@@ -79,7 +79,7 @@ add_definitions("-DARANGODB_STANDALONE_ASIO=0")
 set(ARANGODB_VERSION_MAJOR      "3")
 set(ARANGODB_VERSION_MINOR      "3")
 if (NOT DEFINED ARANGODB_VERSION_REVISION)
-  set(ARANGODB_VERSION_REVISION   "13")
+  set(ARANGODB_VERSION_REVISION   "19")
 endif()
 
 set(ARANGODB_PACKAGE_REVISION   "1")
@@ -392,8 +392,8 @@ endif ()
 if (CMAKE_COMPILER_IS_GNUCC)
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "5.4")
     message(FATAL_ERROR "ArangoDB requires g++ 5.4 or newer.")
-  elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "7.9.9")
-    message(FATAL_ERROR "ArangoDB doesn't support g++ 8.0 yet.")
+  elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "8.9.9")
+    message(FATAL_ERROR "ArangoDB doesn't support g++ 9.0 yet.")
   endif()
   set(BASE_C_FLAGS "${BASE_C_FLAGS}")
 endif ()
@@ -799,7 +799,7 @@ endif()
 ## OPENSSL
 ################################################################################
 
-# Some special stuff for Mac OSX and homebrew as a preparation for the 
+# Some special stuff for Mac OSX and homebrew as a preparation for the
 # generic FindOpenSSL script:
 if (APPLE AND BREW AND NOT OPENSSL_ROOT_DIR)
   message("searching openssl with brew (${BREW})")

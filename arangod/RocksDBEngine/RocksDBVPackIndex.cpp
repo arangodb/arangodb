@@ -154,7 +154,7 @@ RocksDBVPackIndexIterator::RocksDBVPackIndexIterator(
   TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::vpack());
 
   RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
-  rocksdb::ReadOptions options = mthds->readOptions();
+  rocksdb::ReadOptions options = mthds->iteratorReadOptions();
   if (!reverse) {
     // we need to have a pointer to a slice for the upper bound
     // so we need to assign the slice to an instance variable here

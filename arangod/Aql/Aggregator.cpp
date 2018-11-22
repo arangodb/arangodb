@@ -106,11 +106,9 @@ void AggregatorLength::reduce(AqlValue const&) {
 }
 
 AqlValue AggregatorLength::stealValue() {
-  builder.clear();
-  builder.add(VPackValue(count));
-  AqlValue temp(builder.slice());
+  uint64_t value = count;
   reset();
-  return temp;
+  return AqlValue(AqlValueHintUInt(value));
 }
 
 AggregatorMin::~AggregatorMin() { value.destroy(); }
@@ -161,9 +159,11 @@ AqlValue AggregatorMax::stealValue() {
 void AggregatorSum::reset() {
   sum = 0.0;
   invalid = false;
+  invoked = false;
 }
 
 void AggregatorSum::reduce(AqlValue const& cmpValue) {
+  invoked = true;
   if (!invalid) {
     if (cmpValue.isNull(true)) {
       // ignore `null` values here
@@ -183,15 +183,13 @@ void AggregatorSum::reduce(AqlValue const& cmpValue) {
 }
 
 AqlValue AggregatorSum::stealValue() {
-  if (invalid || std::isnan(sum) || sum == HUGE_VAL || sum == -HUGE_VAL) {
+  if (invalid || !invoked || std::isnan(sum) || sum == HUGE_VAL || sum == -HUGE_VAL) {
     return AqlValue(AqlValueHintNull());
   }
 
-  builder.clear();
-  builder.add(VPackValue(sum));
-  AqlValue temp(builder.slice());
+  double v = sum;
   reset();
-  return temp;
+  return AqlValue(AqlValueHintDouble(v));
 }
 
 void AggregatorAverage::reset() {
@@ -228,11 +226,9 @@ AqlValue AggregatorAverage::stealValue() {
 
   TRI_ASSERT(count > 0);
   
-  builder.clear();
-  builder.add(VPackValue(sum / count));
-  AqlValue temp(builder.slice());
+  double v = sum / count;
   reset();
-  return temp;
+  return AqlValue(AqlValueHintDouble(v));
 }
 
 void AggregatorVarianceBase::reset() {
@@ -271,19 +267,18 @@ AqlValue AggregatorVariance::stealValue() {
   }
 
   TRI_ASSERT(count > 0);
-  
-  builder.clear();
+ 
+  double v; 
   if (!population) {
     TRI_ASSERT(count > 1);
-    builder.add(VPackValue(sum / (count - 1)));
+    v = sum / (count - 1);
   }
   else {
-    builder.add(VPackValue(sum / count));
+    v = sum / count;
   }
   
-  AqlValue temp(builder.slice());
   reset();
-  return temp;
+  return AqlValue(AqlValueHintDouble(v));
 }
 
 AqlValue AggregatorStddev::stealValue() {
@@ -293,17 +288,16 @@ AqlValue AggregatorStddev::stealValue() {
   }
 
   TRI_ASSERT(count > 0);
-    
-  builder.clear();
+  
+  double v;  
   if (!population) {
     TRI_ASSERT(count > 1);
-    builder.add(VPackValue(sqrt(sum / (count - 1))));
+    v = sqrt(sum / (count - 1));
   }
   else {
-    builder.add(VPackValue(sqrt(sum / count)));
+    v = sqrt(sum / count);
   }
 
-  AqlValue temp(builder.slice());
   reset();
-  return temp;
+  return AqlValue(AqlValueHintDouble(v));
 }

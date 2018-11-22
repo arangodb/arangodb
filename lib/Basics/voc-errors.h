@@ -291,8 +291,6 @@
 /// - 1414: @LIT{start tick not present}
 ///   Will be raised when the replication applier fetches data using a start
 ///   tick, but that start tick is not present on the logger server anymore.
-/// - 1415: @LIT{the checksum format is wrong}
-///    "Will be raised when the format of the checksum is wrong")
 /// - 1416: @LIT{wrong checksum}
 ///   Will be raised when a new born follower submits a wrong checksum
 /// - 1417: @LIT{shard not empty}
@@ -437,6 +435,9 @@
 ///   the result is still unknown.
 /// - 1496: @LIT{not a leader}
 ///   Will be raised when an operation is sent to a non-leading server.
+/// - 1499: @LIT{could not drop collection in plan}
+///   Will be raised when a coordinator in a cluster cannot drop a collection
+///   entry in the Plan hierarchy in the agency.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -458,9 +459,9 @@
 ///   undefined the context it is used.
 /// - 1521: @LIT{unable to read-lock collection \%s}
 ///   Will be raised when a read lock on the collection cannot be acquired.
-/// - 1522: @LIT{too many collections}
-///   Will be raised when the number of collections in a query is beyond the
-///   allowed value.
+/// - 1522: @LIT{too many collections/shards}
+///   Will be raised when the number of collections or shards in a query is
+///   beyond the allowed value.
 /// - 1530: @LIT{document attribute '\%s' is assigned multiple times}
 ///   Will be raised when a document attribute is re-assigned.
 /// - 1540: @LIT{usage of unknown function '\%s()'}
@@ -2055,16 +2056,6 @@ void TRI_InitializeErrorMessages ();
 #define TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT                      (1414)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1415: ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT
-///
-/// the checksum format is wrong
-///
-///  "Will be raised when the format of the checksum is wrong")
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT                       (1415)
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief 1416: ERROR_REPLICATION_WRONG_CHECKSUM
 ///
 /// wrong checksum
@@ -2605,6 +2596,17 @@ void TRI_InitializeErrorMessages ();
 #define TRI_ERROR_CLUSTER_NOT_LEADER                                      (1496)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1499: ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION
+///
+/// could not drop collection in plan
+///
+/// Will be raised when a coordinator in a cluster cannot drop a collection
+/// entry in the Plan hierarchy in the agency.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION                       (1499)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED
 ///
 /// query killed
@@ -2699,10 +2701,10 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1522: ERROR_QUERY_TOO_MANY_COLLECTIONS
 ///
-/// too many collections
+/// too many collections/shards
 ///
-/// Will be raised when the number of collections in a query is beyond the
-/// allowed value.
+/// Will be raised when the number of collections or shards in a query is
+/// beyond the allowed value.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_TOO_MANY_COLLECTIONS                              (1522)

@@ -100,77 +100,145 @@ AqlItemBlock::AqlItemBlock(ResourceMonitor* resourceMonitor, VPackSlice const sl
   VPackArrayIterator dataIterator(data);
   VPackArrayIterator rawIterator(raw);
 
+  auto storeSingleValue = [this](size_t row, size_t column, VPackArrayIterator& it, std::vector<AqlValue>& madeHere) {
+    AqlValue a(it.value());
+    it.next();
+    try {
+      setValue(row, column, a);  // if this throws, a is destroyed again
+    } catch (...) {
+      a.destroy();
+      throw;
+    }
+    madeHere.emplace_back(a);
+  };
+
+  enum RunType {
+    NoRun = 0,
+    EmptyRun,
+    NextRun,
+    PositionalRun
+  };
+    
+  int64_t runLength = 0;
+  size_t tablePos = 0;
+  RunType runType = NoRun;
+  
   try {
     // skip the first two records
     rawIterator.next();
     rawIterator.next();
-    int64_t emptyRun = 0;
-
+    
     for (RegisterId column = 0; column < _nrRegs; column++) {
       for (size_t i = 0; i < _nrItems; i++) {
-        if (emptyRun > 0) {
-          emptyRun--;
-        } else {
-          VPackSlice dataEntry = dataIterator.value();
-          dataIterator.next();
-          if (!dataEntry.isNumber()) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                           "data must contain only numbers");
+        if (runLength > 0) {
+          switch (runType) {
+            case EmptyRun:
+              // nothing to do
+              break;
+            
+            case NextRun: 
+              storeSingleValue(i, column, rawIterator, madeHere);
+              break;
+
+            case PositionalRun: 
+              TRI_ASSERT(tablePos < madeHere.size());
+              setValue(i, column, madeHere[tablePos]);
+              break;
+
+            case NoRun: {
+              TRI_ASSERT(false);
+            }
           }
-          int64_t n = dataEntry.getNumericValue<int64_t>();
-          if (n == 0) {
-            // empty, do nothing here
-          } else if (n == -1) {
-            // empty run:
-            VPackSlice runLength = dataIterator.value();
-            dataIterator.next();
-            TRI_ASSERT(runLength.isNumber());
-            emptyRun = runLength.getNumericValue<int64_t>();
-            emptyRun--;
-          } else if (n == -2) {
-            // a range
-            VPackSlice lowBound = dataIterator.value();
-            dataIterator.next();
-            VPackSlice highBound = dataIterator.value();
-            dataIterator.next();
-             
-            int64_t low =
-                VelocyPackHelper::getNumericValue<int64_t>(lowBound, 0);
-            int64_t high =
-                VelocyPackHelper::getNumericValue<int64_t>(highBound, 0);
-            AqlValue a(low, high);
-            try {
-              setValue(i, column, a);
-            } catch (...) {
-              a.destroy();
-              throw;
+
+          --runLength;
+          if (runLength == 0) {
+            runType = NoRun;
+            tablePos = 0;
+          }
+
+          continue;
+        }
+
+        VPackSlice dataEntry = dataIterator.value();
+        dataIterator.next();
+        if (!dataEntry.isNumber()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         "data must contain only numbers");
+        }
+
+        int64_t n = dataEntry.getNumericValue<int64_t>();
+        if (n == 0) {
+          // empty, do nothing here
+        } else if (n == 1) {
+          // a VelocyPack value
+          storeSingleValue(i, column, rawIterator, madeHere);
+        } else if (n == -1 || n == -3 || n == -4) {
+          // -1: empty run, -3: run of "next" values, -4: run of positional values
+          VPackSlice v = dataIterator.value();
+          dataIterator.next();
+          TRI_ASSERT(v.isNumber());
+          runLength = v.getNumericValue<int64_t>();
+          runLength--;
+          switch (n) {
+            case -1:
+              runType = EmptyRun;
+              break;
+            
+            case -3: 
+              runType = NextRun;
+              storeSingleValue(i, column, rawIterator, madeHere);
+              break;
+            
+            case -4: {
+              runType = PositionalRun;
+              VPackSlice v = dataIterator.value();
+              dataIterator.next();
+              TRI_ASSERT(v.isNumber());
+              tablePos = v.getNumericValue<size_t>();
+              if (tablePos >= madeHere.size()) {
+                // safeguard against out-of-bounds accesses
+                THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                               "found undefined data value");
+              }
+
+              setValue(i, column, madeHere[tablePos]);
             }
-          } else if (n == 1) {
-            // a VelocyPack value
-            AqlValue a(rawIterator.value());
-            rawIterator.next();
-            try {
-              setValue(i, column, a);  // if this throws, a is destroyed again
-            } catch (...) {
-              a.destroy();
-              throw;
-            }
-            madeHere.emplace_back(a);
-          } else if (n >= 2) {
-            setValue(i, column, madeHere[static_cast<size_t>(n)]);
-            // If this throws, all is OK, because it was already put into
-            // the block elsewhere.
-          } else {
+          }
+        } else if (n == -2) {
+          // a range
+          VPackSlice lowBound = dataIterator.value();
+          dataIterator.next();
+          VPackSlice highBound = dataIterator.value();
+          dataIterator.next();
+            
+          int64_t low =
+              VelocyPackHelper::getNumericValue<int64_t>(lowBound, 0);
+          int64_t high =
+              VelocyPackHelper::getNumericValue<int64_t>(highBound, 0);
+          emplaceValue(i, column, low, high);
+        } else if (n >= 2) {
+          if (static_cast<size_t>(n) >= madeHere.size()) {
+            // safeguard against out-of-bounds accesses
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                            "found undefined data value");
           }
+
+          setValue(i, column, madeHere[static_cast<size_t>(n)]);
+          // If this throws, all is OK, because it was already put into
+          // the block elsewhere.
+        } else {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         "found invalid data encoding value");
         }
       }
     }
   } catch (...) {
     destroy();
-    // TODO: rethrow?
+    throw;
   }
+
+  TRI_ASSERT(runLength == 0);
+  TRI_ASSERT(runType == NoRun);
 }
 
 /// @brief destroy the block, used in the destructor and elsewhere

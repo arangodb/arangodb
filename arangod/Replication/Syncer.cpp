@@ -66,7 +66,7 @@ Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
       _connection(nullptr),
       _client(nullptr),
       _barrierId(0),
-      _barrierTtl(600),
+      _barrierTtl(900),
       _barrierUpdateTime(0),
       _isChildSyncer(false) {
   
@@ -569,7 +569,7 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
       
       SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase),
                                       col->cid(), AccessMode::Type::WRITE);
-    
+      trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
       Result res = trx.begin();
       if (!res.ok()) {
         return res;

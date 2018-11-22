@@ -67,6 +67,9 @@ QueryOptions::QueryOptions() :
   // "cache" only defaults to true if query cache is turned on
   auto queryCacheMode = QueryCache::instance()->mode();
   cache = (queryCacheMode == CACHE_ALWAYS_ON);
+  
+  maxNumberOfPlans = q->maxQueryPlans();
+  TRI_ASSERT(maxNumberOfPlans > 0);
 }
   
 void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
@@ -87,6 +90,9 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
   value = slice.get("maxNumberOfPlans"); 
   if (value.isNumber()) {
     maxNumberOfPlans = value.getNumber<size_t>();
+    if (maxNumberOfPlans == 0) {
+      maxNumberOfPlans = 1;
+    }
   }
   value = slice.get("maxWarningCount"); 
   if (value.isNumber()) {

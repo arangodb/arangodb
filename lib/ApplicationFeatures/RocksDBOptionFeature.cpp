@@ -45,6 +45,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(
     application_features::ApplicationServer* server)
     : application_features::ApplicationFeature(server, "RocksDBOption"),
       _transactionLockTimeout(rocksDBTrxDefaults.transaction_lock_timeout),
+      _totalWriteBufferSize(rocksDBDefaults.db_write_buffer_size),
       _writeBufferSize(rocksDBDefaults.write_buffer_size),
       _maxWriteBufferNumber(rocksDBDefaults.max_write_buffer_number),
       _maxTotalWalSize(80 << 20),
@@ -77,7 +78,8 @@ RocksDBOptionFeature::RocksDBOptionFeature(
       _useFSync(rocksDBDefaults.use_fsync),
       _skipCorrupted(false),
       _dynamicLevelBytes(true),
-      _enableStatistics(false) {
+      _enableStatistics(false),
+      _useFileLogging(false) {
   // setting the number of background jobs to
   _maxBackgroundJobs = static_cast<int32_t>(std::max((size_t)2,
                                                      std::min(TRI_numberProcessors(), (size_t)8)));
@@ -117,6 +119,10 @@ void RocksDBOptionFeature::collectOptions(
                      " a transaction attempts to lock a document. A negative value "
                      "is not recommended as it can lead to deadlocks (0 = no waiting, < 0 no timeout)",
                      new Int64Parameter(&_transactionLockTimeout));
+  
+  options->addHiddenOption("--rocksdb.total-write-buffer-size",
+                           "maximum total size of in-memory write buffers (0 = unbounded)",
+                           new UInt64Parameter(&_totalWriteBufferSize));
 
   options->addOption("--rocksdb.write-buffer-size",
                      "amount of data to build up in memory before converting "
@@ -257,6 +263,10 @@ void RocksDBOptionFeature::collectOptions(
       "that way RocksDB's compaction is doing sequential instead of random "
       "reads.",
       new UInt64Parameter(&_compactionReadaheadSize));
+  
+  options->addHiddenOption("--rocksdb.use-file-logging",
+                           "use a file-base logger for RocksDB's own logs",
+                           new BooleanParameter(&_useFileLogging));
 
   options->addHiddenOption("--rocksdb.wal-recovery-skip-corrupted",
                            "skip corrupted records in WAL recovery",
@@ -268,6 +278,11 @@ void RocksDBOptionFeature::validateOptions(
   if (_writeBufferSize > 0 && _writeBufferSize < 1024 * 1024) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "invalid value for '--rocksdb.write-buffer-size'";
+    FATAL_ERROR_EXIT();
+  }
+  if (_totalWriteBufferSize > 0 && _totalWriteBufferSize < 64 * 1024 * 1024) {
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "invalid value for '--rocksdb.total-write-buffer-size'";
     FATAL_ERROR_EXIT();
   }
   if (_maxBytesForLevelMultiplier <= 0.0) {
@@ -322,6 +337,7 @@ void RocksDBOptionFeature::start() {
 
   LOG_TOPIC(TRACE, Logger::ROCKSDB) << "using RocksDB options:"
                                     << " wal_dir: " << _walDirectory << "'"
+                                    << ", total_write_buffer_size: " << _totalWriteBufferSize
                                     << ", write_buffer_size: " << _writeBufferSize
                                     << ", max_write_buffer_number: " << _maxWriteBufferNumber
                                     << ", max_total_wal_size: " << _maxTotalWalSize

@@ -131,8 +131,14 @@ bool resolveRequestContext(GeneralRequest& req) {
 
   TRI_ASSERT(!vocbase->isDangling());
 
+  std::unique_ptr<VocbaseContext> guard(VocbaseContext::create(&req, vocbase));
+  if (!guard) {
+    return false;
+  }
+
   // the vocbase context is now responsible for releasing the vocbase
-  req.setRequestContext(VocbaseContext::create(&req, vocbase), true);
+  req.setRequestContext(guard.get(), true);
+  guard.release();
 
   // the "true" means the request is the owner of the context
   return true;
@@ -144,11 +150,26 @@ bool resolveRequestContext(GeneralRequest& req) {
 GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
     GeneralRequest& req) {
   if (!::resolveRequestContext(req)) {
-    addErrorResponse(rest::ResponseCode::NOT_FOUND, req.contentTypeResponse(),
-                     req.messageId(), TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-                     TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND));
 
-    return RequestFlow::Abort;
+    // BUG FIX - do not answer with DATABASE_NOT_FOUND, when follower in active failover
+    auto mode = ServerState::serverMode();
+    switch (mode) {
+      case ServerState::Mode::REDIRECT:
+        addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE, req.contentTypeResponse(),
+                     req.messageId(), TRI_ERROR_CLUSTER_NOT_LEADER,
+                     TRI_errno_string(TRI_ERROR_CLUSTER_NOT_LEADER));
+        return RequestFlow::Abort;
+      case ServerState::Mode::TRYAGAIN:
+        addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE, req.contentTypeResponse(),
+                     req.messageId(), TRI_ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING,
+                     TRI_errno_string(TRI_ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING));
+        return RequestFlow::Abort;
+      default:
+        addErrorResponse(rest::ResponseCode::NOT_FOUND, req.contentTypeResponse(),
+               req.messageId(), TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+               TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND));
+        return RequestFlow::Abort;
+    }
   }
   TRI_ASSERT(req.requestContext() != nullptr);
 
@@ -486,7 +507,9 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
 
   std::string const& path = request.requestPath();
   std::string const& username = request.user();
-  rest::ResponseCode result = request.authenticated()
+  bool userAuthenticated = request.authenticated();
+
+  rest::ResponseCode result = userAuthenticated
                                   ? rest::ResponseCode::OK
                                   : rest::ResponseCode::UNAUTHORIZED;
 
@@ -497,6 +520,10 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
     events::NotAuthorized(&request);
     result = rest::ResponseCode::UNAUTHORIZED;
     LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "Access forbidden to " << path;
+
+    if (userAuthenticated) {
+      request.setAuthenticated(false);
+    }
   }
 
   // mop: inside the authenticateRequest() request->user will be populated
@@ -541,6 +568,10 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
         // req.user when it could be validated
         result = rest::ResponseCode::OK;
         vc->forceSuperuser();
+      } else if (userAuthenticated && path == "/_api/cluster/endpoints") {
+        // allow authenticated users to access cluster/endpoints
+        result = rest::ResponseCode::OK;
+        //vc->forceReadOnly();
       } else if (request.requestType() == RequestType::POST &&
                  !username.empty() &&
                  StringUtils::isPrefix(path, ApiUser + username + '/')) {

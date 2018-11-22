@@ -264,7 +264,7 @@ bool FollowerInfo::remove(ServerID const& sid) {
           break;  //
         } else {
           LOG_TOPIC(WARN, Logger::CLUSTER)
-              << "FollowerInfo::remove, could not cas key " << path 
+              << "FollowerInfo::remove, could not cas key " << path
               << ". status code: " << res2._statusCode << ", incriminating body: " << res2.bodyRef();
         }
       }
@@ -273,7 +273,8 @@ bool FollowerInfo::remove(ServerID const& sid) {
                                       << path << " in agency.";
     }
     usleep(500000);
-  } while (TRI_microtime() < startTime + 30);
+  } while (TRI_microtime() < startTime + 30
+    && application_features::ApplicationServer::isRetryOK());
   if (!success) {
     _followers = _oldFollowers;
     LOG_TOPIC(ERR, Logger::CLUSTER)

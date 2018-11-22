@@ -62,7 +62,7 @@ x-content-type-options: nosniff
           <span class="hljs-string">"condition"</span> : { 
           }, 
           <span class="hljs-string">"reverse"</span> : <span class="hljs-literal">false</span>, 
-          <span class="hljs-string">"needsGatherNodeSort"</span> : <span class="hljs-literal">false</span>, 
+          <span class="hljs-string">"needsGatherNodeSort"</span> : <span class="hljs-literal">true</span>, 
           <span class="hljs-string">"indexCoversProjections"</span> : <span class="hljs-literal">false</span> 
         }, 
         { 

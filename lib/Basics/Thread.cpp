@@ -72,7 +72,7 @@ void Thread::startThread(void* arg) {
   TRI_ASSERT(ptr != nullptr);
 
   ptr->_threadNumber = LOCAL_THREAD_NUMBER;
-  
+
   LOCAL_THREAD_NAME = ptr->name().c_str();
 
   if (0 <= ptr->_affinity) {
@@ -85,6 +85,7 @@ void Thread::startThread(void* arg) {
     LOG_TOPIC(WARN, Logger::THREADS)
         << "caught exception in thread '" << ptr->_name << "': " << ex.what();
     ptr->cleanupMe();
+    ptr->crashNotification(ex);
     throw;
   } catch (...) {
     ptr->cleanupMe();
@@ -111,7 +112,7 @@ TRI_pid_t Thread::currentProcessId() {
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t Thread::currentThreadNumber() { return LOCAL_THREAD_NUMBER; }
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the name of the current thread, if set
 /// note that this function may return a nullptr
@@ -157,6 +158,7 @@ std::string Thread::stringify(ThreadState state) {
 
 Thread::Thread(std::string const& name, bool deleteOnExit)
     : _deleteOnExit(deleteOnExit),
+      _threadStructInitialized(false),
       _name(name),
       _thread(),
       _threadNumber(0),
@@ -180,12 +182,14 @@ Thread::~Thread() {
       << "delete(" << _name << "), state: " << stringify(state);
 
   if (state == ThreadState::STOPPED) {
-    if (TRI_IsSelfThread(&_thread)) {
-      // we must ignore any errors here, but TRI_DetachThread will log them
-      TRI_DetachThread(&_thread);
-    } else {
-      // we must ignore any errors here, but TRI_JoinThread will log them
-      TRI_JoinThread(&_thread);
+    if (_threadStructInitialized) {
+      if (TRI_IsSelfThread(&_thread)) {
+        // we must ignore any errors here, but TRI_DetachThread will log them
+        TRI_DetachThread(&_thread);
+      } else {
+        // we must ignore any errors here, but TRI_JoinThread will log them
+        TRI_JoinThread(&_thread);
+      }
     }
 
     _state.store(ThreadState::DETACHED);
@@ -200,7 +204,7 @@ Thread::~Thread() {
         << ". shutting down hard";
     FATAL_ERROR_ABORT();
   }
-  
+
   LOCAL_THREAD_NAME = nullptr;
 }
 
@@ -229,7 +233,7 @@ void Thread::beginShutdown() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief called from the destructor
+/// @brief derived class MUST call from its destructor
 ////////////////////////////////////////////////////////////////////////////////
 
 void Thread::shutdown() {
@@ -319,6 +323,9 @@ bool Thread::start(ConditionVariable* finishedCondition) {
     return false;
   }
 
+  TRI_ASSERT(!_threadStructInitialized);
+  memset(&_thread, 0, sizeof(thread_t));
+
   bool ok =
       TRI_StartThread(&_thread, &_threadId, _name.c_str(), &startThread, this);
 
@@ -331,6 +338,8 @@ bool Thread::start(ConditionVariable* finishedCondition) {
     // must cleanup to prevent memleaks
     cleanupMe();
   }
+
+  _threadStructInitialized = true;
 
   return ok;
 }

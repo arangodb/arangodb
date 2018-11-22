@@ -2320,11 +2320,12 @@ int MMFilesCollection::restoreIndex(transaction::Methods* trx,
     // Just report.
     return e.code();
   }
-  TRI_ASSERT(newIdx != nullptr);
-
-  TRI_UpdateTickServer(newIdx->id());
+  if (newIdx == nullptr) {
+    return TRI_ERROR_ARANGO_INDEX_CREATION_FAILED;
+  }
 
   auto const id = newIdx->id();
+  TRI_UpdateTickServer(id);
   for (auto& it : _indexes) {
     if (it->id() == id) {
       // index already exists
@@ -2733,8 +2734,8 @@ int MMFilesCollection::unlockWrite(bool useDeadlockDetector) {
   return TRI_ERROR_NO_ERROR;
 }
 
-void MMFilesCollection::truncate(transaction::Methods* trx,
-                                 OperationOptions& options) {
+Result MMFilesCollection::truncate(transaction::Methods* trx,
+                                   OperationOptions& options) {
   auto primaryIdx = primaryIndex();
 
   options.ignoreRevs = true;
@@ -2763,8 +2764,16 @@ void MMFilesCollection::truncate(transaction::Methods* trx,
 
     return true;
   };
-  primaryIdx->invokeOnAllElementsForRemoval(callback);
-  
+  try {
+    primaryIdx->invokeOnAllElementsForRemoval(callback);
+  } catch(basics::Exception const& e) {
+    return Result(e.code(), e.message());
+  } catch(std::exception const& e) {
+    return Result(TRI_ERROR_INTERNAL, e.what());
+  } catch(...) {
+    return Result(TRI_ERROR_INTERNAL, "unknown error during truncate");
+  }
+
   auto indexes = _indexes;
   size_t const n = indexes.size();
 
@@ -2773,6 +2782,8 @@ void MMFilesCollection::truncate(transaction::Methods* trx,
     TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
     idx->afterTruncate();
   }
+
+  return Result();
 }
 
 Result MMFilesCollection::insert(transaction::Methods* trx,
@@ -2909,7 +2920,7 @@ Result MMFilesCollection::insert(transaction::Methods* trx,
       operation.revert(trx);
     }
   }
-  
+
   if (res.ok()) {
     uint8_t const* vpack = lookupDocumentVPack(documentId);
     if (vpack != nullptr) {
@@ -3276,7 +3287,7 @@ Result MMFilesCollection::update(
                           documentId, options.mergeObjects,
                           options.keepNull, *builder.get(), options.isRestore, revisionId);
 
-    if (res.fail()) { 
+    if (res.fail()) {
       return res;
     }
 

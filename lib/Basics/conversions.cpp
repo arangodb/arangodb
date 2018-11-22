@@ -52,9 +52,9 @@ int TRI_IntHex(char ch, int errorValue) {
 ////////////////////////////////////////////////////////////////////////////////
 
 double TRI_DoubleString(char const* str) {
-  TRI_set_errno(TRI_ERROR_NO_ERROR);
-
   char* endptr;
+  errno = TRI_ERROR_NO_ERROR;
+  TRI_set_errno(TRI_ERROR_NO_ERROR);
   double result = strtod(str, &endptr);
 
   while (isspace(*endptr)) {
@@ -85,6 +85,7 @@ int32_t TRI_Int32String(char const* str) {
   struct reent buffer;
 #endif
 
+  errno = TRI_ERROR_NO_ERROR;
   TRI_set_errno(TRI_ERROR_NO_ERROR);
 
 #if defined(TRI_HAVE_STRTOL_R)
@@ -142,6 +143,7 @@ uint32_t TRI_UInt32String(char const* str) {
   struct reent buffer;
 #endif
 
+  errno = TRI_ERROR_NO_ERROR;
   TRI_set_errno(TRI_ERROR_NO_ERROR);
 
 #if defined(TRI_HAVE_STRTOUL_R)

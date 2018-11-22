@@ -47,6 +47,7 @@
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Transaction/StandaloneContext.h"
+#include "Transaction/UserTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -132,10 +133,96 @@ bool State::persist(index_t index, term_t term,
   return res.ok();
 }
 
+bool State::persistconf(
+  index_t index, term_t term, arangodb::velocypack::Slice const& entry,
+  std::string const& clientId) const {
+  LOG_TOPIC(TRACE, Logger::AGENCY)
+    << "persist configuration index=" << index << " term=" << term
+    << " entry: " << entry.toJson();
+  
+  // The conventional log entry-------------------------------------------------
+  Builder log;
+  { VPackObjectBuilder b(&log);
+    log.add("_key", Value(stringify(index)));
+    log.add("term", Value(term));
+    log.add("request", entry);
+    log.add("clientId", Value(clientId));
+    log.add("timestamp", Value(timestamp())); }
+  
+  // The new configuration to be persisted.-------------------------------------
+  // Actual agent's configuration is changed after successful persistence.
+  Slice config;
+  if (entry.valueAt(0).hasKey("new")) {
+    config = entry.valueAt(0).get("new");
+  } else {
+    config = entry.valueAt(0);
+  }
+  auto const myId = _agent->id();
+  Builder builder;
+  if (config.get("id").copyString() != myId) {
+    { VPackObjectBuilder b(&builder);
+      for (auto const& i : VPackObjectIterator(config)) {
+        auto key = i.key.copyString();
+        if (key == "endpoint") {
+          builder.add(key, VPackValue(_agent->endpoint()));
+        } else if (key == "id") {
+          builder.add(key, VPackValue(myId));
+        } else {
+          builder.add(key, i.value);
+        }
+      }}
+    config = builder.slice();
+  }
+  
+  Builder configuration;
+  { VPackObjectBuilder b(&configuration);
+    configuration.add("_key", VPackValue("0"));
+    configuration.add("cfg", config);}
+  
+  // Multi docment transaction for log entry and configuration replacement -----
+  TRI_ASSERT(_vocbase != nullptr);
+
+  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
+  transaction::Options options;
+
+  transaction::UserTransaction trx(
+    ctx, {}, {"log", "configuration"}, {}, options);
+  
+  Result res = trx.begin();
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+  
+  OperationResult logResult, confResult;
+  try {
+    logResult = trx.insert("log", log.slice(), _options);
+    confResult = trx.replace("configuration", configuration.slice(), _options);
+  } catch (std::exception const& e) {
+    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to persist log entry:" << e.what();
+    return false;
+  }
+  
+  res = trx.finish(confResult.result);
+  
+  // Successful persistence affects local configuration ------------------------
+  if (res.ok()) {
+    _agent->updateConfiguration(config);
+  }
+  
+  LOG_TOPIC(TRACE, Logger::AGENCY)
+    << "persist done index=" << index << " term=" << term << " entry: "
+    << entry.toJson() << " ok:" << res.ok();
+  
+  return res.ok();
+  
+}
+
+
 
 /// Log transaction (leader)
 std::vector<index_t> State::logLeaderMulti(
-  query_t const& transactions, std::vector<bool> const& applicable, term_t term) {
+  query_t const& transactions, std::vector<apply_ret_t> const& applicable,
+  term_t term) {
 
   std::vector<index_t> idx(applicable.size());
   size_t j = 0;
@@ -164,9 +251,17 @@ std::vector<index_t> State::logLeaderMulti(
         );
     }
     
-    if (applicable[j]) {
+    if (applicable[j] == APPLIED) {
       std::string clientId((i.length() == 3) ? i[2].copyString() : "");
-      idx[j] = logNonBlocking(_log.back().index + 1, i[0], term, clientId, true);
+
+      auto transaction = i[0];
+      TRI_ASSERT(transaction.isObject());
+      TRI_ASSERT(transaction.length() > 0);
+      size_t pos = transaction.keyAt(0).copyString().find(RECONFIGURE);
+      
+      idx[j] = logNonBlocking(
+        _log.back().index + 1, i[0], term, clientId, true, pos == 0 || pos == 1);
+
     }
     ++j;
   }
@@ -186,15 +281,19 @@ index_t State::logLeaderSingle(velocypack::Slice const& slice, term_t term,
 /// Log transaction (leader)
 index_t State::logNonBlocking(
   index_t idx, velocypack::Slice const& slice, term_t term,
-  std::string const& clientId, bool leading) {
+  std::string const& clientId, bool leading, bool reconfiguration) {
 
   _logLock.assertLockedByCurrentThread();
 
   auto buf = std::make_shared<Buffer<uint8_t>>();
-  
   buf->append((char const*)slice.begin(), slice.byteSize());
   
-  if (!persist(idx, term, slice, clientId)) {         // log to disk or die
+  
+  bool success = reconfiguration ?
+    persistconf(idx, term, slice, clientId) : 
+    persist(idx, term, slice, clientId);
+  
+  if (!success) {         // log to disk or die
     if (leading) {
       LOG_TOPIC(FATAL, Logger::AGENCY)
         << "RAFT leader fails to persist log entries!";
@@ -251,6 +350,7 @@ index_t State::logFollower(query_t const& transactions) {
   bool gotSnapshot = slices.length() > 0 &&
                      slices[0].isObject() &&
                      !slices[0].get("readDB").isNone();
+
 
   // In case of a snapshot, there are three possibilities:
   //   1. Our highest log index is smaller than the snapshot index, in this 
@@ -314,12 +414,21 @@ index_t State::logFollower(query_t const& transactions) {
     std::string clientId;
 
     for (size_t i = ndups; i < nqs; ++i) {
-
       VPackSlice const& slice = slices[i];
+
+      auto query = slice.get("query");
+      TRI_ASSERT(query.isObject());
+      TRI_ASSERT(query.length() > 0);
+
+      auto term = slice.get("term").getUInt();
+      auto clientId = slice.get("clientId").copyString();
+      auto index = slice.get("index").getUInt();
+      
+      bool reconfiguration = query.keyAt(0).isEqualString(RECONFIGURE);
+
       // first to disk
       if (logNonBlocking(
-            slice.get("index").getUInt(), slice.get("query"),
-            slice.get("term").getUInt(), slice.get("clientId").copyString())==0) {
+            index, query, term, clientId, false, reconfiguration)==0) {
         break;
       }
     }

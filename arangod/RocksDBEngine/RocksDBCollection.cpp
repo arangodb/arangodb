@@ -93,7 +93,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
         TRI_ERROR_BAD_PARAMETER,
         "volatile collections are unsupported in the RocksDB engine");
   }
-  
+
   addCollectionMapping(_objectId, _logicalCollection->vocbase()->id(),
                        _logicalCollection->cid());
   if (_cacheEnabled) {
@@ -113,7 +113,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _cache(nullptr),
       _cachePresent(false),
       _cacheEnabled(static_cast<RocksDBCollection const*>(physical)->_cacheEnabled) {
-  
+
   addCollectionMapping(_objectId, _logicalCollection->vocbase()->id(),
                        _logicalCollection->cid());
   if (_cacheEnabled) {
@@ -466,8 +466,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
   // We also hold the lock.
   // Create it
 
-  idx =
-      idxFactory->prepareIndexFromSlice(info, true, _logicalCollection, false);
+  idx = idxFactory->prepareIndexFromSlice(info, true, _logicalCollection, false);
   TRI_ASSERT(idx != nullptr);
   if (ServerState::instance()->isCoordinator()) {
     // In the coordinator case we do not fill the index
@@ -546,12 +545,12 @@ int RocksDBCollection::restoreIndex(transaction::Methods* trx,
     // Just report.
     return e.code();
   }
-  TRI_ASSERT(newIdx != nullptr);
+  if (newIdx == nullptr) {
+    return TRI_ERROR_ARANGO_INDEX_CREATION_FAILED;
+  }
 
   auto const id = newIdx->id();
-
   TRI_UpdateTickServer(id);
-
   for (auto& it : _indexes) {
     if (it->id() == id) {
       // index already exists
@@ -669,12 +668,6 @@ std::unique_ptr<IndexIterator> RocksDBCollection::getAnyIterator(
       _logicalCollection, trx, mdr, primaryIndex()));
 }
 
-std::unique_ptr<IndexIterator> RocksDBCollection::getSortedAllIterator(
-    transaction::Methods* trx, ManagedDocumentResult* mdr) const {
-  return std::unique_ptr<RocksDBSortedAllIterator>(new RocksDBSortedAllIterator(
-      _logicalCollection, trx, mdr, primaryIndex()));
-}
-
 void RocksDBCollection::invokeOnAllElements(
     transaction::Methods* trx,
     std::function<bool(LocalDocumentId const&)> callback) {
@@ -695,8 +688,8 @@ void RocksDBCollection::invokeOnAllElements(
 // -- SECTION DML Operations --
 ///////////////////////////////////
 
-void RocksDBCollection::truncate(transaction::Methods* trx,
-                                 OperationOptions& options) {
+Result RocksDBCollection::truncate(transaction::Methods* trx,
+                                   OperationOptions& options) {
   TRI_ASSERT(_objectId != 0);
   auto state = RocksDBTransactionState::toState(trx);
   RocksDBMethods* mthd = state->rocksdbMethods();
@@ -705,7 +698,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
       RocksDBKeyBounds::CollectionDocuments(this->objectId());
   rocksdb::Comparator const* cmp =
       RocksDBColumnFamily::documents()->GetComparator();
-  rocksdb::ReadOptions ro = mthd->readOptions();
+  rocksdb::ReadOptions ro = mthd->iteratorReadOptions();
   rocksdb::Slice const end = documentBounds.end();
   ro.iterate_upper_bound = &end;
 
@@ -732,12 +725,11 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
 
     state->prepareOperation(_logicalCollection->cid(), docId.id(),
                             StringRef(key),TRI_VOC_DOCUMENT_OPERATION_REMOVE);
-    
+
     auto res = removeDocument(trx, docId, doc, options, false);
     if (res.fail()) {
       // Failed to remove document in truncate.
-      // Throw
-      THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+      return res;
     }
     res = state->addOperation(_logicalCollection->cid(), docId.id(),
                               TRI_VOC_DOCUMENT_OPERATION_REMOVE, 0,
@@ -746,7 +738,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
     // transaction size limit reached
     if (res.fail()) {
       // This should never happen...
-      THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+      return res;
     }
 
     if (found % 10000 == 0) {
@@ -763,15 +755,14 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   // check if documents have been deleted
   if (state->numCommits() == 0 &&
       mthd->countInBounds(documentBounds, true)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "deletion check in collection truncate "
-                                   "failed - not all documents have been "
-                                   "deleted");
+    return Result(TRI_ERROR_INTERNAL,
+                  "deletion check in collection truncate failed - not all "
+                  "documents have been deleted");
   }
 #endif
 
   TRI_IF_FAILURE("FailAfterAllCommits") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    return Result(TRI_ERROR_DEBUG);
   }
   TRI_IF_FAILURE("SegfaultAfterAllCommits") {
     TRI_SegfaultDebugging("SegfaultAfterAllCommits");
@@ -782,6 +773,8 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
     // to the collection
     compact();
   }
+
+  return Result();
 }
 
 LocalDocumentId RocksDBCollection::lookupKey(transaction::Methods* trx,
@@ -863,7 +856,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
       mdr.reset();
     } else {
       // copy result only if we need it
-      mdr.setManaged(newSlice.begin(), documentId); 
+      mdr.setManaged(newSlice.begin(), documentId);
       TRI_ASSERT(!mdr.empty());
     }
 
@@ -1056,7 +1049,7 @@ Result RocksDBCollection::replace(
       return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
     }
   }
-  
+
   VPackSlice const newDoc(builder->slice());
 
   auto state = RocksDBTransactionState::toState(trx);
@@ -1075,7 +1068,7 @@ Result RocksDBCollection::replace(
       mdr.reset();
     } else {
       // copy result only if we need it
-      mdr.setManaged(newDoc.begin(), documentId); 
+      mdr.setManaged(newDoc.begin(), documentId);
       TRI_ASSERT(!mdr.empty());
    }
 
@@ -1455,7 +1448,7 @@ RocksDBOperationResult RocksDBCollection::removeDocument(
 
   /*LOG_TOPIC(ERR, Logger::FIXME)
       << "Delete rev: " << revisionId << " trx: " << trx->state()->id()
-      << " seq: " << mthd->readOptions().snapshot->GetSequenceNumber()
+      << " seq: " << mthd->sequenceNumber()
       << " objectID " << _objectId << " name: " << _logicalCollection->name();*/
 
   RocksDBOperationResult resInner;
@@ -1515,7 +1508,7 @@ RocksDBOperationResult RocksDBCollection::updateDocument(
   TRI_ASSERT(_objectId != 0);
 
   RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
-  
+
   // We NEED to do the PUT first, otherwise WAL tailing breaks
   RocksDBKeyLeaser newKey(trx);
   newKey->constructDocument(_objectId, newDocumentId.id());
@@ -1532,7 +1525,7 @@ RocksDBOperationResult RocksDBCollection::updateDocument(
     res.keySize(newKey->size());
     return res;
   }
-  
+
   RocksDBKeyLeaser oldKey(trx);
   oldKey->constructDocument(_objectId, oldDocumentId.id());
   blackListKey(oldKey->string().data(),
@@ -1627,7 +1620,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
   } else {
     LOG_TOPIC(DEBUG, Logger::FIXME)
         << "NOT FOUND rev: " << documentId.id() << " trx: " << trx->state()->id()
-        << " seq: " << mthd->readOptions().snapshot->GetSequenceNumber()
+        << " seq: " << mthd->sequenceNumber()
         << " objectID " << _objectId << " name: " << _logicalCollection->name();
     mdr.reset();
   }
@@ -1689,7 +1682,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
   } else {
     LOG_TOPIC(DEBUG, Logger::FIXME)
         << "NOT FOUND rev: " << documentId.id() << " trx: " << trx->state()->id()
-        << " seq: " << mthd->readOptions().snapshot->GetSequenceNumber()
+        << " seq: " << mthd->sequenceNumber()
         << " objectID " << _objectId << " name: " << _logicalCollection->name();
   }
   return res;

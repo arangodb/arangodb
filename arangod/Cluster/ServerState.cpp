@@ -55,6 +55,7 @@ static ServerState Instance;
 
 ServerState::ServerState()
     : _id(),
+      _shortId(0),
       _address(),
       _lock(),
       _role(RoleEnum::ROLE_UNDEFINED),
@@ -576,6 +577,14 @@ bool ServerState::registerAtAgency(AgencyComm& comm,
 
     // already registered
     if (!mapSlice.isNone()) {
+      VPackSlice s = mapSlice.get("TransactionID");
+      if (s.isNumber()) {
+        uint32_t shortId = s.getNumericValue<uint32_t>();
+        setShortId(shortId);
+        LOG_TOPIC(DEBUG, Logger::CLUSTER) << "restored short id " << shortId << " from agency";
+      } else {
+        LOG_TOPIC(WARN, Logger::CLUSTER) << "unable to restore short id from agency";
+      }
       return true;
     }
 
@@ -650,7 +659,7 @@ void ServerState::setShortId(uint32_t id) {
   if (id == 0) {
     return;
   }
-
+      
   _shortId.store(id, std::memory_order_relaxed);
 }
 
@@ -874,6 +883,10 @@ Result ServerState::propagateClusterServerMode(Mode mode) {
       if (!r.successful()) {
         return Result(TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED, r.errorMessage());
       }
+      // This is propagated to all servers via the heartbeat, which happens
+      // once per second. So to ensure that every server has taken note of
+      // the change, we delay here for 2 seconds.
+      std::this_thread::sleep_for(std::chrono::seconds(2));
     }
     setServerMode(mode);
   }

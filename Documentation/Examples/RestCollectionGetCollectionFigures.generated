@@ -13,7 +13,7 @@ location: <span class="hljs-regexp">/_api/</span>collection/products/figures
   <span class="hljs-string">"keyOptions"</span> : { 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"traditional"</span>, 
     <span class="hljs-string">"allowUserKeys"</span> : <span class="hljs-literal">true</span>, 
-    <span class="hljs-string">"lastValue"</span> : <span class="hljs-number">10199</span> 
+    <span class="hljs-string">"lastValue"</span> : <span class="hljs-number">10198</span> 
   }, 
   <span class="hljs-string">"journalSize"</span> : <span class="hljs-number">33554432</span>, 
   <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span>, 
@@ -25,11 +25,11 @@ location: <span class="hljs-regexp">/_api/</span>collection/products/figures
       <span class="hljs-string">"count"</span> : <span class="hljs-number">1</span>, 
       <span class="hljs-string">"size"</span> : <span class="hljs-number">32128</span> 
     }, 
-    <span class="hljs-string">"documentReferences"</span> : <span class="hljs-number">1</span>, 
-    <span class="hljs-string">"waitingFor"</span> : <span class="hljs-string">"document-reference"</span>, 
+    <span class="hljs-string">"documentReferences"</span> : <span class="hljs-number">0</span>, 
+    <span class="hljs-string">"waitingFor"</span> : <span class="hljs-string">"-"</span>, 
     <span class="hljs-string">"alive"</span> : { 
-      <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
-      <span class="hljs-string">"size"</span> : <span class="hljs-number">0</span> 
+      <span class="hljs-string">"count"</span> : <span class="hljs-number">1</span>, 
+      <span class="hljs-string">"size"</span> : <span class="hljs-number">72</span> 
     }, 
     <span class="hljs-string">"dead"</span> : { 
       <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
@@ -38,7 +38,7 @@ location: <span class="hljs-regexp">/_api/</span>collection/products/figures
     }, 
     <span class="hljs-string">"compactionStatus"</span> : { 
       <span class="hljs-string">"message"</span> : <span class="hljs-string">"skipped compaction because collection has no datafiles"</span>, 
-      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2018-07-26T16:08:44Z"</span>, 
+      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2018-10-20T10:39:06Z"</span>, 
       <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"filesCombined"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"bytesRead"</span> : <span class="hljs-number">0</span>, 
@@ -60,13 +60,13 @@ location: <span class="hljs-regexp">/_api/</span>collection/products/figures
       <span class="hljs-string">"count"</span> : <span class="hljs-number">1</span>, 
       <span class="hljs-string">"size"</span> : <span class="hljs-number">48192</span> 
     }, 
-    <span class="hljs-string">"lastTick"</span> : <span class="hljs-number">10201</span>, 
-    <span class="hljs-string">"uncollectedLogfileEntries"</span> : <span class="hljs-number">1</span> 
+    <span class="hljs-string">"lastTick"</span> : <span class="hljs-number">10200</span>, 
+    <span class="hljs-string">"uncollectedLogfileEntries"</span> : <span class="hljs-number">0</span> 
   }, 
   <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
-  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h8551149F1F83/10195"</span>, 
+  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h5486C74C94E1/10194"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
   <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
   <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"10195"</span> 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"10194"</span> 
 }

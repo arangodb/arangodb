@@ -321,8 +321,12 @@ var transformExampleToAQL = function (examples, collections, bindVars, varname) 
 // //////////////////////////////////////////////////////////////////////////////
 
 var sortEdgeDefinitionInplace = function (edgeDefinition) {
-  edgeDefinition.from.sort();
-  edgeDefinition.to.sort();
+  if (edgeDefinition && edgeDefinition.from && Array.isArray(edgeDefinition.from)) {
+    edgeDefinition.from.sort();
+  }
+  if (edgeDefinition && edgeDefinition.to && Array.isArray(edgeDefinition.to)) {
+    edgeDefinition.to.sort();
+  }
   return edgeDefinition;
 };
 
@@ -1601,7 +1605,15 @@ class Graph {
       }
     );
 
-    findOrCreateCollectionsByEdgeDefinitions([edgeDefinition]);
+    var options = {};
+    if (self.__replicationFactor) {
+      options.replicationFactor = self.__replicationFactor;
+    }
+    if (self.__numberOfShards) {
+      options.numberOfShards = self.__numberOfShards;
+    }
+
+    findOrCreateCollectionsByEdgeDefinitions([edgeDefinition], false, options);
 
     this.__edgeDefinitions.push(edgeDefinition);
     db._graphs.update(this.__name, {edgeDefinitions: this.__edgeDefinitions});
@@ -1653,7 +1665,15 @@ class Graph {
       throw err;
     }
 
-    findOrCreateCollectionsByEdgeDefinitions([edgeDefinition]);
+    var options = {};
+    if (self.__replicationFactor) {
+      options.replicationFactor = self.__replicationFactor;
+    }
+    if (self.__numberOfShards) {
+      options.numberOfShards = self.__numberOfShards;
+    }
+
+    findOrCreateCollectionsByEdgeDefinitions([edgeDefinition], false, options);
 
     // evaluate collections to add to orphanage
     var possibleOrphans = [];
@@ -1723,7 +1743,9 @@ class Graph {
     possibleOrphans.forEach(
       function (po) {
         if (usedVertexCollections.indexOf(po) === -1) {
-          self.__orphanCollections.push(po);
+          if (self.__orphanCollections.indexOf(po) === -1) {
+            self.__orphanCollections.push(po);
+          }
         }
       }
     );
@@ -1750,10 +1772,19 @@ class Graph {
   _addVertexCollection (vertexCollectionName, createCollection) {
     // check edgeCollection
     var ec = db._collection(vertexCollectionName);
+    var self = this;
     var err;
     if (ec === null) {
       if (createCollection !== false) {
-        db._create(vertexCollectionName);
+        // TODO
+        var options = {};
+        if (self.__replicationFactor) {
+          options.replicationFactor = self.__replicationFactor;
+        }
+        if (self.__numberOfShards) {
+          options.numberOfShards = self.__numberOfShards;
+        }
+        db._create(vertexCollectionName, options);
       } else {
         err = new ArangoError();
         err.errorNum = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code;

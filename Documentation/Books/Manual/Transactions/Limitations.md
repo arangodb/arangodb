@@ -64,14 +64,13 @@ systems support. In cluster mode, single-document operations are also fully ACID
 Multi-document / multi-collection queries in a cluster are not ACID, which is
 equally the case with competing database systems. Transactions in a cluster
 will be supported in a future version of ArangoDB and make these operations
-fully ACID as well. Note that for non-sharded collections in a cluster, the
-transactional properties of a single server apply (fully ACID).
+fully ACID as well.
 
 
 Transactions in the RocksDB storage engine
 ------------------------------------------
 
-Data of ongoing transactions is stored in RAM. Transactions that get too big 
+Data of ongoing transactions is stored in RAM. Query-Transactions that get too big 
 (in terms of number of operations involved or the total size of data created or
 modified by the transaction) will be committed automatically. Effectively this 
 means that big user transactions are split into multiple smaller RocksDB 
@@ -100,8 +99,8 @@ is committed automatically and a new transaction is started. The value is specif
 If the number of operations in a transaction reaches this value, the transaction is 
 committed automatically and a new transaction is started.
 
-The above values can also be adjusted per transaction, by setting the following
-attributes in the call to *db._executeTransaction()*:
+The above values can also be adjusted per query, by setting the following
+attributes in the call to *db._query()*:
 
 - *maxTransactionSize*: transaction size limit in bytes
 - *intermediateCommitSize*: maximum total size of operations after which an intermediate

@@ -170,6 +170,70 @@ function checkData(server) {
   return res.json.count;
 }
 
+function createUser(server, user, passwd) {
+  print("Create a new user in ", server);
+
+  let res = request.post({
+    url: getUrl(server) + "/_api/user",
+    auth: {
+      bearer: jwtRoot,
+    },
+    body: { user, passwd },
+    json: true
+  });
+
+  assertTrue(res instanceof request.Response);
+  assertTrue(res.statusCode === 201);
+
+  res = request.put({
+    url: getUrl(server) + "/_api/user/" + user + "/database/_system",
+    auth: {
+      bearer: jwtRoot,
+    },
+      body: { grant: "ro" },
+    json: true
+  });
+
+  assertTrue(res instanceof request.Response);
+  assertTrue(res.statusCode === 200);
+
+  res = request.put({
+    url: getUrl(server) + "/_api/user/" + user + "/database/_system/" + cname,
+    auth: {
+      bearer: jwtRoot,
+    },
+      body: { grant: "none" },
+    json: true
+  });
+
+  assertTrue(res instanceof request.Response);
+  assertTrue(res.statusCode === 200);
+}
+
+function validateUserRights(server, user) {
+  let res = request.get({
+    url: getUrl(server) + "/_api/user/" + user + "/database/_system",
+    auth: {
+      bearer: jwtRoot,
+    }
+  });
+
+  assertTrue(res instanceof request.Response);
+  assertTrue(res.statusCode === 200);
+  assertEqual("ro", res.json.result);
+
+  res = request.get({
+    url: getUrl(server) + "/_api/user/" + user + "/database/_system/" + cname,
+    auth: {
+      bearer: jwtRoot,
+    }
+  });
+
+  assertTrue(res instanceof request.Response);
+  assertTrue(res.statusCode === 200);
+  assertEqual("none", res.json.result);
+}
+
 function readAgencyValue(path) {
   let agents = instanceinfo.arangods.filter(arangod => arangod.role === "agent");
   assertTrue(agents.length > 0, "No agents present");
@@ -427,6 +491,37 @@ function ActiveFailoverSuite() {
       assertTrue(checkInSync(currentLead, servers));
     },
 
+    testUsers: function() {
+      const leadAtStart = currentLead;
+      const userName = "UnitTestFailoverUser";
+      const password = "UnitTestFailoverPassword";
+
+      assertTrue(checkInSync(currentLead, servers));
+
+      // Let us create a user in current leader:
+      createUser(leadAtStart, userName, password);
+
+      // Check that the master has created expected user rights:
+      validateUserRights(leadAtStart, userName);
+
+      assertTrue(checkInSync(currentLead, servers));
+
+      // Trigger failover
+      suspended = instanceinfo.arangods.filter(arangod => arangod.endpoint === currentLead);
+      suspended.forEach(arangod => {
+        print("Suspending Leader: ", arangod.endpoint);
+        assertTrue(suspendExternal(arangod.pid));
+      });
+
+
+      const newLead = checkForFailover(leadAtStart);
+      assertTrue(newLead !== leadAtStart);
+
+      // Check that follower has copied user rights:
+      validateUserRights(newLead, userName);
+    },
+
+
     // try to failback to the original leader
     testFailback: function() {
       if (currentLead === firstLeader) {
@@ -457,7 +552,7 @@ function ActiveFailoverSuite() {
 
       assertTrue(checkInSync(currentLead, servers));
       assertEqual(checkData(currentLead), 10000);
-    }
+    },
 
     // Try to cleanup everything that was created
     /*testCleanup: function () {

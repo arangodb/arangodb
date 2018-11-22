@@ -47,8 +47,8 @@ class Hints {
     NO_USAGE_LOCK = 256, // not supported in RocksDB
     RECOVERY = 512,
     NO_DLD = 1024, // disable deadlock detection
-    UNTRACKED = 2048, // use Untracked RocksDB methods
-    NO_INDEXING = 4096 // use DisableIndexing for RocksDB
+    NO_INDEXING = 2048, // use DisableIndexing for RocksDB
+    INTERMEDIATE_COMMITS = 4096 // enable intermediate commits in rdb
   };
 
   Hints() : _value(0) {}

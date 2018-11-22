@@ -124,3 +124,6 @@ std::string const StaticStrings::MimeTypeJson(
     "application/json; charset=utf-8");
 std::string const StaticStrings::MimeTypeText("text/plain; charset=utf-8");
 std::string const StaticStrings::MimeTypeVPack("application/x-velocypack");
+
+// misc strings
+std::string const StaticStrings::checksumFileJs("JS_SHA1SUM.txt");

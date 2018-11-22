@@ -171,8 +171,17 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
     // create a WAL logfile barrier that prevents WAL logfile collection
     // TODO: why are we ignoring the return value here?
     sendCreateBarrier(_masterInfo._lastLogTick);
+    
+    // enable patching of collection count for ShardSynchronization Job
+    std::string patchCount = StaticStrings::Empty;
+    std::string const& engineName = EngineSelectorFeature::ENGINE->typeName();
+    if (incremental && engineName == "rocksdb" && _configuration._skipCreateDrop &&
+        _configuration._restrictType == "include" &&
+        _configuration._restrictCollections.size() == 1) {
+      patchCount = *_configuration._restrictCollections.begin();
+    }
 
-    r = sendStartBatch();
+    r = sendStartBatch(patchCount);
     if (r.fail()) {
       return r;
     }
@@ -620,9 +629,7 @@ Result DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* 
         transaction::StandaloneContext::Create(vocbase()), coll->cid(),
         AccessMode::Type::EXCLUSIVE);
 
-    trx.addHint(
-        transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
-    trx.addHint(transaction::Hints::Hint::UNTRACKED);
+    trx.addHint(transaction::Hints::Hint::RECOVERY);  // turn off waitForSync!
     trx.addHint(transaction::Hints::Hint::NO_INDEXING);
 
     Result res = trx.begin();
@@ -818,7 +825,7 @@ Result DatabaseInitialSyncer::handleCollectionSync(arangodb::LogicalCollection* 
     SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(vocbase()), coll->cid(),
         AccessMode::Type::EXCLUSIVE);
-
+    trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
     Result res = trx.begin();
 
     if (!res.ok()) {
@@ -983,7 +990,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
             SingleCollectionTransaction trx(
                 transaction::StandaloneContext::Create(vocbase()), col->cid(),
                 AccessMode::Type::EXCLUSIVE);
-
+            trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
             Result res = trx.begin();
 
             if (!res.ok()) {

@@ -127,14 +127,14 @@ static bool IsSupportedNode(Variable const* pathVar, AstNode const* node) {
     case NODE_TYPE_OPERATOR_BINARY_IN:
     case NODE_TYPE_OPERATOR_BINARY_NIN: {
       // the following types of expressions are not supported
-      //   p.edges[0]._from  op  whatever attribute access 
+      //   p.edges[0]._from  op  whatever attribute access
       //   whatever attribute access  op  p.edges[0]._from
       AstNode const* lhs = node->getMember(0);
       AstNode const* rhs = node->getMember(1);
 
       if (lhs->isAttributeAccessForVariable(pathVar, true)) {
         // p.xxx  op  whatever
-        if (rhs->type != NODE_TYPE_VALUE && 
+        if (rhs->type != NODE_TYPE_VALUE &&
             rhs->type != NODE_TYPE_ARRAY &&
             rhs->type != NODE_TYPE_OBJECT &&
             rhs->type != NODE_TYPE_REFERENCE) {
@@ -142,7 +142,7 @@ static bool IsSupportedNode(Variable const* pathVar, AstNode const* node) {
         }
       } else if (rhs->isAttributeAccessForVariable(pathVar, true)) {
         // whatever  op  p.xxx
-        if (lhs->type != NODE_TYPE_VALUE && 
+        if (lhs->type != NODE_TYPE_VALUE &&
             lhs->type != NODE_TYPE_ARRAY &&
             lhs->type != NODE_TYPE_OBJECT &&
             lhs->type != NODE_TYPE_REFERENCE) {
@@ -235,7 +235,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
   //   A) var.vertices[n] (.*)
   //   B) var.edges[n] (.*)
   //   C) var.vertices[*] (.*) (ALL|NONE) (.*)
-  //   D) var.vertices[*] (.*) (ALL|NONE) (.*)
+  //   D) var.edges[*] (.*) (ALL|NONE) (.*)
 
   auto unusedWalker = [](AstNode const* n, void*) {};
   bool isEdge = false;
@@ -315,7 +315,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
         patternStep++;
         break;
       }
-      case 3: 
+      case 3:
         if (depth != UINT64_MAX) {
           // We are in depth pattern.
           // The first Node we encount HAS to be indexed Access
@@ -327,7 +327,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
           // Search for the parent having this node.
           patternStep = 6;
           parentOfReplace = node;
-          
+
           // we need to know the depth at which a filter condition will
           // access a path. Otherwise there are too many results
           TRI_ASSERT(node->numMembers() == 2);
@@ -340,6 +340,18 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
           return node;
         }
         if (node->type == NODE_TYPE_EXPANSION) {
+
+          // Check that the expansion [*] contains no inline expression;
+          // members 2, 3 and 4 correspond to FILTER, LIMIT and RETURN,
+          // respectively.
+          TRI_ASSERT(node->numMembers() == 5);
+          if (node->getMemberUnchecked(2)->type != NODE_TYPE_NOP
+          || node->getMemberUnchecked(3)->type != NODE_TYPE_NOP
+          || node->getMemberUnchecked(4)->type != NODE_TYPE_NOP) {
+            notSupported = true;
+            return node;
+          }
+
           // We continue in this pattern, all good
           patternStep++;
           parentOfReplace = node;
@@ -380,7 +392,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
             }
             parentOfReplace = node;
             replaceIdx = idx;
-            // Ok finally done. 
+            // Ok finally done.
             patternStep++;
             break;
           }
@@ -505,25 +517,33 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
     case EN::REMOTE:
     case EN::SUBQUERY:
     case EN::INDEX:
-    case EN::INSERT:
-    case EN::REMOVE:
-    case EN::REPLACE:
-    case EN::UPDATE:
-    case EN::UPSERT:
+    case EN::LIMIT:
     case EN::RETURN:
     case EN::SORT:
     case EN::ENUMERATE_COLLECTION:
-    case EN::LIMIT:
-    case EN::SHORTEST_PATH:
+    case EN::SHORTEST_PATH: {
       // in these cases we simply ignore the intermediate nodes, note
       // that we have taken care of nodes that could throw exceptions
       // above.
       break;
+    }
+
+    case EN::INSERT:
+    case EN::REMOVE:
+    case EN::REPLACE:
+    case EN::UPDATE:
+    case EN::UPSERT: {
+      // modification invalidates the filter expression we already found
+      _condition = std::make_unique<Condition>(_plan->getAst());
+      _filterVariables.clear();
+      break;
+    }
 
     case EN::SINGLETON:
-    case EN::NORESULTS:
+    case EN::NORESULTS: {
       // in all these cases we better abort
       return true;
+    }
 
     case EN::FILTER: {
       std::vector<Variable const*>&& invars = en->getVariablesUsedHere();
@@ -587,7 +607,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
       TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
 
       std::unordered_set<Variable const*> varsUsedByCondition;
-      
+
       auto originalFilterConditions = std::make_unique<Condition>(_plan->getAst());
       for (size_t i = andNode->numMembers(); i > 0; --i) {
         // Whenever we do not support a of the condition we have to throw it out
@@ -602,7 +622,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
           // For now we only! optimize filter conditions on the path
           // So we skip all FILTERS not referencing the path
           andNode->removeMemberUnchecked(i - 1);
-          continue; 
+          continue;
         }
 
         // now we validate that there is no illegal variable used.
@@ -628,7 +648,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
 
         AstNode* cloned = andNode->getMember(i - 1)->clone(_plan->getAst());
         int64_t indexedAccessDepth = -1;
-        
+
         size_t swappedIndex = 0;
         // If we get here we can optimize this condition
         if (!checkPathVariableAccessFeasible(_plan->getAst(), andNode, i - 1,
@@ -646,7 +666,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
 
         } else {
           TRI_ASSERT(!conditionIsImpossible);
-          
+
           // remember the original filter conditions if we can remove them later
           if (indexedAccessDepth == -1) {
             originalFilterConditions->andCombine(cloned);
@@ -655,7 +675,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
             // is in [0..maxDepth], if the depth is not a concrete value
             // then indexedAccessDepth would be INT64_MAX
             originalFilterConditions->andCombine(cloned);
-            
+
             if ((int64_t)options->minDepth < indexedAccessDepth && !isTrueOnNull(cloned, pathVar)) {
               // do not return paths shorter than the deepest path access
               // Unless the condition evaluates to true on `null`.

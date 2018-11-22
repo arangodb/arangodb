@@ -126,7 +126,6 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_REPLICATION_APPLIER_STOPPED, "replication stopped");
   REG_ERROR(ERROR_REPLICATION_NO_START_TICK, "no start tick");
   REG_ERROR(ERROR_REPLICATION_START_TICK_NOT_PRESENT, "start tick not present");
-  REG_ERROR(ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT, "the checksum format is wrong");
   REG_ERROR(ERROR_REPLICATION_WRONG_CHECKSUM, "wrong checksum");
   REG_ERROR(ERROR_REPLICATION_SHARD_NONEMPTY, "shard not empty");
   REG_ERROR(ERROR_CLUSTER_NO_AGENCY, "could not connect to agency");
@@ -176,6 +175,7 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS, "conflicting shard number with distributeShardsLike parameter assignment");
   REG_ERROR(ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING, "leadership challenge is ongoing");
   REG_ERROR(ERROR_CLUSTER_NOT_LEADER, "not a leader");
+  REG_ERROR(ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION, "could not drop collection in plan");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "%s");
   REG_ERROR(ERROR_QUERY_EMPTY, "query is empty");
@@ -185,7 +185,7 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_QUERY_VARIABLE_REDECLARED, "variable '%s' is assigned multiple times");
   REG_ERROR(ERROR_QUERY_VARIABLE_NAME_UNKNOWN, "unknown variable '%s'");
   REG_ERROR(ERROR_QUERY_COLLECTION_LOCK_FAILED, "unable to read-lock collection %s");
-  REG_ERROR(ERROR_QUERY_TOO_MANY_COLLECTIONS, "too many collections");
+  REG_ERROR(ERROR_QUERY_TOO_MANY_COLLECTIONS, "too many collections/shards");
   REG_ERROR(ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED, "document attribute '%s' is assigned multiple times");
   REG_ERROR(ERROR_QUERY_FUNCTION_NAME_UNKNOWN, "usage of unknown function '%s()'");
   REG_ERROR(ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "invalid number of arguments for function '%s()', expected number of arguments: minimum: %d, maximum: %d");

@@ -292,6 +292,8 @@ void TraditionalKeyGenerator::track(char const* p, size_t length) {
 
 /// @brief create a VPack representation of the generator
 void TraditionalKeyGenerator::toVelocyPack(VPackBuilder& builder) const {
+  MUTEX_LOCKER(mutexLocker, _lock);
+
   TRI_ASSERT(!builder.isClosed());
   builder.add("type", VPackValue(name()));
   builder.add("allowUserKeys", VPackValue(_allowUserKeys));
@@ -399,6 +401,8 @@ void AutoIncrementKeyGenerator::track(char const* p, size_t length) {
 
 /// @brief create a VelocyPack representation of the generator
 void AutoIncrementKeyGenerator::toVelocyPack(VPackBuilder& builder) const {
+  MUTEX_LOCKER(mutexLocker, _lock);
+
   TRI_ASSERT(!builder.isClosed());
   builder.add("type", VPackValue(name()));
   builder.add("allowUserKeys", VPackValue(_allowUserKeys));

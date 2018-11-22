@@ -40,29 +40,32 @@ bool ConditionFinder::before(ExecutionNode* en) {
     case EN::REMOTE:
     case EN::SUBQUERY:
     case EN::INDEX:
+    case EN::RETURN:
+    case EN::TRAVERSAL:
+    case EN::SHORTEST_PATH: {
+      // in these cases we simply ignore the intermediate nodes, note
+      // that we have taken care of nodes that could throw exceptions
+      // above.
+      break;
+    }
+
     case EN::INSERT:
     case EN::REMOVE:
     case EN::REPLACE:
     case EN::UPDATE:
     case EN::UPSERT:
-    case EN::RETURN:
-    case EN::TRAVERSAL:
-    case EN::SHORTEST_PATH:
-      // in these cases we simply ignore the intermediate nodes, note
-      // that we have taken care of nodes that could throw exceptions
-      // above.
-      break;
-
-    case EN::LIMIT:
+    case EN::LIMIT: {
       // LIMIT invalidates the sort expression we already found
       _sorts.clear();
       _filters.clear();
       break;
+    }
 
     case EN::SINGLETON:
-    case EN::NORESULTS:
+    case EN::NORESULTS: {
       // in all these cases we better abort
       return true;
+    }
 
     case EN::FILTER: {
       std::vector<Variable const*> invars(en->getVariablesUsedHere());

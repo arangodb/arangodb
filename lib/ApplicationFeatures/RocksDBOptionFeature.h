@@ -49,6 +49,7 @@ class RocksDBOptionFeature final
 
   int64_t _transactionLockTimeout;
   std::string _walDirectory;
+  uint64_t _totalWriteBufferSize;
   uint64_t _writeBufferSize;
   uint64_t _maxWriteBufferNumber;
   uint64_t _maxTotalWalSize;
@@ -78,6 +79,7 @@ class RocksDBOptionFeature final
   bool _skipCorrupted;
   bool _dynamicLevelBytes;
   bool _enableStatistics;
+  bool _useFileLogging;
 };
 
 }  // namespace arangodb

@@ -160,6 +160,9 @@ class ServerState {
             role == ServerState::ROLE_COORDINATOR);
   }
 
+  /// @brief whether or not the role is a cluster-related role
+  bool isClusterRole() {return (isClusterRole(loadRole()));};
+
   /// @brief check whether the server is an agent
   bool isAgent() { return isAgent(loadRole()); }
 

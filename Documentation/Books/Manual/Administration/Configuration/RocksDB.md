@@ -33,6 +33,13 @@ The maximum number of write buffers that built up in memory. If this number is
 reached before the buffers can be flushed, writes will be slowed or stalled.
 Default: 2.
 
+`--rocksdb.total-write-buffer-size` (Hidden)
+
+The total amount of data to build up in all in-memory buffers (backed by log
+files). This option, together with the block cache size configuration option,
+can be used to limit memory usage. If set to 0, the memory usage is not limited.
+Default: 0 (disabled).
+
 `--rocksdb.min-write-buffer-number-to-merge`
 
 Minimum number of write buffers that will be merged together when flushing to
@@ -230,3 +237,20 @@ milliseconds in ArangoDB 3.4 however.
 
 Note: this option is not supported on Windows platforms. Setting the option to
 a value greater 0 will produce a startup warning.
+
+`--rocksdb.use-file-logging`
+
+When set to *true*, enables writing of RocksDB's own informational LOG files into 
+RocksDB's database directory.
+
+This option is turned off by default, but can be enabled for debugging RocksDB
+internals and performance.
+
+`--rocksdb.debug-logging`
+
+When set to *true*, enables verbose logging of RocksDB's actions into the logfile
+written by ArangoDB (if option `--rocksdb.use-file-logging` is off) or RocksDB's
+own log (if option `--rocksdb.use-file-logging` is on).
+
+This option is turned off by default, but can be enabled for debugging RocksDB
+internals and performance.

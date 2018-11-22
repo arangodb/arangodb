@@ -112,9 +112,15 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(
     READ_LOCKER(guard, _basicLock);
     auto const& it = _basicCache.find(secret);
     if (it != _basicCache.end() && !it->second.expired()) {
+      // copy entry under the read-lock
+      auth::TokenCache::Entry res = it->second;
+      // and now give up on the read-lock
+      guard.unlock();
+
       // LDAP rights might need to be refreshed
-      _userManager->refreshUser(it->second.username());
-      return it->second;
+      if (!_userManager->refreshUser(res.username())) {
+        return res;
+      }
     }
   }
 
@@ -305,10 +311,13 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(
 
   if (bodySlice.hasKey("preferred_username")) {
     VPackSlice const usernameSlice = bodySlice.get("preferred_username");
-    if (!usernameSlice.isString()) {
+    if (!usernameSlice.isString() || usernameSlice.getStringLength() == 0) {
       return authResult;  // unauthenticated
     }
     authResult._username = usernameSlice.copyString();
+    if (_userManager == nullptr || !_userManager->userExists(authResult._username)) {
+      return authResult;  // unauthenticated
+    }
   } else if (bodySlice.hasKey("server_id")) {
     // mop: hmm...nothing to do here :D
     // authResult._username = "root";

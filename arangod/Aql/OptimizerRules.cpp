@@ -715,7 +715,9 @@ void arangodb::aql::removeCollectVariablesRule(
     if (outVariable != nullptr &&
         varsUsedLater.find(outVariable) == varsUsedLater.end()) {
       // outVariable not used later
-      collectNode->clearOutVariable();
+      if (!collectNode->count()) {
+        collectNode->clearOutVariable();
+      }
       modified = true;
     }
 
@@ -1140,7 +1142,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
          (!collectNode->hasOutVariable() || collectNode->count()) &&
          collectNode->getOptions().canUseMethod(CollectOptions::CollectMethod::HASH));
 
-    if (canUseHashAggregation && !opt->runOnlyRequiredRules()) {
+    if (canUseHashAggregation && !opt->runOnlyRequiredRules(1)) {
       if (collectNode->getOptions().shouldUseMethod(CollectOptions::CollectMethod::HASH)) {
         // user has explicitly asked for hash method
         // specialize existing the CollectNode so it will become a HashedCollectBlock
@@ -2003,7 +2005,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         auto condition = std::make_unique<Condition>(_plan->getAst());
         condition->normalize(_plan);
 
-        std::unique_ptr<ExecutionNode> newNode(new IndexNode(
+        std::unique_ptr<IndexNode> newNode(new IndexNode(
             _plan, _plan->nextId(), enumerateCollectionNode->vocbase(),
             enumerateCollectionNode->collection(), outVariable, usedIndexes,
             condition.get(), sortCondition.isDescending()));
@@ -2019,6 +2021,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         if (coveredAttributes == sortCondition.numAttributes()) {
           // if the index covers the complete sort condition, we can also remove
           // the sort node
+          n->needsGatherNodeSort(true);
           _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
         }
       }
@@ -2506,7 +2509,7 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(
     do {
       // check if we already have enough plans (plus the one plan that we will
       // add at the end of this function)
-      if (opt->hasEnoughPlans(1)) {
+      if (opt->runOnlyRequiredRules(1)) {
         // have enough plans. stop permutations
         break;
       }

@@ -39,23 +39,11 @@ function runSetup () {
   db._drop('UnitTestsRecovery');
   db._create('UnitTestsRecovery');
 
-  db._executeTransaction({
-    intermediateCommitCount: 1000,
-    collections: {
-      write: 'UnitTestsRecovery'
-    },
-    action: function () {
-      var db = require('@arangodb').db;
+  db._query("FOR i IN 0..1999 INSERT {_key: CONCAT('test', i)} INTO UnitTestsRecovery OPTIONS { waitForSync: true }", 
+  {}, {intermediateCommitCount: 1000});
+  // the above should commit two times
 
-      var i, c = db._collection('UnitTestsRecovery');
-      for (i = 0; i < 2000; ++i) {
-        c.insert({ _key: 'test' + i, value: i }, { waitForSync: i === 1999 });
-      }
-      // the above should commit two times
-
-      internal.debugSegfault('crashing server');
-    }
-  });
+  internal.debugSegfault('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

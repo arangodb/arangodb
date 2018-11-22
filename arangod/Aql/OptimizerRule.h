@@ -54,10 +54,6 @@ struct OptimizerRule {
     // "Pass 1": moving nodes "up" (potentially outside loops):
     // ========================================================
 
-    // determine the "right" type of CollectNode and
-    // add a sort node for each COLLECT (may be removed later)
-    specializeCollectRule_pass1,
-
     inlineSubqueriesRule_pass1,
 
     // split and-combined filters into multiple smaller filters
@@ -84,6 +80,10 @@ struct OptimizerRule {
 
     // remove calculations that are never necessary
     removeUnnecessaryCalculationsRule_pass2,
+    
+    // determine the "right" type of CollectNode and
+    // add a sort node for each COLLECT (may be removed later)
+    specializeCollectRule_pass1,
 
     // remove redundant sort blocks
     removeRedundantSortsRule_pass2,

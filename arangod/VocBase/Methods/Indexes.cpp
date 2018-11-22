@@ -309,8 +309,8 @@ Result Indexes::ensureIndexCoordinator(
 
   auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
   int res = ClusterInfo::instance()->ensureIndexCoordinator(
-      dbName, cid, indexDef, create, &arangodb::Index::Compare, resultBuilder,
-      errorMsg, cluster->indexCreationTimeout());
+      dbName, cid, indexDef, create, resultBuilder, errorMsg,
+      cluster->indexCreationTimeout());
   return Result(res, errorMsg);
 }
 

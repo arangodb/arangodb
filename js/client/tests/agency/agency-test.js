@@ -554,7 +554,7 @@ function agencyTestSuite () {
       wres = accessAgency("write",[[query[1], pre[1], id[2]]]);
       assertEqual(wres.statusCode,412);
       res = accessAgency("inquire",[id[2]]);
-      assertEqual(res.statusCode,412);
+      assertEqual(res.statusCode,404);
       assertEqual(res.bodyParsed, {"results":[0],"inquired":true});
       assertEqual(res.bodyParsed.results, wres.bodyParsed.results);
 
@@ -604,7 +604,7 @@ function agencyTestSuite () {
       assertEqual(wres.statusCode,412);
       cur += 2;
       res = accessAgency("inquire",[id[7],id[8],id[9]]);
-      assertEqual(res.statusCode,412);
+      assertEqual(res.statusCode,404);
       assertEqual(res.bodyParsed.results, wres.bodyParsed.results);
 
     },
@@ -1025,17 +1025,17 @@ function agencyTestSuite () {
     
     testHiddenAgencyWrite: function() {
       var res = accessAgency("write",[[{".agency": {"op":"set","new":"fallera"}}]]);
-      assertEqual(res.statusCode, 200);
+      assertEqual(res.statusCode, 403);
     }, 
     
     testHiddenAgencyWriteSlash: function() {
       var res = accessAgency("write",[[{"/.agency": {"op":"set","new":"fallera"}}]]);
-      assertEqual(res.statusCode, 200);
+      assertEqual(res.statusCode, 403);
     },
     
     testHiddenAgencyWriteDeep: function() {
       var res = accessAgency("write",[[{"/.agency/hans": {"op":"set","new":"fallera"}}]]);
-      assertEqual(res.statusCode, 200);
+      assertEqual(res.statusCode, 403);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

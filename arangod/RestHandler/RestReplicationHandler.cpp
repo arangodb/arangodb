@@ -280,6 +280,7 @@ RestStatus RestReplicationHandler::execute() {
       if (ServerState::instance()->isCoordinator()) {
         handleTrampolineCoordinator();
       } else {
+        grantTemporaryRights();
         handleCommandInventory();
       }
     } else if (command == "keys") {
@@ -333,6 +334,7 @@ RestStatus RestReplicationHandler::execute() {
       if (ServerState::instance()->isCoordinator()) {
         handleTrampolineCoordinator();
       } else {
+        grantTemporaryRights();
         handleCommandDump();
       }
     } else if (command == "restore-collection") {
@@ -941,6 +943,7 @@ Result RestReplicationHandler::processRestoreCollection(
                                         AccessMode::Type::EXCLUSIVE);
         // to turn off waitForSync!
         trx.addHint(transaction::Hints::Hint::RECOVERY);
+        trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
         res = trx.begin();
         if (!res.ok()) {
           return res;
@@ -1176,7 +1179,7 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
 
   grantTemporaryRights();
 
-  if (colName == "_users") {
+  if (colName == TRI_COL_NAME_USERS) {
     // We need to handle the _users in a special way
     return processRestoreUsersBatch(colName);
   }
@@ -1395,23 +1398,42 @@ Result RestReplicationHandler::processRestoreDataBatch(
     options.ignoreRevs = true;
     options.isRestore = true;
     options.waitForSync = false;
+    double startTime = TRI_microtime();
     OperationResult opRes =
         trx.remove(collectionName, oldBuilder.slice(), options);
+    double duration = TRI_microtime() - startTime;
     if (opRes.fail()) {
+      LOG_TOPIC(WARN, Logger::CLUSTER)
+        << "Could not delete " << oldBuilder.slice().length()
+        << " documents for restore: "
+        << opRes.result.errorMessage();
       return opRes.result;
     }
+    if (duration > 30) {
+      LOG_TOPIC(INFO, Logger::PERFORMANCE) << "Restored/deleted "
+        << oldBuilder.slice().length() << " documents in time: " << duration
+        << " seconds.";
+    }
   } catch (arangodb::basics::Exception const& ex) {
+    LOG_TOPIC(WARN, Logger::CLUSTER)
+      << "Could not delete documents for restore exception: "
+      << ex.what();
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
+    LOG_TOPIC(WARN, Logger::CLUSTER)
+      << "Could not delete documents for restore exception: "
+      << ex.what();
     return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
+    LOG_TOPIC(WARN, Logger::CLUSTER)
+      << "Could not delete documents for restore exception.";
     return Result(TRI_ERROR_INTERNAL);
   }
 
   // Now try to insert all keys for which the last marker was a document
   // marker, note that these could still be replace markers!
   builder.clear();
-  if (ServerState::instance()->isCoordinator() && collectionName == "_users") {
+  if (ServerState::instance()->isCoordinator() && collectionName == TRI_COL_NAME_USERS) {
     // Special-case for _users, we need to remove the _key and _id from the
     // marker
     VPackArrayBuilder guard(&builder);
@@ -1475,15 +1497,34 @@ Result RestReplicationHandler::processRestoreDataBatch(
     options.ignoreRevs = true;
     options.isRestore = true;
     options.waitForSync = false;
+    double startTime = TRI_microtime();
     opRes = trx.insert(collectionName, requestSlice, options);
+    double duration = TRI_microtime() - startTime;
     if (opRes.fail()) {
+      LOG_TOPIC(WARN, Logger::CLUSTER)
+        << "Could not insert " << requestSlice.length()
+        << " documents for restore: "
+        << opRes.result.errorMessage();
       return opRes.result;
     }
+    if (duration > 30) {
+      LOG_TOPIC(INFO, Logger::PERFORMANCE) << "Restored/inserted "
+        << requestSlice.length() << " documents in time: " << duration
+        << " seconds.";
+    }
   } catch (arangodb::basics::Exception const& ex) {
+    LOG_TOPIC(WARN, Logger::CLUSTER)
+      << "Could not insert documents for restore exception: "
+      << ex.what();
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
+    LOG_TOPIC(WARN, Logger::CLUSTER)
+      << "Could not insert documents for restore exception: "
+      << ex.what();
     return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
+    LOG_TOPIC(WARN, Logger::CLUSTER)
+      << "Could not insert documents for restore exception.";
     return Result(TRI_ERROR_INTERNAL);
   }
 
@@ -1524,15 +1565,34 @@ Result RestReplicationHandler::processRestoreDataBatch(
     options.ignoreRevs = true;
     options.isRestore = true;
     options.waitForSync = false;
+    double startTime = TRI_microtime();
     opRes = trx.replace(collectionName, replBuilder.slice(), options);
+    double duration = TRI_microtime() - startTime;
     if (opRes.fail()) {
+      LOG_TOPIC(WARN, Logger::CLUSTER)
+        << "Could not replace " << replBuilder.slice().length()
+        << " documents for restore: "
+        << opRes.result.errorMessage();
       return opRes.result;
     }
+    if (duration > 30) {
+      LOG_TOPIC(INFO, Logger::PERFORMANCE) << "Restored/replaced "
+        << replBuilder.slice().length() << " documents in time: " << duration
+        << " seconds.";
+    }
   } catch (arangodb::basics::Exception const& ex) {
+    LOG_TOPIC(WARN, Logger::CLUSTER)
+      << "Could not replace documents for restore exception: "
+      << ex.what();
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
+    LOG_TOPIC(WARN, Logger::CLUSTER)
+      << "Could not replace documents for restore exception: "
+      << ex.what();
     return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
+    LOG_TOPIC(WARN, Logger::CLUSTER)
+      << "Could not replace documents for restore exception.";
     return Result(TRI_ERROR_INTERNAL);
   }
 
@@ -1695,6 +1755,8 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(
   }
 
   std::string dbName = _vocbase->name();
+
+  grantTemporaryRights();
 
   // in a cluster, we only look up by name:
   ClusterInfo* ci = ClusterInfo::instance();
@@ -2011,16 +2073,19 @@ void RestReplicationHandler::handleCommandAddFollower() {
                   "and 'shard'");
     return;
   }
-  VPackSlice const followerId = body.get("followerId");
-  VPackSlice const readLockId = body.get("readLockId");
-  VPackSlice const shard = body.get("shard");
-  if (!followerId.isString() || !shard.isString()) {
+  VPackSlice const followerIdSlice = body.get("followerId");
+  VPackSlice const readLockIdSlice = body.get("readLockId");
+  VPackSlice const shardSlice = body.get("shard");
+  VPackSlice const checksumSlice = body.get("checksum");
+  if (!followerIdSlice.isString() ||
+      !shardSlice.isString() ||
+      !checksumSlice.isString()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "'followerId' and 'shard' attributes must be strings");
+                  "'followerId', 'shard', and 'checksum' attributes must be strings");
     return;
   }
 
-  auto col = _vocbase->lookupCollection(shard.copyString());
+  auto col = _vocbase->lookupCollection(shardSlice.copyString());
 
   if (col == nullptr) {
     generateError(rest::ResponseCode::SERVER_ERROR,
@@ -2029,8 +2094,9 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
-  if (readLockId.isNone()) {
-    // Short cut for the case that the collection is empty
+  const std::string followerId = followerIdSlice.copyString();
+  // Short cut for the case that the collection is empty
+  if (readLockIdSlice.isNone()) {
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
     SingleCollectionTransaction trx(ctx, col->cid(),
                                     AccessMode::Type::EXCLUSIVE);
@@ -2041,8 +2107,8 @@ void RestReplicationHandler::handleCommandAddFollower() {
       if (countRes.ok()) {
         VPackSlice nrSlice = countRes.slice();
         uint64_t nr = nrSlice.getNumber<uint64_t>();
-        if (nr == 0) {
-          col->followers()->add(followerId.copyString());
+        if (nr == 0 && checksumSlice.isEqualString("0")) {
+          col->followers()->add(followerId);
 
           VPackBuilder b;
           {
@@ -2063,15 +2129,14 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
-  VPackSlice const checksum = body.get("checksum");
   // optional while introducing this bugfix. should definitely be required with
   // 3.4
   // and throw a 400 then when no checksum is provided
-  if (checksum.isString() && readLockId.isString()) {
+  if (readLockIdSlice.isString()) {
     std::string referenceChecksum;
     {
       CONDITION_LOCKER(locker, _condVar);
-      auto it = _holdReadLockJobs.find(readLockId.copyString());
+      auto it = _holdReadLockJobs.find(readLockIdSlice.copyString());
       if (it == _holdReadLockJobs.end()) {
         // Entry has been removed since, so we cancel the whole thing
         // right away and generate an error:
@@ -2095,23 +2160,19 @@ void RestReplicationHandler::handleCommandAddFollower() {
       referenceChecksum = std::to_string(num);
     }
 
-    auto result = col->compareChecksums(checksum, referenceChecksum);
-
-    if (result.fail()) {
-      auto errorNumber = result.errorNumber();
-      rest::ResponseCode code;
-      if (errorNumber == TRI_ERROR_REPLICATION_WRONG_CHECKSUM ||
-          errorNumber == TRI_ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT) {
-        code = rest::ResponseCode::BAD;
-      } else {
-        code = rest::ResponseCode::SERVER_ERROR;
-      }
-      generateError(code, errorNumber, result.errorMessage());
+    if (!checksumSlice.isEqualString(referenceChecksum)) {
+      const std::string checksum = checksumSlice.copyString();
+      LOG_TOPIC(WARN, Logger::REPLICATION) << "Cannot add follower, mismatching checksums. "
+       << "Expected: " << referenceChecksum << " Actual: " << checksum;
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
+                    "'checksum' is wrong. Expected: "
+                    + referenceChecksum
+                    + ". Actual: " + checksum);
       return;
     }
   }
 
-  col->followers()->add(followerId.copyString());
+  col->followers()->add(followerId);
 
   VPackBuilder b;
   {

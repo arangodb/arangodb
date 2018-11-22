@@ -1,9 +1,9 @@
-shell> curl -X DELETE --header 'If-Match: "_XLbXgLS--B"' --dump - http://localhost:8529/_api/document/products/10551
+shell> curl -X DELETE --header 'If-Match: "_XnCMn-O--B"' --dump - http://localhost:8529/_api/document/products/10551
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">412</span> Precondition Failed
 x-content-type-options: nosniff
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: <span class="hljs-string">"_XLbXgLS--_"</span>
+etag: <span class="hljs-string">"_XnCMn-O--_"</span>
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 
@@ -12,5 +12,5 @@ etag: <span class="hljs-string">"_XLbXgLS--_"</span>
   <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"precondition failed"</span>, 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/10551"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10551"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XLbXgLS--_"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XnCMn-O--_"</span> 
 }

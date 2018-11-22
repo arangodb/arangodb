@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShardDistributionReporter.h"
+#include "Basics/StringUtils.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/LogicalCollection.h"
@@ -64,6 +65,9 @@ static inline bool TestIsShardInSync(
     std::vector<ServerID> realServers) {
   // The leader at [0] must be the same, while the order of the followers must
   // be ignored.
+  TRI_ASSERT(!plannedServers.empty());
+  TRI_ASSERT(!realServers.empty());
+
   std::sort(plannedServers.begin() + 1, plannedServers.end());
   std::sort(realServers.begin() + 1, realServers.end());
 
@@ -252,7 +256,7 @@ static void ReportOffSync(
       auto const& c = counters[s.first];
       if (c.insync) {
         ReportShardNoProgress(s.first, s.second, aliases, result);
-      } else {
+      } else if (!c.followers.empty()) {
         ReportShardNoProgress(s.first, c.followers, aliases, result);
       }
     }
@@ -305,12 +309,16 @@ void ShardDistributionReporter::helperDistributionForDatabase(
         OperationID leaderOpId = 0;
         auto curServers = cic->servers(s.first);
         auto& entry = counters[s.first];  // Emplaces a new SyncCountInfo
-        if (TestIsShardInSync(s.second, curServers)) {
+        if (curServers.empty() || s.second.empty()) {
+          // either of the two vectors is empty...
+          entry.insync = false;
+        } else if (TestIsShardInSync(s.second, curServers)) {
           entry.insync = true;
         } else {
           entry.followers = curServers;
           if (timeleft > 0.0)  {
-            std::string path = "/_api/collection/" + s.first + "/count";
+            std::string path = "/_db/" + basics::StringUtils::urlEncode(dbName) + 
+                               "/_api/collection/" + basics::StringUtils::urlEncode(s.first) + "/count";
             auto body = std::make_shared<std::string const>();
 
             {
@@ -486,7 +494,9 @@ bool ShardDistributionReporter::testAllShardsInSync(
   auto cic = _ci->getCollectionCurrent(dbName, col->cid_as_string());
   for (auto const& s : *shardIds) {
     auto curServers = cic->servers(s.first);
-    if (!TestIsShardInSync(s.second, curServers)) {
+    if (s.second.empty() ||
+        curServers.empty() ||
+        !TestIsShardInSync(s.second, curServers)) {
       return false;
     }
   }

@@ -538,7 +538,6 @@ QueryResult Query::execute(QueryRegistry* registry) {
       // check the query cache for an existing result
       auto cacheEntry = arangodb::aql::QueryCache::instance()->lookup(
           _vocbase, queryHash, _queryString);
-      arangodb::aql::QueryCacheResultEntryGuard guard(cacheEntry);
 
       if (cacheEntry != nullptr) {
         ExecContext const* exe = ExecContext::CURRENT;
@@ -728,10 +727,8 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
       // check the query cache for an existing result
       auto cacheEntry = arangodb::aql::QueryCache::instance()->lookup(
           _vocbase, queryHash, _queryString);
-      arangodb::aql::QueryCacheResultEntryGuard guard(cacheEntry);
 
       if (cacheEntry != nullptr) {
-        
         auto ctx = transaction::StandaloneContext::Create(_vocbase);
         ExecContext const* exe = ExecContext::CURRENT;
         // got a result from the query cache

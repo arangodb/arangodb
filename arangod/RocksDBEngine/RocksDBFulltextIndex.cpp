@@ -412,7 +412,7 @@ Result RocksDBFulltextIndex::applyQueryToken(
   rocksdb::Slice end = bounds.end();
   rocksdb::Comparator const* cmp = this->comparator();
 
-  rocksdb::ReadOptions ro = mthds->readOptions();
+  rocksdb::ReadOptions ro = mthds->iteratorReadOptions();
   ro.iterate_upper_bound = &end;
   std::unique_ptr<rocksdb::Iterator> iter = mthds->NewIterator(ro, _cf);
   iter->Seek(bounds.start());

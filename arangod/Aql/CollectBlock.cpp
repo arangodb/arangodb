@@ -456,6 +456,7 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
       cur = _buffer.front();
       _currentGroup.firstRow = 0; 
       _currentGroup.lastRow = 0; 
+      _currentGroup.rowsAreValid = false;
     }
   }
 
@@ -506,11 +507,8 @@ void SortedCollectBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
             ++r) {
           it->reduce(getValueForRegister(cur, r, reg));
         }
-        res->setValue(row, _aggregateRegisters[j].first, it->stealValue());
-      } else {
-        res->emplaceValue(
-            row, _aggregateRegisters[j].first, arangodb::basics::VelocyPackHelper::NullValue());
       }
+      res->setValue(row, _aggregateRegisters[j].first, it->stealValue());
       ++j;
     }
 
@@ -755,7 +753,6 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
           }
         }
 
-        // note: aggregateValues may be a nullptr!
         allGroups.emplace(group, aggregateValues.get());
         aggregateValues.release();
       } else {

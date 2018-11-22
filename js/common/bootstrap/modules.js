@@ -386,25 +386,33 @@
       request = '/' + request;
     }
 
-    var dbModule = Module._dbCache[request];
+    try {
+      var dbModule = Module._dbCache[request];
 
-    if (!dbModule && internal.db !== undefined && internal.db._modules !== undefined) {
-      dbModule = internal.db._modules.firstExample({path: request});
-
-      if (!dbModule) {
-        // try again, but prefix module with '/db' as some modules seem
-        // to have been saved with that prefix...
-        dbModule = internal.db._modules.firstExample({path: '/db:' + request});
+      if (!dbModule && internal.db !== undefined && internal.db._modules !== undefined) {
+        dbModule = internal.db._modules.firstExample({path: request});
 
         if (!dbModule) {
-          return null;
+          // try again, but prefix module with '/db' as some modules seem
+          // to have been saved with that prefix...
+          dbModule = internal.db._modules.firstExample({path: '/db:' + request});
+
+          if (!dbModule) {
+            return null;
+          }
         }
+
+        Module._dbCache[request] = dbModule;
       }
 
-      Module._dbCache[request] = dbModule;
+      return dbModule;
+    } catch (err) {
+      // something went wrong while accessing _modules collection
+      // ArangoDB will continue to run without it, so just log a message and
+      // continue operations
+      console.debug("unable to load module '%s': %s", request, String(err));
+      return null;
     }
-
-    return dbModule;
   };
 
   function isGlobalModule (filename) {
@@ -542,7 +550,7 @@
       Module._extensions[extension](this, filename);
     } catch (e) {
       if (e.errorNum !== internal.errors.ERROR_MODULE_FAILURE.code) {
-        let msg = `${internal.errors.ERROR_MODULE_FAILURE.message}`;
+        let msg = `${internal.errors.ERROR_MODULE_FAILURE.message}\nReason: ${e}`;
 
         if (e.fileName !== undefined) {
           msg += `\nFile: ${e.fileName}`;
@@ -550,7 +558,7 @@
           msg += `\nFile: ${filename}`;
         }
         if (e.lineNumber !== undefined) {
-          msg += `\nLine: ${e.lineNumber-2}`;
+          msg += `\nLine: ${e.lineNumber}`;
         }
         if (e.columnNumber !== undefined) {
           msg += `\nColumn: ${e.columnNumber}`;

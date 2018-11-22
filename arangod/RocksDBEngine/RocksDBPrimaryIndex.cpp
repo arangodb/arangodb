@@ -215,10 +215,6 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
 
   // acquire rocksdb transaction
   RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
-  auto options = mthds->readOptions();  // intentional copy
-  options.fill_cache = PrimaryIndexFillBlockCache;
-  TRI_ASSERT(options.snapshot != nullptr);
-
   arangodb::Result r = mthds->Get(_cf, key.ref(), value.buffer());
   if (!r.ok()) {
     return LocalDocumentId();

@@ -48,7 +48,7 @@
 
   exports.ArangoCollection = global.ArangoCollection;
   delete global.ArangoCollection;
-  
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief ArangoView
   // //////////////////////////////////////////////////////////////////////////////
@@ -168,37 +168,41 @@
   // autoload specific modules
   exports.autoloadModules = function () {
     console.debug('autoloading actions');
-    var modules = exports.db._collection('_modules');
 
-    if (modules !== null) {
-      modules = modules.byExample({ autoload: true }).toArray();
-      modules.forEach(function (module) {
+    try {
+      var modules = exports.db._collection('_modules');
 
-        // this module is only meant to be executed in one thread
-        if (exports.threadNumber !== 0 && !module.perThread) {
-          return;
-        }
-
-        console.debug('autoloading module: %s', module.path);
-
-        try {
-
-          // require a module
-          if (module.path !== undefined) {
-            require(module.path);
+      if (modules !== null) {
+        modules = modules.byExample({ autoload: true }).toArray();
+        
+        modules.forEach(function (module) {
+          // this module is only meant to be executed in one thread
+          if (exports.threadNumber !== 0 && !module.perThread) {
+            return;
           }
 
-          // execute a user function
-          else if (module.func !== undefined) {
-            /*eslint-disable */
-            var func = new Function(module.func)
-            /*eslint-enable */
-            func();
+          console.debug('autoloading module: %s', module.path);
+
+          try {
+            // require a module
+            if (module.path !== undefined) {
+              require(module.path);
+            }
+
+            // execute a user function
+            else if (module.func !== undefined) {
+              /*eslint-disable */
+              var func = new Function(module.func)
+              /*eslint-enable */
+              func();
+            }
+          } catch (err) {
+            console.error('error while loading startup module "%s": %s', module.name || module.path, String(err));
           }
-        } catch (err) {
-          console.error('error while loading startup module "%s": %s', module.name || module.path, String(err));
-        }
-      });
+        });
+      }
+    } catch (err) {
+      console.error('error while loading startup modules: %s', String(err));
     }
 
     console.debug('autoloading actions finished');
@@ -398,4 +402,41 @@
     exports.getCollectionShardDistribution = global.SYS_CLUSTER_COLLECTION_SHARD_DISTRIBUTION;
     delete global.SYS_CLUSTER_COLLECTION_SHARD_DISTRIBUTION;
   }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief debugSegfault
+  // //////////////////////////////////////////////////////////////////////////////
+  if (global.SYS_DEBUG_SEGFAULT) {
+    exports.debugSegfault = global.SYS_DEBUG_SEGFAULT;
+    delete global.SYS_DEBUG_SEGFAULT;
+  }
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief debugSetFailAt
+  // //////////////////////////////////////////////////////////////////////////////
+  if (global.SYS_DEBUG_SET_FAILAT) {
+    exports.debugSetFailAt = global.SYS_DEBUG_SET_FAILAT;
+    delete global.SYS_DEBUG_SET_FAILAT;
+  }
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief debugRemoveFailAt
+  // //////////////////////////////////////////////////////////////////////////////
+  if (global.SYS_DEBUG_REMOVE_FAILAT) {
+    exports.debugRemoveFailAt = global.SYS_DEBUG_REMOVE_FAILAT;
+    delete global.SYS_DEBUG_REMOVE_FAILAT;
+  }
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief debugClearFailAt
+  // //////////////////////////////////////////////////////////////////////////////
+  if (global.SYS_DEBUG_CLEAR_FAILAT) {
+    exports.debugClearFailAt = global.SYS_DEBUG_CLEAR_FAILAT;
+    delete global.SYS_DEBUG_CLEAR_FAILAT;
+  }
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief debugCanUseFailAt
+  // //////////////////////////////////////////////////////////////////////////////
+  if (global.SYS_DEBUG_CAN_USE_FAILAT) {
+    exports.debugCanUseFailAt = global.SYS_DEBUG_CAN_USE_FAILAT;
+    delete global.SYS_DEBUG_CAN_USE_FAILAT;
+  }
+  
 }());

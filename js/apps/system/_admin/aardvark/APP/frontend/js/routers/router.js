@@ -659,6 +659,9 @@
       this.arangoCollectionsStore.fetch({
         cache: false,
         success: function () {
+          if (self.indicesView) {
+            self.indicesView.remove();
+          }
           self.indicesView = new window.IndicesView({
             collectionName: colname,
             collection: self.arangoCollectionsStore.findWhere({
@@ -880,11 +883,12 @@
         this.waitForInit(this.queryManagement.bind(this));
         return;
       }
-      if (!this.queryManagementView) {
-        this.queryManagementView = new window.QueryManagementView({
-          collection: undefined
-        });
+      if (this.queryManagementView) {
+        this.queryManagementView.remove();
       }
+      this.queryManagementView = new window.QueryManagementView({
+        collection: undefined
+      });
       this.queryManagementView.render();
     },
 

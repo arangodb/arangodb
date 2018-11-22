@@ -101,34 +101,6 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
   bool _forward;
 };
 
-/// @brief iterates over the primary index and does lookups
-/// into the document store. E.g. used for incremental sync
-class RocksDBSortedAllIterator final : public IndexIterator {
- public:
-  RocksDBSortedAllIterator(LogicalCollection* collection,
-                           transaction::Methods* trx,
-                           ManagedDocumentResult* mmdr,
-                           RocksDBPrimaryIndex const* index);
-
-  ~RocksDBSortedAllIterator() {}
-
-  char const* typeName() const override { return "sorted-all-index-iterator"; }
-
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
-  void reset() override;
-
-  // engine specific optimizations
-  void seek(StringRef const& key);
-
- private:
-  bool outOfRange() const;
-
-  transaction::Methods* _trx;
-  RocksDBKeyBounds const _bounds;
-  std::unique_ptr<rocksdb::Iterator> _iterator;
-  rocksdb::Comparator const* _cmp;
-};
-
 class RocksDBGenericIterator {
  public:
   RocksDBGenericIterator(rocksdb::ReadOptions& options
@@ -164,8 +136,6 @@ class RocksDBGenericIterator {
 };
 
 RocksDBGenericIterator createPrimaryIndexIterator(transaction::Methods* trx, LogicalCollection* col);
-
-RocksDBGenericIterator createDocumentIterator(transaction::Methods* trx, LogicalCollection* col);
 
 } //namespace arangodb
 

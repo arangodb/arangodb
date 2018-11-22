@@ -962,7 +962,9 @@ if test -n "${TARGET_DIR}";  then
                   )
             DLLS=$(find "${SSLDIR}" -name \*.dll |grep -i release)
             # shellcheck disable=SC2086
-            cp ${DLLS} "bin/${BUILD_CONFIG}"
+            if test -n "${DLLS}"; then
+                cp ${DLLS} "bin/${BUILD_CONFIG}"
+            fi
             cp "bin/${BUILD_CONFIG}/"* bin/
             cp "tests/${BUILD_CONFIG}/"*exe bin/
         fi

@@ -398,9 +398,8 @@ class ClusterInfo {
   int ensureIndexCoordinator(
       std::string const& databaseName, std::string const& collectionID,
       arangodb::velocypack::Slice const& slice, bool create,
-      bool (*compare)(arangodb::velocypack::Slice const&,
-                      arangodb::velocypack::Slice const&),
-      arangodb::velocypack::Builder& resultBuilder, std::string& errorMsg, double timeout);
+      arangodb::velocypack::Builder& resultBuilder, std::string& errorMsg,
+      double timeout);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop an index in coordinator.
@@ -500,18 +499,6 @@ class ClusterInfo {
   ServerID getCoordinatorByShortID(ServerShortID);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief lookup a full dbserver ID by short ID
-  //////////////////////////////////////////////////////////////////////////////
-
-  ServerID getDBServerByShortID(ServerShortID);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief lookup a full server ID by short name
-  //////////////////////////////////////////////////////////////////////////////
-
-  ServerID getServerByShortName(ServerShortName const&);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief invalidate planned
   //////////////////////////////////////////////////////////////////////////////
 
@@ -587,10 +574,9 @@ class ClusterInfo {
 
   int ensureIndexCoordinatorWithoutRollback(
       std::string const& databaseName, std::string const& collectionID,
-      std::string const& idSlice, arangodb::velocypack::Slice const& slice, bool create,
-      bool (*compare)(arangodb::velocypack::Slice const&,
-                      arangodb::velocypack::Slice const&),
-      arangodb::velocypack::Builder& resultBuilder, std::string& errorMsg, double timeout);
+      std::string const& idSlice, arangodb::velocypack::Slice const& slice,
+      bool create, arangodb::velocypack::Builder& resultBuilder,
+      std::string& errorMsg, double timeout);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief object for agency communication
@@ -644,8 +630,6 @@ class ClusterInfo {
 
   // Mappings between short names/IDs and full server IDs
   std::unordered_map<ServerShortID, ServerID> _coordinatorIdMap;
-  std::unordered_map<ServerShortID, ServerID> _dbserverIdMap;
-  std::unordered_map<ServerShortName, ServerID> _nameMap;
   ProtectionData _mappingsProt;
 
   std::shared_ptr<VPackBuilder> _plan;
