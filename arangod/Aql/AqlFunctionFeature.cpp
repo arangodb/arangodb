@@ -119,6 +119,12 @@ void AqlFunctionFeature::toVelocyPack(VPackBuilder& builder) {
   builder.close();
 }
 
+bool AqlFunctionFeature::exists(std::string const& name) const {
+  auto it = _functionNames.find(name);
+
+  return it != _functionNames.end();
+}
+
 Function const* AqlFunctionFeature::byName(std::string const& name) {
   auto it = _functionNames.find(name);
 

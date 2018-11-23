@@ -996,6 +996,7 @@ bool Supervision::handleJobs() {
   shrinkCluster();
   enforceReplication();
   cleanupLostCollections(_snapshot, _agent, std::to_string(_jobId++));
+  readyOrphanedIndexCreations();
   workJobs();
 
   return true;
@@ -1017,6 +1018,109 @@ void Supervision::workJobs() {
 
 }
 
+
+void Supervision::readyOrphanedIndexCreations() {
+  _lock.assertLockedByCurrentThread();
+  
+  if (_snapshot.has(planColPrefix) && _snapshot.has(curColPrefix)) {
+    auto const& plannedDBs = _snapshot(planColPrefix).children();
+    auto const& currentDBs = _snapshot(curColPrefix);
+
+    for (auto const& db : plannedDBs) {
+      std::string const& dbname = db.first;
+      auto const& database = *(db.second);
+      auto const& plannedCols = database.children();
+      for (auto const& col : plannedCols) {
+        auto const& colname = col.first;
+        std::string const& colPath = dbname + "/" + colname + "/";
+        auto const& collection = *(col.second);
+        std::unordered_set<std::string> built;
+        Slice indexes;
+        if (collection.has("indexes")) {
+          indexes = collection("indexes").getArray();
+          if (indexes.length() > 0) {
+            for (auto const& planIndex : VPackArrayIterator(indexes)) {
+              if (planIndex.hasKey("isBuilding") && collection.has("shards")) {
+                auto const& planId = planIndex.get("id");
+                auto const& shards = collection("shards");
+                if (collection.has("numberOfShards") &&
+                    collection("numberOfShards").isUInt()) {
+                  auto const& nshards = collection("numberOfShards").getUInt();
+                  if (nshards == 0) {
+                    continue;
+                  }
+                  size_t nIndexes = 0;
+                  for (auto const& sh : shards.children()) {
+
+                    auto const& shname = sh.first;
+                  
+                    if (currentDBs.has(colPath + shname + "/indexes")) {
+                      auto const& curIndexes =
+                        currentDBs(colPath + shname + "/indexes").slice();
+                      for (auto const& curIndex : VPackArrayIterator(curIndexes)) {
+                        auto const& curId = curIndex.get("id");
+                        if (planId == curId) {
+                          ++nIndexes;
+                        }
+                      }
+                    }
+                  }
+                  if (nIndexes == nshards) {
+                    built.emplace(planId.copyString());
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        // We have some indexes, that have been built and are isBuilding still
+        if (!built.empty()) {
+
+          auto envelope = std::make_shared<Builder>();
+          { VPackArrayBuilder trxs(envelope.get());
+            { VPackArrayBuilder trx(envelope.get());
+              { VPackObjectBuilder operation(envelope.get());
+                envelope->add(VPackValue(_agencyPrefix + "/" + PLAN_VERSION));
+                { VPackObjectBuilder o(envelope.get());
+                  envelope->add("op", VPackValue("increment")); }
+                envelope->add(
+                  VPackValue(
+                    _agencyPrefix + planColPrefix + colPath + "indexes"));
+                VPackArrayBuilder value(envelope.get());
+                for (auto const& planIndex :
+                       VPackArrayIterator(indexes)) {
+                  if (built.find(
+                        planIndex.get("id").copyString()) != built.end()) {
+                    { VPackObjectBuilder props(envelope.get());
+                      for (auto const& prop : VPackObjectIterator(planIndex)) {
+                        auto const& key = prop.key.copyString();
+                        if (key != "isBuilding") {
+                          envelope->add(key, prop.value);
+                        }
+                      }}
+                  } else {
+                    envelope->add(planIndex);
+                  }
+                }
+              }
+              { VPackObjectBuilder precondition(envelope.get());
+                envelope->add(
+                  VPackValue(
+                    _agencyPrefix + planColPrefix + colPath + "indexes")); 
+                envelope->add(indexes); }
+            }}
+
+          write_ret_t res = _agent->write(envelope);
+          if (!res.successful()) {
+            LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+              << "failed to report ready index to agency. Will retry.";
+          }
+        }          
+      }
+    }
+  }
+}
 
 void Supervision::enforceReplication() {
   _lock.assertLockedByCurrentThread();

@@ -316,12 +316,9 @@ static arangodb::Result cancelReadLockOnLeader (
   { VPackObjectBuilder b(&body);
     body.add(ID, VPackValue(std::to_string(lockJobId))); }
 
-  // Note that we always use the _system database here because the actual
-  // database might be gone already on the leader and we need to cancel
-  // the read lock under all circumstances.
   auto comres = cc->syncRequest(
     clientId, 1, endpoint, rest::RequestType::DELETE_REQ,
-    DB + StaticStrings::SystemDatabase + REPL_HOLD_READ_LOCK, body.toJson(),
+    DB + database + REPL_HOLD_READ_LOCK, body.toJson(),
     std::unordered_map<std::string, std::string>(), timeout);
 
   auto result = comres->result;
@@ -570,7 +567,10 @@ static arangodb::Result replicationSynchronize(
 
 
 static arangodb::Result replicationSynchronizeCatchup(VPackSlice const& conf,
-                                                      TRI_voc_tick_t& tickReached) {
+                                                      double timeout,
+                                                      TRI_voc_tick_t& tickReached,
+                                                      bool& didTimeout) {
+  didTimeout = false;
 
   auto const database = conf.get(DATABASE).copyString();
   auto const collection = conf.get(COLLECTION).copyString();
@@ -591,7 +591,7 @@ static arangodb::Result replicationSynchronizeCatchup(VPackSlice const& conf,
 
   Result r;
   try {
-    r = syncer.syncCollectionCatchup(collection, tickReached);
+    r = syncer.syncCollectionCatchup(collection, timeout, tickReached, didTimeout);
   } catch (arangodb::basics::Exception const& ex) {
     r = Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
@@ -687,10 +687,8 @@ bool SynchronizeShard::first() {
       return false;
     }
 
-    std::shared_ptr<LogicalCollection> ci;
-    try {   // ci->getCollection can throw
-      ci = clusterInfo->getCollection(database, planId);
-    } catch(...) {
+    auto ci = clusterInfo->getCollectionNT(database, planId);
+    if (ci == nullptr) {
       std::stringstream msg;
       msg << "exception in getCollection, ";
       AppendShardInformationToMessage(database, shard, planId, startTime, msg);
@@ -698,7 +696,6 @@ bool SynchronizeShard::first() {
       _result.reset(TRI_ERROR_FAILED, msg.str());
       return false;
     }
-    TRI_ASSERT(ci != nullptr);
 
     std::string const cid = std::to_string(ci->id());
     std::shared_ptr<CollectionInfoCurrent> cic =
@@ -874,7 +871,7 @@ bool SynchronizeShard::first() {
 
       ResultT<TRI_voc_tick_t> tickResult = catchupWithReadLock(ep, database, *collection, clientId,
           shard, leader, lastTick, builder);
-      if (!res.ok()) {
+      if (!tickResult.ok()) {
         LOG_TOPIC(INFO, Logger::MAINTENANCE) << res.errorMessage();
         _result.reset(tickResult);
         return false;
@@ -930,72 +927,88 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
                             std::string const& leader,
                             TRI_voc_tick_t lastLogTick,
                             VPackBuilder& builder) {
-  // Now ask for a "soft stop" on the leader, in case of mmfiles, this
-  // will be a hard stop, but for rocksdb, this is a no-op:
-  uint64_t lockJobId = 0;
-  LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-    << "synchronizeOneShard: startReadLockOnLeader (soft): " << ep << ":"
-    << database << ":" << collection.name();
-  Result res = startReadLockOnLeader(
-    ep, database, collection.name(), clientId, lockJobId, true);
-  if (!res.ok()) {
-    std::string errorMessage = 
-      "synchronizeOneShard: error in startReadLockOnLeader (soft):"
-      + res.errorMessage();
-    return ResultT<TRI_voc_tick_t>::error(TRI_ERROR_INTERNAL, errorMessage);
-  }
-  auto readLockGuard = arangodb::scopeGuard([&]() {
-    // Always cancel the read lock.
-    // Reported seperately
-    auto res = cancelReadLockOnLeader(ep, database, lockJobId, clientId, 60.0);
-    if (!res.ok()) {
-      LOG_TOPIC(INFO, Logger::MAINTENANCE)
-          << "Could not cancel soft read lock on leader: "
-          << res.errorMessage();
-    }
-  });
-
-  LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "lockJobId: " <<  lockJobId;
-
-  // From now on, we need to cancel the read lock on the leader regardless
-  // if things go wrong or right!
-
-  // Do a first try of a catch up with the WAL. In case of RocksDB,
-  // this has not yet stopped the writes, so we have to be content
-  // with nearly reaching the end of the WAL, which is a "soft" catchup.
-  builder.clear();
-  { VPackObjectBuilder o(&builder);
-    builder.add(ENDPOINT, VPackValue(ep));
-    builder.add(DATABASE, VPackValue(database));
-    builder.add(COLLECTION, VPackValue(shard));
-    builder.add(LEADER_ID, VPackValue(leader));
-    builder.add("from", VPackValue(lastLogTick));
-    builder.add("requestTimeout", VPackValue(600.0));
-    builder.add("connectTimeout", VPackValue(60.0));
-  }
-
+  bool didTimeout = true;
+  int tries = 0;
+  double timeout = 300.0;
   TRI_voc_tick_t tickReached = 0;
-  res = replicationSynchronizeCatchup(builder.slice(), tickReached);
+  while (didTimeout && tries++ < 18) { // This will try to sync for at most 1 hour. (200 * 18 == 3600)
+    didTimeout = false;
+    // Now ask for a "soft stop" on the leader, in case of mmfiles, this
+    // will be a hard stop, but for rocksdb, this is a no-op:
+    uint64_t lockJobId = 0;
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+      << "synchronizeOneShard: startReadLockOnLeader (soft): " << ep << ":"
+      << database << ":" << collection.name();
+    Result res = startReadLockOnLeader(
+      ep, database, collection.name(), clientId, lockJobId, true, timeout);
+    if (!res.ok()) {
+      std::string errorMessage = 
+        "synchronizeOneShard: error in startReadLockOnLeader (soft):"
+        + res.errorMessage();
+      return ResultT<TRI_voc_tick_t>::error(TRI_ERROR_INTERNAL, errorMessage);
+    }
 
-  if (!res.ok()) {
-    std::string errorMessage(
-      "synchronizeOneshard: error in syncCollectionCatchup: ") ;
-    errorMessage += res.errorMessage();
-    return ResultT<TRI_voc_tick_t>::error(TRI_ERROR_INTERNAL, errorMessage);
+    auto readLockGuard = arangodb::scopeGuard([&]() {
+      // Always cancel the read lock.
+      // Reported seperately
+      auto res = cancelReadLockOnLeader(ep, database, lockJobId, clientId, 60.0);
+      if (!res.ok()) {
+        LOG_TOPIC(INFO, Logger::MAINTENANCE)
+            << "Could not cancel soft read lock on leader: "
+            << res.errorMessage();
+      }
+    });
+
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "lockJobId: " <<  lockJobId;
+
+    // From now on, we need to cancel the read lock on the leader regardless
+    // if things go wrong or right!
+
+    // Do a first try of a catch up with the WAL. In case of RocksDB,
+    // this has not yet stopped the writes, so we have to be content
+    // with nearly reaching the end of the WAL, which is a "soft" catchup.
+    builder.clear();
+    { VPackObjectBuilder o(&builder);
+      builder.add(ENDPOINT, VPackValue(ep));
+      builder.add(DATABASE, VPackValue(database));
+      builder.add(COLLECTION, VPackValue(shard));
+      builder.add(LEADER_ID, VPackValue(leader));
+      builder.add("from", VPackValue(lastLogTick));
+      builder.add("requestTimeout", VPackValue(600.0));
+      builder.add("connectTimeout", VPackValue(60.0));
+    }
+
+    // We only allow to hold this lock for 60% of the timeout time, so to avoid any issues
+    // with Locks timeouting on the Leader and the Client not recognizing it.
+    res = replicationSynchronizeCatchup(builder.slice(), timeout * 0.6, tickReached, didTimeout);
+
+    if (!res.ok()) {
+      std::string errorMessage(
+        "synchronizeOneshard: error in syncCollectionCatchup: ") ;
+      errorMessage += res.errorMessage();
+      return ResultT<TRI_voc_tick_t>::error(TRI_ERROR_INTERNAL, errorMessage);
+    }
+
+    // Stop the read lock again:
+    res = cancelReadLockOnLeader(ep, database, lockJobId,
+                                 clientId, 60.0);
+    // We removed the readlock
+    readLockGuard.cancel();
+    if (!res.ok()) {
+      std::string errorMessage
+        = "synchronizeOneShard: error when cancelling soft read lock: "
+        + res.errorMessage();
+      LOG_TOPIC(INFO, Logger::MAINTENANCE) << errorMessage;
+      _result.reset(TRI_ERROR_INTERNAL, errorMessage);
+      return ResultT<TRI_voc_tick_t>::error(TRI_ERROR_INTERNAL, errorMessage);
+    }
+    lastLogTick = tickReached;
+    if (didTimeout) {
+      LOG_TOPIC(INFO, Logger::MAINTENANCE) << "Renewing softLock for " << shard << " on leader: " << leader;
+    }
   }
-
-  // Stop the read lock again:
-  res = cancelReadLockOnLeader(ep, database, lockJobId,
-                               clientId, 60.0);
-  // We removed the readlock
-  readLockGuard.cancel();
-  if (!res.ok()) {
-    std::string errorMessage
-      = "synchronizeOneShard: error when cancelling soft read lock: "
-      + res.errorMessage();
-    LOG_TOPIC(INFO, Logger::MAINTENANCE) << errorMessage;
-    _result.reset(TRI_ERROR_INTERNAL, errorMessage);
-    return ResultT<TRI_voc_tick_t>::error(TRI_ERROR_INTERNAL, errorMessage);
+  if (didTimeout) {
+    LOG_TOPIC(WARN, Logger::MAINTENANCE) << "Could not catchup under softLock for " << shard << " on leader: " << leader << " now activating hardLock. This is expected under high load.";
   }
   return ResultT<TRI_voc_tick_t>::success(tickReached);
 }

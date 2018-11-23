@@ -143,7 +143,8 @@ function readOnly (options) {
       const res = request[r[1]]({
         url: `${adbInstance.arangods[0].url}${r[2]}`,
         body: Object.keys(r[4]).length ? JSON.stringify(r[4]) : '',
-        auth: { username: r[3], password: '' }
+        auth: { username: r[3], password: '' },
+        timeout: 60.0
       });
       try {
         bodies.push(JSON.parse(res.body));

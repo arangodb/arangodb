@@ -95,8 +95,7 @@ std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(
   return rocks->mapObjectToCollection(objectId);
 }
 
-std::tuple<TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t> mapObjectToIndex(
-                                                              uint64_t objectId) {
+std::tuple<TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t> mapObjectToIndex(uint64_t objectId) {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
   RocksDBEngine* rocks = static_cast<RocksDBEngine*>(engine);
@@ -153,14 +152,14 @@ std::size_t countKeyRange(rocksdb::DB* db,
 
 /// @brief helper method to remove large ranges of data
 /// Should mainly be used to implement the drop() call
-Result removeLargeRange(rocksdb::TransactionDB* db,
+Result removeLargeRange(rocksdb::DB* db,
                         RocksDBKeyBounds const& bounds,
                         bool prefixSameAsStart,
                         bool useRangeDelete) {
   LOG_TOPIC(DEBUG, Logger::ENGINES) << "removing large range: " << bounds;
 
   rocksdb::ColumnFamilyHandle* cf = bounds.columnFamily();
-  rocksdb::DB* bDB = db->GetBaseDB();
+  rocksdb::DB* bDB = db->GetRootDB();
   TRI_ASSERT(bDB != nullptr);
 
   try {

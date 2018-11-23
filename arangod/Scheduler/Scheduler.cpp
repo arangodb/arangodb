@@ -214,20 +214,22 @@ void Scheduler::post(std::function<void()> const callback) {
 
   // implies if _ioContext still valid (defense against shutdown races)
   if (!isStopping()) {
-
     auto guardQueue = scopeGuard([this]() { decQueued(); });
 
     // capture without self, ioContext will not live longer than scheduler
     _ioContext->post([this, callback]() {
-        // start working
-        JobGuard jobGuard(this);
-        jobGuard.work();
+      // start working
+      JobGuard jobGuard(this);
+      jobGuard.work();
 
-        // reduce number of queued now
-        decQueued();
+      // reduce number of queued now
+      decQueued();
 
-        callback();
-      });
+      // it is safe to execute the callback now, even with the queued counter
+      // being decreased. this is because JobGuard::work() has increased the
+      // working counter, which is also checked on shutdown
+      callback();
+    });
 
     // no exception happened, cancel guard
     guardQueue.cancel();
@@ -240,11 +242,11 @@ void Scheduler::post(std::function<void()> const callback) {
     decQueued();
 
     // this post is coming late in application shutdown,
-    //  might be essential ... process in-line after heavy complaining
-    LOG_TOPIC(WARN, Logger::THREADS)
-      << "Scheduler::post() called after isStopping() set.";
-    TRI_ASSERT(false);
-
+    //  might be essential ...
+    
+    // it is safe to execute the callback now, even with the queued counter
+    // being decreased. this is because JobGuard::work() has increased the
+    // working counter, which is also checked on shutdown
     callback();
   } // else
 }
@@ -524,23 +526,29 @@ bool Scheduler::start() {
 }
 
 void Scheduler::beginShutdown() {
-  if (isStopping()) {
+  if (!setStopping()) {
+    // somebody else had set the stopping bit already, so we don't care here
     return;
   }
 
   // Scheduler::post() assumes atomic _counters is manipulated in a
   //  sequentially-consistent manner so that state of _ioContext can be implied
   //  via _counters.
-  setStopping();
 
   // push anything within fifo queues onto context queue
   drain();
+
+  int notifyCounter = 0;
 
   while (true) {
     uint64_t const counters = _counters.load();
 
     if (numWorking(counters) == 0 && numQueued(counters) == 0) {
       break;
+    }
+ 
+    if (++notifyCounter % 500 == 0) {
+      LOG_TOPIC(DEBUG, Logger::THREADS) << "waiting for numWorking: " << numWorking(counters) << ", numQueued: " << numQueued(counters); 
     }
 
     std::this_thread::yield();
@@ -560,6 +568,9 @@ void Scheduler::beginShutdown() {
 }
 
 void Scheduler::shutdown() {
+  TRI_ASSERT(isStopping());
+
+  int notifyCounter = 0;
 
   while (true) {
     uint64_t const counters = _counters.load();
@@ -567,6 +578,10 @@ void Scheduler::shutdown() {
     if (numRunning(counters) == 0 && numWorking(counters) == 0
         && numQueued(counters) == 0) {
       break;
+    }
+    
+    if (++notifyCounter % 50 == 0) {   
+      LOG_TOPIC(DEBUG, Logger::THREADS) << "waiting for numRunning: " << numRunning(counters) << ", numWorking: " << numWorking(counters) << ", numQueued: " << numQueued(counters); 
     }
 
     std::this_thread::yield();
@@ -634,8 +649,6 @@ void Scheduler::stopRebalancer() noexcept {
   }
 }
 
-
-//
 // This routine tries to keep only the most likely needed count of threads running:
 //  - asio io_context runs less efficiently if it has too many threads, but
 //  - there is a latency hit to starting a new thread.

@@ -61,6 +61,7 @@ class CollectionInfoCurrent {
   friend class ClusterInfo;
 
  public:
+
   explicit CollectionInfoCurrent(uint64_t currentVersion);
 
   CollectionInfoCurrent(CollectionInfoCurrent const&) = delete;
@@ -118,8 +119,8 @@ class CollectionInfoCurrent {
     auto it = _vpacks.find(shardID);
     if (it != _vpacks.end()) {
       VPackSlice slice = it->second->slice();
-      return arangodb::basics::VelocyPackHelper::getNumericValue<int>(slice,
-                                                                "errorNum", 0);
+      return arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+        slice, "errorNum", 0);
     }
     return 0;
   }
@@ -132,7 +133,8 @@ class CollectionInfoCurrent {
     std::unordered_map<ShardID, int> m;
 
     for (auto const& it: _vpacks) {
-      int s = arangodb::basics::VelocyPackHelper::getNumericValue<int>(it.second->slice(), "errorNum", 0);
+      int s = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+        it.second->slice(), "errorNum", 0);
       m.insert(std::make_pair(it.first, s));
     }
     return m;
@@ -313,14 +315,30 @@ class ClusterInfo {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a collection
-  /// If it is not found in the cache, the cache is reloaded once. The second
-  /// argument can be a collection ID or a collection name (both cluster-wide).
-  /// if the collection is not found afterwards, this method will throw an
-  /// exception
+  /// Throwing version, deprecated.
   //////////////////////////////////////////////////////////////////////////////
 
   virtual std::shared_ptr<LogicalCollection> getCollection(DatabaseID const&,
                                                    CollectionID const&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief ask about a collection
+  /// If it is not found in the cache, the cache is reloaded once. The second
+  /// argument can be a collection ID or a collection name (both cluster-wide).
+  /// if the collection is not found afterwards, this method will throw an
+  /// exception
+  /// will not throw but return nullptr if the collection isn't found.
+  //////////////////////////////////////////////////////////////////////////////
+
+  virtual std::shared_ptr<LogicalCollection> getCollectionNT(DatabaseID const&,
+                                                   CollectionID const&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// Format error message for TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND
+  //////////////////////////////////////////////////////////////////////////////
+  static std::string getCollectionNotFoundMsg(DatabaseID const&,
+                                              CollectionID const&);
+
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about all collections of a database
@@ -449,7 +467,8 @@ class ClusterInfo {
   int ensureIndexCoordinator(
       std::string const& databaseName, std::string const& collectionID,
       arangodb::velocypack::Slice const& slice, bool create,
-      arangodb::velocypack::Builder& resultBuilder, std::string& errorMsg, double timeout);
+      arangodb::velocypack::Builder& resultBuilder, std::string& errorMsg,
+      double timeout);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop an index in coordinator.
@@ -642,8 +661,9 @@ class ClusterInfo {
 
   int ensureIndexCoordinatorWithoutRollback(
       std::string const& databaseName, std::string const& collectionID,
-      std::string const& idSlice, arangodb::velocypack::Slice const& slice, bool create,
-      arangodb::velocypack::Builder& resultBuilder, std::string& errorMsg, double timeout);
+      std::string const& idSlice, arangodb::velocypack::Slice const& slice,
+      bool create, arangodb::velocypack::Builder& resultBuilder,
+      std::string& errorMsg, double timeout);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief object for agency communication
