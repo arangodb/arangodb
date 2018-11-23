@@ -250,15 +250,23 @@ describe('Shard distribution', function () {
           const envelope = 
               { method: "GET", url: url + "/_admin/cluster/numberOfServers" };
           let res = request(envelope);
+          if (res.statusCode !== 200) {
+            return {cleanedServers: []};
+          }
           var body = res.body;
           if (typeof body === "string") {
             body = JSON.parse(body);
+          }
+          if (typeof body !== "object" ||
+              !body.hasOwnProperty("cleanedServers") ||
+              typeof body.cleanedServers !== "object") {
+            return {cleanedServers:[]};
           }
           return body;
         } catch (err) {
           console.error(
             "Exception for POST /_admin/cluster/cleanOutServer:", err.stack);
-          return {};
+          return {cleanedServers: []};
         }
       };
 
