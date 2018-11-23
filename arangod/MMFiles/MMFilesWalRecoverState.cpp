@@ -45,6 +45,7 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 
@@ -378,6 +379,15 @@ bool MMFilesWalRecoverState::InitialScanMarker(MMFilesMarker const* marker,
             transaction::helpers::extractRevFromDocument(payloadSlice);
         if (revisionId != UINT64_MAX && revisionId > state->maxRevisionId) {
           state->maxRevisionId = revisionId;
+        }
+      }
+      if (marker->getSize() == MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT) + payloadSlice.byteSize() + sizeof(LocalDocumentId::BaseType)) {
+        // we do have a LocalDocumentId stored at the end of the marker
+        uint8_t const* ptr = payloadSlice.begin() + payloadSlice.byteSize();
+        LocalDocumentId localDocumentId{encoding::readNumber<LocalDocumentId::BaseType>(ptr, sizeof(LocalDocumentId::BaseType))};
+        if (!state->maxLocalDocumentId.isSet() ||
+            localDocumentId > state->maxLocalDocumentId) {
+          state->maxLocalDocumentId = localDocumentId;
         }
       }
       break;
@@ -839,7 +849,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
               << " was already renamed; moving on";
               break;
             }
-            vocbase->dropView(other->id(), true);
+            other->drop();
           }
 
           auto res = view->rename(std::string(name));
@@ -1365,9 +1375,8 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         // ignore any potential error returned by this call
         std::shared_ptr<arangodb::LogicalView> view =
             vocbase->lookupView(viewId);
-
         if (view != nullptr) {
-          vocbase->dropView(view->id(), true);
+          view->drop();
         }
 
         break;

@@ -919,6 +919,10 @@ static void JS_QueriesPropertiesAql(
       queryList->slowQueryThreshold(TRI_ObjectToDouble(
           obj->Get(TRI_V8_ASCII_STRING(isolate, "slowQueryThreshold"))));
     }
+    if (obj->Has(TRI_V8_ASCII_STRING(isolate, "slowStreamingQueryThreshold"))) {
+      queryList->slowStreamingQueryThreshold(TRI_ObjectToDouble(
+          obj->Get(TRI_V8_ASCII_STRING(isolate, "slowStreamingQueryThreshold"))));
+    }
     if (obj->Has(TRI_V8_ASCII_STRING(isolate, "maxQueryStringLength"))) {
       queryList->maxQueryStringLength(static_cast<size_t>(TRI_ObjectToInt64(
           obj->Get(TRI_V8_ASCII_STRING(isolate, "maxQueryStringLength")))));
@@ -940,6 +944,8 @@ static void JS_QueriesPropertiesAql(
                   isolate, static_cast<double>(queryList->maxSlowQueries())));
   result->Set(TRI_V8_ASCII_STRING(isolate, "slowQueryThreshold"),
               v8::Number::New(isolate, queryList->slowQueryThreshold()));
+  result->Set(TRI_V8_ASCII_STRING(isolate, "slowStreamingQueryThreshold"),
+              v8::Number::New(isolate, queryList->slowStreamingQueryThreshold()));
   result->Set(TRI_V8_ASCII_STRING(isolate, "maxQueryStringLength"),
               v8::Number::New(isolate, static_cast<double>(
                                            queryList->maxQueryStringLength())));
@@ -1390,18 +1396,13 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
 
   std::shared_ptr<arangodb::LogicalCollection> collection;
 
-  try {
-    if (ServerState::instance()->isCoordinator()) {
-      auto* ci = arangodb::ClusterInfo::instance();
-
-      collection = ci
-        ? ci->getCollection(vocbase.name(), std::string(key)) : nullptr;
-    } else {
-      collection = vocbase.lookupCollection(std::string(key));
+  if (ServerState::instance()->isCoordinator()) {
+    auto* ci = arangodb::ClusterInfo::instance();
+    if (ci) {
+      collection = ci->getCollectionNT(vocbase.name(), std::string(key));
     }
-  } catch (...) {
-    // do not propagate exception from here
-    TRI_V8_RETURN(v8::Handle<v8::Value>());
+  } else {
+    collection = vocbase.lookupCollection(std::string(key));
   }
 
   if (collection == nullptr) {

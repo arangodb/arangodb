@@ -119,11 +119,21 @@ function MovingShardsSuite () {
     } catch (err) {
       console.error(
         "Exception for POST /_admin/cluster/cleanOutServer:", err.stack);
-      return {};
+      return {cleanedServers:[]};
+    }
+    if (res.statusCode !== 200) {
+      return {cleanedServers:[]};
     }
     var body = res.body;
     if (typeof body === "string") {
-      body = JSON.parse(body);
+      try {
+        body = JSON.parse(body);
+      } catch (err2) {
+      }
+    }
+    if (typeof body !== "object" || !body.hasOwnProperty("cleanedServers") ||
+        typeof body.cleanedServers !== "object") {
+      return {cleanedServers:[]};
     }
     return body;
   }

@@ -46,13 +46,6 @@ NS_BEGIN(iresearch)
 struct QueryContext;
 
 struct FilterFactory {
-  static irs::filter::ptr filter(TRI_voc_cid_t cid);
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief create a filter matching 'cid' + 'rid' pair
-  ////////////////////////////////////////////////////////////////////////////////
-  static irs::filter::ptr filter(TRI_voc_cid_t cid, TRI_voc_rid_t rid);
-
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief determine if the 'node' can be converted into an iresearch filter
   ///        if 'filter' != nullptr then also append the iresearch filter there

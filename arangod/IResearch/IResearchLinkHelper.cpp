@@ -74,7 +74,7 @@ bool createLink(
   )->bool {
     // ignored fields
     return key != arangodb::StaticStrings::IndexType
-      && key != arangodb::iresearch::StaticStrings::ViewIdField;
+        && key != arangodb::iresearch::StaticStrings::ViewIdField;
   };
   arangodb::velocypack::Builder builder;
 
@@ -181,7 +181,7 @@ arangodb::Result modifyLinks(
     )->bool {
       // ignored fields
       return key != arangodb::StaticStrings::IndexType
-        && key != arangodb::iresearch::StaticStrings::ViewIdField;
+          && key != arangodb::iresearch::StaticStrings::ViewIdField;
     };
     arangodb::velocypack::Builder namedJson;
 
@@ -555,7 +555,7 @@ namespace iresearch {
     if (!collection) {
       return arangodb::Result(
         TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-        std::string("while validating arangosearch link definition, error: collection '") + collectionName.copyString() + "' not a string"
+        std::string("while validating arangosearch link definition, error: collection '") + collectionName.copyString() + "' not found"
       );
     }
 

@@ -138,7 +138,6 @@ bool resolveRequestContext(GeneralRequest& req) {
 /// Must be called before calling executeRequest, will add an error
 /// response if execution is supposed to be aborted
 GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& req) {
-
   // Step 1: In the shutdown phase we simply return 503:
   if (application_features::ApplicationServer::isStopping()) {
     auto res = createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
@@ -235,7 +234,7 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& r
   // Step 4: Check the authentication. Will determine if the user can access
   // this path checks db permissions and contains exceptions for the
   // users API to allow logins
-  const rest::ResponseCode code = GeneralCommTask::canAccessPath(req);
+  rest::ResponseCode const code = GeneralCommTask::canAccessPath(req);
   if (code == rest::ResponseCode::UNAUTHORIZED) {
     addErrorResponse(rest::ResponseCode::UNAUTHORIZED,
                      req.contentTypeResponse(), req.messageId(),
@@ -512,7 +511,9 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest& req) const {
 
   std::string const& path = req.requestPath();
   std::string const& username = req.user();
-  rest::ResponseCode result = req.authenticated()
+  bool userAuthenticated = req.authenticated();
+
+  rest::ResponseCode result = userAuthenticated
                                 ? rest::ResponseCode::OK
                                 : rest::ResponseCode::UNAUTHORIZED;
 
@@ -524,7 +525,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest& req) const {
     result = rest::ResponseCode::UNAUTHORIZED;
     LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "Access forbidden to " << path;
 
-    if (req.authenticated()) {
+    if (userAuthenticated) {
       req.setAuthenticated(false);
     }
   }
@@ -571,6 +572,10 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest& req) const {
         // req.user when it could be validated
         result = rest::ResponseCode::OK;
         vc->forceSuperuser();
+      } else if (userAuthenticated && path == "/_api/cluster/endpoints") {
+        // allow authenticated users to access cluster/endpoints
+        result = rest::ResponseCode::OK;
+        //vc->forceReadOnly();
       } else if (req.requestType() == RequestType::POST &&
                  !username.empty() &&
                  StringUtils::isPrefix(path, ApiUser + username + '/')) {

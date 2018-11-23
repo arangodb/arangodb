@@ -653,9 +653,13 @@ static void JS_GetCollectionInfoClusterInfo(
         "getCollectionInfo(<database-id>, <collection-id>)");
   }
 
-  std::shared_ptr<LogicalCollection> ci = ClusterInfo::instance()->getCollection(
-      TRI_ObjectToString(args[0]), TRI_ObjectToString(args[1]));
-  TRI_ASSERT(ci != nullptr);
+  auto databaseID = TRI_ObjectToString(args[0]);
+  auto collectionID = TRI_ObjectToString(args[1]);
+  std::shared_ptr<LogicalCollection> ci = ClusterInfo::instance()->getCollectionNT(databaseID, collectionID);
+  if (ci == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                                   ClusterInfo::getCollectionNotFoundMsg(databaseID, collectionID));
+  }
 
   std::unordered_set<std::string> ignoreKeys{"allowUserKeys",
                                              "avoidServers",
@@ -720,9 +724,13 @@ static void JS_GetCollectionInfoCurrentClusterInfo(
 
   ShardID shardID = TRI_ObjectToString(args[2]);
 
-  std::shared_ptr<LogicalCollection> ci = ClusterInfo::instance()->getCollection(
-      TRI_ObjectToString(args[0]), TRI_ObjectToString(args[1]));
-  TRI_ASSERT(ci != nullptr);
+  auto databaseID = TRI_ObjectToString(args[0]);
+  auto collectionID = TRI_ObjectToString(args[1]);
+  std::shared_ptr<LogicalCollection> ci = ClusterInfo::instance()->getCollectionNT(databaseID, collectionID);
+  if (ci == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                                   ClusterInfo::getCollectionNotFoundMsg(databaseID, collectionID));
+  }
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   // First some stuff from Plan for which Current does not make sense:
@@ -841,7 +849,12 @@ static void JS_GetResponsibleShardClusterInfo(
   CollectionID collectionId = TRI_ObjectToString(args[0]);
   auto& vocbase = GetContextVocBase(isolate);
   auto ci = ClusterInfo::instance();
-  auto collInfo = ci->getCollection(vocbase.name(), collectionId);
+  auto collInfo = ci->getCollectionNT(vocbase.name(), collectionId);
+  if (collInfo == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                                   ClusterInfo::getCollectionNotFoundMsg(vocbase.name(), collectionId));
+  }
+
   bool usesDefaultShardingAttributes;
 
   res = collInfo->getResponsibleShard(builder.slice(), documentIsComplete, shardId, usesDefaultShardingAttributes);

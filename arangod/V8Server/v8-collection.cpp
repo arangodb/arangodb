@@ -82,16 +82,10 @@ std::shared_ptr<arangodb::LogicalCollection> GetCollectionFromArgument(
     v8::Handle<v8::Value> const val
 ) {
   if (arangodb::ServerState::instance()->isCoordinator()) {
-    try {
-      auto* ci = arangodb::ClusterInfo::instance();
+    auto* ci = arangodb::ClusterInfo::instance();
 
-      return ci
-        ? ci->getCollection(vocbase.name(), TRI_ObjectToString(val)) : nullptr;
-    } catch (...) {
-      // NOOP
-    }
-
-    return nullptr; // not found
+    return ci
+        ? ci->getCollectionNT(vocbase.name(), TRI_ObjectToString(val)) : nullptr;
   }
 
   // number
@@ -2063,12 +2057,13 @@ static void JS_StatusVocbaseCol(
   if (ServerState::instance()->isCoordinator()) {
     auto& databaseName = collection->vocbase().name();
 
-    try {
-      auto ci = ClusterInfo::instance()->getCollection(
+    auto ci = ClusterInfo::instance()->getCollectionNT(
         databaseName, std::to_string(collection->id())
       );
+    if (ci != nullptr) {
       TRI_V8_RETURN(v8::Number::New(isolate, (int)ci->status()));
-    } catch (...) {
+    }
+    else {
       TRI_V8_RETURN(v8::Number::New(isolate, (int)TRI_VOC_COL_STATUS_DELETED));
     }
   }
@@ -2144,12 +2139,13 @@ static void JS_TypeVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (ServerState::instance()->isCoordinator()) {
     auto& databaseName = collection->vocbase().name();
 
-    try {
-      auto ci = ClusterInfo::instance()->getCollection(
+    auto ci = ClusterInfo::instance()->getCollectionNT(
         databaseName, std::to_string(collection->id())
       );
+    if (ci != nullptr) {
       TRI_V8_RETURN(v8::Number::New(isolate, (int)ci->type()));
-    } catch (...) {
+    }
+    else {
       TRI_V8_RETURN(v8::Number::New(isolate, (int)(collection->type())));
     }
   }

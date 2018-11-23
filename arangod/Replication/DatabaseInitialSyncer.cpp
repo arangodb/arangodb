@@ -1504,7 +1504,7 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(VPackSlice const& collSl
   
   if (!_config.applier._skipCreateDrop &&
       _config.applier._restrictCollections.empty() &&
-      !viewSlices.isNone()) {
+      viewSlices.isArray()) {
     // views are optional, and 3.3 and before will not send any view data
     Result r = handleViewCreation(viewSlices); // no requests to master
     if (r.fail()) {

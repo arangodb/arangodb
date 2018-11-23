@@ -38,9 +38,27 @@ irs::doc_iterator::ptr PrimaryKeyFilter::execute(
     irs::order::prepared const& /*order*/,
     irs::attribute_view const& /*ctx*/
 ) const {
-  if (&segment != _pkIterator._pkSegment) {
+  auto* pkField = segment.field(arangodb::iresearch::DocumentPrimaryKey::PK());
+
+  if (!pkField) {
+    // no such field
     return irs::doc_iterator::empty();
   }
+
+  auto term = pkField->iterator();
+
+  if (!term->seek(static_cast<irs::bytes_ref>(_pk))) {
+    // no such term
+    return irs::doc_iterator::empty();
+  }
+
+  auto docs = term->postings(irs::flags::empty_instance());
+
+  if (!docs->next()) {
+    return irs::doc_iterator::empty();
+  }
+
+  _pkIterator.reset(docs->value());
 
   // aliasing constructor
   return irs::doc_iterator::ptr(
@@ -52,40 +70,22 @@ irs::doc_iterator::ptr PrimaryKeyFilter::execute(
 size_t PrimaryKeyFilter::hash() const noexcept {
   size_t seed = 0;
   irs::hash_combine(seed, filter::hash());
-  irs::hash_combine(seed, _pk.cid());
-  irs::hash_combine(seed, _pk.rid());
+  irs::hash_combine(seed, _pk.first);
+  irs::hash_combine(seed, _pk.second);
   return seed;
 }
 
 irs::filter::prepared::ptr PrimaryKeyFilter::prepare(
-    irs::index_reader const& index,
+    irs::index_reader const& /*index*/,
     irs::order::prepared const& /*ord*/,
     irs::boost::boost_t /*boost*/,
     irs::attribute_view const& /*ctx*/
 ) const {
-  auto const pkRef = static_cast<irs::bytes_ref>(_pk);
-
-  for (auto& segment : index) {
-    auto* pkField = segment.field(arangodb::iresearch::DocumentPrimaryKey::PK());
-
-    if (!pkField) {
-      continue;
-    }
-
-    auto term = pkField->iterator();
-
-    if (!term->seek(pkRef)) {
-      continue;
-    }
-
-    auto docs = term->postings(irs::flags::empty_instance());
-
-    if (docs->next()) {
-      _pkIterator.reset(segment, docs->value());
-    }
-
-    break;
-  }
+//FIXME uncomment after fix
+//  if (irs::type_limits<irs::type_t::doc_id_t>::valid(_pkIterator._doc)) {
+//    // aleady processed
+//    return irs::filter::prepared::empty();
+//  }
 
   // aliasing constructor
   return irs::filter::prepared::ptr(irs::filter::prepared::ptr(), this);
@@ -95,8 +95,8 @@ bool PrimaryKeyFilter::equals(filter const& rhs) const noexcept {
   auto const& trhs = static_cast<PrimaryKeyFilter const&>(rhs);
 
   return filter::equals(rhs)
-    && _pk.cid() == trhs._pk.cid()
-    && _pk.rid() == trhs._pk.rid();
+    && _pk.first == trhs._pk.first
+    && _pk.second == trhs._pk.second;
 }
 
 DEFINE_FILTER_TYPE(PrimaryKeyFilter);

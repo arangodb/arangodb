@@ -41,6 +41,7 @@
 
 #include "Aql/AstNode.h"
 #include "Aql/QueryCache.h"
+#include "Basics/StaticStrings.h"
 #include "Logger/LogMacros.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionState.h"
@@ -72,118 +73,6 @@ const irs::string_ref IRESEARCH_STORE_FORMAT("1_0");
 
 typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
 typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
-
-////////////////////////////////////////////////////////////////////////////////
-/// --SECTION--                                               utility constructs
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief index reader implementation over multiple directory readers
-////////////////////////////////////////////////////////////////////////////////
-class CompoundReader final: public arangodb::iresearch::PrimaryKeyIndexReader {
- public:
-  explicit CompoundReader(ReadMutex& viewMutex) noexcept
-    : _viewLock(viewMutex) {
-  }
-  irs::sub_reader const& operator[](
-      size_t subReaderId
-  ) const noexcept override {
-    return *(_subReaders[subReaderId].first);
-  }
-
-  void add(irs::directory_reader const& reader);
-  virtual reader_iterator begin() const override {
-    return reader_iterator(new IteratorImpl(_subReaders.begin()));
-  }
-  virtual uint64_t docs_count() const override;
-  virtual reader_iterator end() const override {
-    return reader_iterator(new IteratorImpl(_subReaders.end()));
-  }
-  virtual uint64_t live_docs_count() const override;
-
-  irs::columnstore_reader::values_reader_f const& pkColumn(
-      size_t subReaderId
-  ) const noexcept override {
-    return _subReaders[subReaderId].second;
-  }
-
-  virtual size_t size() const noexcept override { return _subReaders.size(); }
-
-  void clear() noexcept {
-    _subReaders.clear();
-    _readers.clear();
-  }
-
- private:
-  typedef std::vector<
-    std::pair<irs::sub_reader*, irs::columnstore_reader::values_reader_f>
-  > SubReadersType;
-
-  class IteratorImpl final: public irs::index_reader::reader_iterator_impl {
-   public:
-    explicit IteratorImpl(SubReadersType::const_iterator const& itr) noexcept
-      : _itr(itr) {
-    }
-
-    virtual void operator++() noexcept override { ++_itr; }
-    virtual reference operator*() noexcept override { return *(_itr->first); }
-
-    virtual const_reference operator*() const noexcept override {
-      return *(_itr->first);
-    }
-
-    virtual bool operator==(
-        const reader_iterator_impl& other
-    ) noexcept override {
-      return static_cast<IteratorImpl const&>(other)._itr == _itr;
-    }
-
-   private:
-    SubReadersType::const_iterator _itr;
-  };
-
-  std::vector<irs::directory_reader> _readers;
-  SubReadersType _subReaders;
-  std::lock_guard<ReadMutex> _viewLock; // prevent data-store deallocation (lock @ AsyncSelf)
-};
-
-void CompoundReader::add(irs::directory_reader const& reader) {
-  _readers.emplace_back(reader);
-
-  for(auto& entry: _readers.back()) {
-    const auto* pkColumn =
-      entry.column_reader(arangodb::iresearch::DocumentPrimaryKey::PK());
-
-    if (!pkColumn) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "encountered a sub-reader without a primary key column while creating a reader for arangosearch view, ignoring";
-
-      continue;
-    }
-
-    _subReaders.emplace_back(&entry, pkColumn->values());
-  }
-}
-
-uint64_t CompoundReader::docs_count() const {
-  uint64_t count = 0;
-
-  for (auto& entry: _subReaders) {
-    count += entry.first->docs_count();
-  }
-
-  return count;
-}
-
-uint64_t CompoundReader::live_docs_count() const {
-  uint64_t count = 0;
-
-  for (auto& entry: _subReaders) {
-    count += entry.first->live_docs_count();
-  }
-
-  return count;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates user-friendly description of the specified view
@@ -294,7 +183,7 @@ inline void insertDocument(
   doc.insert(irs::action::index_store, field);
 
   // Indexed: CID
-  Field::setCidValue(field, primaryKey.cid());
+  Field::setCidValue(field, primaryKey.first);
   doc.insert(irs::action::index, field);
 }
 
@@ -445,14 +334,20 @@ bool consolidateCleanupStore(
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
         << "caught exception during registration of consolidation policy '" << policy.properties().toString() << "' for store '" << storeName << "' with arangosearch view '" << view.name() << "': " << e.code() << " " << e.what();
       IR_LOG_EXCEPTION();
+
+      return false;
     } catch (std::exception const& e) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
         << "caught exception during registration of consolidation policy '" << policy.properties().toString() << "' for store '" << storeName << "' with arangosearch view '" << view.name() << "': " << e.what();
       IR_LOG_EXCEPTION();
+
+      return false;
     } catch (...) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
         << "caught exception during registration of consolidation policy '" << policy.properties().toString() << "' for store '" << storeName << "' with arangosearch view '" << view.name() << "'";
       IR_LOG_EXCEPTION();
+
+      return false;
     }
 
     LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
@@ -476,14 +371,20 @@ bool consolidateCleanupStore(
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "caught exception during cleanup of '" << storeName << "' store of arangosearch view '" << view.name() << "': " << e.code() << " " << e.what();
     IR_LOG_EXCEPTION();
+
+    return false;
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "caught exception during cleanup of '" << storeName << "' store of arangosearch view '" << view.name() << "': " << e.what();
     IR_LOG_EXCEPTION();
+
+    return false;
   } catch (...) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "caught exception during cleanup of '" << storeName << "' of arangosearch view '" << view.name() << "'";
     IR_LOG_EXCEPTION();
+
+    return false;
   }
 
   LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
@@ -641,10 +542,11 @@ struct IResearchView::ViewFactory: public arangodb::ViewFactory {
 ////////////////////////////////////////////////////////////////////////////////
 struct IResearchView::ViewStateRead final
     : public arangodb::TransactionState::Cookie {
-  CompoundReader _snapshot;
+  irs::index_reader::ptr _snapshot;
+  std::lock_guard<ReadMutex> _viewLock; // prevent data-store deallocation (lock @ AsyncSelf)
 
   explicit ViewStateRead(ReadMutex& mutex) noexcept
-    : _snapshot(mutex) {
+    : _viewLock(mutex) {
   }
 };
 
@@ -1106,7 +1008,29 @@ arangodb::Result IResearchView::appendVelocyPackDetailed(
           }
 
           linkBuilder.close();
-          linksBuilderWrapper->add(collectionName, linkBuilder.slice());
+
+          // need to mask out some fields
+          static const std::function<bool(irs::string_ref const& key)> acceptor = [](
+              irs::string_ref const& key
+          )->bool {
+            return key != arangodb::StaticStrings::IndexId
+                && key != arangodb::StaticStrings::IndexType
+                && key != StaticStrings::ViewIdField; // ignored fields
+          };
+
+          arangodb::velocypack::Builder sanitizedBuilder;
+          sanitizedBuilder.openObject();
+          if (!mergeSliceSkipKeys(sanitizedBuilder, linkBuilder.slice(), acceptor)) {
+            Result result(TRI_ERROR_INTERNAL,
+                std::string("failed to generate externally visible link ")
+                .append("definition while emplacing link definition into ")
+                .append("arangosearch view '").append(name()).append("'"));
+            LOG_TOPIC(WARN, iresearch::TOPIC) << result.errorMessage();
+            return result;
+          }
+          sanitizedBuilder.close();
+
+          linksBuilderWrapper->add(collectionName, sanitizedBuilder.slice());
         }
       }
     }
@@ -1149,7 +1073,7 @@ arangodb::Result IResearchView::drop(
     TRI_voc_cid_t cid,
     bool unlink /*= true*/
 ) {
-  auto filter = iresearch::FilterFactory::filter(cid);
+  auto filter = iresearch::DocumentPrimaryKey::filter(cid);
 
   ReadMutex rmutex(_mutex); // '_meta' and '_storeByTid' can be asynchronously updated
   WriteMutex wmutex(_mutex); // '_meta' and '_storeByTid' can be asynchronously updated
@@ -1825,7 +1749,7 @@ int IResearchView::remove(
   return TRI_ERROR_INTERNAL;
 }
 
-PrimaryKeyIndexReader* IResearchView::snapshot(
+irs::index_reader const* IResearchView::snapshot(
     transaction::Methods& trx,
     IResearchView::Snapshot mode /*= IResearchView::Snapshot::Find*/
 ) const {
@@ -1842,10 +1766,10 @@ PrimaryKeyIndexReader* IResearchView::snapshot(
 
   switch (mode) {
     case Snapshot::Find:
-      return cookie ? &cookie->_snapshot : nullptr;
+      return cookie ? cookie->_snapshot.get() : nullptr;
     case Snapshot::FindOrCreate:
       if (cookie) {
-        return &cookie->_snapshot;
+        return cookie->_snapshot.get();
       }
       break;
     case Snapshot::SyncAndReplace: {
@@ -1862,18 +1786,14 @@ PrimaryKeyIndexReader* IResearchView::snapshot(
   }
 
   std::unique_ptr<ViewStateRead> cookiePtr;
-  CompoundReader* reader = nullptr;
 
   if (!cookie) {
     // will acquire read-lock to prevent data-store deallocation
     cookiePtr = irs::memory::make_unique<ViewStateRead>(_asyncSelf->mutex());
-    reader = &cookiePtr->_snapshot;
-  } else {
-    reader = &cookie->_snapshot;
-    reader->clear();
+    cookie = cookiePtr.get();
   }
 
-  TRI_ASSERT(reader);
+  TRI_ASSERT(cookie);
 
   if (!_asyncSelf->get()) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
@@ -1885,7 +1805,13 @@ PrimaryKeyIndexReader* IResearchView::snapshot(
   try {
     // '_storePersisted' protected by '_asyncSelf' held by ViewStateRead
     if (_storePersisted) {
-      reader->add(_storePersisted._reader);
+      cookie->_snapshot = static_cast<irs::index_reader::ptr>(
+        _storePersisted._reader
+      );
+    } else {
+      cookie->_snapshot = irs::index_reader::ptr(
+        irs::index_reader::ptr(), &irs::sub_reader::empty()
+      );
     }
   } catch (arangodb::basics::Exception& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
@@ -1918,7 +1844,9 @@ PrimaryKeyIndexReader* IResearchView::snapshot(
     return nullptr;
   }
 
-  return reader;
+  TRI_ASSERT(cookie->_snapshot);
+
+  return cookie->_snapshot.get();
 }
 
 IResearchView::AsyncSelf::ptr IResearchView::self() const {
