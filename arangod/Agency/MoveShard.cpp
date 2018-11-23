@@ -549,12 +549,31 @@ JOB_STATUS MoveShard::pendingLeader() {
       trx.add(pre.slice());
     }
   } else if (plan[0].copyString() == _to) {
-    // New leader in Plan, let's check that it has assumed leadership:
-    size_t done = 0;  // count the number of shards for which leader has retired
+    // New leader in Plan, let's check that it has assumed leadership and
+    // all but except the old leader are in sync:
+    size_t done = 0;
     doForAllShards(_snapshot, _database, shardsLikeMe,
       [this, &done](Slice plan, Slice current, std::string& planPath) {
         if (current.length() > 0 && current[0].copyString() == _to) {
-          ++done;
+          if (plan.length() < 3) {   // Should never be the case!
+            ++done;
+          } else {
+            // New leader has assumed leadership, now check all but the
+            // old leader:
+            size_t found = 0;
+            for (size_t i = 1; i < plan.length() - 1; ++i) {
+              VPackSlice p = plan[i];
+              for (auto const& c : VPackArrayIterator(current)) {
+                if (arangodb::basics::VelocyPackHelper::compare(p, c, true)) {
+                  ++found
+                  break;
+                }
+              }
+            }
+            if (found >= plan.length() - 2) {
+              ++done;
+            }
+          }
         }
       });
 
