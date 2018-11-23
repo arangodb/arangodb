@@ -1784,7 +1784,7 @@ function GeneralGraphTraversalSuite () {
 /// @brief test outbound expander
 ////////////////////////////////////////////////////////////////////////////////
 
-    testGGOutboundExpander : function () {
+    testOutboundExpander : function () {
       var config = {
         sort: function (l, r) { return l._key < r._key ? -1 : 1; },
         datasource: traversal.generalGraphDatasourceFactory(gn)
@@ -1819,7 +1819,7 @@ function GeneralGraphTraversalSuite () {
 /// @brief test inbound expander
 ////////////////////////////////////////////////////////////////////////////////
 
-    testGGInboundExpander : function () {
+    testInboundExpander : function () {
       var config = {
         sort: function (l, r) { return l._key < r._key ? -1 : 1; },
         datasource: traversal.generalGraphDatasourceFactory(gn)
@@ -1854,7 +1854,7 @@ function GeneralGraphTraversalSuite () {
 /// @brief test iteration
 ////////////////////////////////////////////////////////////////////////////////
 
-    testGGIterateFullOutbound : function () {
+    testIterateFullOutbound : function () {
       var config = {
         datasource: traversal.generalGraphDatasourceFactory(gn),
         strategy: Traverser.DEPTH_FIRST,
@@ -1893,7 +1893,7 @@ function GeneralGraphTraversalSuite () {
 /// @brief test iteration
 ////////////////////////////////////////////////////////////////////////////////
 
-    testGGIterateInbound : function () {
+    testIterateInbound : function () {
       var config = {
         datasource: traversal.generalGraphDatasourceFactory(gn),
         strategy: Traverser.DEPTH_FIRST,
@@ -1925,7 +1925,7 @@ function GeneralGraphTraversalSuite () {
 /// @brief test iteration
 ////////////////////////////////////////////////////////////////////////////////
 
-    testGGIterateUniqueGlobalVertices : function () {
+    testIterateUniqueGlobalVertices : function () {
       var config = {
         datasource: traversal.generalGraphDatasourceFactory(gn),
         strategy: Traverser.DEPTH_FIRST,
@@ -1964,7 +1964,7 @@ function GeneralGraphTraversalSuite () {
 /// @brief test iteration
 ////////////////////////////////////////////////////////////////////////////////
 
-    testGGIterateUniquePathVertices : function () {
+    testIterateUniquePathVertices : function () {
       var config = {
         datasource: traversal.generalGraphDatasourceFactory(gn),
         strategy: Traverser.DEPTH_FIRST,
@@ -2007,7 +2007,7 @@ function GeneralGraphTraversalSuite () {
 /// @brief test iteration
 ////////////////////////////////////////////////////////////////////////////////
 
-    testGGIterateUniqueEdges : function () {
+    testIterateUniqueEdges : function () {
       var config = {
         datasource: traversal.generalGraphDatasourceFactory(gn),
         strategy: Traverser.DEPTH_FIRST,

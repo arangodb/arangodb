@@ -1141,7 +1141,7 @@ function ahuacatlQueryCacheViewTestSuite () {
       assertEqual(1, result2.json.length);
     },
     
-    testViewInvalidationAfterAqlInsertNoSync : function () {
+    testInvalidationAfterAqlInsertNoSync : function () {
       if (!internal.debugCanUseFailAt()) {
         return;
       }
@@ -1199,7 +1199,7 @@ function ahuacatlQueryCacheViewTestSuite () {
       assertEqual([ 1, 2, 3, 4, 5, 9 ], result.json);
     },
     
-    testViewInvalidationAfterAqlInsert : function () {
+    testInvalidationAfterAqlInsert : function () {
       let meta = { links: { "UnitTestsAhuacatlQueryCache1" : { includeAllFields: true } } };
       v.properties(meta);
 
@@ -1230,7 +1230,7 @@ function ahuacatlQueryCacheViewTestSuite () {
       assertEqual([ 1, 2, 3, 4, 5, 9 ], result.json);
     },
     
-    testViewInvalidationAfterAqlUpdate : function () {
+    testInvalidationAfterAqlUpdate : function () {
       let meta = { links: { "UnitTestsAhuacatlQueryCache1" : { includeAllFields: true } } };
       v.properties(meta);
 
@@ -1261,7 +1261,7 @@ function ahuacatlQueryCacheViewTestSuite () {
       assertEqual([ 1, 2, 3, 4, 9 ], result.json);
     },
     
-    testViewInvalidationAfterAqlRemove : function () {
+    testInvalidationAfterAqlRemove : function () {
       let meta = { links: { "UnitTestsAhuacatlQueryCache1" : { includeAllFields: true } } };
       v.properties(meta);
 

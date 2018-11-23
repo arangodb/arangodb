@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global print db arango */
+/* global print db */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -228,19 +228,9 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
 
           // Check whether some collections were left behind, and if mark test as failed.
           let collectionsAfter = [];
-          try {
-            db._collections().forEach(collection => {
-              collectionsAfter.push(collection._name);
-            });
-          }
-          catch (x) {
-            results[te] = {
-              status: false,
-              message: 'failed to fetch the currently available collections: ' + x.message + '. Original test status: ' + JSON.stringify(results[te])
-            };
-            continueTesting = false;
-            continue;
-          }
+          db._collections().forEach(collection => {
+            collectionsAfter.push(collection._name);
+          });
           let delta = diffArray(collectionsBefore, collectionsAfter).filter(function(name) {
             return (name[0] !== '_'); // exclude system collections from the comparison
           });
@@ -251,33 +241,12 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
               message: 'Cleanup missing - test left over collections: ' + delta + '. Original test status: ' + JSON.stringify(results[te])
             };
             collectionsBefore = [];
-            try {
-              db._collections().forEach(collection => {
-                collectionsBefore.push(collection._name);
-              });
-            }
-            catch (x) {
-              results[te] = {
-                status: false,
-                message: 'failed to fetch the currently available delta collections: ' + x.message + '. Original test status: ' + JSON.stringify(results[te])
-              };
-              continueTesting = false;
-              continue;
-            }
+            db._collections().forEach(collection => {
+              collectionsBefore.push(collection._name);
+            });
           }
 
-          let graphs;
-          try {
-            graphs = db._collection('_graphs');
-          }
-          catch (x) {
-            results[te] = {
-              status: false,
-              message: 'failed to fetch the graphs: ' + x.message + '. Original test status: ' + JSON.stringify(results[te])
-            };
-            continueTesting = false;
-            continue;
-          }
+          let graphs = db._collection('_graphs');
           if (graphs && graphs.count() !== graphCount) {
             results[te] = {
               status: false,
@@ -308,20 +277,9 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
             results.setup.message = 'custom preStop failed!';
           }
           collectionsBefore = [];
-          try {
-            db._collections().forEach(collection => {
-              collectionsBefore.push(collection._name);
-            });
-          }
-          catch (x) {
-            results[te] = {
-              status: false,
-              message: 'failed to fetch the currently available shutdown collections: ' + x.message + '. Original test status: ' + JSON.stringify(results[te])
-            };
-            continueTesting = false;
-            continue;
-          }
-
+          db._collections().forEach(collection => {
+            collectionsBefore.push(collection._name);
+          });
         }
 
         first = false;
@@ -677,47 +635,7 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
 }
 runInArangosh.info = 'arangosh';
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief runs a local unittest file in the current arangosh
-// //////////////////////////////////////////////////////////////////////////////
 
-function runInLocalArangosh (options, instanceInfo, file, addArgs) {
-  let endpoint = arango.getEndpoint();
-  if (endpoint !== instanceInfo.endpoint) {
-    print(`runInLocalArangosh: Reconnecting to ${instanceInfo.endpoint} from ${endpoint}`);
-    arango.reconnect(instanceInfo.endpoint, '_system', 'root', '');
-  }
-  
-  let testCode;
-  if (file.indexOf('-spec') === -1) {
-    let testCase = JSON.stringify(options.testCase);
-    if (options.testCase === undefined) {
-      testCase = '"undefined"';
-    }
-    testCode = 'const runTest = require("jsunity").runTest;\n ' +
-      'return runTest(' + JSON.stringify(file) + ', true, ' + testCase + ');\n';
-  } else {
-    let mochaGrep = options.mochaGrep ? ', ' + JSON.stringify(options.mochaGrep) : '';
-    testCode = 'const runTest = require("@arangodb/mocha-runner"); ' +
-      'return runTest(' + JSON.stringify(file) + ', true' + mochaGrep + ');\n';
-  }
-
-  let testFunc;
-  eval('testFunc = function () { \nglobal.instanceInfo = ' + JSON.stringify(instanceInfo) + ';\n' + testCode + "}");
-  
-  try {
-    let result = testFunc();
-    return result;
-  }
-  catch (ex) {
-    return {
-      status: false,
-      message: "test has thrown! '" + file + "' - " + ex.message || String(ex),
-      stack: ex.stack
-    };
-  }
-}
-runInLocalArangosh.info = 'localarangosh';
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs a unittest file using rspec
@@ -895,7 +813,6 @@ function makeResults (testname, instanceInfo) {
 
 exports.runThere = runThere;
 exports.runInArangosh = runInArangosh;
-exports.runInLocalArangosh = runInLocalArangosh;
 exports.runInRSpec = runInRSpec;
 
 exports.makePathUnix = makePathUnix;

@@ -80,7 +80,7 @@ function arrayHashIndexSuite () {
 /// @brief test: get index
 ////////////////////////////////////////////////////////////////////////////////
 
-    testHashIndex : function () {
+    testIndex : function () {
       var id = collection.ensureHashIndex("a[*]");
 
       var idx = collection.index(id.id);
@@ -100,7 +100,7 @@ function arrayHashIndexSuite () {
 /// @brief test: Multiple identical elements in unique array 
 ////////////////////////////////////////////////////////////////////////////////
 
-    testHashInsertAndReadArrayCombinedUnique : function () {
+    testInsertAndReadArrayCombinedUnique : function () {
       collection.ensureHashIndex("a[*]", "b[*]", {unique: true});
 
       collection.save({a: [1, 2], b: ["a", "b"]});
@@ -141,7 +141,7 @@ function arrayHashIndexSuite () {
 /// @brief test: Multiple identical elements in array with unique constraint
 ////////////////////////////////////////////////////////////////////////////////
 
-    testHashInsertAndReadArrayIdenticalElementsUnique : function () {
+    testInsertAndReadArrayIdenticalElementsUnique : function () {
       collection.ensureUniqueConstraint("a[*]");
 
       collection.save({a: [1, 2, 1, 3, 1]});
@@ -160,7 +160,7 @@ function arrayHashIndexSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 /*
-    testHashInsertBatches : function () {
+    testInsertBatches : function () {
       // this really needs to be 1,000,000 documents to reproduce a bug that
       // occurred with exactly this value and no others
       for (var i = 0; i < 1000 * 1000; ++i) {
@@ -226,7 +226,7 @@ function arraySkiplistIndexSuite () {
 /// @brief test: get index
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSkipIndex : function () {
+    testIndex : function () {
       var id = collection.ensureSkiplist("a[*]");
 
       var idx = collection.index(id.id);
@@ -246,7 +246,7 @@ function arraySkiplistIndexSuite () {
 /// @brief test: Unique index insertion and reading
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSkipInsertAndReadArrayUnique : function () {
+    testInsertAndReadArrayUnique : function () {
       collection.ensureUniqueSkiplist("a[*]");
 
       collection.save({a: [1, 2]});
@@ -264,7 +264,7 @@ function arraySkiplistIndexSuite () {
 /// @brief test: Multiple identical elements in array with unique constraint
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSkipInsertAndReadArrayIdenticalElementsUnique : function () {
+    testInsertAndReadArrayIdenticalElementsUnique : function () {
       collection.ensureUniqueSkiplist("a[*]");
 
       collection.save({a: [1, 2, 1, 3, 1]});

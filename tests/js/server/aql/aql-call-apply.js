@@ -289,7 +289,7 @@ function ahuacatlCallUserDefinedTestSuite () {
 /// @brief test call function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUserDefCall : function () {
+    testCall : function () {
       var data = [
         [ null, [ "UnitTests::func::call", 1234 ] ],
         [ null, [ "UnitTests::func::call", "foo", "bar" ] ],
@@ -317,7 +317,7 @@ function ahuacatlCallUserDefinedTestSuite () {
 /// @brief test apply function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUserDefApply : function () {
+    testApply : function () {
       var data = [
         [ null, [ "UnitTests::func::call", 1234 ] ],
         [ null, [ "UnitTests::func::call", "foo", "bar" ] ],
@@ -349,7 +349,7 @@ function ahuacatlCallUserDefinedTestSuite () {
 /// @brief test non-existing functions
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUserDefNonExisting : function () {
+    testNonExisting : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_NOT_FOUND.code, "RETURN CALL('UNITTESTS::FUNC::MEOW', 'baz')"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_NOT_FOUND.code, "RETURN APPLY('UNITTESTS::FUNC::MEOW', [ 'baz' ])"); 
     },
@@ -358,7 +358,7 @@ function ahuacatlCallUserDefinedTestSuite () {
 /// @brief test throwing function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUserDefThrows : function () {
+    testThrows : function () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR.code, "RETURN CALL('UNITTESTS::FUNC::THROWING')"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR.code, "RETURN APPLY('UNITTESTS::FUNC::THROWING', [ ])"); 
     },
@@ -367,7 +367,7 @@ function ahuacatlCallUserDefinedTestSuite () {
 /// @brief test function name passed from the outside
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUserDefFunctionName : function () {
+    testFunctionName : function () {
       aqlfunctions.register("UnitTests::func::call", function () { return this.name; });
 
       var actual = getQueryResults("RETURN UnitTests::func::call()");

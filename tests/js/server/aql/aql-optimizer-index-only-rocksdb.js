@@ -134,7 +134,7 @@ function optimizerIndexOnlyEdgeTestSuite () {
       db._drop("UnitTestsCollection");
     },
 
-    testEdgeNoProjectionsButIndex : function () {
+    testNoProjectionsButIndex : function () {
       let queries = [
         `FOR doc IN ${c.name()} FILTER doc._from == "test/123" RETURN doc`,
         `FOR doc IN ${c.name()} FILTER doc._from == "test/123" SORT doc._from RETURN doc`,
@@ -161,7 +161,7 @@ function optimizerIndexOnlyEdgeTestSuite () {
       });
     },
 
-    testEdgeNotCoveringProjection : function () {
+    testNotCoveringProjection : function () {
       let queries = [
         [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" RETURN doc.b`, ["b"] ],
         [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" RETURN [ doc._from, doc.b ]`, ["_from", "b"] ],
@@ -192,7 +192,7 @@ function optimizerIndexOnlyEdgeTestSuite () {
       });
     },
     
-    testEdgeIndexFromCoveringProjection : function () {
+    testIndexFromCoveringProjection : function () {
       let query = `FOR doc IN ${c.name()} FILTER doc._from == "test/123" RETURN doc._from`;
      
       let plan = AQL_EXPLAIN(query).plan;
@@ -202,7 +202,7 @@ function optimizerIndexOnlyEdgeTestSuite () {
       assertTrue(nodes[0].indexCoversProjections);
     },
     
-    testEdgeIndexFromCoveringInProjection : function () {
+    testIndexFromCoveringInProjection : function () {
       let query = `FOR doc IN ${c.name()} FILTER doc._from IN ["test/123", "test/124", "test/125"] RETURN doc._from`;
      
       let plan = AQL_EXPLAIN(query).plan;
@@ -212,7 +212,7 @@ function optimizerIndexOnlyEdgeTestSuite () {
       assertTrue(nodes[0].indexCoversProjections);
     },
     
-    testEdgeIndexToCoveringProjection : function () {
+    testIndexToCoveringProjection : function () {
       let query = `FOR doc IN ${c.name()} FILTER doc._to == "test/123" RETURN doc._to`;
      
       let plan = AQL_EXPLAIN(query).plan;
@@ -223,7 +223,7 @@ function optimizerIndexOnlyEdgeTestSuite () {
     },
     
 
-    testEdgeIndexToCoveringInProjection : function () {
+    testIndexToCoveringInProjection : function () {
       let query = `FOR doc IN ${c.name()} FILTER doc._to IN ["test/123", "test/124", "test/125"] RETURN doc._to`;
      
       let plan = AQL_EXPLAIN(query).plan;
@@ -293,7 +293,7 @@ function optimizerIndexOnlyVPackTestSuite () {
       });
     },
     
-    testVPackNoProjectionsButIndex : function () {
+    testNoProjectionsButIndex : function () {
       c.ensureIndex({ type: "hash", fields: ["a"] });
 
       let queries = [
@@ -312,7 +312,7 @@ function optimizerIndexOnlyVPackTestSuite () {
       });
     },
 
-    testVPackSingleFieldIndexNotCoveringProjection : function () {
+    testSingleFieldIndexNotCoveringProjection : function () {
       c.ensureIndex({ type: "hash", fields: ["a"] });
       
       let queries = [
@@ -333,7 +333,7 @@ function optimizerIndexOnlyVPackTestSuite () {
       });
     },
     
-    testVPackSingleFieldIndexCoveringProjection : function () {
+    testSingleFieldIndexCoveringProjection : function () {
       c.ensureIndex({ type: "hash", fields: ["a"] });
       
       let query = `FOR doc IN ${c.name()} FILTER doc.a >= 0 RETURN doc.a`;
@@ -347,7 +347,7 @@ function optimizerIndexOnlyVPackTestSuite () {
       assertTrue(nodes[0].indexCoversProjections);
     },
     
-    testVPackSingleFieldIndexCoveringInProjection : function () {
+    testSingleFieldIndexCoveringInProjection : function () {
       c.ensureIndex({ type: "hash", fields: ["a"] });
       
       let query = `FOR doc IN ${c.name()} FILTER doc.a IN [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] RETURN doc.a`;
@@ -361,7 +361,7 @@ function optimizerIndexOnlyVPackTestSuite () {
       assertTrue(nodes[0].indexCoversProjections);
     },
     
-    testVPackSingleFieldUniqueIndexCoveringProjection : function () {
+    testSingleFieldUniqueIndexCoveringProjection : function () {
       c.ensureIndex({ type: "hash", fields: ["b"], unique: true });
       
       let query = `FOR doc IN ${c.name()} FILTER doc.b >= 0 RETURN doc.b`;
@@ -375,7 +375,7 @@ function optimizerIndexOnlyVPackTestSuite () {
       assertTrue(nodes[0].indexCoversProjections);
     },
     
-    testVPackMultipleFieldsIndexCoveringProjection : function () {
+    testMultipleFieldsIndexCoveringProjection : function () {
       c.ensureIndex({ type: "hash", fields: ["a", "b"] });
       
       let queries = [
@@ -400,7 +400,7 @@ function optimizerIndexOnlyVPackTestSuite () {
       });
     },
 
-    testVPackMultipleFieldsUniqueIndexCoveringProjection : function () {
+    testMultipleFieldsUniqueIndexCoveringProjection : function () {
       c.ensureIndex({ type: "hash", fields: ["a", "b"], unique: true });
       
       let queries = [

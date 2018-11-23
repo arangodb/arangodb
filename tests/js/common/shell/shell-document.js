@@ -1427,7 +1427,7 @@ function DatabaseDocumentSuiteErrorHandling () {
 /// @brief bad handle
 ////////////////////////////////////////////////////////////////////////////////
 
-    testDBErrorHandlingBadHandle : function () {
+    testErrorHandlingBadHandle : function () {
       try {
         db._document("  123456");
         fail();
@@ -1441,7 +1441,7 @@ function DatabaseDocumentSuiteErrorHandling () {
 /// @brief bad handle replace
 ////////////////////////////////////////////////////////////////////////////////
 
-    testDBErrorHandlingBadHandleReplace : function () {
+    testErrorHandlingBadHandleReplace : function () {
       try {
         db._replace("123456  ", {});
         fail();
@@ -1455,7 +1455,7 @@ function DatabaseDocumentSuiteErrorHandling () {
 /// @brief bad handle delete
 ////////////////////////////////////////////////////////////////////////////////
 
-    testDBErrorHandlingBadHandleDelete : function () {
+    testErrorHandlingBadHandleDelete : function () {
       try {
         db._remove("123/45/6");
         fail();
@@ -1469,7 +1469,7 @@ function DatabaseDocumentSuiteErrorHandling () {
 /// @brief unknown document identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-    testDBErrorHandlingUnknownDocument : function () {
+    testErrorHandlingUnknownDocument : function () {
       var collection = db._create(cn, { waitForSync : false });
 
       try {
@@ -1521,7 +1521,7 @@ function DatabaseDocumentSuite () {
 /// @brief read a document
 ////////////////////////////////////////////////////////////////////////////////
 
-    testDBReadDocument : function () {
+    testReadDocument : function () {
       var d = collection.save({ "Hello" : "World" });
 
       var doc = db._document(d._id);
@@ -1539,7 +1539,7 @@ function DatabaseDocumentSuite () {
 /// @brief read a document with conflict
 ////////////////////////////////////////////////////////////////////////////////
 
-    testDBReadDocumentConflict : function () {
+    testReadDocumentConflict : function () {
       var d = collection.save({ "Hello" : "World" });
 
       var doc = db._document(d._id);
@@ -1568,7 +1568,7 @@ function DatabaseDocumentSuite () {
 /// @brief exists
 ////////////////////////////////////////////////////////////////////////////////
 
-    testDBExistsDocument : function () {
+    testExistsDocument : function () {
       var d1 = collection.save({ _key : "baz" });
 
       // string keys
@@ -1621,7 +1621,7 @@ function DatabaseDocumentSuite () {
 /// @brief replace a document
 ////////////////////////////////////////////////////////////////////////////////
 
-    testDBReplaceDocument : function () {
+    testReplaceDocument : function () {
       var a1 = collection.save({ a : 1});
 
       assertTypeOf("string", a1._id);
@@ -1663,7 +1663,7 @@ function DatabaseDocumentSuite () {
 /// @brief tests the _replace function with new signature
 ////////////////////////////////////////////////////////////////////////////////
 
-    testDBReplaceWithNewSignatureDocument : function () {
+    testReplaceWithNewSignatureDocument : function () {
       var a1 = collection.save({ a : 1});
 
       assertTypeOf("string", a1._id);
@@ -1705,7 +1705,7 @@ function DatabaseDocumentSuite () {
 /// @brief update a document
 ////////////////////////////////////////////////////////////////////////////////
 
-    testDBUpdateDocument : function () {
+    testUpdateDocument : function () {
       var a1 = collection.save({ a : 1});
 
       assertTypeOf("string", a1._id);
@@ -1822,7 +1822,7 @@ function DatabaseDocumentSuite () {
 /// @brief tests update function with new signature
 ////////////////////////////////////////////////////////////////////////////////
 
-    testDBNewsignatureOf_UpdateDocument : function () {
+    testNewsignatureOf_UpdateDocument : function () {
       var a1 = collection.save({ a : 1});
 
       assertTypeOf("string", a1._id);
@@ -1940,7 +1940,7 @@ function DatabaseDocumentSuite () {
 /// @brief delete a document
 ////////////////////////////////////////////////////////////////////////////////
 
-    testDBDeleteDocument : function () {
+    testDeleteDocument : function () {
       var a1 = collection.save({ a : 1});
 
       assertTypeOf("string", a1._id);
@@ -1980,7 +1980,7 @@ function DatabaseDocumentSuite () {
 ///       of the remove function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testDBDeleteWithNewSignatureDocument : function () {
+    testDeleteWithNewSignatureDocument : function () {
       var a1 = collection.save({ a : 1});
 
       assertTypeOf("string", a1._id);
@@ -2019,7 +2019,7 @@ function DatabaseDocumentSuite () {
 /// @brief delete a deleted document
 ////////////////////////////////////////////////////////////////////////////////
 
-    testDBDeleteDeletedDocument : function () {
+    testDeleteDeletedDocument : function () {
       var a1 = collection.save({ a : 1});
 
       assertTypeOf("string", a1._id);
@@ -2040,7 +2040,7 @@ function DatabaseDocumentSuite () {
 /// @brief create a very big document
 ////////////////////////////////////////////////////////////////////////////////
 
-    testDBDocumentVeryLarge : function () {
+    testDocumentVeryLarge : function () {
       // create a very big and silly document, just to blow up the datafiles
       var doc = { };
       for (var i = 0; i < 60000; ++i) {
@@ -2057,7 +2057,7 @@ function DatabaseDocumentSuite () {
 /// @brief create a document bigger than shape file size
 ////////////////////////////////////////////////////////////////////////////////
 
-    testDBBigShape : function () {
+    testBigShape : function () {
       // create a very big and silly document, just to blow up the datafiles
       var doc = { _key : "mydoc" };
       for (var i = 0; i < 50000; ++i) {

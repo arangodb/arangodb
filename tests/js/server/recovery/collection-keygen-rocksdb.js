@@ -94,7 +94,7 @@ function recoverySuite () {
     // / @brief test whether we still pick up the right autoincrement value
     // //////////////////////////////////////////////////////////////////////////////
 
-    testCollectionKeyGenRocksDB: function () {
+    testCollectionKeyGen: function () {
       var c, d;
 
       c = db._collection('UnitTestsRecovery1');

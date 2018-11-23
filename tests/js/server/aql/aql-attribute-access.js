@@ -181,7 +181,7 @@ function nestedAttributeAccessTestSuite () {
     /// @brief test direct access
     ////////////////////////////////////////////////////////////////////////////////
 
-    testNestedDirectAccess : function () {
+    testDirectAccess : function () {
       var queryRes = [
         { 'xpRes': 3, 'q': "FOR item IN @@cn FILTER item.foo.bar == 'searchvalue' RETURN item.whichOne" },
         { 'xpRes': 2, 'q': "FOR item IN @@cn FILTER item.`foo.bar` == 'searchvalue' RETURN item.whichOne" },
@@ -196,7 +196,7 @@ function nestedAttributeAccessTestSuite () {
       }
     },
 
-    testNestedDirectAccessIndexed : function () {
+    testDirectAccessIndexed : function () {
       var queryRes = [
         { 'xpRes': 3, 'q': "FOR item IN @@cn FILTER item.foo.bar == 'searchvalue' RETURN item.whichOne" },
         { 'xpRes': 2, 'q': "FOR item IN @@cn FILTER item.`foo.bar` == 'searchvalue' RETURN item.whichOne" },

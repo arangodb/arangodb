@@ -135,7 +135,7 @@ function HashIndexMultiFailuresSuite () {
 /// @brief test: hash index multi fill element oom
 ////////////////////////////////////////////////////////////////////////////////
 
-    testMultiFailCreateIndexElementOOM : function () {
+    testCreateIndexElementOOM : function () {
       collection.ensureUniqueConstraint("a");
       internal.debugSetFailAt("FillElementOOM");
       try {
@@ -153,7 +153,7 @@ function HashIndexMultiFailuresSuite () {
 /// @brief test: hash index multi fill element oom, other position
 ////////////////////////////////////////////////////////////////////////////////
 
-    testMultiFailCreateIndexElementOOMOther : function () {
+    testCreateIndexElementOOMOther : function () {
       collection.ensureUniqueConstraint("a");
       internal.debugSetFailAt("FillElementOOM2");
       try {

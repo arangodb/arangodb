@@ -30,7 +30,6 @@
 
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
-const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -136,27 +135,19 @@ function IResearchAqlTestSuite(args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(function IResearchAqlTestSuite_s1_r1() {
-  let derivedSuite = {};
-  deriveTestSuite(IResearchAqlTestSuite({ numberOfShards: 1, replicationFactor: 1 }), derivedSuite, "_1_1");
-  return derivedSuite;
+  return IResearchAqlTestSuite({ numberOfShards: 1, replicationFactor: 1 });
 });
 
 jsunity.run(function IResearchAqlTestSuite_s4_r1() {
-  let derivedSuite = {};
-  deriveTestSuite(IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 1 }), derivedSuite, "_4_1");
-  return derivedSuite;
+  return IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 1 });
 });
 
 jsunity.run(function IResearchAqlTestSuite_s1_r2() {
-  let derivedSuite = {};
-  deriveTestSuite(IResearchAqlTestSuite({ numberOfShards: 1, replicationFactor: 2 }), derivedSuite, "_1_2");
-  return derivedSuite;
+  return IResearchAqlTestSuite({ numberOfShards: 1, replicationFactor: 2 });
 });
 
 jsunity.run(function IResearchAqlTestSuite_s4_r3() {
-  let derivedSuite = {};
-  deriveTestSuite(IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 2 }), derivedSuite, "_4_2");
-  return derivedSuite;
+  return IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 2 });
 });
 
 return jsunity.done();

@@ -81,7 +81,7 @@ function arrayHashIndexSuite () {
 /// @brief test: get index
 ////////////////////////////////////////////////////////////////////////////////
 
-    testHashIndex : function () {
+    testIndex : function () {
       var id = collection.ensureHashIndex("a[*]");
 
       var idx = collection.index(id.id);
@@ -231,7 +231,7 @@ function arraySkiplistIndexSuite () {
 /// @brief test: get index
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSkiplistIndex : function () {
+    testIndex : function () {
       var id = collection.ensureSkiplist("a[*]");
 
       var idx = collection.index(id.id);
@@ -251,7 +251,7 @@ function arraySkiplistIndexSuite () {
 /// @brief test: Unique index insertion and reading
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSkipListInsertAndReadArrayUnique : function () {
+    testInsertAndReadArrayUnique : function () {
       collection.ensureUniqueSkiplist("a[*]");
 
       collection.save({a: [1, 2]});
@@ -269,7 +269,7 @@ function arraySkiplistIndexSuite () {
 /// @brief test: Multiple identical elements in array with unique constraint
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSkipListInsertAndReadArrayIdenticalElementsUnique : function () {
+    testInsertAndReadArrayIdenticalElementsUnique : function () {
       collection.ensureUniqueSkiplist("a[*]");
 
       collection.save({a: [1, 2, 1, 3, 1]});

@@ -742,7 +742,7 @@ function getIndexesEdgesSuite() {
 /// @brief test: get primary
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEdgeGetPrimary : function () {
+    testGetPrimary : function () {
       var res = collection.getIndexes();
 
       assertEqual(2, res.length);
@@ -777,7 +777,7 @@ function getIndexesEdgesSuite() {
 /// @brief test: get geo constraint
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEdgeGetGeoConstraint1 : function () {
+    testGetGeoConstraint1 : function () {
       collection.ensureGeoConstraint("lat", "lon", false);
       var res = collection.getIndexes();
 
@@ -797,7 +797,7 @@ function getIndexesEdgesSuite() {
 /// @brief test: get geo constraint
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEdgeGetGeoConstraint2 : function () {
+    testGetGeoConstraint2 : function () {
       collection.ensureGeoConstraint("lat", "lon", true);
       var res = collection.getIndexes();
 
@@ -817,7 +817,7 @@ function getIndexesEdgesSuite() {
 /// @brief test: get geo constraint
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEdgeGetGeoConstraint3 : function () {
+    testGetGeoConstraint3 : function () {
       collection.ensureGeoConstraint("lat", true, true);
       var res = collection.getIndexes();
 
@@ -838,7 +838,7 @@ function getIndexesEdgesSuite() {
 /// @brief test: get geo index
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEdgeGetGeoIndex1 : function () {
+    testGetGeoIndex1 : function () {
       collection.ensureGeoIndex("lat", true, true);
       var res = collection.getIndexes();
 
@@ -859,7 +859,7 @@ function getIndexesEdgesSuite() {
 /// @brief test: get geo index
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEdgeGetGeoIndex2 : function () {
+    testGetGeoIndex2 : function () {
       collection.ensureGeoIndex("lat", "lon");
       var res = collection.getIndexes();
 
@@ -879,7 +879,7 @@ function getIndexesEdgesSuite() {
 /// @brief test: get unique hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEdgeGetHashUnique : function () {
+    testGetHashUnique : function () {
       collection.ensureUniqueConstraint("value");
       var res = collection.getIndexes();
 
@@ -899,7 +899,7 @@ function getIndexesEdgesSuite() {
 /// @brief test: get unique hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEdgeGetSparseHashUnique : function () {
+    testGetSparseHashUnique : function () {
       collection.ensureUniqueConstraint("value", { sparse: true });
       var res = collection.getIndexes();
 
@@ -919,7 +919,7 @@ function getIndexesEdgesSuite() {
 /// @brief test: get hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEdgeGetHash : function () {
+    testGetHash : function () {
       collection.ensureHashIndex("value");
       var res = collection.getIndexes();
 
@@ -939,7 +939,7 @@ function getIndexesEdgesSuite() {
 /// @brief test: get hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEdgeGetSparseHash : function () {
+    testGetSparseHash : function () {
       collection.ensureHashIndex("value", { sparse: true });
       var res = collection.getIndexes();
 
@@ -959,7 +959,7 @@ function getIndexesEdgesSuite() {
 /// @brief test: get unique skiplist index
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEdgeGetSkiplistUnique : function () {
+    testGetSkiplistUnique : function () {
       collection.ensureUniqueSkiplist("value");
       var res = collection.getIndexes();
 
@@ -979,7 +979,7 @@ function getIndexesEdgesSuite() {
 /// @brief test: get unique skiplist index
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEdgeGetSparseSkiplistUnique : function () {
+    testGetSparseSkiplistUnique : function () {
       collection.ensureUniqueSkiplist("value", { sparse: true });
       var res = collection.getIndexes();
 
@@ -999,7 +999,7 @@ function getIndexesEdgesSuite() {
 /// @brief test: get skiplist index
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEdgeGetSkiplist : function () {
+    testGetSkiplist : function () {
       collection.ensureSkiplist("value");
       var res = collection.getIndexes();
 
@@ -1018,7 +1018,7 @@ function getIndexesEdgesSuite() {
 /// @brief test: get skiplist index
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEdgeGetSparseSkiplist : function () {
+    testGetSparseSkiplist : function () {
       collection.ensureSkiplist("value", { sparse: true });
       var res = collection.getIndexes();
 
@@ -1038,7 +1038,7 @@ function getIndexesEdgesSuite() {
 /// @brief test: get fulltext index
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEdgeGetFulltext: function () {
+    testGetFulltext: function () {
       collection.ensureFulltextIndex("value");
       var res = collection.getIndexes();
 

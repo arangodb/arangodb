@@ -31,7 +31,6 @@
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
 var ERRORS = require("@arangodb").errors;
-var deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -528,27 +527,15 @@ jsunity.run(function IResearchAqlTestSuite_s1_r1() {
 });
 
 jsunity.run(function IResearchAqlTestSuite_s4_r1() {
-  let suite = {};
-  
-  deriveTestSuite(IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 1 }),
-                  suite, "_FourShards");
-  return suite;
+  return IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 1 });
 });
 
 jsunity.run(function IResearchAqlTestSuite_s1_r2() {
-  let suite = {};
-  
-  deriveTestSuite(IResearchAqlTestSuite({ numberOfShards: 1, replicationFactor: 2 }),
-                  suite, "_ReplTwo");
-  return suite;
+  return IResearchAqlTestSuite({ numberOfShards: 1, replicationFactor: 2 });
 });
 
 jsunity.run(function IResearchAqlTestSuite_s4_r3() {
-  let suite = {};
-  
-  deriveTestSuite(IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 2 }),
-                  suite, "_FourShardsReplTwo");
-  return suite;
+  return IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 2 });
 });
 
 return jsunity.done();

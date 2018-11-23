@@ -174,18 +174,10 @@ function Run (testsuite) {
   FAILED += result.failed;
   DURATION += result.duration;
 
-  let duplicates = [];
   for (var attrname in RESULTS) {
     if (RESULTS.hasOwnProperty(attrname)) {
-      if (COMPLETE.hasOwnProperty(attrname)) {
-        print("Duplicate testsuite '" + attrname + "' - already have: " + JSON.stringify(COMPLETE[attrname]) + "");
-        duplicates.push(attrname);
-      }
       COMPLETE[attrname] = RESULTS[attrname];
     }
-  }
-  if (duplicates.length !== 0) {
-    throw("Duplicate testsuite '" + duplicates + "'");
   }
   return result;
 }
