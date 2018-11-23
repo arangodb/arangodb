@@ -247,6 +247,9 @@ function cleanupLastDirectory (options) {
   if (options.cleanup) {
     while (cleanupDirectories.length) {
       const cleanupDirectory = cleanupDirectories.shift();
+      if (options.extremeVerbosity === true) {
+        print("Cleaning up: " + cleanupDirectory);
+      }
       // Avoid attempting to remove the same directory multiple times
       if ((cleanupDirectories.indexOf(cleanupDirectory) === -1) &&
           (fs.exists(cleanupDirectory))) {
