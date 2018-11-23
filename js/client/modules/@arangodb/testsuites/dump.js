@@ -185,7 +185,7 @@ class DumpRestoreHelper {
 
   testFoxxAppsBundle(file, database) {
     this.print('Test Foxx Apps after _apps then _appbundles restore');
-    this.results.testFoxxFoxxAppBundles = this.arangosh(file, {'server.database': database})
+    this.results.testFoxxAppBundles = this.arangosh(file, {'server.database': database})
     return this.validate(this.results.testFoxxAppBundles);
   }
 
@@ -271,9 +271,9 @@ function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, which, 
   if (!helper.restoreFoxxComplete('UnitTestsDumpFoxxComplete') ||
       !helper.testFoxxComplete(foxxTestFile, 'UnitTestsDumpFoxxComplete') ||
       !helper.restoreFoxxAppsBundle('UnitTestsDumpFoxxAppsBundle') ||
-      !helper.testFoxxAppsBunlde(foxxTestFile, 'UnitTestsDumpFoxxAppsBundle') ||
+      !helper.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxAppsBundle') ||
       !helper.restoreFoxxAppsBundle('UnitTestsDumpFoxxBundleApps') ||
-      !helper.testFoxxAppsBunlde(foxxTestFile, 'UnitTestsDumpFoxxBundleApps')) {
+      !helper.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxBundleApps')) {
     return helper.extractResults();
   }
 
