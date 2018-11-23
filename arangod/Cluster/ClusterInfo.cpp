@@ -2482,7 +2482,7 @@ int ClusterInfo::ensureIndexCoordinator(
     // Keep trying for 2 minutes, if it's preconditions, which are stopping us
     do {
       resultBuilder.clear();
-      errorCode = ensureIndexCoordinatorWithoutRollback(
+      errorCode = ensureIndexCoordinatorInner(
         databaseName, collectionID, idString, slice, create, resultBuilder,
         errorMsg, timeout);
       
@@ -2502,130 +2502,35 @@ int ClusterInfo::ensureIndexCoordinator(
     errorCode = TRI_ERROR_INTERNAL;
   }
   
-  if (application_features::ApplicationServer::isStopping()) {
-    return errorCode;
+  // We get here in any case eventually, regardless of whether we have
+  //   - succeeded with lookup or index creation
+  //   - failed because of a timeout and rollback
+  //   - some other error
+  // There is not a lot more to do except proper error reporting.
+
+  if (!application_features::ApplicationServer::isStopping()) {
+    loadPlan();
   }
-  loadPlan();
-  
-  std::string const indexPath =
-    "Plan/Collections/" + databaseName + "/" + collectionID + "/indexes";
-
-  auto const resultSlice = resultBuilder.slice();
-  VPackBuilder oldPlanIndex;
-  { VPackObjectBuilder b(&oldPlanIndex);
-    for (auto const& entry : VPackObjectIterator(resultSlice)) {
-      auto const key = entry.key.copyString();
-      if (key != "isNewlyCreated") {
-        oldPlanIndex.add(entry.key.copyString(), entry.value);
-      }}}
-  
-  std::uint64_t sleepFor = 50;
-  if (errorCode == TRI_ERROR_NO_ERROR) { // Success so far
-
-    // Smart collection, we're done.
-    auto const resultSlice = resultBuilder.slice();
-    if (resultSlice.hasKey("isSmart") &&
-        resultSlice.get("isSmart").isBoolean() &&
-        resultSlice.get("isSmart").getBoolean()) {
-      return TRI_ERROR_NO_ERROR;
-    }
-
-    // Arangosearch we're done
-    if (slice.get(
-          arangodb::StaticStrings::IndexType).isEqualString("arangosearch")) {
-      return TRI_ERROR_NO_ERROR;
-    }
-
-    std::string idStr;
-    if (resultSlice.hasKey("id")) {
-      idStr = resultSlice.get("id").copyString();
-    } else {
-      LOG_TOPIC(ERR, Logger::CLUSTER)
-        << "Missing 'id' field in index creation result";
-      return TRI_ERROR_INTERNAL;
-    }
-
-    // isBuilding key to be removed, when index appears in all shards in Current
-    if (resultSlice.hasKey("isBuilding")) {
-      
-      VPackBuilder newPlanIndex;
-      { VPackObjectBuilder o(&newPlanIndex);
-        for (auto const& entry : VPackObjectIterator(resultSlice)) {
-          auto const key = entry.key.copyString();
-          if (key != "isBuilding" && key != "isNewlyCreated") {
-            newPlanIndex.add(entry.key.copyString(), entry.value);
-          } 
-        }
-      }
-      
-      // Remove isBuilding from Plan
-      AgencyWriteTransaction trx({
-          AgencyOperation(
-            indexPath, AgencyValueOperationType::REPLACE,
-            newPlanIndex.slice(), oldPlanIndex.slice()),
-          AgencyOperation(
-            "Plan/Version", AgencySimpleOperationType::INCREMENT_OP)});
-      sleepFor = 50;
-      while (true) {
-        if (_agency.sendTransactionWithFailover(trx, 0.0).successful()) {
-          loadPlan();
-          return TRI_ERROR_NO_ERROR;
-        }
-        if (steady_clock::now() > endTime) {
-           errorMsg = "Timed out while trying to update Plan record for the index.";
-          // It's fine to leave here in hopes that
-          // the supervision will handle this.
-          return TRI_ERROR_CLUSTER_TIMEOUT;
-        }
-        if (sleepFor <= 2500) {
-          sleepFor*=2;
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds());
-      }
-      
-    } else {
-      // That's odd isBuilding key has gone already. Supervision was quicker?
-      loadPlan();
-      return TRI_ERROR_NO_ERROR;
-    }
-    
-  }
-
-  // At this time the index creation has failed and we want to  roll back
-  // the plan entry
-  AgencyWriteTransaction trx(
-    std::vector<AgencyOperation>
-    { AgencyOperation(
-           indexPath, AgencyValueOperationType::ERASE, oldPlanIndex.slice()),
-        AgencyOperation(
-        "Plan/Version", AgencySimpleOperationType::INCREMENT_OP)});
-
   setErrormsg(errorCode, errorMsg);
-
-  sleepFor = 50;
-  while (true) {
-    AgencyCommResult update =
-      _agency.sendTransactionWithFailover(trx, 0.0);
-    if (update.successful()) {
-      loadPlan();
-      return errorCode;
-    }
-    if (steady_clock::now() > endTime) {
-      LOG_TOPIC(ERR, Logger::CLUSTER)
-        << "Couldn't roll back index creation of " << idString << ". Database: "
-        << databaseName << ", Collection " << collectionID;
-      errorMsg = "Timed out while trying to report index creation failure";
-      return TRI_ERROR_CLUSTER_TIMEOUT;
-    }
-    if (sleepFor <= 2500) {
-      sleepFor*=2;
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(sleepFor));
-  }
-  
+  return errorCode;
 }
 
-int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
+// The following function does the actual work of index creation: Create
+// in Plan, watch Current until all dbservers for all shards have done their
+// bit. If this goes wrong with a timeout, the creation operation is rolled
+// back. If the `create` flag is false, this is actually a lookup operation.
+// In any case, no rollback has to happen in the calling function
+// ClusterInfo::ensureIndexCoordinator. Note that this method here
+// sets the `isBuilding` attribute to `true`, which leads to the fact
+// that the index is not yet used by queries. There is code in the
+// Agency Supervision which deletes this flag once everything has been
+// built successfully. This is a more robust and self-repairing solution
+// than if we would take out the `isBuilding` here, since it survives a
+// coordinator crash and failover operations.
+// Finally note that the retry loop for the case of a failed precondition
+// is outside this function here in `ensureIndexCoordinator`.
+
+int ClusterInfo::ensureIndexCoordinatorInner(
     std::string const& databaseName, std::string const& collectionID,
     std::string const& idString, VPackSlice const& slice, bool create,
     VPackBuilder& resultBuilder, std::string& errorMsg, double timeout) {
@@ -2783,6 +2688,7 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
   if (!result.successful()) {
     if (result.httpCode() ==
         (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+      // Retry loop is outside!
       return TRI_ERROR_HTTP_PRECONDITION_FAILED;
     } else {
       errorMsg += " Failed to execute ";
@@ -2794,6 +2700,10 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
     return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN;
   }
 
+  // From here on we want to roll back the index creation if we run into
+  // the timeout. If this coordinator crashes, the worst that can happen
+  // is that the index stays in some state. In most cases, it will converge
+  // against the planned state.
   loadPlan();
 
   if (numberOfShards == 0) { // smart "dummy" collection has no shards
@@ -2826,7 +2736,48 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
       }
 
       if (TRI_microtime() > endTime) {
-        return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
+        // At this time the index creation has failed and we want to
+        // roll back the plan entry, provided the collection still exists:
+        AgencyWriteTransaction trx(
+          std::vector<AgencyOperation>
+          { AgencyOperation(
+                 planIndexesKey, AgencyValueOperationType::ERASE,
+                 newIndexBuilder.slice()),
+            AgencyOperation(
+            "Plan/Version", AgencySimpleOperationType::INCREMENT_OP)},
+          std::vector<AgencyPrecondition>
+          { AgencyPrecondition oldValue(planCollKey,
+                           AgencyPrecondition::Type::EMPTY, false) });
+
+        sleepFor = 50;
+        auto rollbackEndTime = steady_clock::now() + std::chrono::seconds(10);
+        while (true) {
+          AgencyCommResult update =
+            _agency.sendTransactionWithFailover(trx, 0.0);
+          if (update.successful() ||
+            loadPlan();
+            errorMsg = "Index could not be created within timeout, giving up and rolling back index creation.";
+            return TRI_ERROR_CLUSTER_TIMEOUT;
+          }
+          if (update.statusCode == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
+            // Collection was removed, let's break here and report outside
+            break;
+          }
+          if (steady_clock::now() > rollbackEndTime) {
+            LOG_TOPIC(ERR, Logger::CLUSTER)
+              << "Couldn't roll back index creation of " << idString
+              << ". Database: " databaseName << ", Collection " <<
+              << collectionID;
+            errorMsg = "Timed out while trying to roll back index creation failure";
+            return TRI_ERROR_CLUSTER_TIMEOUT;
+          }
+          if (sleepFor <= 2500) {
+            sleepFor*=2;
+          }
+          std::this_thread::sleep_for(std::chrono::milliseconds(sleepFor));
+        }
+        // We only get here if the collection was dropped just in the moment
+        // when we wanted to roll back the index creation.
       }
       
       auto c = getCollection(databaseName, collectionID);
