@@ -477,11 +477,12 @@ ArangoDatabase.prototype._flushCache = function () {
 
   for (name in this) {
     if (this.hasOwnProperty(name)) {
-      var collection = this[name];
+      var collOrView = this[name];
 
-      if (collection instanceof this._collectionConstructor) {
+      if (collOrView instanceof this._collectionConstructor ||
+         collOrView instanceof this._viewConstructor) {
         // reset the collection status
-        collection._status = null;
+        collOrView._status = null;
         this[name] = undefined;
       }
     }

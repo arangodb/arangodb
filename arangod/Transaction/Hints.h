@@ -49,7 +49,8 @@ class Hints {
     NO_DLD = 1024, // disable deadlock detection
     NO_INDEXING = 2048, // use DisableIndexing for RocksDB
     INTERMEDIATE_COMMITS = 4096, // enable intermediate commits in rdb
-    ALLOW_RANGE_DELETE = 8192 // enable range-delete in rdb
+    ALLOW_RANGE_DELETE = 8192, // enable range-delete in rdb
+    FROM_TOPLEVEL_AQL = 16384 // transaction is started by an AQL query that is not in a sub-transaction
   };
 
   Hints() : _value(0) {}

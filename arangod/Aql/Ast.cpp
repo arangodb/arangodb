@@ -1229,8 +1229,8 @@ AstNode* Ast::createNodeWithCollections(AstNode const* collections, arangodb::Co
 
           // We want to tolerate that a collection name is given here
           // which does not exist, if only for some unit tests:
-          try {
-            auto coll = ci->getCollection(_query->vocbase().name(), name);
+          auto coll = ci->getCollectionNT(_query->vocbase().name(), name);
+          if (coll != nullptr) {
             auto names = coll->realNames();
 
             for (auto const& n : names) {
@@ -1238,7 +1238,6 @@ AstNode* Ast::createNodeWithCollections(AstNode const* collections, arangodb::Co
               LogicalDataSource::Category const* shardsCategory = injectDataSourceInQuery(*_query, resolver, AccessMode::Type::READ, false, shardsNameRef);
               TRI_ASSERT(shardsCategory == LogicalCollection::category());
             }
-          } catch (...) {
           }
         }
       } else {
@@ -1270,8 +1269,8 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections, Collectio
     LogicalDataSource::Category const* category = injectDataSourceInQuery(*_query, resolver, AccessMode::Type::READ, false, nameRef);
     if (category == LogicalCollection::category()) {
       if (ss->isCoordinator()) {
-        try {
-          auto c = ci->getCollection(_query->vocbase().name(), name);
+        auto c = ci->getCollectionNT(_query->vocbase().name(), name);
+        if (c != nullptr) {
           auto const& names = c->realNames();
 
           for (auto const& n : names) {
@@ -1279,9 +1278,7 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections, Collectio
             LogicalDataSource::Category const* shardsCategory = injectDataSourceInQuery(*_query, resolver, AccessMode::Type::READ, false, shardsNameRef);
             TRI_ASSERT(shardsCategory == LogicalCollection::category());
           }
-        } catch (...) {
-          // TODO Should we really not react?
-        }
+        } // else { TODO Should we really not react? }
       }
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_TYPE_MISMATCH, nameRef.toString() + " is required to be a collection.");
@@ -1731,14 +1728,13 @@ void Ast::injectBindParameters(
 
         // We want to tolerate that a collection name is given here
         // which does not exist, if only for some unit tests:
-        try {
-          auto coll = ci->getCollection(_query->vocbase().name(), name);
+        auto coll = ci->getCollectionNT(_query->vocbase().name(), name);
+        if (coll != nullptr) {
           auto names = coll->realNames();
 
           for (auto const& n : names) {
             _query->addCollection(n, isExclusive ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::WRITE);
           }
-        } catch (...) {
         }
       }
     }
@@ -2146,7 +2142,7 @@ void Ast::validateAndOptimize() {
 /// @brief determines the variables referenced in an expression
 void Ast::getReferencedVariables(AstNode const* node,
                                  std::unordered_set<Variable const*>& result) {
-  auto preVisitor = [&result](AstNode const* node) -> bool {
+  auto preVisitor = [](AstNode const* node) -> bool {
     return !node->isConstant();
   };
   
@@ -3843,16 +3839,14 @@ AstNode* Ast::createNodeCollectionNoValidation(StringRef const& name,
     auto ci = ClusterInfo::instance();
     // We want to tolerate that a collection name is given here
     // which does not exist, if only for some unit tests:
-    try {
-      auto coll = ci->getCollection(_query->vocbase().name(), name.toString());
-
+    auto coll = ci->getCollectionNT(_query->vocbase().name(), name.toString());
+    if (coll != nullptr) {
       if (coll->isSmart()) {
         // add names of underlying smart-edge collections
         for (auto const& n : coll->realNames()) {
           _query->addCollection(n, accessType);
         }
       }
-    } catch (...) {
     }
   }
 
@@ -3869,7 +3863,7 @@ void Ast::extractCollectionsFromGraph(AstNode const* graphNode) {
     std::string graphName = graphNode->getString();
     auto graph = _query->lookupGraphByName(graphName);
     if (graph == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_GRAPH_NOT_FOUND, graphName.c_str());
     }
     TRI_ASSERT(graph != nullptr);
 
@@ -3887,14 +3881,13 @@ void Ast::extractCollectionsFromGraph(AstNode const* graphNode) {
       auto ci = ClusterInfo::instance();
 
       for (const auto& n : eColls) {
-        try {
-          auto c = ci->getCollection(_query->vocbase().name(), n);
+        auto c = ci->getCollection(_query->vocbase().name(), n);
+        if (c != nullptr) {
           auto names = c->realNames();
 
           for (auto const& name : names) {
             _query->addCollection(name, AccessMode::Type::READ);
           }
-        } catch (...) {
         }
       }
     }

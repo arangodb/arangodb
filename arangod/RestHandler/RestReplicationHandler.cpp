@@ -1735,13 +1735,10 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(
 
   // in a cluster, we only look up by name:
   ClusterInfo* ci = ClusterInfo::instance();
-  std::shared_ptr<LogicalCollection> col;
-
-  try {
-    col = ci->getCollection(dbName, name);
-  } catch (...) {
-    std::string errorMsg = "could not find collection '" + name + "'";
-    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg};
+  std::shared_ptr<LogicalCollection> col = ci->getCollectionNT(dbName, name);
+  if (col == nullptr) {
+    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+        ClusterInfo::getCollectionNotFoundMsg(dbName, name)};
   }
 
   TRI_ASSERT(col != nullptr);
