@@ -689,7 +689,6 @@ bool SynchronizeShard::first() {
 
     auto ci = clusterInfo->getCollectionNT(database, planId);
     if (ci == nullptr) {
-      auto const endTime = system_clock::now();
       std::stringstream msg;
       msg << "exception in getCollection, ";
       AppendShardInformationToMessage(database, shard, planId, startTime, msg);
