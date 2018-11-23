@@ -68,6 +68,9 @@ v3.3.20 (XXXX-XX-XX)
 * fixed a bug when cluster indexes were usable for queries, while
   still being built on db servers
 
+* fix move leader shard: wait until all but the old leader are in sync.
+  This fixes some unstable tests.
+
 	
 v3.3.19 (2018-10-20)
 --------------------
