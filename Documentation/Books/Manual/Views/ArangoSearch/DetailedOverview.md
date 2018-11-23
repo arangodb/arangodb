@@ -119,6 +119,33 @@ of removing unused segments after release of internal resources.
   > in-progress ArangoDB transactions will still continue to return a
   > repeatable-read state.
 
+  > ArangoSearch performs operations in its index based on numerous writer
+  > objects that mapped to processed segments. In order to control memory that
+  > is used by these writers (in terms of "writers pool") one can use
+  > `writebuffer*` properties of a view.
+
+- **writebufferIdle** (_optional_; type: `integer`; default: `64`;
+  to disable use: `0`)
+
+  Maximum number of writers (segments) cached in the pool. `0` value turns off
+  caching.
+
+- **writebufferActive** (_optional_; type: `integer`; default: `0`;
+  to disable use: `0`)
+
+  Maximum number of concurrent active writers (segments) performs (a transaction).
+  Other writers (segments) are wait till current active writers (segments) finish.
+  `0` value turns off this limit and used by default. 
+
+- **writebufferSizeMax** (_optional_; type: `integer`; default: `33554432`;
+  to disable use: `0`)
+
+  Maximum memory byte size per writer (segment) before a writer (segment) flush is
+  triggered. `0` value turns off this limit fon any writer (buffer) and will be
+  flushed only after a period defined for special thread during ArangoDB server
+  startup. `0` value should be used with carefully due to high potential memory
+  consumption.
+
 - **consolidationPolicy** (_optional_; type: `object`; default: `{}`)
 
   The consolidation policy to apply for selecting data store segment merge
@@ -145,6 +172,32 @@ of removing unused segments after release of internal resources.
       segment byte size multiplied by the `{threshold}`.
     - **tier**: Consolidate based on segment byte size and live document count
       as dictated by the customization attributes.
+
+### `consolidationPolicy` properties for `tier` type
+
+  - **min\_segments** (_optional_; type: `integer`; default: `1`)
+
+    The minimum number of segments that will be evaluated as candidates for consolidation.
+
+  - **max\_segments** (_optional_; type: `integer`; default: `1`)
+
+    The maximum number of segments that will be evaluated as candidates for consolidation.
+
+  - **segments_bytes_max** (_optional_; type: `int`; default: `5368709120`)
+
+    Maxinum allowed size of all consolidated segments in bytes.
+
+  - **segments_bytes_floor** (_optional_; type: `int`; default: `2097152`)
+
+    Defines the value (in bytes) to treat all smaller segments as equal for consolidation
+    selection.
+
+  - **lookahead** (_optional_; type: `integer`; default: `18446744073709552000`)
+
+    The number of additionally searched tiers except initially chosen candidated based on
+    `min_segments`, `max_segments`, `segments_bytes_max`, `segments_bytes_floor` with
+    respect to defined values. Default value falls to `integer_traits<size_t>::const_max`
+    (in C++ source code).
 
 ## Link properties
 
