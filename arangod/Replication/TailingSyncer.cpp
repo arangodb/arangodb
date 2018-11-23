@@ -1604,17 +1604,18 @@ Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick,
 
   TRI_voc_tick_t readTick = StringUtils::uint64(header);
 
-  if (!fromIncluded && _requireFromPresent && fromTick > 0 &&
-      (!_state.master.simulate32Client() || fromTick != readTick)) {
-    return Result(
-        TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT,
-        std::string("required init tick value '") +
-            StringUtils::itoa(fromTick) +
-            "' is not present (anymore?) on master at " +
-            _state.master.endpoint + ". Last tick available on master is '" +
-            StringUtils::itoa(readTick) +
-            "'. It may be required to do a full resync and increase the number "
-            "of historic logfiles/WAL file timeout on the master.");
+  if (!fromIncluded && fromTick > 0 && (!_state.master.simulate32Client() || fromTick != readTick)) {
+    const std::string msg = std::string("required init tick value '") +
+                            StringUtils::itoa(fromTick) +
+                            "' is not present (anymore?) on master at " +
+                            _state.master.endpoint + ". Last tick available on master is '" +
+                            StringUtils::itoa(readTick) +
+                            "'. It may be required to do a full resync and increase the number "
+                            "of historic logfiles/WAL file timeout on the master.";
+    if (_requireFromPresent) { // hard fail
+      return Result(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT, msg);
+    }
+    LOG_TOPIC(WARN, Logger::REPLICATION) << msg;
   }
 
   startTick = readTick;
@@ -1838,18 +1839,20 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
     _applier->_state._lastAvailableContinuousTick = tick;
   }
 
-  if (!fromIncluded && _requireFromPresent && fetchTick > 0 &&
-      (!_state.master.simulate32Client() || originalFetchTick != tick)) {
-    return Result(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT,
-                  std::string("required follow tick value '") +
-                      StringUtils::itoa(fetchTick) +
-                      "' is not present (anymore?) on master at " +
-                      _state.master.endpoint +
-                      ". Last tick available on master is '" +
-                      StringUtils::itoa(tick) +
-                      "'. It may be required to do a full resync and increase "
-                      "the number " +
-                      "of historic logfiles/WAL file timeout on the master");
+  if (!fromIncluded && fetchTick > 0 && (!_state.master.simulate32Client() || originalFetchTick != tick)) {
+    const std::string msg = std::string("required follow tick value '") +
+                            StringUtils::itoa(fetchTick) +
+                            "' is not present (anymore?) on master at " +
+                            _state.master.endpoint +
+                            ". Last tick available on master is '" +
+                            StringUtils::itoa(tick) +
+                            "'. It may be required to do a full resync and increase "
+                            "the number " +
+                            "of historic logfiles/WAL file timeout on the master";
+    if (_requireFromPresent) { // hard fail
+      return Result(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT, msg);
+    }
+    LOG_TOPIC(WARN, Logger::REPLICATION) << msg;
   }
  
   // already fetch next batch of data in the background... 
