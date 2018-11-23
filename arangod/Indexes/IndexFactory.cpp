@@ -181,12 +181,16 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
 
   if (!res.ok()) {
     TRI_set_errno(res.errorNumber());
+    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+      << "failed to instantiate index, error: " << res.errorNumber() << " " << res.errorMessage();
 
     return nullptr;
   }
 
   if (!index) {
     TRI_set_errno(TRI_ERROR_INTERNAL);
+    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+      << "failed to instantiate index, factory returned null instance";
 
     return nullptr;
   }

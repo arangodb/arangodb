@@ -504,7 +504,7 @@ namespace iresearch {
     // one is a prefix of the other up to the `/`
     if (ls.empty() ||
         ls.back() != '/' ||
-        !ls.compare(rs.substr(0, ls.size()))) {
+        ls.compare(rs.substr(0, ls.size()))) {
       return false;
     }
   }
