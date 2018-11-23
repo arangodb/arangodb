@@ -495,7 +495,6 @@ function BaseTestConfig () {
         },
 
         function (state) {
-<<<<<<< HEAD
           const c = db._collection(cn);
           let x = 10;
           while (c.count() > 0 && x-- > 0) {
@@ -503,10 +502,6 @@ function BaseTestConfig () {
           }
           assertEqual(c.count(), 0);
           assertEqual(c.all().toArray().length, 0);
-=======
-          assertEqual(db._collection(cn).count(), 0);
-          assertEqual(db._collection(cn).all().toArray().length, 0);
->>>>>>> 15a366b17f... Bug fix/fix duplicate testcasenames (#7003)
         }
       );
     },
@@ -862,6 +857,7 @@ function BaseTestConfig () {
           if (!state.arangoSearchEnabled) {
             return;
           }
+
           let view = db._view('UnitTestsSyncView');
           let x = 10;
           while (view && x-- > 0) {
