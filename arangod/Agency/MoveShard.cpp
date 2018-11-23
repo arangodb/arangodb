@@ -427,7 +427,7 @@ JOB_STATUS MoveShard::pendingLeader() {
       = _snapshot.hasAsString(pendingPrefix + _jobId + "/timeCreated").first;
     Supervision::TimePoint timeCreated = stringToTimepoint(timeCreatedString);
     Supervision::TimePoint now(std::chrono::system_clock::now());
-    if (now - timeCreated > std::chrono::duration<double>(3600.0)) {
+    if (now - timeCreated > std::chrono::duration<double>(10000.0)) {
       abort();
       return true;
     }
@@ -661,7 +661,7 @@ JOB_STATUS MoveShard::pendingFollower() {
       = _snapshot.hasAsString(pendingPrefix + _jobId + "/timeCreated").first;
     Supervision::TimePoint timeCreated = stringToTimepoint(timeCreatedString);
     Supervision::TimePoint now(std::chrono::system_clock::now());
-    if (now - timeCreated > std::chrono::duration<double>(3600.0)) {
+    if (now - timeCreated > std::chrono::duration<double>(10000.0)) {
       abort();
       return FAILED;
     }
