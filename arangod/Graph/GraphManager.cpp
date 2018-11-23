@@ -257,14 +257,11 @@ std::shared_ptr<LogicalCollection> GraphManager::getCollectionByName(
     const TRI_vocbase_t& vocbase, std::string const& name) {
   if (!name.empty()) {
     // try looking up the collection by name then
-    try {
-      if (arangodb::ServerState::instance()->isRunningInCluster()) {
+    if (arangodb::ServerState::instance()->isRunningInCluster()) {
         ClusterInfo* ci = ClusterInfo::instance();
-        return ci->getCollection(vocbase.name(), name);
-      } else {
-        return vocbase.lookupCollection(name);
-      }
-    } catch (...) {
+        return ci->getCollectionNT(vocbase.name(), name);
+    } else {
+      return vocbase.lookupCollection(name);
     }
   }
 
