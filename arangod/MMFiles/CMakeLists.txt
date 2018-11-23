@@ -23,6 +23,7 @@ set(MMFILES_SOURCES
   MMFiles/MMFilesExportCursor.cpp
   MMFiles/MMFilesIndexElement.cpp
   MMFiles/MMFilesIndexFactory.cpp
+  MMFiles/MMFilesIndexLookupContext.cpp
   MMFiles/MMFilesLogfileManager.cpp
   MMFiles/MMFilesFulltextIndex.cpp
   MMFiles/MMFilesGeoIndex.cpp

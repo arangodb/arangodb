@@ -32,6 +32,7 @@ class Transaction;
 class Slice;
 class Iterator;
 class TransactionDB;
+class WriteBatch;
 class WriteBatchWithIndex;
 class Comparator;
 struct ReadOptions;
@@ -192,7 +193,34 @@ class RocksDBTrxUntrackedMethods final : public RocksDBTrxMethods {
 class RocksDBBatchedMethods final : public RocksDBMethods {
  public:
   RocksDBBatchedMethods(RocksDBTransactionState*,
-                        rocksdb::WriteBatchWithIndex*);
+                        rocksdb::WriteBatch*);
+
+  bool Exists(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) override;
+  arangodb::Result Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
+                       std::string* val) override;
+  arangodb::Result Put(
+      rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
+      rocksdb::Slice const& val,
+      rocksutils::StatusHint hint = rocksutils::StatusHint::none) override;
+  arangodb::Result Delete(rocksdb::ColumnFamilyHandle*,
+                          RocksDBKey const& key) override;
+  std::unique_ptr<rocksdb::Iterator> NewIterator(
+      rocksdb::ReadOptions const&, rocksdb::ColumnFamilyHandle*) override;
+
+  void SetSavePoint() override {}
+  arangodb::Result RollbackToSavePoint() override { return arangodb::Result(); }
+  void PopSavePoint() override {}
+
+ private:
+  rocksdb::TransactionDB* _db;
+  rocksdb::WriteBatch* _wb;
+};
+
+/// wraps a writebatch with index - non transactional
+class RocksDBBatchedWithIndexMethods final : public RocksDBMethods {
+ public:
+  RocksDBBatchedWithIndexMethods(RocksDBTransactionState*,
+                                 rocksdb::WriteBatchWithIndex*);
 
   bool Exists(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) override;
   arangodb::Result Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
@@ -213,6 +241,33 @@ class RocksDBBatchedMethods final : public RocksDBMethods {
  private:
   rocksdb::TransactionDB* _db;
   rocksdb::WriteBatchWithIndex* _wb;
+};
+
+// INDEXING MAY ONLY BE DISABLED IN TOPLEVEL AQL TRANSACTIONS
+// THIS IS BECAUSE THESE TRANSACTIONS WILL EITHER READ FROM
+// OR (XOR) WRITE TO A COLLECTION. IF THIS PRECONDITION IS
+// VIOLATED THE DISABLED INDEXING WILL BREAK GET OPERATIONS.
+struct IndexingDisabler {
+  // will only be active if condition is true
+
+  IndexingDisabler() = delete;
+  IndexingDisabler(IndexingDisabler&&) = delete;
+  IndexingDisabler(IndexingDisabler const&) = delete;
+  IndexingDisabler& operator=(IndexingDisabler const&) = delete;
+  IndexingDisabler& operator=(IndexingDisabler&&) = delete;
+
+  IndexingDisabler(RocksDBMethods* meth, bool condition) : _meth(nullptr) {
+    if (condition) {
+      bool disabledHere = meth->DisableIndexing();
+      if (disabledHere) { _meth = meth; }
+    }
+  }
+
+  ~IndexingDisabler(){
+    if (_meth) { _meth->EnableIndexing(); }
+  }
+private:
+  RocksDBMethods* _meth;
 };
 
 }  // namespace arangodb

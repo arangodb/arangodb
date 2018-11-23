@@ -95,8 +95,7 @@ std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(
   return rocks->mapObjectToCollection(objectId);
 }
 
-std::tuple<TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t> mapObjectToIndex(
-                                                              uint64_t objectId) {
+std::tuple<TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t> mapObjectToIndex(uint64_t objectId) {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
   RocksDBEngine* rocks = static_cast<RocksDBEngine*>(engine);
@@ -153,14 +152,14 @@ std::size_t countKeyRange(rocksdb::DB* db,
 
 /// @brief helper method to remove large ranges of data
 /// Should mainly be used to implement the drop() call
-Result removeLargeRange(rocksdb::TransactionDB* db,
+Result removeLargeRange(rocksdb::DB* db,
                         RocksDBKeyBounds const& bounds,
                         bool prefixSameAsStart,
                         bool useRangeDelete) {
   LOG_TOPIC(DEBUG, Logger::ENGINES) << "removing large range: " << bounds;
 
   rocksdb::ColumnFamilyHandle* cf = bounds.columnFamily();
-  rocksdb::DB* bDB = db->GetBaseDB();
+  rocksdb::DB* bDB = db->GetRootDB();
   TRI_ASSERT(bDB != nullptr);
 
   try {
@@ -180,9 +179,8 @@ Result removeLargeRange(rocksdb::TransactionDB* db,
 
     // go on and delete the remaining keys (delete files in range does not
     // necessarily find them all, just complete files)
-    rocksdb::WriteOptions wo;
-
     if (useRangeDelete) {
+      rocksdb::WriteOptions wo;
       rocksdb::Status s = bDB->DeleteRange(wo, cf, lower, upper);
       if (!s.ok()) {
         LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
@@ -194,8 +192,6 @@ Result removeLargeRange(rocksdb::TransactionDB* db,
 
     // go on and delete the remaining keys (delete files in range does not
     // necessarily find them all, just complete files)
-    rocksdb::Comparator const* cmp = cf->GetComparator();
-    rocksdb::WriteBatch batch;
     rocksdb::ReadOptions readOptions;
     readOptions.iterate_upper_bound = &upper;
     readOptions.prefix_same_as_start = prefixSameAsStart; // for edge index
@@ -203,6 +199,11 @@ Result removeLargeRange(rocksdb::TransactionDB* db,
     readOptions.verify_checksums = false;
     readOptions.fill_cache = false;
     std::unique_ptr<rocksdb::Iterator> it(bDB->NewIterator(readOptions, cf));
+    
+    rocksdb::WriteOptions wo;
+
+    rocksdb::Comparator const* cmp = cf->GetComparator();
+    rocksdb::WriteBatch batch;
 
     size_t total = 0;
     size_t counter = 0;
