@@ -99,7 +99,7 @@ void QueryResources::addNode(AstNode* node) {
   _resourceMonitor->increaseMemoryUsage(sizeof(AstNode));
 
   // will not fail
-  _nodes.emplace_back(node);
+  _nodes.push_back(node);
 
   // safely took over the ownership for the node, cancel the deletion now
   guard.cancel();
@@ -189,7 +189,7 @@ char* QueryResources::registerLongString(char* copy, size_t length) {
   }
 
   // will not fail
-  _strings.emplace_back(copy);
+  _strings.push_back(copy);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _stringsLength += length;
 #endif

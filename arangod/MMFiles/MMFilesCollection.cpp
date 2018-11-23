@@ -47,6 +47,7 @@
 #include "MMFiles/MMFilesDocumentPosition.h"
 #include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesIndexElement.h"
+#include "MMFiles/MMFilesIndexLookupContext.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
 #include "MMFiles/MMFilesTransactionState.h"
@@ -85,7 +86,7 @@ struct OpenIteratorState {
   MMFilesDatafileStatisticsContainer* _dfi{nullptr};
   transaction::Methods* _trx;
   ManagedDocumentResult _mdr;
-  IndexLookupContext _context;
+  MMFilesIndexLookupContext _context;
   uint64_t _deletions{0};
   uint64_t _documents{0};
   int64_t _initialCount{-1};
@@ -2400,6 +2401,13 @@ int MMFilesCollection::restoreIndex(transaction::Methods* trx,
 
   if (!info.isObject()) {
     return TRI_ERROR_INTERNAL;
+  }
+
+  // check if we already have this index
+  auto oldIdx = lookupIndex(info);
+  if (oldIdx) {
+    idx = oldIdx;
+    return TRI_ERROR_NO_ERROR;
   }
 
   // We create a new Index object to make sure that the index

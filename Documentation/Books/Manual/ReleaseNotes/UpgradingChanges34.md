@@ -686,6 +686,9 @@ removed, so it cannot be use from Foxx applications anymore The module only
 provided the current version of the database, so any client-side invocations
 can easily be replaced by using the `db._version()` instead.
 
+The `ShapedJson` JavaScript object prototype, a remainder from ArangoDB 2.8 
+for encapsulating database documents, has been removed in ArangoDB 3.4.
+
 
 Miscellaneous changes
 ---------------------

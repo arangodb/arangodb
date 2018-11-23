@@ -326,7 +326,7 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
   VPackBuilder b;
   b.openObject();
   b.add("isNewlyCreated", VPackValue(created));
-  b.add("id",
+  b.add(StaticStrings::IndexId,
         VPackValue(collection->name() + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
   b.close();
   output = VPackCollection::merge(tmp.slice(), b.slice(), false);

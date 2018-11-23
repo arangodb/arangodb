@@ -208,8 +208,6 @@ class RocksDBCollection final : public PhysicalCollection {
   /// @brief return engine-specific figures
   void figuresSpecific(std::shared_ptr<velocypack::Builder>&) override;
   void addIndex(std::shared_ptr<arangodb::Index> idx);
-  int saveIndex(transaction::Methods* trx,
-                std::shared_ptr<arangodb::Index> idx);
 
   arangodb::Result fillIndexes(transaction::Methods*,
                                std::shared_ptr<arangodb::Index>);
@@ -254,8 +252,6 @@ class RocksDBCollection final : public PhysicalCollection {
   inline bool useCache() const noexcept { return (_cacheEnabled && _cachePresent); }
 
   void blackListKey(char const* data, std::size_t len) const;
-
-  bool hasAllPersistentLocalIds() const override { return true; }
 
  private:
   uint64_t const _objectId;  // rocksdb-specific object id for collection

@@ -359,7 +359,6 @@ SET(ARANGOD_SOURCES
   Indexes/Index.cpp
   Indexes/IndexFactory.cpp
   Indexes/IndexIterator.cpp
-  Indexes/IndexLookupContext.cpp
   Indexes/PersistentIndexAttributeMatcher.cpp
   Indexes/SimpleAttributeEqualityMatcher.cpp
   Indexes/SkiplistIndexAttributeMatcher.cpp

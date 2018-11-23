@@ -61,5 +61,5 @@ the view name is *demo*, then the URL of that view is:
 A view instance may be:
 * [Created](Creating.md)
 * [Retrieved](Getting.md)
-* [Modifled](Modifying.md)
+* [Modified](Modifying.md)
 * [Deleted](Dropping.md)

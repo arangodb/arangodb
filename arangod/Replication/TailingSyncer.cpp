@@ -805,31 +805,30 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
 
 /// @brief apply a single marker from the continuous log
 Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
-                                     TRI_voc_tick_t firstRegularTick) {
+                                     TRI_voc_tick_t firstRegularTick,
+                                     TRI_voc_tick_t& markerTick) {
+  // reset found tick value to 0
+  markerTick = 0;
+
   if (!slice.isObject()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "marker slice is no object");
   }
-
+  
   // fetch marker "type"
   int typeValue = VelocyPackHelper::getNumericValue<int>(slice, "type", 0);
 
   // fetch "tick"
-  std::string const tick = VelocyPackHelper::getStringValue(slice, "tick", "");
-
-  if (!tick.empty()) {
-    TRI_voc_tick_t newTick = NumberUtils::atoi_zero<TRI_voc_tick_t>(
-        tick.data(), tick.data() + tick.size());
-    if (newTick >= firstRegularTick) {
-      WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
-      if (newTick > _applier->_state._lastProcessedContinuousTick) {
-        _applier->_state._lastProcessedContinuousTick = newTick;
-      }
-    }
+  VPackSlice tickSlice = slice.get("tick");
+  if (tickSlice.isString()) {
+    VPackValueLength length;
+    char const* p = tickSlice.getStringUnchecked(length);
+    // update the caller's tick
+    markerTick = NumberUtils::atoi_zero<TRI_voc_tick_t>(p, p + length);
   }
 
   // handle marker type
-  TRI_replication_operation_e type = (TRI_replication_operation_e)typeValue;
+  TRI_replication_operation_e type = static_cast<TRI_replication_operation_e>(typeValue);
   if (type == REPLICATION_MARKER_DOCUMENT ||
       type == REPLICATION_MARKER_REMOVE) {
     try {
@@ -843,22 +842,22 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
     }
   }
 
-  else if (type == REPLICATION_TRANSACTION_START) {
+  if (type == REPLICATION_TRANSACTION_START) {
     return startTransaction(slice);
   }
 
-  else if (type == REPLICATION_TRANSACTION_ABORT) {
+  if (type == REPLICATION_TRANSACTION_ABORT) {
     return abortTransaction(slice);
   }
 
-  else if (type == REPLICATION_TRANSACTION_COMMIT) {
+  if (type == REPLICATION_TRANSACTION_COMMIT) {
     return commitTransaction(slice);
   }
 
-  else if (type == REPLICATION_COLLECTION_CREATE) {
+  if (type == REPLICATION_COLLECTION_CREATE) {
     if (_ignoreRenameCreateDrop) {
       LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Ignoring collection marker";
-      return TRI_ERROR_NO_ERROR;
+      return Result();
     }
 
     TRI_vocbase_t* vocbase = resolveVocbase(slice);
@@ -874,35 +873,45 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
     }
 
     return createCollection(*vocbase, slice.get("data"), nullptr);
-  } else if (type == REPLICATION_COLLECTION_DROP) {
+  } 
+  
+  if (type == REPLICATION_COLLECTION_DROP) {
     if (_ignoreRenameCreateDrop) {
       return TRI_ERROR_NO_ERROR;
     }
 
     return dropCollection(slice, false);
-  } else if (type == REPLICATION_COLLECTION_RENAME) {
+  } 
+  
+  if (type == REPLICATION_COLLECTION_RENAME) {
     if (_ignoreRenameCreateDrop) {
       // do not execute rename operations
       return Result();
     }
 
     return renameCollection(slice);
-  } else if (type == REPLICATION_COLLECTION_CHANGE) {
+  } 
+  
+  if (type == REPLICATION_COLLECTION_CHANGE) {
     return changeCollection(slice);
-  } else if (type == REPLICATION_COLLECTION_TRUNCATE) {
+  } 
+  
+  if (type == REPLICATION_COLLECTION_TRUNCATE) {
     return truncateCollection(slice);
   }
 
-  else if (type == REPLICATION_INDEX_CREATE) {
+  if (type == REPLICATION_INDEX_CREATE) {
     return createIndex(slice);
-  } else if (type == REPLICATION_INDEX_DROP) {
+  } 
+  
+  if (type == REPLICATION_INDEX_DROP) {
     return dropIndex(slice);
   }
   
-  else if (type == REPLICATION_VIEW_CREATE) {
+  if (type == REPLICATION_VIEW_CREATE) {
     if (_ignoreRenameCreateDrop) {
       LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Ignoring view create marker";
-      return TRI_ERROR_NO_ERROR;
+      return Result();
     }
     
     TRI_vocbase_t* vocbase = resolveVocbase(slice);
@@ -914,19 +923,23 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
     }
     
     return createView(*vocbase, slice.get("data"));
-  } else if (type == REPLICATION_VIEW_DROP) {
+  } 
+  
+  if (type == REPLICATION_VIEW_DROP) {
     if (_ignoreRenameCreateDrop) {
       LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Ignoring view drop marker";
-      return TRI_ERROR_NO_ERROR;
+      return Result();
     }
     
     return dropView(slice, false);
-  } else if (type == REPLICATION_VIEW_CHANGE) {
+  } 
+  
+  if (type == REPLICATION_VIEW_CHANGE) {
     return changeView(slice);
   }
   
-  else if (type == REPLICATION_DATABASE_CREATE ||
-           type == REPLICATION_DATABASE_DROP) {
+  if (type == REPLICATION_DATABASE_CREATE ||
+      type == REPLICATION_DATABASE_DROP) {
     if (_ignoreDatabaseMarkers) {
       LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Ignoring database marker";
       return Result();
@@ -1005,13 +1018,13 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response,
 
     Result res;
     bool skipped;
+    TRI_voc_tick_t markerTick = 0; 
 
     if (skipMarker(firstRegularTick, slice)) {
       // entry is skipped
-      res.reset();
       skipped = true;
     } else {
-      res = applyLogMarker(slice, firstRegularTick);
+      res = applyLogMarker(slice, firstRegularTick, markerTick);
       skipped = false;
     }
 
@@ -1041,6 +1054,12 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response,
     // update tick value
     // postApplyMarker(processedMarkers, skipped);
     WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
+  
+    if (markerTick > firstRegularTick &&
+        markerTick > _applier->_state._lastProcessedContinuousTick) {
+      TRI_ASSERT(markerTick > 0);
+      _applier->_state._lastProcessedContinuousTick = markerTick;
+    }
 
     if (_applier->_state._lastProcessedContinuousTick >
         _applier->_state._lastAppliedContinuousTick) {

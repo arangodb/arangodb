@@ -2696,10 +2696,8 @@ OperationResult transaction::Methods::countCoordinator(
   }
   
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo;
-  try {
-    collinfo = ci->getCollection(vocbase().name(), collectionName);
-  } catch (...) {
+  auto collinfo = ci->getCollectionNT(vocbase().name(), collectionName);
+  if (collinfo == nullptr) {
     return OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 

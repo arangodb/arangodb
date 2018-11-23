@@ -179,9 +179,8 @@ Result removeLargeRange(rocksdb::DB* db,
 
     // go on and delete the remaining keys (delete files in range does not
     // necessarily find them all, just complete files)
-    rocksdb::WriteOptions wo;
-
     if (useRangeDelete) {
+      rocksdb::WriteOptions wo;
       rocksdb::Status s = bDB->DeleteRange(wo, cf, lower, upper);
       if (!s.ok()) {
         LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
@@ -193,8 +192,6 @@ Result removeLargeRange(rocksdb::DB* db,
 
     // go on and delete the remaining keys (delete files in range does not
     // necessarily find them all, just complete files)
-    rocksdb::Comparator const* cmp = cf->GetComparator();
-    rocksdb::WriteBatch batch;
     rocksdb::ReadOptions readOptions;
     readOptions.iterate_upper_bound = &upper;
     readOptions.prefix_same_as_start = prefixSameAsStart; // for edge index
@@ -202,6 +199,11 @@ Result removeLargeRange(rocksdb::DB* db,
     readOptions.verify_checksums = false;
     readOptions.fill_cache = false;
     std::unique_ptr<rocksdb::Iterator> it(bDB->NewIterator(readOptions, cf));
+    
+    rocksdb::WriteOptions wo;
+
+    rocksdb::Comparator const* cmp = cf->GetComparator();
+    rocksdb::WriteBatch batch;
 
     size_t total = 0;
     size_t counter = 0;
