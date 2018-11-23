@@ -45,11 +45,9 @@ void MMFilesFulltextIndex::extractWords(std::set<std::string>& words,
                                         VPackSlice value, int level) const {
   if (value.isString()) {
     // extract the string value for the indexed attribute
-    std::string text = value.copyString();
-
     // parse the document text
     arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(
-        words, text, _minWordLength, TRI_FULLTEXT_MAX_WORD_LENGTH, true);
+        words, value.stringRef(), _minWordLength, TRI_FULLTEXT_MAX_WORD_LENGTH, true);
     // We don't care for the result. If the result is false, words stays
     // unchanged and is not indexed
   } else if (value.isArray() && level == 0) {
