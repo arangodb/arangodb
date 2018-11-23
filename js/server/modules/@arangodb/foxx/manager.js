@@ -141,6 +141,7 @@ function selfHealAll (skipReloadRouting) {
     const databases = db._databases();
     for (const name of databases) {
       try {
+        require("internal").print("Healing Database" + name);
         db._useDatabase(name);
         modified = selfHeal() || modified;
       } catch (e) {
@@ -149,7 +150,8 @@ function selfHealAll (skipReloadRouting) {
     }
   } finally {
     db._useDatabase(dbName);
-    if (modified && !skipReloadRouting) {
+    if (true || (modified && !skipReloadRouting)) {
+      require("internal").print("ReloadRouting");
       reloadRouting();
     }
   }
