@@ -67,7 +67,8 @@ function getCoordinators() {
 
 function foxxTestSuite () {
   return {
-    setUp: () => {},
+    setUp: () => {
+    },
     tearDown: () => {},
 
     testServiceIsMounted: function () {

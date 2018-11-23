@@ -62,8 +62,28 @@ class DumpRestoreHelper {
     this.fn = afterServerStart(instanceInfo);
     this.results = {failed: 1};
     this.arangosh = tu.runInArangosh.bind(this, this.options, this.instanceInfo);
-    this.arangorestore = pu.run.arangoDumpRestore.bind(this, this.dumpOptions, this.instanceInfo, 'restore');
-    this.arangodump = pu.run.arangoDumpRestore.bind(this, this.dumpOptions, this.instanceInfo, 'dump');
+    this.dumpConfig = pu.createBaseConfig('dump', this.dumpOptions, this.instanceInfo);
+    this.dumpConfig.setOutputDirectory('dump');
+    this.dumpConfig.setIncludeSystem(true);
+
+    this.restoreConfig = pu.createBaseConfig('restore', this.dumpOptions, this.instanceInfo);
+    this.restoreConfig.setInputDirectory('dump', true);
+    this.restoreConfig.setIncludeSystem(true);
+
+    this.restoreOldConfig = pu.createBaseConfig('restore', this.dumpOptions, this.instanceInfo);
+    this.restoreOldConfig.setInputDirectory('dump', true);
+    this.restoreOldConfig.setIncludeSystem(true);
+    this.restoreOldConfig.setDatabase('_system');
+    this.restoreOldConfig.setRootDir(pu.TOP_DIR);
+
+    if (options.encrypted) {
+      this.dumpConfig.activateEncryption();
+      this.restoreOldConfig.activateEncryption();
+    }
+
+    this.arangorestore = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreConfig, this.dumpOptions);
+    this.arangorestoreOld = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreOldConfig, this.dumpOptions);
+    this.arangodump = pu.run.arangoDumpRestoreWithConfig.bind(this, this.dumpConfig, this.dumpOptions);
   }
 
   print (s) {
@@ -99,13 +119,15 @@ class DumpRestoreHelper {
 
   dumpFrom(database) {
     this.print('dump');
-    this.results.dump = this.arangodump(database);
+    this.dumpConfig.setDatabase(database);
+    this.results.dump = this.arangodump();
     return this.validate(this.results.dump);
   }
 
   restoreTo(database) {
     this.print('restore');
-    this.results.restore = this.arangorestore(database);
+    this.restoreConfig.setDatabase(database);
+    this.results.restore = this.arangorestore();
     return this.validate(this.results.restore);
   }
 
@@ -123,7 +145,8 @@ class DumpRestoreHelper {
 
   restoreOld(directory) {
     this.print('restoreOld');
-    this.results.restoreOld = this.arangorestore('_system', pu.TOP_DIR, directory);
+    this.restoreOldConfig.setInputDirectory(directory, true);
+    this.results.restoreOld = this.arangorestoreOld();
     return this.validate(this.results.restoreOld);
   }
 
@@ -135,7 +158,8 @@ class DumpRestoreHelper {
 
   restoreFoxxComplete(database) {
     this.print('Foxx Apps with full restore');
-    this.results.restoreFoxxComplete = this.arangorestore(database)
+    this.restoreConfig.setDatabase(database);
+    this.results.restoreFoxxComplete = this.arangorestore()
     return this.validate(this.results.restoreFoxxComplete);
   }
 
@@ -147,14 +171,15 @@ class DumpRestoreHelper {
 
   restoreFoxxAppsBundle(database) {
     this.print('Foxx Apps restore _apps then _appbundles');
-    // TODO Need to Add Collection _apps
-    this.results.restoreFoxxAppBundlesStep1 = this.arangorestore(database);
+    this.restoreConfig.setDatabase(database);
+    this.restoreConfig.restrictToCollection('_apps');
+    this.results.restoreFoxxAppBundlesStep1 = this.arangorestore();
     if (!this.validate(this.results.restoreFoxxAppBundlesStep1)) {
       return false;
     }
+    this.restoreConfig.restrictToCollection('_appbundles');
     // TODO if cluster, switch coordinator!
-    // TODO Need to Add Collection _appbundles
-    this.results.restoreFoxxAppBundlesStep2 = this.arangorestore(database)
+    this.results.restoreFoxxAppBundlesStep2 = this.arangorestore()
     return this.validate(this.results.restoreFoxxAppBundlesStep2);
   }
 
@@ -166,14 +191,15 @@ class DumpRestoreHelper {
 
   restoreFoxxBundleApps(database) {
     this.print('Foxx Apps restore _appbundles then _apps');
-    // TODO Need to Add Collection _appbundles
-    this.results.restoreFoxxAppBundlesStep1 = this.arangorestore(database)
+    this.restoreConfig.setDatabase(database);
+    this.restoreConfig.restrictToCollection('_appbundles');
+    this.results.restoreFoxxAppBundlesStep1 = this.arangorestore()
     if (!this.validate(this.results.restoreFoxxAppBundlesStep1)) {
       return false;
     }
+    this.restoreConfig.restrictToCollection('_apps');
     // TODO if cluster, switch coordinator!
-    // TODO Need to Add Collection _apps
-    this.results.restoreFoxxAppBundlesStep2 = this.arangorestore(database)
+    this.results.restoreFoxxAppBundlesStep2 = this.arangorestore()
     return this.validate(this.results.restoreFoxxAppBundlesStep2);
   }
 

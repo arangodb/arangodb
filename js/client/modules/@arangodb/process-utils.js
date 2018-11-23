@@ -58,6 +58,81 @@ const platform = internal.platform;
 
 const abortSignal = 6;
 
+class ConfigBuilder {
+  constructor(type) {
+    this.config = {};
+    this.type = type;
+    switch (type) {
+      case 'restore':
+        this.config.configuration = fs.join(CONFIG_DIR, 'arangorestore.conf'); 
+        this.executable = ARANGORESTORE_BIN;
+        break;
+      case 'dump':
+        this.config.configuration = fs.join(CONFIG_DIR, 'arangodump.conf'); 
+        this.executable = ARANGODUMP_BIN;
+        break;
+      default:
+        throw 'Sorry this type of Arango-Binary is not yet implemented: ' + type;
+    }
+  }
+
+  setAuth(username, password) {
+    this.config['server.username'] = username;
+    this.config['server.password'] = password;
+  }
+  setEndpoint(endpoint) { this.config['server.endpoint'] = endpoint; }
+  setDatabase(database) { this.config['server.database'] = database; }
+  setIncludeSystem(active) {
+    if (this.type !== 'restore' && this.type !== 'dump') {
+      throw '"include-system-collections" is not supported for binary: ' + this.type;
+    }
+    this.config['include-system-collections'] = active ? 'true' : 'false';
+  }
+  setOutputDirectory(dir) {
+    if (this.type !== 'dump') {
+      throw '"output-directory" is not supported for binary: ' + this.type;
+    }
+    this.config['output-directory'] = fs.join(this.rootDir, dir);
+  }
+  setInputDirectory(dir, createDatabase) {
+    if (this.type !== 'restore') {
+      throw '"input-directory" is not supported for binary: ' + this.type;
+    }
+    this.config['input-directory'] = fs.join(this.rootDir, dir);
+    if (createDatabase) {
+      this.config['create-database'] = 'true';
+    } else {
+      this.config['create-database'] = 'false';
+    }
+  }
+  activateEncryption() { this.config['encription.keyfile'] = fs.join(this.rootDir, 'secret-key'); }
+  setRootDir(dir) { this.rootDir = dir; }
+  restrictToCollection(collection) {
+    if (this.type !== 'restore' && this.type !== 'dump') {
+      throw '"collection" is not supported for binary: ' + this.type;
+    }
+    this.config['collection'] = collection;
+  };
+
+  toArgv() { return internal.toArgv(this.config); }
+
+  getExe() { return this.executable; }
+
+  print() {
+    print(this.executable);
+    print(this.config);
+  }
+}
+
+const createBaseConfigBuilder = function (type, options, instanceInfo, database = '_system') {
+  const cfg = new ConfigBuilder(type);
+  cfg.setAuth(options.username, options.password);
+  cfg.setDatabase(database);
+  cfg.setEndpoint(instanceInfo.endpoint);
+  cfg.setRootDir(instanceInfo.rootDir);
+  return cfg;
+}
+
 let executableExt = '';
 if (platform.substr(0, 3) === 'win') {
   executableExt = '.exe';
@@ -651,42 +726,37 @@ function runArangoImport (options, instanceInfo, what, coreCheck = false) {
   return executeAndWait(ARANGOIMPORT_BIN, toArgv(args), options, 'arangoimport', instanceInfo.rootDir, false, coreCheck);
 }
 
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief runs arangodump or arangorestore based on config object
+// //////////////////////////////////////////////////////////////////////////////
+
+function runArangoDumpRestoreCfg (config, options, rootDir, coreCheck) {
+  if (options.extremeVerbosity === true) {
+    config.print();
+  }
+  return executeAndWait(config.getExe(), config.toArgv(), options, 'arangorestore', rootDir, false, coreCheck);
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs arangodump or arangorestore
 // //////////////////////////////////////////////////////////////////////////////
 
 function runArangoDumpRestore (options, instanceInfo, which, database, rootDir, dumpDir = 'dump', includeSystem = true, coreCheck = false) {
-  let args = {
-    'configuration': fs.join(CONFIG_DIR, (which === 'dump' ? 'arangodump.conf' : 'arangorestore.conf')),
-    'server.username': options.username,
-    'server.password': options.password,
-    'server.endpoint': instanceInfo.endpoint,
-    'server.database': database,
-    'include-system-collections': includeSystem ? 'true' : 'false',
-  };
-
-  let exe;
-  rootDir = rootDir || instanceInfo.rootDir;
+  const cfg = createBaseConfigBuilder(which, options, instanceInfo, database);
+  cfg.setIncludeSystem(includeSystem);
+  if (rootDir) { cfg.setRootDir(rootDir); } 
 
   if (which === 'dump') {
-    args['output-directory'] = fs.join(rootDir, dumpDir);
-    exe = ARANGODUMP_BIN;
+    cfg.setOutputDirectory(dumpDir);
   } else {
-    args['create-database'] = 'true';
-    args['input-directory'] = fs.join(rootDir, dumpDir);
-    exe = ARANGORESTORE_BIN;
+    cfg.setInputDirectory(dumpDir, true);
   }
 
   if (options.encrypted) {
-    args['encryption.keyfile'] = fs.join(rootDir, 'secret-key');
+    cfg.activateEncryption();
   }
-
-  if (options.extremeVerbosity === true) {
-    print(exe);
-    print(args);
-  }
-
-  return executeAndWait(exe, toArgv(args), options, 'arangorestore', rootDir, false, coreCheck);
+  return runArangoDumpRestoreCfg(cfg, options, rootDir, coreCheck);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1455,10 +1525,12 @@ exports.findFreePort = findFreePort;
 exports.executeArangod = executeArangod;
 exports.executeAndWait = executeAndWait;
 
+exports.createBaseConfig = createBaseConfigBuilder;
 exports.run = {
   arangoshCmd: runArangoshCmd,
   arangoImport: runArangoImport,
   arangoDumpRestore: runArangoDumpRestore,
+  arangoDumpRestoreWithConfig: runArangoDumpRestoreCfg,
   arangoBenchmark: runArangoBenchmark
 };
 
