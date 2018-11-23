@@ -147,7 +147,7 @@ VPackBuilder* transaction::Context::leaseBuilder() {
 void transaction::Context::returnBuilder(VPackBuilder* builder) {
   try {
     // put builder back into our vector of builders
-    _builders.emplace_back(builder);
+    _builders.push_back(builder);
   } catch (...) {
     // no harm done. just wipe the builder
     delete builder;

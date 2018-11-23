@@ -134,6 +134,8 @@ class TraditionalKeyGenerator : public KeyGenerator {
   explicit TraditionalKeyGenerator(bool allowUserKeys)
     : KeyGenerator(allowUserKeys),
       _lastValue(0) {}
+  
+  bool hasDynamicState() const override { return true; }
 
   /// @brief generate a key
   std::string generate() override final {
@@ -242,6 +244,8 @@ class PaddedKeyGenerator : public KeyGenerator {
   explicit PaddedKeyGenerator(bool allowUserKeys)
     : KeyGenerator(allowUserKeys),
       _lastValue(0) {}
+  
+  bool hasDynamicState() const override { return true; }
 
   /// @brief generate a key
   std::string generate() override {
@@ -403,6 +407,8 @@ class AutoIncrementKeyGenerator final : public KeyGenerator {
       _lastValue(0),
       _offset(offset),
       _increment(increment) {}
+  
+  bool hasDynamicState() const override { return true; }
 
   /// @brief generate a key
   std::string generate() override {
@@ -498,6 +504,8 @@ class UuidKeyGenerator final : public KeyGenerator {
   /// @brief create the generator
   explicit UuidKeyGenerator(bool allowUserKeys)
     : KeyGenerator(allowUserKeys) {}
+  
+  bool hasDynamicState() const override { return false; }
 
   /// @brief generate a key
   std::string generate() override {

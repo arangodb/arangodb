@@ -21,27 +21,30 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IndexLookupContext.h"
-#include "Transaction/Methods.h"
+#include "MMFilesIndexLookupContext.h"
+#include "MMFiles/MMFilesCollection.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 
 using namespace arangodb;
 
-IndexLookupContext::IndexLookupContext(transaction::Methods* trx, 
+MMFilesIndexLookupContext::MMFilesIndexLookupContext(transaction::Methods* trx, 
                                        LogicalCollection* collection, 
                                        ManagedDocumentResult* result, 
                                        size_t numFields)
-    : _trx(trx), _collection(collection), _result(result), _numFields(numFields) {
+    : _trx(trx), 
+      _collection(collection), 
+      _result(result), 
+      _numFields(numFields) {
   TRI_ASSERT(_trx != nullptr);
   TRI_ASSERT(_collection != nullptr);
   // note: _result can be a nullptr
 }
  
-uint8_t const* IndexLookupContext::lookup(LocalDocumentId token) {
+uint8_t const* MMFilesIndexLookupContext::lookup(LocalDocumentId token) const {
   TRI_ASSERT(_result != nullptr);
   try {
-    if (_collection->readDocument(_trx, token, *_result)) {
+    if (static_cast<MMFilesCollection*>(_collection->getPhysical())->readDocument(_trx, token, *_result)) {
       return _result->vpack();
     } 
   } catch (...) {

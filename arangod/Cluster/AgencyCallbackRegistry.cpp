@@ -82,7 +82,7 @@ std::shared_ptr<AgencyCallback> AgencyCallbackRegistry::getCallback(uint32_t id)
   auto it = _endpoints.find(id);
 
   if (it == _endpoints.end()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_UNKNOWN_CALLBACK_ENDPOINT);
+    return nullptr;
   }
   return (*it).second;
 }
