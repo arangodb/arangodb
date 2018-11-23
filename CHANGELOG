@@ -34,6 +34,9 @@ v3.4.0-rc.5 (XXXX-XX-XX)
 * fixed a bug where indexes are used in the cluster while still being
   built on the db servers
 
+* fix move leader shard: wait until all but the old leader are in sync.
+  This fixes some unstable tests.
+
 v3.4.0-rc.4 (2018-11-04)
 ------------------------
 
