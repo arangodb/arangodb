@@ -258,9 +258,7 @@ std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
     return nullptr;
   }
 
-  return std::unique_ptr<arangodb::aql::ExecutionPlan>(
-    arangodb::aql::ExecutionPlan::instantiateFromAst(query.ast())
-  );
+  return arangodb::aql::ExecutionPlan::instantiateFromAst(query.ast());
 }
 
 uint64_t getCurrentPlanVersion() {

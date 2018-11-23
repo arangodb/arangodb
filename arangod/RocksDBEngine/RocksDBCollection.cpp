@@ -1360,7 +1360,6 @@ static arangodb::Result fillIndex(transaction::Methods* trx,
   };
 
   rocksdb::WriteOptions wo;
-  //wo.disableWAL = true; // breaks tests
 
   bool hasMore = true;
   while (hasMore && res.ok()) {
