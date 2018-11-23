@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen : 4000 */
-/* global assertEqual */
+/* global assertEqual, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for dump/reload
@@ -48,7 +48,7 @@ const db = require("@arangodb").db;
 const MOUNT = "/test";
 const serviceUrl = (endpoint) => {
   return endpointToURL(endpoint) + "/_db/" + encodeURIComponent(db._name()) + MOUNT;
-}
+};
 const baseUrl = serviceUrl(arango.getEndpoint());
 const _ = require('lodash');
 const options = {

@@ -133,7 +133,7 @@ const createBaseConfigBuilder = function (type, options, instanceInfo, database 
   cfg.setEndpoint(instanceInfo.endpoint);
   cfg.setRootDir(instanceInfo.rootDir);
   return cfg;
-}
+};
 
 let executableExt = '';
 if (platform.substr(0, 3) === 'win') {

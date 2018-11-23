@@ -138,7 +138,7 @@ class DumpRestoreHelper {
   }
 
   tearDown(file) {
-    this.print('teardown')
+    this.print('teardown');
     this.results.tearDown = this.arangosh(file);
     return this.validate(this.results.tearDown);
   }
@@ -151,7 +151,7 @@ class DumpRestoreHelper {
   }
 
   testRestoreOld(file) {
-    this.print('test restoreOld')
+    this.print('test restoreOld');
     this.results.testRestoreOld = this.arangosh(file);
     return this.validate(this.results.testRestoreOld);
   }
@@ -159,13 +159,13 @@ class DumpRestoreHelper {
   restoreFoxxComplete(database) {
     this.print('Foxx Apps with full restore');
     this.restoreConfig.setDatabase(database);
-    this.results.restoreFoxxComplete = this.arangorestore()
+    this.results.restoreFoxxComplete = this.arangorestore();
     return this.validate(this.results.restoreFoxxComplete);
   }
 
   testFoxxComplete(file, database) {
     this.print('Test Foxx Apps after full restore');
-    this.results.testFoxxComplete = this.arangosh(file, {'server.database': database})
+    this.results.testFoxxComplete = this.arangosh(file, {'server.database': database});
     return this.validate(this.results.testFoxxComplete);
   }
 
@@ -179,13 +179,13 @@ class DumpRestoreHelper {
     }
     this.restoreConfig.restrictToCollection('_appbundles');
     // TODO if cluster, switch coordinator!
-    this.results.restoreFoxxAppBundlesStep2 = this.arangorestore()
+    this.results.restoreFoxxAppBundlesStep2 = this.arangorestore();
     return this.validate(this.results.restoreFoxxAppBundlesStep2);
   }
 
   testFoxxAppsBundle(file, database) {
     this.print('Test Foxx Apps after _apps then _appbundles restore');
-    this.results.testFoxxAppBundles = this.arangosh(file, {'server.database': database})
+    this.results.testFoxxAppBundles = this.arangosh(file, {'server.database': database});
     return this.validate(this.results.testFoxxAppBundles);
   }
 
@@ -193,19 +193,19 @@ class DumpRestoreHelper {
     this.print('Foxx Apps restore _appbundles then _apps');
     this.restoreConfig.setDatabase(database);
     this.restoreConfig.restrictToCollection('_appbundles');
-    this.results.restoreFoxxAppBundlesStep1 = this.arangorestore()
+    this.results.restoreFoxxAppBundlesStep1 = this.arangorestore();
     if (!this.validate(this.results.restoreFoxxAppBundlesStep1)) {
       return false;
     }
     this.restoreConfig.restrictToCollection('_apps');
     // TODO if cluster, switch coordinator!
-    this.results.restoreFoxxAppBundlesStep2 = this.arangorestore()
+    this.results.restoreFoxxAppBundlesStep2 = this.arangorestore();
     return this.validate(this.results.restoreFoxxAppBundlesStep2);
   }
 
   testFoxxBundleApps(file, database) {
     this.print('Test Foxx Apps after _appbundles then _apps restore');
-    this.results.testFoxxFoxxAppBundles = this.arangosh(file, {'server.database': database})
+    this.results.testFoxxFoxxAppBundles = this.arangosh(file, {'server.database': database});
     return this.validate(this.results.testFoxxAppBundles);
   }
 };
