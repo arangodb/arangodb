@@ -2481,6 +2481,9 @@ int ClusterInfo::ensureIndexCoordinator(
       errorCode = ensureIndexCoordinatorInner(
         databaseName, collectionID, idString, slice, create, resultBuilder,
         errorMsg, timeout);
+      // Note that this function sets the errorMsg unless it is precondition
+      // failed, in which case we retry, if this times out, we need to set
+      // it ourselves, otherwise all is done!
       
       if (errorCode == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
         auto diff = std::chrono::steady_clock::now() - start;
@@ -2489,25 +2492,30 @@ int ClusterInfo::ensureIndexCoordinator(
           std::this_thread::sleep_for(std::chrono::steady_clock::duration(wt));
           continue;
         }
+        errorCode 
+          = setErrorMsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN,
+                        errorMsg);
       }
       break;
     } while(true);
   } catch (basics::Exception const& ex) {
     errorCode = ex.code();
+    setErrormsg(errorCode, errorMsg);
+    errorMsg += ", exception: " + ex.what();
   } catch (...) {
     errorCode = TRI_ERROR_INTERNAL;
+    setErrormsg(errorCode, errorMsg);
   }
   
   // We get here in any case eventually, regardless of whether we have
   //   - succeeded with lookup or index creation
   //   - failed because of a timeout and rollback
   //   - some other error
-  // There is not a lot more to do except proper error reporting.
+  // There is nothing more to do here.
 
   if (!application_features::ApplicationServer::isStopping()) {
     loadPlan();
   }
-  setErrormsg(errorCode, errorMsg);
   return errorCode;
 }
 
@@ -2546,7 +2554,7 @@ int ClusterInfo::ensureIndexCoordinatorInner(
 
   AgencyCommResult previous = ac.getValues(planCollKey);
   if (!previous.successful()) {
-    return TRI_ERROR_CLUSTER_READING_PLAN_AGENCY;
+    return setErrorMsg(TRI_ERROR_CLUSTER_READING_PLAN_AGENCY, errorMsg);
   }
 
   velocypack::Slice collection = previous.slice()[0].get(
@@ -2634,7 +2642,6 @@ int ClusterInfo::ensureIndexCoordinatorInner(
 
     if (found == (size_t)numberOfShards) {
       dbServerResult->store(setErrormsg(TRI_ERROR_NO_ERROR, *errMsg), std::memory_order_release);
-      return true;
     }
     
     return true;
@@ -2712,7 +2719,7 @@ int ClusterInfo::ensureIndexCoordinatorInner(
       resultBuilder.add("isSmart", VPackValue(true));
     }
     loadCurrent();
-    return TRI_ERROR_NO_ERROR;
+    return setErrorMsg(TRI_ERROR_NO_ERROR, errorMsg);
   }
 
   {
@@ -2743,9 +2750,8 @@ int ClusterInfo::ensureIndexCoordinatorInner(
                  newIndexBuilder.slice()),
             AgencyOperation(
             "Plan/Version", AgencySimpleOperationType::INCREMENT_OP)}),
-          std::vector<AgencyPrecondition>(
-          { AgencyPrecondition oldValue(planCollKey,
-                           AgencyPrecondition::Type::EMPTY, false) });
+          AgencyPrecondition oldValue(planCollKey,
+                         AgencyPrecondition::Type::EMPTY, false) );
 
         sleepFor = 50;
         auto rollbackEndTime = steady_clock::now() + std::chrono::seconds(10);
