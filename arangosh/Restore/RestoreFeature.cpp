@@ -755,7 +755,7 @@ arangodb::Result processInputDirectory(
       return firstError;
     }
     
-    if (true || didModifyFoxxCollection) {
+    if (didModifyFoxxCollection) {
       // if we get here we need to trigger foxx heal
       Result res = ::triggerFoxxHeal(httpClient);
       if (res.fail()) {
