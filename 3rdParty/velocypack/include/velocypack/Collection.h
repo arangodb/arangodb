@@ -125,9 +125,8 @@ class Collection {
   
   static void keys(Slice const& slice, std::vector<std::string>& result) {
     // pre-allocate result vector
-    result.reserve(checkOverflow(slice.length()));
-
     ObjectIterator it(slice);
+    result.reserve(checkOverflow(it.size()));
 
     while (it.valid()) {
       result.emplace_back(it.key(true).copyString());
