@@ -166,9 +166,11 @@ if (USE_IRESEARCH)
   set(UNWIND_ROOT "invalid")
   set(BFD_ROOT "invalid")
 
-  set(IRESEARCH_PREGENERATED_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/iresearch.build/core/")
-  set(GENERATED_PARSER_SOURCES "${IRESEARCH_PREGENERATED_ROOT}/iql/parser.cc" CACHE PATH "use pregenerated source")
-  include_directories("${IRESEARCH_PREGENERATED_ROOT}")
+  set(IRESEARCH_PREGENERATED_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/iresearch.build/")
+  set(GENERATED_PARSER_SOURCES "${IRESEARCH_PREGENERATED_ROOT}/core/iql/parser.cc" CACHE PATH "use pregenerated source")
+  include_directories("${IRESEARCH_PREGENERATED_ROOT}/core/")
+  include_directories("${IRESEARCH_PREGENERATED_ROOT}/external/snowball/libstemmer/")
+  
   if(MSVC)
     set(USE_IQL OFF CACHE BOOL "Use IQL" FORCE) # skip IQL on MSVC until IResearch upstream is updated
   endif()
