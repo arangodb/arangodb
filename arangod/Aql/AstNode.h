@@ -71,7 +71,7 @@ enum AstNodeFlagType : AstNodeFlagsType {
   FLAG_BIND_PARAMETER =          0x0020000,  // node was created from a bind parameter
   FLAG_FINALIZED =               0x0040000,  // node has been finalized and should not be modified; only set and checked in maintainer mode
 };
-
+  
 /// @brief enumeration of AST node value types
 /// note: these types must be declared in asc. sort order
 enum AstNodeValueType : uint8_t {
@@ -93,15 +93,29 @@ static_assert(VALUE_TYPE_DOUBLE < VALUE_TYPE_STRING,
 
 /// @brief AST node value
 struct AstNodeValue {
-  union {
+  union Value {
     int64_t _int;
     double _double;
     bool _bool;
     char const* _string;
     void* _data;
-  } value;
+
+    // constructors for union values
+    explicit Value(int64_t value) : _int(value) {}
+    explicit Value(double value) : _double(value) {}
+    explicit Value(bool value) : _bool(value) {}
+    explicit Value(char const* value) : _string(value) {}
+  };
+  
+  Value value;
   uint32_t length;  // only used for string values
   AstNodeValueType type;
+  
+  AstNodeValue() : value(int64_t(0)), length(0), type(VALUE_TYPE_NULL) {}
+  explicit AstNodeValue(int64_t value) : value(value), length(0), type(VALUE_TYPE_INT) {}
+  explicit AstNodeValue(double value) : value(value), length(0), type(VALUE_TYPE_DOUBLE) {}
+  explicit AstNodeValue(bool value) : value(value), length(0), type(VALUE_TYPE_BOOL) {}
+  explicit AstNodeValue(char const* value, uint32_t length) : value(value), length(length), type(VALUE_TYPE_STRING) {}
 };
 
 /// @brief enumeration of AST node types
@@ -197,28 +211,29 @@ struct AstNode {
   static std::unordered_map<int, std::string const> const TypeNames;
   static std::unordered_map<int, std::string const> const ValueTypeNames;
 
+  /// @brief helper for building flags
+  template <typename... Args>
+  static inline std::underlying_type<AstNodeFlagType>::type makeFlags(AstNodeFlagType flag, Args... args) {
+    return static_cast<std::underlying_type<AstNodeFlagType>::type>(flag) + makeFlags(args...);
+  }
+    
+  static inline std::underlying_type<AstNodeFlagType>::type makeFlags() {
+    return static_cast<std::underlying_type<AstNodeFlagType>::type>(0);
+  }
+
   /// @brief create the node
   explicit AstNode(AstNodeType);
-
-  /// @brief create a node, with defining a value type
-  AstNode(AstNodeType, AstNodeValueType);
-
-  /// @brief create a boolean node, with defining a value type
-  AstNode(bool, AstNodeValueType);
-
-  /// @brief create a boolean node, with defining a value type
-  AstNode(int64_t, AstNodeValueType);
-
-  /// @brief create a string node, with defining a value type
-  AstNode(char const*, size_t, AstNodeValueType);
+  
+  /// @brief create a node, with defining a value
+  explicit AstNode(AstNodeValue value);
 
   /// @brief create the node from VPack
-  AstNode(Ast*, arangodb::velocypack::Slice const& slice);
+  explicit AstNode(Ast*, arangodb::velocypack::Slice const& slice);
 
   /// @brief create the node from VPack
-  AstNode(std::function<void(AstNode*)> registerNode,
-          std::function<char const*(std::string const&)> registerString,
-          arangodb::velocypack::Slice const& slice);
+  explicit AstNode(std::function<void(AstNode*)> const& registerNode,
+                   std::function<char const*(std::string const&)> registerString,
+                   arangodb::velocypack::Slice const& slice);
 
   /// @brief destroy the node
   ~AstNode();
@@ -313,6 +328,11 @@ struct AstNode {
   inline void setFlag(AstNodeFlagType typeFlag,
                       AstNodeFlagType valueFlag) const {
     flags |= (typeFlag | valueFlag);
+  }
+  
+  /// @brief remove a flag for the node
+  inline void removeFlag(AstNodeFlagType flag) const {
+    flags &= ~flag;
   }
 
   /// @brief whether or not the node value is trueish
@@ -524,7 +544,7 @@ struct AstNode {
     if (i >= members.size()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "member out of range");
     }
-    members.at(i) = node;
+    members[i] = node;
   }
 
   /// @brief remove a member from the node

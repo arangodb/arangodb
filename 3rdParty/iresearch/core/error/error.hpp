@@ -60,13 +60,19 @@ struct IRESEARCH_API error_base: std::exception {
 // -----------------------------------------------------------------------------
 //                                                           detailed_error_base
 // -----------------------------------------------------------------------------
-class IRESEARCH_API detailed_error_base: public error_base {
+class IRESEARCH_API detailed_error_base : public error_base {
  public:
-  explicit detailed_error_base(const char* error): error_(error) {}
+  explicit detailed_error_base(const char* error)
+    : error_(error) {
+  }
+
   explicit detailed_error_base(std::string&& error) NOEXCEPT
     : error_(std::move(error)) {
   }
-  virtual const char* what() const NOEXCEPT final { return error_.c_str(); }
+
+  virtual const char* what() const NOEXCEPT override final { 
+    return error_.c_str();
+  }
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN

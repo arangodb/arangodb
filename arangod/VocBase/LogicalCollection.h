@@ -89,7 +89,12 @@ class LogicalCollection : public LogicalDataSource {
   LogicalCollection& operator=(LogicalCollection const&) = delete;
   virtual ~LogicalCollection();
   
-  enum CollectionVersions { VERSION_30 = 5, VERSION_31 = 6, VERSION_33 = 7 };
+  enum CollectionVersions {
+    VERSION_30 = 5,
+    VERSION_31 = 6,
+    VERSION_33 = 7,
+    VERSION_34 = 8
+  };
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the category representing a logical collection
@@ -99,7 +104,7 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief hard-coded minimum version number for collections
   static constexpr uint32_t minimumVersion() { return VERSION_30; }
   /// @brief current version for collections
-  static constexpr uint32_t currentVersion() { return VERSION_33; }
+  static constexpr uint32_t currentVersion() { return VERSION_34; }
 
   // SECTION: Meta Information
   uint32_t version() const { return _version; }
@@ -141,7 +146,6 @@ class LogicalCollection : public LogicalDataSource {
 
   // SECTION: Properties
   TRI_voc_rid_t revision(transaction::Methods*) const;
-  bool isLocal() const;
   bool waitForSync() const;
   bool isSmart() const;
   bool isAStub() const { return _isAStub; }
@@ -216,7 +220,7 @@ class LogicalCollection : public LogicalDataSource {
   void unload();
 
   virtual arangodb::Result drop() override;
-  virtual Result rename(std::string&& name, bool doSync) override;
+  virtual Result rename(std::string&& name) override;
   virtual void setStatus(TRI_vocbase_col_status_e);
 
   // SECTION: Serialization
@@ -234,7 +238,11 @@ class LogicalCollection : public LogicalDataSource {
                                                bool allInSync) const;
 
   // Update this collection.
-  virtual arangodb::Result updateProperties(velocypack::Slice const&, bool);
+  using LogicalDataSource::properties;
+  virtual arangodb::Result properties(
+    velocypack::Slice const& slice,
+    bool partialUpdate
+  ) override;
 
   /// @brief return the figures for a collection
   virtual std::shared_ptr<velocypack::Builder> figures() const;
@@ -270,30 +278,42 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief processes a truncate operation
   Result truncate(transaction::Methods* trx, OperationOptions&);
 
-  Result insert(transaction::Methods*, velocypack::Slice const,
-                ManagedDocumentResult& result, OperationOptions&,
-                TRI_voc_tick_t&, bool lock, TRI_voc_tick_t& revisionId);
   // convenience function for downwards-compatibility
   Result insert(transaction::Methods* trx, velocypack::Slice const slice,
                 ManagedDocumentResult& result, OperationOptions& options,
                 TRI_voc_tick_t& resultMarkerTick, bool lock) {
     TRI_voc_tick_t unused;
-    return insert(trx, slice, result, options, resultMarkerTick, lock, unused);
+    return insert(trx, slice, result, options, resultMarkerTick, lock, unused,
+                  nullptr);
   }
 
-  Result update(transaction::Methods*, velocypack::Slice const,
+  /**
+  * @param callbackDuringLock Called immediately after a successful insert. If
+  * it returns a failure, the insert will be rolled back. If the insert wasn't
+  * successful, it isn't called. May be nullptr.
+  */
+  Result insert(transaction::Methods* trx, velocypack::Slice slice,
+                ManagedDocumentResult& result, OperationOptions& options,
+                TRI_voc_tick_t& resultMarkerTick, bool lock,
+                TRI_voc_tick_t& revisionId,
+                std::function<Result(void)> callbackDuringLock);
+
+  Result update(transaction::Methods*, velocypack::Slice,
                 ManagedDocumentResult& result, OperationOptions&,
-                TRI_voc_tick_t&, bool, TRI_voc_rid_t& prevRev,
-                ManagedDocumentResult& previous);
+                TRI_voc_tick_t&, bool lock, TRI_voc_rid_t& prevRev,
+                ManagedDocumentResult& previous,
+                std::function<Result(void)> callbackDuringLock);
 
-  Result replace(transaction::Methods*, velocypack::Slice const,
+  Result replace(transaction::Methods*, velocypack::Slice,
                  ManagedDocumentResult& result, OperationOptions&,
-                 TRI_voc_tick_t&, bool /*lock*/, TRI_voc_rid_t& prevRev,
-                 ManagedDocumentResult& previous);
+                 TRI_voc_tick_t&, bool lock, TRI_voc_rid_t& prevRev,
+                 ManagedDocumentResult& previous,
+                 std::function<Result(void)> callbackDuringLock);
 
-  Result remove(transaction::Methods*, velocypack::Slice const,
-                OperationOptions&, TRI_voc_tick_t&, bool,
-                TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous);
+  Result remove(transaction::Methods*, velocypack::Slice,
+                OperationOptions&, TRI_voc_tick_t&, bool lock,
+                TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
+                std::function<Result(void)> callbackDuringLock);
 
   bool readDocument(transaction::Methods* trx,
                     LocalDocumentId const& token,
@@ -341,10 +361,6 @@ class LogicalCollection : public LogicalDataSource {
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);
 
-  // SECTION: Indexes (local only)
-  // @brief create index with the given definition.
-  bool openIndex(velocypack::Slice const&, transaction::Methods*);
-
   void increaseInternalVersion();
 
   transaction::CountCache _countCache;
@@ -375,8 +391,6 @@ class LogicalCollection : public LogicalDataSource {
   bool _isSmart;
 
   // SECTION: Properties
-  bool _isLocal;
-
   bool _waitForSync;
 
   bool const _allowUserKeys;

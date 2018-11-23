@@ -39,20 +39,18 @@ var basePath = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-
 
 function foxxQueuesSuite () {
   var cn = "UnitTestsFoxx";
-  var collection = null;
   var qn = "FoxxCircus";
 
   return {
 
     setUp : function () {
       db._drop(cn);
-      collection = db._create(cn);
+      db._create(cn);
       queues.delete(qn);
     },
 
     tearDown : function () {
       db._drop(cn);
-      collection = null;
       queues.delete(qn);
     },
 
@@ -220,6 +218,29 @@ function foxxQueuesSuite () {
         }
       }
       assertNotEqual(3, db.UnitTestsFoxx.count());
+    },
+
+    testExecuteInfinitelyFailingJob : function () {
+      assertEqual(0, db.UnitTestsFoxx.count());
+      var queue = queues.create(qn);
+      var id = queue.push({
+        name: 'peng',
+        mount: '/_admin/aardvark',
+        maxFailures: -1
+      }, {}, { failure: function() {
+        require("internal").db.UnitTestsFoxx.insert({ failed: true }); 
+      }});
+
+      for (let tries = 0; tries < 60; tries++) {
+        var result = db.UnitTestsFoxx.count();
+        if (result < 2) {
+          internal.wait(0.5, false);
+          continue;
+        }
+        queue.delete(id);
+        break;
+      }
+      assertNotEqual(0, db.UnitTestsFoxx.count());
     }
 
   };

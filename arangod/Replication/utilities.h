@@ -147,7 +147,10 @@ struct BatchInfo {
   double updateTime{0};
 
   /// @brief send a "start batch" command
-  Result start(Connection& connection, ProgressInfo& progress);
+  /// @param patchCount try to patch count of this collection
+  ///        only effective with the incremental sync
+  Result start(Connection& connection, ProgressInfo& progress,
+               std::string const& patchCount = "");
 
   /// @brief send an "extend batch" command
   Result extend(Connection& connection, ProgressInfo& progress);

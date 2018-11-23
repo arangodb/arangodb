@@ -45,7 +45,9 @@ class BaseExpressionContext final : public QueryExpressionContext {
 
   ~BaseExpressionContext() {}
 
-  size_t numRegisters() const override;
+  size_t numRegisters() const override {
+    return _regs->size();
+  }
 
   AqlValue const& getRegisterValue(size_t i) const override;
 

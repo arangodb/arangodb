@@ -241,6 +241,8 @@ void V8ShellFeature::copyInstallationFiles() {
   
   LOG_TOPIC(DEBUG, Logger::V8) << "Copying JS installation files from '" << _startupDirectory << "' to '" << _copyDirectory << "'";
   int res = TRI_ERROR_NO_ERROR;
+        
+  _nodeModulesDirectory = _startupDirectory;
 
   if (FileUtils::exists(_copyDirectory)) {
     res = TRI_RemoveDirectory(_copyDirectory.c_str());
@@ -262,7 +264,7 @@ void V8ShellFeature::copyInstallationFiles() {
   std::string const versionAppendix = std::regex_replace(rest::Version::getServerVersion(), std::regex("-.*$"), "");
   std::string const nodeModulesPath = FileUtils::buildFilename("js", "node", "node_modules");
   std::string const nodeModulesPathVersioned = basics::FileUtils::buildFilename("js", versionAppendix, "node", "node_modules");
-  auto filter = [&nodeModulesPath, &nodeModulesPathVersioned, this](std::string const& filename) -> bool{
+  auto filter = [&nodeModulesPath, &nodeModulesPathVersioned](std::string const& filename) -> bool{
     if (filename.size() >= nodeModulesPath.size()) {
       std::string normalized = filename;
       FileUtils::normalizePath(normalized);
@@ -270,7 +272,6 @@ void V8ShellFeature::copyInstallationFiles() {
       if (normalized.substr(normalized.size() - nodeModulesPath.size(), nodeModulesPath.size()) == nodeModulesPath ||
           normalized.substr(normalized.size() - nodeModulesPathVersioned.size(), nodeModulesPathVersioned.size()) == nodeModulesPathVersioned) {
         // filter it out!
-        _nodeModulesDirectory = _startupDirectory;
         return true;
       }
     }

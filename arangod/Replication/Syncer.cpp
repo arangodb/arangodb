@@ -766,9 +766,9 @@ Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
       return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     }
 
-    auto* col = resolveCollection(*vocbase, slice).get();
+    auto col = resolveCollection(*vocbase, slice);
 
-    if (col == nullptr) {
+    if (!col) {
       return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
 
@@ -811,44 +811,53 @@ Result Syncer::createView(TRI_vocbase_t& vocbase,
   }
 
   VPackSlice nameSlice = slice.get(StaticStrings::DataSourceName);
+
   if (!nameSlice.isString() || nameSlice.getStringLength() == 0) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "no name specified for view");
   }
+
   VPackSlice guidSlice = slice.get(StaticStrings::DataSourceGuid);
+
   if (!guidSlice.isString() || guidSlice.getStringLength() == 0) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "no guid specified for view");
   }
+
   VPackSlice typeSlice = slice.get(StaticStrings::DataSourceType);
+
   if (!typeSlice.isString() || typeSlice.getStringLength() == 0) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "no type specified for view");
   }
 
   auto view = vocbase.lookupView(guidSlice.copyString());
+
   if (view) { // identical view already exists
     VPackSlice nameSlice = slice.get(StaticStrings::DataSourceName);
+
     if (nameSlice.isString() && !nameSlice.isEqualString(view->name())) {
-      auto res = vocbase.renameView(view->id(), nameSlice.copyString());
+      auto res = view->rename(nameSlice.copyString());
+
       if (!res.ok()) {
         return res;
       }
     }
 
-    bool doSync = DatabaseFeature::DATABASE->forceSyncProperties();
-    return view->updateProperties(slice, false, doSync);
+    return view->properties(slice, false); // always a full-update
   }
 
+  // check for name conflicts
   view = vocbase.lookupView(nameSlice.copyString());
   if (view) { // resolve name conflict by deleting existing
-    Result res = vocbase.dropView(view->id(), /*dropSytem*/false);
+    Result res = view->drop();
     if (res.fail()) {
       return res;
     }
   }
 
   VPackBuilder s;
+
   s.openObject();
   s.add("id", VPackSlice::nullSlice());
   s.close();
@@ -858,7 +867,8 @@ Result Syncer::createView(TRI_vocbase_t& vocbase,
                          /*nullMeansRemove*/ true);
 
   try {
-    vocbase.createView(merged.slice());
+    LogicalView::ptr view; // ignore result
+    return LogicalView::create(view, vocbase, merged.slice());
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
@@ -866,8 +876,6 @@ Result Syncer::createView(TRI_vocbase_t& vocbase,
   } catch (...) {
     return Result(TRI_ERROR_INTERNAL);
   }
-
-  return Result();
 }
 
 /// @brief drops a view, based on the VelocyPack provided
@@ -888,9 +896,10 @@ Result Syncer::dropView(arangodb::velocypack::Slice const& slice,
   }
 
   try {
+    TRI_ASSERT(!ServerState::instance()->isCoordinator());
     auto view = vocbase->lookupView(guidSlice.copyString());
-    if (view != nullptr) { // ignore non-existing
-      return vocbase->dropView(view->id(), false);
+    if (view) { // prevent dropping of system views ?
+      return view->drop();
     }
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());

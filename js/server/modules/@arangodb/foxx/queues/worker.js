@@ -89,12 +89,12 @@ function getBackOffDelay(job) {
 
 exports.work = function (job) {
   var maxFailures = (
-  typeof job.maxFailures === 'number' || job.maxFailures === false
+    typeof job.maxFailures === 'number'
     ? job.maxFailures
     : (
-    typeof job.type.maxFailures === 'number' || job.type.maxFailures === false
+      typeof job.type.maxFailures === 'number'
       ? job.type.maxFailures
-      : false
+      : 0
     )
   );
 
@@ -150,7 +150,7 @@ exports.work = function (job) {
         callback = job.success;
         data.status = 'complete';
         data.runs += 1;
-      } else if (maxFailures === false || job.runFailures > maxFailures) {
+      } else if (maxFailures !== -1 && job.runFailures > maxFailures) {
         // mark failed
         callback = job.failure;
         data.status = 'failed';

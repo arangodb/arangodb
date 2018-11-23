@@ -77,7 +77,7 @@ void CollectionAccessingNode::toVelocyPack(arangodb::velocypack::Builder& builde
   builder.add("satellite", VPackValue(_collection->isSatellite()));
   
   if (ServerState::instance()->isCoordinator()) {
-    builder.add("numberOfShards", VPackValue(_collection->numberOfShards()));
+    builder.add(StaticStrings::NumberOfShards, VPackValue(_collection->numberOfShards()));
   }
   
   if (!_restrictedTo.empty()) {

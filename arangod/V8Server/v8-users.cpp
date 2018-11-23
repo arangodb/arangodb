@@ -610,10 +610,10 @@ void TRI_InitV8Users(v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase,
   v8::Handle<v8::FunctionTemplate> ft;
 
   ft = v8::FunctionTemplate::New(isolate);
-  ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoUsers"));
+  ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoUsersCtor"));
 
   rt = ft->InstanceTemplate();
-  rt->SetInternalFieldCount(2);
+  rt->SetInternalFieldCount(0);
 
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "save"), JS_SaveUser);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "replace"),
@@ -646,14 +646,13 @@ void TRI_InitV8Users(v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase,
                        JS_AuthIsActive);
 
   v8g->UsersTempl.Reset(isolate, rt);
-  ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoUsersCtor"));
+  //ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoUsersCtor"));
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "ArangoUsersCtor"),
                                ft->GetFunction(), true);
 
   // register the global object
   v8::Handle<v8::Object> aa = rt->NewInstance();
   if (!aa.IsEmpty()) {
-    TRI_AddGlobalVariableVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "ArangoUsers"),
-                                 aa);
+    TRI_AddGlobalVariableVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "ArangoUsers"), aa);
   }
 }

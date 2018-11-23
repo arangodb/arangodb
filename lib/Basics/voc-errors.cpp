@@ -181,6 +181,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_CLUSTER_NOT_LEADER, "not a leader");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN, "could not create view in plan");
   REG_ERROR(ERROR_CLUSTER_VIEW_ID_EXISTS, "view ID already exists");
+  REG_ERROR(ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION, "could not drop collection in plan");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "%s");
   REG_ERROR(ERROR_QUERY_EMPTY, "query is empty");
@@ -191,7 +192,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_QUERY_VARIABLE_REDECLARED, "variable '%s' is assigned multiple times");
   REG_ERROR(ERROR_QUERY_VARIABLE_NAME_UNKNOWN, "unknown variable '%s'");
   REG_ERROR(ERROR_QUERY_COLLECTION_LOCK_FAILED, "unable to read-lock collection %s");
-  REG_ERROR(ERROR_QUERY_TOO_MANY_COLLECTIONS, "too many collections");
+  REG_ERROR(ERROR_QUERY_TOO_MANY_COLLECTIONS, "too many collections/shards");
   REG_ERROR(ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED, "document attribute '%s' is assigned multiple times");
   REG_ERROR(ERROR_QUERY_FUNCTION_NAME_UNKNOWN, "usage of unknown function '%s()'");
   REG_ERROR(ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "invalid number of arguments for function '%s()', expected number of arguments: minimum: %d, maximum: %d");
@@ -268,7 +269,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS, "edge collection already used in edge def");
   REG_ERROR(ERROR_GRAPH_CREATE_MISSING_NAME, "missing graph name");
   REG_ERROR(ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION, "malformed edge definition");
-  REG_ERROR(ERROR_GRAPH_NOT_FOUND, "graph not found");
+  REG_ERROR(ERROR_GRAPH_NOT_FOUND, "graph '%s' not found");
   REG_ERROR(ERROR_GRAPH_DUPLICATE, "graph already exists");
   REG_ERROR(ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST, "vertex collection does not exist or is not part of the graph");
   REG_ERROR(ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX, "not a vertex collection");

@@ -123,7 +123,43 @@ class noop_directory : public irs::directory {
 
  private:
   noop_directory() NOEXCEPT { }
-};
+}; // noop_directory
+
+class progress_tracker {
+ public:
+  explicit progress_tracker(
+      const irs::merge_writer::flush_progress_t& progress,
+      size_t count
+  ) NOEXCEPT
+    : progress_(&progress),
+      count_(count) {
+    assert(progress);
+  }
+
+  bool operator()() {
+    if (hits_++ >= count_) {
+      hits_ = 0;
+      valid_ = (*progress_)();
+    }
+
+    return valid_;
+  }
+
+  explicit operator bool() const NOEXCEPT {
+    return valid_;
+  }
+
+  void reset() NOEXCEPT {
+    hits_ = 0;
+    valid_ = true;
+  }
+
+ private:
+  const irs::merge_writer::flush_progress_t* progress_;
+  const size_t count_; // call progress callback each `count_` hits
+  size_t hits_{ 0 }; // current number of hits
+  bool valid_{ true };
+}; // progress_tracker
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class compound_attributes
@@ -198,10 +234,22 @@ class compound_attributes: public irs::attribute_view {
 /// @brief iterator over doc_ids for a term over all readers
 //////////////////////////////////////////////////////////////////////////////
 struct compound_doc_iterator : public irs::doc_iterator {
+  static CONSTEXPR const size_t PROGRESS_STEP_DOCS = size_t(1) << 14;
+
+  explicit compound_doc_iterator(
+      const irs::merge_writer::flush_progress_t& progress
+  ) NOEXCEPT
+    : progress_(progress, PROGRESS_STEP_DOCS) {
+  }
+
   void reset() NOEXCEPT {
     iterators.clear();
     current_id = irs::type_limits<irs::type_t::doc_id_t>::invalid();
     current_itr = 0;
+  }
+
+  bool aborted() const NOEXCEPT {
+    return !static_cast<bool>(progress_);
   }
 
   void add(irs::doc_iterator::ptr&& postings, const doc_map_f& doc_map) {
@@ -235,9 +283,18 @@ struct compound_doc_iterator : public irs::doc_iterator {
   std::vector<doc_iterator_t> iterators;
   irs::doc_id_t current_id{ irs::type_limits<irs::type_t::doc_id_t>::invalid() };
   size_t current_itr{ 0 };
+  progress_tracker progress_;
 }; // compound_doc_iterator
 
 bool compound_doc_iterator::next() {
+  progress_();
+
+  if (aborted()) {
+    current_id = irs::type_limits<irs::type_t::doc_id_t>::eof();
+    iterators.clear();
+    return false;
+  }
+
   for (
     bool update_attributes = false;
     current_itr < iterators.size();
@@ -385,7 +442,16 @@ class compound_iterator {
 //////////////////////////////////////////////////////////////////////////////
 class compound_term_iterator : public irs::term_iterator {
  public:
-  compound_term_iterator() = default;
+  static CONSTEXPR const size_t PROGRESS_STEP_TERMS = size_t(1) << 7;
+
+  explicit compound_term_iterator(const irs::merge_writer::flush_progress_t& progress)
+    : doc_itr_(progress),
+      progress_(progress, PROGRESS_STEP_TERMS) {
+  }
+
+  bool aborted() const {
+    return !static_cast<bool>(progress_) || doc_itr_.aborted();
+  }
 
   void reset(const irs::field_meta& meta) NOEXCEPT {
     meta_ = &meta;
@@ -442,6 +508,7 @@ class compound_term_iterator : public irs::term_iterator {
   std::vector<size_t> term_iterator_mask_; // valid iterators for current term
   std::vector<term_iterator_t> term_iterators_; // all term iterators
   mutable compound_doc_iterator doc_itr_;
+  progress_tracker progress_;
 }; // compound_term_iterator
 
 void compound_term_iterator::add(
@@ -452,6 +519,14 @@ void compound_term_iterator::add(
 }
 
 bool compound_term_iterator::next() {
+  progress_();
+
+  if (aborted()) {
+    term_iterators_.clear();
+    term_iterator_mask_.clear();
+    return false;
+  }
+
   // advance all used iterators
   for (auto& itr_id: term_iterator_mask_) {
     auto& it = term_iterators_[itr_id].first;
@@ -507,6 +582,13 @@ irs::doc_iterator::ptr compound_term_iterator::postings(const irs::flags& /*feat
 //////////////////////////////////////////////////////////////////////////////
 class compound_field_iterator : public irs::basic_term_reader {
  public:
+  static CONSTEXPR const size_t PROGRESS_STEP_FIELDS = size_t(1);
+
+  explicit compound_field_iterator(const irs::merge_writer::flush_progress_t& progress)
+    : term_itr_(progress),
+      progress_(progress, PROGRESS_STEP_FIELDS) {
+  }
+
   void add(const irs::sub_reader& reader, const doc_map_f& doc_id_map);
   bool next();
   size_t size() const { return field_iterators_.size(); }
@@ -542,6 +624,10 @@ class compound_field_iterator : public irs::basic_term_reader {
 
   virtual irs::term_iterator::ptr iterator() const override;
 
+  bool aborted() const {
+    return !static_cast<bool>(progress_) || term_itr_.aborted();
+  }
+
  private:
   struct field_iterator_t {
     field_iterator_t(
@@ -567,6 +653,7 @@ class compound_field_iterator : public irs::basic_term_reader {
     const irs::field_meta* meta;
     const irs::term_reader* reader;
   };
+
   irs::string_ref current_field_;
   const irs::field_meta* current_meta_{ &irs::field_meta::EMPTY };
   const irs::bytes_ref* min_{ &irs::bytes_ref::NIL };
@@ -574,6 +661,7 @@ class compound_field_iterator : public irs::basic_term_reader {
   std::vector<term_iterator_t> field_iterator_mask_; // valid iterators for current field
   std::vector<field_iterator_t> field_iterators_; // all segment iterators
   mutable compound_term_iterator term_itr_;
+  progress_tracker progress_;
 }; // compound_field_iterator
 
 typedef compound_iterator<irs::column_iterator::ptr> compound_column_iterator_t;
@@ -595,6 +683,16 @@ void compound_field_iterator::add(
 }
 
 bool compound_field_iterator::next() {
+  progress_();
+
+  if (aborted()) {
+    field_iterators_.clear();
+    field_iterator_mask_.clear();
+    current_field_ = irs::string_ref::NIL;
+    max_ = min_ = &irs::bytes_ref::NIL;
+    return false;
+  }
+
   // advance all used iterators
   for (auto& entry : field_iterator_mask_) {
     auto& it = field_iterators_[entry.itr_id];
@@ -693,7 +791,13 @@ bool compute_field_meta(
 //////////////////////////////////////////////////////////////////////////////
 class columnstore {
  public:
-  columnstore(irs::directory& dir, const irs::segment_meta& meta) {
+  static CONSTEXPR const size_t PROGRESS_STEP_COLUMN = size_t(1) << 13;
+
+  columnstore(
+      irs::directory& dir,
+      const irs::segment_meta& meta,
+      const irs::merge_writer::flush_progress_t& progress
+  ) : progress_(progress, PROGRESS_STEP_COLUMN) {
     auto writer = meta.codec->get_columnstore_writer();
 
     if (!writer->prepare(dir, meta)) {
@@ -707,7 +811,8 @@ class columnstore {
   bool insert(
       const irs::sub_reader& reader,
       irs::field_id column,
-      const doc_map_f& doc_map) {
+      const doc_map_f& doc_map
+  ) {
     const auto* column_reader = reader.column_reader(column);
 
     if (!column_reader) {
@@ -717,6 +822,11 @@ class columnstore {
 
     return column_reader->visit(
       [this, &doc_map](irs::doc_id_t doc, const irs::bytes_ref& in) {
+        if (!progress_()) {
+          // stop was requsted
+          return false;
+        }
+
         const auto mapped_doc = doc_map(doc);
         if (irs::type_limits<irs::type_t::doc_id_t>::eof(mapped_doc)) {
           // skip deleted document
@@ -753,6 +863,7 @@ class columnstore {
   irs::field_id id() const { return column_.first; }
 
  private:
+  progress_tracker progress_;
   irs::columnstore_writer::ptr writer_;
   irs::columnstore_writer::column_t column_{};
   bool empty_{ false };
@@ -769,11 +880,11 @@ bool write_columns(
   assert(cs);
   assert(progress);
 
-  auto visitor = [&cs, &progress](
+  auto visitor = [&cs](
       const irs::sub_reader& segment,
       const doc_map_f& doc_map,
       const irs::column_meta& column) {
-    return progress() && cs.insert(segment, column.id, doc_map);
+    return cs.insert(segment, column.id, doc_map);
   };
 
   auto cmw = meta.codec->get_column_meta_writer();
@@ -815,7 +926,6 @@ bool write_fields(
 ) {
   REGISTER_TIMER_DETAILED();
   assert(cs);
-  assert(progress);
 
   irs::flush_state flush_state;
   flush_state.dir = &dir;
@@ -828,13 +938,13 @@ bool write_fields(
   auto fw = meta.codec->get_field_writer(true);
   fw->prepare(flush_state);
 
-  auto merge_norms = [&cs, &progress] (
+  auto merge_norms = [&cs] (
       const irs::sub_reader& segment,
       const doc_map_f& doc_map,
       const irs::field_meta& field) {
     // merge field norms if present
     if (irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)
-        && (!progress() || !cs.insert(segment, field.norm, doc_map))) {
+        && !cs.insert(segment, field.norm, doc_map)) {
       return false;
     }
 
@@ -867,7 +977,7 @@ bool write_fields(
 
   fw.reset();
 
-  return true;
+  return !field_itr.aborted();
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -931,10 +1041,30 @@ bool merge_writer::flush(
 ) {
   REGISTER_TIMER_DETAILED();
 
+  bool result = false; // overall flush result
+
+  auto segment_invalidator = irs::make_finally([&result, &segment]() NOEXCEPT {
+    if (result) {
+      // all good
+      return;
+    }
+
+    // invalidate segment
+    segment.filename.clear();
+    auto& meta = segment.meta;
+    meta.name.clear();
+    meta.files.clear();
+    meta.column_store = false;
+    meta.docs_count = 0;
+    meta.live_docs_count = 0;
+    meta.size = 0;
+    meta.version = 0;
+  });
+
   static const flush_progress_t progress_noop = []()->bool { return true; };
   auto& progress_callback = progress ? progress : progress_noop;
   std::unordered_map<irs::string_ref, const irs::field_meta*> field_metas;
-  compound_field_iterator fields_itr;
+  compound_field_iterator fields_itr(progress_callback);
   compound_column_iterator_t columns_itr;
   irs::flags fields_features;
   doc_id_t base_id = type_limits<type_t::doc_id_t>::min(); // next valid doc_id
@@ -986,7 +1116,7 @@ bool merge_writer::flush(
   //...........................................................................
   REGISTER_TIMER_DETAILED();
   tracking_directory track_dir(dir_); // track writer created files
-  columnstore cs(track_dir, segment.meta);
+  columnstore cs(track_dir, segment.meta, progress_callback);
 
   if (!cs) {
     return false; // flush failure
@@ -1001,16 +1131,20 @@ bool merge_writer::flush(
     return false; // flush failure
   }
 
+  if (!progress_callback()) {
+    return false; // progress callback requested termination
+  }
+
   // write field meta and field term data
   if (!write_fields(cs, track_dir, segment.meta, fields_itr, field_metas, fields_features, progress_callback)) {
     return false; // flush failure
   }
 
-  segment.meta.column_store = cs.flush();
-
   if (!progress_callback()) {
     return false; // progress callback requested termination
   }
+
+  segment.meta.column_store = cs.flush();
 
   // ...........................................................................
   // write segment meta
@@ -1020,7 +1154,7 @@ bool merge_writer::flush(
     return false;
   }
 
-  return true;
+  return (result = true);
 }
 
 NS_END // ROOT

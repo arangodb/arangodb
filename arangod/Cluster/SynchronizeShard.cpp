@@ -163,7 +163,7 @@ static arangodb::Result getReadLockId (
   auto result = comres->result;
 
   if (result != nullptr && result->getHttpReturnCode() == 200) {
-    auto const idv = comres->result->getBodyVelocyPack();
+    auto const idv = result->getBodyVelocyPack();
     auto const& idSlice = idv->slice();
     TRI_ASSERT(idSlice.isObject());
     TRI_ASSERT(idSlice.hasKey(ID));
@@ -175,7 +175,11 @@ static arangodb::Result getReadLockId (
       return arangodb::Result(TRI_ERROR_INTERNAL, error);
     }
   } else {
-    error += result->getHttpReturnMessage();
+    if (result) {
+      error.append(result->getHttpReturnMessage());
+    } else {
+      error.append(comres->stringifyErrorMessage());
+    }
     return arangodb::Result(TRI_ERROR_INTERNAL, error);
   }
 
@@ -444,7 +448,7 @@ arangodb::Result SynchronizeShard::getReadLock(
     auto r = cc->syncRequest(
       TRI_NewTickServer(), endpoint, rest::RequestType::DELETE_REQ, url, body.toJson(),
       std::unordered_map<std::string, std::string>(), timeout);
-    if (r->result == nullptr && r->result->getHttpReturnCode() != 200) {
+    if (r->result == nullptr || r->result->getHttpReturnCode() != 200) {
       LOG_TOPIC(ERR, Logger::MAINTENANCE)
         << "startReadLockOnLeader: cancelation error for shard - " << collection
         << " " << r->getErrorCode() << ": " << r->stringifyErrorMessage();
@@ -687,10 +691,8 @@ bool SynchronizeShard::first() {
       return false;
     }
 
-    std::shared_ptr<LogicalCollection> ci;
-    try {   // ci->getCollection can throw
-      ci = clusterInfo->getCollection(database, planId);
-    } catch(...) {
+    auto ci = clusterInfo->getCollectionNT(database, planId);
+    if (ci == nullptr) {
       std::stringstream msg;
       msg << "exception in getCollection, ";
       AppendShardInformationToMessage(database, shard, planId, startTime, msg);
@@ -698,7 +700,6 @@ bool SynchronizeShard::first() {
       _result.reset(TRI_ERROR_FAILED, msg.str());
       return false;
     }
-    TRI_ASSERT(ci != nullptr);
 
     std::string const cid = std::to_string(ci->id());
     std::shared_ptr<CollectionInfoCurrent> cic =
@@ -810,7 +811,7 @@ bool SynchronizeShard::first() {
       VPackBuilder config;
       { VPackObjectBuilder o(&config);
         config.add(ENDPOINT, VPackValue(ep));
-        config.add(INCREMENTAL, VPackValue(true));
+        config.add(INCREMENTAL, VPackValue(docCount > 0)); // use dump if possible
         config.add(KEEP_BARRIER, VPackValue(true));
         config.add(LEADER_ID, VPackValue(leader));
         config.add(SKIP_CREATE_DROP, VPackValue(true));

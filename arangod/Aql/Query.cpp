@@ -385,6 +385,10 @@ void Query::prepare(QueryRegistry* registry) {
 
       int res = trx->addCollections(*_collections.collections());
 
+      if(!trx->transactionContextPtr()->getParentTransaction()) {
+        trx->addHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
+      }
+
       if (res == TRI_ERROR_NO_ERROR) {
         res = _trx->begin();
       }
@@ -461,8 +465,8 @@ ExecutionPlan* Query::preparePlan() {
 
   if (!_queryString.empty()) {
     Parser parser(this);
+    parser.parse();
 
-    parser.parse(false);
     // put in bind parameters
     parser.ast()->injectBindParameters(_bindParameters, ctx->resolver());
   }
@@ -488,6 +492,10 @@ ExecutionPlan* Query::preparePlan() {
   // create the transaction object, but do not start it yet
   _trx = trx.get();
 
+  if(!trx->transactionContextPtr()->getParentTransaction()){
+    trx->addHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
+  }
+
   // As soon as we start to instantiate the plan we have to clean it
   // up before killing the unique_ptr
   if (!_queryString.empty()) {
@@ -506,7 +514,7 @@ ExecutionPlan* Query::preparePlan() {
     }
 
     enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
-    plan.reset(ExecutionPlan::instantiateFromAst(_ast.get()));
+    plan = ExecutionPlan::instantiateFromAst(_ast.get());
 
     if (plan == nullptr) {
       // oops
@@ -517,9 +525,9 @@ ExecutionPlan* Query::preparePlan() {
     enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
     arangodb::aql::Optimizer opt(_queryOptions.maxNumberOfPlans);
     // get enabled/disabled rules
-    opt.createPlans(plan.release(), _queryOptions, false);
+    opt.createPlans(std::move(plan), _queryOptions, false);
     // Now plan and all derived plans belong to the optimizer
-    plan.reset(opt.stealBest());  // Now we own the best one again
+    plan = opt.stealBest();  // Now we own the best one again
   } else {  // no queryString, we are instantiating from _queryBuilder
     VPackSlice const querySlice = _queryBuilder->slice();
     ExecutionPlan::getCollectionsFromVelocyPack(_ast.get(), querySlice);
@@ -1004,7 +1012,7 @@ QueryResult Query::parse() {
   try {
     init();
     Parser parser(this);
-    return parser.parse(true);
+    return parser.parseWithDetails();
   } catch (arangodb::basics::Exception const& ex) {
     return QueryResult(ex.code(), ex.message());
   } catch (std::bad_alloc const&) {
@@ -1028,8 +1036,7 @@ QueryResult Query::explain() {
 
     auto ctx = createTransactionContext();
     Parser parser(this);
-
-    parser.parse(true);
+    parser.parse();
 
     // put in bind parameters
     parser.ast()->injectBindParameters(_bindParameters, ctx->resolver());
@@ -1057,7 +1064,7 @@ QueryResult Query::explain() {
 
 
     enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
-    ExecutionPlan* plan = ExecutionPlan::instantiateFromAst(parser.ast());
+    std::unique_ptr<ExecutionPlan> plan = ExecutionPlan::instantiateFromAst(parser.ast());
 
     if (plan == nullptr) {
       // oops
@@ -1068,7 +1075,7 @@ QueryResult Query::explain() {
     enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
     arangodb::aql::Optimizer opt(_queryOptions.maxNumberOfPlans);
     // get enabled/disabled rules
-    opt.createPlans(plan, _queryOptions, true);
+    opt.createPlans(std::move(plan), _queryOptions, true);
 
     enterState(QueryExecutionState::ValueType::FINALIZATION);
 
@@ -1079,21 +1086,21 @@ QueryResult Query::explain() {
       {
         VPackArrayBuilder guard(result.result.get());
 
-        auto plans = opt.getPlans();
+        auto const& plans = opt.getPlans();
         for (auto& it : plans) {
-          TRI_ASSERT(it != nullptr);
+          auto& plan = it.first;
+          TRI_ASSERT(plan != nullptr);
 
-          it->findVarUsage();
-          it->planRegisters();
-          it->toVelocyPack(*result.result.get(), parser.ast(), _queryOptions.verbosePlans);
+          plan->findVarUsage();
+          plan->planRegisters();
+          plan->toVelocyPack(*result.result.get(), parser.ast(), _queryOptions.verbosePlans);
         }
       }
       // cacheability not available here
       result.cached = false;
     } else {
       // Now plan and all derived plans belong to the optimizer
-      std::unique_ptr<ExecutionPlan> bestPlan(
-          opt.stealBest());  // Now we own the best one again
+      std::unique_ptr<ExecutionPlan> bestPlan = opt.stealBest();  // Now we own the best one again
       TRI_ASSERT(bestPlan != nullptr);
 
       bestPlan->findVarUsage();

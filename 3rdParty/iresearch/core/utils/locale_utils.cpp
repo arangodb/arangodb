@@ -3201,7 +3201,7 @@ template<typename T>
       *out++ = '+';
       ++size;
 
-      for (size_t i = ipad < len ? 0 : ipad - len; i; --i) {
+      for (size_t j = ipad < len ? 0 : ipad - len; j; --j) {
         *out++ = fill;
         ++len; // subtract from 'ipad'
         ++size;
@@ -3215,7 +3215,7 @@ template<typename T>
       size += 2;
     }
 
-    for (size_t i = ipad < len ? 0 : ipad - len; i; --i) {
+    for (size_t j = ipad < len ? 0 : ipad - len; j; --j) {
       *out++ = fill;
       ++size;
     }
@@ -3671,7 +3671,7 @@ NS_BEGIN( locale_utils )
   ) {
     return std::use_facet<std::codecvt<char32_t, char, mbstate_t>>(locale);
   }
-#elif defined(_MSC_VER) && _MSC_VER <= 1915 // MSVC2015/MSVC2017
+#elif defined(_MSC_VER) && _MSC_VER <= 1916 // MSVC2015/MSVC2017
   // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
   // due to a missing export, as per their comment:
   //   This is an active bug in our database (VSO#143857), which we'll investigate

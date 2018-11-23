@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused: false */
-/* global assertEqual, assertTrue, assertFalse, assertNull, assertNotNull, arango, ARGUMENTS */
+/* global fail, assertEqual, assertTrue, assertFalse, assertNull, assertNotNull, arango, ARGUMENTS */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test the replication
@@ -151,6 +151,7 @@ const compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFi
     internal.wait(0.5, false);
   }
 
+  internal.wait(1.0, false);
   db._flushCache();
   slaveFuncFinal(state);
 };
@@ -459,8 +460,13 @@ function BaseTestConfig () {
         },
 
         function (state) {
-          assertEqual(db._collection(cn).count(), 0);
-          assertEqual(db._collection(cn).all().toArray().length, 0);
+          const c = db._collection(cn);
+          let x = 10;
+          while (c.count() > 0 && x-- > 0) {
+            internal.sleep(1);
+          }
+          assertEqual(c.count(), 0);
+          assertEqual(c.all().toArray().length, 0);
         }
       );
     },
@@ -938,7 +944,13 @@ function BaseTestConfig () {
           }
 
           let view = db._view('UnitTestsSyncView');
-          assertTrue(view === null);
+          let x = 10;
+          while (view && x-- > 0) {
+            internal.sleep(1);
+            db._flushCache();
+            view = db._view('UnitTestsSyncView');
+          }
+          assertNull(view);
         },
         {}
       );
@@ -1316,14 +1328,7 @@ function ReplicationOtherDBSuite () {
       // The DB should be gone and the server should be running.
       let dbs = db._databases();
       assertEqual(-1, dbs.indexOf(dbName));
-
-      // Now recreate a new database with this name
-      db._createDatabase(dbName);
-      db._useDatabase(dbName);
-
-      db._create(cn);
-      db._collection(cn).save(docs);
-
+      
       const lastLogTick = replication.logger.state().state.lastLogTick;
 
       // Section - Slave
@@ -1345,9 +1350,17 @@ function ReplicationOtherDBSuite () {
         internal.sleep(0.5);
       }
 
-      // Now test if the Slave did replicate the new database directly...
-      assertEqual(50, collectionCount(cn),
-                  'The slave inserted the new collection data into the old one, it skipped the drop.');
+      i = 60;
+      while (i-- > 0) {
+        let state = replication.applier.state();
+        if (!state.running) {
+          // all good
+          return;
+        }
+        internal.sleep(0.5);
+      }
+
+      fail();
     }
   };
   deriveTestSuite(BaseTestConfig(), suite, '_ReplOther');

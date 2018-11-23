@@ -283,8 +283,7 @@ Result GlobalInitialSyncer::updateServerInventory(
 
       for (auto const& coll : VPackArrayIterator(collections)) {
         if (!coll.isObject() || !coll.hasKey("parameters")) {
-          // somehow invalid
-          continue;
+          continue; // somehow invalid
         }
 
         VPackSlice const params = coll.get("parameters");
@@ -306,13 +305,9 @@ Result GlobalInitialSyncer::updateServerInventory(
               // collection should surive
               return;
             }
-
-            if (collection->system()) {
-              // we will not drop system collections here
-              return;
+            if (!collection->system()) { // we will not drop system collections here
+              toDrop.emplace_back(collection);
             }
-
-            toDrop.emplace_back(collection);
           },
           false);
 

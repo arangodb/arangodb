@@ -57,6 +57,8 @@ void RocksDBBackgroundThread::run() {
     if (_engine->inRecovery()) {
       continue;
     }
+    
+    TRI_IF_FAILURE("RocksDBBackgroundThread::run") { continue; }
 
     try {
       if (!isStopping()) {

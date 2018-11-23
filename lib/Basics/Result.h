@@ -149,13 +149,23 @@ class Result {
    * @brief  Get error message
    * @return Our error message
    */
-  virtual std::string errorMessage() const&;
+  std::string errorMessage() const&;
 
   /**
    * @brief  Get error message
    * @return Our error message
    */
-  virtual std::string errorMessage() &&;
+  std::string errorMessage() &&;
+  
+  template<typename S>
+  void resetErrorMessage(S&& msg) {
+    _errorMessage.assign(std::forward<S>(msg));
+  }
+  
+  template<typename S>
+  void appendErrorMessage(S&& msg) {
+    _errorMessage.append(std::forward<S>(msg));
+  }
 
  private:
   int _errorNumber;

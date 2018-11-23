@@ -48,6 +48,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <v8.h>
@@ -382,12 +383,12 @@ void Expression::buildExpression(transaction::Methods* trx) {
 AqlValue Expression::executeSimpleExpression(
     AstNode const* node, transaction::Methods* trx,
     bool& mustDestroy, bool doCopy) {
-
+      
   switch (node->type) {
     case NODE_TYPE_ATTRIBUTE_ACCESS:
-      return executeSimpleExpressionAttributeAccess(node, trx, mustDestroy);
+      return executeSimpleExpressionAttributeAccess(node, trx, mustDestroy, doCopy);
     case NODE_TYPE_INDEXED_ACCESS:
-      return executeSimpleExpressionIndexedAccess(node, trx, mustDestroy);
+      return executeSimpleExpressionIndexedAccess(node, trx, mustDestroy, doCopy);
     case NODE_TYPE_ARRAY:
       return executeSimpleExpressionArray(node, trx, mustDestroy);
     case NODE_TYPE_OBJECT:
@@ -489,7 +490,7 @@ void Expression::stringifyIfNotTooLong(
 /// always creates a copy
 AqlValue Expression::executeSimpleExpressionAttributeAccess(
     AstNode const* node, transaction::Methods* trx,
-    bool& mustDestroy) {
+    bool& mustDestroy, bool doCopy) {
   // object lookup, e.g. users.name
   TRI_ASSERT(node->numMembers() == 1);
 
@@ -500,13 +501,13 @@ AqlValue Expression::executeSimpleExpressionAttributeAccess(
   AqlValue result = executeSimpleExpression(member, trx, localMustDestroy, false);
   AqlValueGuard guard(result, localMustDestroy);
 
-  return result.get(trx, std::string(name, node->getStringLength()), mustDestroy, true);
+  return result.get(trx, arangodb::velocypack::StringRef(name, node->getStringLength()), mustDestroy, true);
 }
 
 /// @brief execute an expression of type SIMPLE with INDEXED ACCESS
 AqlValue Expression::executeSimpleExpressionIndexedAccess(
     AstNode const* node, transaction::Methods* trx,
-    bool& mustDestroy) {
+    bool& mustDestroy, bool doCopy) {
   // array lookup, e.g. users[0]
   // note: it depends on the type of the value whether an array lookup or an
   // object lookup is performed
@@ -564,8 +565,7 @@ AqlValue Expression::executeSimpleExpressionIndexedAccess(
     }
 
     if (indexResult.isString()) {
-      std::string const indexString = indexResult.slice().copyString();
-      return result.get(trx, indexString, mustDestroy, true);
+      return result.get(trx, arangodb::velocypack::StringRef(indexResult.slice()), mustDestroy, true);
     }
 
     // fall-through to returning null
@@ -656,14 +656,10 @@ AqlValue Expression::executeSimpleExpressionObject(
         std::string key(buffer->begin(), buffer->length());
 
         // note each individual object key name with latest value position
-        auto it = uniqueKeyValues.find(key);
-
-        if (it == uniqueKeyValues.end()) {
-          // unique key
-          uniqueKeyValues.emplace(std::move(key), i);
-        } else {
+        auto it = uniqueKeyValues.insert({std::move(key), i});
+        if (!it.second) {
           // duplicate key
-          (*it).second = i;
+          it.first->second = i;
           isUnique = false;
         }
       }
@@ -679,14 +675,10 @@ AqlValue Expression::executeSimpleExpressionObject(
         std::string key(member->getString());
 
         // note each individual object key name with latest value position
-        auto it = uniqueKeyValues.find(key);
-
-        if (it == uniqueKeyValues.end()) {
-          // unique key
-          uniqueKeyValues.emplace(std::move(key), i);
-        } else {
+        auto it = uniqueKeyValues.insert({std::move(key), i});
+        if (!it.second) {
           // duplicate key
-          (*it).second = i;
+          it.first->second = i;
           isUnique = false;
         }
       }
@@ -821,46 +813,52 @@ AqlValue Expression::executeSimpleExpressionFCallCxx(
   auto member = node->getMemberUnchecked(0);
   TRI_ASSERT(member->type == NODE_TYPE_ARRAY);
 
-  size_t const n = member->numMembers();
+  struct FunctionParameters {
+    // use stack-based allocation for the first few function call
+    // parameters. this saves a few heap allocations per function
+    // call invocation
+    SmallVector<AqlValue>::allocator_type::arena_type arena;
+    VPackFunctionParameters parameters{arena};
 
-  // use stack-based allocation for the first few function call
-  // parameters. this saves a few heap allocations per function
-  // call invocation
-  SmallVector<AqlValue>::allocator_type::arena_type arena;
-  VPackFunctionParameters parameters{arena};
+    // same here
+    SmallVector<uint64_t>::allocator_type::arena_type arena2;
+    SmallVector<uint64_t> destroyParameters{arena2};
 
-  // same here
-  SmallVector<uint64_t>::allocator_type::arena_type arena2;
-  SmallVector<uint64_t> destroyParameters{arena2};
+    explicit FunctionParameters(size_t n) {
+      parameters.reserve(n);
+      destroyParameters.reserve(n);
+    }
 
-  parameters.reserve(n);
-  destroyParameters.reserve(n);
-
-  auto guard = scopeGuard([&destroyParameters, &parameters]() {
-    for (size_t i = 0; i < destroyParameters.size(); ++i) {
-      if (destroyParameters[i]) {
-        parameters[i].destroy();
+    ~FunctionParameters() {
+      for (size_t i = 0; i < destroyParameters.size(); ++i) {
+        if (destroyParameters[i]) {
+          parameters[i].destroy();
+        }
       }
     }
-  });
+  };
+  
+  size_t const n = member->numMembers();
+
+  FunctionParameters params(n);
 
   for (size_t i = 0; i < n; ++i) {
     auto arg = member->getMemberUnchecked(i);
 
     if (arg->type == NODE_TYPE_COLLECTION) {
-      parameters.emplace_back(arg->getStringValue(), arg->getStringLength());
-      destroyParameters.push_back(1);
+      params.parameters.emplace_back(arg->getStringValue(), arg->getStringLength());
+      params.destroyParameters.push_back(1);
     } else {
       bool localMustDestroy;
-      parameters.emplace_back(executeSimpleExpression(arg, trx, localMustDestroy, false));
-      destroyParameters.push_back(localMustDestroy ? 1 : 0);
+      params.parameters.emplace_back(executeSimpleExpression(arg, trx, localMustDestroy, false));
+      params.destroyParameters.push_back(localMustDestroy ? 1 : 0);
     }
   }
 
-  TRI_ASSERT(parameters.size() == destroyParameters.size());
-  TRI_ASSERT(parameters.size() == n);
+  TRI_ASSERT(params.parameters.size() == params.destroyParameters.size());
+  TRI_ASSERT(params.parameters.size() == n);
 
-  AqlValue a = func->implementation(_expressionContext, trx, parameters);
+  AqlValue a = func->implementation(_expressionContext, trx, params.parameters);
   mustDestroy = true; // function result is always dynamic
 
   return a;
@@ -1117,45 +1115,54 @@ AqlValue Expression::executeSimpleExpressionOr(
 /// @brief execute an expression of type SIMPLE with AND or OR
 AqlValue Expression::executeSimpleExpressionNaryAndOr(
     AstNode const* node, transaction::Methods* trx, bool& mustDestroy) {
+  mustDestroy = false;
   size_t count = node->numMembers();
   if (count == 0) {
     // There is nothing to evaluate. So this is always true
-    mustDestroy = true;
     return AqlValue(AqlValueHintBool(true));
   }
 
   // AND
   if (node->type == NODE_TYPE_OPERATOR_NARY_AND) {
     for (size_t i = 0; i < count; ++i) {
+      bool localMustDestroy = false;
       AqlValue check =
-          executeSimpleExpression(node->getMemberUnchecked(i), trx, mustDestroy, true);
-      if (!check.toBoolean()) {
-        // Check is false. Return it.
-        return check;
-      }
+          executeSimpleExpression(node->getMemberUnchecked(i), trx, localMustDestroy, false);
+      bool result = check.toBoolean();
 
-      if (mustDestroy) {
+      if (localMustDestroy) {
         check.destroy();
       }
+
+      if (!result) {
+        // we are allowed to return early here, because this is only called
+        // in the context of index lookups
+        return AqlValue(AqlValueHintBool(false));
+      }
     }
-    mustDestroy = true;
     return AqlValue(AqlValueHintBool(true));
   }
 
   // OR
   for (size_t i = 0; i < count; ++i) {
+    bool localMustDestroy = false;
     AqlValue check =
-        executeSimpleExpression(node->getMemberUnchecked(i), trx, mustDestroy, true);
-    if (check.toBoolean()) {
-      // Check is true. Return it.
-      return check;
-    }
+        executeSimpleExpression(node->getMemberUnchecked(i), trx, localMustDestroy, true);
+    bool result = check.toBoolean();
 
-    if (mustDestroy) {
+    if (localMustDestroy) {
       check.destroy();
     }
+    
+    if (result) {
+      // we are allowed to return early here, because this is only called
+      // in the context of index lookups
+      return AqlValue(AqlValueHintBool(true));
+    }
   }
-  mustDestroy = true;
+
+  // anything else... we shouldn't get here
+  TRI_ASSERT(false);
   return AqlValue(AqlValueHintBool(false));
 }
 

@@ -43,7 +43,7 @@ using namespace arangodb;
 
 // custom type value handler, used for deciphering the _id attribute
 struct CustomTypeHandler final : public VPackCustomTypeHandler {
-  CustomTypeHandler(TRI_vocbase_t* vocbase, CollectionNameResolver const* resolver)
+  CustomTypeHandler(TRI_vocbase_t& vocbase, CollectionNameResolver const& resolver)
       : vocbase(vocbase), resolver(resolver) {}
 
   ~CustomTypeHandler() {} 
@@ -56,11 +56,11 @@ struct CustomTypeHandler final : public VPackCustomTypeHandler {
 
   std::string toString(VPackSlice const& value, VPackOptions const* options,
                        VPackSlice const& base) override final {
-    return transaction::helpers::extractIdString(resolver, value, base);
+    return transaction::helpers::extractIdString(&resolver, value, base);
   }
 
-  TRI_vocbase_t* vocbase;
-  CollectionNameResolver const* resolver;
+  TRI_vocbase_t& vocbase;
+  CollectionNameResolver const& resolver;
 };
 
 /// @brief create the context
@@ -74,6 +74,12 @@ transaction::Context::Context(TRI_vocbase_t& vocbase)
       _dumpOptions(arangodb::velocypack::Options::Defaults),
       _transaction{ 0, false }, 
       _ownsResolver(false) {
+  /// dump options contain have the escapeUnicode attribute set to true
+  /// this allows dumping of string values as plain 7-bit ASCII values.
+  /// for example, the string "möter" will be dumped as "m\u00F6ter".
+  /// this allows faster JSON parsing in some client implementations,
+  /// which speculate on ASCII strings first and only fall back to slower
+  /// multibyte strings on first actual occurrence of a multibyte character.
   _dumpOptions.escapeUnicode = true;        
 }
 
@@ -97,8 +103,8 @@ transaction::Context::~Context() {
 }
 
 /// @brief factory to create a custom type handler, not managed
-VPackCustomTypeHandler* transaction::Context::createCustomTypeHandler(TRI_vocbase_t* vocbase, 
-                                                                    CollectionNameResolver const* resolver) {
+VPackCustomTypeHandler* transaction::Context::createCustomTypeHandler(TRI_vocbase_t& vocbase,
+                                                                      CollectionNameResolver const& resolver) {
   return new CustomTypeHandler(vocbase, resolver);
 }
 
@@ -147,7 +153,7 @@ VPackBuilder* transaction::Context::leaseBuilder() {
 void transaction::Context::returnBuilder(VPackBuilder* builder) {
   try {
     // put builder back into our vector of builders
-    _builders.emplace_back(builder);
+    _builders.push_back(builder);
   } catch (...) {
     // no harm done. just wipe the builder
     delete builder;
@@ -171,6 +177,12 @@ VPackOptions* transaction::Context::getVPackOptionsForDump() {
     orderCustomTypeHandler();
   }
 
+  /// dump options have the escapeUnicode attribute set to true.
+  /// this allows dumping of string values as plain 7-bit ASCII values.
+  /// for example, the string "möter" will be dumped as "m\u00F6ter".
+  /// this allows faster JSON parsing in some client implementations,
+  /// which speculate on ASCII strings first and only fall back to slower
+  /// multibyte strings on first actual occurrence of a multibyte character.
   return &_dumpOptions;
 }
 

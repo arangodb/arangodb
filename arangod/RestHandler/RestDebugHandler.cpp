@@ -46,6 +46,12 @@ RestStatus RestDebugHandler::execute() {
 
   // execute one of the CRUD methods
   switch (type) {
+    case rest::RequestType::GET: {
+      VPackBuilder result;
+      result.add(VPackValue(TRI_CanUseFailurePointsDebugging()));
+      generateResult(rest::ResponseCode::OK, result.slice());
+      return RestStatus::DONE;
+    }
     case rest::RequestType::DELETE_REQ:
       if (len == 1) {
         TRI_ClearFailurePointsDebugging();

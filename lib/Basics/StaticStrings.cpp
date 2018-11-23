@@ -146,7 +146,6 @@ std::string const StaticStrings::Location("location");
 std::string const StaticStrings::NoSniff("nosniff");
 std::string const StaticStrings::Origin("origin");
 std::string const StaticStrings::PotentialDirtyRead("x-arango-potential-dirty-read");
-std::string const StaticStrings::Queue("x-arango-queue");
 std::string const StaticStrings::RequestForwardedTo(
     "x-arango-request-forwarded-to");
 std::string const StaticStrings::ResponseCode("x-arango-response-code");
@@ -165,10 +164,11 @@ std::string const StaticStrings::MimeTypeVPack("application/x-velocypack");
 std::string const StaticStrings::MultiPartContentType("multipart/form-data");
 
 // collection attributes
+std::string const StaticStrings::DistributeShardsLike("distributeShardsLike");
 std::string const StaticStrings::IsSmart("isSmart");
 std::string const StaticStrings::NumberOfShards("numberOfShards");
 std::string const StaticStrings::ReplicationFactor("replicationFactor");
-std::string const StaticStrings::DistributeShardsLike("distributeShardsLike");
+std::string const StaticStrings::ShardKeys("shardKeys");
 
 // graph attribute names
 std::string const StaticStrings::GraphCollection("_graphs");

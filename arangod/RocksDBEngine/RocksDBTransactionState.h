@@ -64,7 +64,6 @@ struct Options;
 
 }
 
-class TransactionCollection;
 class RocksDBMethods;
 
 /// @brief transaction type
@@ -74,6 +73,7 @@ class RocksDBTransactionState final : public TransactionState {
   friend class RocksDBTrxMethods;
   friend class RocksDBTrxUntrackedMethods;
   friend class RocksDBBatchedMethods;
+  friend class RocksDBBatchedWithIndexMethods;
 
  public:
   RocksDBTransactionState(
@@ -121,13 +121,6 @@ class RocksDBTransactionState final : public TransactionState {
   
   /// @brief return wrapper around rocksdb transaction
   RocksDBMethods* rocksdbMethods();
-
-  /// @brief insert a snapshot into a (not yet started) transaction.
-  ///        Only ever valid on a trx in CREATED state
-  void donateSnapshot(rocksdb::Snapshot const* snap);
-  /// @brief steal snapshot of this transaction.
-  /// Does not work on a single operation
-  rocksdb::Snapshot const* stealReadSnapshot();
 
   /// @brief Rocksdb sequence number of snapshot. Works while trx
   ///        has either a snapshot or a transaction

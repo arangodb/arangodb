@@ -326,7 +326,7 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
   VPackBuilder b;
   b.openObject();
   b.add("isNewlyCreated", VPackValue(created));
-  b.add("id",
+  b.add(StaticStrings::IndexId,
         VPackValue(collection->name() + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
   b.close();
   output = VPackCollection::merge(tmp.slice(), b.slice(), false);
@@ -343,7 +343,7 @@ Result Indexes::ensureIndexCoordinator(
 
   auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
   int res = ClusterInfo::instance()->ensureIndexCoordinator(
-      dbName, cid, indexDef, create, &arangodb::Index::Compare, resultBuilder,
+      dbName, cid, indexDef, create, resultBuilder,
       errorMsg, cluster->indexCreationTimeout());
   return Result(res, errorMsg);
 }

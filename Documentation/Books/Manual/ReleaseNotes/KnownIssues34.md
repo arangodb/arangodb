@@ -4,17 +4,8 @@ Known Issues
 The following known issues are present in this version of ArangoDB and will be fixed
 in follow-up releases:
 
-Installer
----------
-
-* Rolling upgrades are not yet supported with the RC version of ArangoDB 3.4, when
-  there are multiple instances of the same ArangoDB version running on the same host,
-  and only some of them shall be upgraded, or they should be upgraded one after the
-  other.
-
-
-Modify documents in cluster using AQL and an incorrect custom shard key
------------------------------------------------------------------------
+Modifing documents in cluster using AQL and an incorrect custom shard key
+-------------------------------------------------------------------------
 
 * In a very uncommon edge case there is an issue with an optimization rule in the cluster.
 
@@ -43,5 +34,4 @@ ArangoSearch
 * ArangoSearch ignores `_id` attribute even if `includeAllFields` is set to `true` (internal #445)
 * Using score functions (BM25/TFIDF) in ArangoDB expression is not supported (internal #316)
 * Using a loop variable in expressions within a corresponding SEARCH condition is not supported (internal #318)
-* ArangoSearch doesn't support joins with satellite collections (internal #440)
 * RocksDB recovery fails sometimes after renaming a view (internal #469)

@@ -23,27 +23,45 @@
 
 #include "IResearchCommon.h"
 #include "IResearchDocument.h"
-#include "IResearchViewMeta.h"
 #include "IResearchKludge.h"
+#include "IResearchPrimaryKeyFilter.h"
+#include "IResearchViewMeta.h"
 #include "Misc.h"
-
-#include "analysis/token_streams.hpp"
-#include "analysis/token_attributes.hpp"
-
+#include "Basics/Endian.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/LogMacros.h"
 
+#include "analysis/token_streams.hpp"
+#include "analysis/token_attributes.hpp"
+
+#include "search/term_filter.hpp"
+
 #include "utils/log.hpp"
 #include "utils/numeric_utils.hpp"
 
-#define Swap8Bytes(val) \
- ( (((val) >> 56) & UINT64_C(0x00000000000000FF)) | (((val) >> 40) & UINT64_C(0x000000000000FF00)) | \
-   (((val) >> 24) & UINT64_C(0x0000000000FF0000)) | (((val) >>  8) & UINT64_C(0x00000000FF000000)) | \
-   (((val) <<  8) & UINT64_C(0x000000FF00000000)) | (((val) << 24) & UINT64_C(0x0000FF0000000000)) | \
-   (((val) << 40) & UINT64_C(0x00FF000000000000)) | (((val) << 56) & UINT64_C(0xFF00000000000000)) )
-
 NS_LOCAL
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                           Primary key endianness
+// ----------------------------------------------------------------------------
+
+constexpr bool const LittleEndian = true;
+constexpr bool const BigEndian = false;
+
+template<bool IsLittleEndian>
+struct PrimaryKeyEndianness {
+  static uint64_t hostToPk(uint64_t value) { return arangodb::basics::hostToLittle(value); }
+  static uint64_t pkToHost(uint64_t value) { return arangodb::basics::littleToHost(value); }
+}; // PrimaryKeyEndianness
+
+template<>
+struct PrimaryKeyEndianness<false> {
+  static uint64_t hostToPk(uint64_t value) { return arangodb::basics::hostToBig(value); }
+  static uint64_t pkToHost(uint64_t value) { return arangodb::basics::bigToHost(value); }
+}; // PrimaryKeyEndianness
+
+constexpr bool const Endianness = BigEndian; // current PK endianness
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                       FieldIterator dependencies
@@ -65,7 +83,6 @@ static_assert(
 );
 
 irs::string_ref const CID_FIELD("@_CID");
-irs::string_ref const RID_FIELD("@_REV");
 irs::string_ref const PK_COLUMN("@_PK");
 
 // wrapper for use objects with the IResearch unbounded_object_pool
@@ -370,19 +387,6 @@ bool setStringValue(
   return true;
 }
 
-void setIdValue(
-    uint64_t& value,
-    irs::token_stream& analyzer
-) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto& sstream = dynamic_cast<irs::string_token_stream&>(analyzer);
-#else
-  auto& sstream = static_cast<irs::string_token_stream&>(analyzer);
-#endif
-
-  sstream.reset(arangodb::iresearch::DocumentPrimaryKey::encode(value));
-}
-
 NS_END
 
 NS_BEGIN(arangodb)
@@ -392,34 +396,59 @@ NS_BEGIN(iresearch)
 // --SECTION--                                             Field implementation
 // ----------------------------------------------------------------------------
 
-/*static*/ void Field::setCidValue(Field& field, TRI_voc_cid_t& cid) {
+/*static*/ void Field::setCidValue(
+    Field& field,
+    TRI_voc_cid_t const& cid
+) {
+  TRI_ASSERT(field._analyzer);
+
+  irs::bytes_ref const cidRef(
+    reinterpret_cast<irs::byte_type const*>(&cid),
+    sizeof(TRI_voc_cid_t)
+  );
+
   field._name = CID_FIELD;
-  setIdValue(cid, *field._analyzer);
   field._features = &irs::flags::empty_instance();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto& sstream = dynamic_cast<irs::string_token_stream&>(*field._analyzer);
+#else
+  auto& sstream = static_cast<irs::string_token_stream&>(*field._analyzer);
+#endif
+  sstream.reset(cidRef);
 }
 
 /*static*/ void Field::setCidValue(
     Field& field,
-    TRI_voc_cid_t& cid,
+    TRI_voc_cid_t const& cid,
     Field::init_stream_t
 ) {
   field._analyzer = StringStreamPool.emplace().release(); // FIXME don't use shared_ptr
   setCidValue(field, cid);
 }
 
-/*static*/ void Field::setRidValue(Field& field, TRI_voc_rid_t& rid) {
-  field._name = RID_FIELD;
-  setIdValue(rid, *field._analyzer);
+/*static*/ void Field::setPkValue(
+    Field& field,
+    DocumentPrimaryKey const& pk
+) {
+  field._name = PK_COLUMN;
   field._features = &irs::flags::empty_instance();
+  field._storeValues = ValueStorage::FULL;
+  field._value = irs::bytes_ref(reinterpret_cast<irs::byte_type const*>(&pk), sizeof(pk));
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto& sstream = dynamic_cast<irs::string_token_stream&>(*field._analyzer);
+#else
+  auto& sstream = static_cast<irs::string_token_stream&>(*field._analyzer);
+#endif
+  sstream.reset(field._value);
 }
 
-/*static*/ void Field::setRidValue(
+/*static*/ void Field::setPkValue(
     Field& field,
-    TRI_voc_rid_t& rid,
+    DocumentPrimaryKey const& pk,
     Field::init_stream_t
 ) {
   field._analyzer = StringStreamPool.emplace().release(); // FIXME don't use shared_ptr
-  setRidValue(field, rid);
+  setPkValue(field, pk);
 }
 
 Field::Field(Field&& rhs)
@@ -528,6 +557,7 @@ bool FieldIterator::setRegularAttribute(IResearchLinkMeta const& context) {
   auto const value = topValue().value;
 
   _value._storeValues = context._storeValues;
+  _value._value = irs::bytes_ref::NIL;
 
   switch (value.type()) {
     case VPackValueType::None:
@@ -624,72 +654,62 @@ void FieldIterator::next() {
 // --SECTION--                                DocumentPrimaryKey implementation
 // ----------------------------------------------------------------------------
 
-/* static */ irs::string_ref const& DocumentPrimaryKey::PK() {
+/* static */ irs::string_ref const& DocumentPrimaryKey::PK() noexcept {
   return PK_COLUMN;
 }
 
-/* static */ irs::string_ref const& DocumentPrimaryKey::CID() {
+/* static */ irs::string_ref const& DocumentPrimaryKey::CID() noexcept {
   return CID_FIELD;
 }
 
-/* static */ irs::string_ref const& DocumentPrimaryKey::RID() {
-  return RID_FIELD;
-}
+/*static*/ irs::filter::ptr DocumentPrimaryKey::filter(TRI_voc_cid_t cid) {
+  cid = PrimaryKeyEndianness<Endianness>::hostToPk(cid);
 
-/* static */ bool DocumentPrimaryKey::decode(
-    uint64_t& buf, const irs::bytes_ref& value
-) {
-  if (sizeof(uint64_t) != value.size()) {
-    return false;
-  }
-
-  buf = *reinterpret_cast<uint64_t const*>(value.c_str());
-
-  // convert from little endian
-  if (irs::numeric_utils::is_big_endian()) {
-    buf = Swap8Bytes(buf);
-  }
-
-  return true;
-}
-
-/* static */ irs::bytes_ref DocumentPrimaryKey::encode(uint64_t& value) {
-  // ensure little endian
-  if (irs::numeric_utils::is_big_endian()) {
-    value = Swap8Bytes(value);
-  }
-
-  return irs::bytes_ref(
-    reinterpret_cast<irs::byte_type const*>(&value),
-    sizeof(value)
+  irs::bytes_ref const term(
+    reinterpret_cast<irs::byte_type const*>(&cid),
+    sizeof(cid)
   );
+
+  auto filter = irs::by_term::make();
+
+  // filter matching on cid
+  static_cast<irs::by_term&>(*filter)
+    .field(CID_FIELD) // set field
+    .term(term); // set value
+
+  return filter;
 }
 
-DocumentPrimaryKey::DocumentPrimaryKey(
+/*static*/ irs::filter::ptr DocumentPrimaryKey::filter(
     TRI_voc_cid_t cid,
     TRI_voc_rid_t rid
-) noexcept
-  : _keys{ cid, rid } {
-  static_assert(sizeof(_keys) == sizeof(cid) + sizeof(rid), "Invalid size");
+) {
+  return std::make_unique<PrimaryKeyFilter>(cid, rid);
 }
 
-bool DocumentPrimaryKey::read(irs::bytes_ref const& in) noexcept {
-  if (sizeof(_keys) != in.size()) {
+// PLEASE NOTE that 'in.c_str()' MUST HAVE alignment >= alignof(uint64_t)
+/*static*/ bool DocumentPrimaryKey::read(type& value, irs::bytes_ref const& in) noexcept {
+  if (sizeof(type) != in.size()) {
     return false;
   }
 
-  std::memcpy(_keys, in.c_str(), sizeof(_keys));
+  static_assert(
+    sizeof(TRI_voc_cid_t) == sizeof(TRI_voc_rid_t),
+    "sizeof(TRI_voc_cid_t) != sizeof(TRI_voc_rid_t)"
+  );
+
+  // PLEASE NOTE that 'in.c_str()' MUST HAVE alignment >= alignof(uint64_t)
+  auto* begin = reinterpret_cast<TRI_voc_cid_t const*>(in.c_str());
+
+  value.first = PrimaryKeyEndianness<Endianness>::pkToHost(begin[0]);
+  value.second = PrimaryKeyEndianness<Endianness>::pkToHost(begin[1]);
 
   return true;
 }
 
-bool DocumentPrimaryKey::write(irs::data_output& out) const {
-  out.write_bytes(
-    reinterpret_cast<const irs::byte_type*>(_keys),
-    sizeof(_keys)
-  );
-
-  return true;
+DocumentPrimaryKey::DocumentPrimaryKey(TRI_voc_cid_t cid, TRI_voc_rid_t rid) noexcept
+  : type(PrimaryKeyEndianness<Endianness>::hostToPk(cid),
+         PrimaryKeyEndianness<Endianness>::hostToPk(rid)) {
 }
 
 bool appendKnownCollections(
@@ -729,14 +749,17 @@ bool visitReaderCollections(
     }
 
     while(term_itr->next()) {
-      TRI_voc_cid_t cid;
+      auto const& value = term_itr->value();
 
-      if (!DocumentPrimaryKey::decode(cid, term_itr->value())) {
+      if (sizeof(TRI_voc_cid_t) != value.size()) {
         LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
           << "failed to decode CID while collecting CIDs for arangosearch reader";
-
         return false;
       }
+
+      auto const cid = PrimaryKeyEndianness<Endianness>::pkToHost(
+        *reinterpret_cast<TRI_voc_cid_t const*>(value.c_str())
+      );
 
       if (!visitor(cid)) {
         return false;
