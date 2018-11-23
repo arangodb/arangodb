@@ -1016,6 +1016,18 @@ void ClusterInfo::loadCurrent() {
 
 std::shared_ptr<LogicalCollection> ClusterInfo::getCollection(
     DatabaseID const& databaseID, CollectionID const& collectionID) {
+  auto c = getCollectionNT(databaseID, collectionID);
+  if (c == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                                   getCollectionNotFoundMsg(collectionID, databaseID));
+  }
+  else {
+    return c;
+  }
+}
+
+std::shared_ptr<LogicalCollection> ClusterInfo::getCollectionNT(
+    DatabaseID const& databaseID, CollectionID const& collectionID) {
   int tries = 0;
 
   if (!_planProt.isValid) {
@@ -1046,9 +1058,12 @@ std::shared_ptr<LogicalCollection> ClusterInfo::getCollection(
     // must load collections outside the lock
     loadPlan();
   }
-  THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-      "Collection not found: " + collectionID + " in database " + databaseID);
+  return nullptr;
+}
+
+std::string ClusterInfo::getCollectionNotFoundMsg (
+    DatabaseID const& databaseID, CollectionID const& collectionID) {
+  return "Collection not found: " + collectionID + " in database " + databaseID;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
