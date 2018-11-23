@@ -83,6 +83,7 @@ const compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFi
   applierConfiguration.password = '';
   applierConfiguration.includeSystem = false;
   applierConfiguration.force32mode = false;
+  applierConfiguration.requireFromPresent = false;
 
   var syncResult = replication.syncGlobal({
     endpoint: masterEndpoint,

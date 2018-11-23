@@ -95,6 +95,7 @@ const compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFi
   applierConfiguration.username = 'root';
   applierConfiguration.password = '';
   applierConfiguration.force32mode = true;
+  applierConfiguration.requireFromPresent = false;
 
   if (!applierConfiguration.hasOwnProperty('chunkSize')) {
     applierConfiguration.chunkSize = 16384;
