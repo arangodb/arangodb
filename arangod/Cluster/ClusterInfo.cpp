@@ -2493,7 +2493,7 @@ int ClusterInfo::ensureIndexCoordinator(
           continue;
         }
         errorCode 
-          = setErrorMsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN,
+          = setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN,
                         errorMsg);
       }
       break;
@@ -2501,7 +2501,7 @@ int ClusterInfo::ensureIndexCoordinator(
   } catch (basics::Exception const& ex) {
     errorCode = ex.code();
     setErrormsg(errorCode, errorMsg);
-    errorMsg += ", exception: " + ex.what();
+    errorMsg += std::string(", exception: ") + ex.what();
   } catch (...) {
     errorCode = TRI_ERROR_INTERNAL;
     setErrormsg(errorCode, errorMsg);
@@ -2554,7 +2554,7 @@ int ClusterInfo::ensureIndexCoordinatorInner(
 
   AgencyCommResult previous = ac.getValues(planCollKey);
   if (!previous.successful()) {
-    return setErrorMsg(TRI_ERROR_CLUSTER_READING_PLAN_AGENCY, errorMsg);
+    return setErrormsg(TRI_ERROR_CLUSTER_READING_PLAN_AGENCY, errorMsg);
   }
 
   velocypack::Slice collection = previous.slice()[0].get(
@@ -2719,7 +2719,7 @@ int ClusterInfo::ensureIndexCoordinatorInner(
       resultBuilder.add("isSmart", VPackValue(true));
     }
     loadCurrent();
-    return setErrorMsg(TRI_ERROR_NO_ERROR, errorMsg);
+    return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
   }
 
   {
@@ -2750,10 +2750,10 @@ int ClusterInfo::ensureIndexCoordinatorInner(
                  newIndexBuilder.slice()),
             AgencyOperation(
             "Plan/Version", AgencySimpleOperationType::INCREMENT_OP)}),
-          AgencyPrecondition oldValue(planCollKey,
+          AgencyPrecondition(planCollKey,
                          AgencyPrecondition::Type::EMPTY, false) );
 
-        sleepFor = 50;
+        int sleepFor = 50;
         auto rollbackEndTime = steady_clock::now() + std::chrono::seconds(10);
         while (true) {
           AgencyCommResult update =
@@ -2763,14 +2763,14 @@ int ClusterInfo::ensureIndexCoordinatorInner(
             errorMsg = "Index could not be created within timeout, giving up and rolling back index creation.";
             return TRI_ERROR_CLUSTER_TIMEOUT;
           }
-          if (update.statusCode == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
+          if (update._statusCode == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
             // Collection was removed, let's break here and report outside
             break;
           }
           if (steady_clock::now() > rollbackEndTime) {
             LOG_TOPIC(ERR, Logger::CLUSTER)
               << "Couldn't roll back index creation of " << idString
-              << ". Database: " databaseName << ", Collection " <<
+              << ". Database: " << databaseName << ", Collection "
               << collectionID;
             errorMsg = "Timed out while trying to roll back index creation failure";
             return TRI_ERROR_CLUSTER_TIMEOUT;
