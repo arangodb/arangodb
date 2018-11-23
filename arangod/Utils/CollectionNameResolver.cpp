@@ -118,7 +118,11 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionIdCluster(
     // We have to look up the collection info:
     auto* ci = ClusterInfo::instance();
 
-    auto const cinfo = (ci) ? ci->getCollectionNT(_vocbase.name(), name) : nullptr;
+    if (ci == nullptr) {
+      return 0;
+    }
+
+    auto const cinfo = ci->getCollectionNT(_vocbase.name(), name);
 
     if (cinfo != nullptr) {
       return cinfo->id();
@@ -350,19 +354,19 @@ std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(
     // cluster coordinator
     auto* ci = ClusterInfo::instance();
 
-    if (!ci) {
+    if (ci == nullptr) {
       return nullptr;
     }
 
-    try {
-      ptr = (ci) ? ci->getCollectionNT(_vocbase.name(), nameOrId) : nullptr;
+    ptr = ci->getCollectionNT(_vocbase.name(), nameOrId);
 
-      if (ptr == nullptr) {
+    if (ptr == nullptr) {
+      try {
         ptr = ci->getView(_vocbase.name(), nameOrId);
+      } catch (...) {
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "caught exception while resolving cluster data-source: " << nameOrId;
       }
-    } catch (...) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "caught exception while resolving cluster data-source: " << nameOrId;
     }
   }
 

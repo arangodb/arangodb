@@ -28,7 +28,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Indexes/IndexIterator.h"
-#include "Indexes/IndexLookupContext.h"
+#include "MMFiles/MMFilesIndexLookupContext.h"
 #include "MMFiles/MMFilesDatafileStatistics.h"
 #include "MMFiles/MMFilesDatafileStatisticsContainer.h"
 #include "MMFiles/MMFilesDitch.h"
