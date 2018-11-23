@@ -119,7 +119,7 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionIdCluster(
     auto* ci = ClusterInfo::instance();
 
     if (ci == nullptr) {
-      return nullptr;
+      return 0;
     }
 
     auto const cinfo = ci->getCollectionNT(_vocbase.name(), name);
