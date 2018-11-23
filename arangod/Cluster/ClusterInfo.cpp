@@ -2458,10 +2458,6 @@ int ClusterInfo::ensureIndexCoordinator(
     VPackSlice const& slice, bool create, VPackBuilder& resultBuilder,
     std::string& errorMsg, double timeout) {
 
-  // The timepoint at which we timeout
-  using namespace std::chrono;
-  auto const endTime = steady_clock::now() + duration<double>(timeout);
-  
   // check index id
   uint64_t iid = 0;
 
@@ -2535,6 +2531,8 @@ int ClusterInfo::ensureIndexCoordinatorInner(
     std::string const& idString, VPackSlice const& slice, bool create,
     VPackBuilder& resultBuilder, std::string& errorMsg, double timeout) {
   AgencyComm ac;
+
+  using namespace std::chrono;
 
   double const realTimeout = getTimeout(timeout);
   double const endTime = TRI_microtime() + realTimeout;
@@ -2739,13 +2737,13 @@ int ClusterInfo::ensureIndexCoordinatorInner(
         // At this time the index creation has failed and we want to
         // roll back the plan entry, provided the collection still exists:
         AgencyWriteTransaction trx(
-          std::vector<AgencyOperation>
+          std::vector<AgencyOperation>(
           { AgencyOperation(
                  planIndexesKey, AgencyValueOperationType::ERASE,
                  newIndexBuilder.slice()),
             AgencyOperation(
-            "Plan/Version", AgencySimpleOperationType::INCREMENT_OP)},
-          std::vector<AgencyPrecondition>
+            "Plan/Version", AgencySimpleOperationType::INCREMENT_OP)}),
+          std::vector<AgencyPrecondition>(
           { AgencyPrecondition oldValue(planCollKey,
                            AgencyPrecondition::Type::EMPTY, false) });
 
@@ -2754,7 +2752,7 @@ int ClusterInfo::ensureIndexCoordinatorInner(
         while (true) {
           AgencyCommResult update =
             _agency.sendTransactionWithFailover(trx, 0.0);
-          if (update.successful() ||
+          if (update.successful()) {
             loadPlan();
             errorMsg = "Index could not be created within timeout, giving up and rolling back index creation.";
             return TRI_ERROR_CLUSTER_TIMEOUT;
