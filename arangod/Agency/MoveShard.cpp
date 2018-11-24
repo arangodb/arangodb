@@ -565,7 +565,7 @@ JOB_STATUS MoveShard::pendingLeader() {
               VPackSlice p = plan[i];
               for (auto const& c : VPackArrayIterator(current)) {
                 if (arangodb::basics::VelocyPackHelper::compare(p, c, true)) {
-                  ++found
+                  ++found;
                   break;
                 }
               }
