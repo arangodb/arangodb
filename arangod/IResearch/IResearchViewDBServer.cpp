@@ -170,6 +170,10 @@ struct IResearchViewDBServer::ViewFactory: public arangodb::ViewFactory {
     );
 
     if (TRI_ERROR_NO_ERROR != resNum) {
+      if (error.empty()) {
+        error = TRI_errno_string(resNum);
+      }
+
       return arangodb::Result(
         resNum,
         std::string("failure during ClusterInfo persistance of created view while creating arangosearch View in database '") + vocbase.name() + "', error: " + error
