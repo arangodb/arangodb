@@ -1064,7 +1064,7 @@ std::string tolower(std::string&& str) {
     str[i] = static_cast<char>(::tolower(str[i]));
   }
 
-  return str;
+  return std::move(str);
 }
 
 std::string tolower(std::string const& str) {

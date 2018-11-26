@@ -137,8 +137,6 @@ class RocksDBGenericIterator {
 
 RocksDBGenericIterator createPrimaryIndexIterator(transaction::Methods* trx, LogicalCollection* col);
 
-RocksDBGenericIterator createDocumentIterator(transaction::Methods* trx, LogicalCollection* col);
-
 } //namespace arangodb
 
 #endif

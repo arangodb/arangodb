@@ -676,7 +676,7 @@ Result MMFilesHashIndex::insertUnique(transaction::Methods* trx,
         _allocator->deallocate(elements[j]);
       }
       // Already indexed elements will be removed by the rollback
-      return error;
+      return std::move(error);
     }
   }
 

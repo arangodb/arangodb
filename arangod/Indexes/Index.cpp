@@ -54,6 +54,7 @@ Index::Index(
       _fields(fields),
       _unique(unique),
       _sparse(sparse),
+      _isBuilding(false),
       _clusterSelectivity(0.1) {
   // note: _collection can be a nullptr in the cluster coordinator case!!
 }
@@ -67,6 +68,8 @@ Index::Index(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
           slice, "unique", false)),
       _sparse(arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, "sparse", false)),
+      _isBuilding(arangodb::basics::VelocyPackHelper::getBooleanValue(
+          slice, "isBuilding", false)),
       _clusterSelectivity(0.1) {
   VPackSlice const fields = slice.get("fields");
   setFields(fields,
@@ -472,6 +475,10 @@ bool Index::matchesDefinition(VPackSlice const& info) const {
                      info, "sparse", false)) {
     return false;
   }
+  if (_isBuilding != arangodb::basics::VelocyPackHelper::getBooleanValue(
+                     info, "isBuilding", false)) {
+    return false;
+  }
   // This check takes ordering of attributes into account.
   std::vector<arangodb::basics::AttributeName> translate;
   for (size_t i = 0; i < n; ++i) {
@@ -868,6 +875,10 @@ std::pair<bool, double> Index::updateClusterEstimate(double defaultValue) {
     _clusterSelectivity = rv.second;
   }
   return rv;
+}
+
+bool Index::isBuilding() const {
+  return _isBuilding;
 }
 
 /// @brief append the index description to an output stream

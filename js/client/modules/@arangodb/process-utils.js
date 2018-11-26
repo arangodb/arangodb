@@ -536,6 +536,7 @@ function runArangoshCmd (options, instanceInfo, addArgs, cmds) {
 
 function runArangoImp (options, instanceInfo, what) {
   let args = {
+    'log.foreground-tty': 'true',
     'server.username': options.username,
     'server.password': options.password,
     'server.endpoint': instanceInfo.endpoint,
@@ -579,6 +580,7 @@ function runArangoImp (options, instanceInfo, what) {
 function runArangoDumpRestore (options, instanceInfo, which, database, rootDir, dumpDir = 'dump', includeSystem = true) {
   let args = {
     'configuration': fs.join(CONFIG_DIR, (which === 'dump' ? 'arangodump.conf' : 'arangorestore.conf')),
+    'log.foreground-tty': 'true',
     'server.username': options.username,
     'server.password': options.password,
     'server.endpoint': instanceInfo.endpoint,
@@ -617,6 +619,7 @@ function runArangoDumpRestore (options, instanceInfo, which, database, rootDir, 
 function runArangoBenchmark (options, instanceInfo, cmds, rootDir) {
   let args = {
     'configuration': fs.join(CONFIG_DIR, 'arangobench.conf'),
+    'log.foreground-tty': 'true',
     'server.username': options.username,
     'server.password': options.password,
     'server.endpoint': instanceInfo.endpoint,

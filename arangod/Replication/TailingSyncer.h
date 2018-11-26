@@ -105,7 +105,9 @@ class TailingSyncer : public Syncer {
   Result truncateCollection(arangodb::velocypack::Slice const&);
 
   /// @brief apply a single marker from the continuous log
-  Result applyLogMarker(arangodb::velocypack::Slice const&, TRI_voc_tick_t);
+  Result applyLogMarker(arangodb::velocypack::Slice const&, 
+                        TRI_voc_tick_t firstRegularTick,
+                        TRI_voc_tick_t& markerTicker);
 
   /// @brief apply the data from the continuous log
   Result applyLog(httpclient::SimpleHttpResult*, TRI_voc_tick_t firstRegularTick, 
