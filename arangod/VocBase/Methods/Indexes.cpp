@@ -280,17 +280,6 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
   READ_LOCKER(readLocker, collection->vocbase()._inventoryLock);
   Result res;
 
-//  SingleCollectionTransaction trx(
-//    transaction::V8Context::CreateWhenRequired(collection->vocbase(), false),
-//    *collection,
-//    create ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::READ
-//  );
-//  Result res = trx.begin();
-//
-//  if (!res.ok()) {
-//    return res;
-//  }
-
   bool created = false;
   std::shared_ptr<arangodb::Index> idx;
 
@@ -317,11 +306,6 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
   } catch (...) {
     return res.reset(TRI_ERROR_OUT_OF_MEMORY);
   }
-  // builder->close();
-//  res = trx.commit();
-//  if (!res.ok()) {
-//    return res;
-//  }
 
   std::string iid = StringUtils::itoa(idx->id());
   VPackBuilder b;

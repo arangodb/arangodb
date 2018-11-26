@@ -246,7 +246,7 @@ negatively impact the write performance:
 
 Use the _exclusive_ query option for modifying AQL queries on a _single collection_, 
 to improve the performance drastically.
-This has the downside that no concurrent writes may occur on the collection, but we are able
+This has the downside that no concurrent writes may occur on the collection, but ArangoDB is able
 to use a special fast-path which should improve the performance by up to 50% for large collections.
 
 ```js
@@ -256,4 +256,5 @@ FOR doc IN mycollection
   OPTIONS { exclusive: true }
 ```
 
-The same naturally also applies for queries using _REPLACE_
+The same naturally also applies for queries using _REPLACE_. Additionally you may be able to use
+the `intermediateCommitCount` option in the API to subdivide the AQL transaction into smaller batches.

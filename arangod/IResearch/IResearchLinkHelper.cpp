@@ -239,29 +239,6 @@ arangodb::Result modifyLinks(
 
   static std::vector<std::string> const EMPTY;
   arangodb::ExecContextScope scope(arangodb::ExecContext::superuser()); // required to remove links from non-RW collections
-//  arangodb::transaction::Methods trx(
-//    trxCtx,
-//    EMPTY, // readCollections
-//    EMPTY, // writeCollections
-//    collectionsToLock, // exclusiveCollections
-//    arangodb::transaction::Options() // use default lock timeout
-//  );
-//  auto trxResolver = trxCtx->resolver();
-//  if (!trxResolver) {
-//    return arangodb::Result(
-//      TRI_ERROR_ARANGO_ILLEGAL_STATE,
-//      std::string("failed to find collection name resolver while updating arangosearch view '") + view.name() + "'"
-//    );
-//  }
-//
-//  auto res = trx.begin();
-//
-//  if (!res.ok()) {
-//    return arangodb::Result(
-//      res.errorNumber(),
-//      std::string("failed to start transaction while updating arangosearch view '") + view.name() + "' error: " + res.errorMessage()
-//    );
-//  }
 
   {
     std::unordered_set<TRI_voc_cid_t> collectionsToRemove; // track removal for potential reindex

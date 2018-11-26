@@ -2279,14 +2279,6 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods* trx,
     LOG_TOPIC(ERR, Logger::ENGINES) << "index creation failed while restoring";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
   }
-
-//  if (ServerState::instance()->isCoordinator()) {
-//    // In the coordinator case we do not fill the index
-//    // We only inform the others.
-//    addIndex(idx);
-//    created = true;
-//    return idx;
-//  }
   
   if (!restore) {
     TRI_UpdateTickServer(idx->id());
