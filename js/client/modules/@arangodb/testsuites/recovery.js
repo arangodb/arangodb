@@ -173,7 +173,6 @@ function recovery (options) {
         results.status = false;
       }
       else {
-        options.cleanup = false;
         pu.cleanupLastDirectory(params.options);
       }
     } else {
