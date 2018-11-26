@@ -2727,9 +2727,9 @@ int ClusterInfo::ensureIndexCoordinatorInner(
 
     while (!application_features::ApplicationServer::isStopping()) {
       int tmpRes = dbServerResult->load(std::memory_order_acquire);
-      if (tmpRes >= 0) {
-        // Finally, wait until the Supervision has removed the `isBuilding`
-        // flag and the index has appeared:
+      if (tmpRes == 0) {
+        // Finally, in case all is good, wait until the Supervision has
+        // removed the `isBuilding` flag and the index has appeared:
         auto coll = getCollection(databaseName, collectionID);
         auto indexes = coll->getIndexes();
         TRI_idx_iid_t indexId = arangodb::basics::StringUtils::uint64(
@@ -2754,7 +2754,7 @@ int ClusterInfo::ensureIndexCoordinatorInner(
           << " is complete, waiting for Supervision to remove isBuilding flag.";
       }
 
-      if (TRI_microtime() > endTime) {
+      if (tmpRes > 0 || TRI_microtime() > endTime) {
         // At this time the index creation has failed and we want to
         // roll back the plan entry, provided the collection still exists:
         AgencyWriteTransaction trx(
@@ -2774,8 +2774,11 @@ int ClusterInfo::ensureIndexCoordinatorInner(
             _agency.sendTransactionWithFailover(trx, 0.0);
           if (update.successful()) {
             loadPlan();
-            errorMsg = "Index could not be created within timeout, giving up and rolling back index creation.";
-            return TRI_ERROR_CLUSTER_TIMEOUT;
+            if (tmpRes < 0) {   // timeout
+              errorMsg = "Index could not be created within timeout, giving up and rolling back index creation.";
+              return TRI_ERROR_CLUSTER_TIMEOUT;
+            }
+            return tmpRes;
           }
           if (update._statusCode == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
             // Collection was removed, let's break here and report outside
@@ -2786,8 +2789,11 @@ int ClusterInfo::ensureIndexCoordinatorInner(
               << "Couldn't roll back index creation of " << idString
               << ". Database: " << databaseName << ", Collection "
               << collectionID;
-            errorMsg = "Timed out while trying to roll back index creation failure";
-            return TRI_ERROR_CLUSTER_TIMEOUT;
+            if (tmpRes < 0) {   // timeout
+              errorMsg = "Timed out while trying to roll back index creation failure";
+              return TRI_ERROR_CLUSTER_TIMEOUT;
+            }
+            return tmpRes;
           }
           if (sleepFor <= 2500) {
             sleepFor*=2;
