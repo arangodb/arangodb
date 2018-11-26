@@ -895,21 +895,23 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
     print('Server already dead, doing nothing. This shouldn\'t happen?');
   }
 
-  try {
-    // send a maintenance request to any of the coordinators, so that
-    // no failed server/failed follower jobs will be started on shutdown
-    let coords = instanceInfo.arangods.filter(arangod =>
-                                              arangod.role === 'coordinator' &&
-                                              !arangod.hasOwnProperty('exitStatus'));
-    if (coords.length > 0) {
-      let requestOptions = makeAuthorizationHeaders(options);
-      requestOptions.method = 'PUT';
+  if (!forceTerminate) {
+    try {
+      // send a maintenance request to any of the coordinators, so that
+      // no failed server/failed follower jobs will be started on shutdown
+      let coords = instanceInfo.arangods.filter(arangod =>
+                                                arangod.role === 'coordinator' &&
+                                                !arangod.hasOwnProperty('exitStatus'));
+      if (coords.length > 0) {
+        let requestOptions = makeAuthorizationHeaders(options);
+        requestOptions.method = 'PUT';
 
-      print(coords[0].url + "/_admin/cluster/maintenance");
-      download(coords[0].url + "/_admin/cluster/maintenance", JSON.stringify("on"), requestOptions);
+        print(coords[0].url + "/_admin/cluster/maintenance");
+        download(coords[0].url + "/_admin/cluster/maintenance", JSON.stringify("on"), requestOptions);
+      }
+    } catch (err) {
+      print("error while setting cluster maintenance mode:", err);
     }
-  } catch (err) {
-    print("error while setting cluster maintenance mode:", err);
   }
 
   // Shut down all non-agency servers:
@@ -952,11 +954,15 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
         if ((nonAgenciesCount > 0) && (arangod.role === 'agent')) {
           return true;
         }
-        shutdownArangod(arangod, options, false);
-        arangod.exitStatus = {
-          status: 'RUNNING'
-        };
-        print("Commanded shut down: " + JSON.stringify(arangod));
+        shutdownArangod(arangod, options, forceTerminate);
+        if (forceTerminate) {
+          print("FORCED shut down: " + JSON.stringify(arangod));
+        } else {
+          arangod.exitStatus = {
+            status: 'RUNNING'
+          };
+          print("Commanded shut down: " + JSON.stringify(arangod));
+        }
         return true;
       }
       if (arangod.exitStatus.status === 'RUNNING') {

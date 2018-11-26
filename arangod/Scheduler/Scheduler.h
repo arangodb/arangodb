@@ -105,18 +105,12 @@ class Scheduler {
 
   bool isRunning() const { return numRunning(_counters) > 0; }
   bool isStopping() const noexcept { return (_counters & (1ULL << 63)) != 0; }
-  size_t numQueued() const { return (_counters >> 32) & 0xFFFFULL; }
 
  private:
   void post(std::function<void()> const callback);
   void drain();
 
-  /// @brief set the stopping bit
-  /// returns true if the stopping bit was not set before, and
-  /// false if it was already set 
-  inline bool setStopping() noexcept { 
-    return !isStopping(_counters.fetch_or(1ULL << 63));
-  }
+  inline void setStopping() noexcept { _counters |= (1ULL << 63); }
 
   inline bool isStopping(uint64_t value) const noexcept {
     return (value & (1ULL << 63)) != 0;
@@ -175,7 +169,6 @@ class Scheduler {
   // the highest bytes (AA) are used only to encode a stopping bit. when this
   // bit is set, the scheduler is stopping (or already stopped)
 
-  // warning: _ioContext usage assumes _counters used in sequentially-consistent manner
   std::atomic<uint64_t> _counters;
 
   inline uint64_t getCounters() const noexcept { return _counters; }
