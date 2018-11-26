@@ -448,7 +448,7 @@ index_writer::consolidation_policy_t consolidation_policy(
         sorted_segments.erase(best.segments.first, best.segments.second);
 
         if (consolidating_segments.size() >= lookahead) {
-          break;
+          break; // FIXME check
         }
       }
     }
@@ -482,7 +482,7 @@ void read_document_mask(
   reader->read(dir, meta, docs_mask);
 }
 
-void write_index_segment(directory& dir, index_meta::index_segment_t& segment) {
+void flush_index_segment(directory& dir, index_meta::index_segment_t& segment) {
   assert(segment.meta.codec);
   assert(!segment.meta.size); // assume segment size will be calculated in a single place, here
 
@@ -500,8 +500,7 @@ void write_index_segment(directory& dir, index_meta::index_segment_t& segment) {
 
   auto writer = segment.meta.codec->get_segment_meta_writer();
 
-  segment.filename = writer->filename(segment.meta);
-  writer->write(dir, segment.meta);
+  writer->write(dir, segment.filename, segment.meta);
 }
 
 NS_END // index_utils
