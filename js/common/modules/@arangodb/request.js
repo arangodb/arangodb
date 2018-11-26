@@ -130,6 +130,10 @@ function request (req) {
   }
   path = url.format(pathObj);
 
+  if (path.indexOf("http:///") === 0) {
+    path = path.replace("http:///", "/");
+  }
+
   let contentType;
   let body = req.body;
   if (req.json) {

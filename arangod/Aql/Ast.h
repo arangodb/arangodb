@@ -471,8 +471,8 @@ class Ast {
   static bool IsOrOperatorType(AstNodeType);
 
   /// @brief create an AST node from vpack
-  AstNode* nodeFromVPack(arangodb::velocypack::Slice const&, bool);
-
+  AstNode* nodeFromVPack(arangodb::velocypack::Slice const&, bool copyStringValues);
+  
   /// @brief resolve an attribute access
   static AstNode const* resolveConstAttributeAccess(AstNode const*);
 

@@ -254,6 +254,10 @@ arangodb::Result LogicalViewClusterInfo::drop() {
     if (TRI_ERROR_NO_ERROR != resNum) {
       deleted(false); // not fully deleted
 
+      if (error.empty()) {
+        error = TRI_errno_string(resNum);
+      }
+
       return arangodb::Result(
         resNum,
         std::string("failure during ClusterInfo removal of View in database '") + vocbase().name() + "', error: " + error

@@ -336,7 +336,7 @@ bool RestAqlHandler::registerSnippets(
         // No need to cleanup...
       }
 
-      _queryRegistry->insert(qId, query.get(), ttl, true);
+      _queryRegistry->insert(qId, query.get(), ttl, true, false);
       query.release();
       answerBuilder.add(it.key);
       answerBuilder.add(VPackValue(arangodb::basics::StringUtils::itoa(qId)));
@@ -445,7 +445,7 @@ void RestAqlHandler::createQueryFromVelocyPack() {
 
   _qId = TRI_NewTickServer();
   try {
-    _queryRegistry->insert(_qId, query.get(), ttl, true);
+    _queryRegistry->insert(_qId, query.get(), ttl, true, false);
     query.release();
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
