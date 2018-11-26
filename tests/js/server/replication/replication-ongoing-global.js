@@ -83,6 +83,7 @@ const compare = function(masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFin
   applierConfiguration.password = "";
   applierConfiguration.includeSystem = false;
   applierConfiguration.force32mode = false;
+  applierConfiguration.requireFromPresent = false;
 
   var syncResult = replication.syncGlobal({
     endpoint: masterEndpoint,
@@ -150,6 +151,7 @@ const compare = function(masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFin
     internal.wait(0.5, false);
   }
 
+  internal.wait(1.0, false);
   db._flushCache();
   slaveFuncFinal(state);
 };
@@ -465,9 +467,14 @@ function BaseTestConfig() {
           return true;
         },
 
-        function(state) {
-          assertEqual(db._collection(cn).count(), 0);
-          assertEqual(db._collection(cn).all().toArray().length, 0);
+        function (state) {
+          const c = db._collection(cn);
+          let x = 10;
+          while (c.count() > 0 && x-- > 0) {
+            internal.sleep(1);
+          }
+          assertEqual(c.count(), 0);
+          assertEqual(c.all().toArray().length, 0);
         }
       );
     },
@@ -769,9 +776,9 @@ function BaseTestConfig() {
             return;
           }
           // rename view on master
-          let view = db._view("UnitTestsSyncView");
-          view.rename("UnitTestsSyncViewRenamed");
-          view = db._view("UnitTestsSyncViewRenamed");
+          let view = db._view('UnitTestsSyncView');
+          view.rename('UnitTestsSyncViewRenamed');
+          view = db._view('UnitTestsSyncViewRenamed');
           assertTrue(view !== null);
           let props = view.properties();
           assertEqual(Object.keys(props.links).length, 1);
@@ -810,7 +817,7 @@ function BaseTestConfig() {
             return;
           }
           // drop view on master
-          let view = db._view("UnitTestsSyncView");
+          let view = db._view('UnitTestsSyncView');
           view.drop();
         },
         function(state) {},
@@ -818,9 +825,14 @@ function BaseTestConfig() {
           if (!state.arangoSearchEnabled) {
             return;
           }
-    
-          let view = db._view("UnitTestsSyncView");
-          assertTrue(view === null);
+          let view = db._view('UnitTestsSyncView');
+          let x = 10;
+          while (view && x-- > 0) {
+            internal.sleep(1);
+            db._flushCache();
+            view = db._view('UnitTestsSyncView');
+          }
+          assertNull(view);
         },
         {}
       );

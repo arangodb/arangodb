@@ -28,7 +28,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Indexes/IndexIterator.h"
-#include "Indexes/IndexLookupContext.h"
+#include "MMFiles/MMFilesIndexLookupContext.h"
 #include "MMFiles/MMFilesDatafileStatistics.h"
 #include "MMFiles/MMFilesDatafileStatisticsContainer.h"
 #include "MMFiles/MMFilesDitch.h"
@@ -44,8 +44,6 @@ struct MMFilesDatafile;
 struct MMFilesMarker;
 
 namespace arangodb {
-
-
 class LogicalCollection;
 class ManagedDocumentResult;
 struct MMFilesDocumentOperation;
@@ -84,7 +82,7 @@ class MMFilesCollection final : public PhysicalCollection {
     MMFilesDatafileStatisticsContainer* _dfi{nullptr};
     transaction::Methods* _trx;
     ManagedDocumentResult _mmdr;
-    IndexLookupContext _context;
+    MMFilesIndexLookupContext _context;
     uint64_t _deletions{0};
     uint64_t _documents{0};
     uint64_t _operations{0};
@@ -537,7 +535,7 @@ class MMFilesCollection final : public PhysicalCollection {
 
   LocalDocumentId reuseOrCreateLocalDocumentId(OperationOptions const& options) const;
 
-  bool hasAllPersistentLocalIds() const;
+  bool hasAllPersistentLocalIds() const override;
 
   static Result persistLocalDocumentIdsForDatafile(
       MMFilesCollection& collection, MMFilesDatafile& file);

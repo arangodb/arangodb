@@ -132,7 +132,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
     // rocksdb does not count LogData towards sequence-number
     RocksDBLogType type = RocksDBLogValue::type(blob);
 
-    // LOG_TOPIC(WARN, Logger::REPLICATION) << "[LOG] " << _currentSequence
+    //LOG_TOPIC(WARN, Logger::REPLICATION) << "[LOG] " << _currentSequence
     // << " " << rocksDBLogTypeName(type);
     switch (type) {
       case RocksDBLogType::DatabaseCreate:
@@ -792,6 +792,8 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
     lastScannedTick = batch.sequence;  // start of the batch
 
     if (batch.sequence < since) {
+      //LOG_DEVEL << "skipping batch from " << batch.sequence << " to "
+      //<< (batch.sequence + batch.writeBatchPtr->Count());
       iterator->Next();  // skip
       continue;
     }

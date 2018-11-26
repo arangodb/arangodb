@@ -591,6 +591,57 @@ function runThere (options, instanceInfo, file) {
 }
 runThere.info = 'runThere';
 
+function readTestResult(path, rc) {
+  const jsonFN = fs.join(path, 'testresult.json');
+  let buf;
+  try {
+    buf = fs.read(jsonFN);
+    fs.remove(jsonFN);
+  } catch (x) {
+    let msg = 'failed to read ' + jsonFN + " - " + x;
+    print(RED + msg + RESET);
+    return {
+      status: false,
+      message: msg,
+      duration: -1
+    };
+  }
+
+  let result;
+  try {
+    result = JSON.parse(buf);
+  } catch (x) {
+    let msg = 'failed to parse ' + jsonFN + "'" + buf + "' - " + x;
+    print(RED + msg + RESET);
+    return {
+      status: false,
+      message: msg,
+      duration: -1
+    };
+  }
+
+  if (Array.isArray(result)) {
+    if (result.length === 0) {
+      // spec-files - don't have parseable results.
+      rc.failed = rc.status ? 0 : 1;
+      return rc;
+    } else if ((result.length >= 1) &&
+               (typeof result[0] === 'object') &&
+               result[0].hasOwnProperty('status')) {
+      return result[0];
+    } else {
+      rc.failed = rc.status ? 0 : 1;
+      rc.message = "don't know howto handle '" + buf + "'";
+      return rc;
+    }
+  } else if (_.isObject(result)) {
+    return result;
+  } else {
+    rc.failed = rc.status ? 0 : 1;
+    rc.message = "don't know howto handle '" + buf + "'";
+    return rc;
+  }    
+}
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs a local unittest file using arangosh
 // //////////////////////////////////////////////////////////////////////////////
@@ -611,27 +662,8 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
     args = Object.assign(args, addArgs);
   }
   require('internal').env.INSTANCEINFO = JSON.stringify(instanceInfo);
-  const jsonFN = fs.join(instanceInfo.rootDir, 'testresult.json');
   let rc = pu.executeAndWait(pu.ARANGOSH_BIN, toArgv(args), options, 'arangosh', instanceInfo.rootDir, false, options.coreCheck);
-  let result;
-  try {
-    result = JSON.parse(fs.read(jsonFN));
-
-    fs.remove(jsonFN);
-  } catch (x) {
-    if (options.extremeVerbosity) {
-      print('failed to read ' + jsonFN);
-    }
-    return rc;
-  }
-
-  if ((typeof result[0] === 'object') &&
-    result[0].hasOwnProperty('status')) {
-    return result[0];
-  } else {
-    rc.failed = rc.status ? 0 : 1;
-    return rc;
-  }
+  return readTestResult(instanceInfo.rootDir, rc);
 }
 runInArangosh.info = 'arangosh';
 
@@ -763,54 +795,6 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
 }
 runInRSpec.info = 'runInRSpec';
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief
-// //////////////////////////////////////////////////////////////////////////////
-
-function makeResults (testname, instanceInfo) {
-  const startTime = time();
-
-  return function (status, message) {
-    let duration = time() - startTime;
-    let results;
-
-    if (status) {
-      let result;
-
-      try {
-        result = JSON.parse(fs.read(instanceInfo.rootDir + '/testresult.json'));
-
-        if ((typeof result[0] === 'object') &&
-            result[0].hasOwnProperty('status')) {
-          results = result[0];
-        }
-      } catch (x) {}
-    }
-
-    if (results === undefined) {
-      results = {
-        status: status,
-        duration: duration,
-        total: 1,
-        failed: status ? 0 : 1,
-        'testing.js': {
-          status: status,
-          duration: duration
-        }
-      };
-
-      if (message) {
-        results['testing.js'].message = message;
-      }
-    }
-
-    let full = {};
-    full[testname] = results;
-
-    return full;
-  };
-}
-
 exports.runThere = runThere;
 exports.runInArangosh = runInArangosh;
 exports.runInRSpec = runInRSpec;
@@ -818,10 +802,10 @@ exports.runInRSpec = runInRSpec;
 exports.makePathUnix = makePathUnix;
 exports.makePathGeneric = makePathGeneric;
 exports.performTests = performTests;
+exports.readTestResult = readTestResult;
 exports.filterTestcaseByOptions = filterTestcaseByOptions;
 exports.splitBuckets = splitBuckets;
 exports.doOnePathInner = doOnePathInner;
 exports.scanTestPaths = scanTestPaths;
-exports.makeResults = makeResults;
 exports.diffArray = diffArray;
 exports.pathForTesting = pathForTesting;
