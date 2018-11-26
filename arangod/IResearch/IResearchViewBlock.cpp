@@ -293,52 +293,30 @@ IResearchViewBlockBase::getSome(size_t atMost) {
     return {ExecutionState::DONE, nullptr};
   }
 
-  bool needMore;
-  AqlItemBlock* cur = nullptr;
-
   ReadContext ctx(getNrInputRegisters());
-
   RegisterId const nrOutRegs = getNrOutputRegisters();
 
   do {
-    do {
-      needMore = false;
+    if (_buffer.empty()) {
+      size_t const toFetch = (std::min)(DefaultBatchSize(), atMost);
 
-      if (_buffer.empty()) {
-        size_t const toFetch = (std::min)(DefaultBatchSize(), atMost);
-        BufferState bufferState = getBlockIfNeeded(toFetch);
-        if (bufferState == BufferState::WAITING) {
-          traceGetSomeEnd(nullptr, ExecutionState::WAITING);
-          return {ExecutionState::WAITING, nullptr};
-        }
-        if (bufferState == BufferState::NO_MORE_BLOCKS) {
-          TRI_ASSERT(_inflight == 0);
-          _done = true;
-          TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
-          traceGetSomeEnd(nullptr, ExecutionState::DONE);
-          return {ExecutionState::DONE, nullptr};
-        }
+      switch (getBlockIfNeeded(toFetch)) {
+       case BufferState::NO_MORE_BLOCKS:
+        TRI_ASSERT(_inflight == 0);
+        _done = true;
+        TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
+        traceGetSomeEnd(nullptr, ExecutionState::DONE);
+        return {ExecutionState::DONE, nullptr};
+       case BufferState::WAITING:
+        traceGetSomeEnd(nullptr, ExecutionState::WAITING);
+        return {ExecutionState::WAITING, nullptr};
+       default:
         reset();
       }
+    }
 
-      // If we get here, we do have _buffer.front()
-      cur = _buffer.front();
-
-      if (!_hasMore) {
-        needMore = true;
-        _hasMore = true;
-
-        if (++_pos >= cur->size()) {
-          _buffer.pop_front();  // does not throw
-          returnBlock(cur);
-          _pos = 0;
-        } else {
-          // we have exhausted this cursor
-          // re-initialize fetching of documents
-          reset();
-        }
-      }
-    } while (needMore);
+    // If we get here, we do have _buffer.front()
+    auto* cur = _buffer.front();
 
     TRI_ASSERT(cur);
     TRI_ASSERT(ctx.curRegs == cur->getNrRegs());
@@ -352,14 +330,13 @@ IResearchViewBlockBase::getSome(size_t atMost) {
 
     throwIfKilled();  // check if we were aborted
 
-    TRI_IF_FAILURE("EnumerateViewBlock::moreDocuments") {
+    TRI_IF_FAILURE("IResearchViewBlockBase::getSome") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
     _hasMore = next(ctx, atMost);
 
     if (!_hasMore) {
-      needMore = true;
       _hasMore = true;
 
       if (++_pos >= cur->size()) {
@@ -379,7 +356,7 @@ IResearchViewBlockBase::getSome(size_t atMost) {
   TRI_ASSERT(ctx.res);
 
   // aggregate stats
-   _engine->_stats.scannedIndex += static_cast<int64_t>(ctx.pos);
+  _engine->_stats.scannedIndex += static_cast<int64_t>(ctx.pos);
 
   if (ctx.pos < atMost) {
     // The collection did not have enough results
