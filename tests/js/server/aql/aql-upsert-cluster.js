@@ -188,7 +188,7 @@ function ahuacatlClusterUpsertNonKeySuite () {
 /// @brief test upsert
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUpsertOnlyUpdate : function () {
+    testUpsertOnlyUpdateNonKey : function () {
       var actual = AQL_EXECUTE("FOR i IN 0..9 UPSERT { value : i } INSERT { new: true, value2: i, value: i } UPDATE { value2: i, new: false } IN @@cn1 RETURN { old: OLD, new: NEW }", { "@cn1": cn1 });
 
       actual.json.sort(sorter);
@@ -207,7 +207,7 @@ function ahuacatlClusterUpsertNonKeySuite () {
 /// @brief test upsert
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUpsertOnlyInsert : function () {
+    testUpsertOnlyInsertNonKey : function () {
       var actual = AQL_EXECUTE("FOR i IN 50..59 UPSERT { value: i } INSERT { new: true, value2: i, value: i } UPDATE { value2: i, new: false } IN @@cn1 RETURN { old: OLD, new: NEW }", { "@cn1": cn1 });
       actual.json.sort(sorter);
 
@@ -226,7 +226,7 @@ function ahuacatlClusterUpsertNonKeySuite () {
 /// @brief test upsert
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUpsertMixed : function () {
+    testUpsertMixedNonKey : function () {
       var actual = AQL_EXECUTE("FOR i IN 0..39 UPSERT { value: i } INSERT { new: true, value2: i, value: i } UPDATE { value2: i, new: false } IN @@cn1 RETURN { old: OLD, new: NEW }", { "@cn1": cn1 });
       actual.json.sort(sorter);
 
@@ -253,7 +253,7 @@ function ahuacatlClusterUpsertNonKeySuite () {
 /// @brief test upsert
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUpsertInsertWithKey : function () {
+    testUpsertInsertWithKeyNonKey : function () {
       assertQueryError(errors.ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY.code, "FOR i IN 20..29 UPSERT { value: i } INSERT { _key: CONCAT('test', i) } UPDATE { } IN @@cn1 RETURN { old: OLD, new: NEW }", { "@cn1": cn1 });
     },
 
@@ -261,7 +261,7 @@ function ahuacatlClusterUpsertNonKeySuite () {
 /// @brief test upsert
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUpsertShardKeyChange : function () {
+    testUpsertShardKeyChangeNonKey : function () {
       assertQueryError(errors.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code, "FOR i IN 0..19 UPSERT { value: i } INSERT { } UPDATE { value: OLD.value + 1 } IN @@cn1 RETURN { old: OLD, new: NEW }", { "@cn1": cn1 });
     }
 

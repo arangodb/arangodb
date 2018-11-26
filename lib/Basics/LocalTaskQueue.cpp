@@ -140,9 +140,6 @@ void LocalTaskQueue::enqueueCallback(std::shared_ptr<LocalCallbackTask> task) {
 //////////////////////////////////////////////////////////////////////////////
 
 void LocalTaskQueue::post(std::function<void()> fn) {
-  if (SchedulerFeature::SCHEDULER->isStopping()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-  }
   _poster(fn);
 }
 
