@@ -568,7 +568,7 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
     _columnNames.push_back(std::move(name));
   }
   // skip removable attributes
-  if (!_removeAttributes.empty() &&
+  if (!_removeAttributes.empty() && column < _columnNames.size() &&
       _removeAttributes.find(_columnNames[column]) != _removeAttributes.end()) {
     return;
   }
