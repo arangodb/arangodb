@@ -397,13 +397,11 @@ std::shared_ptr<Index> ClusterCollection::lookupIndex(
 }
 
 std::shared_ptr<Index> ClusterCollection::createIndex(
-    transaction::Methods* trx, arangodb::velocypack::Slice const& info,
+    arangodb::velocypack::Slice const& info, bool restore,
     bool& created) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   // prevent concurrent dropping
-  bool isLocked =
-      trx->isLocked(&_logicalCollection, AccessMode::Type::EXCLUSIVE);
-  CONDITIONAL_WRITE_LOCKER(guard, _exclusiveLock, !isLocked);
+  WRITE_LOCKER(guard, _exclusiveLock);
   std::shared_ptr<Index> idx;
 
   {
@@ -433,15 +431,6 @@ std::shared_ptr<Index> ClusterCollection::createIndex(
   addIndex(idx);
   created = true;
   return idx;
-}
-
-/// @brief Restores an index from VelocyPack.
-int ClusterCollection::restoreIndex(transaction::Methods* trx,
-                                    velocypack::Slice const& info,
-                                    std::shared_ptr<Index>& idx) {
-  // The coordinator can never get into this state!
-  TRI_ASSERT(false);
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief Drop an index with the given iid.

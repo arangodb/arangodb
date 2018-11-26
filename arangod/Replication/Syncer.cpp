@@ -709,34 +709,22 @@ Result Syncer::createIndex(VPackSlice const& slice) {
   VPackBuilder merged =
       VPackCollection::merge(indexSlice, s.slice(),
                              /*mergeValues*/ true, /*nullMeansRemove*/ true);
-
+  
   try {
-    SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(*vocbase),
-      *col,
-      AccessMode::Type::WRITE
-    );
-    Result res = trx.begin();
-
-    if (!res.ok()) {
-      return res;
-    }
-
-    auto physical = trx.documentCollection()->getPhysical();
+    auto physical = col->getPhysical();
     TRI_ASSERT(physical != nullptr);
+    
     std::shared_ptr<arangodb::Index> idx;
-    res = physical->restoreIndex(&trx, merged.slice(), idx);
-    res = trx.finish(res);
+    bool created = false;
+    idx = physical->createIndex(merged.slice(), /*restore*/true, created);
+    TRI_ASSERT(idx != nullptr);
 
-    return res;
   } catch (arangodb::basics::Exception const& ex) {
-    return Result(
-        ex.code(),
-        std::string("caught exception while creating index: ") + ex.what());
+    return Result(ex.code(),
+                  std::string("caught exception while creating index: ") + ex.what());
   } catch (std::exception const& ex) {
-    return Result(
-        TRI_ERROR_INTERNAL,
-        std::string("caught exception while creating index: ") + ex.what());
+    return Result(TRI_ERROR_INTERNAL,
+                  std::string("caught exception while creating index: ") + ex.what());
   } catch (...) {
     return Result(TRI_ERROR_INTERNAL,
                   "caught unknown exception while creating index");

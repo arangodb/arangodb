@@ -232,6 +232,8 @@ Consider some ways to minimize the required amount of storage space:
   store one entry. This will only be beneficial if the combined documents are
   regularly retrieved together and not just subsets.
 
+### RockDB Storage Engine
+
 Especially for the RocksDB storage engine large documents and transactions may
 negatively impact the write performance:
 - Consider a maximum size of 50-75 kB _per document_ as a good rule of thumb.
@@ -239,3 +241,19 @@ negatively impact the write performance:
 - Transactions are held in-memory before they are committed.
   This means that transactions have to be split if they become too big, see the
   [limitations section](../Transactions/Limitations.md#with-rocksdb-storage-engine).
+
+#### Improving Update Query Perfromance
+
+Use the _exclusive_ query option for modifying AQL queries on a _single collection_, 
+to improve the performance drastically.
+This has the downside that no concurrent writes may occur on the collection, but we are able
+to use a special fast-path which should improve the performance by up to 50% for large collections.
+
+```js
+FOR doc IN mycollection
+  UPDATE doc._key
+  WITH { foobar: true } IN mycollection
+  OPTIONS { exclusive: true }
+```
+
+The same naturally also applies for queries using _REPLACE_
