@@ -90,6 +90,8 @@ devel
 
 * use `-std=c++14` for ArangoDB compilation
 
+* fix move leader shard: wait until all but the old leader are in sync.
+  This fixes some unstable tests.
 
 v3.4.0-rc.4 (XXXX-XX-XX)
 ------------------------
