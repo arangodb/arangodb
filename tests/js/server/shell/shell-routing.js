@@ -289,7 +289,7 @@ function routingSuiteBundle () {
 /// @brief test: simple routing
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSimpleRouting: function () {
+    testBundleSimpleRouting: function () {
       var r = actions.firstRouting('GET', "/hello/world", routing);
 
       assertEqual('m1', r.route.route.content);
@@ -373,7 +373,7 @@ function routingSuitePrefix () {
 /// @brief test: simple routing
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSimpleRouting: function () {
+    testPrefixSimpleRouting: function () {
       var r = actions.firstRouting('GET', "/test/hello/world", routing);
       assertEqual('m1', r.route.route.content);
       assertEqual('/test/*', r.route.path);
