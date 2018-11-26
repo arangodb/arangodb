@@ -555,7 +555,10 @@ JOB_STATUS MoveShard::pendingLeader() {
     doForAllShards(_snapshot, _database, shardsLikeMe,
       [this, &done](Slice plan, Slice current, std::string& planPath) {
         if (current.length() > 0 && current[0].copyString() == _to) {
-          if (plan.length() < 3) {   // Should never be the case!
+          if (plan.length() < 3) {
+            // This only happens for replicationFactor == 1, in which case
+            // there are exactly 2 servers in the Plan at this stage.
+            // But then we do not have to wait for any follower to get in sync.
             ++done;
           } else {
             // New leader has assumed leadership, now check all but the
