@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused: false */
-/* global assertEqual, assertTrue, assertFalse, assertNull, assertNotNull, arango, ARGUMENTS */
+/* global fail, assertEqual, assertTrue, assertFalse, assertNull, assertNotNull, arango, ARGUMENTS */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test the replication
