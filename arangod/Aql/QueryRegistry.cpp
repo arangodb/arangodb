@@ -81,22 +81,11 @@ void QueryRegistry::insert(QueryId id, Query* query, double ttl, bool isPrepared
   {
     WRITE_LOCKER(writeLocker, _lock);
 
-    auto m = _queries.find(vocbase.name());
-    if (m == _queries.end()) {
-      m = _queries.emplace(vocbase.name(),
-                           std::unordered_map<QueryId, std::unique_ptr<QueryInfo>>()).first;
-
-      TRI_ASSERT(_queries.find(vocbase.name()) != _queries.end());
-    }
-
-    auto q = m->second.find(id);
-
-    if (q != m->second.end()) {
+    auto result = _queries[vocbase.name()].emplace(id, std::move(p));
+    if (!result.second) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL, "query with given vocbase and id already there");
     }
-
-    m->second.emplace(id, std::move(p));
   }
 }
 

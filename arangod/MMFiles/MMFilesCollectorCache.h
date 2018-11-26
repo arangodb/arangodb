@@ -87,14 +87,7 @@ struct MMFilesCollectorCache {
   /// @brief return a reference to an existing datafile statistics struct,
   /// create it if it does not exist
   MMFilesDatafileStatisticsContainer& createDfi(TRI_voc_fid_t fid) {
-    auto it = dfi.find(fid);
-
-    if (it != dfi.end()) {
-      return (*it).second;
-    }
-
-    dfi.emplace(fid, MMFilesDatafileStatisticsContainer());
-
+    // implicitly creates the entry if it does not exist yet
     return dfi[fid];
   }
 

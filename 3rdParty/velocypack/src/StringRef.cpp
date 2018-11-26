@@ -29,16 +29,17 @@
 
 using namespace arangodb::velocypack;
   
-StringRef::StringRef(arangodb::velocypack::Slice const& slice) {
+StringRef::StringRef(Slice slice) {
   VELOCYPACK_ASSERT(slice.isString());
-  arangodb::velocypack::ValueLength l;
+  ValueLength l;
   _data = slice.getString(l);
   _length = l;
 }
   
 /// @brief create a StringRef from a VPack slice of type String
-StringRef& StringRef::operator=(arangodb::velocypack::Slice const& slice) {
-  arangodb::velocypack::ValueLength l;
+StringRef& StringRef::operator=(Slice slice) {
+  VELOCYPACK_ASSERT(slice.isString());
+  ValueLength l;
   _data = slice.getString(l);
   _length = l;
   return *this;
