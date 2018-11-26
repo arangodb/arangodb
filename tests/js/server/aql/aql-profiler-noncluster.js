@@ -323,9 +323,15 @@ function ahuacatlProfilerTestSuite () {
       const query = `FOR d IN @@view SEARCH d.value != 0 OPTIONS { waitForSync: true } RETURN d.value`;
 
       const genNodeList = (rows, batches) => {
+        // EnumerateViewBlock returns HASMORE when asked for the exact number
+        // of items it has left. This could be improved.
+        const optimalBatches = Math.ceil(rows / defaultBatchSize);
+        const maxViewBatches = Math.floor(rows / defaultBatchSize) + 1;
+        const viewBatches = [optimalBatches, maxViewBatches];
+
         return [
-          {type: SingletonBlock, calls: 2, items: 1},
-          {type: EnumerateViewNode, calls: batches + 1, items: rows},
+          {type: SingletonBlock, calls: 1, items: 1},
+          {type: EnumerateViewNode, calls: viewBatches, items: rows},
           {type: CalculationBlock, calls: rows % defaultBatchSize === 0 ? batches + 1 : batches, items: rows},
           {type: ReturnBlock, calls: rows % defaultBatchSize === 0 ? batches + 1 : batches, items: rows}
         ];
@@ -350,9 +356,15 @@ function ahuacatlProfilerTestSuite () {
       const query = `FOR d IN @@view SEARCH d.value != 0 OPTIONS { waitForSync: true } SORT d.value DESC RETURN d.value`;
 
       const genNodeList = (rows, batches) => {
+        // EnumerateViewBlock returns HASMORE when asked for the exact number
+        // of items it has left. This could be improved.
+        const optimalBatches = Math.ceil(rows / defaultBatchSize);
+        const maxViewBatches = Math.floor(rows / defaultBatchSize) + 1;
+        const viewBatches = [optimalBatches, maxViewBatches];
+
         return [
-          {type: SingletonBlock, calls: 2, items: 1},
-          {type: EnumerateViewNode, calls: batches + 1, items: rows},
+          {type: SingletonBlock, calls: 1, items: 1},
+          {type: EnumerateViewNode, calls: viewBatches, items: rows},
           {type: CalculationBlock, calls: rows % defaultBatchSize === 0 ? batches + 1 : batches, items: rows},
           {type: SortBlock, calls: batches, items: rows},
           {type: ReturnBlock, calls: batches, items: rows}
@@ -378,9 +390,15 @@ function ahuacatlProfilerTestSuite () {
       const query = `FOR d IN @@view SEARCH d.value != 0 OPTIONS { waitForSync: true } SORT TFIDF(d) ASC, BM25(d) RETURN d.value`;
 
       const genNodeList = (rows, batches) => {
+        // EnumerateViewBlock returns HASMORE when asked for the exact number
+        // of items it has left. This could be improved.
+        const optimalBatches = Math.ceil(rows / defaultBatchSize);
+        const maxViewBatches = Math.floor(rows / defaultBatchSize) + 1;
+        const viewBatches = [optimalBatches, maxViewBatches];
+
         return [
-          {type: SingletonBlock, calls: 2, items: 1},
-          {type: EnumerateViewNode, calls: batches + 1, items: rows},
+          {type: SingletonBlock, calls: 1, items: 1},
+          {type: EnumerateViewNode, calls: viewBatches, items: rows},
           {type: SortBlock, calls: batches, items: rows},
           {type: CalculationBlock, calls: batches, items: rows},
           {type: ReturnBlock, calls: batches, items: rows}
