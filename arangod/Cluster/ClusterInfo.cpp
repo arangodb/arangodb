@@ -2031,7 +2031,7 @@ int ClusterInfo::ensureIndexCoordinatorInner(
             newIndexBuilder.slice().get("id").copyString());
         if (std::any_of(indexes.begin(), indexes.end(),
               [indexId](std::shared_ptr<arangodb::Index>& index) -> bool {
-                return indexId == index->id();
+                return indexId == index->id() && !index->isBuilding();
               })) {
           // unregister cb before accessing errMsg
           _agencyCallbackRegistry->unregisterCallback(agencyCallback);
