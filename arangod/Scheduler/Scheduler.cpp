@@ -112,7 +112,7 @@ class arangodb::SchedulerThread : public Thread {
     size_t counter = 0;
     bool doDecrement = true;
 
-    while (!_scheduler->isStopping() || 0 != _scheduler->numQueued()) {
+    while (!_scheduler->isStopping()) {
       try {
         _service->run_one();
       } catch (std::exception const& ex) {
@@ -208,47 +208,24 @@ Scheduler::~Scheduler() {
 // do not pass callback by reference, might get deleted before execution
 void Scheduler::post(std::function<void()> const callback) {
   // increment number of queued and guard against exceptions
-  //  (this incQueued() manipulates the atomic _counters in a sequentially-consistent
-  //   manner.  isStopping() uses same atomic _counters)
   incQueued();
 
-  // implies if _ioContext still valid (defense against shutdown races)
-  if (!isStopping()) {
-    auto guardQueue = scopeGuard([this]() { decQueued(); });
+  auto guardQueue = scopeGuard([this]() { decQueued(); });
 
-    // capture without self, ioContext will not live longer than scheduler
-    _ioContext->post([this, callback]() {
-      // start working
-      JobGuard jobGuard(this);
-      jobGuard.work();
-
-      // reduce number of queued now
-      decQueued();
-
-      // it is safe to execute the callback now, even with the queued counter
-      // being decreased. this is because JobGuard::work() has increased the
-      // working counter, which is also checked on shutdown
-      callback();
-    });
-
-    // no exception happened, cancel guard
-    guardQueue.cancel();
-  } else {
-    // increase number of working (must precede decQueue() to keep shutdown looping)
+  // capture without self, ioContext will not live longer than scheduler
+  _ioContext->post([this, callback]() {
+    // start working
     JobGuard jobGuard(this);
     jobGuard.work();
 
     // reduce number of queued now
     decQueued();
 
-    // this post is coming late in application shutdown,
-    //  might be essential ...
-    
-    // it is safe to execute the callback now, even with the queued counter
-    // being decreased. this is because JobGuard::work() has increased the
-    // working counter, which is also checked on shutdown
     callback();
-  } // else
+  });
+
+  // no exception happened, cancel guard
+  guardQueue.cancel();
 }
 
 // do not pass callback by reference, might get deleted before execution
@@ -386,67 +363,57 @@ std::string Scheduler::infoStatus() {
 }
 
 bool Scheduler::canPostDirectly(RequestPriority prio) const noexcept {
-  if (!isStopping()) {
-    auto counters = getCounters();
-    auto nrWorking = numWorking(counters);
-    auto nrQueued = numQueued(counters);
+  auto counters = getCounters();
+  auto nrWorking = numWorking(counters);
+  auto nrQueued = numQueued(counters);
 
-    switch (prio) {
-      case RequestPriority::HIGH:
-        return nrWorking + nrQueued < _maxThreads;
+  switch (prio) {
+    case RequestPriority::HIGH:
+      return nrWorking + nrQueued < _maxThreads;
 
-        // the "/ 2" is an assumption that HIGH is typically responses to our outbound messages
-        //  where MED & LOW are incoming requests.  Keep half the threads processing our work and half their work.
-      case RequestPriority::MED:
-      case RequestPriority::LOW:
-        return nrWorking + nrQueued < _maxThreads / 2;
-    }
+    // the "/ 2" is an assumption that HIGH is typically responses to our outbound messages
+    //  where MED & LOW are incoming requests.  Keep half the threads processing our work and half their work.
+    case RequestPriority::MED:
+    case RequestPriority::LOW:
+      return nrWorking + nrQueued < _maxThreads / 2;
+  }
 
-    return false;
-  } else {
-    // during shutdown, finesse is no longer needed.  post everything.
-    return true;
-  } // else
+  return false;
 }
 
 bool Scheduler::pushToFifo(int64_t fifo, std::function<void()> const& callback) {
   LOG_TOPIC(TRACE, Logger::THREADS) << "Push element on fifo: " << fifo;
   TRI_ASSERT(0 <= fifo && fifo < NUMBER_FIFOS);
 
-  if (!isStopping()) {
-    size_t p = static_cast<size_t>(fifo);
-    auto job = std::make_unique<FifoJob>(callback);
+  size_t p = static_cast<size_t>(fifo);
+  auto job = std::make_unique<FifoJob>(callback);
 
-    try {
-      if (0 < _maxFifoSize[p] && (int64_t)_maxFifoSize[p] <= _fifoSize[p]) {
-        return false;
-      }
-
-      if (!_fifos[p]->push(job.get())) {
-        return false;
-      }
-
-      job.release();
-      ++_fifoSize[p];
-
-      // then check, otherwise we might miss to wake up a thread
-      auto counters = getCounters();
-      auto nrWorking = numRunning(counters);
-      auto nrQueued = numQueued(counters);
-
-      if (0 == nrWorking + nrQueued) {
-        post([] {
-            LOG_TOPIC(DEBUG, Logger::THREADS) << "Wakeup alarm";
-            /*wakeup call for scheduler thread*/
-          });
-      }
-    } catch (...) {
+  try {
+    if (0 < _maxFifoSize[p] && (int64_t)_maxFifoSize[p] <= _fifoSize[p]) {
       return false;
     }
-  } else {
-    // hand this directly to post() so it can route it quickly
-    post(callback);
-  } // else
+
+    if (!_fifos[p]->push(job.get())) {
+      return false;
+    }
+
+    job.release();
+    ++_fifoSize[p];
+
+    // then check, otherwise we might miss to wake up a thread
+    auto counters = getCounters();
+    auto nrWorking = numRunning(counters);
+    auto nrQueued = numQueued(counters);
+
+    if (0 == nrWorking + nrQueued) {
+      post([] {
+          LOG_TOPIC(DEBUG, Logger::THREADS) << "Wakeup alarm";
+          /*wakeup call for scheduler thread*/
+      });
+    }
+  } catch (...) {
+    return false;
+  }
 
   return true;
 }
@@ -526,38 +493,11 @@ bool Scheduler::start() {
 }
 
 void Scheduler::beginShutdown() {
-  if (!setStopping()) {
-    // somebody else had set the stopping bit already, so we don't care here
+  if (isStopping()) {
     return;
   }
 
-  // Scheduler::post() assumes atomic _counters is manipulated in a
-  //  sequentially-consistent manner so that state of _ioContext can be implied
-  //  via _counters.
-
-  // push anything within fifo queues onto context queue
-  drain();
-
-  int notifyCounter = 0;
-
-  while (true) {
-    uint64_t const counters = _counters.load();
-
-    if (numWorking(counters) == 0 && numQueued(counters) == 0) {
-      break;
-    }
- 
-    if (++notifyCounter % 500 == 0) {
-      LOG_TOPIC(DEBUG, Logger::THREADS) << "waiting for numWorking: " << numWorking(counters) << ", numQueued: " << numQueued(counters); 
-    }
-
-    std::this_thread::yield();
-    std::this_thread::sleep_for(std::chrono::microseconds(2000));
-  }
-
-  // shutdown worker threads and control mechanisms
   stopRebalancer();
-
   _threadManager.reset();
 
   _managerGuard.reset();
@@ -565,23 +505,17 @@ void Scheduler::beginShutdown() {
 
   _serviceGuard.reset();
   _ioContext->stop();
+
+  // set the flag AFTER stopping the threads
+  setStopping();
 }
 
 void Scheduler::shutdown() {
-  TRI_ASSERT(isStopping());
-
-  int notifyCounter = 0;
-
   while (true) {
     uint64_t const counters = _counters.load();
 
-    if (numRunning(counters) == 0 && numWorking(counters) == 0
-        && numQueued(counters) == 0) {
+    if (numRunning(counters) == 0 && numWorking(counters) == 0) {
       break;
-    }
-    
-    if (++notifyCounter % 50 == 0) {   
-      LOG_TOPIC(DEBUG, Logger::THREADS) << "waiting for numRunning: " << numRunning(counters) << ", numWorking: " << numWorking(counters) << ", numQueued: " << numQueued(counters); 
     }
 
     std::this_thread::yield();
@@ -649,6 +583,8 @@ void Scheduler::stopRebalancer() noexcept {
   }
 }
 
+
+//
 // This routine tries to keep only the most likely needed count of threads running:
 //  - asio io_context runs less efficiently if it has too many threads, but
 //  - there is a latency hit to starting a new thread.
