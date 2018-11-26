@@ -141,7 +141,7 @@ of removing unused segments after release of internal resources.
 
   Maximum memory byte size per writer (segment) before a writer (segment) flush is
   triggered. `0` value turns off this limit fon any writer (buffer) and will be
-  flushed only after a period [defined](Manual/Programs/Arangod/Server.md#data-source-flush-synchronization)
+  flushed only after a period [defined](../../Programs/Arangod/Server.md#data-source-flush-synchronization)
   for the flush thread during ArangoDB server startup. `0` value should be used 
   carefully due to high potential memory consumption.
 
