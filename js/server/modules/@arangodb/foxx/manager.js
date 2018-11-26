@@ -130,13 +130,12 @@ function parallelClusterRequests (requests) {
 function selfHealAll (skipReloadRouting) {
   const db = require('internal').db;
   const dbName = db._name();
-  let modified;
+  let modified = false;
   try {
     db._useDatabase('_system');
     const databases = db._databases();
     for (const name of databases) {
       try {
-        require("internal").print("Healing Database" + name);
         db._useDatabase(name);
         modified = selfHeal() || modified;
       } catch (e) {
@@ -145,8 +144,7 @@ function selfHealAll (skipReloadRouting) {
     }
   } finally {
     db._useDatabase(dbName);
-    if (true || (modified && !skipReloadRouting)) {
-      require("internal").print("ReloadRouting");
+    if (modified && !skipReloadRouting) {
       reloadRouting();
     }
   }
