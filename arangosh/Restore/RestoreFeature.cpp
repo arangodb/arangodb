@@ -570,14 +570,15 @@ arangodb::Result processInputDirectory(
     arangodb::RestoreFeature::Stats& stats) {
   using arangodb::Logger;
   using arangodb::Result;
+  using arangodb::StaticStrings;
   using arangodb::basics::FileUtils::listFiles;
+  using arangodb::basics::VelocyPackHelper;
 
   // create a lookup table for collections
-  std::map<std::string, bool> restrictList;
-  for (size_t i = 0; i < options.collections.size(); ++i) {
-    restrictList.insert(
-        std::pair<std::string, bool>(options.collections[i], true));
-  }
+  std::set<std::string> restrictColls, restrictViews;
+  restrictColls.insert(options.collections.begin(), options.collections.end());
+  restrictViews.insert(options.views.begin(), options.views.end());
+
   try {
     std::vector<std::string> const files = listFiles(options.inputPath);
     std::string const collectionSuffix = std::string(".structure.json");
@@ -593,13 +594,27 @@ arangodb::Result processInputDirectory(
 
         if (nameLength > viewsSuffix.size() &&
             file.substr(file.size() - viewsSuffix.size()) == viewsSuffix) {
-          VPackBuilder fileContentBuilder = directory.vpackFromJsonFile(file);
-          VPackSlice const fileContent = fileContentBuilder.slice();
+          
+          if (!restrictColls.empty() && restrictViews.empty()) {
+            continue; // skip view if not specifically included
+          }
+          
+          VPackBuilder contentBuilder = directory.vpackFromJsonFile(file);
+          VPackSlice const fileContent = contentBuilder.slice();
           if (!fileContent.isObject()) {
             return {TRI_ERROR_INTERNAL,
               "could not read view file '" + directory.pathToFile(file) + "'"};
           }
-          views.emplace_back(std::move(fileContentBuilder));
+          
+          if (!restrictViews.empty()) {
+            std::string const name = VelocyPackHelper::getStringValue(fileContent,
+                                                                      StaticStrings::DataSourceName, "");
+            if (restrictViews.find(name) == restrictViews.end()) {
+              continue;
+            }
+          }
+          
+          views.emplace_back(std::move(contentBuilder));
           continue;
         }
 
@@ -630,9 +645,8 @@ arangodb::Result processInputDirectory(
                   "could not read collection structure file '" +
                       directory.pathToFile(file) + "'"};
         }
-        std::string const cname =
-            arangodb::basics::VelocyPackHelper::getStringValue(parameters,
-                                                               "name", "");
+        std::string const cname = VelocyPackHelper::getStringValue(parameters,
+                                                                   StaticStrings::DataSourceName, "");
         bool overwriteName = false;
         if (cname != name &&
             name !=
@@ -656,10 +670,9 @@ arangodb::Result processInputDirectory(
           }
         }
 
-        if (!restrictList.empty() &&
-            restrictList.find(cname) == restrictList.end()) {
-          // collection name not in list
-          continue;
+        if (!restrictColls.empty() &&
+            restrictColls.find(cname) == restrictColls.end()) {
+          continue; // collection name not in list
         }
 
         if (overwriteName) {
@@ -693,6 +706,7 @@ arangodb::Result processInputDirectory(
       jobs.push_back(std::move(jobData));
     }
 
+    // Step 3: create views
     if (options.importStructure && !views.empty()) {
       LOG_TOPIC(INFO, Logger::RESTORE) << "# Creating views...";
       // Step 3: recreate all views
@@ -850,6 +864,11 @@ void RestoreFeature::collectOptions(
       "--collection",
       "restrict to collection name (can be specified multiple times)",
       new VectorParameter<StringParameter>(&_options.collections));
+  
+  options->addOption(
+      "--view",
+      "restrict to view name (can be specified multiple times)",
+     new VectorParameter<StringParameter>(&_options.views));
 
   options->addObsoleteOption(
       "--recycle-ids", "collection ids are now handled automatically", false);

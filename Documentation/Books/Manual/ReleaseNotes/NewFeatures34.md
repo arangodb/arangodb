@@ -1107,3 +1107,16 @@ often undesired in logs anyway.
 Another positive side effect of turning off the escaping is that it will slightly
 reduce the CPU overhead for logging. However, this will only be noticable when the
 logging is set to a very verbose level (e.g. log levels debug or trace).
+
+
+### Active Failover
+
+The _Active Failover_ mode is now officially supported for multiple slaves.
+
+Additionally you can now send read-only requests to followers, so you can
+use them for read scaling. To make sure only requests that are intended for
+this use-case are served by the follower you need to add a
+`X-Arango-Allow-Dirty-Read: true` header to HTTP requests.
+
+For more information see
+[Active Failover Architecture](../Architecture/DeploymentModes/ActiveFailover/Architecture.md).

@@ -30,7 +30,7 @@
 #include "Basics/StringRef.h"
 #include "Basics/fasthash.h"
 #include "Basics/hashes.h"
-#include "Indexes/IndexLookupContext.h"
+#include "MMFiles/MMFilesIndexLookupContext.h"
 #include "Indexes/IndexResult.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "MMFiles/MMFilesCollection.h"
@@ -281,7 +281,7 @@ Result MMFilesEdgeIndex::insert(transaction::Methods* trx,
   MMFilesSimpleIndexElement fromElement(buildFromElement(documentId, doc));
   MMFilesSimpleIndexElement toElement(buildToElement(documentId, doc));
   ManagedDocumentResult result;
-  IndexLookupContext context(trx, &_collection, &result, 1);
+  MMFilesIndexLookupContext context(trx, &_collection, &result, 1);
 
   _edgesFrom->insert(&context, fromElement, true,
                      mode == OperationMode::rollback);
@@ -311,7 +311,7 @@ Result MMFilesEdgeIndex::remove(transaction::Methods* trx,
   MMFilesSimpleIndexElement fromElement(buildFromElement(documentId, doc));
   MMFilesSimpleIndexElement toElement(buildToElement(documentId, doc));
   ManagedDocumentResult result;
-  IndexLookupContext context(trx, &_collection, &result, 1);
+  MMFilesIndexLookupContext context(trx, &_collection, &result, 1);
 
   try {
     _edgesFrom->remove(&context, fromElement);
@@ -347,10 +347,10 @@ void MMFilesEdgeIndex::batchInsert(
   auto creator = [&trx, this]() -> void* {
     ManagedDocumentResult* result = new ManagedDocumentResult;
 
-    return new IndexLookupContext(trx, &_collection, result, 1);
+    return new MMFilesIndexLookupContext(trx, &_collection, result, 1);
   };
   auto destroyer = [](void* userData) {
-    IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
+    MMFilesIndexLookupContext* context = static_cast<MMFilesIndexLookupContext*>(userData);
     delete context->result();
     delete context;
   };
@@ -390,7 +390,7 @@ int MMFilesEdgeIndex::sizeHint(transaction::Methods* trx, size_t size) {
   // set an initial size for the index for some new nodes to be created
   // without resizing
   ManagedDocumentResult result;
-  IndexLookupContext context(trx, &_collection, &result, 1);
+  MMFilesIndexLookupContext context(trx, &_collection, &result, 1);
   int err = _edgesFrom->resize(&context, size + 2049);
 
   if (err != TRI_ERROR_NO_ERROR) {

@@ -341,6 +341,8 @@ Result RocksDBPrimaryIndex::insertInternal(transaction::Methods* trx,
                                            LocalDocumentId const& documentId,
                                            VPackSlice const& slice,
                                            OperationMode mode) {
+  IndexResult res;
+  
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(_objectId, StringRef(keySlice));
@@ -352,19 +354,16 @@ Result RocksDBPrimaryIndex::insertInternal(transaction::Methods* trx,
 
   if (mthd->Exists(_cf, key.ref())) {
     std::string existingId(slice.get(StaticStrings::KeyString).copyString());
-
     if (mode == OperationMode::internal) {
-      return IndexResult(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED,
-                         std::move(existingId));
+      return res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, std::move(existingId));
     }
-    return IndexResult(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, this,
-                       existingId);
+    return res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, this, existingId);
   }
 
   blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
 
   Result status = mthd->Put(_cf, key.ref(), value.string(), rocksutils::index);
-  return IndexResult(status.errorNumber(), this);
+  return res.reset(status, this);
 }
 
 Result RocksDBPrimaryIndex::updateInternal(transaction::Methods* trx,

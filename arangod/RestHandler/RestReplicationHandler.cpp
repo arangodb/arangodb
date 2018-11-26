@@ -30,6 +30,7 @@
 #include "Basics/Result.h"
 #include "Basics/RocksDBUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/WriteLocker.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
@@ -76,6 +77,12 @@ std::string const typeString("type");
 
 uint64_t const RestReplicationHandler::_defaultChunkSize = 128 * 1024;
 uint64_t const RestReplicationHandler::_maxChunkSize = 128 * 1024 * 1024;
+std::chrono::hours const RestReplicationHandler::_tombstoneTimeout = std::chrono::hours(24);
+
+
+basics::ReadWriteLock RestReplicationHandler::_tombLock;
+std::unordered_map<std::string, std::chrono::time_point<std::chrono::steady_clock>> RestReplicationHandler::_tombstones = {};
+
 
 static aql::QueryId ExtractReadlockId(VPackSlice slice) {
   TRI_ASSERT(slice.isString());
@@ -1735,13 +1742,10 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(
 
   // in a cluster, we only look up by name:
   ClusterInfo* ci = ClusterInfo::instance();
-  std::shared_ptr<LogicalCollection> col;
-
-  try {
-    col = ci->getCollection(dbName, name);
-  } catch (...) {
-    std::string errorMsg = "could not find collection '" + name + "'";
-    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg};
+  std::shared_ptr<LogicalCollection> col = ci->getCollectionNT(dbName, name);
+  if (col == nullptr) {
+    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+        ClusterInfo::getCollectionNotFoundMsg(dbName, name)};
   }
 
   TRI_ASSERT(col != nullptr);
@@ -2163,8 +2167,10 @@ void RestReplicationHandler::handleCommandAddFollower() {
   }
 
   const std::string followerId = followerIdSlice.copyString();
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Attempt to Add Follower: " << followerId << " to shard " << col->name() << " in database: " << _vocbase.name();
   // Short cut for the case that the collection is empty
   if (readLockIdSlice.isNone()) {
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Try add follower fast-path (no documents)";
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
     SingleCollectionTransaction trx(ctx, *col, AccessMode::Type::EXCLUSIVE);
     auto res = trx.begin();
@@ -2175,6 +2181,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
       if (countRes.ok()) {
         VPackSlice nrSlice = countRes.slice();
         uint64_t nr = nrSlice.getNumber<uint64_t>();
+        LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Compare with shortCut Leader: " << nr << " == Follower: " << checksumSlice.copyString();
         if (nr == 0 && checksumSlice.isEqualString("0")) {
           col->followers()->add(followerId);
 
@@ -2185,6 +2192,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
           }
 
           generateResult(rest::ResponseCode::OK, b.slice());
+          LOG_TOPIC(DEBUG, Logger::REPLICATION) << followerId << " is now following on shard " << _vocbase.name() << "/" << col->name();
           return;
         }
       }
@@ -2193,6 +2201,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
     generateError(rest::ResponseCode::FORBIDDEN,
                   TRI_ERROR_REPLICATION_SHARD_NONEMPTY,
                   "shard not empty");
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << followerId << " is not yet in sync with " << _vocbase.name() << "/" << col->name();
     return;
   }
 
@@ -2201,6 +2210,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
                   "'readLockId' is not a string or empty");
     return;
   }
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Try add follower with documents";
   // previous versions < 3.3x might not send the checksum, if mixed clusters
   // get into trouble here we may need to be more lenient
   TRI_ASSERT(checksumSlice.isString() && readLockIdSlice.isString());
@@ -2214,7 +2224,9 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Compare Leader: " << referenceChecksum.get() << " == Follower: " << checksumSlice.copyString();
   if (!checksumSlice.isEqualString(referenceChecksum.get())) {
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << followerId << " is not yet in sync with " << _vocbase.name() << "/" << col->name();
     const std::string checksum = checksumSlice.copyString();
     LOG_TOPIC(WARN, Logger::REPLICATION) << "Cannot add follower, mismatching checksums. "
      << "Expected: " << referenceChecksum.get() << " Actual: " << checksum;
@@ -2233,6 +2245,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
     b.add(StaticStrings::Error, VPackValue(false));
   }
 
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << followerId << " is now following on shard " << _vocbase.name() << "/" << col->name();
   generateResult(rest::ResponseCode::OK, b.slice());
 }
 
@@ -2347,6 +2360,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     lockType = AccessMode::Type::EXCLUSIVE;
   }
 
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Attempt to create a Lock: " << id << " for shard: " << _vocbase.name() << "/" << col->name() << " of type: " << (doSoftLock ? "soft" : "hard");
   Result res = createBlockingTransaction(id, *col, ttl, lockType);
   if (!res.ok()) {
     generateError(res);
@@ -2362,6 +2376,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     b.add(StaticStrings::Error, VPackValue(false));
   }
 
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Shard: " << _vocbase.name() << "/" << col->name() << " is now locked with type: " << (doSoftLock ? "soft" : "hard") << " lock id: " << id;
   generateResult(rest::ResponseCode::OK, b.slice());
 }
 
@@ -2391,6 +2406,7 @@ void RestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
     return;
   }
   aql::QueryId id = ExtractReadlockId(idSlice);
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Test if Lock " << id << " is still active.";
   auto res = isLockHeld(id);
   if (!res.ok()) {
     generateError(res);
@@ -2403,6 +2419,7 @@ void RestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
     b.add(StaticStrings::Error, VPackValue(false));
     b.add("lockHeld", VPackValue(res.get()));
   }
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Lock " << id << " is " << (res.get() ? "still active." : "gone.");
   generateResult(rest::ResponseCode::OK, b.slice());
 }
 
@@ -2432,9 +2449,11 @@ void RestReplicationHandler::handleCommandCancelHoldReadLockCollection() {
     return;
   }
   aql::QueryId id = ExtractReadlockId(idSlice);
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Attempt to cancel Lock: " << id;
 
   auto res = cancelBlockingTransaction(id);
   if (!res.ok()) {
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Lock " << id << " not canceled because of: " << res.errorMessage();
     generateError(res);
     return;
   }
@@ -2446,6 +2465,7 @@ void RestReplicationHandler::handleCommandCancelHoldReadLockCollection() {
     b.add("lockHeld", VPackValue(res.get()));
   }
 
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Lock: " << id << " is now canceled, " << (res.get() ? "it is still in use.": "it is gone.");
   generateResult(rest::ResponseCode::OK, b.slice());
 }
 
@@ -2729,6 +2749,18 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
   auto q = query.release();
   // Make sure to return the query after we are done
   TRI_DEFER(queryRegistry->close(&_vocbase, id));
+
+  if (isTombstoned(id)) {
+    try {
+      // Code does not matter, read only access, so we can roll back.
+      queryRegistry->destroy(&_vocbase, id, TRI_ERROR_QUERY_KILLED);
+    } catch (...) {
+      // Maybe thrown in shutdown.
+    }
+    // DO NOT LOCK in this case, pointless
+    return {TRI_ERROR_TRANSACTION_INTERNAL, "transaction already cancelled"};
+  }
+
   TRI_ASSERT(isLockHeld(id).ok());
   TRI_ASSERT(isLockHeld(id).get() == false);
 
@@ -2771,6 +2803,8 @@ ResultT<bool> RestReplicationHandler::cancelBlockingTransaction(aql::QueryId id)
       // All errors that show up here can only be
       // triggered if the query is destroyed in between.
     }
+  } else {
+    registerTombstone(id);
   }
   return res;
 }
@@ -2796,4 +2830,68 @@ ResultT<std::string> RestReplicationHandler::computeCollectionChecksum(aql::Quer
     // So in Locking phase
     return ResultT<std::string>::error(TRI_ERROR_TRANSACTION_INTERNAL, "Read lock not yet acquired!");
   }
+}
+
+static std::string IdToTombstoneKey (TRI_vocbase_t& vocbase, aql::QueryId id) {
+  return vocbase.name() + "/" + StringUtils::itoa(id);
+}
+
+void RestReplicationHandler::timeoutTombstones() const {
+  std::unordered_set<std::string> toDelete;
+  { 
+    READ_LOCKER(readLocker, RestReplicationHandler::_tombLock);
+    if (RestReplicationHandler::_tombstones.empty()) {
+      // Fast path
+      return;
+    }
+    auto now = std::chrono::steady_clock::now();
+    for (auto const& it : RestReplicationHandler::_tombstones) {
+      if (it.second < now) {
+        toDelete.emplace(it.first);
+      }
+    }
+    // Release read lock.
+    // If someone writes now we do not realy care.
+  }
+  if (toDelete.empty()) {
+    // nothing todo
+    return;
+  }
+  WRITE_LOCKER(writeLocker, RestReplicationHandler::_tombLock);
+  for (auto const& it: toDelete) {
+    try {
+      RestReplicationHandler::_tombstones.erase(it);
+    } catch (...) {
+      // erase should not throw.
+      TRI_ASSERT(false);
+    }
+  }
+}
+
+bool RestReplicationHandler::isTombstoned(aql::QueryId id) const {
+  std::string key = IdToTombstoneKey(_vocbase, id);
+  bool isDead = false;
+  {
+    READ_LOCKER(readLocker, RestReplicationHandler::_tombLock);
+    isDead = RestReplicationHandler::_tombstones.find(key)
+          != RestReplicationHandler::_tombstones.end();
+  }
+  if (!isDead) {
+    // Clear Tombstone
+    WRITE_LOCKER(writeLocker, RestReplicationHandler::_tombLock);
+    try {
+      RestReplicationHandler::_tombstones.erase(key);
+    } catch (...) {
+      // Just ignore, tombstone will be removed by timeout, and IDs are unique anyways
+      TRI_ASSERT(false);
+    }
+  }
+  return isDead;
+}
+
+void RestReplicationHandler::registerTombstone(aql::QueryId id) const {
+  std::string key = IdToTombstoneKey(_vocbase, id);
+  WRITE_LOCKER(writeLocker, RestReplicationHandler::_tombLock);
+  RestReplicationHandler::_tombstones.emplace(key, std::chrono::steady_clock::now() + RestReplicationHandler::_tombstoneTimeout); 
+  timeoutTombstones();
 }
