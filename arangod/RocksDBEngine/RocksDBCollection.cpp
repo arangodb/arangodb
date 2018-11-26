@@ -410,21 +410,22 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
     addIndex(idx);
   }
   
-  TRI_ASSERT(!engine->inRecovery());
-  auto builder = _logicalCollection.toVelocyPackIgnore(
-      {"path", "statusString"}, true, /*forPersistence*/ true);
-  VPackBuilder indexInfo;
-  idx->toVelocyPack(indexInfo, Index::makeFlags(Index::Serialize::ObjectId));
-  res = engine->writeCreateCollectionMarker(
-    _logicalCollection.vocbase().id(),
-    _logicalCollection.id(),
-    builder.slice(),
-    RocksDBLogValue::IndexCreate(
+  if (!engine->inRecovery()) {
+    auto builder = _logicalCollection.toVelocyPackIgnore(
+        {"path", "statusString"}, true, /*forPersistence*/ true);
+    VPackBuilder indexInfo;
+    idx->toVelocyPack(indexInfo, Index::makeFlags(Index::Serialize::ObjectId));
+    res = engine->writeCreateCollectionMarker(
       _logicalCollection.vocbase().id(),
       _logicalCollection.id(),
-      indexInfo.slice()
-    )
-  );
+      builder.slice(),
+      RocksDBLogValue::IndexCreate(
+        _logicalCollection.vocbase().id(),
+        _logicalCollection.id(),
+        indexInfo.slice()
+      )
+    );
+  }
 
   if (res.fail()) {
     // We could not persist the index creation. Better abort

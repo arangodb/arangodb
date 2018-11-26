@@ -2256,7 +2256,7 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods* trx,
                                                       bool restore,
                                                       bool& created) {
   // prevent concurrent dropping
-  TRI_ASSERT(trx->isLocked(&_logicalCollection, AccessMode::Type::WRITE));
+//  TRI_ASSERT(trx->isLocked(&_logicalCollection, AccessMode::Type::READ));
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   
   TRI_ASSERT(info.isObject());
@@ -2284,13 +2284,9 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods* trx,
     TRI_UpdateTickServer(idx->id());
   }
   
-  {READ_LOCKER(gurad, _indexesLock);
-    for (auto& it : _indexes) {
-      if (it->id() == idx->id()) {
-        // index already exists
-        return it;
-      }
-    }
+  auto other = PhysicalCollection::lookupIndex(idx->id());
+  if (other) {
+    return other;
   }
   
   TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
@@ -2310,10 +2306,12 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods* trx,
 
   addIndexLocal(idx);
   // trigger a rewrite
-  auto builder = _logicalCollection.toVelocyPackIgnore(
-    {"path", "statusString"}, true, true
-  );
-  _logicalCollection.properties(builder.slice(), false); // always a full-update
+  if (!engine->inRecovery()) {
+    auto builder = _logicalCollection.toVelocyPackIgnore(
+      {"path", "statusString"}, true, true
+    );
+    _logicalCollection.properties(builder.slice(), false); // always a full-update
+  }
 
   created = true;
   return idx;
