@@ -1130,7 +1130,8 @@ int createDocumentOnCoordinator(
       std::string("&waitForSync=") + (options.waitForSync ? "true" : "false") +
       "&returnNew=" + (options.returnNew ? "true" : "false") + "&returnOld=" +
       (options.returnOld ? "true" : "false") + "&isRestore=" +
-      (options.isRestore ? "true" : "false");
+      (options.isRestore ? "true" : "false") +
+      "&overwrite=" + (options.overwrite ? "true" : "false");
 
   VPackBuilder reqBuilder;
 

@@ -842,6 +842,32 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   }
   VPackSlice newSlice = builder->slice();
 
+  if (options.overwrite) {
+    // special optimization for the overwrite case:
+    // in case the operation is a RepSert, we will first check if the specified
+    // primary key exists. we can abort this low-level insert early, before any
+    // modification to the data has been done. this saves us from creating a RocksDB
+    // transaction SavePoint.
+    // if we don't do the check here, we will always create a SavePoint first and
+    // insert the new document. when then inserting the key for the primary index and
+    // then detecting a unique constraint violation, the transaction would be rolled
+    // back to the SavePoint state, which will rebuild *all* data in the WriteBatch
+    // up to the SavePoint. this can be super-expensive for bigger transactions.
+    // to keep things simple, we are not checking for unique constraint violations
+    // in secondary indexes here, but defer it to the regular index insertion check
+    VPackSlice keySlice = newSlice.get(StaticStrings::KeyString);
+    if (keySlice.isString()) {
+      LocalDocumentId const documentId = primaryIndex()->lookupKey(trx, StringRef(keySlice));
+      if (documentId.isSet()) {
+        if (options.indexOperationMode == Index::OperationMode::internal) {
+          // need to return the key of the conflict document
+          return Result(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, keySlice.copyString());
+        }
+        return Result(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+      }
+    }
+  }
+
   auto state = RocksDBTransactionState::toState(trx);
   auto mthds = RocksDBTransactionState::toMethods(trx);
   RocksDBSavePoint guard(mthds, trx->isSingleOperationTransaction(),
