@@ -2023,18 +2023,31 @@ int ClusterInfo::ensureIndexCoordinatorInner(
     while (!application_features::ApplicationServer::isStopping()) {
       int tmpRes = dbServerResult->load(std::memory_order_acquire);
       if (tmpRes >= 0) {
-        // unregister cb before accessing errMsg
-        _agencyCallbackRegistry->unregisterCallback(agencyCallback);
-        
-        loadCurrent();
-        {
-          // Copy over all elements in slice.
-          VPackObjectBuilder b(&resultBuilder);
-          resultBuilder.add(VPackObjectIterator(newIndexBuilder.slice()));
-          resultBuilder.add("isNewlyCreated", VPackValue(true));
+        // Finally, wait until the Supervision has removed the `isBuilding`
+        // flag and the index has appeared:
+        auto coll = getCollection(databaseName, collectionID);
+        auto indexes = coll->getIndexes();
+        TRI_idx_iid_t indexId = arangodb::basics::StringUtils::uint64(
+            newIndexBuilder.slice().get("id").copyString());
+        if (std::any_of(indexes.begin(), indexes.end(),
+              [indexId](std::shared_ptr<arangodb::Index>& index) -> bool {
+                return indexId == index->id();
+              })) {
+          // unregister cb before accessing errMsg
+          _agencyCallbackRegistry->unregisterCallback(agencyCallback);
+          loadCurrent();
+          {
+            // Copy over all elements in slice.
+            VPackObjectBuilder b(&resultBuilder);
+            resultBuilder.add(VPackObjectIterator(newIndexBuilder.slice()));
+            resultBuilder.add("isNewlyCreated", VPackValue(true));
+          }
+          errorMsg = *errMsg;
+          return tmpRes;
         }
-        errorMsg = *errMsg;
-        return tmpRes;
+        LOG_TOPIC(DEBUG, Logger::CLUSTER)
+          << "Index " << indexId
+          << " is complete, waiting for Supervision to remove isBuilding flag.";
       }
 
       if (TRI_microtime() > endTime) {
