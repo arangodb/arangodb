@@ -425,9 +425,11 @@ Result RocksDBGeoIndex::insertInternal(transaction::Methods* trx,
   RocksDBKeyLeaser key(trx);
   for (S2CellId cell : cells) {
     key->constructGeoIndexValue(_objectId, cell.id(), documentId);
-    res = mthd->Put(RocksDBColumnFamily::geo(), key.ref(), val.string());
-    if (res.fail()) {
-      return res;
+    rocksdb::Status s = mthd->Put(RocksDBColumnFamily::geo(), key.ref(), val.string());
+    if (!s.ok()) {
+      res.reset(rocksutils::convertStatus(s, rocksutils::index));
+      addErrorMsg(res);
+      break;
     }
   }
 
@@ -459,9 +461,11 @@ Result RocksDBGeoIndex::removeInternal(transaction::Methods* trx,
   // the same cells everytime for the same parameters ?
   for (S2CellId cell : cells) {
     key->constructGeoIndexValue(_objectId, cell.id(), documentId);
-    res = mthd->Delete(RocksDBColumnFamily::geo(), key.ref());
-    if (res.fail()) {
-      return res;
+    rocksdb::Status s = mthd->Delete(RocksDBColumnFamily::geo(), key.ref());
+    if (!s.ok()) {
+      res.reset(rocksutils::convertStatus(s, rocksutils::index));
+      addErrorMsg(res);
+      break;
     }
   }
   return res;

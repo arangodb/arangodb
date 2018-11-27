@@ -31,7 +31,6 @@
 #include "Basics/SmallVector.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Indexes/IndexResult.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesIndexLookupContext.h"
@@ -483,7 +482,7 @@ Result MMFilesHashIndex::insert(transaction::Methods* trx,
     return insertUnique(trx, documentId, doc, mode);
   }
 
-  return IndexResult(insertMulti(trx, documentId, doc, mode), this);
+  return insertMulti(trx, documentId, doc, mode);
 }
 
 /// @brief removes an entry from the hash array part of the hash index
@@ -491,14 +490,16 @@ Result MMFilesHashIndex::remove(transaction::Methods* trx,
                                 LocalDocumentId const& documentId,
                                 VPackSlice const& doc,
                                 OperationMode mode) {
+  Result res;
+  
   std::vector<MMFilesHashIndexElement*> elements;
-  int res = fillElement<MMFilesHashIndexElement>(elements, documentId, doc);
+  int r = fillElement<MMFilesHashIndexElement>(elements, documentId, doc);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (r != TRI_ERROR_NO_ERROR) {
     for (auto& hashElement : elements) {
       _allocator->deallocate(hashElement);
     }
-    return IndexResult(res, this);
+    return addErrorMsg(res, r);
   }
 
   for (auto& hashElement : elements) {
@@ -512,12 +513,12 @@ Result MMFilesHashIndex::remove(transaction::Methods* trx,
     // we may be looping through this multiple times, and if an error
     // occurs, we want to keep it
     if (result != TRI_ERROR_NO_ERROR) {
-      res = result;
+      addErrorMsg(res, result);
     }
     _allocator->deallocate(hashElement);
   }
 
-  return IndexResult(res, this);
+  return res;
 }
 
 void MMFilesHashIndex::batchInsert(
@@ -599,16 +600,17 @@ Result MMFilesHashIndex::insertUnique(transaction::Methods* trx,
                                       LocalDocumentId const& documentId,
                                       VPackSlice const& doc,
                                       OperationMode mode) {
+  Result res;
+  
   std::vector<MMFilesHashIndexElement*> elements;
-  int res = fillElement<MMFilesHashIndexElement>(elements, documentId, doc);
+  int r = fillElement<MMFilesHashIndexElement>(elements, documentId, doc);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (r != TRI_ERROR_NO_ERROR) {
     for (auto& it : elements) {
       // free all elements to prevent leak
       _allocator->deallocate(it);
     }
-
-    return IndexResult(res, this);
+    return addErrorMsg(res, r);
   }
 
   ManagedDocumentResult result;
@@ -624,11 +626,11 @@ Result MMFilesHashIndex::insertUnique(transaction::Methods* trx,
 
   for (size_t i = 0; i < n; ++i) {
     auto hashElement = elements[i];
-    res = work(hashElement, mode);
+    r = work(hashElement, mode);
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      IndexResult error(res, this);
-      if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+    if (r != TRI_ERROR_NO_ERROR) {
+      
+      if (r == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
         LocalDocumentId rev(_uniqueArray->_hashArray->find(&context, hashElement)->localDocumentId());
         std::string existingId;
 
@@ -637,23 +639,24 @@ Result MMFilesHashIndex::insertUnique(transaction::Methods* trx,
         });
 
         if (mode == OperationMode::internal) {
-          error = IndexResult(res, std::move(existingId));
+          res.reset(r, std::move(existingId));
         } else {
-          error = IndexResult(res, this, existingId);
+          addErrorMsg(res, r, existingId);
         }
+      } else {
+        addErrorMsg(res, r);
       }
 
       for (size_t j = i; j < n; ++j) {
         // Free all elements that are not yet in the index
         _allocator->deallocate(elements[j]);
       }
-
-      // Already indexed elements will be removed by the rollback
-      return std::move(error);
+      
+      break; // Already indexed elements will be removed by the rollback
     }
   }
 
-  return IndexResult(res, this);
+  return res;
 }
 
 void MMFilesHashIndex::batchInsertUnique(
@@ -715,18 +718,20 @@ void MMFilesHashIndex::batchInsertUnique(
   queue->enqueueCallback(cbTask);
 }
 
-int MMFilesHashIndex::insertMulti(transaction::Methods* trx,
-                                  LocalDocumentId const& documentId,
-                                  VPackSlice const& doc, OperationMode mode) {
+Result MMFilesHashIndex::insertMulti(transaction::Methods* trx,
+                                     LocalDocumentId const& documentId,
+                                     VPackSlice const& doc, OperationMode mode) {
+  Result res;
+  
   std::vector<MMFilesHashIndexElement*> elements;
-  int res = fillElement<MMFilesHashIndexElement>(elements, documentId, doc);
+  int r = fillElement<MMFilesHashIndexElement>(elements, documentId, doc);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (r != TRI_ERROR_NO_ERROR) {
     for (auto& hashElement : elements) {
       _allocator->deallocate(hashElement);
     }
 
-    return res;
+    return res.reset(r);
   }
 
   ManagedDocumentResult result;
@@ -754,14 +759,14 @@ int MMFilesHashIndex::insertMulti(transaction::Methods* trx,
     try {
       work(hashElement, mode);
     } catch (arangodb::basics::Exception const& ex) {
-      res = ex.code();
+      r = ex.code();
     } catch (std::bad_alloc const&) {
-      res = TRI_ERROR_OUT_OF_MEMORY;
+      r = TRI_ERROR_OUT_OF_MEMORY;
     } catch (...) {
-      res = TRI_ERROR_INTERNAL;
+      r = TRI_ERROR_INTERNAL;
     }
 
-    if (res != TRI_ERROR_NO_ERROR) {
+    if (r != TRI_ERROR_NO_ERROR) {
       for (size_t j = i; j < n; ++j) {
         // Free all elements that are not yet in the index
         _allocator->deallocate(elements[j]);
@@ -772,12 +777,11 @@ int MMFilesHashIndex::insertMulti(transaction::Methods* trx,
           removeMultiElement(trx, elements[j], mode);
         }
       }
-
-      return res;
+      return addErrorMsg(res, r);
     }
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return res;
 }
 
 void MMFilesHashIndex::batchInsertMulti(

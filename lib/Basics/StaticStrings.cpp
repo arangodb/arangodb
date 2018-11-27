@@ -190,6 +190,9 @@ std::string const StaticStrings::GraphDropCollection("dropCollection");
 std::string const StaticStrings::GraphCreateCollections("createCollections");
 std::string const StaticStrings::GraphCreateCollection("createCollection");
 
+// Replication
+std::string const StaticStrings::ReplicationSoftLockOnly("doSoftLockOnly");
+
 // misc strings
 std::string const StaticStrings::LastValue("lastValue");
 std::string const StaticStrings::checksumFileJs("JS_SHA1SUM.txt");

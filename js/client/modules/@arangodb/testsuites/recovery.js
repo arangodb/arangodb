@@ -92,6 +92,7 @@ function runArangodRecovery (params) {
     argv = toArgv(
       Object.assign(params.args,
                     {
+                      'log.foreground-tty': 'true',
                       'wal.ignore-logfile-errors': 'true',
                       'javascript.script-parameter': 'recovery'
                     }
@@ -173,7 +174,6 @@ function recovery (options) {
         results.status = false;
       }
       else {
-        options.cleanup = false;
         pu.cleanupLastDirectory(params.options);
       }
     } else {
