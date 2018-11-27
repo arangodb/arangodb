@@ -24,6 +24,7 @@
 #include "utils/index_utils.hpp"
 #include "utils/locale_utils.hpp"
 
+#include "IResearchCommon.h"
 #include "VelocyPackHelper.h"
 #include "Basics/StringUtils.h"
 #include "velocypack/Builder.h"
@@ -216,7 +217,7 @@ IResearchViewMeta::IResearchViewMeta()
   : _cleanupIntervalStep(10),
     _consolidationIntervalMsec(60 * 1000),
     _locale(std::locale::classic()),
-    _version(0),
+    _version(LATEST_VERSION),
     _writebufferActive(0),
     _writebufferIdle(64),
     _writebufferSizeMax(32*(size_t(1)<<20)) { // 32MB

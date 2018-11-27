@@ -36,6 +36,12 @@ arangodb::LogTopic& logTopic();
 ADB_IGNORE_UNUSED static auto& DATA_SOURCE_TYPE = dataSourceType();
 ADB_IGNORE_UNUSED static auto& TOPIC = logTopic();
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the current implementation version of the iresearch interface
+///        e.g. which how data is stored in iresearch
+////////////////////////////////////////////////////////////////////////////////
+size_t const LATEST_VERSION = 0;
+
 struct StaticStrings {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch View definition denoting the
