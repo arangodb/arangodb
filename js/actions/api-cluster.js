@@ -540,7 +540,7 @@ actions.defineHttp({
       return Health;
     }, Health);
 
-    Object.entries(agency[0]['.agency'].pool).forEach(([key, value]) => {
+    Object.entries(agency.configuration.pool).forEach(([key, value]) => {
       Health[key] = {Endpoint: value, Role: 'Agent', CanBeDeleted: false};
     });
 
