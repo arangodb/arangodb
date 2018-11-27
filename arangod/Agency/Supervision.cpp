@@ -61,16 +61,12 @@ struct HealthRecord {
 
   HealthRecord(
     std::string const& sn, std::string const& ep, std::string const& ho,
-    std::string const& en, std::string const& sv) :
-    shortName(sn), endpoint(ep), hostId(ho), serverVersion(sv),
-    engine(en), version(0) {}
+    std::string const& en, std::string const& sv, std::string const& ae) :
+    shortName(sn), endpoint(ep), advertisedEndpoint(ae), hostId(ho),
+    serverVersion(sv), engine(en), version(0) {}
 
   HealthRecord(Node const& node) {
     *this = node;
-  }
-
-  HealthRecord(HealthRecord const& other) {
-    *this = other;
   }
 
   HealthRecord& operator=(Node const& node) {
@@ -116,19 +112,6 @@ struct HealthRecord {
         }
       }
     }
-    return *this;
-  }
-
-  HealthRecord& operator=(HealthRecord const& other) {
-    shortName = other.shortName;
-    syncStatus = other.syncStatus;
-    status = other.status;
-    advertisedEndpoint = other.advertisedEndpoint;
-    endpoint = other.endpoint;
-    hostId = other.hostId;
-    engine = other.engine;
-    serverVersion = other.serverVersion;
-    version = other.version;
     return *this;
   }
 
@@ -483,16 +466,18 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       }
 
 
-      // "/arango/Current/<serverId>/externalEndpoint"
-      /*std::string externalEndpoint;
-      std::string extEndPath = serverID + "/externalEndpoint";
+      //"/arango/Current/<serverId>/externalEndpoint"
+      std::string externalEndpoint;
+      std::string extEndPath = serverID + "/advertisedEndpoint";
       if (serversRegistered.has(extEndPath)) {
         externalEndpoint = serversRegistered.hasAsString(extEndPath).first;
-      }*/
+      }
 
       // Health records from persistence, from transience and a new one
-      HealthRecord transist(shortName, endpoint, hostId, engine, serverVersion);
-      HealthRecord persist(shortName, endpoint, hostId, engine, serverVersion);
+      HealthRecord transist(
+        shortName, endpoint, hostId, engine, serverVersion, externalEndpoint);
+      HealthRecord persist(
+        shortName, endpoint, hostId, engine, serverVersion, externalEndpoint);
 
       // Get last health entries from transient and persistent key value stores
       if (_transient.has(healthPrefix + serverID)) {

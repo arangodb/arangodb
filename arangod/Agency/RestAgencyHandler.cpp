@@ -548,9 +548,8 @@ RestStatus RestAgencyHandler::handleConfig() {
     body.add("commitIndex", Value(last));
     _agent->lastAckedAgo(body);
     body.add("configuration", _agent->config().toBuilder()->slice());
-    body.add("storage-engine", VPackValue(EngineSelectorFeature::engineName()));
+    body.add("engine", VPackValue(EngineSelectorFeature::engineName()));
     body.add("version", VPackValue(ARANGODB_VERSION));
-
   }
 
   generateResult(rest::ResponseCode::OK, body.slice());

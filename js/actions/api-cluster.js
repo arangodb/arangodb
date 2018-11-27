@@ -541,7 +541,49 @@ actions.defineHttp({
     }, Health);
 
     Object.entries(agency.configuration.pool).forEach(([key, value]) => {
-      Health[key] = {Endpoint: value, Role: 'Agent', CanBeDeleted: false};
+
+      if (Health.hasOwnProperty(key)) {
+        Health[key].Endpoint = value;
+        Health[key].Role = 'Agent';
+        Health[key].CanBeDeleted = false;
+      } else {
+        Health[key] = {Endpoint: value, Role: 'Agent', CanBeDeleted: false};
+      }
+
+      var options = { timeout: 5 };
+      var op = ArangoClusterComm.asyncRequest(
+        'GET', value, req.database, '/_api/agency/config', '', {}, options);
+      var r = ArangoClusterComm.wait(op);
+
+      if (r.status === 'RECEIVED') {
+        var record = JSON.parse(r.body);
+        Health[key].Version = record.version;
+        Health[key].Engine = record.engine;
+        Health[key].Leader = record.leaderId;
+        if (record.hasOwnProperty("lastAcked")) {
+          Health[key].Leading = true;
+          Object.entries(record.lastAcked).forEach(([k,v]) => {
+            if (Health.hasOwnProperty(k)) {
+              Health[k].lastAckedTime = v.lastAckedTime;
+            } else {
+              Health[k] = {lastAckedTime: v.lastAckedTime};
+            }
+          });
+        }
+        Health[key].Status = "GOOD";
+      } else {
+        Health[key].Status = "BAD";
+        if (r.status === 'TIMEOUT') {
+          Health[key].Error = "TIMEOUT";
+        } else {
+          try {
+            Health[key].Error = JSON.parse(r.body);
+          } catch (err) {
+            Health[key].Error = "UNKNOWN"
+          }
+        }
+      }
+      
     });
 
     actions.resultOk(req, res, actions.HTTP_OK, {Health, ClusterId: clusterId});
