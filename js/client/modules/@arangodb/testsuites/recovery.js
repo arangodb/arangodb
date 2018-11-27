@@ -53,6 +53,8 @@ const testPaths = {
 function runArangodRecovery (params) {
   let argv = [];
 
+  let binary = pu.ARANGOD_BIN;
+
   if (params.setup) {
     params.options.disableMonitor = true;
     params.testDir = fs.join(params.tempDir, `${params.count}`);
@@ -98,9 +100,13 @@ function runArangodRecovery (params) {
                     }
                    )
     );
+    if (options.rr) {
+      binary = 'rr';
+      argv.unshift(pu.ARANGOD_BIN);
+    }
   }
   params.instanceInfo.pid = pu.executeAndWait(
-    pu.ARANGOD_BIN,
+    binary,
     argv,
     params.options,
     'recovery',
