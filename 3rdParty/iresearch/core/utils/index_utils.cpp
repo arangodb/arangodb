@@ -217,7 +217,7 @@ index_writer::consolidation_policy_t consolidation_policy(
   return [options](
       std::set<const segment_meta*>& candidates,
       const index_meta& meta,
-      const index_writer::consolidating_segments_t& /*consolidating_segments*/
+      const index_writer::consolidating_segments_t& consolidating_segments
   )->void {
     auto byte_threshold = options.threshold;
     size_t all_segment_bytes_size = 0;
@@ -227,6 +227,11 @@ index_writer::consolidation_policy_t consolidation_policy(
     segments.reserve(meta.size());
 
     for (auto& segment: meta) {
+      if (consolidating_segments.find(&segment.meta) != consolidating_segments.end()) {
+        // segment is already under consolidation
+        continue;
+      }
+
       segments.emplace_back(size_without_removals(segment.meta), &(segment.meta));
       all_segment_bytes_size += segments.back().first;
     }
@@ -437,19 +442,20 @@ index_writer::consolidation_policy_t consolidation_policy(
         }
       }
 
-      assert(best.count);
+      if (!best.count) {
+        // can't find a suitable candidate
+        break;
+      }
 
-      if (best.count) {
-        // remember the best candidate
-        consolidation_candidates.emplace_back(best);
-        std::push_heap(consolidation_candidates.begin(), consolidation_candidates.end());
+      // remember the best candidate
+      consolidation_candidates.emplace_back(best);
+      std::push_heap(consolidation_candidates.begin(), consolidation_candidates.end());
 
-        // remove picked segments from the list
-        sorted_segments.erase(best.segments.first, best.segments.second);
+      // remove picked segments from the list
+      sorted_segments.erase(best.segments.first, best.segments.second);
 
-        if (consolidating_segments.size() >= lookahead) {
-          break; // FIXME check
-        }
+      if (consolidation_candidates.size() >= lookahead) {
+        break;
       }
     }
 

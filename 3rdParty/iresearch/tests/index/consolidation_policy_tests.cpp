@@ -123,7 +123,7 @@ TEST(consolidation_test_tier, test_defaults) {
   }
 }
 
-TEST(consolidation_test_tier, test_infinite_loop) {
+TEST(consolidation_test_tier, test_no_candidates) {
   irs::index_utils::consolidate_tier options;
   options.floor_segment_bytes = 2097152;
   options.max_segments_bytes = 4294967296;
@@ -142,6 +142,7 @@ TEST(consolidation_test_tier, test_infinite_loop) {
 
   std::set<const irs::segment_meta*> candidates;
   policy(candidates, meta, consolidating_segments);
+  ASSERT_TRUE(candidates.empty()); // candidates too large
 }
 
 TEST(consolidation_test_tier, test_skewed_segments) {
