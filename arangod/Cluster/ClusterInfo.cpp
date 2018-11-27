@@ -2749,7 +2749,7 @@ int ClusterInfo::ensureIndexCoordinatorInner(
         AgencyWriteTransaction trx(
             {AgencyOperation(
                planIndexesKey, AgencyValueOperationType::REPLACE,
-               newIndexBuilder.slice(), finishedPlanIndex.slice()),
+               finishedPlanIndex.slice(), newIndexBuilder.slice()),
              AgencyOperation(
                "Plan/Version", AgencySimpleOperationType::INCREMENT_OP)},
             AgencyPrecondition(planIndexesKey, AgencyPrecondition::Type::EMPTY,
