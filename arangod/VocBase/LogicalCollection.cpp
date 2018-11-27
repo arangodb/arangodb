@@ -835,10 +835,9 @@ std::shared_ptr<Index> LogicalCollection::lookupIndex(
   return getPhysical()->lookupIndex(info);
 }
 
-std::shared_ptr<Index> LogicalCollection::createIndex(transaction::Methods* trx,
-                                                      VPackSlice const& info,
+std::shared_ptr<Index> LogicalCollection::createIndex(VPackSlice const& info,
                                                       bool& created) {
-  auto idx = _physical->createIndex(trx, info, created);
+  auto idx = _physical->createIndex(info, /*restore*/ false, created);
   if (idx) {
     if (DatabaseFeature::DATABASE != nullptr &&
         DatabaseFeature::DATABASE->versionTracker() != nullptr) {

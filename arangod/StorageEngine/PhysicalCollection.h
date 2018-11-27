@@ -115,13 +115,11 @@ class PhysicalCollection {
   /// @brief return the figures for a collection
   virtual std::shared_ptr<velocypack::Builder> figures();
 
+  /// @brief create or restore an index
+  /// @param restore utilize specified ID, assume index has to be created
   virtual std::shared_ptr<Index> createIndex(
-      transaction::Methods* trx, arangodb::velocypack::Slice const& info,
+      arangodb::velocypack::Slice const& info, bool restore,
       bool& created) = 0;
-
-  /// @brief Restores an index from VelocyPack.
-  virtual int restoreIndex(transaction::Methods*, velocypack::Slice const&,
-                           std::shared_ptr<Index>&) = 0;
 
   virtual bool dropIndex(TRI_idx_iid_t iid) = 0;
 
