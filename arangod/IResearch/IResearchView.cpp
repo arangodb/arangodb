@@ -738,6 +738,7 @@ IResearchView::IResearchView(
           << "starting persisted-sync sync for arangosearch view '" << viewPtr->name() << "'";
 
         try {
+          // this is _also_ required for the PrimaryKeyFilter single-execution optimization to work
           viewPtr->_storePersisted.sync();
         } catch (arangodb::basics::Exception& e) {
           LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
