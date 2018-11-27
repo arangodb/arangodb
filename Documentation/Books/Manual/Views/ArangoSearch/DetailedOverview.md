@@ -185,7 +185,7 @@ is used by these writers (in terms of "writers pool") one can use
 
     The minimum number of segments that will be evaluated as candidates for consolidation.
 
-  - **segmentsMax** (_optional_; type: `integer`; default: `1`)
+  - **segmentsMax** (_optional_; type: `integer`; default: `10`)
 
     The maximum number of segments that will be evaluated as candidates for consolidation.
 
