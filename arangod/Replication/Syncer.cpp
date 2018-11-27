@@ -729,6 +729,7 @@ Result Syncer::createIndex(VPackSlice const& slice) {
     return Result(TRI_ERROR_INTERNAL,
                   "caught unknown exception while creating index");
   }
+  return Result();
 }
 
 Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {

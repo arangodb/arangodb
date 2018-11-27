@@ -589,7 +589,7 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::v
   auto res = trx.begin();
   TRI_ASSERT(res.ok());
   
-  index->batchInsert(nullptr, docs, taskQueuePtr);
+  index->batchInsert(&trx, docs, taskQueuePtr);
 
   if (TRI_ERROR_NO_ERROR != taskQueue.status()) {
     return nullptr;
