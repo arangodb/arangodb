@@ -2023,12 +2023,41 @@ int ClusterInfo::ensureIndexCoordinatorInner(
     while (!application_features::ApplicationServer::isStopping()) {
       int tmpRes = dbServerResult->load(std::memory_order_acquire);
       if (tmpRes == 0) {
-        // Finally, in case all is good, wait until the Supervision has
-        // removed the `isBuilding` flag and the index has appeared:
-        auto coll = getCollection(databaseName, collectionID);
-        auto indexes = coll->getIndexes();
+        // Finally, in case all is good, remove the `isBuilding` flag
+        // check that the index has appeared. Note that we have to have
+        // a precondition since the collection could have been deleted
+        // in the meantime:
+        VPackBuilder finishedPlanIndex;
+        { VPackObjectBuilder o(&finishedPlanIndex);
+          for (auto const& entry : VPackObjectIterator(newIndexBuilder.slice())) {
+            auto const key = entry.key.copyString();
+            if (key != "isBuilding" && key != "isNewlyCreated") {
+              finishedPlanIndex.add(entry.key.copyString(), entry.value);
+            }
+          }
+        }
+        AgencyWriteTransaction trx(
+            {AgencyOperation(
+               planIndexesKey, AgencyValueOperationType::REPLACE,
+               finishedPlanIndex.slice(), newIndexBuilder.slice()),
+             AgencyOperation(
+               "Plan/Version", AgencySimpleOperationType::INCREMENT_OP)},
+            AgencyPrecondition(planIndexesKey, AgencyPrecondition::Type::EMPTY,
+                               false));
         TRI_idx_iid_t indexId = arangodb::basics::StringUtils::uint64(
             newIndexBuilder.slice().get("id").copyString());
+        if (!_agency.sendTransactionWithFailover(trx, 0.0).successful()) {
+          // We just log the problem and move on, the Supervision will repair
+          // things in due course:
+          LOG_TOPIC(INFO, Logger::CLUSTER)
+            << "Could not remove isBuilding flag in new index " << indexId
+            << ", this will be repaired automatically.";
+        }
+        loadPlan();
+        // Finally check if it has appeared, if not, we take another turn,
+        // which does not do any harm:
+        auto coll = getCollection(databaseName, collectionID);
+        auto indexes = coll->getIndexes();
         if (std::any_of(indexes.begin(), indexes.end(),
               [indexId](std::shared_ptr<arangodb::Index>& index) -> bool {
                 return indexId == index->id() && !index->isBuilding();
@@ -2039,7 +2068,7 @@ int ClusterInfo::ensureIndexCoordinatorInner(
           {
             // Copy over all elements in slice.
             VPackObjectBuilder b(&resultBuilder);
-            resultBuilder.add(VPackObjectIterator(newIndexBuilder.slice()));
+            resultBuilder.add(VPackObjectIterator(finishedPlanIndex.slice()));
             resultBuilder.add("isNewlyCreated", VPackValue(true));
           }
           errorMsg = *errMsg;
