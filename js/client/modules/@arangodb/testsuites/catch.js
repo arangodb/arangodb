@@ -87,7 +87,7 @@ function catchRunner (options) {
       results.basics = {
         failed: 1,
         status: false,
-        message: 'binary "basics_suite" not found'
+        message: 'binary "arangodbtests" not found when trying to run suite "all-catch"'
       };
     }
   }
@@ -114,7 +114,7 @@ function catchRunner (options) {
       results.cache_suite = {
         failed: 1,
         status: false,
-        message: 'binary "cache_suite" not found'
+        message: 'binary "arangodbtests" not found when trying to run suite "cache_suite"'
       };
     }
   }
