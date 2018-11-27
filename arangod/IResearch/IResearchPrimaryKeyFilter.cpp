@@ -47,13 +47,7 @@ irs::doc_iterator::ptr PrimaryKeyFilter::execute(
     irs::order::prepared const& /*order*/,
     irs::attribute_view const& /*ctx*/
 ) const {
-  // optimization, since during:
-  // * regular runtime should have at most 1 identical primary key in the entire datastore
-  // * recovery should have at most 2 identical primary keys in the entire datastore
-  if (!_pk.first) {
-    return nullptr; // already processed
-  }
-
+  TRI_ASSERT(_pk.first); // re-execution of a fiter is not expected to ever occur without a call to prepare(...)
   auto* pkField = segment.field(arangodb::iresearch::DocumentPrimaryKey::PK());
 
   if (!pkField) {
@@ -108,10 +102,8 @@ irs::filter::prepared::ptr PrimaryKeyFilter::prepare(
   // optimization, since during:
   // * regular runtime should have at most 1 identical primary key in the entire datastore
   // * recovery should have at most 2 identical primary keys in the entire datastore
-//    return irs::filter::prepared::empty();
-//  }
   if (!_pk.first) {
-    return nullptr; // already processed
+    return irs::filter::prepared::empty(); // already processed
   }
 
   // aliasing constructor
