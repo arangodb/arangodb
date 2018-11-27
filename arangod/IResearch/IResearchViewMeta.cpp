@@ -116,7 +116,7 @@ arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy createConsolidationP
 
   {
     // optional size_t
-    static const std::string fieldName("segments_bytes_floor");
+    static const std::string fieldName("segmentsBytesFloor");
 
     if (slice.hasKey(fieldName)) {
       auto field = slice.get(fieldName);
@@ -133,7 +133,7 @@ arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy createConsolidationP
 
   {
     // optional size_t
-    static const std::string fieldName("segments_bytes_max");
+    static const std::string fieldName("segmentsBytesMax");
 
     if (slice.hasKey(fieldName)) {
       auto field = slice.get(fieldName);
@@ -150,7 +150,7 @@ arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy createConsolidationP
 
   {
     // optional size_t
-    static const std::string fieldName("segments_max");
+    static const std::string fieldName("segmentsMax");
 
     if (slice.hasKey(fieldName)) {
       auto field = slice.get(fieldName);
@@ -167,7 +167,7 @@ arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy createConsolidationP
 
   {
     // optional size_t
-    static const std::string fieldName("segments_min");
+    static const std::string fieldName("segmentsMin");
 
     if (slice.hasKey(fieldName)) {
       auto field = slice.get(fieldName);
@@ -185,10 +185,10 @@ arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy createConsolidationP
   properties.openObject();
   properties.add("type", arangodb::iresearch::toValuePair(POLICY_TIER));
   properties.add("lookahead", arangodb::velocypack::Value(options.lookahead));
-  properties.add("segments_bytes_floor", arangodb::velocypack::Value(options.floor_segment_bytes));
-  properties.add("segments_bytes_max", arangodb::velocypack::Value(options.max_segments_bytes));
-  properties.add("segments_max", arangodb::velocypack::Value(options.max_segments));
-  properties.add("segments_min", arangodb::velocypack::Value(options.min_segments));
+  properties.add("segmentsBytesFloor", arangodb::velocypack::Value(options.floor_segment_bytes));
+  properties.add("segmentsBytesMax", arangodb::velocypack::Value(options.max_segments_bytes));
+  properties.add("segmentsMax", arangodb::velocypack::Value(options.max_segments));
+  properties.add("segmentsMin", arangodb::velocypack::Value(options.min_segments));
   properties.close();
 
   return arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy{
@@ -206,6 +206,7 @@ IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
     _consolidationIntervalMsec(mask),
     _consolidationPolicy(mask),
     _locale(mask),
+    _version(mask),
     _writebufferActive(mask),
     _writebufferIdle(mask),
     _writebufferSizeMax(mask) {
@@ -215,6 +216,7 @@ IResearchViewMeta::IResearchViewMeta()
   : _cleanupIntervalStep(10),
     _consolidationIntervalMsec(60 * 1000),
     _locale(std::locale::classic()),
+    _version(0),
     _writebufferActive(0),
     _writebufferIdle(64),
     _writebufferSizeMax(32*(size_t(1)<<20)) { // 32MB
@@ -247,6 +249,7 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta&& other) noexc
     _consolidationIntervalMsec = std::move(other._consolidationIntervalMsec);
     _consolidationPolicy = std::move(other._consolidationPolicy);
     _locale = std::move(other._locale);
+    _version = std::move(other._version);
     _writebufferActive = std::move(other._writebufferActive);
     _writebufferIdle = std::move(other._writebufferIdle);
     _writebufferSizeMax = std::move(other._writebufferSizeMax);
@@ -261,6 +264,7 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta const& other) 
     _consolidationIntervalMsec = other._consolidationIntervalMsec;
     _consolidationPolicy = other._consolidationPolicy;
     _locale = other._locale;
+    _version = other._version;
     _writebufferActive = other._writebufferActive;
     _writebufferIdle = other._writebufferIdle;
     _writebufferSizeMax = other._writebufferSizeMax;
@@ -285,6 +289,10 @@ bool IResearchViewMeta::operator==(IResearchViewMeta const& other) const noexcep
   if (irs::locale_utils::language(_locale) != irs::locale_utils::language(other._locale)
       || irs::locale_utils::country(_locale) != irs::locale_utils::country(other._locale)
       || irs::locale_utils::encoding(_locale) != irs::locale_utils::encoding(other._locale)) {
+    return false; // values do not match
+  }
+
+  if (_version != other._version) {
     return false; // values do not match
   }
 
@@ -329,6 +337,25 @@ bool IResearchViewMeta::init(
 
   if (!mask) {
     mask = &tmpMask;
+  }
+
+  {
+    // optional uint32_t
+    static const std::string fieldName("version");
+
+    mask->_version = slice.hasKey(fieldName);
+
+    if (!mask->_version) {
+      _version = defaults._version;
+    } else {
+      auto field = slice.get(fieldName);
+
+      if (!getNumber(_version, field)) {
+        errorField = fieldName;
+
+        return false;
+      }
+    }
   }
 
   {
@@ -549,6 +576,10 @@ bool IResearchViewMeta::json(
     builder.add("locale", arangodb::velocypack::Value(irs::locale_utils::name(_locale)));
   }
 */
+
+  if ((!ignoreEqual || _version != ignoreEqual->_version) && (!mask || mask->_version)) {
+    builder.add("version", arangodb::velocypack::Value(_version));
+  }
 
   if ((!ignoreEqual || _writebufferActive != ignoreEqual->_writebufferActive) && (!mask || mask->_writebufferActive)) {
     builder.add("writebufferActive", arangodb::velocypack::Value(_writebufferActive));
