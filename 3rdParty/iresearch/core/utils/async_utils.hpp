@@ -70,19 +70,23 @@ class IRESEARCH_API read_write_mutex final {
   // for use with std::lock_guard/std::unique_lock for read operations
   class read_mutex {
    public:
-    read_mutex(read_write_mutex& mutex): mutex_(mutex) {}
+    explicit read_mutex(read_write_mutex& mutex) NOEXCEPT
+      : mutex_(mutex) {
+    }
     read_mutex& operator=(read_mutex&) = delete; // because of reference
     void lock() { mutex_.lock_read(); }
     bool try_lock() { return mutex_.try_lock_read(); }
     void unlock() { mutex_.unlock(); }
    private:
     read_write_mutex& mutex_;
-  };
+  }; // read_mutex
 
   // for use with std::lock_guard/std::unique_lock for write operations
   class write_mutex {
    public:
-    write_mutex(read_write_mutex& mutex): mutex_(mutex) {}
+    explicit write_mutex(read_write_mutex& mutex) NOEXCEPT
+      : mutex_(mutex) {
+    }
     write_mutex& operator=(write_mutex&) = delete; // because of reference
     void lock() { mutex_.lock_write(); }
     bool owns_write() { return mutex_.owns_write(); }
@@ -90,14 +94,14 @@ class IRESEARCH_API read_write_mutex final {
     void unlock(bool exclusive_only = false) { mutex_.unlock(exclusive_only); }
    private:
     read_write_mutex& mutex_;
-  };
+  }; // write_mutex
 
-  read_write_mutex();
-  ~read_write_mutex();
+  read_write_mutex() NOEXCEPT;
+  ~read_write_mutex() NOEXCEPT;
 
   void lock_read();
   void lock_write();
-  bool owns_write();
+  bool owns_write() NOEXCEPT;
   bool try_lock_read();
   bool try_lock_write();
 
@@ -115,7 +119,7 @@ class IRESEARCH_API read_write_mutex final {
    std::condition_variable reader_cond_;
    std::condition_variable writer_cond_;
    IRESEARCH_API_PRIVATE_VARIABLES_END
-};
+}; // read_write_mutex
 
 class IRESEARCH_API thread_pool {
  public:
@@ -132,22 +136,23 @@ class IRESEARCH_API thread_pool {
   virtual size_t tasks_active();
   virtual size_t tasks_pending();
   virtual size_t threads();
+
  private:
-   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-   size_t active_;
-   std::condition_variable cond_;
-   std::mutex lock_;
-   size_t max_idle_;
-   size_t max_threads_;
-   std::vector<std::thread> pool_;
-   std::queue<std::function<void()>> queue_;
-   enum class State { ABORT, FINISH, RUN } state_;
-   IRESEARCH_API_PRIVATE_VARIABLES_END
+  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
+  size_t active_;
+  std::condition_variable cond_;
+  std::mutex lock_;
+  size_t max_idle_;
+  size_t max_threads_;
+  std::vector<std::thread> pool_;
+  std::queue<std::function<void()>> queue_;
+  enum class State { ABORT, FINISH, RUN } state_;
+  IRESEARCH_API_PRIVATE_VARIABLES_END
 
-   void run();
-};
+  void run();
+}; // thread_pool
 
-NS_END
-NS_END
+NS_END // async_utils
+NS_END // NS_ROOT
 
 #endif

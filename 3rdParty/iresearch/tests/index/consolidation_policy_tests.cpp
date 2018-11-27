@@ -123,6 +123,28 @@ TEST(consolidation_test_tier, test_defaults) {
   }
 }
 
+TEST(consolidation_test_tier, test_no_candidates) {
+  irs::index_utils::consolidate_tier options;
+  options.floor_segment_bytes = 2097152;
+  options.max_segments_bytes = 4294967296;
+  options.min_segments = 5;         // min number of segments per tier to merge at once
+  options.max_segments = 10;        // max number of segments per tier to merge at once
+  options.lookahead = irs::integer_traits<size_t>::const_max;
+  auto policy = irs::index_utils::consolidation_policy(options);
+
+  irs::index_writer::consolidating_segments_t consolidating_segments;
+  irs::index_meta meta;
+  meta.add(irs::segment_meta("0", nullptr, 100, 100, false, irs::segment_meta::file_set{}, 141747));
+  meta.add(irs::segment_meta("1", nullptr, 100, 100, false, irs::segment_meta::file_set{}, 1548373791));
+  meta.add(irs::segment_meta("2", nullptr, 100, 100, false, irs::segment_meta::file_set{}, 1699787770));
+  meta.add(irs::segment_meta("3", nullptr, 100, 100, false, irs::segment_meta::file_set{}, 1861963739));
+  meta.add(irs::segment_meta("4", nullptr, 100, 100, false, irs::segment_meta::file_set{}, 2013404723));
+
+  std::set<const irs::segment_meta*> candidates;
+  policy(candidates, meta, consolidating_segments);
+  ASSERT_TRUE(candidates.empty()); // candidates too large
+}
+
 TEST(consolidation_test_tier, test_skewed_segments) {
   {
     irs::index_utils::consolidate_tier options;
