@@ -178,6 +178,7 @@ struct IResearchViewCoordinatorSetup {
     orderedFeatures = arangodb::application_features::ApplicationServer::server->getOrderedFeatures();
 
     // suppress log messages since tests check error conditions
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::ENGINES.name(), arangodb::LogLevel::FATAL); // suppress ERROR {engines} failed to instantiate index, error: ...
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR); // suppress ERROR recovery failure due to error from callback
     arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::FATAL);
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
@@ -221,6 +222,7 @@ struct IResearchViewCoordinatorSetup {
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::ENGINES.name(), arangodb::LogLevel::DEFAULT);
     arangodb::ClusterInfo::cleanup(); // reset ClusterInfo::instance() before DatabaseFeature::unprepare()
     arangodb::application_features::ApplicationServer::server = nullptr;
 
@@ -362,7 +364,7 @@ SECTION("test_defaults") {
       arangodb::iresearch::IResearchViewMeta meta;
       std::string error;
 
-      CHECK((13U == slice.length()));
+      CHECK((14U == slice.length()));
       CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
       CHECK((slice.get("id").copyString() == "1"));
       CHECK((slice.hasKey("isSystem") && slice.get("isSystem").isBoolean() && false == slice.get("isSystem").getBoolean()));
