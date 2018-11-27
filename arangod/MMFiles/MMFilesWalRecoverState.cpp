@@ -950,8 +950,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
           
           try {
             bool created;
-            std::shared_ptr<arangodb::Index> unused;
-            unused = physical->createIndex(payloadSlice, /*restore*/true, created);
+            auto unused = physical->createIndex(payloadSlice, /*restore*/true, created);
             TRI_ASSERT(unused != nullptr);
           } catch(basics::Exception const& e) {
             LOG_TOPIC(WARN, arangodb::Logger::ENGINES)

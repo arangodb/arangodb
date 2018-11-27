@@ -2234,13 +2234,12 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(arangodb::velocypack::Slic
   SingleCollectionTransaction trx(
     transaction::StandaloneContext::Create(_logicalCollection.vocbase()),
     _logicalCollection,
-    AccessMode::Type::WRITE
+    AccessMode::Type::EXCLUSIVE
   );
   Result res = trx.begin();
 
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
-    return nullptr;
   }
   
   std::shared_ptr<Index> idx = createIndex(&trx, info, restore, created);

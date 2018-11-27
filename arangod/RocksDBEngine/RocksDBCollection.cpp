@@ -351,7 +351,6 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
   
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
-    return nullptr;
   }
     
   std::shared_ptr<Index> idx = lookupIndex(info);
