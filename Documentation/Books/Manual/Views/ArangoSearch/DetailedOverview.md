@@ -171,7 +171,7 @@ of removing unused segments after release of internal resources.
       as dictated by the customization attributes.
 
 ### `consolidationPolicy` properties for `bytes_accum` type
-  - **threshold** (_optional_; type: `float`; default: `0.8`)
+  - **threshold** (_optional_; type: `float`; default: `0.1`)
 
     Defines threshold value of `[0.0, 1.0]` possible range. Consolidation is
     performed when then the sum of all candidate segment's byte
@@ -181,19 +181,19 @@ of removing unused segments after release of internal resources.
 
 ### `consolidationPolicy` properties for `tier` type
 
-  - **min\_segments** (_optional_; type: `integer`; default: `1`)
+  - **segmentsMin** (_optional_; type: `integer`; default: `1`)
 
     The minimum number of segments that will be evaluated as candidates for consolidation.
 
-  - **max\_segments** (_optional_; type: `integer`; default: `1`)
+  - **segmentsMax** (_optional_; type: `integer`; default: `1`)
 
     The maximum number of segments that will be evaluated as candidates for consolidation.
 
-  - **segments_bytes_max** (_optional_; type: `integer`; default: `5368709120`)
+  - **segmentsBytesMax** (_optional_; type: `integer`; default: `5368709120`)
 
     Maxinum allowed size of all consolidated segments in bytes.
 
-  - **segments_bytes_floor** (_optional_; type: `integer`; default: `2097152`)
+  - **segmentsBytesFloor** (_optional_; type: `integer`; default: `2097152`)
 
     Defines the value (in bytes) to treat all smaller segments as equal for consolidation
     selection.
@@ -201,7 +201,7 @@ of removing unused segments after release of internal resources.
   - **lookahead** (_optional_; type: `integer`; default: `18446744073709552000`)
 
     The number of additionally searched tiers except initially chosen candidates based on
-    `min_segments`, `max_segments`, `segments_bytes_max`, `segments_bytes_floor` with
+    `segmentsMin`, `segmentsMax`, `segmentsBytesMax`, `segmentsBytesFloor` with
     respect to defined values. Default value falls to search through all existing segments.
 
 ## Link properties
