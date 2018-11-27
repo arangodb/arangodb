@@ -147,7 +147,7 @@ class IRESEARCH_API fields_data: util::noncopyable {
   }
   const flags& features() { return features_; }
   void flush(field_writer& fw, flush_state& state);
-  void reset();
+  void reset() NOEXCEPT;
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
