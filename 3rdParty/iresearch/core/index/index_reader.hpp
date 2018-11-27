@@ -80,7 +80,7 @@ struct IRESEARCH_API index_reader {
     }
 
    private:
-    friend class index_reader;
+    friend struct index_reader;
 
     explicit reader_iterator(
         const index_reader& reader,

@@ -38,7 +38,7 @@ namespace transaction {
 class Methods;
 }
 
-class KeyLockInfo;
+struct KeyLockInfo;
 class LocalDocumentId;
 class Index;
 class IndexIterator;

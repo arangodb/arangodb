@@ -45,7 +45,7 @@ class FollowerInfo;
 class Index;
 class IndexIterator;
 class KeyGenerator;
-class KeyLockInfo;
+struct KeyLockInfo;
 class LocalDocumentId;
 class ManagedDocumentResult;
 struct OperationOptions;
