@@ -2738,14 +2738,9 @@ int ClusterInfo::ensureIndexCoordinatorInner(
             auto const key = entry.key.copyString();
             if (key != "isBuilding" && key != "isNewlyCreated") {
               finishedPlanIndex.add(entry.key.copyString(), entry.value);
-            } 
+            }
           }
         }
-        LOG_TOPIC(INFO, Logger::CLUSTER) << "In flight index entry: "
-          << newIndexBuilder.slice().toJson()
-          << " finished entry: "
-          << finishedPlanIndex.slice().toJson()
-          << " path: " << planIndexesKey;
         AgencyWriteTransaction trx(
             {AgencyOperation(
                planIndexesKey, AgencyValueOperationType::REPLACE,
@@ -2763,8 +2758,6 @@ int ClusterInfo::ensureIndexCoordinatorInner(
             << "Could not remove isBuilding flag in new index " << indexId
             << ", this will be repaired automatically.";
         }
-        LOG_TOPIC(ERR, Logger::CLUSTER) << "Done removing isBuilding "
-          << collectionID << " " << indexId;
         loadPlan();
         // Finally check if it has appeared, if not, we take another turn,
         // which does not do any harm:
