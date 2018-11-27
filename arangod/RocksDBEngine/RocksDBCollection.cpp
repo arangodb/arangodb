@@ -818,7 +818,7 @@ Result RocksDBCollection::insert(
     // up to the SavePoint. this can be super-expensive for bigger transactions.
     // to keep things simple, we are not checking for unique constraint violations
     // in secondary indexes here, but defer it to the regular index insertion check
-    VPackSlice keySlice = newSlice.get(StaticStrings::KeyString);
+    VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(newSlice);
     if (keySlice.isString()) {
       LocalDocumentId const documentId = primaryIndex()->lookupKey(trx, StringRef(keySlice));
       if (documentId.isSet()) {
