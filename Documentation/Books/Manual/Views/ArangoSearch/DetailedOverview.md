@@ -118,12 +118,11 @@ of removing unused segments after release of internal resources.
   > reflected by queries invoked in subsequent ArangoDB transactions, while
   > in-progress ArangoDB transactions will still continue to return a
   > repeatable-read state.
-  
-  
-  ArangoSearch performs operations in its index based on numerous writer
-  objects that are mapped to processed segments. In order to control memory that
-  is used by these writers (in terms of "writers pool") one can use
-  `writebuffer*` properties of a view.
+
+ArangoSearch performs operations in its index based on numerous writer
+objects that are mapped to processed segments. In order to control memory that
+is used by these writers (in terms of "writers pool") one can use
+`writebuffer*` properties of a view.
 
 - **writebufferIdle** (_optional_; type: `integer`; default: `64`;
   to disable use: `0`)
@@ -133,17 +132,18 @@ of removing unused segments after release of internal resources.
 - **writebufferActive** (_optional_; type: `integer`; default: `0`;
   to disable use: `0`)
 
-  Maximum number of concurrent active writers (segments) performs (a transaction).
-  Other writers (segments) are wait till current active writers (segments) finish.
+  Maximum number of concurrent active writers (segments) perform a transaction.
+  Other writers (segments) wait till current active writers (segments) finish.
 
 - **writebufferSizeMax** (_optional_; type: `integer`; default: `33554432`;
   to disable use: `0`)
 
   Maximum memory byte size per writer (segment) before a writer (segment) flush is
-  triggered. `0` value turns off this limit fon any writer (buffer) and will be
-  flushed only after a period [defined](../../Programs/Arangod/Server.md#data-source-flush-synchronization)
-  for the flush thread during ArangoDB server startup. `0` value should be used 
-  carefully due to high potential memory consumption.
+  triggered. `0` value turns off this limit for any writer (buffer) and data will
+  be flushed periodically based on the
+  [value defined for the flush thread](../../Programs/Arangod/Server.md#data-source-flush-synchronization)
+  during ArangoDB server startup. `0` value should be used carefully due to high
+  potential memory consumption.
 
 - **consolidationPolicy** (_optional_; type: `object`; default: `{}`)
 
@@ -165,7 +165,7 @@ of removing unused segments after release of internal resources.
     upon several possible configurable formulas as defined by their types.
     The currently supported types are:
 
-    - **bytes_accum**: Consolidate is performed based on current memory cunsumption
+    - **bytes_accum**: Consolidation is performed based on current memory cunsumption
       of segments and `threshold` property value.
     - **tier**: Consolidate based on segment byte size and live document count
       as dictated by the customization attributes.
@@ -174,9 +174,9 @@ of removing unused segments after release of internal resources.
   - **threshold** (_optional_; type: `float`; default: `0.1`)
 
     Defines threshold value of `[0.0, 1.0]` possible range. Consolidation is
-    performed when then the sum of all candidate segment's byte
-    size is less than the total segment byte size multiplied by the `threshold`.
-    I.e. the following formula is applied:
+    performed on segments which accumulated size in bytes is less than all
+    segments' byte size multiplied by the `threshold`; i.e. the following formula
+    is applied for each segment:
     `{threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes`.
 
 ### `consolidationPolicy` properties for `tier` type
@@ -202,7 +202,8 @@ of removing unused segments after release of internal resources.
 
     The number of additionally searched tiers except initially chosen candidates based on
     `segmentsMin`, `segmentsMax`, `segmentsBytesMax`, `segmentsBytesFloor` with
-    respect to defined values. Default value falls to search through all existing segments.
+    respect to defined values. Default value is treated as searching among all existing
+    segments.
 
 ## Link properties
 
