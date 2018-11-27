@@ -928,7 +928,22 @@ arangodb::Result IResearchView::appendVelocyPackDetailed(
     auto meta = std::atomic_load(&_meta);
     SCOPED_LOCK(meta->read()); // '_meta' can be asynchronously updated
 
-    if (!meta->json(builder)) {
+    static const std::function<bool(irs::string_ref const& key)> acceptor = [](
+        irs::string_ref const& key
+    )->bool {
+      return key != StaticStrings::VersionField; // ignored fields
+    };
+    static const std::function<bool(irs::string_ref const& key)> persistenceAcceptor = [](
+        irs::string_ref const&
+    )->bool {
+      return true;
+    };
+    arangodb::velocypack::Builder sanitizedBuilder;
+
+    sanitizedBuilder.openObject();
+
+    if (!meta->json(sanitizedBuilder)
+        || !mergeSliceSkipKeys(builder, sanitizedBuilder.close().slice(), forPersistence ? persistenceAcceptor : acceptor)) {
       return arangodb::Result(
         TRI_ERROR_INTERNAL,
         std::string("failure to generate definition while generating properties jSON for arangosearch View in database '") + vocbase().name() + "'"
@@ -1021,17 +1036,21 @@ arangodb::Result IResearchView::appendVelocyPackDetailed(
           };
 
           arangodb::velocypack::Builder sanitizedBuilder;
+
           sanitizedBuilder.openObject();
+
           if (!mergeSliceSkipKeys(sanitizedBuilder, linkBuilder.slice(), acceptor)) {
             Result result(TRI_ERROR_INTERNAL,
                 std::string("failed to generate externally visible link ")
                 .append("definition while emplacing link definition into ")
                 .append("arangosearch view '").append(name()).append("'"));
+
             LOG_TOPIC(WARN, iresearch::TOPIC) << result.errorMessage();
+
             return result;
           }
-          sanitizedBuilder.close();
 
+          sanitizedBuilder.close();
           linksBuilderWrapper->add(collectionName, sanitizedBuilder.slice());
         }
       }

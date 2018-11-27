@@ -342,7 +342,7 @@ bool IResearchViewMeta::init(
 
   {
     // optional uint32_t
-    static const std::string fieldName("version");
+    static const std::string fieldName(StaticStrings::VersionField);
 
     mask->_version = slice.hasKey(fieldName);
 
@@ -579,7 +579,7 @@ bool IResearchViewMeta::json(
 */
 
   if ((!ignoreEqual || _version != ignoreEqual->_version) && (!mask || mask->_version)) {
-    builder.add("version", arangodb::velocypack::Value(_version));
+    builder.add(StaticStrings::VersionField, arangodb::velocypack::Value(_version));
   }
 
   if ((!ignoreEqual || _writebufferActive != ignoreEqual->_writebufferActive) && (!mask || mask->_writebufferActive)) {

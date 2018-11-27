@@ -387,7 +387,7 @@ SECTION("test_defaults") {
       arangodb::iresearch::IResearchViewMeta meta;
       std::string error;
 
-      CHECK((12U == slice.length()));
+      CHECK((11U == slice.length()));
       CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
       CHECK((slice.get("id").copyString() == "1"));
       CHECK((slice.get("name").copyString() == "testView"));
