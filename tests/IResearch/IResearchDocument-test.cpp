@@ -1558,8 +1558,8 @@ SECTION("test_cid_rid_encoding") {
       for (auto& segment : *reader) {
         auto docs = prepared->execute(segment);
         REQUIRE(docs);
-        CHECK((nullptr == prepared->execute(segment))); // unusable filter
-        CHECK((nullptr == filter.prepare(*reader))); // unusable filter (after execute)
+        //CHECK((nullptr == prepared->execute(segment))); // unusable filter TRI_ASSERT(...) check
+        CHECK((irs::filter::prepared::empty() == filter.prepare(*reader))); // unusable filter (after execute)
 
         CHECK(docs->next());
         auto const id = docs->value();
@@ -1737,8 +1737,8 @@ SECTION("test_cid_rid_filter") {
       for (auto& segment: *store.reader) {
         auto docs = prepared->execute(segment);
         REQUIRE((docs));
-        CHECK((nullptr == prepared->execute(segment))); // unusable filter
-        CHECK((nullptr == filter.prepare(*store.reader))); // unusable filter (after execute)
+        //CHECK((nullptr == prepared->execute(segment))); // unusable filter TRI_ASSERT(...) check
+        CHECK((irs::filter::prepared::empty() == filter.prepare(*store.reader))); // unusable filter (after execute)
 
         CHECK((docs->next()));
         auto const id = docs->value();
