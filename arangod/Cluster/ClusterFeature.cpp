@@ -448,6 +448,7 @@ void ClusterFeature::start() {
       builder.add("endpoint", VPackValue(_myAddress));
       builder.add("host", VPackValue(ServerState::instance()->getHost()));
       builder.add("version", VPackValue(rest::Version::getNumericServerVersion()));
+      builder.add("versionString",  VPackValue(rest::Version::getServerVersion()));
       builder.add("engine", VPackValue(EngineSelectorFeature::engineName()));
     } catch (...) {
       LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "out of memory";
@@ -461,7 +462,7 @@ void ClusterFeature::start() {
       break;
     } else {
       LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
-        << "failed to register server in agency: http code: "	
+        << "failed to register server in agency: http code: "
         << result.httpCode() << ", body: '" << result.body() << "', retrying ...";
     }
 
