@@ -79,7 +79,7 @@ irs::doc_iterator::ptr PrimaryKeyFilter::execute(
   // optimization, since during:
   // * regular runtime should have at most 1 identical live primary key in the entire datastore
   // * recovery should have at most 2 identical live primary keys in the entire datastore
-  if (type() == typeDefault) {
+  if (irs::filter::type() == typeDefault) { // explicitly check type of instance
     TRI_ASSERT(!docs->next()); // primary key duplicates should NOT happen in the same segment in regular runtime
     _pk.first = 0; // already matched 1 primary key (should be at most 1 at runtime)
   }
