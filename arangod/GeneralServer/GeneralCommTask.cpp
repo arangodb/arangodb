@@ -356,19 +356,17 @@ void GeneralCommTask::executeRequest(
 void GeneralCommTask::setStatistics(uint64_t id, RequestStatistics* stat) {
   MUTEX_LOCKER(locker, _statisticsMutex);
 
-  auto iter = _statisticsMap.find(id);
-
-  if (iter == _statisticsMap.end()) {
-    if (stat != nullptr) {
-      _statisticsMap.emplace(std::make_pair(id, stat));
+  if (stat == nullptr) {
+    auto it = _statisticsMap.find(id);
+    if (it != _statisticsMap.end()) {
+      it->second->release();
+      _statisticsMap.erase(it);
     }
   } else {
-    iter->second->release();
-
-    if (stat != nullptr) {
-      iter->second = stat;
-    } else {
-      _statisticsMap.erase(iter);
+    auto result = _statisticsMap.insert({id, stat});
+    if (!result.second) {
+      result.first->second->release();
+      result.first->second = stat;
     }
   }
 }

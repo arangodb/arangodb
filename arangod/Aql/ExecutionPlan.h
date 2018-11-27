@@ -56,7 +56,7 @@ class ExecutionPlan {
 
  public:
   /// @brief create an execution plan from an AST
-  static ExecutionPlan* instantiateFromAst(Ast*);
+  static std::unique_ptr<ExecutionPlan> instantiateFromAst(Ast*);
 
   /// @brief process the list of collections in a VelocyPack
   static void getCollectionsFromVelocyPack(Ast* ast,

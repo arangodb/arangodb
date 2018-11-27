@@ -685,14 +685,10 @@ AqlValue Expression::executeSimpleExpressionObject(
         std::string key(buffer->begin(), buffer->length());
 
         // note each individual object key name with latest value position
-        auto it = uniqueKeyValues.find(key);
-
-        if (it == uniqueKeyValues.end()) {
-          // unique key
-          uniqueKeyValues.emplace(std::move(key), i);
-        } else {
+        auto it = uniqueKeyValues.insert({std::move(key), i});
+        if (!it.second) {
           // duplicate key
-          (*it).second = i;
+          it.first->second = i;
           isUnique = false;
         }
       }
@@ -708,14 +704,10 @@ AqlValue Expression::executeSimpleExpressionObject(
         std::string key(member->getString());
 
         // note each individual object key name with latest value position
-        auto it = uniqueKeyValues.find(key);
-
-        if (it == uniqueKeyValues.end()) {
-          // unique key
-          uniqueKeyValues.emplace(std::move(key), i);
-        } else {
+        auto it = uniqueKeyValues.insert({std::move(key), i});
+        if (!it.second) {
           // duplicate key
-          (*it).second = i;
+          it.first->second = i;
           isUnique = false;
         }
       }

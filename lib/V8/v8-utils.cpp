@@ -68,6 +68,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -4173,7 +4174,7 @@ static void JS_SplitWordlist(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::set<std::string> wordList;
 
   if (!Utf8Helper::DefaultUtf8Helper.tokenize(
-          wordList, stringToTokenize, minLength, maxLength, lowerCase)) {
+          wordList, arangodb::velocypack::StringRef(stringToTokenize), minLength, maxLength, lowerCase)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "SplitWordlist failed!");
   }
 

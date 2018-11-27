@@ -36,6 +36,7 @@ const wait = internal.wait;
 const request = require("@arangodb/request");
 const cluster = require("@arangodb/cluster");
 const supervisionState = cluster.supervisionState;
+const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 
 function getDBServers() {
   var tmp = global.ArangoClusterInfo.getDBServers();
@@ -1051,11 +1052,15 @@ function MovingShardsWithViewSuite (options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(function MovingShardsWithViewSuite_nodata() {
-  return MovingShardsWithViewSuite({ useData: false });
+  let derivedSuite = {};
+  deriveTestSuite(MovingShardsWithViewSuite({ useData: false }), derivedSuite, "_nodata");
+  return derivedSuite;
 });
 
 jsunity.run(function MovingShardsWithViewSuite_data() {
-  return MovingShardsWithViewSuite({ useData: true });
+  let derivedSuite = {};
+  deriveTestSuite(MovingShardsWithViewSuite({ useData: true }), derivedSuite, "_data");
+  return derivedSuite;
 });
 
 return jsunity.done();

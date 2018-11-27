@@ -4,11 +4,5 @@ In this file we collect information about which tests are currently
 greylisted. Please add a reason and date, and possibly links to issues
 or PRs.
 
- - `./tests/js/server/resilience/moving-shards-with-arangosearch-view-cluster.js`
-   as of now this test has frequent failures. The issue seems to be that
-   the MoveShard operation from one leader to a different one does not
-   reliably drop the old leader as a follower from the Plan in the end.
-   See https://github.com/arangodb/release-3.4/issues/125
-
  - `./tests/js/client/resilience/foxxmaster-grey.js` there is a bug in the
    test code. Alan is looking into it.

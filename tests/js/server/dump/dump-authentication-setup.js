@@ -85,6 +85,13 @@
   c.update("one", { value: 1, value2: 789 });
   c.remove("four");
   
+  // Install Foxx
+  const fs = require('fs');
+  const SERVICE_PATH = fs.makeAbsolute(fs.join(
+    require('internal').pathForTesting('common'), 'test-data', 'apps', 'minimal-working-service'
+  ));
+  const FoxxManager = require('@arangodb/foxx/manager');
+  FoxxManager.install(SERVICE_PATH, '/test');
 })();
 
 return {

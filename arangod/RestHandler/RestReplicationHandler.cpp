@@ -1235,13 +1235,7 @@ Result RestReplicationHandler::parseBatch(
 
         // Put into array of all parsed markers:
         allMarkers.add(builder.slice());
-        auto it = latest.find(key);
-        if (it != latest.end()) {
-          // Already found, overwrite:
-          it->second = currentPos;
-        } else {
-          latest.emplace(std::make_pair(key, currentPos));
-        }
+        latest[key] = currentPos;
         ++currentPos;
       }
 

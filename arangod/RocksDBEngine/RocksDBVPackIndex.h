@@ -28,6 +28,7 @@
 
 #include "Aql/AstNode.h"
 #include "Basics/Common.h"
+#include "Basics/SmallVector.h"
 #include "Basics/StringRef.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
@@ -235,8 +236,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
   /// @brief helper function to insert a document into any index type
   int fillElement(velocypack::Builder& leased,
                   LocalDocumentId const& documentId, VPackSlice const& doc,
-                  std::vector<RocksDBKey>& elements,
-                  std::vector<uint64_t>& hashes);
+                  SmallVector<RocksDBKey>& elements,
+                  SmallVector<uint64_t>& hashes);
 
   /// @brief helper function to build the key and value for rocksdb from the
   /// vector of slices
@@ -244,9 +245,9 @@ class RocksDBVPackIndex : public RocksDBIndex {
   void addIndexValue(velocypack::Builder& leased,
                      LocalDocumentId const& documentId,
                      VPackSlice const& document,
-                     std::vector<RocksDBKey>& elements,
-                     std::vector<VPackSlice>& sliceStack,
-                     std::vector<uint64_t>& hashes);
+                     SmallVector<RocksDBKey>& elements,
+                     SmallVector<uint64_t>& hashes,
+                     SmallVector<VPackSlice>& sliceStack);
 
   /// @brief helper function to create a set of value combinations to insert
   /// into the rocksdb index.
@@ -256,9 +257,9 @@ class RocksDBVPackIndex : public RocksDBIndex {
   void buildIndexValues(velocypack::Builder& leased,
                         LocalDocumentId const& documentId,
                         VPackSlice const document, size_t level,
-                        std::vector<RocksDBKey>& elements,
-                        std::vector<VPackSlice>& sliceStack,
-                        std::vector<uint64_t>& hashes);
+                        SmallVector<RocksDBKey>& elements,
+                        SmallVector<uint64_t>& hashes,
+                        SmallVector<VPackSlice>& sliceStack);
 
  private:
   /// @brief the attribute paths
