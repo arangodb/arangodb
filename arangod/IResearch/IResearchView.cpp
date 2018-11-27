@@ -471,20 +471,20 @@ struct IResearchView::ViewFactory: public arangodb::ViewFactory {
 
       if (!res.ok()) {
         LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-          << "failed to create links while creating arangosearch view '" << view->name() <<  "': " << res.errorNumber() << " " <<  res.errorMessage();
+          << "failed to create links while creating arangosearch view '" << impl->name() <<  "': " << res.errorNumber() << " " <<  res.errorMessage();
       }
     } catch (arangodb::basics::Exception const& e) {
       IR_LOG_EXCEPTION();
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "caught exception while creating links while creating arangosearch view '" << view->name() << "': " << e.code() << " " << e.what();
+        << "caught exception while creating links while creating arangosearch view '" << impl->name() << "': " << e.code() << " " << e.what();
     } catch (std::exception const& e) {
       IR_LOG_EXCEPTION();
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "caught exception while creating links while creating arangosearch view '" << view->name() << "': " << e.what();
+        << "caught exception while creating links while creating arangosearch view '" << impl->name() << "': " << e.what();
     } catch (...) {
       IR_LOG_EXCEPTION();
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "caught exception while creating links while creating arangosearch view '" << view->name() << "'";
+        << "caught exception while creating links while creating arangosearch view '" << impl->name() << "'";
     }
 
     view = impl;
@@ -516,6 +516,7 @@ struct IResearchView::ViewFactory: public arangodb::ViewFactory {
     );
 
     if (!meta->init(definition, error)
+        || meta->_version > LATEST_VERSION
         || !impl->_metaState.init(definition, error)) {
       return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
@@ -1909,6 +1910,7 @@ arangodb::Result IResearchView::updateProperties(
 
       // reset non-updatable values to match current meta
       meta._locale = viewMeta->_locale;
+      meta._version = viewMeta->_version;
       meta._writebufferActive = viewMeta->_writebufferActive;
       meta._writebufferIdle = viewMeta->_writebufferIdle;
       meta._writebufferSizeMax = viewMeta->_writebufferSizeMax;

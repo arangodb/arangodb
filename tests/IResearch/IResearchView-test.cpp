@@ -1036,6 +1036,26 @@ SECTION("test_drop_database") {
   CHECK((1 == beforeCount));
 }
 
+SECTION("test_instantiate") {
+  // valid version
+  {
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"version\": 0 }");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    arangodb::LogicalView::ptr view;
+    CHECK((arangodb::iresearch::IResearchView::factory().instantiate(view, vocbase, json->slice(), 0).ok()));
+    CHECK((false == !view));
+  }
+
+  // unsupported version
+  {
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"version\": 123456789 }");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    arangodb::LogicalView::ptr view;
+    CHECK((!arangodb::iresearch::IResearchView::factory().instantiate(view, vocbase, json->slice(), 0).ok()));
+    CHECK((true == !view));
+  }
+}
+
 SECTION("test_truncate_cid") {
   static std::vector<std::string> const EMPTY;
 
