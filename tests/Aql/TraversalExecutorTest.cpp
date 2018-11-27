@@ -207,6 +207,10 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
           REQUIRE(fetcher.isDone());
           REQUIRE(fetcher.nrCalled() == 3);
 
+          REQUIRE(traverser->startVertexUsedAt(0) == "v/1");
+          REQUIRE(traverser->startVertexUsedAt(1) == "v/2");
+          REQUIRE(traverser->startVertexUsedAt(2) == "v/3");
+
           AND_THEN("The output should stay stable") {
             std::tie(state, stats) = testee.produceRow(row);
             REQUIRE(state == ExecutionState::DONE);
@@ -217,6 +221,9 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
             REQUIRE(fetcher.nrCalled() == 3);
           }
         }
+      }
+
+      WHEN("edges are connected to vertices") {
       }
     }
   }
