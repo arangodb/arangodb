@@ -191,7 +191,7 @@ is used by these writers (in terms of "writers pool") one can use
 
   - **segmentsBytesMax** (_optional_; type: `integer`; default: `5368709120`)
 
-    Maxinum allowed size of all consolidated segments in bytes.
+    Maximum allowed size of all consolidated segments in bytes.
 
   - **segmentsBytesFloor** (_optional_; type: `integer`; default: `2097152`)
 
