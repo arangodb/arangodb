@@ -235,8 +235,11 @@ void MMFilesTransactionCollection::release() {
   if (_collection != nullptr) {
     // unuse collection, remove usage-lock
     LOG_TRX(_transaction, 0) << "unusing collection " << _cid;
-
-    _transaction->vocbase().releaseCollection(_collection.get());
+    
+    if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) &&
+        !_transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
+      _transaction->vocbase().releaseCollection(_collection.get());
+    }
     _collection = nullptr;
   }
 }
