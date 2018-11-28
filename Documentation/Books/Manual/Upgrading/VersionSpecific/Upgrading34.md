@@ -1,13 +1,14 @@
 Upgrading to ArangoDB 3.4
 =========================
 
-Please be sure that you have checked the list of [incompatible changes in 3.4](../../ReleaseNotes/UpgradingChanges34.md)
+Please be sure that you have checked the list of
+[incompatible changes in 3.4](../../ReleaseNotes/UpgradingChanges34.md)
 before upgrading.
 
 Upon upgrading from 3.3 to 3.4, the following storage engine-specific data conversion tasks
 will be executed:
 
-* for the MMFiles storage engine, all collection datafiles will be rewritten into a
+- for the MMFiles storage engine, all collection datafiles will be rewritten into a
   new data format. This data format is required in order to support using the collections
   with the ArangoSearch tool introduced in ArangoDB 3.4. 
 
@@ -16,7 +17,7 @@ will be executed:
   writing are done in a sequential fashion. Preliminary tests have shown that it will need 
   at most 2-3 times as long as it takes to copy the database directory.
 
-* for the RocksDB storage engine, all existing geo indexes will be rewritten into a new 
+- for the RocksDB storage engine, all existing geo indexes will be rewritten into a new 
   data format. This data format is required for using the indexes with the improved geo
   index feature in ArangoDB 3.4. 
   
