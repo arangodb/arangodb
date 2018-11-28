@@ -45,9 +45,9 @@ standalone index.
 
 ## Analyzers
 
-To simplify query syntax ArangoSearch provides a concept of [named
-analyzers](Analyzers.md) which are merely aliases for type+configuration of
-IResearch analyzers.
+To simplify query syntax ArangoSearch provides a concept of
+[named analyzers](Analyzers.md) which are merely aliases for type+configuration
+of IResearch analyzers.
 <!-- Management of named analyzers is exposed via REST, GUI and JavaScript APIs. -->
 
 ## View definition/modification
@@ -132,7 +132,7 @@ is used by these writers (in terms of "writers pool") one can use
 - **writebufferActive** (_optional_; type: `integer`; default: `0`;
   to disable use: `0`)
 
-  Maximum number of concurrent active writers (segments) perform a transaction.
+  Maximum number of concurrent active writers (segments) that perform a transaction.
   Other writers (segments) wait till current active writers (segments) finish.
 
 - **writebufferSizeMax** (_optional_; type: `integer`; default: `33554432`;
@@ -142,7 +142,7 @@ is used by these writers (in terms of "writers pool") one can use
   triggered. `0` value turns off this limit for any writer (buffer) and data will
   be flushed periodically based on the
   [value defined for the flush thread](../../Programs/Arangod/Server.md#data-source-flush-synchronization)
-  during ArangoDB server startup. `0` value should be used carefully due to high
+  (ArangoDB server startup option). `0` value should be used carefully due to high
   potential memory consumption.
 
 - **consolidationPolicy** (_optional_; type: `object`; default: `{}`)
