@@ -1,10 +1,10 @@
 arangosh&gt; col = db.example;
-[ArangoCollection <span class="hljs-number">15495</span>, <span class="hljs-string">"example"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
+[ArangoCollection <span class="hljs-number">15493</span>, <span class="hljs-string">"example"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
 arangosh&gt; col.save({ <span class="hljs-string">"Hello"</span> : <span class="hljs-string">"World"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/15499"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15499"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XnCMvRK--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/15497"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15497"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Xzu5LQ---_"</span> 
 }
 arangosh&gt; col.count();
 <span class="hljs-number">1</span>

@@ -4,7 +4,7 @@ arangosh&gt; db.names.ensureIndex({ <span class="hljs-attr">type</span>: <span c
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"first"</span> 
   ], 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"names/16266"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"names/16265"</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
@@ -13,31 +13,31 @@ arangosh&gt; db.names.ensureIndex({ <span class="hljs-attr">type</span>: <span c
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tim"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/16269"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16269"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XnCMxXm--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/16268"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16268"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Xzu5MyO--_"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tom"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/16273"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16273"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XnCMxXm--B"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/16272"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16272"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Xzu5MyO--B"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"John"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/16276"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16276"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XnCMxXq--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/16275"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16275"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Xzu5MyS--_"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tim"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/16279"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16279"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XnCMxXq--B"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/16278"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16278"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Xzu5MyS--B"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tom"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/16282"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16282"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XnCMxXq--D"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/16281"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16281"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Xzu5MyS--D"</span> 
 }

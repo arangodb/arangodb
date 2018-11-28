@@ -8,9 +8,9 @@ location: <span class="hljs-regexp">/_api/</span>collection/products/checksum
 { 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span>, 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h5486C74C94E1/9878"</span>, 
+  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h622D028FA349/9878"</span>, 
   <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"revision"</span> : <span class="hljs-string">"_XnCMkUy--_"</span>, 
+  <span class="hljs-string">"revision"</span> : <span class="hljs-string">"_Xzu5AJC--_"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
   <span class="hljs-string">"checksum"</span> : <span class="hljs-string">"7182653171256674187"</span>, 
   <span class="hljs-string">"id"</span> : <span class="hljs-string">"9878"</span>, 
