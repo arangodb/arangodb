@@ -56,6 +56,46 @@ using namespace arangodb::httpclient;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
+/// @brief check whether HTTP response is valid, complete, and not an error
+arangodb::Result checkHttpResponse(
+    arangodb::httpclient::SimpleHttpClient& client,
+    std::unique_ptr<arangodb::httpclient::SimpleHttpResult>& response,
+    char const* requestAction,
+    std::string const& originalRequest) {
+  using arangodb::basics::StringUtils::itoa;
+  if (response == nullptr || !response->isComplete()) {
+    return {TRI_ERROR_INTERNAL,
+        "got invalid response from server: '" +
+        client.getErrorMessage() +
+        "' while executing '" +
+        requestAction +
+        "' with this payload: '" +
+        originalRequest +
+        "'"
+        };
+  }
+  if (response->wasHttpError()) {
+    int errorNum = TRI_ERROR_INTERNAL;
+    std::string errorMsg = response->getHttpReturnMessage();
+    std::shared_ptr<arangodb::velocypack::Builder> bodyBuilder(response->getBodyVelocyPack());
+    arangodb::velocypack::Slice error = bodyBuilder->slice();
+    if (!error.isNone() && error.hasKey(arangodb::StaticStrings::ErrorMessage)) {
+      errorNum = error.get(arangodb::StaticStrings::ErrorNum).getNumericValue<int>();
+      errorMsg = error.get(arangodb::StaticStrings::ErrorMessage).copyString();
+    }
+    return {errorNum,
+        "got invalid response from server: HTTP " +
+        itoa(response->getHttpReturnCode()) + ": '" +
+        errorMsg +
+        "' while executing '" +
+        requestAction +
+        "' with this payload: '" +
+        originalRequest +
+        "'"};
+  }
+  return {TRI_ERROR_NO_ERROR};
+}
+
 RestoreFeature::RestoreFeature(application_features::ApplicationServer* server,
                                int* result)
     : ApplicationFeature(server, "Restore"),
@@ -459,6 +499,17 @@ Result RestoreFeature::readDumpInfo() {
   return Result();
 }
 
+arangodb::Result triggerFoxxHeal(
+    arangodb::httpclient::SimpleHttpClient& httpClient) {
+  using arangodb::Logger;
+  using arangodb::httpclient::SimpleHttpResult;
+  const std::string FoxxHealUrl = "/_api/foxx/_local/heal";
+  std::string body = "";
+  std::unique_ptr<SimpleHttpResult> response(httpClient.request(
+        arangodb::rest::RequestType::POST, FoxxHealUrl, body.c_str(), body.length()));
+  return ::checkHttpResponse(httpClient, response, "trigger self heal", body);
+}
+
 int RestoreFeature::processInputDirectory(std::string& errorMsg) {
   // create a lookup table for collections
   std::map<std::string, bool> restrictList;
@@ -559,12 +610,21 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
     }
     std::sort(collections.begin(), collections.end(), SortCollections);
 
+    bool didModifyFoxxCollection = false;
     StringBuffer buffer(true);
-    // step2: run the actual import
+    // Step 2: run the actual import
     for (VPackBuilder const& b : collections) {
       VPackSlice const collection = b.slice();
       VPackSlice const parameters = collection.get("parameters");
       VPackSlice const indexes = collection.get("indexes");
+      VPackSlice params = collection.get("parameters");
+      if (params.isObject()) {
+        params = params.get("name");
+        // Only these two are relevant for FOXX.
+        if (params.isString() && (params.isEqualString("_apps") || params.isEqualString("_appbundles"))) {
+          didModifyFoxxCollection = true;
+        }
+      };
       std::string const cname =
           arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name",
                                                              "");
@@ -755,6 +815,15 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
                   << " collection(s), read " << _stats._totalRead << " byte(s) from datafiles, "
                   << "sent " << _stats._totalBatches << " data batch(es) of " << _stats._totalSent << " byte(s) total size" << std::endl;
       }
+
+      if (didModifyFoxxCollection) {
+        // if we get here we need to trigger foxx heal
+        Result res = ::triggerFoxxHeal(*_httpClient);
+        if (res.fail()) {
+          LOG_TOPIC(WARN, Logger::RESTORE) << "Reloading of Foxx failed. In the cluster Foxx Services will be available eventually, On SingleServers send a PUT to ";
+        }
+      }
+
     }
   } catch (std::exception const& ex) {
     errorMsg = "arangorestore terminated because of an unhandled exception: ";
