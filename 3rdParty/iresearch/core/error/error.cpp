@@ -30,10 +30,6 @@ NS_ROOT
 //                                                                   error_base
 // ----------------------------------------------------------------------------
 
-ErrorCode error_base::code() const NOEXCEPT {
-  return ErrorCode::undefined_error;
-}
-
 const char* error_base::what() const NOEXCEPT {
   return "An unspecified error has occured.";
 }
@@ -42,33 +38,13 @@ const char* error_base::what() const NOEXCEPT {
 //                                                                not_supported
 // ----------------------------------------------------------------------------
 
-ErrorCode not_supported::code() const NOEXCEPT {
-  return CODE;
-}
-
-const char* not_supported::what() const NOEXCEPT { 
+const char* not_supported::what() const NOEXCEPT {
   return "Operation not supported."; 
-}
-
-// ----------------------------------------------------------------------------
-//                                                                     io_error
-// ----------------------------------------------------------------------------
-
-ErrorCode io_error::code() const NOEXCEPT {
-  return CODE;
-}
-
-const char* io_error::what() const NOEXCEPT { 
-  return "An unspecified I/O error has occured."; 
 }
 
 // ----------------------------------------------------------------------------
 //                                                                    eof_error
 // ----------------------------------------------------------------------------
-
-ErrorCode eof_error::code() const NOEXCEPT {
-  return CODE;
-}
 
 const char* eof_error::what() const NOEXCEPT { 
   return "Read past EOF."; 
@@ -79,7 +55,7 @@ const char* eof_error::what() const NOEXCEPT {
 // ----------------------------------------------------------------------------
 
 lock_obtain_failed::lock_obtain_failed(
-    const irs::string_ref& filename /*= irs::string_ref::NIL*/
+    const irs::string_ref& filename /*= "" */
 ) : error_("Lock obtain timed out") {
   if (filename.null()) {
     error_ += ".";
@@ -87,10 +63,6 @@ lock_obtain_failed::lock_obtain_failed(
     error_ += ": ";
     error_ + filename.c_str();
   }
-}
-
-ErrorCode lock_obtain_failed::code() const NOEXCEPT {
-  return CODE;
 }
 
 const char* lock_obtain_failed::what() const NOEXCEPT {
@@ -102,7 +74,7 @@ const char* lock_obtain_failed::what() const NOEXCEPT {
 // ----------------------------------------------------------------------------
 
 file_not_found::file_not_found(
-    const irs::string_ref& filename /*= irs::string_ref::NIL*/
+    const irs::string_ref& filename /*= "" */
 ): error_("File not found") {
   if (filename.null()) {
     error_ += ".";
@@ -110,10 +82,6 @@ file_not_found::file_not_found(
     error_ += ": ";
     error_ + filename.c_str();
   }
-}
-
-ErrorCode file_not_found::code() const NOEXCEPT{
-  return CODE;
 }
 
 const char* file_not_found::what() const NOEXCEPT { 
@@ -124,10 +92,6 @@ const char* file_not_found::what() const NOEXCEPT {
 //                                                              index_not_found
 // ----------------------------------------------------------------------------
 
-ErrorCode index_not_found::code() const NOEXCEPT{
-  return CODE;
-}
-
 const char* index_not_found::what() const NOEXCEPT {
   return "No segments* file found.";
 }
@@ -135,10 +99,6 @@ const char* index_not_found::what() const NOEXCEPT {
 // ----------------------------------------------------------------------------
 //                                                               not_impl_error
 // ----------------------------------------------------------------------------
-
- ErrorCode not_impl_error::code() const NOEXCEPT{
-  return CODE;
-}
 
 const char* not_impl_error::what() const NOEXCEPT { 
   return "Not implemented."; 
@@ -148,10 +108,6 @@ const char* not_impl_error::what() const NOEXCEPT {
 //                                                             illegal_argument
 // ----------------------------------------------------------------------------
 
-ErrorCode illegal_argument::code() const NOEXCEPT{
-  return CODE;
-}
-
 const char* illegal_argument::what() const NOEXCEPT{ 
   return "Invalid argument."; 
 }
@@ -159,10 +115,6 @@ const char* illegal_argument::what() const NOEXCEPT{
 // ----------------------------------------------------------------------------
 //                                                             illegal_argument
 // ----------------------------------------------------------------------------
-
-ErrorCode illegal_state::code() const NOEXCEPT{
-  return CODE;
-}
 
 const char* illegal_state::what() const NOEXCEPT{
   return "Illegal state."; 
