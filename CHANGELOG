@@ -11,7 +11,7 @@ v3.4.0-rc.5 (XXXX-XX-XX)
 
   In ArangoDB 3.3 the governing configuration option `--rocksdb.total-write-buffer-size`
   had a default value of `0`, which meant that the memory usage was not limited. ArangoDB
-  3.4 now changes the default value to about 40% of available physical RAM, and 512MiB
+  3.4 now changes the default value to about 50% of available physical RAM, and 512MiB
   for setups with less than 4GiB of RAM.
 
 * lower default value for `--cache.size` startup option from about 30% of physical RAM to

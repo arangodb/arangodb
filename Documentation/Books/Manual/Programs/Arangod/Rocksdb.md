@@ -39,9 +39,10 @@ The total amount of data to build up in all in-memory buffers (backed by log
 files). This option, together with the block cache size configuration option,
 can be used to limit memory usage. If set to 0, the memory usage is not limited.
 
-If set to 0, this will cap memory usage for write buffers but may have an effect
-on performance. If there is less than 4GiB of RAM on the system, the default value
-is 512MiB. If there is more, the default is `(system RAM size - 2GiB) * 0.4`.
+If set to a value larger than 0, this will cap memory usage for write buffers 
+but may have an effect on performance. If there is less than 4GiB of RAM on the 
+system, the default value is 512MiB. If there is more, the default is 
+`(system RAM size - 2GiB) * 0.5`.
 
 `--rocksdb.min-write-buffer-number-to-merge`
 
