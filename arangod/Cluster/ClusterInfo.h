@@ -659,7 +659,7 @@ class ClusterInfo {
   /// @brief ensure an index in coordinator.
   //////////////////////////////////////////////////////////////////////////////
 
-  int ensureIndexCoordinatorWithoutRollback(
+  int ensureIndexCoordinatorInner(
       std::string const& databaseName, std::string const& collectionID,
       std::string const& idSlice, arangodb::velocypack::Slice const& slice,
       bool create, arangodb::velocypack::Builder& resultBuilder,
