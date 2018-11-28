@@ -35,11 +35,10 @@
 namespace arangodb {
 
 namespace transaction {
-
 class Methods;
-
 }
 
+struct KeyLockInfo;
 class LocalDocumentId;
 class Index;
 class IndexIterator;
@@ -125,13 +124,11 @@ class PhysicalCollection {
   /// @brief return the figures for a collection
   virtual std::shared_ptr<velocypack::Builder> figures();
 
+  /// @brief create or restore an index
+  /// @param restore utilize specified ID, assume index has to be created
   virtual std::shared_ptr<Index> createIndex(
-      transaction::Methods* trx, arangodb::velocypack::Slice const& info,
+      arangodb::velocypack::Slice const& info, bool restore,
       bool& created) = 0;
-
-  /// @brief Restores an index from VelocyPack.
-  virtual int restoreIndex(transaction::Methods*, velocypack::Slice const&,
-                           std::shared_ptr<Index>&) = 0;
 
   virtual bool dropIndex(TRI_idx_iid_t iid) = 0;
 
@@ -186,6 +183,7 @@ class PhysicalCollection {
                         OperationOptions& options,
                         TRI_voc_tick_t& resultMarkerTick, bool lock,
                         TRI_voc_tick_t& revisionId,
+                        KeyLockInfo* keyLockInfo,
                         std::function<Result(void)> callbackDuringLock) = 0;
 
   Result insert(arangodb::transaction::Methods* trx,
@@ -195,7 +193,7 @@ class PhysicalCollection {
                 bool lock) {
     TRI_voc_rid_t unused;
     return insert(trx, newSlice, result, options, resultMarkerTick, lock,
-                  unused, nullptr);
+                  unused, nullptr, nullptr);
   }
 
   virtual Result update(arangodb::transaction::Methods* trx,
@@ -222,6 +220,7 @@ class PhysicalCollection {
                         OperationOptions& options,
                         TRI_voc_tick_t& resultMarkerTick, bool lock,
                         TRI_voc_rid_t& prevRev, TRI_voc_rid_t& revisionId,
+                        KeyLockInfo* keyLockInfo,
                         std::function<Result(void)> callbackDuringLock) = 0;
 
  protected:

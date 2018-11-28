@@ -835,10 +835,9 @@ std::shared_ptr<Index> LogicalCollection::lookupIndex(
   return getPhysical()->lookupIndex(info);
 }
 
-std::shared_ptr<Index> LogicalCollection::createIndex(transaction::Methods* trx,
-                                                      VPackSlice const& info,
+std::shared_ptr<Index> LogicalCollection::createIndex(VPackSlice const& info,
                                                       bool& created) {
-  auto idx = _physical->createIndex(trx, info, created);
+  auto idx = _physical->createIndex(info, /*restore*/ false, created);
   if (idx) {
     if (DatabaseFeature::DATABASE != nullptr &&
         DatabaseFeature::DATABASE->versionTracker() != nullptr) {
@@ -927,13 +926,14 @@ Result LogicalCollection::insert(
     transaction::Methods* trx, VPackSlice const slice,
     ManagedDocumentResult& result, OperationOptions& options,
     TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_tick_t& revisionId,
+    KeyLockInfo* keyLockInfo,
     std::function<Result(void)> callbackDuringLock) {
   TRI_IF_FAILURE("LogicalCollection::insert") {
     return Result(TRI_ERROR_DEBUG);
   }
   resultMarkerTick = 0;
   return getPhysical()->insert(trx, slice, result, options, resultMarkerTick,
-                               lock, revisionId, std::move(callbackDuringLock));
+                               lock, revisionId, keyLockInfo, std::move(callbackDuringLock));
 }
 
 /// @brief updates a document or edge in a collection
@@ -989,6 +989,7 @@ Result LogicalCollection::remove(
     transaction::Methods* trx, VPackSlice const slice,
     OperationOptions& options, TRI_voc_tick_t& resultMarkerTick, bool lock,
     TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
+    KeyLockInfo* keyLockInfo,
     std::function<Result(void)> callbackDuringLock) {
   TRI_IF_FAILURE("LogicalCollection::remove") {
     return Result(TRI_ERROR_DEBUG);
@@ -996,7 +997,7 @@ Result LogicalCollection::remove(
   resultMarkerTick = 0;
   TRI_voc_rid_t revisionId = 0;
   return getPhysical()->remove(trx, slice, previous, options, resultMarkerTick,
-                               lock, prevRev, revisionId,
+                               lock, prevRev, revisionId, keyLockInfo,
                                std::move(callbackDuringLock));
 }
 
