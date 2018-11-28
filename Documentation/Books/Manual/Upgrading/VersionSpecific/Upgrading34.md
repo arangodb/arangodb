@@ -12,7 +12,7 @@ will be executed:
 
   All collection datafiles will be rewritten into a
   new data format. This data format is required in order to support using the collections
-  with the ArangoSearch tool introduced in ArangoDB 3.4. 
+  in [ArangoSearch Views](../../Views/ArangoSearch/README.md) introduced in ArangoDB 3.4. 
 
   The conversion will read each datafile sequentially and write out a new datafile in the
   new format sequentially. This means the disk will be involved, but both reading and
@@ -22,8 +22,11 @@ will be executed:
 - **RocksDB storage engine:**
 
   All existing geo indexes will be rewritten into a new 
-  data format. This data format is required for using the indexes with the improved geo
-  index feature in ArangoDB 3.4. 
+  data format. This data format is required for using the indexes with the improved
+  [geo index feature](../../Indexing/Geo.md) in ArangoDB 3.4. 
   
   Preliminary tests have shown that the conversion can process about 500K to 1M geo index 
   entries per second on commodity hardware.
+
+If you upgrade without any existing data (new blank data folder), then none of these tasks
+needs to be run because the datafiles will be created using the new format already.
