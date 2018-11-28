@@ -94,15 +94,6 @@ RocksDBOptionFeature::RocksDBOptionFeature(
   } // if
 #endif
       
-  if (_totalWriteBufferSize == 0) {
-    // unlimited write buffer size... now set to some fraction of physical RAM
-    if (TRI_PhysicalMemory >= (static_cast<uint64_t>(4) << 30)) {
-      _totalWriteBufferSize = static_cast<uint64_t>((TRI_PhysicalMemory - (static_cast<uint64_t>(2) << 30)) * 0.4);
-    } else {
-      _totalWriteBufferSize = (512 << 20);
-    }
-  }
-
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Daemon");

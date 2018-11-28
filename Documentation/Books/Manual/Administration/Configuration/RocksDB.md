@@ -36,12 +36,15 @@ Default: 2.
 `--rocksdb.total-write-buffer-size` (Hidden)
 
 The total amount of data to build up in all in-memory buffers (backed by log
-files). This option, together with the block cache size configuration option,
-can be used to limit memory usage. If set to 0, the memory usage is not limited.
+files, in bytes). This option, together with the block cache size configuration 
+option, can be used to limit memory usage. 
 
-If set to 0, this will cap memory usage for write buffers but may have an effect
-on performance. If there is less than 4GiB of RAM on the system, the default value
-is 512MiB. If there is more, the default is `(system RAM size - 2GiB) * 0.4`.
+If set to 0, the memory usage is not limited. This is the default setting in 
+3.3. Please note that the default setting may be adjusted in future versions of 
+ArangoDB.
+
+If set to a value greater than 0, this will cap the memory usage for write buffers,
+but may have an effect on write performance.
 
 `--rocksdb.min-write-buffer-number-to-merge`
 
