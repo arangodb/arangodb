@@ -110,7 +110,7 @@ class PrimaryKeyFilter final
     mutable irs::doc_id_t _next{ irs::type_limits<irs::type_t::doc_id_t>::eof() };
   }; // PrimaryKeyIterator
 
-  DocumentPrimaryKey _pk;
+  mutable DocumentPrimaryKey _pk; // !_pk.first -> do not perform further execution (first-match optimization)
   mutable PrimaryKeyIterator _pkIterator;
 }; // PrimaryKeyFilter
 
@@ -128,6 +128,7 @@ class PrimaryKeyFilterContainer final : public irs::empty {
 
   PrimaryKeyFilter& emplace(TRI_voc_cid_t cid, TRI_voc_rid_t rid) {
     _filters.emplace_back(cid, rid);
+
     return _filters.back();
   }
 

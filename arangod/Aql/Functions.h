@@ -44,9 +44,8 @@ class Query;
 
 typedef SmallVector<AqlValue> VPackFunctionParameters;
 
-typedef std::function<AqlValue(arangodb::aql::Query*, transaction::Methods*,
-                                VPackFunctionParameters const&)>
-    FunctionImplementation;
+typedef AqlValue(*FunctionImplementation)(arangodb::aql::Query*, transaction::Methods*,
+                                VPackFunctionParameters const&);
 
 struct Functions {
 

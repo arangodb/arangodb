@@ -94,8 +94,8 @@ struct IRESEARCH_API index_input : public data_input {
   DEFINE_FACTORY_INLINE(index_input);
 
   virtual ~index_input();
-  virtual ptr dup() const NOEXCEPT = 0; // non-thread-safe fd copy (offset preserved)
-  virtual ptr reopen() const NOEXCEPT = 0; // thread-safe new low-level-fd (offset preserved)
+  virtual ptr dup() const = 0; // non-thread-safe fd copy (offset preserved)
+  virtual ptr reopen() const = 0; // thread-safe new low-level-fd (offset preserved)
   virtual void seek(size_t pos) = 0;
 
   // returns checksum from the current position to a

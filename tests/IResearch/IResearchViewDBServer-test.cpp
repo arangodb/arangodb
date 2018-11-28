@@ -1116,7 +1116,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((14U == slice.length()));
+      CHECK((15U == slice.length()));
       CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
@@ -1206,7 +1206,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((14U == slice.length()));
+      CHECK((15U == slice.length()));
       CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
@@ -1298,7 +1298,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((14U == slice.length()));
+      CHECK((15U == slice.length()));
       CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
@@ -1393,7 +1393,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((14U == slice.length()));
+      CHECK((15U == slice.length()));
       CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
