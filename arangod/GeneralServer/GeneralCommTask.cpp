@@ -274,10 +274,6 @@ void GeneralCommTask::finishExecution(GeneralResponse& res) const {
 void GeneralCommTask::executeRequest(
     std::unique_ptr<GeneralRequest>&& request,
     std::unique_ptr<GeneralResponse>&& response) {
-  bool found;
-  // check for an async request (before the handler steals the request)
-  std::string const& asyncExec = request->header(StaticStrings::Async, found);
-
   // store the message id for error handling
   uint64_t messageId = 0UL;
   if (request) {
@@ -310,6 +306,10 @@ void GeneralCommTask::executeRequest(
     addResponse(*handler->response(), handler->stealStatistics());
     return;
   }
+
+  bool found;
+  // check for an async request (before the handler steals the request)
+  std::string const& asyncExec = request->header(StaticStrings::Async, found);
 
   // asynchronous request
   if (found && (asyncExec == "true" || asyncExec == "store")) {
@@ -444,9 +444,8 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
                           std::move(handler));
   });
 
-  uint64_t messageId = handler->messageId();
-
   if (!ok) {
+    uint64_t messageId = handler->messageId();
     addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
                      handler->request()->contentTypeResponse(), messageId,
                      TRI_ERROR_QUEUE_FULL);
@@ -510,7 +509,6 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest& req) const {
   }
 
   std::string const& path = req.requestPath();
-  std::string const& username = req.user();
   bool userAuthenticated = req.authenticated();
 
   rest::ResponseCode result = userAuthenticated
@@ -565,6 +563,8 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest& req) const {
     }
 
     if (result != rest::ResponseCode::OK) {
+      std::string const& username = req.user();
+
       if (path == "/" || StringUtils::isPrefix(path, Open) ||
           StringUtils::isPrefix(path, AdminAardvark) ||
           path == "/_admin/server/availability") {
