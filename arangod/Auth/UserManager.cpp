@@ -605,6 +605,13 @@ static Result RemoveUserInternal(auth::User const& entry) {
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_INTERNAL, "unable to find system database");
   }
+    
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder guard(&builder);
+    builder.add(StaticStrings::KeyString, VPackValue(entry.key()));
+    // TODO maybe protect with a revision ID?
+  }
 
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
@@ -618,13 +625,6 @@ static Result RemoveUserInternal(auth::User const& entry) {
   Result res = trx.begin();
 
   if (res.ok()) {
-    VPackBuilder builder;
-    {
-      VPackObjectBuilder guard(&builder);
-      builder.add(StaticStrings::KeyString, VPackValue(entry.key()));
-      // TODO maybe protect with a revision ID?
-    }
-
     OperationResult result =
         trx.remove(TRI_COL_NAME_USERS, builder.slice(), OperationOptions());
     res = trx.finish(result.result);

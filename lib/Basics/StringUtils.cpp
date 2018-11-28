@@ -69,8 +69,6 @@ char soundexCode(char c) {
   }
 }
     
-bool isSpace(char a) { return a == ' ' || a == '\t' || a == '_'; }
-
 char const* const BASE64_CHARS =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     "abcdefghijklmnopqrstuvwxyz"
@@ -157,85 +155,6 @@ inline bool isBase64(unsigned char c) {
 
 inline bool isBase64U(unsigned char c) {
   return (isalnum(c) || (c == '-') || (c == '_'));
-}
-
-bool parseHexanumber(char const* inputStr, size_t len, uint32_t* outputInt) {
-  uint32_t const charVal[16] = {0, 1, 2,  3,  4,  5,  6,  7,
-                                8, 9, 10, 11, 12, 13, 14, 15};
-  bool ok = true;
-  for (size_t j = 0; j < len; j++) {
-    if (inputStr[j] > '/' && inputStr[j] < ':') {
-      *outputInt = (*outputInt << 4) | charVal[inputStr[j] - 48];
-    } else if (inputStr[j] > '@' && inputStr[j] < 'G') {
-      *outputInt = (*outputInt << 4) | charVal[inputStr[j] - 55];
-    } else if (inputStr[j] > '`' && inputStr[j] < 'g') {
-      *outputInt = (*outputInt << 4) | charVal[inputStr[j] - 87];
-    } else {
-      // invalid sequence of characters received for now simply return whatever
-      // we received
-      // *outputStr = std::string(inputStr,len);
-      ok = false;
-      break;
-    }
-  }
-  return ok;
-}
-
-///-------------------------------------------------------
-/// @brief computes the unicode value of an ut16 symbol
-///-------------------------------------------------------
-
-bool toUnicode(uint16_t w1, uint16_t w2, uint32_t* v) {
-  uint32_t vh = w1 - 0xD800;
-  uint32_t vl = w2 - 0xDC00;
-  uint32_t vp = (vh << 10) | vl;
-  *v = vp + 0x10000;
-  return true;
-}
-
-bool toUtf8(uint32_t outputInt, std::string& outputStr) {
-  if ((outputInt >> 7) == 0) {
-    outputStr.append(1, (char)(outputInt));
-  }
-  // unicode sequence is in the range \u0080 to \u07ff
-  else if ((outputInt >> 11) == 0) {
-    outputStr.append(1, (char)((3 << 6) | (outputInt >> 6)));
-    outputStr.append(1, (char)((1 << 7) | (outputInt & 63)));
-  }
-  // unicode sequence is in the range \u0800 to \uffff
-  else if ((outputInt >> 16) == 0) {
-    outputStr.append(1, (char)((7 << 5) | (outputInt >> 12)));
-    outputStr.append(
-        1, (char)((1 << 7) | ((outputInt & 4095 /* 2^12 - 1*/) >> 6)));
-    outputStr.append(1, (char)((1 << 7) | (outputInt & 63)));
-  } else if ((outputInt >> 21) == 0) {
-    outputStr.append(1, (char)((15 << 4) | (outputInt >> 18)));
-    outputStr.append(
-        1, (char)((1 << 7) | ((outputInt & 262143 /* 2^18 - 1*/) >> 12)));
-    outputStr.append(
-        1, (char)((1 << 7) | ((outputInt & 4095 /* 2^12 - 1*/) >> 6)));
-    outputStr.append(1, (char)((1 << 7) | ((outputInt & 63))));
-  } else {
-    // can't handle it yet (need 5,6 etc utf8 characters), just send back the
-    // string we got
-    return false;
-  }
-  return true;
-}
-
-///-------------------------------------------------------
-/// @brief true when number lays in the range
-///        U+D800  U+DBFF
-///-------------------------------------------------------
-bool isHighSurrugate(uint32_t number) {
-  return (number >= 0xD800) && (number <= 0xDBFF);
-}
-
-///-------------------------------------------------------
-/// @brief true when number lays in the range
-///        U+DC00  U+DFFF
-bool isLowSurrugate(uint32_t number) {
-  return (number >= 0xDC00) && (number <= 0xDFFF);
 }
 
 unsigned char consume(char const*& s) {
