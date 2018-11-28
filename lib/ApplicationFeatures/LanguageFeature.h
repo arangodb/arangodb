@@ -40,6 +40,7 @@ class LanguageFeature final : public application_features::ApplicationFeature {
   static LanguageFeature* instance();
   Locale& getLocale() { return _locale; }
   std::string const& getDefaultLanguage() const { return _language; }
+  std::string getCollatorLanguage() const;
   void resetDefaultLanguage(std::string const& language);
 
 private:

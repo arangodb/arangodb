@@ -135,15 +135,16 @@ LanguageCheckFeature::~LanguageCheckFeature() {}
 void LanguageCheckFeature::start() {
   auto feature = arangodb::application_features::ApplicationServer::getFeature<
       LanguageFeature>("Language");
-  auto language = feature->getDefaultLanguage();
-  auto previous = ::getOrSetPreviousLanguage(language);
+  auto defaultLang = feature->getDefaultLanguage();
+  auto previous = ::getOrSetPreviousLanguage(defaultLang);
   
-  if (language.empty() && !previous.empty()) {
+  if (defaultLang.empty() && !previous.empty()) {
     // override the empty current setting with the previous one
     feature->resetDefaultLanguage(previous);
     return;
   }
   
+  auto language = feature->getCollatorLanguage();
   if (language != previous) {
     // current not empty and not the same as previous, get out!
     LOG_TOPIC(FATAL, arangodb::Logger::CONFIG)

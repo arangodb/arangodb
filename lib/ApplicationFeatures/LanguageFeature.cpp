@@ -41,6 +41,7 @@ void setCollator(std::string const& language, void* icuDataPtr) {
     FATAL_ERROR_EXIT();
   }
 }
+
 void setLocale(Locale& locale) {
   using arangodb::basics::Utf8Helper;
   std::string languageName;
@@ -182,6 +183,19 @@ void LanguageFeature::prepare() {
 
 void LanguageFeature::start() {
   ::setLocale(_locale);
+}
+
+std::string LanguageFeature::getCollatorLanguage() const {
+  using arangodb::basics::Utf8Helper;
+  std::string languageName;
+  if (Utf8Helper::DefaultUtf8Helper.getCollatorCountry() != "") {
+    languageName =
+        std::string(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() + "_" +
+                    Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
+  } else {
+    languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
+  } 
+  return languageName; 
 }
 
 void LanguageFeature::resetDefaultLanguage(std::string const& language) {
