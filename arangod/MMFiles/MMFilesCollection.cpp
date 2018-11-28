@@ -31,6 +31,7 @@
 #include "Basics/ReadUnlocker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/WriteUnlocker.h"
@@ -66,6 +67,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/KeyGenerator.h"
+#include "VocBase/KeyLockInfo.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -2125,7 +2127,8 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
     }
   }
 
-  {READ_LOCKER(guard, _indexesLock);
+  {
+    READ_LOCKER(guard, _indexesLock);
     for (auto const& idx : _indexes) {
       if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
         foundPrimary = true;
@@ -2890,7 +2893,9 @@ Result MMFilesCollection::insert(
     arangodb::transaction::Methods* trx, VPackSlice const slice,
     arangodb::ManagedDocumentResult& result, OperationOptions& options,
     TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_tick_t& revisionId,
+    KeyLockInfo* keyLockInfo,
     std::function<Result(void)> callbackDuringLock) {
+  
   LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options);
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
   transaction::BuilderLeaser builder(trx);
@@ -2931,7 +2936,7 @@ Result MMFilesCollection::insert(
       revisionId = TRI_StringToRid(p, l, false);
     }
   }
-
+  
   // create marker
   MMFilesCrudMarker insertMarker(
       TRI_DF_MARKER_VPACK_DOCUMENT,
@@ -2983,6 +2988,12 @@ Result MMFilesCollection::insert(
   } catch (...) {
     return Result(TRI_ERROR_INTERNAL);
   }
+      
+  TRI_ASSERT(keyLockInfo != nullptr);
+  if (keyLockInfo->shouldLock) {
+    TRI_ASSERT(lock);
+    lockKey(*keyLockInfo, newSlice.get(StaticStrings::KeyString));
+  }
 
   res = Result();
   {
@@ -3031,6 +3042,7 @@ Result MMFilesCollection::insert(
     // store the tick that was used for writing the document
     resultMarkerTick = operation.tick();
   }
+
   return res;
 }
 
@@ -3145,7 +3157,7 @@ void MMFilesCollection::removeLocalDocumentId(LocalDocumentId const& documentId,
 bool MMFilesCollection::hasAllPersistentLocalIds() const {
   return _hasAllPersistentLocalIds.load();
 }
-
+  
 Result MMFilesCollection::persistLocalDocumentIdsForDatafile(
     MMFilesCollection& collection, MMFilesDatafile& file) {
   Result res;
@@ -3715,7 +3727,9 @@ Result MMFilesCollection::remove(
     arangodb::transaction::Methods* trx, VPackSlice slice,
     arangodb::ManagedDocumentResult& previous, OperationOptions& options,
     TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev,
-    TRI_voc_rid_t& revisionId, std::function<Result(void)> callbackDuringLock) {
+    TRI_voc_rid_t& revisionId, KeyLockInfo* keyLockInfo, 
+    std::function<Result(void)> callbackDuringLock) {
+  
   prevRev = 0;
   LocalDocumentId const documentId = LocalDocumentId::create();
 
@@ -3760,6 +3774,11 @@ Result MMFilesCollection::remove(
   }
 
   TRI_ASSERT(!key.isNone());
+  
+  TRI_ASSERT(keyLockInfo != nullptr); 
+  if (keyLockInfo->shouldLock) {
+    lockKey(*keyLockInfo, key);
+  }
 
   MMFilesDocumentOperation operation(
     &_logicalCollection, TRI_VOC_DOCUMENT_OPERATION_REMOVE
@@ -3790,7 +3809,7 @@ Result MMFilesCollection::remove(
       return res;
     }
   }
-
+  
   // we found a document to remove
   try {
     operation.setDocumentIds(MMFilesDocumentDescriptor(oldDocumentId, oldDoc.begin()),
@@ -4115,4 +4134,56 @@ Result MMFilesCollection::updateDocument(
 
   return Result(static_cast<MMFilesTransactionState*>(trx->state())
       ->addOperation(newDocumentId, revisionId, operation, marker, waitForSync));
+}
+
+void MMFilesCollection::lockKey(KeyLockInfo& keyLockInfo, VPackSlice const& key) {
+  TRI_ASSERT(keyLockInfo.key.empty());
+
+  // copy out the key we need to lock
+  TRI_ASSERT(key.isString());
+  std::string k = key.copyString();
+
+  MMFilesCollection::KeyLockShard& shard = getShardForKey(k); 
+
+  // register key unlock function
+  keyLockInfo.unlocker = [this](KeyLockInfo& keyLock) {
+    unlockKey(keyLock);
+  };
+
+  do {
+    {
+      MUTEX_LOCKER(locker, shard._mutex);
+      // if the insert fails because the key is already in the set,
+      // we carry on trying until the previous value is gone from the set.
+      // if the insert fails because of an out-of-memory exception,
+      // we can let the exception escape from here. no harm will be done
+      if (shard._keys.insert(k).second) {
+        // if insertion into the lock set succeeded, we can
+        // go on without the lock. otherwise we just need to carry on trying
+        locker.unlock();
+
+        // store key to unlock later. the move assignment will not fail
+        keyLockInfo.key = std::move(k);
+        return;
+      }
+    }
+    std::this_thread::yield();
+  } while (!application_features::ApplicationServer::isStopping());
+
+  // we can only get here on shutdown
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+}
+  
+void MMFilesCollection::unlockKey(KeyLockInfo& keyLockInfo) noexcept {
+  TRI_ASSERT(keyLockInfo.shouldLock);
+  if (!keyLockInfo.key.empty()) {
+    MMFilesCollection::KeyLockShard& shard = getShardForKey(keyLockInfo.key); 
+    MUTEX_LOCKER(locker, shard._mutex);
+    shard._keys.erase(keyLockInfo.key);
+  }
+}
+
+MMFilesCollection::KeyLockShard& MMFilesCollection::getShardForKey(std::string const& key) noexcept {
+  size_t hash = std::hash<std::string>()(key);
+  return _keyLockShards[hash % numKeyLockShards];
 }
