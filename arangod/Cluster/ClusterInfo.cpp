@@ -1927,7 +1927,7 @@ int ClusterInfo::ensureIndexCoordinatorInner(
             // variable of the agency callback, which protects writing
             // to *errMsg:
             *errMsg = extractErrorMessage(shard.key.copyString(), v);
-            *errMsg = "Error during index creation: " + errMsg;
+            *errMsg = "Error during index creation: " + *errMsg;
             // Returns the specific error number if set, or the general
             // error otherwise
             int errNum = arangodb::basics::VelocyPackHelper::readNumericValue<int>(
