@@ -36,6 +36,7 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -159,18 +160,7 @@ arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
   }
 
   bool created = false;
-  auto ctx = arangodb::transaction::StandaloneContext::Create(vocbase);
-  arangodb::SingleCollectionTransaction trx(
-    ctx, collection, arangodb::AccessMode::Type::EXCLUSIVE
-  );
-
-  res = trx.begin();
-
-  if (res.fail()) {
-    return res;
-  }
-
-  auto newIndex = collection.createIndex(&trx, newDesc.slice(), created);
+  auto newIndex = collection.getPhysical()->createIndex(newDesc.slice(), /*restore*/true, created);
 
   if (!created) {
     res.reset(TRI_ERROR_INTERNAL);
@@ -178,7 +168,6 @@ arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
 
   TRI_ASSERT(newIndex->id() == iid); // will break cluster otherwise
   TRI_ASSERT(newIndex->type() == Index::TRI_IDX_TYPE_GEO_INDEX);
-  res = trx.finish(res);
 
   return res;
 }

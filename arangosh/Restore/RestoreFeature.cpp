@@ -528,6 +528,19 @@ arangodb::Result restoreView(arangodb::httpclient::SimpleHttpClient& httpClient,
   return ::checkHttpResponse(httpClient, response, "restoring view", body);
 }
 
+arangodb::Result triggerFoxxHeal(
+    arangodb::httpclient::SimpleHttpClient& httpClient) {
+  using arangodb::Logger;
+  using arangodb::httpclient::SimpleHttpResult;
+  const std::string FoxxHealUrl = "/_api/foxx/_local/heal";
+
+  std::string body = "";
+
+  std::unique_ptr<SimpleHttpResult> response(httpClient.request(
+      arangodb::rest::RequestType::POST, FoxxHealUrl, body.c_str(), body.length()));
+  return ::checkHttpResponse(httpClient, response, "trigger self heal", body);
+}
+
 arangodb::Result processInputDirectory(
     arangodb::httpclient::SimpleHttpClient& httpClient,
     arangodb::ClientTaskQueue<arangodb::RestoreFeature::JobData>& jobQueue,
@@ -654,9 +667,19 @@ arangodb::Result processInputDirectory(
 
     std::vector<std::unique_ptr<arangodb::RestoreFeature::JobData>> jobs(collections.size());
 
+    bool didModifyFoxxCollection = false;
     // Step 2: create collections
     for (VPackBuilder const& b : collections) {
       VPackSlice const collection = b.slice();
+      VPackSlice params = collection.get("parameters");
+      if (params.isObject()) {
+        params = params.get("name");
+        // Only these two are relevant for FOXX.
+        if (params.isString() && (params.isEqualString("_apps") || params.isEqualString("_appbundles"))) {
+          didModifyFoxxCollection = true;
+        }
+      };
+
 
       auto jobData = std::make_unique<arangodb::RestoreFeature::JobData>(
           directory, feature, options, stats, collection);
@@ -730,6 +753,14 @@ arangodb::Result processInputDirectory(
     Result firstError = feature.getFirstError();
     if (firstError.fail()) {
       return firstError;
+    }
+    
+    if (didModifyFoxxCollection) {
+      // if we get here we need to trigger foxx heal
+      Result res = ::triggerFoxxHeal(httpClient);
+      if (res.fail()) {
+        LOG_TOPIC(WARN, Logger::RESTORE) << "Reloading of Foxx failed. In the cluster Foxx Services will be available eventually, On SingleServers send a POST to '/_api/foxx/_local/heal' on the current database, with an empty body.";
+      }
     }
 
   } catch (std::exception const& ex) {

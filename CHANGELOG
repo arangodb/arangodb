@@ -1,6 +1,8 @@
 devel
 -----
 
+* Export Version and Storage Engine in `_admin/cluster/health` for Coordinators and DBServers. 
+
 * fixed Foxx complaining about valid `$schema` value in manifest.json
 
 * Foxx `req.makeAbsolute` now will return meaningful values when ArangoDB is using
@@ -90,6 +92,8 @@ devel
 
 * use `-std=c++14` for ArangoDB compilation
 
+* fix move leader shard: wait until all but the old leader are in sync.
+  This fixes some unstable tests.
 
 v3.4.0-rc.4 (XXXX-XX-XX)
 ------------------------

@@ -154,7 +154,7 @@ Result RocksDBSettingsManager::sync(bool force) {
   auto minSeqNr = maxSeqNr;
 
   rocksdb::TransactionOptions opts;
-  opts.lock_timeout = 0.05; // do not wait for locking keys
+  opts.lock_timeout = 50; // do not wait for locking keys
   
   rocksdb::WriteOptions wo;
   rocksdb::WriteBatch batch;

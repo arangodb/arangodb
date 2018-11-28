@@ -508,7 +508,7 @@ struct V8Cursor final {
     TRI_V8_RETURN(v8::Integer::New(isolate, self->_cursorId));
   }
   
-private:
+ private:
   /// called when GC deletes the value
   static void weakCallback(const v8::WeakCallbackInfo<v8::Persistent<v8::Object>>& data) {
     auto isolate = data.GetIsolate();

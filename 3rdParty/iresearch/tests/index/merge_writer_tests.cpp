@@ -163,7 +163,6 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
     writer->commit();
     writer->documents().remove(std::move(query_doc4.filter));
     writer->commit();
-    writer->close();
   }
 
   auto reader = iresearch::directory_reader::open(dir, codec_ptr);
@@ -565,7 +564,6 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
     ASSERT_TRUE(insert(*writer, doc2.indexed.end(), doc2.indexed.end(), doc2.stored.begin(), doc2.stored.end()));
     ASSERT_TRUE(insert(*writer, doc4.indexed.end(), doc4.indexed.end(), doc4.stored.begin(), doc4.stored.end()));
     writer->commit();
-    writer->close();
   }
 
   auto reader = iresearch::directory_reader::open(dir, codec_ptr);
@@ -1051,7 +1049,6 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     writer->commit();
     writer->documents().remove(std::move(query_doc4.filter));
     writer->commit();
-    writer->close();
   }
 
   auto docs_count = [](const irs::sub_reader& segment, const irs::string_ref& field) {
@@ -2398,7 +2395,6 @@ TEST_F(merge_writer_tests, test_merge_writer_field_features) {
       doc2.stored.begin(), doc2.stored.end()
     ));
     writer->commit();
-    writer->close();
   }
 
   auto reader = iresearch::directory_reader::open(dir, codec_ptr);

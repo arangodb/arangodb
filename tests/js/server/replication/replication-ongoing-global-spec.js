@@ -53,6 +53,7 @@ const config = {
   username: username,
   password: password,
   verbose: true,
+  requireFromPresent: false
 };
 
 // We allow the replication a delay of this many seconds at most

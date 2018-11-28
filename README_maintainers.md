@@ -499,6 +499,20 @@ make the above change permanent:
 
 `echo "sys.fs.suid_dumpable = 1" >> /etc/sysctl.d/99-suid-coredump.conf` 
 
+You can also generate coredumps from running processes without killing them by using gdb:
+
+    # sleep 100000 & 
+    [2] 6942
+    # gdb /bin/sleep 6942 
+    ...
+    0x00007faaa7abd4e4 in __GI___nanosleep (requested_time=0x7ffd047c9940, remaining=0x0) at ../sysdeps/unix/sysv/linux/nanosleep.c:28
+    gdb> gcore 
+    Saved corefile core.6942
+    gdb> quit
+    Detaching from program: /bin/sleep, process 6942
+    # ls -l core*
+    -rw-r--r--  1 me users  352664 Nov 27 10:48  core.6942
+
 Analyzing Coredumps on Linux
 ============================
 We offer debug packages containing the debug symbols for your binaries. Please install them if you didn't compile yourselves.
