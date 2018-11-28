@@ -35,11 +35,10 @@
 namespace arangodb {
 
 namespace transaction {
-
 class Methods;
-
 }
 
+struct KeyLockInfo;
 class LocalDocumentId;
 class Index;
 class IndexIterator;
@@ -176,6 +175,7 @@ class PhysicalCollection {
                         OperationOptions& options,
                         TRI_voc_tick_t& resultMarkerTick, bool lock,
                         TRI_voc_tick_t& revisionId,
+                        KeyLockInfo* keyLockInfo,
                         std::function<Result(void)> callbackDuringLock) = 0;
 
   Result insert(arangodb::transaction::Methods* trx,
@@ -185,7 +185,7 @@ class PhysicalCollection {
                 bool lock) {
     TRI_voc_rid_t unused;
     return insert(trx, newSlice, result, options, resultMarkerTick, lock,
-                  unused, nullptr);
+                  unused, nullptr, nullptr);
   }
 
   virtual Result update(arangodb::transaction::Methods* trx,
@@ -212,6 +212,7 @@ class PhysicalCollection {
                         OperationOptions& options,
                         TRI_voc_tick_t& resultMarkerTick, bool lock,
                         TRI_voc_rid_t& prevRev, TRI_voc_rid_t& revisionId,
+                        KeyLockInfo* keyLockInfo,
                         std::function<Result(void)> callbackDuringLock) = 0;
 
   // returns true all documents have a persistent LocalDocumentId or false if it

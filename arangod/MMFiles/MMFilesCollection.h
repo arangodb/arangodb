@@ -362,6 +362,7 @@ class MMFilesCollection final : public PhysicalCollection {
                 arangodb::ManagedDocumentResult& result,
                 OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
                 bool lock, TRI_voc_tick_t& revisionId,
+                KeyLockInfo* keyLockInfo,
                 std::function<Result(void)> callbackDuringLock) override;
 
   Result update(arangodb::transaction::Methods* trx,
@@ -384,6 +385,7 @@ class MMFilesCollection final : public PhysicalCollection {
                 arangodb::ManagedDocumentResult& previous,
                 OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
                 bool lock, TRI_voc_rid_t& prevRev, TRI_voc_rid_t& revisionId,
+                KeyLockInfo* keyLockInfo,
                 std::function<Result(void)> callbackDuringLock) override;
 
   Result rollbackOperation(transaction::Methods*, TRI_voc_document_operation_e,
@@ -541,6 +543,12 @@ class MMFilesCollection final : public PhysicalCollection {
       MMFilesCollection& collection, MMFilesDatafile& file);
       
   void setCurrentVersion();
+  
+  // key locking
+  struct KeyLockShard;
+  void lockKey(KeyLockInfo& keyLockInfo, arangodb::velocypack::Slice const& key);
+  void unlockKey(KeyLockInfo& keyLockInfo) noexcept;
+  KeyLockShard& getShardForKey(std::string const& key) noexcept;
 
  private:
   mutable arangodb::MMFilesDitches _ditches;
@@ -585,6 +593,18 @@ class MMFilesCollection final : public PhysicalCollection {
 
   bool _doCompact;
   TRI_voc_tick_t _maxTick;
+
+  // currently locked keys
+  struct KeyLockShard {
+    Mutex _mutex;
+    std::unordered_set<std::string> _keys;
+    // TODO: add padding here so we can avoid false sharing
+  };
+
+  static constexpr size_t numKeyLockShards = 8;
+
+
+  std::array<KeyLockShard, numKeyLockShards> _keyLockShards;
 
   // whether or not all documents are stored with a persistent LocalDocumentId
   std::atomic<bool> _hasAllPersistentLocalIds{true};

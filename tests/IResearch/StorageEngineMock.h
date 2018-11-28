@@ -36,6 +36,7 @@
 
 namespace arangodb {
 
+class KeyLockInfo;
 class TransactionManager;
 class WalAccess;
 
@@ -72,6 +73,7 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
       arangodb::ManagedDocumentResult& result,
       arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
       bool lock, TRI_voc_tick_t& revisionId,
+      arangodb::KeyLockInfo* /*keyLockInfo*/,
       std::function<arangodb::Result(void)> callbackDuringLock) override;
   virtual void invokeOnAllElements(arangodb::transaction::Methods* trx, std::function<bool(arangodb::LocalDocumentId const&)> callback) override;
   virtual std::shared_ptr<arangodb::Index> lookupIndex(arangodb::velocypack::Slice const&) const override;
@@ -93,6 +95,7 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
       arangodb::ManagedDocumentResult& previous,
       arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
       bool lock, TRI_voc_rid_t& prevRev, TRI_voc_rid_t& revisionId,
+      arangodb::KeyLockInfo* /*keyLockInfo*/,
       std::function<arangodb::Result(void)> callbackDuringLock) override;
   virtual arangodb::Result replace(
       arangodb::transaction::Methods* trx,
