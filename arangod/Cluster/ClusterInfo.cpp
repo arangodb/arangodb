@@ -2623,9 +2623,11 @@ int ClusterInfo::ensureIndexCoordinatorInner(
           
           // check for errors
           if (hasError(v)) {
-            std::string errorMsg =
-                extractErrorMessage(shard.key.copyString(), v);
-            errorMsg = "Error during index creation: " + errorMsg;
+            // Note that this closure runs with the mutex in the condition
+            // variable of the agency callback, which protects writing
+            // to *errMsg:
+            *errMsg = extractErrorMessage(shard.key.copyString(), v);
+            *errMsg = "Error during index creation: " + errMsg;
             // Returns the specific error number if set, or the general
             // error otherwise
             int errNum = arangodb::basics::VelocyPackHelper::readNumericValue<int>(
@@ -2723,8 +2725,6 @@ int ClusterInfo::ensureIndexCoordinatorInner(
   }
 
   {
-    CONDITION_LOCKER(locker, agencyCallback->_cv);
-
     while (!application_features::ApplicationServer::isStopping()) {
       int tmpRes = dbServerResult->load(std::memory_order_acquire);
       if (tmpRes == 0) {
@@ -2775,6 +2775,9 @@ int ClusterInfo::ensureIndexCoordinatorInner(
             resultBuilder.add(VPackObjectIterator(finishedPlanIndex.slice()));
             resultBuilder.add("isNewlyCreated", VPackValue(true));
           }
+          // The mutex in the condition variable protects the access to
+          // *errMsg:
+          CONDITION_LOCKER(locker, agencyCallback->_cv);
           errorMsg = *errMsg;
           return tmpRes;
         }
@@ -2839,7 +2842,10 @@ int ClusterInfo::ensureIndexCoordinatorInner(
         return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
       }
 
-      agencyCallback->executeByCallbackOrTimeout(interval);
+      {
+        CONDITION_LOCKER(locker, agencyCallback->_cv);
+        agencyCallback->executeByCallbackOrTimeout(interval);
+      }
     }
   }
 
