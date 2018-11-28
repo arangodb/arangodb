@@ -253,7 +253,7 @@ ExecutionPlan::~ExecutionPlan() {
 }
 
 /// @brief create an execution plan from an AST
-ExecutionPlan* ExecutionPlan::instantiateFromAst(Ast* ast) {
+std::unique_ptr<ExecutionPlan> ExecutionPlan::instantiateFromAst(Ast* ast) {
   TRI_ASSERT(ast != nullptr);
 
   auto root = ast->root();
@@ -277,7 +277,7 @@ ExecutionPlan* ExecutionPlan::instantiateFromAst(Ast* ast) {
 
   plan->findVarUsage();
 
-  return plan.release();
+  return plan;
 }
 
 /// @brief whether or not the plan contains at least one node of this type
@@ -2162,8 +2162,8 @@ struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
   void after(ExecutionNode* en) override final {
     // Add variables set here to _valid:
     for (auto const& v : en->getVariablesSetHere()) {
-      _valid.emplace(v);
-      _varSetBy->emplace(v->id, en);
+      _valid.insert(v);
+      _varSetBy->insert({v->id, en});
     }
 
     en->setVarsValid(_valid);
@@ -2327,14 +2327,14 @@ void ExecutionPlan::insertAfter(ExecutionNode* previous, ExecutionNode* newNode)
   newNode->addDependency(previous);
 }
 
-/// @brief insert note directly before current
+/// @brief insert node directly before current
 void ExecutionPlan::insertBefore(ExecutionNode* current, ExecutionNode* newNode) {
   TRI_ASSERT(newNode != nullptr);
   TRI_ASSERT(current->id() != newNode->id());
   TRI_ASSERT(newNode->getDependencies().empty());
   TRI_ASSERT(!newNode->hasParent());
 
-  for (auto* dep : current->getDependencies()){
+  for (auto* dep : current->getDependencies()) {
     newNode->addDependency(dep);
   }
   current->removeDependencies();

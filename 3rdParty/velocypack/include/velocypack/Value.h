@@ -32,6 +32,7 @@
 
 #include "velocypack/velocypack-common.h"
 #include "velocypack/Exception.h"
+#include "velocypack/StringRef.h"
 #include "velocypack/ValueType.h"
 
 namespace arangodb {
@@ -87,42 +88,42 @@ class Value {
     }
   }
 
-  explicit Value(bool b, ValueType t = ValueType::Bool)
+  explicit Value(bool b, ValueType t = ValueType::Bool) noexcept
       : _valueType(t), _cType(CType::Bool), _unindexed(false) {
     _value.b = b;
   }
 
-  explicit Value(double d, ValueType t = ValueType::Double)
+  explicit Value(double d, ValueType t = ValueType::Double) noexcept
       : _valueType(t), _cType(CType::Double), _unindexed(false) {
     _value.d = d;
   }
 
-  explicit Value(void const* e, ValueType t = ValueType::External)
+  explicit Value(void const* e, ValueType t = ValueType::External) noexcept
       : _valueType(t), _cType(CType::VoidPtr), _unindexed(false) {
     _value.e = e;
   }
 
-  explicit Value(char const* c, ValueType t = ValueType::String)
+  explicit Value(char const* c, ValueType t = ValueType::String) noexcept
       : _valueType(t), _cType(CType::CharPtr), _unindexed(false) {
     _value.c = c;
   }
 
-  explicit Value(int32_t i, ValueType t = ValueType::Int)
+  explicit Value(int32_t i, ValueType t = ValueType::Int) noexcept
       : _valueType(t), _cType(CType::Int64), _unindexed(false) {
     _value.i = static_cast<int64_t>(i);
   }
 
-  explicit Value(uint32_t u, ValueType t = ValueType::UInt)
+  explicit Value(uint32_t u, ValueType t = ValueType::UInt) noexcept
       : _valueType(t), _cType(CType::UInt64), _unindexed(false) {
     _value.u = static_cast<uint64_t>(u);
   }
 
-  explicit Value(int64_t i, ValueType t = ValueType::Int)
+  explicit Value(int64_t i, ValueType t = ValueType::Int) noexcept
       : _valueType(t), _cType(CType::Int64), _unindexed(false) {
     _value.i = i;
   }
 
-  explicit Value(uint64_t u, ValueType t = ValueType::UInt)
+  explicit Value(uint64_t u, ValueType t = ValueType::UInt) noexcept
       : _valueType(t), _cType(CType::UInt64), _unindexed(false) {
     _value.u = u;
   }
@@ -137,13 +138,13 @@ class Value {
 
   // however, defining the method on Linux and with MSVC will lead
   // to ambiguous overloads, so this is restricted to __APPLE__ only
-  explicit Value(unsigned long i, ValueType t = ValueType::Int)
+  explicit Value(unsigned long i, ValueType t = ValueType::Int) noexcept
       : _valueType(t), _cType(CType::UInt64), _unindexed(false) {
     _value.i = static_cast<uint64_t>(i);
   }
 #endif
 
-  explicit Value(std::string const& s, ValueType t = ValueType::String)
+  explicit Value(std::string const& s, ValueType t = ValueType::String) noexcept
       : _valueType(t), _cType(CType::String), _unindexed(false) {
     _value.s = &s;
   }
@@ -197,17 +198,18 @@ class ValuePair {
 
  public:
   ValuePair(uint8_t const* start, uint64_t size,
-            ValueType type = ValueType::Binary)
+            ValueType type = ValueType::Binary) noexcept
       : _start(start), _size(size), _type(type) {}
 
   ValuePair(char const* start, uint64_t size,
-            ValueType type = ValueType::Binary)
-      : _start(reinterpret_cast<uint8_t const*>(start)),
-        _size(size),
-        _type(type) {}
+            ValueType type = ValueType::Binary) noexcept
+      : ValuePair(reinterpret_cast<uint8_t const*>(start), size, type) {}
 
-  explicit ValuePair(uint64_t size, ValueType type = ValueType::Binary)
+  explicit ValuePair(uint64_t size, ValueType type = ValueType::Binary) noexcept
       : _start(nullptr), _size(size), _type(type) {}
+  
+  explicit ValuePair(StringRef const& value, ValueType type = ValueType::Binary) noexcept
+      : ValuePair(value.data(), value.size(), type) {}
 
   uint8_t const* getStart() const { return _start; }
 

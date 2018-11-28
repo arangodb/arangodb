@@ -58,7 +58,7 @@ NS_BEGIN(tests)
 position::position(
     uint32_t pos, uint32_t start,
     uint32_t end,
-    const iresearch::bytes_ref& pay)
+    const irs::bytes_ref& pay)
   : pos( pos ), start( start ),
     end( end ), payload( pay ) {
 }
@@ -67,30 +67,30 @@ position::position(
 * posting
 * ------------------------------------------------------------------*/
 
-posting::posting(iresearch::doc_id_t id): id_(id) {}
+posting::posting(irs::doc_id_t id): id_(id) {}
 
 void posting::add(uint32_t pos, uint32_t offs_start, const irs::attribute_view& attrs) {
-  auto& offs = attrs.get<iresearch::offset>();
-  auto& pay = attrs.get<iresearch::payload>();
+  auto& offs = attrs.get<irs::offset>();
+  auto& pay = attrs.get<irs::payload>();
 
-  uint32_t start = iresearch::offset::INVALID_OFFSET;
-  uint32_t end = iresearch::offset::INVALID_OFFSET;
+  uint32_t start = irs::offset::INVALID_OFFSET;
+  uint32_t end = irs::offset::INVALID_OFFSET;
   if ( offs ) {
     start = offs_start + offs->start;
     end = offs_start + offs->end;
   }
 
   positions_.emplace( pos, start, end,
-                      pay ? pay->value : iresearch::bytes_ref::NIL);
+                      pay ? pay->value : irs::bytes_ref::NIL);
 }
 
 /* -------------------------------------------------------------------
 * term
 * ------------------------------------------------------------------*/
 
-term::term(const iresearch::bytes_ref& data): value( data ) {}
+term::term(const irs::bytes_ref& data): value( data ) {}
 
-posting& term::add(iresearch::doc_id_t id) {
+posting& term::add(irs::doc_id_t id) {
   return const_cast< posting& >( *postings.emplace( id ).first );
 }
 
@@ -106,8 +106,8 @@ bool term::operator<( const term& rhs ) const {
 * ------------------------------------------------------------------*/
 
 field::field(
-    const iresearch::string_ref& name,
-    const iresearch::flags& features)
+    const irs::string_ref& name,
+    const irs::flags& features)
   : pos(0), offs(0) {
   this->name = name;
   this->features = features;
@@ -121,17 +121,17 @@ field::field(field&& rhs) NOEXCEPT
     offs( rhs.offs ) {
 }
 
-term& field::add(const iresearch::bytes_ref& t) {
+term& field::add(const irs::bytes_ref& t) {
   auto res = terms.emplace( t );
   return const_cast< term& >( *res.first );
 }
 
-term* field::find(const iresearch::bytes_ref& t) {
+term* field::find(const irs::bytes_ref& t) {
   auto it = terms.find( term( t ) );
   return terms.end() == it ? nullptr : const_cast< term* >(&*it);
 }
 
-size_t field::remove(const iresearch::bytes_ref& t) {
+size_t field::remove(const irs::bytes_ref& t) {
   return terms.erase( term( t ) );
 }
 
@@ -158,22 +158,22 @@ index_segment& index_segment::operator=(index_segment&& rhs) NOEXCEPT {
 }
 
 void index_segment::add(const ifield& f) {
-  const iresearch::string_ref& field_name = f.name();
+  const irs::string_ref& field_name = f.name();
   field field(field_name, f.features());
   auto res = fields_.emplace(field_name, std::move(field));
   if (res.second) {
     id_to_field_.emplace_back(&res.first->second);
   }
-  const_cast<iresearch::string_ref&>(res.first->first) = res.first->second.name;
+  const_cast<irs::string_ref&>(res.first->first) = res.first->second.name;
   auto& fld = res.first->second;
 
   auto& stream = f.get_tokens();
 
   auto& attrs = stream.attributes();
-  auto& term = attrs.get<iresearch::term_attribute>();
-  auto& inc = attrs.get<iresearch::increment>();
-  auto& offs = attrs.get<iresearch::offset>();
-  auto& pay = attrs.get<iresearch::payload>();
+  auto& term = attrs.get<irs::term_attribute>();
+  auto& inc = attrs.get<irs::increment>();
+  auto& offs = attrs.get<irs::offset>();
+  auto& pay = attrs.get<irs::payload>();
 
   bool empty = true;
   auto doc_id = (irs::type_limits<irs::type_t::doc_id_t>::min)() + count_;
@@ -205,38 +205,36 @@ void index_segment::add(const ifield& f) {
  * ------------------------------------------------------------------*/
 
 std::string index_meta_writer::filename(
-  const iresearch::index_meta& meta
+  const irs::index_meta& meta
 ) const {
   return std::string();
 }
 
 bool index_meta_writer::prepare(
-  iresearch::directory& dir,
-  iresearch::index_meta& meta
+  irs::directory& dir,
+  irs::index_meta& meta
 ) {
   return true;
 }
 
-void index_meta_writer::commit() {
-}
+bool index_meta_writer::commit() { return true; }
 
-void index_meta_writer::rollback() NOEXCEPT {
-}
+void index_meta_writer::rollback() NOEXCEPT { }
 
 /* -------------------------------------------------------------------
  * index_meta_reader
  * ------------------------------------------------------------------*/
 
 bool index_meta_reader::last_segments_file(
-    const iresearch::directory&, 
+    const irs::directory&,
     std::string&) const {
   return false;
 }
 
 void index_meta_reader::read(
-  const iresearch::directory& dir,
-  iresearch::index_meta& meta,
-  const iresearch::string_ref& filename /*= string_ref::NIL*/
+  const irs::directory& dir,
+  irs::index_meta& meta,
+  const irs::string_ref& filename /*= string_ref::NIL*/
 ) {
 }
 
@@ -244,15 +242,11 @@ void index_meta_reader::read(
  * segment_meta_writer 
  * ------------------------------------------------------------------*/
 
-std::string segment_meta_writer::filename(
-  const iresearch::segment_meta& meta
-) const {
-  return std::string();
-}
 
 void segment_meta_writer::write(
-  iresearch::directory& dir,  
-  const iresearch::segment_meta& meta ) { 
+  irs::directory& dir,
+  std::string& filename,
+  const irs::segment_meta& meta ) {
 }
 
 /* -------------------------------------------------------------------
@@ -260,9 +254,9 @@ void segment_meta_writer::write(
  * ------------------------------------------------------------------*/
 
 void segment_meta_reader::read( 
-  const iresearch::directory& dir,
-  iresearch::segment_meta& meta,
-  const iresearch::string_ref& filename /*= string_ref::NIL*/
+  const irs::directory& dir,
+  irs::segment_meta& meta,
+  const irs::string_ref& filename /*= string_ref::NIL*/
 ) {
 }
 
@@ -295,19 +289,19 @@ void document_mask_writer::write(
  * field_writer
  * ------------------------------------------------------------------*/
 
-field_writer::field_writer(const index_segment& data, const iresearch::flags& features)
+field_writer::field_writer(const index_segment& data, const irs::flags& features)
   : readers_( data ), features_( features) {
 }
 
-void field_writer::prepare(const iresearch::flush_state& state) {
+void field_writer::prepare(const irs::flush_state& state) {
   EXPECT_EQ( state.doc_count, readers_.data().doc_count() );
 }
 
 void field_writer::write(
     const std::string& name,
-    iresearch::field_id norm,
-    const iresearch::flags& expected_field, 
-    iresearch::term_iterator& actual_term) {
+    irs::field_id norm,
+    const irs::flags& expected_field,
+    irs::term_iterator& actual_term) {
   // features to check
   const tests::field* fld = readers_.data().find(name);
   ASSERT_NE(nullptr, fld);
@@ -317,13 +311,13 @@ void field_writer::write(
   
   auto features = features_ & fld->features;
 
-  const iresearch::term_reader* expected_term_reader = readers_.field(fld->name);
+  const irs::term_reader* expected_term_reader = readers_.field(fld->name);
   ASSERT_NE(nullptr, expected_term_reader);
 
-  iresearch::bytes_ref actual_min{ irs::bytes_ref::NIL };
-  iresearch::bytes_ref actual_max{ irs::bytes_ref::NIL };
-  iresearch::bstring actual_min_buf;
-  iresearch::bstring actual_max_buf;
+  irs::bytes_ref actual_min{ irs::bytes_ref::NIL };
+  irs::bytes_ref actual_max{ irs::bytes_ref::NIL };
+  irs::bstring actual_min_buf;
+  irs::bstring actual_max_buf;
   size_t actual_size = 0;
 
   for (auto expected_term = expected_term_reader->iterator(); 
@@ -357,12 +351,12 @@ NS_BEGIN( detail )
 
 class pos_iterator;
 
-class doc_iterator : public iresearch::doc_iterator {
+class doc_iterator : public irs::doc_iterator {
  public:
-   doc_iterator(const iresearch::flags& features,
+   doc_iterator(const irs::flags& features,
                       const tests::term& data );
 
-  iresearch::doc_id_t value() const override {
+  irs::doc_id_t value() const override {
     return doc_.value;
   }
 
@@ -384,7 +378,7 @@ class doc_iterator : public iresearch::doc_iterator {
     return true;
   }
 
-  virtual iresearch::doc_id_t seek(iresearch::doc_id_t id) override {
+  virtual irs::doc_id_t seek(irs::doc_id_t id) override {
     posting tmp( id );
     auto it = data_.postings.find( tmp );
 
@@ -468,16 +462,16 @@ doc_iterator::doc_iterator(const irs::flags& features, const tests::term& data)
 
   attrs_.emplace(doc_);
 
-  if (features.check<iresearch::frequency>()) {
+  if (features.check<irs::frequency>()) {
     attrs_.emplace(freq_);
   }
 
-  if (features.check< iresearch::position >()) {
+  if (features.check< irs::position >()) {
     attrs_.emplace(pos_);
   }
 }
 
-class term_iterator : public iresearch::seek_term_iterator {
+class term_iterator : public irs::seek_term_iterator {
  public:
   term_iterator( const tests::field& data ) 
     : data_( data ) {
@@ -488,13 +482,13 @@ class term_iterator : public iresearch::seek_term_iterator {
     return attrs_;
   }
 
-  const iresearch::bytes_ref& value() const override {
+  const irs::bytes_ref& value() const override {
     return value_;
   }
 
   bool next() override {
     if ( next_ == data_.terms.end() ) {
-      value_ = iresearch::bytes_ref::NIL;
+      value_ = irs::bytes_ref::NIL;
       return false;
     }
 
@@ -505,12 +499,12 @@ class term_iterator : public iresearch::seek_term_iterator {
 
   virtual void read() override  { }
 
-  virtual bool seek(const iresearch::bytes_ref& value) override {
+  virtual bool seek(const irs::bytes_ref& value) override {
     auto it = data_.terms.find(value);
 
     if (it == data_.terms.end()) {
       prev_ = next_ = it;
-      value_ = iresearch::bytes_ref::NIL;
+      value_ = irs::bytes_ref::NIL;
       return false;
     }
 
@@ -520,28 +514,28 @@ class term_iterator : public iresearch::seek_term_iterator {
     return true;
   }
 
-  virtual iresearch::SeekResult seek_ge(const iresearch::bytes_ref& value) override {
+  virtual irs::SeekResult seek_ge(const irs::bytes_ref& value) override {
     auto it = data_.terms.lower_bound(value);
     if (it == data_.terms.end()) {
       prev_ = next_ = it;
-      value_ = iresearch::bytes_ref::NIL;
-      return iresearch::SeekResult::END;
+      value_ = irs::bytes_ref::NIL;
+      return irs::SeekResult::END;
     }
 
     if (it->value == value) {
       prev_ = it;
       next_ = ++it;
     value_ = prev_->value;
-      return iresearch::SeekResult::FOUND;
+      return irs::SeekResult::FOUND;
     }
 
     prev_ = ++it;
     next_ = ++it;
     value_ = prev_->value;
-    return iresearch::SeekResult::NOT_FOUND;
+    return irs::SeekResult::NOT_FOUND;
   }
 
-  virtual doc_iterator::ptr postings(const iresearch::flags& features) const override {
+  virtual doc_iterator::ptr postings(const irs::flags& features) const override {
     return doc_iterator::make< detail::doc_iterator >( features, *prev_ );
   }
 
@@ -561,7 +555,7 @@ class term_iterator : public iresearch::seek_term_iterator {
   const tests::field& data_;
   std::set< tests::term >::const_iterator prev_;
   std::set< tests::term >::const_iterator next_;
-  iresearch::bytes_ref value_;
+  irs::bytes_ref value_;
 };
 
 size_t term_reader::size() const {
@@ -572,21 +566,21 @@ uint64_t term_reader::docs_count() const {
   return data_.docs.size();
 }
 
-const iresearch::bytes_ref& (term_reader::min)() const {
+const irs::bytes_ref& (term_reader::min)() const {
   return min_;
 }
 
-const iresearch::bytes_ref& (term_reader::max)() const {
+const irs::bytes_ref& (term_reader::max)() const {
   return max_;
 }
 
-iresearch::seek_term_iterator::ptr term_reader::iterator() const {
-  return iresearch::seek_term_iterator::ptr(
+irs::seek_term_iterator::ptr term_reader::iterator() const {
+  return irs::seek_term_iterator::ptr(
     new detail::term_iterator( data_ )
   );
 }
 
-const iresearch::field_meta& term_reader::meta() const {
+const irs::field_meta& term_reader::meta() const {
   return data_;
 }
 
@@ -602,7 +596,7 @@ field_reader::field_reader(const index_segment& data)
   readers_.reserve(data.fields().size());
 
   for (const auto& pair : data_.fields()) {
-    readers_.emplace_back(iresearch::term_reader::make<detail::term_reader>(pair.second));
+    readers_.emplace_back(irs::term_reader::make<detail::term_reader>(pair.second));
   }
 }
 
@@ -610,18 +604,19 @@ field_reader::field_reader(field_reader&& other) NOEXCEPT
   : readers_(std::move(other.readers_)), data_(std::move(other.data_)) {
 }
 
-bool field_reader::prepare(const irs::directory& dir, const irs::segment_meta& meta, const irs::document_mask& mask) {
-  return true;
+void field_reader::prepare(
+    const irs::directory& dir, const irs::segment_meta& meta, const irs::document_mask& mask
+) {
 }
 
-iresearch::field_iterator::ptr field_reader::iterator() const {
+irs::field_iterator::ptr field_reader::iterator() const {
   return nullptr;
 }
 
-const iresearch::term_reader* field_reader::field(const iresearch::string_ref& field) const {
+const irs::term_reader* field_reader::field(const irs::string_ref& field) const {
   const auto it = std::lower_bound(
     readers_.begin(), readers_.end(), field,
-    [] (const iresearch::term_reader::ptr& lhs, const iresearch::string_ref& rhs) {
+    [] (const irs::term_reader::ptr& lhs, const irs::string_ref& rhs) {
       return lhs->meta().name < rhs;
   });
 
@@ -643,11 +638,11 @@ size_t field_reader::size() const {
 format::format(): format(DEFAULT_SEGMENT) {}
 
 format::format(const index_segment& data):
-  iresearch::format(format::type()), data_(data) {
+  irs::format(format::type()), data_(data) {
 }
 
-iresearch::index_meta_writer::ptr format::get_index_meta_writer() const {
-  return iresearch::index_meta_writer::make<index_meta_writer>();
+irs::index_meta_writer::ptr format::get_index_meta_writer() const {
+  return irs::index_meta_writer::make<index_meta_writer>();
 }
 
 irs::index_meta_reader::ptr format::get_index_meta_reader() const {
@@ -657,49 +652,49 @@ irs::index_meta_reader::ptr format::get_index_meta_reader() const {
   return irs::memory::make_managed<irs::index_meta_reader, false>(&reader);
 }
 
-iresearch::segment_meta_writer::ptr format::get_segment_meta_writer() const {
+irs::segment_meta_writer::ptr format::get_segment_meta_writer() const {
   // can reuse stateless writer
   static segment_meta_writer writer;
 
   return irs::memory::make_managed<irs::segment_meta_writer, false>(&writer);
 }
 
-iresearch::segment_meta_reader::ptr format::get_segment_meta_reader() const {
+irs::segment_meta_reader::ptr format::get_segment_meta_reader() const {
   // can reuse stateless reader
   static segment_meta_reader reader;
 
   return irs::memory::make_managed<irs::segment_meta_reader, false>(&reader);
 }
 
-iresearch::document_mask_reader::ptr format::get_document_mask_reader() const {
-  return iresearch::document_mask_reader::ptr();
+irs::document_mask_reader::ptr format::get_document_mask_reader() const {
+  return irs::document_mask_reader::ptr();
 }
 
-iresearch::document_mask_writer::ptr format::get_document_mask_writer() const {
-  return iresearch::document_mask_writer::make<tests::document_mask_writer>(data_);
+irs::document_mask_writer::ptr format::get_document_mask_writer() const {
+  return irs::document_mask_writer::make<tests::document_mask_writer>(data_);
 }
 
-iresearch::field_writer::ptr format::get_field_writer(bool volatile_attributes) const {
-  return iresearch::field_writer::make<tests::field_writer>(data_);
+irs::field_writer::ptr format::get_field_writer(bool volatile_attributes) const {
+  return irs::field_writer::make<tests::field_writer>(data_);
 }
 
-iresearch::field_reader::ptr format::get_field_reader() const {
-  return iresearch::field_reader::make<tests::field_reader>(data_);
+irs::field_reader::ptr format::get_field_reader() const {
+  return irs::field_reader::make<tests::field_reader>(data_);
 }
 
-iresearch::column_meta_writer::ptr format::get_column_meta_writer() const {
+irs::column_meta_writer::ptr format::get_column_meta_writer() const {
   return nullptr;
 }
 
-iresearch::column_meta_reader::ptr format::get_column_meta_reader() const {
+irs::column_meta_reader::ptr format::get_column_meta_reader() const {
   return nullptr;
 }
 
-iresearch::columnstore_writer::ptr format::get_columnstore_writer() const {
+irs::columnstore_writer::ptr format::get_columnstore_writer() const {
   return nullptr;
 }
 
-iresearch::columnstore_reader::ptr format::get_columnstore_reader() const {
+irs::columnstore_reader::ptr format::get_columnstore_reader() const {
   return nullptr;
 }
 
@@ -712,13 +707,13 @@ REGISTER_FORMAT(tests::format);
 }
 
 void assert_term(
-    const iresearch::term_iterator& expected_term, 
-    const iresearch::term_iterator& actual_term,
-    const iresearch::flags& features) {
+    const irs::term_iterator& expected_term,
+    const irs::term_iterator& actual_term,
+    const irs::flags& features) {
   ASSERT_EQ(expected_term.value(), actual_term.value());
 
-  const iresearch::doc_iterator::ptr expected_docs = expected_term.postings(features);
-  const iresearch::doc_iterator::ptr actual_docs = actual_term.postings(features);
+  const irs::doc_iterator::ptr expected_docs = expected_term.postings(features);
+  const irs::doc_iterator::ptr actual_docs = actual_term.postings(features);
 
   // check docs
   for (; expected_docs->next();) {
@@ -731,26 +726,26 @@ void assert_term(
       auto& actual_attrs = actual_docs->attributes();
       ASSERT_EQ(expected_attrs.features(), actual_attrs.features());
 
-      auto& expected_freq = expected_attrs.get<iresearch::frequency>();
-      auto& actual_freq = actual_attrs.get<iresearch::frequency>();
+      auto& expected_freq = expected_attrs.get<irs::frequency>();
+      auto& actual_freq = actual_attrs.get<irs::frequency>();
 
       if (expected_freq) {
         ASSERT_FALSE(!actual_freq);
         ASSERT_EQ(expected_freq->value, actual_freq->value);
       }
 
-      auto& expected_pos = expected_attrs.get< iresearch::position >();
-      auto& actual_pos = actual_attrs.get< iresearch::position >();
+      auto& expected_pos = expected_attrs.get< irs::position >();
+      auto& actual_pos = actual_attrs.get< irs::position >();
 
       if (expected_pos) {
         ASSERT_FALSE(!actual_pos);
 
-        auto& expected_offs = expected_pos->attributes().get<iresearch::offset>();
-        auto& actual_offs = actual_pos->attributes().get<iresearch::offset>();
+        auto& expected_offs = expected_pos->attributes().get<irs::offset>();
+        auto& actual_offs = actual_pos->attributes().get<irs::offset>();
         if (expected_offs) ASSERT_FALSE(!actual_offs);
 
-        auto& expected_pay = expected_pos->attributes().get<iresearch::payload>();
-        auto& actual_pay = actual_pos->attributes().get<iresearch::payload>();
+        auto& expected_pay = expected_pos->attributes().get<irs::payload>();
+        auto& actual_pay = actual_pos->attributes().get<irs::payload>();
         if (expected_pay) ASSERT_FALSE(!actual_pay);
 
         for (; expected_pos->next();) {
@@ -776,19 +771,19 @@ void assert_term(
 }
 
 void assert_terms_next(
-    const iresearch::term_reader& expected_term_reader,
-    const iresearch::term_reader& actual_term_reader,
-    const iresearch::flags& features) {
+    const irs::term_reader& expected_term_reader,
+    const irs::term_reader& actual_term_reader,
+    const irs::flags& features) {
   // check term reader
   ASSERT_EQ((expected_term_reader.min)(), (actual_term_reader.min)());
   ASSERT_EQ((expected_term_reader.max)(), (actual_term_reader.max)());
   ASSERT_EQ(expected_term_reader.size(), actual_term_reader.size());
   ASSERT_EQ(expected_term_reader.docs_count(), actual_term_reader.docs_count());
 
-  iresearch::bytes_ref actual_min{ irs::bytes_ref::NIL };
-  iresearch::bytes_ref actual_max{ irs::bytes_ref::NIL };
-  iresearch::bstring actual_min_buf;
-  iresearch::bstring actual_max_buf;
+  irs::bytes_ref actual_min{ irs::bytes_ref::NIL };
+  irs::bytes_ref actual_max{ irs::bytes_ref::NIL };
+  irs::bstring actual_min_buf;
+  irs::bstring actual_max_buf;
   size_t actual_size = 0;
 
   auto expected_term = expected_term_reader.iterator();
@@ -814,9 +809,9 @@ void assert_terms_next(
 }
 
 void assert_terms_seek(
-    const iresearch::term_reader& expected_term_reader,
-    const iresearch::term_reader& actual_term_reader,
-    const iresearch::flags& features,
+    const irs::term_reader& expected_term_reader,
+    const irs::term_reader& actual_term_reader,
+    const irs::flags& features,
     size_t lookahead /* = 10 */) {
   // check term reader
   ASSERT_EQ((expected_term_reader.min)(), (actual_term_reader.min)());
@@ -866,7 +861,7 @@ void assert_terms_seek(
     // seek greater or equal without state, iterate forward
     {
       auto actual_term = actual_term_reader.iterator();
-      ASSERT_EQ(iresearch::SeekResult::FOUND, actual_term->seek_ge(expected_term->value()));
+      ASSERT_EQ(irs::SeekResult::FOUND, actual_term->seek_ge(expected_term->value()));
       assert_term(*expected_term, *actual_term, features);
 
       // iterate forward
@@ -922,7 +917,7 @@ void assert_terms_seek(
       assert_term(*expected_term, *actual_term, features);
 
       // seek greater equal to the same term
-      ASSERT_EQ(iresearch::SeekResult::FOUND, actual_term->seek_ge(expected_term->value()));
+      ASSERT_EQ(irs::SeekResult::FOUND, actual_term->seek_ge(expected_term->value()));
       assert_term(*expected_term, *actual_term, features);
     }
   }
@@ -967,7 +962,7 @@ void assert_index(
       auto actual_term_reader = actual_sub_reader.field(actual_fields->value().meta().name);
       ASSERT_NE(nullptr, actual_term_reader);
 
-      const iresearch::field_meta* expected_field = expected_segment.find(expected_fields_begin->first);
+      const irs::field_meta* expected_field = expected_segment.find(expected_fields_begin->first);
       ASSERT_NE(nullptr, expected_field);
       auto features_to_check = features & expected_field->features;
 
@@ -984,7 +979,7 @@ void assert_index(
     const index_t& expected_index,
     const irs::flags& features,
     size_t skip /*= 0*/) {
-  auto actual_index_reader = iresearch::directory_reader::open(dir, codec);
+  auto actual_index_reader = irs::directory_reader::open(dir, codec);
 
   assert_index(expected_index, actual_index_reader, features, skip);
 }

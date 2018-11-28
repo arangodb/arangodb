@@ -41,8 +41,6 @@ class IRESEARCH_API fs_directory : public directory {
 
   virtual attribute_store& attributes() NOEXCEPT override;
 
-  virtual void close() NOEXCEPT override;
-
   virtual index_output::ptr create(const std::string& name) NOEXCEPT override;
 
   const std::string& directory() const NOEXCEPT;

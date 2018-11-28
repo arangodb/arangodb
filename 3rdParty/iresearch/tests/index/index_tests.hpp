@@ -53,8 +53,6 @@ class directory_mock: public irs::directory {
     return impl_.attributes();
   }
 
-  virtual void close() NOEXCEPT override { impl_.close(); }
-
   virtual irs::index_output::ptr create(
     const std::string& name
   ) NOEXCEPT override {
@@ -113,6 +111,45 @@ class directory_mock: public irs::directory {
  private:
   irs::directory& impl_;
 }; // directory_mock
+
+struct blocking_directory : directory_mock {
+  explicit blocking_directory(irs::directory& impl, const std::string& blocker)
+    : tests::directory_mock(impl), blocker(blocker) {
+  }
+
+  irs::index_output::ptr create(const std::string& name) NOEXCEPT {
+    auto stream = tests::directory_mock::create(name);
+
+    if (name == blocker) {
+      {
+        SCOPED_LOCK_NAMED(policy_lock, guard);
+        policy_applied.notify_all();
+      }
+
+      // wait for intermediate commits to be applied
+      SCOPED_LOCK_NAMED(intermediate_commits_lock, guard);
+    }
+
+    return stream;
+  }
+
+  void wait_for_blocker() {
+    bool has = false;
+    exists(has, blocker);
+
+    while (!has) {
+      exists(has, blocker);
+
+      SCOPED_LOCK_NAMED(policy_lock, policy_guard);
+      policy_applied.wait_for(policy_guard, std::chrono::milliseconds(1000));
+    }
+  }
+
+  std::string blocker;
+  std::mutex policy_lock;
+  std::condition_variable policy_applied;
+  std::mutex intermediate_commits_lock;
+}; // blocking_directory
 
 class index_test_base : public virtual test_base {
  protected:

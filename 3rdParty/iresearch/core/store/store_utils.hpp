@@ -439,15 +439,11 @@ class IRESEARCH_API bytes_ref_input : public index_input {
     reset(ref.c_str(), ref.size());
   }
 
-  virtual ptr dup() const NOEXCEPT override {
-    try {
-      return index_input::make<bytes_ref_input>(*this);
-    } catch (...) {
-      return nullptr;
-    }
+  virtual ptr dup() const override {
+    return index_input::make<bytes_ref_input>(*this);
   }
 
-  virtual ptr reopen() const NOEXCEPT override {
+  virtual ptr reopen() const override {
     return dup();
   }
 

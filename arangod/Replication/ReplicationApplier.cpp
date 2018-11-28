@@ -636,12 +636,12 @@ void ReplicationApplier::doStop(Result const& r, bool joinThread) {
     while (_state.isShuttingDown()) {
       writeLocker.unlock();
       std::this_thread::sleep_for(std::chrono::milliseconds(50));
-      writeLocker.lock();
-      if (std::chrono::steady_clock::now() - start > std::chrono::minutes(1)) {
+      if (std::chrono::steady_clock::now() - start > std::chrono::minutes(3)) {
         LOG_TOPIC(ERR, Logger::REPLICATION) << "replication applier is not stopping";
         TRI_ASSERT(false);
         start = std::chrono::steady_clock::now();;
       }
+      writeLocker.lock();
     }
     
     TRI_ASSERT(!_state.isActive() && !_state.isShuttingDown());

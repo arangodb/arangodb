@@ -109,13 +109,7 @@ bool SkiplistIndexAttributeMatcher::accessFitsIndex(
     
     if (match) {
       // mark ith attribute as being covered
-      auto it = found.find(i);
-      
-      if (it == found.end()) {
-        found.emplace(i, std::vector<arangodb::aql::AstNode const*>{op});
-      } else {
-        (*it).second.emplace_back(op);
-      }
+      found[i].emplace_back(op);
       TRI_IF_FAILURE("PersistentIndex::accessFitsIndex") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }

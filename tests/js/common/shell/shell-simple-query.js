@@ -320,7 +320,7 @@ function SimpleQueryRemoveByKeysSuite () {
 // / @brief remove in empty collection
 // //////////////////////////////////////////////////////////////////////////////
 
-    testEmptyCollection: function () {
+    testRemoveEmptyCollection: function () {
       var result = c.removeByKeys([ 'foo', 'bar', 'baz' ]);
 
       assertEqual({ removed: 0, ignored: 3 }, result);
@@ -330,7 +330,7 @@ function SimpleQueryRemoveByKeysSuite () {
 // / @brief remove in empty collection and empty lookup list
 // //////////////////////////////////////////////////////////////////////////////
 
-    testEmptyCollectionAndArray: function () {
+    testRemoveEmptyCollectionAndArray: function () {
       var result = c.removeByKeys([ ]);
 
       assertEqual({ removed: 0, ignored: 0 }, result);
@@ -340,7 +340,7 @@ function SimpleQueryRemoveByKeysSuite () {
 // / @brief remove in collection with empty lookup list
 // //////////////////////////////////////////////////////////////////////////////
 
-    testEmptyArray: function () {
+    testRemoveEmptyArray: function () {
       for (var i = 0; i < 100; ++i) {
         c.insert({ _key: 'test' + i });
       }
@@ -354,7 +354,7 @@ function SimpleQueryRemoveByKeysSuite () {
 // / @brief remove in collection with existing and nonexisting keys
 // //////////////////////////////////////////////////////////////////////////////
 
-    testMixed: function () {
+    testRemoveMixed: function () {
       var keys = [ ];
       for (var i = 0; i < 500; ++i) {
         c.insert({ _key: 'test' + i });
@@ -377,7 +377,7 @@ function SimpleQueryRemoveByKeysSuite () {
 // / @brief remove in collection with nonexisting keys
 // //////////////////////////////////////////////////////////////////////////////
 
-    testNonExisting: function () {
+    testRemoveNonExisting: function () {
       var keys = [ ];
       for (var i = 0; i < 100; ++i) {
         keys.push('test' + i);
@@ -392,7 +392,7 @@ function SimpleQueryRemoveByKeysSuite () {
 // / @brief remove in collection with numeric keys
 // //////////////////////////////////////////////////////////////////////////////
 
-    testNumericKeys: function () {
+    testRemoveNumericKeys: function () {
       for (var i = 0; i < 100; ++i) {
         c.insert({ _key: String(i) });
       }
@@ -406,7 +406,7 @@ function SimpleQueryRemoveByKeysSuite () {
 // / @brief remove using invalid keys
 // //////////////////////////////////////////////////////////////////////////////
 
-    testInvalidKeys: function () {
+    testRemoveInvalidKeys: function () {
       var result = c.removeByKeys([ ' ', '*  ', ' bfffff/\\&, ', '////.,;::' ]);
 
       assertEqual({ removed: 0, ignored: 4 }, result);
@@ -2127,7 +2127,7 @@ function SimpleQuerySparseRangeSuite () {
 // / @brief test: range
 // //////////////////////////////////////////////////////////////////////////////
 
-    testRange: function () {
+    testSparseRange: function () {
       var l = collection.range('age', 10, 13).toArray().map(age).sort(ageSort);
       assertEqual([ 10, 11, 12 ], l);
 
@@ -2145,7 +2145,7 @@ function SimpleQuerySparseRangeSuite () {
 // / @brief test: range
 // //////////////////////////////////////////////////////////////////////////////
 
-    testRangeMultipleIndexes: function () {
+    testSparseRangeMultipleIndexes: function () {
       // now we have a sparse and a non-sparse index
       collection.ensureSkiplist('age', { sparse: false });
 
@@ -2205,7 +2205,7 @@ function SimpleQueryUniqueRangeSuite () {
 // / @brief test: range
 // //////////////////////////////////////////////////////////////////////////////
 
-    testRange: function () {
+    testUniqueRange: function () {
       var l = collection.range('age', 10, 13).toArray().map(age).sort(ageSort);
       assertEqual([ 10, 11, 12 ], l);
 
@@ -2261,7 +2261,7 @@ function SimpleQueryUniqueSparseRangeSuite () {
 // / @brief test: range
 // //////////////////////////////////////////////////////////////////////////////
 
-    testRange: function () {
+    testUniqueSparseRange: function () {
       var l = collection.range('age', 10, 13).toArray().map(age).sort(ageSort);
       assertEqual([ 10, 11, 12 ], l);
 
@@ -2279,7 +2279,7 @@ function SimpleQueryUniqueSparseRangeSuite () {
 // / @brief test: range
 // //////////////////////////////////////////////////////////////////////////////
 
-    testRangeMultipleIndexes: function () {
+    testUniqueSparseRangeMultipleIndexes: function () {
       // now we have a sparse and a non-sparse index
       collection.ensureUniqueSkiplist('age', { sparse: false });
 

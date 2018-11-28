@@ -374,7 +374,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan,
 
   _regsToClear.reserve(regsToClearList.length());
   for (auto const& it : VPackArrayIterator(regsToClearList)) {
-    _regsToClear.emplace(it.getNumericValue<RegisterId>());
+    _regsToClear.insert(it.getNumericValue<RegisterId>());
   }
 
   auto allVars = plan->getAst()->variables();
@@ -395,7 +395,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan,
                            StringUtils::itoa(oneVarUsedLater.id);
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, errmsg);
     }
-    _varsUsedLater.emplace(oneVariable);
+    _varsUsedLater.insert(oneVariable);
   }
 
   VPackSlice varsValidList = slice.get("varsValid");
@@ -415,7 +415,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan,
                            StringUtils::itoa(oneVarValid.id);
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, errmsg);
     }
-    _varsValid.emplace(oneVariable);
+    _varsValid.insert(oneVariable);
   }
 }
 
@@ -465,7 +465,7 @@ ExecutionNode* ExecutionNode::cloneHelper(
     for (auto const& orgVar : _varsUsedLater) {
       auto var = allVars->getVariable(orgVar->id);
       TRI_ASSERT(var != nullptr);
-      other->_varsUsedLater.emplace(var);
+      other->_varsUsedLater.insert(var);
     }
 
     other->_varsValid.reserve(_varsValid.size());
@@ -473,7 +473,7 @@ ExecutionNode* ExecutionNode::cloneHelper(
     for (auto const& orgVar : _varsValid) {
       auto var = allVars->getVariable(orgVar->id);
       TRI_ASSERT(var != nullptr);
-      other->_varsValid.emplace(var);
+      other->_varsValid.insert(var);
     }
 
     if (_registerPlan.get() != nullptr) {
@@ -1085,7 +1085,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
         // finally adjust the variable inside the IN calculation
         TRI_ASSERT(it2 != varInfo.end());
         RegisterId r = it2->second.registerId;
-        regsToClear.emplace(r);
+        regsToClear.insert(r);
       }
     }
     en->setRegsToClear(std::move(regsToClear));
@@ -1444,7 +1444,7 @@ void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) co
       Ast::traverseReadOnly(root, [&functionsSeen, &nodes](AstNode const* node) -> bool {
         if (node->type == NODE_TYPE_FCALL) {
           auto func = static_cast<Function const*>(node->getData());
-          if (functionsSeen.emplace(func->name).second) {
+          if (functionsSeen.insert(func->name).second) {
             // built-in function, not seen before
             nodes.openObject();
             nodes.add("name", VPackValue(func->name));
@@ -1456,7 +1456,7 @@ void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) co
           }
         } else if (node->type == NODE_TYPE_FCALL_USER) {
           auto func = node->getString();
-          if (functionsSeen.emplace(func).second) {
+          if (functionsSeen.insert(func).second) {
             // user defined function, not seen before
             nodes.openObject();
             nodes.add("name", VPackValue(func));
@@ -1689,7 +1689,7 @@ struct SubqueryVarUsageFinder final : public WalkerWorker<ExecutionNode> {
   void after(ExecutionNode* en) override final {
     // Add variables set here to _valid:
     for (auto& v : en->getVariablesSetHere()) {
-      _valid.emplace(v);
+      _valid.insert(v);
     }
   }
 
@@ -1703,10 +1703,9 @@ struct SubqueryVarUsageFinder final : public WalkerWorker<ExecutionNode> {
 
     // create the set difference. note: cannot use std::set_difference as our
     // sets are NOT sorted
-    for (auto it = subfinder._usedLater.begin();
-         it != subfinder._usedLater.end(); ++it) {
-      if (_valid.find(*it) != _valid.end()) {
-        _usedLater.emplace(*it);
+    for (auto var : subfinder._usedLater) {
+      if (_valid.find(var) != _valid.end()) {
+        _usedLater.insert(var);
       }
     }
     return false;
@@ -1719,10 +1718,9 @@ std::vector<Variable const*> SubqueryNode::getVariablesUsedHere() const {
   _subquery->walk(finder);
 
   std::vector<Variable const*> v;
-  for (auto it = finder._usedLater.begin(); it != finder._usedLater.end();
-       ++it) {
-    if (finder._valid.find(*it) == finder._valid.end()) {
-      v.emplace_back(*it);
+  for (auto var : finder._usedLater) {
+    if (finder._valid.find(var) == finder._valid.end()) {
+      v.emplace_back(var);
     }
   }
 
@@ -1735,10 +1733,9 @@ void SubqueryNode::getVariablesUsedHere(
   SubqueryVarUsageFinder finder;
   _subquery->walk(finder);
 
-  for (auto it = finder._usedLater.begin(); it != finder._usedLater.end();
-       ++it) {
-    if (finder._valid.find(*it) == finder._valid.end()) {
-      vars.emplace(*it);
+  for (auto var : finder._usedLater) {
+    if (finder._valid.find(var) == finder._valid.end()) {
+      vars.insert(var);
     }
   }
 }

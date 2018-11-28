@@ -890,12 +890,8 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
       // Thanks to fanout...
       for (auto const& collection : (*cs)) {
         for (auto& entry : mappingServerToCollections) {
-          auto it =
-              entry.second.vertexCollections.find(collection.second->name());
-          if (it == entry.second.vertexCollections.end()) {
-            entry.second.vertexCollections.emplace(collection.second->name(),
-                                                   std::vector<ShardID>());
-          }
+          // implicity creates the map entry in case it does not exist
+          entry.second.vertexCollections[collection.second->name()];
         }
       }
     } else {
@@ -921,11 +917,8 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
       // Thanks to fanout...
       for (auto const& it : vertices) {
         for (auto& entry : mappingServerToCollections) {
-          auto vIt = entry.second.vertexCollections.find(it->name());
-          if (vIt == entry.second.vertexCollections.end()) {
-            entry.second.vertexCollections.emplace(it->name(),
-                                                   std::vector<ShardID>());
-          }
+          // implicitly creates the map entry in case it does not exist.
+          entry.second.vertexCollections[it->name()];
         }
       }
     }

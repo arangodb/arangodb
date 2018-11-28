@@ -79,7 +79,7 @@ bool QueryList::insert(Query* query) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    auto it = _current.emplace(query->id(), query);
+    auto it = _current.insert({query->id(), query});
     if (it.second) {
       return true;
     }
