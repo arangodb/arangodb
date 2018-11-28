@@ -511,7 +511,9 @@ Result ClusterCollection::insert(arangodb::transaction::Methods*,
                                  arangodb::velocypack::Slice const,
                                  arangodb::ManagedDocumentResult&,
                                  OperationOptions&, TRI_voc_tick_t&, bool,
-                                 TRI_voc_tick_t&, std::function<Result(void)>) {
+                                 TRI_voc_tick_t&, 
+                                 KeyLockInfo* /*keyLock*/,
+                                 std::function<Result(void)>) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -538,7 +540,8 @@ Result ClusterCollection::remove(
     arangodb::transaction::Methods* trx, arangodb::velocypack::Slice slice,
     arangodb::ManagedDocumentResult& previous, OperationOptions& options,
     TRI_voc_tick_t& resultMarkerTick, bool, TRI_voc_rid_t& prevRev,
-    TRI_voc_rid_t& revisionId, std::function<Result(void)> /*callbackDuringLock*/) {
+    TRI_voc_rid_t& revisionId, KeyLockInfo* /*keyLock*/,
+    std::function<Result(void)> /*callbackDuringLock*/) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

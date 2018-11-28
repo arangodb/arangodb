@@ -57,6 +57,7 @@
 #include "Utils/Events.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/OperationOptions.h"
+#include "VocBase/KeyLockInfo.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Methods/Indexes.h"
@@ -1628,13 +1629,14 @@ OperationResult transaction::Methods::insertLocal(
   // If we maybe will overwrite, we cannot do single document operations, thus:
   // options.overwrite => !needsLock
   TRI_ASSERT(!options.overwrite || !needsLock);
+    
+  bool const isMMFiles = EngineSelectorFeature::isMMFiles();
 
   // Assert my assumption that we don't have a lock only with mmfiles single
   // document operations.
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   {
-    bool const isMMFiles = EngineSelectorFeature::isMMFiles();
     bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
     if (!isMock) {
       // needsLock => isMMFiles
@@ -1686,6 +1688,11 @@ OperationResult transaction::Methods::insertLocal(
     followers = collection->followers()->get();
   }
 
+  // we may need to lock individual keys here so we can ensure that even with concurrent
+  // operations on the same keys we have the same order of data application on leader
+  // and followers
+  KeyLockInfo keyLockInfo;
+
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
     // Block operation early if we are not supposed to perform it:
@@ -1697,13 +1704,16 @@ OperationResult transaction::Methods::insertLocal(
       }
 
       replicationType = ReplicationType::LEADER;
+      if (isMMFiles && needsLock) {
+        keyLockInfo.shouldLock = true;
+      }
       // We cannot be silent if we may have to replicate later.
       // If we need to get the followers under the single document operation's
       // lock, we don't know yet if we will have followers later and thus cannot
       // be silent.
       // Otherwise, if we already know the followers to replicate to, we can
       // just check if they're empty.
-      if (needsToGetFollowersUnderLock || !followers->empty()) {
+      if (needsToGetFollowersUnderLock || keyLockInfo.shouldLock || !followers->empty()) {
         options.silent = false;
       }
     } else {  // we are a follower following theLeader
@@ -1724,7 +1734,7 @@ OperationResult transaction::Methods::insertLocal(
   VPackBuilder resultBuilder;
   ManagedDocumentResult documentResult;
   TRI_voc_tick_t maxTick = 0;
-
+    
   auto workForOneDocument = [&](VPackSlice const value) -> Result {
     if (!value.isObject()) {
       return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
@@ -1741,7 +1751,7 @@ OperationResult transaction::Methods::insertLocal(
     TRI_ASSERT(needsLock == !isLocked(collection, AccessMode::Type::WRITE));
     Result res = collection->insert(this, value, documentResult, options,
                                     resultMarkerTick, needsLock, revisionId,
-                                    updateFollowers);
+                                    &keyLockInfo, updateFollowers);
 
     TRI_voc_rid_t previousRevisionId = 0;
     ManagedDocumentResult previousDocumentResult; // return OLD
@@ -2254,14 +2264,13 @@ OperationResult transaction::Methods::removeLocal(
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
   bool const needsLock = !isLocked(collection, AccessMode::Type::WRITE);
+  bool const isMMFiles = EngineSelectorFeature::isMMFiles();
 
   // Assert my assumption that we don't have a lock only with mmfiles single
   // document operations.
 
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   {
-    bool const isMMFiles = EngineSelectorFeature::isMMFiles();
     bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
     if (!isMock) {
       // needsLock => isMMFiles
@@ -2305,6 +2314,11 @@ OperationResult transaction::Methods::removeLocal(
     TRI_ASSERT(followers == nullptr);
     followers = collection->followers()->get();
   }
+  
+  // we may need to lock individual keys here so we can ensure that even with concurrent
+  // operations on the same keys we have the same order of data application on leader
+  // and followers
+  KeyLockInfo keyLockInfo;
 
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
@@ -2317,6 +2331,9 @@ OperationResult transaction::Methods::removeLocal(
       }
 
       replicationType = ReplicationType::LEADER;
+      if (isMMFiles && needsLock) {
+        keyLockInfo.shouldLock = true;
+      }
       // We cannot be silent if we may have to replicate later.
       // If we need to get the followers under the single document operation's
       // lock, we don't know yet if we will have followers later and thus cannot
@@ -2375,7 +2392,7 @@ OperationResult transaction::Methods::removeLocal(
 
     Result res =
         collection->remove(this, value, options, resultMarkerTick, needsLock,
-                           actualRevision, previous, updateFollowers);
+                           actualRevision, previous, &keyLockInfo, updateFollowers);
 
     if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
       maxTick = resultMarkerTick;
