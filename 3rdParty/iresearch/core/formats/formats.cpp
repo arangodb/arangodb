@@ -95,7 +95,7 @@ index_meta_writer::~index_meta_writer() {}
 /* static */void index_meta_writer::complete(index_meta& meta) NOEXCEPT {
   meta.last_gen_ = meta.gen_;
 }
-/* static */ void index_meta_writer::prepare(index_meta& meta) {
+/* static */ void index_meta_writer::prepare(index_meta& meta) NOEXCEPT {
   meta.gen_ = meta.next_generation();
 }
 

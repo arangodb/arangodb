@@ -1,6 +1,8 @@
 devel
 -----
 
+* Export Version and Storage Engine in `_admin/cluster/health` for Coordinators and DBServers. 
+
 * fixed Foxx complaining about valid `$schema` value in manifest.json
 
 * Foxx `req.makeAbsolute` now will return meaningful values when ArangoDB is using

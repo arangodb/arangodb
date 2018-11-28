@@ -64,8 +64,6 @@ class noop_directory : public irs::directory {
     );
   }
 
-  virtual void close() NOEXCEPT override { }
-
   virtual irs::index_output::ptr create(
     const std::string&
   ) NOEXCEPT override {
@@ -756,7 +754,7 @@ irs::term_iterator::ptr compound_field_iterator::iterator() const {
 }
 
 //////////////////////////////////////////////////////////////////////////////
-/// @brief computes fields_type and fields_count
+/// @brief computes fields_type
 //////////////////////////////////////////////////////////////////////////////
 bool compute_field_meta(
     field_meta_map_t& field_meta_map,
@@ -799,10 +797,7 @@ class columnstore {
       const irs::merge_writer::flush_progress_t& progress
   ) : progress_(progress, PROGRESS_STEP_COLUMN) {
     auto writer = meta.codec->get_columnstore_writer();
-
-    if (!writer->prepare(dir, meta)) {
-      return; // flush failure
-    }
+    writer->prepare(dir, meta);
 
     writer_ = std::move(writer);
   }
@@ -857,7 +852,7 @@ class columnstore {
   bool empty() const { return empty_; }
 
   // @return was anything actually flushed
-  bool flush() { return writer_->flush(); }
+  bool flush() { return writer_->commit(); }
 
   // returns current column identifier
   irs::field_id id() const { return column_.first; }
@@ -889,10 +884,7 @@ bool write_columns(
 
   auto cmw = meta.codec->get_column_meta_writer();
 
-  if (!cmw->prepare(dir, meta)) {
-    // failed to prepare writer
-    return false;
-  }
+  cmw->prepare(dir, meta);
 
   while (column_itr.next()) {
     cs.reset();  
@@ -907,6 +899,7 @@ bool write_columns(
       cmw->write((*column_itr).name, cs.id());
     } 
   }
+
   cmw->flush();
 
   return true;
@@ -920,7 +913,6 @@ bool write_fields(
     irs::directory& dir,
     const irs::segment_meta& meta,
     compound_field_iterator& field_itr,
-    const field_meta_map_t& field_meta_map,
     const irs::flags& fields_features,
     const irs::merge_writer::flush_progress_t& progress
 ) {
@@ -930,10 +922,8 @@ bool write_fields(
   irs::flush_state flush_state;
   flush_state.dir = &dir;
   flush_state.doc_count = meta.docs_count;
-  flush_state.fields_count = field_meta_map.size();
   flush_state.features = &fields_features;
   flush_state.name = meta.name;
-  flush_state.ver = IRESEARCH_VERSION;
 
   auto fw = meta.codec->get_field_writer(true);
   fw->prepare(flush_state);
@@ -1063,7 +1053,7 @@ bool merge_writer::flush(
 
   static const flush_progress_t progress_noop = []()->bool { return true; };
   auto& progress_callback = progress ? progress : progress_noop;
-  std::unordered_map<irs::string_ref, const irs::field_meta*> field_metas;
+  field_meta_map_t field_meta_map;
   compound_field_iterator fields_itr(progress_callback);
   compound_column_iterator_t columns_itr;
   irs::flags fields_features;
@@ -1096,7 +1086,7 @@ bool merge_writer::flush(
       return false; // failed to compute next doc_id
     }
 
-    if (!compute_field_meta(field_metas, fields_features, reader)) {
+    if (!compute_field_meta(field_meta_map, fields_features, reader)) {
       return false;
     }
 
@@ -1136,7 +1126,7 @@ bool merge_writer::flush(
   }
 
   // write field meta and field term data
-  if (!write_fields(cs, track_dir, segment.meta, fields_itr, field_metas, fields_features, progress_callback)) {
+  if (!write_fields(cs, track_dir, segment.meta, fields_itr, fields_features, progress_callback)) {
     return false; // flush failure
   }
 
@@ -1149,10 +1139,7 @@ bool merge_writer::flush(
   // ...........................................................................
   // write segment meta
   // ...........................................................................
-  if (!track_dir.swap_tracked(segment.meta.files)) {
-    IR_FRMT_ERROR("Failed to swap list of tracked files in: %s", __FUNCTION__);
-    return false;
-  }
+  track_dir.flush_tracked(segment.meta.files);
 
   return (result = true);
 }
