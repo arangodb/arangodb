@@ -506,8 +506,8 @@ class MMFilesCollection final : public PhysicalCollection {
   // key locking
   struct KeyLockShard;
   void lockKey(KeyLockInfo& keyLockInfo, arangodb::velocypack::Slice const& key);
-  void unlockKey(KeyLockInfo& keyLockInfo);
-  KeyLockShard& getShardForKey(std::string const& key);
+  void unlockKey(KeyLockInfo& keyLockInfo) noexcept;
+  KeyLockShard& getShardForKey(std::string const& key) noexcept;
 
  private:
   mutable arangodb::MMFilesDitches _ditches;

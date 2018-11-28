@@ -4153,20 +4153,28 @@ void MMFilesCollection::lockKey(KeyLockInfo& keyLockInfo, VPackSlice const& key)
   do {
     {
       MUTEX_LOCKER(locker, shard._mutex);
-      // if insertion into the lock set succeeded, we can
-      // go on. otherwise we just need to carry on
+      // if the insert fails because the key is already in the set,
+      // we carry on trying until the previous value is gone from the set.
+      // if the insert fails because of an out-of-memory exception,
+      // we can let the exception escape from here. no harm will be done
       if (shard._keys.insert(k).second) {
+        // if insertion into the lock set succeeded, we can
+        // go on without the lock. otherwise we just need to carry on trying
         locker.unlock();
-        // store key to unlock later
+
+        // store key to unlock later. the move assignment will not fail
         keyLockInfo.key = std::move(k);
-        break;
+        return;
       }
     }
     std::this_thread::yield();
   } while (!application_features::ApplicationServer::isStopping());
+
+  // we can only get here on shutdown
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
 }
   
-void MMFilesCollection::unlockKey(KeyLockInfo& keyLockInfo) {
+void MMFilesCollection::unlockKey(KeyLockInfo& keyLockInfo) noexcept {
   TRI_ASSERT(keyLockInfo.shouldLock);
   if (!keyLockInfo.key.empty()) {
     MMFilesCollection::KeyLockShard& shard = getShardForKey(keyLockInfo.key); 
@@ -4175,7 +4183,7 @@ void MMFilesCollection::unlockKey(KeyLockInfo& keyLockInfo) {
   }
 }
 
-MMFilesCollection::KeyLockShard& MMFilesCollection::getShardForKey(std::string const& key) {
+MMFilesCollection::KeyLockShard& MMFilesCollection::getShardForKey(std::string const& key) noexcept {
   size_t hash = std::hash<std::string>()(key);
   return _keyLockShards[hash % numKeyLockShards];
 }
