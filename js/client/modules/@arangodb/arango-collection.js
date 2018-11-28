@@ -229,8 +229,8 @@ ArangoCollection.prototype._edgesQuery = function (vertex, direction) {
   return requestResult.edges;
 };
 
-ArangoCollection.prototype.shards = function () {
-  var requestResult = this._database._connection.GET(this._baseurl('shards'));
+ArangoCollection.prototype.shards = function (details) {
+  var requestResult = this._database._connection.GET(this._baseurl('shards') + '?details=' + (details ? 'true' : 'false'));
 
   arangosh.checkRequestResult(requestResult);
 
@@ -1085,7 +1085,7 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
   var rev = null;
   var requestResult;
 
-  if (id === undefined || id === null) {
+  if (id === undefined || id === null || data === undefined || data === null) {
     throw new ArangoError({
       error: true,
       errorCode: internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code,
@@ -1192,7 +1192,7 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
   var rev = null;
   var requestResult;
 
-  if (id === undefined || id === null) {
+  if (id === undefined || id === null || data === undefined || data === null) {
     throw new ArangoError({
       errorNum: internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code,
       errorMessage: internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.message
@@ -1276,7 +1276,7 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
 
   if (rev === null || ignoreRevs) {
     requestResult = this._database._connection.PATCH(url, data);
-  }else {
+  } else {
     requestResult = this._database._connection.PATCH(url, data,
       {'if-match': JSON.stringify(rev) });
   }
