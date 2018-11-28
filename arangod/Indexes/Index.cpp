@@ -1009,6 +1009,36 @@ void Index::warmup(arangodb::transaction::Methods*,
   // it has to explicitly implement it.
 }
 
+/// @brief generate error message
+/// @param key the conflicting key
+Result& Index::addErrorMsg(Result& r, std::string const& key) {
+  // now provide more context based on index
+  r.appendErrorMessage(" - in index ");
+  r.appendErrorMessage(std::to_string(_iid));
+  r.appendErrorMessage(" of type ");
+  r.appendErrorMessage(typeName());
+  
+  // build fields string
+  r.appendErrorMessage(" over '");
+  
+  for (size_t i = 0; i < _fields.size(); i++) {
+    std::string msg;
+    TRI_AttributeNamesToString(_fields[i], msg);
+    r.appendErrorMessage(msg);
+    if (i != _fields.size() - 1) {
+      r.appendErrorMessage(", ");
+    }
+  }
+  r.appendErrorMessage("'");
+  
+  // provide conflicting key
+  if (!key.empty()) {
+    r.appendErrorMessage("; conflicting key: ");
+    r.appendErrorMessage(key);
+  }
+  return r;
+}
+
 /// @brief append the index description to an output stream
 std::ostream& operator<<(std::ostream& stream, arangodb::Index const* index) {
   stream << index->context();

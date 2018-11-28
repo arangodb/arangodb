@@ -382,8 +382,11 @@ void Communicator::createRequestInProgress(NewRequest&& newRequest) {
   // in doubt change the timeout to _MS below and hardcode it to 999 and see if
   // the requests immediately fail
   // if not this hack can go away
-  if (connectTimeout <= 0) {
-    connectTimeout = 5;
+  if (connectTimeout <= 7) {
+    // matthewv: previously arangod default was 1.  libcurl flushes its DNS cache
+    //  every 60 seconds.  Tests showed DNS packets lost under high load.  libcurl
+    //  retries DNS after 5 seconds.  7 seconds allows for one retry plus a little padding.
+    connectTimeout = 7;
   }
 
   curl_easy_setopt(
@@ -467,7 +470,10 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
   }
 
   if (curlHandle) {
-    rip->_callbacks._scheduleMe([curlHandle, this, handle, rc, rip]
+    // defensive code:  intentionally not passing "this".  There is a
+    //   possibility that Scheduler will execute the code after Communicator
+    //   object destroyed.  use shared_from_this() if ever essential.
+    rip->_callbacks._scheduleMe([curlHandle, handle, rc, rip]
     {// lamda rewrite starts
       double connectTime = 0.0;
       LOG_TOPIC(TRACE, Logger::COMMUNICATION)
@@ -485,6 +491,14 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
           << ::buildPrefix(rip->_ticketId) << "curl error details: " << rip->_errorBuffer;
       }
 
+      double namelookup;
+      curl_easy_getinfo(handle, CURLINFO_NAMELOOKUP_TIME, &namelookup);
+
+      if (5.0 <= namelookup) {
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "libcurl DNS lookup took "
+                                                 << namelookup << " seconds.  Consider using static IP addresses.";
+      }
+
       switch (rc) {
         case CURLE_OK: {
           long httpStatusCode = 200;
@@ -495,7 +509,7 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
 
           transformResult(handle, std::move(rip->_responseHeaders),
                           std::move(rip->_responseBody),
-                          dynamic_cast<HttpResponse*>(response.get()));
+                          static_cast<HttpResponse*>(response.get()));
 
           if (httpStatusCode < 400) {
             callSuccessFn(rip->_ticketId, rip->_destination, rip->_callbacks, std::move(response));

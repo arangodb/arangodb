@@ -137,7 +137,7 @@ void RestCollectionHandler::handleCommandGet() {
 
         if (sub == "checksum") {
           // /_api/collection/<identifier>/checksum
-          if (!coll->isLocal()) {
+          if (ServerState::instance()->isCoordinator()) {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
           }
 
@@ -233,14 +233,36 @@ void RestCollectionHandler::handleCommandGet() {
             /*showCount*/ false,
             /*detailedCount*/ true
           );
-
+  
           auto shards = ClusterInfo::instance()->getShardList(
             std::to_string(coll->planId())
           );
-          VPackArrayBuilder arr(&builder, "shards", true);
 
-          for (ShardID const& shard : *shards) {
-            arr->add(VPackValue(shard));
+          if (_request->parsedValue("details", false)) {
+            // with details
+            VPackObjectBuilder arr(&builder, "shards", true);
+            for (ShardID const& shard : *shards) {
+              std::vector<ServerID> servers;
+              ClusterInfo::instance()->getShardServers(shard, servers);
+
+
+              if (servers.empty()) {
+                continue;
+              }
+                
+              VPackArrayBuilder arr(&builder, shard);
+
+              for (auto const& server : servers) {
+                arr->add(VPackValue(server));
+              }
+            }
+          } else {
+            // no details
+            VPackArrayBuilder arr(&builder, "shards", true);
+
+            for (ShardID const& shard : *shards) {
+              arr->add(VPackValue(shard));
+            }
           }
 
         } else {
@@ -299,12 +321,12 @@ void RestCollectionHandler::handleCommandPost() {
   }
 
   // for some "security" a white-list of allowed parameters
-  VPackBuilder filtered = VPackCollection::keep(
-      body,
+  VPackBuilder filtered = VPackCollection::keep(body,
       std::unordered_set<std::string>{
           "doCompact", "isSystem", "id", "isVolatile", "journalSize",
           "indexBuckets", "keyOptions", "waitForSync", "cacheEnabled",
-          "shardKeys", "numberOfShards", "distributeShardsLike", "avoidServers",
+          StaticStrings::ShardKeys, StaticStrings::NumberOfShards,
+          StaticStrings::DistributeShardsLike, "avoidServers",
           "isSmart", "shardingStrategy", "smartGraphAttribute", "replicationFactor", 
           "servers"});
   VPackSlice const parameters = filtered.slice();
@@ -411,7 +433,7 @@ void RestCollectionHandler::handleCommandPut() {
         }
 
         if (res.ok()) {
-            if (!coll->isLocal()) { // ClusterInfo::loadPlan eventually updates status
+            if (ServerState::instance()->isCoordinator()) { // ClusterInfo::loadPlan eventually updates status
               coll->setStatus(TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_LOADED);
             }
 
@@ -430,7 +452,9 @@ void RestCollectionHandler::handleCommandPut() {
                                            "replicationFactor", "cacheEnabled"};
           VPackBuilder props = VPackCollection::keep(body, keep);
 
-          res = methods::Collections::updateProperties(coll.get(), props.slice());
+          res = methods::Collections::updateProperties(
+            *coll, props.slice(), false // always a full-update
+          );
 
           if (res.ok()) {
             collectionRepresentation(builder, name, /*showProperties*/ true,
@@ -440,13 +464,15 @@ void RestCollectionHandler::handleCommandPut() {
 
         } else if (sub == "rename") {
           VPackSlice const newNameSlice = body.get("name");
+
           if (!newNameSlice.isString()) {
             res = Result(TRI_ERROR_ARANGO_ILLEGAL_NAME, "name is empty");
             return;
           }
 
           std::string const newName = newNameSlice.copyString();
-          res = methods::Collections::rename(coll.get(), newName, false);
+
+          res = methods::Collections::rename(*coll, newName, false);
 
           if (res.ok()) {
             collectionRepresentation(builder, newName, /*showProperties*/ false,

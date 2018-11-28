@@ -162,7 +162,13 @@ class features {
     FREQ = 1,
     POS = 2,
     OFFS = 4,
-    PAY = 8
+    PAY = 8,
+    // MSVC2013 requires compile-time constant values for enum combinations
+    // used by switch-case statements
+    FREQ_POS = 3, // FREQ | POS
+    FREQ_POS_OFFS = 7, // FREQ | POS | OFFS
+    FREQ_POS_PAY = 11, // FREQ | POS | PAY
+    FREQ_POS_OFFS_PAY = 15, // FREQ | POS | OFFS | PAY
   };
 
   features() = default;
@@ -229,7 +235,7 @@ inline void prepare_output(
   out = state.dir->create(str);
 
   if (!out) {
-    throw detailed_io_error(string_utils::to_string(
+    throw io_error(string_utils::to_string(
       "failed to create file, path: %s",
       str.c_str()
     ));
@@ -252,7 +258,7 @@ inline void prepare_input(
   in = state.dir->open(str, advice);
 
   if (!in) {
-    throw detailed_io_error(string_utils::to_string(
+    throw io_error(string_utils::to_string(
       "failed to open file, path: %s",
       str.c_str()
     ));
@@ -306,8 +312,8 @@ class postings_writer final: public irs::postings_writer {
   // postings_writer
   // ------------------------------------------
 
-  virtual void prepare(index_output& out, const iresearch::flush_state& state) override;
-  virtual void begin_field(const iresearch::flags& meta) override;
+  virtual void prepare(index_output& out, const irs::flush_state& state) override;
+  virtual void begin_field(const irs::flags& meta) override;
   virtual irs::postings_writer::state write(irs::doc_iterator& docs) override;
   virtual void begin_block() override;
   virtual void encode(data_output& out, const irs::term_meta& attrs) override;
@@ -487,7 +493,7 @@ postings_writer::postings_writer(bool volatile_attributes)
   attrs_.emplace(docs_);
 }
 
-void postings_writer::prepare(index_output& out, const iresearch::flush_state& state) {
+void postings_writer::prepare(index_output& out, const irs::flush_state& state) {
   assert(state.dir);
   assert(!state.name.null());
 
@@ -542,7 +548,7 @@ void postings_writer::prepare(index_output& out, const iresearch::flush_state& s
   docs_.value.reset(state.doc_count);
 }
 
-void postings_writer::begin_field(const iresearch::flags& field) {
+void postings_writer::begin_field(const irs::flags& field) {
   features_ = ::features(field);
   docs_.value.clear();
   last_state.clear();
@@ -705,7 +711,7 @@ void postings_writer::add_position(uint32_t pos, const offset* offs, const paylo
     }
 
     if (offs) {
-      assert(features_.payload() && pay_ && pay_->out);
+      assert(features_.offset() && pay_ && pay_->out);
       pay_->flush_offsets(buf);
     }
   }
@@ -985,7 +991,7 @@ FORCE_INLINE void skip_offsets(index_input& in) {
 ///////////////////////////////////////////////////////////////////////////////
 /// @class doc_iterator
 ///////////////////////////////////////////////////////////////////////////////
-class doc_iterator : public iresearch::doc_iterator {
+class doc_iterator : public irs::doc_iterator {
  public:
   DECLARE_UNIQUE_PTR(doc_iterator);
 
@@ -1018,12 +1024,13 @@ class doc_iterator : public iresearch::doc_iterator {
     // init document stream
     if (term_state_.docs_count > 1) {
       if (!doc_in_) {
-        doc_in_ = doc_in->reopen();
+        doc_in_ = doc_in->reopen(); // reopen thread-safe stream
 
         if (!doc_in_) {
-          IR_FRMT_FATAL("Failed to reopen document input in: %s", __FUNCTION__);
+          // implementation returned wrong pointer
+          IR_FRMT_ERROR("Failed to reopen document input in: %s", __FUNCTION__);
 
-          throw detailed_io_error("failed to reopen document input");
+          throw io_error("failed to reopen document input");
         }
       }
 
@@ -1040,7 +1047,7 @@ class doc_iterator : public iresearch::doc_iterator {
     }
 
     seek_to_block(target);
-    iresearch::seek(*this, target);
+    irs::seek(*this, target);
     return value();
   }
 
@@ -1232,7 +1239,14 @@ void doc_iterator::seek_to_block(doc_id_t target) {
 
     // init skip writer in lazy fashion
     if (!skip_) {
-      index_input::ptr skip_in = doc_in_->dup();
+      auto skip_in = doc_in_->dup();
+
+      if (!skip_in) {
+        IR_FRMT_ERROR("Failed to duplicate input in: %s", __FUNCTION__);
+
+        throw io_error("Failed to duplicate document input");
+      }
+
       skip_in->seek(term_state_.doc_start + term_state_.e_skip_start);
 
       skip_.prepare(
@@ -1294,7 +1308,7 @@ class mask_doc_iterator final: public DocIterator {
 
   static_assert(
     std::is_base_of<irs::doc_iterator, doc_iterator_t>::value,
-    "DocIterator must be derived from iresearch::doc_iterator"
+    "DocIterator must be derived from irs::doc_iterator"
    );
 
   explicit mask_doc_iterator(const document_mask& mask)
@@ -1373,12 +1387,13 @@ class pos_iterator: public position {
 
   // prepares iterator to work
   virtual void prepare(const doc_state& state) {
-    pos_in_ = state.pos_in->reopen();
+    pos_in_ = state.pos_in->reopen(); // reopen thread-safe stream
 
     if (!pos_in_) {
-      IR_FRMT_FATAL("Failed to reopen positions input in: %s", __FUNCTION__);
+      // implementation returned wrong pointer
+      IR_FRMT_ERROR("Failed to reopen positions input in: %s", __FUNCTION__);
 
-      throw detailed_io_error("failed to reopen positions input");
+      throw io_error("failed to reopen positions input");
     }
 
     pos_in_->seek(state.term_state->pos_start);
@@ -1486,12 +1501,13 @@ class offs_pay_iterator final: public pos_iterator {
 
   virtual void prepare(const doc_state& state) override {
     pos_iterator::prepare(state);
-    pay_in_ = state.pay_in->reopen();
+    pay_in_ = state.pay_in->reopen(); // reopen thread-safe stream
 
     if (!pay_in_) {
-      IR_FRMT_FATAL("Failed to reopen payload input in: %s", __FUNCTION__);
+      // implementation returned wrong pointer
+      IR_FRMT_ERROR("Failed to reopen payload input in: %s", __FUNCTION__);
 
-      throw detailed_io_error("failed to reopen payload input");
+      throw io_error("failed to reopen payload input");
     }
 
     pay_in_->seek(state.term_state->pay_start);
@@ -1631,12 +1647,13 @@ class offs_iterator final : public pos_iterator {
 
   virtual void prepare(const doc_state& state) override {
     pos_iterator::prepare(state);
-    pay_in_ = state.pay_in->reopen();
+    pay_in_ = state.pay_in->reopen(); // reopen thread-safe stream
 
     if (!pay_in_) {
-      IR_FRMT_FATAL("Failed to reopen payload input in: %s", __FUNCTION__);
+      // implementation returned wrong pointer
+      IR_FRMT_ERROR("Failed to reopen payload input in: %s", __FUNCTION__);
 
-      throw detailed_io_error("failed to reopen payload input");
+      throw io_error("failed to reopen payload input");
     }
 
     pay_in_->seek(state.term_state->pay_start);
@@ -1741,12 +1758,13 @@ class pay_iterator final : public pos_iterator {
 
   virtual void prepare(const doc_state& state) override {
     pos_iterator::prepare(state);
-    pay_in_ = state.pay_in->reopen();
+    pay_in_ = state.pay_in->reopen(); // reopen thread-safe stream
 
     if (!pay_in_) {
-      IR_FRMT_FATAL("Failed to reopen payload input in: %s", __FUNCTION__);
+      // implementation returned wrong pointer
+      IR_FRMT_ERROR("Failed to reopen payload input in: %s", __FUNCTION__);
 
-      throw detailed_io_error("failed to reopen payload input");
+      throw io_error("failed to reopen payload input");
     }
 
     pay_in_->seek(state.term_state->pay_start);
@@ -1954,7 +1972,7 @@ void pos_doc_iterator<PosItrType>::prepare_attributes(
 // --SECTION--                                                index_meta_writer
 // ----------------------------------------------------------------------------
 
-struct index_meta_writer final: public iresearch::index_meta_writer {
+struct index_meta_writer final: public irs::index_meta_writer {
   static const string_ref FORMAT_NAME;
   static const string_ref FORMAT_PREFIX;
   static const string_ref FORMAT_PREFIX_TMP;
@@ -1963,9 +1981,9 @@ struct index_meta_writer final: public iresearch::index_meta_writer {
   static const int32_t FORMAT_MAX = FORMAT_MIN;
 
   virtual std::string filename(const index_meta& meta) const override;
-  using iresearch::index_meta_writer::prepare;
+  using irs::index_meta_writer::prepare;
   virtual bool prepare(directory& dir, index_meta& meta) override;
-  virtual void commit() override;
+  virtual bool commit() override;
   virtual void rollback() NOEXCEPT override;
  private:
   directory* dir_ = nullptr;
@@ -2013,16 +2031,18 @@ bool index_meta_writer::prepare(directory& dir, index_meta& meta) {
 
   prepare(meta); // prepare meta before generating filename
 
-  auto seg_file = file_name<irs::index_meta_writer>(meta);
+  const auto seg_file = file_name<irs::index_meta_writer>(meta);
 
-  try {
-    auto out = dir.create(seg_file);
+  auto out = dir.create(seg_file);
 
-    if (!out) {
-      IR_FRMT_ERROR("Failed to create output file, path: %s", seg_file.c_str());
-      return false;
-    }
+  if (!out) {
+    throw io_error(string_utils::to_string(
+      "Failed to create file, path: %s",
+      seg_file.c_str()
+    ));
+  }
 
+  {
     format_utils::write_header(*out, FORMAT_NAME, FORMAT_MAX);
     out->write_vlong(meta.generation());
     out->write_long(meta.counter());
@@ -2036,46 +2056,48 @@ bool index_meta_writer::prepare(directory& dir, index_meta& meta) {
 
     format_utils::write_footer(*out);
     // important to close output here
-  } catch (const io_error& e) {
-    IR_FRMT_ERROR("Caught i/o error, reason: %s", e.what());
-    return false;
   }
 
   if (!dir.sync(seg_file)) {
-    IR_FRMT_ERROR("Failed to sync output file, path: %s", seg_file.c_str());
-    return false;
+    throw io_error(string_utils::to_string(
+      "failed to sync file, path: %s",
+      seg_file.c_str()
+    ));
   }
 
+  // only noexcept operations below
   dir_ = &dir;
   meta_ = &meta;
 
   return true;
 }
 
-void index_meta_writer::commit() {
+bool index_meta_writer::commit() {
   if (!meta_) {
-    return;
+    return false;
   }
 
-  auto src = file_name<irs::index_meta_writer>(*meta_);
-  auto dst = file_name<irs::index_meta_reader>(*meta_);
+  const auto src = file_name<irs::index_meta_writer>(*meta_);
+  const auto dst = file_name<irs::index_meta_reader>(*meta_);
 
-  try {
-    auto clear_pending = make_finally([this]{ meta_ = nullptr; });
-
-    if (!dir_->rename(src, dst)) {
-      throw detailed_io_error(string_utils::to_string(
-        "failed to rename file, src path: '%s' dst path: '%s'",
-        src.c_str(), dst.c_str()
-      ));
-    }
-
-    complete(*meta_);
-    dir_ = nullptr;
-  } catch ( ... ) {
+  if (!dir_->rename(src, dst)) {
     rollback();
-    throw;
+
+    throw io_error(string_utils::to_string(
+      "failed to rename file, src path: '%s' dst path: '%s'",
+      src.c_str(),
+      dst.c_str()
+    ));
   }
+
+  // only noexcept operations below
+  complete(*meta_);
+
+  // clear pending state
+  meta_ = nullptr;
+  dir_ = nullptr;
+
+  return true;
 }
 
 void index_meta_writer::rollback() NOEXCEPT {
@@ -2083,12 +2105,23 @@ void index_meta_writer::rollback() NOEXCEPT {
     return;
   }
 
-  auto seg_file = file_name<irs::index_meta_writer>(*meta_);
+  std::string seg_file;
+
+  try {
+    seg_file = file_name<irs::index_meta_writer>(*meta_);
+  } catch (const std::exception& e) {
+    IR_FRMT_ERROR("Caught error while generating file name for index meta, reason: %s", e.what());
+    return;
+  } catch (...) {
+    IR_FRMT_ERROR("Caught error while generating file name for index meta");
+    return;
+  }
 
   if (!dir_->remove(seg_file)) { // suppress all errors
     IR_FRMT_ERROR("Failed to remove file, path: %s", seg_file.c_str());
   }
 
+  // clear pending state
   dir_ = nullptr;
   meta_ = nullptr;
 }
@@ -2110,7 +2143,7 @@ uint64_t parse_generation(const std::string& segments_file) {
 bool index_meta_reader::last_segments_file(const directory& dir, std::string& out) const {
   uint64_t max_gen = 0;
   directory::visitor_f visitor = [&out, &max_gen] (std::string& name) {
-    if (iresearch::starts_with(name, index_meta_writer::FORMAT_PREFIX)) {
+    if (irs::starts_with(name, index_meta_writer::FORMAT_PREFIX)) {
       const uint64_t gen = parse_generation(name);
 
       if (type_limits<type_t::index_gen_t>::valid(gen) && gen > max_gen) {
@@ -2139,7 +2172,7 @@ void index_meta_reader::read(
   );
 
   if (!in) {
-    throw detailed_io_error(string_utils::to_string(
+    throw io_error(string_utils::to_string(
       "failed to open file, path: %s",
       meta_file.c_str()
     ));
@@ -2187,18 +2220,21 @@ struct segment_meta_writer final : public irs::segment_meta_writer{
   static const int32_t FORMAT_MIN = 0;
   static const int32_t FORMAT_MAX = FORMAT_MIN;
 
-  enum flags_t {
+  enum {
     HAS_COLUMN_STORE = 1,
   };
 
-  virtual std::string filename(const segment_meta& meta) const override;
-  virtual void write(directory& dir, const segment_meta& meta) override;
+  virtual void write(
+    directory& dir,
+    std::string& filename,
+    const segment_meta& meta
+  ) override;
 }; // segment_meta_writer
 
 template<>
 std::string file_name<irs::segment_meta_writer, segment_meta>(const segment_meta& meta) {
   return irs::file_name(meta.name, meta.version, segment_meta_writer::FORMAT_EXT);
-};
+}
 
 MSVC2015_ONLY(__pragma(warning(push)))
 MSVC2015_ONLY(__pragma(warning(disable: 4592))) // symbol will be dynamically initialized (implementation limitation) false positive bug in VS2015.1
@@ -2206,21 +2242,20 @@ const string_ref segment_meta_writer::FORMAT_EXT = "sm";
 const string_ref segment_meta_writer::FORMAT_NAME = "iresearch_10_segment_meta";
 MSVC2015_ONLY(__pragma(warning(pop)))
 
-std::string segment_meta_writer::filename(const segment_meta& meta) const {
-  return file_name<irs::segment_meta_writer>(meta);
-}
-
-void segment_meta_writer::write(directory& dir, const segment_meta& meta) {
-  auto meta_file = file_name<irs::segment_meta_writer>(meta);
+void segment_meta_writer::write(directory& dir, std::string& meta_file, const segment_meta& meta) {
+  meta_file = file_name<irs::segment_meta_writer>(meta);
   auto out = dir.create(meta_file);
-  byte_type flags = meta.column_store ? segment_meta_writer::flags_t::HAS_COLUMN_STORE : 0;
 
   if (!out) {
-    throw detailed_io_error(string_utils::to_string(
+    throw io_error(string_utils::to_string(
       "failed to create file, path: %s",
       meta_file.c_str()
     ));
   }
+
+  const byte_type flags = meta.column_store
+    ? segment_meta_writer::HAS_COLUMN_STORE
+    : 0;
 
   format_utils::write_header(*out, FORMAT_NAME, FORMAT_MAX);
   write_string(*out, meta.name);
@@ -2229,7 +2264,7 @@ void segment_meta_writer::write(directory& dir, const segment_meta& meta) {
   out->write_vlong(meta.docs_count - meta.live_docs_count); // docs_count >= live_docs_count
   out->write_vlong(meta.size);
   out->write_byte(flags);
-  write_strings( *out, meta.files );
+  write_strings(*out, meta.files);
   format_utils::write_footer(*out);
 }
 
@@ -2259,7 +2294,7 @@ void segment_meta_reader::read(
   );
 
   if (!in) {
-    throw detailed_io_error(string_utils::to_string(
+    throw io_error(string_utils::to_string(
       "failed to open file, path: %s",
       meta_file.c_str()
     ));
@@ -2290,7 +2325,7 @@ void segment_meta_reader::read(
   const auto flags = in->read_byte();
   auto files = read_strings<segment_meta::file_set>(*in);
 
-  if (flags & ~(segment_meta_writer::flags_t::HAS_COLUMN_STORE)) {
+  if (flags & ~(segment_meta_writer::HAS_COLUMN_STORE)) {
     throw index_error(
       std::string("while reading segment meta '" + name
       + "', error: use of unsupported flags '" + std::to_string(flags) + "'")
@@ -2305,7 +2340,7 @@ void segment_meta_reader::read(
 
   meta.name = std::move(name);
   meta.version = version;
-  meta.column_store = flags & segment_meta_writer::flags_t::HAS_COLUMN_STORE;
+  meta.column_store = flags & segment_meta_writer::HAS_COLUMN_STORE;
   meta.docs_count = docs_count;
   meta.live_docs_count = live_docs_count;
   meta.size = size;
@@ -2339,7 +2374,7 @@ class document_mask_writer final: public irs::document_mask_writer {
 
 template<>
 std::string file_name<irs::document_mask_writer, segment_meta>(const segment_meta& meta) {
-  return iresearch::file_name(meta.name, meta.version, document_mask_writer::FORMAT_EXT);
+  return file_name(meta.name, meta.version, document_mask_writer::FORMAT_EXT);
 };
 
 MSVC2015_ONLY(__pragma(warning(push)))
@@ -2361,7 +2396,7 @@ void document_mask_writer::write(
   auto out = dir.create(filename);
 
   if (!out) {
-    throw detailed_io_error(string_utils::to_string(
+    throw io_error(string_utils::to_string(
       "Failed to create file, path: %s",
       filename.c_str()
     ));
@@ -2392,31 +2427,29 @@ class document_mask_reader final: public irs::document_mask_reader {
   virtual bool read(
     const directory& dir,
     const segment_meta& meta,
-    document_mask& docs_mask,
-    bool* seen = nullptr
+    document_mask& docs_mask
   ) override;
 }; // document_mask_reader
 
 bool document_mask_reader::read(
     const directory& dir,
     const segment_meta& meta,
-    document_mask& docs_mask,
-    bool* seen /*= nullptr*/
+    document_mask& docs_mask
 ) {
   const auto in_name = file_name<irs::document_mask_writer>(meta);
+
   bool exists;
 
-  // possible that the file does not exist since document_mask is optional
-  if (dir.exists(exists, in_name) && !exists) {
-    if (!seen) {
-      IR_FRMT_ERROR("Failed to open file, path: %s", in_name.c_str());
+  if (!dir.exists(exists, in_name)) {
+    throw io_error(string_utils::to_string(
+      "failed to check existence of file, path: %s",
+      in_name.c_str()
+    ));
+  }
 
-      return false;
-    }
-
-    *seen = false;
-
-    return true;
+  if (!exists) {
+    // possible that the file does not exist since document_mask is optional
+    return false;
   }
 
   auto in = dir.open(
@@ -2424,16 +2457,13 @@ bool document_mask_reader::read(
   );
 
   if (!in) {
-    IR_FRMT_ERROR("Failed to open file, path: %s", in_name.c_str());
-
-    return false;
+    throw io_error(string_utils::to_string(
+      "failed to open file, path: %s",
+      in_name.c_str()
+    ));
   }
 
   const auto checksum = format_utils::checksum(*in);
-
-  if (seen) {
-    *seen = true;
-  }
 
   format_utils::check_header(
     *in,
@@ -2470,7 +2500,7 @@ std::string file_name(const M& meta); // forward declaration
 template<typename T, typename M>
 void file_name(std::string& buf, const M& meta); // forward declaration
 
-class meta_writer final : public iresearch::column_meta_writer {
+class meta_writer final : public irs::column_meta_writer {
  public:
   static const string_ref FORMAT_NAME;
   static const string_ref FORMAT_EXT;
@@ -2478,7 +2508,7 @@ class meta_writer final : public iresearch::column_meta_writer {
   static const int32_t FORMAT_MIN = 0;
   static const int32_t FORMAT_MAX = FORMAT_MIN;
 
-  virtual bool prepare(directory& dir, const segment_meta& meta) override;
+  virtual void prepare(directory& dir, const segment_meta& meta) override;
   virtual void write(const std::string& name, field_id id) override;
   virtual void flush() override;
 
@@ -2501,22 +2531,22 @@ std::string file_name<column_meta_writer, segment_meta>(
   return irs::file_name(meta.name, columns::meta_writer::FORMAT_EXT);
 };
 
-bool meta_writer::prepare(directory& dir, const segment_meta& meta) {
+void meta_writer::prepare(directory& dir, const segment_meta& meta) {
   auto filename = file_name<column_meta_writer>(meta);
 
   out_ = dir.create(filename);
 
   if (!out_) {
-    IR_FRMT_ERROR("Failed to create file, path: %s", filename.c_str());
-    return false;
+    throw io_error(string_utils::to_string(
+      "Failed to create file, path: %s", filename.c_str()
+    ));
   }
 
   format_utils::write_header(*out_, FORMAT_NAME, FORMAT_MAX);
-
-  return true;
 }
 
 void meta_writer::write(const std::string& name, field_id id) {
+  assert(out_);
   out_->write_vlong(id);
   write_string(*out_, name);
   ++count_;
@@ -2524,6 +2554,7 @@ void meta_writer::write(const std::string& name, field_id id) {
 }
 
 void meta_writer::flush() {
+  assert(out_);
   out_->write_long(count_); // write total number of written objects
   out_->write_long(max_id_); // write highest column id written
   format_utils::write_footer(*out_);
@@ -2531,7 +2562,7 @@ void meta_writer::flush() {
   count_ = 0;
 }
 
-class meta_reader final : public iresearch::column_meta_reader {
+class meta_reader final : public irs::column_meta_reader {
  public:
   virtual bool prepare(
     const directory& dir,
@@ -2553,15 +2584,31 @@ bool meta_reader::prepare(
     size_t& count,
     field_id& max_id
 ) {
-  auto filename = file_name<column_meta_writer>(meta);
+  const auto filename = file_name<column_meta_writer>(meta);
+
+  bool exists;
+
+  if (!dir.exists(exists, filename)) {
+    throw io_error(string_utils::to_string(
+      "failed to check existence of file, path: %s",
+      filename.c_str()
+    ));
+  }
+
+  if (!exists) {
+    // column meta is optional
+    return false;
+  }
 
   auto in = dir.open(
     filename, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE
   );
 
   if (!in) {
-    IR_FRMT_ERROR("Failed to open file, path: %s", filename.c_str());
-    return false;
+    throw io_error(string_utils::to_string(
+      "failed to open file, path: %s",
+      filename.c_str()
+    ));
   }
 
   const auto checksum = format_utils::checksum(*in);
@@ -2571,6 +2618,14 @@ bool meta_reader::prepare(
   );
   count = in->read_long(); // read number of objects to read
   max_id = in->read_long(); // read highest column id written
+
+  if (max_id >= irs::integer_traits<size_t>::const_max) {
+    throw index_error(string_utils::to_string(
+      "invalid max column id: " IR_UINT64_T_SPECIFIER ", path: %s",
+      max_id, filename.c_str()
+    ));
+  }
+
   format_utils::check_footer(*in, checksum);
 
   in->seek(0);
@@ -2710,7 +2765,7 @@ void read_compact(
     decode_buf.size()
   );
 
-  if (!irs::type_limits<iresearch::type_t::address_t>::valid(buf_size)) {
+  if (!irs::type_limits<irs::type_t::address_t>::valid(buf_size)) {
     throw irs::index_error(string_utils::to_string(
       "while reading compact, error: invalid buffer size '" IR_SIZE_T_SPECIFIER "'",
       buf_size
@@ -2848,7 +2903,7 @@ class index_block {
 //////////////////////////////////////////////////////////////////////////////
 /// @class writer
 //////////////////////////////////////////////////////////////////////////////
-class writer final : public iresearch::columnstore_writer {
+class writer final : public irs::columnstore_writer {
  public:
   static const int32_t FORMAT_MIN = 0;
   static const int32_t FORMAT_MAX = FORMAT_MIN;
@@ -2856,12 +2911,13 @@ class writer final : public iresearch::columnstore_writer {
   static const string_ref FORMAT_NAME;
   static const string_ref FORMAT_EXT;
 
-  virtual bool prepare(directory& dir, const segment_meta& meta) override;
+  virtual void prepare(directory& dir, const segment_meta& meta) override;
   virtual column_t push_column() override;
-  virtual bool flush() override;
+  virtual bool commit() override;
+  virtual void rollback() NOEXCEPT override;
 
  private:
-  class column final : public iresearch::columnstore_writer::column_output {
+  class column final : public irs::columnstore_writer::column_output {
    public:
     explicit column(writer& ctx)
       : ctx_(&ctx),
@@ -3015,15 +3071,7 @@ template<>
 std::string file_name<columnstore_writer, segment_meta>(
     const segment_meta& meta
 ) {
-  return irs::file_name(meta.name, columns::writer::FORMAT_EXT);
-};
-
-template<>
-void file_name<columnstore_writer, segment_meta>(
-    std::string& buf,
-    const segment_meta& meta
-) {
-  irs::file_name(buf, meta.name, columns::writer::FORMAT_EXT);
+  return file_name(meta.name, columns::writer::FORMAT_EXT);
 };
 
 MSVC2015_ONLY(__pragma(warning(push)))
@@ -3032,23 +3080,27 @@ const string_ref writer::FORMAT_NAME = "iresearch_10_columnstore";
 const string_ref writer::FORMAT_EXT = "cs";
 MSVC2015_ONLY(__pragma(warning(pop)))
 
-bool writer::prepare(directory& dir, const segment_meta& meta) {
+void writer::prepare(directory& dir, const segment_meta& meta) {
   columns_.clear();
 
-  dir_ = &dir;
-  file_name<columnstore_writer>(filename_, meta);
-  data_out_ = dir.create(filename_);
+  auto filename = file_name<columnstore_writer>(meta);
+  auto data_out = dir.create(filename);
 
-  if (!data_out_) {
-    IR_FRMT_ERROR("Failed to create file, path: %s", filename_.c_str());
-    return false;
+  if (!data_out) {
+    throw io_error(string_utils::to_string(
+      "Failed to create file, path: %s",
+      filename.c_str()
+    ));
   }
 
-  format_utils::write_header(*data_out_, FORMAT_NAME, FORMAT_MAX);
+  format_utils::write_header(*data_out, FORMAT_NAME, FORMAT_MAX);
 
   alloc_ = &directory_utils::get_allocator(dir);
 
-  return true;
+  // noexcept block
+  dir_ = &dir;
+  data_out_ = std::move(data_out);
+  filename_ = std::move(filename);
 }
 
 columnstore_writer::column_t writer::push_column() {
@@ -3067,7 +3119,9 @@ columnstore_writer::column_t writer::push_column() {
   });
 }
 
-bool writer::flush() {
+bool writer::commit() {
+  assert(dir_);
+
   // remove all empty columns from tail
   while (!columns_.empty() && columns_.back().empty()) {
     columns_.pop_back();
@@ -3100,10 +3154,17 @@ bool writer::flush() {
 
   data_out_->write_long(block_index_ptr);
   format_utils::write_footer(*data_out_);
-  data_out_.reset();
-  columns_.clear(); // ensure next flush (without prepare(...)) will use the section without 'data_out_'
+
+  rollback();
 
   return true;
+}
+
+void writer::rollback() NOEXCEPT {
+  filename_.clear();
+  dir_ = nullptr;
+  data_out_.reset(); // close output
+  columns_.clear(); // ensure next flush (without prepare(...)) will use the section without 'data_out_'
 }
 
 template<typename Block, typename Allocator>
@@ -3112,7 +3173,7 @@ class block_cache : irs::util::noncopyable {
   block_cache(const Allocator& alloc = Allocator())
     : cache_(alloc) {
   }
-  block_cache(block_cache&& rhs)
+  block_cache(block_cache&& rhs) NOEXCEPT
     : cache_(std::move(rhs.cache_)) {
   }
 
@@ -3122,7 +3183,7 @@ class block_cache : irs::util::noncopyable {
     return cache_.back();
   }
 
-  void pop_back() {
+  void pop_back() NOEXCEPT {
     cache_.pop_back();
   }
 
@@ -3224,12 +3285,11 @@ class sparse_block : util::noncopyable {
     const bstring* data_{};
   }; // iterator
 
-  bool load(index_input& in, decompressor& decomp, bstring& buf) {
+  void load(index_input& in, decompressor& decomp, bstring& buf) {
     const uint32_t size = in.read_vint(); // total number of entries in a block
 
     if (!size) {
-      IR_FRMT_ERROR("Empty 'sparse_block' found in columnstore");
-      return false;
+      throw index_error("Empty 'sparse_block' found in columnstore");
     }
 
     auto begin = std::begin(index_);
@@ -3253,8 +3313,6 @@ class sparse_block : util::noncopyable {
     // read data
     read_compact(in, decomp, buf, data_);
     end_ = index_ + size;
-
-    return true;
   }
 
   bool value(doc_id_t key, bytes_ref& out) const {
@@ -3413,19 +3471,20 @@ class dense_block : util::noncopyable {
     doc_id_t base_{};
   }; // iterator
 
-  bool load(index_input& in, decompressor& decomp, bstring& buf) {
+  void load(index_input& in, decompressor& decomp, bstring& buf) {
     const uint32_t size = in.read_vint(); // total number of entries in a block
 
     if (!size) {
-      IR_FRMT_ERROR("Empty 'dense_block' found in columnstore");
-      return false;
+      throw index_error("Empty 'dense_block' found in columnstore");
     }
 
     // dense block must be encoded with RL encoding, avg must be equal to 1
     uint32_t avg;
     if (!encode::avg::read_block_rl32(in, base_, avg) || 1 != avg) {
-      // invalid block type
-      return false;
+      throw index_error(string_utils::to_string(
+        "Invalid RL encoding in 'dense_block', base_key=%du, avg_delta=%du",
+        base_, avg
+      ));
     }
 
     // read data offsets
@@ -3441,8 +3500,6 @@ class dense_block : util::noncopyable {
     // read data
     read_compact(in, decomp, buf, data_);
     end_ = index_ + size;
-
-    return true;
   }
 
   bool value(doc_id_t key, bytes_ref& out) const {
@@ -3512,104 +3569,113 @@ class dense_block : util::noncopyable {
   doc_id_t base_{ };
 }; // dense_block
 
-class dense_fixed_length_block : util::noncopyable {
+class dense_fixed_offset_block : util::noncopyable {
  public:
   class iterator {
    public:
     bool seek(doc_id_t doc) NOEXCEPT {
-      if (doc < value_) {
-        doc = value_;
+      if (doc < value_next_) {
+        if (!type_limits<type_t::doc_id_t>::valid(value_)) {
+          return next();
+        }
+
+        // don't seek backwards
+        return true;
       }
 
-      // FIXME refactor
-      begin_ = avg_length_*(doc-base_);
-
+      value_next_ = doc;
       return next();
     }
 
-    const irs::doc_id_t& value() const NOEXCEPT { return value_; }
+    const doc_id_t& value() const NOEXCEPT {
+      return value_;
+    }
 
-    const irs::bytes_ref& value_payload() const NOEXCEPT {
+    const bytes_ref& value_payload() const NOEXCEPT {
       return value_payload_;
     }
 
     bool next() NOEXCEPT {
-      if (begin_ >= end_) {
+      if (value_next_ >= value_end_) {
+        seal();
         return false;
       }
 
-      value_ = base_ + begin_ / avg_length_;
-      next_value();
+      value_ = value_next_++;
+      const auto offset = (value_ - value_min_)*avg_length_;
+
+      value_payload_ = bytes_ref(
+        data_.c_str() + offset,
+        value_ == value_back_ ? data_.size() - offset : avg_length_
+      );
 
       return true;
     }
 
     void seal() NOEXCEPT {
-      value_ = irs::type_limits<irs::type_t::doc_id_t>::eof();
-      value_payload_ = irs::bytes_ref::NIL;
-      begin_ = end_ = 0;
-    }
-
-    void reset(const dense_fixed_length_block& block) NOEXCEPT {
-      value_ = block.base_key_;
+      value_ = type_limits<type_t::doc_id_t>::eof();
+      value_next_ = type_limits<type_t::doc_id_t>::eof();
+      value_min_ = type_limits<type_t::doc_id_t>::eof();
+      value_end_ = type_limits<type_t::doc_id_t>::eof();
       value_payload_ = bytes_ref::NIL;
-      begin_ = 0;
-      end_ = block.avg_length_*block.size_;
+    }
+
+    void reset(const dense_fixed_offset_block& block) NOEXCEPT {
       avg_length_ = block.avg_length_;
-      base_ = block.base_key_;
-      data_ = &block.data_;
+      data_ = block.data_;
+      value_payload_ = bytes_ref::NIL;
+      value_ = type_limits<type_t::doc_id_t>::invalid();
+      value_next_ = block.base_key_;
+      value_min_ = block.base_key_;
+      value_end_ = value_min_ + block.size_;
+      value_back_ = value_end_ - 1;
     }
 
-    bool operator==(const dense_fixed_length_block& rhs) const NOEXCEPT {
-      return data_ == &rhs.data_;
+    bool operator==(const dense_fixed_offset_block& rhs) const NOEXCEPT {
+      return data_.c_str() == rhs.data_.c_str();
     }
 
-    bool operator!=(const dense_fixed_length_block& rhs) const NOEXCEPT {
+    bool operator!=(const dense_fixed_offset_block& rhs) const NOEXCEPT {
       return !(*this == rhs);
     }
 
    private:
-    irs::bytes_ref value_payload_ { irs::bytes_ref::NIL };
-    irs::doc_id_t value_ { irs::type_limits<irs::type_t::doc_id_t>::invalid() };
-
-    // note that function increases 'begin_' value
-    void next_value() NOEXCEPT {
-      value_payload_ = bytes_ref(data_->c_str() + begin_, avg_length_);
-      begin_ += avg_length_;
-    }
-
-    uint64_t begin_{}; // start offset
-    uint64_t end_{}; // end offset
     uint64_t avg_length_{}; // average value length
-    doc_id_t base_{}; // base doc_id
-    const bstring* data_{};
+    bytes_ref data_;
+    bytes_ref value_payload_;
+    doc_id_t value_ { type_limits<type_t::doc_id_t>::invalid() }; // current value
+    doc_id_t value_next_{ type_limits<type_t::doc_id_t>::invalid() }; // next value
+    doc_id_t value_min_{}; // min doc_id
+    doc_id_t value_end_{}; // after the last valid doc id
+    doc_id_t value_back_{}; // last valid doc id
   }; // iterator
 
-  bool load(index_input& in, decompressor& decomp, bstring& buf) {
+  void load(index_input& in, decompressor& decomp, bstring& buf) {
     size_ = in.read_vint(); // total number of entries in a block
 
     if (!size_) {
-      IR_FRMT_ERROR("Empty 'dense_fixed_length_block' found in columnstore");
-      return false;
+      throw index_error("Empty 'dense_fixed_offset_block' found in columnstore");
     }
 
     // dense block must be encoded with RL encoding, avg must be equal to 1
     uint32_t avg;
     if (!encode::avg::read_block_rl32(in, base_key_, avg) || 1 != avg) {
-      // invalid block type
-      return false;
+      throw index_error(string_utils::to_string(
+        "Invalid RL encoding in 'dense_fixed_offset_block', base_key=%du, avg_delta=%du",
+        base_key_, avg
+      ));
     }
 
     // fixed length block must be encoded with RL encoding
     if (!encode::avg::read_block_rl32(in, base_offset_, avg_length_)) {
-      // invalid block type
-      return false;
+      throw index_error(string_utils::to_string(
+        "Invalid RL encoding in 'dense_fixed_offset_block', base_offset=%du, avg_length=%du",
+        base_key_, avg_length_
+      ));
     }
 
     // read data
     read_compact(in, decomp, buf, data_);
-
-    return true;
   }
 
   bool value(doc_id_t key, bytes_ref& out) const {
@@ -3664,7 +3730,7 @@ class dense_fixed_length_block : util::noncopyable {
   uint32_t avg_length_{}; // entry length
   doc_id_t size_{}; // total number of entries
   bstring data_;
-}; // dense_fixed_length_block
+}; // dense_fixed_offset_block
 
 class sparse_mask_block : util::noncopyable {
  public:
@@ -3730,12 +3796,11 @@ class sparse_mask_block : util::noncopyable {
     );
   }
 
-  bool load(index_input& in, decompressor& /*decomp*/, bstring& buf) {
+  void load(index_input& in, decompressor& /*decomp*/, bstring& buf) {
     size_ = in.read_vint(); // total number of entries in a block
 
     if (!size_) {
-      IR_FRMT_ERROR("Empty 'sparse_mask_block' found in columnstore");
-      return false;
+      throw index_error("Empty 'sparse_mask_block' found in columnstore");
     }
 
     auto begin = std::begin(keys_);
@@ -3748,11 +3813,8 @@ class sparse_mask_block : util::noncopyable {
 
     // mask block has no data, so all offsets should be equal to 0
     if (!encode::avg::check_block_rl64(in, 0)) {
-      // invalid block type
-      return false;
+      throw index_error("'sparse_mask_block' expected to contain no data");
     }
-
-    return true;
   }
 
   bool value(doc_id_t key, bytes_ref& /*reader*/) const {
@@ -3855,30 +3917,28 @@ class dense_mask_block {
       max_(type_limits<type_t::doc_id_t>::invalid()) {
   }
 
-  bool load(index_input& in, decompressor& /*decomp*/, bstring& /*buf*/) {
+  void load(index_input& in, decompressor& /*decomp*/, bstring& /*buf*/) {
     const auto size = in.read_vint(); // total number of entries in a block
 
     if (!size) {
-      IR_FRMT_ERROR("Empty 'dense_mask_block' found in columnstore");
-      return false;
+      throw index_error("Empty 'dense_mask_block' found in columnstore");
     }
 
     // dense block must be encoded with RL encoding, avg must be equal to 1
     uint32_t avg;
     if (!encode::avg::read_block_rl32(in, min_, avg) || 1 != avg) {
-      // invalid block type
-      return false;
+      throw index_error(string_utils::to_string(
+        "Invalid RL encoding in 'dense_mask_block', base_key=%du, avg_delta=%du",
+        min_, avg
+      ));
     }
 
     // mask block has no data, so all offsets should be equal to 0
     if (!encode::avg::check_block_rl64(in, 0)) {
-      // invalid block type
-      return false;
+      throw index_error("'dense_mask_block' expected to contain no data");
     }
 
     max_ = min_ + size;
-
-    return true;
   }
 
   bool value(doc_id_t key, bytes_ref& /*reader*/) const NOEXCEPT {
@@ -3904,19 +3964,20 @@ template<typename Allocator = std::allocator<sparse_block>>
 class read_context
   : public block_cache_traits<sparse_block, Allocator>::cache_t,
     public block_cache_traits<dense_block, Allocator>::cache_t,
-    public block_cache_traits<dense_fixed_length_block, Allocator>::cache_t,
+    public block_cache_traits<dense_fixed_offset_block, Allocator>::cache_t,
     public block_cache_traits<sparse_mask_block, Allocator>::cache_t,
     public block_cache_traits<dense_mask_block, Allocator>::cache_t {
  public:
   DECLARE_SHARED_PTR(read_context);
 
   static ptr make(const index_input& stream) {
-    auto clone = stream.reopen();
+    auto clone = stream.reopen(); // reopen thead-safe stream
 
     if (!clone) {
-      IR_FRMT_FATAL("Failed to reopen document input in: %s", __FUNCTION__);
+      // implementation returned wrong pointer
+      IR_FRMT_ERROR("Failed to reopen columpstore input in: %s", __FUNCTION__);
 
-      return nullptr;
+      throw io_error("Failed to reopen columnstore input in");
     }
 
     return memory::make_shared<read_context>(std::move(clone));
@@ -3925,7 +3986,7 @@ class read_context
   read_context(index_input::ptr&& in = index_input::ptr(), const Allocator& alloc = Allocator())
     : block_cache_traits<sparse_block, Allocator>::cache_t(typename block_cache_traits<sparse_block, Allocator>::allocator_t(alloc)),
       block_cache_traits<dense_block, Allocator>::cache_t(typename block_cache_traits<dense_block, Allocator>::allocator_t(alloc)),
-      block_cache_traits<dense_fixed_length_block, Allocator>::cache_t(typename block_cache_traits<dense_fixed_length_block, Allocator>::allocator_t(alloc)),
+      block_cache_traits<dense_fixed_offset_block, Allocator>::cache_t(typename block_cache_traits<dense_fixed_offset_block, Allocator>::allocator_t(alloc)),
       block_cache_traits<sparse_mask_block, Allocator>::cache_t(typename block_cache_traits<sparse_mask_block, Allocator>::allocator_t(alloc)),
       block_cache_traits<dense_mask_block, Allocator>::cache_t(typename block_cache_traits<dense_mask_block, Allocator>::allocator_t(alloc)),
       buf_(INDEX_BLOCK_SIZE*sizeof(uint32_t), 0),
@@ -3933,39 +3994,37 @@ class read_context
   }
 
   template<typename Block, typename... Args>
-  Block* emplace_back(uint64_t offset, Args&&... args) {
-    auto& block = emplace_block<Block>(
-      std::forward<Args>(args)...
-    ); // add cache entry
+  Block& emplace_back(uint64_t offset, Args&&... args) {
+    typename block_cache_traits<Block, Allocator>::cache_t& cache = *this;
 
-    if (!load(block, offset)) {
-      // unable to load block
+    // add cache entry
+    auto& block = cache.emplace_back(std::forward<Args>(args)...);
+
+    try {
+      load(block, offset);
+    } catch (...) {
+      // failed to load block
       pop_back<Block>();
-      return nullptr;
+
+      throw;
     }
 
-    return &block;
+    return block;
   }
 
   template<typename Block>
-  bool load(Block& block, uint64_t offset) {
+  void load(Block& block, uint64_t offset) {
     stream_->seek(offset); // seek to the offset
-    return block.load(*stream_, decomp_, buf_);
+    block.load(*stream_, decomp_, buf_);
   }
 
   template<typename Block>
-  void pop_back() {
+  void pop_back() NOEXCEPT {
     typename block_cache_traits<Block, Allocator>::cache_t& cache = *this;
     cache.pop_back();
   }
 
  private:
-  template<typename Block, typename... Args>
-  Block& emplace_block(Args&&... args) {
-    typename block_cache_traits<Block, Allocator>::cache_t& cache = *this;
-    return cache.emplace_back(std::forward<Args>(args)...);
-  }
-
   decompressor decomp_; // decompressor
   bstring buf_; // temporary buffer for decoding/unpacking
   index_input::ptr stream_;
@@ -3993,10 +4052,9 @@ class context_provider: private util::noncopyable {
 }; // context_provider
 
 // in case of success caches block pointed
-// by 'ref' and retuns a pointer to cached
 // instance, nullptr otherwise
 template<typename BlockRef>
-const typename BlockRef::block_t* load_block(
+const typename BlockRef::block_t& load_block(
     const context_provider& ctxs,
     BlockRef& ref) {
   typedef typename BlockRef::block_t block_t;
@@ -4005,30 +4063,21 @@ const typename BlockRef::block_t* load_block(
 
   if (!cached) {
     auto ctx = ctxs.get_context();
-
-    if (!ctx) {
-      // unable to get context
-      return nullptr;
-    }
+    assert(ctx);
 
     // load block
-    const auto* block = ctx->template emplace_back<block_t>(ref.offset);
-
-    if (!block) {
-      // failed to load block
-      return nullptr;
-    }
+    const auto& block = ctx->template emplace_back<block_t>(ref.offset);
 
     // mark block as loaded
-    if (ref.pblock.compare_exchange_strong(cached, block)) {
-      cached = block;
+    if (ref.pblock.compare_exchange_strong(cached, &block)) {
+      cached = &block;
     } else {
       // already cached by another thread
       ctx->template pop_back<block_t>();
     }
   }
 
-  return cached;
+  return *cached;
 }
 
 // in case of success caches block pointed
@@ -4036,7 +4085,7 @@ const typename BlockRef::block_t* load_block(
 // retuns a pointer to cached instance,
 // nullptr otherwise
 template<typename BlockRef>
-const typename BlockRef::block_t* load_block(
+const typename BlockRef::block_t& load_block(
     const context_provider& ctxs,
     const BlockRef& ref,
     typename BlockRef::block_t& block) {
@@ -4044,21 +4093,14 @@ const typename BlockRef::block_t* load_block(
 
   if (!cached) {
     auto ctx = ctxs.get_context();
+    assert(ctx);
 
-    if (!ctx) {
-      // unable to get context
-      return nullptr;
-    }
-
-    if (!ctx->load(block, ref.offset)) {
-      // unable to load block
-      return nullptr;
-    }
+    ctx->load(block, ref.offset);
 
     cached = &block;
   }
 
-  return cached;
+  return *cached;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4076,7 +4118,7 @@ class column
 
   virtual ~column() { }
 
-  virtual bool read(data_input& in, uint64_t* /*buf*/) {
+  virtual void read(data_input& in, uint64_t* /*buf*/) {
     count_ = in.read_vint();
     max_ = in.read_vint();
     avg_block_size_ = in.read_vint();
@@ -4084,7 +4126,6 @@ class column
     if (!avg_block_count_) {
       avg_block_count_ = count_;
     }
-    return true;
   }
 
   doc_id_t max() const NOEXCEPT { return max_; }
@@ -4180,20 +4221,20 @@ class column_iterator final: public irs::doc_iterator {
       return false;
     }
 
-    const auto* cached = load_block(*column_->ctxs_, *begin_);
+    try {
+      const auto& cached = load_block(*column_->ctxs_, *begin_);
 
-    if (!cached) {
+      if (block_ != cached) {
+        block_.reset(cached);
+        payload_.value_ = &(block_.value_payload());
+      }
+    } catch (...) {
       // unable to load block, seal the iterator
       block_.seal();
       begin_ = end_;
       payload_.value_ = nullptr;
 
-      return false;
-    }
-
-    if (block_ != *cached) {
-      block_.reset(*cached);
-      payload_.value_ = &(block_.value_payload());
+      throw;
     }
 
     seek_origin_ = begin_++;
@@ -4242,10 +4283,9 @@ class sparse_column final : public column {
     : column(props), ctxs_(&ctxs) {
   }
 
-  virtual bool read(data_input& in, uint64_t* buf) override {
-    if (!column::read(in, buf)) {
-      return false;
-    }
+  virtual void read(data_input& in, uint64_t* buf) override {
+    column::read(in, buf); // read common header
+
     uint32_t blocks_count = in.read_vint(); // total number of column index blocks
 
     std::vector<block_ref> refs(blocks_count + 1); // +1 for upper bound
@@ -4298,7 +4338,6 @@ class sparse_column final : public column {
     begin->offset = type_limits<type_t::address_t>::invalid();
 
     refs_ = std::move(refs);
-    return true;
   }
 
   bool value(doc_id_t key, bytes_ref& value) const {
@@ -4315,15 +4354,9 @@ class sparse_column final : public column {
       return false;
     }
 
-    const auto* cached = load_block(*ctxs_, *it);
+    const auto& cached = load_block(*ctxs_, *it);
 
-    if (!cached) {
-      // unable to load block
-      return false;
-    }
-
-    assert(cached);
-    return cached->value(key, value);
+    return cached.value(key, value);
   };
 
   virtual bool visit(
@@ -4331,16 +4364,9 @@ class sparse_column final : public column {
   ) const override {
     block_t block; // don't cache new blocks
     for (auto begin = refs_.begin(), end = refs_.end()-1; begin != end; ++begin) { // -1 for upper bound
-      const auto* cached = load_block(*ctxs_, *begin, block);
+      const auto& cached = load_block(*ctxs_, *begin, block);
 
-      if (!cached) {
-        // unable to load block
-        return false;
-      }
-
-      assert(cached);
-
-      if (!cached->visit(visitor)) {
+      if (!cached.visit(visitor)) {
         return false;
       }
     }
@@ -4433,26 +4459,25 @@ class sparse_column final : public column {
 }; // sparse_column
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @class dense_fixed_length_column
+/// @class dense_fixed_offset_column
 ////////////////////////////////////////////////////////////////////////////////
 template<typename Block>
-class dense_fixed_length_column final : public column {
+class dense_fixed_offset_column final : public column {
  public:
-  typedef dense_fixed_length_column column_t;
+  typedef dense_fixed_offset_column column_t;
   typedef Block block_t;
 
   static column::ptr make(const context_provider& ctxs, ColumnProperty props) {
     return memory::make_unique<column_t>(ctxs, props);
   }
 
-  dense_fixed_length_column(const context_provider& ctxs, ColumnProperty prop)
+  dense_fixed_offset_column(const context_provider& ctxs, ColumnProperty prop)
     : column(prop), ctxs_(&ctxs) {
   }
 
-  virtual bool read(data_input& in, uint64_t* buf) override {
-    if (!column::read(in, buf)) {
-      return false;
-    }
+  virtual void read(data_input& in, uint64_t* buf) override {
+    column::read(in, buf); // read common header
+
     size_t blocks_count = in.read_vint(); // total number of column index blocks
 
     std::vector<block_ref> refs(blocks_count);
@@ -4460,8 +4485,7 @@ class dense_fixed_length_column final : public column {
     auto begin = refs.begin();
     while (blocks_count >= INDEX_BLOCK_SIZE) {
       if (!encode::avg::check_block_rl32(in, this->avg_block_count())) {
-        // invalid column type
-        return false;
+        throw index_error("Invalid RL encoding in 'dense_fixed_offset_column' (keys)");
       }
 
       encode::avg::visit_block_packed(
@@ -4482,8 +4506,7 @@ class dense_fixed_length_column final : public column {
         : 0U; // in this case avg == 0
 
       if (!encode::avg::check_block_rl32(in, avg_block_count)) {
-        // invalid column type
-        return false;
+        throw index_error("Invalid RL encoding in 'dense_fixed_offset_column' (keys)");
       }
 
       encode::avg::visit_block_packed_tail(
@@ -4498,8 +4521,6 @@ class dense_fixed_length_column final : public column {
 
     refs_ = std::move(refs);
     min_ = this->max() - this->count() + 1;
-
-    return true;
   }
 
   bool value(doc_id_t key, bytes_ref& value) const {
@@ -4514,15 +4535,9 @@ class dense_fixed_length_column final : public column {
 
     auto& ref = const_cast<block_ref&>(refs_[block_idx]);
 
-    const auto* cached = load_block(*ctxs_, ref);
+    const auto& cached = load_block(*ctxs_, ref);
 
-    if (!cached) {
-      // unable to load block
-      return false;
-    }
-
-    assert(cached);
-    return cached->value(key, value);
+    return cached.value(key, value);
   }
 
   virtual bool visit(
@@ -4530,16 +4545,9 @@ class dense_fixed_length_column final : public column {
   ) const override {
     block_t block; // don't cache new blocks
     for (auto& ref : refs_) {
-      const auto* cached = load_block(*ctxs_, ref, block);
+      const auto& cached = load_block(*ctxs_, ref, block);
 
-      if (!cached) {
-        // unable to load block
-        return false;
-      }
-
-      assert(cached);
-
-      if (!cached->visit(visitor)) {
+      if (!cached.visit(visitor)) {
         return false;
       }
     }
@@ -4621,36 +4629,33 @@ class dense_fixed_length_column final : public column {
   const context_provider* ctxs_;
   refs_t refs_;
   doc_id_t min_{}; // min key
-}; // dense_fixed_length_column
+}; // dense_fixed_offset_column
 
 template<>
-class dense_fixed_length_column<dense_mask_block> final : public column {
+class dense_fixed_offset_column<dense_mask_block> final : public column {
  public:
-  typedef dense_fixed_length_column column_t;
+  typedef dense_fixed_offset_column column_t;
 
   static column::ptr make(const context_provider&, ColumnProperty props) {
     return memory::make_unique<column_t>(props);
   }
 
-  explicit dense_fixed_length_column(ColumnProperty prop) NOEXCEPT
+  explicit dense_fixed_offset_column(ColumnProperty prop) NOEXCEPT
     : column(prop) {
   }
 
-  virtual bool read(data_input& in, uint64_t* buf) override {
+  virtual void read(data_input& in, uint64_t* buf) override {
     // we treat data in blocks as "garbage" which could be
     // potentially removed on merge, so we don't validate
     // column properties using such blocks
 
-    if (!column::read(in, buf)) {
-      return false;
-    }
+    column::read(in, buf); // read common header
 
     uint32_t blocks_count = in.read_vint(); // total number of column index blocks
 
     while (blocks_count >= INDEX_BLOCK_SIZE) {
       if (!encode::avg::check_block_rl32(in, this->avg_block_count())) {
-        // invalid column type
-        return false;
+        throw index_error("Invalid RL encoding in 'dense_fixed_offset_column<dense_mask_block>' (keys)");
       }
 
       // skip offsets, they point to "garbage" data
@@ -4669,8 +4674,7 @@ class dense_fixed_length_column<dense_mask_block> final : public column {
         : 0; // in this case avg == 0
 
       if (!encode::avg::check_block_rl32(in, avg_block_count)) {
-        // invalid column type
-        return false;
+        throw index_error("Invalid RL encoding in 'dense_fixed_offset_column<dense_mask_block>' (keys)");
       }
 
       // skip offsets, they point to "garbage" data
@@ -4682,8 +4686,6 @@ class dense_fixed_length_column<dense_mask_block> final : public column {
 
 
     min_ = this->max() - this->count();
-
-    return true;
   }
 
   bool value(doc_id_t key, bytes_ref& value) const NOEXCEPT {
@@ -4761,9 +4763,9 @@ class dense_fixed_length_column<dense_mask_block> final : public column {
   }; // column_iterator
 
   doc_id_t min_{}; // min key (less than any key in column)
-}; // dense_fixed_length_column
+}; // dense_fixed_offset_column
 
-irs::doc_iterator::ptr dense_fixed_length_column<dense_mask_block>::iterator() const {
+irs::doc_iterator::ptr dense_fixed_offset_column<dense_mask_block>::iterator() const {
   return empty()
     ? irs::doc_iterator::empty()
     : irs::doc_iterator::make<column_iterator>(*this);
@@ -4781,7 +4783,7 @@ const column_factory_f g_column_factories[] {                  // CP_DENSE | CP_
   &sparse_column<sparse_block>::make,                          //    0     |    0        0        0
   &sparse_column<dense_block>::make,                           //    0     |    0        0        1
   &sparse_column<sparse_block>::make,                          //    0     |    0        1        0
-  &sparse_column<dense_fixed_length_block>::make,              //    0     |    0        1        1
+  &sparse_column<dense_fixed_offset_block>::make,              //    0     |    0        1        1
   nullptr, /* invalid properties, should never happen */       //    0     |    1        0        0
   nullptr, /* invalid properties, should never happen */       //    0     |    1        0        1
   &sparse_column<sparse_mask_block>::make,                     //    0     |    1        1        0
@@ -4790,11 +4792,11 @@ const column_factory_f g_column_factories[] {                  // CP_DENSE | CP_
   &sparse_column<sparse_block>::make,                          //    1     |    0        0        0
   &sparse_column<dense_block>::make,                           //    1     |    0        0        1
   &sparse_column<sparse_block>::make,                          //    1     |    0        1        0
-  &dense_fixed_length_column<dense_fixed_length_block>::make,  //    1     |    0        1        1
+  &dense_fixed_offset_column<dense_fixed_offset_block>::make,  //    1     |    0        1        1
   nullptr, /* invalid properties, should never happen */       //    1     |    1        0        0
   nullptr, /* invalid properties, should never happen */       //    1     |    1        0        1
   &sparse_column<sparse_mask_block>::make,                     //    1     |    1        1        0
-  &dense_fixed_length_column<dense_mask_block>::make           //    1     |    1        1        1
+  &dense_fixed_offset_column<dense_mask_block>::make           //    1     |    1        1        1
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -4808,8 +4810,7 @@ class reader final: public columnstore_reader, public context_provider {
 
   virtual bool prepare(
     const directory& dir,
-    const segment_meta& meta,
-    bool* seen = nullptr
+    const segment_meta& meta
   ) override;
 
   virtual const column_reader* column(field_id field) const override;
@@ -4824,32 +4825,31 @@ class reader final: public columnstore_reader, public context_provider {
 
 bool reader::prepare(
     const directory& dir,
-    const segment_meta& meta,
-    bool* seen /*= nullptr*/
+    const segment_meta& meta
 ) {
-  auto filename = file_name<columnstore_writer>(meta);
+  const auto filename = file_name<columnstore_writer>(meta);
   bool exists;
 
-  // possible that the file does not exist since columnstore is optional
-  if (dir.exists(exists, filename) && !exists) {
-    if (!seen) {
-      IR_FRMT_ERROR("Failed to open file, path: %s", filename.c_str());
+  if (!dir.exists(exists, filename)) {
+    throw io_error(string_utils::to_string(
+      "failed to check existence of file, path: %s",
+      filename.c_str()
+    ));
+  }
 
-      return false;
-    }
-
-    *seen = false;
-
-    return true;
+  if (!exists) {
+    // possible that the file does not exist since columnstore is optional
+    return false;
   }
 
   // open columstore stream
   auto stream = dir.open(filename, irs::IOAdvice::RANDOM);
 
   if (!stream) {
-    IR_FRMT_ERROR("Failed to open file, path: %s", filename.c_str());
-
-    return false;
+    throw io_error(string_utils::to_string(
+      "Failed to open file, path: %s",
+      filename.c_str()
+    ));
   }
 
   // check header
@@ -4879,11 +4879,10 @@ bool reader::prepare(
     const auto props = read_enum<ColumnProperty>(*stream);
 
     if (props >= IRESEARCH_COUNTOF(g_column_factories)) {
-      IR_FRMT_ERROR(
+      throw index_error(string_utils::to_string(
         "Failed to load column id=" IR_SIZE_T_SPECIFIER ", got invalid properties=%d",
         i, static_cast<uint32_t>(props)
-      );
-      return false;
+      ));
     }
 
     // create column
@@ -4895,31 +4894,35 @@ bool reader::prepare(
         "Enum 'ColumnProperty' has different underlying type"
       );
 
-      IR_FRMT_ERROR(
+      throw index_error(string_utils::to_string(
         "Failed to open column id=" IR_SIZE_T_SPECIFIER ", properties=%d",
         i, static_cast<uint32_t>(props)
-      );
-      return false;
+      ));
     }
 
     auto column = factory(*this, props);
 
-    // read column
-    if (!column || !column->read(*stream, buf)) {
-      IR_FRMT_ERROR("Failed to load column id=" IR_SIZE_T_SPECIFIER, i);
-      return false;
+    if (!column) {
+      throw index_error(string_utils::to_string(
+        "Factory failed to create column id=" IR_SIZE_T_SPECIFIER, i
+      ));
     }
 
+    try {
+      column->read(*stream, buf);
+    } catch (...) {
+      IR_FRMT_ERROR("Failed to load column id=" IR_SIZE_T_SPECIFIER, i);
+
+      throw;
+    }
+
+    // noexcept since space has been already reserved
     columns.emplace_back(std::move(column));
   }
 
   // noexcept
   context_provider::prepare(std::move(stream));
   columns_ = std::move(columns);
-
-  if (seen) {
-    *seen = true;
-  }
 
   return true;
 }
@@ -4938,7 +4941,7 @@ NS_END // columns
 
 class postings_reader final: public irs::postings_reader {
  public:
-  virtual bool prepare(
+  virtual void prepare(
     index_input& in,
     const reader_state& state,
     const flags& features
@@ -4963,7 +4966,7 @@ class postings_reader final: public irs::postings_reader {
   index_input::ptr pay_in_;
 }; // postings_reader
 
-bool postings_reader::prepare(
+void postings_reader::prepare(
     index_input& in,
     const reader_state& state,
     const flags& features) {
@@ -5036,8 +5039,6 @@ bool postings_reader::prepare(
       block_size
     ));
   }
-
-  return true;
 }
 
 void postings_reader::decode(
@@ -5096,22 +5097,17 @@ irs::doc_iterator::ptr postings_reader::iterator(
 
   // MSVC 2013 doesn't support constexpr, can't use
   // 'operator|' in the following switch statement
-  CONSTEXPR const auto FREQ_POS_OFFS_PAY = features::FREQ | features::POS | features::OFFS | features::PAY;
-  CONSTEXPR const auto FREQ_POS_OFFS = features::FREQ | features::POS | features::OFFS;
-  CONSTEXPR const auto FREQ_POS_PAY = features::FREQ | features::POS | features::PAY;
-  CONSTEXPR const auto FREQ_POS = features::FREQ | features::POS;
-
   switch (enabled) {
-   case FREQ_POS_OFFS_PAY:
+   case features::FREQ_POS_OFFS_PAY:
     it = doc_iterator::make<pos_doc_iterator<offs_pay_iterator>>();
     break;
-   case FREQ_POS_OFFS:
+   case features::FREQ_POS_OFFS:
     it = doc_iterator::make<pos_doc_iterator<offs_iterator>>();
     break;
-   case FREQ_POS_PAY:
+   case features::FREQ_POS_PAY:
     it = doc_iterator::make<pos_doc_iterator<pay_iterator>>();
     break;
-   case FREQ_POS:
+   case features::FREQ_POS:
     it = doc_iterator::make<pos_doc_iterator<pos_iterator>>();
     break;
    default:

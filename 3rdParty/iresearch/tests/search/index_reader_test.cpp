@@ -317,6 +317,8 @@ TEST(segment_reader_test, segment_reader_has) {
   auto codec = irs::formats::get("1_0");
   ASSERT_NE(nullptr, codec);
 
+  std::string filename;
+
   // has none (default)
   {
     irs::memory_directory dir;
@@ -324,11 +326,11 @@ TEST(segment_reader_test, segment_reader_has) {
     auto reader = codec->get_segment_meta_reader();
     irs::segment_meta expected;
 
-    writer->write(dir, expected);
+    writer->write(dir, filename, expected);
 
     irs::segment_meta meta;
 
-    reader->read(dir, meta, writer->filename(expected));
+    reader->read(dir, meta, filename);
 
     ASSERT_EQ(expected, meta);
     ASSERT_FALSE(irs::segment_reader::has<irs::columnstore_reader>(meta));
@@ -343,11 +345,11 @@ TEST(segment_reader_test, segment_reader_has) {
     irs::segment_meta expected;
 
     expected.column_store = true;
-    writer->write(dir, expected);
+    writer->write(dir, filename, expected);
 
     irs::segment_meta meta;
 
-    reader->read(dir, meta, writer->filename(expected));
+    reader->read(dir, meta, filename);
 
     ASSERT_EQ(expected, meta);
     ASSERT_TRUE(irs::segment_reader::has<irs::columnstore_reader>(meta));
@@ -366,11 +368,11 @@ TEST(segment_reader_test, segment_reader_has) {
     expected.live_docs_count = 42;
     expected.version = 0;
     docs_mask_writer->write(dir, expected, {0});
-    writer->write(dir, expected);
+    writer->write(dir, filename, expected);
 
     irs::segment_meta meta;
 
-    reader->read(dir, meta, writer->filename(expected));
+    reader->read(dir, meta, filename);
 
     ASSERT_EQ(expected, meta);
     ASSERT_FALSE(irs::segment_reader::has<irs::columnstore_reader>(meta));
@@ -390,11 +392,11 @@ TEST(segment_reader_test, segment_reader_has) {
     expected.column_store = true;
     expected.version = 1;
     docs_mask_writer->write(dir, expected, {0});
-    writer->write(dir, expected);
+    writer->write(dir, filename, expected);
 
     irs::segment_meta meta;
 
-    reader->read(dir, meta, writer->filename(expected));
+    reader->read(dir, meta, filename);
 
     ASSERT_EQ(expected, meta);
     ASSERT_TRUE(irs::segment_reader::has<irs::columnstore_reader>(meta));
@@ -413,7 +415,7 @@ TEST(segment_reader_test, open_invalid_segment) {
     meta.codec = codec_ptr;
     meta.name = "invalid_segment_name";
 
-    ASSERT_THROW(irs::segment_reader::open(dir, meta), irs::detailed_io_error);
+    ASSERT_THROW(irs::segment_reader::open(dir, meta), irs::io_error);
   }
 }
 

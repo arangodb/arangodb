@@ -63,6 +63,10 @@ else
 fi
 DEFAULT_REPLICATION=""
 
+if [ "$AUTOUPGRADE" == "1" ];then
+  echo "-- Using autoupgrade procedure"
+fi
+
 if [[ $NRAGENTS -le 0 ]]; then
     echo "you need as least one agent currently you have $NRAGENTS"
     exit 1
@@ -133,6 +137,34 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
     [ "$INTERACTIVE_MODE" == "R" ] && sleep 1
     PORT=$(( $AG_BASE + $aid ))
     AGENCY_ENDPOINTS+="--cluster.agency-endpoint $TRANSPORT://$ADDRESS:$PORT "
+    if [ "$AUTOUPGRADE" == "1" ];then
+      $ARANGOD \
+          -c none \
+          --agency.activate true \
+          --agency.compaction-step-size $COMP \
+          --agency.compaction-keep-size $KEEP \
+          --agency.endpoint $TRANSPORT://$ENDPOINT:$AG_BASE \
+          --agency.my-address $TRANSPORT://$ADDRESS:$PORT \
+          --agency.pool-size $NRAGENTS \
+          --agency.size $NRAGENTS \
+          --agency.supervision true \
+          --agency.supervision-frequency $SFRE \
+          --agency.supervision-grace-period 5.0 \
+          --agency.wait-for-sync false \
+          --database.directory cluster/data$PORT \
+          --javascript.enabled false \
+          --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
+          --server.statistics false \
+          --log.file cluster/$PORT.log \
+        --log.force-direct true \
+          --log.level $LOG_LEVEL_AGENCY \
+          --javascript.allow-admin-execute true \
+          $STORAGE_ENGINE \
+          $AUTHENTICATION \
+          $SSLKEYFILE \
+          --database.auto-upgrade true \
+          2>&1 | tee cluster/$PORT.stdout
+    fi
     $ARANGOD \
         -c none \
         --agency.activate true \
@@ -187,6 +219,29 @@ start() {
     mkdir -p cluster/data$PORT cluster/apps$PORT
     echo == Starting $TYPE on port $PORT
     [ "$INTERACTIVE_MODE" == "R" ] && sleep 1
+    if [ "$AUTOUPGRADE" == "1" ];then
+      $CMD \
+          -c none \
+          --database.directory cluster/data$PORT \
+          --cluster.agency-endpoint $TRANSPORT://$ENDPOINT:$AG_BASE \
+          --cluster.my-address $TRANSPORT://$ADDRESS:$PORT \
+          --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
+          --cluster.my-role $ROLE \
+          --log.file cluster/$PORT.log \
+          --log.level $LOG_LEVEL \
+          --server.statistics true \
+          --javascript.startup-directory $SRC_DIR/js \
+          --javascript.module-directory $SRC_DIR/enterprise/js \
+          --javascript.app-path cluster/apps$PORT \
+          --log.force-direct true \
+          --log.level $LOG_LEVEL_CLUSTER \
+          --javascript.allow-admin-execute true \
+          $STORAGE_ENGINE \
+          $AUTHENTICATION \
+          $SSLKEYFILE \
+          --database.auto-upgrade true \
+          2>&1 | tee cluster/$PORT.stdout
+    fi
     $CMD \
         -c none \
         --database.directory cluster/data$PORT \
@@ -201,6 +256,7 @@ start() {
         --javascript.module-directory $SRC_DIR/enterprise/js \
         --javascript.app-path cluster/apps$PORT \
         --log.force-direct true \
+        --log.thread true \
         --log.level $LOG_LEVEL_CLUSTER \
         --javascript.allow-admin-execute true \
         $STORAGE_ENGINE \

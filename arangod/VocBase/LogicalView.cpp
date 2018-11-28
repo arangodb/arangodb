@@ -29,6 +29,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -111,6 +112,40 @@ LogicalView::LogicalView(
   auto& factory = viewTypes->factory(LogicalDataSource::Type::emplace(type));
 
   return factory.create(view, vocbase, definition);
+}
+
+/*static*/ bool LogicalView::enumerate(
+  TRI_vocbase_t& vocbase,
+  std::function<bool(std::shared_ptr<LogicalView> const&)> const& callback
+) {
+  TRI_ASSERT(callback);
+
+  if (!ServerState::instance()->isCoordinator()) {
+    for (auto& view: vocbase.views()) {
+      if (!callback(view)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  auto* engine = arangodb::ClusterInfo::instance();
+
+  if (!engine) {
+    LOG_TOPIC(ERR, Logger::VIEWS)
+      << "failure to get storage engine while enumerating views";
+
+    return false;
+  }
+
+  for (auto& view: engine->getViews(vocbase.name())) {
+    if (!callback(view)) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 /*static*/ Result LogicalView::instantiate(
@@ -219,6 +254,10 @@ arangodb::Result LogicalViewClusterInfo::drop() {
     if (TRI_ERROR_NO_ERROR != resNum) {
       deleted(false); // not fully deleted
 
+      if (error.empty()) {
+        error = TRI_errno_string(resNum);
+      }
+
       return arangodb::Result(
         resNum,
         std::string("failure during ClusterInfo removal of View in database '") + vocbase().name() + "', error: " + error
@@ -231,6 +270,11 @@ arangodb::Result LogicalViewClusterInfo::drop() {
   }
 
   return arangodb::Result();
+}
+
+arangodb::Result LogicalViewClusterInfo::rename(std::string&&) {
+  // renaming a view in a cluster is unsupported
+  return TRI_ERROR_CLUSTER_UNSUPPORTED;
 }
 
 // -----------------------------------------------------------------------------
@@ -337,40 +381,88 @@ arangodb::Result LogicalViewStorageEngine::drop() {
   return arangodb::Result();
 }
 
-Result LogicalViewStorageEngine::rename(std::string&& newName, bool doSync) {
+Result LogicalViewStorageEngine::rename(std::string&& newName) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine);
+  auto* databaseFeature = application_features::ApplicationServer::lookupFeature<
+    DatabaseFeature
+  >("Database");
 
+  if (!databaseFeature) {
+    return Result(
+      TRI_ERROR_INTERNAL,
+      "failed to find feature 'Database' while renaming view"
+    );
+  }
+
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+
+  if (!engine) {
+    return Result(
+      TRI_ERROR_INTERNAL,
+      "failed to find a storage engine while renaming view"
+    );
+  }
+
+  auto doSync = databaseFeature->forceSyncProperties();
   auto oldName = name();
+  auto res = vocbase().renameView(id(), newName);
+
+  if (!res.ok()) {
+    return res;
+  }
 
   try {
     name(std::move(newName));
 
-    // store new view definition to disk
-    if (!engine->inRecovery()) {
-      // write WAL 'change' marker
-      return engine->changeView(vocbase(), *this, doSync);
+    auto res = engine->inRecovery()
+      ? Result() : engine->changeView(vocbase(), *this, doSync);
+
+    if (!res.ok()) {
+      name(std::move(oldName)); // restore name
+      vocbase().renameView(id(), oldName);
+
+      return res;
     }
   } catch (basics::Exception const& ex) {
     name(std::move(oldName));
+    vocbase().renameView(id(), oldName);
 
-    return ex.code();
+    return Result(ex.code(), ex.message());
   } catch (...) {
     name(std::move(oldName));
+    vocbase().renameView(id(), oldName);
 
-    return TRI_ERROR_INTERNAL;
+    return Result(TRI_ERROR_INTERNAL, "caught exception while renaming view");;
   }
 
   return TRI_ERROR_NO_ERROR;
 }
 
-arangodb::Result LogicalViewStorageEngine::updateProperties(
+arangodb::Result LogicalViewStorageEngine::properties(
     VPackSlice const& slice,
-    bool partialUpdate,
-    bool doSync
+    bool partialUpdate
 ) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
+  auto* databaseFeature = application_features::ApplicationServer::lookupFeature<
+    DatabaseFeature
+  >("Database");
+
+  if (!databaseFeature) {
+    return Result(
+      TRI_ERROR_INTERNAL,
+      "failed to find feature 'Database' while updating collection"
+    );
+   }
+
+  auto* engine = EngineSelectorFeature::ENGINE;
+
+  if (!engine) {
+    return Result(
+      TRI_ERROR_INTERNAL,
+      "failed to find a storage engine while updating collection"
+    );
+  }
 
   auto res = updateProperties(slice, partialUpdate);
 
@@ -382,10 +474,9 @@ arangodb::Result LogicalViewStorageEngine::updateProperties(
   LOG_TOPIC(DEBUG, Logger::VIEWS) << "updated view with properties '"
                                   << slice.toJson() << "'";
 
-  // after this call the properties are stored
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine);
+  auto doSync = !engine->inRecovery() && databaseFeature->forceSyncProperties();
 
+  // after this call the properties are stored
   if (engine->inRecovery()) {
     return arangodb::Result(); // do not modify engine while in recovery
   }
@@ -393,9 +484,9 @@ arangodb::Result LogicalViewStorageEngine::updateProperties(
   try {
     engine->changeView(vocbase(), *this, doSync);
   } catch (arangodb::basics::Exception const& e) {
-    return { e.code() };
+    return Result(e.code(), e.message());
   } catch (...) {
-    return { TRI_ERROR_INTERNAL };
+    return Result(TRI_ERROR_INTERNAL, "caught exception while updating view");
   }
 
   arangodb::aql::PlanCache::instance()->invalidate(&vocbase());

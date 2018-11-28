@@ -182,11 +182,11 @@ void IndexBlock::executeExpressions() {
   AqlItemBlock* cur = _buffer.front();
   auto en = ExecutionNode::castTo<IndexNode const*>(getPlanNode());
   auto ast = en->_plan->getAst();
-  AstNode const* oldCondition = _condition;
-  AstNode* newCondition = ast->shallowCopyForModify(oldCondition);
-  _condition = newCondition;
-  TRI_DEFER(FINALIZE_SUBTREE(newCondition));
-          
+  AstNode* condition = const_cast<AstNode*>(_condition);
+
+  // modify the existing node in place
+  TEMPORARILY_UNLOCK_NODE(condition);
+  
   Query* query = _engine->getQuery();
 
   for (size_t posInExpressions = 0;
@@ -204,15 +204,18 @@ void IndexBlock::executeExpressions() {
     VPackSlice slice = materializer.slice(a, false);
     AstNode* evaluatedNode = ast->nodeFromVPack(slice, true);
 
-    AstNode* tmp = newCondition;
+    AstNode* tmp = condition;
     for (size_t x = 0; x < toReplace->indexPath.size(); x++) {
       size_t idx = toReplace->indexPath[x];
       AstNode* old = tmp->getMember(idx);
+      // modify the node in place
+      TEMPORARILY_UNLOCK_NODE(tmp);
       if (x + 1 < toReplace->indexPath.size()) {
-        AstNode* cpy = ast->shallowCopyForModify(old);
+        AstNode* cpy = old; 
         tmp->changeMember(idx, cpy);
         tmp = cpy;
       } else {
+        // insert the actual expression value
         tmp->changeMember(idx, evaluatedNode);
       }
     }
@@ -613,7 +616,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> IndexBlock::getSome(
       TRI_ASSERT(_resultInFlight != nullptr);
       if (!_isLastIndex) {
         // insert & check for duplicates in one go
-        if (!_alreadyReturned.emplace(token.id()).second) {
+        if (!_alreadyReturned.insert(token.id()).second) {
           // Document already in list. Skip this
           return;
         }

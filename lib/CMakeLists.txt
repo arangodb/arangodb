@@ -174,7 +174,6 @@ add_library(${LIB_ARANGO} STATIC
   Basics/LocalTaskQueue.cpp
   Basics/Mutex.cpp
   Basics/Nonce.cpp
-  Basics/OpenFilesTracker.cpp
   Basics/ReadWriteLock.cpp
   Basics/Result.cpp
   Basics/RocksDBLogger.cpp

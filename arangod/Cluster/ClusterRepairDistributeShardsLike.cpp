@@ -432,7 +432,7 @@ ResultT<std::list<RepairOperation>> DistributeShardsLikeRepairer::fixShard(
           collection, proto, shardId, protoShardId);
 
   if (maybeFixServerOrderOperationResult.fail()) {
-    return maybeFixServerOrderOperationResult;
+    return std::move(maybeFixServerOrderOperationResult);
   }
 
   if (auto const& maybeFixServerOrderOperation =
@@ -457,7 +457,7 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
 
   auto collectionMapResult = readCollections(planCollections);
   if (collectionMapResult.fail()) {
-    return collectionMapResult;
+    return std::move(collectionMapResult);
   }
   std::map<CollectionID, struct Collection> collectionMap =
       collectionMapResult.get();

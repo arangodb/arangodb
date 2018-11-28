@@ -140,20 +140,23 @@ Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
 
   if (ServerState::instance()->isCoordinator()) {
     try {
-      auto coll = ClusterInfo::instance()->getCollection(vocbase->name(), name);
-
-      // check authentication after ensuring the collection exists
-      if (exec != nullptr &&
-          !exec->canUseCollection(vocbase->name(), coll->name(),
-                                  auth::Level::RO)) {
-        return Result(TRI_ERROR_FORBIDDEN,
-                      "No access to collection '" + name + "'");
-      }
+      auto coll = ClusterInfo::instance()->getCollectionNT(vocbase->name(), name);
 
       if (coll) {
+        // check authentication after ensuring the collection exists
+        if (exec != nullptr &&
+            !exec->canUseCollection(vocbase->name(), coll->name(),
+                                  auth::Level::RO)) {
+          return Result(TRI_ERROR_FORBIDDEN,
+                        "No access to collection '" + name + "'");
+        }
+
         func(coll);
 
         return Result();
+      }
+      else {
+        return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
       }
     } catch (basics::Exception const& ex) {
       return Result(ex.code(), ex.what());
@@ -382,11 +385,16 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
   return TRI_ERROR_NO_ERROR;
 }
 
-Result Collections::updateProperties(LogicalCollection* coll,
-                                     VPackSlice const& props) {
+Result Collections::updateProperties(
+    LogicalCollection& collection,
+    velocypack::Slice const& props,
+    bool partialUpdate
+) {
   ExecContext const* exec = ExecContext::CURRENT;
+
   if (exec != nullptr) {
-    bool canModify = exec->canUseCollection(coll->name(), auth::Level::RW);
+    bool canModify = exec->canUseCollection(collection.name(), auth::Level::RW);
+
     if ((exec->databaseAuthLevel() != auth::Level::RW || !canModify)) {
       return TRI_ERROR_FORBIDDEN;
     }
@@ -394,17 +402,17 @@ Result Collections::updateProperties(LogicalCollection* coll,
 
   if (ServerState::instance()->isCoordinator()) {
     ClusterInfo* ci = ClusterInfo::instance();
+    auto info = ci->getCollection(
+      collection.vocbase().name(), std::to_string(collection.id())
+    );
 
-    TRI_ASSERT(coll);
-
-    auto info =
-        ci->getCollection(coll->vocbase().name(), std::to_string(coll->id()));
-
-    return info->updateProperties(props, false);
+    return info->properties(props, partialUpdate);
   } else {
     auto ctx =
-        transaction::V8Context::CreateWhenRequired(coll->vocbase(), false);
-    SingleCollectionTransaction trx(ctx, *coll, AccessMode::Type::EXCLUSIVE);
+      transaction::V8Context::CreateWhenRequired(collection.vocbase(), false);
+    SingleCollectionTransaction trx(
+      ctx, collection, AccessMode::Type::EXCLUSIVE
+    );
     Result res = trx.begin();
 
     if (!res.ok()) {
@@ -412,15 +420,15 @@ Result Collections::updateProperties(LogicalCollection* coll,
     }
 
     // try to write new parameter to file
-    bool doSync = DatabaseFeature::DATABASE->forceSyncProperties();
-    arangodb::Result updateRes = coll->updateProperties(props, doSync);
+    auto updateRes = collection.properties(props, partialUpdate);
 
     if (!updateRes.ok()) {
       return updateRes;
     }
 
-    auto physical = coll->getPhysical();
+    auto physical = collection.getPhysical();
     TRI_ASSERT(physical != nullptr);
+
     return physical->persistProperties();
   }
 }
@@ -461,8 +469,11 @@ static int RenameGraphCollections(TRI_vocbase_t* vocbase,
   return TRI_ERROR_NO_ERROR;
 }
 
-Result Collections::rename(LogicalCollection* coll, std::string const& newName,
-                           bool doOverride) {
+Result Collections::rename(
+    LogicalCollection& collection,
+    std::string const& newName,
+    bool doOverride
+) {
   if (ServerState::instance()->isCoordinator()) {
     // renaming a collection in a cluster is unsupported
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
@@ -475,20 +486,46 @@ Result Collections::rename(LogicalCollection* coll, std::string const& newName,
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
     if (!exec->canUseDatabase(auth::Level::RW) ||
-        !exec->canUseCollection(coll->name(), auth::Level::RW)) {
+        !exec->canUseCollection(collection.name(), auth::Level::RW)) {
       return TRI_ERROR_FORBIDDEN;
     }
   }
 
-  std::string const oldName(coll->name());
-  auto res = coll->vocbase().renameCollection(coll->id(), newName, doOverride);
+  // check required to pass shell-collection-rocksdb-noncluster.js::testSystemSpecial
+  if (collection.system()) {
+    return TRI_set_errno(TRI_ERROR_FORBIDDEN);
+  }
+
+  if (!doOverride) {
+    auto isSystem = TRI_vocbase_t::IsSystemName(collection.name());
+
+    if (isSystem && !TRI_vocbase_t::IsSystemName(newName)) {
+      // a system collection shall not be renamed to a non-system collection name
+      return arangodb::Result(
+        TRI_ERROR_ARANGO_ILLEGAL_NAME,
+        "a system collection shall not be renamed to a non-system collection name"
+      );
+    } else if (!isSystem && TRI_vocbase_t::IsSystemName(newName)) {
+      return arangodb::Result(
+        TRI_ERROR_ARANGO_ILLEGAL_NAME,
+        "a non-system collection shall not be renamed to a system collection name"
+      );
+    }
+
+    if (!TRI_vocbase_t::IsAllowedName(isSystem, arangodb::velocypack::StringRef(newName))) {
+      return TRI_ERROR_ARANGO_ILLEGAL_NAME;
+    }
+  }
+
+  std::string const oldName(collection.name());
+  auto res = collection.vocbase().renameCollection(collection.id(), newName);
 
   if (!res.ok()) {
     return res;
   }
 
   // rename collection inside _graphs as well
-  return RenameGraphCollections(&(coll->vocbase()), oldName, newName);
+  return RenameGraphCollections(&(collection.vocbase()), oldName, newName);
 }
 
 #ifndef USE_ENTERPRISE

@@ -50,7 +50,6 @@ namespace arangodb {
 namespace iresearch {
 
 class AsyncMeta;
-class PrimaryKeyIndexReader;
 
 class IResearchViewDBServer final: public arangodb::LogicalViewClusterInfo {
  public:
@@ -82,7 +81,11 @@ class IResearchViewDBServer final: public arangodb::LogicalViewClusterInfo {
   static arangodb::ViewFactory const& factory();
 
   virtual void open() override;
-  virtual arangodb::Result rename(std::string&& newName, bool doSync) override;
+
+  virtual arangodb::Result properties(
+    arangodb::velocypack::Slice const& properties,
+    bool partialUpdate
+  ) override;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @return pointer to an index reader containing the datastore record snapshot
@@ -90,17 +93,12 @@ class IResearchViewDBServer final: public arangodb::LogicalViewClusterInfo {
   ///         (nullptr == no view snapshot associated with the specified state)
   ///         if force == true && no snapshot -> associate current snapshot
   ////////////////////////////////////////////////////////////////////////////////
-  PrimaryKeyIndexReader* snapshot(
+  irs::index_reader const* snapshot(
     transaction::Methods& trx,
     std::vector<std::string> const& shards,
     IResearchView::Snapshot mode = IResearchView::Snapshot::Find
   ) const;
 
-  virtual arangodb::Result updateProperties(
-    arangodb::velocypack::Slice const& properties,
-    bool partialUpdate,
-    bool doSync
-  ) override;
   virtual bool visitCollections(
     CollectionVisitor const& visitor
   ) const override;

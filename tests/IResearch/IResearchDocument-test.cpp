@@ -38,6 +38,7 @@
 #include "IResearch/IResearchDocument.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchLinkMeta.h"
+#include "IResearch/IResearchPrimaryKeyFilter.h"
 #include "IResearch/IResearchKludge.h"
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
@@ -1419,23 +1420,6 @@ SECTION("FieldIterator_nullptr_analyzer") {
   }
 }
 
-SECTION("DocumentPrimaryKey_encode_decode") {
-  uint64_t src = 42;
-  auto encoded = arangodb::iresearch::DocumentPrimaryKey::encode(src);
-
-  CHECK((sizeof(uint64_t) == encoded.size()));
-  uint64_t dst;
-
-  CHECK((arangodb::iresearch::DocumentPrimaryKey::decode(dst, encoded)));
-  CHECK((42 == dst));
-
-  // check failure on null
-  CHECK((!arangodb::iresearch::DocumentPrimaryKey::decode(dst, irs::bytes_ref::NIL)));
-
-  // check failure on incorrect size
-  CHECK((!arangodb::iresearch::DocumentPrimaryKey::decode(dst, irs::ref_cast<irs::byte_type>(irs::string_ref("abcdefghijklmnopqrstuvwxyz")))));
-}
-
 SECTION("test_cid_rid_encoding") {
   auto data = arangodb::velocypack::Parser::fromJson(
     "[{ \"cid\": 62, \"rid\": 1605879230128717824},"
@@ -1516,7 +1500,7 @@ SECTION("test_cid_rid_encoding") {
     // insert document
     {
       auto doc = writer->documents().insert();
-      arangodb::iresearch::Field::setCidValue(field, pk.cid(), arangodb::iresearch::Field::init_stream_t());
+      arangodb::iresearch::Field::setCidValue(field, pk.first, arangodb::iresearch::Field::init_stream_t());
       CHECK((doc.insert(irs::action::index, field)));
       arangodb::iresearch::Field::setPkValue(field, pk);
       CHECK(doc.insert(irs::action::index_store, field));
@@ -1558,38 +1542,442 @@ SECTION("test_cid_rid_encoding") {
     CHECK(pkField);
     CHECK(size == pkField->docs_count());
 
-    auto filter = arangodb::iresearch::FilterFactory::filter(cid, rid);
-    REQUIRE(filter);
+    arangodb::iresearch::PrimaryKeyFilterContainer filters;
+    CHECK(filters.empty());
+    auto& filter = filters.emplace(cid, rid);
+    REQUIRE(filter.type() == arangodb::iresearch::PrimaryKeyFilter::type());
+    CHECK(!filters.empty());
 
-    auto prepared = filter->prepare(*reader);
-    REQUIRE(prepared);
+    // first execution
+    {
+      auto prepared = filter.prepare(*reader);
+      REQUIRE(prepared);
+      CHECK(prepared == filter.prepare(*reader)); // same object
+      CHECK(&filter == dynamic_cast<arangodb::iresearch::PrimaryKeyFilter const*>(prepared.get())); // same object
 
-    for (auto& segment : *reader) {
-      auto docs = prepared->execute(segment);
-      REQUIRE(docs);
+      for (auto& segment : *reader) {
+        auto docs = prepared->execute(segment);
+        REQUIRE(docs);
+        //CHECK((nullptr == prepared->execute(segment))); // unusable filter TRI_ASSERT(...) check
+        CHECK((irs::filter::prepared::empty() == filter.prepare(*reader))); // unusable filter (after execute)
 
-      CHECK(docs->next());
-      auto const id = docs->value();
-      ++found;
-      CHECK(!docs->next());
+        CHECK(docs->next());
+        auto const id = docs->value();
+        ++found;
+        CHECK(!docs->next());
+        CHECK(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
+        CHECK(!docs->next());
+        CHECK(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
 
-      auto column = segment.column_reader(arangodb::iresearch::DocumentPrimaryKey::PK());
-      REQUIRE(column);
+        auto column = segment.column_reader(arangodb::iresearch::DocumentPrimaryKey::PK());
+        REQUIRE(column);
 
-      auto values = column->values();
-      REQUIRE(values);
+        auto values = column->values();
+        REQUIRE(values);
 
-      irs::bytes_ref pkValue;
-      CHECK(values(id, pkValue));
+        irs::bytes_ref pkValue;
+        CHECK(values(id, pkValue));
 
-      arangodb::iresearch::DocumentPrimaryKey pk;
-      CHECK(pk.read(pkValue));
-      CHECK(cid == pk.cid());
-      CHECK(rid == pk.rid());
+        arangodb::iresearch::DocumentPrimaryKey::type pk;
+        CHECK(arangodb::iresearch::DocumentPrimaryKey::read(pk, pkValue));
+        CHECK(cid == pk.first);
+        CHECK(rid == pk.second);
+      }
     }
+
+    // FIXME uncomment after fix
+    //// can't prepare twice
+    //{
+    //  auto prepared = filter.prepare(*reader);
+    //  REQUIRE(prepared);
+    //  CHECK(prepared == filter.prepare(*reader)); // same object
+
+    //  for (auto& segment : *reader) {
+    //    auto docs = prepared->execute(segment);
+    //    REQUIRE(docs);
+    //    CHECK(docs == prepared->execute(segment)); // same object
+    //    CHECK(!docs->next());
+    //    CHECK(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
+    //  }
+    //}
   }
 
   CHECK(found == size);
+}
+
+SECTION("test_cid_rid_filter") {
+  auto data = arangodb::velocypack::Parser::fromJson(
+    "[{ \"cid\": 62, \"rid\": 1605879230128717824},"
+    "{ \"cid\": 62, \"rid\": 1605879230128717826},"
+    "{ \"cid\": 62, \"rid\": 1605879230129766400},"
+    "{ \"cid\": 62, \"rid\": 1605879230130814976},"
+    "{ \"cid\": 62, \"rid\": 1605879230130814978},"
+    "{ \"cid\": 62, \"rid\": 1605879230131863552},"
+    "{ \"cid\": 62, \"rid\": 1605879230131863554},"
+    "{ \"cid\": 62, \"rid\": 1605879230132912128},"
+    "{ \"cid\": 62, \"rid\": 1605879230133960704},"
+    "{ \"cid\": 62, \"rid\": 1605879230133960706},"
+    "{ \"cid\": 62, \"rid\": 1605879230135009280},"
+    "{ \"cid\": 62, \"rid\": 1605879230136057856},"
+    "{ \"cid\": 62, \"rid\": 1605879230136057858},"
+    "{ \"cid\": 62, \"rid\": 1605879230137106432},"
+    "{ \"cid\": 62, \"rid\": 1605879230137106434},"
+    "{ \"cid\": 62, \"rid\": 1605879230138155008},"
+    "{ \"cid\": 62, \"rid\": 1605879230138155010},"
+    "{ \"cid\": 62, \"rid\": 1605879230139203584},"
+    "{ \"cid\": 62, \"rid\": 1605879230139203586},"
+    "{ \"cid\": 62, \"rid\": 1605879230140252160},"
+    "{ \"cid\": 62, \"rid\": 1605879230140252162},"
+    "{ \"cid\": 62, \"rid\": 1605879230141300736},"
+    "{ \"cid\": 62, \"rid\": 1605879230142349312},"
+    "{ \"cid\": 62, \"rid\": 1605879230142349314},"
+    "{ \"cid\": 62, \"rid\": 1605879230142349316},"
+    "{ \"cid\": 62, \"rid\": 1605879230143397888},"
+    "{ \"cid\": 62, \"rid\": 1605879230143397890},"
+    "{ \"cid\": 62, \"rid\": 1605879230144446464},"
+    "{ \"cid\": 62, \"rid\": 1605879230144446466},"
+    "{ \"cid\": 62, \"rid\": 1605879230144446468},"
+    "{ \"cid\": 62, \"rid\": 1605879230145495040},"
+    "{ \"cid\": 62, \"rid\": 1605879230145495042},"
+    "{ \"cid\": 62, \"rid\": 1605879230145495044},"
+    "{ \"cid\": 62, \"rid\": 1605879230146543616},"
+    "{ \"cid\": 62, \"rid\": 1605879230146543618},"
+    "{ \"cid\": 62, \"rid\": 1605879230146543620},"
+    "{ \"cid\": 62, \"rid\": 1605879230147592192}]"
+  );
+  auto data1 = arangodb::velocypack::Parser::fromJson("{ \"cid\": 62, \"rid\": 2605879230128717824}");
+
+  struct DataStore {
+    irs::memory_directory dir;
+    irs::directory_reader reader;
+    irs::index_writer::ptr writer;
+
+    DataStore() {
+      writer = irs::index_writer::make(dir, irs::formats::get("1_0"), irs::OM_CREATE);
+      REQUIRE(writer);
+      writer->commit();
+
+      reader = irs::directory_reader::open(dir);
+    }
+  };
+
+  auto const dataSlice = data->slice();
+  size_t expectedDocs = 0;
+  size_t expectedLiveDocs = 0;
+  DataStore store;
+
+  // initial population
+  for (auto const docSlice: arangodb::velocypack::ArrayIterator(dataSlice)) {
+    auto const cidSlice = docSlice.get("cid");
+    CHECK((cidSlice.isNumber<TRI_voc_cid_t>()));
+    auto const ridSlice = docSlice.get("rid");
+    CHECK((ridSlice.isNumber<uint64_t>()));
+
+    auto cid = cidSlice.getNumber<TRI_voc_cid_t>();
+    auto rid = ridSlice.getNumber<uint64_t>();
+    arangodb::iresearch::Field field;
+    arangodb::iresearch::DocumentPrimaryKey const pk(cid, rid);
+
+    // insert document
+    {
+      auto ctx = store.writer->documents();
+      auto doc = ctx.insert();
+      arangodb::iresearch::Field::setCidValue(field, pk.first, arangodb::iresearch::Field::init_stream_t());
+      CHECK((doc.insert(irs::action::index, field)));
+      arangodb::iresearch::Field::setPkValue(field, pk);
+      CHECK((doc.insert(irs::action::index_store, field)));
+      CHECK((doc));
+      ++expectedDocs;
+      ++expectedLiveDocs;
+    }
+  }
+
+  // add extra doc to hold segment after others are removed
+  {
+    arangodb::iresearch::Field field;
+    arangodb::iresearch::DocumentPrimaryKey const pk(42, 12345);
+    auto ctx = store.writer->documents();
+    auto doc = ctx.insert();
+    arangodb::iresearch::Field::setCidValue(field, pk.first, arangodb::iresearch::Field::init_stream_t());
+    CHECK((doc.insert(irs::action::index, field)));
+    arangodb::iresearch::Field::setPkValue(field, pk);
+    CHECK((doc.insert(irs::action::index_store, field)));
+    CHECK((doc));
+  }
+
+  store.writer->commit();
+  store.reader = store.reader->reopen();
+  CHECK((1 == store.reader->size()));
+  CHECK((expectedDocs + 1 == store.reader->docs_count())); // +1 for keep-alive doc
+  CHECK((expectedLiveDocs + 1 == store.reader->live_docs_count())); // +1 for keep-alive doc
+
+  // check regular filter case (unique cid+rid)
+  {
+    size_t actualDocs = 0;
+
+    for (auto const docSlice: arangodb::velocypack::ArrayIterator(dataSlice)) {
+      auto const cidSlice = docSlice.get("cid");
+      CHECK((cidSlice.isNumber<TRI_voc_cid_t>()));
+      auto const ridSlice = docSlice.get("rid");
+      CHECK(ridSlice.isNumber<uint64_t>());
+
+      auto cid = cidSlice.getNumber<TRI_voc_cid_t>();
+      auto rid = ridSlice.getNumber<uint64_t>();
+      arangodb::iresearch::PrimaryKeyFilterContainer filters;
+      CHECK((filters.empty()));
+      auto& filter = filters.emplace(cid, rid);
+      REQUIRE((filter.type() == arangodb::iresearch::PrimaryKeyFilter::type()));
+      CHECK((!filters.empty()));
+
+      auto prepared = filter.prepare(*store.reader);
+      REQUIRE((prepared));
+      CHECK((prepared == filter.prepare(*store.reader))); // same object
+      CHECK((&filter == dynamic_cast<arangodb::iresearch::PrimaryKeyFilter const*>(prepared.get()))); // same object
+
+      for (auto& segment: *store.reader) {
+        auto docs = prepared->execute(segment);
+        REQUIRE((docs));
+        //CHECK((nullptr == prepared->execute(segment))); // unusable filter TRI_ASSERT(...) check
+        CHECK((irs::filter::prepared::empty() == filter.prepare(*store.reader))); // unusable filter (after execute)
+
+        CHECK((docs->next()));
+        auto const id = docs->value();
+        ++actualDocs;
+        CHECK((!docs->next()));
+        CHECK((irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value())));
+        CHECK((!docs->next()));
+        CHECK((irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value())));
+
+        auto column = segment.column_reader(arangodb::iresearch::DocumentPrimaryKey::PK());
+        REQUIRE((column));
+
+        auto values = column->values();
+        REQUIRE((values));
+
+        irs::bytes_ref pkValue;
+        CHECK((values(id, pkValue)));
+
+        arangodb::iresearch::DocumentPrimaryKey::type pk;
+        CHECK((arangodb::iresearch::DocumentPrimaryKey::read(pk, pkValue)));
+        CHECK((cid == pk.first));
+        CHECK((rid == pk.second));
+      }
+    }
+
+    CHECK((expectedDocs == actualDocs));
+  }
+
+  // remove + insert (simulate recovery)
+  for (auto const docSlice: arangodb::velocypack::ArrayIterator(dataSlice)) {
+    auto const cidSlice = docSlice.get("cid");
+    CHECK((cidSlice.isNumber<TRI_voc_cid_t>()));
+    auto const ridSlice = docSlice.get("rid");
+    CHECK((ridSlice.isNumber<uint64_t>()));
+
+    auto cid = cidSlice.getNumber<TRI_voc_cid_t>();
+    auto rid = ridSlice.getNumber<uint64_t>();
+    arangodb::iresearch::Field field;
+    arangodb::iresearch::DocumentPrimaryKey const pk(cid, rid);
+
+    // remove + insert document
+    {
+      auto ctx = store.writer->documents();
+      ctx.remove(std::make_shared<arangodb::iresearch::PrimaryKeyFilter>(cid, rid));
+      auto doc = ctx.insert();
+      arangodb::iresearch::Field::setCidValue(field, pk.first, arangodb::iresearch::Field::init_stream_t());
+      CHECK((doc.insert(irs::action::index, field)));
+      arangodb::iresearch::Field::setPkValue(field, pk);
+      CHECK((doc.insert(irs::action::index_store, field)));
+      CHECK((doc));
+      ++expectedDocs;
+    }
+  }
+
+  // add extra doc to hold segment after others are removed
+  {
+    arangodb::iresearch::Field field;
+    arangodb::iresearch::DocumentPrimaryKey const pk(43, 123456);
+    auto ctx = store.writer->documents();
+    auto doc = ctx.insert();
+    arangodb::iresearch::Field::setCidValue(field, pk.first, arangodb::iresearch::Field::init_stream_t());
+    CHECK((doc.insert(irs::action::index, field)));
+    arangodb::iresearch::Field::setPkValue(field, pk);
+    CHECK((doc.insert(irs::action::index_store, field)));
+    CHECK((doc));
+  }
+
+  store.writer->commit();
+  store.reader = store.reader->reopen();
+  CHECK((2 == store.reader->size()));
+  CHECK((expectedDocs + 2 == store.reader->docs_count())); // +2 for keep-alive doc
+  CHECK((expectedLiveDocs + 2 == store.reader->live_docs_count())); // +2 for keep-alive doc
+
+  // check 1st recovery case
+  {
+    size_t actualDocs = 0;
+
+    auto beforeRecovery = StorageEngineMock::inRecoveryResult;
+    StorageEngineMock::inRecoveryResult = true;
+    auto restoreRecovery = irs::make_finally([&beforeRecovery]()->void { StorageEngineMock::inRecoveryResult = beforeRecovery; });
+
+    for (auto const docSlice: arangodb::velocypack::ArrayIterator(dataSlice)) {
+      auto const cidSlice = docSlice.get("cid");
+      CHECK((cidSlice.isNumber<TRI_voc_cid_t>()));
+      auto const ridSlice = docSlice.get("rid");
+      CHECK(ridSlice.isNumber<uint64_t>());
+
+      auto cid = cidSlice.getNumber<TRI_voc_cid_t>();
+      auto rid = ridSlice.getNumber<uint64_t>();
+      arangodb::iresearch::PrimaryKeyFilterContainer filters;
+      CHECK((filters.empty()));
+      auto& filter = filters.emplace(cid, rid);
+      REQUIRE((filter.type() == arangodb::iresearch::PrimaryKeyFilter::type()));
+      CHECK((!filters.empty()));
+
+      auto prepared = filter.prepare(*store.reader);
+      REQUIRE((prepared));
+      CHECK((prepared == filter.prepare(*store.reader))); // same object
+      CHECK((&filter == dynamic_cast<arangodb::iresearch::PrimaryKeyFilter const*>(prepared.get()))); // same object
+
+      for (auto& segment: *store.reader) {
+        auto docs = prepared->execute(segment);
+        REQUIRE((docs));
+        CHECK((nullptr != prepared->execute(segment))); // usable filter
+        CHECK((nullptr != filter.prepare(*store.reader))); // usable filter (after execute)
+
+        if (docs->next()) { // old segments will not have any matching docs
+          auto const id = docs->value();
+          ++actualDocs;
+          CHECK((!docs->next()));
+          CHECK((irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value())));
+          CHECK((!docs->next()));
+          CHECK((irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value())));
+
+          auto column = segment.column_reader(arangodb::iresearch::DocumentPrimaryKey::PK());
+          REQUIRE((column));
+
+          auto values = column->values();
+          REQUIRE((values));
+
+          irs::bytes_ref pkValue;
+          CHECK((values(id, pkValue)));
+
+          arangodb::iresearch::DocumentPrimaryKey::type pk;
+          CHECK((arangodb::iresearch::DocumentPrimaryKey::read(pk, pkValue)));
+          CHECK((cid == pk.first));
+          CHECK((rid == pk.second));
+        }
+      }
+    }
+
+    CHECK((expectedLiveDocs == actualDocs));
+  }
+
+  // remove + insert (simulate recovery) 2nd time
+  for (auto const docSlice: arangodb::velocypack::ArrayIterator(dataSlice)) {
+    auto const cidSlice = docSlice.get("cid");
+    CHECK((cidSlice.isNumber<TRI_voc_cid_t>()));
+    auto const ridSlice = docSlice.get("rid");
+    CHECK((ridSlice.isNumber<uint64_t>()));
+
+    auto cid = cidSlice.getNumber<TRI_voc_cid_t>();
+    auto rid = ridSlice.getNumber<uint64_t>();
+    arangodb::iresearch::Field field;
+    arangodb::iresearch::DocumentPrimaryKey const pk(cid, rid);
+
+    // remove + insert document
+    {
+      auto ctx = store.writer->documents();
+      ctx.remove(std::make_shared<arangodb::iresearch::PrimaryKeyFilter>(cid, rid));
+      auto doc = ctx.insert();
+      arangodb::iresearch::Field::setCidValue(field, pk.first, arangodb::iresearch::Field::init_stream_t());
+      CHECK((doc.insert(irs::action::index, field)));
+      arangodb::iresearch::Field::setPkValue(field, pk);
+      CHECK((doc.insert(irs::action::index_store, field)));
+      CHECK((doc));
+      ++expectedDocs;
+    }
+  }
+
+  // add extra doc to hold segment after others are removed
+  {
+    arangodb::iresearch::Field field;
+    arangodb::iresearch::DocumentPrimaryKey const pk(44, 1234567);
+    auto ctx = store.writer->documents();
+    auto doc = ctx.insert();
+    arangodb::iresearch::Field::setCidValue(field, pk.first, arangodb::iresearch::Field::init_stream_t());
+    CHECK((doc.insert(irs::action::index, field)));
+    arangodb::iresearch::Field::setPkValue(field, pk);
+    CHECK((doc.insert(irs::action::index_store, field)));
+    CHECK((doc));
+  }
+
+  store.writer->commit();
+  store.reader = store.reader->reopen();
+  CHECK((3 == store.reader->size()));
+  CHECK((expectedDocs + 3 == store.reader->docs_count())); // +3 for keep-alive doc
+  CHECK((expectedLiveDocs + 3 == store.reader->live_docs_count())); // +3 for keep-alive doc
+
+  // check 2nd recovery case
+  {
+    size_t actualDocs = 0;
+
+    auto beforeRecovery = StorageEngineMock::inRecoveryResult;
+    StorageEngineMock::inRecoveryResult = true;
+    auto restoreRecovery = irs::make_finally([&beforeRecovery]()->void { StorageEngineMock::inRecoveryResult = beforeRecovery; });
+
+    for (auto const docSlice: arangodb::velocypack::ArrayIterator(dataSlice)) {
+      auto const cidSlice = docSlice.get("cid");
+      CHECK((cidSlice.isNumber<TRI_voc_cid_t>()));
+      auto const ridSlice = docSlice.get("rid");
+      CHECK(ridSlice.isNumber<uint64_t>());
+
+      auto cid = cidSlice.getNumber<TRI_voc_cid_t>();
+      auto rid = ridSlice.getNumber<uint64_t>();
+      arangodb::iresearch::PrimaryKeyFilterContainer filters;
+      CHECK((filters.empty()));
+      auto& filter = filters.emplace(cid, rid);
+      REQUIRE((filter.type() == arangodb::iresearch::PrimaryKeyFilter::type()));
+      CHECK((!filters.empty()));
+
+      auto prepared = filter.prepare(*store.reader);
+      REQUIRE((prepared));
+      CHECK((prepared == filter.prepare(*store.reader))); // same object
+      CHECK((&filter == dynamic_cast<arangodb::iresearch::PrimaryKeyFilter const*>(prepared.get()))); // same object
+
+      for (auto& segment: *store.reader) {
+        auto docs = prepared->execute(segment);
+        REQUIRE((docs));
+        CHECK((nullptr != prepared->execute(segment))); // usable filter
+        CHECK((nullptr != filter.prepare(*store.reader))); // usable filter (after execute)
+
+        if (docs->next()) { // old segments will not have any matching docs
+          auto const id = docs->value();
+          ++actualDocs;
+          CHECK((!docs->next()));
+          CHECK((irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value())));
+          CHECK((!docs->next()));
+          CHECK((irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value())));
+
+          auto column = segment.column_reader(arangodb::iresearch::DocumentPrimaryKey::PK());
+          REQUIRE((column));
+
+          auto values = column->values();
+          REQUIRE((values));
+
+          irs::bytes_ref pkValue;
+          CHECK((values(id, pkValue)));
+
+          arangodb::iresearch::DocumentPrimaryKey::type pk;
+          CHECK((arangodb::iresearch::DocumentPrimaryKey::read(pk, pkValue)));
+          CHECK((cid == pk.first));
+          CHECK((rid == pk.second));
+        }
+      }
+    }
+
+    CHECK((expectedLiveDocs == actualDocs));
+  }
 }
 
 SECTION("test_appendKnownCollections") {
@@ -1620,7 +2008,7 @@ SECTION("test_appendKnownCollections") {
     );
     REQUIRE(writer);
 
-    arangodb::iresearch::DocumentPrimaryKey pk(42, 42);
+    arangodb::iresearch::DocumentPrimaryKey pk(42, 42); // ensure cid is properly encoded
     arangodb::iresearch::Field field;
 
     arangodb::iresearch::Field::setPkValue(field, pk, arangodb::iresearch::Field::init_stream_t());
@@ -1651,9 +2039,11 @@ SECTION("test_appendKnownCollections") {
     REQUIRE(writer);
 
     TRI_voc_cid_t cid = 42;
+    arangodb::iresearch::DocumentPrimaryKey pk(cid, 0); // ensure cid is properly encoded
+
     arangodb::iresearch::Field field;
 
-    arangodb::iresearch::Field::setCidValue(field, cid, arangodb::iresearch::Field::init_stream_t());
+    arangodb::iresearch::Field::setCidValue(field, pk.first, arangodb::iresearch::Field::init_stream_t());
     {
       auto doc = writer->documents().insert();
       CHECK(doc.insert(irs::action::index, field));
@@ -1666,7 +2056,7 @@ SECTION("test_appendKnownCollections") {
     CHECK((1 == reader->size()));
     CHECK((1 == reader->docs_count()));
 
-    std::unordered_set<TRI_voc_rid_t> expected = { 42 };
+    std::unordered_set<TRI_voc_rid_t> expected = { cid };
     std::unordered_set<TRI_voc_rid_t> actual;
     CHECK((arangodb::iresearch::appendKnownCollections(actual, reader)));
 
@@ -1737,9 +2127,10 @@ SECTION("test_visitReaderCollections") {
     REQUIRE(writer);
 
     TRI_voc_cid_t cid = 42;
+    arangodb::iresearch::DocumentPrimaryKey pk(cid, 42);
     arangodb::iresearch::Field field;
 
-    arangodb::iresearch::Field::setCidValue(field, cid, arangodb::iresearch::Field::init_stream_t());
+    arangodb::iresearch::Field::setCidValue(field, pk.first, arangodb::iresearch::Field::init_stream_t());
     {
       auto doc = writer->documents().insert();
       CHECK(doc.insert(irs::action::index, field));
@@ -1752,7 +2143,7 @@ SECTION("test_visitReaderCollections") {
     CHECK((1 == reader->size()));
     CHECK((1 == reader->docs_count()));
 
-    std::unordered_set<TRI_voc_rid_t> expected = { 42 };
+    std::unordered_set<TRI_voc_rid_t> expected = { cid };
     std::unordered_set<TRI_voc_rid_t> actual;
     auto visitor = [&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; };
     CHECK((arangodb::iresearch::visitReaderCollections(reader, visitor)));

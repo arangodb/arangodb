@@ -27,60 +27,24 @@
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/QueryExpressionContext.h"
 #include "Indexes/IndexIterator.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
 
 #include "utils/attributes.hpp"
 #include "IResearch/ExpressionFilter.h"
+#include "IResearch/IResearchExpressionContext.h"
 #include "IResearch/IResearchView.h"
+#include "IResearch/IResearchDocument.h"
 
-NS_BEGIN(iresearch)
+namespace iresearch {
 class score;
-NS_END // iresearch
+} // iresearch
 
-NS_BEGIN(arangodb)
-NS_BEGIN(aql)
-class AqlItemBlock;
-class ExecutionEngine;
-NS_END // aql
-
-NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
 class IResearchViewNode;
-
-///////////////////////////////////////////////////////////////////////////////
-/// @class ViewExpressionContext
-///////////////////////////////////////////////////////////////////////////////
-class ViewExpressionContext final : public aql::QueryExpressionContext {
- public:
-  explicit ViewExpressionContext(arangodb::aql::Query* query, IResearchViewNode const& node)
-    : QueryExpressionContext(query),
-      _node(&node) {
-    TRI_ASSERT(_node);
-  }
-
-  virtual size_t numRegisters() const override;
-
-  virtual aql::AqlValue const& getRegisterValue(size_t i) const override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
-  virtual aql::Variable const* getVariable(size_t i) const override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
-  virtual aql::AqlValue getVariableValue(
-    aql::Variable const* variable,
-    bool doCopy,
-    bool& mustDestroy
-  ) const override;
-
-  aql::AqlItemBlock const* _data{};
-  IResearchViewNode const* _node;
-  size_t _pos{};
-}; // ViewExpressionContext
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class IResearchViewBlockBase
@@ -88,7 +52,7 @@ class ViewExpressionContext final : public aql::QueryExpressionContext {
 class IResearchViewBlockBase : public aql::ExecutionBlock {
  public:
   IResearchViewBlockBase(
-    arangodb::iresearch::PrimaryKeyIndexReader const& reader,
+    irs::index_reader const& reader,
     aql::ExecutionEngine&,
     IResearchViewNode const&
   );
@@ -102,19 +66,30 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
   virtual std::pair<aql::ExecutionState, Result> initializeCursor(aql::AqlItemBlock* items, size_t pos) override;
 
  protected:
-  struct ReadContext {
+  class ReadContext {
+   private:
+    static IndexIterator::DocumentCallback copyDocumentCallback(ReadContext& ctx);
+
+   public:
     explicit ReadContext(aql::RegisterId curRegs)
-      : curRegs(curRegs) {
+      : curRegs(curRegs),
+        callback(copyDocumentCallback(*this)) {
     }
 
-    std::unique_ptr<aql::AqlItemBlock> res;
+    aql::RegisterId const curRegs;
     size_t pos{};
-    const aql::RegisterId curRegs;
+    std::unique_ptr<aql::AqlItemBlock> res;
+    IndexIterator::DocumentCallback const callback;
   }; // ReadContext
 
   bool readDocument(
-    size_t segmentId,
     irs::doc_id_t docId,
+    irs::columnstore_reader::values_reader_f const& pkValues,
+    IndexIterator::DocumentCallback const& callback
+  );
+
+  bool readDocument(
+    DocumentPrimaryKey::type const& key,
     IndexIterator::DocumentCallback const& callback
   );
 
@@ -127,9 +102,10 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
 
   virtual size_t skip(size_t count) = 0;
 
+  std::vector<DocumentPrimaryKey::type> _keys; // buffer for primary keys
   irs::attribute_view _filterCtx; // filter context
   ViewExpressionContext _ctx;
-  iresearch::PrimaryKeyIndexReader const& _reader;
+  irs::index_reader const& _reader;
   irs::filter::prepared::ptr _filter;
   irs::order::prepared _order;
   iresearch::ExpressionExecutionContext _execCtx; // expression execution context
@@ -145,7 +121,7 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
 class IResearchViewUnorderedBlock : public IResearchViewBlockBase {
  public:
   IResearchViewUnorderedBlock(
-    PrimaryKeyIndexReader const& reader,
+    irs::index_reader const& reader,
     aql::ExecutionEngine& engine,
     IResearchViewNode const& node
   );
@@ -166,6 +142,10 @@ class IResearchViewUnorderedBlock : public IResearchViewBlockBase {
 
   virtual size_t skip(size_t count) override;
 
+  // resets _itr and _pkReader
+  virtual bool resetIterator();
+
+  irs::columnstore_reader::values_reader_f _pkReader; // current primary key reader
   irs::doc_iterator::ptr _itr;
   size_t _readerOffset;
 }; // IResearchViewUnorderedBlock
@@ -176,7 +156,7 @@ class IResearchViewUnorderedBlock : public IResearchViewBlockBase {
 class IResearchViewBlock final : public IResearchViewUnorderedBlock {
  public:
   IResearchViewBlock(
-    PrimaryKeyIndexReader const& reader,
+    irs::index_reader const& reader,
     aql::ExecutionEngine& engine,
     IResearchViewNode const& node
   );
@@ -190,41 +170,13 @@ class IResearchViewBlock final : public IResearchViewUnorderedBlock {
   virtual size_t skip(size_t count) override;
 
  private:
-  void resetIterator();
+  virtual bool resetIterator() override;
 
   irs::score const* _scr;
   irs::bytes_ref _scrVal;
 }; // IResearchViewBlock
 
-///////////////////////////////////////////////////////////////////////////////
-/// @class IResearchViewOrderedBlock
-///////////////////////////////////////////////////////////////////////////////
-class IResearchViewOrderedBlock final : public IResearchViewBlockBase {
- public:
-  IResearchViewOrderedBlock(
-    PrimaryKeyIndexReader const& reader,
-    aql::ExecutionEngine& engine,
-    IResearchViewNode const& node
-  );
-
- protected:
-  virtual void reset() override {
-    IResearchViewBlockBase::reset();
-    _skip = 0;
-  }
-
-  virtual bool next(
-    ReadContext& ctx,
-    size_t limit
-  ) override;
-
-  virtual size_t skip(size_t count) override;
-
- private:
-  size_t _skip{};
-}; // IResearchViewOrderedBlock
-
-NS_END // iresearch
-NS_END // arangodb
+} // iresearch
+} // arangodb
 
 #endif // ARANGOD_IRESEARCH__ENUMERATE_VIEW_BLOCK_H 

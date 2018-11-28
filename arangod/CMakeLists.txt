@@ -69,9 +69,11 @@ if (USE_IRESEARCH)
     IResearch/IResearchViewOptimizerRules.cpp IResearch/IResearchViewOptimizerRules.h
     IResearch/IResearchViewNode.cpp IResearch/IResearchViewNode.h
     IResearch/IResearchViewBlock.cpp IResearch/IResearchViewBlock.h
+    IResearch/IResearchExpressionContext.cpp IResearch/IResearchExpressionContext.h
     IResearch/IResearchViewMeta.cpp IResearch/IResearchViewMeta.h
     IResearch/IResearchFeature.cpp IResearch/IResearchFeature.h
     IResearch/IResearchDocument.cpp IResearch/IResearchDocument.h
+    IResearch/IResearchPrimaryKeyFilter.cpp IResearch/IResearchPrimaryKeyFilter.h
     IResearch/IResearchFilterFactory.cpp IResearch/IResearchFilterFactory.h
     IResearch/IResearchOrderFactory.cpp IResearch/IResearchOrderFactory.h
     IResearch/VelocyPackHelper.cpp IResearch/VelocyPackHelper.h
@@ -357,7 +359,6 @@ SET(ARANGOD_SOURCES
   Indexes/Index.cpp
   Indexes/IndexFactory.cpp
   Indexes/IndexIterator.cpp
-  Indexes/IndexLookupContext.cpp
   Indexes/PersistentIndexAttributeMatcher.cpp
   Indexes/SimpleAttributeEqualityMatcher.cpp
   Indexes/SkiplistIndexAttributeMatcher.cpp
@@ -543,6 +544,7 @@ SET(ARANGOD_SOURCES
   VocBase/Methods/UpgradeTasks.cpp
   VocBase/Methods/Version.cpp
   VocBase/KeyGenerator.cpp
+  VocBase/KeyLockInfo.cpp
   VocBase/LogicalCollection.cpp
   VocBase/LogicalDataSource.cpp
   VocBase/LogicalView.cpp

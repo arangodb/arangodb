@@ -220,6 +220,7 @@ ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING,1495,"leadership challenge is ongoing
 ERROR_CLUSTER_NOT_LEADER,1496,"not a leader","Will be raised when an operation is sent to a non-leading server."
 ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN,1497,"could not create view in plan","Will be raised when a coordinator in a cluster cannot create an entry for a new view in the Plan hierarchy in the agency."
 ERROR_CLUSTER_VIEW_ID_EXISTS,1498,"view ID already exists","Will be raised when a coordinator in a cluster tries to create a view and the view ID already exists."
+ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION,1499,"could not drop collection in plan","Will be raised when a coordinator in a cluster cannot drop a collection entry in the Plan hierarchy in the agency."
 
 ################################################################################
 ## ArangoDB query errors
@@ -235,7 +236,7 @@ ERROR_QUERY_VARIABLE_NAME_INVALID,1510,"variable name '%s' has an invalid format
 ERROR_QUERY_VARIABLE_REDECLARED,1511,"variable '%s' is assigned multiple times","Will be raised when a variable gets re-assigned in a query."
 ERROR_QUERY_VARIABLE_NAME_UNKNOWN,1512,"unknown variable '%s'","Will be raised when an unknown variable is used or the variable is undefined the context it is used."
 ERROR_QUERY_COLLECTION_LOCK_FAILED,1521,"unable to read-lock collection %s","Will be raised when a read lock on the collection cannot be acquired."
-ERROR_QUERY_TOO_MANY_COLLECTIONS,1522,"too many collections","Will be raised when the number of collections in a query is beyond the allowed value."
+ERROR_QUERY_TOO_MANY_COLLECTIONS,1522,"too many collections/shards","Will be raised when the number of collections or shards in a query is beyond the allowed value."
 ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED,1530,"document attribute '%s' is assigned multiple times","Will be raised when a document attribute is re-assigned."
 ERROR_QUERY_FUNCTION_NAME_UNKNOWN,1540,"usage of unknown function '%s()'","Will be raised when an undefined function is called."
 ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,1541,"invalid number of arguments for function '%s()', expected number of arguments: minimum: %d, maximum: %d","Will be raised when the number of arguments used in a function call does not match the expected number of arguments for the function."
@@ -359,7 +360,7 @@ ERROR_GRAPH_COLLECTION_MULTI_USE,1920,"multi use of edge collection in edge def"
 ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS,1921,"edge collection already used in edge def"," is already used by another graph in a different edge definition.",
 ERROR_GRAPH_CREATE_MISSING_NAME,1922,"missing graph name","a graph name is required to create a graph.",
 ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION,1923,"malformed edge definition","the edge definition is malformed. It has to be an array of objects.",
-ERROR_GRAPH_NOT_FOUND,1924,"graph not found","a graph with this name could not be found.",
+ERROR_GRAPH_NOT_FOUND,1924,"graph '%s' not found","a graph with this name could not be found.",
 ERROR_GRAPH_DUPLICATE,1925,"graph already exists","a graph with this name already exists.",
 ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST,1926,"vertex collection does not exist or is not part of the graph","the specified vertex collection does not exist or is not part of the graph.",
 ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX,1927,"not a vertex collection","the collection is not a vertex collection.",

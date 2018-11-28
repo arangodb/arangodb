@@ -50,13 +50,12 @@ namespace {
 std::string const& LINK_TYPE = arangodb::iresearch::DATA_SOURCE_TYPE.name();
 
 bool createLink(
-    arangodb::transaction::Methods& trx,
     arangodb::LogicalCollection& collection,
     arangodb::LogicalView const& view,
     arangodb::velocypack::Slice definition
 ) {
   bool isNew = false;
-  auto link = collection.createIndex(&trx, definition, isNew);
+  auto link = collection.createIndex(definition, isNew);
   LOG_TOPIC_IF(DEBUG, arangodb::iresearch::TOPIC, link)
       << "added link '" << link->id() << "'";
 
@@ -64,7 +63,6 @@ bool createLink(
 }
 
 bool createLink(
-    arangodb::transaction::Methods& trx,
     arangodb::LogicalCollection& collection,
     arangodb::iresearch::IResearchViewCoordinator const& view,
     arangodb::velocypack::Slice definition
@@ -74,7 +72,7 @@ bool createLink(
   )->bool {
     // ignored fields
     return key != arangodb::StaticStrings::IndexType
-      && key != arangodb::iresearch::StaticStrings::ViewIdField;
+        && key != arangodb::iresearch::StaticStrings::ViewIdField;
   };
   arangodb::velocypack::Builder builder;
 
@@ -181,7 +179,7 @@ arangodb::Result modifyLinks(
     )->bool {
       // ignored fields
       return key != arangodb::StaticStrings::IndexType
-        && key != arangodb::iresearch::StaticStrings::ViewIdField;
+          && key != arangodb::iresearch::StaticStrings::ViewIdField;
     };
     arangodb::velocypack::Builder namedJson;
 
@@ -219,8 +217,17 @@ arangodb::Result modifyLinks(
     linkDefinitions.emplace_back(std::move(namedJson), std::move(linkMeta));
   }
 
+  auto trxCtx = arangodb::transaction::StandaloneContext::Create(vocbase);
+
   // add removals for any 'stale' links not found in the 'links' definition
   for (auto& id: stale) {
+    if (!trxCtx->resolver().getCollection(id)) {
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "request for removal of a stale link to a missing collection '" << id << "', ignoring";
+
+      continue; // skip adding removal requests to stale links to non-existant collections (already dropped)
+    }
+
     linkModifications.emplace_back(collectionsToLock.size());
     linkModifications.back()._stale = true;
     collectionsToLock.emplace_back(std::to_string(id));
@@ -232,27 +239,6 @@ arangodb::Result modifyLinks(
 
   static std::vector<std::string> const EMPTY;
   arangodb::ExecContextScope scope(arangodb::ExecContext::superuser()); // required to remove links from non-RW collections
-  arangodb::transaction::Methods trx(
-    arangodb::transaction::StandaloneContext::Create(vocbase),
-    EMPTY, // readCollections
-    EMPTY, // writeCollections
-    collectionsToLock, // exclusiveCollections
-    arangodb::transaction::Options() // use default lock timeout
-  );
-  auto* trxResolver = trx.resolver();
-
-  if (!trxResolver) {
-    return arangodb::Result(
-      TRI_ERROR_ARANGO_ILLEGAL_STATE,
-      std::string("failed to find collection name resolver while updating arangosearch view '") + view.name() + "'"
-    );
-  }
-
-  auto res = trx.begin();
-
-  if (!res.ok()) {
-    return res;
-  }
 
   {
     std::unordered_set<TRI_voc_cid_t> collectionsToRemove; // track removal for potential reindex
@@ -263,7 +249,7 @@ arangodb::Result modifyLinks(
       auto& state = *itr;
       auto& collectionName = collectionsToLock[state._collectionsToLockOffset];
 
-      state._collection = trxResolver->getCollection(collectionName);
+      state._collection = trxCtx->resolver().getCollection(collectionName);
 
       if (!state._collection) {
         // remove modification state if removal of non-existant link on non-existant collection
@@ -400,7 +386,6 @@ arangodb::Result modifyLinks(
   for (auto& state: linkModifications) {
     if (state._valid && state._linkDefinitionsOffset < linkDefinitions.size()) {
       state._valid = createLink(
-        trx,
         *(state._collection),
         view,
         linkDefinitions[state._linkDefinitionsOffset].first.slice()
@@ -419,7 +404,7 @@ arangodb::Result modifyLinks(
   }
 
   if (error.empty()) {
-    return arangodb::Result(trx.commit());
+    return arangodb::Result();
   }
 
   return arangodb::Result(
@@ -535,7 +520,7 @@ namespace iresearch {
     if (!collection) {
       return arangodb::Result(
         TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-        std::string("while validating arangosearch link definition, error: collection '") + collectionName.copyString() + "' not a string"
+        std::string("while validating arangosearch link definition, error: collection '") + collectionName.copyString() + "' not found"
       );
     }
 

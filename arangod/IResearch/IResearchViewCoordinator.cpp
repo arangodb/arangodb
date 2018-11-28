@@ -25,6 +25,8 @@
 #include "IResearchCommon.h"
 #include "IResearchLinkCoordinator.h"
 #include "IResearchLinkHelper.h"
+
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterFeature.h"
@@ -98,7 +100,7 @@ struct IResearchViewCoordinator::ViewFactory: public arangodb::ViewFactory {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    res = impl->toVelocyPack(builder, true, true); // include links so that Agency will always have a full definition
+    res = impl->properties(builder, true, true); // include links so that Agency will always have a full definition
 
     if (!res.ok()) {
       return res;
@@ -112,6 +114,10 @@ struct IResearchViewCoordinator::ViewFactory: public arangodb::ViewFactory {
     );
 
     if (TRI_ERROR_NO_ERROR != resNum) {
+      if (error.empty()) {
+        error = TRI_errno_string(resNum);
+      }
+
       return arangodb::Result(
         resNum,
         std::string("failure during ClusterInfo persistance of created view while creating arangosearch View in database '") + vocbase.name() + "', error: " + error
@@ -129,20 +135,20 @@ struct IResearchViewCoordinator::ViewFactory: public arangodb::ViewFactory {
 
       if (!res.ok()) {
         LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-          << "failed to create links while creating arangosearch view '" << view->name() <<  "': " << res.errorNumber() << " " <<  res.errorMessage();
+          << "failed to create links while creating arangosearch view '" << impl->name() <<  "': " << res.errorNumber() << " " <<  res.errorMessage();
       }
     } catch (arangodb::basics::Exception const& e) {
       IR_LOG_EXCEPTION();
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "caught exception while creating links while creating arangosearch view '" << view->name() << "': " << e.code() << " " << e.what();
+        << "caught exception while creating links while creating arangosearch view '" << impl->name() << "': " << e.code() << " " << e.what();
     } catch (std::exception const& e) {
       IR_LOG_EXCEPTION();
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "caught exception while creating links while creating arangosearch view '" << view->name() << "': " << e.what();
+        << "caught exception while creating links while creating arangosearch view '" << impl->name() << "': " << e.what();
     } catch (...) {
       IR_LOG_EXCEPTION();
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "caught exception while creating links while creating arangosearch view '" << view->name() << "'";
+        << "caught exception while creating links while creating arangosearch view '" << impl->name() << "'";
     }
 
     view = ci->getView(vocbase.name(), std::to_string(impl->id())); // refresh view from Agency
@@ -191,7 +197,22 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPackDetailed(
     );
   }
 
-  if (!_meta.json(builder)) {
+  static const std::function<bool(irs::string_ref const& key)> acceptor = [](
+      irs::string_ref const& key
+  )->bool {
+    return key != StaticStrings::VersionField; // ignored fields
+  };
+  static const std::function<bool(irs::string_ref const& key)> persistenceAcceptor = [](
+      irs::string_ref const&
+  )->bool {
+    return true;
+  };
+  arangodb::velocypack::Builder sanitizedBuilder;
+
+  sanitizedBuilder.openObject();
+
+  if (!_meta.json(sanitizedBuilder)
+      || !mergeSliceSkipKeys(builder, sanitizedBuilder.close().slice(), forPersistence ? persistenceAcceptor : acceptor)) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
       std::string("failure to generate definition while generating properties jSON for IResearch View in database '") + vocbase().name() + "'"
@@ -269,8 +290,9 @@ bool IResearchViewCoordinator::emplace(
   static const std::function<bool(irs::string_ref const& key)> acceptor = [](
       irs::string_ref const& key
   )->bool {
-    return key != arangodb::StaticStrings::IndexType
-      && key != StaticStrings::ViewIdField; // ignored fields
+    return key != arangodb::StaticStrings::IndexId
+        && key != arangodb::StaticStrings::IndexType
+        && key != StaticStrings::ViewIdField; // ignored fields
   };
   arangodb::velocypack::Builder builder;
 
@@ -327,10 +349,9 @@ bool IResearchViewCoordinator::visitCollections(
   return true;
 }
 
-arangodb::Result IResearchViewCoordinator::updateProperties(
+arangodb::Result IResearchViewCoordinator::properties(
     velocypack::Slice const& slice,
-    bool partialUpdate,
-    bool /*doSync*/
+    bool partialUpdate
 ) {
   auto* engine = arangodb::ClusterInfo::instance();
 
@@ -394,7 +415,7 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
       builder.openObject();
       meta.json(builder);
 
-      auto result = toVelocyPack(builder, false, true);
+      auto result = properties(builder, false, true);
 
       if (!result.ok()) {
         return result;
@@ -476,8 +497,6 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
       std::string("error updating properties for arangosearch view '") + name() + "'"
     );
   }
-
-  return arangodb::Result();
 }
 
 Result IResearchViewCoordinator::dropImpl() {

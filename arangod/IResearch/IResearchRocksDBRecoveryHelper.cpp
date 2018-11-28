@@ -202,27 +202,11 @@ void ensureLink(
 
   json.close();
 
-  arangodb::SingleCollectionTransaction trx(
-    arangodb::transaction::StandaloneContext::Create(*vocbase),
-    *col,
-    arangodb::AccessMode::Type::EXCLUSIVE
-  );
-  auto res = trx.begin();
   bool created;
-
-  if (!res.ok()) {
-    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "Failed to begin transaction while recovering link '" << iid
-        << "' to the collection '" << cid
-        << "' in the database '" << dbId;
-    return;
-  }
-
   // re-insert link
   if (!col->dropIndex(link->id())
-      || !col->createIndex(&trx, json.slice(), created)
-      || !created
-      || !trx.commit().ok()) {
+      || !col->createIndex(json.slice(), created)
+      || !created) {
     LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
         << "Failed to recreate the link '" << iid
         << "' to the collection '" << cid
@@ -236,33 +220,36 @@ void dropCollectionFromAllViews(
     TRI_voc_cid_t collectionId
 ) {
   auto* vocbase = db.useDatabase(dbId);
+  if (!vocbase) {
+    return;
+  }
+  TRI_DEFER(vocbase->release());
 
-  if (vocbase) {
-    // iterate over vocbase views
-    for (auto logicalView : vocbase->views()) {
-      if (arangodb::iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
-        continue;
-      }
+  // iterate over vocbase views
+  arangodb::LogicalView::enumerate(
+    *vocbase,
+    [collectionId](arangodb::LogicalView::ptr const& view)->bool {
+      #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
+      #else
+        auto* impl = static_cast<arangodb::iresearch::IResearchView*>(view.get());
+      #endif
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
-#else
-      auto* view = static_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
-#endif
-
-      if (!view) {
+      if (!impl) {
         LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-            << "error finding view: '" << view->id() << "': not an arangosearch view";
-        return;
+            << "error finding view: '" << view->name() << "': not an arangosearch view";
+
+        return true;
       }
 
       LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-          << "Removing all documents belonging to view " << view->id()
-          << " sourced from collection " << collectionId;
+        << "Removing all documents belonging to view '" << view->name() << "' sourced from collection " << collectionId;
 
-      view->drop(collectionId);
+      impl->drop(collectionId);
+
+      return true;
     }
-  }
+  );
 }
 
 void dropCollectionFromView(
@@ -362,15 +349,20 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
     trx.begin();
 
     for (auto link : links) {
+      IndexId indexId(coll->vocbase().id(), coll->id(), link->id());
+
+      // optimization: avoid insertion of recovered documents twice,
+      //               first insertion done during index creation
+      if (!link || _recoveredIndexes.find(indexId) != _recoveredIndexes.end()) {
+        continue; // index was already populated when it was created
+      }
+
       link->insert(
         &trx,
         docId,
         doc,
         Index::OperationMode::internal
       );
-      LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-          << "recovery helper inserted: "
-          << doc.toJson(trx.transactionContext()->getVPackOptions());
     }
 
     trx.commit();
@@ -414,8 +406,6 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(uint32_t column_family_id,
       arangodb::velocypack::Slice::emptyObjectSlice(),
       Index::OperationMode::internal
     );
-    // LOG_TOPIC(TRACE, IResearchFeature::IRESEARCH) << "recovery helper
-    // removed: " << docId.id();
   }
 
   trx.commit();

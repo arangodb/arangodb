@@ -65,12 +65,6 @@ using namespace arangodb::basics;
 _invalid_parameter_handler oldInvalidHandleHandler;
 _invalid_parameter_handler newInvalidHandleHandler;
 
-// Windows variant for unistd.h's ftruncate()
-int ftruncate(int fd, long newSize) {
-  int result = _chsize(fd, newSize);
-  return result;
-}
-
 // Windows variant for getpagesize()
 int getpagesize(void) {
   static int pageSize = 0;  // only define it once
@@ -101,9 +95,9 @@ static void InvalidParameterHandler(
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   char buf[1024] = "";
   snprintf(buf, 1023,
-           " Expression: %ls Function: %ls File: %ls Line: %ld",
-           expression, function, file, line);
-  buf[1024] = '\0';
+           "Expression: %ls Function: %ls File: %ls Line: %d",
+           expression, function, file, (int) line);
+  buf[1023] = '\0';
 #endif
 
   LOG_TOPIC(ERR, arangodb::Logger::FIXME) <<

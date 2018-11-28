@@ -42,11 +42,11 @@ class RestActionHandler : public RestVocbaseBaseHandler {
 
  private:
   // executes an action
-  TRI_action_result_t executeAction();
+  void executeAction();
 
  protected:
   // action
-  TRI_action_t* _action;
+  std::shared_ptr<TRI_action_t> _action;
 
   // data lock
   Mutex _dataLock;

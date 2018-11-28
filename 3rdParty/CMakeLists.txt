@@ -164,7 +164,13 @@ if (USE_IRESEARCH)
   set(LZ4_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/lz4")
   set(SNOWBALL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/snowball")
   set(UNWIND_ROOT "invalid")
+  set(BFD_ROOT "invalid")
 
+  set(IRESEARCH_PREGENERATED_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/iresearch.build/")
+  set(GENERATED_PARSER_SOURCES "${IRESEARCH_PREGENERATED_ROOT}/core/iql/parser.cc" CACHE PATH "use pregenerated source")
+  include_directories("${IRESEARCH_PREGENERATED_ROOT}/core/")
+  include_directories("${IRESEARCH_PREGENERATED_ROOT}/external/snowball/libstemmer/")
+  
   if(MSVC)
     set(USE_IQL OFF CACHE BOOL "Use IQL" FORCE) # skip IQL on MSVC until IResearch upstream is updated
   endif()
@@ -179,24 +185,6 @@ if (USE_IRESEARCH)
     "${IRESEARCH_ROOT}/cmake" # to find iResearch dependencies
   )
 
-  # cmake will seemingly randomly delete files from ${IRESEARCH_BUILD_DIR} during configuration
-  # so must copy required files only after the cmake configuration phase is complete, not via file(COPY ...)
-  # this command must _always_ be executed because the subsequent cmake configuration runs will once again delete files
-  if(MSVC)
-    add_custom_command(OUTPUT "${IRESEARCH_BUILD_DIR}/copy_iresearch.build" # non-existent file
-      COMMAND ${CMAKE_COMMAND} -E copy_directory "${IRESEARCH_ROOT}.build/" "${IRESEARCH_BUILD_DIR}/"
-    )
-  else()
-    # 'cmake -E copy_directory' does not preserve timestamps, use 'cp' directly where avalable
-    add_custom_command(OUTPUT "${IRESEARCH_BUILD_DIR}/copy_iresearch.build" # non-existent file
-      COMMAND cp -rp "${IRESEARCH_ROOT}.build/*" "${IRESEARCH_BUILD_DIR}/" # MacOS requires '/*' suffix
-    )
-  endif()
-
-  add_custom_target("copy_iresearch.build" ALL
-    DEPENDS "${IRESEARCH_BUILD_DIR}/copy_iresearch.build"
-  )
-
   add_subdirectory("${IRESEARCH_ROOT}" "${IRESEARCH_BUILD_DIR}" EXCLUDE_FROM_ALL) # do not build unused targets
   set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH_ORIGINAL}) # restore CMAKE_MODULE_PATH
   unset(BUILD_SHARED_LIBS) # otherwise ZLib (below) does not build on win32
@@ -206,13 +194,6 @@ if (USE_IRESEARCH)
   if(APPLE)
     # cmake does not build ICU without this (cmake does not inherit dependencies)
     add_dependencies(v8_build icu-build icudata-static icui18n-static icuuc-static)
-  endif()
-
-  # ensure the 'copy_iresearch.build' target is executed before start of build of the 'iresearch' target
-  if(MSVC)
-    add_dependencies(iresearch-static-scrt "copy_iresearch.build") # use static + staticCRT to match ArangoDB
-  else()
-    add_dependencies(iresearch-static "copy_iresearch.build") # use static to match ArangoDB
   endif()
 endif()
 

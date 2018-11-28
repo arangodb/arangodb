@@ -163,11 +163,10 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
     writer->commit();
     writer->documents().remove(std::move(query_doc4.filter));
     writer->commit();
-    writer->close();
   }
 
   auto reader = iresearch::directory_reader::open(dir, codec_ptr);
-  irs::merge_writer writer(dir, "merged");
+  irs::merge_writer writer(dir);
 
   ASSERT_EQ(2, reader.size());
   ASSERT_EQ(2, reader[0].docs_count());
@@ -565,11 +564,10 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
     ASSERT_TRUE(insert(*writer, doc2.indexed.end(), doc2.indexed.end(), doc2.stored.begin(), doc2.stored.end()));
     ASSERT_TRUE(insert(*writer, doc4.indexed.end(), doc4.indexed.end(), doc4.stored.begin(), doc4.stored.end()));
     writer->commit();
-    writer->close();
   }
 
   auto reader = iresearch::directory_reader::open(dir, codec_ptr);
-  irs::merge_writer writer(dir, "merged");
+  irs::merge_writer writer(dir);
 
   ASSERT_EQ(2, reader.size());
   ASSERT_EQ(2, reader[0].docs_count());
@@ -1051,7 +1049,6 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     writer->commit();
     writer->documents().remove(std::move(query_doc4.filter));
     writer->commit();
-    writer->close();
   }
 
   auto docs_count = [](const irs::sub_reader& segment, const irs::string_ref& field) {
@@ -1060,7 +1057,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
   };
 
   auto reader = iresearch::directory_reader::open(dir, codec_ptr);
-  irs::merge_writer writer(dir, "merged");
+  irs::merge_writer writer(dir);
 
   ASSERT_EQ(2, reader.size());
   ASSERT_EQ(2, reader[0].docs_count());
@@ -2212,7 +2209,7 @@ TEST_F(merge_writer_tests, test_merge_writer_add_segments) {
   {
     irs::memory_directory dir;
     irs::index_meta::index_segment_t index_segment;
-    irs::merge_writer writer(dir, "merged");
+    irs::merge_writer writer(dir);
 
     for (auto& sub_reader: reader) {
       writer.add(sub_reader);
@@ -2269,12 +2266,18 @@ TEST_F(merge_writer_tests, test_merge_writer_flush_progress) {
     irs::memory_directory dir;
     irs::index_meta::index_segment_t index_segment;
     irs::merge_writer::flush_progress_t progress;
-    irs::merge_writer writer(dir, "merged0");
+    irs::merge_writer writer(dir);
 
     index_segment.meta.codec = codec_ptr;
     writer.add(reader[0]);
     writer.add(reader[1]);
     ASSERT_TRUE(writer.flush(index_segment, progress));
+
+    ASSERT_FALSE(index_segment.meta.files.empty());
+    ASSERT_EQ(2, index_segment.meta.docs_count);
+    ASSERT_EQ(2, index_segment.meta.live_docs_count);
+    ASSERT_EQ(0, index_segment.meta.version);
+    ASSERT_EQ(true, index_segment.meta.column_store);
 
     auto segment = irs::segment_reader::open(dir, index_segment.meta);
     ASSERT_EQ(2, segment.docs_count());
@@ -2285,12 +2288,21 @@ TEST_F(merge_writer_tests, test_merge_writer_flush_progress) {
     irs::memory_directory dir;
     irs::index_meta::index_segment_t index_segment;
     irs::merge_writer::flush_progress_t progress = []()->bool { return false; };
-    irs::merge_writer writer(dir, "merged");
+    irs::merge_writer writer(dir);
 
     index_segment.meta.codec = codec_ptr;
     writer.add(reader[0]);
     writer.add(reader[1]);
     ASSERT_FALSE(writer.flush(index_segment, progress));
+
+    ASSERT_TRUE(index_segment.filename.empty());
+    ASSERT_TRUE(index_segment.meta.name.empty());
+    ASSERT_TRUE(index_segment.meta.files.empty());
+    ASSERT_FALSE(index_segment.meta.column_store);
+    ASSERT_EQ(0, index_segment.meta.version);
+    ASSERT_EQ(0, index_segment.meta.docs_count);
+    ASSERT_EQ(0, index_segment.meta.live_docs_count);
+    ASSERT_EQ(0, index_segment.meta.size);
 
     ASSERT_ANY_THROW(irs::segment_reader::open(dir, index_segment.meta));
   }
@@ -2303,12 +2315,18 @@ TEST_F(merge_writer_tests, test_merge_writer_flush_progress) {
     irs::index_meta::index_segment_t index_segment;
     irs::merge_writer::flush_progress_t progress =
       [&progress_call_count]()->bool { ++progress_call_count; return true; };
-    irs::merge_writer writer(dir, "merged");
+    irs::merge_writer writer(dir);
 
     index_segment.meta.codec = codec_ptr;
     writer.add(reader[0]);
     writer.add(reader[1]);
     ASSERT_TRUE(writer.flush(index_segment, progress));
+
+    ASSERT_FALSE(index_segment.meta.files.empty());
+    ASSERT_EQ(2, index_segment.meta.docs_count);
+    ASSERT_EQ(2, index_segment.meta.live_docs_count);
+    ASSERT_EQ(0, index_segment.meta.version);
+    ASSERT_EQ(true, index_segment.meta.column_store);
 
     auto segment = irs::segment_reader::open(dir, index_segment.meta);
     ASSERT_EQ(2, segment.docs_count());
@@ -2323,13 +2341,23 @@ TEST_F(merge_writer_tests, test_merge_writer_flush_progress) {
     irs::index_meta::index_segment_t index_segment;
     irs::merge_writer::flush_progress_t progress =
       [&call_count]()->bool { return --call_count; };
-    irs::merge_writer writer(dir, "merged");
+    irs::merge_writer writer(dir);
 
     index_segment.meta.codec = codec_ptr;
+    index_segment.meta.name = "merged";
     writer.add(reader[0]);
     writer.add(reader[1]);
     ASSERT_FALSE(writer.flush(index_segment, progress));
     ASSERT_EQ(0, call_count);
+
+    ASSERT_TRUE(index_segment.filename.empty());
+    ASSERT_TRUE(index_segment.meta.name.empty());
+    ASSERT_TRUE(index_segment.meta.files.empty());
+    ASSERT_FALSE(index_segment.meta.column_store);
+    ASSERT_EQ(0, index_segment.meta.version);
+    ASSERT_EQ(0, index_segment.meta.docs_count);
+    ASSERT_EQ(0, index_segment.meta.live_docs_count);
+    ASSERT_EQ(0, index_segment.meta.size);
 
     ASSERT_ANY_THROW(irs::segment_reader::open(dir, index_segment.meta));
   }
@@ -2367,7 +2395,6 @@ TEST_F(merge_writer_tests, test_merge_writer_field_features) {
       doc2.stored.begin(), doc2.stored.end()
     ));
     writer->commit();
-    writer->close();
   }
 
   auto reader = iresearch::directory_reader::open(dir, codec_ptr);
@@ -2378,7 +2405,7 @@ TEST_F(merge_writer_tests, test_merge_writer_field_features) {
 
   // test merge existing with feature subset (success)
   {
-    irs::merge_writer writer(dir, "merged_subset");
+    irs::merge_writer writer(dir);
     writer.add(reader[1]); // assume 1 is segment with text field
     writer.add(reader[0]); // assume 0 is segment with string field
 
@@ -2390,7 +2417,7 @@ TEST_F(merge_writer_tests, test_merge_writer_field_features) {
 
   // test merge existing with feature superset (fail)
   {
-    irs::merge_writer writer(dir, "merged_superset");
+    irs::merge_writer writer(dir);
     writer.add(reader[0]); // assume 0 is segment with text field
     writer.add(reader[1]); // assume 1 is segment with string field
 

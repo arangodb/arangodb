@@ -135,7 +135,6 @@ class StaticStrings {
   static std::string const NoSniff;
   static std::string const Origin;
   static std::string const PotentialDirtyRead;
-  static std::string const Queue;
   static std::string const RequestForwardedTo;
   static std::string const ResponseCode;
   static std::string const Server;
@@ -174,6 +173,9 @@ class StaticStrings {
   static std::string const GraphInitial;
   static std::string const GraphInitialCid;
   static std::string const GraphName;
+
+  // Replication
+  static std::string const ReplicationSoftLockOnly;
 
   // misc strings
   static std::string const LastValue;

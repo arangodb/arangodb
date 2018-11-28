@@ -64,10 +64,9 @@ class IRESEARCH_API segment_reader final
   segment_reader* operator->() NOEXCEPT { return this; }
   const segment_reader* operator->() const NOEXCEPT { return this; }
 
-  virtual index_reader::reader_iterator begin() const override;
-
-  virtual index_reader::reader_iterator end() const override {
-    return impl_->end();
+  virtual const sub_reader& operator[](size_t i) const NOEXCEPT override {
+    assert(!i);
+    return *this;
   }
 
   virtual const column_meta* column(const string_ref& name) const override {
