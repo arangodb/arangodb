@@ -1860,12 +1860,11 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   }
 
   {
-    CONDITION_LOCKER(locker, agencyCallback->_cv);
-
     while (true) {
 
       int tmpRes = dbServerResult->load(std::memory_order_acquire);
       if (tmpRes >= 0) {
+        CONDITION_LOCKER(locker, agencyCallback->_cv);
         cbGuard.fire(); // unregister cb before accessing errMsg
         errorMsg = *errMsg;
         loadCurrent();
@@ -1909,7 +1908,10 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
         return setErrormsg(TRI_ERROR_SHUTTING_DOWN, errorMsg);
       }
 
-      agencyCallback->executeByCallbackOrTimeout(interval);
+      {
+        CONDITION_LOCKER(locker, agencyCallback->_cv);
+        agencyCallback->executeByCallbackOrTimeout(interval);
+      }
       if (!application_features::ApplicationServer::isRetryOK()) {
         return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
       }
@@ -2627,7 +2629,7 @@ int ClusterInfo::ensureIndexCoordinatorInner(
             // variable of the agency callback, which protects writing
             // to *errMsg:
             *errMsg = extractErrorMessage(shard.key.copyString(), v);
-            *errMsg = "Error during index creation: " + errMsg;
+            *errMsg = "Error during index creation: " + *errMsg;
             // Returns the specific error number if set, or the general
             // error otherwise
             int errNum = arangodb::basics::VelocyPackHelper::readNumericValue<int>(
