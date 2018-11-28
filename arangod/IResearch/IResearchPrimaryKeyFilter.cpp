@@ -22,9 +22,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchPrimaryKeyFilter.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 
 #include "index/index_reader.hpp"
 #include "utils/hash_utils.hpp"
+
+namespace {
+
+::iresearch::type_id typeDefault;
+::iresearch::type_id typeRecovery;
+
+}
 
 namespace arangodb {
 namespace iresearch {
@@ -38,8 +47,35 @@ irs::doc_iterator::ptr PrimaryKeyFilter::execute(
     irs::order::prepared const& /*order*/,
     irs::attribute_view const& /*ctx*/
 ) const {
-  if (&segment != _pkIterator._pkSegment) {
+  TRI_ASSERT(_pk.first); // re-execution of a fiter is not expected to ever occur without a call to prepare(...)
+  auto* pkField = segment.field(arangodb::iresearch::DocumentPrimaryKey::PK());
+
+  if (!pkField) {
+    // no such field
     return irs::doc_iterator::empty();
+  }
+
+  auto term = pkField->iterator();
+
+  if (!term->seek(static_cast<irs::bytes_ref>(_pk))) {
+    // no such term
+    return irs::doc_iterator::empty();
+  }
+
+  auto docs = segment.mask(term->postings(irs::flags::empty_instance())); // must not match removed docs
+
+  if (!docs->next()) {
+    return irs::doc_iterator::empty();
+  }
+
+  _pkIterator.reset(docs->value());
+
+  // optimization, since during:
+  // * regular runtime should have at most 1 identical live primary key in the entire datastore
+  // * recovery should have at most 2 identical live primary keys in the entire datastore
+  if (irs::filter::type() == typeDefault) { // explicitly check type of instance
+    TRI_ASSERT(!docs->next()); // primary key duplicates should NOT happen in the same segment in regular runtime
+    _pk.first = 0; // already matched 1 primary key (should be at most 1 at runtime)
   }
 
   // aliasing constructor
@@ -58,33 +94,16 @@ size_t PrimaryKeyFilter::hash() const noexcept {
 }
 
 irs::filter::prepared::ptr PrimaryKeyFilter::prepare(
-    irs::index_reader const& index,
+    irs::index_reader const& /*index*/,
     irs::order::prepared const& /*ord*/,
     irs::boost::boost_t /*boost*/,
     irs::attribute_view const& /*ctx*/
 ) const {
-  auto const pkRef = static_cast<irs::bytes_ref>(_pk);
-
-  for (auto& segment : index) {
-    auto* pkField = segment.field(arangodb::iresearch::DocumentPrimaryKey::PK());
-
-    if (!pkField) {
-      continue;
-    }
-
-    auto term = pkField->iterator();
-
-    if (!term->seek(pkRef)) {
-      continue;
-    }
-
-    auto docs = term->postings(irs::flags::empty_instance());
-
-    if (docs->next()) {
-      _pkIterator.reset(segment, docs->value());
-    }
-
-    break;
+  // optimization, since during:
+  // * regular runtime should have at most 1 identical primary key in the entire datastore
+  // * recovery should have at most 2 identical primary keys in the entire datastore
+  if (!_pk.first) {
+    return irs::filter::prepared::empty(); // already processed
   }
 
   // aliasing constructor
@@ -99,7 +118,12 @@ bool PrimaryKeyFilter::equals(filter const& rhs) const noexcept {
     && _pk.second == trhs._pk.second;
 }
 
-DEFINE_FILTER_TYPE(PrimaryKeyFilter);
+/*static*/ ::iresearch::type_id const& PrimaryKeyFilter::type() {
+  return arangodb::EngineSelectorFeature::ENGINE
+         && arangodb::EngineSelectorFeature::ENGINE->inRecovery()
+    ? typeRecovery : typeDefault
+    ;
+}
 
 } // iresearch
 } // arangodb

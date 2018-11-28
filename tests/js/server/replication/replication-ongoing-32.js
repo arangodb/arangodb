@@ -95,6 +95,7 @@ const compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFi
   applierConfiguration.username = 'root';
   applierConfiguration.password = '';
   applierConfiguration.force32mode = true;
+  applierConfiguration.requireFromPresent = false;
 
   if (!applierConfiguration.hasOwnProperty('chunkSize')) {
     applierConfiguration.chunkSize = 16384;
@@ -151,6 +152,7 @@ const compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFi
     internal.wait(0.5, false);
   }
 
+  internal.wait(1.0, false);
   db._flushCache();
   slaveFuncFinal(state);
 };

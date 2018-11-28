@@ -27,10 +27,15 @@
 
 #include "ActionBase.h"
 #include "ActionDescription.h"
+#include "Cluster/ResultT.h"
+#include "VocBase/voc-types.h"
 
 #include <chrono>
 
 namespace arangodb {
+
+class LogicalCollection;
+
 namespace maintenance {
 
 class SynchronizeShard : public ActionBase {
@@ -49,13 +54,31 @@ private:
   arangodb::Result getReadLock(
     std::string const& endpoint, std::string const& database,
     std::string const& collection, std::string const& clientId, uint64_t rlid,
-    double timeout = 300.0);
+    bool soft, double timeout = 300.0);
 
   arangodb::Result startReadLockOnLeader(
     std::string const& endpoint, std::string const& database,
     std::string const& collection, std::string const& clientId, uint64_t& rlid,
-    double timeout = 300.0);
+    bool soft, double timeout = 300.0);
 
+
+  arangodb::ResultT<TRI_voc_tick_t> catchupWithReadLock(std::string const& ep,
+                                                        std::string const& database,
+                                                        LogicalCollection const& collection,
+                                                        std::string const& clientId,
+                                                        std::string const& shard,
+                                                        std::string const& leader,
+                                                        TRI_voc_tick_t lastLogTick,
+                                                        VPackBuilder& builder);
+
+  arangodb::Result catchupWithExclusiveLock(std::string const& ep,
+                                            std::string const& database,
+                                            LogicalCollection const& collection,
+                                            std::string const& clientId,
+                                            std::string const& shard,
+                                            std::string const& leader,
+                                            TRI_voc_tick_t lastLogTick,
+                                            VPackBuilder& builder);
 };
 
 }}

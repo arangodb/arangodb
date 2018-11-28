@@ -146,7 +146,6 @@ std::string const StaticStrings::Location("location");
 std::string const StaticStrings::NoSniff("nosniff");
 std::string const StaticStrings::Origin("origin");
 std::string const StaticStrings::PotentialDirtyRead("x-arango-potential-dirty-read");
-std::string const StaticStrings::Queue("x-arango-queue");
 std::string const StaticStrings::RequestForwardedTo(
     "x-arango-request-forwarded-to");
 std::string const StaticStrings::ResponseCode("x-arango-response-code");
@@ -190,6 +189,9 @@ std::string const StaticStrings::GraphDropCollections("dropCollections");
 std::string const StaticStrings::GraphDropCollection("dropCollection");
 std::string const StaticStrings::GraphCreateCollections("createCollections");
 std::string const StaticStrings::GraphCreateCollection("createCollection");
+
+// Replication
+std::string const StaticStrings::ReplicationSoftLockOnly("doSoftLockOnly");
 
 // misc strings
 std::string const StaticStrings::LastValue("lastValue");

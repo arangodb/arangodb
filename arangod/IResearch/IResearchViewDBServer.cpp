@@ -170,6 +170,10 @@ struct IResearchViewDBServer::ViewFactory: public arangodb::ViewFactory {
     );
 
     if (TRI_ERROR_NO_ERROR != resNum) {
+      if (error.empty()) {
+        error = TRI_errno_string(resNum);
+      }
+
       return arangodb::Result(
         resNum,
         std::string("failure during ClusterInfo persistance of created view while creating arangosearch View in database '") + vocbase.name() + "', error: " + error
@@ -368,8 +372,8 @@ IResearchViewDBServer::~IResearchViewDBServer() {
 }
 
 arangodb::Result IResearchViewDBServer::appendVelocyPackDetailed(
-  arangodb::velocypack::Builder& builder,
-  bool //forPersistence
+    arangodb::velocypack::Builder& builder,
+    bool forPersistence
 ) const {
   if (!builder.isOpenObject()) {
     return arangodb::Result(
@@ -381,7 +385,22 @@ arangodb::Result IResearchViewDBServer::appendVelocyPackDetailed(
   {
     SCOPED_LOCK(_meta->read()); // '_meta' can be asynchronously updated
 
-    if (!_meta->json(builder)) {
+    static const std::function<bool(irs::string_ref const& key)> acceptor = [](
+        irs::string_ref const& key
+    )->bool {
+      return key != StaticStrings::VersionField; // ignored fields
+    };
+    static const std::function<bool(irs::string_ref const& key)> persistenceAcceptor = [](
+        irs::string_ref const&
+    )->bool {
+      return true;
+    };
+    arangodb::velocypack::Builder sanitizedBuilder;
+
+    sanitizedBuilder.openObject();
+
+    if (!_meta->json(sanitizedBuilder)
+        || !mergeSliceSkipKeys(builder, sanitizedBuilder.close().slice(), forPersistence ? persistenceAcceptor : acceptor)) {
       return arangodb::Result(
         TRI_ERROR_INTERNAL,
         std::string("failure to generate definition while generating properties jSON for arangosearch view in database '") + vocbase().name() + "'"

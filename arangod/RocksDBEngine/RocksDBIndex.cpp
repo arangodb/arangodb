@@ -202,24 +202,6 @@ void RocksDBIndex::destroyCache() {
   _cachePresent = false;
 }
 
-rocksdb::SequenceNumber RocksDBIndex::serializeEstimate(
-    std::string&, rocksdb::SequenceNumber seq) const {
-  // All indexes that do not have an estimator do not serialize anything.
-  return seq;
-}
-
-bool RocksDBIndex::deserializeEstimate(RocksDBSettingsManager*) {
-  // All indexes that do not have an estimator do not deserialize anything.
-  // So the estimate is always recreatable.
-  // We do not advance anything here.
-  return true;
-}
-
-void RocksDBIndex::recalculateEstimates() {
-  // Nothing to do.
-  return;
-}
-
 int RocksDBIndex::drop() {
   auto* coll = toRocksDBCollection(_collection);
   // edge index needs to be dropped with prefixSameAsStart = false
@@ -274,6 +256,7 @@ Result RocksDBIndex::updateInternal(transaction::Methods* trx, RocksDBMethods* m
   // It is illegal to call this method on the primary index
   // RocksDBPrimaryIndex must override this method accordingly
   TRI_ASSERT(type() != TRI_IDX_TYPE_PRIMARY_INDEX);
+
   Result res = removeInternal(trx, mthd, oldDocumentId, oldDoc, mode);
   if (!res.ok()) {
     return res;
@@ -359,6 +342,6 @@ RocksDBCuckooIndexEstimator<uint64_t>* RocksDBIndex::estimator() {
   return nullptr;
 }
 
-bool RocksDBIndex::needToPersistEstimate() const {
-  return false;
+void RocksDBIndex::setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>) {
+  // Nothing to do.
 }

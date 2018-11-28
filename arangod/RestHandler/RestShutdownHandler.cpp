@@ -51,7 +51,7 @@ RestStatus RestShutdownHandler::execute() {
   }
   
   AuthenticationFeature* af = AuthenticationFeature::instance();
-  if (af->isEnabled() && !_request->user().empty()) {
+  if (af->isActive() && !_request->user().empty()) {
     auth::Level lvl = auth::Level::NONE;
     if (af->userManager() != nullptr) {
       lvl = af->userManager()->databaseAuthLevel(_request->user(), "_system", /*configured*/true);

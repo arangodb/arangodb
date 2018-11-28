@@ -64,6 +64,7 @@ class PrimaryKeyFilter final
 
   virtual size_t hash() const noexcept override;
 
+  using irs::filter::prepare;
   virtual filter::prepared::ptr prepare(
     irs::index_reader const& index,
     irs::order::prepared const& /*ord*/,
@@ -100,18 +101,16 @@ class PrimaryKeyFilter final
       return irs::attribute_view::empty_instance();
     }
 
-    void reset(irs::sub_reader const& segment, irs::doc_id_t doc) noexcept {
-      _pkSegment = &segment;
+    void reset(irs::doc_id_t doc) noexcept {
       _doc = irs::type_limits<irs::type_t::doc_id_t>::invalid();
       _next = doc;
     }
 
-    mutable irs::sub_reader const* _pkSegment{};
     mutable irs::doc_id_t _doc{ irs::type_limits<irs::type_t::doc_id_t>::invalid() };
     mutable irs::doc_id_t _next{ irs::type_limits<irs::type_t::doc_id_t>::eof() };
   }; // PrimaryKeyIterator
 
-  DocumentPrimaryKey _pk;
+  mutable DocumentPrimaryKey _pk; // !_pk.first -> do not perform further execution (first-match optimization)
   mutable PrimaryKeyIterator _pkIterator;
 }; // PrimaryKeyFilter
 
@@ -129,6 +128,7 @@ class PrimaryKeyFilterContainer final : public irs::empty {
 
   PrimaryKeyFilter& emplace(TRI_voc_cid_t cid, TRI_voc_rid_t rid) {
     _filters.emplace_back(cid, rid);
+
     return _filters.back();
   }
 

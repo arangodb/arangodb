@@ -4,21 +4,19 @@ Active Failover Architecture
 An _Active Failover_ is defined as:
 
 - One ArangoDB Single-Server instance which is read / writable by clients called **Leader**
-- One or more ArangoDB Single-Server instances, which are passive and not readable or writable 
+- One or more ArangoDB Single-Server instances, which are passive and not writable 
   called **Followers**, which asynchronously replicate data from the master
 - At least one _Agency_ acting as a "witness" to determine which server becomes the _leader_
   in a _failure_ situation
 
-**Note:** even though it is technically possible to start more than one _followers_ only one
-_follower_ is currently officially supported. This limitation may be removed in
-future releases.
-
 ![ArangoDB Active Failover](leader-follower.png)
 
-The advantage of the _Active Failover_ compared to a traditional _Master-Slave_
+The advantage of the _Active Failover_ compared to the traditional [_Master/Slave_](../MasterSlave/README.md)
 setup is that there is an active third party, the _Agency_ which observes and supervises
 all involved server processes. _Follower_ instances can rely on the _Agency_ to
-determine the correct _leader_ server.
+determine the correct _Leader_ server. From an operational point of view, one advantage is that
+the failover, in case the _Leader_ goes down, is automatic. An additional operational
+advantage is that there is no need to start a _replication applier_ manually.
 
 The _Active Failover_ setup is made **resilient** by the fact that all the official
 ArangoDB drivers can automatically determine the correct _leader_ server and
@@ -52,7 +50,7 @@ In contrast to the normal behaviour of a single-server instance, the Active-Fail
 mode will change the behaviour of ArangoDB in some situations.
 
 The _Follower_ will _always_ deny write requests from client applications.  Starting from ArangoDB 3.4
-read requests are _only_ permitted if the requests is marked with the `X-Arango-Allow-Dirty-Read` header,
+read requests are _only_ permitted if the requests is marked with the `X-Arango-Allow-Dirty-Read: true` header,
 otherwise they are denied too.
 Only the replication itself is allowed to access the follower's data until the
 follower becomes a new _Leader_ (should a _failover_ happen).
@@ -75,11 +73,12 @@ on _Leader_ and _Followers_ alike.
 Reading from Followers
 ----------------------
 
-Followers in the active-failover setup are in a read-only mode. It is possible to read from these
-followers by adding a `X-Arango-Allow-Dirty-Read` header on each request. Responses will then automatically
-contain the `X-Arango-Potential-Dirty-Read` header so that clients can reject accidental dirty reads.
+Followers in the active-failover setup are in read-only mode. It is possible to read from these
+followers by adding a `X-Arango-Allow-Dirty-Read: true` header on each request. Responses will then automatically
+contain the `X-Arango-Potential-Dirty-Read: true` header so that clients can reject accidental dirty reads.
 
-Depending on the driver support for your specific programming language, you should be able to enable this option.
+Depending on the driver support for your specific programming language, you should be able
+to enable this option.
 
 Tooling Support
 ---------------

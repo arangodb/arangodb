@@ -202,27 +202,11 @@ void ensureLink(
 
   json.close();
 
-  arangodb::SingleCollectionTransaction trx(
-    arangodb::transaction::StandaloneContext::Create(*vocbase),
-    *col,
-    arangodb::AccessMode::Type::EXCLUSIVE
-  );
-  auto res = trx.begin();
   bool created;
-
-  if (!res.ok()) {
-    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "Failed to begin transaction while recovering link '" << iid
-        << "' to the collection '" << cid
-        << "' in the database '" << dbId;
-    return;
-  }
-
   // re-insert link
   if (!col->dropIndex(link->id())
-      || !col->createIndex(&trx, json.slice(), created)
-      || !created
-      || !trx.commit().ok()) {
+      || !col->createIndex(json.slice(), created)
+      || !created) {
     LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
         << "Failed to recreate the link '" << iid
         << "' to the collection '" << cid
@@ -365,15 +349,20 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
     trx.begin();
 
     for (auto link : links) {
+      IndexId indexId(coll->vocbase().id(), coll->id(), link->id());
+
+      // optimization: avoid insertion of recovered documents twice,
+      //               first insertion done during index creation
+      if (!link || _recoveredIndexes.find(indexId) != _recoveredIndexes.end()) {
+        continue; // index was already populated when it was created
+      }
+
       link->insert(
         &trx,
         docId,
         doc,
         Index::OperationMode::internal
       );
-      LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-          << "recovery helper inserted: "
-          << doc.toJson(trx.transactionContext()->getVPackOptions());
     }
 
     trx.commit();
@@ -417,8 +406,6 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(uint32_t column_family_id,
       arangodb::velocypack::Slice::emptyObjectSlice(),
       Index::OperationMode::internal
     );
-    // LOG_TOPIC(TRACE, IResearchFeature::IRESEARCH) << "recovery helper
-    // removed: " << docId.id();
   }
 
   trx.commit();

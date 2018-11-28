@@ -41,6 +41,7 @@
 
 #include "Aql/AstNode.h"
 #include "Aql/QueryCache.h"
+#include "Basics/StaticStrings.h"
 #include "Logger/LogMacros.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionState.h"
@@ -470,20 +471,20 @@ struct IResearchView::ViewFactory: public arangodb::ViewFactory {
 
       if (!res.ok()) {
         LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-          << "failed to create links while creating arangosearch view '" << view->name() <<  "': " << res.errorNumber() << " " <<  res.errorMessage();
+          << "failed to create links while creating arangosearch view '" << impl->name() <<  "': " << res.errorNumber() << " " <<  res.errorMessage();
       }
     } catch (arangodb::basics::Exception const& e) {
       IR_LOG_EXCEPTION();
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "caught exception while creating links while creating arangosearch view '" << view->name() << "': " << e.code() << " " << e.what();
+        << "caught exception while creating links while creating arangosearch view '" << impl->name() << "': " << e.code() << " " << e.what();
     } catch (std::exception const& e) {
       IR_LOG_EXCEPTION();
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "caught exception while creating links while creating arangosearch view '" << view->name() << "': " << e.what();
+        << "caught exception while creating links while creating arangosearch view '" << impl->name() << "': " << e.what();
     } catch (...) {
       IR_LOG_EXCEPTION();
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "caught exception while creating links while creating arangosearch view '" << view->name() << "'";
+        << "caught exception while creating links while creating arangosearch view '" << impl->name() << "'";
     }
 
     view = impl;
@@ -515,6 +516,7 @@ struct IResearchView::ViewFactory: public arangodb::ViewFactory {
     );
 
     if (!meta->init(definition, error)
+        || meta->_version > LATEST_VERSION
         || !impl->_metaState.init(definition, error)) {
       return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
@@ -737,6 +739,7 @@ IResearchView::IResearchView(
           << "starting persisted-sync sync for arangosearch view '" << viewPtr->name() << "'";
 
         try {
+          // this is _also_ required for the PrimaryKeyFilter single-execution optimization to work
           viewPtr->_storePersisted.sync();
         } catch (arangodb::basics::Exception& e) {
           LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
@@ -894,9 +897,7 @@ IResearchView::~IResearchView() {
     if (_storePersisted) {
       try {
         // NOTE: do not commit writer so as not to go out-of-sync with the WAL (i.e. flush thread)
-        _storePersisted._writer->close();
         _storePersisted._writer.reset();
-        _storePersisted._directory->close();
         _storePersisted._directory.reset();
       } catch (...) {
         // must not propagate exception out of destructor
@@ -925,7 +926,22 @@ arangodb::Result IResearchView::appendVelocyPackDetailed(
     auto meta = std::atomic_load(&_meta);
     SCOPED_LOCK(meta->read()); // '_meta' can be asynchronously updated
 
-    if (!meta->json(builder)) {
+    static const std::function<bool(irs::string_ref const& key)> acceptor = [](
+        irs::string_ref const& key
+    )->bool {
+      return key != StaticStrings::VersionField; // ignored fields
+    };
+    static const std::function<bool(irs::string_ref const& key)> persistenceAcceptor = [](
+        irs::string_ref const&
+    )->bool {
+      return true;
+    };
+    arangodb::velocypack::Builder sanitizedBuilder;
+
+    sanitizedBuilder.openObject();
+
+    if (!meta->json(sanitizedBuilder)
+        || !mergeSliceSkipKeys(builder, sanitizedBuilder.close().slice(), forPersistence ? persistenceAcceptor : acceptor)) {
       return arangodb::Result(
         TRI_ERROR_INTERNAL,
         std::string("failure to generate definition while generating properties jSON for arangosearch View in database '") + vocbase().name() + "'"
@@ -1007,7 +1023,33 @@ arangodb::Result IResearchView::appendVelocyPackDetailed(
           }
 
           linkBuilder.close();
-          linksBuilderWrapper->add(collectionName, linkBuilder.slice());
+
+          // need to mask out some fields
+          static const std::function<bool(irs::string_ref const& key)> acceptor = [](
+              irs::string_ref const& key
+          )->bool {
+            return key != arangodb::StaticStrings::IndexId
+                && key != arangodb::StaticStrings::IndexType
+                && key != StaticStrings::ViewIdField; // ignored fields
+          };
+
+          arangodb::velocypack::Builder sanitizedBuilder;
+
+          sanitizedBuilder.openObject();
+
+          if (!mergeSliceSkipKeys(sanitizedBuilder, linkBuilder.slice(), acceptor)) {
+            Result result(TRI_ERROR_INTERNAL,
+                std::string("failed to generate externally visible link ")
+                .append("definition while emplacing link definition into ")
+                .append("arangosearch view '").append(name()).append("'"));
+
+            LOG_TOPIC(WARN, iresearch::TOPIC) << result.errorMessage();
+
+            return result;
+          }
+
+          sanitizedBuilder.close();
+          linksBuilderWrapper->add(collectionName, sanitizedBuilder.slice());
         }
       }
     }
@@ -1211,9 +1253,7 @@ arangodb::Result IResearchView::dropImpl() {
   try {
     if (_storePersisted) {
       _storePersisted._reader.reset(); // reset reader to release file handles
-      _storePersisted._writer->close();
       _storePersisted._writer.reset();
-      _storePersisted._directory->close();
       _storePersisted._directory.reset();
     }
 
@@ -1885,6 +1925,7 @@ arangodb::Result IResearchView::updateProperties(
 
       // reset non-updatable values to match current meta
       meta._locale = viewMeta->_locale;
+      meta._version = viewMeta->_version;
       meta._writebufferActive = viewMeta->_writebufferActive;
       meta._writebufferIdle = viewMeta->_writebufferIdle;
       meta._writebufferSizeMax = viewMeta->_writebufferSizeMax;

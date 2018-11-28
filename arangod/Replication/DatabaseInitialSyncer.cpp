@@ -1277,13 +1277,12 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
         !masterUuid.empty() ? masterUuid : itoa(masterCid);
     auto res = incremental && getSize(*col) > 0
              ? fetchCollectionSync(col, masterColl, _config.master.lastUncommittedLogTick)
-             : fetchCollectionDump(col, masterColl, _config.master.lastUncommittedLogTick)
-             ;
+             : fetchCollectionDump(col, masterColl, _config.master.lastUncommittedLogTick);
 
     if (!res.ok()) {
       return res;
     } else if (isAborted()) {
-      return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
+      return res.reset(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
 
     if (masterName == TRI_COL_NAME_USERS) {
@@ -1310,57 +1309,30 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
                            collectionMsg);
 
       try {
-        SingleCollectionTransaction trx(
-          transaction::StandaloneContext::Create(vocbase()),
-          *col,
-          AccessMode::Type::EXCLUSIVE
-        );
-
-        res = trx.begin();
-
-        if (!res.ok()) {
-          return Result(res.errorNumber(),
-                        std::string("unable to start transaction: ") +
-                            res.errorMessage());
-        }
-
-        trx.pinData(col->id());  // will throw when it fails
-
-        LogicalCollection* document = trx.documentCollection();
-        TRI_ASSERT(document != nullptr);
-        auto physical = document->getPhysical();
+        auto physical = col->getPhysical();
         TRI_ASSERT(physical != nullptr);
 
         for (auto const& idxDef : VPackArrayIterator(indexes)) {
           std::shared_ptr<arangodb::Index> idx;
 
           if (idxDef.isObject()) {
-            VPackSlice const type = idxDef.get("type");
+            VPackSlice const type = idxDef.get(StaticStrings::IndexType);
             if (type.isString()) {
               _config.progress.set("creating index of type " +
                                    type.copyString() + " for " + collectionMsg);
             }
           }
 
-          res = physical->restoreIndex(&trx, idxDef, idx);
-
-          if (!res.ok()) {
-            res.reset(
-                res.errorNumber(),
-                std::string("could not create index: ") + res.errorMessage());
-            break;
-          }
-        }
-
-        if (res.ok()) {
-          res = trx.commit();
+          bool created = false;
+          idx = physical->createIndex(idxDef, /*restore*/true, created);
+          TRI_ASSERT(idx != nullptr);
         }
       } catch (arangodb::basics::Exception const& ex) {
-        return Result(ex.code(), ex.what());
+        return res.reset(ex.code(), ex.what());
       } catch (std::exception const& ex) {
-        return Result(TRI_ERROR_INTERNAL, ex.what());
+        return res.reset(TRI_ERROR_INTERNAL, ex.what());
       } catch (...) {
-        return Result(TRI_ERROR_INTERNAL);
+        return res.reset(TRI_ERROR_INTERNAL);
       }
     }
 
@@ -1504,7 +1476,7 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(VPackSlice const& collSl
   
   if (!_config.applier._skipCreateDrop &&
       _config.applier._restrictCollections.empty() &&
-      !viewSlices.isNone()) {
+      viewSlices.isArray()) {
     // views are optional, and 3.3 and before will not send any view data
     Result r = handleViewCreation(viewSlices); // no requests to master
     if (r.fail()) {

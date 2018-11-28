@@ -2676,7 +2676,7 @@ typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, Cvt
   auto ctx = context();
 
   if (!ctx) {
-    throw irs::detailed_io_error(
+    throw irs::io_error(
       "failed to retrieve ICU formatter in num_put_facet::do_put(...)"
     );
   }
@@ -2686,7 +2686,7 @@ typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, Cvt
   ctx->regular_->format(int64_t(0 - value), ctx->icu_buf0_);
 
   if (!converter_.append(ctx->buf_, ctx->icu_buf0_)) {
-    throw irs::detailed_io_error(
+    throw irs::io_error(
       "failed to convert data from UTF8 in num_put_facet::do_put(...)"
     );
   }
@@ -2752,7 +2752,7 @@ typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, Cvt
   }
 
   if ((unsigned long long)irs::integer_traits<int64_t>::const_max < value) {
-    throw irs::detailed_io_error(
+    throw irs::io_error(
       "value too large while converting data from UTF8 in num_put_facet::do_put(...)"
     );
   }
@@ -2771,7 +2771,7 @@ typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, Cvt
   auto ctx = context();
 
   if (!ctx) {
-    throw irs::detailed_io_error(
+    throw irs::io_error(
       "failed to retrieve ICU formatter in num_put_facet::do_put(...)"
     );
   }
@@ -2781,7 +2781,7 @@ typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, Cvt
   ctx->regular_->format(int64_t(value), ctx->icu_buf0_);
 
   if (!converter_.append(ctx->buf_, ctx->icu_buf0_)) {
-    throw irs::detailed_io_error(
+    throw irs::io_error(
       "failed to convert data from UTF8 in num_put_facet::do_put(...)"
     );
   }
@@ -2837,7 +2837,7 @@ typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, Cvt
   auto ctx = context();
 
   if (!ctx) {
-    throw irs::detailed_io_error(
+    throw irs::io_error(
       "failed to retrieve ICU formatter in num_put_facet::do_put(...)"
     );
   }
@@ -2915,7 +2915,7 @@ typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, Cvt
   }
 
   if (!converter_.append(ctx->buf_, *icu_buf)) {
-    throw irs::detailed_io_error(
+    throw irs::io_error(
       "failed to convert data from UTF8 in num_put_facet::do_put(...)"
     );
   }
@@ -3201,7 +3201,7 @@ template<typename T>
       *out++ = '+';
       ++size;
 
-      for (size_t i = ipad < len ? 0 : ipad - len; i; --i) {
+      for (size_t j = ipad < len ? 0 : ipad - len; j; --j) {
         *out++ = fill;
         ++len; // subtract from 'ipad'
         ++size;
@@ -3215,7 +3215,7 @@ template<typename T>
       size += 2;
     }
 
-    for (size_t i = ipad < len ? 0 : ipad - len; i; --i) {
+    for (size_t j = ipad < len ? 0 : ipad - len; j; --j) {
       *out++ = fill;
       ++size;
     }

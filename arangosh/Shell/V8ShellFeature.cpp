@@ -264,7 +264,7 @@ void V8ShellFeature::copyInstallationFiles() {
   std::string const versionAppendix = std::regex_replace(rest::Version::getServerVersion(), std::regex("-.*$"), "");
   std::string const nodeModulesPath = FileUtils::buildFilename("js", "node", "node_modules");
   std::string const nodeModulesPathVersioned = basics::FileUtils::buildFilename("js", versionAppendix, "node", "node_modules");
-  auto filter = [&nodeModulesPath, &nodeModulesPathVersioned, this](std::string const& filename) -> bool{
+  auto filter = [&nodeModulesPath, &nodeModulesPathVersioned](std::string const& filename) -> bool{
     if (filename.size() >= nodeModulesPath.size()) {
       std::string normalized = filename;
       FileUtils::normalizePath(normalized);
