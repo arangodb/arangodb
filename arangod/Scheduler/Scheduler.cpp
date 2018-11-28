@@ -213,9 +213,8 @@ void Scheduler::post(std::function<void()> const callback, bool isHandler) {
   // reduce queued at the end
   auto guardQueue = scopeGuard([this]() { decQueued(); });
 
-  LOG_TOPIC(WARN, Logger::THREADS) << "old: " << old;
-
-  if (isHandler && old < 1) {
+  // if there is a handler, there is also a io task
+  if (isHandler && old < 2) {
     JobGuard jobGuard(this);
     jobGuard.work();
 
@@ -231,10 +230,9 @@ void Scheduler::post(std::function<void()> const callback, bool isHandler) {
       callback();
     });
 
+    // no exception happened, cancel guard
     guardQueue.cancel();
   }
-
-  // no exception happened, cancel guard
 }
 
 // do not pass callback by reference, might get deleted before execution
