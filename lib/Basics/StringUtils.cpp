@@ -791,18 +791,15 @@ std::string tolower(std::string const& str) {
   if (len == 0) {
     return "";
   }
+  
+  std::string result;
+  result.reserve(len);
 
-  char* buffer = new char[len];
-  char* qtr = buffer;
   char const* ptr = str.c_str();
 
-  for (; 0 < len; len--, ptr++, qtr++) {
-    *qtr = static_cast<char>(::tolower(*ptr));
+  for (; 0 < len; len--, ptr++) {
+    result.push_back(static_cast<char>(::tolower(*ptr)));
   }
-
-  std::string result(buffer, str.size());
-
-  delete[] buffer;
 
   return result;
 }
@@ -826,16 +823,15 @@ std::string toupper(std::string const& str) {
     return "";
   }
 
-  char* buffer = new char[len];
-  char* qtr = buffer;
+  std::string result;
+  result.reserve(len);
+
   char const* ptr = str.c_str();
 
-  for (; 0 < len; len--, ptr++, qtr++) {
-    *qtr = static_cast<char>(::toupper(*ptr));
+  for (; 0 < len; len--, ptr++) {
+    result.push_back(static_cast<char>(::toupper(*ptr)));
   }
 
-  std::string result(buffer, str.size());
-  delete[] buffer;
   return result;
 }
 

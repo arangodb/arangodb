@@ -444,9 +444,8 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
                           std::move(handler));
   });
 
-  uint64_t messageId = handler->messageId();
-
   if (!ok) {
+    uint64_t messageId = handler->messageId();
     addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
                      handler->request()->contentTypeResponse(), messageId,
                      TRI_ERROR_QUEUE_FULL);
