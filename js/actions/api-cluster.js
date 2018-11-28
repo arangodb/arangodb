@@ -188,7 +188,7 @@ actions.defineHttp({
     while (true) {
       var mode = global.ArangoAgency.read([["/arango/Supervision/State/Mode"]])[0].
           arango.Supervision.State.Mode;
-      
+
       if (body === "on" && mode === "Maintenance") {
         res.body = JSON.stringify({
           error: false,
@@ -202,7 +202,7 @@ actions.defineHttp({
       }
 
       wait(0.1);
-      
+
       if (new Date().getTime() > waitUntil) {
         res.responseCode = actions.HTTP_GATEWAY_TIMEOUT;
         res.body = JSON.stringify({
@@ -212,10 +212,10 @@ actions.defineHttp({
         });
         return;
       }
-      
+
     }
 
-    return ; 
+    return ;
 
   }});
   // //////////////////////////////////////////////////////////////////////////////
@@ -564,9 +564,9 @@ actions.defineHttp({
           Health[key].Leading = true;
           Object.entries(record.lastAcked).forEach(([k,v]) => {
             if (Health.hasOwnProperty(k)) {
-              Health[k].lastAckedTime = v.lastAckedTime;
+              Health[k].LastAckedTime = v.lastAckedTime;
             } else {
-              Health[k] = {lastAckedTime: v.lastAckedTime};
+              Health[k] = {LastAckedTime: v.lastAckedTime};
             }
           });
         }
@@ -583,7 +583,7 @@ actions.defineHttp({
           }
         }
       }
-      
+
     });
 
     actions.resultOk(req, res, actions.HTTP_OK, {Health, ClusterId: clusterId});
