@@ -29,7 +29,9 @@ In ArangoDB there are two ways to handle monetary data:
    on them on the server. Calculations have to happen in application logic
    that is capable of doing arithmetic on string-encoded integers.
    
- **Authors:** Jan Stücke, [Jan Steemann](https://github.com/jsteemann)
+ **Authors:**
+ [Jan Stücke](https://github.com/MrPieces),
+ [Jan Steemann](https://github.com/jsteemann)
  
  **Tags**: #howto #datamodel #numbers
  
