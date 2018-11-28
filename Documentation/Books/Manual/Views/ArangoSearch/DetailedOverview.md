@@ -45,9 +45,9 @@ standalone index.
 
 ## Analyzers
 
-To simplify query syntax ArangoSearch provides a concept of [named
-analyzers](Analyzers.md) which are merely aliases for type+configuration of
-IResearch analyzers.
+To simplify query syntax ArangoSearch provides a concept of
+[named analyzers](Analyzers.md) which are merely aliases for type+configuration
+of IResearch analyzers.
 <!-- Management of named analyzers is exposed via REST, GUI and JavaScript APIs. -->
 
 ## View definition/modification
@@ -119,6 +119,32 @@ of removing unused segments after release of internal resources.
   > in-progress ArangoDB transactions will still continue to return a
   > repeatable-read state.
 
+ArangoSearch performs operations in its index based on numerous writer
+objects that are mapped to processed segments. In order to control memory that
+is used by these writers (in terms of "writers pool") one can use
+`writebuffer*` properties of a view.
+
+- **writebufferIdle** (_optional_; type: `integer`; default: `64`;
+  to disable use: `0`)
+
+  Maximum number of writers (segments) cached in the pool.
+
+- **writebufferActive** (_optional_; type: `integer`; default: `0`;
+  to disable use: `0`)
+
+  Maximum number of concurrent active writers (segments) that perform a transaction.
+  Other writers (segments) wait till current active writers (segments) finish.
+
+- **writebufferSizeMax** (_optional_; type: `integer`; default: `33554432`;
+  to disable use: `0`)
+
+  Maximum memory byte size per writer (segment) before a writer (segment) flush is
+  triggered. `0` value turns off this limit for any writer (buffer) and data will
+  be flushed periodically based on the
+  [value defined for the flush thread](../../Programs/Arangod/Server.md#data-source-flush-synchronization)
+  (ArangoDB server startup option). `0` value should be used carefully due to high
+  potential memory consumption.
+
 - **consolidationPolicy** (_optional_; type: `object`; default: `{}`)
 
   The consolidation policy to apply for selecting data store segment merge
@@ -139,12 +165,45 @@ of removing unused segments after release of internal resources.
     upon several possible configurable formulas as defined by their types.
     The currently supported types are:
 
-    - **bytes_accum**: Consolidate if and only if  ({threshold} range `[0.0, 1.0]`)
-      `{threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes`,
-      i.e. the sum of all candidate segment's byte size is less than the total
-      segment byte size multiplied by the `{threshold}`.
+    - **bytes_accum**: Consolidation is performed based on current memory cunsumption
+      of segments and `threshold` property value.
     - **tier**: Consolidate based on segment byte size and live document count
       as dictated by the customization attributes.
+
+### `consolidationPolicy` properties for `bytes_accum` type
+  - **threshold** (_optional_; type: `float`; default: `0.1`)
+
+    Defines threshold value of `[0.0, 1.0]` possible range. Consolidation is
+    performed on segments which accumulated size in bytes is less than all
+    segments' byte size multiplied by the `threshold`; i.e. the following formula
+    is applied for each segment:
+    `{threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes`.
+
+### `consolidationPolicy` properties for `tier` type
+
+  - **segmentsMin** (_optional_; type: `integer`; default: `1`)
+
+    The minimum number of segments that will be evaluated as candidates for consolidation.
+
+  - **segmentsMax** (_optional_; type: `integer`; default: `10`)
+
+    The maximum number of segments that will be evaluated as candidates for consolidation.
+
+  - **segmentsBytesMax** (_optional_; type: `integer`; default: `5368709120`)
+
+    Maximum allowed size of all consolidated segments in bytes.
+
+  - **segmentsBytesFloor** (_optional_; type: `integer`; default: `2097152`)
+
+    Defines the value (in bytes) to treat all smaller segments as equal for consolidation
+    selection.
+
+  - **lookahead** (_optional_; type: `integer`; default: `18446744073709552000`)
+
+    The number of additionally searched tiers except initially chosen candidates based on
+    `segmentsMin`, `segmentsMax`, `segmentsBytesMax`, `segmentsBytesFloor` with
+    respect to defined values. Default value is treated as searching among all existing
+    segments.
 
 ## Link properties
 
