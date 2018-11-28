@@ -1,9 +1,30 @@
 v3.3.20 (XXXX-XX-XX)
 --------------------
 
-* Export Version and Storage Engine in Cluster Health.
+* Added RocksDB option `--rocksdb.total-write-buffer-size` to limit total memory 
+  usage across all RocksDB in-memory write buffers
 
-* Potential fix for issue #7407: arangorestore very slow converting from mmfiles to rocksdb
+  The total amount of data to build up in all in-memory buffers (backed by log
+  files). This option, together with the block cache size configuration option,
+  can be used to limit memory usage. If set to 0, the memory usage is not limited.
+
+  If set to 0, this will cap memory usage for write buffers but may have an effect
+  on performance. If there is less than 4GiB of RAM on the system, the default value
+  is 512MiB. If there is more, the default is `(system RAM size - 2GiB) * 0.4`.
+
+* Added RocksDB configuration option `--rocksdb.enforce-block-cache-size-limit`
+
+  Whether or not the maximum size of the RocksDB block cache is strictly enforced.
+  This option can be set to limit the memory usage of the block cache to at most the
+  specified size. If then inserting a data block into the cache would exceed the 
+  cache's capacity, the data block will not be inserted. If the flag is not set,
+  a data block may still get inserted into the cache. It is evicted later, but the
+  cache may temporarily grow beyond its capacity limit. 
+
+* Export version and storage engine in cluster health
+
+* Potential fix for issue #7407: arangorestore very slow converting from 
+  mmfiles to rocksdb
 
 * Updated joi library (Web UI), improved foxx mount path validation
 
@@ -50,9 +71,6 @@ v3.3.20 (XXXX-XX-XX)
 
 * fixes some graph data parsing issues in the ui, e.g. cleaning up duplicate
   edges inside the graph viewer.
-
-* added option `--rocksdb.total-write-buffer-size` to limit total memory usage
-  across all RocksDB in-memory write buffers
 
 * in a cluster environment, the arangod process now exits if wrong credentials
   are used during the startup process.
