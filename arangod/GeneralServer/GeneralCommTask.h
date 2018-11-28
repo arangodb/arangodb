@@ -153,7 +153,7 @@ class GeneralCommTask : public SocketTask {
 
  private:
   bool handleRequestSync(std::shared_ptr<RestHandler>);
-  void handleRequestDirectly(bool doLock, std::shared_ptr<RestHandler>);
+  void handleRequest(bool doLock, std::shared_ptr<RestHandler>);
   bool handleRequestAsync(std::shared_ptr<RestHandler>,
                           uint64_t* jobId = nullptr);
 };

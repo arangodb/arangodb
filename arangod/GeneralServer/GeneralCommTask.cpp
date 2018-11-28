@@ -439,9 +439,8 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   auto self = shared_from_this();
 
   bool ok = SchedulerFeature::SCHEDULER->queue(prio, [self, this, handler]() {
-    handleRequestDirectly(basics::ConditionalLocking::DoLock,
-                          std::move(handler));
-  });
+    handleRequest(basics::ConditionalLocking::DoLock, std::move(handler));
+  }, true);
 
   uint64_t messageId = handler->messageId();
 
@@ -455,7 +454,7 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 }
 
 // Just run the handler, could have been called in a different thread
-void GeneralCommTask::handleRequestDirectly(
+void GeneralCommTask::handleRequest(
     bool doLock, std::shared_ptr<RestHandler> handler) {
   TRI_ASSERT(doLock || _peer->runningInThisThread());
 

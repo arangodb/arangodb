@@ -206,26 +206,35 @@ Scheduler::~Scheduler() {
 }
 
 // do not pass callback by reference, might get deleted before execution
-void Scheduler::post(std::function<void()> const callback) {
+void Scheduler::post(std::function<void()> const callback, bool isHandler) {
   // increment number of queued and guard against exceptions
-  incQueued();
+  uint64_t old = incQueued();
 
+  // reduce queued at the end
   auto guardQueue = scopeGuard([this]() { decQueued(); });
 
-  // capture without self, ioContext will not live longer than scheduler
-  _ioContext->post([this, callback]() {
-    // start working
+  LOG_TOPIC(WARN, Logger::THREADS) << "old: " << old;
+
+  if (isHandler && old < 1) {
     JobGuard jobGuard(this);
     jobGuard.work();
 
-    // reduce number of queued now
-    decQueued();
-
     callback();
-  });
+  } else {
+    // capture without self, ioContext will not live longer than scheduler
+    _ioContext->post([this, callback]() {
+      auto guardQueue = scopeGuard([this]() { decQueued(); });
+
+      JobGuard jobGuard(this);
+      jobGuard.work();
+
+      callback();
+    });
+
+    guardQueue.cancel();
+  }
 
   // no exception happened, cancel guard
-  guardQueue.cancel();
 }
 
 // do not pass callback by reference, might get deleted before execution
@@ -239,7 +248,8 @@ void Scheduler::post(asio_ns::io_context::strand& strand,
     JobGuard guard(this);
     guard.work();
 
-    decQueued();
+    // reduce queued at the end
+    auto guardQueue = scopeGuard([this]() { decQueued(); });
     callback();
   });
 
@@ -248,7 +258,8 @@ void Scheduler::post(asio_ns::io_context::strand& strand,
 }
 
 bool Scheduler::queue(RequestPriority prio,
-                      std::function<void()> const& callback) {
+                      std::function<void()> const& callback,
+		      bool isHandler) {
   bool ok = true;
 
   switch (prio) {
@@ -262,7 +273,7 @@ bool Scheduler::queue(RequestPriority prio,
       if (0 < _fifoSize[FIFO1] || !canPostDirectly(prio)) {
         ok = pushToFifo(FIFO1, callback);
       } else {
-        post(callback);
+        post(callback, isHandler);
       }
       break;
 
@@ -274,7 +285,7 @@ bool Scheduler::queue(RequestPriority prio,
       if (0 < _fifoSize[FIFO1] || 0 < _fifoSize[FIFO2] || !canPostDirectly(prio)) {
         ok = pushToFifo(FIFO2, callback);
       } else {
-        post(callback);
+        post(callback, isHandler);
       }
       break;
 
@@ -286,7 +297,7 @@ bool Scheduler::queue(RequestPriority prio,
       if (0 < _fifoSize[FIFO1] || 0 < _fifoSize[FIFO2] || 0 < _fifoSize[FIFO3] || !canPostDirectly(prio)) {
         ok = pushToFifo(FIFO3, callback);
       } else {
-        post(callback);
+        post(callback, isHandler);
       }
       break;
 
@@ -364,18 +375,17 @@ std::string Scheduler::infoStatus() {
 
 bool Scheduler::canPostDirectly(RequestPriority prio) const noexcept {
   auto counters = getCounters();
-  auto nrWorking = numWorking(counters);
   auto nrQueued = numQueued(counters);
 
   switch (prio) {
     case RequestPriority::HIGH:
-      return nrWorking + nrQueued < _maxThreads;
+      return nrQueued < _maxThreads;
 
     // the "/ 2" is an assumption that HIGH is typically responses to our outbound messages
     //  where MED & LOW are incoming requests.  Keep half the threads processing our work and half their work.
     case RequestPriority::MED:
     case RequestPriority::LOW:
-      return nrWorking + nrQueued < _maxThreads / 2;
+      return nrQueued < _maxThreads / 2;
   }
 
   return false;
@@ -402,14 +412,13 @@ bool Scheduler::pushToFifo(int64_t fifo, std::function<void()> const& callback) 
 
     // then check, otherwise we might miss to wake up a thread
     auto counters = getCounters();
-    auto nrWorking = numRunning(counters);
     auto nrQueued = numQueued(counters);
 
-    if (0 == nrWorking + nrQueued) {
+    if (0 == nrQueued) {
       post([] {
           LOG_TOPIC(DEBUG, Logger::THREADS) << "Wakeup alarm";
           /*wakeup call for scheduler thread*/
-      });
+      }, false);
     }
   } catch (...) {
     return false;
@@ -434,7 +443,7 @@ bool Scheduler::popFifo(int64_t fifo) {
       }
     });
 
-   post(job->_callback);
+    post(job->_callback, false);
 
     --_fifoSize[p];
   }
