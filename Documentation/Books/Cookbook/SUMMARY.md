@@ -17,6 +17,7 @@
   * [Using a custom Visitor](Graph/CustomVisitorFromNodeJs.md)
   * [Example AQL Queries for Graphs](Graph/ExampleActorsAndMovies.md)
 * [Use Cases / Examples](UseCases/README.md)
+  * [Monetary data without precision loss](UseCases/MonetaryDataWithoutPrecisionLoss.md)
   * [Populating a Textbox](UseCases/PopulatingAnAutocompleteTextbox.md)
   * [Exporting Data](UseCases/ExportingData.md)
   * [Accessing base documents with Java](UseCases/JavaDriverBaseDocument.md)
