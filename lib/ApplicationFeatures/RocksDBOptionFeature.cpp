@@ -71,6 +71,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(
       _level0CompactionTrigger(2),
       _level0SlowdownTrigger(rocksDBDefaults.level0_slowdown_writes_trigger),
       _level0StopTrigger(rocksDBDefaults.level0_stop_writes_trigger),
+      _enforceBlockCacheSizeLimit(false),
       _enablePipelinedWrite(rocksDBDefaults.enable_pipelined_write),
       _optimizeFiltersForHits(rocksDBDefaults.optimize_filters_for_hits),
       _useDirectReads(rocksDBDefaults.use_direct_reads),
@@ -92,7 +93,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(
     --_maxBackgroundJobs;
   } // if
 #endif
-
+      
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Daemon");
@@ -247,6 +248,10 @@ void RocksDBOptionFeature::collectOptions(
   options->addOption("--rocksdb.block-cache-shard-bits",
                      "number of shard bits to use for block cache (use -1 for default value)",
                      new Int64Parameter(&_blockCacheShardBits));
+  
+  options->addOption("--rocksdb.enforce-block-cache-size-limit",
+                     "if true, strictly enforces the block cache size limit",
+                     new BooleanParameter(&_enforceBlockCacheSizeLimit));
 
   options->addOption("--rocksdb.table-block-size",
                      "approximate size (in bytes) of user data packed per block",
@@ -353,6 +358,7 @@ void RocksDBOptionFeature::start() {
                                     << ", num_threads_low: " << _numThreadsLow
                                     << ", block_cache_size: " << _blockCacheSize
                                     << ", block_cache_shard_bits: " << _blockCacheShardBits
+                                    << ", block_cache_strict_capacity_limit: " << _enforceBlockCacheSizeLimit
                                     << ", table_block_size: " << _tableBlockSize
                                     << ", recycle_log_file_num: " << _recycleLogFileNum
                                     << ", compaction_read_ahead_size: " << _compactionReadaheadSize
