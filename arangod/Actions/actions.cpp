@@ -46,6 +46,7 @@ std::shared_ptr<TRI_action_t> TRI_DefineActionVocBase(std::string const& name,
                                                       std::shared_ptr<TRI_action_t> action) {
   std::string url = name;
 
+  // strip leading slash
   while (!url.empty() && url[0] == '/') {
     url = url.substr(1);
   }
@@ -109,10 +110,15 @@ std::shared_ptr<TRI_action_t> TRI_LookupActionVocBase(arangodb::GeneralRequest* 
 
 
     auto const& suffix = suffixes.back();
-    // the additional 1 byte is for the '/' char
-    TRI_ASSERT(name.size() >= suffix.size() + 1);
-    name.resize(name.size() - suffix.size() - 1);
+    size_t suffixLength = suffix.size();
     suffixes.pop_back();
+
+    TRI_ASSERT(name.size() >= suffixLength);
+    name.resize(name.size() - suffixLength);
+    // skip over '/' char at the end
+    if (!name.empty() && name.back() == '/') {
+      name.resize(name.size() - 1);
+    }
   }
 
   return nullptr;
