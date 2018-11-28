@@ -213,7 +213,7 @@ void Scheduler::post(std::function<void()> const callback, bool isHandler) {
   // reduce queued at the end
   auto guardQueue = scopeGuard([this]() { decQueued(); });
 
-  // if there is a handler, there is also a io task
+  // if there is a handler, there is also an io task
   if (isHandler && old < 2) {
     JobGuard jobGuard(this);
     jobGuard.work();

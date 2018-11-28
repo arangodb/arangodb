@@ -440,7 +440,7 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 
   bool ok = SchedulerFeature::SCHEDULER->queue(prio, [self, this, handler]() {
     handleRequest(basics::ConditionalLocking::DoLock, std::move(handler));
-  }, true);
+  }, _peer->runningInThisThread());
 
   uint64_t messageId = handler->messageId();
 
@@ -461,7 +461,6 @@ void GeneralCommTask::handleRequest(
   auto self = shared_from_this();
   handler->runHandler([self, this, doLock](rest::RestHandler* handler) {
     RequestStatistics* stat = handler->stealStatistics();
-    // TODO we could reduce all of this to strand::dispatch ?
     if (doLock || !_peer->runningInThisThread()) {
       // Note that the latter is for the case that a handler was put to sleep
       // and woke up in a different thread.
