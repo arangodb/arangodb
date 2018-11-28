@@ -62,7 +62,7 @@ ParseResult<AttributeMasking> AttributeMasking::parse(Maskings* maskings,
       }
 
       path = entry.value.copyString();
-    } else if (key == "length") {
+    } else if (key == "unmaskedLength") {
       if (!entry.value.isInteger()) {
         return ParseResult<AttributeMasking>(
             ParseResult<AttributeMasking>::ILLEGAL_PARAMETER,

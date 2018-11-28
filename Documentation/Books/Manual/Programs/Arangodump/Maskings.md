@@ -53,12 +53,12 @@ For example:
           {
             "path": "name",
             "type": "xify_front",
-            "length": 2
+            "unmaskedLength": 2
           },
           {
             "path": ".security_id",
             "type": "xify_front",
-            "length": 2
+            "unmaskedLength": 2
           }
         ]
       }
@@ -96,7 +96,7 @@ This masking replaces characters with `x` and ` `. Alphanumeric characters,
 
     {
       "path": ".name",
-      "length": 2
+      "unmaskedLength": 2
     }
 
 This will mask all alphanumeric characters of a word except the last 2.
@@ -115,7 +115,7 @@ unique index.
 
     {
       "path": ".name",
-      "length": 2,
+      "unmaskedLength": 2,
       "hash": true
     }
 
@@ -136,7 +136,7 @@ not be `0`.
 
     {
       "path": ".name",
-      "length": 2,
+      "unmaskedLength": 2,
       "hash": true,
       "seed": 246781478647
     }
