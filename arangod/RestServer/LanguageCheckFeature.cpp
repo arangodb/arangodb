@@ -137,7 +137,15 @@ void LanguageCheckFeature::start() {
       LanguageFeature>("Language");
   auto language = feature->getDefaultLanguage();
   auto previous = ::getOrSetPreviousLanguage(language);
+  
+  if (language.empty() && !previous.empty()) {
+    // override the empty current setting with the previous one
+    feature->resetDefaultLanguage(previous);
+    return;
+  }
+  
   if (language != previous) {
+    // current not empty and not the same as previous, get out!
     LOG_TOPIC(FATAL, arangodb::Logger::CONFIG)
         << "specified language '" << language
         << "' does not match previously used language '" << previous << "'";
