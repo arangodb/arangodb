@@ -1085,7 +1085,7 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
   var rev = null;
   var requestResult;
 
-  if (id === undefined || id === null || data === undefined || data === null) {
+  if (id === undefined || id === null) {
     throw new ArangoError({
       error: true,
       errorCode: internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code,
@@ -1192,7 +1192,7 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
   var rev = null;
   var requestResult;
 
-  if (id === undefined || id === null || data === undefined || data === null) {
+  if (id === undefined || id === null) {
     throw new ArangoError({
       errorNum: internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code,
       errorMessage: internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.message
