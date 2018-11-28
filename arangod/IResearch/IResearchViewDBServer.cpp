@@ -324,12 +324,12 @@ IResearchViewDBServer::IResearchViewDBServer(
     arangodb::velocypack::Slice const& info,
     arangodb::DatabasePathFeature const& /*dbPathFeature*/,
     uint64_t planVersion,
-    std::shared_ptr<AsyncMeta>&& meta /*=nullptr*/
+    std::shared_ptr<AsyncMeta> meta /*=nullptr*/
 ) : LogicalViewClusterInfo(vocbase, info, planVersion),
     _meta(std::move(meta)) {
 }
 
-IResearchViewDBServer::~IResearchViewDBServer() {
+IResearchViewDBServer::~IResearchViewDBServer() noexcept {
   _collections.clear(); // ensure view distructors called before mutex is deallocated
 }
 
