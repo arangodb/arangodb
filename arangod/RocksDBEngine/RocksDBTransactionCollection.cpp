@@ -181,6 +181,8 @@ void RocksDBTransactionCollection::release() {
     }
 
     _collection = nullptr;
+  } else {
+    TRI_ASSERT(!_usageLocked);
   }
 }
 

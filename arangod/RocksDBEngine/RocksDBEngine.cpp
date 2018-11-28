@@ -467,7 +467,10 @@ void RocksDBEngine::start() {
   rocksdb::BlockBasedTableOptions tableOptions;
   if (opts->_blockCacheSize > 0) {
     tableOptions.block_cache = rocksdb::NewLRUCache(
-        opts->_blockCacheSize, static_cast<int>(opts->_blockCacheShardBits));
+        opts->_blockCacheSize, 
+        static_cast<int>(opts->_blockCacheShardBits), 
+        /*strict_capacity_limit*/ opts->_enforceBlockCacheSizeLimit
+    );
     // tableOptions.cache_index_and_filter_blocks =
     // opts->_compactionReadaheadSize > 0;
   } else {

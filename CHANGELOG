@@ -1,8 +1,6 @@
 devel
 -----
 
-* Export Version and Storage Engine in `_admin/cluster/health` for Coordinators and DBServers. 
-
 * fixed Foxx complaining about valid `$schema` value in manifest.json
 
 * Foxx `req.makeAbsolute` now will return meaningful values when ArangoDB is using
@@ -92,11 +90,88 @@ devel
 
 * use `-std=c++14` for ArangoDB compilation
 
+
+v3.4.0-rc.5 (XXXX-XX-XX)
+------------------------
+
+* export version and storage engine in `_admin/cluster/health` for Coordinators 
+  and DBServers.
+
+* restrict the total amount of data to build up in all in-memory RocksDB write buffers
+  by default to a certain fraction of the available physical RAM. This helps restricting 
+  memory usage for the arangod process, but may have an effect on the RocksDB storage 
+  engine's write performance. 
+
+  In ArangoDB 3.3 the governing configuration option `--rocksdb.total-write-buffer-size`
+  had a default value of `0`, which meant that the memory usage was not limited. ArangoDB
+  3.4 now changes the default value to about 50% of available physical RAM, and 512MiB
+  for setups with less than 4GiB of RAM.
+
+* lower default value for `--cache.size` startup option from about 30% of physical RAM to
+  about 25% percent of physical RAM.
+
+* fix internal issue #2786: improved confirmation dialog when clicking the truncate 
+  button in the web UI
+
+* Updated joi library (web UI), improved Foxx mount path validation
+
+* disable startup warning for Linux kernel variable `vm.overcommit_memory` settings
+  values of 0 or 1.
+  Effectively `overcommit_memory` settings value of 0 or 1 fix two memory-allocation
+  related issues with the default memory allocator used in ArangoDB release builds on 
+  64bit Linux. 
+  The issues will remain when running with an `overcommit_memory` settings value of 2,
+  so this is now discouraged.
+  Setting `overcommit_memory` to 0 or 1 (0 is the Linux kernel's default) fixes issues
+  with increasing numbers of memory mappings for the arangod process (which may lead
+  to an out-of-memory situation if the kernel's maximum number of mappings threshold
+  is hit) and an increasing amount of memory that the kernel counts as "committed".
+  With an `overcommit_memory` setting of 0 or 1, an arangod process may either be 
+  killed by the kernel's OOM killer or will die with a segfault when accessing memory
+  it has allocated before but the kernel could not provide later on. This is still 
+  more acceptable than the kernel not providing any more memory to the process when
+  there is still physical memory left, which may have occurred with an `overcommit_memory`
+  setting of 2 after the arangod process had done lots of allocations.
+
+  In summary, the recommendation for the `overcommit_memory` setting is now to set it
+  to 0 or 1 (0 is kernel default) and not use 2.
+
+* fixed Foxx complaining about valid `$schema` value in manifest.json
+
+* fix for supervision, which started failing servers using old transient store
+
+* fixed a bug where indexes are used in the cluster while still being
+  built on the db servers
+
 * fix move leader shard: wait until all but the old leader are in sync.
   This fixes some unstable tests.
 
-v3.4.0-rc.4 (XXXX-XX-XX)
+
+v3.4.0-rc.4 (2018-11-04)
 ------------------------
+
+* fixed Foxx queues not retrying jobs with infinite `maxFailures`
+
+* increase AQL query string parsing performance for queries with many (100K+) string
+  values contained in the query string
+
+* increase timeouts for inter-node communication in the cluster
+
+* fixed undefined behavior in `/_api/import` when importing a single document went
+  wrong
+
+* replication bugfixes
+
+* stop printing `connection class corrupted` in arangosh
+
+ when just starting the arangosh without a connection to a server and running 
+ code such as `require("internal")`, the shell always printed "connection class 
+ corrupted", which was somewhat misleading.
+
+* add separate option `--query.slow-streaming-threshold` for tracking slow
+  streaming queries with a different timeout value
+
+* increase maximum number of collections/shards in an AQL query from 256 to 2048
 
 * do not rely on `_modules` collection being present at arangod startup
 

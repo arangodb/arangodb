@@ -651,6 +651,7 @@ arangodb::Result PhysicalCollectionMock::insert(
     arangodb::ManagedDocumentResult& result,
     arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
     bool lock, TRI_voc_tick_t& revisionId,
+    arangodb::KeyLockInfo* /*keyLockInfo*/,
     std::function<arangodb::Result(void)> callbackDuringLock) {
   TRI_ASSERT(callbackDuringLock == nullptr); // not implemented
   before();
@@ -856,6 +857,7 @@ arangodb::Result PhysicalCollectionMock::remove(
     arangodb::ManagedDocumentResult& previous,
     arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
     bool lock, TRI_voc_rid_t& prevRev, TRI_voc_rid_t& revisionId,
+    arangodb::KeyLockInfo* /*keyLockInfo*/,
     std::function<arangodb::Result(void)> callbackDuringLock) {
   TRI_ASSERT(callbackDuringLock == nullptr); // not implemented
   before();
@@ -949,7 +951,7 @@ arangodb::Result PhysicalCollectionMock::update(
 
         TRI_voc_rid_t unused;
         return insert(trx, newSlice, result, options, resultMarkerTick, lock,
-                      unused, nullptr);
+                      unused, nullptr, nullptr);
       }
 
       arangodb::velocypack::Builder builder;
@@ -975,7 +977,7 @@ arangodb::Result PhysicalCollectionMock::update(
 
       TRI_voc_rid_t unused;
       return insert(trx, builder.slice(), result, options, resultMarkerTick,
-                    lock, unused, nullptr);
+                    lock, unused, nullptr, nullptr);
     }
   }
 
