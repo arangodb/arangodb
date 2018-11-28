@@ -7,15 +7,15 @@ EOF
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
 x-content-type-options: nosniff
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: _Xzu49X2--_
+etag: _XzvFI6---_
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"vertex"</span> : { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Xzu49X2--_"</span>, 
-    <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_Xzu49Xe--_"</span> 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XzvFI6---_"</span>, 
+    <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_XzvFI5u--B"</span> 
   }, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">202</span> 
 }
