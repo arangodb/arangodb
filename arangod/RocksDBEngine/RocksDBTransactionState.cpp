@@ -87,7 +87,8 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
       << "beginning " << AccessMode::typeString(_type) << " transaction";
 
 
-  TRI_ASSERT(!hasHint(transaction::Hints::Hint::NO_USAGE_LOCK) || !AccessMode::isWriteOrExclusive(_type));
+  TRI_ASSERT(!hasHint(transaction::Hints::Hint::NO_USAGE_LOCK) ||
+             !AccessMode::isWriteOrExclusive(_type));
 
   if (_nestingLevel == 0) {
     // set hints
@@ -148,7 +149,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
 
       // with exlusive locking there is no chance of conflict
       // with other transactions -> we can use untracked< Put/Delete methods
-      if (isExclusiveTransactionOnSingleCollection()) {
+      if (isOnlyExclusiveTransaction()) {
         _rocksMethods.reset(new RocksDBTrxUntrackedMethods(this));
       } else {
         _rocksMethods.reset(new RocksDBTrxMethods(this));
