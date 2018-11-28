@@ -154,6 +154,7 @@ class RocksDBCollection final : public PhysicalCollection {
                 arangodb::ManagedDocumentResult& result,
                 OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
                 bool lock, TRI_voc_tick_t& revisionId,
+                KeyLockInfo* /*keyLockInfo*/,
                 std::function<Result(void)> callbackDuringLock) override;
 
   Result update(arangodb::transaction::Methods* trx,
@@ -176,6 +177,7 @@ class RocksDBCollection final : public PhysicalCollection {
                 arangodb::ManagedDocumentResult& previous,
                 OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
                 bool lock, TRI_voc_rid_t& prevRev, TRI_voc_rid_t& revisionId,
+                KeyLockInfo* /*keyLockInfo*/,
                 std::function<Result(void)> callbackDuringLock) override;
 
   /// adjust the current number of docs
