@@ -270,7 +270,7 @@ class UnorderedRefKeyMap:
     return *this;
   }
 
-  UnorderedRefKeyMap& operator=(UnorderedRefKeyMap&& other) noexcept {
+  UnorderedRefKeyMap& operator=(UnorderedRefKeyMap&& other) {
     if (this != &other) {
       _map = std::move(other._map);
     }
