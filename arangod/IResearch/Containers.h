@@ -260,6 +260,7 @@ class UnorderedRefKeyMap:
   UnorderedRefKeyMap& operator=(UnorderedRefKeyMap const& other) {
     if (this != &other) {
       _map.clear();
+      _map.reserve(other._map.size());
 
       for (auto& entry: other._map) {
         emplace(entry.first, entry.second.second); // ensure that the key is regenerated
