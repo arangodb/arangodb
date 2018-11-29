@@ -1,4 +1,4 @@
-v3.4.0-rc.5 (XXXX-XX-XX)
+v3.4.0-rc.5 (2018-11-29)
 ------------------------
 
 * Persist and check default language (locale) selection.
