@@ -1593,7 +1593,7 @@ bool MMFilesCollection::openIndex(VPackSlice const& description,
   }
 
   bool unused = false;
-  auto idx = _logicalCollection.createIndex(trx, description, unused);
+  auto idx = createIndex(trx, description, /*restore*/false, unused);
 
   if (idx == nullptr) {
     // error was already printed if we get here
@@ -2183,37 +2183,67 @@ std::shared_ptr<Index> MMFilesCollection::lookupIndex(
   return nullptr;
 }
 
+std::shared_ptr<Index> MMFilesCollection::createIndex(arangodb::velocypack::Slice const& info,
+                                                      bool restore, bool& created) {
+  
+  SingleCollectionTransaction trx(
+    transaction::StandaloneContext::Create(_logicalCollection.vocbase()),
+    _logicalCollection,
+    AccessMode::Type::EXCLUSIVE
+  );
+  Result res = trx.begin();
+
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+  
+  std::shared_ptr<Index> idx = createIndex(&trx, info, restore, created);
+  if (idx) {
+    res = trx.commit();
+  }
+  
+  return idx;
+}
+
 std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods* trx,
                                                       VPackSlice const& info,
+                                                      bool restore,
                                                       bool& created) {
-
-  auto idx = lookupIndex(info);
-  if (idx != nullptr) {
+  // prevent concurrent dropping
+//  TRI_ASSERT(trx->isLocked(&_logicalCollection, AccessMode::Type::READ));
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  
+  TRI_ASSERT(info.isObject());
+  std::shared_ptr<Index> idx = lookupIndex(info);
+  if (idx != nullptr) { // We already have this index.
     created = false;
-    // We already have this index.
     return idx;
   }
-
+  
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
   // We are sure that we do not have an index of this type.
-  // We also hold the lock.
-  // Create it
+  // We also hold the lock. Create it
 
+  bool generateKey = !restore; // Restore is not allowed to generate an id
   idx = engine->indexFactory().prepareIndexFromSlice(
-    info, true, _logicalCollection, false
+    info, generateKey, _logicalCollection, false
   );
   if (!idx) {
+    LOG_TOPIC(ERR, Logger::ENGINES) << "index creation failed while restoring";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
   }
-
-  if (ServerState::instance()->isCoordinator()) {
-    // In the coordinator case we do not fill the index
-    // We only inform the others.
-    addIndex(idx);
-    created = true;
-    return idx;
+  
+  if (!restore) {
+    TRI_UpdateTickServer(idx->id());
   }
+  
+  auto other = PhysicalCollection::lookupIndex(idx->id());
+  if (other) {
+    return other;
+  }
+  
+  TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
 
   int res = saveIndex(trx, idx);
 
@@ -2229,17 +2259,15 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods* trx,
   // left before
 
   addIndexLocal(idx);
-
-  {
+  // trigger a rewrite
+  if (!engine->inRecovery()) {
     auto builder = _logicalCollection.toVelocyPackIgnore(
       {"path", "statusString"}, true, true
     );
-
     _logicalCollection.properties(builder.slice(), false); // always a full-update
   }
 
   created = true;
-
   return idx;
 }
 
@@ -2341,74 +2369,6 @@ void MMFilesCollection::addIndexLocal(std::shared_ptr<arangodb::Index> idx) {
   if (idx->isPersistent()) {
     ++_persistentIndexes;
   }
-}
-
-int MMFilesCollection::restoreIndex(transaction::Methods* trx,
-                                    VPackSlice const& info,
-                                    std::shared_ptr<arangodb::Index>& idx) {
-  // The coordinator can never get into this state!
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  idx.reset();  // Clear it to make sure.
-
-  if (!info.isObject()) {
-    return TRI_ERROR_INTERNAL;
-  }
-
-  // check if we already have this index
-  auto oldIdx = lookupIndex(info);
-  if (oldIdx) {
-    idx = oldIdx;
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  // We create a new Index object to make sure that the index
-  // is not handed out except for a successful case.
-  std::shared_ptr<Index> newIdx;
-
-  try {
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-
-    newIdx = engine->indexFactory().prepareIndexFromSlice(
-      info, false, _logicalCollection, false
-    );
-  } catch (arangodb::basics::Exception const& e) {
-    // Something with index creation went wrong.
-    // Just report.
-    return e.code();
-  }
-
-  if (!newIdx) { // simon: probably something wrong with ArangoSearch Links
-    LOG_TOPIC(ERR, Logger::ENGINES) << "index creation failed while restoring";
-    return TRI_ERROR_ARANGO_INDEX_CREATION_FAILED;
-  }
-
-  TRI_UpdateTickServer(newIdx->id());
-
-  {READ_LOCKER(gurad, _indexesLock);
-    auto const id = newIdx->id();
-    for (auto& it : _indexes) {
-      if (it->id() == id) {
-        // index already exists
-        idx = it;
-        return TRI_ERROR_NO_ERROR;
-      }
-    }
-  }
-
-  TRI_ASSERT(newIdx.get()->type() !=
-             Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
-  std::vector<std::shared_ptr<arangodb::Index>> indexListLocal;
-  indexListLocal.emplace_back(newIdx);
-
-  int res = fillIndexes(trx, indexListLocal, false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  addIndexLocal(newIdx);
-  idx = newIdx;
-  return TRI_ERROR_NO_ERROR;
 }
 
 bool MMFilesCollection::dropIndex(TRI_idx_iid_t iid) {
