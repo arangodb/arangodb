@@ -598,7 +598,8 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::v
   _indexes.emplace_back(std::move(index));
   created = true;
   
-  TRI_ASSERT(trx.commit().ok());
+  res = trx.commit();
+  TRI_ASSERT(res.ok());
 
   return _indexes.back();
 }
