@@ -440,7 +440,7 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 
   bool ok = SchedulerFeature::SCHEDULER->queue(prio, [self, this, handler]() {
     handleRequest(basics::ConditionalLocking::DoLock, std::move(handler));
-  }, _peer->runningInThisThread());
+  }, _peer->runningInThisThread() && false);
 
   uint64_t messageId = handler->messageId();
 

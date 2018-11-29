@@ -243,11 +243,11 @@ void Scheduler::post(asio_ns::io_context::strand& strand,
   auto guardQueue = scopeGuard([this]() { decQueued(); });
 
   strand.post([this, callback]() {
+    auto guardQueue = scopeGuard([this]() { decQueued(); });
+
     JobGuard guard(this);
     guard.work();
 
-    // reduce queued at the end
-    auto guardQueue = scopeGuard([this]() { decQueued(); });
     callback();
   });
 
