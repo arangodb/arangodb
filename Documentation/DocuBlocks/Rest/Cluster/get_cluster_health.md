@@ -23,7 +23,7 @@ Queries the health of the cluster for monitoring purposes. The response is a JSO
       - `Timestamp`: ISO 8601 timestamp specifying the last heartbeat received.
       - `Host`: An optional string, specifying the host machine if known.
     - Only Coordinators:
-      - `AdvertisedEndpoint`: A string representing the advertised endpoint (e.g. external IP address or load balancer, optional)
+      - `AdvertisedEndpoint`: A string representing the advertised endpoint, if set. (e.g. external IP address or load balancer, optional)
     - Agents:
         - "Leader": ID of the agent this node regards as leader.
         - "Leading": Whether this agent is the leader (true) or not (false).

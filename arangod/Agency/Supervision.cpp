@@ -91,15 +91,19 @@ struct HealthRecord {
         if (node.has("LastAcked")) {
           lastAcked = node.hasAsString("LastAcked").first;
         }
+        if (node.has("Engine") && node.has("Version")) {
+          version = 4;
+          engine = node.hasAsString("Engine").first;
+          serverVersion = node.hasAsString("Version").first;
+        } else {
+          engine.clear();
+          serverVersion.clear();
+        }
         if (node.has("AdvertisedEndpoint")) {
           version = 3;
           advertisedEndpoint = node.hasAsString("AdvertisedEndpoint").first;
-
-          if (node.has("Engine") && node.has("Version")) {
-            version = 4;
-            engine = node.hasAsString("Engine").first;
-            serverVersion = node.hasAsString("Version").first;
-          }
+        } else {
+          advertisedEndpoint.clear();
         }
       } else if (node.has("LastHeartbeatStatus")) {
         version = 1;
@@ -119,12 +123,14 @@ struct HealthRecord {
     TRI_ASSERT(obj.isOpenObject());
     obj.add("ShortName", VPackValue(shortName));
     obj.add("Endpoint", VPackValue(endpoint));
-    obj.add("AdvertisedEndpoint", VPackValue(advertisedEndpoint));
     obj.add("Host", VPackValue(hostId));
     obj.add("SyncStatus", VPackValue(syncStatus));
     obj.add("Status", VPackValue(status));
     obj.add("Version", VPackValue(serverVersion));
     obj.add("Engine", VPackValue(engine));
+    if (!advertisedEndpoint.empty()) {
+      obj.add("AdvertisedEndpoint", VPackValue(advertisedEndpoint));
+    }
     if (syncTime.empty()) {
       obj.add("Timestamp",
               VPackValue(timepointToString(std::chrono::system_clock::now())));
@@ -135,7 +141,13 @@ struct HealthRecord {
   }
 
   bool statusDiff(HealthRecord const& other) {
-    return (status != other.status || syncStatus != other.syncStatus);
+    return status != other.status ||
+      syncStatus != other.syncStatus ||
+      advertisedEndpoint != other.advertisedEndpoint ||
+      serverVersion != other.serverVersion ||
+      engine != other.engine ||
+      hostId != other.hostId ||
+      endpoint != other.endpoint;
   }
 
   friend std::ostream& operator<<(std::ostream& o, HealthRecord const& hr) {
@@ -464,8 +476,6 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       if (serversRegistered.has(enPath)) {
         engine = serversRegistered.hasAsString(enPath).first;
       }
-
-
       //"/arango/Current/<serverId>/externalEndpoint"
       std::string externalEndpoint;
       std::string extEndPath = serverID + "/advertisedEndpoint";
@@ -481,9 +491,11 @@ std::vector<check_t> Supervision::check(std::string const& type) {
 
       // Get last health entries from transient and persistent key value stores
       if (_transient.has(healthPrefix + serverID)) {
+        LOG_TOPIC(ERR, Logger::FIXME) << "Found transist in _transient";
         transist = _transient.hasAsNode(healthPrefix + serverID).first;
       }
       if (_snapshot.has(healthPrefix + serverID)) {
+        LOG_TOPIC(ERR, Logger::FIXME) << "Found persist in snapshot";
         persist = _snapshot.hasAsNode(healthPrefix + serverID).first;
       }
 
@@ -504,6 +516,13 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       transist.syncTime = syncTime;
       transist.syncStatus = syncStatus;
 
+      // update volatile values that may change
+      transist.advertisedEndpoint = externalEndpoint;
+      transist.serverVersion = serverVersion;
+      transist.engine = engine;
+      transist.hostId = hostId;
+      transist.endpoint = endpoint;
+
       // Calculate elapsed since lastAcked
       auto elapsed = std::chrono::duration<double>(
         std::chrono::system_clock::now() - lastAckedTime);
@@ -519,11 +538,17 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       // Status changed?
       bool changed = transist.statusDiff(persist);
 
+      LOG_TOPIC(ERR, Logger::FIXME) << "Persist: " << persist;
+      LOG_TOPIC(ERR, Logger::FIXME) << "transist: " << transist;
+
+
       // Take necessary actions if any
       std::shared_ptr<VPackBuilder> envelope;
       if (changed) {
         handleOnStatus(
           _agent, _snapshot, persist, transist, serverID, _jobId, envelope);
+      } else {
+        LOG_TOPIC(ERR, Logger::FIXME) << "Nothing changed.";
       }
 
       persist = transist; // Now copy Status, SyncStatus from transient to persited
