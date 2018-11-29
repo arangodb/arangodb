@@ -569,7 +569,7 @@ void ClusterInfo::loadPlan() {
           VPackSlice const& viewsSlice = databasePairSlice.value;
 
           if (!viewsSlice.isObject()) {
-            LOG_TOPIC(ERR, Logger::AGENCY)
+            LOG_TOPIC(INFO, Logger::AGENCY)
               << "Views in the plan is not a valid json object."
                  " Views will be ignored for now and the invalid information"
                  " will be repaired. VelocyPack: " << viewsSlice.toJson();
@@ -582,7 +582,7 @@ void ClusterInfo::loadPlan() {
           if (vocbase == nullptr) {
             // No database with this name found.
             // We have an invalid state here.
-            LOG_TOPIC(ERR, Logger::AGENCY)
+            LOG_TOPIC(WARN, Logger::AGENCY)
               << "No database '" << databaseName << "' found,"
                  " corresponding view will be ignored for now and the invalid information"
                  " will be repaired. VelocyPack: " << viewsSlice.toJson();
@@ -593,7 +593,7 @@ void ClusterInfo::loadPlan() {
                VPackObjectIterator(viewsSlice)) {
             VPackSlice const& viewSlice = viewPairSlice.value;
             if (!viewSlice.isObject()) {
-              LOG_TOPIC(ERR, Logger::AGENCY)
+              LOG_TOPIC(INFO, Logger::AGENCY)
                 << "View entry is not a valid json object."
                    " The view will be ignored for now and the invalid information"
                    " will be repaired. VelocyPack: " << viewSlice.toJson();
@@ -720,7 +720,7 @@ void ClusterInfo::loadPlan() {
           VPackSlice const& collectionsSlice = databasePairSlice.value;
 
           if (!collectionsSlice.isObject()) {
-            LOG_TOPIC(ERR, Logger::AGENCY)
+            LOG_TOPIC(INFO, Logger::AGENCY)
               << "Collections in the plan is not a valid json object."
                  " Collections will be ignored for now and the invalid information"
                  " will be repaired. VelocyPack: " << collectionsSlice.toJson();
@@ -734,7 +734,7 @@ void ClusterInfo::loadPlan() {
           if (vocbase == nullptr) {
             // No database with this name found.
             // We have an invalid state here.
-            LOG_TOPIC(ERR, Logger::AGENCY)
+            LOG_TOPIC(WARN, Logger::AGENCY)
               << "No database '" << databaseName << "' found,"
                  " corresponding collection will be ignored for now and the invalid information"
                  " will be repaired. VelocyPack: " << collectionsSlice.toJson();
@@ -745,7 +745,7 @@ void ClusterInfo::loadPlan() {
                VPackObjectIterator(collectionsSlice)) {
             VPackSlice const& collectionSlice = collectionPairSlice.value;
             if (!collectionSlice.isObject()) {
-              LOG_TOPIC(ERR, Logger::AGENCY)
+              LOG_TOPIC(WARN, Logger::AGENCY)
                 << "Collection entry is not a valid json object."
                    " The collection will be ignored for now and the invalid information"
                    " will be repaired. VelocyPack: " << collectionSlice.toJson();
