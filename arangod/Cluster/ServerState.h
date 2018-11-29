@@ -237,7 +237,7 @@ class ServerState {
   /// @brief sets the JavaScript startup path
   void setJavaScriptPath(std::string const&);
 
-  bool isFoxxmaster();
+  bool isFoxxmaster() const;
 
   std::string const& getFoxxmaster();
 
@@ -245,7 +245,7 @@ class ServerState {
 
   void setFoxxmasterQueueupdate(bool);
 
-  bool getFoxxmasterQueueupdate();
+  bool getFoxxmasterQueueupdate() const noexcept;
 
   std::string getPersistedId();
   bool hasPersistedId();
@@ -278,9 +278,6 @@ class ServerState {
   
   /// @brief write the Current/ServersRegistered entry
   bool registerAtAgencyPhase2(AgencyComm&);
-  
-  /// @brief register shortname for an id
-  bool registerShortName(std::string const& id, const RoleEnum&);
   
 private:
   
