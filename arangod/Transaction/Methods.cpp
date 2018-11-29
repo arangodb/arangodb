@@ -554,6 +554,8 @@ bool transaction::Methods::sortOrs(
     root->removeMemberUnchecked(0);
   }
 
+  std::unordered_set<std::string> seenIndexConditions; 
+        
   // and rebuild
   for (size_t i = 0; i < n; ++i) {
     if (parts[i].operatorType ==
@@ -565,8 +567,26 @@ bool transaction::Methods::sortOrs(
     }
 
     auto conditionData = static_cast<ConditionData*>(parts[i].data);
-    root->addMember(conditionData->first);
-    usedIndexes.emplace_back(conditionData->second);
+    bool isUnique = true;
+
+    if (!usedIndexes.empty()) {
+      // try to find duplicate condition parts, and only return each
+      // unique condition part once
+      try {
+        std::string conditionString = conditionData->first->toString() + " - " + std::to_string(conditionData->second.getIndex()->id());
+        isUnique = seenIndexConditions.emplace(std::move(conditionString)).second;
+          // we already saw the same combination of index & condition
+          // don't add it again
+      } catch (...) {
+        // condition stringification may fail. in this case, we simply carry own
+        // without simplifying the condition
+      }
+    }
+
+    if (isUnique) {
+      root->addMember(conditionData->first);
+      usedIndexes.emplace_back(conditionData->second);
+    }
   }
 
   return true;
