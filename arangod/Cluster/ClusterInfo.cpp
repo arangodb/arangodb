@@ -1224,68 +1224,6 @@ std::shared_ptr<LogicalView> ClusterInfo::getView(
   return nullptr;
 }
 
-std::shared_ptr<LogicalView> ClusterInfo::getViewCurrent(
-    DatabaseID const& databaseID,
-    ViewID const& viewID
-) {
-  if (viewID.empty()) {
-    return nullptr;
-  }
-
-  static const auto lookupView = [](
-      AllViews const& dbs,
-      DatabaseID const& databaseID,
-      ViewID const& viewID
-  ) noexcept -> std::shared_ptr<LogicalView> {
-    auto const db = dbs.find(databaseID); // look up database by id
-
-    if (db != dbs.end()) {
-      auto& views = db->second;
-      auto const itr = views.find(viewID); // look up view by id (or by name)
-
-      if (itr != views.end()) {
-        return itr->second;
-      }
-    }
-
-    return nullptr;
-  };
-
-  if (std::this_thread::get_id() == _planLoader) {
-    return lookupView(_plannedViews, databaseID, viewID);
-  }
-
-  size_t planReloads = 0;
-
-  if (!_planProt.isValid) {
-    loadPlan(); // current Views are actually in Plan instead of Current
-    ++planReloads;
-  }
-
-  for(;;) {
-    {
-      READ_LOCKER(readLocker, _planProt.lock);
-      auto const view = lookupView(_plannedViews, databaseID, viewID);
-
-      if (view) {
-        return view;
-      }
-    }
-
-    if (planReloads >= 2) {
-      break;
-    }
-
-    loadPlan(); // current Views are actually in Plan instead of Current (must load plan outside the lock)
-    ++planReloads;
-  }
-
-  LOG_TOPIC(INFO, Logger::CLUSTER)
-    << "View not found: '" << viewID << "' in database '" << databaseID << "'";
-
-  return nullptr;
-}
-
 //////////////////////////////////////////////////////////////////////////////
 /// @brief ask about all views of a database
 //////////////////////////////////////////////////////////////////////////////
