@@ -40,17 +40,12 @@ killing ArangoDB too eagerly on Linux.
 
 ### Over-Commit Memory
 
-For the MMFiles storage engine, execute
+The recommended kernel setting for `overcommit_memory` for both MMFiles and
+RocksDB storage engine is 0 or 1. The kernel default is 0.
+
+You can set it as follows before executing `arangod`:
 
     sudo bash -c "echo 0 >/proc/sys/vm/overcommit_memory"
-
-before executing `arangod`.
-
-For the RocksDB storage engine, execute
-    
-    sudo bash -c "echo 2 >/proc/sys/vm/overcommit_memory"
-
-before starting. 
 
 From [www.kernel.org](https://www.kernel.org/doc/Documentation/sysctl/vm.txt):
 
@@ -62,17 +57,6 @@ From [www.kernel.org](https://www.kernel.org/doc/Documentation/sysctl/vm.txt):
 
 - When this flag is 2, the kernel uses a "never overcommit"
   policy that attempts to prevent any overcommit of memory.
-
-
-Note that then using an `overcommit_memory` setting of 2, this will by default allow 
-processes to use all swap space but only half of the available RAM. This can be changed 
-by adjusting the value of `overcommit_ratio` as well.
-
-From [www.kernel.org](https://www.kernel.org/doc/Documentation/sysctl/vm.txt):
-
-- When overcommit_memory is set to 2, the committed address
-  space is not permitted to exceed swap plus this percentage
-  of physical RAM. 
 
 ### Zone Reclaim
 

@@ -885,6 +885,7 @@ Result RocksDBCollection::insert(
     arangodb::velocypack::Slice const slice,
     arangodb::ManagedDocumentResult& mdr, OperationOptions& options,
     TRI_voc_tick_t& resultMarkerTick, bool, TRI_voc_tick_t& revisionId,
+    KeyLockInfo* /*keyLockInfo*/,
     std::function<Result(void)> callbackDuringLock) {
   // store the tick that was used for writing the document
   // note that we don't need it for this engine
@@ -1198,7 +1199,8 @@ Result RocksDBCollection::remove(
     arangodb::transaction::Methods* trx, arangodb::velocypack::Slice slice,
     arangodb::ManagedDocumentResult& previous, OperationOptions& options,
     TRI_voc_tick_t& resultMarkerTick, bool, TRI_voc_rid_t& prevRev,
-    TRI_voc_rid_t& revisionId, std::function<Result(void)> callbackDuringLock) {
+    TRI_voc_rid_t& revisionId, KeyLockInfo* /*keyLockInfo*/,
+    std::function<Result(void)> callbackDuringLock) {
   // store the tick that was used for writing the document
   // note that we don't need it for this engine
   resultMarkerTick = 0;
