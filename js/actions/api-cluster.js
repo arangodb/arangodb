@@ -188,7 +188,7 @@ actions.defineHttp({
     while (true) {
       var mode = global.ArangoAgency.read([["/arango/Supervision/State/Mode"]])[0].
           arango.Supervision.State.Mode;
-      
+
       if (body === "on" && mode === "Maintenance") {
         res.body = JSON.stringify({
           error: false,
@@ -202,7 +202,7 @@ actions.defineHttp({
       }
 
       wait(0.1);
-      
+
       if (new Date().getTime() > waitUntil) {
         res.responseCode = actions.HTTP_GATEWAY_TIMEOUT;
         res.body = JSON.stringify({
@@ -212,10 +212,10 @@ actions.defineHttp({
         });
         return;
       }
-      
+
     }
 
-    return ; 
+    return ;
 
   }});
   // //////////////////////////////////////////////////////////////////////////////
@@ -540,8 +540,50 @@ actions.defineHttp({
       return Health;
     }, Health);
 
-    Object.entries(agency[0]['.agency'].pool).forEach(([key, value]) => {
-      Health[key] = {Endpoint: value, Role: 'Agent', CanBeDeleted: false};
+    Object.entries(agency.configuration.pool).forEach(([key, value]) => {
+
+      if (Health.hasOwnProperty(key)) {
+        Health[key].Endpoint = value;
+        Health[key].Role = 'Agent';
+        Health[key].CanBeDeleted = false;
+      } else {
+        Health[key] = {Endpoint: value, Role: 'Agent', CanBeDeleted: false};
+      }
+
+      var options = { timeout: 5 };
+      var op = ArangoClusterComm.asyncRequest(
+        'GET', value, req.database, '/_api/agency/config', '', {}, options);
+      var r = ArangoClusterComm.wait(op);
+
+      if (r.status === 'RECEIVED') {
+        var record = JSON.parse(r.body);
+        Health[key].Version = record.version;
+        Health[key].Engine = record.engine;
+        Health[key].Leader = record.leaderId;
+        if (record.hasOwnProperty("lastAcked")) {
+          Health[key].Leading = true;
+          Object.entries(record.lastAcked).forEach(([k,v]) => {
+            if (Health.hasOwnProperty(k)) {
+              Health[k].LastAckedTime = v.lastAckedTime;
+            } else {
+              Health[k] = {LastAckedTime: v.lastAckedTime};
+            }
+          });
+        }
+        Health[key].Status = "GOOD";
+      } else {
+        Health[key].Status = "BAD";
+        if (r.status === 'TIMEOUT') {
+          Health[key].Error = "TIMEOUT";
+        } else {
+          try {
+            Health[key].Error = JSON.parse(r.body);
+          } catch (err) {
+            Health[key].Error = "UNKNOWN";
+          }
+        }
+      }
+
     });
 
     actions.resultOk(req, res, actions.HTTP_OK, {Health, ClusterId: clusterId});
