@@ -53,6 +53,9 @@ v3.4.0-rc.5 (XXXX-XX-XX)
 * fix move leader shard: wait until all but the old leader are in sync.
   This fixes some unstable tests.
 
+* cluster health features more elaborate agent records
+
+* agency's supervision edited for advertised endpoints
 
 v3.4.0-rc.4 (2018-11-04)
 ------------------------
