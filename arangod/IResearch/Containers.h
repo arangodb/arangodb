@@ -247,15 +247,20 @@ class UnorderedRefKeyMap:
 
   UnorderedRefKeyMap& operator=(UnorderedRefKeyMap const& other) {
     if (this != &other) {
-      _map = other._map;
+      _map.clear();
+
+      for (auto& entry: other._map) {
+        emplace(entry.first, entry.second.second); // ensure that the key is regenerated
+      }
     }
 
     return *this;
   }
 
-  UnorderedRefKeyMap& operator=(UnorderedRefKeyMap&& other) {
+  UnorderedRefKeyMap& operator=(UnorderedRefKeyMap&& other) noexcept {
     if (this != &other) {
       _map = std::move(other._map);
+      TRI_ASSERT(_map.empty() || _map.begin()->first.c_str() == &(_map.begin()->second.first[0]));
     }
 
     return *this;
