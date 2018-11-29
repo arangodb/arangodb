@@ -230,7 +230,7 @@ void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {
       arangodb::aql::Function::Flags::Cacheable,
       arangodb::aql::Function::Flags::CanRunOnDBServer
     ), 
-    aqlFnTokens // function implementation
+    &aqlFnTokens // function implementation
   });
 }
 
