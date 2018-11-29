@@ -579,7 +579,7 @@ actions.defineHttp({
           try {
             Health[key].Error = JSON.parse(r.body);
           } catch (err) {
-            Health[key].Error = "UNKNOWN"
+            Health[key].Error = "UNKNOWN";
           }
         }
       }
