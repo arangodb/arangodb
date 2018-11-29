@@ -304,7 +304,7 @@ function startup () {
   if (global.ArangoServerState.role() === 'SINGLE') {
     commitLocalState(true);
   }
-  selfHealAll(true);
+  selfHealAll();
 }
 
 function upsertSystemServices () {
