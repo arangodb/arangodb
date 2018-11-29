@@ -320,10 +320,10 @@ void BootstrapFeature::start() {
 
   if (ServerState::isSingleServer(role) && AgencyCommManager::isEnabled()) {
     // simon: this is set to correct value in the heartbeat thread
-    ServerState::instance()->setServerMode(ServerState::Mode::TRYAGAIN);
+    ServerState::setServerMode(ServerState::Mode::TRYAGAIN);
   } else {
     // Start service properly:
-    ServerState::instance()->setServerMode(ServerState::Mode::DEFAULT);
+    ServerState::setServerMode(ServerState::Mode::DEFAULT);
   }
 
   LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "ArangoDB (version " << ARANGODB_VERSION_FULL
