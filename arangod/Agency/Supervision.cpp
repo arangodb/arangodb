@@ -131,13 +131,10 @@ struct HealthRecord {
     if (!advertisedEndpoint.empty()) {
       obj.add("AdvertisedEndpoint", VPackValue(advertisedEndpoint));
     }
-    if (syncTime.empty()) {
-      obj.add("Timestamp",
-              VPackValue(timepointToString(std::chrono::system_clock::now())));
-    } else {
-      obj.add("SyncTime", VPackValue(syncTime));
-      obj.add("LastAcked", VPackValue(lastAcked));
-    }
+    obj.add("Timestamp",
+            VPackValue(timepointToString(std::chrono::system_clock::now())));
+    obj.add("SyncTime", VPackValue(syncTime));
+    obj.add("LastAckedTime", VPackValue(lastAcked));
   }
 
   bool statusDiff(HealthRecord const& other) {
