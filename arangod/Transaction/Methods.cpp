@@ -553,7 +553,7 @@ bool transaction::Methods::sortOrs(
   while (root->numMembers()) {
     root->removeMemberUnchecked(0);
   }
-
+        
   // and rebuild
   for (size_t i = 0; i < n; ++i) {
     if (parts[i].operatorType ==
@@ -565,8 +565,30 @@ bool transaction::Methods::sortOrs(
     }
 
     auto conditionData = static_cast<ConditionData*>(parts[i].data);
-    root->addMember(conditionData->first);
-    usedIndexes.emplace_back(conditionData->second);
+    bool haveSeen = false;
+
+    if (!usedIndexes.empty()) {
+      // try to find duplicate condition parts, and only return each
+      // unique condition part once
+      try {
+        std::string const conditionString = conditionData->first->toString();
+        for (size_t j = 0; j < usedIndexes.size(); ++j) {
+          if (conditionData->second == usedIndexes[j] &&
+              root->getMember(j)->toString() == conditionString) {
+            haveSeen = true;
+            break;
+          }
+        }
+      } catch (...) {
+        // condition stringification may fail. in this case, we simply carry own
+        // without simplifying the condition
+      }
+    }
+
+    if (!haveSeen) {
+      root->addMember(conditionData->first);
+      usedIndexes.emplace_back(conditionData->second);
+    }
   }
 
   return true;
