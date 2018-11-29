@@ -99,7 +99,7 @@ void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
 
       return; // skip view
     }
-  } catch(...) {
+  } catch (...) {
     generateError(arangodb::Result(TRI_ERROR_INTERNAL));
 
     return; // skip view
@@ -306,7 +306,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
           return; // skip view
         }
-      } catch(...) {
+      } catch (...) {
         generateError(arangodb::Result(TRI_ERROR_INTERNAL));
 
         return; // skip view
@@ -502,7 +502,7 @@ void RestViewHandler::getViews() {
     if (view && (!excludeSystem || !view->system())) {
       if (!canUse(auth::Level::RO, view->vocbase())) { // as per https://github.com/arangodb/backlog/issues/459
       //if (!canUse(auth::Level::RO, view->vocbase(), &view->name())) {
-        continue; // skip views that are not authorised to be read
+        continue; // skip views that are not authorized to be read
       }
 
       // skip views for which the full view definition cannot be generated, as per https://github.com/arangodb/backlog/issues/459
@@ -514,7 +514,7 @@ void RestViewHandler::getViews() {
         if (!view->properties(viewBuilder, true, false).ok()) {
           continue; // skip view
         }
-      } catch(...) {
+      } catch (...) {
         continue; // skip view
       }
 
@@ -530,9 +530,9 @@ void RestViewHandler::getViews() {
 
           return;
         }
-      } catch (arangodb::basics::Exception& e) {
+      } catch (arangodb::basics::Exception const& e) {
         if (TRI_ERROR_FORBIDDEN != e.code()) {
-          throw; // skip views that are not authorised to be read
+          throw; // skip views that are not authorized to be read
         }
       }
 

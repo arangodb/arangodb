@@ -29,7 +29,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
-#include "Utils/CollectionGuard.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Builder.h>
