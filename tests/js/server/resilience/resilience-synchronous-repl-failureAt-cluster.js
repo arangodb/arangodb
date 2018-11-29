@@ -397,7 +397,7 @@ function SynchronousReplicationSuite() {
 
     testSetup: function () {
       for (var count = 0; count < 120; ++count) {
-        dbservers = getDBServers();
+        let dbservers = getDBServers();
         if (dbservers.length === 5) {
           assertTrue(waitForSynchronousReplication("_system"));
           return;
