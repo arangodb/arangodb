@@ -24,7 +24,10 @@
 
 const parseUrl = require('url').parse;
 const formatUrl = require('url').format;
-const joinPath = require('path').posix.join;
+const {
+  posix: {join: joinPath},
+  resolve: resolvePath
+} = require('path');
 const typeIs = require('type-is').is;
 const accepts = require('accepts');
 const parseRange = require('range-parser');
