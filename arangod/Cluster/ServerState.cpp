@@ -90,17 +90,19 @@ void ServerState::findHost(std::string const& fallback) {
 
   // Now look at the contents of the file /etc/machine-id, if it exists:
   std::string name = "/etc/machine-id";
-  try {
-    _host = arangodb::basics::FileUtils::slurp(name);
-    while (!_host.empty() &&
-           (_host.back() == '\r' || _host.back() == '\n' ||
-            _host.back() == ' ')) {
-      _host.erase(_host.size() - 1);
-    }
-    if (!_host.empty()) {
-      return;
-    }
-  } catch (...) { }
+  if (arangodb::basics::FileUtils::exists(name)) {
+    try {
+      _host = arangodb::basics::FileUtils::slurp(name);
+      while (!_host.empty() &&
+             (_host.back() == '\r' || _host.back() == '\n' ||
+              _host.back() == ' ')) {
+        _host.erase(_host.size() - 1);
+      }
+      if (!_host.empty()) {
+        return;
+      }
+    } catch (...) { }
+  }
 
 #ifdef __APPLE__
   static_assert(sizeof(uuid_t) == 16, "");
@@ -482,16 +484,16 @@ static constexpr char const* currentServersRegisteredPref = "/Current/ServersReg
 /// @brief check equality of engines with other registered servers
 bool ServerState::checkEngineEquality(AgencyComm& comm) {
   std::string engineName = EngineSelectorFeature::engineName();
-  
+
   AgencyCommResult result = comm.getValues(currentServersRegisteredPref);
   if (result.successful()) { // no error if we cannot reach agency directly
-    
+
     auto slicePath = AgencyCommManager::slicePath(currentServersRegisteredPref);
     VPackSlice servers = result.slice()[0].get(slicePath);
     if (!servers.isObject()) {
       return true; // do not do anything harsh here
     }
-    
+
     for (VPackObjectIterator::ObjectPair pair : VPackObjectIterator(servers)) {
       if (pair.value.isObject()) {
         VPackSlice engineStr = pair.value.get("engine");
@@ -501,7 +503,7 @@ bool ServerState::checkEngineEquality(AgencyComm& comm) {
       }
     }
   }
-  
+
   return true;
 }
 
@@ -643,7 +645,7 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm,
 
 bool ServerState::registerAtAgencyPhase2(AgencyComm& comm) {
   TRI_ASSERT(!_id.empty() && !_myEndpoint.empty());
-  
+
   while (!application_features::ApplicationServer::isStopping()) {
     VPackBuilder builder;
     try {
@@ -652,14 +654,15 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm) {
       builder.add("advertisedEndpoint", VPackValue(_advertisedEndpoint));
       builder.add("host", VPackValue(getHost()));
       builder.add("version", VPackValue(rest::Version::getNumericServerVersion()));
+      builder.add("versionString", VPackValue(rest::Version::getServerVersion()));
       builder.add("engine", VPackValue(EngineSelectorFeature::engineName()));
     } catch (...) {
       LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "out of memory";
       FATAL_ERROR_EXIT();
     }
-    
+
     auto result = comm.setValue(currentServersRegisteredPref + _id, builder.slice(), 0.0);
-    
+
     if (result.successful()) {
       return true;
     } else {
@@ -667,10 +670,10 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm) {
       << "failed to register server in agency: http code: "
       << result.httpCode() << ", body: '" << result.body() << "', retrying ...";
     }
-    
+
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
-  
+
   return false;
 }
 
@@ -848,7 +851,7 @@ bool ServerState::checkCoordinatorState(StateEnum state) {
   return false;
 }
 
-bool ServerState::isFoxxmaster() {
+bool ServerState::isFoxxmaster() const {
   return /*!isRunningInCluster() ||*/ _foxxmaster == getId();
 }
 
@@ -861,7 +864,9 @@ void ServerState::setFoxxmaster(std::string const& foxxmaster) {
   }
 }
 
-bool ServerState::getFoxxmasterQueueupdate() { return _foxxmasterQueueupdate; }
+bool ServerState::getFoxxmasterQueueupdate() const noexcept {
+  return _foxxmasterQueueupdate;
+}
 
 void ServerState::setFoxxmasterQueueupdate(bool value) {
   _foxxmasterQueueupdate = value;

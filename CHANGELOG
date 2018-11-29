@@ -1,6 +1,27 @@
 v3.4.0-rc.5 (XXXX-XX-XX)
 ------------------------
 
+* export version and storage engine in `_admin/cluster/health` for Coordinators 
+  and DBServers. 
+
+* restrict the total amount of data to build up in all in-memory RocksDB write buffers
+  by default to a certain fraction of the available physical RAM. This helps restricting 
+  memory usage for the arangod process, but may have an effect on the RocksDB storage 
+  engine's write performance. 
+
+  In ArangoDB 3.3 the governing configuration option `--rocksdb.total-write-buffer-size`
+  had a default value of `0`, which meant that the memory usage was not limited. ArangoDB
+  3.4 now changes the default value to about 50% of available physical RAM, and 512MiB
+  for setups with less than 4GiB of RAM.
+
+* lower default value for `--cache.size` startup option from about 30% of physical RAM to
+  about 25% percent of physical RAM.
+
+* fix internal issue #2786: improved confirmation dialog when clicking the truncate 
+  button in the web UI
+
+* Updated joi library (web UI), improved Foxx mount path validation
+
 * disable startup warning for Linux kernel variable `vm.overcommit_memory` settings
   values of 0 or 1.
   Effectively `overcommit_memory` settings value of 0 or 1 fix two memory-allocation
@@ -22,7 +43,19 @@ v3.4.0-rc.5 (XXXX-XX-XX)
   In summary, the recommendation for the `overcommit_memory` setting is now to set it
   to 0 or 1 (0 is kernel default) and not use 2.
 
+* fixed Foxx complaining about valid `$schema` value in manifest.json
+
 * fix for supervision, which started failing servers using old transient store
+
+* fixed a bug where indexes are used in the cluster while still being
+  built on the db servers
+
+* fix move leader shard: wait until all but the old leader are in sync.
+  This fixes some unstable tests.
+
+* cluster health features more elaborate agent records
+
+* agency's supervision edited for advertised endpoints
 
 v3.4.0-rc.4 (2018-11-04)
 ------------------------
@@ -351,7 +384,6 @@ v3.4.0-rc.2 (2018-09-30)
 
 * fixed a bug in cleanOutServer which could lead to a cleaned out server
   still being a follower for some shard
-
 
 v3.4.0-rc.1 (2018-09-06)
 ------------------------

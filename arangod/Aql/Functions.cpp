@@ -4834,13 +4834,11 @@ AqlValue Functions::Outersection(arangodb::aql::Query* query,
 
     for (auto const& it : VPackArrayIterator(slice)) {
       // check if we have seen the same element before
-      auto found = values.find(it);
-      if (found != values.end()) {
+      auto result = values.insert({it, 1});
+      if (!result.second) {
         // already seen
-        TRI_ASSERT((*found).second > 0);
-        ++(found->second);
-      } else {
-        values.emplace(it, 1);
+        TRI_ASSERT(result.first->second > 0);
+        ++(result.first->second);
       }
     }
   }
@@ -6306,12 +6304,7 @@ AqlValue Functions::Append(arangodb::aql::Query* query,
   builder->openArray();
 
   for (auto const& it : VPackArrayIterator(l)) {
-    if (unique) {
-      if (added.find(it) == added.end()) {
-        builder->add(it);
-        added.emplace(it);
-      }
-    } else {
+    if (!unique || added.insert(it).second) {
       builder->add(it);
     }
   }
@@ -6325,12 +6318,7 @@ AqlValue Functions::Append(arangodb::aql::Query* query,
     }
   } else {
     for (auto const& it : VPackArrayIterator(slice)) {
-      if (unique) {
-        if (added.find(it) == added.end()) {
-          builder->add(it);
-          added.emplace(it);
-        }
-      } else {
+      if (!unique || added.insert(it).second) {
         builder->add(it);
       }
     }

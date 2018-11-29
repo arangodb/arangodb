@@ -71,7 +71,7 @@ struct Function {
   Function(std::string const& name,
            char const* arguments, 
            std::underlying_type<Flags>::type flags,
-           FunctionImplementation const& implementation = nullptr);
+           FunctionImplementation implementation = nullptr);
 
   /// @brief return whether a specific flag is set for the function
   inline bool hasFlag(Flags flag) const {

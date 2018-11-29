@@ -190,6 +190,20 @@ Note: this option is not supported on Windows platforms. Setting the sync interv
 to a value greater than 0 will produce a startup warning on Windows.
 
 
+RocksDB write buffer size
+-------------------------
+
+The total amount of data to build up in all in-memory write buffers (backed by log
+files) is now by default restricted to a certain fraction of the available physical 
+RAM. This helps restricting memory usage for the arangod process, but may have an 
+effect on the RocksDB storage engine's write performance. 
+
+In ArangoDB 3.3 the governing configuration option `--rocksdb.total-write-buffer-size`
+had a default value of `0`, which meant that the memory usage was not limited. ArangoDB
+3.4 now changes the default value to about 40% of available physical RAM, and 512MiB
+for setups with less than 4GiB of RAM.
+
+
 Threading and request handling
 ------------------------------
 
@@ -685,6 +699,9 @@ The undocumented JavaScript module `@arangodb/database-version` has been
 removed, so it cannot be use from Foxx applications anymore The module only
 provided the current version of the database, so any client-side invocations
 can easily be replaced by using the `db._version()` instead.
+
+The `ShapedJson` JavaScript object prototype, a remainder from ArangoDB 2.8 
+for encapsulating database documents, has been removed in ArangoDB 3.4.
 
 
 Miscellaneous changes

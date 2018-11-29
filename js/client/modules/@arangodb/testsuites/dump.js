@@ -52,6 +52,163 @@ const testPaths = {
   'dump_authentication': [tu.pathForTesting('server/dump')]
 };
 
+class DumpRestoreHelper {
+  constructor(instanceInfo, options, clientAuth, dumpOptions, which, afterServerStart) {
+    this.instanceInfo = instanceInfo;
+    this.options = options;
+    this.clientAuth = clientAuth;
+    this.dumpOptions = dumpOptions;
+    this.which = which;
+    this.fn = afterServerStart(instanceInfo);
+    this.results = {failed: 1};
+    this.arangosh = tu.runInArangosh.bind(this, this.options, this.instanceInfo);
+    this.dumpConfig = pu.createBaseConfig('dump', this.dumpOptions, this.instanceInfo);
+    this.dumpConfig.setOutputDirectory('dump');
+    this.dumpConfig.setIncludeSystem(true);
+
+    this.restoreConfig = pu.createBaseConfig('restore', this.dumpOptions, this.instanceInfo);
+    this.restoreConfig.setInputDirectory('dump', true);
+    this.restoreConfig.setIncludeSystem(true);
+
+    this.restoreOldConfig = pu.createBaseConfig('restore', this.dumpOptions, this.instanceInfo);
+    this.restoreOldConfig.setInputDirectory('dump', true);
+    this.restoreOldConfig.setIncludeSystem(true);
+    this.restoreOldConfig.setDatabase('_system');
+    this.restoreOldConfig.setRootDir(pu.TOP_DIR);
+
+    if (options.encrypted) {
+      this.dumpConfig.activateEncryption();
+      this.restoreOldConfig.activateEncryption();
+    }
+
+    this.arangorestore = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreConfig, this.dumpOptions, this.instanceInfo.rootDir);
+    this.arangorestoreOld = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreOldConfig, this.dumpOptions, this.instanceInfo.rootDir);
+    this.arangodump = pu.run.arangoDumpRestoreWithConfig.bind(this, this.dumpConfig, this.dumpOptions, this.instanceInfo.rootDir);
+  }
+
+  print (s) {
+    print(CYAN + Date() + ': ' + this.which + ' and Restore - ' + s + RESET);
+  }
+
+  isAlive() {
+    return pu.arangod.check.instanceAlive(this.instanceInfo, this.options);
+  }
+
+  validate(phaseInfo) {
+    phaseInfo.failed = (phaseInfo.status !== true || !this.isAlive() ? 1 : 0);
+    return phaseInfo.failed === 0;
+  };
+ 
+  extractResults() {
+    if (this.fn !== undefined) {
+      fs.remove(this.fn);
+    }
+    print(CYAN + 'Shutting down...' + RESET);
+    pu.shutdownInstance(this.instanceInfo, this.options);
+    print(CYAN + 'done.' + RESET);
+
+    print();
+    return this.results;
+  }
+
+  runSetupSuite(path) {
+    this.print('Setting up');
+    this.results.setup = this.arangosh(path, this.clientAuth);
+    return this.validate(this.results.setup);
+  }
+
+  dumpFrom(database) {
+    this.print('dump');
+    this.dumpConfig.setDatabase(database);
+    this.results.dump = this.arangodump();
+    return this.validate(this.results.dump);
+  }
+
+  restoreTo(database) {
+    this.print('restore');
+    this.restoreConfig.setDatabase(database);
+    this.results.restore = this.arangorestore();
+    return this.validate(this.results.restore);
+  }
+
+  runTests(file, database) {
+    this.print('dump after restore');
+    this.results.test = this.arangosh(file, {'server.database': database});
+    return this.validate(this.results.test);
+  }
+
+  tearDown(file) {
+    this.print('teardown');
+    this.results.tearDown = this.arangosh(file);
+    return this.validate(this.results.tearDown);
+  }
+
+  restoreOld(directory) {
+    this.print('restoreOld');
+    this.restoreOldConfig.setInputDirectory(directory, true);
+    this.results.restoreOld = this.arangorestoreOld();
+    return this.validate(this.results.restoreOld);
+  }
+
+  testRestoreOld(file) {
+    this.print('test restoreOld');
+    this.results.testRestoreOld = this.arangosh(file);
+    return this.validate(this.results.testRestoreOld);
+  }
+
+  restoreFoxxComplete(database) {
+    this.print('Foxx Apps with full restore');
+    this.restoreConfig.setDatabase(database);
+    this.results.restoreFoxxComplete = this.arangorestore();
+    return this.validate(this.results.restoreFoxxComplete);
+  }
+
+  testFoxxComplete(file, database) {
+    this.print('Test Foxx Apps after full restore');
+    this.results.testFoxxComplete = this.arangosh(file, {'server.database': database});
+    return this.validate(this.results.testFoxxComplete);
+  }
+
+  restoreFoxxAppsBundle(database) {
+    this.print('Foxx Apps restore _apps then _appbundles');
+    this.restoreConfig.setDatabase(database);
+    this.restoreConfig.restrictToCollection('_apps');
+    this.results.restoreFoxxAppBundlesStep1 = this.arangorestore();
+    if (!this.validate(this.results.restoreFoxxAppBundlesStep1)) {
+      return false;
+    }
+    this.restoreConfig.restrictToCollection('_appbundles');
+    // TODO if cluster, switch coordinator!
+    this.results.restoreFoxxAppBundlesStep2 = this.arangorestore();
+    return this.validate(this.results.restoreFoxxAppBundlesStep2);
+  }
+
+  testFoxxAppsBundle(file, database) {
+    this.print('Test Foxx Apps after _apps then _appbundles restore');
+    this.results.testFoxxAppBundles = this.arangosh(file, {'server.database': database});
+    return this.validate(this.results.testFoxxAppBundles);
+  }
+
+  restoreFoxxBundleApps(database) {
+    this.print('Foxx Apps restore _appbundles then _apps');
+    this.restoreConfig.setDatabase(database);
+    this.restoreConfig.restrictToCollection('_appbundles');
+    this.results.restoreFoxxAppBundlesStep1 = this.arangorestore();
+    if (!this.validate(this.results.restoreFoxxAppBundlesStep1)) {
+      return false;
+    }
+    this.restoreConfig.restrictToCollection('_apps');
+    // TODO if cluster, switch coordinator!
+    this.results.restoreFoxxAppBundlesStep2 = this.arangorestore();
+    return this.validate(this.results.restoreFoxxAppBundlesStep2);
+  }
+
+  testFoxxBundleApps(file, database) {
+    this.print('Test Foxx Apps after _appbundles then _apps restore');
+    this.results.testFoxxFoxxAppBundles = this.arangosh(file, {'server.database': database});
+    return this.validate(this.results.testFoxxAppBundles);
+  }
+};
 
 function getClusterStrings(options)
 {
@@ -72,8 +229,6 @@ function getClusterStrings(options)
 // / @brief TEST: dump
 // //////////////////////////////////////////////////////////////////////////////
 function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, which, tstFiles, afterServerStart) {
-  let cluster;
-  let notCluster = getClusterStrings(options).notCluster;
   print(CYAN + which + ' tests...' + RESET);
 
   let instanceInfo = pu.startInstance('tcp', options, serverAuthInfo, which);
@@ -88,125 +243,41 @@ function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, which, 
     };
     return rc;
   }
-  let fn = afterServerStart(instanceInfo);
-  
-  print(CYAN + Date() + ': Setting up' + RESET);
-  
-  let results = { failed: 1 };
-  results.setup = tu.runInArangosh(
-    options,
-    instanceInfo,
-    tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpSetup)),
-    clientAuth);
+  const helper = new DumpRestoreHelper(instanceInfo, options, clientAuth, dumpOptions, which, afterServerStart);
+ 
+  const setupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpSetup));
+  const testFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpAgain));
+  const tearDownFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpTearDown));
+  if (
+    !helper.runSetupSuite(setupFile) ||
+    !helper.dumpFrom('UnitTestsDumpSrc') ||
+    !helper.restoreTo('UnitTestsDumpDst') ||
+    !helper.runTests(testFile,'UnitTestsDumpDst') ||
+    !helper.tearDown(tearDownFile)) {
+    return helper.extractResults();
+  }
 
-  results.setup.failed = 1;
-
-  if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
-      (results.setup.status === true)) {
-    results.setup.failed = 0;
-
-    print(CYAN + Date() + ': ' + which + ' and Restore - dump' + RESET);
-
-    results.dump = pu.run.arangoDumpRestore(
-      dumpOptions,
-      instanceInfo,
-      'dump',
-      'UnitTestsDumpSrc');
-
-    results.dump.failed = 1;
-    if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
-        (results.dump.status === true)) {
-      results.dump.failed = 0;
-
-      print(CYAN + Date() + ': ' + which + ' and Restore - restore' + RESET);
-
-      results.restore = pu.run.arangoDumpRestore(
-        dumpOptions,
-        instanceInfo,
-        'restore',
-        'UnitTestsDumpDst');
-
-      results.restore.failed = 1;
-      if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
-          (results.restore.status === true)) {
-        results.restore.failed = 0;
-
-        print(CYAN + Date() + ': ' + which + ' and Restore - dump after restore' + RESET);
-
-        results.test = tu.runInArangosh(
-          options,
-          instanceInfo,
-          tu.makePathUnix(
-            fs.join(testPaths[which][0],
-                    tstFiles.dumpAgain)),
-          {
-	    'server.database': 'UnitTestsDumpDst'
-          });
-        results.test.failed = 1;
-        if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
-            (results.test.status === true)) {
-          results.test.failed = 0;
-
-          print(CYAN + Date() + ': ' + which + ' and Restore - teardown' + RESET);
-
-          results.tearDown = tu.runInArangosh(
-            options,
-            instanceInfo,
-            tu.makePathUnix(
-              fs.join(testPaths[which][0],
-                      tstFiles.dumpTearDown)));
-          results.tearDown.failed = 1;
-          if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
-              (results.tearDown.status === true)) {
-            results.tearDown.failed = 0;
-
-	    if (tstFiles.dumpCheckGraph === false) {
-              results.failed = 0;
-	    } else {
-              print(CYAN + Date() + ': Dump and Restore - restoreOld' + RESET);
-              let restoreDir = tu.makePathUnix(tu.pathForTesting('server/dump/dump' + notCluster));
-
-              results.restoreOld = pu.run.arangoDumpRestore(
-                options,
-                instanceInfo,
-                'restore',
-                '_system',
-                pu.TOP_DIR,
-                restoreDir);
-              results.restoreOld.failed = 1;
-              if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
-                  (results.restoreOld.status === true)) {
-                results.restoreOld.failed = 0;
-
-                results.testRestoreOld = tu.runInArangosh(
-                  options,
-                  instanceInfo,
-                  fs.join(testPaths[which][0],
-                          tstFiles.dumpCheckGraph));
-
-                results.testRestoreOld.failed = 1;
-
-                if (results.testRestoreOld.status) {
-                  results.testRestoreOld.failed = 10;
-                  results.failed = 0;
-                }
-              }
-            }
-          }
-        }
-      }
+  if (tstFiles.hasOwnProperty("dumpCheckGraph")) {
+    const notCluster = getClusterStrings(options).notCluster;
+    const restoreDir = tu.makePathUnix(tu.pathForTesting('server/dump/dump' + notCluster));
+    const oldTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheckGraph));
+    if (!helper.restoreOld(restoreDir) ||
+        !helper.testRestoreOld(oldTestFile)) {
+      return helper.extractResults();
     }
   }
-  if (fn !== undefined) {
-    fs.remove(fn);
+
+  const foxxTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.foxxTest));
+  if (!helper.restoreFoxxComplete('UnitTestsDumpFoxxComplete') ||
+      !helper.testFoxxComplete(foxxTestFile, 'UnitTestsDumpFoxxComplete') ||
+      !helper.restoreFoxxAppsBundle('UnitTestsDumpFoxxAppsBundle') ||
+      !helper.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxAppsBundle') ||
+      !helper.restoreFoxxAppsBundle('UnitTestsDumpFoxxBundleApps') ||
+      !helper.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxBundleApps')) {
+    return helper.extractResults();
   }
-  print(CYAN + 'Shutting down...' + RESET);
-  pu.shutdownInstance(instanceInfo, options);
-  print(CYAN + 'done.' + RESET);
 
-  print();
-
-  return results;
+  return helper.extractResults();
 }
 
 // /////////////////////////////////////////////////////////////////////////////
@@ -217,7 +288,8 @@ function dump (options) {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
     dumpAgain: 'dump-' + options.storageEngine + c.cluster + '.js',
     dumpTearDown: 'dump-teardown' + c.cluster + '.js',
-    dumpCheckGraph: 'check-graph.js'
+    dumpCheckGraph: 'check-graph.js',
+    foxxTest: 'check-foxx.js'
   };
 
   return dump_backend(options, {}, {}, options, 'dump', tstFiles, function(){});
@@ -257,11 +329,10 @@ function dumpAuthentication (options) {
     dumpSetup: 'dump-authentication-setup.js',
     dumpAgain: 'dump-authentication.js',
     dumpTearDown: 'dump-teardown.js',
-    dumpCheckGraph: false
+    foxxTest: 'check-foxx.js'
   };
 
   return dump_backend(options, serverAuthInfo, clientAuth, dumpAuthOpts, 'dump_authentication', tstFiles, function(){});
-
 }
 
 function dumpEncrypted (options) {
@@ -299,7 +370,7 @@ function dumpEncrypted (options) {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
     dumpAgain: 'dump-' + options.storageEngine + c.cluster + '.js',
     dumpTearDown: 'dump-teardown' + c.cluster + '.js',
-    dumpCheckGraph: false
+    foxxTest: 'check-foxx.js'
   };
 
   return dump_backend(options, {}, {}, dumpOptions, 'dump_encrypted', tstFiles, afterServerStart);

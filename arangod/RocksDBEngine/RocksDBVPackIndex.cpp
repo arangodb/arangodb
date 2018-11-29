@@ -381,8 +381,8 @@ bool RocksDBVPackIndex::implicitlyUnique() const {
 int RocksDBVPackIndex::fillElement(VPackBuilder& leased,
                                    LocalDocumentId const& documentId,
                                    VPackSlice const& doc,
-                                   std::vector<RocksDBKey>& elements,
-                                   std::vector<uint64_t>& hashes) {
+                                   SmallVector<RocksDBKey>& elements,
+                                   SmallVector<uint64_t>& hashes) {
   if (doc.isNone()) {
     LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
         << "encountered invalid marker with slice of type None";
@@ -421,31 +421,30 @@ int RocksDBVPackIndex::fillElement(VPackBuilder& leased,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
 
+    elements.emplace_back();
+    RocksDBKey& key = elements.back();
     if (_unique) {
       // Unique VPack index values are stored as follows:
       // - Key: 7 + 8-byte object ID of index + VPack array with index
       // value(s) + separator (NUL) byte
       // - Value: primary key
-      RocksDBKey key;
       key.constructUniqueVPackIndexValue(_objectId, leased.slice());
-      elements.emplace_back(std::move(key));
     } else {
       // Non-unique VPack index values are stored as follows:
       // - Key: 6 + 8-byte object ID of index + VPack array with index
       // value(s) + revisionID
       // - Value: empty
-      RocksDBKey key;
       key.constructVPackIndexValue(_objectId, leased.slice(), documentId);
-      elements.emplace_back(std::move(key));
       hashes.push_back(leased.slice().normalizedHash());
     }
   } else {
     // other path for handling array elements, too
 
-    std::vector<VPackSlice> sliceStack;
+    SmallVector<VPackSlice>::allocator_type::arena_type sliceStackArena;
+    SmallVector<VPackSlice> sliceStack{sliceStackArena};
+
     try {
-      buildIndexValues(leased, documentId, doc, 0, elements, sliceStack,
-                       hashes);
+      buildIndexValues(leased, documentId, doc, 0, elements, hashes, sliceStack);
     } catch (arangodb::basics::Exception const& ex) {
       return ex.code();
     } catch (std::bad_alloc const&) {
@@ -462,9 +461,9 @@ int RocksDBVPackIndex::fillElement(VPackBuilder& leased,
 void RocksDBVPackIndex::addIndexValue(VPackBuilder& leased,
                                       LocalDocumentId const& documentId,
                                       VPackSlice const& document,
-                                      std::vector<RocksDBKey>& elements,
-                                      std::vector<VPackSlice>& sliceStack,
-                                      std::vector<uint64_t>& hashes) {
+                                      SmallVector<RocksDBKey>& elements,
+                                      SmallVector<uint64_t>& hashes,
+                                      SmallVector<VPackSlice>& sliceStack) {
   leased.clear();
   leased.openArray(true);  // unindexed
   for (VPackSlice const& s : sliceStack) {
@@ -495,14 +494,14 @@ void RocksDBVPackIndex::addIndexValue(VPackBuilder& leased,
 void RocksDBVPackIndex::buildIndexValues(VPackBuilder& leased,
                                          LocalDocumentId const& documentId,
                                          VPackSlice const doc, size_t level,
-                                         std::vector<RocksDBKey>& elements,
-                                         std::vector<VPackSlice>& sliceStack,
-                                         std::vector<uint64_t>& hashes) {
+                                         SmallVector<RocksDBKey>& elements,
+                                         SmallVector<uint64_t>& hashes,
+                                         SmallVector<VPackSlice>& sliceStack) {
   // Invariant: level == sliceStack.size()
 
   // Stop the recursion:
   if (level == _paths.size()) {
-    addIndexValue(leased, documentId, doc, elements, sliceStack, hashes);
+    addIndexValue(leased, documentId, doc, elements, hashes, sliceStack);
     return;
   }
 
@@ -516,8 +515,7 @@ void RocksDBVPackIndex::buildIndexValues(VPackBuilder& leased,
     } else {
       sliceStack.emplace_back(slice);
     }
-    buildIndexValues(leased, documentId, doc, level + 1, elements, sliceStack,
-                     hashes);
+    buildIndexValues(leased, documentId, doc, level + 1, elements, hashes, sliceStack);
     sliceStack.pop_back();
     return;
   }
@@ -538,7 +536,7 @@ void RocksDBVPackIndex::buildIndexValues(VPackBuilder& leased,
     for (size_t i = level; i < _paths.size(); i++) {
       sliceStack.emplace_back(illegalSlice);
     }
-    addIndexValue(leased, documentId, doc, elements, sliceStack, hashes);
+    addIndexValue(leased, documentId, doc, elements, hashes, sliceStack);
     for (size_t i = level; i < _paths.size(); i++) {
       sliceStack.pop_back();
     }
@@ -573,8 +571,7 @@ void RocksDBVPackIndex::buildIndexValues(VPackBuilder& leased,
     if (it == seen.end()) {
       seen.insert(something);
       sliceStack.emplace_back(something);
-      buildIndexValues(leased, documentId, doc, level + 1, elements, sliceStack,
-                       hashes);
+      buildIndexValues(leased, documentId, doc, level + 1, elements, hashes, sliceStack);
       sliceStack.pop_back();
     } else if (_unique && !_deduplicate) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
@@ -640,8 +637,10 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx,
                                          LocalDocumentId const& documentId,
                                          VPackSlice const& doc,
                                          OperationMode mode) {
-  std::vector<RocksDBKey> elements;
-  std::vector<uint64_t> hashes;
+  SmallVector<RocksDBKey>::allocator_type::arena_type elementsArena;
+  SmallVector<RocksDBKey> elements{elementsArena};
+  SmallVector<uint64_t>::allocator_type::arena_type hashesArena;
+  SmallVector<uint64_t> hashes{hashesArena};
   int res = TRI_ERROR_NO_ERROR;
   {
     // rethrow all types of exceptions from here...
@@ -658,8 +657,9 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx,
                                : RocksDBValue::VPackIndexValue();
 
   size_t const count = elements.size();
-  RocksDBValue existing =
-      RocksDBValue::Empty(RocksDBEntryType::UniqueVPackIndexValue);
+  RocksDBValue existing = RocksDBValue::Empty(RocksDBEntryType::UniqueVPackIndexValue);
+  IndexingDisabler guard(mthds, !_unique && trx->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
+
   for (size_t i = 0; i < count; ++i) {
     RocksDBKey& key = elements[i];
     if (_unique) {
@@ -757,9 +757,11 @@ Result RocksDBVPackIndex::updateInternal(
                                           newDocumentId, newDoc, mode);
     }
 
-    // more expansive method to
-    std::vector<RocksDBKey> elements;
-    std::vector<uint64_t> hashes;
+    // more expensive method to
+    SmallVector<RocksDBKey>::allocator_type::arena_type elementsArena;
+    SmallVector<RocksDBKey> elements{elementsArena};
+    SmallVector<uint64_t>::allocator_type::arena_type hashesArena;
+    SmallVector<uint64_t> hashes{hashesArena};
     int res = TRI_ERROR_NO_ERROR;
     {
       // rethrow all types of exceptions from here...
@@ -801,8 +803,13 @@ Result RocksDBVPackIndex::removeInternal(transaction::Methods* trx,
                                          LocalDocumentId const& documentId,
                                          VPackSlice const& doc,
                                          OperationMode mode) {
-  std::vector<RocksDBKey> elements;
-  std::vector<uint64_t> hashes;
+  SmallVector<RocksDBKey>::allocator_type::arena_type elementsArena;
+  SmallVector<RocksDBKey> elements{elementsArena};
+  SmallVector<uint64_t>::allocator_type::arena_type hashesArena;
+  SmallVector<uint64_t> hashes{hashesArena};
+
+  IndexingDisabler guard(mthds, !_unique && trx->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
+
   int res = TRI_ERROR_NO_ERROR;
   {
     // rethrow all types of exceptions from here...
@@ -1204,54 +1211,6 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
   return lookup(trx, searchSlice, !opts.ascending);
 }
 
-rocksdb::SequenceNumber RocksDBVPackIndex::serializeEstimate(
-    std::string& output, rocksdb::SequenceNumber seq) const {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  if (!_unique) {
-    TRI_ASSERT(_estimator != nullptr);
-    return _estimator->serialize(output, seq);
-  }
-  return seq;
-}
-
-bool RocksDBVPackIndex::deserializeEstimate(RocksDBSettingsManager* mgr) {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  if (_unique) {
-    return true;
-  }
-  // We simply drop the current estimator and steal the one from recovery
-  // We are then safe for resizing issues in our _estimator format
-  // and will use the old size.
-
-  TRI_ASSERT(mgr != nullptr);
-  auto tmp = mgr->stealIndexEstimator(_objectId);
-  if (tmp == nullptr) {
-    // We expected to receive a stored index estimate, however we got none.
-    // We use the freshly created estimator but have to recompute it.
-    return false;
-  }
-  _estimator.swap(tmp);
-  TRI_ASSERT(_estimator != nullptr);
-  return true;
-}
-
-void RocksDBVPackIndex::recalculateEstimates() {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  if (unique()) {
-    return;
-  }
-  TRI_ASSERT(_estimator != nullptr);
-  _estimator->clear();
-
-  RocksDBKeyBounds bounds = getBounds();
-  rocksutils::iterateBounds(bounds,
-                            [this](rocksdb::Iterator* it) {
-                              uint64_t hash =
-                                  RocksDBVPackIndex::HashForKey(it->key());
-                              _estimator->insert(hash);
-                            });
-}
-
 void RocksDBVPackIndex::afterTruncate(TRI_voc_tick_t tick) {
   if (unique()) {
     return;
@@ -1265,9 +1224,33 @@ RocksDBCuckooIndexEstimator<uint64_t>* RocksDBVPackIndex::estimator() {
   return _estimator.get();
 }
 
-bool RocksDBVPackIndex::needToPersistEstimate() const {
-  if (_estimator) {
-    return _estimator->needToPersist();
+void RocksDBVPackIndex::setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> est) {
+  TRI_ASSERT(!_unique);
+  _estimator = std::move(est);
+}
+
+void RocksDBVPackIndex::recalculateEstimates() {
+  if (unique()) {
+    return;
   }
-  return false;
+  
+  TRI_ASSERT(_estimator != nullptr);
+  _estimator->clear();
+  
+  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  rocksdb::SequenceNumber seq = db->GetLatestSequenceNumber();
+  
+  auto bounds = getBounds();
+  rocksdb::Slice const end = bounds.end();
+  rocksdb::ReadOptions options;
+  options.iterate_upper_bound = &end;  // safe to use on rocksb::DB directly
+  options.prefix_same_as_start = true;  // key-prefix includes edge
+  options.verify_checksums = false;
+  options.fill_cache = false;
+  std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(options, _cf));
+  for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
+    uint64_t hash = RocksDBVPackIndex::HashForKey(it->key());
+    _estimator->insert(hash);
+  }
+  _estimator->setCommitSeq(seq);
 }

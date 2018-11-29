@@ -851,7 +851,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
               << " was already renamed; moving on";
               break;
             }
-            vocbase->dropView(other->id(), true);
+            other->drop();
           }
 
           auto res = view->rename(std::string(name));
@@ -949,19 +949,16 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
 
           return state->canContinue();
         } else {
-          auto ctx = transaction::StandaloneContext::Create(*vocbase);
-          arangodb::SingleCollectionTransaction trx(
-            ctx, *col, AccessMode::Type::WRITE
-          );
-          std::shared_ptr<arangodb::Index> unused;
-          int res = physical->restoreIndex(&trx, payloadSlice, unused);
-
-          if (res != TRI_ERROR_NO_ERROR) {
+          
+          try {
+            bool created;
+            auto unused = physical->createIndex(payloadSlice, /*restore*/true, created);
+            TRI_ASSERT(unused != nullptr);
+          } catch(basics::Exception const& e) {
             LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
-                << "cannot create index " << indexId << ", collection "
-                << collectionId << " in database " << databaseId;
+            << "cannot create index " << indexId << ", collection "
+            << collectionId << " in database " << databaseId;
             ++state->errorCount;
-
             return state->canContinue();
           }
         }
@@ -1377,9 +1374,8 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         // ignore any potential error returned by this call
         std::shared_ptr<arangodb::LogicalView> view =
             vocbase->lookupView(viewId);
-
         if (view != nullptr) {
-          vocbase->dropView(view->id(), true);
+          view->drop();
         }
 
         break;

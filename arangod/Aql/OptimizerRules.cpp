@@ -981,7 +981,7 @@ void arangodb::aql::removeRedundantSortsRule(
   }
 
   std::unordered_set<ExecutionNode*> toUnlink;
-  arangodb::basics::StringBuffer buffer(false);
+  arangodb::basics::StringBuffer buffer;
 
   for (auto const& n : nodes) {
     if (toUnlink.find(n) != toUnlink.end()) {
@@ -2523,7 +2523,7 @@ void arangodb::aql::removeRedundantCalculationsRule(
     return;
   }
 
-  arangodb::basics::StringBuffer buffer(false);
+  arangodb::basics::StringBuffer buffer; 
   std::unordered_map<VariableId, Variable const*> replacements;
 
   for (auto const& n : nodes) {
@@ -3813,7 +3813,9 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
     // found a node we need to replace in the plan
 
     auto const& parents = node->getParents();
-    auto const& deps = node->getDependencies();
+    // intentional copy of the dependencies, as we will be modifying 
+    // dependencies later on
+    auto const deps = node->getDependencies();
     TRI_ASSERT(deps.size() == 1);
 
     // don't do this if we are already distributing!
@@ -4066,7 +4068,9 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
       // In the INSERT and REPLACE cases we use a DistributeNode...
 
       TRI_ASSERT(node->hasDependency());
-      auto const& deps = node->getDependencies();
+      // intentional copy of the dependencies, as we will be modifying 
+      // dependencies later on
+      auto const deps = node->getDependencies();
 
       bool haveAdjusted = false;
       if (originalParent != nullptr) {
@@ -4213,9 +4217,7 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
     auto used = node->getVariablesUsedHere();
 
     // found a node we need to replace in the plan
-
-    auto const& deps = node->getDependencies();
-    TRI_ASSERT(deps.size() == 1);
+    TRI_ASSERT(node->getDependencies().size() == 1);
 
     auto collectNode = ExecutionNode::castTo<CollectNode*>(node);
     // look for next remote node
@@ -4550,6 +4552,8 @@ void arangodb::aql::distributeFilternCalcToClusterRule(
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::GATHER, true);
+    
+  std::unordered_set<Variable const*> varsSetHere;
 
   for (auto& n : nodes) {
     auto const& remoteNodeList = n->getDependencies();
@@ -4562,7 +4566,7 @@ void arangodb::aql::distributeFilternCalcToClusterRule(
 
     bool allowOnlyFilterAndCalculation = false;
 
-    std::unordered_set<Variable const*> varsSetHere;
+    varsSetHere.clear();
     auto parents = n->getParents();
     TRI_ASSERT(!parents.empty());
         
@@ -4703,14 +4707,15 @@ void arangodb::aql::distributeSortToClusterRule(
   bool modified = false;
 
   for (auto& n : nodes) {
-    auto const& remoteNodeList = n->getDependencies();
-    auto gatherNode = ExecutionNode::castTo<GatherNode*>(n);
+    auto const remoteNodeList = n->getDependencies();
     TRI_ASSERT(remoteNodeList.size() > 0);
     auto rn = remoteNodeList[0];
 
     if (!n->hasParent()) {
       continue;
     }
+    
+    auto gatherNode = ExecutionNode::castTo<GatherNode*>(n);
 
     auto parents = n->getParents();
 
@@ -4924,7 +4929,7 @@ void arangodb::aql::restrictToSingleShardRule(
           modNode->restrictToShard(shardId);
           modificationRestrictions[collection].emplace(shardId);
 
-          auto deps = current->getDependencies();
+          auto const& deps = current->getDependencies();
           if (deps.size() && deps[0]->getType() == ExecutionNode::REMOTE) {
             // if we can apply the single-shard optimization, but still have a
             // REMOTE node in front of us, we can probably move the remote parts

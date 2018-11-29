@@ -28,7 +28,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Indexes/IndexIterator.h"
-#include "Indexes/IndexLookupContext.h"
+#include "MMFiles/MMFilesIndexLookupContext.h"
 #include "MMFiles/MMFilesDatafileStatistics.h"
 #include "MMFiles/MMFilesDatafileStatisticsContainer.h"
 #include "MMFiles/MMFilesDitch.h"
@@ -44,8 +44,6 @@ struct MMFilesDatafile;
 struct MMFilesMarker;
 
 namespace arangodb {
-
-
 class LogicalCollection;
 class ManagedDocumentResult;
 struct MMFilesDocumentOperation;
@@ -84,7 +82,7 @@ class MMFilesCollection final : public PhysicalCollection {
     MMFilesDatafileStatisticsContainer* _dfi{nullptr};
     transaction::Methods* _trx;
     ManagedDocumentResult _mmdr;
-    IndexLookupContext _context;
+    MMFilesIndexLookupContext _context;
     uint64_t _deletions{0};
     uint64_t _documents{0};
     uint64_t _operations{0};
@@ -296,13 +294,11 @@ class MMFilesCollection final : public PhysicalCollection {
       transaction::Methods* trx,
       std::function<bool(LocalDocumentId const&)> callback) override;
 
+  std::shared_ptr<Index> createIndex(arangodb::velocypack::Slice const& info,
+                                     bool restore, bool& created) override;
   std::shared_ptr<Index> createIndex(transaction::Methods* trx,
                                      arangodb::velocypack::Slice const& info,
-                                     bool& created) override;
-
-  /// @brief Restores an index from VelocyPack.
-  int restoreIndex(transaction::Methods*, velocypack::Slice const&,
-                   std::shared_ptr<Index>&) override;
+                                     bool restore, bool& created);
 
   /// @brief Drop an index with the given iid.
   bool dropIndex(TRI_idx_iid_t iid) override;
@@ -360,31 +356,35 @@ class MMFilesCollection final : public PhysicalCollection {
                                ManagedDocumentResult& result);
 
   Result insert(arangodb::transaction::Methods* trx,
-                arangodb::velocypack::Slice const newSlice,
+                arangodb::velocypack::Slice newSlice,
                 arangodb::ManagedDocumentResult& result,
-                OperationOptions& options,
-                TRI_voc_tick_t& resultMarkerTick, bool lock,
-                TRI_voc_tick_t& revisionId) override;
+                OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
+                bool lock, TRI_voc_tick_t& revisionId,
+                KeyLockInfo* keyLockInfo,
+                std::function<Result(void)> callbackDuringLock) override;
 
   Result update(arangodb::transaction::Methods* trx,
-                arangodb::velocypack::Slice const newSlice,
-                arangodb::ManagedDocumentResult& result,
-                OperationOptions& options,
+                arangodb::velocypack::Slice newSlice,
+                ManagedDocumentResult& result, OperationOptions& options,
                 TRI_voc_tick_t& resultMarkerTick, bool lock,
                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                arangodb::velocypack::Slice const key) override;
+                arangodb::velocypack::Slice key,
+                std::function<Result(void)> callbackDuringLock) override;
 
   Result replace(transaction::Methods* trx,
-                 arangodb::velocypack::Slice const newSlice,
+                 arangodb::velocypack::Slice newSlice,
                  ManagedDocumentResult& result, OperationOptions& options,
                  TRI_voc_tick_t& resultMarkerTick, bool lock,
-                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous) override;
+                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
+                 std::function<Result(void)> callbackDuringLock) override;
 
   Result remove(arangodb::transaction::Methods* trx,
-                arangodb::velocypack::Slice const slice,
+                arangodb::velocypack::Slice slice,
                 arangodb::ManagedDocumentResult& previous,
                 OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
-                bool lock, TRI_voc_rid_t& prevRev, TRI_voc_rid_t& revisionId) override;
+                bool lock, TRI_voc_rid_t& prevRev, TRI_voc_rid_t& revisionId,
+                KeyLockInfo* keyLockInfo,
+                std::function<Result(void)> callbackDuringLock) override;
 
   Result rollbackOperation(transaction::Methods*, TRI_voc_document_operation_e,
                            LocalDocumentId const& oldDocumentId,
@@ -535,10 +535,18 @@ class MMFilesCollection final : public PhysicalCollection {
 
   LocalDocumentId reuseOrCreateLocalDocumentId(OperationOptions const& options) const;
 
-  bool hasAllPersistentLocalIds() const { return _hasAllPersistentLocalIds.load(); }
+  bool hasAllPersistentLocalIds() const override;
 
   static Result persistLocalDocumentIdsForDatafile(
       MMFilesCollection& collection, MMFilesDatafile& file);
+      
+  void setCurrentVersion();
+  
+  // key locking
+  struct KeyLockShard;
+  void lockKey(KeyLockInfo& keyLockInfo, arangodb::velocypack::Slice const& key);
+  void unlockKey(KeyLockInfo& keyLockInfo) noexcept;
+  KeyLockShard& getShardForKey(std::string const& key) noexcept;
 
  private:
   mutable arangodb::MMFilesDitches _ditches;
@@ -583,6 +591,18 @@ class MMFilesCollection final : public PhysicalCollection {
 
   bool _doCompact;
   TRI_voc_tick_t _maxTick;
+
+  // currently locked keys
+  struct KeyLockShard {
+    Mutex _mutex;
+    std::unordered_set<std::string> _keys;
+    // TODO: add padding here so we can avoid false sharing
+  };
+
+  static constexpr size_t numKeyLockShards = 8;
+
+
+  std::array<KeyLockShard, numKeyLockShards> _keyLockShards;
 
   // whether or not all documents are stored with a persistent LocalDocumentId
   std::atomic<bool> _hasAllPersistentLocalIds{true};

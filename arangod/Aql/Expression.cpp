@@ -685,14 +685,10 @@ AqlValue Expression::executeSimpleExpressionObject(
         std::string key(buffer->begin(), buffer->length());
 
         // note each individual object key name with latest value position
-        auto it = uniqueKeyValues.find(key);
-
-        if (it == uniqueKeyValues.end()) {
-          // unique key
-          uniqueKeyValues.emplace(std::move(key), i);
-        } else {
+        auto it = uniqueKeyValues.insert({std::move(key), i});
+        if (!it.second) {
           // duplicate key
-          (*it).second = i;
+          it.first->second = i;
           isUnique = false;
         }
       }
@@ -708,14 +704,10 @@ AqlValue Expression::executeSimpleExpressionObject(
         std::string key(member->getString());
 
         // note each individual object key name with latest value position
-        auto it = uniqueKeyValues.find(key);
-
-        if (it == uniqueKeyValues.end()) {
-          // unique key
-          uniqueKeyValues.emplace(std::move(key), i);
-        } else {
+        auto it = uniqueKeyValues.insert({std::move(key), i});
+        if (!it.second) {
           // duplicate key
-          (*it).second = i;
+          it.first->second = i;
           isUnique = false;
         }
       }
@@ -1153,45 +1145,54 @@ AqlValue Expression::executeSimpleExpressionOr(
 /// @brief execute an expression of type SIMPLE with AND or OR
 AqlValue Expression::executeSimpleExpressionNaryAndOr(
     AstNode const* node, transaction::Methods* trx, bool& mustDestroy) {
+  mustDestroy = false;
   size_t count = node->numMembers();
   if (count == 0) {
     // There is nothing to evaluate. So this is always true
-    mustDestroy = true;
     return AqlValue(AqlValueHintBool(true));
   }
 
   // AND
   if (node->type == NODE_TYPE_OPERATOR_NARY_AND) {
     for (size_t i = 0; i < count; ++i) {
+      bool localMustDestroy = false;
       AqlValue check =
-          executeSimpleExpression(node->getMemberUnchecked(i), trx, mustDestroy, true);
-      if (!check.toBoolean()) {
-        // Check is false. Return it.
-        return check;
-      }
+          executeSimpleExpression(node->getMemberUnchecked(i), trx, localMustDestroy, false);
+      bool result = check.toBoolean();
 
-      if (mustDestroy) {
+      if (localMustDestroy) {
         check.destroy();
       }
+
+      if (!result) {
+        // we are allowed to return early here, because this is only called
+        // in the context of index lookups
+        return AqlValue(AqlValueHintBool(false));
+      }
     }
-    mustDestroy = true;
     return AqlValue(AqlValueHintBool(true));
   }
 
   // OR
   for (size_t i = 0; i < count; ++i) {
+    bool localMustDestroy = false;
     AqlValue check =
-        executeSimpleExpression(node->getMemberUnchecked(i), trx, mustDestroy, true);
-    if (check.toBoolean()) {
-      // Check is true. Return it.
-      return check;
-    }
+        executeSimpleExpression(node->getMemberUnchecked(i), trx, localMustDestroy, true);
+    bool result = check.toBoolean();
 
-    if (mustDestroy) {
+    if (localMustDestroy) {
       check.destroy();
     }
+    
+    if (result) {
+      // we are allowed to return early here, because this is only called
+      // in the context of index lookups
+      return AqlValue(AqlValueHintBool(true));
+    }
   }
-  mustDestroy = true;
+
+  // anything else... we shouldn't get here
+  TRI_ASSERT(false);
   return AqlValue(AqlValueHintBool(false));
 }
 

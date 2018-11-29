@@ -190,7 +190,7 @@ Returns the job id.
 
     See *script.maxFailures*.
 
-  * **repeatTimes**: `number | Function` (Default: `0`)
+  * **repeatTimes**: `number` (Default: `0`)
 
     If set to a positive number, the job will be repeated this many times
     (not counting recovery when using *maxFailures*).
