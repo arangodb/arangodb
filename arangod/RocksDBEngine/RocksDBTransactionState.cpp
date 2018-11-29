@@ -325,7 +325,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     result = rocksutils::convertStatus(_rocksTransaction->Commit());
     
     if (result.ok()) {
-      TRI_ASSERT(numOps > 0); // simon: should hold unless we're beeing stupid
+      TRI_ASSERT(numOps > 0); // simon: should hold unless we're being stupid
       rocksdb::SequenceNumber postCommitSeq = _rocksTransaction->GetCommitedSeqNumber();
       if (ADB_LIKELY(numOps > 0)) {
         postCommitSeq += numOps - 1; // add to get to the next batch
