@@ -61,16 +61,12 @@ struct HealthRecord {
 
   HealthRecord(
     std::string const& sn, std::string const& ep, std::string const& ho,
-    std::string const& en, std::string const& sv) :
-    shortName(sn), endpoint(ep), hostId(ho), serverVersion(sv),
-    engine(en), version(0) {}
+    std::string const& en, std::string const& sv, std::string const& ae) :
+    shortName(sn), endpoint(ep), advertisedEndpoint(ae), hostId(ho),
+    serverVersion(sv), engine(en), version(0) {}
 
   explicit HealthRecord(Node const& node) {
     *this = node;
-  }
-
-  HealthRecord(HealthRecord const& other) {
-    *this = other;
   }
 
   HealthRecord& operator=(Node const& node) {
@@ -98,12 +94,16 @@ struct HealthRecord {
         if (node.has("AdvertisedEndpoint")) {
           version = 3;
           advertisedEndpoint = node.hasAsString("AdvertisedEndpoint").first;
-
-          if (node.has("Engine") && node.has("Version")) {
-            version = 4;
-            engine = node.hasAsString("Engine").first;
-            serverVersion = node.hasAsString("Version").first;
-          }
+        } else {
+          advertisedEndpoint.clear();
+        }
+        if (node.has("Engine") && node.has("Version")) {
+          version = 4;
+          engine = node.hasAsString("Engine").first;
+          serverVersion = node.hasAsString("Version").first;
+        } else {
+          engine.clear();
+          serverVersion.clear();
         }
       } else if (node.has("LastHeartbeatStatus")) {
         version = 1;
@@ -119,29 +119,18 @@ struct HealthRecord {
     return *this;
   }
 
-  HealthRecord& operator=(HealthRecord const& other) {
-    shortName = other.shortName;
-    syncStatus = other.syncStatus;
-    status = other.status;
-    advertisedEndpoint = other.advertisedEndpoint;
-    endpoint = other.endpoint;
-    hostId = other.hostId;
-    engine = other.engine;
-    serverVersion = other.serverVersion;
-    version = other.version;
-    return *this;
-  }
-
   void toVelocyPack(VPackBuilder& obj) const {
     TRI_ASSERT(obj.isOpenObject());
     obj.add("ShortName", VPackValue(shortName));
     obj.add("Endpoint", VPackValue(endpoint));
-    obj.add("AdvertisedEndpoint", VPackValue(advertisedEndpoint));
     obj.add("Host", VPackValue(hostId));
     obj.add("SyncStatus", VPackValue(syncStatus));
     obj.add("Status", VPackValue(status));
     obj.add("Version", VPackValue(serverVersion));
     obj.add("Engine", VPackValue(engine));
+    if (!advertisedEndpoint.empty()) {
+      obj.add("AdvertisedEndpoint", VPackValue(advertisedEndpoint));
+    }
     if (syncTime.empty()) {
       obj.add("Timestamp",
               VPackValue(timepointToString(std::chrono::system_clock::now())));
@@ -152,7 +141,13 @@ struct HealthRecord {
   }
 
   bool statusDiff(HealthRecord const& other) {
-    return (status != other.status || syncStatus != other.syncStatus);
+    return status != other.status ||
+      syncStatus != other.syncStatus ||
+      advertisedEndpoint != other.advertisedEndpoint ||
+      serverVersion != other.serverVersion ||
+      engine != other.engine ||
+      hostId != other.hostId ||
+      endpoint != other.endpoint;
   }
 
   friend std::ostream& operator<<(std::ostream& o, HealthRecord const& hr) {
@@ -481,18 +476,18 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       if (serversRegistered.has(enPath)) {
         engine = serversRegistered.hasAsString(enPath).first;
       }
-
-
-      // "/arango/Current/<serverId>/externalEndpoint"
-      /*std::string externalEndpoint;
-      std::string extEndPath = serverID + "/externalEndpoint";
+      //"/arango/Current/<serverId>/externalEndpoint"
+      std::string externalEndpoint;
+      std::string extEndPath = serverID + "/advertisedEndpoint";
       if (serversRegistered.has(extEndPath)) {
         externalEndpoint = serversRegistered.hasAsString(extEndPath).first;
-      }*/
+      }
 
       // Health records from persistence, from transience and a new one
-      HealthRecord transist(shortName, endpoint, hostId, engine, serverVersion);
-      HealthRecord persist(shortName, endpoint, hostId, engine, serverVersion);
+      HealthRecord transist(
+        shortName, endpoint, hostId, engine, serverVersion, externalEndpoint);
+      HealthRecord persist(
+        shortName, endpoint, hostId, engine, serverVersion, externalEndpoint);
 
       // Get last health entries from transient and persistent key value stores
       if (_transient.has(healthPrefix + serverID)) {
@@ -518,6 +513,13 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       transist.lastAcked = timepointToString(lastAckedTime);
       transist.syncTime = syncTime;
       transist.syncStatus = syncStatus;
+
+      // update volatile values that may change
+      transist.advertisedEndpoint = externalEndpoint;
+      transist.serverVersion = serverVersion;
+      transist.engine = engine;
+      transist.hostId = hostId;
+      transist.endpoint = endpoint;
 
       // Calculate elapsed since lastAcked
       auto elapsed = std::chrono::duration<double>(
