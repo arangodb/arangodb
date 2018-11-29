@@ -243,7 +243,7 @@ negatively impact the write performance:
   This means that transactions have to be split if they become too big, see the
   [limitations section](../Transactions/Limitations.md#with-rocksdb-storage-engine).
 
-#### Improving Update Query Perfromance
+### Improving Update Query Perfromance
 
 You may use the _exclusive_ query option for modifying AQL queries, to improve the performance drastically.
 This has the downside that no concurrent writes may occur on the collection, but ArangoDB is able
@@ -259,7 +259,7 @@ FOR doc IN mycollection
 The same naturally also applies for queries using _REPLACE_ or _INSERT_. Additionally you may be able to use
 the `intermediateCommitCount` option in the API to subdivide the AQL transaction into smaller batches.
 
-#### Read / Write Load Balance
+### Read / Write Load Balance
 
 Depending on whether your data model has a higher read- or higher write-rate you may want
 to adjust some of the rocksdb specific options. Some of the most critical options to
@@ -289,3 +289,9 @@ You may wish to adjust this parameter to control memory usage.
 
 Setting this to a low value may limit the RAM that ArangoDB will use but may slow down
 write heavy workloads. Setting this to 0 will not limit the size of the write-buffers.
+
+`--rocksdb.level0-stop-trigger`
+
+When this many files accumulate in level-0, writes will be stopped to allow compaction to catch up.
+Setting this value very high may improve write throughput, but may lead to temporarily 
+bad read performance.
