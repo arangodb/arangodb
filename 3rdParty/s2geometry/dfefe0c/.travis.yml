@@ -1,0 +1,94 @@
+dist: trusty
+
+language: cpp
+
+matrix:
+  include:
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-7
+            - libgflags-dev
+            - libgoogle-glog-dev
+            - libgtest-dev
+            - libssl-dev
+            - swig3.0
+      env:
+        - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
+        - GTEST_ROOT=/usr/src/gtest
+
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-6
+            - libgflags-dev
+            - libgoogle-glog-dev
+            - libgtest-dev
+            - libssl-dev
+            - swig3.0
+      env:
+        - MATRIX_EVAL="CC=gcc-6 && CXX=g++-6"
+        - GTEST_ROOT=/usr/src/gtest
+
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-5
+            - libgflags-dev
+            - libgoogle-glog-dev
+            - libgtest-dev
+            - libssl-dev
+            - swig3.0
+      env:
+        - MATRIX_EVAL="CC=gcc-5 && CXX=g++-5"
+        - GTEST_ROOT=/usr/src/gtest
+
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - llvm-toolchain-trusty-5.0
+            - ubuntu-toolchain-r-test
+          packages:
+            - clang-5.0
+            - g++-7
+            - libgflags-dev
+            - libgoogle-glog-dev
+            - libgtest-dev
+            - libssl-dev
+            - swig3.0
+      env:
+        - MATRIX_EVAL="CC=clang-5.0 && CXX=clang++-5.0"
+        - GTEST_ROOT=/usr/src/gtest
+
+    - os: osx
+      osx_image: xcode8.3
+      env:
+        - MATRIX_EVAL=""
+        - GTEST_ROOT="$( /bin/pwd )/googletest-release-1.8.0/googletest"
+        - OPENSSL_ROOT_DIR=/usr/local/opt/openssl
+
+before_install:
+  - eval "${MATRIX_EVAL}"
+  - ${CC} --version
+  - ${CXX} --version
+
+install:
+  - if [[ "$TRAVIS_OS_NAME" == osx ]]; then brew install gflags glog; fi
+  - if [[ "$TRAVIS_OS_NAME" == osx ]]; then wget https://github.com/google/googletest/archive/release-1.8.0.tar.gz; fi
+  - if [[ "$TRAVIS_OS_NAME" == osx ]]; then tar zxvf release-1.8.0.tar.gz; fi
+
+script:
+  - mkdir build
+  - cd build
+  - cmake -DGTEST_ROOT=$GTEST_ROOT -DWITH_GFLAGS=ON -DWITH_GLOG=ON ..
+  - make && make CTEST_OUTPUT_ON_FAILURE=1 test
