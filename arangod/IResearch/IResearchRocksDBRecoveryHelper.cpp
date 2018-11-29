@@ -202,27 +202,11 @@ void ensureLink(
 
   json.close();
 
-  arangodb::SingleCollectionTransaction trx(
-    arangodb::transaction::StandaloneContext::Create(*vocbase),
-    *col,
-    arangodb::AccessMode::Type::EXCLUSIVE
-  );
-  auto res = trx.begin();
   bool created;
-
-  if (!res.ok()) {
-    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "Failed to begin transaction while recovering link '" << iid
-        << "' to the collection '" << cid
-        << "' in the database '" << dbId;
-    return;
-  }
-
   // re-insert link
   if (!col->dropIndex(link->id())
-      || !col->createIndex(&trx, json.slice(), created)
-      || !created
-      || !trx.commit().ok()) {
+      || !col->createIndex(json.slice(), created)
+      || !created) {
     LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
         << "Failed to recreate the link '" << iid
         << "' to the collection '" << cid

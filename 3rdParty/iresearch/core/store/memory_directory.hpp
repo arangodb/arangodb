@@ -168,12 +168,12 @@ class IRESEARCH_API memory_index_input final : public index_input {
 
   explicit memory_index_input(const memory_file& file) NOEXCEPT;
 
-  virtual index_input::ptr dup() const NOEXCEPT override;
+  virtual index_input::ptr dup() const override;
   virtual int64_t checksum(size_t offset) const override;
   virtual bool eof() const override;
   virtual byte_type read_byte() override;
   virtual size_t read_bytes(byte_type* b, size_t len) override;
-  virtual index_input::ptr reopen() const NOEXCEPT override;
+  virtual index_input::ptr reopen() const override;
   virtual size_t length() const override;
 
   virtual size_t file_pointer() const override;
@@ -267,13 +267,11 @@ class IRESEARCH_API memory_directory final : public directory {
   // 0 == pool_size -> use global allocator, noexcept
   explicit memory_directory(size_t pool_size = 0);
 
-  virtual ~memory_directory();
+  virtual ~memory_directory() NOEXCEPT;
 
   using directory::attributes;
 
   virtual attribute_store& attributes() NOEXCEPT override;
-
-  virtual void close() NOEXCEPT override;
 
   virtual index_output::ptr create(const std::string& name) NOEXCEPT override;
 

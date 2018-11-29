@@ -792,7 +792,7 @@ arangodb::Result processInputDirectory(
       // if we get here we need to trigger foxx heal
       Result res = ::triggerFoxxHeal(httpClient);
       if (res.fail()) {
-        LOG_TOPIC(WARN, Logger::RESTORE) << "Reloading of Foxx failed. In the cluster Foxx Services will be available eventually, On SingleServers send a PUT to ";
+        LOG_TOPIC(WARN, Logger::RESTORE) << "Reloading of Foxx failed. In the cluster Foxx Services will be available eventually, On SingleServers send a POST to '/_api/foxx/_local/heal' on the current database, with an empty body.";
       }
     }
 

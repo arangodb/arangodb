@@ -705,49 +705,45 @@ field_data& fields_data::get(const hashed_string_ref& name) {
 
 void fields_data::flush(field_writer& fw, flush_state& state) {
   REGISTER_TIMER_DETAILED();
-  /* set the segment meta */
+
   state.features = &features_;
 
-  /* set total number of field in the segment */
-  state.fields_count = fields_.size();
-
-  {
-    struct less_t {
-      bool operator()(
-          const field_data* lhs,
-          const field_data* rhs
-      ) const NOEXCEPT {
-        return lhs->meta().name < rhs->meta().name;
-      };
+  struct less_t {
+    bool operator()(
+        const field_data* lhs,
+        const field_data* rhs
+    ) const NOEXCEPT {
+      return lhs->meta().name < rhs->meta().name;
     };
+  };
 
-    std::set<const field_data*, less_t> fields;
+  std::set<const field_data*, less_t> fields;
 
-    // ensure fields are sorted
-    for (auto& entry : fields_) {
-      fields.emplace(&entry.second);
-    }
-
-    fw.prepare(state);
-
-    detail::term_reader terms;
-
-    for (auto* field : fields) {
-      auto& meta = field->meta();
-
-      // reset reader
-      terms.reset(*field);
-
-      // write inverted data
-      auto it = terms.iterator();
-      fw.write(meta.name, meta.norm, meta.features, *it);
-    }
-
-    fw.end();
+  // ensure fields are sorted
+  for (auto& entry : fields_) {
+    fields.emplace(&entry.second);
   }
+
+  fw.prepare(state);
+
+  detail::term_reader terms;
+
+  for (auto* field : fields) {
+    auto& meta = field->meta();
+
+    // reset reader
+    terms.reset(*field);
+
+    // write inverted data
+    auto it = terms.iterator();
+    fw.write(meta.name, meta.norm, meta.features, *it);
+  }
+
+  fw.end();
+
 }
 
-void fields_data::reset() {
+void fields_data::reset() NOEXCEPT {
   byte_writer_ = byte_pool_.begin(); // reset position pointer to start of pool
   features_.clear();
   fields_.clear();
