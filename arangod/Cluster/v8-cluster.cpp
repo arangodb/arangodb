@@ -428,18 +428,13 @@ static void JS_Agency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   VPackBuilder builder;
-  { VPackArrayBuilder a(&builder);
-    { VPackArrayBuilder b(&builder);
-      builder.add(VPackValue("/.agency"));
-    }
-  }
 
   AgencyComm comm;
   AgencyCommResult result =
     comm.sendWithFailover(
-      arangodb::rest::RequestType::POST,
+      arangodb::rest::RequestType::GET,
       AgencyCommManager::CONNECTION_OPTIONS._requestTimeout,
-      std::string("/_api/agency/read"), builder.slice());
+      std::string("/_api/agency/config"), builder.slice());
 
   if (!result.successful()) {
     THROW_AGENCY_EXCEPTION(result);
