@@ -94,6 +94,13 @@ devel
 v3.4.0-rc.5 (XXXX-XX-XX)
 ------------------------
 
+* Persist and check default language (locale) selection.
+  Previously we would not check if the language (`--default-language`) had changed 
+  when the server was restarted. This could cause issues with indexes over text fields, 
+  as it will resulted in undefined behavior within RocksDB (potentially missing entries, 
+  corruption, etc.). Now if the language is changed, ArangoDB will print out an error
+  message on startup and abort.
+
 * fixed issue #7522: FILTER logic totally broke for my query in 3.4-rc4
 
 * export version and storage engine in `_admin/cluster/health` for Coordinators 
