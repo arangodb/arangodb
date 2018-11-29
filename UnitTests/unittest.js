@@ -10,6 +10,7 @@ const internalMembers = UnitTest.internalMembers;
 const fs = require('fs');
 const internal = require('internal'); // js/common/bootstrap/modules/internal.js
 const inspect = internal.inspect;
+const abortSignal = 6;
 
 let testOutputDirectory;
 
@@ -312,7 +313,13 @@ function main (argv) {
   // creates yaml like dump at the end
   UnitTest.unitTestPrettyPrintResults(res, testOutputDirectory, options);
 
-  return res.status;
+  let running = require("internal").getExternalSpawned();
+  let i = 0;
+  for (i = 0; i < running.length; i++) {
+    print("Killing remaining process: " + JSON.stringify(running[i]));
+    print(require("internal").killExternal(running[i].pid, abortSignal));
+  };
+  return res.status && running.length === 0;
 }
 
 let result = main(ARGUMENTS);
