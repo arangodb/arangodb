@@ -134,7 +134,7 @@ struct HealthRecord {
     obj.add("Timestamp",
             VPackValue(timepointToString(std::chrono::system_clock::now())));
     obj.add("SyncTime", VPackValue(syncTime));
-    obj.add("LastAcked", VPackValue(lastAcked));
+    obj.add("LastAckedTime", VPackValue(lastAcked));
   }
 
   bool statusDiff(HealthRecord const& other) {
