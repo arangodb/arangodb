@@ -770,11 +770,15 @@ function MovingShardsSuite ({useData}) {
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(function MovingShardsSuite_nodata() {
-  return MovingShardsSuite({ useData: false });
+  let derivedSuite = {};
+  deriveTestSuite(MovingShardsSuite({ useData: false }), derivedSuite, "_nodata");
+  return derivedSuite;
 });
 
 jsunity.run(function MovingShardsSuite_data() {
-  return MovingShardsSuite({ useData: true });
+  let derivedSuite = {};
+  deriveTestSuite(MovingShardsSuite({ useData: true }), derivedSuite, "_data");
+  return derivedSuite;
 });
 
 return jsunity.done();
