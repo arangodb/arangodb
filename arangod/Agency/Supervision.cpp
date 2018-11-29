@@ -91,6 +91,12 @@ struct HealthRecord {
         if (node.has("LastAcked")) {
           lastAcked = node.hasAsString("LastAcked").first;
         }
+        if (node.has("AdvertisedEndpoint")) {
+          version = 3;
+          advertisedEndpoint = node.hasAsString("AdvertisedEndpoint").first;
+        } else {
+          advertisedEndpoint.clear();
+        }
         if (node.has("Engine") && node.has("Version")) {
           version = 4;
           engine = node.hasAsString("Engine").first;
@@ -98,12 +104,6 @@ struct HealthRecord {
         } else {
           engine.clear();
           serverVersion.clear();
-        }
-        if (node.has("AdvertisedEndpoint")) {
-          version = 3;
-          advertisedEndpoint = node.hasAsString("AdvertisedEndpoint").first;
-        } else {
-          advertisedEndpoint.clear();
         }
       } else if (node.has("LastHeartbeatStatus")) {
         version = 1;
