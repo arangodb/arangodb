@@ -47,7 +47,7 @@ using namespace arangodb::cache;
 TEST_CASE("cache::Manager", "[cache][!hide][longRunning]") {
   SECTION("test basic constructor function") {
     uint64_t requestLimit = 1024 * 1024;
-    auto postFn = [](std::function<void()>) -> bool { return false; };
+    auto postFn = [](std::function<void(bool)>) -> bool { return false; };
     Manager manager(postFn, requestLimit);
 
     REQUIRE(requestLimit == manager.globalLimit());
@@ -67,7 +67,7 @@ TEST_CASE("cache::Manager", "[cache][!hide][longRunning]") {
   SECTION("test mixed cache types under mixed load") {
     RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
     MockScheduler scheduler(4);
-    auto postFn = [&scheduler](std::function<void()> fn) -> bool {
+    auto postFn = [&scheduler](std::function<void(bool)> fn) -> bool {
       scheduler.post(fn);
       return true;
     };
@@ -177,7 +177,7 @@ TEST_CASE("cache::Manager", "[cache][!hide][longRunning]") {
   SECTION("test manager under cache lifecycle chaos") {
     RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
     MockScheduler scheduler(4);
-    auto postFn = [&scheduler](std::function<void()> fn) -> bool {
+    auto postFn = [&scheduler](std::function<void(bool)> fn) -> bool {
       scheduler.post(fn);
       return true;
     };

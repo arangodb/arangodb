@@ -63,10 +63,10 @@ class LocalCallbackTask
   LocalCallbackTask(LocalCallbackTask const&) = delete;
   LocalCallbackTask& operator=(LocalCallbackTask const&) = delete;
 
-  LocalCallbackTask(std::shared_ptr<LocalTaskQueue> const& queue, std::function<void()> const& cb);
+  LocalCallbackTask(std::shared_ptr<LocalTaskQueue> const& queue, std::function<void(bool)> const& cb);
   virtual ~LocalCallbackTask() {}
 
-  virtual void run();
+  virtual void run(bool);
   void dispatch();
 
  protected:
@@ -81,12 +81,12 @@ class LocalCallbackTask
   /// ignored; must not call queue->setStatus() or queue->enqueue())
   //////////////////////////////////////////////////////////////////////////////
 
-  std::function<void()> _cb;
+  std::function<void(bool)> _cb;
 };
 
 class LocalTaskQueue {
  public:
-  typedef std::function<void(std::function<void()>)> PostFn;
+  typedef std::function<void(std::function<void(bool)>)> PostFn;
 
   LocalTaskQueue() = delete;
   LocalTaskQueue(LocalTaskQueue const&) = delete;
@@ -117,7 +117,7 @@ class LocalTaskQueue {
   /// by task dispatch.
   //////////////////////////////////////////////////////////////////////////////
 
-  void post(std::function<void()> fn);
+  void post(std::function<void(bool)> fn);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief join a single task. reduces the number of waiting tasks and wakes

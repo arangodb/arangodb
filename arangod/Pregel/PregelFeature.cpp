@@ -287,7 +287,7 @@ void PregelFeature::cleanupWorker(uint64_t executionNumber) {
   // unmapping etc might need a few seconds
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  scheduler->queue(RequestPriority::LOW, [this, executionNumber] {
+  scheduler->queue(RequestPriority::LOW, [this, executionNumber](bool) {
     MUTEX_LOCKER(guard, _mutex);
 
     auto wit = _workers.find(executionNumber);
@@ -392,7 +392,7 @@ void PregelFeature::handleConductorRequest(std::string const& path,
   } else if (path == Utils::cancelGSSPath) {
     w->cancelGlobalStep(body);
   } else if (path == Utils::finalizeExecutionPath) {
-    w->finalizeExecution(body, [exeNum] {
+    w->finalizeExecution(body, [exeNum](bool) {
       if (Instance != nullptr) {
         Instance->cleanupWorker(exeNum);
       }

@@ -58,4 +58,4 @@ MockScheduler::~MockScheduler() {
   _ioService->stop();
 }
 
-void MockScheduler::post(std::function<void()> fn) { _ioService->post(fn); }
+void MockScheduler::post(std::function<void(bool)> fn) { _ioService->post([fn](){fn(false);}); }

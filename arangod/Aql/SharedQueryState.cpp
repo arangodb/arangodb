@@ -55,7 +55,7 @@ void SharedQueryState::setContinueCallback() noexcept {
 
 /// @brief setter for the continue handler:
 ///        We can either have a handler or a callback
-void SharedQueryState::setContinueHandler(std::function<void()> const& handler) {
+void SharedQueryState::setContinueHandler(std::function<void(bool)> const& handler) {
   std::lock_guard<std::mutex> guard(_mutex);
   _continueCallback = handler;
   _hasHandler = true;

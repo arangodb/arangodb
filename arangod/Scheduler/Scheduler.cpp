@@ -206,7 +206,7 @@ Scheduler::~Scheduler() {
 }
 
 // do not pass callback by reference, might get deleted before execution
-void Scheduler::post(std::function<void()> const callback, bool isHandler) {
+void Scheduler::post(std::function<void(bool)> const callback, bool isHandler) {
   // increment number of queued and guard against exceptions
   uint64_t old = incQueued();
 
@@ -218,7 +218,7 @@ void Scheduler::post(std::function<void()> const callback, bool isHandler) {
     JobGuard jobGuard(this);
     jobGuard.work();
 
-    callback();
+    callback(true);
   } else {
     // capture without self, ioContext will not live longer than scheduler
     _ioContext->post([this, callback]() {
@@ -227,7 +227,7 @@ void Scheduler::post(std::function<void()> const callback, bool isHandler) {
       JobGuard jobGuard(this);
       jobGuard.work();
 
-      callback();
+      callback(false);
     });
 
     // no exception happened, cancel guard
@@ -256,7 +256,7 @@ void Scheduler::post(asio_ns::io_context::strand& strand,
 }
 
 bool Scheduler::queue(RequestPriority prio,
-                      std::function<void()> const& callback,
+                      std::function<void(bool)> const& callback,
 		      bool isHandler) {
   bool ok = true;
 
@@ -389,7 +389,7 @@ bool Scheduler::canPostDirectly(RequestPriority prio) const noexcept {
   return false;
 }
 
-bool Scheduler::pushToFifo(int64_t fifo, std::function<void()> const& callback) {
+bool Scheduler::pushToFifo(int64_t fifo, std::function<void(bool)> const& callback) {
   LOG_TOPIC(TRACE, Logger::THREADS) << "Push element on fifo: " << fifo;
   TRI_ASSERT(0 <= fifo && fifo < NUMBER_FIFOS);
 
@@ -413,7 +413,7 @@ bool Scheduler::pushToFifo(int64_t fifo, std::function<void()> const& callback) 
     auto nrQueued = numQueued(counters);
 
     if (0 == nrQueued) {
-      post([] {
+      post([](bool) {
           LOG_TOPIC(DEBUG, Logger::THREADS) << "Wakeup alarm";
           /*wakeup call for scheduler thread*/
       }, false);

@@ -150,7 +150,7 @@ void RecoveryManager::updatedFailedServers() {
 
       TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
       rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-      scheduler->queue(RequestPriority::LOW, [this, shard] { _renewPrimaryServer(shard); });
+      scheduler->queue(RequestPriority::LOW, [this, shard](bool) { _renewPrimaryServer(shard); });
     }
   }
 }

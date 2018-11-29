@@ -44,7 +44,7 @@ LocalTask::LocalTask(std::shared_ptr<LocalTaskQueue> const& queue) : _queue(queu
 
 void LocalTask::dispatch() {
   auto self = shared_from_this();
-  _queue->post([self, this]() {
+  _queue->post([self, this](bool) {
     _queue->startTask();
     try {
       run();
@@ -61,16 +61,16 @@ void LocalTask::dispatch() {
 ////////////////////////////////////////////////////////////////////////////////
 
 LocalCallbackTask::LocalCallbackTask(std::shared_ptr<LocalTaskQueue> const& queue,
-                                     std::function<void()> const& cb)
+                                     std::function<void(bool)> const& cb)
     : _queue(queue), _cb(cb) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run the callback and join
 ////////////////////////////////////////////////////////////////////////////////
 
-void LocalCallbackTask::run() {
+void LocalCallbackTask::run(bool isDirect) {
   try {
-    _cb();
+    _cb(isDirect);
   } catch (...) {
   }
   _queue->join();
@@ -82,7 +82,7 @@ void LocalCallbackTask::run() {
 
 void LocalCallbackTask::dispatch() {
   auto self = shared_from_this();
-  _queue->post([self, this]() { run(); });
+  _queue->post([self, this](bool isDirect) { run(isDirect); });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -139,7 +139,7 @@ void LocalTaskQueue::enqueueCallback(std::shared_ptr<LocalCallbackTask> task) {
 /// by task dispatch.
 //////////////////////////////////////////////////////////////////////////////
 
-void LocalTaskQueue::post(std::function<void()> fn) {
+void LocalTaskQueue::post(std::function<void(bool)> fn) {
   _poster(fn);
 }
 

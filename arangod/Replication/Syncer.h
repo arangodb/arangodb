@@ -80,7 +80,7 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
     /// @brief post an async request to the scheduler
     /// this will increase the number of inflight jobs, and count it down
     /// when the posted request has finished
-    void request(std::function<void()> const& cb);
+    void request(std::function<void(bool)> const& cb);
 
     /// @brief notifies that a job was posted
     /// returns false if job counter could not be increased (e.g. because

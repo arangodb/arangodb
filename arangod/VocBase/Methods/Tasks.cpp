@@ -283,7 +283,7 @@ std::function<void(const asio::error_code&)> Task::callbackFunction() {
 
     // now do the work:
     SchedulerFeature::SCHEDULER->queue(
-        RequestPriority::LOW, [self, this, execContext] {
+       RequestPriority::LOW, [self, this, execContext](bool) {
           ExecContextScope scope(_user.empty() ? ExecContext::superuser()
                                                : execContext.get());
 

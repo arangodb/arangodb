@@ -89,7 +89,7 @@ VPackSlice QueryResultCursor::next() {
 size_t QueryResultCursor::count() const { return _iterator.size(); }
 
 std::pair<ExecutionState, Result> QueryResultCursor::dump(VPackBuilder& builder,
-                                                          std::function<void()> const&) {
+                                                          std::function<void(bool)> const&) {
   // This cursor cannot block, result already there.
   auto res = dumpSync(builder);
   return {ExecutionState::DONE, res};
@@ -234,7 +234,7 @@ void QueryStreamCursor::kill() {
 }
 
 std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder,
-                                                          std::function<void()> const& ch) {
+                                                          std::function<void(bool)> const& ch) {
   TRI_ASSERT(batchSize() > 0);
   LOG_TOPIC(TRACE, Logger::QUERIES) << "executing query " << _id << ": '"
                                     << _query->queryString().extract(1024) << "'";

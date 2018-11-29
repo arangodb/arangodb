@@ -44,7 +44,7 @@ using namespace arangodb::cache;
 
 TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
   SECTION("test basic cache creation") {
-    auto postFn = [](std::function<void()>) -> bool { return false; };
+    auto postFn = [](std::function<void(bool)>) -> bool { return false; };
     Manager manager(postFn, 1024 * 1024);
     auto cache1 = manager.createCache(CacheType::Plain, false, 256 * 1024);
     REQUIRE(true);
@@ -61,7 +61,7 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
 
   SECTION("check that insertion works as expected") {
     uint64_t cacheLimit = 256 * 1024;
-    auto postFn = [](std::function<void()>) -> bool { return false; };
+    auto postFn = [](std::function<void(bool)>) -> bool { return false; };
     Manager manager(postFn, 4 * cacheLimit);
     auto cache = manager.createCache(CacheType::Plain, false, cacheLimit);
 
@@ -112,7 +112,7 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
 
   SECTION("test that removal works as expected") {
     uint64_t cacheLimit = 256 * 1024;
-    auto postFn = [](std::function<void()>) -> bool { return false; };
+    auto postFn = [](std::function<void(bool)>) -> bool { return false; };
     Manager manager(postFn, 4 * cacheLimit);
     auto cache = manager.createCache(CacheType::Plain, false, cacheLimit);
 
@@ -171,7 +171,7 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
   SECTION("verify that cache can indeed grow when it runs out of space") {
     uint64_t minimumUsage = 1024 * 1024;
     MockScheduler scheduler(4);
-    auto postFn = [&scheduler](std::function<void()> fn) -> bool {
+    auto postFn = [&scheduler](std::function<void(bool)> fn) -> bool {
       scheduler.post(fn);
       return true;
     };
@@ -196,7 +196,7 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
   SECTION("test behavior under mixed load") {
     RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
     MockScheduler scheduler(4);
-    auto postFn = [&scheduler](std::function<void()> fn) -> bool {
+    auto postFn = [&scheduler](std::function<void(bool)> fn) -> bool {
       scheduler.post(fn);
       return true;
     };
@@ -290,7 +290,7 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
 
   SECTION("test hit rate statistics reporting") {
     uint64_t cacheLimit = 256 * 1024;
-    auto postFn = [](std::function<void()>) -> bool { return false; };
+    auto postFn = [](std::function<void(bool)>) -> bool { return false; };
     Manager manager(postFn, 4 * cacheLimit);
     auto cacheMiss = manager.createCache(CacheType::Plain, true, cacheLimit);
     auto cacheHit = manager.createCache(CacheType::Plain, true, cacheLimit);

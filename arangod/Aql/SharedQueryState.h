@@ -87,7 +87,7 @@ public:
   
   /// @brief setter for the continue handler:
   ///        We can either have a handler or a callback
-  void setContinueHandler(std::function<void()> const& handler);
+  void setContinueHandler(std::function<void(bool)> const& handler);
   
 private:
   
@@ -102,7 +102,7 @@ private:
   /// @brief a callback function which is used to implement continueAfterPause.
   /// Typically, the RestHandler using the Query object will put a closure
   /// in here, which continueAfterPause simply calls.
-  std::function<void()> _continueCallback;
+  std::function<void(bool)> _continueCallback;
   
   bool _wasNotified;
   

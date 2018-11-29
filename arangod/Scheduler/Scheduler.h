@@ -96,7 +96,7 @@ class Scheduler {
     uint64_t _fifo3;
   };
 
-  bool queue(RequestPriority prio, std::function<void()> const&, bool isHandler = false);
+  bool queue(RequestPriority prio, std::function<void(bool)> const&, bool isHandler = false);
   void post(asio_ns::io_context::strand&, std::function<void()> const callback);
 
   void addQueueStatistics(velocypack::Builder&) const;
@@ -107,7 +107,7 @@ class Scheduler {
   bool isStopping() const noexcept { return (_counters & (1ULL << 63)) != 0; }
 
  private:
-  void post(std::function<void()> const callback, bool isHandler);
+  void post(std::function<void(bool)> const callback, bool isHandler);
   void drain();
 
   inline void setStopping() noexcept { _counters |= (1ULL << 63); }
@@ -180,12 +180,12 @@ class Scheduler {
   // queue is full
 
   struct FifoJob {
-    FifoJob(std::function<void()> const& callback)
+    FifoJob(std::function<void(bool)> const& callback)
         : _callback(callback) {}
-    std::function<void()> _callback;
+    std::function<void(bool)> _callback;
   };
 
-  bool pushToFifo(int64_t fifo, std::function<void()> const& callback);
+  bool pushToFifo(int64_t fifo, std::function<void(bool)> const& callback);
   bool popFifo(int64_t fifo);
 
   static constexpr int64_t NUMBER_FIFOS = 3;

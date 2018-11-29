@@ -750,7 +750,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(
       // already fetch next batch in the background, by posting the
       // request to the scheduler, which can run it asynchronously
       sharedStatus->request(
-        [this, self, &stats, &baseUrl, sharedStatus, coll, leaderColl, batch, fromTick, chunkSize]() {
+        [this, self, &stats, &baseUrl, sharedStatus, coll, leaderColl, batch, fromTick, chunkSize](bool) {
           fetchDumpChunk(sharedStatus, baseUrl, coll, leaderColl, stats, batch + 1, fromTick, chunkSize);
         }
       );

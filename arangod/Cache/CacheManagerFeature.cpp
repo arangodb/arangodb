@@ -97,7 +97,7 @@ void CacheManagerFeature::validateOptions(
 
 void CacheManagerFeature::start() {
   auto scheduler = SchedulerFeature::SCHEDULER;
-  auto postFn = [scheduler](std::function<void()> fn) -> bool {
+  auto postFn = [scheduler](std::function<void(bool)> fn) -> bool {
     scheduler->queue(RequestPriority::LOW, fn);
     return true;
   };

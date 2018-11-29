@@ -56,7 +56,7 @@ class MMFilesExportCursor final : public Cursor {
 
   std::pair<arangodb::aql::ExecutionState, Result> dump(
       velocypack::Builder& result,
-      std::function<void()> const& ch) override final;
+      std::function<void(bool)> const& ch) override final;
 
   Result dumpSync(velocypack::Builder& result) override final;
 

@@ -1674,7 +1674,7 @@ int MMFilesCollection::fillIndexes(
       _logicalCollection.vocbase().name() + "/" + _logicalCollection.name() +
       " }, indexes: " + std::to_string(n - 1));
 
-  auto poster = [](std::function<void()> fn) -> void {
+  auto poster = [](std::function<void(bool)> fn) -> void {
     SchedulerFeature::SCHEDULER->queue(RequestPriority::LOW, fn);
   };
   auto queue = std::make_shared<arangodb::basics::LocalTaskQueue>(poster);

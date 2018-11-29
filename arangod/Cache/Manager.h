@@ -72,7 +72,7 @@ class Rebalancer;      // forward declaration
 ////////////////////////////////////////////////////////////////////////////////
 class Manager {
  protected:
-  typedef std::function<bool(std::function<void()>)> PostFn;
+  typedef std::function<bool(std::function<void(bool)>)> PostFn;
 
  public:
   static const uint64_t minSize;
@@ -161,7 +161,7 @@ class Manager {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Post a function to the scheduler
   //////////////////////////////////////////////////////////////////////////////
-  bool post(std::function<void()> fn);
+  bool post(std::function<void(bool)> fn);
 
  private:
   // use sizeof(uint64_t) + sizeof(std::shared_ptr<Cache>) + 64 for upper bound

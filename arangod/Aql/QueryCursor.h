@@ -60,7 +60,7 @@ class QueryResultCursor final : public arangodb::Cursor {
 
   std::pair<ExecutionState, Result> dump(
     velocypack::Builder& result,
-    std::function<void()> const& continueHandler) override final;
+    std::function<void(bool)> const& continueHandler) override final;
 
   Result dumpSync(velocypack::Builder& result) override final;
 
@@ -103,7 +103,7 @@ class QueryStreamCursor final : public arangodb::Cursor {
 
   std::pair<ExecutionState, Result> dump(
       velocypack::Builder& result,
-      std::function<void()> const& continueHandler) override final;
+      std::function<void(bool)> const& continueHandler) override final;
 
   Result dumpSync(velocypack::Builder& result) override final;
 

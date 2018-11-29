@@ -110,7 +110,7 @@ class Cursor {
    *         Second: Result If State==DONE this contains Error information or NO_ERROR. On NO_ERROR result is filled.
    */
   virtual std::pair<aql::ExecutionState, Result> dump(
-      velocypack::Builder& result, std::function<void()> const&) = 0;
+      velocypack::Builder& result, std::function<void(bool)> const&) = 0;
 
   /**
    * @brief Dump the cursor result. This is guaranteed to return the result in this thread.

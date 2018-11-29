@@ -287,7 +287,7 @@ Transaction* Manager::beginTransaction(bool readOnly) {
 
 void Manager::endTransaction(Transaction* tx) noexcept { _transactions.end(tx); }
 
-bool Manager::post(std::function<void()> fn) { return _schedulerPost(fn); }
+bool Manager::post(std::function<void(bool)> fn) { return _schedulerPost(fn); }
 
 std::tuple<bool, Metadata, std::shared_ptr<Table>> Manager::registerCache(
     uint64_t fixedSize, uint64_t maxSize) {

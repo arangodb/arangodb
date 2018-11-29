@@ -703,7 +703,7 @@ void MMFilesHashIndex::batchInsertUnique(
 
   // queue cleanup callback
   auto allocator = _allocator.get();
-  auto callback = [elements, queue, allocator]() -> void {
+  auto callback = [elements, queue, allocator](bool) -> void {
     if (queue->status() != TRI_ERROR_NO_ERROR) {
       for (auto& it : *(elements.get())) {
         // free all elements to prevent leak
@@ -826,7 +826,7 @@ void MMFilesHashIndex::batchInsertMulti(
 
   // queue cleanup callback
   auto allocator = _allocator.get();
-  auto callback = [elements, queue, allocator]() -> void {
+  auto callback = [elements, queue, allocator](bool) -> void {
     if (queue->status() != TRI_ERROR_NO_ERROR) {
       // free all elements to prevent leak
       for (auto& it : *(elements.get())) {

@@ -38,7 +38,7 @@ FreeMemoryTask::~FreeMemoryTask() {}
 bool FreeMemoryTask::dispatch() {
   _manager->prepareTask(_environment);
   auto self = shared_from_this();
-  return _manager->post([self, this]() -> void { run(); });
+  return _manager->post([self, this](bool) -> void { run(); });
 }
 
 void FreeMemoryTask::run() {
@@ -72,7 +72,7 @@ MigrateTask::~MigrateTask() {}
 bool MigrateTask::dispatch() {
   _manager->prepareTask(_environment);
   auto self = shared_from_this();
-  return _manager->post([self, this]() -> void { run(); });
+  return _manager->post([self, this](bool) -> void { run(); });
 }
 
 void MigrateTask::run() {
