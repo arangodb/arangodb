@@ -284,10 +284,11 @@ static arangodb::Result addShardFollower(
     if (result == nullptr || result->getHttpReturnCode() != 200) {
       if (lockJobId != 0) {
         errorMessage += comres->stringifyErrorMessage();
+        LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMessage;
       } else {
-        errorMessage += "with shortcut.";
+        errorMessage += "With shortcut (can happen, no problem).";
+        LOG_TOPIC(INFO, Logger::MAINTENANCE) << errorMessage;
       }
-      LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMessage;
       return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
     }
 
