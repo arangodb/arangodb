@@ -262,18 +262,18 @@ the `intermediateCommitCount` option in the API to subdivide the AQL transaction
 ### Read / Write Load Balance
 
 Depending on whether your data model has a higher read- or higher write-rate you may want
-to adjust some of the rocksdb specific options. Some of the most critical options to
+to adjust some of the RocksDB specific options. Some of the most critical options to
 adjust the performance and memory usage are listed below:
 
 `--rocksdb.block-cache-size`
 
-This is the size of the block cache in bytes. This cache is used for read operations, 
-increasing the size of this may improve the performance of read heavy workloads.
+This is the size of the block cache in bytes. This cache is used for read operations.
+Increasing the size of this may improve the performance of read heavy workloads.
 You may wish to adjust this parameter to control memory usage.
 
 `--rocksdb.write-buffer-size`
 
-Amount of data to build up in memory before converting to a file on disk. 
+Amount of data to build up in memory before converting to a file on disk.
 Larger values increase performance, especially during bulk loads.
 
 `--rocksdb.max-write-buffer-number`
