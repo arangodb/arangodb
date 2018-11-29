@@ -127,9 +127,6 @@ class ServerState {
   /// @brief whether or not the cluster was properly initialized
   bool initialized() const { return _initialized; }
 
-  /// @brief flush the server state (used for testing)
-  void flush();
-
   bool isSingleServer() { return isSingleServer(loadRole()); }
 
   static bool isSingleServer(ServerState::RoleEnum role) {
@@ -237,7 +234,7 @@ class ServerState {
   /// @brief sets the JavaScript startup path
   void setJavaScriptPath(std::string const&);
 
-  bool isFoxxmaster();
+  bool isFoxxmaster() const;
 
   std::string const& getFoxxmaster();
 
@@ -245,7 +242,7 @@ class ServerState {
 
   void setFoxxmasterQueueupdate(bool);
 
-  bool getFoxxmasterQueueupdate();
+  bool getFoxxmasterQueueupdate() const noexcept;
 
   std::string getPersistedId();
   bool hasPersistedId();
@@ -269,8 +266,6 @@ private:
 
   /// @brief register at agency
   bool registerAtAgency(AgencyComm&, const RoleEnum&, std::string const&);
-  /// @brief register shortname for an id
-  bool registerShortName(std::string const& id, const RoleEnum&);
 
   /// file where the server persists it's UUID
   std::string getUuidFilename();

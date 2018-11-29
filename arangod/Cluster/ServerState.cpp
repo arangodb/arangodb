@@ -840,7 +840,7 @@ bool ServerState::checkCoordinatorState(StateEnum state) {
   return false;
 }
 
-bool ServerState::isFoxxmaster() {
+bool ServerState::isFoxxmaster() const {
   return /*!isRunningInCluster() ||*/ _foxxmaster == getId();
 }
 
@@ -853,7 +853,9 @@ void ServerState::setFoxxmaster(std::string const& foxxmaster) {
   }
 }
 
-bool ServerState::getFoxxmasterQueueupdate() { return _foxxmasterQueueupdate; }
+bool ServerState::getFoxxmasterQueueupdate() const noexcept {
+  return _foxxmasterQueueupdate;
+}
 
 void ServerState::setFoxxmasterQueueupdate(bool value) {
   _foxxmasterQueueupdate = value;
