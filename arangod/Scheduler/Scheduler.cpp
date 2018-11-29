@@ -244,7 +244,7 @@ void Scheduler::post(std::function<void()> const callback) {
     LOG_TOPIC(WARN, Logger::THREADS)
       << "Scheduler::post() called after isStopping() set.";
     TRI_ASSERT(false);
-
+    std::abort();   /// temporary ... debugging within Jenkins
     callback();
   } // else
 }
@@ -403,6 +403,8 @@ bool Scheduler::canPostDirectly(RequestPriority prio) const noexcept {
     return false;
   } else {
     // during shutdown, finesse is no longer needed.  post everything.
+    TRI_ASSERT(false);
+    std::abort();
     return true;
   } // else
 }
