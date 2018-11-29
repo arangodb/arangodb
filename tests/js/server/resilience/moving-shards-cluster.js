@@ -34,6 +34,7 @@ const db = arangodb.db;
 const _ = require("lodash");
 const wait = require("internal").wait;
 const supervisionState = require("@arangodb/cluster").supervisionState;
+const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 
 // in the `useData` case, use this many documents:
 const numDocuments = 1000;
