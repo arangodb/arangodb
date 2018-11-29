@@ -19,8 +19,9 @@ Queries the health of the cluster for monitoring purposes. The response is a JSO
   Additionally it will also have the following attributes for
     - Coordinators and DBServer:
       - `SyncStatus`: The last sync status reported by the node. This value is primarily used to determine the value of `Status`. Possible values include `"UNKNOWN"`, `"UNDEFINED"`, `"STARTUP"`, `"STOPPING"`, `"STOPPED"`, `"SERVING"`, `"SHUTDOWN"`.
+      - `LastAcked`: ISO 8601 timestamp specifying the last heartbeat received.
       - `ShortName`: A string representing the shortname of the server, e.g. `"Coordinator0001"`.
-      - `Timestamp`: ISO 8601 timestamp specifying the last heartbeat received.
+      - `Timestamp`: ISO 8601 timestamp specifying the last heartbeat received. (deprecated)
       - `Host`: An optional string, specifying the host machine if known.
     - Only Coordinators:
       - `AdvertisedEndpoint`: A string representing the advertised endpoint, if set. (e.g. external IP address or load balancer, optional)
