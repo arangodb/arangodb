@@ -8,6 +8,8 @@ v3.4.0-rc.5 (XXXX-XX-XX)
   corruption, etc.). Now if the language is changed, ArangoDB will print out an error
   message on startup and abort.
 
+* fixed issue #7522: FILTER logic totally broke for my query in 3.4-rc4
+
 * export version and storage engine in `_admin/cluster/health` for Coordinators 
   and DBServers. 
 
