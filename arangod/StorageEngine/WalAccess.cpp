@@ -103,7 +103,7 @@ LogicalCollection* WalAccessContext::loadCollection(TRI_voc_tick_t dbid,
       if (created.second) {
         return created.first->second.collection();
       }
-    } catch(...) {
+    } catch (...) {
       // weglaecheln
     }
   }

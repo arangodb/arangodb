@@ -168,9 +168,9 @@ static arangodb::Result getReadLockId (
     TRI_ASSERT(idSlice.isObject());
     TRI_ASSERT(idSlice.hasKey(ID));
     try {
-      id = std::stoll(idSlice.get(ID).copyString());
+      id = std::stoull(idSlice.get(ID).copyString());
     } catch (std::exception const&) {
-      error += " expecting id to be int64_t ";
+      error += " expecting id to be uint64_t ";
       error += idSlice.toJson();
       return arangodb::Result(TRI_ERROR_INTERNAL, error);
     }
@@ -218,7 +218,7 @@ static arangodb::Result collectionCount(
   return opResult.result;
 }
 
-static arangodb::Result addShardFollower (
+static arangodb::Result addShardFollower(
   std::string const& endpoint, std::string const& database,
   std::string const& shard, uint64_t lockJobId,
   std::string const& clientId, double timeout = 120.0) {
@@ -286,8 +286,8 @@ static arangodb::Result addShardFollower (
         errorMessage += comres->stringifyErrorMessage();
         LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMessage;
       } else {
-        errorMessage += "with shortcut.";
-        LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMessage;
+        errorMessage += "With shortcut (can happen, no problem).";
+        LOG_TOPIC(INFO, Logger::MAINTENANCE) << errorMessage;
       }
       return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
     }
@@ -305,7 +305,7 @@ static arangodb::Result addShardFollower (
   }
 }
 
-static arangodb::Result cancelReadLockOnLeader (
+static arangodb::Result cancelReadLockOnLeader(
   std::string const& endpoint, std::string const& database,
   uint64_t lockJobId, std::string const& clientId,
   double timeout = 10.0) {
@@ -433,8 +433,8 @@ arangodb::Result SynchronizeShard::getReadLock(
       auto const vp = putres->result->getBodyVelocyPack();
       auto const& slice = vp->slice();
       TRI_ASSERT(slice.isObject());
-      if (slice.hasKey("lockHeld") && slice.get("lockHeld").isBoolean() &&
-          slice.get("lockHeld").getBool()) {
+      VPackSlice lockHeld = slice.get("lockHeld");
+      if (lockHeld.isBoolean() && lockHeld.getBool()) {
         return arangodb::Result();
       }
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
@@ -461,11 +461,10 @@ arangodb::Result SynchronizeShard::getReadLock(
     }
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
-      << "startReadLockOnLeader: expection in cancel: " << e.what();
+      << "startReadLockOnLeader: exception in cancel: " << e.what();
   }
 
   return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT, "startReadLockOnLeader: giving up");
-
 }
 
 static inline bool isStopping() {
@@ -484,9 +483,8 @@ arangodb::Result SynchronizeShard::startReadLockOnLeader(
   if (!result.ok()) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << result.errorMessage();
     return result;
-  } else {
-    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "Got read lock id: " << rlid;
-  }
+  } 
+  LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "Got read lock id: " << rlid;
 
   result = getReadLock(endpoint, database, collection, clientId, rlid, soft, timeout);
 
@@ -678,8 +676,7 @@ bool SynchronizeShard::first() {
   // First wait until the leader has created the shard (visible in
   // Current in the Agency) or we or the shard have vanished from
   // the plan:
-  while(true) {
-
+  while (true) {
     if (isStopping()) {
       _result.reset(TRI_ERROR_SHUTTING_DOWN);
       return false;
@@ -1074,7 +1071,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(std::string const& ep,
 
   if (!res.ok()) {
     std::string errorMessage(
-      "synchronizeOneshard: error in syncCollectionFinalize: ") ;
+      "synchronizeOneshard: error in syncCollectionFinalize: ");
     errorMessage += res.errorMessage();
     return {TRI_ERROR_INTERNAL, errorMessage};
   }
@@ -1083,17 +1080,9 @@ Result SynchronizeShard::catchupWithExclusiveLock(std::string const& ep,
 
   if (!res.ok()) {
     std::string errorMessage(
-      "synchronizeOneshard: error in addShardFollower: ") ;
+      "synchronizeOneshard: error in addShardFollower: ");
     errorMessage += res.errorMessage();
     return {TRI_ERROR_INTERNAL, errorMessage};
-  }
-
-  // This result is unused, only in logs
-  res = cancelReadLockOnLeader(ep, database, lockJobId, clientId, 60.0);
-  readLockGuard.cancel();
-  if (!res.ok()) {
-    LOG_TOPIC(INFO, Logger::MAINTENANCE)
-      << "synchronizeOneShard: read lock has timed out for shard " << shard;
   }
 
   // Report success:
@@ -1105,7 +1094,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(std::string const& ep,
 
 
 void SynchronizeShard::setState(ActionState state) {
-  if ((COMPLETE==state || FAILED==state) && _state != state) {
+  if ((COMPLETE == state || FAILED == state) && _state != state) {
     TRI_ASSERT(_description.has("shard"));
     _feature.incShardVersion(_description.get("shard"));
   }

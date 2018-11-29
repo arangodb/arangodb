@@ -51,7 +51,6 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/StandaloneContext.h"
-#include "Utils/CollectionGuard.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -1644,17 +1643,17 @@ Result RestReplicationHandler::processRestoreIndexes(VPackSlice const& collectio
       }
 
       std::shared_ptr<arangodb::Index> idx;
-      bool created = false;
       try {
+        bool created = false;
         idx = physical->createIndex(idxDef, /*restore*/true, created);
-      } catch(basics::Exception& e) {
+      } catch (basics::Exception const& e) {
         if (e.code() == TRI_ERROR_NOT_IMPLEMENTED) {
           continue;
-        } else {
-          std::string errorMsg = "could not create index: " + e.message();
-          fres.reset(e.code(), errorMsg);
-          break;
-        }
+        } 
+
+        std::string errorMsg = "could not create index: " + e.message();
+        fres.reset(e.code(), errorMsg);
+        break;
       }
       TRI_ASSERT(idx != nullptr);
     }
@@ -2198,7 +2197,6 @@ void RestReplicationHandler::handleCommandAddFollower() {
   TRI_ASSERT(checksumSlice.isString() && readLockIdSlice.isString());
 
   aql::QueryId readLockId = ExtractReadlockId(readLockIdSlice);
-  const std::string checksum = checksumSlice.copyString();
 
   // referenceChecksum is the stringified number of documents in the collection
   ResultT<std::string> referenceChecksum = computeCollectionChecksum(readLockId, col.get());
@@ -2336,7 +2334,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   AccessMode::Type lockType = AccessMode::Type::READ;
   if (!doSoftLock && EngineSelectorFeature::ENGINE->typeName() == "rocksdb") {
     // With not doSoftLock we trigger RocksDB to stop writes on this shard.
-    // With a softLock we only stop the WAL from beeing collected,
+    // With a softLock we only stop the WAL from being collected,
     // but still allow writes.
     // This has potential to never ever finish, so we need a short
     // hard lock for the final sync.

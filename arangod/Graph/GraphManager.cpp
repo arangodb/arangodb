@@ -459,7 +459,7 @@ Result GraphManager::applyOnAllGraphs(
     std::unique_ptr<Graph> graph;
     try {
       graph = Graph::fromPersistence(it.resolveExternals(), _vocbase);
-    } catch (basics::Exception& e) {
+    } catch (basics::Exception const& e) {
       return {e.code(), e.message()};
     }
     TRI_ASSERT(graph != nullptr);

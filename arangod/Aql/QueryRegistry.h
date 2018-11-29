@@ -107,6 +107,9 @@ public:
  private:
   /// @brief a struct for all information regarding one query in the registry
   struct QueryInfo {
+    QueryInfo(QueryInfo const&) = delete;
+    QueryInfo& operator=(QueryInfo const&) = delete;
+
     QueryInfo(QueryId id, Query* query, double ttl, bool isPrepared);
     ~QueryInfo();
 

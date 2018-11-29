@@ -58,7 +58,7 @@ CacheManagerFeature::CacheManagerFeature(
       _manager(nullptr),
       _rebalancer(nullptr),
       _cacheSize((TRI_PhysicalMemory >= (static_cast<uint64_t>(4) << 30))
-                  ? static_cast<uint64_t>((TRI_PhysicalMemory - (static_cast<uint64_t>(2) << 30)) * 0.3)
+                  ? static_cast<uint64_t>((TRI_PhysicalMemory - (static_cast<uint64_t>(2) << 30)) * 0.25)
                   : (256 << 20)),
       _rebalancingInterval(static_cast<uint64_t>(2 * 1000 * 1000)) {
   setOptional(true);
