@@ -491,11 +491,9 @@ std::vector<check_t> Supervision::check(std::string const& type) {
 
       // Get last health entries from transient and persistent key value stores
       if (_transient.has(healthPrefix + serverID)) {
-        LOG_TOPIC(ERR, Logger::FIXME) << "Found transist in _transient";
         transist = _transient.hasAsNode(healthPrefix + serverID).first;
       }
       if (_snapshot.has(healthPrefix + serverID)) {
-        LOG_TOPIC(ERR, Logger::FIXME) << "Found persist in snapshot";
         persist = _snapshot.hasAsNode(healthPrefix + serverID).first;
       }
 
@@ -538,17 +536,11 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       // Status changed?
       bool changed = transist.statusDiff(persist);
 
-      LOG_TOPIC(ERR, Logger::FIXME) << "Persist: " << persist;
-      LOG_TOPIC(ERR, Logger::FIXME) << "transist: " << transist;
-
-
       // Take necessary actions if any
       std::shared_ptr<VPackBuilder> envelope;
       if (changed) {
         handleOnStatus(
           _agent, _snapshot, persist, transist, serverID, _jobId, envelope);
-      } else {
-        LOG_TOPIC(ERR, Logger::FIXME) << "Nothing changed.";
       }
 
       persist = transist; // Now copy Status, SyncStatus from transient to persited
