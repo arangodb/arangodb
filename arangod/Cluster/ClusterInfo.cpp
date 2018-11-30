@@ -3369,6 +3369,7 @@ void ClusterInfo::loadCurrentDBServers() {
     velocypack::Slice currentDBServers;
     velocypack::Slice failedDBServers;
     velocypack::Slice cleanedDBServers;
+    velocypack::Slice toBeCleanedDBServers;
 
     if (result.slice().length() > 0) {
       currentDBServers = result.slice()[0].get(std::vector<std::string>(
@@ -3380,7 +3381,10 @@ void ClusterInfo::loadCurrentDBServers() {
               {AgencyCommManager::path(), "Target", "FailedServers"}));
       cleanedDBServers =
         target.slice()[0].get(std::vector<std::string>(
-              {AgencyCommManager::path(), "Target", "CleanedOutServers"}));
+              {AgencyCommManager::path(), "Target", "CleanedServers"}));
+     toBeCleanedDBServers =
+        target.slice()[0].get(std::vector<std::string>(
+              {AgencyCommManager::path(), "Target", "ToBeCleanedServers"}));
     }
     if (currentDBServers.isObject() && failedDBServers.isObject()) {
       decltype(_DBServers) newDBServers;
@@ -3406,7 +3410,21 @@ void ClusterInfo::loadCurrentDBServers() {
                VPackArrayIterator(cleanedDBServers)) {
             if (dbserver.key == cleanedServer) {
               found = true;
-              continue;
+              break;
+            }
+          }
+          if (found) {
+            continue;
+          }
+        }
+
+        if (toBeCleanedDBServers.isArray()) {
+          bool found = false;
+          for (auto const& toBeCleanedServer :
+               VPackArrayIterator(toBeCleanedDBServers)) {
+            if (dbserver.key == toBeCleanedServer) {
+              found = true;
+              break;
             }
           }
           if (found) {
