@@ -3380,7 +3380,7 @@ void ClusterInfo::loadCurrentDBServers() {
               {AgencyCommManager::path(), "Target", "FailedServers"}));
       cleanedDBServers =
         target.slice()[0].get(std::vector<std::string>(
-              {AgencyCommManager::path(), "Target", "CleanedOutServers"}));
+              {AgencyCommManager::path(), "Target", "CleanedServers"}));
     }
     if (currentDBServers.isObject() && failedDBServers.isObject()) {
       decltype(_DBServers) newDBServers;
