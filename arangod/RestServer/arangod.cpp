@@ -81,6 +81,7 @@
 #include "RestServer/FortuneFeature.h"
 #include "RestServer/FrontendFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
+#include "RestServer/LanguageCheckFeature.h"
 #include "RestServer/LockfileFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ScriptFeature.h"
@@ -185,6 +186,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new GeneralServerFeature(server));
     server.addFeature(new GreetingsFeature(server));
     server.addFeature(new InitDatabaseFeature(server, nonServerFeatures));
+    server.addFeature(new LanguageCheckFeature(server));
     server.addFeature(new LanguageFeature(server));
     server.addFeature(new LockfileFeature(server));
     server.addFeature(new LoggerBufferFeature(server));
