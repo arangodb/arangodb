@@ -71,6 +71,7 @@
   * [Arangodump](Programs/Arangodump/README.md)
     * [Examples](Programs/Arangodump/Examples.md)
     * [Options](Programs/Arangodump/Options.md)
+    * [Maskings](Programs/Arangodump/Maskings.md)
     * [Limitations](Programs/Arangodump/Limitations.md)
   * [Arangorestore](Programs/Arangorestore/README.md)
     * [Examples](Programs/Arangorestore/Examples.md)
