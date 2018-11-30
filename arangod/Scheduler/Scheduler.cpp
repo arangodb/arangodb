@@ -564,10 +564,30 @@ void Scheduler::shutdown() {
   while (true) {
     uint64_t const counters = _counters.load();
 
-    if (numRunning(counters) == 0 && numWorking(counters) == 0
+    if (numWorking(counters) == 0
         && numQueued(counters) == 0) {
       break;
     }
+
+    std::this_thread::yield();
+    // we can be quite generous here with waiting...
+    // as we are in the shutdown already, we do not care if we need to wait
+    // for a bit longer
+    std::this_thread::sleep_for(std::chrono::microseconds(20000));
+  }
+
+  // no tasks are pending, bring down any threads that are sitting in run_once
+  while (true) {
+    uint64_t const counters = _counters.load();
+
+    if (numRunning(counters) == 0 ) {
+      break;
+    }
+
+    post([] {
+        LOG_TOPIC(DEBUG, Logger::THREADS) << "Wakeup alarm";
+        /*wakeup call for scheduler thread*/
+      });
 
     std::this_thread::yield();
     // we can be quite generous here with waiting...
