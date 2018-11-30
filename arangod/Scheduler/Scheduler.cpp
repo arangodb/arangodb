@@ -584,7 +584,7 @@ void Scheduler::shutdown() {
       break;
     }
 
-    post([] {
+    _ioContext->post([] {
         LOG_TOPIC(DEBUG, Logger::THREADS) << "Wakeup alarm";
         /*wakeup call for scheduler thread*/
       });
