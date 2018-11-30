@@ -31,6 +31,7 @@
 #include "Basics/ReadUnlocker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/WriteUnlocker.h"
@@ -65,6 +66,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/KeyGenerator.h"
+#include "VocBase/KeyLockInfo.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
@@ -1591,7 +1593,7 @@ bool MMFilesCollection::openIndex(VPackSlice const& description,
   }
 
   bool unused = false;
-  auto idx = _logicalCollection.createIndex(trx, description, unused);
+  auto idx = createIndex(trx, description, /*restore*/false, unused);
 
   if (idx == nullptr) {
     // error was already printed if we get here
@@ -2077,7 +2079,8 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
     }
   }
 
-  {READ_LOCKER(guard, _indexesLock);
+  {
+    READ_LOCKER(guard, _indexesLock);
     for (auto const& idx : _indexes) {
       if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
         foundPrimary = true;
@@ -2180,37 +2183,67 @@ std::shared_ptr<Index> MMFilesCollection::lookupIndex(
   return nullptr;
 }
 
+std::shared_ptr<Index> MMFilesCollection::createIndex(arangodb::velocypack::Slice const& info,
+                                                      bool restore, bool& created) {
+  
+  SingleCollectionTransaction trx(
+    transaction::StandaloneContext::Create(_logicalCollection.vocbase()),
+    _logicalCollection,
+    AccessMode::Type::EXCLUSIVE
+  );
+  Result res = trx.begin();
+
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+  
+  std::shared_ptr<Index> idx = createIndex(&trx, info, restore, created);
+  if (idx) {
+    res = trx.commit();
+  }
+  
+  return idx;
+}
+
 std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods* trx,
                                                       VPackSlice const& info,
+                                                      bool restore,
                                                       bool& created) {
-
-  auto idx = lookupIndex(info);
-  if (idx != nullptr) {
+  // prevent concurrent dropping
+//  TRI_ASSERT(trx->isLocked(&_logicalCollection, AccessMode::Type::READ));
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  
+  TRI_ASSERT(info.isObject());
+  std::shared_ptr<Index> idx = lookupIndex(info);
+  if (idx != nullptr) { // We already have this index.
     created = false;
-    // We already have this index.
     return idx;
   }
-
+  
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
   // We are sure that we do not have an index of this type.
-  // We also hold the lock.
-  // Create it
+  // We also hold the lock. Create it
 
+  bool generateKey = !restore; // Restore is not allowed to generate an id
   idx = engine->indexFactory().prepareIndexFromSlice(
-    info, true, _logicalCollection, false
+    info, generateKey, _logicalCollection, false
   );
   if (!idx) {
+    LOG_TOPIC(ERR, Logger::ENGINES) << "index creation failed while restoring";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
   }
-
-  if (ServerState::instance()->isCoordinator()) {
-    // In the coordinator case we do not fill the index
-    // We only inform the others.
-    addIndex(idx);
-    created = true;
-    return idx;
+  
+  if (!restore) {
+    TRI_UpdateTickServer(idx->id());
   }
+  
+  auto other = PhysicalCollection::lookupIndex(idx->id());
+  if (other) {
+    return other;
+  }
+  
+  TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
 
   int res = saveIndex(trx, idx);
 
@@ -2226,17 +2259,15 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods* trx,
   // left before
 
   addIndexLocal(idx);
-
-  {
+  // trigger a rewrite
+  if (!engine->inRecovery()) {
     auto builder = _logicalCollection.toVelocyPackIgnore(
       {"path", "statusString"}, true, true
     );
-
     _logicalCollection.properties(builder.slice(), false); // always a full-update
   }
 
   created = true;
-
   return idx;
 }
 
@@ -2338,74 +2369,6 @@ void MMFilesCollection::addIndexLocal(std::shared_ptr<arangodb::Index> idx) {
   if (idx->isPersistent()) {
     ++_persistentIndexes;
   }
-}
-
-int MMFilesCollection::restoreIndex(transaction::Methods* trx,
-                                    VPackSlice const& info,
-                                    std::shared_ptr<arangodb::Index>& idx) {
-  // The coordinator can never get into this state!
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  idx.reset();  // Clear it to make sure.
-
-  if (!info.isObject()) {
-    return TRI_ERROR_INTERNAL;
-  }
-
-  // check if we already have this index
-  auto oldIdx = lookupIndex(info);
-  if (oldIdx) {
-    idx = oldIdx;
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  // We create a new Index object to make sure that the index
-  // is not handed out except for a successful case.
-  std::shared_ptr<Index> newIdx;
-
-  try {
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-
-    newIdx = engine->indexFactory().prepareIndexFromSlice(
-      info, false, _logicalCollection, false
-    );
-  } catch (arangodb::basics::Exception const& e) {
-    // Something with index creation went wrong.
-    // Just report.
-    return e.code();
-  }
-
-  if (!newIdx) { // simon: probably something wrong with ArangoSearch Links
-    LOG_TOPIC(ERR, Logger::ENGINES) << "index creation failed while restoring";
-    return TRI_ERROR_ARANGO_INDEX_CREATION_FAILED;
-  }
-
-  TRI_UpdateTickServer(newIdx->id());
-
-  {READ_LOCKER(gurad, _indexesLock);
-    auto const id = newIdx->id();
-    for (auto& it : _indexes) {
-      if (it->id() == id) {
-        // index already exists
-        idx = it;
-        return TRI_ERROR_NO_ERROR;
-      }
-    }
-  }
-
-  TRI_ASSERT(newIdx.get()->type() !=
-             Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
-  std::vector<std::shared_ptr<arangodb::Index>> indexListLocal;
-  indexListLocal.emplace_back(newIdx);
-
-  int res = fillIndexes(trx, indexListLocal, false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  addIndexLocal(newIdx);
-  idx = newIdx;
-  return TRI_ERROR_NO_ERROR;
 }
 
 bool MMFilesCollection::dropIndex(TRI_idx_iid_t iid) {
@@ -2878,7 +2841,9 @@ Result MMFilesCollection::insert(
     arangodb::transaction::Methods* trx, VPackSlice const slice,
     arangodb::ManagedDocumentResult& result, OperationOptions& options,
     TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_tick_t& revisionId,
+    KeyLockInfo* keyLockInfo,
     std::function<Result(void)> callbackDuringLock) {
+  
   LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options);
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
   transaction::BuilderLeaser builder(trx);
@@ -2919,7 +2884,7 @@ Result MMFilesCollection::insert(
       revisionId = TRI_StringToRid(p, l, false);
     }
   }
-
+  
   // create marker
   MMFilesCrudMarker insertMarker(
       TRI_DF_MARKER_VPACK_DOCUMENT,
@@ -2971,6 +2936,12 @@ Result MMFilesCollection::insert(
   } catch (...) {
     return Result(TRI_ERROR_INTERNAL);
   }
+      
+  TRI_ASSERT(keyLockInfo != nullptr);
+  if (keyLockInfo->shouldLock) {
+    TRI_ASSERT(lock);
+    lockKey(*keyLockInfo, newSlice.get(StaticStrings::KeyString));
+  }
 
   res = Result();
   {
@@ -3019,6 +2990,7 @@ Result MMFilesCollection::insert(
     // store the tick that was used for writing the document
     resultMarkerTick = operation.tick();
   }
+
   return res;
 }
 
@@ -3133,7 +3105,7 @@ void MMFilesCollection::removeLocalDocumentId(LocalDocumentId const& documentId,
 bool MMFilesCollection::hasAllPersistentLocalIds() const {
   return _hasAllPersistentLocalIds.load();
 }
-
+  
 Result MMFilesCollection::persistLocalDocumentIdsForDatafile(
     MMFilesCollection& collection, MMFilesDatafile& file) {
   Result res;
@@ -3703,7 +3675,9 @@ Result MMFilesCollection::remove(
     arangodb::transaction::Methods* trx, VPackSlice slice,
     arangodb::ManagedDocumentResult& previous, OperationOptions& options,
     TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev,
-    TRI_voc_rid_t& revisionId, std::function<Result(void)> callbackDuringLock) {
+    TRI_voc_rid_t& revisionId, KeyLockInfo* keyLockInfo, 
+    std::function<Result(void)> callbackDuringLock) {
+  
   prevRev = 0;
   LocalDocumentId const documentId = LocalDocumentId::create();
 
@@ -3748,6 +3722,11 @@ Result MMFilesCollection::remove(
   }
 
   TRI_ASSERT(!key.isNone());
+  
+  TRI_ASSERT(keyLockInfo != nullptr); 
+  if (keyLockInfo->shouldLock) {
+    lockKey(*keyLockInfo, key);
+  }
 
   MMFilesDocumentOperation operation(
     &_logicalCollection, TRI_VOC_DOCUMENT_OPERATION_REMOVE
@@ -3778,7 +3757,7 @@ Result MMFilesCollection::remove(
       return res;
     }
   }
-
+  
   // we found a document to remove
   try {
     operation.setDocumentIds(MMFilesDocumentDescriptor(oldDocumentId, oldDoc.begin()),
@@ -4103,4 +4082,56 @@ Result MMFilesCollection::updateDocument(
 
   return Result(static_cast<MMFilesTransactionState*>(trx->state())
       ->addOperation(newDocumentId, revisionId, operation, marker, waitForSync));
+}
+
+void MMFilesCollection::lockKey(KeyLockInfo& keyLockInfo, VPackSlice const& key) {
+  TRI_ASSERT(keyLockInfo.key.empty());
+
+  // copy out the key we need to lock
+  TRI_ASSERT(key.isString());
+  std::string k = key.copyString();
+
+  MMFilesCollection::KeyLockShard& shard = getShardForKey(k); 
+
+  // register key unlock function
+  keyLockInfo.unlocker = [this](KeyLockInfo& keyLock) {
+    unlockKey(keyLock);
+  };
+
+  do {
+    {
+      MUTEX_LOCKER(locker, shard._mutex);
+      // if the insert fails because the key is already in the set,
+      // we carry on trying until the previous value is gone from the set.
+      // if the insert fails because of an out-of-memory exception,
+      // we can let the exception escape from here. no harm will be done
+      if (shard._keys.insert(k).second) {
+        // if insertion into the lock set succeeded, we can
+        // go on without the lock. otherwise we just need to carry on trying
+        locker.unlock();
+
+        // store key to unlock later. the move assignment will not fail
+        keyLockInfo.key = std::move(k);
+        return;
+      }
+    }
+    std::this_thread::yield();
+  } while (!application_features::ApplicationServer::isStopping());
+
+  // we can only get here on shutdown
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+}
+  
+void MMFilesCollection::unlockKey(KeyLockInfo& keyLockInfo) noexcept {
+  TRI_ASSERT(keyLockInfo.shouldLock);
+  if (!keyLockInfo.key.empty()) {
+    MMFilesCollection::KeyLockShard& shard = getShardForKey(keyLockInfo.key); 
+    MUTEX_LOCKER(locker, shard._mutex);
+    shard._keys.erase(keyLockInfo.key);
+  }
+}
+
+MMFilesCollection::KeyLockShard& MMFilesCollection::getShardForKey(std::string const& key) noexcept {
+  size_t hash = std::hash<std::string>()(key);
+  return _keyLockShards[hash % numKeyLockShards];
 }

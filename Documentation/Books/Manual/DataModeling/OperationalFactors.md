@@ -232,6 +232,9 @@ Consider some ways to minimize the required amount of storage space:
   store one entry. This will only be beneficial if the combined documents are
   regularly retrieved together and not just subsets.
 
+RockDB Storage Engine
+---------------------
+
 Especially for the RocksDB storage engine large documents and transactions may
 negatively impact the write performance:
 - Consider a maximum size of 50-75 kB _per document_ as a good rule of thumb.
@@ -239,3 +242,56 @@ negatively impact the write performance:
 - Transactions are held in-memory before they are committed.
   This means that transactions have to be split if they become too big, see the
   [limitations section](../Transactions/Limitations.md#with-rocksdb-storage-engine).
+
+### Improving Update Query Perfromance
+
+You may use the _exclusive_ query option for modifying AQL queries, to improve the performance drastically.
+This has the downside that no concurrent writes may occur on the collection, but ArangoDB is able
+to use a special fast-path which should improve the performance by up to 50% for large collections.
+
+```js
+FOR doc IN mycollection
+  UPDATE doc._key
+  WITH { foobar: true } IN mycollection
+  OPTIONS { exclusive: true }
+```
+
+The same naturally also applies for queries using _REPLACE_ or _INSERT_. Additionally you may be able to use
+the `intermediateCommitCount` option in the API to subdivide the AQL transaction into smaller batches.
+
+### Read / Write Load Balance
+
+Depending on whether your data model has a higher read- or higher write-rate you may want
+to adjust some of the RocksDB specific options. Some of the most critical options to
+adjust the performance and memory usage are listed below:
+
+`--rocksdb.block-cache-size`
+
+This is the size of the block cache in bytes. This cache is used for read operations.
+Increasing the size of this may improve the performance of read heavy workloads.
+You may wish to adjust this parameter to control memory usage.
+
+`--rocksdb.write-buffer-size`
+
+Amount of data to build up in memory before converting to a file on disk.
+Larger values increase performance, especially during bulk loads.
+
+`--rocksdb.max-write-buffer-number`
+
+Maximum number of write buffers that built up in memory, per internal column family.
+The default and the minimum number is 2, so that when 1 write buffer
+is being flushed to storage, new writes can continue to the other write buffer.
+
+`--rocksdb.total-write-buffer-size`
+
+The total amount of data to build up in all in-memory buffers when writing into ArangoDB.
+You may wish to adjust this parameter to control memory usage.
+
+Setting this to a low value may limit the RAM that ArangoDB will use but may slow down
+write heavy workloads. Setting this to 0 will not limit the size of the write-buffers.
+
+`--rocksdb.level0-stop-trigger`
+
+When this many files accumulate in level-0, writes will be stopped to allow compaction to catch up.
+Setting this value very high may improve write throughput, but may lead to temporarily 
+bad read performance.

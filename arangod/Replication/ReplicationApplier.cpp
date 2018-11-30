@@ -649,16 +649,14 @@ void ReplicationApplier::doStop(Result const& r, bool joinThread) {
     static_cast<ApplierThread*>(_thread.get())->setAborted(false);
 
     // steal thread
-    Thread* t = _thread.release();
+    std::unique_ptr<Thread> t = std::move(_thread);
+    TRI_ASSERT(_thread.get() == nullptr);
     // now _thread is empty
     // and release the write lock so when "thread" goes
     // out of scope, it actually can call the thread
     // deleter without holding the write lock (which would
     // deadlock)
     writeLocker.unlock();
-
-    // now delete without holding the lock
-    delete t;
   }
 }
   

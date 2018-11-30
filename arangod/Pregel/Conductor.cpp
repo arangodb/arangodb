@@ -738,7 +738,10 @@ VPackBuilder Conductor::toVelocyPack() const {
   result.add("gss", VPackValue(_globalSuperstep));
   result.add("totalRuntime", VPackValue(totalRuntimeSecs()));
   _aggregators->serializeValues(result);
-  _statistics.serializeValues(result);
+  {
+    MUTEX_LOCKER(guard, _callbackMutex);
+    _statistics.serializeValues(result);
+  }
   if (_state != ExecutionState::RUNNING) {
     result.add("vertexCount", VPackValue(_totalVerticesCount));
     result.add("edgeCount", VPackValue(_totalEdgesCount));

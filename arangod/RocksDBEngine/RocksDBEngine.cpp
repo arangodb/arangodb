@@ -469,7 +469,10 @@ void RocksDBEngine::start() {
   rocksdb::BlockBasedTableOptions tableOptions;
   if (opts->_blockCacheSize > 0) {
     tableOptions.block_cache = rocksdb::NewLRUCache(
-        opts->_blockCacheSize, static_cast<int>(opts->_blockCacheShardBits));
+        opts->_blockCacheSize, 
+        static_cast<int>(opts->_blockCacheShardBits), 
+        /*strict_capacity_limit*/ opts->_enforceBlockCacheSizeLimit
+    );
     // tableOptions.cache_index_and_filter_blocks =
     // opts->_compactionReadaheadSize > 0;
   } else {
@@ -1286,7 +1289,7 @@ arangodb::Result RocksDBEngine::dropCollection(
   // remove from map
   {
     WRITE_LOCKER(guard, _mapLock);
-    _collectionMap.erase(collection.id());
+    _collectionMap.erase(coll->objectId());
   }
   
   // delete indexes, RocksDBIndex::drop() has its own check

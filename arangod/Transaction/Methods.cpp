@@ -57,6 +57,7 @@
 #include "Utils/Events.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/OperationOptions.h"
+#include "VocBase/KeyLockInfo.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Methods/Indexes.h"
@@ -553,6 +554,8 @@ bool transaction::Methods::sortOrs(
     root->removeMemberUnchecked(0);
   }
 
+  std::unordered_set<std::string> seenIndexConditions; 
+        
   // and rebuild
   for (size_t i = 0; i < n; ++i) {
     if (parts[i].operatorType ==
@@ -564,8 +567,26 @@ bool transaction::Methods::sortOrs(
     }
 
     auto conditionData = static_cast<ConditionData*>(parts[i].data);
-    root->addMember(conditionData->first);
-    usedIndexes.emplace_back(conditionData->second);
+    bool isUnique = true;
+
+    if (!usedIndexes.empty()) {
+      // try to find duplicate condition parts, and only return each
+      // unique condition part once
+      try {
+        std::string conditionString = conditionData->first->toString() + " - " + std::to_string(conditionData->second.getIndex()->id());
+        isUnique = seenIndexConditions.emplace(std::move(conditionString)).second;
+          // we already saw the same combination of index & condition
+          // don't add it again
+      } catch (...) {
+        // condition stringification may fail. in this case, we simply carry own
+        // without simplifying the condition
+      }
+    }
+
+    if (isUnique) {
+      root->addMember(conditionData->first);
+      usedIndexes.emplace_back(conditionData->second);
+    }
   }
 
   return true;
@@ -1626,13 +1647,14 @@ OperationResult transaction::Methods::insertLocal(
   // If we maybe will overwrite, we cannot do single document operations, thus:
   // options.overwrite => !needsLock
   TRI_ASSERT(!options.overwrite || !needsLock);
+    
+  bool const isMMFiles = EngineSelectorFeature::isMMFiles();
 
   // Assert my assumption that we don't have a lock only with mmfiles single
   // document operations.
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   {
-    bool const isMMFiles = EngineSelectorFeature::isMMFiles();
     bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
     if (!isMock) {
       // needsLock => isMMFiles
@@ -1684,6 +1706,11 @@ OperationResult transaction::Methods::insertLocal(
     followers = collection->followers()->get();
   }
 
+  // we may need to lock individual keys here so we can ensure that even with concurrent
+  // operations on the same keys we have the same order of data application on leader
+  // and followers
+  KeyLockInfo keyLockInfo;
+
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
     // Block operation early if we are not supposed to perform it:
@@ -1695,13 +1722,16 @@ OperationResult transaction::Methods::insertLocal(
       }
 
       replicationType = ReplicationType::LEADER;
+      if (isMMFiles && needsLock) {
+        keyLockInfo.shouldLock = true;
+      }
       // We cannot be silent if we may have to replicate later.
       // If we need to get the followers under the single document operation's
       // lock, we don't know yet if we will have followers later and thus cannot
       // be silent.
       // Otherwise, if we already know the followers to replicate to, we can
       // just check if they're empty.
-      if (needsToGetFollowersUnderLock || !followers->empty()) {
+      if (needsToGetFollowersUnderLock || keyLockInfo.shouldLock || !followers->empty()) {
         options.silent = false;
       }
     } else {  // we are a follower following theLeader
@@ -1721,7 +1751,7 @@ OperationResult transaction::Methods::insertLocal(
 
   VPackBuilder resultBuilder;
   TRI_voc_tick_t maxTick = 0;
-
+    
   auto workForOneDocument = [&](VPackSlice const value) -> Result {
     if (!value.isObject()) {
       return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
@@ -1738,7 +1768,7 @@ OperationResult transaction::Methods::insertLocal(
     TRI_ASSERT(needsLock == !isLocked(collection, AccessMode::Type::WRITE));
     Result res = collection->insert(this, value, documentResult, options,
                                     resultMarkerTick, needsLock, revisionId,
-                                    updateFollowers);
+                                    &keyLockInfo, updateFollowers);
 
     ManagedDocumentResult previousDocumentResult; // return OLD
     TRI_voc_rid_t previousRevisionId = 0;
@@ -2255,14 +2285,13 @@ OperationResult transaction::Methods::removeLocal(
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
   bool const needsLock = !isLocked(collection, AccessMode::Type::WRITE);
+  bool const isMMFiles = EngineSelectorFeature::isMMFiles();
 
   // Assert my assumption that we don't have a lock only with mmfiles single
   // document operations.
 
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   {
-    bool const isMMFiles = EngineSelectorFeature::isMMFiles();
     bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
     if (!isMock) {
       // needsLock => isMMFiles
@@ -2306,6 +2335,11 @@ OperationResult transaction::Methods::removeLocal(
     TRI_ASSERT(followers == nullptr);
     followers = collection->followers()->get();
   }
+  
+  // we may need to lock individual keys here so we can ensure that even with concurrent
+  // operations on the same keys we have the same order of data application on leader
+  // and followers
+  KeyLockInfo keyLockInfo;
 
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
@@ -2318,6 +2352,9 @@ OperationResult transaction::Methods::removeLocal(
       }
 
       replicationType = ReplicationType::LEADER;
+      if (isMMFiles && needsLock) {
+        keyLockInfo.shouldLock = true;
+      }
       // We cannot be silent if we may have to replicate later.
       // If we need to get the followers under the single document operation's
       // lock, we don't know yet if we will have followers later and thus cannot
@@ -2375,7 +2412,7 @@ OperationResult transaction::Methods::removeLocal(
 
     Result res =
         collection->remove(this, value, options, resultMarkerTick, needsLock,
-                           actualRevision, previous, updateFollowers);
+                           actualRevision, previous, &keyLockInfo, updateFollowers);
 
     if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
       maxTick = resultMarkerTick;
