@@ -155,7 +155,8 @@ size_t computeThreadPoolSize(size_t threads, size_t threadsLimit) {
     ;
 }
 
-void registerFunctions(arangodb::aql::AqlFunctionFeature& functions) {
+void registerFunctions(arangodb::aql::AqlFunctionFeature& /*functions*/) {
+#if 0
   arangodb::iresearch::addFunction(functions, {
     "__ARANGOSEARCH_SCORE_DEBUG",  // name
     ".",    // value to convert
@@ -172,11 +173,13 @@ void registerFunctions(arangodb::aql::AqlFunctionFeature& functions) {
         return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(double_t(std::nan(""))));
       } else {
         // unsafe
-        auto const floatValue = *reinterpret_cast<float_t const*>(args[0].slice().begin());
+        VPackValueLength length;
+        auto const floatValue = *reinterpret_cast<float_t const*>(args[0].slice().getString(length));
         return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(double_t(floatValue)));
       }
     }
   });
+#endif
 }
 
 void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {

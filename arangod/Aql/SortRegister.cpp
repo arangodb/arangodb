@@ -28,7 +28,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/SortNode.h"
 
-#ifdef USE_IRESEARCH
+#if 0 // #ifdef USE_IRESEARCH
 #include "IResearch/IResearchViewNode.h"
 #include "IResearch/IResearchOrderFactory.h"
 
@@ -82,7 +82,7 @@ SortRegister::SortRegister(
     asc(element.ascending) {
 }
 
-#ifdef USE_IRESEARCH
+#if 0 // #ifdef USE_IRESEARCH
 
 void SortRegister::fill(
     ExecutionPlan const& execPlan,
@@ -103,6 +103,8 @@ void SortRegister::fill(
     TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
     sortRegisters.emplace_back(it->second.registerId, p, &compareAqlValues);
 
+    const_cast<ExecutionPlan&>(execPlan).clearVarUsageComputed();
+    const_cast<ExecutionPlan&>(execPlan).findVarUsage();
     auto const* setter = execPlan.getVarSetBy(varId);
 
     if (setter && ExecutionNode::ENUMERATE_IRESEARCH_VIEW == setter->getType()) {
