@@ -436,16 +436,18 @@ bool ServerState::hasPersistedId() {
 
 bool ServerState::writePersistedId(std::string const& id) {
   std::string uuidFilename = getUuidFilename();
-  mkdir(FileUtils::dirname(uuidFilename));
-  std::ofstream ofs(uuidFilename);
-  if (!ofs.is_open()) {
-    LOG_TOPIC(FATAL, Logger::CLUSTER)
-      << "Couldn't write id file " << getUuidFilename();
+  // try to create underlying directory
+  int error;
+  FileUtils::createDirectory(FileUtils::dirname(uuidFilename), &error);
+
+  try {
+    arangodb::basics::FileUtils::spit(uuidFilename, id, true);
+  } catch (arangodb::basics::Exception const& ex) {
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Cannot write UUID file '"
+                                              << uuidFilename << "': "
+                                              << ex.what();
     FATAL_ERROR_EXIT();
-    return false;
   }
-  ofs << id << std::endl;
-  ofs.close();
 
   return true;
 }
@@ -466,11 +468,9 @@ std::string ServerState::getPersistedId() {
       if (!uuidBuf.empty()) {
         return uuidBuf;
       }
-    }
-    catch (arangodb::basics::Exception const& ex) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Couldn't read UUID file '"
-                                                << uuidFilename << "' - "
-                                                << ex.what();
+    } catch (arangodb::basics::Exception const& ex) {
+      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER)
+        << "Couldn't read UUID file '" << uuidFilename << "' - " << ex.what();
       FATAL_ERROR_EXIT();
     }
   }
@@ -851,7 +851,7 @@ bool ServerState::checkCoordinatorState(StateEnum state) {
   return false;
 }
 
-bool ServerState::isFoxxmaster() {
+bool ServerState::isFoxxmaster() const {
   return /*!isRunningInCluster() ||*/ _foxxmaster == getId();
 }
 
@@ -864,7 +864,9 @@ void ServerState::setFoxxmaster(std::string const& foxxmaster) {
   }
 }
 
-bool ServerState::getFoxxmasterQueueupdate() { return _foxxmasterQueueupdate; }
+bool ServerState::getFoxxmasterQueueupdate() const noexcept {
+  return _foxxmasterQueueupdate;
+}
 
 void ServerState::setFoxxmasterQueueupdate(bool value) {
   _foxxmasterQueueupdate = value;

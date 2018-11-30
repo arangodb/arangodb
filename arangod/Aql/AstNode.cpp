@@ -2158,7 +2158,7 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
     getMember(1)->stringify(buffer, verbose, failIfLong);
     return;
   }
-
+  
   if (type == NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ ||
       type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NE ||
       type == NODE_TYPE_OPERATOR_BINARY_ARRAY_LT ||
@@ -2188,6 +2188,23 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
     getMember(1)->stringify(buffer, verbose, failIfLong);
     buffer->appendChar(':');
     getMember(2)->stringify(buffer, verbose, failIfLong);
+    return;
+  }
+  
+  if (type == NODE_TYPE_OPERATOR_NARY_AND ||
+      type == NODE_TYPE_OPERATOR_NARY_OR) {
+    // not used by V8
+    size_t const n = numMembers();
+    for (size_t i = 0; i < n; ++i) {
+      if (i > 0) {
+        if (type == NODE_TYPE_OPERATOR_NARY_AND) {
+          buffer->appendText(" AND ");
+        } else {
+          buffer->appendText(" OR ");
+        }
+      }
+      getMember(i)->stringify(buffer, verbose, failIfLong);
+    }
     return;
   }
 

@@ -201,7 +201,7 @@ SECTION("test_defaults") {
     REQUIRE((false == !logicalView));
 
     bool created;
-    auto link = logicalCollection->createIndex(nullptr, linkJson->slice(), created);
+    auto link = logicalCollection->createIndex(linkJson->slice(), created);
     REQUIRE((false == !link && created));
     CHECK((true == link->canBeDropped()));
     CHECK((logicalCollection.get() == link->collection()));
@@ -253,7 +253,7 @@ SECTION("test_defaults") {
     REQUIRE((false == !logicalView));
 
     bool created;
-    auto link = logicalCollection->createIndex(nullptr, linkJson->slice(), created);
+    auto link = logicalCollection->createIndex(linkJson->slice(), created);
     REQUIRE((false == !link && created));
     CHECK((true == link->canBeDropped()));
     CHECK((logicalCollection.get() == link->collection()));
@@ -605,7 +605,7 @@ SECTION("test_write") {
   irs::fs_directory directory(dataPath);
   auto reader = irs::directory_reader::open(directory);
   bool created;
-  auto link = logicalCollection->createIndex(nullptr, linkJson->slice(), created);
+  auto link = logicalCollection->createIndex(linkJson->slice(), created);
   REQUIRE((false == !link && created));
   CHECK((0 == reader.reopen().live_docs_count()));
   CHECK((TRI_ERROR_BAD_PARAMETER == link->insert(nullptr, arangodb::LocalDocumentId(1), doc0->slice(), arangodb::Index::OperationMode::normal).errorNumber()));

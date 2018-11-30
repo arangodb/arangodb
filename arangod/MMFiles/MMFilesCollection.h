@@ -294,13 +294,11 @@ class MMFilesCollection final : public PhysicalCollection {
       transaction::Methods* trx,
       std::function<bool(LocalDocumentId const&)> callback) override;
 
+  std::shared_ptr<Index> createIndex(arangodb::velocypack::Slice const& info,
+                                     bool restore, bool& created) override;
   std::shared_ptr<Index> createIndex(transaction::Methods* trx,
                                      arangodb::velocypack::Slice const& info,
-                                     bool& created) override;
-
-  /// @brief Restores an index from VelocyPack.
-  int restoreIndex(transaction::Methods*, velocypack::Slice const&,
-                   std::shared_ptr<Index>&) override;
+                                     bool restore, bool& created);
 
   /// @brief Drop an index with the given iid.
   bool dropIndex(TRI_idx_iid_t iid) override;

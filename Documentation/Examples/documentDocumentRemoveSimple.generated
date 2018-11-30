@@ -1,21 +1,21 @@
 arangosh&gt; a1 = db.example.insert({ <span class="hljs-attr">a</span> : <span class="hljs-number">1</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/110722"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"110722"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XsBrsRC--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/110783"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"110783"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Xz9k7u2--_"</span> 
 }
 arangosh&gt; db.example.document(a1);
 { 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"110722"</span>, 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/110722"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XsBrsRC--_"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"110783"</span>, 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/110783"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Xz9k7u2--_"</span>, 
   <span class="hljs-string">"a"</span> : <span class="hljs-number">1</span> 
 }
 arangosh&gt; db.example.remove(a1);
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/110722"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"110722"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XsBrsRC--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/110783"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"110783"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Xz9k7u2--_"</span> 
 }
 arangosh&gt; db.example.document(a1);
 [ArangoError <span class="hljs-number">1202</span>: <span class="hljs-built_in">document</span> not found]

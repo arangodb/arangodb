@@ -257,8 +257,7 @@ class LogicalCollection : public LogicalDataSource {
   // SECTION: Indexes
 
   /// @brief Create a new Index based on VelocyPack description
-  virtual std::shared_ptr<Index> createIndex(transaction::Methods*,
-                                             velocypack::Slice const&, bool&);
+  virtual std::shared_ptr<Index> createIndex(velocypack::Slice const&, bool&);
 
   /// @brief Find index by definition
   std::shared_ptr<Index> lookupIndex(velocypack::Slice const&) const;

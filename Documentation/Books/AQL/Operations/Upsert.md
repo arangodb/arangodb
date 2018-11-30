@@ -99,6 +99,23 @@ the searchExpression. Even worse, if you use an outdated `_rev` in the searchExp
 UPSERT will trigger the INSERT path instead of the UPDATE path, because it has not found a document
 exactly matching the searchExpression.
 
+In contrast to the MMFiles engine, the RocksDB engine does not require collection-level
+locks. Different write operations on the same collection do not block each other, as
+long as there are no _write-write conficts_ on the same documents. From an application
+development perspective it can be desired to have exclusive write access on collections,
+to simplify the development. Note that writes do not block reads in RocksDB.
+Exclusive access can also speed up modification queries, because we avoid conflict checks.
+
+Use the *exclusive* option to achieve this effect on a per query basis:
+
+```js
+FOR i IN 1..1000
+  UPSERT { _key: CONCAT('test', i) }
+  INSERT { foobar: false }
+  UPDATE { foobar: true }
+  IN users OPTIONS { exclusive: true }
+```
+
 Returning documents
 -------------------
 

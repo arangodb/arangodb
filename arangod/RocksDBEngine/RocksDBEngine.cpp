@@ -1289,7 +1289,7 @@ arangodb::Result RocksDBEngine::dropCollection(
   // remove from map
   {
     WRITE_LOCKER(guard, _mapLock);
-    _collectionMap.erase(collection.id());
+    _collectionMap.erase(coll->objectId());
   }
   
   // delete indexes, RocksDBIndex::drop() has its own check
