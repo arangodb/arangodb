@@ -533,7 +533,7 @@ void Scheduler::beginShutdown() {
   //  via _counters.
   setStopping();
 
-  // push anything within fifo queues onto context queue
+  // push everything within fifo queues onto context queue
   drain();
 
   while (true) {
@@ -547,7 +547,7 @@ void Scheduler::beginShutdown() {
     std::this_thread::sleep_for(std::chrono::microseconds(2000));
   }
 
-  // shutdown worker threads and control mechanisms
+  // shutdown control mechanisms
   stopRebalancer();
 
   _threadManager.reset();
@@ -556,7 +556,6 @@ void Scheduler::beginShutdown() {
   _managerContext->stop();
 
   _serviceGuard.reset();
-//  _ioContext->stop();
 }
 
 void Scheduler::shutdown() {
@@ -577,6 +576,10 @@ void Scheduler::shutdown() {
   }
 
   // no tasks are pending, bring down any threads that are sitting in run_once
+  //  a. tell io_context to release all
+  _ioContext->stop();
+
+  //  b. wait for the release to be verified
   while (true) {
     uint64_t const counters = _counters.load();
 
@@ -600,7 +603,6 @@ void Scheduler::shutdown() {
   // in its queue, that requires for it finalization some object (for example vocbase)
   // that would already be destroyed
   _managerContext.reset();
-  _ioContext->stop();
   _ioContext.reset();
 }
 
