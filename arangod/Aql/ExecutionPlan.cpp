@@ -321,7 +321,7 @@ ExecutionPlan* ExecutionPlan::instantiateFromVelocyPack(
 
   auto plan = std::make_unique<ExecutionPlan>(ast);
   plan->_root = plan->fromSlice(slice);
-  plan->findVarUsage();
+  plan->varUsageComputed();
 
   return plan.release();
 }
