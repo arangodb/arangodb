@@ -92,24 +92,40 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
           collections.add(VPackValue(colname));
 
           VPackObjectBuilder col(&collections);
-
           collection->properties(collections,true,false);
 
+
           auto const& folls = collection->followers();
-          auto const theLeader = folls->getLeader();
+          std::string const theLeader = folls->getLeader();
+          bool theLeaderTouched = folls->getLeaderTouched();
 
-          collections.add("theLeader", VPackValue(theLeader));
+          // Note that whenever theLeader was set explicitly since the collection
+          // object was created, we believe it. Otherwise, we do not accept
+          // that we are the leader. This is to circumvent the problem that
+          // after a restart we would implicitly be assumed to be the leader.
+          if (theLeaderTouched) {
+            collections.add("theLeader", VPackValue(theLeader));
+          } else {
+            collections.add("theLeader", VPackValue("NOT_YET_TOUCHED"));
+          }
 
-          if (theLeader.empty()) {  // we are the leader ourselves
+          if (theLeader.empty() && theLeaderTouched) {
+            // we are the leader ourselves
             // In this case we report our in-sync followers here in the format
             // of the agency: [ leader, follower1, follower2, ... ]
             collections.add(VPackValue("servers"));
-            { VPackArrayBuilder guard(&collections);
 
-              collections.add(VPackValue(arangodb::ServerState::instance()->getId()));
-              std::shared_ptr<std::vector<ServerID> const> srvs = folls->get();
-              for (auto const& s : *srvs) {
-                collections.add(VPackValue(s));
+            if (theLeader.empty()) {  // we are the leader ourselves
+              // In this case we report our in-sync followers here in the format
+              // of the agency: [ leader, follower1, follower2, ... ]
+              collections.add(VPackValue("servers"));
+              { VPackArrayBuilder guard(&collections);
+
+                collections.add(VPackValue(arangodb::ServerState::instance()->getId()));
+                std::shared_ptr<std::vector<ServerID> const> srvs = folls->get();
+                for (auto const& s : *srvs) {
+                  collections.add(VPackValue(s));
+                }
               }
             }
           }
@@ -213,14 +229,14 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
       std::vector<std::string> path = {maintenance::PHASE_TWO, "agency"};
       if (report.hasKey(path) && report.get(path).isObject()) {
-        
+
         auto agency = report.get(path);
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
           << "DBServerAgencySync reporting to Current: " << agency.toJson();
 
         // Report to current
         if (!agency.isEmptyObject()) {
-          
+
           std::vector<AgencyOperation> operations;
           for (auto const& ao : VPackObjectIterator(agency)) {
             auto const key = ao.key.copyString();
@@ -248,7 +264,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
         }
 
       }
- 
+
       if (tmp.ok()) {
         result = DBServerAgencySyncResult(
           true,
