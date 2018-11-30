@@ -2648,10 +2648,20 @@ static void JS_Append(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("append(<filename>, <content>)");
   }
 
-  TRI_Utf8ValueNFC name(args[0]);
+#if _WIN32 // the wintendo needs utf16 filenames
+  v8::String::Value str(args[0]);
+  std::wstring name {
+    reinterpret_cast<wchar_t *>(*str),
+      static_cast<size_t>(str.length())};
+#else
+  TRI_Utf8ValueNFC str(args[0]);
+  std::string name(*str, str.length());
+#endif
+    
+  std::ofstream file;
 
-  if (*name == nullptr) {
-    TRI_V8_THROW_TYPE_ERROR("<filename> must be a string");
+  if (name.empty()) {
+    TRI_V8_THROW_TYPE_ERROR("<filename> must be a non-empty string");
   }
 
   if (args[1]->IsObject() && V8Buffer::hasInstance(isolate, args[1])) {
@@ -2664,9 +2674,7 @@ static void JS_Append(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                      "invalid <content> buffer value");
     }
 
-    std::ofstream file;
-
-    file.open(*name, std::ios::out | std::ios::binary | std::ios::app);
+    file.open(name, std::ios::out | std::ios::binary | std::ios::app);
 
     if (file.is_open()) {
       file.write(data, size);
@@ -2680,9 +2688,7 @@ static void JS_Append(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_TYPE_ERROR("<content> must be a string");
     }
 
-    std::ofstream file;
-
-    file.open(*name, std::ios::out | std::ios::binary | std::ios::app);
+    file.open(name, std::ios::out | std::ios::binary | std::ios::app);
 
     if (file.is_open()) {
       file.write(*content, content.length());
