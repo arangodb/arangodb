@@ -219,6 +219,8 @@ void Scheduler::post(std::function<void(bool)> const callback, bool isHandler) {
     jobGuard.work();
 
     callback(true);
+
+    drain();
   } else {
     // capture without self, ioContext will not live longer than scheduler
     _ioContext->post([this, callback]() {
