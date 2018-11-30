@@ -103,8 +103,6 @@ void SortRegister::fill(
     TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
     sortRegisters.emplace_back(it->second.registerId, p, &compareAqlValues);
 
-    const_cast<ExecutionPlan&>(execPlan).clearVarUsageComputed();
-    const_cast<ExecutionPlan&>(execPlan).findVarUsage();
     auto const* setter = execPlan.getVarSetBy(varId);
 
     if (setter && ExecutionNode::ENUMERATE_IRESEARCH_VIEW == setter->getType()) {
