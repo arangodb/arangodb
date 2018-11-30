@@ -44,7 +44,7 @@ class FollowerInfo {
  public:
 
   explicit FollowerInfo(arangodb::LogicalCollection* d)
-    : _followers(new std::vector<ServerID>()), _docColl(d) { }
+    : _followers(new std::vector<ServerID>()), _docColl(d), _theLeaderTouched(false) { }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get information about current followers of a shard.
