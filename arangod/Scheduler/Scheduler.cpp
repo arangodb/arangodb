@@ -403,8 +403,6 @@ bool Scheduler::canPostDirectly(RequestPriority prio) const noexcept {
     return false;
   } else {
     // during shutdown, finesse is no longer needed.  post everything.
-    TRI_ASSERT(false);
-    std::abort();
     return true;
   } // else
 }
@@ -558,7 +556,7 @@ void Scheduler::beginShutdown() {
   _managerContext->stop();
 
   _serviceGuard.reset();
-  _ioContext->stop();
+//  _ioContext->stop();
 }
 
 void Scheduler::shutdown() {
@@ -582,6 +580,7 @@ void Scheduler::shutdown() {
   // in its queue, that requires for it finalization some object (for example vocbase)
   // that would already be destroyed
   _managerContext.reset();
+  _ioContext->stop();
   _ioContext.reset();
 }
 
