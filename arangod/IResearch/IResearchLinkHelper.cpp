@@ -529,7 +529,7 @@ namespace iresearch {
         && !arangodb::ExecContext::CURRENT->canUseCollection(vocbase.name(), collection->name(), arangodb::auth::Level::RO)) {
       return arangodb::Result(
         TRI_ERROR_FORBIDDEN,
-        std::string("while validating arangosearch link definition, error: collection '") + collectionName.copyString() + "' not authorised for read access"
+        std::string("while validating arangosearch link definition, error: collection '") + collectionName.copyString() + "' not authorized for read access"
       );
     }
 
