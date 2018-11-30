@@ -43,7 +43,12 @@ class FollowerInfo {
  public:
 
   explicit FollowerInfo(arangodb::LogicalCollection* d)
-    : _followers(new std::vector<ServerID>()), _docColl(d) { }
+    : _followers(new std::vector<ServerID>()), _docColl(d),
+      _theLeader("NOT_YET_SET") { }
+  // We initialize _theLeader with "NOT_YET_SET" to make sure that we do not
+  // erranously think that we are the leader if we are in fact a follower
+  // after a restart.
+
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get information about current followers of a shard.
