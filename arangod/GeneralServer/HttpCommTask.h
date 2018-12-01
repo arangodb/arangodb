@@ -37,7 +37,7 @@ class HttpCommTask final : public GeneralCommTask {
   void addResponse(GeneralResponse& response,
                    RequestStatistics* stat) override;
   
-  bool allowDirectHandling() const override final { return true; }
+  bool allowDirectHandling() const override final { return false; }
 
   /// @brief send error response including response body
   void addSimpleResponse(rest::ResponseCode, rest::ContentType,
