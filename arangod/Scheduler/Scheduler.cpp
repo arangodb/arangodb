@@ -40,6 +40,7 @@
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/Task.h"
 #include "Statistics/RequestStatistics.h"
+#include "Utils/ExecContext.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -217,6 +218,7 @@ void Scheduler::post(std::function<void(bool)> const callback, bool isHandler) {
   if (isHandler && old < 2) {
     JobGuard jobGuard(this);
     jobGuard.work();
+    ExecContextScope exec(nullptr);
 
     callback(true);
 
