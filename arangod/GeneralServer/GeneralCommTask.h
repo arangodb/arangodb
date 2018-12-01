@@ -105,6 +105,8 @@ class GeneralCommTask : public SocketTask {
   /// @brief send the response to the client.
   virtual void addResponse(GeneralResponse&, RequestStatistics*) = 0;
   
+  virtual bool allowDirectHandling() const = 0;
+
  protected:
   
   enum class RequestFlow : bool {

@@ -438,11 +438,13 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   auto const prio = handler->priority();
   auto self = shared_from_this();
 
+  bool tryDirect = allowDirectHandling() && _peer->runningInThisThread();
+
   bool ok = SchedulerFeature::SCHEDULER->queue(prio, [self, this, handler](bool isDirect) {
     handleRequest(isDirect ?
 		  basics::ConditionalLocking::DoNotLock :
 		  basics::ConditionalLocking::DoLock, std::move(handler));
-  }, _peer->runningInThisThread());
+  }, tryDirect);
 
   uint64_t messageId = handler->messageId();
 
