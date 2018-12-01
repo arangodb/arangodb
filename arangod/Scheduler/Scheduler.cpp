@@ -210,6 +210,7 @@ Scheduler::~Scheduler() {
 void Scheduler::post(std::function<void(bool)> const callback, bool isHandler) {
   // increment number of queued and guard against exceptions
   uint64_t old = incQueued();
+  old += _fifoSize[FIFO1] + _fifoSize[FIFO2] + _fifoSize[FIFO3];
 
   // reduce queued at the end
   auto guardQueue = scopeGuard([this]() { decQueued(); });
@@ -218,7 +219,6 @@ void Scheduler::post(std::function<void(bool)> const callback, bool isHandler) {
   if (isHandler && old < 2) {
     JobGuard jobGuard(this);
     jobGuard.work();
-    ExecContextScope exec(ExecContext::CURRENT);
 
     callback(true);
 
