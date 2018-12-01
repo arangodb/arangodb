@@ -218,7 +218,7 @@ void Scheduler::post(std::function<void(bool)> const callback, bool isHandler) {
   if (isHandler && old < 2) {
     JobGuard jobGuard(this);
     jobGuard.work();
-    ExecContextScope exec(nullptr);
+    ExecContextScope exec(ExecContext::CURRENT);
 
     callback(true);
 
