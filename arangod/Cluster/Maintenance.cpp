@@ -860,27 +860,35 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
         if (cur.hasKey(servers)) {
           auto s = cur.get(servers);
           if (s.isArray() && cur.get(servers)[0].copyString() == serverId) {
-            // we were previously leader and we are done resigning.
-            // update current and let supervision handle the rest
-            VPackBuilder ns;
-            { VPackArrayBuilder a(&ns);
-              if (s.isArray()) {
-                bool front = true;
-                for (auto const& i : VPackArrayIterator(s)) {
-                  ns.add(VPackValue((!front) ? i.copyString() : UNDERSCORE + i.copyString()));
-                  front = false;
-                }
-              }}
-            report.add(
-              VPackValue(
-                CURRENT_COLLECTIONS + dbName + "/" + colName + "/" + shName
-                + "/" + SERVERS));
+
+            // We are in the situation after a restart, that we do not know
+            // who the leader is because FollowerInfo is not updated yet.
+            // Hence, in the case we are the Leader in Plan but do not
+            // know it yet, do nothing here.
+            if (shSlice.get("theLeaderTouched").isTrue()) {
+
+              // we were previously leader and we are done resigning.
+              // update current and let supervision handle the rest
+              VPackBuilder ns;
+              { VPackArrayBuilder a(&ns);
+                if (s.isArray()) {
+                  bool front = true;
+                  for (auto const& i : VPackArrayIterator(s)) {
+                    ns.add(VPackValue((!front) ? i.copyString() : UNDERSCORE + i.copyString()));
+                    front = false;
+                  }
+                }}
+              report.add(
+                VPackValue(
+                  CURRENT_COLLECTIONS + dbName + "/" + colName + "/" + shName
+                  + "/" + SERVERS));
 
               { VPackObjectBuilder o(&report);
                 report.add(OP, VP_SET);
                 report.add("payload", ns.slice()); }
             }
           }
+        }
       }
     }
   }
