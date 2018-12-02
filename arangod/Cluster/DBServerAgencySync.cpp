@@ -100,11 +100,8 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
         // object was created, we believe it. Otherwise, we do not accept
         // that we are the leader. This is to circumvent the problem that
         // after a restart we would implicitly be assumed to be the leader.
-        if (theLeaderTouched) {
-          collections.add("theLeader", VPackValue(theLeader));
-        } else {
-          collections.add("theLeader", VPackValue("NOT_YET_TOUCHED"));
-        }
+        collections.add("theLeader", VPackValue(theLeaderTouched ? theLeader : "NOT_YET_TOUCHED"));
+        collections.add("theLeaderTouched", VPackValue(theLeaderTouched));
 
         if (theLeader.empty() && theLeaderTouched) {
           // we are the leader ourselves
@@ -277,7 +274,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   } else {
     result.errorMessage = "Report from phase 1 and 2 was not closed.";
   }
-  
+
   auto took = duration<double>(clock::now() - start).count();
   if (took > 30.0) {
     LOG_TOPIC(WARN, Logger::MAINTENANCE) << "DBServerAgencySync::execute "
