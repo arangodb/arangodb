@@ -95,16 +95,6 @@ function IResearchAqlTestSuite(args) {
       db._drop("AnotherUnitTestsCollection");
     },
 
-    testInTokensFilterSortTFIDF : function () {
-      var result = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(doc.text IN TOKENS('the quick brown', 'text_en'), 'text_en') OPTIONS { waitForSync: true } SORT TFIDF(doc) LIMIT 4 RETURN doc").toArray();
-
-      assertEqual(result.length, 4);
-      assertEqual(result[0].name, 'other half');
-      assertEqual(result[1].name, 'full');
-      assertEqual(result[2].name, 'half');
-      assertEqual(result[3].name, 'quarter');
-    },
-
 /*    testViewInInnerLoopSortByTFIDF_BM25_Attribute : function() {
       var expected = [];
       expected.push({ a: "baz", b: "foo", c: 1 });
