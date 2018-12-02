@@ -113,11 +113,11 @@ bool OurLessThan::operator()(
     int cmp;
 
     if (attributePath.empty()) {
-#ifdef USE_IRESEARCH
+#if 0 // #ifdef USE_IRESEARCH
       TRI_ASSERT(reg.comparator);
       cmp = (*reg.comparator)(reg.scorer.get(), _trx, lhs, rhs);
 #else
-      cmp = AqlValue::Compare(_trx, lhs, rhs, true);
+    cmp = AqlValue::Compare(_trx, lhs, rhs, true);
 #endif
     } else {
       // Take attributePath into consideration:
