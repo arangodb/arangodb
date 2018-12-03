@@ -546,7 +546,7 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
   auto state = RocksDBTransactionState::toState(trx);
   RocksDBMethods* mthds = state->rocksdbMethods();
 
-  if (state->isExclusiveTransactionOnSingleCollection() &&
+  if (state->isOnlyExclusiveTransaction() &&
       state->hasHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE) &&
       static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->canUseRangeDeleteInWal() &&
       _numberDocuments >= 32 * 1024) {
@@ -819,7 +819,7 @@ Result RocksDBCollection::insert(
     // up to the SavePoint. this can be super-expensive for bigger transactions.
     // to keep things simple, we are not checking for unique constraint violations
     // in secondary indexes here, but defer it to the regular index insertion check
-    VPackSlice keySlice = newSlice.get(StaticStrings::KeyString);
+    VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(newSlice);
     if (keySlice.isString()) {
       LocalDocumentId const documentId = primaryIndex()->lookupKey(trx, StringRef(keySlice));
       if (documentId.isSet()) {
@@ -1522,7 +1522,6 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
 
       if (entry) {
         Result status = _cache->insert(entry);
-
         if (status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
           // the writeLock uses cpu_relax internally, so we can try yield
           std::this_thread::yield();

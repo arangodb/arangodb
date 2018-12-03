@@ -1899,7 +1899,7 @@ arangodb::Result IResearchView::updateProperties(
             && !arangodb::ExecContext::CURRENT->canUseCollection(vocbase().name(), collection->name(), arangodb::auth::Level::RO)) {
           return arangodb::Result(
             TRI_ERROR_FORBIDDEN,
-            std::string("while updating arangosearch definition, error: collection '") + collection->name() + "' not authorised for read access"
+            std::string("while updating arangosearch definition, error: collection '") + collection->name() + "' not authorized for read access"
           );
         }
       }

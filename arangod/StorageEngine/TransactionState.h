@@ -215,8 +215,8 @@ class TransactionState {
    */
   void setLockedShards(std::unordered_set<std::string> const& lockedShards);
   
-  /// @brief whether or not a transaction is an exclusive transaction on a single collection
-  bool isExclusiveTransactionOnSingleCollection() const;
+  /// @brief whether or not a transaction only has exculsive or read accesses
+  bool isOnlyExclusiveTransaction() const;
 
  protected:
   /// @brief find a collection in the transaction's list of collections

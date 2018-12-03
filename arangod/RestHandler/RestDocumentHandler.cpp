@@ -131,7 +131,6 @@ bool RestDocumentHandler::insertDocument() {
   }
 
   Result res = trx->begin();
-
   if (!res.ok()) {
     generateTransactionError(collectionName, res, "");
     return false;
@@ -144,7 +143,6 @@ bool RestDocumentHandler::insertDocument() {
   // or abort if an error occured.
   // result stays valid!
   res = trx->finish(result.result);
-
   if (result.fail()) {
     generateTransactionError(result);
     return false;
@@ -428,7 +426,6 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   // ...........................................................................
 
   Result res = trx->begin();
-
   if (!res.ok()) {
     generateTransactionError(collectionName, res, "");
     return false;

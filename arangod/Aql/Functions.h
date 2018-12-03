@@ -44,9 +44,8 @@ class ExpressionContext;
 
 typedef SmallVector<AqlValue> VPackFunctionParameters;
 
-typedef std::function<AqlValue(arangodb::aql::ExpressionContext*, transaction::Methods*,
-                                VPackFunctionParameters const&)>
-    FunctionImplementation;
+typedef AqlValue(*FunctionImplementation)(arangodb::aql::ExpressionContext*, transaction::Methods*,
+                                          VPackFunctionParameters const&);
 
 struct Functions {
 
