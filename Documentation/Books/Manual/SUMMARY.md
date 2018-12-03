@@ -369,6 +369,7 @@
     * [Incompatible changes in 3.4](ReleaseNotes/UpgradingChanges34.md)
   * [Version 3.3](ReleaseNotes/33.md)
     * [What's New in 3.3](ReleaseNotes/NewFeatures33.md)
+    * [Known Issues in 3.3](ReleaseNotes/KnownIssues33.md)
     * [Incompatible changes in 3.3](ReleaseNotes/UpgradingChanges33.md)
   * [Version 3.2](ReleaseNotes/32.md)
     * [What's New in 3.2](ReleaseNotes/NewFeatures32.md)
