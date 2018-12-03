@@ -190,7 +190,7 @@ class Index {
   char const* oldtypeName() const { return oldtypeName(type()); }
 
   /// @brief return the index type based on a type name
-  static IndexType type(char const* type);
+  static IndexType type(char const* type, size_t len);
 
   static IndexType type(std::string const& type);
 
@@ -227,7 +227,6 @@ class Index {
   static bool Compare(velocypack::Slice const& lhs,
                       velocypack::Slice const& rhs);
 
-  virtual bool isPersistent() const { return false; }
   virtual bool canBeDropped() const = 0;
  
   /// @brief whether or not the index provides an iterator that can extract
@@ -242,10 +241,13 @@ class Index {
 
   /// @brief whether or not the index is sorted
   virtual bool isSorted() const = 0;
+  
+  /// @brief if true this index should not be shown externally
+  virtual bool isHidden() const = 0;
 
   /// @brief whether or not the index has a selectivity estimate
   virtual bool hasSelectivityEstimate() const = 0;
-
+  
   /// @brief return the selectivity estimate of the index
   /// must only be called if hasSelectivityEstimate() returns true
   ///
@@ -273,10 +275,10 @@ class Index {
     Basics = 0,
     /// @brief serialize figures for index
     Figures = 2,
-    /// @brief serialize object ids for persistence
-    ObjectId = 4,
     /// @brief serialize selectivity estimates
-    Estimates = 8
+    Estimates = 4,
+    /// @brief serialize object ids for persistence
+    ObjectId = 8,
   };
   
   /// @brief helper for building flags

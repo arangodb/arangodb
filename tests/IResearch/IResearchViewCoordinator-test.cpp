@@ -1191,7 +1191,6 @@ SECTION("test_update_links_partial_remove") {
     CHECK((false == index->hasExpansion()));
     CHECK((false == index->hasSelectivityEstimate()));
     CHECK((false == index->implicitlyUnique()));
-    CHECK((true == index->isPersistent()));
     CHECK((false == index->isSorted()));
     CHECK((0 < index->memory()));
     CHECK((true == index->sparse()));
@@ -1237,7 +1236,6 @@ SECTION("test_update_links_partial_remove") {
     CHECK((false == index->hasExpansion()));
     CHECK((false == index->hasSelectivityEstimate()));
     CHECK((false == index->implicitlyUnique()));
-    CHECK((true == index->isPersistent()));
     CHECK((false == index->isSorted()));
     CHECK((0 < index->memory()));
     CHECK((true == index->sparse()));
@@ -1283,7 +1281,6 @@ SECTION("test_update_links_partial_remove") {
     CHECK((false == index->hasExpansion()));
     CHECK((false == index->hasSelectivityEstimate()));
     CHECK((false == index->implicitlyUnique()));
-    CHECK((true == index->isPersistent()));
     CHECK((false == index->isSorted()));
     CHECK((0 < index->memory()));
     CHECK((true == index->sparse()));
@@ -1416,7 +1413,6 @@ SECTION("test_update_links_partial_remove") {
     CHECK((false == index->hasExpansion()));
     CHECK((false == index->hasSelectivityEstimate()));
     CHECK((false == index->implicitlyUnique()));
-    CHECK((true == index->isPersistent()));
     CHECK((false == index->isSorted()));
     CHECK((0 < index->memory()));
     CHECK((true == index->sparse()));
@@ -1463,7 +1459,6 @@ SECTION("test_update_links_partial_remove") {
     CHECK((false == index->hasExpansion()));
     CHECK((false == index->hasSelectivityEstimate()));
     CHECK((false == index->implicitlyUnique()));
-    CHECK((true == index->isPersistent()));
     CHECK((false == index->isSorted()));
     CHECK((0 < index->memory()));
     CHECK((true == index->sparse()));
@@ -1736,7 +1731,6 @@ SECTION("test_update_links_partial_add") {
     CHECK((false == index->hasExpansion()));
     CHECK((false == index->hasSelectivityEstimate()));
     CHECK((false == index->implicitlyUnique()));
-    CHECK((true == index->isPersistent()));
     CHECK((false == index->isSorted()));
     CHECK((0 < index->memory()));
     CHECK((true == index->sparse()));
@@ -1782,7 +1776,6 @@ SECTION("test_update_links_partial_add") {
     CHECK((false == index->hasExpansion()));
     CHECK((false == index->hasSelectivityEstimate()));
     CHECK((false == index->implicitlyUnique()));
-    CHECK((true == index->isPersistent()));
     CHECK((false == index->isSorted()));
     CHECK((0 < index->memory()));
     CHECK((true == index->sparse()));
@@ -1930,7 +1923,6 @@ SECTION("test_update_links_partial_add") {
     CHECK((false == index->hasExpansion()));
     CHECK((false == index->hasSelectivityEstimate()));
     CHECK((false == index->implicitlyUnique()));
-    CHECK((true == index->isPersistent()));
     CHECK((false == index->isSorted()));
     CHECK((0 < index->memory()));
     CHECK((true == index->sparse()));
@@ -1977,7 +1969,6 @@ SECTION("test_update_links_partial_add") {
     CHECK((false == index->hasExpansion()));
     CHECK((false == index->hasSelectivityEstimate()));
     CHECK((false == index->implicitlyUnique()));
-    CHECK((true == index->isPersistent()));
     CHECK((false == index->isSorted()));
     CHECK((0 < index->memory()));
     CHECK((true == index->sparse()));
@@ -2024,7 +2015,6 @@ SECTION("test_update_links_partial_add") {
     CHECK((false == index->hasExpansion()));
     CHECK((false == index->hasSelectivityEstimate()));
     CHECK((false == index->implicitlyUnique()));
-    CHECK((true == index->isPersistent()));
     CHECK((false == index->isSorted()));
     CHECK((0 < index->memory()));
     CHECK((true == index->sparse()));
@@ -2344,7 +2334,6 @@ SECTION("test_update_links_replace") {
     CHECK((false == index->hasExpansion()));
     CHECK((false == index->hasSelectivityEstimate()));
     CHECK((false == index->implicitlyUnique()));
-    CHECK((true == index->isPersistent()));
     CHECK((false == index->isSorted()));
     CHECK((0 < index->memory()));
     CHECK((true == index->sparse()));
@@ -2390,7 +2379,6 @@ SECTION("test_update_links_replace") {
     CHECK((false == index->hasExpansion()));
     CHECK((false == index->hasSelectivityEstimate()));
     CHECK((false == index->implicitlyUnique()));
-    CHECK((true == index->isPersistent()));
     CHECK((false == index->isSorted()));
     CHECK((0 < index->memory()));
     CHECK((true == index->sparse()));
@@ -2520,7 +2508,6 @@ SECTION("test_update_links_replace") {
     CHECK((false == index->hasExpansion()));
     CHECK((false == index->hasSelectivityEstimate()));
     CHECK((false == index->implicitlyUnique()));
-    CHECK((true == index->isPersistent()));
     CHECK((false == index->isSorted()));
     CHECK((0 < index->memory()));
     CHECK((true == index->sparse()));
@@ -2642,7 +2629,6 @@ SECTION("test_update_links_replace") {
     CHECK((false == index->hasExpansion()));
     CHECK((false == index->hasSelectivityEstimate()));
     CHECK((false == index->implicitlyUnique()));
-    CHECK((true == index->isPersistent()));
     CHECK((false == index->isSorted()));
     CHECK((0 < index->memory()));
     CHECK((true == index->sparse()));
@@ -2932,7 +2918,6 @@ SECTION("test_update_links_clear") {
     CHECK((false == index->hasExpansion()));
     CHECK((false == index->hasSelectivityEstimate()));
     CHECK((false == index->implicitlyUnique()));
-    CHECK((true == index->isPersistent()));
     CHECK((false == index->isSorted()));
     CHECK((0 < index->memory()));
     CHECK((true == index->sparse()));
@@ -2979,7 +2964,6 @@ SECTION("test_update_links_clear") {
     CHECK((false == index->hasExpansion()));
     CHECK((false == index->hasSelectivityEstimate()));
     CHECK((false == index->implicitlyUnique()));
-    CHECK((true == index->isPersistent()));
     CHECK((false == index->isSorted()));
     CHECK((0 < index->memory()));
     CHECK((true == index->sparse()));
@@ -3025,7 +3009,6 @@ SECTION("test_update_links_clear") {
     CHECK((false == index->hasExpansion()));
     CHECK((false == index->hasSelectivityEstimate()));
     CHECK((false == index->implicitlyUnique()));
-    CHECK((true == index->isPersistent()));
     CHECK((false == index->isSorted()));
     CHECK((0 < index->memory()));
     CHECK((true == index->sparse()));
@@ -3293,7 +3276,6 @@ SECTION("test_drop_link") {
       CHECK((false == index->hasExpansion()));
       CHECK((false == index->hasSelectivityEstimate()));
       CHECK((false == index->implicitlyUnique()));
-      CHECK((true == index->isPersistent()));
       CHECK((false == index->isSorted()));
       CHECK((0 < index->memory()));
       CHECK((true == index->sparse()));

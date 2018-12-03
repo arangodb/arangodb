@@ -120,7 +120,10 @@ class RocksDBTransactionState final : public TransactionState {
       bool& hasPerformedIntermediateCommit);
   
   /// @brief return wrapper around rocksdb transaction
-  RocksDBMethods* rocksdbMethods();
+  RocksDBMethods* rocksdbMethods() {
+    TRI_ASSERT(_rocksMethods);
+    return _rocksMethods.get();
+  }
 
   /// @brief Rocksdb sequence number of snapshot. Works while trx
   ///        has either a snapshot or a transaction

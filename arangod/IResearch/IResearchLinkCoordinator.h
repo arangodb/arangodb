@@ -100,10 +100,12 @@ class IResearchLinkCoordinator final: public arangodb::ClusterIndex {
     return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
-  virtual bool isPersistent() const override { return true; }
-
   // IResearch does not provide a fixed default sort order
   virtual bool isSorted() const override { return false; }
+  
+  bool isHidden() const override {
+    return true;
+  }
 
   virtual void load() override { /* NOOP */ }
 

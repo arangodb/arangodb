@@ -193,7 +193,6 @@ std::pair<AstNode*, AstNode*> getAttributeAccessFromIndex(Ast* ast, AstNode* doc
   for(auto& idx : indexes){
     if(Index::isGeoIndex(idx->type())) {
       // we take the first index that is found
-
       bool isGeo1 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX;
       bool isGeo2 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX;
       bool isGeo = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO_INDEX;

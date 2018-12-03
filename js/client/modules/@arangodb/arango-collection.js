@@ -611,10 +611,10 @@ ArangoCollection.prototype.refresh = function () {
 // / @brief gets all indexes
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.getIndexes = ArangoCollection.prototype.indexes = function (withStats, withLinks) {
+ArangoCollection.prototype.getIndexes = ArangoCollection.prototype.indexes = function (withStats, withHidden) {
   let url = this._indexurl() + '&withStats=' + (withStats || false);
-  if (withLinks) {
-    url += '&withLinks=true';
+  if (withHidden) {
+    url += '&withHidden=true';
   }
   var requestResult = this._database._connection.GET(url);
 

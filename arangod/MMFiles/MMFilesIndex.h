@@ -52,11 +52,19 @@ class MMFilesIndex : public Index {
   )
     : Index(id, collection, info) {}
 
+  /// @brief if true this index should not be shown externally
+  virtual bool isHidden() const override {
+    return false; // do not generally hide MMFiles indexes
+  }
 
   void afterTruncate(TRI_voc_tick_t) override {
     // for mmfiles, truncating the index just unloads it
     unload();
   }
+  
+  virtual bool isPersistent() const {
+    return false;
+  };
 };
 }
 

@@ -264,7 +264,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   // to "createCollection" returns
   virtual std::string createCollection(
     TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t id,
     LogicalCollection const& collection
   ) = 0;
 
@@ -304,7 +303,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   // to "changeCollection" returns
   virtual void changeCollection(
     TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t id,
     LogicalCollection const& collection,
     bool doSync
   ) = 0;

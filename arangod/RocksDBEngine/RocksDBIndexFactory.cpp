@@ -627,9 +627,9 @@ void RocksDBIndexFactory::prepareIndexes(
     auto value = v.get("type");
 
     if (value.isString()) {
-      std::string tmp = value.copyString();
-      arangodb::Index::IndexType const type =
-      arangodb::Index::type(tmp.c_str());
+      VPackValueLength len;
+      const char* tmp = value.getStringUnchecked(len);
+      arangodb::Index::IndexType const type = arangodb::Index::type(tmp, len);
 
       if (type == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
         VPackSlice fields = v.get("fields");

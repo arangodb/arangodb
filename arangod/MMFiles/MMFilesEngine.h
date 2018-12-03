@@ -262,7 +262,6 @@ class MMFilesEngine final : public StorageEngine {
   // to "createCollection" returns
   std::string createCollection(
     TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t id,
     LogicalCollection const& collection
   ) override;
 
@@ -302,7 +301,6 @@ class MMFilesEngine final : public StorageEngine {
   // to "changeCollection" returns
   void changeCollection(
     TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t id,
     LogicalCollection const& collection,
     bool doSync
   ) override;

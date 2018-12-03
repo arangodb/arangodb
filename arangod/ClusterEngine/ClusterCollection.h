@@ -104,9 +104,6 @@ class ClusterCollection final : public PhysicalCollection {
 
   void prepareIndexes(arangodb::velocypack::Slice indexesSlice) override;
 
-  /// @brief Find index by definition
-  std::shared_ptr<Index> lookupIndex(velocypack::Slice const&) const override;
-
   std::shared_ptr<Index> createIndex(arangodb::velocypack::Slice const& info,
                                      bool restore, bool& created) override;
 

@@ -36,7 +36,7 @@
 
 namespace arangodb {
 
-class KeyLockInfo;
+struct KeyLockInfo;
 class TransactionManager;
 class WalAccess;
 
@@ -76,7 +76,6 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
       arangodb::KeyLockInfo* /*keyLockInfo*/,
       std::function<arangodb::Result(void)> callbackDuringLock) override;
   virtual void invokeOnAllElements(arangodb::transaction::Methods* trx, std::function<bool(arangodb::LocalDocumentId const&)> callback) override;
-  virtual std::shared_ptr<arangodb::Index> lookupIndex(arangodb::velocypack::Slice const&) const override;
   virtual arangodb::LocalDocumentId lookupKey(arangodb::transaction::Methods*, arangodb::velocypack::Slice const&) const override;
   virtual size_t memory() const override;
   virtual uint64_t numberDocuments(arangodb::transaction::Methods* trx) const override;
@@ -164,10 +163,10 @@ class StorageEngineMock: public arangodb::StorageEngine {
   virtual void addOptimizerRules() override;
   virtual void addRestHandlers(arangodb::rest::RestHandlerFactory& handlerFactory) override;
   virtual void addV8Functions() override;
-  virtual void changeCollection(TRI_vocbase_t& vocbase, TRI_voc_cid_t id, arangodb::LogicalCollection const& collection, bool doSync) override;
+  virtual void changeCollection(TRI_vocbase_t& vocbase, arangodb::LogicalCollection const& collection, bool doSync) override;
   virtual arangodb::Result changeView(TRI_vocbase_t& vocbase, arangodb::LogicalView const& view, bool doSync) override;
   virtual std::string collectionPath(TRI_vocbase_t const& vocbase, TRI_voc_cid_t id) const override;
-  virtual std::string createCollection(TRI_vocbase_t& vocbase, TRI_voc_cid_t id, arangodb::LogicalCollection const& collection) override;
+  virtual std::string createCollection(TRI_vocbase_t& vocbase, arangodb::LogicalCollection const& collection) override;
   virtual std::unique_ptr<TRI_vocbase_t> createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& args, int& status) override;
   virtual arangodb::Result createLoggerState(TRI_vocbase_t*, VPackBuilder&) override;
   virtual std::unique_ptr<arangodb::PhysicalCollection> createPhysicalCollection(arangodb::LogicalCollection& collection, arangodb::velocypack::Slice const& info) override;

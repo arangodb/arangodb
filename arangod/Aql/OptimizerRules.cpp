@@ -6581,15 +6581,15 @@ static bool geoFuncArgCheck(ExecutionPlan* plan, AstNode const* args,
   info.collectionNodeToReplace = collNode;
   info.collectionNodeOutVar = collNode->outVariable();
   info.collection = collNode->collection();
-  std::shared_ptr<LogicalCollection> coll =
-      collNode->collection()->getCollection();
-
-  // check for suitable indexes
-  for (std::shared_ptr<arangodb::Index> idx : coll->getIndexes()) {
+  
+  // we should not access the LogicalCollection directly
+  Query* query = plan->getAst()->query();
+  auto indexes = query->trx()->indexesForCollection(info.collection->name());
+  // check for suitiable indexes
+  for (std::shared_ptr<arangodb::Index> idx : indexes) {
     // check if current index is a geo-index
-    bool isGeo =
-        idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_GEO_INDEX;
-    if (isGeo && idx->fields().size() == 1) {  // individual fields
+    bool isGeo = idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_GEO_INDEX;
+    if (isGeo && idx->fields().size() == 1) { // individual fields
       // check access paths of attributes in ast and those in index match
       if (idx->fields()[0] == attributeAccess.second) {
         if (info.index != nullptr && info.index != idx) {

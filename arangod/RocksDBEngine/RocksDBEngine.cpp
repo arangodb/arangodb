@@ -1137,7 +1137,9 @@ int RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
 
   // Write marker + key into RocksDB inside one batch
   rocksdb::WriteBatch batch;
-  batch.PutLogData(logValue.slice());
+  if (logValue.slice().size() > 0) {
+    batch.PutLogData(logValue.slice());
+  }
   batch.Put(RocksDBColumnFamily::definitions(), key.string(), value.string());
   rocksdb::Status res = db->Write(wo, &batch);
   
@@ -1186,14 +1188,13 @@ void RocksDBEngine::recoveryDone(TRI_vocbase_t& vocbase) {
 
 std::string RocksDBEngine::createCollection(
     TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t cid,
     LogicalCollection const& collection
 ) {
-  auto builder = collection.toVelocyPackIgnore(
-    {"path", "statusString"}, /*translate cid*/ true, /*for persistence*/ true
-  );
-
+  const TRI_voc_cid_t cid = collection.id();
   TRI_ASSERT(cid != 0);
+  
+  auto builder = collection.toVelocyPackIgnore({"path", "statusString"},
+      /*translateCid*/ true, /*forPersist*/ true);
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(cid));
 
   int res = writeCreateCollectionMarker(
@@ -1358,7 +1359,6 @@ void RocksDBEngine::destroyCollection(
 
 void RocksDBEngine::changeCollection(
     TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t id,
     LogicalCollection const& collection,
     bool doSync
 ) {
@@ -1367,9 +1367,9 @@ void RocksDBEngine::changeCollection(
   );
   int res = writeCreateCollectionMarker(
     vocbase.id(),
-    id,
+    collection.id(),
     builder.slice(),
-    RocksDBLogValue::CollectionChange(vocbase.id(), id)
+    RocksDBLogValue::CollectionChange(vocbase.id(), collection.id())
   );
 
   if (res != TRI_ERROR_NO_ERROR) {

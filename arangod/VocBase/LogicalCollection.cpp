@@ -499,7 +499,7 @@ Result LogicalCollection::rename(std::string&& newName) {
     TRI_ASSERT(engine != nullptr);
 
     name(std::move(newName));
-    engine->changeCollection(vocbase(), id(), *this, doSync);
+    engine->changeCollection(vocbase(), *this, doSync);
   } catch (basics::Exception const& ex) {
     // Engine Rename somehow failed. Reset to old name
     name(std::move(oldName));
@@ -593,7 +593,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
     // AND exclude arangosearch indexes
     return (idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
             idx->type() != arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX &&
-            idx->type() != arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK);
+            !idx->isHidden());
   });
   result.add("planVersion", VPackValue(planVersion()));
   result.add("isReady", VPackValue(isReady));
@@ -645,10 +645,13 @@ arangodb::Result LogicalCollection::appendVelocyPack(
   // Indexes
   result.add(VPackValue("indexes"));
   auto flags = Index::makeFlags();
+  auto filter = [&](arangodb::Index const* idx) { // hide hidden indexes
+    return (forPersistence || !idx->isHidden());
+  };
   if (forPersistence) {
     flags = Index::makeFlags(Index::Serialize::ObjectId);
   }
-  getIndexesVPack(result, flags);
+  getIndexesVPack(result, flags, filter);
 
   // Cluster Specific
   result.add(StaticStrings::IsSmart, VPackValue(_isSmart));
@@ -684,6 +687,9 @@ VPackBuilder LogicalCollection::toVelocyPackIgnore(
   full.openObject();
     properties(full, translateCids, forPersistence);
   full.close();
+  if (ignoreKeys.empty()) {
+    return full;
+  }
   return VPackCollection::remove(full.slice(), ignoreKeys);
 }
 
@@ -798,7 +804,7 @@ arangodb::Result LogicalCollection::properties(
     );
   }
 
-  engine->changeCollection(vocbase(), id(), *this, doSync);
+  engine->changeCollection(vocbase(), *this, doSync);
 
   if (DatabaseFeature::DATABASE != nullptr &&
       DatabaseFeature::DATABASE->versionTracker() != nullptr) {
@@ -874,7 +880,7 @@ void LogicalCollection::persistPhysicalCollection() {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  auto path = engine->createCollection(vocbase(), id(), *this);
+  auto path = engine->createCollection(vocbase(), *this);
 
   getPhysical()->setPath(path);
 }

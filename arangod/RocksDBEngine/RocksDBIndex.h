@@ -62,8 +62,13 @@ class RocksDBIndex : public Index {
                     std::underlying_type<Index::Serialize>::type) const override;
 
   uint64_t objectId() const { return _objectId; }
+  
+  /// @brief if true this index should not be shown externally
+  virtual bool isHidden() const override {
+    return isBuilding(); // do not show building indexes
+  }
 
-  bool isPersistent() const override final { return true; }
+  size_t memory() const override;
 
   int drop() override;
   virtual void afterTruncate(TRI_voc_tick_t tick) override;
@@ -71,9 +76,8 @@ class RocksDBIndex : public Index {
   void load() override;
   void unload() override;
 
-  size_t memory() const override;
-
-  void cleanup();
+  /// compact the index, should reduce read amplification
+  void compact();
 
   /// @brief provides a size hint for the index
   int sizeHint(transaction::Methods* /*trx*/, size_t /*size*/) override final {
@@ -130,11 +134,19 @@ class RocksDBIndex : public Index {
 
   static RocksDBKeyBounds getBounds(Index::IndexType type, uint64_t objectId,
                                     bool unique);
+  
+  /// @brief is this index still beeing build
+  bool isBuilding() const {
+    return _isBuilding.load(std::memory_order_acquire);
+  }
 
+  /// @brief get index estimator, optional
   virtual RocksDBCuckooIndexEstimator<uint64_t>* estimator();
   virtual void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>);
   virtual void recalculateEstimates() {}
 
+  arangodb::Result fillIndex(transaction::Methods&);
+  
  protected:
   RocksDBIndex(
     TRI_idx_iid_t id,
@@ -158,6 +170,8 @@ class RocksDBIndex : public Index {
   inline bool useCache() const { return (_cacheEnabled && _cachePresent); }
   void blackListKey(char const* data, std::size_t len);
   void blackListKey(StringRef& ref) { blackListKey(ref.data(), ref.size()); };
+  
+ protected:
 
   uint64_t _objectId;
   rocksdb::ColumnFamilyHandle* _cf;
@@ -167,6 +181,11 @@ class RocksDBIndex : public Index {
   // it's quicker than accessing the shared_ptr each time
   bool _cachePresent;
   bool _cacheEnabled;
+  
+ private:
+  
+  /// is this index currently building
+  std::atomic<bool> _isBuilding;
 };
 }  // namespace arangodb
 

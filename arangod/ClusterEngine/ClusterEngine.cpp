@@ -289,11 +289,10 @@ void ClusterEngine::recoveryDone(TRI_vocbase_t& vocbase) {
 
 std::string ClusterEngine::createCollection(
     TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t cid,
     LogicalCollection const& collection
 ) {
-  TRI_ASSERT(cid != 0);
-  TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(cid));
+  TRI_ASSERT(collection.id() != 0);
+  TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(collection.id()));
   return std::string();  // no need to return a path
 }
 
@@ -320,7 +319,6 @@ void ClusterEngine::destroyCollection(
 
 void ClusterEngine::changeCollection(
     TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t id,
     LogicalCollection const& collection,
     bool doSync
 ) {

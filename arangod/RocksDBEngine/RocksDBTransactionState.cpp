@@ -575,11 +575,6 @@ Result RocksDBTransactionState::addOperation(
   return checkIntermediateCommit(currentSize, hasPerformedIntermediateCommit);
 }
 
-RocksDBMethods* RocksDBTransactionState::rocksdbMethods() {
-  TRI_ASSERT(_rocksMethods);
-  return _rocksMethods.get();
-}
-
 uint64_t RocksDBTransactionState::sequenceNumber() const {
   if (_rocksTransaction) {
     return static_cast<uint64_t>(

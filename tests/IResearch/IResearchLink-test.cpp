@@ -211,7 +211,6 @@ SECTION("test_defaults") {
     CHECK((false == link->hasExpansion()));
     CHECK((false == link->hasSelectivityEstimate()));
     CHECK((false == link->implicitlyUnique()));
-    CHECK((true == link->isPersistent()));
     CHECK((false == link->isSorted()));
     CHECK((0 < link->memory()));
     CHECK((true == link->sparse()));
@@ -263,7 +262,6 @@ SECTION("test_defaults") {
     CHECK((false == link->hasExpansion()));
     CHECK((false == link->hasSelectivityEstimate()));
     CHECK((false == link->implicitlyUnique()));
-    CHECK((true == link->isPersistent()));
     CHECK((false == link->isSorted()));
     CHECK((0 < link->memory()));
     CHECK((true == link->sparse()));

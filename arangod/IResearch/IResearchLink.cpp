@@ -348,19 +348,6 @@ Result IResearchLink::insert(
   return _view->insert(*trx, _collection.id(), documentId, doc, _meta);
 }
 
-bool IResearchLink::isPersistent() const {
-  auto* engine = arangodb::EngineSelectorFeature::ENGINE;
-
-  // FIXME TODO remove once MMFilesEngine will fillIndex(...) during recovery
-  // currently the index is created but fill is deffered untill the end of recovery
-  // at the end of recovery only non-persistent indexes are filled
-  if (engine && engine->inRecovery()) {
-    return false;
-  }
-
-  return true; // records persisted into the iResearch view
-}
-
 bool IResearchLink::isSorted() const {
   return false; // iResearch does not provide a fixed default sort order
 }

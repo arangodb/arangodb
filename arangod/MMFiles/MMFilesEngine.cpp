@@ -923,11 +923,12 @@ void MMFilesEngine::waitUntilDeletion(TRI_voc_tick_t id, bool force,
 // to "createCollection" returns
 std::string MMFilesEngine::createCollection(
     TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t id,
     LogicalCollection const& collection
 ) {
   auto path = databasePath(&vocbase);
   TRI_ASSERT(!path.empty());
+  const TRI_voc_cid_t id = collection.id();
+  TRI_ASSERT(id != 0);
 
   // sanity check
   if (sizeof(MMFilesDatafileHeaderMarker) + sizeof(MMFilesDatafileFooterMarker) >
@@ -1245,11 +1246,10 @@ void MMFilesEngine::destroyCollection(
 // to "changeCollection" returns
 void MMFilesEngine::changeCollection(
     TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t id,
     LogicalCollection const& collection,
     bool doSync
 ) {
-  saveCollectionInfo(&vocbase, id, &collection, doSync);
+  saveCollectionInfo(&vocbase, collection.id(), &collection, doSync);
 }
 
 // asks the storage engine to persist renaming of a collection

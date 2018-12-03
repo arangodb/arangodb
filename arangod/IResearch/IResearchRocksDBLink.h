@@ -81,6 +81,10 @@ class IResearchRocksDBLink final
   virtual bool isSorted() const override {
     return IResearchLink::isSorted();
   }
+    
+  bool isHidden() const override {
+    return IResearchLink::isHidden();
+  }
 
   virtual void load() override {
     IResearchLink::load();

@@ -217,7 +217,7 @@ void ClusterIndexFactory::prepareIndexes(
       continue;
     }
 
-    if (basics::VelocyPackHelper::getBooleanValue(v, "isBuilding", false)) {
+    if (basics::VelocyPackHelper::getBooleanValue(v, StaticStrings::IndexIsBuilding, false)) {
       // This index is still being built. Do not add.
       continue;
     }

@@ -195,12 +195,11 @@ size_t Index::sortWeight(arangodb::aql::AstNode const* node) {
 
 /// @brief validate fields from slice
 void Index::validateFields(VPackSlice const& slice) {
-  auto allowExpansion = Index::allowExpansion(
-    Index::type(slice.get(arangodb::StaticStrings::IndexType).copyString())
-  );
+  VPackValueLength len;
+  const char *idxStr = slice.get(arangodb::StaticStrings::IndexType).getString(len);
+  auto allowExpansion = Index::allowExpansion(Index::type(idxStr, len));
 
   auto fields = slice.get(arangodb::StaticStrings::IndexFields);
-
   if (!fields.isArray()) {
     return;
   }
@@ -218,33 +217,34 @@ void Index::validateFields(VPackSlice const& slice) {
 }
 
 /// @brief return the index type based on a type name
-Index::IndexType Index::type(char const* type) {
-  if (::strcmp(type, "primary") == 0) {
+Index::IndexType Index::type(char const* type, size_t len) {
+  if (::strncmp(type, "primary", len) == 0) {
     return TRI_IDX_TYPE_PRIMARY_INDEX;
   }
-  if (::strcmp(type, "edge") == 0) {
+  if (::strncmp(type, "edge", len) == 0) {
     return TRI_IDX_TYPE_EDGE_INDEX;
   }
-  if (::strcmp(type, "hash") == 0) {
+  if (::strncmp(type, "hash", len) == 0) {
     return TRI_IDX_TYPE_HASH_INDEX;
   }
-  if (::strcmp(type, "skiplist") == 0) {
+  if (::strncmp(type, "skiplist", len) == 0) {
     return TRI_IDX_TYPE_SKIPLIST_INDEX;
   }
-  if (::strcmp(type, "persistent") == 0 || ::strcmp(type, "rocksdb") == 0) {
+  if (::strncmp(type, "persistent", len) == 0 ||
+      ::strncmp(type, "rocksdb", len) == 0) {
     return TRI_IDX_TYPE_PERSISTENT_INDEX;
   }
-  if (::strcmp(type, "fulltext") == 0) {
+  if (::strncmp(type, "fulltext", len) == 0) {
     return TRI_IDX_TYPE_FULLTEXT_INDEX;
   }
-  if (::strcmp(type, "geo1") == 0) {
+  if (::strncmp(type, "geo", len) == 0) {
+    return TRI_IDX_TYPE_GEO_INDEX;
+  }
+  if (::strncmp(type, "geo1", len) == 0) {
     return TRI_IDX_TYPE_GEO1_INDEX;
   }
-  if (::strcmp(type, "geo2") == 0) {
+  if (::strncmp(type, "geo2", len) == 0) {
     return TRI_IDX_TYPE_GEO2_INDEX;
-  }
-  if (::strcmp(type, "geo") == 0) {
-    return TRI_IDX_TYPE_GEO_INDEX;
   }
 #ifdef USE_IRESEARCH
   if (arangodb::iresearch::DATA_SOURCE_TYPE.name() == type) {
@@ -259,7 +259,7 @@ Index::IndexType Index::type(char const* type) {
 }
 
 Index::IndexType Index::type(std::string const& type) {
-  return Index::type(type.c_str());
+  return Index::type(type.c_str(), type.size());
 }
 
 /// @brief return the name of an index type
@@ -372,11 +372,11 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
     return false;
   }
 
-  auto type = Index::type(lhsType.copyString());
-
+  VPackValueLength len;
+  const char* tmp = lhsType.getString(len);
+  auto type = Index::type(tmp, len);
   // unique must be identical if present
   auto value = lhs.get(arangodb::StaticStrings::IndexUnique);
-
   if (value.isBoolean()) {
     if (arangodb::basics::VelocyPackHelper::compare(
           value, rhs.get(arangodb::StaticStrings::IndexUnique), false

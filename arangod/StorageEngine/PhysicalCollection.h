@@ -100,23 +100,15 @@ class PhysicalCollection {
   
   bool hasIndexOfType(arangodb::Index::IndexType type) const;
 
+  /// @brief find index by definition
+  static std::shared_ptr<Index> findIndex(velocypack::Slice const&,
+                                          std::vector<std::shared_ptr<Index>> const&);
   /// @brief Find index by definition
-  virtual std::shared_ptr<Index> lookupIndex(
-      velocypack::Slice const&) const = 0;
+  std::shared_ptr<Index> lookupIndex(velocypack::Slice const&) const;
 
   /// @brief Find index by iid
   std::shared_ptr<Index> lookupIndex(TRI_idx_iid_t) const;
   std::vector<std::shared_ptr<Index>> getIndexes() const;
-  template<typename F>
-  void enumerateIndexes(F&& f) {
-    _indexesLock.readLock(); // avoid including ReadLocker.h
-    try {
-      for (auto& idx : _indexes) {
-        std::forward<F>(f)(idx);
-      }
-    } catch(...) {}
-    _indexesLock.unlockRead();
-  }
                        
   void getIndexesVPack(velocypack::Builder&, unsigned flags,
                        std::function<bool(arangodb::Index const*)> const& filter) const;

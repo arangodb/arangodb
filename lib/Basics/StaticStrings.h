@@ -94,6 +94,7 @@ class StaticStrings {
   static std::string const IndexSparse; // index sparsness marker
   static std::string const IndexType; // index type
   static std::string const IndexUnique; // index uniqueness marker
+  static std::string const IndexIsBuilding; // index build in-process
 
   // HTTP headers
   static std::string const Accept;

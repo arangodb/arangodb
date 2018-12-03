@@ -135,19 +135,6 @@ void ClusterIndex::updateClusterSelectivityEstimate(double estimate) {
   _clusterSelectivity = estimate;
 }
 
-bool ClusterIndex::isPersistent() const {
-  if (_engineType == ClusterEngineType::MMFilesEngine) {
-    return _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX;
-  } else if (_engineType == ClusterEngineType::RocksDBEngine) {
-    return true;
-  } else if (_engineType == ClusterEngineType::MockEngine) {
-    return false;
-  }
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                 "unsupported cluster storage engine");
-}
-
 bool ClusterIndex::isSorted() const {
   if (_engineType == ClusterEngineType::MMFilesEngine) {
     return _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||

@@ -360,42 +360,6 @@ void ClusterCollection::prepareIndexes(
   TRI_ASSERT(!_indexes.empty());
 }
 
-static std::shared_ptr<Index> findIndex(
-    velocypack::Slice const& info,
-    std::vector<std::shared_ptr<Index>> const& indexes) {
-  TRI_ASSERT(info.isObject());
-
-  // extract type
-  VPackSlice value = info.get("type");
-
-  if (!value.isString()) {
-    // Compatibility with old v8-vocindex.
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "invalid index type definition");
-  }
-
-  std::string tmp = value.copyString();
-  arangodb::Index::IndexType const type = arangodb::Index::type(tmp.c_str());
-
-  for (auto const& idx : indexes) {
-    if (idx->type() == type) {
-      // Only check relevant indexes
-      if (idx->matchesDefinition(info)) {
-        // We found an index for this definition.
-        return idx;
-      }
-    }
-  }
-  return nullptr;
-}
-
-/// @brief Find index by definition
-std::shared_ptr<Index> ClusterCollection::lookupIndex(
-    velocypack::Slice const& info) const {
-  READ_LOCKER(guard, _indexesLock);
-  return findIndex(info, _indexes);
-}
-
 std::shared_ptr<Index> ClusterCollection::createIndex(
     arangodb::velocypack::Slice const& info, bool restore,
     bool& created) {
@@ -418,9 +382,7 @@ std::shared_ptr<Index> ClusterCollection::createIndex(
   TRI_ASSERT(engine != nullptr);
 
   // We are sure that we do not have an index of this type.
-  // We also hold the lock.
-  // Create it
-
+  // We also hold the lock. Create it
   idx = engine->indexFactory().prepareIndexFromSlice(
     info, true, _logicalCollection, false
   );

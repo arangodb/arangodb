@@ -239,7 +239,6 @@ class ClusterEngine final : public StorageEngine {
  public:
   std::string createCollection(
     TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t id,
     LogicalCollection const& collection
   ) override;
 
@@ -260,7 +259,6 @@ class ClusterEngine final : public StorageEngine {
 
   void changeCollection(
     TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t id,
     LogicalCollection const& collection,
     bool doSync
   ) override;

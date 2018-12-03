@@ -119,7 +119,7 @@ void ensureLink(
   auto const indexTypeSlice =
     indexSlice.get(arangodb::StaticStrings::IndexType);
   auto const indexTypeStr = indexTypeSlice.copyString();
-  auto const indexType = arangodb::Index::type(indexTypeStr.c_str());
+  auto const indexType = arangodb::Index::type(indexTypeStr);
 
   if (arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK != indexType) {
     // skip non iresearch link indexes
