@@ -154,8 +154,7 @@ Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
         func(coll);
 
         return Result();
-      }
-      else {
+      } else {
         return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
       }
     } catch (basics::Exception const& ex) {
@@ -267,10 +266,24 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
       if (name[0] != '_' && um != nullptr && exe != nullptr &&
           !exe->isSuperuser()) {
         // this should not fail, we can not get here without database RW access
-        um->updateUser(ExecContext::CURRENT->user(), [&](auth::User& entry) {
-          entry.grantCollection(vocbase->name(), name, auth::Level::RW);
-          return TRI_ERROR_NO_ERROR;
-        });
+        // however, there may be races for updating the users account, so we try a
+        // few times in case of a conflict
+        int tries = 0;
+        while (true) {
+          Result r = um->updateUser(ExecContext::CURRENT->user(), [&](auth::User& entry) {
+            entry.grantCollection(vocbase->name(), name, auth::Level::RW);
+            return TRI_ERROR_NO_ERROR;
+          });
+          if (r.ok() || !r.is(TRI_ERROR_ARANGO_CONFLICT)) {
+            break;
+          }
+          if (++tries == 10) {
+            LOG_TOPIC(WARN, Logger::FIXME) << "Updating user failed with error: " << r.errorMessage() << ". giving up!";
+            break;
+          }
+          // try again in case of conflict
+          LOG_TOPIC(TRACE, Logger::FIXME) << "Updating user failed with error: " << r.errorMessage() << ". trying again";
+        }
       }
 
       // reload otherwise collection might not be in yet
@@ -286,10 +299,24 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
       if (name[0] != '_' && um != nullptr && exe != nullptr &&
           !exe->isSuperuser()) {
         // this should not fail, we can not get here without database RW access
-        um->updateUser(ExecContext::CURRENT->user(), [&](auth::User& u) {
-          u.grantCollection(vocbase->name(), name, auth::Level::RW);
-          return TRI_ERROR_NO_ERROR;
-        });
+        // however, there may be races for updating the users account, so we try a
+        // few times in case of a conflict
+        int tries = 0;
+        while (true) {
+          Result r = um->updateUser(ExecContext::CURRENT->user(), [&](auth::User& entry) {
+            entry.grantCollection(vocbase->name(), name, auth::Level::RW);
+            return TRI_ERROR_NO_ERROR;
+          });
+          if (r.ok() || !r.is(TRI_ERROR_ARANGO_CONFLICT)) {
+            break;
+          }
+          if (++tries == 10) {
+            LOG_TOPIC(WARN, Logger::FIXME) << "Updating user failed with error: " << r.errorMessage() << ". giving up!";
+            break;
+          }
+          // try again in case of conflict
+          LOG_TOPIC(TRACE, Logger::FIXME) << "Updating user failed with error: " << r.errorMessage() << ". trying again";
+        }
       }
 
       func(col);
@@ -567,7 +594,7 @@ Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
   }
 
   TRI_ASSERT(coll);
-  auto& dbname = coll->vocbase().name();
+  auto const& dbname = coll->vocbase().name();
   std::string const collName = coll->name();
 
   Result res;
@@ -590,9 +617,23 @@ Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
 
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (res.ok() && um != nullptr) {
-    um->enumerateUsers([&](auth::User& entry) -> bool {
-      return entry.removeCollection(dbname, collName);
-    });
+    int tries = 0;
+    while (true) {
+      Result r = um->enumerateUsers([&](auth::User& entry) -> bool {
+        return entry.removeCollection(dbname, collName);
+      });
+
+      if (r.ok() || !r.is(TRI_ERROR_ARANGO_CONFLICT)) {
+        break;
+      }
+      
+      if (++tries == 10) {
+        LOG_TOPIC(WARN, Logger::FIXME) << "Enumerating users failed with " << r.errorMessage() << ". giving up!";
+        break;
+      }
+      // try again in case of conflict
+      LOG_TOPIC(TRACE, Logger::FIXME) << "Enumerating users failed with error: " << r.errorMessage() << ". trying again";
+    }
   }
   return res;
 }
