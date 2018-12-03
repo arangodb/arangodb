@@ -242,10 +242,10 @@ function main (argv) {
   }
 
   // run the test and store the result
-  let r = {}; // result
+  let res = {}; // result
   try {
     // run tests
-    r = UnitTest.unitTest(testSuits, options, testOutputDirectory) || {};
+    res = UnitTest.unitTest(testSuits, options, testOutputDirectory) || {};
   } catch (x) {
     print('caught exception during test execution!');
 
@@ -259,18 +259,18 @@ function main (argv) {
       print(x);
     }
 
-    print(JSON.stringify(r));
+    print(JSON.stringify(res));
   }
 
-  _.defaults(r, {
+  _.defaults(res, {
     status: false,
     crashed: true
   });
 
   // whether or not there was an error
   try {
-    fs.write(testOutputDirectory + '/UNITTEST_RESULT_EXECUTIVE_SUMMARY.json', String(r.status), true);
-    fs.write(testOutputDirectory + '/UNITTEST_RESULT_CRASHED.json', String(r.crashed), true);
+    fs.write(testOutputDirectory + '/UNITTEST_RESULT_EXECUTIVE_SUMMARY.json', String(res.status), true);
+    fs.write(testOutputDirectory + '/UNITTEST_RESULT_CRASHED.json', String(res.crashed), true);
   } catch (x) {
     print('failed to write test result: ' + x.message);
   }
@@ -279,9 +279,9 @@ function main (argv) {
     let j;
 
     try {
-      j = JSON.stringify(r);
+      j = JSON.stringify(res);
     } catch (err) {
-      j = inspect(r);
+      j = inspect(res);
     }
 
     fs.write(testOutputDirectory + '/UNITTEST_RESULT.json', j, true);
@@ -300,19 +300,19 @@ function main (argv) {
         isRocksDb = (options.storageEngine === 'rocksdb');
       }
 
-      resultsToXml(r, 'UNITTEST_RESULT_' + prefix, isCluster, isRocksDb);
+      resultsToXml(res, 'UNITTEST_RESULT_' + prefix, isCluster, isRocksDb);
     } catch (x) {
       print('exception while serializing status xml!');
       print(x.message);
       print(x.stack);
-      print(inspect(r));
+      print(inspect(res));
     }
   }
 
   // creates yaml like dump at the end
-  UnitTest.unitTestPrettyPrintResults(r, testOutputDirectory, options);
+  UnitTest.unitTestPrettyPrintResults(res, testOutputDirectory, options);
 
-  return r.status;
+  return res.status;
 }
 
 let result = main(ARGUMENTS);
