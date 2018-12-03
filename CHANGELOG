@@ -1,4 +1,4 @@
-v3.4.0 (2018-12-06)
+v3.4.0-rc.6 (2018-12-06)
 -------------------
 
 * Add license key checking to enterprise version in Docker containers.
