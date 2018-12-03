@@ -1,3 +1,10 @@
+v3.3.21 (XXXX-XX-XX)
+--------------------
+
+* fixed issue #7586: a running query within the user interface was not shown
+  if the active view was `Running Queries` or `Slow Query History`.
+
+
 v3.3.20 (2018-11-28)
 --------------------
 
