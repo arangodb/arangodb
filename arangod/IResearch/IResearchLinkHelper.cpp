@@ -441,6 +441,48 @@ namespace iresearch {
   return emptySlice._slice;
 }
 
+/*static*/ bool IResearchLinkHelper::equal(
+    arangodb::velocypack::Slice const& lhs,
+    arangodb::velocypack::Slice const& rhs
+) {
+  if (!lhs.isObject() || !rhs.isObject()) {
+    return false;
+  }
+
+  auto lhsViewSlice = lhs.get(StaticStrings::ViewIdField);
+  auto rhsViewSlice = rhs.get(StaticStrings::ViewIdField);
+
+  if (!lhsViewSlice.equals(rhsViewSlice)) {
+    if (!lhsViewSlice.isString() || !rhsViewSlice.isString()) {
+      return false;
+    }
+
+    auto ls = lhsViewSlice.copyString();
+    auto rs = lhsViewSlice.copyString();
+
+    if (ls.size() > rs.size()) {
+      std::swap(ls, rs);
+    }
+
+    // in the cluster, we may have identifiers of the form
+    // `cxxx/` and `cxxx/yyy` which should be considered equal if the
+    // one is a prefix of the other up to the `/`
+    if (ls.empty() ||
+        ls.back() != '/' ||
+        ls.compare(rs.substr(0, ls.size()))) {
+      return false;
+    }
+  }
+
+  std::string errorField;
+  IResearchLinkMeta lhsMeta;
+  IResearchLinkMeta rhsMeta;
+
+  return lhsMeta.init(lhs, errorField)
+         && rhsMeta.init(rhs, errorField)
+         && lhsMeta == rhsMeta;
+}
+
 /*static*/ arangodb::Result IResearchLinkHelper::normalize(
   arangodb::velocypack::Builder& normalized,
   velocypack::Slice definition,
