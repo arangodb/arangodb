@@ -385,19 +385,7 @@ function validateManifestFile (filename, mount, complainAboutVersionMismatches) 
       }), {cause: e}
     );
   }
-  try {
-    mf = checkManifest(mf, mount, complainAboutVersionMismatches);
-  } catch (e) {
-    throw Object.assign(
-      new ArangoError({
-        errorNum: ERROR_INVALID_SERVICE_MANIFEST.code,
-        errorMessage: dd`
-          ${ERROR_INVALID_SERVICE_MANIFEST.message}
-          File: ${filename}
-        `
-      }), {cause: e}
-    );
-  }
+  mf = checkManifest(mf, mount, complainAboutVersionMismatches);
   return mf;
 }
 
