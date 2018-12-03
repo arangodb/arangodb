@@ -21,15 +21,15 @@ Deletes the edge with the given _documentHandle_ from the collection.
 **Examples**
 
 ```js
-const graph = db.graph('some-graph');
-const collection = graph.edgeCollection('edges');
+const graph = db.graph("some-graph");
+const collection = graph.edgeCollection("edges");
 
-await collection.remove('some-key')
+await collection.remove("some-key");
 // document 'edges/some-key' no longer exists
 
 // -- or --
 
-await collection.remove('edges/some-key')
+await collection.remove("edges/some-key");
 // document 'edges/some-key' no longer exists
 ```
 
@@ -50,10 +50,10 @@ Checks whether the edge with the given _documentHandle_ exists.
 **Examples**
 
 ```js
-const graph = db.graph('some-graph');
-const collection = graph.edgeCollection('edges');
+const graph = db.graph("some-graph");
+const collection = graph.edgeCollection("edges");
 
-const exists = await collection.documentExists('some-key');
+const exists = await collection.documentExists("some-key");
 if (exists === false) {
   // the edge does not exist
 }
@@ -61,7 +61,7 @@ if (exists === false) {
 
 ## graphEdgeCollection.document
 
-`async graphEdgeCollection.document(documentHandle, [graceful]): Object`
+`async graphEdgeCollection.document(documentHandle, [opts]): Object`
 
 Alias: `graphEdgeCollection.edge`.
 
@@ -75,32 +75,50 @@ Retrieves the edge with the given _documentHandle_ from the collection.
   of an edge in the collection, or an edge (i.e. an object with an `_id` or
   `_key` property).
 
-- **graceful**: `boolean` (Default: `false`)
+- **opts**: `Object` (optional)
 
-  If set to `true`, the method will return `null` instead of throwing an error
-  if the edge does not exist.
+  If _opts_ is set, it must be an object with any of the following properties:
+
+  - **graceful**: `boolean` (Default: `false`)
+
+    If set to `true`, the method will return `null` instead of throwing an
+    error if the edge does not exist.
+
+  - **allowDirtyRead**: `boolean` (Default: `false`)
+
+    {% hint 'info' %}
+    This option is only available when targeting ArangoDB 3.4 or later,
+    see [Compatibility](../../GettingStarted/README.md#compatibility).
+    {% endhint %}
+
+    If set to `true`, the request will explicitly permit ArangoDB to return a
+    potentially dirty or stale result and arangojs will load balance the
+    request without distinguishing between leaders and followers.
+
+If a boolean is passed instead of an options object, it will be interpreted as
+the _graceful_ option.
 
 **Examples**
 
 ```js
-const graph = db.graph('some-graph');
-const collection = graph.edgeCollection('edges');
+const graph = db.graph("some-graph");
+const collection = graph.edgeCollection("edges");
 
-const edge = await collection.document('some-key');
+const edge = await collection.document("some-key");
 // the edge exists
-assert.equal(edge._key, 'some-key');
-assert.equal(edge._id, 'edges/some-key');
+assert.equal(edge._key, "some-key");
+assert.equal(edge._id, "edges/some-key");
 
 // -- or --
 
-const edge = await collection.document('edges/some-key');
+const edge = await collection.document("edges/some-key");
 // the edge exists
-assert.equal(edge._key, 'some-key');
-assert.equal(edge._id, 'edges/some-key');
+assert.equal(edge._key, "some-key");
+assert.equal(edge._id, "edges/some-key");
 
 // -- or --
 
-const edge = await collection.document('some-key', true);
+const edge = await collection.document("some-key", true);
 if (edge === null) {
   // the edge does not exist
 }
@@ -136,17 +154,17 @@ _data_.
 
 ```js
 const db = new Database();
-const graph = db.graph('some-graph');
-const collection = graph.edgeCollection('edges');
+const graph = db.graph("some-graph");
+const collection = graph.edgeCollection("edges");
 const edge = await collection.save(
-  {some: 'data'},
-  'vertices/start-vertex',
-  'vertices/end-vertex'
+  { some: "data" },
+  "vertices/start-vertex",
+  "vertices/end-vertex"
 );
-assert.equal(edge._id, 'edges/' + edge._key);
-assert.equal(edge.some, 'data');
-assert.equal(edge._from, 'vertices/start-vertex');
-assert.equal(edge._to, 'vertices/end-vertex');
+assert.equal(edge._id, "edges/" + edge._key);
+assert.equal(edge.some, "data");
+assert.equal(edge._from, "vertices/start-vertex");
+assert.equal(edge._to, "vertices/end-vertex");
 ```
 
 ## graphEdgeCollection.edges
@@ -167,17 +185,17 @@ Retrieves a list of all edges of the document with the given _documentHandle_.
 
 ```js
 const db = new Database();
-const graph = db.graph('some-graph');
-const collection = graph.edgeCollection('edges');
+const graph = db.graph("some-graph");
+const collection = graph.edgeCollection("edges");
 await collection.import([
-  ['_key', '_from', '_to'],
-  ['x', 'vertices/a', 'vertices/b'],
-  ['y', 'vertices/a', 'vertices/c'],
-  ['z', 'vertices/d', 'vertices/a']
+  ["_key", "_from", "_to"],
+  ["x", "vertices/a", "vertices/b"],
+  ["y", "vertices/a", "vertices/c"],
+  ["z", "vertices/d", "vertices/a"]
 ]);
-const edges = await collection.edges('vertices/a');
+const edges = await collection.edges("vertices/a");
 assert.equal(edges.length, 3);
-assert.deepEqual(edges.map(edge => edge._key), ['x', 'y', 'z']);
+assert.deepEqual(edges.map(edge => edge._key), ["x", "y", "z"]);
 ```
 
 ## graphEdgeCollection.inEdges
@@ -199,17 +217,17 @@ _documentHandle_.
 
 ```js
 const db = new Database();
-const graph = db.graph('some-graph');
-const collection = graph.edgeCollection('edges');
+const graph = db.graph("some-graph");
+const collection = graph.edgeCollection("edges");
 await collection.import([
-  ['_key', '_from', '_to'],
-  ['x', 'vertices/a', 'vertices/b'],
-  ['y', 'vertices/a', 'vertices/c'],
-  ['z', 'vertices/d', 'vertices/a']
+  ["_key", "_from", "_to"],
+  ["x", "vertices/a", "vertices/b"],
+  ["y", "vertices/a", "vertices/c"],
+  ["z", "vertices/d", "vertices/a"]
 ]);
-const edges = await collection.inEdges('vertices/a');
+const edges = await collection.inEdges("vertices/a");
 assert.equal(edges.length, 1);
-assert.equal(edges[0]._key, 'z');
+assert.equal(edges[0]._key, "z");
 ```
 
 ## graphEdgeCollection.outEdges
@@ -231,17 +249,17 @@ _documentHandle_.
 
 ```js
 const db = new Database();
-const graph = db.graph('some-graph');
-const collection = graph.edgeCollection('edges');
+const graph = db.graph("some-graph");
+const collection = graph.edgeCollection("edges");
 await collection.import([
-  ['_key', '_from', '_to'],
-  ['x', 'vertices/a', 'vertices/b'],
-  ['y', 'vertices/a', 'vertices/c'],
-  ['z', 'vertices/d', 'vertices/a']
+  ["_key", "_from", "_to"],
+  ["x", "vertices/a", "vertices/b"],
+  ["y", "vertices/a", "vertices/c"],
+  ["z", "vertices/d", "vertices/a"]
 ]);
-const edges = await collection.outEdges('vertices/a');
+const edges = await collection.outEdges("vertices/a");
 assert.equal(edges.length, 2);
-assert.deepEqual(edges.map(edge => edge._key), ['x', 'y']);
+assert.deepEqual(edges.map(edge => edge._key), ["x", "y"]);
 ```
 
 ## graphEdgeCollection.traversal
@@ -275,18 +293,18 @@ contained in this edge collection.
 
 ```js
 const db = new Database();
-const graph = db.graph('some-graph');
-const collection = graph.edgeCollection('edges');
+const graph = db.graph("some-graph");
+const collection = graph.edgeCollection("edges");
 await collection.import([
-  ['_key', '_from', '_to'],
-  ['x', 'vertices/a', 'vertices/b'],
-  ['y', 'vertices/b', 'vertices/c'],
-  ['z', 'vertices/c', 'vertices/d']
+  ["_key", "_from", "_to"],
+  ["x", "vertices/a", "vertices/b"],
+  ["y", "vertices/b", "vertices/c"],
+  ["z", "vertices/c", "vertices/d"]
 ]);
-const result = await collection.traversal('vertices/a', {
-  direction: 'outbound',
-  visitor: 'result.vertices.push(vertex._key);',
-  init: 'result.vertices = [];'
+const result = await collection.traversal("vertices/a", {
+  direction: "outbound",
+  visitor: "result.vertices.push(vertex._key);",
+  init: "result.vertices = [];"
 });
-assert.deepEqual(result.vertices, ['a', 'b', 'c', 'd']);
+assert.deepEqual(result.vertices, ["a", "b", "c", "d"]);
 ```

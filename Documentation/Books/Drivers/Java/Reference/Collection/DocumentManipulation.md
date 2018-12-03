@@ -125,11 +125,11 @@ Creates a new document from the given document, unless there is already a docume
 
   - **returnOld**: `Boolean`
 
-    Additionally return the complete old document under the attribute old in the result. Only available if the _overwrite_ option is used.
+    This options requires ArangoDB version 3.4.0 or higher. Additionally return the complete old document under the attribute old in the result. Only available if the _overwrite_ option is used.
 
   - **overwrite**: `Boolean`
 
-    If set to true, the insert becomes a replace-insert. If a document with the same \_key already exists the new document is not rejected with unique constraint violated but will replace the old document.
+    This options requires ArangoDB version 3.4.0 or higher. If set to true, the insert becomes a replace-insert. If a document with the same \_key already exists the new document is not rejected with unique constraint violated but will replace the old document.
 
   - **silent**: `Boolean`
 
@@ -173,11 +173,11 @@ Creates new documents from the given documents, unless there is already a docume
 
   - **returnOld**: `Boolean`
 
-    Additionally return the complete old document under the attribute old in the result. Only available if the _overwrite_ option is used.
+    This options requires ArangoDB version 3.4.0 or higher. Additionally return the complete old document under the attribute old in the result. Only available if the _overwrite_ option is used.
 
   - **overwrite**: `Boolean`
 
-    If set to true, the insert becomes a replace-insert. If a document with the same \_key already exists the new document is not rejected with unique constraint violated but will replace the old document.
+    This options requires ArangoDB version 3.4.0 or higher. If set to true, the insert becomes a replace-insert. If a document with the same \_key already exists the new document is not rejected with unique constraint violated but will replace the old document.
 
   - **silent**: `Boolean`
 
@@ -234,7 +234,7 @@ Replaces the document with _key_ with the one in the body, provided there is suc
 
   - **returnOld**: `Boolean`
 
-    Additionally return the complete old document under the attribute old in the result. Only available if the _overwrite_ option is used.
+    Additionally return the complete old document under the attribute old in the result. 
 
   - **silent**: `Boolean`
 
@@ -292,7 +292,7 @@ Replaces multiple documents in the specified collection with the ones in the val
 
   - **returnOld**: `Boolean`
 
-    Additionally return the complete old document under the attribute old in the result. Only available if the _overwrite_ option is used.
+    Additionally return the complete old document under the attribute old in the result.
 
   - **silent**: `Boolean`
 
@@ -353,7 +353,7 @@ Updates the document with _key_ with the one in the body, provided there is such
 
   - **returnOld**: `Boolean`
 
-    Additionally return the complete old document under the attribute old in the result. Only available if the _overwrite_ option is used.
+    Additionally return the complete old document under the attribute old in the result.
 
   - **silent**: `Boolean`
 
@@ -411,7 +411,7 @@ Updates multiple documents in the specified collection with the ones in the valu
 
   - **returnOld**: `Boolean`
 
-    Additionally return the complete old document under the attribute old in the result. Only available if the _overwrite_ option is used.
+    Additionally return the complete old document under the attribute old in the result.
 
   - **silent**: `Boolean`
 

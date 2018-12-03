@@ -150,10 +150,16 @@ GraphEntity info = graph.getInfo();
 ## ArangoGraph.drop
 
 ```
-ArangoGraph.drop() : void
+ArangoGraph.drop(boolean dropCollections) : void
 ```
 
 Deletes the graph from the database.
+
+**Arguments**
+
+- **dropCollections**: `boolean`
+
+  Drop collections of this graph as well. Collections will only be dropped if they are not used in other graphs.
 
 **Examples**
 

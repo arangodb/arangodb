@@ -22,6 +22,8 @@
   <!-- SYNC: https://@github.com/arangodb/kube-arangodb.git;kube-arangodb;docs/Manual;;/ -->
   * [Kubernetes](Tutorials/Kubernetes/README.md)
     * [GKE](Tutorials/Kubernetes/GKE.md)
+    * [AKS](Tutorials/Kubernetes/AKS.md)
+    * [EKS](Tutorials/Kubernetes/EKS.md)
   * [DC2DC on Kubernetes](Tutorials/Kubernetes/DC2DC.md)
 * [Programs & Tools](Programs/README.md)
   * [ArangoDB Server](Programs/Arangod/README.md)
