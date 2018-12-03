@@ -5,9 +5,15 @@ const joi = require('joi');
 const semver = require('semver');
 const util = require('util');
 const joinPath = require('path').join;
-const arangodb = require('@arangodb');
-const ArangoError = arangodb.ArangoError;
-const errors = arangodb.errors;
+const {
+  plainServerVersion,
+  ArangoError,
+  errors: {
+    ERROR_INVALID_SERVICE_MANIFEST,
+    ERROR_SERVICE_MANIFEST_NOT_FOUND,
+    ERROR_MALFORMED_MANIFEST_FILE
+  }
+} = require('@arangodb');
 const il = require('@arangodb/util').inline;
 
 const CANONICAL_SCHEMA = 'http://json.schemastore.org/foxx-manifest';
@@ -161,7 +167,7 @@ const manifestSchema = {
 };
 
 function checkManifest (inputManifest, mount, complainAboutVersionMismatches) {
-  const serverVersion = arangodb.plainServerVersion();
+  const serverVersion = plainServerVersion();
   const errors = [];
   const manifest = {};
   let legacy = false;
@@ -317,9 +323,9 @@ function checkManifest (inputManifest, mount, complainAboutVersionMismatches) {
       console.errorLines(error);
     }
     throw new ArangoError({
-      errorNum: errors.ERROR_INVALID_SERVICE_MANIFEST.code,
+      errorNum: ERROR_INVALID_SERVICE_MANIFEST.code,
       errorMessage: dd`
-        ${errors.ERROR_INVALID_SERVICE_MANIFEST.message}
+        ${ERROR_INVALID_SERVICE_MANIFEST.message}
         Manifest for service at "${mount}":
         ${errors.join('\n')}
       `
@@ -359,9 +365,9 @@ function validateManifestFile (filename, mount, complainAboutVersionMismatches) 
   let mf;
   if (!fs.exists(filename)) {
     throw new ArangoError({
-      errorNum: errors.ERROR_SERVICE_MANIFEST_NOT_FOUND.code,
+      errorNum: ERROR_SERVICE_MANIFEST_NOT_FOUND.code,
       errorMessage: dd`
-        ${errors.ERROR_SERVICE_MANIFEST_NOT_FOUND.message}
+        ${ERROR_SERVICE_MANIFEST_NOT_FOUND.message}
         File: ${filename}
       `
     });
@@ -371,9 +377,9 @@ function validateManifestFile (filename, mount, complainAboutVersionMismatches) 
   } catch (e) {
     throw Object.assign(
       new ArangoError({
-        errorNum: errors.ERROR_MALFORMED_MANIFEST_FILE.code,
+        errorNum: ERROR_MALFORMED_MANIFEST_FILE.code,
         errorMessage: dd`
-          ${errors.ERROR_MALFORMED_MANIFEST_FILE.message}
+          ${ERROR_MALFORMED_MANIFEST_FILE.message}
           File: ${filename}
         `
       }), {cause: e}
@@ -384,9 +390,9 @@ function validateManifestFile (filename, mount, complainAboutVersionMismatches) 
   } catch (e) {
     throw Object.assign(
       new ArangoError({
-        errorNum: errors.ERROR_INVALID_SERVICE_MANIFEST.code,
+        errorNum: ERROR_INVALID_SERVICE_MANIFEST.code,
         errorMessage: dd`
-          ${errors.ERROR_INVALID_SERVICE_MANIFEST.message}
+          ${ERROR_INVALID_SERVICE_MANIFEST.message}
           File: ${filename}
         `
       }), {cause: e}

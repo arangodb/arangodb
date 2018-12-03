@@ -1,6 +1,9 @@
 devel
 -----
 
+* fixed TypeError being thrown instead of validation errors when Foxx manifest
+  validation fails
+
 * fixed Foxx complaining about valid `$schema` value in manifest.json
 
 * Foxx `req.makeAbsolute` now will return meaningful values when ArangoDB is using
