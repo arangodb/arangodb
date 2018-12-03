@@ -40,7 +40,7 @@ function locateArangod() {
     ARANGOD = fs.join(fs.join(fs.makeAbsolute('')), "bin/arangod");
   }
   if(!fs.isFile(ARANGOD) && !fs.isFile(ARANGOD + ".exe")) {
-    throw "Cannot find Aarangod to execute tests against";
+    throw "Cannot find arangod to execute tests against";
   }
 }
 
