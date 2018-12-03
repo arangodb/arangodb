@@ -557,12 +557,12 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::v
   } else if (0 == type.compare(arangodb::iresearch::DATA_SOURCE_TYPE.name())) {
 
     if (arangodb::ServerState::instance()->isCoordinator()) {
-      index = arangodb::iresearch::IResearchLinkCoordinator::make(
-        _logicalCollection, info, ++lastId, false
+      arangodb::iresearch::IResearchLinkCoordinator::factory().instantiate(
+        index, _logicalCollection, info, ++lastId, false
       );
     } else {
-      index = arangodb::iresearch::IResearchMMFilesLink::make(
-        _logicalCollection, info, ++lastId, false
+      arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(
+        index, _logicalCollection, info, ++lastId, false
       );
     }
 #endif

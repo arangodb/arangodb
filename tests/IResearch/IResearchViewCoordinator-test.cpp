@@ -116,13 +116,9 @@ struct IResearchViewCoordinatorSetup {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
     // register factories & normalizers
     auto& indexFactory = const_cast<arangodb::IndexFactory&>(engine.indexFactory());
-    indexFactory.emplaceFactory(
+    indexFactory.emplace(
       arangodb::iresearch::DATA_SOURCE_TYPE.name(),
-      arangodb::iresearch::IResearchLinkCoordinator::make
-    );
-    indexFactory.emplaceNormalizer(
-      arangodb::iresearch::DATA_SOURCE_TYPE.name(),
-      arangodb::iresearch::IResearchLinkHelper::normalize
+      arangodb::iresearch::IResearchLinkCoordinator::factory()
     );
 
     arangodb::tests::init();

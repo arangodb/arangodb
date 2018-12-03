@@ -2071,7 +2071,7 @@ SECTION("test_register_link") {
   auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
   auto viewJson0 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101 }");
   auto viewJson1 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101, \"collections\": [ 100 ] }");
-  auto linkJson  = arangodb::velocypack::Parser::fromJson("{ \"view\": 101 }");
+  auto linkJson  = arangodb::velocypack::Parser::fromJson("{ \"view\": \"101\" }");
 
   // new link in recovery
   {
@@ -2110,7 +2110,8 @@ SECTION("test_register_link") {
     StorageEngineMock::inRecoveryResult = true;
     auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
     persisted = false;
-    auto link = arangodb::iresearch::IResearchMMFilesLink::make(*logicalCollection, linkJson->slice(), 1, false);
+    std::shared_ptr<arangodb::Index> link;
+    CHECK((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(link, *logicalCollection, linkJson->slice(), 1, false).ok()));
     CHECK((false == persisted));
     CHECK((false == !link));
 
@@ -2180,7 +2181,8 @@ SECTION("test_register_link") {
     }
 
     persisted = false;
-    auto link = arangodb::iresearch::IResearchMMFilesLink::make(*logicalCollection, linkJson->slice(), 1, false);
+    std::shared_ptr<arangodb::Index> link;
+    CHECK((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(link, *logicalCollection, linkJson->slice(), 1, false).ok()));
     CHECK((true == persisted)); // link instantiation does modify and persist view meta
     CHECK((false == !link));
     std::unordered_set<TRI_voc_cid_t> cids;
@@ -2249,7 +2251,8 @@ SECTION("test_register_link") {
     }
 
     persisted = false;
-    auto link0 = arangodb::iresearch::IResearchMMFilesLink::make(*logicalCollection, linkJson->slice(), 1, false);
+    std::shared_ptr<arangodb::Index> link0;
+    CHECK((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(link0, *logicalCollection, linkJson->slice(), 1, false).ok()));
     CHECK((false == persisted));
     CHECK((false == !link0));
 
@@ -2281,7 +2284,8 @@ SECTION("test_register_link") {
     }
 
     persisted = false;
-    auto link1 = arangodb::iresearch::IResearchMMFilesLink::make(*logicalCollection, linkJson->slice(), 1, false);
+    std::shared_ptr<arangodb::Index> link1;
+    CHECK((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(link1, *logicalCollection, linkJson->slice(), 1, false).ok()));
     CHECK((false == persisted));
     CHECK((false == !link1)); // duplicate link creation is allowed
     std::unordered_set<TRI_voc_cid_t> cids;

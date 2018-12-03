@@ -68,7 +68,7 @@ ViewTypesFeature::ViewTypesFeature(
   startsAfter("BasicsPhase");
 }
 
-arangodb::Result ViewTypesFeature::emplace(
+Result ViewTypesFeature::emplace(
     LogicalDataSource::Type const& type,
     ViewFactory const& factory
 ) {
