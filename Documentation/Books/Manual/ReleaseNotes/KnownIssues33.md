@@ -3,7 +3,9 @@ Known Issues
 
 This page lists some known issues of the ArangoDB suite of products. 
 
-ArangoDB Customers can access the [_Technical & Security Alerts_](https://arangodb.atlassian.net/wiki/spaces/DEVSUP/pages/223903745) page after logging in the Support Portal.
+ArangoDB Customers can access the
+[_Technical & Security Alerts_](https://arangodb.atlassian.net/wiki/spaces/DEVSUP/pages/223903745)
+page after login in the Support Portal.
 
 | # | Issue      |
 |---|------------|
