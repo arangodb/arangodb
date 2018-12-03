@@ -468,10 +468,8 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
     if (pdbs.hasKey(dbname)) {                        // if in plan
       for (auto const& sh : VPackObjectIterator(db.value)) { // for each local shard
         std::string shName = sh.key.copyString();
-        if (shName.front() != '_') { // exclude local system shards/collections
-          handleLocalShard(dbname, shName, sh.value, shardMap.slice(), commonShrds,
-                           indis, serverId, actions);
-        }
+        handleLocalShard(dbname, shName, sh.value, shardMap.slice(), commonShrds,
+                         indis, serverId, actions);
       }
     }
   }
