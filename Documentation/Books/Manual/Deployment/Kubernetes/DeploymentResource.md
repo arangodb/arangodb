@@ -326,10 +326,12 @@ servers.
 When not specified, no monitoring token is used.
 The default value is empty.
 
-### `spec.ipv6.forbidden: bool`
+### `spec.disableIPv6: bool`
 
 This setting prevents the use of IPv6 addresses by ArangoDB servers.
-The default is `false`.
+The default is `false`. 
+
+This setting cannot be changed after the deployment has been created.
 
 ### `spec.<group>.count: number`
 

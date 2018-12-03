@@ -13,7 +13,7 @@ The driver is configured with some default values:
 <table>
 <tr><th>property-key</th><th>description</th><th>default value</th></tr>
 <tr><td>arangodb.hosts</td><td>ArangoDB hosts</td><td>127.0.0.1:8529</td></tr>
-<tr><td>arangodb.timeout</td><td>socket connect timeout(millisecond)</td><td>0</td></tr>
+<tr><td>arangodb.timeout</td><td>connect & request timeout(millisecond)</td><td>0</td></tr>
 <tr><td>arangodb.user</td><td>Basic Authentication User</td><td></td></tr>
 <tr><td>arangodb.password</td><td>Basic Authentication Password</td><td></td></tr>
 <tr><td>arangodb.useSsl</td><td>use SSL connection</td><td>false</td></tr>
