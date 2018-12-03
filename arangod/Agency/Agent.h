@@ -147,6 +147,9 @@ class Agent final : public arangodb::Thread,
   /// @brief Resign leadership
   void resign(term_t otherTerm = 0);
 
+  /// @brief Remove callback from read db
+  void removeStoreCallback(std::string const& url, query_t const& body);
+
  private:
   /// @brief Invoked by leader to replicate log entries ($5.3);
   ///        also used as heartbeat ($5.2).

@@ -1896,6 +1896,36 @@ bool Agent::ready() const {
 
 }
 
+
+void Agent::removeStoreCallback(std::string const& url, query_t const& body) {
+
+  auto const& slice = body->slice();
+  TRI_ASSERT(slice.isObject());
+
+  // body consists of object holding keys index, term and the observed keys
+  // we'll remove observation on every key and according observer url 
+  auto envelope = std::make_shared<VPackBuilder>();
+  { VPackArrayBuilder trxs(envelope.get());
+    { VPackArrayBuilder trx(envelope.get());
+  
+      for (auto const& i : VPackObjectIterator(slice)) {
+        if (!i.key.isEqualString("term") && !i.key.isEqualString("index")) {
+          { VPackObjectBuilder ak(envelope.get());
+            envelope->add(VPackValue(i.key.copyString()));
+            { VPackObjectBuilder oper(envelope.get());
+              envelope->add("op", VPackValue("unobserve"));
+              envelope->add("url", VPackValue(url));}}
+        }
+      }
+    }}
+
+  // Best effort. Will be retried anyway
+  auto wres = write(envelope);
+  
+  return;
+}
+
+
 query_t Agent::buildDB(arangodb::consensus::index_t index) {
   Store store(this);
   index_t oldIndex;
