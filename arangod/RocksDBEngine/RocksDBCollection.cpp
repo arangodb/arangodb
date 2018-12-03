@@ -543,7 +543,7 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
   auto state = RocksDBTransactionState::toState(trx);
   RocksDBMethods* mthds = state->rocksdbMethods();
 
-  if (state->isExclusiveTransactionOnSingleCollection() &&
+  if (state->isOnlyExclusiveTransaction() &&
       state->hasHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE) &&
       static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->canUseRangeDeleteInWal() &&
       _numberDocuments >= 32 * 1024) {

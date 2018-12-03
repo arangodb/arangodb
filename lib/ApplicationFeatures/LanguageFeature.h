@@ -38,7 +38,10 @@ class LanguageFeature final : public application_features::ApplicationFeature {
   void start() override final;
   static void* prepareIcu(std::string const& binaryPath, std::string const& binaryExecutionPath, std::string& path, std::string const& binaryName);
   static LanguageFeature* instance();
-  Locale& getLocale() {return _locale; }
+  Locale& getLocale() { return _locale; }
+  std::string const& getDefaultLanguage() const { return _language; }
+  std::string getCollatorLanguage() const;
+  void resetDefaultLanguage(std::string const& language);
 
 private:
   Locale _locale;

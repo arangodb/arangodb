@@ -526,8 +526,16 @@ void ClusterInfo::loadPlan() {
       VPackSlice databasesSlice;
       databasesSlice = planSlice.get("Databases");
       if (databasesSlice.isObject()) {
+        std::string name;
         for (auto const& database : VPackObjectIterator(databasesSlice)) {
-          std::string const& name = database.key.copyString();
+          try {
+            name = database.key.copyString();
+          } catch (arangodb::velocypack::Exception const& e) {
+            LOG_TOPIC(ERR, Logger::AGENCY)
+              << "Failed to get database name from json, error '" << e.what()
+              << "'. VelocyPack: " << database.key.toJson();
+            throw;
+          }
 
           newDatabases.insert(std::make_pair(name, database.value));
         }
@@ -561,6 +569,10 @@ void ClusterInfo::loadPlan() {
           VPackSlice const& viewsSlice = databasePairSlice.value;
 
           if (!viewsSlice.isObject()) {
+            LOG_TOPIC(INFO, Logger::AGENCY)
+              << "Views in the plan is not a valid json object."
+                 " Views will be ignored for now and the invalid information"
+                 " will be repaired. VelocyPack: " << viewsSlice.toJson();
             continue;
           }
 
@@ -570,6 +582,10 @@ void ClusterInfo::loadPlan() {
           if (vocbase == nullptr) {
             // No database with this name found.
             // We have an invalid state here.
+            LOG_TOPIC(WARN, Logger::AGENCY)
+              << "No database '" << databaseName << "' found,"
+                 " corresponding view will be ignored for now and the invalid information"
+                 " will be repaired. VelocyPack: " << viewsSlice.toJson();
             continue;
           }
 
@@ -577,6 +593,11 @@ void ClusterInfo::loadPlan() {
                VPackObjectIterator(viewsSlice)) {
             VPackSlice const& viewSlice = viewPairSlice.value;
             if (!viewSlice.isObject()) {
+              LOG_TOPIC(INFO, Logger::AGENCY)
+                << "View entry is not a valid json object."
+                   " The view will be ignored for now and the invalid information"
+                   " will be repaired. VelocyPack: " << viewSlice.toJson();
+
               continue;
             }
 
@@ -699,6 +720,10 @@ void ClusterInfo::loadPlan() {
           VPackSlice const& collectionsSlice = databasePairSlice.value;
 
           if (!collectionsSlice.isObject()) {
+            LOG_TOPIC(INFO, Logger::AGENCY)
+              << "Collections in the plan is not a valid json object."
+                 " Collections will be ignored for now and the invalid information"
+                 " will be repaired. VelocyPack: " << collectionsSlice.toJson();
             continue;
           }
 
@@ -709,6 +734,10 @@ void ClusterInfo::loadPlan() {
           if (vocbase == nullptr) {
             // No database with this name found.
             // We have an invalid state here.
+            LOG_TOPIC(WARN, Logger::AGENCY)
+              << "No database '" << databaseName << "' found,"
+                 " corresponding collection will be ignored for now and the invalid information"
+                 " will be repaired. VelocyPack: " << collectionsSlice.toJson();
             continue;
           }
 
@@ -716,6 +745,10 @@ void ClusterInfo::loadPlan() {
                VPackObjectIterator(collectionsSlice)) {
             VPackSlice const& collectionSlice = collectionPairSlice.value;
             if (!collectionSlice.isObject()) {
+              LOG_TOPIC(WARN, Logger::AGENCY)
+                << "Collection entry is not a valid json object."
+                   " The collection will be ignored for now and the invalid information"
+                   " will be repaired. VelocyPack: " << collectionSlice.toJson();
               continue;
             }
 
@@ -1219,68 +1252,6 @@ std::shared_ptr<LogicalView> ClusterInfo::getView(
   }
 
   LOG_TOPIC(DEBUG, Logger::CLUSTER)
-    << "View not found: '" << viewID << "' in database '" << databaseID << "'";
-
-  return nullptr;
-}
-
-std::shared_ptr<LogicalView> ClusterInfo::getViewCurrent(
-    DatabaseID const& databaseID,
-    ViewID const& viewID
-) {
-  if (viewID.empty()) {
-    return nullptr;
-  }
-
-  static const auto lookupView = [](
-      AllViews const& dbs,
-      DatabaseID const& databaseID,
-      ViewID const& viewID
-  ) noexcept -> std::shared_ptr<LogicalView> {
-    auto const db = dbs.find(databaseID); // look up database by id
-
-    if (db != dbs.end()) {
-      auto& views = db->second;
-      auto const itr = views.find(viewID); // look up view by id (or by name)
-
-      if (itr != views.end()) {
-        return itr->second;
-      }
-    }
-
-    return nullptr;
-  };
-
-  if (std::this_thread::get_id() == _planLoader) {
-    return lookupView(_plannedViews, databaseID, viewID);
-  }
-
-  size_t planReloads = 0;
-
-  if (!_planProt.isValid) {
-    loadPlan(); // current Views are actually in Plan instead of Current
-    ++planReloads;
-  }
-
-  for(;;) {
-    {
-      READ_LOCKER(readLocker, _planProt.lock);
-      auto const view = lookupView(_plannedViews, databaseID, viewID);
-
-      if (view) {
-        return view;
-      }
-    }
-
-    if (planReloads >= 2) {
-      break;
-    }
-
-    loadPlan(); // current Views are actually in Plan instead of Current (must load plan outside the lock)
-    ++planReloads;
-  }
-
-  LOG_TOPIC(INFO, Logger::CLUSTER)
     << "View not found: '" << viewID << "' in database '" << databaseID << "'";
 
   return nullptr;
@@ -3398,6 +3369,7 @@ void ClusterInfo::loadCurrentDBServers() {
     velocypack::Slice currentDBServers;
     velocypack::Slice failedDBServers;
     velocypack::Slice cleanedDBServers;
+    velocypack::Slice toBeCleanedDBServers;
 
     if (result.slice().length() > 0) {
       currentDBServers = result.slice()[0].get(std::vector<std::string>(
@@ -3409,7 +3381,10 @@ void ClusterInfo::loadCurrentDBServers() {
               {AgencyCommManager::path(), "Target", "FailedServers"}));
       cleanedDBServers =
         target.slice()[0].get(std::vector<std::string>(
-              {AgencyCommManager::path(), "Target", "CleanedOutServers"}));
+              {AgencyCommManager::path(), "Target", "CleanedServers"}));
+     toBeCleanedDBServers =
+        target.slice()[0].get(std::vector<std::string>(
+              {AgencyCommManager::path(), "Target", "ToBeCleanedServers"}));
     }
     if (currentDBServers.isObject() && failedDBServers.isObject()) {
       decltype(_DBServers) newDBServers;
@@ -3435,7 +3410,21 @@ void ClusterInfo::loadCurrentDBServers() {
                VPackArrayIterator(cleanedDBServers)) {
             if (dbserver.key == cleanedServer) {
               found = true;
-              continue;
+              break;
+            }
+          }
+          if (found) {
+            continue;
+          }
+        }
+
+        if (toBeCleanedDBServers.isArray()) {
+          bool found = false;
+          for (auto const& toBeCleanedServer :
+               VPackArrayIterator(toBeCleanedDBServers)) {
+            if (dbserver.key == toBeCleanedServer) {
+              found = true;
+              break;
             }
           }
           if (found) {

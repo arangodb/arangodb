@@ -423,5 +423,14 @@
     "hidden" : false,
     "section" : "",
     "type" : "boolean"
+  },
+  "view" : {
+    "default" : [
+    ],
+    "description" : "restrict to view name (can be specified multiple times)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "",
+    "type" : "string..."
   }
 }

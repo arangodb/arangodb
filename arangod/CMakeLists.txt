@@ -460,6 +460,7 @@ SET(ARANGOD_SOURCES
   RestServer/FortuneFeature.cpp
   RestServer/FrontendFeature.cpp
   RestServer/InitDatabaseFeature.cpp
+  RestServer/LanguageCheckFeature.cpp
   RestServer/LockfileFeature.cpp
   RestServer/QueryRegistryFeature.cpp
   RestServer/ScriptFeature.cpp

@@ -554,6 +554,8 @@ bool transaction::Methods::sortOrs(
     root->removeMemberUnchecked(0);
   }
 
+  std::unordered_set<std::string> seenIndexConditions; 
+        
   // and rebuild
   for (size_t i = 0; i < n; ++i) {
     if (parts[i].operatorType ==
@@ -565,8 +567,26 @@ bool transaction::Methods::sortOrs(
     }
 
     auto conditionData = static_cast<ConditionData*>(parts[i].data);
-    root->addMember(conditionData->first);
-    usedIndexes.emplace_back(conditionData->second);
+    bool isUnique = true;
+
+    if (!usedIndexes.empty()) {
+      // try to find duplicate condition parts, and only return each
+      // unique condition part once
+      try {
+        std::string conditionString = conditionData->first->toString() + " - " + std::to_string(conditionData->second.getIndex()->id());
+        isUnique = seenIndexConditions.emplace(std::move(conditionString)).second;
+          // we already saw the same combination of index & condition
+          // don't add it again
+      } catch (...) {
+        // condition stringification may fail. in this case, we simply carry own
+        // without simplifying the condition
+      }
+    }
+
+    if (isUnique) {
+      root->addMember(conditionData->first);
+      usedIndexes.emplace_back(conditionData->second);
+    }
   }
 
   return true;
@@ -3448,16 +3468,19 @@ Result Methods::replicateOperations(
   cc->performRequests(requests,
                       chooseTimeout(count, body->size() * followers->size()),
                       nrDone, Logger::REPLICATION, false);
-  // If any would-be-follower refused to follow there must be a
-  // new leader in the meantime, in this case we must not allow
-  // this operation to succeed, we simply return with a refusal
-  // error (note that we use the follower version, since we have
-  // lost leadership):
-  if (findRefusal(requests)) {
-    return Result{TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED};
-  }
+  // If any would-be-follower refused to follow there are two possiblities:
+  // (1) there is a new leader in the meantime, or
+  // (2) the follower was restarted and forgot that it is a follower.
+  // Unfortunately, we cannot know which is the case.
+  // In case (1) case we must not allow
+  // this operation to succeed, since the new leader is now responsible.
+  // In case (2) we at least have to drop the follower such that it 
+  // resyncs and we can be sure that it is in sync again.
+  // Therefore, we drop the follower here (just in case), and refuse to
+  // return with a refusal error (note that we use the follower version,
+  // since we have lost leadership):
 
-  // Otherwise we drop all followers that were not successful:
+  // We drop all followers that were not successful:
   for (size_t i = 0; i < followers->size(); ++i) {
     bool replicationWorked =
       requests[i].done &&
@@ -3482,6 +3505,10 @@ Result Methods::replicateOperations(
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
       }
     }
+  }
+
+  if (findRefusal(requests)) {
+    return Result{TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED};
   }
 
   return Result{};

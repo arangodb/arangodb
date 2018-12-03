@@ -307,6 +307,7 @@
         }),
         success: function (data) {
           self.name = data.name;
+          self.model.set('name', data.name);
           self.breadcrumb();
           window.modalView.hide();
         },
