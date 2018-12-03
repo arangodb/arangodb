@@ -364,11 +364,11 @@ std::vector<bool> Store::applyLogEntries(
       std::string endpoint, path;
       if (endpointPathFromUrl(url, endpoint, path)) {
         CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
-        std::unordered_map<std::string, std::string> headerFields;
+        std::unordered_map<std::string, std::string> hf;
         
         arangodb::ClusterComm::instance()->asyncRequest(
           coordinatorTransactionID, endpoint, rest::RequestType::POST, path,
-          std::make_shared<std::string>(body->toString()), headerFields,
+          std::make_shared<std::string>(body->toString()), hf,
           std::make_shared<StoreCallback>(url, body, _agent), 1.0, true, 0.01);
 
       } else {
