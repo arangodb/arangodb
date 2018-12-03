@@ -786,8 +786,16 @@ function MovingShardsWithViewSuite (options) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSetup : function () {
-      assertTrue(waitForSynchronousReplication("_system"));
-      waitAndAssertViewEqualCollectionServers();
+      for (var count = 0; count < 120; ++count) {
+        dbservers = getDBServers();
+        if (dbservers.length === 5) {
+          assertTrue(waitForSynchronousReplication("_system"));
+          waitAndAssertViewEqualCollectionServers();
+          return;
+        }
+        console.log("Waiting for 5 dbservers to be present:", JSON.stringify(dbservers));
+        wait(1.0);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
