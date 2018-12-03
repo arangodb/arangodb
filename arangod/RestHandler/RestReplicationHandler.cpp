@@ -1672,6 +1672,13 @@ Result RestReplicationHandler::processRestoreIndexes(VPackSlice const& collectio
       std::shared_ptr<arangodb::Index> idx;
 
       // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
+      if (idxDef.isObject() && idxDef.get("type").isString()) {
+        VPackSlice type = idxDef.get("type");
+        if (type.isEqualString("primary") || type.isEqualString("edge")) {
+          // don't try to create primary or edge indexes using restore
+          continue;
+        }
+      }
 
       res = physical->restoreIndex(&trx, idxDef, idx);
 
