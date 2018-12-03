@@ -86,37 +86,39 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
       auto cols = vocbase->collections(false);
 
       for (auto const& collection : cols) {
-        collections.add(VPackValue(collection->name()));
-
-        VPackObjectBuilder col(&collections);
-
-        collection->properties(collections,true,false);
-
-        auto const& folls = collection->followers();
-        std::string const theLeader = folls->getLeader();
-        bool theLeaderTouched = folls->getLeaderTouched();
-
-        // Note that whenever theLeader was set explicitly since the collection
-        // object was created, we believe it. Otherwise, we do not accept
-        // that we are the leader. This is to circumvent the problem that
-        // after a restart we would implicitly be assumed to be the leader.
-        collections.add("theLeader", VPackValue(theLeaderTouched ? theLeader : "NOT_YET_TOUCHED"));
-        collections.add("theLeaderTouched", VPackValue(theLeaderTouched));
-
-        if (theLeader.empty() && theLeaderTouched) {
-          // we are the leader ourselves
-          // In this case we report our in-sync followers here in the format
-          // of the agency: [ leader, follower1, follower2, ... ]
-          collections.add(VPackValue("servers"));
-
-          { VPackArrayBuilder guard(&collections);
-
-            collections.add(VPackValue(arangodb::ServerState::instance()->getId()));
-
-            std::shared_ptr<std::vector<ServerID> const> srvs = folls->get();
-
-            for (auto const& s : *srvs) {
-              collections.add(VPackValue(s));
+        if (!collection->system()) {
+          collections.add(VPackValue(collection->name()));
+          
+          VPackObjectBuilder col(&collections);
+          
+          collection->properties(collections,true,false);
+          
+          auto const& folls = collection->followers();
+          std::string const theLeader = folls->getLeader();
+          bool theLeaderTouched = folls->getLeaderTouched();
+          
+          // Note that whenever theLeader was set explicitly since the collection
+          // object was created, we believe it. Otherwise, we do not accept
+          // that we are the leader. This is to circumvent the problem that
+          // after a restart we would implicitly be assumed to be the leader.
+          collections.add("theLeader", VPackValue(theLeaderTouched ? theLeader : "NOT_YET_TOUCHED"));
+          collections.add("theLeaderTouched", VPackValue(theLeaderTouched));
+          
+          if (theLeader.empty() && theLeaderTouched) {
+            // we are the leader ourselves
+            // In this case we report our in-sync followers here in the format
+            // of the agency: [ leader, follower1, follower2, ... ]
+            collections.add(VPackValue("servers"));
+            
+            { VPackArrayBuilder guard(&collections);
+              
+              collections.add(VPackValue(arangodb::ServerState::instance()->getId()));
+              
+              std::shared_ptr<std::vector<ServerID> const> srvs = folls->get();
+              
+              for (auto const& s : *srvs) {
+                collections.add(VPackValue(s));
+              }
             }
           }
         }
@@ -166,6 +168,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   VPackBuilder local;
   Result glc = getLocalCollections(local);
+  LOG_TOPIC(ERR, Logger::AGENCY) << local.toJson(); 
   if (!glc.ok()) {
     // FIXMEMAINTENANCE: if this fails here, then result is empty, is this
     // intended? I also notice that there is another Result object "tmp"

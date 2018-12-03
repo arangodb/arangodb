@@ -832,9 +832,6 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
     for (auto const& shard : VPackObjectIterator(database.value)) {
 
       auto const shName = shard.key.copyString();
-      if (shName.at(0) == '_') { // local system collection
-        continue;
-      }
       auto const shSlice = shard.value;
       auto const colName = shSlice.get(StaticStrings::DataSourcePlanId).copyString();
 
