@@ -244,7 +244,7 @@ void Scheduler::post(std::function<void()> const callback) {
     LOG_TOPIC(WARN, Logger::THREADS)
       << "Scheduler::post() called after isStopping() set.";
     TRI_ASSERT(false);
-    std::abort();   /// temporary ... debugging within Jenkins
+
     callback();
   } // else
 }
