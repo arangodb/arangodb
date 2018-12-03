@@ -1,7 +1,8 @@
 Known Issues
 ============
 
-This page lists some known issues of the ArangoDB suite of products. 
+This page lists important issues of the ArangoDB suite of products all users
+should take note of. It is not a list of all open issues.
 
 ArangoDB Customers can access the
 [_Technical & Security Alerts_](https://arangodb.atlassian.net/wiki/spaces/DEVSUP/pages/223903745)
