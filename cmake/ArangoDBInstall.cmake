@@ -84,6 +84,13 @@ install(
   REGEX       "^.*/.bin"                                   EXCLUDE
 )
 
+install(
+  FILES
+    ${ARANGODB_SOURCE_DIR}/js/JS_SHA1SUM.txt
+  DESTINATION
+    ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}
+)
+
 if (USE_ENTERPRISE)
   install(
     DIRECTORY   ${PROJECT_SOURCE_DIR}/enterprise/js/server

@@ -312,8 +312,9 @@ Specifies the *number* of threads that are spawned to handle requests.
 `--server.statistics value`
 
 If this option is *value* is *false*, then ArangoDB's statistics gathering
-is turned off. Statistics gathering causes regular CPU activity so using this
-option to turn it off might relieve heavy-loaded instances a bit.
+is turned off. Statistics gathering causes regular background CPU activity and
+memory usage, so using this option to turn statistics off might relieve heavy-loaded 
+instances a bit.
 
 ### Session timeout
 

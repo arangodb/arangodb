@@ -144,7 +144,7 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addHiddenOption(
       "--javascript.module-directory",
       "additional paths containing JavaScript modules",
-      new VectorParameter<StringParameter>(&_moduleDirectory));
+      new VectorParameter<StringParameter>(&_moduleDirectories));
   
   options->addOption(
        "--javascript.copy-installation",
@@ -194,7 +194,7 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   ctx->normalizePath(_startupDirectory, "javascript.startup-directory", true);
-  ctx->normalizePath(_moduleDirectory, "javascript.module-directory", false);
+  ctx->normalizePath(_moduleDirectories, "javascript.module-directory", false);
 
   // try to append the current version name to the startup directory,
   // so instead of "/path/to/js" we will get "/path/to/js/3.4.0"
@@ -207,7 +207,7 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     _startupDirectory = versionedPath;
   }
 
-  for (auto& it : _moduleDirectory) {
+  for (auto& it : _moduleDirectories) {
     versionedPath = basics::FileUtils::buildFilename(it, versionAppendix);
 
     LOG_TOPIC(DEBUG, Logger::V8) << "checking for existence of version-specific module-directory '" << versionedPath << "'";
@@ -236,9 +236,26 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 void V8DealerFeature::start() {
   if (_copyInstallation) {
     copyInstallationFiles(); // will exit process if it fails
+  } else {
+    // don't copy JS files on startup
+    // now check if we have a js directory inside the database directory, and if it looks good
+    auto dbPathFeature = application_features::ApplicationServer::getFeature<DatabasePathFeature>(DatabasePathFeature::name());
+    const std::string dbJSPath = FileUtils::buildFilename(dbPathFeature->directory(), "js");
+    const std::string checksumFile = FileUtils::buildFilename(dbJSPath, StaticStrings::checksumFileJs);
+    const std::string serverPath = FileUtils::buildFilename(dbJSPath, "server");
+    const std::string commonPath = FileUtils::buildFilename(dbJSPath, "common");
+    if (FileUtils::isDirectory(dbJSPath) &&
+        FileUtils::exists(checksumFile) &&
+        FileUtils::isDirectory(serverPath) &&
+        FileUtils::isDirectory(commonPath)) {
+      // only load node modules from original startup path
+      _nodeModulesDirectory = _startupDirectory;
+      // js directory inside database directory looks good. now use it!
+      _startupDirectory = dbJSPath;
+    }
   }
-  LOG_TOPIC(DEBUG, Logger::V8) << "effective startup-directory is '" << _startupDirectory <<
-  "', effective module-directory is " << _moduleDirectory;
+
+  LOG_TOPIC(DEBUG, Logger::V8) << "effective startup-directory: " << _startupDirectory << ", effective module-directories: " << _moduleDirectories << ", node-modules-directory: " << _nodeModulesDirectory;
   
   _startupLoader.setDirectory(_startupDirectory);
   ServerState::instance()->setJavaScriptPath(_startupDirectory);
@@ -249,14 +266,13 @@ void V8DealerFeature::start() {
 
     paths.push_back(std::string("startup '" + _startupDirectory + "'"));
 
-    if (!_moduleDirectory.empty()) {
+    if (!_moduleDirectories.empty()) {
       paths.push_back(std::string(
-          "module '" + StringUtils::join(_moduleDirectory, ";") + "'"));
+          "module '" + StringUtils::join(_moduleDirectories, ";") + "'"));
     }
 
     if (!_appPath.empty()) {
       paths.push_back(std::string("application '" + _appPath + "'"));
-
 
       // create app directory if it does not exist 
       if (!basics::FileUtils::isDirectory(_appPath)) {
@@ -348,11 +364,13 @@ void V8DealerFeature::copyInstallationFiles() {
   auto dbPathFeature = application_features::ApplicationServer::getFeature<DatabasePathFeature>(DatabasePathFeature::name());
   const std::string copyJSPath = FileUtils::buildFilename(dbPathFeature->directory(), "js");
   if (copyJSPath == _startupDirectory) {
-    LOG_TOPIC(FATAL, arangodb::Logger::V8)
-    << "'javascript.startup-directory' cannot be inside 'database.directory'";
+    LOG_TOPIC(FATAL, arangodb::Logger::V8) << "'javascript.startup-directory' cannot be inside 'database.directory'";
     FATAL_ERROR_EXIT();
   }
+  
   TRI_ASSERT(!copyJSPath.empty());
+  
+  _nodeModulesDirectory = _startupDirectory;
   
   const std::string checksumFile = FileUtils::buildFilename(_startupDirectory, StaticStrings::checksumFileJs);
   const std::string copyChecksumFile = FileUtils::buildFilename(copyJSPath, StaticStrings::checksumFileJs);
@@ -365,9 +383,8 @@ void V8DealerFeature::copyInstallationFiles() {
   } else {
     try {
       overwriteCopy = (FileUtils::slurp(copyChecksumFile) != FileUtils::slurp(checksumFile));
-    } catch(basics::Exception const& e) {
-      LOG_TOPIC(ERR, Logger::V8) << "Error reading '" << StaticStrings::checksumFileJs <<
-      "' from disk: " << e.what();
+    } catch (basics::Exception const& e) {
+      LOG_TOPIC(ERR, Logger::V8) << "Error reading '" << StaticStrings::checksumFileJs << "' from disk: " << e.what();
       overwriteCopy = true;
     }
   }
@@ -376,18 +393,16 @@ void V8DealerFeature::copyInstallationFiles() {
     // sanity check before removing an existing directory:
     // check if for some reason we will be trying to remove the entire database directory...
     if (FileUtils::exists(FileUtils::buildFilename(copyJSPath, "ENGINE"))) {
-      LOG_TOPIC(FATAL, Logger::V8) << "JS installation path '" << copyJSPath
-      << "' seems to be invalid";
+      LOG_TOPIC(FATAL, Logger::V8) << "JS installation path '" << copyJSPath << "' seems to be invalid";
       FATAL_ERROR_EXIT();
     }
     
-    LOG_TOPIC(DEBUG, Logger::V8) << "Copying JS installation files to '" << copyJSPath << "'";
+    LOG_TOPIC(INFO, Logger::V8) << "Copying JS installation files from '" << _startupDirectory << "' to '" << copyJSPath << "'";
     int res = TRI_ERROR_NO_ERROR;
     if (FileUtils::exists(copyJSPath)) {
       res = TRI_RemoveDirectory(copyJSPath.c_str());
       if (res != TRI_ERROR_NO_ERROR) {
-        LOG_TOPIC(FATAL, Logger::V8) << "Error cleaning JS installation path '" << copyJSPath
-        << "': " << TRI_errno_string(res);
+        LOG_TOPIC(FATAL, Logger::V8) << "Error cleaning JS installation path '" << copyJSPath << "': " << TRI_errno_string(res);
         FATAL_ERROR_EXIT();
       }
     }
@@ -396,10 +411,32 @@ void V8DealerFeature::copyInstallationFiles() {
       << "': " << TRI_errno_string(res);
       FATAL_ERROR_EXIT();
     }
+    
+    // intentionally do not copy js/node/node_modules...
+    // we avoid copying this directory because it contains 5000+ files at the moment,
+    // and copying them one by one is darn slow at least on Windows...
+    std::string const versionAppendix = std::regex_replace(rest::Version::getServerVersion(), std::regex("-.*$"), "");
+    std::string const nodeModulesPath = FileUtils::buildFilename("js", "node", "node_modules");
+    std::string const nodeModulesPathVersioned = basics::FileUtils::buildFilename("js", versionAppendix, "node", "node_modules");
+    auto filter = [&nodeModulesPath, &nodeModulesPathVersioned, this](std::string const& filename) -> bool{
+      if (filename.size() >= nodeModulesPath.size()) {
+        std::string normalized = filename;
+        FileUtils::normalizePath(normalized);
+        TRI_ASSERT(filename.size() == normalized.size());
+        if (normalized.substr(normalized.size() - nodeModulesPath.size(), nodeModulesPath.size()) == nodeModulesPath ||
+            normalized.substr(normalized.size() - nodeModulesPathVersioned.size(), nodeModulesPathVersioned.size()) == nodeModulesPathVersioned) {
+          // filter it out!
+          return true;
+        }
+      }
+      // let the file/directory pass through
+      return false;
+    };
+
     std::string error;
-    if (!FileUtils::copyRecursive(_startupDirectory, copyJSPath, error)) {
+    if (!FileUtils::copyRecursive(_startupDirectory, copyJSPath, filter, error)) {
       LOG_TOPIC(FATAL, Logger::V8) << "Error copying JS installation files to '" << copyJSPath
-      << "': " << error;
+        << "': " << error;
       FATAL_ERROR_EXIT();
     }
   }
@@ -1371,9 +1408,12 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
       std::string sep = "";
 
       std::vector<std::string> directories;
-      directories.insert(directories.end(), _moduleDirectory.begin(),
-                         _moduleDirectory.end());
+      directories.insert(directories.end(), _moduleDirectories.begin(),
+                         _moduleDirectories.end());
       directories.emplace_back(_startupDirectory);
+      if (!_nodeModulesDirectory.empty()) {
+        directories.emplace_back(_nodeModulesDirectory);
+      }
 
       for (auto directory : directories) {
         modules += sep;

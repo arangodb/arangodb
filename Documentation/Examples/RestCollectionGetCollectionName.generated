@@ -18,10 +18,10 @@ location: <span class="hljs-regexp">/_api/</span>collection/products/properties
   }, 
   <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
   <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
-  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h5486C74C94E1/10221"</span>, 
+  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hD04208C1AC40/10227"</span>, 
   <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">true</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"10221"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"10227"</span>, 
   <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"journalSize"</span> : <span class="hljs-number">33554432</span>, 
   <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span> 

@@ -75,6 +75,29 @@ std::string removeTrailingSeparator(std::string const& name) {
 
 void normalizePath(std::string& name) {
   std::replace(name.begin(), name.end(), '/', TRI_DIR_SEPARATOR_CHAR);
+
+#ifdef _WIN32
+  // for Windows the situation is a bit more complicated,
+  // as a mere replacement of all forward slashes to backslashes
+  // may leave us with a double backslash for sequences like "bla/\foo".
+  // in this case we collapse duplicate dir separators to a single one.
+  // we intentionally ignore the first 2 characters, because they may
+  // contain a network share filename such as "\\foo\bar"
+  
+  size_t const n = name.size();
+  size_t out = 0;
+
+  for (size_t i = 0; i < n; ++i) {
+    if (name[i] == TRI_DIR_SEPARATOR_CHAR && out > 1 && name[out - 1] == TRI_DIR_SEPARATOR_CHAR) {
+      continue;
+    }
+    name[out++] = name[i];
+  }
+
+  if (out != n) {
+    name.resize(out);
+  }
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -290,17 +313,26 @@ bool createDirectory(std::string const& name, int mask, int* errorNumber) {
   return (result != 0) ? false : true;
 }
 
-bool copyRecursive(std::string const& source, std::string const& target,
+bool copyRecursive(std::string const& source, 
+                   std::string const& target,
+                   std::function<bool(std::string const&)> const& filter,
                    std::string& error) {
   if (isDirectory(source)) {
-    return copyDirectoryRecursive(source, target, error);
+    return copyDirectoryRecursive(source, target, filter, error);
   }
 
+  if (filter(source)) {
+    return TRI_ERROR_NO_ERROR;
+  }
   return TRI_CopyFile(source, target, error);
 }
 
+/// @brief will not copy files/directories for which the filter function
+/// returns true
 bool copyDirectoryRecursive(std::string const& source,
-                            std::string const& target, std::string& error) {
+                            std::string const& target,
+                            std::function<bool(std::string const&)> const& filter,
+                            std::string& error) {
   bool rc = true;
 
   auto isSubDirectory = [](std::string const& name) -> bool {
@@ -310,8 +342,8 @@ bool copyDirectoryRecursive(std::string const& source,
   struct _finddata_t oneItem;
   intptr_t handle;
 
-  std::string filter = source + "\\*";
-  handle = _findfirst(filter.c_str(), &oneItem);
+  std::string flt = source + "\\*";
+  handle = _findfirst(flt.c_str(), &oneItem);
 
   if (handle == -1) {
     error = "directory " + source + "not found";
@@ -346,6 +378,10 @@ bool copyDirectoryRecursive(std::string const& source,
 
     std::string dst = target + TRI_DIR_SEPARATOR_STR + TRI_DIR_FN(oneItem);
     std::string src = source + TRI_DIR_SEPARATOR_STR + TRI_DIR_FN(oneItem);
+    
+    if (filter(src)) {
+      continue;
+    }
 
     // Handle subdirectories:
     if (isSubDirectory(src)) {
@@ -354,7 +390,7 @@ bool copyDirectoryRecursive(std::string const& source,
       if (rc != TRI_ERROR_NO_ERROR) {
         break;
       }
-      if (!copyDirectoryRecursive(src, dst, error)) {
+      if (!copyDirectoryRecursive(src, dst, filter, error)) {
         break;
       }
       if (!TRI_CopyAttributes(src, dst, error)) {

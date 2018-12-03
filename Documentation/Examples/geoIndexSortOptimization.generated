@@ -5,7 +5,7 @@ arangosh&gt; db.geoSort.ensureIndex({ <span class="hljs-attr">type</span>: <span
     <span class="hljs-string">"latitude"</span>, 
     <span class="hljs-string">"longitude"</span> 
   ], 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"geoSort/33377"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"geoSort/33394"</span>, 
   <span class="hljs-string">"ignoreNull"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">true</span>, 
@@ -43,41 +43,41 @@ Optimization rules applied:
 arangosh&gt; db._query(query);
 [ 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34434"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geoSort/34434"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XnCM6hC--B"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34451"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geoSort/34451"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_X0UvxOy--D"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0/0"</span>, 
     <span class="hljs-string">"latitude"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"longitude"</span> : <span class="hljs-number">0</span> 
   }, 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34323"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geoSort/34323"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XnCM6gq--J"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34340"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geoSort/34340"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_X0UvxOe--M"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/-10/0"</span>, 
     <span class="hljs-string">"latitude"</span> : <span class="hljs-number">-10</span>, 
     <span class="hljs-string">"longitude"</span> : <span class="hljs-number">0</span> 
   }, 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34545"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geoSort/34545"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XnCM6hW--B"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34562"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geoSort/34562"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_X0UvxPG--_"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/10/0"</span>, 
     <span class="hljs-string">"latitude"</span> : <span class="hljs-number">10</span>, 
     <span class="hljs-string">"longitude"</span> : <span class="hljs-number">0</span> 
   }, 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34431"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geoSort/34431"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XnCM6hC--_"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34448"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geoSort/34448"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_X0UvxOy--B"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0/-10"</span>, 
     <span class="hljs-string">"latitude"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"longitude"</span> : <span class="hljs-number">-10</span> 
   }, 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34437"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geoSort/34437"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XnCM6hC--D"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34454"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geoSort/34454"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_X0UvxOy--F"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0/10"</span>, 
     <span class="hljs-string">"latitude"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"longitude"</span> : <span class="hljs-number">10</span> 

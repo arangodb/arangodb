@@ -2247,7 +2247,8 @@ static void JS_CopyRecursive(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_SYS_ERROR, errMsg);
   }
 
-  if (!FileUtils::copyRecursive(source, destination, systemErrorStr)) {
+  std::function<bool(std::string const&)> const passAllFilter = [](std::string const&) { return false; };
+  if (!FileUtils::copyRecursive(source, destination, passAllFilter, systemErrorStr)) {
     std::string errMsg = "cannot copy directory [" + source + "] to [" +
                          destination + " ] : " + std::to_string(errorNo) +
                          ": " + systemErrorStr;

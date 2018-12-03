@@ -400,8 +400,11 @@ void RocksDBEngine::start() {
 
   rocksdb::BlockBasedTableOptions tableOptions;
   if (opts->_blockCacheSize > 0) {
-    tableOptions.block_cache = rocksdb::NewLRUCache(opts->_blockCacheSize,
-                                        static_cast<int>(opts->_blockCacheShardBits));
+    tableOptions.block_cache = rocksdb::NewLRUCache(
+        opts->_blockCacheSize,
+        static_cast<int>(opts->_blockCacheShardBits),
+        /*strict_capacity_limit*/ opts->_enforceBlockCacheSizeLimit
+    );
     //tableOptions.cache_index_and_filter_blocks = opts->_compactionReadaheadSize > 0;
   } else {
     tableOptions.no_block_cache = true;
@@ -429,6 +432,10 @@ void RocksDBEngine::start() {
   if (_useThrottle) {
     _listener.reset(new RocksDBThrottle);
     _options.listeners.push_back(_listener);
+  }
+  
+  if (opts->_totalWriteBufferSize > 0) {
+    _options.db_write_buffer_size = opts->_totalWriteBufferSize;
   }
 
   // this is cfFamilies.size() + 2 ... but _option needs to be set before
@@ -538,6 +545,7 @@ void RocksDBEngine::start() {
       }
     }
   }
+  
 
   rocksdb::Status status = rocksdb::TransactionDB::Open(
       _options, transactionOptions, _path, cfFamilies, &cfHandles, &_db);
@@ -1922,7 +1930,7 @@ Result RocksDBEngine::lastLogger(
   builder->close();
   builderSPtr = std::move(builder);
 
-  return rep;
+  return std::move(rep);
 }
 
 WalAccess const* RocksDBEngine::walAccess() const {

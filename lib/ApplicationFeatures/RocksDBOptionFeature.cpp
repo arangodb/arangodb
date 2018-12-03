@@ -45,6 +45,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(
     application_features::ApplicationServer* server)
     : application_features::ApplicationFeature(server, "RocksDBOption"),
       _transactionLockTimeout(rocksDBTrxDefaults.transaction_lock_timeout),
+      _totalWriteBufferSize(rocksDBDefaults.db_write_buffer_size),
       _writeBufferSize(rocksDBDefaults.write_buffer_size),
       _maxWriteBufferNumber(rocksDBDefaults.max_write_buffer_number),
       _maxTotalWalSize(80 << 20),
@@ -70,6 +71,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(
       _level0CompactionTrigger(2),
       _level0SlowdownTrigger(rocksDBDefaults.level0_slowdown_writes_trigger),
       _level0StopTrigger(rocksDBDefaults.level0_stop_writes_trigger),
+      _enforceBlockCacheSizeLimit(false),
       _enablePipelinedWrite(rocksDBDefaults.enable_pipelined_write),
       _optimizeFiltersForHits(rocksDBDefaults.optimize_filters_for_hits),
       _useDirectReads(rocksDBDefaults.use_direct_reads),
@@ -91,7 +93,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(
     --_maxBackgroundJobs;
   } // if
 #endif
-
+      
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Daemon");
@@ -118,6 +120,10 @@ void RocksDBOptionFeature::collectOptions(
                      " a transaction attempts to lock a document. A negative value "
                      "is not recommended as it can lead to deadlocks (0 = no waiting, < 0 no timeout)",
                      new Int64Parameter(&_transactionLockTimeout));
+  
+  options->addHiddenOption("--rocksdb.total-write-buffer-size",
+                           "maximum total size of in-memory write buffers (0 = unbounded)",
+                           new UInt64Parameter(&_totalWriteBufferSize));
 
   options->addOption("--rocksdb.write-buffer-size",
                      "amount of data to build up in memory before converting "
@@ -242,6 +248,10 @@ void RocksDBOptionFeature::collectOptions(
   options->addOption("--rocksdb.block-cache-shard-bits",
                      "number of shard bits to use for block cache (use -1 for default value)",
                      new Int64Parameter(&_blockCacheShardBits));
+  
+  options->addOption("--rocksdb.enforce-block-cache-size-limit",
+                     "if true, strictly enforces the block cache size limit",
+                     new BooleanParameter(&_enforceBlockCacheSizeLimit));
 
   options->addOption("--rocksdb.table-block-size",
                      "approximate size (in bytes) of user data packed per block",
@@ -273,6 +283,11 @@ void RocksDBOptionFeature::validateOptions(
   if (_writeBufferSize > 0 && _writeBufferSize < 1024 * 1024) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "invalid value for '--rocksdb.write-buffer-size'";
+    FATAL_ERROR_EXIT();
+  }
+  if (_totalWriteBufferSize > 0 && _totalWriteBufferSize < 64 * 1024 * 1024) {
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "invalid value for '--rocksdb.total-write-buffer-size'";
     FATAL_ERROR_EXIT();
   }
   if (_maxBytesForLevelMultiplier <= 0.0) {
@@ -327,6 +342,7 @@ void RocksDBOptionFeature::start() {
 
   LOG_TOPIC(TRACE, Logger::ROCKSDB) << "using RocksDB options:"
                                     << " wal_dir: " << _walDirectory << "'"
+                                    << ", total_write_buffer_size: " << _totalWriteBufferSize
                                     << ", write_buffer_size: " << _writeBufferSize
                                     << ", max_write_buffer_number: " << _maxWriteBufferNumber
                                     << ", max_total_wal_size: " << _maxTotalWalSize
@@ -342,6 +358,7 @@ void RocksDBOptionFeature::start() {
                                     << ", num_threads_low: " << _numThreadsLow
                                     << ", block_cache_size: " << _blockCacheSize
                                     << ", block_cache_shard_bits: " << _blockCacheShardBits
+                                    << ", block_cache_strict_capacity_limit: " << _enforceBlockCacheSizeLimit
                                     << ", table_block_size: " << _tableBlockSize
                                     << ", recycle_log_file_num: " << _recycleLogFileNum
                                     << ", compaction_read_ahead_size: " << _compactionReadaheadSize

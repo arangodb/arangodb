@@ -88,7 +88,9 @@ class InitialSyncer : public Syncer {
   virtual void setProgress(std::string const& msg) {}
 
   /// @brief send a "start batch" command
-  Result sendStartBatch();
+  /// @param patchCount try to patch count of this collection
+  ///        only effective with the incremental sync
+  Result sendStartBatch(std::string const& patchCount = "");
 
   /// @brief send an "extend batch" command
   Result sendExtendBatch();
@@ -110,7 +112,7 @@ class InitialSyncer : public Syncer {
   double _batchUpdateTime;
 
   /// @brief ttl for batches
-  int _batchTtl;
+  double _batchTtl;
 
 };
 }

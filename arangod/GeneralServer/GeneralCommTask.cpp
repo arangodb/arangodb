@@ -135,11 +135,11 @@ bool resolveRequestContext(GeneralRequest& req) {
   if (!guard) {
     return false;
   }
-  
+
   // the vocbase context is now responsible for releasing the vocbase
   req.setRequestContext(guard.get(), true);
   guard.release();
-  
+
   // the "true" means the request is the owner of the context
   return true;
 }
@@ -150,11 +150,23 @@ bool resolveRequestContext(GeneralRequest& req) {
 GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
     GeneralRequest& req) {
   if (!::resolveRequestContext(req)) {
-    addErrorResponse(rest::ResponseCode::NOT_FOUND, req.contentTypeResponse(),
-                     req.messageId(), TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-                     TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND));
 
-    return RequestFlow::Abort;
+    // BUG FIX - do not answer with DATABASE_NOT_FOUND, when follower in active failover
+    auto mode = ServerState::serverMode();
+    switch (mode) {
+      case ServerState::Mode::TRYAGAIN:
+      case ServerState::Mode::REDIRECT: {
+        auto resp = createResponse(rest::ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
+        ReplicationFeature::prepareFollowerResponse(resp.get(), mode);
+        addResponse(*resp.get(), nullptr);
+        return RequestFlow::Abort;
+      }
+      default:
+        addErrorResponse(rest::ResponseCode::NOT_FOUND, req.contentTypeResponse(),
+               req.messageId(), TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+               TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND));
+        return RequestFlow::Abort;
+    }
   }
   TRI_ASSERT(req.requestContext() != nullptr);
 
@@ -489,11 +501,12 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
     // no authentication required at all
     return rest::ResponseCode::OK;
   }
-    
+
   std::string const& path = request.requestPath();
   std::string const& username = request.user();
+  bool userAuthenticated = request.authenticated();
 
-  rest::ResponseCode result = request.authenticated()
+  rest::ResponseCode result = userAuthenticated
                                   ? rest::ResponseCode::OK
                                   : rest::ResponseCode::UNAUTHORIZED;
 
@@ -505,7 +518,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
     result = rest::ResponseCode::UNAUTHORIZED;
     LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "Access forbidden to " << path;
 
-    if (request.authenticated()) {
+    if (userAuthenticated) {
       request.setAuthenticated(false);
     }
   }
@@ -552,6 +565,10 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
         // req.user when it could be validated
         result = rest::ResponseCode::OK;
         vc->forceSuperuser();
+      } else if (userAuthenticated && path == "/_api/cluster/endpoints") {
+        // allow authenticated users to access cluster/endpoints
+        result = rest::ResponseCode::OK;
+        //vc->forceReadOnly();
       } else if (request.requestType() == RequestType::POST &&
                  !username.empty() &&
                  StringUtils::isPrefix(path, ApiUser + username + '/')) {

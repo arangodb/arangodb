@@ -659,7 +659,7 @@ void ServerState::setShortId(uint32_t id) {
   if (id == 0) {
     return;
   }
-      
+
   _shortId.store(id, std::memory_order_relaxed);
 }
 
