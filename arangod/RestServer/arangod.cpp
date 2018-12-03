@@ -307,6 +307,12 @@ static void WINAPI ServiceMain(DWORD dwArgc, LPSTR* lpszArgv) {
 #endif
 
 int main(int argc, char* argv[]) {
+#ifdef __linux__
+#if USE_ENTERPRISE
+  arangodb::checkLicenseKey();
+#endif
+#endif
+
   TRI_GET_ARGV(argc, argv);
 #if _WIN32
   if (argc > 1 && TRI_EqualString("--start-service", argv[1])) {
