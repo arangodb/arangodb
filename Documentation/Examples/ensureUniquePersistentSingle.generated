@@ -4,7 +4,7 @@ arangosh&gt; db.ids.ensureIndex({ <span class="hljs-attr">type</span>: <span cla
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"myId"</span> 
   ], 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"ids/16353"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"ids/16355"</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"persistent"</span>, 
@@ -13,21 +13,21 @@ arangosh&gt; db.ids.ensureIndex({ <span class="hljs-attr">type</span>: <span cla
 }
 arangosh&gt; db.ids.save({ <span class="hljs-string">"myId"</span>: <span class="hljs-number">123</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"ids/16356"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16356"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XzvFaPy--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"ids/16358"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16358"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_X0UvnNi--_"</span> 
 }
 arangosh&gt; db.ids.save({ <span class="hljs-string">"myId"</span>: <span class="hljs-number">456</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"ids/16360"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16360"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XzvFaP2--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"ids/16362"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16362"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_X0UvnNm--_"</span> 
 }
 arangosh&gt; db.ids.save({ <span class="hljs-string">"myId"</span>: <span class="hljs-number">789</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"ids/16363"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16363"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XzvFaP2--B"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"ids/16365"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16365"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_X0UvnNm--B"</span> 
 }
 arangosh&gt; db.ids.save({ <span class="hljs-string">"myId"</span>: <span class="hljs-number">123</span> });
-[ArangoError <span class="hljs-number">1210</span>: unique constraint violated - <span class="hljs-keyword">in</span> index <span class="hljs-number">16353</span> <span class="hljs-keyword">of</span> type persistent over [<span class="hljs-string">"myId"</span>]; conflicting key: <span class="hljs-number">16356</span>]
+[ArangoError <span class="hljs-number">1210</span>: unique constraint violated - <span class="hljs-keyword">in</span> index <span class="hljs-number">16355</span> <span class="hljs-keyword">of</span> type persistent over [<span class="hljs-string">"myId"</span>]; conflicting key: <span class="hljs-number">16358</span>]

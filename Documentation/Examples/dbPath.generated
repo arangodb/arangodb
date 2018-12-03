@@ -1,2 +1,2 @@
 arangosh&gt; <span class="hljs-built_in">require</span>(<span class="hljs-string">"@arangodb"</span>).db._path();
-<span class="hljs-regexp">/tmp/</span>arangosh_ssVzV8/tmp<span class="hljs-number">-29643</span><span class="hljs-number">-1523735299</span>/data/databases/database<span class="hljs-number">-1</span>
+<span class="hljs-regexp">/tmp/</span>arangosh_KUsa21/tmp<span class="hljs-number">-18467</span><span class="hljs-number">-2173726515</span>/data/databases/database<span class="hljs-number">-1</span>
