@@ -213,7 +213,7 @@ TRI_idx_iid_t IndexFactory::validateSlice(arangodb::velocypack::Slice info,
 
   if (iid == 0 && !isClusterConstructor) {
     // Restore is not allowed to generate an id
-    VPackSlice type = info.get("type");
+    VPackSlice type = info.get(StaticStrings::IndexType);
     // dont generate ids for indexes of type "primary"
     // id 0 is expected for primary indexes
     if (!type.isString() || !type.isEqualString("primary")) {
