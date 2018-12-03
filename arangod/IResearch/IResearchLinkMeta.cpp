@@ -92,12 +92,20 @@ IResearchLinkMeta::IResearchLinkMeta()
   }
 }
 
-IResearchLinkMeta::IResearchLinkMeta(IResearchLinkMeta const& other) {
-  *this = other;
+IResearchLinkMeta::IResearchLinkMeta(IResearchLinkMeta const& other)
+  : _analyzers(other._analyzers),
+    _fields(other._fields),
+    _includeAllFields(other._includeAllFields),
+    _trackListPositions(other._trackListPositions),
+    _storeValues(other._storeValues) {
 }
 
-IResearchLinkMeta::IResearchLinkMeta(IResearchLinkMeta&& other) noexcept {
-  *this = std::move(other);
+IResearchLinkMeta::IResearchLinkMeta(IResearchLinkMeta&& other) noexcept
+  : _analyzers(std::move(other._analyzers)),
+    _fields(std::move(other._fields)),
+    _includeAllFields(other._includeAllFields),
+    _trackListPositions(other._trackListPositions),
+    _storeValues(other._storeValues) {
 }
 
 IResearchLinkMeta& IResearchLinkMeta::operator=(IResearchLinkMeta&& other) noexcept {
@@ -460,7 +468,7 @@ bool IResearchLinkMeta::json(
   return builder.builder && json(*(builder.builder), ignoreEqual, mask);
 }
 
-size_t IResearchLinkMeta::memory() const {
+size_t IResearchLinkMeta::memory() const noexcept {
   auto size = sizeof(IResearchLinkMeta);
 
   size += _analyzers.size() * sizeof(decltype(_analyzers)::value_type);

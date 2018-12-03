@@ -29,7 +29,7 @@ The file specified by *filename* can be generated using OpenSSL:
 
 ```
 # create private key in file "server.key"
-openssl genrsa -des3 -out server.key 1024
+openssl genpkey -out server.key -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -aes-128-cbc
 
 # create certificate signing request (csr) in file "server.csr"
 openssl req -new -key server.key -out server.csr
