@@ -31,7 +31,8 @@ ArangoSearch
 ------------
 
 * ArangoSearch index format in 3.4RC3 is incompatible to earlier issued release candidates
+* ArangoSearch index format in 3.4RC4 is incompatible to earlier issued release candidates
 * ArangoSearch ignores `_id` attribute even if `includeAllFields` is set to `true` (internal #445)
 * Using score functions (BM25/TFIDF) in ArangoDB expression is not supported (internal #316)
 * Using a loop variable in expressions within a corresponding SEARCH condition is not supported (internal #318)
-* RocksDB recovery fails sometimes after renaming a view (internal #469)
+* Score values evaluated by corresponding score functions (BM25/TFIDF) may differ in single-server and cluster with a collection having more than 1 shard (internal #508)
