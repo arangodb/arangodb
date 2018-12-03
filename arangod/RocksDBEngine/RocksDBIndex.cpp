@@ -512,9 +512,13 @@ static arangodb::Result fillIndex(transaction::Methods& trx,
 /// from this collection
 arangodb::Result RocksDBIndex::fillIndex(transaction::Methods& trx) {
   TRI_ASSERT(trx.state()->collection(_collection.id(), AccessMode::Type::WRITE));
+  _isBuilding.store(true, std::memory_order_release);
   
 //  std::unique_ptr<IndexIterator> it(new RocksDBAllIndexIterator(&_collection, trx, primaryIndex()));
   RocksDBCollection* coll = static_cast<RocksDBCollection*>(_collection.getPhysical());
+  auto guard = scopeGuard([this] {
+    _isBuilding.store(false, std::memory_order_release);
+  });
   
   if (this->unique()) {
     // unique index. we need to keep track of all our changes because we need to avoid

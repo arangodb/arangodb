@@ -120,7 +120,7 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
     VPackBuilder tmpInner;
     auto c = ClusterInfo::instance()->getCollection(databaseName, cid);
     c->getIndexesVPack(tmpInner, flags, [&](arangodb::Index const* idx) {
-      return !withHidden || !idx->isHidden();
+      return withHidden || !idx->isHidden();
     });
 
     tmp.openArray();
