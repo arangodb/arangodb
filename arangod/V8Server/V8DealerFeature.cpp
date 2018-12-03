@@ -479,8 +479,6 @@ void V8DealerFeature::copyInstallationFiles() {
         << "': " << error;
       FATAL_ERROR_EXIT();
     }
-    // need to keep it because of js/node/node_modules, which we intentionally do not copy!
-    _moduleDirectories.push_back(_startupDirectory);
   }
   _startupDirectory = copyJSPath;
 }
