@@ -29,16 +29,19 @@
 namespace arangodb {
 namespace consensus {
 
+class Agent;
+
 class StoreCallback : public arangodb::ClusterCommCallback {
  public:
-  StoreCallback(std::string const&, std::string const&);
+  StoreCallback(std::string const&, query_t const&, Agent*);
 
   bool operator()(arangodb::ClusterCommResult*) override final;
 
  private:
 
-  std::string _path;
-  std::string _body;
+  std::string _url;
+  query_t _body;
+  Agent* _agent;
   
 };
 }
