@@ -274,7 +274,8 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
             entry.grantCollection(vocbase->name(), name, auth::Level::RW);
             return TRI_ERROR_NO_ERROR;
           });
-          if (r.ok()) {
+          if (r.ok() || r.is(TRI_ERROR_USER_NOT_FOUND)) {
+            // it seems to be allowed to created collections with an unknown user
             break;
           }
           if (!r.is(TRI_ERROR_ARANGO_CONFLICT) || ++tries == 10) {
@@ -307,7 +308,8 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
             entry.grantCollection(vocbase->name(), name, auth::Level::RW);
             return TRI_ERROR_NO_ERROR;
           });
-          if (r.ok()) {
+          if (r.ok() || r.is(TRI_ERROR_USER_NOT_FOUND)) {
+            // it seems to be allowed to created collections with an unknown user
             break;
           }
           if (!r.is(TRI_ERROR_ARANGO_CONFLICT) || ++tries == 10) {
