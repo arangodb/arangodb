@@ -20,7 +20,7 @@ x-content-type-options: nosniff
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"traditional"</span>, 
     <span class="hljs-string">"lastValue"</span> : <span class="hljs-number">0</span> 
   }, 
-  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hB9CF045BCD65/103111"</span>, 
+  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h506DFD5BB5B9/103111"</span>, 
   <span class="hljs-string">"statusString"</span> : <span class="hljs-string">"loaded"</span>, 
   <span class="hljs-string">"id"</span> : <span class="hljs-string">"103111"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"testCollectionBasics"</span>, 
@@ -52,7 +52,7 @@ x-content-type-options: nosniff
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"traditional"</span>, 
     <span class="hljs-string">"lastValue"</span> : <span class="hljs-number">0</span> 
   }, 
-  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hB9CF045BCD65/103117"</span>, 
+  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h506DFD5BB5B9/103117"</span>, 
   <span class="hljs-string">"statusString"</span> : <span class="hljs-string">"loaded"</span>, 
   <span class="hljs-string">"id"</span> : <span class="hljs-string">"103117"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"testCollectionEdges"</span>, 

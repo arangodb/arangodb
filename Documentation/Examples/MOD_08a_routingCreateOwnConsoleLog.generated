@@ -11,5 +11,5 @@ arangosh&gt; db._modules.save({
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_modules/102996"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"102996"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_X1TApzi--_"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_X1nZSR6--_"</span> 
 }
