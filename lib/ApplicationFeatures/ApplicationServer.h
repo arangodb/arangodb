@@ -131,7 +131,9 @@ class ApplicationServer {
   };
 
   static ApplicationServer* server;
-
+  static bool isUnpreparing() {
+    return server != nullptr && server->_unpreparing.load();
+  }
   static bool isStopping() {
     return server != nullptr && server->_stopping.load();
   }
@@ -228,6 +230,11 @@ class ApplicationServer {
 
   // signal the server to shut down
   void beginShutdown();
+
+  // set state to unpreparing phase - no more waiting for external resources from here.
+  void beginUnprepare() {
+    _unpreparing.exchange(true);
+  }
 
   // report that we are going down by fatal error
   void shutdownFatalError();
@@ -368,6 +375,8 @@ class ApplicationServer {
 
   // the install directory of this program:
   char const* _binaryPath;
+
+  std::atomic<bool> _unpreparing;
 
   // fail callback
   std::function<void(std::string const&)> fail;

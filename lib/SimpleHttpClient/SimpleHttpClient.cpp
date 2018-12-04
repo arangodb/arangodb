@@ -409,7 +409,7 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
         break;
     }
 
-    if (application_features::ApplicationServer::isStopping()) {
+    if (application_features::ApplicationServer::isUnpreparing()) {
       setErrorMessage("Command locally aborted");
       return nullptr;
     }

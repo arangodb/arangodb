@@ -52,7 +52,8 @@ ApplicationServer::ApplicationServer(std::shared_ptr<ProgramOptions> options,
     : _state(ServerState::UNINITIALIZED),
       _options(options),
       _stopping(false),
-      _binaryPath(binaryPath) {
+      _binaryPath(binaryPath),
+      _unpreparing(false) {
   // register callback function for failures
   fail = failCallback;
   

@@ -497,6 +497,9 @@ void ClusterFeature::unprepare() {
   AgencyCommManager::MANAGER->stop();
 
   ClusterInfo::cleanup();
+
+  // no more tcp requests from now on.
+  ApplicationServer::server->beginUnprepare();
 }
 
 void ClusterFeature::setUnregisterOnShutdown(bool unregisterOnShutdown) {
