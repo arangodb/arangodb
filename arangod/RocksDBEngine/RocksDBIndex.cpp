@@ -391,7 +391,6 @@ static arangodb::Result fillIndexBackgroundNonUnique(transaction::Methods& trx,
   std::unique_ptr<rocksdb::Iterator> it(rootDB->NewIterator(ro, docCF));
   
   it->SeekForPrev(bounds.end());
-  it->Prev();
   if (!it->Valid() || it->key().compare(bounds.start()) < 0) {
     return res;
   }
@@ -406,12 +405,7 @@ static arangodb::Result fillIndexBackgroundNonUnique(transaction::Methods& trx,
   toRevisit.reserve(1024);
   
   it->Seek(bounds.start());
-  while (true) { // it->Valid() && it->key().compare(lastKey) <= 0
-    bool vv = it->Valid();
-    int kk = it->key().compare(lastKey);
-    if (!vv || kk > 0) {
-      break;
-    }
+  while (it->Valid() && it->key().compare(lastKey) <= 0) {
     
     bool skipKey = false;
     rocksdb::PinnableSlice slice;
@@ -534,7 +528,6 @@ static arangodb::Result fillIndexBackgroundUnique(transaction::Methods& trx,
   std::unique_ptr<rocksdb::Iterator> it(rootDB->NewIterator(ro, docCF));
   
   it->SeekForPrev(bounds.end());
-  it->Prev();
   if (!it->Valid() || it->key().compare(bounds.start()) < 0) {
     return res;
   }
