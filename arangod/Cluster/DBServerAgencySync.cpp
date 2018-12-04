@@ -94,10 +94,17 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
 
         auto const& folls = collection->followers();
         std::string const theLeader = folls->getLeader();
+        bool theLeaderTouched = folls->getLeaderTouched();
 
-        collections.add("theLeader", VPackValue(theLeader));
+        // Note that whenever theLeader was set explicitly since the collection
+        // object was created, we believe it. Otherwise, we do not accept
+        // that we are the leader. This is to circumvent the problem that
+        // after a restart we would implicitly be assumed to be the leader.
+        collections.add("theLeader", VPackValue(theLeaderTouched ? theLeader : "NOT_YET_TOUCHED"));
+        collections.add("theLeaderTouched", VPackValue(theLeaderTouched));
 
-        if (theLeader.empty()) {  // we are the leader ourselves
+        if (theLeader.empty() && theLeaderTouched) {
+          // we are the leader ourselves
           // In this case we report our in-sync followers here in the format
           // of the agency: [ leader, follower1, follower2, ... ]
           collections.add(VPackValue("servers"));
@@ -267,7 +274,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   } else {
     result.errorMessage = "Report from phase 1 and 2 was not closed.";
   }
-  
+
   auto took = duration<double>(clock::now() - start).count();
   if (took > 30.0) {
     LOG_TOPIC(WARN, Logger::MAINTENANCE) << "DBServerAgencySync::execute "

@@ -306,6 +306,7 @@ function ActiveFailoverSuite() {
       setReadOnly(currentLead, false);
       assertTrue(checkInSync(currentLead, servers));
 
+      internal.sleep(2);
       let endpoints = getClusterEndpoints();
       assertEqual(endpoints.length, servers.length);
       assertEqual(endpoints[0], currentLead);
