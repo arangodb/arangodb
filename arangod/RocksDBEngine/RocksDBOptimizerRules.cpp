@@ -29,10 +29,12 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Function.h"
 #include "Aql/IndexNode.h"
+#include "Aql/ModificationNodes.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRule.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/SortNode.h"
+#include "Basics/StaticStrings.h"
 #include "Indexes/Index.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -82,7 +84,29 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt,
 
     ExecutionNode* current = n->getFirstParent();
     while (current != nullptr) {
-      if (current->getType() == EN::CALCULATION) {
+      bool doRegularCheck = false;
+
+      if (current->getType() == EN::REMOVE) {
+        RemoveNode const* removeNode = ExecutionNode::castTo<RemoveNode const*>(current);
+        if (removeNode->inVariable() == v) { 
+          // FOR doc IN collection REMOVE doc IN ...
+          attributes.emplace(StaticStrings::KeyString);
+          optimize = true;
+        } else {
+          doRegularCheck = true;
+        }
+      } else if (current->getType() == EN::UPDATE || current->getType() == EN::REPLACE) {
+        UpdateReplaceNode const* modificationNode = ExecutionNode::castTo<UpdateReplaceNode const*>(current);
+
+        if (modificationNode->inKeyVariable() == v && 
+            modificationNode->inDocVariable() != v) {
+          // FOR doc IN collection UPDATE/REPLACE doc IN ...
+          attributes.emplace(StaticStrings::KeyString);
+          optimize = true;
+        } else {
+          doRegularCheck = true;
+        }
+      } else if (current->getType() == EN::CALCULATION) {
         Expression* exp = ExecutionNode::castTo<CalculationNode*>(current)->expression();
 
         if (exp != nullptr && exp->node() != nullptr) {
@@ -115,6 +139,11 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt,
           }
         }
       } else {
+        // all other node types mandate a check
+        doRegularCheck = true;
+      }
+
+      if (doRegularCheck) {
         vars.clear();
         current->getVariablesUsedHere(vars);
 
