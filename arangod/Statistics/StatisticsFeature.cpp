@@ -195,7 +195,7 @@ void StatisticsFeature::start() {
   }
 }
 
-void StatisticsFeature::unprepare() {
+void StatisticsFeature::stop() {
   if (_statisticsThread != nullptr) {
     _statisticsThread->beginShutdown();
 
