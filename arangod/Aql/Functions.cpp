@@ -1505,6 +1505,110 @@ AqlValue geoContainsIntersect(ExpressionContext* expressionContext,
   return AqlValue(AqlValueHintBool(result));
 }
 
+static Result parseGeoPolygon(VPackSlice polygon, VPackBuilder& b) {
+  // check if nested or not
+  bool unnested = false;
+  for (auto const& v : VPackArrayIterator(polygon)) {
+    if (v.isArray() && v.length() == 2) {
+      unnested = true;
+    }
+  }
+
+  if (unnested) {
+    b.openArray();
+  }
+
+  if (!polygon.isArray()) {
+    return Result(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+        "Polygon needs to be an array of positions.");
+  }
+
+  for (auto const& v : VPackArrayIterator(polygon)) {
+    if (v.isArray() && v.length() > 2) {
+      b.openArray();
+      for (auto const& coord : VPackArrayIterator(v)) {
+        if (coord.isNumber()) {
+          b.add(VPackValue(coord.getNumber<double>()));
+        } else if (coord.isArray()) {
+          if (coord.length() < 2) {
+            return Result(
+                TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                "a Position needs at least two numeric values");
+          } else {
+            b.openArray();
+            for (auto const& innercord : VPackArrayIterator(coord)) {
+              if (innercord.isNumber()) {
+                b.add(VPackValue(innercord.getNumber<double>())); // TODO
+              } else if (innercord.isArray() && innercord.length() == 2) {
+                if (innercord.at(0).isNumber() && innercord.at(1).isNumber()) {
+                  b.openArray();
+                  b.add(VPackValue(innercord.at(0).getNumber<double>()));
+                  b.add(VPackValue(innercord.at(1).getNumber<double>()));
+                  b.close();
+                } else {
+                  return Result(
+                      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                      "coordinate is not a number");
+                }
+              } else {
+                return Result(
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                    "not an array describing a position");
+              }
+            }
+            b.close();
+          }
+        } else {
+          return Result(
+              TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+              "not an array containing positions");
+        }
+      }
+      b.close();
+    } else if (v.isArray() && v.length() == 2) {
+      if (polygon.length() > 2) {
+        b.openArray();
+        for (auto const& innercord : VPackArrayIterator(v)) {
+          if (innercord.isNumber()) {
+            b.add(VPackValue(innercord.getNumber<double>()));
+          } else if (innercord.isArray() && innercord.length() == 2) {
+            if (innercord.at(0).isNumber() && innercord.at(1).isNumber()) {
+              b.openArray();
+              b.add(VPackValue(innercord.at(0).getNumber<double>()));
+              b.add(VPackValue(innercord.at(1).getNumber<double>()));
+              b.close();
+            } else {
+              return Result(
+                  TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                  "coordinate is not a number");
+            }
+          } else {
+            return Result(
+                TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                "not a numeric value");
+          }
+        }
+        b.close();
+      } else {
+        return Result(
+            TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+            "a Polygon needs at least three positions");
+      }
+    } else {
+      return Result(
+          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+          "not an array containing positions");
+    }
+  }
+
+  if (unnested) {
+    b.close();
+  }
+
+  return {TRI_ERROR_NO_ERROR};
+}
+
 } // namespace
 
 void Functions::init() {
@@ -5224,7 +5328,7 @@ AqlValue Functions::GeoPolygon(ExpressionContext* expressionContext,
 
   if (!geoArray.isArray()) {
     ::registerWarning(expressionContext, "GEO_POLYGON",
-                      TRI_ERROR_QUERY_ARRAY_EXPECTED);
+        TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(arangodb::velocypack::Slice::nullSlice());
   }
 
@@ -5236,114 +5340,18 @@ AqlValue Functions::GeoPolygon(ExpressionContext* expressionContext,
   AqlValueMaterializer materializer(trx);
   VPackSlice s = materializer.slice(geoArray, false);
 
-  // check if nested or not
-  bool unnested = false;
-  for (auto const& v : VPackArrayIterator(s)) {
-    if (v.isArray() && v.length() == 2) {
-      unnested = true;
-    }
-  }
-  if (unnested) {
-    b.openArray();
+  Result res = ::parseGeoPolygon(s, b);
+  if (res.fail()) {
+    ::registerWarning(expressionContext, "GEO_POLYGON", res);
+    return AqlValue(arangodb::velocypack::Slice::nullSlice());
   }
 
-  for (auto const& v : VPackArrayIterator(s)) {
-    if (v.isArray() && v.length() > 2) {
-      b.openArray();
-      for (auto const& coord : VPackArrayIterator(v)) {
-        if (coord.isNumber()) {
-          b.add(VPackValue(coord.getNumber<double>()));
-        } else if (coord.isArray()) {
-          if (coord.length() < 2) {
-            ::registerWarning(expressionContext, "GEO_POLYGON", Result(
-                  TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                  "a Position needs at least two numeric values"));
-            return AqlValue(arangodb::velocypack::Slice::nullSlice());
-          } else {
-            b.openArray();
-            for (auto const& innercord : VPackArrayIterator(coord)) {
-              if (innercord.isNumber()) {
-                b.add(VPackValue(innercord.getNumber<double>()));
-              } else if (innercord.isArray()) {
-                if (innercord.at(0).isNumber() && innercord.at(1).isNumber()) {
-                  b.openArray();
-                  b.add(VPackValue(innercord.at(0).getNumber<double>()));
-                  b.add(VPackValue(innercord.at(1).getNumber<double>()));
-                  b.close();
-                } else {
-                  ::registerWarning(expressionContext, "GEO_POLYGON", Result(
-                        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                        "not a number"));
-                  return AqlValue(arangodb::velocypack::Slice::nullSlice());
-                }
-              } else {
-                ::registerWarning(expressionContext, "GEO_POLYGON", Result(
-                      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                      "not an array describing a position"));
-                return AqlValue(arangodb::velocypack::Slice::nullSlice());
-              }
-            }
-            b.close();
-          }
-        } else {
-          ::registerWarning(expressionContext, "GEO_POLYGON", Result(
-                TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                "not an array containing positions"));
-          return AqlValue(arangodb::velocypack::Slice::nullSlice());
-        }
-      }
-      b.close();
-    } else if (v.isArray() && v.length() == 2) {
-        if (s.length() > 2) {
-        b.openArray();
-        for (auto const& innercord : VPackArrayIterator(v)) {
-          if (innercord.isNumber()) {
-            b.add(VPackValue(innercord.getNumber<double>()));
-          } else if (innercord.isArray()) {
-            if (innercord.at(0).isNumber() && innercord.at(1).isNumber()) {
-              b.openArray();
-              b.add(VPackValue(innercord.at(0).getNumber<double>()));
-              b.add(VPackValue(innercord.at(1).getNumber<double>()));
-              b.close();
-            } else {
-              ::registerWarning(expressionContext, "GEO_POLYGON", Result(
-                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                    "not a number"));
-              return AqlValue(arangodb::velocypack::Slice::nullSlice());
-            }
-          } else {
-            ::registerWarning(expressionContext, "GEO_POLYGON", Result(
-                  TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                  "not a numeric value"));
-            return AqlValue(arangodb::velocypack::Slice::nullSlice());
-          }
-        }
-        b.close();
-      } else {
-        ::registerWarning(expressionContext, "GEO_POLYGON", Result(
-              TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-              "a Polygon needs at least three positions"));
-        return AqlValue(arangodb::velocypack::Slice::nullSlice());
-      }
-    } else {
-      ::registerWarning(expressionContext, "GEO_POLYGON", Result(
-            TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-            "not an array containing positions"));
-      return AqlValue(arangodb::velocypack::Slice::nullSlice());
-    }
-  }
-
-  b.close();
-  b.close();
-
-  if (unnested) {
-    b.close();
-  }
+  b.close(); // coordinates
+  b.close(); // object
 
   return AqlValue(b);
 }
 
-// TODO: merge MULTIPOLYGON with POLYGON and reuse functions
 /// @brief function GEO_MULTIPOLYGON
 AqlValue Functions::GeoMultiPolygon(ExpressionContext* expressionContext,
                                transaction::Methods* trx,
@@ -5359,7 +5367,30 @@ AqlValue Functions::GeoMultiPolygon(ExpressionContext* expressionContext,
 
   if (!geoArray.isArray()) {
     ::registerWarning(expressionContext, "GEO_MULTIPOLYGON",
-                      TRI_ERROR_QUERY_ARRAY_EXPECTED);
+        TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(arangodb::velocypack::Slice::nullSlice());
+  }
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice s = materializer.slice(geoArray, false);
+
+  /*
+  return GEO_MULTIPOLYGON([
+    [
+      [[40, 40], [20, 45], [45, 30], [40, 40]]
+    ],
+    [
+      [[20, 35], [10, 30], [10, 10], [30, 5], [45, 20], [20, 35]],
+      [[30, 20], [20, 15], [20, 25], [30, 20]]
+    ]
+  ])
+  */
+
+  TRI_ASSERT(s.isArray());
+  if (s.length() < 2) {
+    ::registerWarning(expressionContext, "GEO_MULTIPOLYGON", Result(
+          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+          "a MultiPolygon needs at least two Polygons inside."));
     return AqlValue(arangodb::velocypack::Slice::nullSlice());
   }
 
@@ -5368,84 +5399,22 @@ AqlValue Functions::GeoMultiPolygon(ExpressionContext* expressionContext,
   b.add("type", VPackValue("MultiPolygon"));
   b.add("coordinates", VPackValue(VPackValueType::Array));
 
-  AqlValueMaterializer materializer(trx);
-  VPackSlice s = materializer.slice(geoArray, false);
-
-  /*
-  return GEO_MULTIPOLYGON([
-    [
-       [[40, 40], [20, 45], [45, 30], [40, 40]]
-    ],
-    [
-        [[20, 35], [10, 30], [10, 10], [30, 5], [45, 20], [20, 35]],
-        [[30, 20], [20, 15], [20, 25], [30, 20]]
-    ]
-  ])
-  */
-
-  if (s.isArray() && s.length() < 2) {
-    ::registerWarning(expressionContext, "GEO_MULTIPOLYGON", Result(
-          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-          "a MultiPolygon needs at least two Polygons inside."));
-    return AqlValue(arangodb::velocypack::Slice::nullSlice());
-  }
-
   for (auto const& arrayOfPolygons : VPackArrayIterator(s)) {
-  b.openArray();
+    if (!arrayOfPolygons.isArray()) {
+      ::registerWarning(expressionContext, "GEO_MULTIPOLYGON", Result(
+            TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+            "a MultiPolygon needs at least two Polygons inside."));
+      return AqlValue(arangodb::velocypack::Slice::nullSlice());
+    }
+    b.openArray(); //arrayOfPolygons
     for (auto const& v : VPackArrayIterator(arrayOfPolygons)) {
-      if (v.isArray() && v.length() > 2) {
-        b.openArray();
-        for (auto const& coord : VPackArrayIterator(v)) {
-          if (coord.isNumber()) {
-            b.add(VPackValue(coord.getNumber<double>()));
-          } else if (coord.isArray()) {
-            if (coord.length() < 2) {
-              ::registerWarning(expressionContext, "GEO_MULTIPOLYGON", Result(
-                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                    "a Position needs at least two numeric values"));
-              return AqlValue(arangodb::velocypack::Slice::nullSlice());
-            } else {
-              b.openArray();
-              for (auto const& innercord : VPackArrayIterator(coord)) {
-                if (innercord.isNumber()) {
-                  b.add(VPackValue(innercord.getNumber<double>()));
-                } else if (innercord.isArray()) {
-                  if (innercord.at(0).isNumber() && innercord.at(1).isNumber()) {
-                    b.openArray();
-                    b.add(VPackValue(innercord.at(0).getNumber<double>()));
-                    b.add(VPackValue(innercord.at(1).getNumber<double>()));
-                    b.close();
-                  } else {
-                    ::registerWarning(expressionContext, "GEO_MULTIPOLYGON", Result(
-                          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                          "not a number"));
-                    return AqlValue(arangodb::velocypack::Slice::nullSlice());
-                  }
-                } else {
-                  ::registerWarning(expressionContext, "GEO_MULTIPOLYGON", Result(
-                        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                        "not an array describing a position"));
-                  return AqlValue(arangodb::velocypack::Slice::nullSlice());
-                }
-              }
-              b.close();
-            }
-          } else {
-            ::registerWarning(expressionContext, "GEO_MULTIPOLYGON", Result(
-                  TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                  "not an array containing positions"));
-            return AqlValue(arangodb::velocypack::Slice::nullSlice());
-          }
-        }
-        b.close();
-      } else {
-        ::registerWarning(expressionContext, "GEO_MULTIPOLYGON", Result(
-              TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-              "not an array containing positions"));
+      Result res = ::parseGeoPolygon(v, b);
+      if (res.fail()) {
+        ::registerWarning(expressionContext, "GEO_MULTIPOLYGON", res);
         return AqlValue(arangodb::velocypack::Slice::nullSlice());
       }
     }
-    b.close();
+    b.close(); //arrayOfPolygons close
   }
 
   b.close();
