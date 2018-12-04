@@ -220,32 +220,32 @@ void Index::validateFields(VPackSlice const& slice) {
 
 /// @brief return the index type based on a type name
 Index::IndexType Index::type(char const* type, size_t len) {
-  if (::strncmp(type, "primary", len) == 0) {
+  if (7 == len && ::strncmp(type, "primary", len) == 0) {
     return TRI_IDX_TYPE_PRIMARY_INDEX;
   }
-  if (::strncmp(type, "edge", len) == 0) {
+  if (4 == len && ::strncmp(type, "edge", len) == 0) {
     return TRI_IDX_TYPE_EDGE_INDEX;
   }
-  if (::strncmp(type, "hash", len) == 0) {
+  if (4 == len && ::strncmp(type, "hash", len) == 0) {
     return TRI_IDX_TYPE_HASH_INDEX;
   }
-  if (::strncmp(type, "skiplist", len) == 0) {
+  if (8 == len && ::strncmp(type, "skiplist", len) == 0) {
     return TRI_IDX_TYPE_SKIPLIST_INDEX;
   }
-  if (::strncmp(type, "persistent", len) == 0 ||
-      ::strncmp(type, "rocksdb", len) == 0) {
+  if ((10 == len && ::strncmp(type, "persistent", len) == 0) ||
+      (7 == len && ::strncmp(type, "rocksdb", len) == 0)) {
     return TRI_IDX_TYPE_PERSISTENT_INDEX;
   }
-  if (::strncmp(type, "fulltext", len) == 0) {
+  if (8 == len && ::strncmp(type, "fulltext", len) == 0) {
     return TRI_IDX_TYPE_FULLTEXT_INDEX;
   }
-  if (::strncmp(type, "geo", len) == 0) {
+  if (3 == len && ::strncmp(type, "geo", len) == 0) {
     return TRI_IDX_TYPE_GEO_INDEX;
   }
-  if (::strncmp(type, "geo1", len) == 0) {
+  if (4 == len && ::strncmp(type, "geo1", len) == 0) {
     return TRI_IDX_TYPE_GEO1_INDEX;
   }
-  if (::strncmp(type, "geo2", len) == 0) {
+  if (4 == len && ::strncmp(type, "geo2", len) == 0) {
     return TRI_IDX_TYPE_GEO2_INDEX;
   }
 #ifdef USE_IRESEARCH
@@ -253,7 +253,7 @@ Index::IndexType Index::type(char const* type, size_t len) {
     return TRI_IDX_TYPE_IRESEARCH_LINK;
   }
 #endif
-  if (::strcmp(type, "noaccess") == 0) {
+  if (8 == len && ::strcmp(type, "noaccess") == 0) {
     return TRI_IDX_TYPE_NO_ACCESS_INDEX;
   }
 

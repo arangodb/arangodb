@@ -278,7 +278,7 @@ class Index {
     /// @brief serialize selectivity estimates
     Estimates = 4,
     /// @brief serialize object ids for persistence
-    ObjectId = 8,
+    Internals = 8,
   };
   
   /// @brief helper for building flags

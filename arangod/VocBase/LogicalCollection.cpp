@@ -649,7 +649,7 @@ arangodb::Result LogicalCollection::appendVelocyPack(
     return (forPersistence || !idx->isHidden());
   };
   if (forPersistence) {
-    flags = Index::makeFlags(Index::Serialize::ObjectId);
+    flags = Index::makeFlags(Index::Serialize::Internals);
   }
   getIndexesVPack(result, flags, filter);
 

@@ -213,8 +213,8 @@ void RocksDBTransactionState::createTransaction() {
              _rocksTransaction->GetState() == rocksdb::Transaction::COMMITED ||
              (_rocksTransaction->GetState() == rocksdb::Transaction::STARTED &&
              _rocksTransaction->GetNumKeys() == 0));
-  _rocksTransaction =
-      db->BeginTransaction(_rocksWriteOptions, trxOpts, _rocksTransaction);
+  rocksdb::WriteOptions wo;
+  _rocksTransaction = db->BeginTransaction(wo, trxOpts, _rocksTransaction);
 
   // add transaction begin marker
   if (!hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
@@ -313,8 +313,9 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     // we do this only for Windows here, because all other platforms use the
     // RocksDB SyncThread to do the syncing
     if (waitForSync()) {
-      _rocksWriteOptions.sync = true;
-      _rocksTransaction->SetWriteOptions(_rocksWriteOptions);
+      rocksdb::WriteOptions wo;
+      wo.sync = true;
+      _rocksTransaction->SetWriteOptions(wo);
     }
 #endif
 

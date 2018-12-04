@@ -145,7 +145,10 @@ class RocksDBIndex : public Index {
   virtual void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>);
   virtual void recalculateEstimates() {}
 
-  arangodb::Result fillIndex(transaction::Methods&);
+  /// @brief fill the index
+  /// @param unlock will be called when the index lock can be released
+  arangodb::Result fillIndex(transaction::Methods&,
+                             std::function<void()> const& unlock);
   
  protected:
   RocksDBIndex(

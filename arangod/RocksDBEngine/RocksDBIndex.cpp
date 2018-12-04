@@ -169,10 +169,11 @@ void RocksDBIndex::unload() {
 void RocksDBIndex::toVelocyPack(VPackBuilder& builder,
                                 std::underlying_type<Serialize>::type flags) const {
   Index::toVelocyPack(builder, flags);
-  if (Index::hasFlag(flags, Index::Serialize::ObjectId)) {
+  if (Index::hasFlag(flags, Index::Serialize::Internals)) {
     // If we store it, it cannot be 0
     TRI_ASSERT(_objectId != 0);
     builder.add("objectId", VPackValue(std::to_string(_objectId)));
+    builder.add(StaticStrings::IndexIsBuilding, VPackValue(isBuilding()));
   }
 }
 
@@ -354,27 +355,27 @@ void RocksDBIndex::setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint
   // Nothing to do.
 }
 
-template<typename WriteBatchType, typename MethodsType>
-static arangodb::Result fillIndex(transaction::Methods& trx,
-                                  RocksDBIndex* ridx,
-                                  RocksDBCollection* coll,
-                                  WriteBatchType& batch) {
+/// Background index filler task
+static arangodb::Result fillIndexBackgroundNonUnique(transaction::Methods& trx,
+                                                     RocksDBIndex* ridx,
+                                                     RocksDBCollection* coll,
+                                                     std::function<void()> const& unlock) {
   auto state = RocksDBTransactionState::toState(&trx);
   arangodb::Result res;
   
   // fillindex can be non transactional, we just need to clean up
   RocksDBEngine* engine = rocksutils::globalRocksEngine();
-  bool const assumeExclusive = engine->inRecovery();
   rocksdb::DB* rootDB = engine->db()->GetRootDB();
   TRI_ASSERT(rootDB != nullptr);
   
   uint64_t numDocsWritten = 0;
+  
   // write batch will be reset every x documents
-  MethodsType batched(state, &batch);
+  rocksdb::WriteBatch batch;
+  RocksDBBatchedMethods batched(state, &batch);
   
   auto bounds = RocksDBKeyBounds::CollectionDocuments(coll->objectId());
-  rocksdb::Slice upper(bounds.end());
-  
+  rocksdb::Slice upper(bounds.end()); // exclusive upper bound
   rocksdb::Status s;
   rocksdb::WriteOptions wo;
   wo.disableWAL = false; // TODO set to true eventually
@@ -388,29 +389,39 @@ static arangodb::Result fillIndex(transaction::Methods& trx,
   
   rocksdb::ColumnFamilyHandle* docCF = bounds.columnFamily();
   std::unique_ptr<rocksdb::Iterator> it(rootDB->NewIterator(ro, docCF));
-
   
+  it->SeekForPrev(bounds.end());
+  it->Prev();
+  if (!it->Valid() || it->key().compare(bounds.start()) < 0) {
+    return res;
+  }
+  std::string lastKey(it->key().data(), it->key().size()); // inclusive
+  unlock(); // release lock
+
   // empty transaction used to lock the keys
   rocksdb::TransactionOptions to;
   to.lock_timeout = 100; // 100ms
-  std::unique_ptr<rocksdb::Transaction> rtrx(engine->db()->BeginTransaction(wo));
+  std::unique_ptr<rocksdb::Transaction> rtrx(engine->db()->BeginTransaction(wo, to));
   std::vector<LocalDocumentId> toRevisit;
   toRevisit.reserve(1024);
   
   it->Seek(bounds.start());
-  while (it->Valid() && it->key().compare(upper) < 0) {
+  while (true) { // it->Valid() && it->key().compare(lastKey) <= 0
+    bool vv = it->Valid();
+    int kk = it->key().compare(lastKey);
+    if (!vv || kk > 0) {
+      break;
+    }
     
     bool skipKey = false;
-    if (!assumeExclusive) {
-      rocksdb::PinnableSlice slice;
-      s = rtrx->GetForUpdate(ro, docCF, it->key(), &slice, /*exclusive*/false);
-      if (s.IsBusy() || s.IsTimedOut() || s.IsTryAgain()) {
-        LOG_DEVEL << "was not able to lock key";
-        toRevisit.push_back(RocksDBKey::documentId(it->key()));
-        skipKey = true;
-      } else if (s.IsNotFound()) { // deleted while we were looking
-        skipKey = true;
-      }
+    rocksdb::PinnableSlice slice;
+    s = rtrx->GetForUpdate(ro, docCF, it->key(), &slice, /*exclusive*/false);
+    if (s.IsBusy() || s.IsTimedOut() || s.IsTryAgain()) {
+      LOG_DEVEL << "was not able to lock key";
+      toRevisit.push_back(RocksDBKey::documentId(it->key()));
+      skipKey = true;
+    } else if (s.IsNotFound()) { // deleted while we were looking
+      skipKey = true;
     }
     
     if (!skipKey) {
@@ -436,14 +447,145 @@ static arangodb::Result fillIndex(transaction::Methods& trx,
     it->Next();
   }
   
-  if (res.ok() && batch.GetWriteBatch()->Count() > 0) {
+ 
+  if (res.ok() && batch.GetWriteBatch()->Count() > 0) {  // write out remaining keys
     s = rootDB->Write(wo, batch.GetWriteBatch());
     if (!s.ok()) {
       res = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
     }
   }
   
-  batch.Clear();
+  if (res.ok() && !toRevisit.empty()) { // now roll-up skipped keys
+    to.lock_timeout = 5000; // longer timeout to increase the odds
+    engine->db()->BeginTransaction(wo, to, rtrx.get()); // release keys
+    RocksDBKey key;
+
+    for (LocalDocumentId const& doc : toRevisit) {
+      key.constructDocument(coll->objectId(), doc);
+
+      rocksdb::PinnableSlice slice;
+      s = rtrx->GetForUpdate(ro, docCF, key.string(), &slice, /*exclusive*/false);
+      if (!s.ok()) {
+        res = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
+        break;
+      }
+      res = ridx->insertInternal(&trx, &batched, doc,
+                                 VPackSlice(slice.data()),
+                                 Index::OperationMode::normal);
+      if (res.fail()) {
+        break;
+      }
+
+      numDocsWritten++;
+    }
+    
+    if (res.ok() && batch.GetWriteBatch()->Count() > 0) {
+      s = rootDB->Write(wo, batch.GetWriteBatch());
+      if (!s.ok()) {
+        res = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
+      }
+    }
+  }
+  
+  // we will need to remove index elements created before an error
+  // occurred, this needs to happen since we are non transactional
+  if (res.fail()) {
+    RocksDBKeyBounds bounds = ridx->getBounds();
+    arangodb::Result res2 = rocksutils::removeLargeRange(rocksutils::globalRocksDB(), bounds,
+                                                         true, /*useRangeDel*/numDocsWritten > 25000);
+    if (res2.fail()) {
+      LOG_TOPIC(WARN, Logger::ENGINES) << "was not able to roll-back "
+      << "index creation: " << res2.errorMessage();
+    }
+  }
+  
+  return res;
+}
+
+// Background index filler task
+static arangodb::Result fillIndexBackgroundUnique(transaction::Methods& trx,
+                                                  RocksDBIndex* ridx,
+                                                  RocksDBCollection* coll,
+                                                  std::function<void()> const& unlock) {
+  auto state = RocksDBTransactionState::toState(&trx);
+  arangodb::Result res;
+  
+  // fillindex can be non transactional, we just need to clean up
+  RocksDBEngine* engine = rocksutils::globalRocksEngine();
+  rocksdb::DB* rootDB = engine->db()->GetRootDB();
+  TRI_ASSERT(rootDB != nullptr);
+  
+  uint64_t numDocsWritten = 0;
+  
+  auto bounds = RocksDBKeyBounds::CollectionDocuments(coll->objectId());
+  rocksdb::Slice upper(bounds.end()); // exclusive upper bound
+  rocksdb::Status s;
+  rocksdb::WriteOptions wo;
+  wo.disableWAL = false; // TODO set to true eventually
+  
+  // we iterator without a snapshot
+  rocksdb::ReadOptions ro;
+  ro.prefix_same_as_start = true;
+  ro.iterate_upper_bound = &upper;
+  ro.verify_checksums = false;
+  ro.fill_cache = false;
+  
+  rocksdb::ColumnFamilyHandle* docCF = bounds.columnFamily();
+  std::unique_ptr<rocksdb::Iterator> it(rootDB->NewIterator(ro, docCF));
+  
+  it->SeekForPrev(bounds.end());
+  it->Prev();
+  if (!it->Valid() || it->key().compare(bounds.start()) < 0) {
+    return res;
+  }
+  std::string lastKey(it->key().data(), it->key().size()); // inclusive
+  unlock(); // release lock
+  
+  // empty transaction used to lock the keys
+  rocksdb::TransactionOptions to;
+  to.lock_timeout = 100; // 100ms
+  std::unique_ptr<rocksdb::Transaction> rtrx(engine->db()->BeginTransaction(wo, to));
+  RocksDBSubTrxMethods batched(state, rtrx.get());
+  
+  std::vector<LocalDocumentId> toRevisit;
+  toRevisit.reserve(1024);
+  
+  it->Seek(bounds.start());
+  while (it->Valid() && it->key().compare(lastKey) <= 0) {
+    
+    bool skipKey = false;
+    rocksdb::PinnableSlice slice;
+    s = rtrx->GetForUpdate(ro, docCF, it->key(), &slice, /*exclusive*/false);
+    if (s.IsBusy() || s.IsTimedOut() || s.IsTryAgain()) {
+      LOG_DEVEL << "was not able to lock key";
+      toRevisit.push_back(RocksDBKey::documentId(it->key()));
+      skipKey = true;
+    } else if (s.IsNotFound()) { // deleted while we were looking
+      skipKey = true;
+    }
+    
+    if (!skipKey) {
+      res = ridx->insertInternal(&trx, &batched, RocksDBKey::documentId(it->key()),
+                                 VPackSlice(it->value().data()),
+                                 Index::OperationMode::normal);
+      if (res.fail()) {
+        break;
+      }
+      numDocsWritten++;
+    }
+    
+    if (numDocsWritten % 200 == 0) { // commit buffered writes
+      s = rtrx->Commit();
+      if (!s.ok()) {
+        res = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
+        break;
+      }
+      engine->db()->BeginTransaction(wo, to, rtrx.get()); // reuse transaction
+    }
+    
+    it->Next();
+  }
+  
   if (res.ok() && !toRevisit.empty()) { // now roll-up skipped keys
     to.lock_timeout = 5000; // longer timeout to increase the odds
     engine->db()->BeginTransaction(wo, to, rtrx.get()); // release keys
@@ -469,29 +611,94 @@ static arangodb::Result fillIndex(transaction::Methods& trx,
     }
   }
   
-//  rocksdb::WriteOptions wo;
-//
-//  bool hasMore = true;
-//  while (hasMore && res.ok()) {
-//    hasMore = it->nextDocument(cb, 250);
-//
-//    if (TRI_VOC_COL_STATUS_DELETED == it->collection()->status()
-//        || it->collection()->deleted()) {
-//      res = TRI_ERROR_INTERNAL;
-//    } else if (application_features::ApplicationServer::isStopping()) {
-//      res = TRI_ERROR_SHUTTING_DOWN;
-//    }
-//
-//    if (res.ok()) {
-//      rocksdb::Status s = db->Write(wo, batch.GetWriteBatch());
-//      if (!s.ok()) {
-//        res = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
-//        break;
-//      }
-//    }
-//
-//    batch.Clear();
-//  }
+  // now actually write all remaining index keys
+  if (res.ok() && rtrx->GetNumPuts() > 0) {
+    s = rtrx->Commit();
+    if (!s.ok()) {
+      res = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
+    }
+  }
+  
+  // we will need to remove index elements created before an error
+  // occurred, this needs to happen since we are non transactional
+  if (res.fail()) {
+    RocksDBKeyBounds bounds = ridx->getBounds();
+    arangodb::Result res2 = rocksutils::removeLargeRange(rocksutils::globalRocksDB(), bounds,
+                                                         true, /*useRangeDel*/numDocsWritten > 25000);
+    if (res2.fail()) {
+      LOG_TOPIC(WARN, Logger::ENGINES) << "was not able to roll-back "
+      << "index creation: " << res2.errorMessage();
+    }
+  }
+  
+  return res;
+}
+
+// fast mode assuming exclusive access
+template<typename WriteBatchType, typename MethodsType>
+static arangodb::Result fillIndexFast(transaction::Methods& trx,
+                                      RocksDBIndex* ridx,
+                                      RocksDBCollection* coll,
+                                      WriteBatchType& batch) {
+  auto state = RocksDBTransactionState::toState(&trx);
+  arangodb::Result res;
+  
+  // fillindex can be non transactional, we just need to clean up
+  RocksDBEngine* engine = rocksutils::globalRocksEngine();
+  rocksdb::DB* rootDB = engine->db()->GetRootDB();
+  TRI_ASSERT(rootDB != nullptr);
+  
+  uint64_t numDocsWritten = 0;
+  // write batch will be reset every x documents
+  MethodsType batched(state, &batch);
+  
+  auto bounds = RocksDBKeyBounds::CollectionDocuments(coll->objectId());
+  rocksdb::Slice upper(bounds.end());
+  
+  rocksdb::Status s;
+  rocksdb::WriteOptions wo;
+  wo.disableWAL = false; // TODO set to true eventually
+  
+  // we iterator without a snapshot
+  rocksdb::ReadOptions ro;
+  ro.prefix_same_as_start = true;
+  ro.iterate_upper_bound = &upper;
+  ro.verify_checksums = false;
+  ro.fill_cache = false;
+  
+  rocksdb::ColumnFamilyHandle* docCF = bounds.columnFamily();
+  std::unique_ptr<rocksdb::Iterator> it(rootDB->NewIterator(ro, docCF));
+  
+  it->Seek(bounds.start());
+  while (it->Valid() && it->key().compare(upper) < 0) {
+  
+    res = ridx->insertInternal(&trx, &batched, RocksDBKey::documentId(it->key()),
+                               VPackSlice(it->value().data()),
+                               Index::OperationMode::normal);
+    if (res.fail()) {
+      break;
+    }
+    numDocsWritten++;
+    
+    if (numDocsWritten % 200 == 0) { // commit buffered writes
+      s = rootDB->Write(wo, batch.GetWriteBatch());
+      if (!s.ok()) {
+        res = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
+        break;
+      }
+      batch.Clear();
+    }
+    
+    it->Next();
+  }
+  
+  if (res.ok() && batch.GetWriteBatch()->Count() > 0) { //
+    s = rootDB->Write(wo, batch.GetWriteBatch());
+    if (!s.ok()) {
+      res = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
+    }
+  }
+  batch.Clear();
   
   // we will need to remove index elements created before an error
   // occurred, this needs to happen since we are non transactional
@@ -510,26 +717,34 @@ static arangodb::Result fillIndex(transaction::Methods& trx,
 
 /// non-transactional: fill index with existing documents
 /// from this collection
-arangodb::Result RocksDBIndex::fillIndex(transaction::Methods& trx) {
+arangodb::Result RocksDBIndex::fillIndex(transaction::Methods& trx,
+                                         std::function<void()> const& unlock) {
   TRI_ASSERT(trx.state()->collection(_collection.id(), AccessMode::Type::WRITE));
   _isBuilding.store(true, std::memory_order_release);
   
-//  std::unique_ptr<IndexIterator> it(new RocksDBAllIndexIterator(&_collection, trx, primaryIndex()));
   RocksDBCollection* coll = static_cast<RocksDBCollection*>(_collection.getPhysical());
-  auto guard = scopeGuard([this] {
+  auto guard = scopeGuard([&] {
     _isBuilding.store(false, std::memory_order_release);
+    unlock(); // we do not need the index lock anymore
   });
   
-  if (this->unique()) {
-    // unique index. we need to keep track of all our changes because we need to avoid
-    // duplicate index keys. must therefore use a WriteBatchWithIndex
-    rocksdb::WriteBatchWithIndex batch(_cf->GetComparator(), 32 * 1024 * 1024);
-    return ::fillIndex<rocksdb::WriteBatchWithIndex, RocksDBBatchedWithIndexMethods>(trx, this, coll, batch);
+  if (trx.state()->isOnlyExclusiveTransaction()) {
+    if (this->unique()) {
+      // unique index. we need to keep track of all our changes because we need to avoid
+      // duplicate index keys. must therefore use a WriteBatchWithIndex
+      rocksdb::WriteBatchWithIndex batch(_cf->GetComparator(), 32 * 1024 * 1024);
+      return ::fillIndexFast<rocksdb::WriteBatchWithIndex, RocksDBBatchedWithIndexMethods>(trx, this, coll, batch);
+    } else {
+      // non-unique index. all index keys will be unique anyway because they contain the document id
+      // we can therefore get away with a cheap WriteBatch
+      rocksdb::WriteBatch batch(32 * 1024 * 1024);
+      return ::fillIndexFast<rocksdb::WriteBatch, RocksDBBatchedMethods>(trx, this, coll, batch);
+    }
   } else {
-    // non-unique index. all index keys will be unique anyway because they contain the document id
-    // we can therefore get away with a cheap WriteBatch
-    rocksdb::WriteBatch batch(32 * 1024 * 1024);
-    return ::fillIndex<rocksdb::WriteBatch, RocksDBBatchedMethods>(trx, this, coll, batch);
+    if (this->unique()) {
+      return ::fillIndexBackgroundUnique(trx, this, coll, unlock);
+    } else {
+      return ::fillIndexBackgroundNonUnique(trx, this, coll, unlock);
+    }
   }
-  return Result();
 }

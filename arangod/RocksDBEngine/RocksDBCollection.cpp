@@ -326,10 +326,14 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
     bool& created) {
   TRI_ASSERT(info.isObject());
   
+  AccessMode::Type type = AccessMode::Type::WRITE;
+//  if (!info.get("isBackground").getBool()) {
+//    AccessMode::Type type = AccessMode::Type::EXCLUSIVE;
+//  }
+//
   SingleCollectionTransaction trx( // prevent concurrent dropping
     transaction::StandaloneContext::Create(_logicalCollection.vocbase()),
-    _logicalCollection,
-    AccessMode::Type::WRITE);
+    _logicalCollection, type);
   Result res = trx.begin();
   
   if (!res.ok()) {
@@ -366,21 +370,48 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
     }
   }
   
-  addIndex(idx); // add index to list
-  indexGuard.unlock(); // toVelocyPackIgnore needs the read-lock
-  
   // Step 3. add index to collection info
   if (!engine->inRecovery()) {
-    auto builder = _logicalCollection.toVelocyPackIgnore(
-       {"path", "statusString"}, true, /*forPersistence*/ true);
-    res = engine->writeCreateCollectionMarker(_logicalCollection.vocbase().id(),
-                                              _logicalCollection.id(),
-                                              builder.slice(),
-                                              RocksDBLogValue::Empty());
+    // read collection info from database
+    RocksDBKey key;
+    key.constructCollection(_logicalCollection.vocbase().id(), _logicalCollection.id());
+    rocksdb::PinnableSlice value;
+    rocksdb::Status s = engine->db()->Get(rocksdb::ReadOptions(),
+                                            RocksDBColumnFamily::definitions(),
+                                            key.string(), &value);
+    if (!s.ok()) {
+      res.reset(rocksutils::convertStatus(s));
+    } else {
+      VPackBuilder builder;
+      builder.openObject();
+      for (auto const& pair : VPackObjectIterator(VPackSlice(value.data()))) {
+        if (pair.key.isEqualString("indexes")) {
+          VPackArrayBuilder arrGuard(&builder, "indexes");
+          builder.add(VPackArrayIterator(pair.value));
+          idx->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Internals));
+          continue;
+        }
+        builder.add(pair.key);
+        builder.add(pair.value);
+      }
+      builder.close();
+      res = engine->writeCreateCollectionMarker(_logicalCollection.vocbase().id(),
+                                                _logicalCollection.id(),
+                                                builder.slice(),
+                                                RocksDBLogValue::Empty());
+    }
   }
 
-  RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
-  res = ridx->fillIndex(trx);
+  // Step 4. fill index
+  if (res.ok()) {
+    addIndex(idx); // add index to indexes list
+    RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
+    res = ridx->fillIndex(trx, [&] {
+      indexGuard.unlock(); // will be called at appropriate moment
+    });
+  }
+
+  // Step 5. cleanup
   if (res.ok()) {
     // we need to sync the selectivity estimates
     res = engine->settingsManager()->sync(false);
@@ -403,7 +434,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
       auto builder = _logicalCollection.toVelocyPackIgnore(
           {"path", "statusString"}, true, /*forPersistence*/ true);
       VPackBuilder indexInfo;
-      idx->toVelocyPack(indexInfo, Index::makeFlags(Index::Serialize::ObjectId));
+      idx->toVelocyPack(indexInfo, Index::makeFlags(Index::Serialize::Internals));
       res = engine->writeCreateCollectionMarker(
         _logicalCollection.vocbase().id(),
         _logicalCollection.id(),

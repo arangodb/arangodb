@@ -1134,7 +1134,6 @@ int RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
   auto value = RocksDBValue::Collection(slice);
   
   rocksdb::WriteOptions wo;
-
   // Write marker + key into RocksDB inside one batch
   rocksdb::WriteBatch batch;
   if (logValue.slice().size() > 0) {

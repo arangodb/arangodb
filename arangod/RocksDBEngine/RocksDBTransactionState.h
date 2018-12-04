@@ -74,6 +74,7 @@ class RocksDBTransactionState final : public TransactionState {
   friend class RocksDBTrxUntrackedMethods;
   friend class RocksDBBatchedMethods;
   friend class RocksDBBatchedWithIndexMethods;
+  friend class RocksDBSubTrxMethods;
 
  public:
   RocksDBTransactionState(
@@ -185,8 +186,6 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief used for read-only trx and intermediate commits
   /// For intermediate commits this MUST ONLY be used for iteratos
   rocksdb::Snapshot const* _readSnapshot;
-  /// @brief shared write options used
-  rocksdb::WriteOptions _rocksWriteOptions;
   /// @brief shared read options which can be used by operations
   /// For intermediate commits iterators MUST use the _readSnapshot
   rocksdb::ReadOptions _rocksReadOptions;
