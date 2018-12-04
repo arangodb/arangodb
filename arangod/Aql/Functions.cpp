@@ -5344,7 +5344,7 @@ AqlValue Functions::GeoPolygon(arangodb::aql::Query* query,
 
 // TODO: merge MULTIPOLYGON with POLYGON and reuse functions
 /// @brief function GEO_MULTIPOLYGON
-AqlValue Functions::GeoMultiPolygon(ExpressionContext* expressionContext,
+AqlValue Functions::GeoMultiPolygon(arangodb::aql::Query* query,
                                transaction::Methods* trx,
                                VPackFunctionParameters const& parameters) {
   size_t const n = parameters.size();
