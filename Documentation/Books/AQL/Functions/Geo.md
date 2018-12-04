@@ -285,7 +285,7 @@ Construct a GeoJSON MultiPolygon. Needs at least two Polygons in an array.
 can find the rules for the Polygon construction above).
 
 - **polygons** (array): array of polygons
-- returns **geoJson** (object|null): a valid GeoJSON Polygon
+- returns **geoJson** (object|null): a valid GeoJSON MultiPolygon
 
 MultiPolygon comprised of a simple Polygon and a Polygon with hole:
 
