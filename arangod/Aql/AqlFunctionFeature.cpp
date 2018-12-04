@@ -358,6 +358,7 @@ void AqlFunctionFeature::addGeometryConstructors() {
   add({"GEO_POINT", ".,.", flags, &Functions::GeoPoint});
   add({"GEO_MULTIPOINT", ".", flags, &Functions::GeoMultiPoint});
   add({"GEO_POLYGON", ".", flags, &Functions::GeoPolygon});
+  add({"GEO_MULTIPOLYGON", ".", flags, &Functions::GeoMultiPolygon});
   add({"GEO_LINESTRING", ".", flags, &Functions::GeoLinestring});
   add({"GEO_MULTILINESTRING", ".", flags, &Functions::GeoMultiLinestring});
 }
