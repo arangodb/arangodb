@@ -5357,7 +5357,7 @@ AqlValue Functions::GeoMultiPolygon(arangodb::aql::Query* query,
   AqlValue const& geoArray = extractFunctionParameterValue(parameters, 0);
 
   if (!geoArray.isArray()) {
-    ::registerWarning(expressionContext, "GEO_MULTIPOLYGON",
+    ::registerWarning(query, "GEO_MULTIPOLYGON",
                       TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(arangodb::velocypack::Slice::nullSlice());
   }
@@ -5383,7 +5383,7 @@ AqlValue Functions::GeoMultiPolygon(arangodb::aql::Query* query,
   */
 
   if (s.isArray() && s.length() < 2) {
-    ::registerWarning(expressionContext, "GEO_MULTIPOLYGON", Result(
+    ::registerWarning(query, "GEO_MULTIPOLYGON", Result(
           TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
           "a MultiPolygon needs at least two Polygons inside."));
     return AqlValue(arangodb::velocypack::Slice::nullSlice());
@@ -5399,7 +5399,7 @@ AqlValue Functions::GeoMultiPolygon(arangodb::aql::Query* query,
             b.add(VPackValue(coord.getNumber<double>()));
           } else if (coord.isArray()) {
             if (coord.length() < 2) {
-              ::registerWarning(expressionContext, "GEO_MULTIPOLYGON", Result(
+              ::registerWarning(query, "GEO_MULTIPOLYGON", Result(
                     TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
                     "a Position needs at least two numeric values"));
               return AqlValue(arangodb::velocypack::Slice::nullSlice());
@@ -5415,13 +5415,13 @@ AqlValue Functions::GeoMultiPolygon(arangodb::aql::Query* query,
                     b.add(VPackValue(innercord.at(1).getNumber<double>()));
                     b.close();
                   } else {
-                    ::registerWarning(expressionContext, "GEO_MULTIPOLYGON", Result(
+                    ::registerWarning(query, "GEO_MULTIPOLYGON", Result(
                           TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
                           "not a number"));
                     return AqlValue(arangodb::velocypack::Slice::nullSlice());
                   }
                 } else {
-                  ::registerWarning(expressionContext, "GEO_MULTIPOLYGON", Result(
+                  ::registerWarning(query, "GEO_MULTIPOLYGON", Result(
                         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
                         "not an array describing a position"));
                   return AqlValue(arangodb::velocypack::Slice::nullSlice());
@@ -5430,7 +5430,7 @@ AqlValue Functions::GeoMultiPolygon(arangodb::aql::Query* query,
               b.close();
             }
           } else {
-            ::registerWarning(expressionContext, "GEO_MULTIPOLYGON", Result(
+            ::registerWarning(query, "GEO_MULTIPOLYGON", Result(
                   TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
                   "not an array containing positions"));
             return AqlValue(arangodb::velocypack::Slice::nullSlice());
@@ -5438,7 +5438,7 @@ AqlValue Functions::GeoMultiPolygon(arangodb::aql::Query* query,
         }
         b.close();
       } else {
-        ::registerWarning(expressionContext, "GEO_MULTIPOLYGON", Result(
+        ::registerWarning(query, "GEO_MULTIPOLYGON", Result(
               TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
               "not an array containing positions"));
         return AqlValue(arangodb::velocypack::Slice::nullSlice());
