@@ -93,7 +93,7 @@ class Exception final : public virtual std::exception {
 
  public:
   char const* what() const noexcept override;
-  std::string message() const;
+  std::string const& message() const noexcept;
   int code() const noexcept;
   void addToMessage(std::string const&);
  private:

@@ -37,6 +37,8 @@
   #include "IResearch/IResearchCommon.h"
 #endif
 
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
@@ -372,121 +374,10 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
     return false;
   }
 
-  VPackValueLength len;
-  const char* tmp = lhsType.getString(len);
-  auto type = Index::type(tmp, len);
-  // unique must be identical if present
-  auto value = lhs.get(arangodb::StaticStrings::IndexUnique);
-  if (value.isBoolean()) {
-    if (arangodb::basics::VelocyPackHelper::compare(
-          value, rhs.get(arangodb::StaticStrings::IndexUnique), false
-        ) != 0) {
-      return false;
-    }
-  }
+  auto* engine = EngineSelectorFeature::ENGINE;
 
-  // sparse must be identical if present
-  value = lhs.get(arangodb::StaticStrings::IndexSparse);
-
-  if (value.isBoolean()) {
-    if (arangodb::basics::VelocyPackHelper::compare(
-          value, rhs.get(arangodb::StaticStrings::IndexSparse), false
-        ) != 0) {
-      return false;
-    }
-  }
-
-  if (type == IndexType::TRI_IDX_TYPE_GEO1_INDEX ||
-      type == IndexType::TRI_IDX_TYPE_GEO_INDEX) {
-    // geoJson must be identical if present
-    value = lhs.get("geoJson");
-    if (value.isBoolean()) {
-      if (arangodb::basics::VelocyPackHelper::compare(value, rhs.get("geoJson"),
-                                                      false) != 0) {
-        return false;
-      }
-    }
-  } else if (type == IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX) {
-    // minLength
-    value = lhs.get("minLength");
-    if (value.isNumber()) {
-      if (arangodb::basics::VelocyPackHelper::compare(
-              value, rhs.get("minLength"), false) != 0) {
-        return false;
-      }
-    }
-  }
-#ifdef USE_IRESEARCH
-  else if (type == IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
-    // FIXME TODO the check below is insufficient and will lead to false-positives since there are other IResearchLink-specific properties which may differ
-    // FIXME TODO use IndexFactory::compare(...) instead
-    // must check if the "view" field is the same, otherwise we may confuse
-    // two links for different views on the same collection
-    auto lhValue = lhs.get("view");
-    auto rhValue = rhs.get("view");
-    if (lhValue.isString() && rhValue.isString()) {
-      if (arangodb::basics::VelocyPackHelper::compare(
-              value, rhs.get("view"), false) != 0) {
-        auto ls = lhValue.copyString();
-        auto rs = rhValue.copyString();
-        if (ls.size() > rs.size()) {
-          std::swap(ls, rs);
-        }
-        // in the cluster, we may have identifiers of the form
-        // `cxxx/` and `cxxx/yyy` which should be considered equal if the
-        // one is a prefix of the other up to the `/`
-        if (ls.empty() ||
-            ls.back() != '/' ||
-            ls.compare(rs.substr(0, ls.size())) != 0) {
-          return false;
-        }
-      }
-    } else {
-      return false;
-    }
-  }
-#endif
-
-  // other index types: fields must be identical if present
-  value = lhs.get(arangodb::StaticStrings::IndexFields);
-
-  if (value.isArray()) {
-    if (type == IndexType::TRI_IDX_TYPE_HASH_INDEX) {
-      VPackValueLength const nv = value.length();
-
-      // compare fields in arbitrary order
-      auto r = rhs.get(arangodb::StaticStrings::IndexFields);
-
-      if (!r.isArray() || nv != r.length()) {
-        return false;
-      }
-
-      for (size_t i = 0; i < nv; ++i) {
-        VPackSlice const v = value.at(i);
-
-        bool found = false;
-
-        for (auto const& vr : VPackArrayIterator(r)) {
-          if (arangodb::basics::VelocyPackHelper::compare(v, vr, false) == 0) {
-            found = true;
-            break;
-          }
-        }
-
-        if (!found) {
-          return false;
-        }
-      }
-    } else {
-      if (arangodb::basics::VelocyPackHelper::compare(
-            value, rhs.get(arangodb::StaticStrings::IndexFields), false
-          ) != 0) {
-        return false;
-      }
-    }
-  }
-
-  return true;
+  return engine
+    && engine->indexFactory().factory(lhsType.copyString()).equal(lhs, rhs);
 }
 
 /// @brief return a contextual string for logging
