@@ -1,8 +1,8 @@
-Known Issues
-============
+Known Issues in ArangoDB 3.4
+============================
 
-This page lists important issues of the ArangoDB suite of products all users
-should take note of. It is not a list of all open issues.
+This page lists important issues affecting the 3.4.x versions of the ArangoDB suite of products.
+It is not a list of all open issues.
 
 ArangoDB Customers can access the
 [_Technical & Security Alerts_](https://arangodb.atlassian.net/wiki/spaces/DEVSUP/pages/223903745)
@@ -37,4 +37,4 @@ Other
 
 | # | Issue      |
 |---|------------|
-| 1 | **Date Added:** 2018-12-04 <br> **Component:** arangod <br> **Deployment Mode:** All <br> **Description:** Parallel creation of collections using multiple client connections with the same database user may spuriously fail with "Could not update user due to conflict" warnings when setting user permissions on the new collections. A follow-up effect of this may be that access to the just-created collection is denied. <br> **Affected Versions:** 3.3.x (all), 3.4.0 <br> **Fixed in Versions:** 3.4.1 <br> **Reference:** [arangodb/arangodb#5342](https://github.com/arangodb/arangodb/issues/5342)  |
+| 1 | **Date Added:** 2018-12-04 <br> **Component:** arangod <br> **Deployment Mode:** All <br> **Description:** Parallel creation of collections using multiple client connections with the same database user may spuriously fail with "Could not update user due to conflict" warnings when setting user permissions on the new collections. A follow-up effect of this may be that access to the just-created collection is denied. <br> **Affected Versions:** 3.4.0 <br> **Fixed in Versions:** 3.4.1 <br> **Reference:** [arangodb/arangodb#5342](https://github.com/arangodb/arangodb/issues/5342)  |
