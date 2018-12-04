@@ -1177,7 +1177,10 @@ retry:
   if (res.fail()) {
     // stop ourselves
     if (res.is(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT) ||
+        res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) || // data source -- collection or view
         res.is(TRI_ERROR_REPLICATION_NO_START_TICK)) {
+
+      // additional logging
       if (res.is(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT)) {
         LOG_TOPIC(WARN, Logger::REPLICATION)
             << "replication applier stopped for database '" << _state.databaseName
@@ -1189,32 +1192,14 @@ retry:
       }
 
       // remove previous applier state
-      abortOngoingTransactions();
+      abortOngoingTransactions(); //ties to clear map - no further side effects
 
-      _applier->removeState();
-
-      // TODO: merge with removeState
-      {
-        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
-
-        LOG_TOPIC(DEBUG, Logger::REPLICATION)
-            << "stopped replication applier for database '" << _state.databaseName
-            << "' with lastProcessedContinuousTick: " << _applier->_state._lastProcessedContinuousTick
-            << ", lastAppliedContinuousTick: " << _applier->_state._lastAppliedContinuousTick
-            << ", safeResumeTick: " << _applier->_state._safeResumeTick;
-
-        _applier->_state._lastProcessedContinuousTick = 0;
-        _applier->_state._lastAppliedContinuousTick = 0;
-        _applier->_state._safeResumeTick = 0;
-        _applier->_state._failedConnects = 0;
-        _applier->_state._totalRequests = 0;
-        _applier->_state._totalFailedConnects = 0;
-        _applier->_state._totalResyncs = 0;
-
-        saveApplierState();
+      LOG_TOPIC(DEBUG, Logger::REPLICATION)
+            << "stopped replication applier for database '" << _state.databaseName;
+      auto rv = _applier->resetState();
+      if(rv.fail()){
+        return rv;
       }
-
-      setAborted(false);
 
       if (!_state.applier._autoResync) {
         LOG_TOPIC(INFO, Logger::REPLICATION)
@@ -1253,9 +1238,9 @@ retry:
         // increase number of syncs counter
         WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
         ++_applier->_state._totalResyncs;
-       
+
         // necessary to reset the state here, because otherwise running the
-        // InitialSyncer may fail with "applier is running" errors 
+        // InitialSyncer may fail with "applier is running" errors
         _applier->_state._phase = ReplicationApplierState::ActivityPhase::INACTIVE;
       }
 

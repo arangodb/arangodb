@@ -76,7 +76,7 @@ ReplicationApplierState& ReplicationApplierState::operator=(ReplicationApplierSt
   return *this;
 }
 
-void ReplicationApplierState::reset(bool resetState) {
+void ReplicationApplierState::reset(bool resetPhase) {
   _lastProcessedContinuousTick = 0;
   _lastAppliedContinuousTick = 0;
   _lastAvailableContinuousTick = 0;
@@ -95,7 +95,7 @@ void ReplicationApplierState::reset(bool resetState) {
   _totalResyncs = 0;
   _skippedOperations = 0;
 
-  if (resetState) {
+  if (resetPhase) {
     _phase = ActivityPhase::INACTIVE;
   }
 }
