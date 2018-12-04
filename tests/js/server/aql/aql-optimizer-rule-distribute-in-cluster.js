@@ -408,6 +408,11 @@ function optimizerRuleTestSuite () {
                             ]
                           ];
 
+      if (db._engine().name !== 'mmfiles') {
+        expectedRules[0].push("patch-update-statements");
+        expectedRules[1].push("patch-update-statements");
+      }
+
       queries.forEach(function(query, i) {
         // can't turn this rule off so should always get the same answer
         var result = AQL_EXPLAIN(query, { }, rulesAll);
@@ -501,6 +506,11 @@ function optimizerRuleTestSuite () {
                               "GatherNode" 
                             ]
                           ];
+      
+      if (db._engine().name !== 'mmfiles') {
+        expectedRules[0].push("patch-update-statements");
+        expectedRules[1].push("patch-update-statements");
+      }
 
       queries.forEach(function(query, i) {
         // can't turn this rule off so should always get the same answer
