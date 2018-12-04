@@ -111,7 +111,7 @@ std::vector<AstNode const*> hasBinaryCompare(ExecutionNode const* node) {
 std::string getFirstKey(std::vector<AstNode const*> const& compares) {
   for(auto const* node : compares){
     AstNode const* keyNode = node->getMemberUnchecked(0);
-    if (keyNode->type == AstNodeType::NODE_TYPE_ATTRIBUTE_ACCESS && 
+    if (keyNode->type == AstNodeType::NODE_TYPE_ATTRIBUTE_ACCESS &&
         keyNode->stringEquals(StaticStrings::KeyString)) {
       keyNode = node->getMemberUnchecked(1);
     }
@@ -245,7 +245,7 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
             true, key, mod->collection(),
             mod->getOptions(),
             update,
-            nullptr,
+            indexNode->outVariable(),
             mod->getOutVariableOld(),
             mod->getOutVariableNew()
           )
@@ -405,8 +405,8 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
                          , &::substituteClusterSingleDocumentOperationsNoIndex
                         }) {
     modified = fun(opt, plan.get(), rule);
-    if (modified) {  
-      break; 
+    if (modified) {
+      break;
     }
   }
 
