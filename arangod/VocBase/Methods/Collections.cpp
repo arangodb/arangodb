@@ -641,7 +641,7 @@ Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
 Result Collections::warmup(TRI_vocbase_t& vocbase,
                            LogicalCollection const& coll) {
   ExecContext const* exec = ExecContext::CURRENT;  // disallow expensive ops
-  if (!exec->canUseCollection(coll.name(), auth::Level::RO)) {
+  if (exec != nullptr && !exec->canUseCollection(coll.name(), auth::Level::RO)) {
     return Result(TRI_ERROR_FORBIDDEN);
   }
 
