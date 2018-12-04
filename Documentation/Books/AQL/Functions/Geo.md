@@ -281,13 +281,13 @@ RETURN GEO_POLYGON([
 
 `GEO_MULTIPOLYGON(polygons) → geoJson`
 
-Construct a GeoJSON MultiPolygon. Needs at least two polygons in an array (You
-can find the rules for the Polygon construction above).
+Construct a GeoJSON MultiPolygon. Needs at least two polygons in an array.
+See [GEO_POLYGON()](#geopolygon) for the rules of Polygon construction.
 
 - **polygons** (array): array of polygons
-- returns **geoJson** (object|null): a valid GeoJSON Polygon
+- returns **geoJson** (object|null): a valid GeoJSON MultiPolygon
 
-MultiPolygon:
+MultiPolygon comprised of a simple Polygon and a Polygon with hole:
 
 @startDocuBlockInline aqlGeoMultiPolygon_1
 @EXAMPLE_AQL{aqlGeoMultiPolygon_1}
