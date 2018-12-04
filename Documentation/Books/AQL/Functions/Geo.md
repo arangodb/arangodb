@@ -287,7 +287,7 @@ can find the rules for the Polygon construction above).
 - **polygons** (array): array of polygons
 - returns **geoJson** (object|null): a valid GeoJSON Polygon
 
-MultiPolygon:
+MultiPolygon comprised of a simple Polygon and a Polygon with hole:
 
 @startDocuBlockInline aqlGeoMultiPolygon_1
 @EXAMPLE_AQL{aqlGeoMultiPolygon_1}
