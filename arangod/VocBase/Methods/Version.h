@@ -60,7 +60,7 @@ struct VersionResult {
 };
 
 /// Code to create and initialize databases
-/// Replaces ugrade-database.js for good
+/// Replaces upgrade-database.js for good
 struct Version {
   /// @brief "(((major * 100) + minor) * 100) + patch"
   static uint64_t current();
@@ -68,6 +68,11 @@ struct Version {
   static VersionResult check(TRI_vocbase_t*);
   /// @brief write a VERSION file including all tasks
   static Result write(TRI_vocbase_t*, std::map<std::string, bool> tasks, bool sync);
+
+  static uint64_t parseVersion(const char* str);
+
+ private:
+  static uint64_t parseVersion(const char* str, size_t len);
 };
 }
 }

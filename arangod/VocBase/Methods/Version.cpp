@@ -40,9 +40,7 @@
 using namespace arangodb;
 using namespace arangodb::methods;
 
-namespace {
-
-static uint64_t parseVersion(char const* str, size_t len) {
+uint64_t Version::parseVersion(const char *str, size_t len) {
   uint64_t result = 0;
   uint64_t tmp = 0;
   for (size_t i = 0; i < len; i++) {
@@ -67,11 +65,13 @@ static uint64_t parseVersion(char const* str, size_t len) {
   return result*100 + tmp;
 }
 
+uint64_t Version::parseVersion(const char *str) {
+  return parseVersion(str, strlen(str));
 }
 
 /// @brief "(((major * 100) + minor) * 100) + patch"
 uint64_t Version::current() {
-  return parseVersion(ARANGODB_VERSION, strlen(ARANGODB_VERSION));
+  return parseVersion(ARANGODB_VERSION);
 }
 
 VersionResult Version::check(TRI_vocbase_t* vocbase) {
