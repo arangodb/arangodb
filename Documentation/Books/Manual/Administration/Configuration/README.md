@@ -1,97 +1,152 @@
 # Configuration
 
-The [programs and tools](../Programs/README.md) shipped in an ArangoDB package,
-except for the *ArangoDB Starter*, can be configured with a `.conf` file and/or
-started with options on a command line. The options are called the same, but
-the syntax is slightly different as explained below.
+The [programs and tools](../../Programs/README.md) shipped in an
+ArangoDB package can be configured with various _startup options_.
 
-## Startup Options
+- Startup options you specify on a command line are referred to as
+  [command line options](#command-line-options):
 
-Only command line options with a value should be set within the configuration
-file. Command line options which act as flags should be entered on the command
-line when starting the server.
+  `arangosh --server.database myDB`
 
+- The same options can also be set via
+  [configuration files](#configuration-file-format),
+  using a slightly different syntax:
+
+  `server.database = myDB`
+
+- There are also _flags_ which are for command line usage only,
+  such as `--help` and `--version`. They don't take any value
+  in contrast to options.
+
+Find the available options and flags in the _Options_ sub-chapters of the
+respective [Programs & Tools](../../Programs/README.md) sub-chapter, like the
+[ArangoDB Server Options](../../Programs/Arangod/Options.md).
+
+The [ArangoDB Starter](../../Programs/Starter/README.md) works differently
+to the other programs and tools. It uses `setup.json` files for its own
+[configuration](../../Programs/Starter/Architecture.md#starter-data-directory)
+and has a fluent command line interface to execute certain actions.
+
+## Command line options
+
+Command line options can be supplied in the style `--option value` with two
+dashes (also known as hyphen minus), the name of the option, a space as
+separator and the value. You may also use an equals sign `=` as separator
+like `--option=value`.
+
+The value can be surrounded with double quote marks `"` like
+`--option="value"`. This is mandatory if the value contains spaces,
+but it is optional otherwise.
+
+Some binaries accept a positional argument, which means you can take a
+shortcut and leave out the `--option` part and supply the value directly.
+For _arangod_ it is the `--database.directory` option. The following
+commands are identical:
+
+```
+arangod my_data_dir
+arangod "my_data_dir"
+arangod --database.directory my_data_dir
+arangod --database.directory=my_data_dir
+arangod --database.directory "my_data_dir"
+arangod --database.directory="my_data_dir"
+```
+
+Many options belong to a section as in `--section.param`, e.g.
+`--server.database`, but there can also be options without any section.
+These options are referred to as _global options_.
+
+To list available options, you can run a binary with the `--help` flag:
+
+```
+arangosh --help
+```
+
+To list the options of a certain section only, use `--help-{section}`
+like `--help-server`. To list all options including hidden ones use
+`--help-.`.
+
+## Configuration file format
+
+`.conf` files for ArangoDB binaries are in a simple key-value pair format.
 Each option is specified on a separate line in the form:
 
-```js
+```conf
 key = value
 ```
 
-Alternatively, a header section can be specified and options pertaining to that
-section can be specified in a shorter form
+It may look like this:
 
-```js
-[log]
-level = trace
+```conf
+server.endpoint = tcp://127.0.0.1:8529
+server.authentication = true
 ```
 
-rather than specifying
+Alternatively, a header section can be specified and options pertaining to
+that section can be specified in a shorter form:
 
-```js
-log.level = trace
+```conf
+[server]
+endpoint = tcp://127.0.0.1:8529
+authentication = true
 ```
 
-So you see in general `--section.param value` translates to
+So you see, a command line option `--section.param value` can be easily
+translated to an option in a configuration file:
 
 ```js
 [section]
-param=value 
+param = value
 ```
 
 {% hint 'tip' %}
-Whitespace around `=` is ignored in the configuration file.
-This includes whitespace around equals signs in the parameter value:
+Whitespace around `=` is ignored in configuration files.
+This includes whitespace around equality signs in the parameter value:
 
-```js
+```conf
 log.level = startup = trace
 ```
 
 It is the same as without whitespace:
 
-```js
+```conf
 log.level=startup=trace
 ```
 {% endhint %}
 
-Where one section may occur multiple times, and the last occurrence of `param`
-will become the final value. In case of parameters being vectors, multiple
-occurrence adds another item to the vector. Vectors can be identified by the
-`...` in the `--help` output of the binaries.
+Comments can be placed in the configuration file by placing one or more
+hash symbols `#` at the beginning of a line.
 
-Comments can be placed in the configuration file, only if the line begins with
-one or more hash symbols (#).
+Only command line options with a value should be set within the configuration
+file. Command line options which act as flags should only be entered on the
+command line when starting the server.
 
-There may be occasions where a configuration file exists and the user wishes to
-override configuration settings stored in a configuration file. Any settings
-specified on the command line will overwrite the same setting when it appears in
-a configuration file. If the user wishes to completely ignore configuration
-files without necessarily deleting the file (or files), then add the command
-line option
+## Using Configuration Files
 
-```js
+For each binary (except `arangodb`, which is the _Starter_) there is a
+corresponding `.conf` file that an ArangoDB package ships with.
+`arangosh.conf` contains the default ArangoShell configuration for instance.
+The configuration files can be adjusted or new ones be created.
+
+To load a particular configuration file, there is a `--configuration` option
+available to let you specify a path to a `.conf` file. If you want to
+completely ignore a configuration file (likely the default one) without
+necessarily deleting the file, then add the command line option
+
+```
 -c none
 ```
 
 or
 
-```js
+```
 --configuration none
 ```
 
-when starting up the server. Note that, the word *none* is case-insensitive.
+The value *none* is case-insensitive.
 
-
-## Configuration Files
-
-Options can be specified on the command line or in configuration files. If a
-string *Variable* occurs in the value, it is replaced by the corresponding
-environment variable.
-
-`--configuration filename`
-
-`-c filename`
-
-Specifies the name of the configuration file to use.
+<!-- TODO: Specific to arangod, move to programs detail page?
+     Linux only? Also macOS? Windows not addressed so far.
 
 If this command is not passed to the server, then by default, the server will
 attempt to first locate a file named *~/.arango/arangod.conf* in the user's home
@@ -107,12 +162,116 @@ manager normally warns you about the conflict. In order to avoid these warning
 for small adjustments, you can put local overrides into a file
 *arangod.conf.local*.
 
+-->
+
+## Environment variables as parameters
+
+If you want to use an environment variable in a value of a startup option,
+write the name of the variable wrapped in at signs `@`. It acts as a
+placeholder. It can be combined with fixed strings for instance.
+
+Command line example:
+
+```
+arangod --temp.path @TEMP@/arango_tmp
+```
+
+In a configuration file:
+
+```
+[temp]
+path = @TEMP@/arango_tmp
+```
+
+On a Windows system, above setting would typically make the ArangoDB Server
+create its folder for temporary files in `%USERPROFILE%\AppData\Local\Temp`,
+i.e. `C:\Users\xxx\AppData\Local\Temp\arango_tmp`.
+
+## Options with multiple values
+
+Certain startup options accept multiple values. In case of parameters being
+_vectors_ you can specify one or more times the option with varying values.
+Whether this is the case can be seen by looking at the **Type** column of a
+tool's option table (e.g. [ArangoDB Server Options](../../Programs/Arangod/Options.md))
+or the type information provided on a command line in the `--help` output of
+an ArangoDB binary:
+
+```
+--log.level <string...>     the global or topic-specific log level
+```
+
+Vectors can be identified by the three dots `...` at the end of the data type
+information (in angled brackets). For `log.level` you can set one or more
+strings for different log levels for example. Simply repeat the option to
+do so. On a command line:
+
+```
+arangod --log.level warning --log.level queries=trace --log.level startup=info
+```
+
+This sets a global log level of `warning` and two topic-specific levels
+(`trace` for queries and `info` for startup). The same in a configuration file:
+
+```conf
+[log]
+level = warning
+level = queries=trace
+level = startup=info
+```
+
+## Configuration precedence
+
+There are built-in defaults, with which all configuration variables are first
+initialized. They can be overridden by configuration files and command line
+options (in this order). Only a fraction of all available options are set in
+the configuration files that ArangoDB ships with. Many options will therefore
+fall back to the built-in defaults unless they are overridden by the user.
+
+It is common to use modified configuration files together with startup
+options on a command line to override specific settings. Command line options
+take precedence over values set in a configuration file.
+
+If the same option is set multiple times, but only supports a single value,
+then the last occurrence of the option will become the final value.
+For example, if you edit `arangosh.conf` to set:
+
+```
+server.database = myDB1
+server.database = myDB2
+```
+
+… and start ArangoShell like:
+
+```
+arangosh --server.database myDB3 --server.database myDB4
+```
+
+… then the database it will connect to is `myDB4`, because this startup option
+takes a single value only (i.e. it is not a vector), the built-in default
+is `_system` but the configuration file overrules the setting. It gets set to
+`myDB1` temporarily before it is replaced by `myDB2`, which in turn gets
+overridden by the command line options twice, first to `myDB3` and then the
+final value `myDB4`.
+
+## Change configuration at runtime
+
+In general, supplied startup options can not be changed nor can configuration
+files be reloaded once an executable is started, other than by restarting the
+executable with different options. However, some of the startup options
+define default values which can be overridden on a per-query basis for
+instance, or adjusted at runtime via an API call. Examples:
+
+- [Query cache configuration](../../../AQL/ExecutionAndPerformance/QueryCache.html#global-configuration)
+  via JavaScript API
+- [Change WAL settings](../../../HTTP/MiscellaneousFunctions/index.html#configures-the-write-ahead-log)
+  via an HTTP API request
+
 ## Fetch Current Configuration Options
 
 To list the configuration options of a running `arangod` instance, you can
 connect with an [ArangoShell](../../Programs/Arangosh/README.md) and invoke a
-[Transaction](../../Transactions/README.md) providing a description
-to the `db._executeTransaction()` JavaScript function:
+[Transaction](../../Transactions/README.md) by calling `db._executeTransaction()`
+and providing a JavaScript function to retrieve the server options:
 
     @startDocuBlockInline listCurrentConfigOpts
     @EXAMPLE_ARANGOSH_OUTPUT{listCurrentConfigOpts}
