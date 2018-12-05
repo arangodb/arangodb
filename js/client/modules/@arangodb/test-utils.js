@@ -242,7 +242,8 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
             continue;
           }
           let delta = diffArray(collectionsBefore, collectionsAfter).filter(function(name) {
-            return (name[0] !== '_'); // exclude system collections from the comparison
+              return ! ((name[0] === '_') || (name === "compact") || (name === "election")
+			|| (name === "log")); // exclude system/agency collections from the comparison
           });
 
           if (delta.length !== 0) {
