@@ -181,6 +181,7 @@
   },
   "javascript.module-directory" : {
     "default" : [
+      "./enterprise/js"
     ],
     "description" : "additional paths containing JavaScript modules",
     "enterpriseOnly" : false,
