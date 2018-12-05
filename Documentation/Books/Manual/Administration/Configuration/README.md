@@ -15,7 +15,7 @@ ArangoDB package can be configured with various _startup options_.
   `server.database = myDB`
 
 - There are also _flags_ which are for command line usage only,
-  such as `--help` and `--version`. They don't take any value
+  such as `‑‑help` and `‑‑version`. They don't take any value
   in contrast to options.
 
 Find the available options and flags in the _Options_ sub-chapters of the
@@ -29,18 +29,18 @@ and has a fluent command line interface to execute certain actions.
 
 ## Command line options
 
-Command line options can be supplied in the style `--option value` with two
+Command line options can be supplied in the style `‑‑option value` with two
 dashes (also known as hyphen minus), the name of the option, a space as
 separator and the value. You may also use an equals sign `=` as separator
-like `--option=value`.
+like `‑‑option=value`.
 
 The value can be surrounded with double quote marks `"` like
-`--option="value"`. This is mandatory if the value contains spaces,
+`‑‑option="value"`. This is mandatory if the value contains spaces,
 but it is optional otherwise.
 
 Some binaries accept a positional argument, which means you can take a
-shortcut and leave out the `--option` part and supply the value directly.
-For _arangod_ it is the `--database.directory` option. The following
+shortcut and leave out the `‑‑option` part and supply the value directly.
+For _arangod_ it is the `‑‑database.directory` option. The following
 commands are identical:
 
 ```
@@ -52,19 +52,19 @@ arangod --database.directory "my_data_dir"
 arangod --database.directory="my_data_dir"
 ```
 
-Many options belong to a section as in `--section.param`, e.g.
-`--server.database`, but there can also be options without any section.
+Many options belong to a section as in `‑‑section.param`, e.g.
+`‑‑server.database`, but there can also be options without any section.
 These options are referred to as _global options_.
 
-To list available options, you can run a binary with the `--help` flag:
+To list available options, you can run a binary with the `‑‑help` flag:
 
 ```
 arangosh --help
 ```
 
-To list the options of a certain section only, use `--help-{section}`
-like `--help-server`. To list all options including hidden ones use
-`--help-.`.
+To list the options of a certain section only, use `‑‑help‑{section}`
+like `‑‑help‑server`. To list all options including hidden ones use
+`‑‑help‑.`.
 
 ## Configuration file format
 
@@ -91,7 +91,7 @@ endpoint = tcp://127.0.0.1:8529
 authentication = true
 ```
 
-So you see, a command line option `--section.param value` can be easily
+So you see, a command line option `‑‑section.param value` can be easily
 translated to an option in a configuration file:
 
 ```js
@@ -128,7 +128,7 @@ corresponding `.conf` file that an ArangoDB package ships with.
 `arangosh.conf` contains the default ArangoShell configuration for instance.
 The configuration files can be adjusted or new ones be created.
 
-To load a particular configuration file, there is a `--configuration` option
+To load a particular configuration file, there is a `‑‑configuration` option
 available to let you specify a path to a `.conf` file. If you want to
 completely ignore a configuration file (likely the default one) without
 necessarily deleting the file, then add the command line option
