@@ -150,7 +150,7 @@ bool parentIsReturnOrConstCalc(ExecutionNode const* node) {
     auto type = node->getType();
     // we do not need to check the order because
     // we expect a valid plan
-    if(type != EN::CALCULATION && type != EN::RETURN) {
+    if (type != EN::CALCULATION && type != EN::RETURN) {
       return false;
     }
     node = node->getFirstParent();
@@ -193,7 +193,7 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
     if (!::depIsSingletonOrConstCalc(node)) {
       continue;
     }
-
+        
     Index* index = ::hasSingleIndexHandle(node, Index::TRI_IDX_TYPE_PRIMARY_INDEX);
     if (index) {
       IndexNode* indexNode = ExecutionNode::castTo<IndexNode*>(node);
@@ -202,6 +202,8 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
       if (key.empty()) {
         continue;
       }
+
+      TRI_ASSERT(node != nullptr);
 
       auto* parentModification = ::hasSingleParent(node, {EN::INSERT, EN::REMOVE, EN::UPDATE, EN::REPLACE});
 
@@ -259,9 +261,9 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
         modified = true;
       } else if (::parentIsReturnOrConstCalc(node)) {
         ExecutionNode* singleOperationNode = plan->registerNode(
-            new SingleRemoteOperationNode(plan, plan->nextId()
-                                          ,EN::INDEX, true, key, indexNode->collection(), ModificationOptions{}
-                                          , nullptr /*in*/ , indexNode->outVariable() /*out*/, nullptr /*old*/, nullptr /*new*/)
+            new SingleRemoteOperationNode(plan, plan->nextId(),
+                                          EN::INDEX, true, key, indexNode->collection(), ModificationOptions{},
+                                          nullptr /*in*/ , indexNode->outVariable() /*out*/, nullptr /*old*/, nullptr /*new*/)
         );
         ::replaceNode(plan, indexNode, singleOperationNode);
         modified = true;
