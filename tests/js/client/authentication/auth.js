@@ -513,6 +513,29 @@ function AuthSuite() {
       expect(res).to.have.property('statusCode', 401);
     },
 
+    testDatabaseGuessingSuperUser: function() {
+      let jwt = crypto.jwtEncode(jwtSecret, {
+        "server_id": "foo",
+        "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
+      }, 'HS256');
+      // should respond with not-found because we are root
+      var res = request.get({
+        url: baseUrl() + "/_db/nonexisting/_api/version",
+        auth: {
+          bearer: jwt,
+        }
+      });
+      expect(res).to.be.an.instanceof(request.Response);
+      expect(res).to.have.property('statusCode', 404);
+
+      // should prevent name guessing by unauthorized users
+      res = request.get({
+        url: baseUrl() + "/_db/nonexisting/_api/version"
+      });
+      expect(res).to.be.an.instanceof(request.Response);
+      expect(res).to.have.property('statusCode', 401);
+    },
+
     testDatabaseListNonSystem: function() {
       let jwt = crypto.jwtEncode(jwtSecret, {
         "preferred_username": "root",
