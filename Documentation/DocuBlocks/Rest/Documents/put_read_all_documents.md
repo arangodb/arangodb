@@ -41,11 +41,13 @@ not be relied on.
 
 Note: the *all-keys* simple query is **deprecated** as of ArangoDB 3.4.0.
 This API may get removed in future versions of ArangoDB. You can use the
-`/_api/cursor` endpoint instead with a 
+`/_api/cursor` endpoint instead with one of the below AQL queries depending
+on the desired result:
 
-FOR doc IN @@collection RETURN doc._id for type id,
-FOR doc IN @@collection RETURN doc._key for type key,
-FOR doc IN @@collection RETURN CONCAT("/_db/", CURRENT_DATABASE(), "/_api/document/", doc._id) for type path?
+- `FOR doc IN @@collection RETURN doc._id` to mimic *type: id*
+- `FOR doc IN @@collection RETURN doc._key` to mimic *type: key*
+- `FOR doc IN @@collection RETURN CONCAT("/_db/", CURRENT_DATABASE(), "/_api/document/", doc._id)`
+  to mimic *type: path*
 
 @RESTRETURNCODES
 
