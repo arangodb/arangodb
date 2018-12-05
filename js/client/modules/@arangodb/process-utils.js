@@ -944,6 +944,12 @@ function shutdownArangod (arangod, options, forceTerminate) {
       requestOptions.method = 'DELETE';
       print(Date() + ' ' + arangod.url + '/_admin/shutdown');
       const reply = download(arangod.url + '/_admin/shutdown', '', requestOptions);
+      if ((reply.code === 200) || // if the server should reply, we expect 200 - if not: 
+          !((reply.code === 500) &&
+           (reply.message === "Connection closed by remote"))) {
+        print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' continuing with hard kill!");
+        shutdownArangod(arangod, options, true);
+      }
       if (options.extremeVerbosity) {
         print(Date() + ' Shutdown response: ' + JSON.stringify(reply));
       }
