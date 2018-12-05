@@ -24,7 +24,7 @@ If _config_ is a string, it will be interpreted as _config.url_.
     can be used to automatically pick up additional coordinators/followers at
     any point.
 
-    When running ArangoDB on a unix socket, e.g. `/tmp/arangodb.sock` the
+    When running ArangoDB on a unix socket, e.g. `/tmp/arangodb.sock`, the
     following URL formats are supported for unix sockets:
 
     - `unix:///tmp/arangodb.sock` (no SSL)
