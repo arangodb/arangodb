@@ -5872,10 +5872,7 @@ void arangodb::aql::removeDataModificationOutVariablesRule(
       // "$OLD" is not used later
       node->clearOutVariableOld();
       modified = true;
-#if 0
     } else {
-      // TODO: activate this section once it does not cause problems with
-      // variables vanishing
       switch (n->getType()) {
         case EN::UPDATE:
         case EN::REPLACE: {
@@ -5909,7 +5906,6 @@ void arangodb::aql::removeDataModificationOutVariablesRule(
           // do nothing
         }
       }
-#endif
     }
 
     if (!n->isVarUsedLater(node->getOutVariableNew())) {
