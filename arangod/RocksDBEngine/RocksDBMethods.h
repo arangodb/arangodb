@@ -276,6 +276,8 @@ public:
   rocksdb::Status RollbackToSavePoint() override { return rocksdb::Status::OK(); }
   void PopSavePoint() override {}
   
+  bool DisableIndexing() override;
+  
 private:
   rocksdb::Transaction* _trx;
 };

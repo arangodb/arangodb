@@ -326,16 +326,18 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
     bool& created) {
   TRI_ASSERT(info.isObject());
   
+  VPackSlice typeSlice = info.get(StaticStrings::IndexType);
+  
   AccessMode::Type type = AccessMode::Type::WRITE;
-//  if (!info.get("isBackground").getBool()) {
-//    AccessMode::Type type = AccessMode::Type::EXCLUSIVE;
-//  }
-//
+#ifdef USE_IRESEARCH
+  if (arangodb::Index::type(typeSlice.copyString()) == Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
+    type = AccessMode::Type::EXCLUSIVE; // iresearch needs exclusive access
+  }
+#endif
   SingleCollectionTransaction trx( // prevent concurrent dropping
     transaction::StandaloneContext::Create(_logicalCollection.vocbase()),
     _logicalCollection, type);
   Result res = trx.begin();
-  
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }

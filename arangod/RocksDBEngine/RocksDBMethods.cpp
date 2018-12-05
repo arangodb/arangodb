@@ -421,3 +421,8 @@ rocksdb::Status RocksDBSubTrxMethods::SingleDelete(rocksdb::ColumnFamilyHandle* 
   TRI_ASSERT(cf != nullptr);
   return _trx->SingleDelete(cf, key.string());
 }
+
+bool RocksDBSubTrxMethods::DisableIndexing() {
+  _trx->DisableIndexing();
+  return true;
+}
