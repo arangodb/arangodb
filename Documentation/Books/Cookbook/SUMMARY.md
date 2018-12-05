@@ -28,7 +28,6 @@
   * [Replication](Administration/Replication/README.md)
     * [Replicating Data](Administration/ReplicatingData.md)
     * [Slave Initialization](Administration/Replication/ReplicationFromBackup.md)
-  * [XCopy Install Windows](Administration/XCopyInstallWindows.md)
   * [Silent NSIS on Windows](Administration/NSISSilentMode.md)
   * [Migrating 2.8 to 3.0](Administration/Migrate2.8to3.0.md)
   * [Show grants function](Administration/ShowUsersGrants.md)
