@@ -613,8 +613,8 @@ For arangod, the following startup options have changed:
 
   As mentioned above, ArangoDB 3.4 changes the default value of the configuration option 
   `--rocksdb.total-write-buffer-size` to about 40% of available physical RAM, and 512MiB
-  for setups with less than 4GiB of RAM. In ArangoDB 3.3 this option had a default value of 
-  `0`, which meant that the memory usage for write buffers was not limited. 
+  for setups with less than 4GiB of RAM. In ArangoDB 3.3 this option had a default value
+  of `0`, which meant that the memory usage for write buffers was not limited.
 
 
 Permissions
@@ -670,7 +670,7 @@ Previous versions of ArangoDB 3.3 used a default value of `false` for
 `requireFromPresent`, meaning that any such gaps in the replication data 
 exchange will not cause the replication to stop. 3.4 now stops replication by
 default and writes according errors to the log. Replication can automatically
-can restarted in this case by setting the `autoResync` replication configuration
+be restarted in this case by setting the `autoResync` replication configuration
 option to `true`.
 
 
