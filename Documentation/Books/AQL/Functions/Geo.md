@@ -254,7 +254,7 @@ Each loop consists of an array with at least three longitude/latitude pairs. The
 first loop must be the outermost, while any subsequent loops will be interpreted
 as holes.
 
-- **points** (array): array of arrays of longitude/latitude pairs
+- **points** (array): array of (arrays of) longitude/latitude pairs
 - returns **geoJson** (object|null): a valid GeoJSON Polygon
 
 Simple Polygon:
