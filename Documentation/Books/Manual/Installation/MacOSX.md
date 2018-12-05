@@ -1,5 +1,5 @@
-Mac OS X
-========
+Installing ArangoDB on Mac OS X
+===============================
 
 The preferred method for installing ArangoDB under Mac OS X is
 [homebrew](#homebrew). However, in case you are not using homebrew, we
