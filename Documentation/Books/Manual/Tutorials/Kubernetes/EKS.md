@@ -1,5 +1,5 @@
 <!-- don't edit here, it's from https://@github.com/arangodb/kube-arangodb.git / docs/Manual/ -->
-# Start ArangoDB cluster on Amazon EKS
+# Start ArangoDB on Amazon Elastic Kubernetes Service (EKS)
 
 ## Requirements:
 
@@ -24,7 +24,8 @@ $ aws --version
 
 ### Configure AWS client
 
-Refer to the [documentation](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html) to accordingly fill in the below with your credentials.
+Refer to the [AWS documentation](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html)
+to accordingly fill in the below with your credentials.
 Pay special attention to the correct region information  to find your cluster next.
 
 ```
@@ -76,7 +77,8 @@ $ kubectl get nodes
 ### Create worker Stack
 
 On Amazon EKS, we need to launch worker nodes, as the cluster has none.
-Open Amazon's [cloud formation console](https://console.aws.amazon.com/cloudformation/) and choose `Create Stack` by specifying this S3 template URL:
+Open Amazon's [cloud formation console](https://console.aws.amazon.com/cloudformation/)
+and choose `Create Stack` by specifying this S3 template URL:
 
 ```
 https://amazon-eks.s3-us-west-2.amazonaws.com/cloudformation/2018-08-30/amazon-eks-nodegroup.yaml
@@ -86,7 +88,9 @@ https://amazon-eks.s3-us-west-2.amazonaws.com/cloudformation/2018-08-30/amazon-e
 
 ### Worker stack details
 
-Pay good attention to details here. If your input is not complete, your worker nodes are either not spawned or you won't be able to integrate the workers into your kubernetes cluster.
+Pay good attention to details here. If your input is not complete, your worker
+nodes are either not spawned or you won't be able to integrate the workers
+into your kubernetes cluster.
 
 **Stack name**: Choose a name for your stack. For example ArangoDB-stack
 
@@ -102,7 +106,7 @@ Pay good attention to details here. If your input is not complete, your worker n
 
 **NodeInstanceType**: Choose an instance type for your worker nodes. For this test we went with the default `t2.medium` instances.
 
-**NodeImageId**: Dependent on the region, there are two image Ids for boxes with and wothout GPU support.
+**NodeImageId**: Dependent on the region, there are two image Ids for boxes with and without GPU support.
 
 | Region    | without GPU           | with GPU              |
 |-----------|-----------------------|-----------------------|
@@ -181,7 +185,7 @@ $ kubectl create clusterrolebinding tiller-cluster-rule \
         --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
     clusterrolebinding.rbac.authorization.k8s.io/tiller-cluster-rule created
 ```
-* Initialise `helm`
+* Initialize `helm`
 ```
 $ helm init --service-account tiller
     $HELM_HOME has been configured at ~/.helm.

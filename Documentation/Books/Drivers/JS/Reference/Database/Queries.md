@@ -69,7 +69,7 @@ const cursor = await db.query(aql`
 
 // Old-school JS with explicit bindVars:
 db.query(
-  "FOR u IN _users " + "FILTER u.authData.active == @active " + "RETURN u.user",
+  "FOR u IN _users FILTER u.authData.active == @active RETURN u.user",
   { active: true }
 ).then(function(cursor) {
   // cursor is a cursor for the query result
@@ -86,8 +86,8 @@ arguments to bind variables.
 
 **Note**: If you want to pass a collection name as a bind variable, you need to
 pass a _Collection_ instance (e.g. what you get by passing the collection name
-to `db.collection`) instead. If you see the error `"array expected as operand to FOR loop"`, you're likely passing a collection name instead of a collection
-instance.
+to `db.collection`) instead. If you see the error `"array expected as operand to FOR loop"`,
+you're likely passing a collection name instead of a collection instance.
 
 **Examples**
 
