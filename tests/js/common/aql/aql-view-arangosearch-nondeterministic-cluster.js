@@ -95,6 +95,19 @@ function IResearchAqlTestSuite(args) {
       db._drop("AnotherUnitTestsCollection");
     },
 
+    testInTokensFilterSortTFIDF : function () {
+      var result = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(doc.text IN TOKENS('the quick brown', 'text_en'), 'text_en') OPTIONS { waitForSync: true } SORT TFIDF(doc) LIMIT 4 RETURN doc").toArray();
+
+      assertEqual(result.length, 4);
+      if (c.properties().numberOfShards === 1) {
+        // result order is currently only guaranteed for collections with a single shard
+        assertEqual(result[0].name, 'half');
+        assertEqual(result[1].name, 'quarter');
+        assertEqual(result[2].name, 'other half');
+        assertEqual(result[3].name, 'full');
+      }
+    },
+
 /*    testViewInInnerLoopSortByTFIDF_BM25_Attribute : function() {
       var expected = [];
       expected.push({ a: "baz", b: "foo", c: 1 });
