@@ -31,3 +31,19 @@ docker run -it --name=adb --rm -p 8528:8528 \
     --starter.address=$IP \
     --starter.mode=single 
 ```
+
+If you use an ArangoDB version of 3.4 or above and use the Enterprise
+Edition Docker image, you have to set the license key in an environment
+variable by adding this option to the above `docker` command:
+
+```
+    -e ARANGO_LICENSE_KEY=<thekey>
+```
+
+You can get a free evaluation license key by visiting
+
+     https://www.arangodb.com/download-arangodb-enterprise/
+
+Then replace `<thekey>` above with the actual license key. The start
+will then hand on the license key to the Docker container it launches
+for ArangoDB.

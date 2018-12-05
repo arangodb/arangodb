@@ -3,11 +3,9 @@
 
 ## ArangoVertexCollection.getVertex
 
-```
-ArangoVertexCollection.getVertex(String key, Class<T> type, DocumentReadOptions options) : T
-```
+`ArangoVertexCollection.getVertex(String key, Class<T> type, DocumentReadOptions options) : T`
 
-Retrieves the vertex document with the given <code>key</code> from the collection.
+Retrieves the vertex document with the given `key` from the collection.
 
 **Arguments**
 
@@ -17,7 +15,7 @@ Retrieves the vertex document with the given <code>key</code> from the collectio
 
 - **type**: `Class<T>`
 
-  The type of the vertex-document (POJO class, `VPackSlice` or `String` for Json)
+  The type of the vertex-document (POJO class, `VPackSlice` or `String` for JSON)
 
 - **options**: `DocumentReadOptions`
 
@@ -35,9 +33,7 @@ Retrieves the vertex document with the given <code>key</code> from the collectio
 
 ## ArangoVertexCollection.insertVertex
 
-```
-ArangoVertexCollection.insertVertex(T value, VertexCreateOptions options) : VertexEntity
-```
+`ArangoVertexCollection.insertVertex(T value, VertexCreateOptions options) : VertexEntity`
 
 Creates a new vertex in the collection.
 
@@ -45,7 +41,7 @@ Creates a new vertex in the collection.
 
 - **value**: `T`
 
-  A representation of a single vertex (POJO, `VPackSlice` or `String` for Json)
+  A representation of a single vertex (POJO, `VPackSlice` or `String` for JSON)
 
 - **options**: `VertexCreateOptions`
 
@@ -68,11 +64,10 @@ collection.insertVertex(document, new VertexCreateOptions());
 
 ## ArangoVertexCollection.replaceVertex
 
-```
-ArangoVertexCollection.replaceVertex(String key, T value, VertexReplaceOptions options) : VertexUpdateEntity
-```
+`ArangoVertexCollection.replaceVertex(String key, T value, VertexReplaceOptions options) : VertexUpdateEntity`
 
-Replaces the vertex with key with the one in the body, provided there is such a vertex and no precondition is violated.
+Replaces the vertex with key with the one in the body, provided there is such
+a vertex and no precondition is violated.
 
 **Arguments**
 
@@ -82,7 +77,7 @@ Replaces the vertex with key with the one in the body, provided there is such a 
 
 - **value**: `T`
 
-  A representation of a single vertex (POJO, `VPackSlice` or `String` for Json)
+  A representation of a single vertex (POJO, `VPackSlice` or `String` for JSON)
 
 - **options**: `VertexReplaceOptions`
 
@@ -108,11 +103,10 @@ collection.replaceVertex("some-key", document, new VertexReplaceOptions());
 
 ## ArangoVertexCollection.updateVertex
 
-```
-ArangoVertexCollection.updateVertex(String key, T value, VertexUpdateOptions options) : VertexUpdateEntity
-```
+`ArangoVertexCollection.updateVertex(String key, T value, VertexUpdateOptions options) : VertexUpdateEntity`
 
-Updates the vertex with key with the one in the body, provided there is such a vertex and no precondition is violated.
+Updates the vertex with key with the one in the body, provided there is such
+a vertex and no precondition is violated.
 
 **Arguments**
 
@@ -122,7 +116,7 @@ Updates the vertex with key with the one in the body, provided there is such a v
 
 - **value**: `T`
 
-  A representation of a single vertex (POJO, `VPackSlice` or `String` for Json)
+  A representation of a single vertex (POJO, `VPackSlice` or `String` for JSON)
 
 - **options**: `VertexUpdateOptions`
 
@@ -136,7 +130,11 @@ Updates the vertex with key with the one in the body, provided there is such a v
 
   - **keepNull**: `Boolean`
 
-    If the intention is to delete existing attributes with the patch command, the URL query parameter keepNull can be used with a value of false. This will modify the behavior of the patch command to remove any attributes from the existing document that are contained in the patch document with an attribute value of null.
+    If the intention is to delete existing attributes with the patch command,
+    the URL query parameter keepNull can be used with a value of false.
+    This will modify the behavior of the patch command to remove any attributes
+    from the existing document that are contained in the patch document with
+    an attribute value of null.
 
 **Examples**
 
@@ -152,9 +150,7 @@ collection.updateVertex("some-key", document, new VertexUpdateOptions());
 
 ## ArangoVertexCollection.deleteVertex
 
-```
-ArangoVertexCollection.deleteVertex(String key, VertexDeleteOptions options) : void
-```
+`ArangoVertexCollection.deleteVertex(String key, VertexDeleteOptions options) : void`
 
 Deletes the vertex with the given _key_ from the collection.
 
