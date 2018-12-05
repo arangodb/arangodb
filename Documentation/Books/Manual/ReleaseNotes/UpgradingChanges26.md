@@ -252,7 +252,7 @@ The following simple query functions are now deprecated:
 * `collection.near`
 * `collection.within`
 * `collection.geo`
-* `collection.fulltex`
+* `collection.fulltext`
 * `collection.range`
 * `collection.closedRange`
 
