@@ -41,7 +41,7 @@ FOR doc IN doc // e.g. documents returned by a traversal
 Checks whether the [GeoJSON object](../../Manual/Indexing/Geo.html#geojson) `geoJsonA`
 fully contains `geoJsonB` (Every point in B is also in A). The object `geoJsonA` has to be of type 
 `Polygon` or `MultiPolygon`, other types are not supported because containment is ill defined. 
-This function can be **optimized** via a S2 based geospatial index.
+This function can be **optimized** by a S2 based [geospatial index](../../Manual/Indexing/Geo.html).
 
 - **geoJsonA** (object): first GeoJSON object or coordinate array (in longitude, latitude order)
 - **geoJsonB** (object): second GeoJSON object or coordinate array (in longitude, latitude order)
@@ -53,8 +53,9 @@ This function can be **optimized** via a S2 based geospatial index.
 `GEO_DISTANCE(geoJsonA, geoJsonB) → distance`
 
 Return the distance between two GeoJSON objects, measured from the **centroid**
-of each shape (For a list of supported Types see [geo index
-page](../../Manual/Indexing/Geo.html#geojson)).
+of each shape. For a list of supported types see the
+[geo index page](../../Manual/Indexing/Geo.html#geojson).
+
 - **geoJsonA** (object): first GeoJSON object
 - **geoJsonB** (object): second GeoJSON object
 - returns **distance** (number): the distance between the centroid points of
@@ -74,8 +75,8 @@ FOR doc IN collectionName
 
 `GEO_EQUALS(geoJsonA, geoJsonB) → bool`
 
-Checks whether two GeoJSON objects are equal or not. (For a list of supported
-Types see [geo index page](../../Manual/Indexing/Geo.html#geojson)).
+Checks whether two GeoJSON objects are equal or not. For a list of supported
+types see the [geo index page](../../Manual/Indexing/Geo.html#geojson).
 
 - **geoJsonA** (object): first GeoJSON object
 - **geoJsonB** (object): second GeoJSON object.
@@ -106,8 +107,8 @@ RETURN GEO_EQUALS(polygonA, polygonB) // false
 `GEO_INTERSECTS(geoJsonA, geoJsonB) → bool`
 
 Checks whether the [GeoJSON object](../../Manual/Indexing/Geo.html#geojson) `geoJsonA`
-intersects with `geoJsonB` (At least one point in B is also A or vice-versa). 
-This function can be **optimized** via a S2 based geospatial index, please look at the [relevant](../../Manual/Indexing/Geo.html) manual section for more information.
+intersects with `geoJsonB` (i.e. at least one point in B is also A or vice-versa).
+This function can be **optimized** by a S2 based [geospatial index](../../Manual/Indexing/Geo.html).
 
 - **geoJsonA** (object): first GeoJSON object
 - **geoJsonB** (object): second GeoJSON object.
@@ -205,8 +206,8 @@ Needs at least two elements consisting valid LineStrings coordinate arrays.
 @startDocuBlockInline aqlGeoMultiLineString_1
 @EXAMPLE_AQL{aqlGeoMultiLineString_1}
 RETURN GEO_MULTILINESTRING([
- [[100.0, 0.0], [101.0, 1.0]],
- [[102.0, 2.0], [101.0, 2.3]]
+  [[100.0, 0.0], [101.0, 1.0]],
+  [[102.0, 2.0], [101.0, 2.3]]
 ])
 @END_EXAMPLE_AQL
 @endDocuBlock aqlGeoMultiLineString_1
@@ -281,10 +282,10 @@ RETURN GEO_POLYGON([
 
 `GEO_MULTIPOLYGON(polygons) → geoJson`
 
-Construct a GeoJSON MultiPolygon. Needs at least two Polygons in an array.
+Construct a GeoJSON MultiPolygon. Needs at least two Polygons inside.
 See [GEO_POLYGON()](#geopolygon) for the rules of Polygon construction.
 
-- **polygons** (array): array of polygons
+- **polygons** (array): array of arrays of array of longitude/latitude pairs
 - returns **geoJson** (object|null): a valid GeoJSON MultiPolygon
 
 MultiPolygon comprised of a simple Polygon and a Polygon with hole:
@@ -293,11 +294,11 @@ MultiPolygon comprised of a simple Polygon and a Polygon with hole:
 @EXAMPLE_AQL{aqlGeoMultiPolygon_1}
 RETURN GEO_MULTIPOLYGON([
   [
-     [[40, 40], [20, 45], [45, 30], [40, 40]]
+    [[40, 40], [20, 45], [45, 30], [40, 40]]
   ],  
   [
-      [[20, 35], [10, 30], [10, 10], [30, 5], [45, 20], [20, 35]],
-      [[30, 20], [20, 15], [20, 25], [30, 20]]
+    [[20, 35], [10, 30], [10, 10], [30, 5], [45, 20], [20, 35]],
+    [[30, 20], [20, 15], [20, 25], [30, 20]]
   ]
 ])
 @END_EXAMPLE_AQL
