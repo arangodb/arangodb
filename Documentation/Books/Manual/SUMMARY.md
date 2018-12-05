@@ -324,6 +324,7 @@
 * [Scaling](Scaling/README.md)
 * [Administration](Administration/README.md)
   * [Configuration](Administration/Configuration.md)
+  * [Starting & Stopping](Administration/StartingStopping.md)
   * [Import & Export](Administration/ImportExport.md)
   * [User Management](Administration/ManagingUsers/README.md)
     * [In Arangosh](Administration/ManagingUsers/InArangosh.md)
