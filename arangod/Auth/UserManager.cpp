@@ -334,7 +334,8 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
       }
 #endif
     } else if (res.is(TRI_ERROR_ARANGO_CONFLICT)) {  // user was outdated
-      _userCache.erase(entry.username());
+      // we didn't succeed in updating the user, so we must not remove the
+      // user from the cache here. however, we should trigger a reload here
       triggerLocalReload();
       LOG_TOPIC(WARN, Logger::AUTHENTICATION)
           << "Cannot update user due to conflict";
@@ -562,6 +563,7 @@ Result auth::UserManager::accessUser(std::string const& user,
   }
 
   loadFromDB();
+
   READ_LOCKER(readGuard, _userCacheLock);
   UserMap::iterator const& it = _userCache.find(user);
   if (it != _userCache.end()) {
@@ -574,8 +576,8 @@ bool auth::UserManager::userExists(std::string const& user) {
   if (user.empty()) {
     return false;
   }
+  
   loadFromDB();
-
   READ_LOCKER(readGuard, _userCacheLock);
   UserMap::iterator const& it = _userCache.find(user);
   return it != _userCache.end();
