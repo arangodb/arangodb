@@ -1,15 +1,19 @@
 Community to Enterprise Upgrade Procedure
 =========================================
 
+{% hint 'warning' %}
 While migrating from the Community to the Enterprise Edition is supported, 
 installing directly the Enterprise package over the Community package is **not**
 supported. Please see below for the correct migration procedure.
+{% endhint %}
 
+{% hint 'danger' %}
 Migrating from Enterprise to Community Edition is, in general, **not** supported. This
 is because the Community Edition does not include some features, such as 
 [SmartGraphs](../Graphs/SmartGraphs/README.md) that, if used while the database
 was running under the Enterprise Edition, does not make easily possible the
 conversion of some database structures.
+{% endhint %}
 
 Upgrading from the Community to the Enterprise Edition requires unistallation of
 the Community package (can be done in a way that the database data are preserved)
@@ -18,12 +22,12 @@ and installation of the Enterprise package.
 Procedure for a _Logical_ Upgrade
 ---------------------------------
 
-1. Use the tool [_arangodump_ ](..\Programs\Arangodump\README.md) to take a backup
+1. Use the tool [_arangodump_ ](../Programs/Arangodump/README.md) to take a backup
    of your _community_ database
 1. Uninstall the ArangoDB Community package
 1. Install the ArangoDB Enterprise package (and start your _Single Instance_, _Active
    Failover_ or _Cluster_)
-1. Restore the backup using the tool [_arangorestore_ ](..\Programs\Arangorestore\README.md).
+1. Restore the backup using the tool [_arangorestore_ ](../Programs/Arangorestore/README.md).
 
 Procedure for an _In-Place_ Upgrade
 ----------------------------------
