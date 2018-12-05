@@ -6,9 +6,7 @@ These functions implement the
 
 ## ArangoDatabase.view
 
-```
-ArangoDatabase.view(String name) : ArangoView
-```
+`ArangoDatabase.view(String name) : ArangoView`
 
 Returns a _ArangoView_ instance for the given view name.
 
@@ -28,9 +26,7 @@ ArangoView view = db.view("myView");
 
 ## ArangoDatabase.arangoSearch
 
-```
-ArangoDatabase.arangoSearch(String name) : ArangoSearch
-```
+`ArangoDatabase.arangoSearch(String name) : ArangoSearch`
 
 Returns a _ArangoSearch_ instance for the given ArangoSearch view name.
 
@@ -50,9 +46,7 @@ ArangoSearch view = db.arangoSearch("myArangoSearchView");
 
 ## ArangoDatabase.getViews
 
-```
-ArangoDatabase.getViews() : Collection<ViewEntity>
-```
+`ArangoDatabase.getViews() : Collection<ViewEntity>`
 
 Fetches all views from the database and returns an list of collection descriptions.
 

@@ -3,7 +3,8 @@
 
 ## VelocyPack serialization
 
-Since version `4.1.11` you can extend the VelocyPack serialization by registering additional `VPackModule`s on `ArangoDB.Builder`.
+Since version `4.1.11` you can extend the VelocyPack serialization by
+registering additional `VPackModule`s on `ArangoDB.Builder`.
 
 ### Java 8 types
 
@@ -95,153 +96,158 @@ documents, edges and query results. One implementation is
 which is based on [Jackson](https://github.com/FasterXML/jackson) working with
 [jackson-dataformat-velocypack](https://github.com/arangodb/jackson-dataformat-velocypack).
 
-**Note**: Any registered custom [serializer/deserializer or module](#custom-serialization) will be ignored.
+**Note**: Any registered custom [serializer/deserializer or module](#custom-serialization)
+will be ignored.
 
 ## custom serialization
 
 ```Java
-  ArangoDB arangoDB = new ArangoDB.Builder().registerModule(new VPackModule() {
-    @Override
-    public <C extends VPackSetupContext<C>> void setup(final C context) {
-      context.registerDeserializer(MyObject.class, new VPackDeserializer<MyObject>() {
-        @Override
-        public MyObject deserialize(VPackSlice parent,VPackSlice vpack,
-            VPackDeserializationContext context) throws VPackException {
-          MyObject obj = new MyObject();
-          obj.setName(vpack.get("name").getAsString());
-          return obj;
-        }
-      });
-      context.registerSerializer(MyObject.class, new VPackSerializer<MyObject>() {
-        @Override
-        public void serialize(VPackBuilder builder,String attribute,MyObject value,
-            VPackSerializationContext context) throws VPackException {
-          builder.add(attribute, ValueType.OBJECT);
-          builder.add("name", value.getName());
-          builder.close();
-        }
-      });
-    }
-  }).build();
+ArangoDB arangoDB = new ArangoDB.Builder().registerModule(new VPackModule() {
+  @Override
+  public <C extends VPackSetupContext<C>> void setup(final C context) {
+    context.registerDeserializer(MyObject.class, new VPackDeserializer<MyObject>() {
+      @Override
+      public MyObject deserialize(VPackSlice parent,VPackSlice vpack,
+          VPackDeserializationContext context) throws VPackException {
+        MyObject obj = new MyObject();
+        obj.setName(vpack.get("name").getAsString());
+        return obj;
+      }
+    });
+    context.registerSerializer(MyObject.class, new VPackSerializer<MyObject>() {
+      @Override
+      public void serialize(VPackBuilder builder,String attribute,MyObject value,
+          VPackSerializationContext context) throws VPackException {
+        builder.add(attribute, ValueType.OBJECT);
+        builder.add("name", value.getName());
+        builder.close();
+      }
+    });
+  }
+}).build();
 ```
 
 ## JavaBeans
 
-The driver can serialize/deserialize JavaBeans. They need at least a constructor without parameter.
+The driver can serialize/deserialize JavaBeans. They need at least a
+constructor without parameter.
 
 ```Java
-  public class MyObject {
+public class MyObject {
 
-    private String name;
-    private Gender gender;
-    private int age;
+  private String name;
+  private Gender gender;
+  private int age;
 
-    public MyObject() {
-      super();
-    }
-
+  public MyObject() {
+    super();
   }
+
+}
 ```
 
-## internal fields
+## Internal fields
 
-To use Arango-internal fields (like \_id, \_key, \_rev, \_from, \_to) in your JavaBeans, use the annotation `DocumentField`.
+To use Arango-internal fields (like \_id, \_key, \_rev, \_from, \_to) in your
+JavaBeans, use the annotation `DocumentField`.
 
 ```Java
-  public class MyObject {
+public class MyObject {
 
-    @DocumentField(Type.KEY)
-    private String key;
+  @DocumentField(Type.KEY)
+  private String key;
 
-    private String name;
-    private Gender gender;
-    private int age;
+  private String name;
+  private Gender gender;
+  private int age;
 
-    public MyObject() {
-      super();
-    }
-
+  public MyObject() {
+    super();
   }
+
+}
 ```
 
-## serialized fieldnames
+## Serialized fieldnames
 
 To use a different serialized name for a field, use the annotation `SerializedName`.
 
 ```Java
-  public class MyObject {
+public class MyObject {
 
-    @SerializedName("title")
-    private String name;
+  @SerializedName("title")
+  private String name;
 
-    private Gender gender;
-    private int age;
+  private Gender gender;
+  private int age;
 
-    public MyObject() {
-      super();
-    }
-
+  public MyObject() {
+    super();
   }
+
+}
 ```
 
-## ignore fields
+## Ignore fields
 
 To ignore fields at serialization/deserialization, use the annotation `Expose`
 
 ```Java
-  public class MyObject {
+public class MyObject {
 
-    @Expose
-    private String name;
-    @Expose(serialize = true, deserialize = false)
-    private Gender gender;
-    private int age;
+  @Expose
+  private String name;
+  @Expose(serialize = true, deserialize = false)
+  private Gender gender;
+  private int age;
 
-    public MyObject() {
-      super();
-    }
-
+  public MyObject() {
+    super();
   }
+
+}
 ```
 
-## custom serializer
+## Custom serializer
 
 ```Java
-  ArangoDB arangoDB = new ArangoDB.Builder().registerModule(new VPackModule() {
-    @Override
-    public <C extends VPackSetupContext<C>> void setup(final C context) {
-      context.registerDeserializer(MyObject.class, new VPackDeserializer<MyObject>() {
-        @Override
-        public MyObject deserialize(VPackSlice parent,VPackSlice vpack,
-            VPackDeserializationContext context) throws VPackException {
-          MyObject obj = new MyObject();
-          obj.setName(vpack.get("name").getAsString());
-          return obj;
-        }
-      });
-      context.registerSerializer(MyObject.class, new VPackSerializer<MyObject>() {
-        @Override
-        public void serialize(VPackBuilder builder,String attribute,MyObject value,
-            VPackSerializationContext context) throws VPackException {
-          builder.add(attribute, ValueType.OBJECT);
-          builder.add("name", value.getName());
-          builder.close();
-        }
-      });
-    }
-  }).build();
+ArangoDB arangoDB = new ArangoDB.Builder().registerModule(new VPackModule() {
+  @Override
+  public <C extends VPackSetupContext<C>> void setup(final C context) {
+    context.registerDeserializer(MyObject.class, new VPackDeserializer<MyObject>() {
+      @Override
+      public MyObject deserialize(VPackSlice parent,VPackSlice vpack,
+          VPackDeserializationContext context) throws VPackException {
+        MyObject obj = new MyObject();
+        obj.setName(vpack.get("name").getAsString());
+        return obj;
+      }
+    });
+    context.registerSerializer(MyObject.class, new VPackSerializer<MyObject>() {
+      @Override
+      public void serialize(VPackBuilder builder,String attribute,MyObject value,
+          VPackSerializationContext context) throws VPackException {
+        builder.add(attribute, ValueType.OBJECT);
+        builder.add("name", value.getName());
+        builder.close();
+      }
+    });
+  }
+}).build();
 ```
 
-## manually serialization
+## Manual serialization
 
-To de-/serialize from and to VelocyPack before or after a database call, use the `ArangoUtil` from the method `util()` in `ArangoDB`, `ArangoDatabase`, `ArangoCollection`, `ArangoGraph`, `ArangoEdgeCollection`or `ArangoVertexCollection`.
+To de-/serialize from and to VelocyPack before or after a database call, use the
+`ArangoUtil` from the method `util()` in `ArangoDB`, `ArangoDatabase`,
+`ArangoCollection`, `ArangoGraph`, `ArangoEdgeCollection`or `ArangoVertexCollection`.
 
 ```Java
-  ArangoDB arangoDB = new ArangoDB.Builder();
-  VPackSlice vpack = arangoDB.util().serialize(myObj);
+ArangoDB arangoDB = new ArangoDB.Builder();
+VPackSlice vpack = arangoDB.util().serialize(myObj);
 ```
 
 ```Java
-  ArangoDB arangoDB = new ArangoDB.Builder();
-  MyObject myObj = arangoDB.util().deserialize(vpack, MyObject.class);
+ArangoDB arangoDB = new ArangoDB.Builder();
+MyObject myObj = arangoDB.util().deserialize(vpack, MyObject.class);
 ```
