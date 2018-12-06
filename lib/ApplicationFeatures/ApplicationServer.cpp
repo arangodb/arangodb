@@ -333,9 +333,9 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
   if (!_helpSection.empty()) {
     // user asked for "--help"
 
-    // translate "all" to "*"
-    if (_helpSection == "all") {
-      _helpSection = "*";
+    // translate "all" to ".", because section "all" does not exist
+    if (_helpSection == "all" || _helpSection == "hidden") {
+      _helpSection = ".";
     }
     _options->printHelp(_helpSection);
     return;
