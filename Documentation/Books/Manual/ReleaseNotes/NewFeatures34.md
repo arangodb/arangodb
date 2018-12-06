@@ -1038,7 +1038,7 @@ Distribution Packages
 ---------------------
 
 In addition to the OS-specific packages (eg. _rpm_ for Red Hat / CentOS, _deb_ for
-Debian, NSIS for Windows, etc) starting from 3.4.0 new _tar.gz_ archive packages
+Debian, NSIS installer for Windows etc.) starting from 3.4.0 new `tar.gz` archive packages
 are available for Linux and Mac.
 
 
