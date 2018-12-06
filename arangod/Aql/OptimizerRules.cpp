@@ -51,6 +51,8 @@
 #include "Cluster/ClusterInfo.h"
 #include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
 #include "VocBase/Methods/Collections.h"
 
@@ -4894,6 +4896,19 @@ void arangodb::aql::patchUpdateStatementsRule(
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::UPDATE, false);
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  if (strcmp(engine->typeName(), "mmfiles") == 0) {
+    // MMFiles: we can update UPDATE/REPLACE but not REMOVE
+    // this is because in MMFiles the iteration over a collection may
+    // use the primary index, but a REMOVE may at the same time remove
+    // the documents from this index. this would not be safe
+    std::vector<ExecutionNode::NodeType> const types = {EN::UPDATE, EN::REPLACE};
+    plan->findNodesOfType(nodes, types, false);
+  } else {
+    // other engines: we can update UPDATE/REPLACE as well as REMOVE
+    std::vector<ExecutionNode::NodeType> const types = {EN::UPDATE, EN::REPLACE, EN::REMOVE};
+    plan->findNodesOfType(nodes, types, false);
+  }
 
   bool modified = false;
 
