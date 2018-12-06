@@ -1034,6 +1034,16 @@ if possible, by adjusting the value of the `--ssl.protocol` startup option for t
 `arangod` server and all client tools.
 
 
+Distribution Packages
+---------------------
+
+In addition to the OS-specific packages (eg. _rpm_ for Red Hat / CentOS, _deb_ for
+Debian, NSIS installer for Windows etc.) starting from 3.4.0 new `tar.gz` archive packages
+are available for Linux and Mac. They correspond to the `.zip` packages for Windows,
+which can be used for portable installations, and to easily run different ArangoDB
+versions on the same machine (e.g. for testing).
+
+
 Client tools
 ------------
 
