@@ -12,7 +12,8 @@ To install ArangoDB on Linux:
    repository you can easily install ArangoDB using _yum_, _aptitude_, _urpmi_ or _zypper_.
 
 {% hint 'info' %}
-Starting from version 3.4.0 in addition to installation packages (distribution dependent)
+In addition to installation packages (distribution dependent) a `tar.gz` archive
+is available starting from version 3.4.0.
 a _tar.gz_ archive is available.
 {% endhint %}
 
