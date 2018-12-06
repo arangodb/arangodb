@@ -27,5 +27,5 @@ additional manual step:
 - Removal of the data directory created by the _Starter_
   (the path used for the option `--starter.data-dir`).
   This is different and in addition to the removal of the data directory 
-  that is created for the _Stand Alone_ instance by the installation package.
+  that is created for the _Single Instance_ by the installation package.
 {% endhint %}
