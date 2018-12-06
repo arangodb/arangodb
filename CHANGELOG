@@ -1,6 +1,17 @@
 v3.4.1 (XXXX-XX-XX)
 -------------------
 
+* make AQL REMOVE operations use less memory with the RocksDB storage engine
+
+  the previous implementation of batch removals read everything to remove into
+  memory first before carrying out the first remove operation. The new version
+  will only read in about 1000 documents each time and then remove these. Queries
+  such as
+
+      FOR doc IN collection FILTER ... REMOVE doc IN collection
+
+  will benefit from this change in terms of memory usage.
+
 * make `--help-all` now also show all hidden program options
 
   Previously hidden program options were only returned when invoking arangod or
