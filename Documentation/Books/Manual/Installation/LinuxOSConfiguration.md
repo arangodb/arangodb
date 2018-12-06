@@ -1,7 +1,7 @@
 Linux Operating System Configuration
 ====================================
 
-{% hint 'info' %}
+{% hint 'tip' %}
 The most important suggestions listed in this section can be easily applied by making use of a script. Please refer to the page [Linux OS Tuning Script Examples](LinuxOSTuningScripts.md) for ready-to-use examples.
 {% endhint %}
 
