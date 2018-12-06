@@ -6,7 +6,7 @@ System from the official [Download](https://www.arangodb.com/download) page of t
 ArangoDB web site.
 
 You can find packages for various operating systems, including _RPM_ and _Debian_
-packages. _dmg_ packages or _homebrew_ can be used on MacOS X; an _Installer_ or a
+packages. _dmg_ packages or _homebrew_ can be used on MacOS; an _Installer_ or a
 `zip` archive is available for Windows.
 
 {% hint 'info' %}
