@@ -123,6 +123,11 @@ Result RocksDBBuilderIndex::removeInternal(transaction::Methods* trx, RocksDBMet
 arangodb::Result RocksDBBuilderIndex::fillIndexBackground(std::function<void()> const& unlock) {
   arangodb::Result res;
   
+  //  1. Index everything under a snapshot iterator (get snapshot under exclusive coll lock)
+  //  2. Track deleted document IDs so we can avoid indexing them
+  //  3. Avoid conflicts on unique index keys by using rocksdb::Transaction snapshot conflict checking
+  //  4. Supress unique constraint violations / conflicts or client drivers
+  
   // fillindex can be non transactional, we just need to clean up
   RocksDBEngine* engine = rocksutils::globalRocksEngine();
   RocksDBCollection* rcoll = static_cast<RocksDBCollection*>(_collection.getPhysical());
@@ -169,7 +174,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(std::function<void()> 
   std::unique_ptr<rocksdb::Transaction> rtrx(engine->db()->BeginTransaction(wo, to));
   if (this->unique()) {
     rtrx->SetSnapshot(); // needed for unique index conflict detection
-  } else { // FIXME use PutUntracked
+  } else {
     rtrx->DisableIndexing(); // we never check for existing index keys
   }
   RocksDBSubTrxMethods batched(state, rtrx.get());
@@ -222,32 +227,6 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(std::function<void()> 
     
     it->Next();
   }
-//
-//  if (res.ok() && !toRevisit.empty()) { // now roll-up skipped keys
-//    to.lock_timeout = 5000; // longer timeout to increase the odds
-//    engine->db()->BeginTransaction(wo, to, rtrx.get()); // release keys
-//    rtrx->SetSnapshot();
-//    RocksDBKey key;
-//
-//    for (LocalDocumentId const& doc : toRevisit) {
-//      key.constructDocument(coll->objectId(), doc);
-//
-//      rocksdb::PinnableSlice slice;
-//      s = rtrx->GetForUpdate(ro, docCF, key.string(), &slice, /*exclusive*/false);
-//      if (!s.ok()) {
-//        res = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
-//        break;
-//      }
-//      res = ridx->insertInternal(&trx, &batched, doc,
-//                                 VPackSlice(slice.data()),
-//                                 Index::OperationMode::normal);
-//      if (res.fail()) {
-//        break;
-//      }
-//
-//      numDocsWritten++;
-//    }
-//  }
   
   // now actually write all remaining index keys
   if (res.ok() && rtrx->GetNumPuts() > 0) {
@@ -263,18 +242,6 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(std::function<void()> 
   std::lock_guard<std::mutex> guard2(_lockedDocsMutex);
   _lockedDocs.clear();
   _lockedDocsCond.notify_all();
-  
-  // we will need to remove index elements created before an error
-  // occurred, this needs to happen since we are non transactional
-//  if (res.fail()) {
-//    RocksDBKeyBounds bounds = internal->getBounds();
-//    arangodb::Result res2 = rocksutils::removeLargeRange(rocksutils::globalRocksDB(), bounds,
-//                                                         true, /*useRangeDel*/numDocsWritten > 25000);
-//    if (res2.fail()) {
-//      LOG_TOPIC(WARN, Logger::ENGINES) << "was not able to roll-back "
-//      << "index creation: " << res2.errorMessage();
-//    }
-//  }
   
   return res;
 }
