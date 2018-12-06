@@ -2,14 +2,18 @@ Installing ArangoDB on Mac OS X
 ===============================
 
 The preferred method for installing ArangoDB under Mac OS X is
-[homebrew](#homebrew). However, in case you are not using homebrew, we
+[_homebrew_](#homebrew). However, in case you are not using homebrew, we
 provide a [command-line app](#command-line-app) or [graphical
 app](#graphical-app) which contains all the executables.
+
+{% hint 'info' %} Starting from version 3.4.0 in addition to 
+_homebrew_ and the _dmg_ package a _tar.gz_ archive is available. 
+{% endhint %}
 
 Homebrew
 --------
 
-If you are using [homebrew](http://brew.sh/),
+If you are using [_homebrew_](http://brew.sh/),
 then you can install the latest released stable version of ArangoDB using *brew* as follows:
 
     brew install arangodb
@@ -98,3 +102,9 @@ showing you the log-file.
 Note that it is possible to install both, the homebrew version and the command-line
 app. You should, however, edit the configuration files of one version and change
 the port used.
+
+Installing using the archive
+----------------------------
+
+Starting from 3.4.0 a _tar.gz_ package is also available for Mac. To install ArangoDB
+using the _tar.gz_ archive, just extract it.
