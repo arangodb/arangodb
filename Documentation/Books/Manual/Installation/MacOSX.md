@@ -2,7 +2,7 @@ Installing ArangoDB on Mac OS X
 ===============================
 
 The preferred method for installing ArangoDB under Mac OS X is
-[_homebrew_](#homebrew). However, in case you are not using homebrew, we
+[_homebrew_](#homebrew). However, in case you are not using _homebrew_, we
 provide a [command-line app](#command-line-app) or [graphical
 app](#graphical-app) which contains all the executables.
 
@@ -38,7 +38,7 @@ You can uninstall ArangoDB using:
 
     brew uninstall arangodb
 
-However, in case you started ArangoDB using the launchctl, you
+However, in case you started ArangoDB using the _launchctl_, you
 need to unload it before uninstalling the server:
 
     launchctl unload ~/Library/LaunchAgents/homebrew.mxcl.arangodb.plist
@@ -54,10 +54,8 @@ also need to update homebrew:
 
 ### Known issues
 
-- Performance - the LLVM delivered as of Mac OS X El Capitan builds slow binaries. Use GCC instead,
-  until this issue has been fixed by Apple.
-- the Commandline argument parsing doesn't accept blanks in filenames; the CLI version below does.
-- if you need to change server endpoint while starting homebrew version, you can edit arangod.conf 
+- The Commandline argument parsing does not accept blanks in filenames; the CLI version below does.
+- If you need to change server endpoint while starting _homebrew_ version, you can edit arangod.conf 
   file and uncomment line with endpoint needed, e.g.:
       
       [server]
@@ -65,7 +63,7 @@ also need to update homebrew:
 
 Graphical App
 -------------
-In case you are not using homebrew, we also provide a graphical app. You can
+In case you are not using _homebrew_, we also provide a graphical app. You can
 download it from [here](https://www.arangodb.com/download).
 
 Choose *Mac OS X*. Download and install the application *ArangoDB* in
@@ -73,7 +71,7 @@ your application folder.
 
 Command line App
 ----------------
-In case you are not using homebrew, we also provide a command-line app. You can
+In case you are not using _homebrew_, we also provide a command-line app. You can
 download it from [here](https://www.arangodb.com/download).
 
 Choose *Mac OS X*. Download and install the application *ArangoDB-CLI*
@@ -99,7 +97,7 @@ showing you the log-file.
 
     2018-03-16T09:37:01Z [13373] INFO ArangoDB (version 3.3.4 [darwin]) is ready for business. Have fun!
 
-Note that it is possible to install both, the homebrew version and the command-line
+Note that it is possible to install both, the _homebrew_ version and the command-line
 app. You should, however, edit the configuration files of one version and change
 the port used.
 
