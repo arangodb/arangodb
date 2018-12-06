@@ -279,6 +279,11 @@ function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
   let onlyFailedMessages = '';
   let failedMessages = '';
   let SuccessMessages = '';
+  let bucketName = "";
+  if (options.testBuckets) {
+    let n = options.testBuckets.split('/');
+    bucketName = "_" + n[0];
+  }
   try {
     /* jshint forin: false */
     for (let testrunName in res) {
@@ -330,7 +335,7 @@ function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
       }
 
       if (isSuccess) {
-        SuccessMessages += '* Test "' + testrunName + '"\n';
+        SuccessMessages += '* Test "' + testrunName + bucketName + '"\n';
 
         for (let name in successCases) {
           if (!successCases.hasOwnProperty(name)) {
@@ -346,7 +351,7 @@ function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
           }
         }
       } else {
-        let m = '* Test "' + testrunName + '"\n';
+        let m = '* Test "' + testrunName + bucketName + '"\n';
         onlyFailedMessages += m;
         failedMessages += m;
 
