@@ -139,15 +139,19 @@ VPackBuilder ProgramOptions::toVPack(bool onlyTouched, bool detailed,
           builder.openObject();
           builder.add("section", VPackValue(option.section));
           builder.add("description", VPackValue(option.description));
-          builder.add("hidden", VPackValue(option.hidden));
+          builder.add("category", VPackValue(option.hasFlag(arangodb::options::Flags::Command) ? "command" : "option"));
+          builder.add("hidden", VPackValue(option.hasFlag(arangodb::options::Flags::Hidden)));
           builder.add("type", VPackValue(option.parameter->name()));
-          builder.add("enterpriseOnly", VPackValue(section.enterpriseOnly || option.enterpriseOnly));
+          builder.add("obsolete", VPackValue(option.hasFlag(arangodb::options::Flags::Obsolete)));
+          builder.add("enterpriseOnly", VPackValue(section.enterpriseOnly || option.hasFlag(arangodb::options::Flags::Enterprise)));
+          builder.add("requiresValue", VPackValue(option.parameter->requiresValue()));
           std::string values = option.parameter->description();
           if (!values.empty()) {
             builder.add("values", VPackValue(values));
           }
           builder.add(VPackValue("default"));
           option.toVPack(builder);
+          builder.add("dynamic", VPackValue(option.hasFlag(arangodb::options::Flags::Dynamic)));
           builder.close();
         } else {
           option.toVPack(builder);
@@ -177,7 +181,7 @@ void ProgramOptions::walk(std::function<void(Section const&, Option const&)> con
       continue;
     }
     for (auto const& it2 : it.second.options) {
-      if (!includeObsolete && it2.second.obsolete) {
+      if (!includeObsolete && it2.second.hasFlag(arangodb::options::Flags::Obsolete)) {
         // obsolete option. ignore it
         continue;
       }
@@ -235,7 +239,7 @@ bool ProgramOptions::setValue(std::string const& name, std::string const& value)
   }
 
   auto& option = (*it2).second;
-  if (option.obsolete) {
+  if (option.hasFlag(arangodb::options::Flags::Obsolete)) {
     // option is obsolete. ignore it
     _processingResult.touch(name);
     return true;

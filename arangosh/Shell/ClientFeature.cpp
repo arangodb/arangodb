@@ -105,14 +105,15 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   if (_allowJwtSecret) {
     // currently the option is only present for arangosh, but none
     // of the other client tools 
-    options->addHiddenOption(
+    options->addOption(
         "--server.ask-jwt-secret",
         "if this option is specified, the user will be prompted "
         "for a JWT secret. This option is not compatible with "
         "--server.username or --server.password. If specified, it will be used for all "
         "connections - even when a new connection to another server is "
         "created",
-        new BooleanParameter(&_askJwtSecret));
+        new BooleanParameter(&_askJwtSecret),
+        arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
   } 
 
   options->addOption("--server.connection-timeout",
@@ -124,10 +125,11 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   // note: the max-packet-size is used for all client tools that use the
   // SimpleHttpClient. fuerte does not use this
-  options->addHiddenOption(
+  options->addOption(
       "--server.max-packet-size",
       "maximum packet size (in bytes) for client/server communication",
-      new UInt64Parameter(&_maxPacketSize));
+      new UInt64Parameter(&_maxPacketSize),
+      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
   std::unordered_set<uint64_t> const sslProtocols = availableSslProtocols();
 
@@ -137,8 +139,9 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new DiscreteValuesParameter<UInt64Parameter>(
                          &_sslProtocol, sslProtocols));
 #if _WIN32
-  options->addHiddenOption("--console.code-page", "Windows code page to use; defaults to UTF8",
-                           new UInt16Parameter(&_codePage));
+  options->addOption("--console.code-page", "Windows code page to use; defaults to UTF8",
+                     new UInt16Parameter(&_codePage),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 #endif
 }
 

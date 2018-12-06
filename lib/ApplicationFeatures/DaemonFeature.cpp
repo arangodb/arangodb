@@ -50,16 +50,19 @@ DaemonFeature::DaemonFeature(application_features::ApplicationServer& server)
 }
 
 void DaemonFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addHiddenOption("--daemon",
-                           "background the server, running it as daemon",
-                           new BooleanParameter(&_daemon));
+  options->addOption("--daemon",
+                     "background the server, running it as daemon",
+                     new BooleanParameter(&_daemon),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption("--pid-file", "pid-file in daemon mode",
-                           new StringParameter(&_pidFile));
+  options->addOption("--pid-file", "pid-file in daemon mode",
+                     new StringParameter(&_pidFile),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption("--working-directory",
-                           "working directory in daemon mode",
-                           new StringParameter(&_workingDirectory));
+  options->addOption("--working-directory",
+                     "working directory in daemon mode",
+                     new StringParameter(&_workingDirectory),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
 void DaemonFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
