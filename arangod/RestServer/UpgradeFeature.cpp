@@ -62,9 +62,10 @@ void UpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "perform a database upgrade if necessary",
                      new BooleanParameter(&_upgrade));
 
-  options->addHiddenOption("--database.upgrade-check",
-                           "skip a database upgrade",
-                           new BooleanParameter(&_upgradeCheck));
+  options->addOption("--database.upgrade-check",
+                     "skip a database upgrade",
+                     new BooleanParameter(&_upgradeCheck),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
 void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {

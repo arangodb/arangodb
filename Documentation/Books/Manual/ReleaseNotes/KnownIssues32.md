@@ -1,5 +1,5 @@
-Known Issues
-============
+Known Issues in ArangoDB 3.2
+============================
 
 The following known issues are present in this version of ArangoDB and will be fixed
 in follow-up releases:
