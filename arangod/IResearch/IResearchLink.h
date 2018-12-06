@@ -98,9 +98,7 @@ class IResearchLink {
 
   bool isSorted() const; // arangodb::Index override
   
-  bool isHidden() const { // arangodb::Index override
-    return true; // always hide links
-  }
+  bool isHidden() const; // arangodb::Index override
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the identifier for this link

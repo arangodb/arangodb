@@ -348,6 +348,11 @@ bool IResearchLink::isSorted() const {
   return false; // iResearch does not provide a fixed default sort order
 }
 
+bool IResearchLink::isHidden() const {
+  // hide links unless we are on a DBServer
+  return !arangodb::ServerState::instance()->isDBServer();
+}
+
 bool IResearchLink::json(arangodb::velocypack::Builder& builder) const {
   if (!builder.isOpenObject() || !_meta.json(builder)) {
     return false;
