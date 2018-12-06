@@ -5,6 +5,11 @@
 
 `async database.listServices([excludeSystem]): Array<Object>`
 
+{% hint 'info' %}
+This method is only available when targeting ArangoDB 3.2 or later,
+see [Compatibility](../../GettingStarted/README.md#compatibility).
+{% endhint %}
+
 Fetches a list of all installed service.
 
 **Arguments**
@@ -26,6 +31,11 @@ const services = await db.listServices(false);
 ## database.installService
 
 `async database.installService(mount, source, [options]): Object`
+
+{% hint 'info' %}
+This method is only available when targeting ArangoDB 3.2 or later,
+see [Compatibility](../../GettingStarted/README.md#compatibility).
+{% endhint %}
 
 Installs a new service.
 
@@ -86,6 +96,11 @@ const info = await db.installService("/hello", source);
 ## database.replaceService
 
 `async database.replaceService(mount, source, [options]): Object`
+
+{% hint 'info' %}
+This method is only available when targeting ArangoDB 3.2 or later,
+see [Compatibility](../../GettingStarted/README.md#compatibility).
+{% endhint %}
 
 Replaces an existing service with a new service by completely removing the old
 service and installing a new service at the same mount point.
@@ -156,6 +171,11 @@ const info = await db.replaceService("/hello", source);
 
 `async database.upgradeService(mount, source, [options]): Object`
 
+{% hint 'info' %}
+This method is only available when targeting ArangoDB 3.2 or later,
+see [Compatibility](../../GettingStarted/README.md#compatibility).
+{% endhint %}
+
 Replaces an existing service with a new service while retaining the old
 service's configuration and dependencies.
 
@@ -225,6 +245,11 @@ const info = await db.upgradeService("/hello", source);
 
 `async database.uninstallService(mount, [options]): void`
 
+{% hint 'info' %}
+This method is only available when targeting ArangoDB 3.2 or later,
+see [Compatibility](../../GettingStarted/README.md#compatibility).
+{% endhint %}
+
 Completely removes a service from the database.
 
 **Arguments**
@@ -252,6 +277,11 @@ await db.uninstallService("/my-service");
 
 `async database.getService(mount): Object`
 
+{% hint 'info' %}
+This method is only available when targeting ArangoDB 3.2 or later,
+see [Compatibility](../../GettingStarted/README.md#compatibility).
+{% endhint %}
+
 Retrieves information about a mounted service.
 
 **Arguments**
@@ -270,6 +300,11 @@ const info = await db.getService("/my-service");
 ## database.getServiceConfiguration
 
 `async database.getServiceConfiguration(mount, [minimal]): Object`
+
+{% hint 'info' %}
+This method is only available when targeting ArangoDB 3.2 or later,
+see [Compatibility](../../GettingStarted/README.md#compatibility).
+{% endhint %}
 
 Retrieves an object with information about the service's configuration options
 and their current values.
@@ -294,6 +329,11 @@ const config = await db.getServiceConfiguration("/my-service");
 ## database.replaceServiceConfiguration
 
 `async database.replaceServiceConfiguration(mount, configuration, [minimal]): Object`
+
+{% hint 'info' %}
+This method is only available when targeting ArangoDB 3.2 or later,
+see [Compatibility](../../GettingStarted/README.md#compatibility).
+{% endhint %}
 
 Replaces the configuration of the given service.
 
@@ -326,6 +366,11 @@ const info = await db.replaceServiceConfiguration("/my-service", config);
 ## database.updateServiceConfiguration
 
 `async database.updateServiceConfiguration(mount, configuration, [minimal]): Object`
+
+{% hint 'info' %}
+This method is only available when targeting ArangoDB 3.2 or later,
+see [Compatibility](../../GettingStarted/README.md#compatibility).
+{% endhint %}
 
 Updates the configuration of the given service my merging the new values into
 the existing ones.
@@ -360,6 +405,11 @@ const info = await db.updateServiceConfiguration("/my-service", config);
 
 `async database.getServiceDependencies(mount, [minimal]): Object`
 
+{% hint 'info' %}
+This method is only available when targeting ArangoDB 3.2 or later,
+see [Compatibility](../../GettingStarted/README.md#compatibility).
+{% endhint %}
+
 Retrieves an object with information about the service's dependencies and their
 current mount points.
 
@@ -383,6 +433,11 @@ const deps = await db.getServiceDependencies("/my-service");
 ## database.replaceServiceDependencies
 
 `async database.replaceServiceDependencies(mount, dependencies, [minimal]): Object`
+
+{% hint 'info' %}
+This method is only available when targeting ArangoDB 3.2 or later,
+see [Compatibility](../../GettingStarted/README.md#compatibility).
+{% endhint %}
 
 Replaces the dependencies for the given service.
 
@@ -415,6 +470,11 @@ const info = await db.replaceServiceDependencies("/my-service", deps);
 ## database.updateServiceDependencies
 
 `async database.updateServiceDependencies(mount, dependencies, [minimal]): Object`
+
+{% hint 'info' %}
+This method is only available when targeting ArangoDB 3.2 or later,
+see [Compatibility](../../GettingStarted/README.md#compatibility).
+{% endhint %}
 
 Updates the dependencies for the given service by merging the new values into
 the existing ones.
@@ -449,6 +509,11 @@ const info = await db.updateServiceDependencies("/my-service", deps);
 
 `async database.enableServiceDevelopmentMode(mount): Object`
 
+{% hint 'info' %}
+This method is only available when targeting ArangoDB 3.2 or later,
+see [Compatibility](../../GettingStarted/README.md#compatibility).
+{% endhint %}
+
 Enables development mode for the given service.
 
 **Arguments**
@@ -468,6 +533,11 @@ const info = await db.enableServiceDevelopmentMode("/my-service");
 ## database.disableServiceDevelopmentMode
 
 `async database.disableServiceDevelopmentMode(mount): Object`
+
+{% hint 'info' %}
+This method is only available when targeting ArangoDB 3.2 or later,
+see [Compatibility](../../GettingStarted/README.md#compatibility).
+{% endhint %}
 
 Disabled development mode for the given service and commits the service state to
 the database.
@@ -490,6 +560,11 @@ const info = await db.disableServiceDevelopmentMode("/my-service");
 
 `async database.listServiceScripts(mount): Object`
 
+{% hint 'info' %}
+This method is only available when targeting ArangoDB 3.2 or later,
+see [Compatibility](../../GettingStarted/README.md#compatibility).
+{% endhint %}
+
 Retrieves a list of the service's scripts.
 
 Returns an object mapping each name to a more readable representation.
@@ -510,6 +585,11 @@ const scripts = await db.listServiceScripts("/my-service");
 ## database.runServiceScript
 
 `async database.runServiceScript(mount, name, [scriptArg]): any`
+
+{% hint 'info' %}
+This method is only available when targeting ArangoDB 3.2 or later,
+see [Compatibility](../../GettingStarted/README.md#compatibility).
+{% endhint %}
 
 Runs a service script and returns the result.
 
@@ -537,6 +617,11 @@ const result = await db.runServiceScript("/my-service", "setup");
 ## database.runServiceTests
 
 `async database.runServiceTests(mount, [reporter]): any`
+
+{% hint 'info' %}
+This method is only available when targeting ArangoDB 3.2 or later,
+see [Compatibility](../../GettingStarted/README.md#compatibility).
+{% endhint %}
 
 Runs the tests of a given service and returns a formatted report.
 
@@ -583,6 +668,11 @@ const result = await db.runServiceTests("/my-service", opts);
 
 `async database.downloadService(mount): Buffer | Blob`
 
+{% hint 'info' %}
+This method is only available when targeting ArangoDB 3.2 or later,
+see [Compatibility](../../GettingStarted/README.md#compatibility).
+{% endhint %}
+
 Retrieves a zip bundle containing the service files.
 
 Returns a `Buffer` in Node or `Blob` in the browser version.
@@ -603,6 +693,11 @@ const bundle = await db.downloadService("/my-service");
 ## database.getServiceReadme
 
 `async database.getServiceReadme(mount): string?`
+
+{% hint 'info' %}
+This method is only available when targeting ArangoDB 3.2 or later,
+see [Compatibility](../../GettingStarted/README.md#compatibility).
+{% endhint %}
 
 Retrieves the text content of the service's `README` or `README.md` file.
 
@@ -626,6 +721,11 @@ const readme = await db.getServiceReadme("/my-service");
 
 `async database.getServiceDocumentation(mount): Object`
 
+{% hint 'info' %}
+This method is only available when targeting ArangoDB 3.2 or later,
+see [Compatibility](../../GettingStarted/README.md#compatibility).
+{% endhint %}
+
 Retrieves a Swagger API description object for the service installed at the
 given mount point.
 
@@ -645,6 +745,11 @@ const spec = await db.getServiceDocumentation("/my-service");
 ## database.commitLocalServiceState
 
 `async database.commitLocalServiceState([replace]): void`
+
+{% hint 'info' %}
+This method is only available when targeting ArangoDB 3.2 or later,
+see [Compatibility](../../GettingStarted/README.md#compatibility).
+{% endhint %}
 
 Writes all locally available services to the database and updates any service
 bundles missing in the database.
