@@ -1,1 +1,1 @@
-29a9c6d79b10275ed7ab26281dddbe59decffe76  JS_FILES.txt
+e00d45f1345e55aa037bebaad44583748482dbda  js/JS_FILES.txt

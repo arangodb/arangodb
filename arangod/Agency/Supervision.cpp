@@ -52,20 +52,20 @@ struct HealthRecord {
   std::string endpoint;
   std::string lastAcked;
   std::string hostId;
+  std::string serverVersion;
+  std::string engine;
   size_t version;
 
   explicit HealthRecord() : version(0) {}
 
   HealthRecord(
-    std::string const& sn, std::string const& ep, std::string const& ho) :
-    shortName(sn), endpoint(ep), hostId(ho), version(0) {}
+    std::string const& sn, std::string const& ep, std::string const& ho,
+    std::string const& en, std::string const& sv) :
+    shortName(sn), endpoint(ep), hostId(ho),
+    serverVersion(sv), engine(en), version(0) {}
 
   HealthRecord(Node const& node) {
     *this = node;
-  }
-
-  HealthRecord(HealthRecord const& other) {
-    *this = other;
   }
 
   HealthRecord& operator=(Node const& node) {
@@ -84,8 +84,16 @@ struct HealthRecord {
         if (node.has("SyncTime")) {
           syncTime = node.hasAsString("SyncTime").first;
         }
-        if (node.has("LastAcked")) {
-          lastAcked = node.hasAsString("LastAcked").first;
+        if (node.has("LastAckedTime")) {
+          lastAcked = node.hasAsString("LastAckedTime").first;
+        }
+        if (node.has("Engine") && node.has("Version")) {
+          version = 4;
+          engine = node.hasAsString("Engine").first;
+          serverVersion = node.hasAsString("Version").first;
+        } else {
+          engine.clear();
+          serverVersion.clear();
         }
       } else if (node.has("LastHeartbeatStatus")) {
         version = 1;
@@ -104,16 +112,6 @@ struct HealthRecord {
     return *this;
   }
 
-  HealthRecord& operator=(HealthRecord const& other) {
-    shortName = other.shortName;
-    syncStatus = other.syncStatus;
-    status = other.status;
-    endpoint = other.endpoint;
-    hostId = other.hostId;
-    version = other.version;
-    return *this;
-  }
-
   void toVelocyPack(VPackBuilder& obj) const {
     TRI_ASSERT(obj.isOpenObject());
     obj.add("ShortName", VPackValue(shortName));
@@ -121,17 +119,21 @@ struct HealthRecord {
     obj.add("Host", VPackValue(hostId));
     obj.add("SyncStatus", VPackValue(syncStatus));
     obj.add("Status", VPackValue(status));
-    if (syncTime.empty()) {
-      obj.add("Timestamp",
-              VPackValue(timepointToString(std::chrono::system_clock::now())));
-    } else {
-      obj.add("SyncTime", VPackValue(syncTime));
-      obj.add("LastAcked", VPackValue(lastAcked));
-    }
+    obj.add("Version", VPackValue(serverVersion));
+    obj.add("Engine", VPackValue(engine));
+    obj.add("Timestamp",
+            VPackValue(timepointToString(std::chrono::system_clock::now())));
+    obj.add("SyncTime", VPackValue(syncTime));
+    obj.add("LastAckedTime", VPackValue(lastAcked));
   }
 
   bool statusDiff(HealthRecord const& other) {
-    return (status != other.status || syncStatus != other.syncStatus);
+    return status != other.status ||
+      syncStatus != other.syncStatus ||
+      serverVersion != other.serverVersion ||
+      engine != other.engine ||
+      hostId != other.hostId ||
+      endpoint != other.endpoint;
   }
 
   friend std::ostream& operator<<(std::ostream& o, HealthRecord const& hr) {
@@ -414,6 +416,8 @@ std::vector<check_t> Supervision::check(std::string const& type) {
     }
   }
 
+  //LOG_TOPIC(ERR, Logger::FIXME) << "ServersRegistered: " << serversRegistered;
+
   // Remove all machines, which are no longer planned
   for (auto const& machine : machinesPlanned) {
     todelete.erase(
@@ -429,6 +433,8 @@ std::vector<check_t> Supervision::check(std::string const& type) {
     std::string lastHeartbeatStatus, lastHeartbeatAcked, lastHeartbeatTime,
       lastStatus, serverID(machine.first), shortName;
 
+    //LOG_TOPIC(ERR, Logger::FIXME) << "ServerID: " << serverID;
+
     // short name arrives asynchronous to machine registering, make sure
     //  it has arrived before trying to use it
     auto tmp_shortName = _snapshot.hasAsString(targetShortID + serverID + "/ShortName");
@@ -436,21 +442,36 @@ std::vector<check_t> Supervision::check(std::string const& type) {
 
       shortName = tmp_shortName.first;
 
-      // Endpoint
+      // "/arango/Current/ServersRegistered/<server-id>/endpoint"
       std::string endpoint;
       std::string epPath = serverID + "/endpoint";
       if (serversRegistered.has(epPath)) {
         endpoint = serversRegistered.hasAsString(epPath).first;
       }
+      // "/arango/Current/ServersRegistered/<server-id>/host"
       std::string hostId;
       std::string hoPath = serverID + "/host";
       if (serversRegistered.has(hoPath)) {
         hostId = serversRegistered.hasAsString(hoPath).first;
       }
+      // "/arango/Current/ServersRegistered/<server-id>/serverVersion"
+      std::string serverVersion;
+      std::string svPath = serverID + "/versionString";
+      if (serversRegistered.has(svPath)) {
+        serverVersion = serversRegistered.hasAsString(svPath).first;
+      }
+      // "/arango/Current/ServersRegistered/<server-id>/engine"
+      std::string engine;
+      std::string enPath = serverID + "/engine";
+      if (serversRegistered.has(enPath)) {
+        engine = serversRegistered.hasAsString(enPath).first;
+      }
 
       // Health records from persistence, from transience and a new one
-      HealthRecord transist(shortName, endpoint, hostId);
-      HealthRecord persist(shortName, endpoint, hostId);
+      HealthRecord transist(
+        shortName, endpoint, hostId, engine, serverVersion);
+      HealthRecord persist(
+        shortName, endpoint, hostId, engine, serverVersion);
 
       // Get last health entries from transient and persistent key value stores
       if (_transient.has(healthPrefix + serverID)) {
@@ -477,6 +498,12 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       transist.syncTime = syncTime;
       transist.syncStatus = syncStatus;
 
+      // update volatile values that may change
+      transist.serverVersion = serverVersion;
+      transist.engine = engine;
+      transist.hostId = hostId;
+      transist.endpoint = endpoint;
+
       // Calculate elapsed since lastAcked
       auto elapsed = std::chrono::duration<double>(
         std::chrono::system_clock::now() - lastAckedTime);
@@ -491,6 +518,9 @@ std::vector<check_t> Supervision::check(std::string const& type) {
 
       // Status changed?
       bool changed = transist.statusDiff(persist);
+
+      /*LOG_TOPIC(ERR, Logger::FIXME) << "Changed: " << changed
+        << "transist: " << transist << " persist: " << persist;*/
 
       // Take necessary actions if any
       std::shared_ptr<VPackBuilder> envelope;
@@ -950,7 +980,7 @@ void Supervision::workJobs() {
 
 void Supervision::readyOrphanedIndexCreations() {
   _lock.assertLockedByCurrentThread();
-  
+
   if (_snapshot.has(planColPrefix) && _snapshot.has(curColPrefix)) {
     auto const& plannedDBs = _snapshot(planColPrefix).children();
     auto const& currentDBs = _snapshot(curColPrefix);
@@ -982,7 +1012,7 @@ void Supervision::readyOrphanedIndexCreations() {
                   for (auto const& sh : shards.children()) {
 
                     auto const& shname = sh.first;
-                  
+
                     if (currentDBs.has(colPath + shname + "/indexes")) {
                       auto const& curIndexes =
                         currentDBs(colPath + shname + "/indexes").slice();
@@ -1036,7 +1066,7 @@ void Supervision::readyOrphanedIndexCreations() {
               { VPackObjectBuilder precondition(envelope.get());
                 envelope->add(
                   VPackValue(
-                    _agencyPrefix + planColPrefix + colPath + "indexes")); 
+                    _agencyPrefix + planColPrefix + colPath + "indexes"));
                 envelope->add(indexes); }
             }}
 
@@ -1045,7 +1075,7 @@ void Supervision::readyOrphanedIndexCreations() {
             LOG_TOPIC(DEBUG, Logger::SUPERVISION)
               << "failed to report ready index to agency. Will retry.";
           }
-        }          
+        }
       }
     }
   }

@@ -154,16 +154,13 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
     // BUG FIX - do not answer with DATABASE_NOT_FOUND, when follower in active failover
     auto mode = ServerState::serverMode();
     switch (mode) {
-      case ServerState::Mode::REDIRECT:
-        addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE, req.contentTypeResponse(),
-                     req.messageId(), TRI_ERROR_CLUSTER_NOT_LEADER,
-                     TRI_errno_string(TRI_ERROR_CLUSTER_NOT_LEADER));
-        return RequestFlow::Abort;
       case ServerState::Mode::TRYAGAIN:
-        addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE, req.contentTypeResponse(),
-                     req.messageId(), TRI_ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING,
-                     TRI_errno_string(TRI_ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING));
+      case ServerState::Mode::REDIRECT: {
+        auto resp = createResponse(rest::ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
+        ReplicationFeature::prepareFollowerResponse(resp.get(), mode);
+        addResponse(*resp.get(), nullptr);
         return RequestFlow::Abort;
+      }
       default:
         addErrorResponse(rest::ResponseCode::NOT_FOUND, req.contentTypeResponse(),
                req.messageId(), TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,

@@ -3561,6 +3561,38 @@ static void convertStatusToV8(v8::FunctionCallbackInfo<v8::Value> const& args,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief lists all running external processes
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_GetExternalSpawned(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  // extract the arguments
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("getExternalSpawned()");
+  }
+
+  v8::Handle<v8::Array> spawnedProcesses =
+      v8::Array::New(isolate, static_cast<int>(ExternalProcesses.size()));
+
+  uint32_t i = 0;
+  for (auto const& process : ExternalProcesses) {
+    v8::Handle<v8::Object> oneProcess = v8::Object::New(isolate);
+    ExternalId external;
+    external._pid = process->_pid;
+    auto external_status = TRI_CheckExternalProcess(external, false);
+    convertStatusToV8(args, oneProcess, external_status, external);
+    spawnedProcesses->Set(i, oneProcess);
+    i++;
+  }
+
+  TRI_V8_RETURN(spawnedProcesses);
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a external program
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4739,6 +4771,11 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_SPLIT_WORDS_ICU"),
                                JS_SplitWordlist);
+
+
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYS_GET_EXTERNAL_SPAWNED"),
+                               JS_GetExternalSpawned);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_KILL_EXTERNAL"),
                                JS_KillExternal);

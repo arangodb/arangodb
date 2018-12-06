@@ -342,8 +342,8 @@ class Index {
   std::vector<std::vector<arangodb::basics::AttributeName>> _fields;
 
   mutable bool _unique;
-  mutable bool _isBuilding;
   mutable bool _sparse;
+  mutable bool _isBuilding;
 
   double _clusterSelectivity;
 };
