@@ -179,7 +179,7 @@ you can edit `etc\arangodb3\arangod.conf` to change or add configuration options
 ### Start the Server
 
 After installation, you may start ArangoDB in several ways. The exact start-up command
-depends on the type of ArangoDB deployment you are interested on (_Single Instance_, _Master-Slave_,
+depends on the type of ArangoDB deployment you are interested in
 _Active Failover_ or Cluster. 
 
 Please refer to the [_Deployment_](../Deployment/README.md) chapter for further information
