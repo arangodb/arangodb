@@ -249,19 +249,19 @@ Deprecated server functionality
 
 The following simple query functions are now deprecated:
 
-* collection.near
-* collection.within 
-* collection.geo 
-* collection.fulltext
-* collection.range 
-* collection.closedRange 
+* `collection.near`
+* `collection.within`
+* `collection.geo`
+* `collection.fulltext`
+* `collection.range`
+* `collection.closedRange`
 
 This also lead to the following REST API methods being deprecated from now on:
 
-* PUT /_api/simple/near
-* PUT /_api/simple/within
-* PUT /_api/simple/fulltext
-* PUT /_api/simple/range
+* `PUT /_api/simple/near`
+* `PUT /_api/simple/within`
+* `PUT /_api/simple/fulltext`
+* `PUT /_api/simple/range`
 
 It is recommended to replace calls to these functions or APIs with equivalent AQL queries, 
 which are more flexible because they can be combined with other operations:
