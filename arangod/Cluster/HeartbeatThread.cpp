@@ -323,11 +323,43 @@ void HeartbeatThread::runDBServer() {
     return true;
   };
 
+  std::function<bool(VPackSlice const& result)> updateCurrent =
+    [=](VPackSlice const& result) {
+
+      if (!result.isNumber()) {
+        LOG_TOPIC(ERR, Logger::HEARTBEAT)
+        << "Plan Version is not a number! " << result.toJson();
+        return false;
+      }
+
+      uint64_t version = result.getNumber<uint64_t>();
+      bool doSync = false;
+
+      {
+        MUTEX_LOCKER(mutexLocker, *_statusLock);
+        if (version > _desiredVersions->current) {
+          _desiredVersions->current = version;
+          LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
+          << "Desired Current Version is now " << _desiredVersions->plan;
+          doSync = true;
+        }
+      }
+
+      if (doSync) {
+        syncDBServerStatusQuo(true);
+      }
+
+      return true;
+    };
+
   auto planAgencyCallback = std::make_shared<AgencyCallback>(
       _agency, "Plan/Version", updatePlan, true);
 
+  auto currentAgencyCallback = std::make_shared<AgencyCallback>(
+      _agency, "Current/Version", updateCurrent, true);
+
   bool registered = false;
-  while (!registered) {
+  while (!registered && !isStopping()) {
     registered =
       _agencyCallbackRegistry->registerCallback(planAgencyCallback);
     if (!registered) {
@@ -337,40 +369,8 @@ void HeartbeatThread::runDBServer() {
     }
   }
 
-  std::function<bool(VPackSlice const& result)> updateCurrent =
-    [=](VPackSlice const& result) {
-
-    if (!result.isNumber()) {
-      LOG_TOPIC(ERR, Logger::HEARTBEAT)
-      << "Plan Version is not a number! " << result.toJson();
-      return false;
-    }
-
-    uint64_t version = result.getNumber<uint64_t>();
-    bool doSync = false;
-
-    {
-      MUTEX_LOCKER(mutexLocker, *_statusLock);
-      if (version > _desiredVersions->current) {
-        _desiredVersions->current = version;
-        LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
-          << "Desired Current Version is now " << _desiredVersions->plan;
-        doSync = true;
-      }
-    }
-
-    if (doSync) {
-      syncDBServerStatusQuo(true);
-    }
-
-    return true;
-  };
-
-  auto currentAgencyCallback = std::make_shared<AgencyCallback>(
-      _agency, "Current/Version", updateCurrent, true);
-
   registered = false;
-  while (!registered) {
+  while (!registered && !isStopping()) {
     registered =
       _agencyCallbackRegistry->registerCallback(currentAgencyCallback);
     if (!registered) {
