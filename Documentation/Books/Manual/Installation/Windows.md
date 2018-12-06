@@ -1,8 +1,6 @@
 Installing ArangoDB on Windows
 ==============================
 
-**TMP**
-
 Introduction
 ------------
 
@@ -13,7 +11,9 @@ There are two possible methods to install ArangoDB on Windows:
 
 Both installation methods have their own pros and cons.
 
-**Note:** Please note that ArangoDB will only work on 64bit.
+{% hint 'info' %}
+Please note that ArangoDB will only work on 64bit systems.
+{% endhint %}
 
 Installing using the Installer
 ------------------------------
@@ -125,7 +125,9 @@ we will be using the administration web interface. Execute *arangod.exe* if you
 have not already done so, then open up your web browser and point it to the
 page:
 
-    http://127.0.0.1:8529/
+```
+http://127.0.0.1:8529/
+```
 
 ### Advanced Starting
 
@@ -156,39 +158,29 @@ files created by the Arango server will remain as well as the *&lt;ROOTDIR&gt;*
 directory.  To complete the uninstallation process, remove the data files and
 the *&lt;ROOTDIR&gt;* directory manually.
 
-
 Installing using the ZIP archive (XCopy installation)
 -----------------------------------------------------
 
-Even if there is a nice guided _Installer_ for Windows, not all users prefer this
-type of installation. In order to have a [portable application](http://en.wikipedia.org/wiki/Portable_application),
-easily start different ArangoDB Servers on the same machine, and/or for the maximum flexibility,
-you might want to install using the ZIP archive ([XCOPY deployment](http://en.wikipedia.org/wiki/XCOPY_deployment)).
+Not all users prefer the guided _Installer_ to install ArangoDB. In order to have a
+[portable application](http://en.wikipedia.org/wiki/Portable_application), or easily
+start different ArangoDB versions on the same machine, and/or for the maximum flexibility,
+you might want to install using the _ZIP_ archive ([XCOPY deployment](http://en.wikipedia.org/wiki/XCOPY_deployment)).
 
 ### Unzip the archive
 
-Open an explorer, choose a place where you want ArangoDB to be, and unzip the files there. 
-It will create its own toplevel directory with the version number in the string.
+Open an explorer, choose a place where you would like ArangoDB to be, and extract the
+archive there. It will create its own toplevel directory with the version number in the string.
 
 ### Edit the configuration
 
 This step is optional. If the default configuration of ArangoDB do not suite your needs,
-you might edit `etc\arangodb3\arangod.conf` to change some configuration options, like
-
-- [the location of the database files](../Administration/Configuration/Wal.html)
-- [ports to bind](../Administration/Configuration/Endpoint.html)
-- [storage engine](../Administration/Configuration/GeneralArangod.html#storage-engine)
-
-and so on.
+you might edit `etc\arangodb3\arangod.conf` to change some configuration options.
 
 ### Start the Server
 
 After installation, you may start ArangoDB in several ways. The exact start-up command
-depends on the type of ArangoDB deployment you are interested on (Single Server, Master-Slave,
-Active Failover, Cluster, DC2DC).
+depends on the type of ArangoDB deployment you are interested on (_Single Instance_, _Master-Slave_,
+_Active Failover_ or Cluster. 
 
 Please refer to the [_Deployment_](../Deployment/README.md) chapter for further information
 on deployment.
-
-A reference on how to start and stop ArangoDB, can be found in the
-[_Starting & Stopping_](../Administration/StartingStopping.md) page.
