@@ -65,8 +65,9 @@ FortuneFeature::FortuneFeature(
 }
 
 void FortuneFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addHiddenOption("fortune", "show fortune cookie on startup",
-                           new BooleanParameter(&_fortune));
+  options->addOption("fortune", "show fortune cookie on startup",
+                     new BooleanParameter(&_fortune),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
 void FortuneFeature::start() {

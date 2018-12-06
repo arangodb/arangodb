@@ -90,8 +90,9 @@ void MaxMapCountFeature::collectOptions(std::shared_ptr<options::ProgramOptions>
   options->addSection("server", "Server Options");
   
   if (needsChecking()) {
-    options->addHiddenOption("--server.check-max-memory-mappings, mappings", "check the maximum number of memory mappings at runtime",
-                             new BooleanParameter(&checkMaxMappings));
+    options->addOption("--server.check-max-memory-mappings, mappings", "check the maximum number of memory mappings at runtime",
+                       new BooleanParameter(&checkMaxMappings),
+                       arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
   } else {
     options->addObsoleteOption("--server.check-max-memory-mappings", "check the maximum number of memory mappings at runtime", true);
   }

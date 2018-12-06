@@ -120,16 +120,18 @@ V8DealerFeature::V8DealerFeature(
 void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("javascript", "Configure the Javascript engine");
 
-  options->addHiddenOption(
+  options->addOption(
       "--javascript.gc-frequency",
       "JavaScript time-based garbage collection frequency (each x seconds)",
-      new DoubleParameter(&_gcFrequency));
+      new DoubleParameter(&_gcFrequency),
+      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption(
+  options->addOption(
       "--javascript.gc-interval",
       "JavaScript request-based garbage collection interval (each x requests)",
-      new UInt64Parameter(&_gcInterval));
-  
+      new UInt64Parameter(&_gcInterval),
+      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+
   options->addOption("--javascript.app-path", "directory for Foxx applications",
                      new StringParameter(&_appPath));
 
@@ -138,10 +140,11 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "path to the directory containing JavaScript startup scripts",
       new StringParameter(&_startupDirectory));
 
-  options->addHiddenOption(
+  options->addOption(
       "--javascript.module-directory",
       "additional paths containing JavaScript modules",
-      new VectorParameter<StringParameter>(&_moduleDirectories));
+      new VectorParameter<StringParameter>(&_moduleDirectories),
+      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
   
   options->addOption(
      "--javascript.copy-installation",
@@ -157,26 +160,30 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--javascript.v8-contexts-minimum",
       "minimum number of V8 contexts that keep available for executing JavaScript actions",
       new UInt64Parameter(&_nrMinContexts));
-  
-  options->addHiddenOption(
+
+  options->addOption(
       "--javascript.v8-contexts-max-invocations",
       "maximum number of invocations for each V8 context before it is disposed",
-      new UInt64Parameter(&_maxContextInvocations));
-  
-  options->addHiddenOption(
+      new UInt64Parameter(&_maxContextInvocations),
+      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+
+  options->addOption(
       "--javascript.v8-contexts-max-age",
       "maximum age for each V8 context (in seconds) before it is disposed",
-      new DoubleParameter(&_maxContextAge));
+      new DoubleParameter(&_maxContextAge),
+      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption(
+  options->addOption(
       "--javascript.allow-admin-execute",
       "for testing purposes allow '_admin/execute', NEVER enable on production",
-      new BooleanParameter(&_allowAdminExecute));
-  
-  options->addHiddenOption(
+      new BooleanParameter(&_allowAdminExecute),
+      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+
+  options->addOption(
       "--javascript.enabled",
       "enable the V8 JavaScript engine",
-      new BooleanParameter(&_enableJS));
+      new BooleanParameter(&_enableJS),
+      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
 void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {

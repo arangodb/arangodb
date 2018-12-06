@@ -72,8 +72,9 @@ BootstrapFeature::BootstrapFeature(
 }
 
 void BootstrapFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addHiddenOption("hund", "make ArangoDB bark on startup",
-                           new BooleanParameter(&_bark));
+  options->addOption("hund", "make ArangoDB bark on startup",
+                     new BooleanParameter(&_bark),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
 // Local Helper functions

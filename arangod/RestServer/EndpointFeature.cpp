@@ -68,11 +68,13 @@ void EndpointFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addSection("tcp", "TCP features");
 
-  options->addHiddenOption("--tcp.reuse-address", "try to reuse TCP port(s)",
-                           new BooleanParameter(&_reuseAddress));
+  options->addOption("--tcp.reuse-address", "try to reuse TCP port(s)",
+                     new BooleanParameter(&_reuseAddress),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption("--tcp.backlog-size", "listen backlog size",
-                           new UInt64Parameter(&_backlogSize));
+  options->addOption("--tcp.backlog-size", "listen backlog size",
+                     new UInt64Parameter(&_backlogSize),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
 void EndpointFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
