@@ -300,6 +300,7 @@
   * [In the Cloud](Deployment/Cloud/README.md)
     * [AWS](Deployment/Cloud/AWS.md)
     * [Azure](Deployment/Cloud/Azure.md)
+  * [Production Checklist](Deployment/ProductionChecklist.md)
 * [Backup & Restore](BackupRestore/README.md)
 * [Upgrading](Upgrading/README.md)
   * [General Upgrade Information](Upgrading/GeneralInfo/README.md)

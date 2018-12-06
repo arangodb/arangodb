@@ -5,6 +5,9 @@ This _Chapter_ describes various possibilities to deploy ArangoDB.
 
 For installation instructions, please refer to the [Installation](../Installation/README.md) _Chapter_.
 
+For _production_ deployments, please also carefully check the
+[ArangoDB Production Checklist](ProductionChecklist.md).
+
 By ArangoDB _Deployment Mode_:
 
 - [Single instance](SingleInstance/README.md)
