@@ -191,7 +191,7 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
     );
 
     if (type.isString() && type.compareString("edge") == 0) {
-      VPackSlice fields = index.get("fields");
+      VPackSlice fields = index.get(StaticStrings::IndexFields);
       TRI_ASSERT(fields.isArray() && fields.length() <= 2);
 
       if (fields.length() == 1) {  // merge indexes
@@ -234,7 +234,7 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
         if (fields[0].compareString(StaticStrings::FromString) == 0) {
           continue;
         } else if (fields[0].compareString(StaticStrings::ToString) == 0) {
-          merge.add("fields", VPackValue(VPackValueType::Array));
+          merge.add(StaticStrings::IndexFields, VPackValue(VPackValueType::Array));
           merge.add(VPackValue(StaticStrings::FromString));
           merge.add(VPackValue(StaticStrings::ToString));
           merge.close();

@@ -258,7 +258,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
   }
 
   Result result;
-  if (hasOperations()) {
+  if (hasOperations()) { // might not have ops for fillIndex
     // we are actually going to attempt a commit
     if (!hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
       // add custom commit marker to increase WAL tailing reliability
@@ -368,15 +368,8 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     TRI_ASSERT(_rocksTransaction->GetNumKeys() == 0 &&
                _rocksTransaction->GetNumPuts() == 0 &&
                _rocksTransaction->GetNumDeletes() == 0);
-    
-    rocksdb::SequenceNumber seq = 0;
-    if (_rocksTransaction) {
-      seq = _rocksTransaction->GetSnapshot()->GetSequenceNumber();
-    } else {
-      TRI_ASSERT(_readSnapshot);
-      seq = _readSnapshot->GetSequenceNumber();
-    }
-
+    // this is most likely the fill index case
+    rocksdb::SequenceNumber seq = _rocksTransaction->GetSnapshot()->GetSequenceNumber();
     for (auto& trxColl : _collections) {
       TRI_IF_FAILURE("RocksDBCommitCounts") {
         continue;
@@ -409,7 +402,6 @@ Result RocksDBTransactionState::commitTransaction(transaction::Methods* activeTr
     if (_rocksTransaction != nullptr) {
       res = internalCommit();
     }
-
     if (res.ok()) {
       updateStatus(transaction::Status::COMMITTED);
       cleanupTransaction();  // deletes trx

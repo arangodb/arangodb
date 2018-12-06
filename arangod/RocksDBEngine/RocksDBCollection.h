@@ -182,9 +182,9 @@ class RocksDBCollection final : public PhysicalCollection {
   uint64_t objectId() const { return _objectId; }
 
   int lockWrite(double timeout = 0.0);
-  int unlockWrite();
+  void unlockWrite();
   int lockRead(double timeout = 0.0);
-  int unlockRead();
+  void unlockRead();
 
   /// recalculte counts for collection in case of failure
   uint64_t recalculateCounts();

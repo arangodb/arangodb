@@ -838,8 +838,8 @@ void RocksDBIndexFactory::prepareIndexes(
   bool splitEdgeIndex = false;
   TRI_idx_iid_t last = 0;
 
-  for (auto const& v : VPackArrayIterator(indexesSlice)) {
-    if (arangodb::basics::VelocyPackHelper::getBooleanValue(v, "error",
+  for (VPackSlice v : VPackArrayIterator(indexesSlice)) {
+    if (arangodb::basics::VelocyPackHelper::getBooleanValue(v, StaticStrings::Error,
                                                             false)) {
       // We have an error here.
       // Do not add index.
@@ -848,15 +848,14 @@ void RocksDBIndexFactory::prepareIndexes(
     }
 
     // check for combined edge index from MMFiles; must split!
-    auto value = v.get("type");
-
-    if (value.isString()) {
+    auto typeSlice = v.get(StaticStrings::IndexType);
+    if (typeSlice.isString()) {
       VPackValueLength len;
-      const char* tmp = value.getStringUnchecked(len);
+      const char* tmp = typeSlice.getStringUnchecked(len);
       arangodb::Index::IndexType const type = arangodb::Index::type(tmp, len);
 
       if (type == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
-        VPackSlice fields = v.get("fields");
+        VPackSlice fields = v.get(StaticStrings::IndexFields);
 
         if (fields.isArray() && fields.length() == 2) {
           VPackBuilder from;
@@ -864,8 +863,8 @@ void RocksDBIndexFactory::prepareIndexes(
           from.openObject();
 
           for (auto const& f : VPackObjectIterator(v)) {
-            if (arangodb::StringRef(f.key) == "fields") {
-              from.add(VPackValue("fields"));
+            if (arangodb::StringRef(f.key) == StaticStrings::IndexFields) {
+              from.add(VPackValue(StaticStrings::IndexFields));
               from.openArray();
               from.add(VPackValue(StaticStrings::FromString));
               from.close();
@@ -880,18 +879,16 @@ void RocksDBIndexFactory::prepareIndexes(
           VPackBuilder to;
 
           to.openObject();
-
           for (auto const& f : VPackObjectIterator(v)) {
-            if (arangodb::StringRef(f.key) == "fields") {
-              to.add(VPackValue("fields"));
+            if (arangodb::StringRef(f.key) == StaticStrings::IndexFields) {
+              to.add(VPackValue(StaticStrings::IndexFields));
               to.openArray();
               to.add(VPackValue(StaticStrings::ToString));
               to.close();
-            } else if (arangodb::StringRef(f.key) == "id") {
+            } else if (arangodb::StringRef(f.key) == StaticStrings::IndexId) {
               auto iid = basics::StringUtils::uint64(f.value.copyString()) + 1;
-
               last = iid;
-              to.add("id", VPackValue(std::to_string(iid)));
+              to.add(StaticStrings::IndexId, VPackValue(std::to_string(iid)));
             } else {
               to.add(f.key);
               to.add(f.value);
@@ -930,9 +927,9 @@ void RocksDBIndexFactory::prepareIndexes(
         b.openObject();
 
         for (auto const& f : VPackObjectIterator(v)) {
-          if (arangodb::StringRef(f.key) == "id") {
+          if (arangodb::StringRef(f.key) == StaticStrings::IndexId) {
             last++;
-            b.add("id", VPackValue(std::to_string(last)));
+            b.add(StaticStrings::IndexId, VPackValue(std::to_string(last)));
           } else {
             b.add(f.key);
             b.add(f.value);
@@ -957,7 +954,6 @@ void RocksDBIndexFactory::prepareIndexes(
     }
 
     auto idx = prepareIndexFromSlice(v, false, col, true);
-
     if (!idx) {
       LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
         << "error creating index from definition '" << v.toString() << "'";
@@ -971,6 +967,12 @@ void RocksDBIndexFactory::prepareIndexes(
           << v.toJson() << "'";
     }
 #endif
+    
+    if (basics::VelocyPackHelper::getBooleanValue(v, StaticStrings::IndexIsBuilding, false)) {
+      LOG_TOPIC(WARN, Logger::ENGINES) << "dropping failed index '" << idx->id() << "'";
+      idx->drop();
+      continue;
+    }
 
     indexes.emplace_back(std::move(idx));
   }

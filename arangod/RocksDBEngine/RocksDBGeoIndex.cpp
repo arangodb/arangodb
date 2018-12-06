@@ -236,7 +236,6 @@ class RDBNearIterator final : public IndexIterator {
   geo_index::NearUtils<CMP> _near;
   std::unique_ptr<rocksdb::Iterator> _iter;
 };
-typedef RDBNearIterator<geo_index::DocumentsAscending> LegacyIterator;
 
 RocksDBGeoIndex::RocksDBGeoIndex(
     TRI_idx_iid_t iid,

@@ -37,6 +37,7 @@
 #include "Indexes/IndexIterator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
+#include "RocksDBEngine/RocksDBBuilderIndex.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -48,16 +49,12 @@
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
-#include "RocksDBEngine/RocksDBValue.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
-#include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
-#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
@@ -281,13 +278,6 @@ void RocksDBCollection::prepareIndexes(
 
   bool droppedIndex = false;
   for (std::shared_ptr<Index>& idx : indexes) {
-    RocksDBIndex* rtrx = static_cast<RocksDBIndex*>(idx.get());
-    if (rtrx->isBuilding()) {
-      int res = rtrx->drop();
-      TRI_ASSERT(res == TRI_ERROR_NO_ERROR);
-      droppedIndex = true;
-      continue;
-    }
     addIndex(std::move(idx));
   }
 
@@ -325,23 +315,27 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
     arangodb::velocypack::Slice const& info, bool restore,
     bool& created) {
   TRI_ASSERT(info.isObject());
+  Result res;
   
-  VPackSlice typeSlice = info.get(StaticStrings::IndexType);
-  
-  AccessMode::Type type = AccessMode::Type::WRITE;
-#ifdef USE_IRESEARCH
-  if (arangodb::Index::type(typeSlice.copyString()) == Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
-    type = AccessMode::Type::EXCLUSIVE; // iresearch needs exclusive access
+  // Step 0. Lock all the things
+  TRI_vocbase_t& vocbase = _logicalCollection.vocbase();
+  TRI_vocbase_col_status_e status;
+  res = vocbase.useCollection(&_logicalCollection, status);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
   }
-#endif
-  SingleCollectionTransaction trx( // prevent concurrent dropping
-    transaction::StandaloneContext::Create(_logicalCollection.vocbase()),
-    _logicalCollection, type);
-  Result res = trx.begin();
-  if (!res.ok()) {
+  auto releaseGuard = scopeGuard([&] {
+    vocbase.releaseCollection(&_logicalCollection);
+  });
+  res = lockWrite(); // MOVE ?!!!
+  if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
   WRITE_LOCKER(indexGuard, _indexesLock);
+  auto unlockGuard = scopeGuard([&] {
+    indexGuard.unlock();
+    this->unlockWrite();
+  });
   
   // Step 1. Check for matching index
   std::shared_ptr<Index> idx = findIndex(info, _indexes);
@@ -372,7 +366,9 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
     }
   }
   
-  // Step 3. add index to collection info
+  auto buildIdx = std::make_shared<RocksDBBuilderIndex>(std::static_pointer_cast<RocksDBIndex>(idx));
+
+  // Step 3. add index to collection entry (for removal after a crash)
   if (!engine->inRecovery()) {
     // read collection info from database
     RocksDBKey key;
@@ -390,7 +386,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
         if (pair.key.isEqualString("indexes")) {
           VPackArrayBuilder arrGuard(&builder, "indexes");
           builder.add(VPackArrayIterator(pair.value));
-          idx->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Internals));
+          buildIdx->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Internals));
           continue;
         }
         builder.add(pair.key);
@@ -406,24 +402,33 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
 
   // Step 4. fill index
   if (res.ok()) {
-    addIndex(idx); // add index to indexes list
-    RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
-    res = ridx->fillIndex(trx, [&] {
-      indexGuard.unlock(); // will be called at appropriate moment
+    _indexes.emplace_back(buildIdx); // add index to indexes list
+    buildIdx->fillIndex([&] {
+      unlockGuard.fire();
     });
   }
 
   // Step 5. cleanup
   if (res.ok()) {
-    // we need to sync the selectivity estimates
+    { // swap in actual index
+      WRITE_LOCKER(indexGuard, _indexesLock);
+      for (auto& other : _indexes) {
+        if (other->id() == buildIdx->id()) {
+          other.swap(idx);
+        }
+      }
+    }
+
+    // we should sync the selectivity estimates
     res = engine->settingsManager()->sync(false);
-    if (res.fail()) { // not a deal breaker
+    if (res.fail()) { // not critical
       LOG_TOPIC(WARN, Logger::ENGINES) << "could not sync settings: "
       << res.errorMessage();
+      res.reset();
     }
     
     rocksdb::Status s = engine->db()->GetRootDB()->FlushWAL(true);
-    if (!s.ok()) { // not a deal breaker
+    if (!s.ok()) { // not critical
       LOG_TOPIC(WARN, Logger::ENGINES) << "could not flush wal: "
       << s.ToString();
     }
@@ -432,7 +437,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
     arangodb::aql::PlanCache::instance()->invalidate(_logicalCollection->vocbase());
 #endif
   
-    if (!engine->inRecovery()) {
+    if (!engine->inRecovery()) { // write new collection marker
       auto builder = _logicalCollection.toVelocyPackIgnore(
           {"path", "statusString"}, true, /*forPersistence*/ true);
       VPackBuilder indexInfo;
@@ -448,14 +453,10 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
         )
       );
     }
-    
-    if (res.ok()) {
-      res = trx.commit();
-    }
   }
 
   if (res.fail()) {
-    // We could not persist the index creation. Better abort
+    // We could not create the index. Better abort
     // Remove the Index in the local list again.
     size_t i = 0;
     WRITE_LOCKER(guard, _indexesLock);
@@ -1610,10 +1611,8 @@ int RocksDBCollection::lockWrite(double timeout) {
 }
 
 /// @brief write unlocks a collection
-int RocksDBCollection::unlockWrite() {
+void RocksDBCollection::unlockWrite() {
   _exclusiveLock.unlockWrite();
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief read locks a collection, with a timeout
@@ -1664,9 +1663,8 @@ int RocksDBCollection::lockRead(double timeout) {
 }
 
 /// @brief read unlocks a collection
-int RocksDBCollection::unlockRead() {
+void RocksDBCollection::unlockRead() {
   _exclusiveLock.unlockRead();
-  return TRI_ERROR_NO_ERROR;
 }
 
 // rescans the collection to update document count

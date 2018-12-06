@@ -65,7 +65,7 @@ class RocksDBIndex : public Index {
   
   /// @brief if true this index should not be shown externally
   virtual bool isHidden() const override {
-    return isBuilding(); // do not show building indexes
+    return false; // do not generally hide indexes
   }
 
   size_t memory() const override;
@@ -135,20 +135,12 @@ class RocksDBIndex : public Index {
   static RocksDBKeyBounds getBounds(Index::IndexType type, uint64_t objectId,
                                     bool unique);
   
-  /// @brief is this index still beeing build
-  bool isBuilding() const {
-    return _isBuilding.load(std::memory_order_acquire);
-  }
-
   /// @brief get index estimator, optional
-  virtual RocksDBCuckooIndexEstimator<uint64_t>* estimator();
-  virtual void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>);
+  virtual RocksDBCuckooIndexEstimator<uint64_t>* estimator() {
+    return nullptr;
+  }
+  virtual void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>) {}
   virtual void recalculateEstimates() {}
-
-  /// @brief fill the index
-  /// @param unlock will be called when the index lock can be released
-  arangodb::Result fillIndex(transaction::Methods&,
-                             std::function<void()> const& unlock);
   
  protected:
   RocksDBIndex(
@@ -184,11 +176,6 @@ class RocksDBIndex : public Index {
   // it's quicker than accessing the shared_ptr each time
   bool _cachePresent;
   bool _cacheEnabled;
-  
- private:
-  
-  /// is this index currently building
-  std::atomic<bool> _isBuilding;
 };
 }  // namespace arangodb
 
