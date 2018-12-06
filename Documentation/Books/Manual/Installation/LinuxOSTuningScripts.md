@@ -14,7 +14,7 @@ Debian
 
 **Script:**
 
-```
+```bash
 #!/bin/bash
 
 ### BEGIN INIT INFO
