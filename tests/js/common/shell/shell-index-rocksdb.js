@@ -28,10 +28,10 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var internal = require("internal");
-var errors = internal.errors;
-var testHelper = require("@arangodb/test-helper").Helper;
+const jsunity = require("jsunity");
+const internal = require("internal");
+const errors = internal.errors;
+const db = internal.db;
 
 function backgroundIndexSuite() {
   'use strict';
@@ -41,8 +41,8 @@ function backgroundIndexSuite() {
   return {
 
     setUp : function () {
-      internal.db._drop(cn);
-      internal.db._create(cn);
+      db._drop(cn);
+      db._create(cn);
     },
 
     tearDown : function () {
@@ -55,14 +55,26 @@ function backgroundIndexSuite() {
           }
         }
       });
-      internal.db._drop(cn);
+      db._drop(cn);
     },
 
-    testInsertInParallel: function () {
-      let n = 10;
+    testInsertParallelNonUnique: function () {
+      let c = require("internal").db._collection(cn);
+      // first lets add some initial documents
+      let x = 10; 
+      while(x-- > 0) {
+        let docs = []; 
+        for(let i = 0; i < 1000; i++) {
+          docs.push({value:i})
+        } 
+        c.save(docs);
+      }
+
+      // lets insert the rest via tasks
+      let n = 9;
       for (let i = 0; i < n; ++i) {
         let command = `let c = require("internal").db._collection("${cn}"); 
-                       let x = 25; while(x-- > 0) {
+                       let x = 10; while(x-- > 0) {
                          let docs = []; 
                          for(let i = 0; i < 1000; i++) {
                            docs.push({value:i})
@@ -72,57 +84,166 @@ function backgroundIndexSuite() {
         tasks.register({ name: "UnitTestsIndexInsert" + i, command: command });
       }
 
+      // create the index on the main thread
+      c.ensureIndex({type: 'hash', fields: ['value'], unique: false});
+
       let time = require("internal").time;
       let start = time();
       while (true) {
-        let indexes = require("internal").db._collection(cn).getIndexes();
-        if (indexes.length === n + 1) {
-          // primary index + user-defined indexes
+        if (c.count() === 100000) {
           break;
         }
-        if (time() - start > 180) {
-          // wait for 3 minutes maximum
-          fail("Timeout creating 80 indices after 3 minutes: " + JSON.stringify(indexes));
+        if (time() - start > 180) { // wait for 3 minutes maximum
+          fail("Timeout creating documents after 3 minutes");
         }
         require("internal").wait(0.5, false);
       }
-        
-      let indexes = require("internal").db._collection(cn).getIndexes();
-      assertEqual(n + 1, indexes.length);
+
+      // 250 entries of each value [0,999]
+      for (let i = 0; i < 1000; i++) {
+        let cursor = db._query("FOR doc IN @@coll FILTER doc.value == @val RETURN 1", 
+                               {'@coll': cn, 'val': i}, {count:true});
+        assertEqual(cursor.count(), 100);
+      }
+
+      const estimate = 1000.0 / 100000.0;
+
+      let indexes = c.getIndexes(true);
+      for (let i of indexes) {
+        switch (i.type) {
+          case 'primary':
+            break;
+          case 'hash':
+            assertEqual(i.selectivityEstimate, estimate);
+            break;
+          default:
+            fail();
+        }
+      }
     },
 
-    testCreateInParallelDuplicate: function () {
-      let n = 100;
-      for (let i = 0; i < n; ++i) {
-        let command = 'require("internal").db._collection("' + cn + '").ensureIndex({ type: "hash", fields: ["value' + (i % 4) + '"] });';
-        tasks.register({ name: "UnitTestsIndexCreate" + i, command: command });
+    testInsertParallelUnique: function () {
+      let c = require("internal").db._collection(cn);
+      // first lets add some initial documents
+      let x = 0;
+      while(x < 10000) {
+        let docs = []; 
+        for(let i = 0; i < 1000; i++) {
+          docs.push({value: x++})
+        } 
+        c.save(docs);
+      }
+
+      // lets insert the rest via tasks
+      for (let i = 1; i < 5; ++i) {
+        let command = `let c = require("internal").db._collection("${cn}"); 
+                       let x = ${i} * 10000; 
+                       while(x < ${i + 1} * 10000) {
+                        let docs = []; 
+                        for(let i = 0; i < 1000; i++) {
+                          docs.push({value: x++})
+                        } 
+                        c.save(docs);
+                      }`;
+        tasks.register({ name: "UnitTestsIndexInsert" + i, command: command });
+      }
+
+      // create the index on the main thread
+      c.ensureIndex({type: 'hash', fields: ['value'], unique: true});
+
+      let time = require("internal").time;
+      let start = time();
+      while (true) {
+        if (c.count() === 50000) {
+          break;
+        }
+        if (time() - start > 300) { // wait for 5 minutes maximum
+          fail("Timeout creating documents after 5 minutes: " + c.count());
+        }
+        require("internal").wait(0.5, false);
+      }
+
+      // 250 entries of each value [0,999]
+      for (let i = 0; i < 50000; i++) {
+        let cursor = db._query("FOR doc IN @@coll FILTER doc.value == @val RETURN 1", 
+                               {'@coll': cn, 'val': i}, {count:true});
+        assertEqual(cursor.count(), 1);
+      }
+
+      let indexes = c.getIndexes(true);
+      for (let i of indexes) {
+        switch (i.type) {
+          case 'primary':
+            break;
+          case 'hash':
+            assertEqual(i.selectivityEstimate, 1.0);
+            break;
+          default:
+            fail();
+        }
+      }
+    },
+
+    testInsertParallelUniqueConstraintViolation: function () {
+      let c = require("internal").db._collection(cn);
+      // first lets add some initial documents
+      let x = 0;
+      while(x < 10000) {
+        let docs = []; 
+        for(let i = 0; i < 1000; i++) {
+          docs.push({value: x++})
+        } 
+        c.save(docs);
+      }
+
+      // lets insert the rest via tasks
+      for (let i = 1; i < 5; ++i) {
+        let command = `let c = require("internal").db._collection("${cn}"); 
+                       let x = ${i} * 10000; 
+                       while(x < ${i + 1} * 10000) {
+                        let docs = []; 
+                        for(let i = 0; i < 1000; i++) {
+                          docs.push({value: x++})
+                        } 
+                        c.save(docs);
+                      }`;
+        tasks.register({ name: "UnitTestsIndexInsert" + i, command: command });
+      }
+
+      c.save({value: 1 }); // now trigger a conflict
+      //tasks.register({ name: "UnitTestsIndexInsert6" + i, command: `require("internal").db._collection("${cn}").save({value: 1 });` });
+
+      try {
+        // create the index on the main thread
+        c.ensureIndex({type: 'hash', fields: ['value'], unique: true});
+        fail();
+      } catch(err) {
+        assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
       }
 
       let time = require("internal").time;
       let start = time();
       while (true) {
-        let indexes = require("internal").db._collection(cn).getIndexes();
-        if (indexes.length === 4 + 1) {
-          // primary index + user-defined indexes
+        if (c.count() === 50000) {
           break;
         }
-        if (time() - start > 180) {
-          // wait for 3 minutes maximum
-          fail("Timeout creating indices after 3 minutes: " + JSON.stringify(indexes));
+        if (time() - start > 300) { // wait for 5 minutes maximum
+          fail("Timeout creating documents after 5 minutes: " + c.count());
         }
         require("internal").wait(0.5, false);
       }
-      
-      // wait some extra time because we just have 4 distinct indexes
-      // these will be created relatively quickly. by waiting here a bit
-      // we give the other pending tasks a chance to execute too (but they
-      // will not do anything because the target indexes already exist)
-      require("internal").wait(5, false);
-        
-      let indexes = require("internal").db._collection(cn).getIndexes();
-      assertEqual(4 + 1, indexes.length);
-    }
 
+      let indexes = c.getIndexes();
+      for (let i of indexes) {
+        switch (i.type) {
+          case 'primary':
+            break;
+          case 'hash':
+          default:
+            fail();
+        }
+      }
+    }
   };
 }
 
