@@ -302,6 +302,7 @@
 * [Backup & Restore](BackupRestore/README.md)
 * [Upgrading](Upgrading/README.md)
   * [General Upgrade Information](Upgrading/GeneralInfo/README.md)
+  * [Community to Enterprise Upgrade](Upgrading/CommunityToEnterprise.md)
   * [OS-specific Information](Upgrading/OSSpecificInfo/README.md)
     * [Upgrading on Linux](Upgrading/OSSpecificInfo/Linux.md)
     * [Upgrading on MacOS](Upgrading/OSSpecificInfo/MacOS.md)
