@@ -36,6 +36,21 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::rest;
 
+class shutDownAsyncThread : public Thread {
+public:
+  shutDownAsyncThread() : Thread("shutDown") {
+  }
+protected:
+  void run() {
+    // Give the server 2 seconds to send the reply:
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    // Go down:
+    ApplicationServer::server->beginShutdown();
+  }
+};
+
+static shutDownAsyncThread SHUTDOWNTHEAD;
+
 RestShutdownHandler::RestShutdownHandler(GeneralRequest* request,
                                          GeneralResponse* response)
     : RestBaseHandler(request, response) {}
@@ -90,9 +105,7 @@ RestStatus RestShutdownHandler::execute() {
         ApplicationServer::getFeature<ClusterFeature>("Cluster");
     clusterFeature->setUnregisterOnShutdown(true);
   }
-
-  ApplicationServer::server->beginShutdown();
-  
+ 
   try {
     VPackBuilder result;
     result.add(VPackValue("OK"));
@@ -100,6 +113,6 @@ RestStatus RestShutdownHandler::execute() {
   } catch (...) {
     // Ignore the error
   }
-
+  SHUTDOWNTHEAD.start();
   return RestStatus::DONE;
 }

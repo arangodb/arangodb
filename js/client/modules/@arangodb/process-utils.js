@@ -964,8 +964,7 @@ function shutdownArangod (arangod, options, forceTerminate) {
       print(Date() + ' ' + arangod.url + '/_admin/shutdown');
       let sockStat = getSockStat(arangod, options, "Sock stat for: ");
       const reply = download(arangod.url + '/_admin/shutdown', '', requestOptions);
-      sockStat += getSockStat(arangod, options, "\n After shutdown: ");
-      if ((reply.code === 200) || // if the server should reply, we expect 200 - if not:
+      if ((reply.code !== 200) && // if the server should reply, we expect 200 - if not:
           !((reply.code === 500) &&
             (
               (reply.message === "Connection closed by remote") || // http connection
