@@ -340,7 +340,7 @@ void HeartbeatThread::runDBServer() {
       if (version > _desiredVersions->current) {
         _desiredVersions->current = version;
         LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
-        << "Desired Current Version is now " << _desiredVersions->plan;
+          << "Desired Current Version is now " << _desiredVersions->plan;
         doSync = true;
       }
     }
