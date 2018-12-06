@@ -174,7 +174,7 @@ archive there. It will create its own top-level directory with the version numbe
 ### Edit the configuration
 
 This step is optional. If the default configuration of ArangoDB does not suite your needs,
-you might edit `etc\arangodb3\arangod.conf` to change some configuration options.
+you can edit `etc\arangodb3\arangod.conf` to change or add configuration options.
 
 ### Start the Server
 
