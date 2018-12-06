@@ -395,7 +395,7 @@ void RestAqlHandler::createQueryFromVelocyPack() {
   bool success = false;
   VPackSlice querySlice = this->parseVPackBody(success);
   if (!success) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(ERR, arangodb::Logger::AQL)
         << "invalid VelocyPack plan in query";
     return;
   }
@@ -404,7 +404,7 @@ void RestAqlHandler::createQueryFromVelocyPack() {
 
   VPackSlice plan = querySlice.get("plan");
   if (plan.isNone()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(ERR, arangodb::Logger::AQL)
         << "Invalid VelocyPack: \"plan\" attribute missing.";
     generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "body must be an object with attribute \"plan\"");
@@ -429,13 +429,13 @@ void RestAqlHandler::createQueryFromVelocyPack() {
   try {
     query->prepare(_queryRegistry);
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(ERR, arangodb::Logger::AQL)
         << "failed to instantiate the query: " << ex.what();
     generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN,
                   ex.what());
     return;
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to instantiate the query";
+    LOG_TOPIC(ERR, arangodb::Logger::AQL) << "failed to instantiate the query";
     generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN, "failed to instantiate the query");
     return;
   }
@@ -448,7 +448,7 @@ void RestAqlHandler::createQueryFromVelocyPack() {
     _queryRegistry->insert(_qId, query.get(), ttl, true, false);
     query.release();
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(ERR, arangodb::Logger::AQL)
         << "could not keep query in registry";
     generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL, "could not insert query into registry");
     return;
@@ -532,13 +532,13 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation,
   } catch (arangodb::basics::Exception const& ex) {
     generateError(rest::ResponseCode::SERVER_ERROR, ex.code(), ex.what());
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed during use of Query: "
-                                            << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::AQL) << "failed during use of Query: "
+                                          << ex.what();
 
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                   ex.what());
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(ERR, arangodb::Logger::AQL)
         << "failed during use of Query: Unknown exception occurred";
 
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
@@ -564,15 +564,19 @@ RestStatus RestAqlHandler::execute() {
       } else if (suffixes[0] == "setup") {
         setupClusterQuery();
       } else {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Unknown POST API";
-        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND, "Unknown API");
+        std::string msg("Unknown POST API: ");
+        msg += arangodb::basics::StringUtils::join(suffixes, '/');
+        LOG_TOPIC(ERR, arangodb::Logger::AQL) << msg;
+        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND, std::move(msg));
       }
       break;
     }
     case rest::RequestType::PUT: {
       if (suffixes.size() != 2) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unknown PUT API";
-        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND, "unknown PUT API");
+        std::string msg("Unknown PUT API: ");
+        msg += arangodb::basics::StringUtils::join(suffixes, '/');
+        LOG_TOPIC(ERR, arangodb::Logger::AQL) << msg;
+        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND, std::move(msg));
       } else {
         auto status = useQuery(suffixes[0], suffixes[1]);
         if (status == RestStatus::WAITING) {
@@ -585,8 +589,10 @@ RestStatus RestAqlHandler::execute() {
       // in 3.3, the only GET API was /_api/aql/hasMore. Now, there is none in 3.4.
       // we need to keep the old route for compatibility with 3.3 however.
       if (suffixes.size() != 2 || suffixes[0] != "hasMore") {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Unknown GET API: " << suffixes;
-        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND, "Unknown GET API");
+        std::string msg("Unknown GET API: ");
+        msg += arangodb::basics::StringUtils::join(suffixes, '/');
+        LOG_TOPIC(ERR, arangodb::Logger::AQL) << msg;
+        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND, std::move(msg));
       } else {
         // for /_api/aql/hasMore, now always return with a hard-coded response
         // that contains  "hasMore" : true. This seems good enough to ensure 
@@ -855,7 +861,7 @@ std::shared_ptr<VPackBuilder> RestAqlHandler::parseVelocyPackBody() {
     VPackSlice tmp = body->slice();
     if (!tmp.isObject()) {
       // Validate the input has correct format.
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC(ERR, arangodb::Logger::AQL)
           << "body of request must be a VelocyPack object";
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "body of request must be a VelcoyPack object");

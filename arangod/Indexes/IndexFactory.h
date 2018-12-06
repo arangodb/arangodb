@@ -37,54 +37,49 @@ class Builder;
 class Slice;
 }
 
-class IndexFactory {
- public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief typedef for a Index factory function
-  /// This typedef is used when registering the factory function for any index
-  /// type. The factory function is called when a index is first created or
-  /// re-opened after a server restart. The VelocyPack Slice will contain all
-  /// information about the indexs' general and implementation-specific
-  /// properties.
-  //////////////////////////////////////////////////////////////////////////////
-  typedef std::function<std::shared_ptr<Index>(
-    LogicalCollection& collection,
-    velocypack::Slice const& definition, // index definition
-    TRI_idx_iid_t id,
-    bool isClusterConstructor
-  )> IndexTypeFactory;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief factory for comparing/instantiating/normalizing a definition for a
+///        specific Index type
+////////////////////////////////////////////////////////////////////////////////
+struct IndexTypeFactory {
+  virtual ~IndexTypeFactory() = default; // define to silence warning
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief typedef for a Index definition normalizer function
-  /// This typedef is used when registering the normalizer function for any
-  /// index type. The normalizer function is called when a index definition
-  /// needs to be normalized before using it to create the index. The resulting
-  /// VelocyBuilder will contain the 'type' that should be used for index
-  /// factory lookup (if no normalizer is registered then use the original type)
+  /// @brief determine if the two Index definitions will result in the same
+  ///        index once instantiated
   //////////////////////////////////////////////////////////////////////////////
-  typedef std::function<Result(
+  virtual bool equal(
+    velocypack::Slice const& lhs,
+    velocypack::Slice const& rhs
+  ) const = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief instantiate an Index definition
+  //////////////////////////////////////////////////////////////////////////////
+  virtual Result instantiate(
+    std::shared_ptr<Index>& index,
+    LogicalCollection& collection,
+    velocypack::Slice const& definition,
+    TRI_idx_iid_t id,
+    bool isClusterConstructor
+  ) const = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief normalize an Index definition prior to instantiation/persistence
+  //////////////////////////////////////////////////////////////////////////////
+  virtual Result normalize(
     velocypack::Builder& normalized,
     velocypack::Slice definition,
     bool isCreation
-  )> IndexNormalizer;
+  ) const = 0;
+};
 
-  IndexFactory() = default;
-  IndexFactory(IndexFactory const&) = delete;
-  IndexFactory& operator=(IndexFactory const&) = delete;
-
+class IndexFactory {
+ public:
   virtual ~IndexFactory() = default;
 
   /// @return 'factory' for 'type' was added successfully
-  Result emplaceFactory(
-    std::string const& type,
-    IndexTypeFactory const& factory
-  );
-
-  /// @return 'normalizer' for 'type' was added successfully
-  Result emplaceNormalizer(
-    std::string const& type,
-    IndexNormalizer const& normalizer
-  );
+  Result emplace(std::string const& type, IndexTypeFactory const& factory);
 
   virtual Result enhanceIndexDefinition(
     velocypack::Slice const definition,
@@ -92,6 +87,9 @@ class IndexFactory {
     bool isCreation,
     bool isCoordinator
   ) const;
+
+  /// @return factory for the specified type or a failing placeholder if no such type
+  IndexTypeFactory const& factory(std::string const& type) const noexcept;
 
   std::shared_ptr<Index> prepareIndexFromSlice(
     velocypack::Slice definition,
@@ -125,8 +123,7 @@ class IndexFactory {
                                      bool isClusterConstructor);
 
  private:
-  std::unordered_map<std::string, IndexTypeFactory> _factories;
-  std::unordered_map<std::string, IndexNormalizer> _normalizers;
+  std::unordered_map<std::string, IndexTypeFactory const*> _factories;
 };
 
 }  // namespace arangodb

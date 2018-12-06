@@ -177,7 +177,7 @@ class IResearchLink {
   /// @brief initialize from the specified definition used in make(...)
   /// @return success
   ////////////////////////////////////////////////////////////////////////////////
-  bool init(arangodb::velocypack::Slice const& definition);
+  arangodb::Result init(arangodb::velocypack::Slice const& definition);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @return the associated IResearch view or nullptr if not associated

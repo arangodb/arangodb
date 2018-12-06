@@ -1,0 +1,85 @@
+@Q:
+RETURN GEO_MULTIPOLYGON([
+[
+   [[<span class="hljs-number">40</span>, <span class="hljs-number">40</span>], [<span class="hljs-number">20</span>, <span class="hljs-number">45</span>], [<span class="hljs-number">45</span>, <span class="hljs-number">30</span>], [<span class="hljs-number">40</span>, <span class="hljs-number">40</span>]]
+],  
+[
+    [[<span class="hljs-number">20</span>, <span class="hljs-number">35</span>], [<span class="hljs-number">10</span>, <span class="hljs-number">30</span>], [<span class="hljs-number">10</span>, <span class="hljs-number">10</span>], [<span class="hljs-number">30</span>, <span class="hljs-number">5</span>], [<span class="hljs-number">45</span>, <span class="hljs-number">20</span>], [<span class="hljs-number">20</span>, <span class="hljs-number">35</span>]],
+    [[<span class="hljs-number">30</span>, <span class="hljs-number">20</span>], [<span class="hljs-number">20</span>, <span class="hljs-number">15</span>], [<span class="hljs-number">20</span>, <span class="hljs-number">25</span>], [<span class="hljs-number">30</span>, <span class="hljs-number">20</span>]]
+]
+])
+
+@R
+[
+  {
+    <span class="hljs-string">"type"</span>: <span class="hljs-string">"MultiPolygon"</span>,
+    <span class="hljs-string">"coordinates"</span>: [
+      [
+        [
+          [
+            <span class="hljs-number">40</span>,
+            <span class="hljs-number">40</span>
+          ],
+          [
+            <span class="hljs-number">20</span>,
+            <span class="hljs-number">45</span>
+          ],
+          [
+            <span class="hljs-number">45</span>,
+            <span class="hljs-number">30</span>
+          ],
+          [
+            <span class="hljs-number">40</span>,
+            <span class="hljs-number">40</span>
+          ]
+        ]
+      ],
+      [
+        [
+          [
+            <span class="hljs-number">20</span>,
+            <span class="hljs-number">35</span>
+          ],
+          [
+            <span class="hljs-number">10</span>,
+            <span class="hljs-number">30</span>
+          ],
+          [
+            <span class="hljs-number">10</span>,
+            <span class="hljs-number">10</span>
+          ],
+          [
+            <span class="hljs-number">30</span>,
+            <span class="hljs-number">5</span>
+          ],
+          [
+            <span class="hljs-number">45</span>,
+            <span class="hljs-number">20</span>
+          ],
+          [
+            <span class="hljs-number">20</span>,
+            <span class="hljs-number">35</span>
+          ]
+        ],
+        [
+          [
+            <span class="hljs-number">30</span>,
+            <span class="hljs-number">20</span>
+          ],
+          [
+            <span class="hljs-number">20</span>,
+            <span class="hljs-number">15</span>
+          ],
+          [
+            <span class="hljs-number">20</span>,
+            <span class="hljs-number">25</span>
+          ],
+          [
+            <span class="hljs-number">30</span>,
+            <span class="hljs-number">20</span>
+          ]
+        ]
+      ]
+    ]
+  }
+]

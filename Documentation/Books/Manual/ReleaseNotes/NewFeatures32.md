@@ -1,5 +1,5 @@
-Features and Improvements
-=========================
+Features and Improvements in ArangoDB 3.2
+=========================================
 
 The following list shows in detail which features have been added or improved in
 ArangoDB 3.2. ArangoDB 3.2 also contains several bugfixes that are not listed

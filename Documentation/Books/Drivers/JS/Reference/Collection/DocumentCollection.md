@@ -6,7 +6,7 @@ The _DocumentCollection API_ extends the
 
 ## documentCollection.document
 
-`async documentCollection.document(documentHandle, [graceful]): Object`
+`async documentCollection.document(documentHandle, [opts]): Object`
 
 Retrieves the document with the given _documentHandle_ from the collection.
 
@@ -18,22 +18,40 @@ Retrieves the document with the given _documentHandle_ from the collection.
   `_key` of a document in the collection, or a document (i.e. an object with an
   `_id` or `_key` property).
 
-- **graceful**: `boolean` (Default: `false`)
+- **opts**: `Object` (optional)
 
-  If set to `true`, the method will return `null` instead of throwing an error
-  if the document does not exist.
+  If _opts_ is set, it must be an object with any of the following properties:
+
+  - **graceful**: `boolean` (Default: `false`)
+
+    If set to `true`, the method will return `null` instead of throwing an
+    error if the document does not exist.
+
+  - **allowDirtyRead**: `boolean` (Default: `false`)
+
+    {% hint 'info' %}
+    This option is only available when targeting ArangoDB 3.4 or later,
+    see [Compatibility](../../GettingStarted/README.md#compatibility).
+    {% endhint %}
+
+    If set to `true`, the request will explicitly permit ArangoDB to return a
+    potentially dirty or stale result and arangojs will load balance the
+    request without distinguishing between leaders and followers.
+
+If a boolean is passed instead of an options object, it will be interpreted as
+the _graceful_ option.
 
 **Examples**
 
 ```js
 const db = new Database();
-const collection = db.collection('my-docs');
+const collection = db.collection("my-docs");
 
 try {
-  const doc = await collection.document('some-key');
+  const doc = await collection.document("some-key");
   // the document exists
-  assert.equal(doc._key, 'some-key');
-  assert.equal(doc._id, 'my-docs/some-key');
+  assert.equal(doc._key, "some-key");
+  assert.equal(doc._id, "my-docs/some-key");
 } catch (err) {
   // something went wrong or
   // the document does not exist
@@ -42,10 +60,10 @@ try {
 // -- or --
 
 try {
-  const doc = await collection.document('my-docs/some-key');
+  const doc = await collection.document("my-docs/some-key");
   // the document exists
-  assert.equal(doc._key, 'some-key');
-  assert.equal(doc._id, 'my-docs/some-key');
+  assert.equal(doc._key, "some-key");
+  assert.equal(doc._id, "my-docs/some-key");
 } catch (err) {
   // something went wrong or
   // the document does not exist
@@ -53,7 +71,7 @@ try {
 
 // -- or --
 
-const doc = await collection.document('some-key', true);
+const doc = await collection.document("some-key", true);
 if (doc === null) {
   // the document does not exist
 }
@@ -77,9 +95,9 @@ Checks whether the document with the given _documentHandle_ exists.
 
 ```js
 const db = new Database();
-const collection = db.collection('my-docs');
+const collection = db.collection("my-docs");
 
-const exists = await collection.documentExists('some-key');
+const exists = await collection.documentExists("some-key");
 if (exists === false) {
   // the document does not exist
 }
@@ -138,11 +156,11 @@ For more information on the _opts_ object, see the
 
 ```js
 const db = new Database();
-const collection = db.collection('my-docs');
-const data = {some: 'data'};
+const collection = db.collection("my-docs");
+const data = { some: "data" };
 const info = await collection.save(data);
-assert.equal(info._id, 'my-docs/' + info._key);
-const doc2 = await collection.document(info)
+assert.equal(info._id, "my-docs/" + info._key);
+const doc2 = await collection.document(info);
 assert.equal(doc2._id, info._id);
 assert.equal(doc2._rev, info._rev);
 assert.equal(doc2.some, data.some);
@@ -150,10 +168,10 @@ assert.equal(doc2.some, data.some);
 // -- or --
 
 const db = new Database();
-const collection = db.collection('my-docs');
-const data = {some: 'data'};
-const opts = {returnNew: true};
-const doc = await collection.save(data, opts)
-assert.equal(doc1._id, 'my-docs/' + doc1._key);
+const collection = db.collection("my-docs");
+const data = { some: "data" };
+const opts = { returnNew: true };
+const doc = await collection.save(data, opts);
+assert.equal(doc1._id, "my-docs/" + doc1._key);
 assert.equal(doc1.new.some, data.some);
 ```

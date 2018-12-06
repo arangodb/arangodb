@@ -24,11 +24,23 @@ If _config_ is a string, it will be interpreted as _config.url_.
     can be used to automatically pick up additional coordinators/followers at
     any point.
 
-    {% hint 'warning' %}
-    As of arangojs 6.0.0 it is no longer possible to pass
-    the username or password from the URL. Use
-    [`database.useBasicAuth`](#databaseusebasicauth) instead.
-    {% endhint %}
+    When running ArangoDB on a unix socket, e.g. `/tmp/arangodb.sock`, the
+    following URL formats are supported for unix sockets:
+
+    - `unix:///tmp/arangodb.sock` (no SSL)
+    - `http+unix:///tmp/arangodb.sock` (or `https+unix://` for SSL)
+    - `http://unix:/tmp/arangodb.sock` (or `https://unix:` for SSL)
+
+    Additionally `ssl` and `tls` are treated as synonymous with `https` and
+    `tcp` is treated as synonymous with `http`, so the following URLs are
+    considered identical:
+
+    - `tcp://localhost:8529` and `http://localhost:8529`
+    - `ssl://localhost:8529` and `https://localhost:8529`
+    - `tcp+unix:///tmp/arangodb.sock` and `http+unix:///tmp/arangodb.sock`
+    - `ssl+unix:///tmp/arangodb.sock` and `https+unix:///tmp/arangodb.sock`
+    - `tcp://unix:/tmp/arangodb.sock` and `http://unix:/tmp/arangodb.sock`
+    - `ssl://unix:/tmp/arangodb.sock` and `https://unix:/tmp/arangodb.sock`
 
     If you want to use ArangoDB with authentication, see
     _useBasicAuth_ or _useBearerAuth_ methods.
@@ -48,9 +60,12 @@ If _config_ is a string, it will be interpreted as _config.url_.
   - **isAbsolute**: `boolean` (Default: `false`)
 
     If this option is explicitly set to `true`, the _url_ will be treated as the
-    absolute database path. This is an escape hatch to allow using arangojs with
-    database APIs exposed with a reverse proxy and makes it impossible to switch
-    databases with _useDatabase_ or using _acquireHostList_.
+    absolute database path and arangojs will not append the database path to it.
+
+    **Note:** This makes it impossible to switch databases with _useDatabase_
+    or using _acquireHostList_. This is only intended to be used as an escape
+    hatch when working with standalone servers exposing a single database API
+    from behind a reverse proxy, which is not a recommended setup.
 
   - **arangoVersion**: `number` (Default: `30000`)
 

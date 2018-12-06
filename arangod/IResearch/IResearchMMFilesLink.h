@@ -28,6 +28,12 @@
 
 #include "Indexes/Index.h"
 
+namespace arangodb {
+
+struct IndexTypeFactory; // forward declaration
+
+}
+
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
@@ -58,6 +64,11 @@ class IResearchMMFilesLink final
     return IResearchLink::drop().errorNumber();
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the factory for this type of index
+  //////////////////////////////////////////////////////////////////////////////
+  static arangodb::IndexTypeFactory const& factory();
+
   virtual bool hasBatchInsert() const override {
     return IResearchLink::hasBatchInsert();
   }
@@ -86,17 +97,6 @@ class IResearchMMFilesLink final
   virtual void load() override {
     IResearchLink::load();
   }
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief create and initialize an iResearch View Link instance
-  /// @return nullptr on failure
-  ////////////////////////////////////////////////////////////////////////////////
-  static ptr make(
-    arangodb::LogicalCollection& collection,
-    arangodb::velocypack::Slice const& definition,
-    TRI_idx_iid_t id,
-    bool isClusterConstructor
-  ) noexcept;
 
   virtual bool matchesDefinition(
     arangodb::velocypack::Slice const& slice
@@ -144,6 +144,8 @@ class IResearchMMFilesLink final
   }
 
  private:
+  struct IndexFactory; // forward declaration
+
   IResearchMMFilesLink(
     TRI_idx_iid_t iid,
     arangodb::LogicalCollection& collection

@@ -383,29 +383,28 @@ CostEstimate GatherNode::estimateCost() const {
   return estimate;
 }
 
-SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan,
-                                                     size_t id,
-                                                     NodeType mode,
-                                                     bool replaceIndexNode,
-                                                     std::string const& key,
-                                                     Collection const* collection,
-                                                     ModificationOptions const& options,
-                                                     Variable const* in,
-                                                     Variable const* out,
-                                                     Variable const* OLD,
-                                                     Variable const* NEW
-                                                     )
-  : ExecutionNode(plan, id)
-  , CollectionAccessingNode(collection)
-  , _replaceIndexNode(replaceIndexNode)
-  , _key(key)
-  , _mode(mode)
-  , _inVariable(in)
-  , _outVariable(out)
-  , _outVariableOld(OLD)
-  , _outVariableNew(NEW)
-  , _options(options)
-{
+SingleRemoteOperationNode::SingleRemoteOperationNode(
+    ExecutionPlan* plan,
+    size_t id,
+    NodeType mode,
+    bool replaceIndexNode,
+    std::string const& key,
+    Collection const* collection,
+    ModificationOptions const& options,
+    Variable const* in,
+    Variable const* out,
+    Variable const* OLD,
+    Variable const* NEW
+) : ExecutionNode(plan, id),
+    CollectionAccessingNode(collection),
+    _replaceIndexNode(replaceIndexNode),
+    _key(key),
+    _mode(mode),
+    _inVariable(in),
+    _outVariable(out),
+    _outVariableOld(OLD),
+    _outVariableNew(NEW),
+    _options(options) {
   if (_mode == NodeType::INDEX) { //select
     TRI_ASSERT(!_key.empty());
     TRI_ASSERT(_inVariable== nullptr);
@@ -415,16 +414,10 @@ SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan,
   } else if (_mode == NodeType::REMOVE) {
     TRI_ASSERT(!_key.empty());
     TRI_ASSERT(_inVariable == nullptr);
-    TRI_ASSERT(_outVariable == nullptr);
     TRI_ASSERT(_outVariableNew == nullptr);
   } else if (_mode == NodeType::INSERT) {
     TRI_ASSERT(_key.empty());
-    TRI_ASSERT(_outVariable == nullptr);
-  } else if (_mode == NodeType::UPDATE) {
-    TRI_ASSERT(_outVariable == nullptr);
-  } else if (_mode == NodeType::REPLACE) {
-    TRI_ASSERT(_outVariable == nullptr);
-  } else {
+  } else if (_mode != NodeType::UPDATE && _mode != NodeType::REPLACE) {
     TRI_ASSERT(false);
   }
 }
@@ -449,7 +442,7 @@ void SingleRemoteOperationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned
   nodes.add("mode", VPackValue(ExecutionNode::getTypeString(_mode)));
   nodes.add("replaceIndexNode", VPackValue(_replaceIndexNode));
 
-  if(!_key.empty()){
+  if (!_key.empty()) {
     nodes.add("key", VPackValue(_key));
   }
 

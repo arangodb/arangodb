@@ -28,6 +28,10 @@
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/Parser.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 using namespace arangodb::maskings;
 
@@ -121,6 +125,10 @@ bool Maskings::shouldDumpStructure(std::string const& name) {
     case CollectionSelection::STRUCTURE:
       return true;
   }
+  
+  // should not get here. however, compiler warns about it 
+  TRI_ASSERT(false);   
+  return false;
 }
 
 bool Maskings::shouldDumpData(std::string const& name) {
@@ -140,6 +148,10 @@ bool Maskings::shouldDumpData(std::string const& name) {
     case CollectionSelection::STRUCTURE:
       return false;
   }
+
+  // should not get here. however, compiler warns about it 
+  TRI_ASSERT(false);   
+  return false;
 }
 
 VPackValue Maskings::maskedItem(Collection& collection,
