@@ -246,6 +246,7 @@
   * [Mac OS X](Installation/MacOSX.md)
   * [Windows](Installation/Windows.md)
   * [Compiling](Installation/Compiling.md)
+* [Uninstallation](Uninstallation/README.md)
 * [Deployment](Deployment/README.md)
   * [By ArangoDB Deployment Modes](Deployment/Modes.md)
     * [Single Instance](Deployment/SingleInstance/README.md)
