@@ -224,7 +224,7 @@ function backgroundIndexSuite() {
       let time = require("internal").time;
       let start = time();
       while (true) {
-        if (c.count() === 50000) {
+        if (c.count() === 50001) {
           break;
         }
         if (time() - start > 300) { // wait for 5 minutes maximum
