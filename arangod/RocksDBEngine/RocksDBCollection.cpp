@@ -403,7 +403,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
   // Step 4. fill index
   if (res.ok()) {
     _indexes.emplace_back(buildIdx); // add index to indexes list
-    buildIdx->fillIndex([&] {
+    res = buildIdx->fillIndex([&] {
       unlockGuard.fire();
     });
   }

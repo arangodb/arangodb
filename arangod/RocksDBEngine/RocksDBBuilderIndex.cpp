@@ -60,7 +60,7 @@ void RocksDBBuilderIndex::toVelocyPack(VPackBuilder& builder,
   builder.openObject(); // FIXME refactor RocksDBIndex::toVelocyPack !!
   builder.add(velocypack::ObjectIterator(inner.slice()));
   if (Index::hasFlag(flags, Index::Serialize::Internals)) {
-    builder.add(StaticStrings::IndexIsBuilding, VPackValue(true));
+    builder.add("_inprogress", VPackValue(true));
   }
   builder.close();
 }
@@ -236,7 +236,9 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(std::function<void()> 
     }
   }
   
-  res = trx.commit(); // required to commit selectivity estimates
+  if (res.ok()) {
+    res = trx.commit(); // required to commit selectivity estimates
+  }
   
   // clear all the processed documents
   std::lock_guard<std::mutex> guard2(_lockedDocsMutex);

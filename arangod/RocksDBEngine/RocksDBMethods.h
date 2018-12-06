@@ -280,6 +280,7 @@ public:
   
 private:
   rocksdb::Transaction* _trx;
+  rocksdb::ReadOptions _ro;
 };
 
 // INDEXING MAY ONLY BE DISABLED IN TOPLEVEL AQL TRANSACTIONS

@@ -389,20 +389,21 @@ std::unique_ptr<rocksdb::Iterator> RocksDBBatchedWithIndexMethods::NewIterator(
 /// transaction wrapper, uses the current rocksdb transaction and non-tracking methods
 RocksDBSubTrxMethods::RocksDBSubTrxMethods(RocksDBTransactionState* state,
                                            rocksdb::Transaction* trx)
-  : RocksDBMethods(state), _trx(trx) {}
+  : RocksDBMethods(state), _trx(trx) {
+    _ro.prefix_same_as_start = true;
+    _ro.fill_cache = false;
+  }
 
 rocksdb::Status RocksDBSubTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf, rocksdb::Slice const& key,
                                           std::string* val) {
   TRI_ASSERT(cf != nullptr);
-  rocksdb::ReadOptions const& ro = _state->_rocksReadOptions;
-  return _trx->Get(ro, cf, key, val);
+  return _trx->Get(_ro, cf, key, val);
 }
 
 rocksdb::Status RocksDBSubTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf, rocksdb::Slice const& key,
                                           rocksdb::PinnableSlice* val) {
   TRI_ASSERT(cf != nullptr);
-  rocksdb::ReadOptions const& ro = _state->_rocksReadOptions;
-  return _trx->Get(ro, cf, key, val);
+  return _trx->Get(_ro, cf, key, val);
 }
   
 rocksdb::Status RocksDBSubTrxMethods::Put(rocksdb::ColumnFamilyHandle* cf,

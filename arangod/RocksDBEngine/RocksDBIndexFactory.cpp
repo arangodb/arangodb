@@ -968,7 +968,7 @@ void RocksDBIndexFactory::prepareIndexes(
     }
 #endif
     
-    if (basics::VelocyPackHelper::getBooleanValue(v, StaticStrings::IndexIsBuilding, false)) {
+    if (basics::VelocyPackHelper::getBooleanValue(v, "_inprogress", false)) {
       LOG_TOPIC(WARN, Logger::ENGINES) << "dropping failed index '" << idx->id() << "'";
       idx->drop();
       continue;
