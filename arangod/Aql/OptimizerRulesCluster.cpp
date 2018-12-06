@@ -150,7 +150,7 @@ bool parentIsReturnOrConstCalc(ExecutionNode const* node) {
     auto type = node->getType();
     // we do not need to check the order because
     // we expect a valid plan
-    if(type != EN::CALCULATION && type != EN::RETURN) {
+    if (type != EN::CALCULATION && type != EN::RETURN) {
       return false;
     }
     node = node->getFirstParent();
@@ -185,16 +185,15 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::INDEX, false);
 
-  if(nodes.size() != 1){
+  if (nodes.size() != 1) {
     return modified;
   }
 
-  for(auto* node : nodes){
-
+  for (auto* node : nodes) {
     if (!::depIsSingletonOrConstCalc(node)) {
       continue;
     }
-
+        
     Index* index = ::hasSingleIndexHandle(node, Index::TRI_IDX_TYPE_PRIMARY_INDEX);
     if (index) {
       IndexNode* indexNode = ExecutionNode::castTo<IndexNode*>(node);
@@ -204,9 +203,11 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
         continue;
       }
 
+      TRI_ASSERT(node != nullptr);
+
       auto* parentModification = ::hasSingleParent(node, {EN::INSERT, EN::REMOVE, EN::UPDATE, EN::REPLACE});
 
-      if (parentModification){
+      if (parentModification) {
         auto mod = ExecutionNode::castTo<ModificationNode*>(parentModification);
         auto parentType = parentModification->getType();
         auto const& vec = mod->getVariablesUsedHere();
@@ -214,7 +215,7 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
         Variable const* update = nullptr;
         Variable const* keyVar = nullptr;
 
-        if ( parentType == EN::REMOVE) {
+        if (parentType == EN::REMOVE) {
           keyVar = vec.front();
           TRI_ASSERT(vec.size() == 1);
         } else {
@@ -224,18 +225,22 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
           }
         }
 
-        if(keyVar && indexNode->outVariable()->id != keyVar->id){
+        if (keyVar && indexNode->outVariable()->id != keyVar->id) {
           continue;
         }
 
-        if(!keyVar){
-          if (update && indexNode->outVariable()->id == update->id){
+        if (!keyVar) {
+          if (update && indexNode->outVariable()->id == update->id) {
             // the update document is already described by the key provided
             // in the index condition
             update = nullptr;
           } else {
             continue;
           }
+        }
+        
+        if (!::parentIsReturnOrConstCalc(mod)) {
+          continue;
         }
 
         ExecutionNode* singleOperationNode = plan->registerNode(
@@ -245,31 +250,27 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
             true, key, mod->collection(),
             mod->getOptions(),
             update,
-            nullptr,
+            indexNode->outVariable(),
             mod->getOutVariableOld(),
             mod->getOutVariableNew()
           )
         );
-
-        if (!::parentIsReturnOrConstCalc(mod)) {
-          continue;
-        }
 
         ::replaceNode(plan, mod, singleOperationNode);
         plan->unlinkNode(indexNode);
         modified = true;
       } else if (::parentIsReturnOrConstCalc(node)) {
         ExecutionNode* singleOperationNode = plan->registerNode(
-            new SingleRemoteOperationNode(plan, plan->nextId()
-                                          ,EN::INDEX, true, key, indexNode->collection(), ModificationOptions{}
-                                          , nullptr /*in*/ , indexNode->outVariable() /*out*/, nullptr /*old*/, nullptr /*new*/)
+            new SingleRemoteOperationNode(plan, plan->nextId(),
+                                          EN::INDEX, true, key, indexNode->collection(), ModificationOptions{},
+                                          nullptr /*in*/ , indexNode->outVariable() /*out*/, nullptr /*old*/, nullptr /*new*/)
         );
         ::replaceNode(plan, indexNode, singleOperationNode);
         modified = true;
-
       }
     }
   }
+
   return modified;
 }
 
