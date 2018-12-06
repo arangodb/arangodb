@@ -65,9 +65,10 @@ void CheckVersionFeature::collectOptions(
 
   options->addOldOption("check-version", "database.check-version");
 
-  options->addHiddenOption("--database.check-version",
-                           "checks the versions of the database and exit",
-                           new BooleanParameter(&_checkVersion));
+  options->addOption("--database.check-version",
+                     "checks the versions of the database and exit",
+                     new BooleanParameter(&_checkVersion),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Command));
 }
 
 void CheckVersionFeature::validateOptions(
