@@ -964,7 +964,7 @@ function shutdownArangod (arangod, options, forceTerminate) {
       print(Date() + ' ' + arangod.url + '/_admin/shutdown');
       let sockStat = getSockStat(arangod, options, "Sock stat for: ");
       const reply = download(arangod.url + '/_admin/shutdown', '', requestOptions);
-      if ((reply.code === 200) || // if the server should reply, we expect 200 - if not: 
+      if ((reply.code !== 200) && // if the server should reply, we expect 200 - if not:
           !((reply.code === 500) &&
             (
               (reply.message === "Connection closed by remote") || // http connection
@@ -973,6 +973,9 @@ function shutdownArangod (arangod, options, forceTerminate) {
         serverCrashedLocal = true;
         print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' " + sockStat + " continuing with hard kill!");
         shutdownArangod(arangod, options, true);
+      }
+      else {
+        print(sockStat);
       }
       if (options.extremeVerbosity) {
         print(Date() + ' Shutdown response: ' + JSON.stringify(reply));

@@ -1,9 +1,10 @@
-Features and Improvements
-=========================
+Features and Improvements in ArangoDB 2.6
+=========================================
 
 The following list shows in detail which features have been added or improved in
 ArangoDB 2.6. ArangoDB 2.6 also contains several bugfixes that are not listed
-here. For a list of bugfixes, please consult the [CHANGELOG](https://github.com/arangodb/arangodb/blob/devel/CHANGELOG).
+here. For a list of bugfixes, please consult the
+[CHANGELOG](https://github.com/arangodb/arangodb/blob/devel/CHANGELOG).
 
 APIs added
 ----------
@@ -12,16 +13,16 @@ APIs added
 
 The following commands have been added for `collection` objects:
 
-* collection.lookupByKeys(keys)
-* collection.removeByKeys(keys)
+* `collection.lookupByKeys(keys)`
+* `collection.removeByKeys(keys)`
 
 These commands can be used to perform multi-document lookup and removal operations efficiently
 from the ArangoShell. The argument to these operations is an array of document keys.
 
 These commands can also be used via the HTTP REST API. Their endpoints are:
 
-* PUT /\_api/simple/lookup-by-keys
-* PUT /\_api/simple/remove-by-keys
+* `PUT /_api/simple/lookup-by-keys`
+* `PUT /_api/simple/remove-by-keys`
 
 ### Collection export HTTP REST API
 
