@@ -72,6 +72,7 @@ ClientFeature::ClientFeature(
   {
   setOptional(true);
   requiresElevatedPrivileges(false);
+  startsAfter("CommunicationPhase");
   startsAfter("GreetingsPhase");
 }
 

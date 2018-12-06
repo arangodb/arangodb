@@ -25,7 +25,7 @@
 
 #include "SimpleHttpClient.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/CommunicationPhase.h"
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpResponse.h"
@@ -409,7 +409,7 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
         break;
     }
 
-    if (application_features::ApplicationServer::isUnpreparing()) {
+    if (!application_features::CommunicationFeaturePhase::getCommAllowed()) {
       setErrorMessage("Command locally aborted");
       return nullptr;
     }
