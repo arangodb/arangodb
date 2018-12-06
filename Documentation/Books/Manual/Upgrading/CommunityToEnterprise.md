@@ -23,7 +23,7 @@ Procedure for a _Logical_ Upgrade
 ---------------------------------
 
 1. Use the tool [_arangodump_](../Programs/Arangodump/README.md) to take a backup
-   of your _community_ database
+   of your data stored by your Community Edition installation
 2. Uninstall the ArangoDB Community Edition package
 3. Install the ArangoDB Enterprise Edition package
    (and start your _Single Instance_, _Active Failover_ or _Cluster_)
