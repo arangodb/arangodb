@@ -1,7 +1,22 @@
-Windows
-=======
+Installing ArangoDB on Windows
+==============================
 
-**Note:** Please note that ArangoDB will only work on 64bit.
+Introduction
+------------
+
+There are two possible methods to install ArangoDB on Windows:
+
+1. Automated, using an _NSIS_ Installer.
+1. Manual, using a ZIP archive (XCopy installation).
+
+Both installation methods have their own pros and cons.
+
+{% hint 'info' %}
+Please note that ArangoDB will only work on 64bit systems.
+{% endhint %}
+
+Installing using the Installer
+------------------------------
 
 The default installation directory is *C:\Program Files\ArangoDB-3.x.x*. During the
 installation process you may change this. In the following description we will assume
@@ -12,8 +27,7 @@ write permission to this directory or you need to modify the configuration file
 for the server process. In the latter case the database directory and the Foxx
 directory have to be writable by the user.
 
-Single- and Multiuser Installation
-----------------------------------
+### Single- and Multiuser Installation
 
 There are two main modes for the installer of ArangoDB.
 The installer lets you select:
@@ -24,8 +38,7 @@ The installer lets you select:
   Allow to install Arangodb as normal user.
   Requires manual starting of the database server.
 
-Installation Options
---------------------
+### Installation Options
 
 The checkboxes allow you to chose weather you want to:
 
@@ -37,7 +50,7 @@ The checkboxes allow you to chose weather you want to:
 
 or not.
 
-### Custom Install Paths
+#### Custom Install Paths
 
 This checkbox controls if you will be able to override
 the default paths for the installation in subsequent steps.
@@ -57,24 +70,24 @@ Single User Default:
 We are not using the roaming part of the user's profile, because doing so
 avoids the data being synced to the windows domain controller.
 
-### Automatic Upgrade
+#### Automatic Upgrade
 
 If this checkbox is selected the installer will attempt to perform an automatic
 update. For more information please see
 [Upgrading from Previous Version](#upgrading-from-previous-version).
 
-### Keep Backup
+#### Keep Backup
 
 Select this to create a backup of your database directory during automatic upgrade.
 The backup will be created next to your current database directory suffixed by
 a time stamp.
 
-### Add to Path
+#### Add to Path
 
 Select this to add the binary directory to your system's path (multi user
 installation) or user's path (single user installation).
 
-### Desktop Icon
+#### Desktop Icon
 
 Select if you want the installer to create Desktop Icons that let you:
 
@@ -82,7 +95,7 @@ Select if you want the installer to create Desktop Icons that let you:
 - start the commandline client (arangosh)
 - start the database server (single user installation only)
 
-## Upgrading from Previous Version
+### Upgrading from Previous Version
 
 If you are upgrading ArangoDB from an earlier version you need to copy your old
 database directory [to the new default paths](#custom-install-paths). Upgrading
@@ -91,8 +104,7 @@ Switching to the RocksDB storage engine requires an
 [export](../Programs/Arangoexport/README.md) and
 [reimport](../Programs/Arangoimport/README.md) of your data.
 
-Starting
---------
+### Starting
 
 If you installed ArangoDB for multiple users (as a service) it is automatically
 started. Otherwise you need to use the link that was created on you Desktop if
@@ -113,17 +125,17 @@ we will be using the administration web interface. Execute *arangod.exe* if you
 have not already done so, then open up your web browser and point it to the
 page:
 
-    http://127.0.0.1:8529/
+```
+http://127.0.0.1:8529/
+```
 
-Advanced Starting
------------------
+### Advanced Starting
 
 If you want to provide our own start scripts, you can set the environment
 variable *ARANGODB_CONFIG_PATH*. This variable should point to a directory
 containing the configuration files.
 
-Using the Client
-----------------
+### Using the Client
 
 To connect to an already running ArangoDB server instance, there is a shell
 *arangosh.exe* located in *&lt;ROOTDIR&gt;\bin*. This starts a shell which can be
@@ -138,8 +150,7 @@ the *arangod.exe* executable.
 *&lt;ROOTDIR&gt;\etc\arangodb\*. Please adjust this to your needs if you want to
 use different connection settings etc.
 
-Uninstalling
-------------
+### Uninstalling
 
 To uninstall the Arango server application you can use the windows control panel
 (as you would normally uninstall an application). Note however, that any data
@@ -147,22 +158,30 @@ files created by the Arango server will remain as well as the *&lt;ROOTDIR&gt;*
 directory.  To complete the uninstallation process, remove the data files and
 the *&lt;ROOTDIR&gt;* directory manually.
 
-Limitations for Cygwin
-----------------------
+Installing using the ZIP archive (XCopy installation)
+-----------------------------------------------------
 
-Please note some important limitations when running ArangoDB under Cygwin:
-Starting ArangoDB can be started from out of a Cygwin terminal, but pressing
-*CTRL-C* will forcefully kill the server process without giving it a chance to
-handle the kill signal. In this case, a regular server shutdown is not possible,
-which may leave a file *LOCK* around in the server's data directory.  This file
-needs to be removed manually to make ArangoDB start again.  Additionally, as
-ArangoDB does not have a chance to handle the kill signal, the server cannot
-forcefully flush any data to disk on shutdown, leading to potential data loss.
-When starting ArangoDB from a Cygwin terminal it might also happen that no
-errors are printed in the terminal output.  Starting ArangoDB from an MS-DOS
-command prompt does not impose these limitations and is thus the preferred
-method.
+Not all users prefer the guided _Installer_ to install ArangoDB. In order to have a
+[portable application](http://en.wikipedia.org/wiki/Portable_application), or easily
+start different ArangoDB versions on the same machine, and/or for the maximum flexibility,
+you might want to install using the _ZIP_ archive ([XCOPY deployment](http://en.wikipedia.org/wiki/XCOPY_deployment)).
 
-Please note that ArangoDB uses UTF-8 as its internal encoding and that the
-system console must support a UTF-8 codepage (65001) and font. It may be
-necessary to manually switch the console font to a font that supports UTF-8.
+### Unzip the archive
+
+Open an explorer, choose a place where you would like ArangoDB to be, and extract the
+archive there. It will create its own top-level directory with the version number in the name.
+
+### Edit the configuration
+
+*This step is optional.*
+
+If the default configuration of ArangoDB does not suite your needs,
+you can edit `etc\arangodb3\arangod.conf` to change or add configuration options.
+
+### Start the Server
+
+After installation, you may start ArangoDB in several ways. The exact start-up command
+depends on the type of ArangoDB deployment you are interested in
+(_Single Instance_, _Master-Slave_, _Active Failover_ or _Cluster_).
+
+Please refer to the [_Deployment_](../Deployment/README.md) chapter for details.
