@@ -121,9 +121,9 @@ void RocksDBOptionFeature::collectOptions(
                      "is not recommended as it can lead to deadlocks (0 = no waiting, < 0 no timeout)",
                      new Int64Parameter(&_transactionLockTimeout));
   
-  options->addHiddenOption("--rocksdb.total-write-buffer-size",
-                           "maximum total size of in-memory write buffers (0 = unbounded)",
-                           new UInt64Parameter(&_totalWriteBufferSize));
+  options->addOption("--rocksdb.total-write-buffer-size",
+                     "maximum total size of in-memory write buffers (0 = unbounded)",
+                     new UInt64Parameter(&_totalWriteBufferSize));
 
   options->addOption("--rocksdb.write-buffer-size",
                      "amount of data to build up in memory before converting "

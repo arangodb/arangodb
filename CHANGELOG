@@ -1,3 +1,18 @@
+v3.3.21 (XXXX-XX-XX)
+--------------------
+
+* make AQL REMOVE operations use less memory with the RocksDB storage engine
+
+  the previous implementation of batch removals read everything to remove into
+  memory first before carrying out the first remove operation. The new version
+  will only read in about 1000 documents each time and then remove these. Queries
+  such as
+
+      FOR doc IN collection FILTER ... REMOVE doc IN collection
+
+  will benefit from this change in terms of memory usage.
+
+
 v3.3.20 (2018-11-28)
 --------------------
 
@@ -97,6 +112,7 @@ v3.3.20 (2018-11-28)
   This fixes some unstable tests.
 
 * cluster health features more elaborate agent records
+
 
 v3.3.19 (2018-10-20)
 --------------------
