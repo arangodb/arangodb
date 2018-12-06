@@ -1,6 +1,9 @@
 v3.3.21 (XXXX-XX-XX)
 --------------------
 
+* improve Windows installer error messages, fix Windows installer backup routine
+  and exit code handling
+
 * make AQL REMOVE operations use less memory with the RocksDB storage engine
 
   the previous implementation of batch removals read everything to remove into

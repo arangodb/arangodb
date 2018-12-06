@@ -59,22 +59,32 @@ def genNSISFile(errors, filename):
 
   impl = """
 !include "LogicLib.nsh"
-!macro printExitCode exitCode Message
+"""
+  for e in errors:
+    impl += """!define ARANGO_%s %s
+""" % (
+  e[0],
+  e[1]
+  )
+
+  impl +="""
+!macro printExitCode exitCode Message DetailMessage
   Push "${exitCode}"
   Push "${Message}"
+  Push "${DetailMessage}"
   Call printExitCode
 !macroend
 Function printExitCode
-pop $1
+pop $3
 pop $2
-${Switch} $0\n
+pop $1
+${Switch} $1\n
 """
   # print individual errors
   for e in errors:
     impl += """
   ${Case} %s # %s
-    MessageBox MB_ICONEXCLAMATION '$1:$\\r$\\n%s'
-    ; %s
+    MessageBox MB_ICONEXCLAMATION '$2:$\\r$\\n>> %s <<$\\r$\\n"%s"$\\r$\\n$3'
   ${Break}
 """ % (
   e[1],
@@ -84,6 +94,11 @@ ${Switch} $0\n
   )
 
   impl = impl + """
+  ${Default}
+    MessageBox MB_ICONEXCLAMATION '$2:$\\r$\\nUnknown exit code $1!'
+    ; Will be returned if the recovery fails
+  ${Break}
+
 ${EndSwitch}
 FunctionEnd
 """
