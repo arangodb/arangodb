@@ -1861,16 +1861,17 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
         out->add(StaticStrings::ErrorNum, VPackValue(500));
       } 
     }
+
+    // let gossip loop know that it has new data
+    if (_inception != nullptr && upsert == config_t::CHANGED) {
+      _inception->signalConditionVar();
+    }
+    
   }
 
   if (!isCallback) {
     LOG_TOPIC(TRACE, Logger::AGENCY)
       << "Answering with gossip " << out->slice().toJson();
-  }
-    
-  // let gossip loop know that it has new data
-  if (_inception != nullptr && upsert == config_t::CHANGED) {
-    _inception->signalConditionVar();
   }
     
   return out;
