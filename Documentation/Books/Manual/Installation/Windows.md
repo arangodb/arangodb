@@ -169,7 +169,7 @@ you might want to install using the _ZIP_ archive ([XCOPY deployment](http://en.
 ### Unzip the archive
 
 Open an explorer, choose a place where you would like ArangoDB to be, and extract the
-archive there. It will create its own toplevel directory with the version number in the string.
+archive there. It will create its own top-level directory with the version number in the name.
 
 ### Edit the configuration
 
