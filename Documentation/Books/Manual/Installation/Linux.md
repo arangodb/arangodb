@@ -7,7 +7,7 @@ To install ArangoDB on Linux:
    ArangoDB web site and download the correct package for your Linux distribution.
    You can find binary packages for the most common distributions there. Linux Mint: 
    please use the corresponding Ubuntu or Debian packages. 
-1. Follow the installation instructions included in the _Download_ page to use your
+2. Follow the installation instructions on the _Download_ page to use your
    favorite package manager for the major distributions. After setting up the ArangoDB
    repository you can easily install ArangoDB using _yum_, _aptitude_, _urpmi_ or _zypper_.
 
