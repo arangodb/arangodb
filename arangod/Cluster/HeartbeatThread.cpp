@@ -523,6 +523,7 @@ void HeartbeatThread::runDBServer() {
     }
   }
 
+  // TODO should these be defered?
   _agencyCallbackRegistry->unregisterCallback(currentAgencyCallback);
   _agencyCallbackRegistry->unregisterCallback(planAgencyCallback);
 }
