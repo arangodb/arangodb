@@ -1034,6 +1034,14 @@ if possible, by adjusting the value of the `--ssl.protocol` startup option for t
 `arangod` server and all client tools.
 
 
+Distribution Packages
+---------------------
+
+In addition to the OS-specific packages (eg. _rpm_ for Red Hat / CentOS, _deb_ for
+Debian, NSIS for Windows, etc) starting from 3.4.0 new _tar.gz_ archive packages
+are available for Linux and Mac.
+
+
 Client tools
 ------------
 
