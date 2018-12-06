@@ -35,7 +35,7 @@ void Section::addOption(Option const& option) { options.emplace(option.name, opt
 bool Section::hasOptions() const {
   if (!hidden) {
     for (auto const& it : options) {
-      if (!it.second.hidden) {
+      if (!it.second.hasFlag(arangodb::options::Flags::Hidden)) {
         return true;
       }
     }

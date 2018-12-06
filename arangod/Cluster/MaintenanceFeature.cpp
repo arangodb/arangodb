@@ -76,25 +76,27 @@ void MaintenanceFeature::init() {
 void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "Server features");
 
-  options->addHiddenOption(
+  options->addOption(
     "--server.maintenance-threads",
     "maximum number of threads available for maintenance actions",
-    new UInt32Parameter(&_maintenanceThreadsMax));
+    new UInt32Parameter(&_maintenanceThreadsMax),
+    arangodb::options::makeFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Dynamic));
 
-  options->addHiddenOption(
+  options->addOption(
     "--server.maintenance-actions-block",
     "minimum number of seconds finished Actions block duplicates",
-    new Int32Parameter(&_secondsActionsBlock));
+    new Int32Parameter(&_secondsActionsBlock),
+    arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption(
+  options->addOption(
     "--server.maintenance-actions-linger",
     "minimum number of seconds finished Actions remain in deque",
-    new Int32Parameter(&_secondsActionsLinger));
+    new Int32Parameter(&_secondsActionsLinger),
+    arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
 } // MaintenanceFeature::collectOptions
 
 void MaintenanceFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-
   if (_maintenanceThreadsMax < minThreadLimit) {
     LOG_TOPIC(WARN, Logger::MAINTENANCE)
       << "Need at least" << minThreadLimit << "maintenance-threads";

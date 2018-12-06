@@ -159,28 +159,23 @@ class ProgramOptions {
   }
 
   // adds an option to the program options
-  void addOption(std::string const& name, std::string const& description,
-                 Parameter* parameter) {
-    addOption(Option(name, description, parameter, false, false));
+  void addOption(std::string const& name, 
+                 std::string const& description,
+                 Parameter* parameter,
+                 std::underlying_type<Flags>::type flags = makeFlags(Flags::Normal)) {
+    addOption(Option(name, description, parameter, flags));
   }
   
-  // adds an enterprise-only option to the program options
-  void addEnterpriseOption(std::string const& name, std::string const& description,
-                           Parameter* parameter) {
-    addOption(EnterpriseOption(name, description, parameter, false, false));
-  }
-
-  // adds a hidden option to the program options
-  void addHiddenOption(std::string const& name, std::string const& description,
-                       Parameter* parameter) {
-    addOption(Option(name, description, parameter, true, false));
-  }
-
   // adds an obsolete and hidden option to the program options
   void addObsoleteOption(std::string const& name,
                          std::string const& description,
                          bool requiresValue) {
-    addOption(Option(name, description, new ObsoleteParameter(requiresValue), true, true));
+    addOption(Option(
+        name, 
+        description, 
+        new ObsoleteParameter(requiresValue), 
+        makeFlags(Flags::Hidden, Flags::Obsolete))
+    );
   }
 
   // prints usage information
