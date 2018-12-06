@@ -55,7 +55,7 @@ The command should be executed after the installation.
 
 ### Other Distributions
 
-For other distributions to set a _root_ password, run `arango-secure-installation`.
+For other distributions run `arango-secure-installation` to set a _root_ password.
 
 {% hint 'danger' %}
 Please be aware that running `arango-secure-installation` on your ArangoDB Server will remove
