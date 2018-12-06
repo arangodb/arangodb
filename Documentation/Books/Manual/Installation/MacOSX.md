@@ -107,4 +107,4 @@ Installing using the archive
 ----------------------------
 
 Starting from 3.4.0 a _tar.gz_ package is also available for Mac. To install ArangoDB
-using the _tar.gz_ archive, just extract it.
+using the `tar.gz` archive, just extract it.
