@@ -182,5 +182,5 @@ After installation, you may start ArangoDB in several ways. The exact start-up c
 depends on the type of ArangoDB deployment you are interested in
 _Active Failover_ or Cluster. 
 
-Please refer to the [_Deployment_](../Deployment/README.md) chapter for further information
+Please refer to the [_Deployment_](../Deployment/README.md) chapter for details.
 on deployment.
