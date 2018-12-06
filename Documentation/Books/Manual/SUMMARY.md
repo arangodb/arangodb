@@ -243,6 +243,7 @@
 * [Installation](Installation/README.md)
   * [Linux](Installation/Linux.md)
     * [Operating System Configuration](Installation/LinuxOSConfiguration.md)
+    * [Linux OS Tuning Script Examples](Installation/LinuxOSTuningScripts.md)    
   * [Mac OS X](Installation/MacOSX.md)
   * [Windows](Installation/Windows.md)
   * [Compiling](Installation/Compiling.md)
