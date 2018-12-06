@@ -24,6 +24,9 @@ devel
     options, such as `--version`, `--dump-options`, `--dump-dependencies` etc.,
     and "option" for all others.
 
+* fixed issue #7586: a running query within the user interface was not shown
+  if the active view was `Running Queries` or `Slow Query History`.
+
 * allow usage of floating point values in AQL without leading zeros, e.g.
   `.1234`. Previous versions of ArangoDB required a leading zero in front of
   the decimal separator, i.e `0.1234`.
