@@ -308,6 +308,7 @@
   * [OS-specific Information](Upgrading/OSSpecificInfo/README.md)
     * [Upgrading on Linux](Upgrading/OSSpecificInfo/Linux.md)
     * [Upgrading on MacOS](Upgrading/OSSpecificInfo/MacOS.md)
+    * [Upgrading on Windows](Upgrading/OSSpecificInfo/Windows.md)    
   * [Upgrading _Starter_ Deployments](Upgrading/Starter/README.md)  
   * [Upgrading Manual Deployments](Upgrading/Manually/README.md)
     * [Upgrading an Active Failover deployment](Upgrading/Manually/ActiveFailover.md)	
