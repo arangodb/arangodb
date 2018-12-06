@@ -16,5 +16,5 @@ The provided ArangoDB packages run as single instances out of the box.
 
 See also:
 
-- [Installation](Installation/README.md)
-- [Single Instance Deployment](Deployment/SingleInstance/README.md)
+- [Installation](../../../Installation/README.md)
+- [Single Instance Deployment](../../../Deployment/SingleInstance/README.md)
