@@ -93,8 +93,8 @@ function backgroundIndexSuite() {
         if (c.count() === 100000) {
           break;
         }
-        if (time() - start > 180) { // wait for 3 minutes maximum
-          fail("Timeout creating documents after 3 minutes");
+        if (time() - start > 300) { // wait for 5 minutes maximum
+          fail("Timeout creating documents after 5 minutes: " + c.count());
         }
         require("internal").wait(0.5, false);
       }
