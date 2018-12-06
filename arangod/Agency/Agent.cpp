@@ -1767,109 +1767,112 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
   }
 
   query_t out = std::make_shared<Builder>();
- 
-  VPackObjectBuilder b(out.get());
-    
-  std::unordered_set<std::string> gossipPeers = _config.gossipPeers();
-  if (!gossipPeers.empty() && !isCallback) {
-    try {
-      _config.eraseGossipPeer(endpoint);
-    } catch (std::exception const& e) {
-      LOG_TOPIC(ERR, Logger::AGENCY)
-        << __FILE__ << ":" << __LINE__ << " " << e.what();
-    }
-  }
-    
-  std::string err;
-  config_t::upsert_t upsert = config_t::UNCHANGED;
-    
-  /// Pool incomplete or the other guy is in my pool: I'll gossip.
-  if (!_config.poolComplete() || _config.matchPeer(id, endpoint)) {
 
-    upsert = _config.upsertPool(pslice, id);
-    if (upsert == config_t::WRONG) {
-      LOG_TOPIC(FATAL, Logger::AGENCY) << "Discrepancy in agent pool!";
-      FATAL_ERROR_EXIT();      /// disagreement over pool membership are fatal!
-    }
-      
-    // Wrapped in envelope in RestAgencyPrivHandler
-    auto pool = _config.pool();
-    out->add(VPackValue("pool"));
-    { VPackObjectBuilder bb(out.get());
-      for (auto const& i : pool) {
-        out->add(i.first, VPackValue(i.second));
-      }}
-       
-  } else {  // Pool complete & id's endpoint not matching.
-
-    // Not leader: redirect / 503     
-    if (challengeLeadership()) {
-      out->add("redirect", VPackValue(true));
-      out->add("id", VPackValue(leaderID()));
-    } else { // leader magic
-      auto tmp = _config;
-      tmp.upsertPool(pslice, id);
-      auto query = std::make_shared<VPackBuilder>();
-      { VPackArrayBuilder trs(query.get());
-        { VPackArrayBuilder tr(query.get());
-          { VPackObjectBuilder o(query.get());
-            query->add(VPackValue(RECONFIGURE));
-            { VPackObjectBuilder o(query.get());
-              query->add("op", VPackValue("set"));
-              query->add(VPackValue("new"));
-              { VPackObjectBuilder c(query.get());
-                tmp.toBuilder(*query); }}}}}
-         
-      LOG_TOPIC(DEBUG, Logger::AGENCY)
-        << "persisting new agency configuration via RAFT: " << query->toJson();
-            
-      // Do write
-      write_ret_t ret;
+  {
+    VPackObjectBuilder b(out.get());
+    
+    std::unordered_set<std::string> gossipPeers = _config.gossipPeers();
+    if (!gossipPeers.empty() && !isCallback) {
       try {
-        ret = write(query, WriteMode(false,true));
-        arangodb::consensus::index_t max_index = 0;
-        if (ret.indices.size() > 0) {
-          max_index =
-            *std::max_element(ret.indices.begin(), ret.indices.end());
-        }
-        if (max_index > 0) { // We have a RAFT index. Wait for the RAFT commit.
-          auto result = waitFor(max_index);
-          if (result != Agent::raft_commit_t::OK) {
-            err = "failed to retrieve RAFT index for updated agency endpoints";
-          } else {
-            auto pool = _config.pool();
-            out->add(VPackValue("pool"));
-            { VPackObjectBuilder bb(out.get());
-              for (auto const& i : pool) {
-                out->add(i.first, VPackValue(i.second));
-              }}
-          }
-        } else {
-          err = "failed to retrieve RAFT index for updated agency endpoints";
-        }
+        _config.eraseGossipPeer(endpoint);
       } catch (std::exception const& e) {
-        err = std::string("failed to write new agency to RAFT") + e.what();
-        LOG_TOPIC(ERR, Logger::AGENCY) << err;
+        LOG_TOPIC(ERR, Logger::AGENCY)
+          << __FILE__ << ":" << __LINE__ << " " << e.what();
       }
+    }
+    
+    std::string err;
+    config_t::upsert_t upsert = config_t::UNCHANGED;
+    
+    /// Pool incomplete or the other guy is in my pool: I'll gossip.
+    if (!_config.poolComplete() || _config.matchPeer(id, endpoint)) {
+
+      upsert = _config.upsertPool(pslice, id);
+      if (upsert == config_t::WRONG) {
+        LOG_TOPIC(FATAL, Logger::AGENCY) << "Discrepancy in agent pool!";
+        FATAL_ERROR_EXIT();      /// disagreement over pool membership are fatal!
+      }
+      
+      // Wrapped in envelope in RestAgencyPrivHandler
+      auto pool = _config.pool();
+      out->add(VPackValue("pool"));
+      { VPackObjectBuilder bb(out.get());
+        for (auto const& i : pool) {
+          out->add(i.first, VPackValue(i.second));
+        }}
+       
+    } else {  // Pool complete & id's endpoint not matching.
+
+      // Not leader: redirect / 503     
+      if (challengeLeadership()) {
+        out->add("redirect", VPackValue(true));
+        out->add("id", VPackValue(leaderID()));
+      } else { // leader magic
+        auto tmp = _config;
+        tmp.upsertPool(pslice, id);
+        auto query = std::make_shared<VPackBuilder>();
+        { VPackArrayBuilder trs(query.get());
+          { VPackArrayBuilder tr(query.get());
+            { VPackObjectBuilder o(query.get());
+              query->add(VPackValue(RECONFIGURE));
+              { VPackObjectBuilder o(query.get());
+                query->add("op", VPackValue("set"));
+                query->add(VPackValue("new"));
+                { VPackObjectBuilder c(query.get());
+                  tmp.toBuilder(*query); }}}}}
+         
+        LOG_TOPIC(DEBUG, Logger::AGENCY)
+          << "persisting new agency configuration via RAFT: " << query->toJson();
+            
+        // Do write
+        write_ret_t ret;
+        try {
+          ret = write(query, WriteMode(false,true));
+          arangodb::consensus::index_t max_index = 0;
+          if (ret.indices.size() > 0) {
+            max_index =
+              *std::max_element(ret.indices.begin(), ret.indices.end());
+          }
+          if (max_index > 0) { // We have a RAFT index. Wait for the RAFT commit.
+            auto result = waitFor(max_index);
+            if (result != Agent::raft_commit_t::OK) {
+              err = "failed to retrieve RAFT index for updated agency endpoints";
+            } else {
+              auto pool = _config.pool();
+              out->add(VPackValue("pool"));
+              { VPackObjectBuilder bb(out.get());
+                for (auto const& i : pool) {
+                  out->add(i.first, VPackValue(i.second));
+                }}
+            }
+          } else {
+            err = "failed to retrieve RAFT index for updated agency endpoints";
+          }
+        } catch (std::exception const& e) {
+          err = std::string("failed to write new agency to RAFT") + e.what();
+          LOG_TOPIC(ERR, Logger::AGENCY) << err;
+        }
         
+      }
+
+      if (!err.empty()) {
+        out->add(StaticStrings::Code, VPackValue(500));
+        out->add(StaticStrings::Error, VPackValue(true));
+        out->add(StaticStrings::ErrorMessage, VPackValue(err));
+        out->add(StaticStrings::ErrorNum, VPackValue(500));
+      } 
     }
 
-    if (!err.empty()) {
-      out->add(StaticStrings::Code, VPackValue(500));
-      out->add(StaticStrings::Error, VPackValue(true));
-      out->add(StaticStrings::ErrorMessage, VPackValue(err));
-      out->add(StaticStrings::ErrorNum, VPackValue(500));
-    } 
+    // let gossip loop know that it has new data
+    if (_inception != nullptr && upsert == config_t::CHANGED) {
+      _inception->signalConditionVar();
+    }
+    
   }
 
   if (!isCallback) {
     LOG_TOPIC(TRACE, Logger::AGENCY)
       << "Answering with gossip " << out->slice().toJson();
-  }
-    
-  // let gossip loop know that it has new data
-  if (_inception != nullptr && upsert == config_t::CHANGED) {
-    _inception->signalConditionVar();
   }
     
   return out;
