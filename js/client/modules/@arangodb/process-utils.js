@@ -921,7 +921,7 @@ function executeArangod (cmd, args, options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function getSockStat(arangod, options, preamble) {
-  if (options.getSockStat && platform.substr(0, 3) === 'linux') {
+  if (options.getSockStat && (platform === 'linux')) {
     let sockStat = preamble + arangod.pid + "\n";
     try {
       sockStat += fs.read("/proc/" + arangod.pid + "/net/sockstat");
@@ -967,7 +967,10 @@ function shutdownArangod (arangod, options, forceTerminate) {
       sockStat += getSockStat(arangod, options, "\n After shutdown: ");
       if ((reply.code === 200) || // if the server should reply, we expect 200 - if not:
           !((reply.code === 500) &&
-            (reply.message === "Connection closed by remote"))) {
+            (
+              (reply.message === "Connection closed by remote") || // http connection
+              reply.message.includes('failed with #111')           // https connection
+            ))) {
         serverCrashedLocal = true;
         print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' " + sockStat + " continuing with hard kill!");
         shutdownArangod(arangod, options, true);
