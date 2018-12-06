@@ -41,17 +41,17 @@ Procedure for an _In-Place_ Upgrade
    using the _cp_ command). If you are using a setup that involves several _arangod_ processes
    (e.g. _Active Failover_ or _Cluster_) please make sure all _arangod_ processes
    are stopped and all the data directories in use are copied in a safe location 
-1. Uninstall the ArangoDB Community Edition package (make sure this is done in a way that
+2. Uninstall the ArangoDB Community Edition package (make sure this is done in a way that
    your database is kept on your disk, e.g. on _Debian_ systems do **not** use the
    _purge_ option of _dpkg_ or, on Windows, do **not** check the "_Delete databases with
    unistallation?_" option)
-2. Install the ArangoDB Enterprise Edition package
-3. If you are moving from version A to version B, where B > A, start _arangod_ on
+3. Install the ArangoDB Enterprise Edition package
+4. If you are moving from version A to version B, where B > A, start _arangod_ on
    your data directory with the option `--database.auto-upgrade` (in addition to
    any other options you are currently using). The server will stop after a while
    (check the log file of _arangod_ as it should contain relevant information about
    the upgrade). If you are using a setup that involves several _arangod_ processes
    (e.g. _Active Failover_ or _Cluster_) this step has to be repeated for all _arangod_
    processes
-4. Start ArangoDB Enterprise Edition
+5. Start ArangoDB Enterprise Edition
    (in the same way you were starting ArangoDB Community Edition)
