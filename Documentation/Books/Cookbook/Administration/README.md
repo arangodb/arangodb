@@ -7,6 +7,4 @@ Administration
 
 - [Replicating Data](ReplicatingData.md)
 
-- [XCopy Install Windows](XCopyInstallWindows.md)
-
 - [Migrating 2.8 to 3.0](Migrate2.8to3.0.md)
