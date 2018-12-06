@@ -39,7 +39,7 @@ query specified in *query*.
 In order to use the *fulltext* operator, a fulltext index must be defined
 for the collection and the specified attribute.
 
-Returns a cursor containing the result, see [Http Cursor](../AqlQueryCursor/README.md) for details.
+Returns a cursor containing the result, see [HTTP Cursor](../AqlQueryCursor/README.md) for details.
 
 Note: the *fulltext* simple query is **deprecated** as of ArangoDB 2.6. 
 This API may be removed in future versions of ArangoDB. The preferred
