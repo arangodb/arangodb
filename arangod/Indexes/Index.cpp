@@ -220,36 +220,37 @@ void Index::validateFields(VPackSlice const& slice) {
 
 /// @brief return the index type based on a type name
 Index::IndexType Index::type(char const* type, size_t len) {
-  if (7 == len && ::strncmp(type, "primary", len) == 0) {
+  if (7 == len && ::memcmp(type, "primary", len) == 0) {
     return TRI_IDX_TYPE_PRIMARY_INDEX;
   }
-  if (4 == len && ::strncmp(type, "edge", len) == 0) {
+  if (4 == len && ::memcmp(type, "edge", len) == 0) {
     return TRI_IDX_TYPE_EDGE_INDEX;
   }
-  if (4 == len && ::strncmp(type, "hash", len) == 0) {
+  if (4 == len && ::memcmp(type, "hash", len) == 0) {
     return TRI_IDX_TYPE_HASH_INDEX;
   }
-  if (8 == len && ::strncmp(type, "skiplist", len) == 0) {
+  if (8 == len && ::memcmp(type, "skiplist", len) == 0) {
     return TRI_IDX_TYPE_SKIPLIST_INDEX;
   }
-  if ((10 == len && ::strncmp(type, "persistent", len) == 0) ||
-      (7 == len && ::strncmp(type, "rocksdb", len) == 0)) {
+  if ((10 == len && ::memcmp(type, "persistent", len) == 0) ||
+      (7 == len && ::memcmp(type, "rocksdb", len) == 0)) {
     return TRI_IDX_TYPE_PERSISTENT_INDEX;
   }
-  if (8 == len && ::strncmp(type, "fulltext", len) == 0) {
+  if (8 == len && ::memcmp(type, "fulltext", len) == 0) {
     return TRI_IDX_TYPE_FULLTEXT_INDEX;
   }
-  if (3 == len && ::strncmp(type, "geo", len) == 0) {
+  if (3 == len && ::memcmp(type, "geo", len) == 0) {
     return TRI_IDX_TYPE_GEO_INDEX;
   }
-  if (4 == len && ::strncmp(type, "geo1", len) == 0) {
+  if (4 == len && ::memcmp(type, "geo1", len) == 0) {
     return TRI_IDX_TYPE_GEO1_INDEX;
   }
-  if (4 == len && ::strncmp(type, "geo2", len) == 0) {
+  if (4 == len && ::memcmp(type, "geo2", len) == 0) {
     return TRI_IDX_TYPE_GEO2_INDEX;
   }
 #ifdef USE_IRESEARCH
-  if (arangodb::iresearch::DATA_SOURCE_TYPE.name() == type) {
+  std::string const& tmp = arangodb::iresearch::DATA_SOURCE_TYPE.name();
+  if (tmp.size() == len && ::memcmp(type, tmp.c_str(), len) == 0) {
     return TRI_IDX_TYPE_IRESEARCH_LINK;
   }
 #endif

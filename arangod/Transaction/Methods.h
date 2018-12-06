@@ -423,7 +423,7 @@ class Methods {
 
   /// @brief get all indexes for a collection name
   ENTERPRISE_VIRT std::vector<std::shared_ptr<arangodb::Index>> indexesForCollection(
-      std::string const&);
+      std::string const&, bool withHidden = false);
 
   /// @brief Lock all collections. Only works for selected sub-classes
   virtual int lockCollections();

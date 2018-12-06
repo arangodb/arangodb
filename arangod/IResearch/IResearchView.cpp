@@ -1001,7 +1001,7 @@ arangodb::Result IResearchView::appendVelocyPackDetailed(
     arangodb::velocypack::ObjectBuilder linksBuilderWrapper(&linksBuilder);
 
     for (auto& collectionName: state->collectionNames()) {
-      for (auto& index: trx.indexesForCollection(collectionName)) {
+      for (auto& index: trx.indexesForCollection(collectionName, /*withHidden*/true)) {
         if (index && arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()) {
           // TODO FIXME find a better way to retrieve an IResearch Link
           // cannot use static_cast/reinterpret_cast since Index is not related to IResearchLink

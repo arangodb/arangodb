@@ -3235,7 +3235,7 @@ Result transaction::Methods::unlockRecursive(TRI_voc_cid_t cid,
 
 /// @brief get list of indexes for a collection
 std::vector<std::shared_ptr<Index>> transaction::Methods::indexesForCollection(
-    std::string const& collectionName) {
+    std::string const& collectionName, bool withHidden) {
   if (_state->isCoordinator()) {
     return indexesForCollectionCoordinator(collectionName);
   }
@@ -3244,12 +3244,14 @@ std::vector<std::shared_ptr<Index>> transaction::Methods::indexesForCollection(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* document = documentCollection(trxCollection(cid));
   std::vector<std::shared_ptr<Index>> indexes = document->getIndexes();
-  auto it = indexes.begin();
-  while (it != indexes.end()) {
-    if ((*it)->isHidden()) {
-      it = indexes.erase(it);
-    } else {
-      it++;
+  if (!withHidden) {
+    auto it = indexes.begin();
+    while (it != indexes.end()) {
+      if ((*it)->isHidden()) {
+        it = indexes.erase(it);
+      } else {
+        it++;
+      }
     }
   }
   return indexes;

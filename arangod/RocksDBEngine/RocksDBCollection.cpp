@@ -412,9 +412,10 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
   if (res.ok()) {
     { // swap in actual index
       WRITE_LOCKER(indexGuard, _indexesLock);
-      for (auto& other : _indexes) {
-        if (other->id() == buildIdx->id()) {
-          other.swap(idx);
+      for (size_t i = 0; i < _indexes.size(); i++) {
+        if (_indexes[i]->id() == buildIdx->id()) {
+          _indexes[i] = idx;
+          break;
         }
       }
     }
