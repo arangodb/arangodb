@@ -28,6 +28,8 @@
 
 #include "Agency/AgencyComm.h"
 #include "Cluster/ClusterFeature.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Rest/HttpRequest.h"
 #include "Utils/ExecContext.h"
@@ -35,21 +37,6 @@
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::rest;
-
-class shutDownAsyncThread : public Thread {
-public:
-  shutDownAsyncThread() : Thread("shutDown") {
-  }
-protected:
-  void run() {
-    // Give the server 2 seconds to send the reply:
-    std::this_thread::sleep_for(std::chrono::seconds(2));
-    // Go down:
-    ApplicationServer::server->beginShutdown();
-  }
-};
-
-static shutDownAsyncThread SHUTDOWNTHEAD;
 
 RestShutdownHandler::RestShutdownHandler(GeneralRequest* request,
                                          GeneralResponse* response)
@@ -113,6 +100,15 @@ RestStatus RestShutdownHandler::execute() {
   } catch (...) {
     // Ignore the error
   }
-  SHUTDOWNTHEAD.start();
+  rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+  // don't block the response for workers waiting on this callback
+  // this should allow workers to go into the IDLE state
+  scheduler->queue(RequestPriority::LOW, [this] {
+    // Give the server 2 seconds to send the reply:
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    // Go down:
+    ApplicationServer::server->beginShutdown();
+    });
+    
   return RestStatus::DONE;
 }
