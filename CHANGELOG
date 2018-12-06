@@ -1,6 +1,10 @@
 devel
 -----
 
+* allow usage of floating point values in AQL without leading zeros, e.g.
+  `.1234`. Previous versions of ArangoDB required a leading zero in front of
+  the decimal separator, i.e `0.1234`.
+
 * fixed Foxx complaining about valid `$schema` value in manifest.json
 
 * Foxx `req.makeAbsolute` now will return meaningful values when ArangoDB is using

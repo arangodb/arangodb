@@ -917,6 +917,22 @@ function executeArangod (cmd, args, options) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief on linux get a statistic about the sockets we used
+// //////////////////////////////////////////////////////////////////////////////
+
+function getSockStat(arangod, options, preamble) {
+  if (options.getSockStat && platform.substr(0, 3) === 'linux') {
+    let sockStat = preamble + arangod.pid + "\n";
+    try {
+      sockStat += fs.read("/proc/" + arangod.pid + "/net/sockstat");
+      return sockStat;
+    }
+    catch (e) {/* oops, process already gone? don't care. */ }
+  }
+  return "";
+}
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief commands a server to shut down via webcall
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -935,14 +951,18 @@ function shutdownArangod (arangod, options, forceTerminate) {
   if ((!arangod.hasOwnProperty('exitStatus')) ||
       (arangod.exitStatus.status === 'RUNNING')) {
     if (forceTerminate) {
+      let sockStat = getSockStat(arangod, options, "Force killing - sockstat before: ");
       arangod.exitStatus = killExternal(arangod.pid, abortSignal);
-      analyzeServerCrash(arangod, options, 'shutdown timeout; instance forcefully KILLED because of fatal timeout in testrun');
+      analyzeServerCrash(arangod, options, 'shutdown timeout; instance forcefully KILLED because of fatal timeout in testrun ' + sockStat);
     } else if (options.useKillExternal) {
+      let sockStat = getSockStat(arangod, options, "Shutdown by kill - sockstat before: ");
       arangod.exitStatus = killExternal(arangod.pid);
+      print(sockStat);
     } else {
       const requestOptions = makeAuthorizationHeaders(options);
       requestOptions.method = 'DELETE';
       print(Date() + ' ' + arangod.url + '/_admin/shutdown');
+      let sockStat = getSockStat(arangod, options, "Sock stat for: ");
       const reply = download(arangod.url + '/_admin/shutdown', '', requestOptions);
       if ((reply.code === 200) || // if the server should reply, we expect 200 - if not: 
           !((reply.code === 500) &&

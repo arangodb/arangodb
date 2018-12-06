@@ -6,9 +6,7 @@ These functions implement
 
 ## ArangoDatabase.createView
 
-```
-ArangoDatabase.createView(String name, ViewType type) : ViewEntity
-```
+`ArangoDatabase.createView(String name, ViewType type) : ViewEntity`
 
 Creates a view of the given _type_, then returns view information from the server.
 
@@ -28,14 +26,12 @@ Creates a view of the given _type_, then returns view information from the serve
 ArangoDB arango = new ArangoDB.Builder().build();
 ArangoDatabase db = arango.db("myDB");
 db.createView("myView", ViewType.ARANGO_SEARCH);
-// the view "potatos" now exists
+// the view "potatoes" now exists
 ```
 
 ## ArangoView.rename
 
-```
-ArangoView.rename(String newName) : ViewEntity
-```
+`ArangoView.rename(String newName) : ViewEntity`
 
 Renames the view.
 
@@ -59,9 +55,7 @@ assertThat(result.getName(), is("new-view-name");
 
 ## ArangoView.drop
 
-```
-ArangoView.drop() : void
-```
+`ArangoView.drop() : void`
 
 Deletes the view from the database.
 

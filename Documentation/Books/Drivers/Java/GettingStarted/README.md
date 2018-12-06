@@ -3,15 +3,14 @@
 
 ## Supported versions
 
-<table>
-<tr><th>arangodb-java-driver</th><th>ArangoDB</th><th>network protocol</th><th>Java version</th></tr>
-<tr><td>5.x.x+</td><td>3.0.0+</td><td>VelocyStream, HTTP</td><td>1.6+</td></tr>
-<tr><td>4.2.x+</td><td>3.0.0+</td><td>VelocyStream, HTTP</td><td>1.6+</td></tr>
-<tr><td>4.1.x</td><td>3.1.0+</td><td>VelocyStream</td><td>1.6+</td></tr>
-<tr><td>3.1.x</td><td>3.1.0+</td><td>HTTP</td><td>1.6+</td></tr>
-<tr><td>3.0.x</td><td>3.0.x</td><td>HTTP</td><td>1.6+</td></tr>
-<tr><td>2.7.4</td><td>2.7.x, 2.8.x</td><td>HTTP</td><td>1.6+</td></tr>
-</table>
+arangodb-java-driver | ArangoDB     | network protocol   | Java version
+---------------------|--------------|--------------------|-------------
+5.x.x+               | 3.0.0+       | VelocyStream, HTTP | 1.6+
+4.2.x+               | 3.0.0+       | VelocyStream, HTTP | 1.6+
+4.1.x                | 3.1.0+       | VelocyStream       | 1.6+
+3.1.x                | 3.1.0+       |               HTTP | 1.6+
+3.0.x                | 3.0.x        |               HTTP | 1.6+
+2.7.4                | 2.7.x, 2.8.x |               HTTP | 1.6+
 
 **Note**: VelocyStream is only supported in ArangoDB 3.1 and above.
 
@@ -32,7 +31,8 @@ ArangoDB 3.x.x
 </dependencies>
 ```
 
-If you want to test with a snapshot version (e.g. 4.6.0-SNAPSHOT), add the staging repository of oss.sonatype.org to your pom.xml:
+If you want to test with a snapshot version (e.g. 4.6.0-SNAPSHOT),
+add the staging repository of oss.sonatype.org to your pom.xml:
 
 ```XML
 <repositories>

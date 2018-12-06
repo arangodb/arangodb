@@ -1,11 +1,11 @@
 <!-- don't edit here, it's from https://@github.com/arangodb-helper/arangodb.git / docs/Manual/ -->
 # Starting an ArangoDB cluster or database the easy way
 
-Starting an ArangoDB cluster is complex. It involves starting various servers with
+Starting an ArangoDB cluster involves starting various servers with
 different roles (agents, dbservers & coordinators).
 
-The ArangoDB Starter is designed to make it easy to start and maintain an ArangoDB cluster
-or single server database.
+The ArangoDB Starter is designed to make it easy to start and
+maintain an ArangoDB cluster or single server database.
 
 Besides starting and maintaining ArangoDB deployments, the starter also provides
 various commands to create TLS certificates & JWT token secrets to secure your
@@ -15,7 +15,8 @@ ArangoDB deployment.
 
 The ArangoDB starter (`arangodb`) comes with all current distributions of ArangoDB.
 
-If you want a specific version, download the precompiled binary via [the github releases page](https://github.com/arangodb-helper/arangodb/releases).
+If you want a specific version, download the precompiled binary via the
+[GitHub releases page](https://github.com/arangodb-helper/arangodb/releases).
 
 ## Starting a cluster
 
@@ -31,13 +32,13 @@ arangodb
 ```
 
 This will use port 8528 to wait for colleagues (3 are needed for a
-resilient agency). On host B: (can be the same as A):
+resilient agency). On host B (can be the same as A):
 
 ```bash
 arangodb --starter.join A
 ```
 
-This will contact A on port 8528 and register. On host C: (can be same
+This will contact A on port 8528 and register. On host C (can be same
 as A or B):
 
 ```bash
@@ -95,9 +96,7 @@ it is also possible to use a host mapped volume. Make sure to map it on `/data`.
 ## Using multiple join arguments
 
 It is allowed to use multiple `--starter.join` arguments.
-This eases scripting.
-
-For example:
+This eases scripting. For example:
 
 On host A:
 
