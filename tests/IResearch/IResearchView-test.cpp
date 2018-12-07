@@ -440,9 +440,9 @@ SECTION("test_cleanup") {
   REQUIRE((false == !view));
   std::shared_ptr<arangodb::Index> index;
   REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), 42, false).ok()));
-  REQUIRE((false != index));
+  REQUIRE((false == !index));
   auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-  REQUIRE((false != link));
+  REQUIRE((false == !link));
 
   std::vector<std::string> const EMPTY;
 
@@ -649,9 +649,9 @@ SECTION("test_drop_cid") {
     REQUIRE((false == !view));
     std::shared_ptr<arangodb::Index> index;
     REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), 42, false).ok()));
-    REQUIRE((false != index));
+    REQUIRE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    REQUIRE((false != link));
+    REQUIRE((false == !link));
 
     // fill with test data
     {
@@ -724,9 +724,9 @@ SECTION("test_drop_cid") {
     REQUIRE((false == !view));
     std::shared_ptr<arangodb::Index> index;
     REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), 42, false).ok()));
-    REQUIRE((false != index));
+    REQUIRE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    REQUIRE((false != link));
+    REQUIRE((false == !link));
 
     // fill with test data
     {
@@ -799,9 +799,9 @@ SECTION("test_drop_cid") {
     REQUIRE((false == !view));
     std::shared_ptr<arangodb::Index> index;
     REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), 42, false).ok()));
-    REQUIRE((false != index));
+    REQUIRE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    REQUIRE((false != link));
+    REQUIRE((false == !link));
 
     // fill with test data
     {
@@ -891,9 +891,9 @@ SECTION("test_drop_cid") {
     REQUIRE((false == !view));
     std::shared_ptr<arangodb::Index> index;
     REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), 42, false).ok()));
-    REQUIRE((false != index));
+    REQUIRE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    REQUIRE((false != link));
+    REQUIRE((false == !link));
 
     // fill with test data
     {
@@ -978,9 +978,9 @@ SECTION("test_drop_cid") {
     REQUIRE((false == !view));
     std::shared_ptr<arangodb::Index> index;
     REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), 42, false).ok()));
-    REQUIRE((false != index));
+    REQUIRE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    REQUIRE((false != link));
+    REQUIRE((false == !link));
 
     // fill with test data
     {
@@ -1139,9 +1139,9 @@ SECTION("test_truncate_cid") {
     REQUIRE((false == !view));
     std::shared_ptr<arangodb::Index> index;
     REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), 42, false).ok()));
-    REQUIRE((false != index));
+    REQUIRE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    REQUIRE((false != link));
+    REQUIRE((false == !link));
 
     // fill with test data
     {
@@ -1214,9 +1214,9 @@ SECTION("test_truncate_cid") {
     REQUIRE((false == !view));
     std::shared_ptr<arangodb::Index> index;
     REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), 42, false).ok()));
-    REQUIRE((false != index));
+    REQUIRE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    REQUIRE((false != link));
+    REQUIRE((false == !link));
 
     // fill with test data
     {
@@ -1291,9 +1291,9 @@ SECTION("test_emplace_cid") {
     REQUIRE((false == !view));
     std::shared_ptr<arangodb::Index> index;
     REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), 42, false).ok()));
-    REQUIRE((false != index));
+    REQUIRE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    REQUIRE((false != link));
+    REQUIRE((false == !link));
 
     // collection in view before
     {
@@ -1600,9 +1600,9 @@ SECTION("test_insert") {
     CHECK((nullptr != view));
     std::shared_ptr<arangodb::Index> index;
     REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), 42, false).ok()));
-    REQUIRE((false != index));
+    REQUIRE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    REQUIRE((false != link));
+    REQUIRE((false == !link));
 
     {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
@@ -1650,9 +1650,9 @@ SECTION("test_insert") {
     CHECK((nullptr != view));
     std::shared_ptr<arangodb::Index> index;
     REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), 42, false).ok()));
-    REQUIRE((false != index));
+    REQUIRE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    REQUIRE((false != link));
+    REQUIRE((false == !link));
 
     {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
@@ -1703,9 +1703,9 @@ SECTION("test_insert") {
     CHECK((nullptr != view));
     std::shared_ptr<arangodb::Index> index;
     REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), 42, false).ok()));
-    REQUIRE((false != index));
+    REQUIRE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    REQUIRE((false != link));
+    REQUIRE((false == !link));
 
     {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
@@ -1752,9 +1752,9 @@ SECTION("test_insert") {
     CHECK(view->category() == arangodb::LogicalView::category());
     std::shared_ptr<arangodb::Index> index;
     REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), 42, false).ok()));
-    REQUIRE((false != index));
+    REQUIRE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    REQUIRE((false != link));
+    REQUIRE((false == !link));
 
     {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
@@ -1801,9 +1801,9 @@ SECTION("test_insert") {
     CHECK(view->category() == arangodb::LogicalView::category());
     std::shared_ptr<arangodb::Index> index;
     REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), 42, false).ok()));
-    REQUIRE((false != index));
+    REQUIRE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    REQUIRE((false != link));
+    REQUIRE((false == !link));
 
     {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
@@ -1847,9 +1847,9 @@ SECTION("test_insert") {
     CHECK((nullptr != view));
     std::shared_ptr<arangodb::Index> index;
     REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), 42, false).ok()));
-    REQUIRE((false != index));
+    REQUIRE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    REQUIRE((false != link));
+    REQUIRE((false == !link));
 
     {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
@@ -1900,9 +1900,9 @@ SECTION("test_insert") {
     CHECK((nullptr != view));
     std::shared_ptr<arangodb::Index> index;
     REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), 42, false).ok()));
-    REQUIRE((false != index));
+    REQUIRE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    REQUIRE((false != link));
+    REQUIRE((false == !link));
 
     {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
@@ -2002,9 +2002,9 @@ SECTION("test_query") {
     CHECK((false == !view));
     std::shared_ptr<arangodb::Index> index;
     REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), 42, false).ok()));
-    REQUIRE((false != index));
+    REQUIRE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    REQUIRE((false != link));
+    REQUIRE((false == !link));
 
     // fill with test data
     {
@@ -2469,9 +2469,9 @@ SECTION("test_unregister_link") {
     REQUIRE((false == !view));
     std::shared_ptr<arangodb::Index> index;
     REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), 42, false).ok()));
-    REQUIRE((false != index));
+    REQUIRE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    REQUIRE((false != link));
+    REQUIRE((false == !link));
 
     // add a document to the view
     {
@@ -2574,9 +2574,9 @@ SECTION("test_unregister_link") {
     REQUIRE((false == !view));
     std::shared_ptr<arangodb::Index> index;
     REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), 42, false).ok()));
-    REQUIRE((false != index));
+    REQUIRE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    REQUIRE((false != link));
+    REQUIRE((false == !link));
 
     // add a document to the view
     {
@@ -2855,9 +2855,9 @@ SECTION("test_tracked_cids") {
       REQUIRE((nullptr != viewImpl));
       std::shared_ptr<arangodb::Index> index;
       REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), 42, false).ok()));
-      REQUIRE((false != index));
+      REQUIRE((false == !index));
       auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-      REQUIRE((false != link));
+      REQUIRE((false == !link));
 
       static std::vector<std::string> const EMPTY;
       auto doc = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
@@ -3252,9 +3252,9 @@ SECTION("test_transaction_snapshot") {
   REQUIRE((nullptr != viewImpl));
   std::shared_ptr<arangodb::Index> index;
   REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), 42, false).ok()));
-  REQUIRE((false != index));
+  REQUIRE((false == !index));
   auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-  REQUIRE((false != link));
+  REQUIRE((false == !link));
 
   // add a single document to view (do not sync)
   {

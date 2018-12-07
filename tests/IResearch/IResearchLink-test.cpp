@@ -455,9 +455,9 @@ SECTION("test_self_token") {
     CHECK((false == !logicalView));
     std::shared_ptr<arangodb::Index> index;
     REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), 42, false).ok()));
-    REQUIRE((false != index));
+    REQUIRE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    REQUIRE((false != link));
+    REQUIRE((false == !link));
     self = link->self();
     CHECK((false == !self));
     CHECK((link.get() == self->get()));

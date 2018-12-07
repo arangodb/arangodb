@@ -552,9 +552,9 @@ SECTION("test_query") {
     auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
     std::shared_ptr<arangodb::Index> index;
     REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), 42, false).ok()));
-    REQUIRE((false != index));
+    REQUIRE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    REQUIRE((false != link));
+    REQUIRE((false == !link));
 
     // fill with test data
     {
@@ -952,9 +952,9 @@ SECTION("test_transaction_snapshot") {
   REQUIRE((nullptr != viewImpl));
   std::shared_ptr<arangodb::Index> index;
   REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), 42, false).ok()));
-  REQUIRE((false != index));
+  REQUIRE((false == !index));
   auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-  REQUIRE((false != link));
+  REQUIRE((false == !link));
 
   // add a single document to view (do not sync)
   {
