@@ -336,13 +336,13 @@ int DumpFeature::dumpCollection(int fd, std::string const& cid,
 
     if (response == nullptr || !response->isComplete()) {
       errorMsg =
-          "got invalid response from server: " + _httpClient->getErrorMessage();
+          "got invalid response from server while dumping collection '" + name + "': " + _httpClient->getErrorMessage();
 
       return TRI_ERROR_INTERNAL;
     }
 
     if (response->wasHttpError()) {
-      errorMsg = getHttpErrorMessage(response.get(), nullptr);
+      errorMsg = "while dumping collection '" + name + "' " + getHttpErrorMessage(response.get(), nullptr);
 
       return TRI_ERROR_INTERNAL;
     }
@@ -378,7 +378,7 @@ int DumpFeature::dumpCollection(int fd, std::string const& cid,
     }
 
     if (!found) {
-      errorMsg = "got invalid response server: required header is missing";
+      errorMsg = "got invalid response server while dumping collection '" + name + "': required header is missing";
       res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
 
@@ -426,7 +426,7 @@ void DumpFeature::flushWal() {
 
   if (response == nullptr || !response->isComplete() ||
       response->wasHttpError()) {
-    std::cerr << "got invalid response from server: " +
+    std::cerr << "got invalid response from server while flushing WAL: " +
                      _httpClient->getErrorMessage()
               << std::endl;
   }
@@ -444,13 +444,13 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg =
-        "got invalid response from server: " + _httpClient->getErrorMessage();
+        "got invalid response from server while fetching inventory: " + _httpClient->getErrorMessage();
 
     return TRI_ERROR_INTERNAL;
   }
 
   if (response->wasHttpError()) {
-    errorMsg = "got invalid response from server: HTTP " +
+    errorMsg = "got invalid response from server while fetching inventory: HTTP " +
                StringUtils::itoa(response->getHttpReturnCode()) + ": " +
                response->getHttpReturnMessage();
     return TRI_ERROR_INTERNAL;
@@ -461,14 +461,14 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
   try {
     parsedBody = response->getBodyVelocyPack();
   } catch (...) {
-    errorMsg = "got malformed JSON response from server";
+    errorMsg = "got malformed JSON response from server while fetching inventory";
 
     return TRI_ERROR_INTERNAL;
   }
   VPackSlice const body = parsedBody->slice();
 
   if (!body.isObject()) {
-    errorMsg = "got malformed JSON response from server";
+    errorMsg = "got malformed JSON response from server while fetching inventory";
 
     return TRI_ERROR_INTERNAL;
   }
@@ -476,7 +476,7 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
   VPackSlice const collections = body.get("collections");
 
   if (!collections.isArray()) {
-    errorMsg = "got malformed JSON response from server";
+    errorMsg = "got malformed JSON response from server while fetching inventory";
 
     return TRI_ERROR_INTERNAL;
   }
@@ -486,7 +486,7 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
       arangodb::basics::VelocyPackHelper::getStringValue(body, "tick", "");
 
   if (tickString == "") {
-    errorMsg = "got malformed JSON response from server";
+    errorMsg = "got malformed JSON response from server while fetching inventory";
 
     return TRI_ERROR_INTERNAL;
   }
@@ -562,7 +562,7 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
   // iterate over collections
   for (VPackSlice const& collection : VPackArrayIterator(collections)) {
     if (!collection.isObject()) {
-      errorMsg = "got malformed JSON response from server";
+      errorMsg = "got malformed JSON response from server while fetching inventory";
 
       return TRI_ERROR_INTERNAL;
     }
@@ -570,7 +570,7 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
     VPackSlice const parameters = collection.get("parameters");
 
     if (!parameters.isObject()) {
-      errorMsg = "got malformed JSON response from server";
+      errorMsg = "got malformed JSON response from server while fetching inventory";
 
       return TRI_ERROR_INTERNAL;
     }
@@ -586,7 +586,7 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
     std::string const collectionType(type == 2 ? "document" : "edge");
 
     if (cid == 0 || name == "") {
-      errorMsg = "got malformed JSON response from server";
+      errorMsg = "got malformed JSON response from server while fetching inventory";
 
       return TRI_ERROR_INTERNAL;
     }
@@ -726,13 +726,13 @@ int DumpFeature::dumpShard(int fd, std::string const& DBserver,
 
     if (response == nullptr || !response->isComplete()) {
       errorMsg =
-          "got invalid response from server: " + _httpClient->getErrorMessage();
+          "got invalid response from server while dumping collection '" + name + "': " + _httpClient->getErrorMessage();
 
       return TRI_ERROR_INTERNAL;
     }
 
     if (response->wasHttpError()) {
-      errorMsg = getHttpErrorMessage(response.get(), nullptr);
+      errorMsg = "while dumping collection '" + name + "' " + getHttpErrorMessage(response.get(), nullptr);
 
       return TRI_ERROR_INTERNAL;
     }
@@ -768,7 +768,7 @@ int DumpFeature::dumpShard(int fd, std::string const& DBserver,
     }
 
     if (!found) {
-      errorMsg = "got invalid response server: required header is missing";
+      errorMsg = "got invalid response server while dumping collection '" + name + "': required header is missing";
       res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
 
