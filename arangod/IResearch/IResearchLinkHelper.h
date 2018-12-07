@@ -29,6 +29,7 @@
 
 namespace arangodb {
 
+class LogicalCollection; // forward declaration
 class LogicalView; // forward declaration
 
 namespace velocypack {
@@ -40,6 +41,7 @@ class Builder;
 
 namespace iresearch {
 
+class IResearchLink; // forward declaration
 struct IResearchLinkMeta;
 
 struct IResearchLinkHelper {
@@ -57,6 +59,22 @@ struct IResearchLinkHelper {
   static bool equal(
     arangodb::velocypack::Slice const& lhs,
     arangodb::velocypack::Slice const& rhs
+  );
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief finds link between specified collection and view with the given id
+  //////////////////////////////////////////////////////////////////////////////
+  static std::shared_ptr<IResearchLink> find(
+    arangodb::LogicalCollection const& collection,
+    TRI_idx_iid_t id
+  );
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief finds first link between specified collection and view
+  //////////////////////////////////////////////////////////////////////////////
+  static std::shared_ptr<IResearchLink> find(
+    arangodb::LogicalCollection const& collection,
+    LogicalView const& view
   );
 
   //////////////////////////////////////////////////////////////////////////////
@@ -84,6 +102,15 @@ struct IResearchLinkHelper {
   static arangodb::Result validateLinks(
     TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& links
+  );
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief visits all links in a collection
+  /// @return full visitation compleated
+  //////////////////////////////////////////////////////////////////////////////
+  static bool visit(
+    arangodb::LogicalCollection const& collection,
+    std::function<bool(IResearchLink& link)> const& visitor
   );
 
   //////////////////////////////////////////////////////////////////////////////

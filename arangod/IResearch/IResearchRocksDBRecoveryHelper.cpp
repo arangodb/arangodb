@@ -21,10 +21,12 @@
 /// @author Daniel Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "IResearchCommon.h"
+#include "IResearchLinkHelper.h"
+#include "IResearchRocksDBRecoveryHelper.h"
+#include "IResearchLink.h"
+#include "IResearchView.h"
 #include "Basics/Common.h"
-#include "IResearch/IResearchCommon.h"
-#include "IResearch/IResearchRocksDBRecoveryHelper.h"
-#include "IResearch/IResearchLink.h"
 #include "Indexes/Index.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
@@ -83,22 +85,7 @@ std::shared_ptr<arangodb::iresearch::IResearchLink> lookupLink(
     return nullptr;
   }
 
-  for (auto& index: col->getIndexes()) {
-    if (!index || arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type()) {
-      continue; // not an IRresearch Link
-    }
-
-    // TODO FIXME find a better way to retrieve an iResearch Link
-    // cannot use static_cast/reinterpret_cast since Index is not related to IResearchLink
-    auto link =
-      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-
-    if (link && link->id() == iid) {
-      return link; // found required link
-    }
-  }
-
-  return nullptr;
+  return arangodb::iresearch::IResearchLinkHelper::find(*col, iid);
 }
 
 void ensureLink(
@@ -220,34 +207,36 @@ void dropCollectionFromAllViews(
     TRI_voc_cid_t collectionId
 ) {
   auto* vocbase = db.useDatabase(dbId);
+
   if (!vocbase) {
+    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+      << "failed to drop arangosearch links from collection '" << collectionId << "', vocbase not found";
+
     return;
   }
+
   TRI_DEFER(vocbase->release());
 
-  // iterate over vocbase views
-  arangodb::LogicalView::enumerate(
-    *vocbase,
-    [collectionId](arangodb::LogicalView::ptr const& view)->bool {
-      #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
-      #else
-        auto* impl = static_cast<arangodb::iresearch::IResearchView*>(view.get());
-      #endif
+  auto collection = vocbase->lookupCollection(collectionId);
 
-      if (!impl) {
-        LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-            << "error finding view: '" << view->name() << "': not an arangosearch view";
+  if (!collection) {
+    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+      << "failed to drop arangosearch links from collection '" << collectionId << "', collection not found";
 
-        return true;
+    return;
+  }
+
+  arangodb::iresearch::IResearchLinkHelper::visit(
+    *collection,
+    [](arangodb::iresearch::IResearchLink& link)->bool {
+      auto res = link.drop();
+
+      if (!res.ok()) {
+        LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+          << "failed to drop arangosearch link '" << link.id() << "' from collection '" << link.collection().name() << "': " << res.errorNumber() << " " << res.errorMessage();
       }
 
-      LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-        << "Removing all documents belonging to view '" << view->name() << "' sourced from collection " << collectionId;
-
-      impl->drop(collectionId);
-
-      return true;
+      return true; // continue with the next link
     }
   );
 }
@@ -261,52 +250,39 @@ void dropCollectionFromView(
 ) {
   auto* vocbase = db.useDatabase(dbId);
 
-  if (vocbase) {
-    auto logicalCollection = vocbase->lookupCollection(collectionId);
+  if (!vocbase) {
+    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+      << "failed to drop arangosearch link '" << indexId << "' from collection '" << collectionId << "', vocbase not found";
 
-    if (!logicalCollection) {
-      LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-          << "error looking up collection '" << collectionId << "': no such collection";
-      return;
-    }
+    return;
+  }
 
-    auto link = lookupLink(*vocbase, collectionId, indexId);
+  TRI_DEFER(vocbase->release());
 
-    if (link) {
-      // don't remove the link if it's there
-      LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-          << "found link '" << indexId
-          << "' of type arangosearch in collection '" << collectionId
-          << "' in database '" << dbId << "': skipping drop marker";
-      return;
-    }
+  auto collection = vocbase->lookupCollection(collectionId);
 
-    auto logicalView = vocbase->lookupView(viewId);
+  if (!collection) {
+    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+      << "failed to drop arangosearch link '" << indexId << "' from collection '" << collectionId << "', collection not found";
 
-    if (!logicalView
-        || arangodb::iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
-      LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-          << "error looking up view '" << viewId << "': no such view";
-      return;
-    }
+    return;
+  }
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
-#else
-    auto* view = static_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
-#endif
+  auto link =
+    arangodb::iresearch::IResearchLinkHelper::find(*collection, indexId);
 
-    if (!view) {
-      LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-          << "error finding view: '" << viewId << "': not an iresearch view";
-      return;
-    }
+  if (!link) {
+    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+      << "failed to drop arangosearch link '" << indexId << "' from collection '" << collectionId << "', link not found";
 
-    LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-        << "Removing all documents belonging to view " << viewId
-        << " sourced from collection " << collectionId;
+    return;
+  }
 
-    view->drop(collectionId);
+  auto res = link->drop();
+
+  if (!res.ok()) {
+    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+      << "failed to drop arangosearch link '" << link->id() << "' from collection '" << collection->name() << "': " << res.errorNumber() << " " << res.errorMessage();
   }
 }
 

@@ -81,7 +81,7 @@ MMFilesPersistentIndexIterator::MMFilesPersistentIndexIterator(
       _probe(false) {
   TRI_idx_iid_t const id = index->id();
   std::string const prefix = MMFilesPersistentIndex::buildPrefix(
-    trx->vocbase().id(), _primaryIndex->collection()->id(), id
+    trx->vocbase().id(), _primaryIndex->collection().id(), id
   );
 
   TRI_ASSERT(prefix.size() == MMFilesPersistentIndex::keyPrefixSize());

@@ -712,64 +712,6 @@ DocumentPrimaryKey::DocumentPrimaryKey(TRI_voc_cid_t cid, TRI_voc_rid_t rid) noe
          PrimaryKeyEndianness<Endianness>::hostToPk(rid)) {
 }
 
-bool appendKnownCollections(
-    std::unordered_set<TRI_voc_cid_t>& set,
-    const irs::index_reader& reader
-) {
-  auto visitor = [&set](TRI_voc_cid_t cid)->bool {
-    set.emplace(cid);
-
-    return true;
-  };
-
-  return visitReaderCollections(reader, visitor);
-}
-
-bool visitReaderCollections(
-    irs::index_reader const& reader,
-    std::function<bool(TRI_voc_cid_t cid)> const& visitor
-) {
-  for(auto& segment: reader) {
-    auto* term_reader = segment.field(CID_FIELD);
-
-    if (!term_reader) {
-      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "failed to get term reader for the 'cid' column while collecting CIDs for arangosearch reader";
-
-      return false;
-    }
-
-    auto term_itr = term_reader->iterator();
-
-    if (!term_itr) {
-      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "failed to get term iterator for the 'cid' column while collecting CIDs for arangosearch reader ";
-
-      return false;
-    }
-
-    while(term_itr->next()) {
-      auto const& value = term_itr->value();
-
-      if (sizeof(TRI_voc_cid_t) != value.size()) {
-        LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-          << "failed to decode CID while collecting CIDs for arangosearch reader";
-        return false;
-      }
-
-      auto const cid = PrimaryKeyEndianness<Endianness>::pkToHost(
-        *reinterpret_cast<TRI_voc_cid_t const*>(value.c_str())
-      );
-
-      if (!visitor(cid)) {
-        return false;
-      }
-    }
-  }
-
-  return true;
-}
-
 NS_END // iresearch
 NS_END // arangodb
 

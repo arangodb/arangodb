@@ -24,7 +24,7 @@
 #ifndef ARANGODB_IRESEARCH__IRESEARCH_LINK_COORDINATOR_H
 #define ARANGODB_IRESEARCH__IRESEARCH_LINK_COORDINATOR_H 1
 
-#include "Indexes/Index.h"
+#include "IResearchLink.h"
 #include "ClusterEngine/ClusterIndex.h"
 #include "IResearch/IResearchLinkMeta.h"
 
@@ -43,9 +43,9 @@ class IResearchViewCoordinator;
 /// @brief common base class for functionality required to link an ArangoDB
 ///        LogicalCollection with an IResearchView on a coordinator in cluster
 ////////////////////////////////////////////////////////////////////////////////
-class IResearchLinkCoordinator final: public arangodb::ClusterIndex {
+class IResearchLinkCoordinator final
+  : public arangodb::ClusterIndex, public IResearchLink {
  public:
-  DECLARE_SHARED_PTR(Index);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief destructor
@@ -87,14 +87,6 @@ class IResearchLinkCoordinator final: public arangodb::ClusterIndex {
   /// @brief the factory for this type of index
   //////////////////////////////////////////////////////////////////////////////
   static arangodb::IndexTypeFactory const& factory();
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief finds first link between specified collection and view
-  ////////////////////////////////////////////////////////////////////////////////
-  static std::shared_ptr<IResearchLinkCoordinator> find(
-    LogicalCollection const& collection,
-    LogicalView const& view
-  );
 
   virtual bool hasBatchInsert() const override { return true; }
 
@@ -160,7 +152,7 @@ class IResearchLinkCoordinator final: public arangodb::ClusterIndex {
   ////////////////////////////////////////////////////////////////////////////////
   IResearchLinkCoordinator(
     TRI_idx_iid_t id,
-    LogicalCollection& collection
+    arangodb::LogicalCollection& collection
   );
 
   ////////////////////////////////////////////////////////////////////////////////

@@ -21,6 +21,9 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "IResearchCommon.h"
+#include "IResearchLinkHelper.h"
+#include "IResearchView.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/IndexFactory.h"
 #include "Logger/Logger.h"
@@ -28,9 +31,7 @@
 #include "MMFiles/MMFilesCollection.h"
 #include "VocBase/LogicalCollection.h"
 
-#include "IResearchCommon.h"
 #include "IResearchMMFilesLink.h"
-#include "IResearchLinkHelper.h"
 
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)

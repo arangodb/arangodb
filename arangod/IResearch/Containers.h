@@ -67,6 +67,16 @@ class ResourceMutex {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief a read-mutex for a resource of a specific type
+////////////////////////////////////////////////////////////////////////////////
+template<typename T>
+class TypedResourceMutex: public ResourceMutex {
+ public:
+  explicit TypedResourceMutex(T* value): ResourceMutex(value) {}
+  T* get() const { return static_cast<T*>(ResourceMutex::get()); }
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief a wrapper around a type, placing the value on the heap to allow
 ///        declaration of map member variables whos' values are of the type
 ///        being declared
@@ -375,4 +385,5 @@ class UnorderedRefKeyMap:
 
 NS_END // iresearch
 NS_END // arangodb
+
 #endif

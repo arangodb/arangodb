@@ -391,55 +391,6 @@ arangodb::Result IResearchViewDBServer::dropImpl() {
   return arangodb::Result();
 }
 
-arangodb::Result IResearchViewDBServer::drop(TRI_voc_cid_t cid) noexcept {
-  try {
-    WriteMutex mutex(_mutex);
-    SCOPED_LOCK(mutex); // 'collections_' can be asynchronously read
-    auto itr = _collections.find(cid);
-
-    if (itr == _collections.end()) {
-      return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-    }
-
-    auto res = itr->second->drop();
-
-    if (res.ok()) {
-      _collections.erase(itr);
-    }
-
-    return res;
-  } catch (arangodb::basics::Exception& e) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while dropping collection '" << cid << "' from arangosearch view'" << name() << "': " << e.code() << " " << e.what();
-    IR_LOG_EXCEPTION();
-
-    return arangodb::Result(
-      e.code(),
-      std::string("error dropping collection '") + std::to_string(cid) + "' from arangosearch view '" + name() + "'"
-    );
-  } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while dropping collection '" << cid << "' from arangosearch view '" << name() << "': " << e.what();
-    IR_LOG_EXCEPTION();
-
-    return arangodb::Result(
-      TRI_ERROR_INTERNAL,
-      std::string("error dropping collection '") + std::to_string(cid) + "' from arangosearch view '" + name() + "'"
-    );
-  } catch (...) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while dropping collection '" << cid << "' from arangosearch view '" << name() << "'";
-    IR_LOG_EXCEPTION();
-
-    return arangodb::Result(
-      TRI_ERROR_INTERNAL,
-      std::string("error dropping collection '") + std::to_string(cid) + "' from arangosearch view '" + name() + "'"
-    );
-  }
-
-  return arangodb::Result(TRI_ERROR_INTERNAL);
-}
-
 std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
     TRI_voc_cid_t cid,
     bool create /*= true*/
@@ -527,7 +478,7 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
       if (view.get() == vocbase.lookupView(view->id()).get() // avoid double dropView(...)
           && view->visitCollections(visitor)) {
         // FIXME TODO ensure somehow that 'this' is still valid
-        drop(cid);
+        unlink(cid);
       }
     }
   );
@@ -658,6 +609,43 @@ irs::index_reader const* IResearchViewDBServer::snapshot(
   }
 
   return reader;
+}
+
+arangodb::Result IResearchViewDBServer::unlink(TRI_voc_cid_t cid) noexcept {
+  try {
+    WriteMutex mutex(_mutex);
+    SCOPED_LOCK(mutex); // 'collections_' can be asynchronously read
+    auto itr = _collections.find(cid);
+
+    if (itr == _collections.end()) {
+      return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    }
+
+    auto res = itr->second->drop();
+
+    if (!res.ok()) {
+      return res;
+    }
+
+    _collections.erase(itr);
+  } catch (arangodb::basics::Exception const& e) {
+    return arangodb::Result(
+      e.code(),
+      std::string("caught exception while unlinking collection '") + std::to_string(cid) + "' from arangosearch view '" + name() + "': " + e.what()
+    );
+  } catch (std::exception const& e) {
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      std::string("caught exception while unlinking collection '") + std::to_string(cid) + "' from arangosearch view '" + name() + "': " + e.what()
+    );
+  } catch (...) {
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      std::string("caught exception while unlinking collection '") + std::to_string(cid) + "' from arangosearch view '" + name() + "'"
+    );
+  }
+
+  return arangodb::Result();
 }
 
 arangodb::Result IResearchViewDBServer::properties(

@@ -40,8 +40,6 @@ NS_BEGIN(iresearch)
 class IResearchMMFilesLink final
   : public arangodb::Index, public IResearchLink {
  public:
-  DECLARE_SHARED_PTR(Index);
-
   virtual ~IResearchMMFilesLink();
 
   void afterTruncate(TRI_voc_tick_t /*tick*/) override {

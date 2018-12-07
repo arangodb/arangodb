@@ -55,14 +55,6 @@ class IResearchViewDBServer final: public arangodb::LogicalViewClusterInfo {
  public:
   virtual ~IResearchViewDBServer() noexcept;
 
-  using LogicalView::drop;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief drop the view association for the specified 'cid'
-  /// @return if an association was removed
-  //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result drop(TRI_voc_cid_t cid) noexcept;
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ensure there is a view instance for the specified 'cid'
   /// @param force creation of a new instance if none is available in vocbase
@@ -98,6 +90,13 @@ class IResearchViewDBServer final: public arangodb::LogicalViewClusterInfo {
     std::vector<std::string> const& shards,
     IResearchView::Snapshot mode = IResearchView::Snapshot::Find
   ) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief unlink remove 'cid' from the persisted list of tracked collection
+  ///        IDs
+  /// @return success == view does not track collection
+  //////////////////////////////////////////////////////////////////////////////
+  arangodb::Result unlink(TRI_voc_cid_t cid) noexcept;
 
   virtual bool visitCollections(
     CollectionVisitor const& visitor

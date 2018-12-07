@@ -72,7 +72,9 @@ struct IResearchViewCoordinator::ViewFactory: public arangodb::ViewFactory {
       );
     }
 
-    auto& properties = definition.isObject() ? definition : emptyObjectSlice(); // if no 'info' then assume defaults
+    auto& properties = definition.isObject()
+                     ? definition
+                     : arangodb::velocypack::Slice::emptyObjectSlice(); // if no 'info' then assume defaults
     auto links = properties.hasKey(StaticStrings::LinksField)
                ? properties.get(StaticStrings::LinksField)
                : arangodb::velocypack::Slice::emptyObjectSlice();
@@ -324,6 +326,10 @@ bool IResearchViewCoordinator::emplace(
   static const ViewFactory factory;
 
   return factory;
+}
+
+arangodb::Result IResearchViewCoordinator::unlink(TRI_voc_cid_t cid) noexcept {
+  return arangodb::Result(); // NOOP since no internal store
 }
 
 IResearchViewCoordinator::IResearchViewCoordinator(

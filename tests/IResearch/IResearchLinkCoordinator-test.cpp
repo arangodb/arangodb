@@ -55,6 +55,7 @@
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchViewCoordinator.h"
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/IResearchLinkHelper.h"
@@ -171,6 +172,7 @@ struct IResearchLinkCoordinatorSetup {
     orderedFeatures = arangodb::application_features::ApplicationServer::server->getOrderedFeatures();
 
     // suppress log messages since tests check error conditions
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(), arangodb::LogLevel::FATAL);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR); // suppress ERROR recovery failure due to error from callback
     arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::FATAL);
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
@@ -211,6 +213,7 @@ struct IResearchLinkCoordinatorSetup {
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
 
     // destroy application features
@@ -328,15 +331,15 @@ SECTION("test_create_drop") {
     ).ok());
 
     // get new version from plan
-    auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection->id()));
-    REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *logicalView);
+    auto updatedCollection0 = ci->getCollection(vocbase->name(), std::to_string(logicalCollection->id()));
+    REQUIRE((updatedCollection0));
+    auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection0, *logicalView);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection0.get() == &(index->collection())));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -380,9 +383,9 @@ SECTION("test_create_drop") {
     CHECK(arangodb::methods::Indexes::drop(logicalCollection.get(), indexArg->slice()).ok());
 
     // get new version from plan
-    updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection->id()));
-    REQUIRE(updatedCollection);
-    CHECK(!arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *logicalView));
+    auto updatedCollection1 = ci->getCollection(vocbase->name(), std::to_string(logicalCollection->id()));
+    REQUIRE((updatedCollection1));
+    CHECK((!arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection1, *logicalView)));
 
     // drop view
     CHECK(logicalView->drop().ok());
@@ -440,12 +443,12 @@ SECTION("test_create_drop") {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection->id()));
     REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *logicalView);
+    auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *logicalView);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get() == &(index->collection())));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));

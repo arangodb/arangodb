@@ -295,7 +295,7 @@ SECTION("test_writeDefaults") {
   tmpSlice2 = tmpSlice.get("type");
   CHECK((tmpSlice2.isString() && std::string("bytes_accum") == tmpSlice2.copyString()));
   tmpSlice = slice.get("version");
-  CHECK((true == tmpSlice.isNumber<uint32_t>() && 0 == tmpSlice.getNumber<uint32_t>()));
+  CHECK((true == tmpSlice.isNumber<uint32_t>() && 1 == tmpSlice.getNumber<uint32_t>()));
   tmpSlice = slice.get("writebufferActive");
   CHECK((true == tmpSlice.isNumber<size_t>() && 0 == tmpSlice.getNumber<size_t>()));
   tmpSlice = slice.get("writebufferIdle");
