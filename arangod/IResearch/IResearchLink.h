@@ -55,7 +55,7 @@ class IResearchLink {
   //////////////////////////////////////////////////////////////////////////////
   class Snapshot {
    public:
-    Snapshot() = default;
+    Snapshot() noexcept {} // on-default implementation required for MacOS
     Snapshot(
       std::unique_lock<irs::async_utils::read_write_mutex::read_mutex>&& lock,
       irs::directory_reader&& reader
