@@ -25,12 +25,9 @@
 namespace arangodb {
 namespace application_features {
 
-CommunicationFeaturePhase* CommunicationFeaturePhase::commPhase = nullptr;
-
 CommunicationFeaturePhase::CommunicationFeaturePhase(ApplicationServer& server)
     : ApplicationFeaturePhase(server, "CommunicationPhase") {
   setOptional(false);
-  commPhase = this;
 }
 
 } // application_features

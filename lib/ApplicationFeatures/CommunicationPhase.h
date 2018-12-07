@@ -31,15 +31,10 @@ namespace application_features {
 class CommunicationFeaturePhase : public ApplicationFeaturePhase {
  public:
   explicit CommunicationFeaturePhase(ApplicationServer& server);
-  static CommunicationFeaturePhase* commPhase;
   /**
    * @brief decide whether we may freely communicate or not.
    */
-  static bool getCommAllowed() {
-    return (commPhase)? commPhase->pgetCommAllowed() : true;
-  }
- protected:
-  bool pgetCommAllowed() {
+  bool getCommAllowed() {
     switch (state()) {
     case ApplicationServer::FeatureState::UNINITIALIZED:
     case ApplicationServer::FeatureState::INITIALIZED:

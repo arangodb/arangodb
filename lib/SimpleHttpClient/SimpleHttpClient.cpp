@@ -253,6 +253,9 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
   // reset error message
   _errorMessage = "";
 
+  auto comm = application_features::ApplicationServer::getFeature<
+    arangodb::application_features::CommunicationFeaturePhase>("CommunicationPhase");
+
   // set body
   setRequest(method, rewriteLocation(location), body, bodyLength, headers);
 
@@ -409,7 +412,7 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
         break;
     }
 
-    if (!application_features::CommunicationFeaturePhase::getCommAllowed()) {
+    if (!comm->getCommAllowed()) {
       setErrorMessage("Command locally aborted");
       return nullptr;
     }
