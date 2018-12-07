@@ -3135,6 +3135,9 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
 #ifdef USE_IRESEARCH
       case EN::ENUMERATE_IRESEARCH_VIEW:
 #endif
+        // found some other FOR loop
+        return true;
+
       case EN::SUBQUERY:
       case EN::FILTER:
         return false;  // skip. we don't care.
