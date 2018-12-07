@@ -1018,7 +1018,19 @@ uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
 
   uint64_t oldValue = 0;
 
+  auto serverFeature =
+    application_features::ApplicationServer::getFeature<ServerFeature>("Server");
+  
   while (tries++ < maxTries) {
+
+    // We're shutting down. We'll return bogus uniqid 0.
+    // Clients need to seize to operate, when receiving uniqid 0.
+    if (serverFeature->isStopping()) {
+      LOG_TOPIC(DEBUG, Logger::AGENCY)
+        << "We're shutting down. Returning uniqid 0.";
+      return 0;
+    }
+    
     result = getValues("Sync/LatestID");
     if (!result.successful()) {
       std::this_thread::sleep_for(std::chrono::microseconds(500000));
