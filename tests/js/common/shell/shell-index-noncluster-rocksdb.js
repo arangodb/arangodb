@@ -65,7 +65,7 @@ function backgroundIndexSuite() {
       while(x-- > 0) {
         let docs = []; 
         for(let i = 0; i < 1000; i++) {
-          docs.push({value:i})
+          docs.push({value:i});
         } 
         c.save(docs);
       }
@@ -129,7 +129,7 @@ function backgroundIndexSuite() {
       while(x < 10000) {
         let docs = []; 
         for(let i = 0; i < 1000; i++) {
-          docs.push({value: x++})
+          docs.push({value: x++});
         } 
         c.save(docs);
       }
@@ -191,7 +191,7 @@ function backgroundIndexSuite() {
       while(x < 10000) {
         let docs = []; 
         for(let i = 0; i < 1000; i++) {
-          docs.push({value: x++})
+          docs.push({value: x++});
         } 
         c.save(docs);
       }
@@ -218,7 +218,7 @@ function backgroundIndexSuite() {
         c.ensureIndex({type: 'hash', fields: ['value'], unique: true});
         fail();
       } catch(err) {
-        assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+        assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum, err);
       }
 
       let time = require("internal").time;
