@@ -227,7 +227,7 @@ void TRI_PrintBacktrace() {
 #endif
 #if TRI_HAVE_PSTACK
   char buf[64];
-  snprintf(buf, 64, "/usr/bin/pstack %i", getpid());
+  snprintf(buf, sizeof(buf), "/usr/bin/pstack %i", getpid());
   system(buf);
 #endif
 #endif

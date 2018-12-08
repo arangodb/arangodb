@@ -94,10 +94,10 @@ static void InvalidParameterHandler(
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   char buf[1024] = "";
-  snprintf(buf, 1023,
+  snprintf(buf, sizeof(buf) - 1,
            "Expression: %ls Function: %ls File: %ls Line: %d",
            expression, function, file, (int) line);
-  buf[1023] = '\0';
+  buf[sizeof(buf) - 1] = '\0';
 #endif
 
   LOG_TOPIC(ERR, arangodb::Logger::FIXME) <<
