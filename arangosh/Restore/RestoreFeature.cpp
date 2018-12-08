@@ -916,7 +916,7 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
                      new UInt64Parameter(&_options.chunkSize));
 
   options->addOption("--threads",
-                     "maximum number of collections to process in parallel",
+                     "maximum number of collections to process in parallel. From 3.4.0",
                      new UInt32Parameter(&_options.threadCount));
 
   options->addOption("--include-system-collections",
