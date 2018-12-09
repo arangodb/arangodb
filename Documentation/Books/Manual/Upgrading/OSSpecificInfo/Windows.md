@@ -30,7 +30,7 @@ When uninstalling the old package, please make sure the option
 _"Delete databases with unistallation"_ is **not** checked.
 {% endhint %}
 
-{% info 'warning' %} 
+{% hint 'info' %} 
 Upgrading via the Installer, when the old data is kept, will keep your 
 password and choice of storage engine as it is.
 {% endhint %}
