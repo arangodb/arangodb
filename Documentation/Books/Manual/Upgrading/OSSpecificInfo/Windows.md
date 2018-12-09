@@ -25,9 +25,9 @@ If you have installed via the Installer, to upgrade:
 After installing the new package, you will have both packages installed.
 You can uninstall the old one.
 
-{% hint 'warning' %} 
+{% hint 'danger' %} 
 When uninstalling the old package, please make sure the option
-_"Delete databases with unistallation"_ is not checked.
+_"Delete databases with unistallation"_ is **not** checked.
 {% endhint %}
 
 {% info 'warning' %} 
