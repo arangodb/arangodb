@@ -74,7 +74,7 @@ avoids the data being synced to the windows domain controller.
 
 If this checkbox is selected the installer will attempt to perform an automatic
 update. For more information please see
-[Upgrading from Previous Version](#upgrading-from-previous-version).
+[Upgrading on Windows](../Upgrading/OSSpecificInfo/Windows.md).
 
 #### Keep Backup
 
