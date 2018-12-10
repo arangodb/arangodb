@@ -117,6 +117,14 @@ class Index {
     return _fields;
   }
 
+  /// @brief return the fields covered by this index.
+  ///        Typically just the fields, but e.g. EdgeIndex on _from also covers _to
+  virtual std::vector<std::vector<arangodb::basics::AttributeName>> const& coveredFields() const {
+    return fields();
+  }
+
+
+
   /// @brief return the index fields names
   inline std::vector<std::vector<std::string>> fieldNames() const {
     std::vector<std::vector<std::string>> result;
