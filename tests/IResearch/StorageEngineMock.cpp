@@ -510,7 +510,7 @@ std::function<void()> PhysicalCollectionMock::before = []()->void {};
 PhysicalCollectionMock::PhysicalCollectionMock(
     arangodb::LogicalCollection& collection,
     arangodb::velocypack::Slice const& info
-): PhysicalCollection(collection, info), lastId(0) {
+): PhysicalCollection(collection, info) {
 }
 
 arangodb::PhysicalCollection* PhysicalCollectionMock::clone(
@@ -544,6 +544,11 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::v
     }
   }
 
+  struct IndexFactory: public arangodb::IndexFactory {
+    using arangodb::IndexFactory::validateSlice;
+  };
+  auto id = IndexFactory::validateSlice(info, true, false); // trie+false to ensure id generation if missing
+
   auto const type = arangodb::basics::VelocyPackHelper::getStringRef(
     info.get("type"),
     arangodb::velocypack::StringRef()
@@ -552,17 +557,17 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::v
   std::shared_ptr<arangodb::Index> index;
 
   if (0 == type.compare("edge")) {
-    index = EdgeIndexMock::make(++lastId, _logicalCollection, info);
+    index = EdgeIndexMock::make(id, _logicalCollection, info);
 #ifdef USE_IRESEARCH
   } else if (0 == type.compare(arangodb::iresearch::DATA_SOURCE_TYPE.name())) {
 
     if (arangodb::ServerState::instance()->isCoordinator()) {
-      index = arangodb::iresearch::IResearchLinkCoordinator::make(
-        _logicalCollection, info, ++lastId, false
+      arangodb::iresearch::IResearchLinkCoordinator::factory().instantiate(
+        index, _logicalCollection, info, id, false
       );
     } else {
-      index = arangodb::iresearch::IResearchMMFilesLink::make(
-        _logicalCollection, info, ++lastId, false
+      arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(
+        index, _logicalCollection, info, id, false
       );
     }
 #endif

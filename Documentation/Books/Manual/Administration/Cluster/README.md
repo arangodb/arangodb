@@ -40,7 +40,7 @@ Example:
 127.0.0.1:8530@_system> db._create("test", {"replicationFactor": 3})
 ```
 
-In the above case, any write operation will require 2 replicas to
+In the above case, any write operation will require 3 replicas to
 report success from now on. 
 
 Preparing growth

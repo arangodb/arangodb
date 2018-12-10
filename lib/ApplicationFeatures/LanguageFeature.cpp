@@ -99,8 +99,9 @@ LanguageFeature* LanguageFeature::instance() {
 
 void LanguageFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  options->addHiddenOption("--default-language", "ISO-639 language code",
-                           new StringParameter(&_language));
+  options->addOption("--default-language", "ISO-639 language code",
+                     new StringParameter(&_language),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
 void* LanguageFeature::prepareIcu(std::string const& binaryPath,

@@ -26,6 +26,7 @@
 #include "../IResearch/StorageEngineMock.h"
 #include "Agency/Store.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/CommunicationPhase.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -159,9 +160,13 @@ struct ClusterInfoSetup {
     // suppress INFO {cluster} Starting up with role SINGLE
     arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::FATAL);
 
+    // suppress log messages since tests check error conditions
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(), arangodb::LogLevel::FATAL);
+
     // setup required application features
     features.emplace_back(new arangodb::AuthenticationFeature(server), false); // required for ClusterFeature::prepare()
     features.emplace_back(arangodb::DatabaseFeature::DATABASE = new arangodb::DatabaseFeature(server), false);
+    features.emplace_back(new arangodb::application_features::CommunicationFeaturePhase(server), false);
     features.emplace_back(new arangodb::ClusterFeature(server), false); // required for ClusterInfo::instance()
     features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // required for DatabaseFeature::createDatabase(...)
     features.emplace_back(new arangodb::V8DealerFeature(server), false); // required for DatabaseFeature::createDatabase(...)
@@ -200,6 +205,7 @@ struct ClusterInfoSetup {
 
   ~ClusterInfoSetup() {
     arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(), arangodb::LogLevel::DEFAULT);
     arangodb::ClusterInfo::cleanup(); // reset ClusterInfo::instance() before DatabaseFeature::unprepare()
     arangodb::application_features::ApplicationServer::server = nullptr;
 

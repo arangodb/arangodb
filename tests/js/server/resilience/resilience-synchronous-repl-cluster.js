@@ -36,6 +36,15 @@ const wait = require("internal").wait;
 const suspendExternal = require("internal").suspendExternal;
 const continueExternal = require("internal").continueExternal;
 
+function getDBServers() {
+  var tmp = global.ArangoClusterInfo.getDBServers();
+  var servers = [];
+  for (var i = 0; i < tmp.length; ++i) {
+    servers[i] = tmp[i].serverId;
+  }
+  return servers;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -392,7 +401,16 @@ function SynchronousReplicationSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSetup : function () {
-      assertTrue(waitForSynchronousReplication("_system"));
+      for (var count = 0; count < 120; ++count) {
+        let dbservers = getDBServers();
+        if (dbservers.length === 5) {
+          assertTrue(waitForSynchronousReplication("_system"));
+          return;
+        }
+        console.log("Waiting for 5 dbservers to be present:", JSON.stringify(dbservers));
+        wait(1.0);
+      }
+      assertTrue(false, "Timeout waiting for 5 dbservers.");
     },
 
 ////////////////////////////////////////////////////////////////////////////////

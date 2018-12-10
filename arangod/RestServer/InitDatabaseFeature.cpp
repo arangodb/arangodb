@@ -64,17 +64,20 @@ void InitDatabaseFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addSection("database", "Configure the database");
 
-  options->addHiddenOption("--database.init-database",
-                           "initializes an empty database",
-                           new BooleanParameter(&_initDatabase));
+  options->addOption("--database.init-database",
+                     "initializes an empty database",
+                     new BooleanParameter(&_initDatabase),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Command));
 
-  options->addHiddenOption("--database.restore-admin",
-                           "resets the admin users and sets a new password",
-                           new BooleanParameter(&_restoreAdmin));
+  options->addOption("--database.restore-admin",
+                     "resets the admin users and sets a new password",
+                     new BooleanParameter(&_restoreAdmin),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Command));
 
-  options->addHiddenOption("--database.password",
-                           "initial password of root user",
-                           new StringParameter(&_password));
+  options->addOption("--database.password",
+                     "initial password of root user",
+                     new StringParameter(&_password),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
 void InitDatabaseFeature::validateOptions(

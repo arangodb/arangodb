@@ -30,6 +30,7 @@
 #include "utils/log.hpp"
 
 #include "ApplicationFeatures/BasicPhase.h"
+#include "ApplicationFeatures/CommunicationPhase.h"
 #include "ApplicationFeatures/ClusterPhase.h"
 #include "ApplicationFeatures/DatabasePhase.h"
 #include "ApplicationFeatures/GreetingsPhase.h"
@@ -46,7 +47,6 @@
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
-#include "Agency/AgencyFeature.h"
 #include "Agency/Store.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
@@ -55,6 +55,7 @@
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchViewCoordinator.h"
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/IResearchLinkHelper.h"
@@ -113,13 +114,9 @@ struct IResearchLinkCoordinatorSetup {
 
     // register factories & normalizers
     auto& indexFactory = const_cast<arangodb::IndexFactory&>(engine.indexFactory());
-    indexFactory.emplaceFactory(
+    indexFactory.emplace(
       arangodb::iresearch::DATA_SOURCE_TYPE.name(),
-      arangodb::iresearch::IResearchLinkCoordinator::make
-    );
-    indexFactory.emplaceNormalizer(
-      arangodb::iresearch::DATA_SOURCE_TYPE.name(),
-      arangodb::iresearch::IResearchLinkHelper::normalize
+      arangodb::iresearch::IResearchLinkCoordinator::factory()
     );
 
     arangodb::tests::init();
@@ -139,6 +136,7 @@ struct IResearchLinkCoordinatorSetup {
     arangodb::application_features::ApplicationFeature* tmpFeature;
 
     buildFeatureEntry(new arangodb::application_features::BasicFeaturePhase(server, false), false);
+    buildFeatureEntry(new arangodb::application_features::CommunicationFeaturePhase(server), false);
     buildFeatureEntry(new arangodb::application_features::ClusterFeaturePhase(server), false);
     buildFeatureEntry(new arangodb::application_features::DatabaseFeaturePhase(server), false);
     buildFeatureEntry(new arangodb::application_features::GreetingsFeaturePhase(server, false), false);
@@ -175,6 +173,7 @@ struct IResearchLinkCoordinatorSetup {
     orderedFeatures = arangodb::application_features::ApplicationServer::server->getOrderedFeatures();
 
     // suppress log messages since tests check error conditions
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(), arangodb::LogLevel::FATAL);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR); // suppress ERROR recovery failure due to error from callback
     arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::FATAL);
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
@@ -215,6 +214,7 @@ struct IResearchLinkCoordinatorSetup {
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
 
     // destroy application features
@@ -293,18 +293,16 @@ SECTION("test_create_drop") {
   // no view specified
   {
     auto json = arangodb::velocypack::Parser::fromJson("{}");
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::make(
-      *logicalCollection.get(), json->slice(), 1, true
-    );
+    std::shared_ptr<arangodb::Index> link;
+    CHECK((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == arangodb::iresearch::IResearchLinkCoordinator::factory().instantiate(link, *logicalCollection.get(), json->slice(), 1, true).errorNumber()));
     CHECK(!link);
   }
 
   // no view can be found
   {
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"view\": 42 }");
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::make(
-      *logicalCollection.get(), json->slice(), 1, true
-    );
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"view\": \"42\" }");
+    std::shared_ptr<arangodb::Index> link;
+    CHECK((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == arangodb::iresearch::IResearchLinkCoordinator::factory().instantiate(link, *logicalCollection.get(), json->slice(), 1, true).errorNumber()));
     CHECK(!link);
   }
 
@@ -313,7 +311,7 @@ SECTION("test_create_drop") {
 
   // valid link creation
   {
-    auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"id\" : \"42\", \"type\": \"arangosearch\", \"view\": 42 }");
+    auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"id\" : \"42\", \"type\": \"arangosearch\", \"view\": \"42\" }");
     auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" }");
     arangodb::LogicalView::ptr logicalView;
     REQUIRE((arangodb::LogicalView::create(logicalView, *vocbase, viewJson->slice()).ok()));
@@ -334,15 +332,15 @@ SECTION("test_create_drop") {
     ).ok());
 
     // get new version from plan
-    auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection->id()));
-    REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *logicalView);
+    auto updatedCollection0 = ci->getCollection(vocbase->name(), std::to_string(logicalCollection->id()));
+    REQUIRE((updatedCollection0));
+    auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection0, *logicalView);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection0.get() == &(index->collection())));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -386,9 +384,9 @@ SECTION("test_create_drop") {
     CHECK(arangodb::methods::Indexes::drop(logicalCollection.get(), indexArg->slice()).ok());
 
     // get new version from plan
-    updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection->id()));
-    REQUIRE(updatedCollection);
-    CHECK(!arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *logicalView));
+    auto updatedCollection1 = ci->getCollection(vocbase->name(), std::to_string(logicalCollection->id()));
+    REQUIRE((updatedCollection1));
+    CHECK((!arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection1, *logicalView)));
 
     // drop view
     CHECK(logicalView->drop().ok());
@@ -420,7 +418,7 @@ SECTION("test_create_drop") {
 
   // ensure jSON is still valid after unload()
   {
-    auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"id\":\"42\", \"type\": \"arangosearch\", \"view\": 42 }");
+    auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"id\":\"42\", \"type\": \"arangosearch\", \"view\": \"42\" }");
     auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" }");
     arangodb::LogicalView::ptr logicalView;
     REQUIRE((arangodb::LogicalView::create(logicalView, *vocbase, viewJson->slice()).ok()));
@@ -446,12 +444,12 @@ SECTION("test_create_drop") {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection->id()));
     REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *logicalView);
+    auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *logicalView);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get() == &(index->collection())));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));

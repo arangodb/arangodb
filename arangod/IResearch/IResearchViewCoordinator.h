@@ -47,14 +47,6 @@ namespace iresearch {
 class IResearchViewCoordinator final : public arangodb::LogicalViewClusterInfo {
  public:
 
-  using LogicalView::drop;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief remove all documents matching collection 'cid' from this IResearch
-  ///        View
-  //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result drop(TRI_voc_cid_t) noexcept { return arangodb::Result(); } // NOOP since no internal store
-
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief acquire locks on the specified 'cid' during read-transactions
   ///        allowing retrieval of documents contained in the aforementioned
@@ -85,6 +77,13 @@ class IResearchViewCoordinator final : public arangodb::LogicalViewClusterInfo {
     velocypack::Slice const& properties,
     bool partialUpdate
   ) override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief unlink remove 'cid' from the persisted list of tracked collection
+  ///        IDs
+  /// @return success == view does not track collection
+  //////////////////////////////////////////////////////////////////////////////
+  arangodb::Result unlink(TRI_voc_cid_t cid) noexcept;
 
   bool visitCollections(CollectionVisitor const& visitor) const override;
 

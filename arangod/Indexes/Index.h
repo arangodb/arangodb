@@ -172,7 +172,7 @@ class Index {
   virtual bool covers(std::unordered_set<std::string> const& attributes) const;
 
   /// @brief return the underlying collection
-  inline LogicalCollection* collection() const { return &_collection; }
+  inline LogicalCollection& collection() const { return _collection; }
 
   /// @brief return a contextual string for logging
   std::string context() const;
@@ -229,7 +229,7 @@ class Index {
 
   virtual bool isPersistent() const { return false; }
   virtual bool canBeDropped() const = 0;
- 
+
   /// @brief whether or not the index provides an iterator that can extract
   /// attribute values from the index data, without having to refer to the
   /// actual document data
@@ -265,7 +265,7 @@ class Index {
   virtual bool implicitlyUnique() const;
 
   virtual size_t memory() const = 0;
-  
+
   /// @brief serialization flags for indexes.
   /// note that these must be mutually exclusive when bit-ORed
   enum class Serialize : uint8_t {
@@ -278,17 +278,17 @@ class Index {
     /// @brief serialize selectivity estimates
     Estimates = 8
   };
-  
+
   /// @brief helper for building flags
   template <typename... Args>
   static inline constexpr std::underlying_type<Serialize>::type makeFlags(Serialize flag, Args... args) {
     return static_cast<std::underlying_type<Serialize>::type>(flag) + makeFlags(args...);
   }
-  
+
   static inline constexpr std::underlying_type<Serialize>::type makeFlags() {
     return static_cast<std::underlying_type<Serialize>::type>(Serialize::Basics);
   }
-  
+
   static inline constexpr bool hasFlag(std::underlying_type<Serialize>::type flags,
                                        Serialize aflag) {
     return (flags & static_cast<std::underlying_type<Serialize>::type>(aflag)) != 0;
@@ -368,9 +368,9 @@ class Index {
                       std::shared_ptr<basics::LocalTaskQueue> queue);
 
   static size_t sortWeight(arangodb::aql::AstNode const* node);
-  
+
  protected:
-  
+
   /// @brief generate error result
   /// @param code the error key
   /// @param key the conflicting key
@@ -386,7 +386,6 @@ class Index {
   /// @param key the conflicting key
   arangodb::Result& addErrorMsg(Result& r, std::string const& key = "");
 
- protected:
   TRI_idx_iid_t const _iid;
   LogicalCollection& _collection;
   std::vector<std::vector<arangodb::basics::AttributeName>> const _fields;

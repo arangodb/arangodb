@@ -170,10 +170,6 @@ if (USE_IRESEARCH)
   set(GENERATED_PARSER_SOURCES "${IRESEARCH_PREGENERATED_ROOT}/core/iql/parser.cc" CACHE PATH "use pregenerated source")
   include_directories("${IRESEARCH_PREGENERATED_ROOT}/core/")
   include_directories("${IRESEARCH_PREGENERATED_ROOT}/external/snowball/libstemmer/")
-  
-  if(MSVC)
-    set(USE_IQL OFF CACHE BOOL "Use IQL" FORCE) # skip IQL on MSVC until IResearch upstream is updated
-  endif()
 
   set(IRESEARCH_EXCLUDE_STATIC_THIRD_PARTY_LIBS TRUE) # disable linking in of 3rd party libraries automatically
   find_package(IResearch REQUIRED) # set IRESEARCH_BUILD_DIR
@@ -184,6 +180,13 @@ if (USE_IRESEARCH)
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake" # cmake overrides (must be first)
     "${IRESEARCH_ROOT}/cmake" # to find iResearch dependencies
   )
+
+  # copy pre-built files over to the build directory
+  # this is required to avoid triggering file generation via bison and perl during the build procedure
+  file(GLOB_RECURSE IRESEARCH_PREBUILT RELATIVE "${IRESEARCH_ROOT}.build" FOLLOW_SYMLINKS "${IRESEARCH_ROOT}.build/*")
+  foreach(ELEMENT ${IRESEARCH_PREBUILT})
+    configure_file("${IRESEARCH_ROOT}.build/${ELEMENT}" "${IRESEARCH_BUILD_DIR}/${ELEMENT}" COPYONLY)
+  endforeach()
 
   add_subdirectory("${IRESEARCH_ROOT}" "${IRESEARCH_BUILD_DIR}" EXCLUDE_FROM_ALL) # do not build unused targets
   set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH_ORIGINAL}) # restore CMAKE_MODULE_PATH

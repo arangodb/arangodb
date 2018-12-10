@@ -29,27 +29,59 @@
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "RestServer/BootstrapFeature.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Slice.h>
+
+namespace {
+
+struct InvalidIndexFactory: public arangodb::IndexTypeFactory {
+  virtual bool equal(
+      arangodb::velocypack::Slice const&,
+      arangodb::velocypack::Slice const&
+  ) const override {
+    return false; // invalid definitions are never equal
+  }
+
+  virtual arangodb::Result instantiate(
+      std::shared_ptr<arangodb::Index>&,
+      arangodb::LogicalCollection&,
+      arangodb::velocypack::Slice const& definition,
+      TRI_idx_iid_t,
+      bool
+  ) const override {
+    return arangodb::Result(
+      TRI_ERROR_BAD_PARAMETER,
+      std::string("failure to instantiate index without a factory for definition: ") + definition.toString()
+    );
+  }
+
+  virtual arangodb::Result normalize(
+      arangodb::velocypack::Builder&,
+      arangodb::velocypack::Slice definition,
+      bool
+  ) const override {
+    return arangodb::Result(
+      TRI_ERROR_BAD_PARAMETER,
+      std::string("failure to normalize index without a factory for definition: ") + definition.toString()
+    );
+  }
+};
+
+InvalidIndexFactory const INVALID;
+
+} // namespace
 
 namespace arangodb {
 
 void IndexFactory::clear() {
   _factories.clear();
-  _normalizers.clear();
 }
 
-Result IndexFactory::emplaceFactory(
+Result IndexFactory::emplace(
   std::string const& type,
   IndexTypeFactory const& factory
 ) {
-  if (!factory) {
-    return arangodb::Result(
-      TRI_ERROR_BAD_PARAMETER,
-      std::string("index factory undefined during index factory registration for index type '") + type + "'"
-    );
-  }
-
   auto* feature =
     arangodb::application_features::ApplicationServer::lookupFeature("Bootstrap");
   auto* bootstrapFeature = dynamic_cast<BootstrapFeature*>(feature);
@@ -62,43 +94,10 @@ Result IndexFactory::emplaceFactory(
     );
   }
 
-  if (!_factories.emplace(type, factory).second) {
+  if (!_factories.emplace(type, &factory).second) {
     return arangodb::Result(
       TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
       std::string("index factory previously registered during index factory registration for index type '") + type + "'"
-    );
-  }
-
-  return arangodb::Result();
-}
-
-Result IndexFactory::emplaceNormalizer(
-  std::string const& type,
-  IndexNormalizer const& normalizer
-) {
-  if (!normalizer) {
-    return arangodb::Result(
-      TRI_ERROR_BAD_PARAMETER,
-      std::string("index normalizer undefined during index normalizer registration for index type '") + type + "'"
-    );
-  }
-
-  auto* feature =
-    arangodb::application_features::ApplicationServer::lookupFeature("Bootstrap");
-  auto* bootstrapFeature = dynamic_cast<BootstrapFeature*>(feature);
-
-  // ensure new normalizers are not added at runtime since that would require additional locks
-  if (bootstrapFeature && bootstrapFeature->isReady()) {
-    return arangodb::Result(
-      TRI_ERROR_INTERNAL,
-      std::string("index normalizer registration is only allowed during server startup")
-    );
-  }
-
-  if (!_normalizers.emplace(type, normalizer).second) {
-    return arangodb::Result(
-      TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
-      std::string("index normalizer previously registered during index normalizer registration for index type '") + type + "'"
     );
   }
 
@@ -117,12 +116,7 @@ Result IndexFactory::enhanceIndexDefinition(
     return TRI_ERROR_BAD_PARAMETER;
   }
 
-  auto typeString = type.copyString();
-  auto itr = _normalizers.find(typeString);
-
-  if (itr == _normalizers.end()) {
-    return TRI_ERROR_BAD_PARAMETER;
-  }
+  auto& factory = IndexFactory::factory(type.copyString());
 
   TRI_ASSERT(ServerState::instance()->isCoordinator() == isCoordinator);
   TRI_ASSERT(normalized.isEmpty());
@@ -145,7 +139,7 @@ Result IndexFactory::enhanceIndexDefinition(
       );
     }
 
-    return itr->second(normalized, definition, isCreation);
+    return factory.normalize(normalized, definition, isCreation);
   } catch (basics::Exception const& ex) {
     return ex.code();
   } catch (std::exception const&) {
@@ -153,6 +147,15 @@ Result IndexFactory::enhanceIndexDefinition(
   } catch (...) {
     return TRI_ERROR_INTERNAL;
   }
+}
+
+const IndexTypeFactory& IndexFactory::factory(
+    std::string const& type
+) const noexcept {
+  auto itr = _factories.find(type);
+  TRI_ASSERT(itr == _factories.end() || false == !(itr->second)); // IndexFactory::emplace(...) inserts non-nullptr
+
+  return itr == _factories.end() ? INVALID : *(itr->second);
 }
 
 std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
@@ -170,17 +173,29 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
     );
   }
 
-  auto typeString = type.copyString();
-  auto itr = _factories.find(typeString);
+  auto& factory = IndexFactory::factory(type.copyString());
+  std::shared_ptr<Index> index;
+  auto res = factory.instantiate(
+    index, collection, definition, id, isClusterConstructor
+  );
 
-  if (itr == _factories.end()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_NOT_IMPLEMENTED,
-      std::string("invalid or unsupported index type '") + typeString + "'"
-    );
+  if (!res.ok()) {
+    TRI_set_errno(res.errorNumber());
+    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+      << "failed to instantiate index, error: " << res.errorNumber() << " " << res.errorMessage();
+
+    return nullptr;
   }
 
-  return itr->second(collection, definition, id, isClusterConstructor);
+  if (!index) {
+    TRI_set_errno(TRI_ERROR_INTERNAL);
+    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+      << "failed to instantiate index, factory returned null instance";
+
+    return nullptr;
+  }
+
+  return index;
 }
 
 /// same for both storage engines
@@ -213,8 +228,13 @@ TRI_idx_iid_t IndexFactory::validateSlice(arangodb::velocypack::Slice info,
 
   if (iid == 0 && !isClusterConstructor) {
     // Restore is not allowed to generate an id
-    TRI_ASSERT(generateKey);
-    iid = arangodb::Index::generateId();
+    VPackSlice type = info.get(StaticStrings::IndexType);
+    // dont generate ids for indexes of type "primary"
+    // id 0 is expected for primary indexes
+    if (!type.isString() || !type.isEqualString("primary")) {
+      TRI_ASSERT(generateKey);
+      iid = arangodb::Index::generateId();
+    }
   }
 
   return iid;

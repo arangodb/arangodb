@@ -197,10 +197,10 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
 }
 
 void registerIndexFactory() {
-  static const std::map<std::string, arangodb::IndexFactory::IndexTypeFactory> factories = {
-    { "ClusterEngine", arangodb::iresearch::IResearchLinkCoordinator::make },
-    { "MMFilesEngine", arangodb::iresearch::IResearchMMFilesLink::make },
-    { "RocksDBEngine", arangodb::iresearch::IResearchRocksDBLink::make }
+  static const std::map<std::string, arangodb::IndexTypeFactory const*> factories = {
+    { "ClusterEngine", &arangodb::iresearch::IResearchLinkCoordinator::factory() },
+    { "MMFilesEngine", &arangodb::iresearch::IResearchMMFilesLink::factory() },
+    { "RocksDBEngine", &arangodb::iresearch::IResearchRocksDBLink::factory() }
   };
   auto const& indexType = arangodb::iresearch::DATA_SOURCE_TYPE.name();
 
@@ -220,23 +220,12 @@ void registerIndexFactory() {
     // ok to const-cast since this should only be called on startup
     auto& indexFactory =
       const_cast<arangodb::IndexFactory&>(engine->indexFactory());
-    auto res = indexFactory.emplaceFactory(indexType, entry.second);
+    auto res = indexFactory.emplace(indexType, *(entry.second));
 
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
         res.errorNumber(),
         std::string("failure registering IResearch link factory with index factory from feature '") + entry.first + "': " + res.errorMessage()
-      );
-    }
-
-    res = indexFactory.emplaceNormalizer(
-      indexType, arangodb::iresearch::IResearchLinkHelper::normalize
-    );
-
-    if (!res.ok()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-        res.errorNumber(),
-        std::string("failure registering IResearch link normalizer with index factory from feature '") + entry.first + "': " + res.errorMessage()
       );
     }
   }
