@@ -1,6 +1,9 @@
 devel
 -----
 
+* fix internal issue #2786: improved confirmation dialog when clicking the
+  Truncate button in the Web UI
+
 * make `--help-all` now also show all hidden program options
 
   Previously hidden program options were only returned when invoking arangod or
