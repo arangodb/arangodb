@@ -579,6 +579,9 @@ static std::string GetEndpointFromUrl(std::string const& url) {
 ///
 /// If @FA{outfile} is not specified, the result body will be returned in the
 /// @LIT{body} attribute of the result object.
+///
+/// `process-utils.js` depends on simple http client error messages.
+///   this needs to be adjusted if this is ever changed!
 ////////////////////////////////////////////////////////////////////////////////
 
 void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {

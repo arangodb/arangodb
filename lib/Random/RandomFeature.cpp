@@ -48,13 +48,13 @@ void RandomFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   std::unordered_set<uint32_t> generators = {1, 2, 3, 4};
 #endif
 
-  options->addHiddenOption(
+  options->addOption(
       "--random.generator",
       "random number generator to use (1 = MERSENNE, 2 = RANDOM, "
       "3 = URANDOM, 4 = COMBINED (not for Windows), 5 = WinCrypt (Windows "
       "only)",
-      new DiscreteValuesParameter<UInt32Parameter>(&_randomGenerator,
-                                                   generators));
+      new DiscreteValuesParameter<UInt32Parameter>(&_randomGenerator, generators),
+      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
 void RandomFeature::prepare() {

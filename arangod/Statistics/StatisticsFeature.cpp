@@ -136,9 +136,10 @@ void StatisticsFeature::collectOptions(
 
   options->addSection("server", "Server features");
 
-  options->addHiddenOption("--server.statistics",
-                           "turn statistics gathering on or off",
-                           new BooleanParameter(&_statistics));
+  options->addOption("--server.statistics",
+                     "turn statistics gathering on or off",
+                     new BooleanParameter(&_statistics),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
 void StatisticsFeature::validateOptions(
@@ -195,7 +196,7 @@ void StatisticsFeature::start() {
   }
 }
 
-void StatisticsFeature::unprepare() {
+void StatisticsFeature::stop() {
   if (_statisticsThread != nullptr) {
     _statisticsThread->beginShutdown();
 

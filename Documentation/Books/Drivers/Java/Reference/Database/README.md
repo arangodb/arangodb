@@ -3,9 +3,7 @@
 
 ## ArangoDB.db
 
-```
-ArangoDB.db(String name) : ArangoDatabase
-```
+`ArangoDB.db(String name) : ArangoDatabase`
 
 Returns a _ArangoDatabase_ instance for the given database name.
 

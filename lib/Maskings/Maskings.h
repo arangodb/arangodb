@@ -26,8 +26,6 @@
 #include "Basics/Common.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -47,10 +45,10 @@ struct MaskingsResult {
     ILLEGAL_DEFINITION
   };
 
-  MaskingsResult(StatusCode s, std::string m)
-      : status(s), message(m), maskings(nullptr){};
-  MaskingsResult(std::unique_ptr<Maskings>&& m)
-      : status(StatusCode::VALID), maskings(std::move(m)){};
+  MaskingsResult(StatusCode s, std::string const& m)
+      : status(s), message(m), maskings(nullptr) {}
+  explicit MaskingsResult(std::unique_ptr<Maskings>&& m)
+      : status(StatusCode::VALID), maskings(std::move(m)) {}
 
   StatusCode status;
   std::string message;

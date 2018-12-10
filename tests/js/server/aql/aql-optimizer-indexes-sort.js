@@ -295,7 +295,6 @@ function optimizerIndexesSortTestSuite () {
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 3 SORT i.value2 RETURN i.value2",
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 && NOOPT(1) SORT i.value2 RETURN i.value2",
         "FOR i IN " + c.name() + " FILTER NOOPT(1) && i.value2 == 2 SORT i.value2 RETURN i.value2",
-        "FOR j IN 1..1 FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value2 RETURN i.value2",
       ];
 
       queries.forEach(function(query) {
@@ -307,6 +306,31 @@ function optimizerIndexesSortTestSuite () {
         assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         // The HashIndex does not yet guarantee sorting, but we're filtering on a constant condition
         assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testDontOptimizeAway : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
+
+      c.ensureIndex({ type: "skiplist", fields: ["value2"] });
+
+      var queries = [
+        "FOR j IN 1..1 FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value2 RETURN i.value2",
+        "FOR i IN " + c.name() + " FOR j IN 1..1 FILTER i.value2 == 2 SORT i.value2 RETURN i.value2",
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query);
       });
     },
 
