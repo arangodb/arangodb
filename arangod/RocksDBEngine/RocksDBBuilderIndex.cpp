@@ -44,7 +44,7 @@ using namespace arangodb;
 using namespace arangodb::rocksutils;
 
 RocksDBBuilderIndex::RocksDBBuilderIndex(std::shared_ptr<arangodb::RocksDBIndex> const& wp)
-  : RocksDBIndex(wp->id(), *wp->collection(),
+  : RocksDBIndex(wp->id(), wp->collection(),
                  wp->fields(), wp->unique(),
                  wp->sparse(), wp->columnFamily(), 0, false),
                  _wrapped(wp), _hasError(false) {
