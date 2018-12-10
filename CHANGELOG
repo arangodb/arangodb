@@ -1,6 +1,13 @@
 v3.4.1 (XXXX-XX-XX)
 -------------------
 
+* reverted accidental change to error handling in geo index
+
+  In previous versions, if non-valid geo coordinates were contained in the
+  indexed field of a document, the document was simply ignored an not indexed.
+  In 3.4.0, this was accidentally changed to generate an error, which caused
+  the upgrade procedure to break in some cases.
+
 * fixed TypeError being thrown instead of validation errors when Foxx manifest
   validation fails
 
