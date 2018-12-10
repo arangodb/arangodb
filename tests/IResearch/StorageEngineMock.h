@@ -90,12 +90,17 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
   virtual bool readDocument(arangodb::transaction::Methods* trx, arangodb::LocalDocumentId const& token, arangodb::ManagedDocumentResult& result) const override;
   virtual bool readDocumentWithCallback(arangodb::transaction::Methods* trx, arangodb::LocalDocumentId const& token, arangodb::IndexIterator::DocumentCallback const& cb) const override;
   virtual arangodb::Result remove(
-      arangodb::transaction::Methods* trx, arangodb::velocypack::Slice slice,
-      arangodb::ManagedDocumentResult& previous,
-      arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
-      bool lock, TRI_voc_rid_t& prevRev, TRI_voc_rid_t& revisionId,
-      arangodb::KeyLockInfo* /*keyLockInfo*/,
-      std::function<arangodb::Result(void)> callbackDuringLock) override;
+    arangodb::transaction::Methods& trx,
+    arangodb::velocypack::Slice slice,
+    arangodb::ManagedDocumentResult& previous,
+    arangodb::OperationOptions& options,
+    TRI_voc_tick_t& resultMarkerTick,
+    bool lock,
+    TRI_voc_rid_t& prevRev,
+    TRI_voc_rid_t& revisionId,
+    arangodb::KeyLockInfo* /*keyLockInfo*/,
+    std::function<arangodb::Result(void)> callbackDuringLock
+  ) override;
   virtual arangodb::Result replace(
       arangodb::transaction::Methods* trx,
       arangodb::velocypack::Slice const newSlice,
@@ -106,7 +111,10 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
       std::function<arangodb::Result(void)> callbackDuringLock) override;
   virtual TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const override;
   virtual void setPath(std::string const&) override;
-  virtual arangodb::Result truncate(arangodb::transaction::Methods* trx, arangodb::OperationOptions&) override;
+  virtual arangodb::Result truncate(
+    arangodb::transaction::Methods& trx,
+    arangodb::OperationOptions& options
+  ) override;
   virtual arangodb::Result update(
       arangodb::transaction::Methods* trx,
       arangodb::velocypack::Slice const newSlice,
