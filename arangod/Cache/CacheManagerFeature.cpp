@@ -72,7 +72,8 @@ void CacheManagerFeature::collectOptions(
   options->addSection("cache", "Configure the hash cache");
 
   options->addOption("--cache.size", "size of cache in bytes",
-                     new UInt64Parameter(&_cacheSize));
+                     new UInt64Parameter(&_cacheSize),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Dynamic));
 
   options->addOption("--cache.rebalancing-interval",
                      "microseconds between rebalancing attempts",

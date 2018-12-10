@@ -95,10 +95,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-#ifdef USE_IRESEARCH
-#include "IResearch/IResearchView.h"
-#endif
-
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
@@ -248,17 +244,19 @@ void RocksDBEngine::collectOptions(
                      "timeout after which unused WAL files are deleted",
                      new DoubleParameter(&_pruneWaitTime));
 
-  options->addHiddenOption("--rocksdb.wal-file-timeout-initial",
-                           "initial timeout after which unused WAL files deletion kicks in after server start",
-                           new DoubleParameter(&_pruneWaitTimeInitial));
+  options->addOption("--rocksdb.wal-file-timeout-initial",
+                     "initial timeout after which unused WAL files deletion kicks in after server start",
+                     new DoubleParameter(&_pruneWaitTimeInitial),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--rocksdb.throttle",
                      "enable write-throttling",
                      new BooleanParameter(&_useThrottle));
 
-  options->addHiddenOption("--rocksdb.debug-logging",
-                           "true to enable rocksdb debug logging",
-                           new BooleanParameter(&_debugLogging));
+  options->addOption("--rocksdb.debug-logging",
+                     "true to enable rocksdb debug logging",
+                     new BooleanParameter(&_debugLogging),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
 #ifdef USE_ENTERPRISE
   collectEnterpriseOptions(options);
@@ -1954,26 +1952,6 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       StorageEngine::registerView(*vocbase, view);
 
       view->open();
-
-#if defined(ARANGODB_ENABLE_MAINTAINER_MODE) && defined(USE_IRESEARCH)
-      struct DummyTransaction : transaction::Methods {
-        explicit DummyTransaction(std::shared_ptr<transaction::Context> const& ctx)
-          : transaction::Methods(ctx) {
-        }
-      };
-
-      transaction::StandaloneContext context(view->vocbase());
-      std::shared_ptr<transaction::Context> dummy;  // intentionally empty
-      DummyTransaction trx(std::shared_ptr<transaction::Context>(dummy, &context)); // use aliasing constructor
-      auto& viewImpl = dynamic_cast<iresearch::IResearchView&>(*view);
-      auto reader = viewImpl.snapshot(trx, iresearch::IResearchView::Snapshot::FindOrCreate);
-      TRI_ASSERT(reader);
-
-      LOG_TOPIC(DEBUG, Logger::VIEWS)
-          << "arangosearch view '" << view->name()
-          << "' contains " << reader->docs_count() << " documents";
-#endif
-
     }
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::ENGINES)

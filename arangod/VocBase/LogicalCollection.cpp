@@ -630,12 +630,9 @@ arangodb::Result LogicalCollection::appendVelocyPack(
   result.add("allowUserKeys", VPackValue(_allowUserKeys));
 
   // keyoptions
-  result.add(VPackValue("keyOptions"));
+  result.add("keyOptions", VPackValue(VPackValueType::Object));
   if (_keyGenerator != nullptr) {
-    result.openObject();
     _keyGenerator->toVelocyPack(result);
-  } else {
-    result.openArray();
   }
   result.close();
 

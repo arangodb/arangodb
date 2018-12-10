@@ -279,20 +279,7 @@ struct DocumentPrimaryKey : std::pair<TRI_voc_cid_t, TRI_voc_rid_t> {
   }
 }; // DocumentPrimaryKey
 
-bool appendKnownCollections(
-  std::unordered_set<TRI_voc_cid_t>& set, const irs::index_reader& reader
-);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief go through the reader and call the callback with each TRI_voc_cid_t
-///        value found, the same TRI_voc_cid_t may repeat multiple times
-/// @return success (if the visitor returns false then also consider as failure)
-////////////////////////////////////////////////////////////////////////////////
-bool visitReaderCollections(
-  irs::index_reader const& reader,
-  std::function<bool(TRI_voc_cid_t cid)> const& visitor
-);
-
 NS_END // iresearch
 NS_END // arangodb
+
 #endif

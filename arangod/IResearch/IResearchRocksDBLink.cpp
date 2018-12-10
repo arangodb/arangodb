@@ -21,18 +21,19 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "IResearchView.h"
+#include "IResearchLinkHelper.h"
 #include "Basics/Common.h"  // required for RocksDBColumnFamily.h
 #include "Indexes/IndexFactory.h"
-#include "IResearch/IResearchFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 
 #include "IResearchRocksDBLink.h"
-#include "IResearchLinkHelper.h"
 
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
@@ -105,10 +106,14 @@ struct IResearchRocksDBLink::IndexFactory: public arangodb::IndexTypeFactory {
 IResearchRocksDBLink::IResearchRocksDBLink(
     TRI_idx_iid_t iid,
     arangodb::LogicalCollection& collection
-)
-    : RocksDBIndex(iid, collection, IResearchLinkHelper::emptyIndexSlice(),
-                   RocksDBColumnFamily::invalid(), false),
-      IResearchLink(iid, collection) {
+): RocksDBIndex(
+     iid,
+     collection,
+     IResearchLinkHelper::emptyIndexSlice(),
+     RocksDBColumnFamily::invalid(),
+     false
+   ),
+   IResearchLink(iid, collection) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   _unique = false;  // cannot be unique since multiple fields are indexed
   _sparse = true;   // always sparse
@@ -157,6 +162,12 @@ void IResearchRocksDBLink::toVelocyPack(
 }
 
 void IResearchRocksDBLink::writeRocksWalMarker() {
+  auto* engine = arangodb::EngineSelectorFeature::ENGINE;
+
+  if (engine && engine->inRecovery()) {
+    return; // do not write WAL markers during WAL replay
+  }
+
   RocksDBLogValue logValue = RocksDBLogValue::IResearchLinkDrop(
     Index::_collection.vocbase().id(),
     Index::_collection.id(),

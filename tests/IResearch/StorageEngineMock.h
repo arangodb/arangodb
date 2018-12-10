@@ -53,7 +53,6 @@ class ContextDataMock: public arangodb::transaction::ContextData {
 class PhysicalCollectionMock: public arangodb::PhysicalCollection {
  public:
   static std::function<void()> before;
-  TRI_idx_iid_t lastId;
   std::string physicalPath;
   std::deque<std::pair<arangodb::velocypack::Builder, bool>> documents; // std::pair<jSON, valid>, deque -> pointers remain valid
 

@@ -138,6 +138,7 @@ add_library(${LIB_ARANGO} STATIC
   ApplicationFeatures/ApplicationFeaturePhase.cpp
   ApplicationFeatures/ApplicationServer.cpp
   ApplicationFeatures/AgencyPhase.cpp
+  ApplicationFeatures/CommunicationPhase.cpp
   ApplicationFeatures/AQLPhase.cpp
   ApplicationFeatures/BasicPhase.cpp
   ApplicationFeatures/ClusterPhase.cpp
