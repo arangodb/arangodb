@@ -87,7 +87,7 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
     RocksDBMethods* methods,
     LocalDocumentId const& documentId,
     velocypack::Slice const& doc,
-    Index::OperationMode mode
+    arangodb::Index::OperationMode mode
   ) override;
 
   /// remove index elements and put it in the specified write batch.
@@ -96,7 +96,7 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
     RocksDBMethods* methods,
     LocalDocumentId const& documentId,
     velocypack::Slice const& docs,
-    Index::OperationMode mode
+    arangodb::Index::OperationMode mode
   ) override;
 
  private:

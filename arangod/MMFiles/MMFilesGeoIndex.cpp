@@ -332,7 +332,7 @@ Result MMFilesGeoIndex::insert(
     transaction::Methods& trx,
     LocalDocumentId const& documentId,
     velocypack::Slice const& doc,
-    Index::OperationMode mode
+    arangodb::Index::OperationMode mode
 ) {
   // covering and centroid of coordinate / polygon / ...
   size_t reserve = _variant == Variant::GEOJSON ? 8 : 1;
@@ -364,7 +364,7 @@ Result MMFilesGeoIndex::remove(
     transaction::Methods& trx,
     LocalDocumentId const& documentId,
     velocypack::Slice const& doc,
-    Index::OperationMode mode
+    arangodb::Index::OperationMode mode
 ) {
   // covering and centroid of coordinate / polygon / ...
   size_t reserve = _variant == Variant::GEOJSON ? 8 : 1;

@@ -404,7 +404,7 @@ Result RocksDBGeoIndex::insertInternal(
     RocksDBMethods* mthd,
     LocalDocumentId const& documentId,
     velocypack::Slice const& doc,
-    Index::OperationMode mode
+    arangodb::Index::OperationMode mode
 ) {
   Result res;
 
@@ -452,7 +452,7 @@ Result RocksDBGeoIndex::removeInternal(
     RocksDBMethods* mthd,
     LocalDocumentId const& documentId,
     velocypack::Slice const& doc,
-    Index::OperationMode mode
+    arangodb::Index::OperationMode mode
 ) {
   Result res;
 

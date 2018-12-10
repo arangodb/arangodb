@@ -90,14 +90,14 @@ class MMFilesGeoIndex final : public MMFilesIndex, public geo_index::Index {
     transaction::Methods& trx,
     LocalDocumentId const& documentId,
     velocypack::Slice const& doc,
-    Index::OperationMode mode
+    arangodb::Index::OperationMode mode
   ) override;
 
   Result remove(
     transaction::Methods& trx,
     LocalDocumentId const& documentId,
     velocypack::Slice const& doc,
-    Index::OperationMode mode
+    arangodb::Index::OperationMode mode
   ) override;
 
   IndexIterator* iteratorForCondition(transaction::Methods*,
