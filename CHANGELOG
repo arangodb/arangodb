@@ -1,6 +1,11 @@
 devel
 -----
 
+* An AQL query that uses the edge index only and returns the opposite side of
+  the edge can now be executed in a more optimized way:
+  e.g. FOR edge IN edgeCollection FILTER edge._from == "v/1" RETURN edge._to
+  is fully covered by RocksDB edge index. For MMFiles this rule does not apply.
+
 * make `--help-all` now also show all hidden program options
 
   Previously hidden program options were only returned when invoking arangod or
