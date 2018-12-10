@@ -477,8 +477,10 @@ void ClusterCollection::invokeOnAllElements(
 // -- SECTION DML Operations --
 ///////////////////////////////////
 
-Result ClusterCollection::truncate(transaction::Methods* trx,
-                                 OperationOptions& options) {
+Result ClusterCollection::truncate(
+    transaction::Methods& trx,
+    OperationOptions& options
+) {
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -537,11 +539,17 @@ Result ClusterCollection::replace(
 }
 
 Result ClusterCollection::remove(
-    arangodb::transaction::Methods* trx, arangodb::velocypack::Slice slice,
-    arangodb::ManagedDocumentResult& previous, OperationOptions& options,
-    TRI_voc_tick_t& resultMarkerTick, bool, TRI_voc_rid_t& prevRev,
-    TRI_voc_rid_t& revisionId, KeyLockInfo* /*keyLock*/,
-    std::function<Result(void)> /*callbackDuringLock*/) {
+    transaction::Methods& trx,
+    velocypack::Slice slice,
+    ManagedDocumentResult& previous,
+    OperationOptions& options,
+    TRI_voc_tick_t& resultMarkerTick,
+    bool lock,
+    TRI_voc_rid_t& prevRev,
+    TRI_voc_rid_t& revisionId,
+    KeyLockInfo* /*keyLock*/,
+    std::function<Result(void)> /*callbackDuringLock*/
+) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

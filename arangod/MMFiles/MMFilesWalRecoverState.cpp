@@ -1558,7 +1558,7 @@ int MMFilesWalRecoverState::fillIndexes() {
     arangodb::SingleCollectionTransaction trx(
       ctx, *collection, AccessMode::Type::WRITE
     );
-    int res = physical->fillAllIndexes(&trx);
+    int res = physical->fillAllIndexes(trx);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;

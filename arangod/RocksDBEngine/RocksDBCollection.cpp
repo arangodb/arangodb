@@ -380,19 +380,22 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
     return other;
   }
   
-  res = fillIndexes(&trx, idx);
+  res = fillIndexes(trx, idx);
+
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  
+
   // we need to sync the selectivity estimates
   res = engine->settingsManager()->sync(false);
+
   if (res.fail()) {
     LOG_TOPIC(WARN, Logger::ENGINES) << "could not sync settings: "
     << res.errorMessage();
   }
-  
+
   rocksdb::Status s = engine->db()->GetRootDB()->FlushWAL(true);
+
   if (!s.ok()) {
     LOG_TOPIC(WARN, Logger::ENGINES) << "could not flush wal: "
     << s.ToString();
@@ -467,7 +470,7 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
     TRI_ASSERT(cindex != nullptr);
 
     if (iid == cindex->id()) {
-      int rv = cindex->drop();
+      auto rv = cindex->drop().errorNumber();
 
       if (rv == TRI_ERROR_NO_ERROR) {
         // trigger compaction before deleting the object
@@ -540,10 +543,12 @@ void RocksDBCollection::invokeOnAllElements(
 // -- SECTION DML Operations --
 ///////////////////////////////////
 
-Result RocksDBCollection::truncate(transaction::Methods* trx,
-                                   OperationOptions& options) {
+Result RocksDBCollection::truncate(
+    transaction::Methods& trx,
+    OperationOptions& options
+) {
   TRI_ASSERT(_objectId != 0);
-  auto state = RocksDBTransactionState::toState(trx);
+  auto state = RocksDBTransactionState::toState(&trx);
   RocksDBMethods* mthds = state->rocksdbMethods();
 
   if (state->isOnlyExclusiveTransaction() &&
@@ -597,22 +602,30 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
     }
 
     // add the log entry so we can recover the correct count
-    auto log = RocksDBLogValue::CollectionTruncate(trx->vocbase().id(),
-                                                   _logicalCollection.id(), _objectId);
+    auto log = RocksDBLogValue::CollectionTruncate(
+      trx.vocbase().id(), _logicalCollection.id(), _objectId
+    );
+
     s = batch.PutLogData(log.slice());
+
     if (!s.ok()) {
       return rocksutils::convertStatus(s);
     }
 
     rocksdb::WriteOptions wo;
+
     s = db->Write(wo, &batch);
+
     if (!s.ok()) {
       return rocksutils::convertStatus(s);
     }
+
     seq = db->GetLatestSequenceNumber() - 1; // post commit sequence
 
     uint64_t numDocs = _numberDocuments.exchange(0);
+
     _meta.adjustNumberDocuments(seq, /*revision*/newRevisionId(), - static_cast<int64_t>(numDocs));
+
     {
       READ_LOCKER(guard, _indexesLock);
       for (std::shared_ptr<Index> const& idx : _indexes) {
@@ -665,14 +678,14 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
     TRI_ASSERT(key.isString());
     TRI_ASSERT(rid != 0);
 
-    RocksDBSavePoint guard(trx, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
+    RocksDBSavePoint guard(&trx, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
 
     state->prepareOperation(_logicalCollection.id(),
                             rid, // actual revision ID!!
                             TRI_VOC_DOCUMENT_OPERATION_REMOVE);
 
     LocalDocumentId const docId = RocksDBKey::documentId(iter->key());
-    auto res = removeDocument(trx, docId, doc, options);
+    auto res = removeDocument(&trx, docId, doc, options);
 
     if (res.fail()) { // Failed to remove document in truncate.
       return res;
@@ -688,7 +701,7 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
     }
     guard.finish(hasPerformedIntermediateCommit);
 
-    trackWaitForSync(trx, options);
+    trackWaitForSync(&trx, options);
     iter->Next();
   }
 
@@ -1099,11 +1112,17 @@ Result RocksDBCollection::replace(
 }
 
 Result RocksDBCollection::remove(
-    arangodb::transaction::Methods* trx, arangodb::velocypack::Slice slice,
-    arangodb::ManagedDocumentResult& previous, OperationOptions& options,
-    TRI_voc_tick_t& resultMarkerTick, bool, TRI_voc_rid_t& prevRev,
-    TRI_voc_rid_t& revisionId, KeyLockInfo* /*keyLockInfo*/,
-    std::function<Result(void)> callbackDuringLock) {
+    transaction::Methods& trx,
+    velocypack::Slice slice,
+    ManagedDocumentResult& previous,
+    OperationOptions& options,
+    TRI_voc_tick_t& resultMarkerTick,
+    bool /*lock*/,
+    TRI_voc_rid_t& prevRev,
+    TRI_voc_rid_t& revisionId,
+    KeyLockInfo* /*keyLockInfo*/,
+    std::function<Result(void)> callbackDuringLock
+) {
   // store the tick that was used for writing the document
   // note that we don't need it for this engine
   resultMarkerTick = 0;
@@ -1119,7 +1138,8 @@ Result RocksDBCollection::remove(
   TRI_ASSERT(!key.isNone());
 
   // get the previous revision
-  Result res = this->read(trx, key, previous, /*lock*/false);
+  auto res = this->read(&trx, key, previous, /*lock*/false);
+
   if (res.fail()) {
     return res;
   }
@@ -1135,24 +1155,24 @@ Result RocksDBCollection::remove(
   // Check old revision:
   if (!options.ignoreRevs && slice.isObject()) {
     TRI_voc_rid_t expectedRevisionId = TRI_ExtractRevisionId(slice);
-    int res = checkRevision(trx, expectedRevisionId, oldRevisionId);
+    auto res = checkRevision(&trx, expectedRevisionId, oldRevisionId);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return Result(res);
     }
   }
 
-  auto state = RocksDBTransactionState::toState(trx);
-  RocksDBSavePoint guard(trx, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
+  auto state = RocksDBTransactionState::toState(&trx);
+  RocksDBSavePoint guard(&trx, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
 
   // add possible log statement under guard
   state->prepareOperation(
     _logicalCollection.id(), oldRevisionId, TRI_VOC_DOCUMENT_OPERATION_REMOVE
   );
-  res = removeDocument(trx, oldDocumentId, oldDoc, options);
+  res = removeDocument(&trx, oldDocumentId, oldDoc, options);
 
   if (res.ok()) {
-    trackWaitForSync(trx, options);
+    trackWaitForSync(&trx, options);
 
     bool hasPerformedIntermediateCommit = false;
 
@@ -1238,13 +1258,15 @@ void RocksDBCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
 }
 
 template<typename WriteBatchType, typename MethodsType>
-static arangodb::Result fillIndex(transaction::Methods* trx, 
-                                  RocksDBIndex* ridx, 
-                                  std::unique_ptr<IndexIterator> it,
-                                  WriteBatchType& batch, 
-                                  RocksDBCollection* rcol) {
-  auto state = RocksDBTransactionState::toState(trx);
-  
+static arangodb::Result fillIndex(
+    transaction::Methods& trx,
+    RocksDBIndex* ridx,
+    std::unique_ptr<IndexIterator> it,
+    WriteBatchType& batch,
+    RocksDBCollection* rcol
+) {
+  auto state = RocksDBTransactionState::toState(&trx);
+
   // fillindex can be non transactional, we just need to clean up
   rocksdb::DB* db = rocksutils::globalRocksDB()->GetRootDB();
   TRI_ASSERT(db != nullptr);
@@ -1258,6 +1280,7 @@ static arangodb::Result fillIndex(transaction::Methods* trx,
     if (res.ok()) {
       res = ridx->insertInternal(trx, &batched, documentId, slice,
                                  Index::OperationMode::normal);
+
       if (res.ok()) {
         numDocsWritten++;
       }
@@ -1306,13 +1329,15 @@ static arangodb::Result fillIndex(transaction::Methods* trx,
 /// non-transactional: fill index with existing documents
 /// from this collection
 arangodb::Result RocksDBCollection::fillIndexes(
-    transaction::Methods* trx, std::shared_ptr<arangodb::Index> added) {
-  TRI_ASSERT(trx->state()->collection(
+    transaction::Methods& trx,
+    std::shared_ptr<arangodb::Index> added
+) {
+  TRI_ASSERT(trx.state()->collection(
     _logicalCollection.id(), AccessMode::Type::EXCLUSIVE
   ));
-  
+
   std::unique_ptr<IndexIterator> it(new RocksDBAllIndexIterator(
-    &_logicalCollection, trx, primaryIndex()
+    &_logicalCollection, &trx, primaryIndex()
   ));
 
   RocksDBIndex* ridx = static_cast<RocksDBIndex*>(added.get());
@@ -1360,13 +1385,16 @@ Result RocksDBCollection::insertDocument(
   READ_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index> const& idx : _indexes) {
     RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
-    Result tmpres = rIdx->insertInternal(trx, mthds, documentId, doc,
-                                         options.indexOperationMode);
+    auto tmpres = rIdx->insertInternal(
+      *trx, mthds, documentId, doc, options.indexOperationMode
+    );
+
     if (tmpres.fail()) {
       if (tmpres.is(TRI_ERROR_OUT_OF_MEMORY)) {
         // in case of OOM return immediately
         return tmpres;
       }
+
       if (tmpres.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) || res.ok()) {
         // "prefer" unique constraint violated over other errors
         res.reset(tmpres);
@@ -1409,12 +1437,15 @@ Result RocksDBCollection::removeDocument(
   Result resInner;
   READ_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index> const& idx : _indexes) {
-    Result tmpres = idx->remove(trx, documentId, doc, options.indexOperationMode);
+    auto tmpres =
+      idx->remove(*trx, documentId, doc, options.indexOperationMode);
+
     if (tmpres.fail()) {
       if (tmpres.is(TRI_ERROR_OUT_OF_MEMORY)) {
         // in case of OOM return immediately
         return tmpres;
       }
+
       // for other errors, set result
       res.reset(tmpres);
     }
@@ -1464,13 +1495,22 @@ Result RocksDBCollection::updateDocument(
   READ_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index> const& idx : _indexes) {
     RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
-    Result tmpres = rIdx->updateInternal(trx, mthd, oldDocumentId, oldDoc, newDocumentId,
-                                         newDoc, options.indexOperationMode);
+    auto tmpres = rIdx->updateInternal(
+      *trx,
+       mthd,
+       oldDocumentId,
+       oldDoc,
+       newDocumentId,
+       newDoc,
+       options.indexOperationMode
+    );
+
     if (tmpres.fail()) {
       if (tmpres.is(TRI_ERROR_OUT_OF_MEMORY)) {
         // in case of OOM return immediately
         return tmpres;
       }
+
       res.reset(tmpres);
     }
   }

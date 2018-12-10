@@ -328,9 +328,12 @@ bool MMFilesGeoIndex::matchesDefinition(VPackSlice const& info) const {
   return true;
 }
 
-Result MMFilesGeoIndex::insert(transaction::Methods*,
-                               LocalDocumentId const& documentId,
-                               VPackSlice const& doc, OperationMode mode) {
+Result MMFilesGeoIndex::insert(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+) {
   // covering and centroid of coordinate / polygon / ...
   size_t reserve = _variant == Variant::GEOJSON ? 8 : 1;
   std::vector<S2CellId> cells;
@@ -357,9 +360,12 @@ Result MMFilesGeoIndex::insert(transaction::Methods*,
   return res;
 }
 
-Result MMFilesGeoIndex::remove(transaction::Methods*,
-                               LocalDocumentId const& documentId,
-                               VPackSlice const& doc, OperationMode mode) {
+Result MMFilesGeoIndex::remove(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+) {
   // covering and centroid of coordinate / polygon / ...
   size_t reserve = _variant == Variant::GEOJSON ? 8 : 1;
   std::vector<S2CellId> cells(reserve);

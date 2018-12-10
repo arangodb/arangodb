@@ -907,11 +907,14 @@ Result LogicalCollection::read(transaction::Methods* trx, arangodb::velocypack::
 /// the read-cache
 ////////////////////////////////////////////////////////////////////////////////
 
-Result LogicalCollection::truncate(transaction::Methods* trx,
-                                   OperationOptions& options) {
+Result LogicalCollection::truncate(
+    transaction::Methods& trx,
+    OperationOptions& options
+) {
   TRI_IF_FAILURE("LogicalCollection::truncate") {
     return Result(TRI_ERROR_DEBUG);
   }
+
   return getPhysical()->truncate(trx, options);
 }
 
@@ -983,11 +986,16 @@ Result LogicalCollection::replace(
 
 /// @brief removes a document or edge
 Result LogicalCollection::remove(
-    transaction::Methods* trx, VPackSlice const slice,
-    OperationOptions& options, TRI_voc_tick_t& resultMarkerTick, bool lock,
-    TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
+    transaction::Methods& trx,
+    velocypack::Slice const slice,
+    OperationOptions& options,
+    TRI_voc_tick_t& resultMarkerTick,
+    bool lock,
+    TRI_voc_rid_t& prevRev,
+    ManagedDocumentResult& previous,
     KeyLockInfo* keyLockInfo,
-    std::function<Result(void)> callbackDuringLock) {
+    std::function<Result(void)> callbackDuringLock
+) {
   TRI_IF_FAILURE("LogicalCollection::remove") {
     return Result(TRI_ERROR_DEBUG);
   }

@@ -202,7 +202,7 @@ void RocksDBIndex::destroyCache() {
   _cachePresent = false;
 }
 
-int RocksDBIndex::drop() {
+Result RocksDBIndex::drop() {
   auto* coll = toRocksDBCollection(_collection);
   // edge index needs to be dropped with prefixSameAsStart = false
   // otherwise full index scan will not work
@@ -235,7 +235,7 @@ int RocksDBIndex::drop() {
   }
 #endif
 
-  return r.errorNumber();
+  return r;
 }
 
 void RocksDBIndex::afterTruncate(TRI_voc_tick_t) {
@@ -247,12 +247,15 @@ void RocksDBIndex::afterTruncate(TRI_voc_tick_t) {
   }
 }
 
-Result RocksDBIndex::updateInternal(transaction::Methods* trx, RocksDBMethods* mthd,
-                                    LocalDocumentId const& oldDocumentId,
-                                    arangodb::velocypack::Slice const& oldDoc,
-                                    LocalDocumentId const& newDocumentId,
-                                    arangodb::velocypack::Slice const& newDoc,
-                                    OperationMode mode) {
+Result RocksDBIndex::updateInternal(
+    transaction::Methods& trx,
+    RocksDBMethods* mthd,
+    LocalDocumentId const& oldDocumentId,
+    velocypack::Slice const& oldDoc,
+    LocalDocumentId const& newDocumentId,
+    velocypack::Slice const& newDoc,
+    Index::OperationMode mode
+) {
   // It is illegal to call this method on the primary index
   // RocksDBPrimaryIndex must override this method accordingly
   TRI_ASSERT(type() != TRI_IDX_TYPE_PRIMARY_INDEX);
