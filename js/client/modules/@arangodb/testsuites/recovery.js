@@ -100,7 +100,7 @@ function runArangodRecovery (params) {
                     }
                    )
     );
-    if (options.rr) {
+    if (params.options.rr) {
       binary = 'rr';
       argv.unshift(pu.ARANGOD_BIN);
     }
