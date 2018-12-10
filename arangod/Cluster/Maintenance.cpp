@@ -468,10 +468,8 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
     if (pdbs.hasKey(dbname)) {                        // if in plan
       for (auto const& sh : VPackObjectIterator(db.value)) { // for each local shard
         std::string shName = sh.key.copyString();
-        if (shName.front() != '_') { // exclude local system shards/collections
-          handleLocalShard(dbname, shName, sh.value, shardMap.slice(), commonShrds,
-                           indis, serverId, actions);
-        }
+        handleLocalShard(dbname, shName, sh.value, shardMap.slice(), commonShrds,
+                         indis, serverId, actions);
       }
     }
   }
@@ -832,9 +830,6 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
     for (auto const& shard : VPackObjectIterator(database.value)) {
 
       auto const shName = shard.key.copyString();
-      if (shName.at(0) == '_') { // local system collection
-        continue;
-      }
       auto const shSlice = shard.value;
       auto const colName = shSlice.get(StaticStrings::DataSourcePlanId).copyString();
 
