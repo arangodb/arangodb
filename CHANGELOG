@@ -1,6 +1,9 @@
 v3.4.1 (XXXX-XX-XX)
 -------------------
 
+* fixed TypeError being thrown instead of validation errors when Foxx manifest
+  validation fails
+
 * make AQL REMOVE operations use less memory with the RocksDB storage engine
 
   the previous implementation of batch removals read everything to remove into
