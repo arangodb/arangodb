@@ -60,16 +60,19 @@ void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   // add --config as an alias for --configuration. both point to the same
   // variable!
-  options->addHiddenOption("--config", "the configuration file or 'none'",
-                           new StringParameter(&_file));
+  options->addOption("--config", "the configuration file or 'none'",
+                     new StringParameter(&_file),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption("--define,-D",
-                           "define key=value for a @key@ entry in config file",
-                           new VectorParameter<StringParameter>(&_defines));
+  options->addOption("--define,-D",
+                     "define key=value for a @key@ entry in config file",
+                     new VectorParameter<StringParameter>(&_defines),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption("--check-configuration",
-                           "check the configuration and exit",
-                           new BooleanParameter(&_checkConfiguration));
+  options->addOption("--check-configuration",
+                     "check the configuration and exit",
+                     new BooleanParameter(&_checkConfiguration),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Command));
 }
 
 void ConfigFeature::loadOptions(std::shared_ptr<ProgramOptions> options,

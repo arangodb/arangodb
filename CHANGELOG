@@ -1,9 +1,48 @@
-
 v3.4.1 (XXXX-XX-XX)
-------------------------
+-------------------
 
 * fixed TypeError being thrown instead of validation errors when Foxx manifest
   validation fails
+
+* make AQL REMOVE operations use less memory with the RocksDB storage engine
+
+  the previous implementation of batch removals read everything to remove into
+  memory first before carrying out the first remove operation. The new version
+  will only read in about 1000 documents each time and then remove these. Queries
+  such as
+
+      FOR doc IN collection FILTER ... REMOVE doc IN collection
+
+  will benefit from this change in terms of memory usage.
+
+* make `--help-all` now also show all hidden program options
+
+  Previously hidden program options were only returned when invoking arangod or
+  a client tool with the cryptic `--help-.` option. Now `--help-all` simply 
+  retuns them as well.
+
+  The program options JSON description returned by `--dump-options` was also 
+  improved as follows:
+
+  - the new boolean attribute "dynamic" indicates whether the option has a dynamic
+    default value, i.e. a value that depends on the target host capabilities or
+    configuration
+
+  - the new boolean attribute "requiresValue" indicates whether a boolean option
+    requires a value of "true" or "false" when specified. If "requiresValue" is
+    false, then the option can be specified without a boolean value following it,
+    and the option will still be set to true, e.g. `--server.authentication` is
+    identical to `--server.authentication true`.
+
+  - the new "category" attribute will contain a value of "command" for command-like
+    options, such as `--version`, `--dump-options`, `--dump-dependencies` etc.,
+    and "option" for all others.
+
+
+v3.4.0 (2018-12-06)
+-------------------
+
+* Add license key checking to enterprise version in Docker containers.
 
 
 v3.4.0-rc.5 (2018-11-29)

@@ -14,6 +14,20 @@ In this guide, we will explain what the ArangoDB Kubernetes Operator is,
 how to install it and how use it to deploy your first ArangoDB database
 in a Kubernetes cluster.
 
+First, you obviously need a Kubernetes cluster and the right credentials
+to access it. If you already have this, you can immediately skip to the
+next section. Since different cloud providers differ slightly in their
+Kubernetes offering, we have put together detailed tutorials for those
+platforms we officially support, follow the link for detailed setup
+instructions:
+
+ - [Amazon Elastic Kubernetes Service (EKS)](EKS.md)
+ - [Google Kubernetes Engine (GKE)](GKE.md)
+ - [Microsoft Azure Kubernetes Service (AKS)](AKS.md)
+
+Note that in particular the details of Role Based Access Control (RBAC)
+matter.
+
 ## What is `kube-arangodb`
 
 `kube-arangodb` is a set of two operators that you deploy in your Kubernetes

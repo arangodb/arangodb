@@ -101,8 +101,9 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "agency endpoint to connect to",
                      new VectorParameter<StringParameter>(&_agencyEndpoints));
 
-  options->addHiddenOption("--cluster.agency-prefix", "agency prefix",
-                           new StringParameter(&_agencyPrefix));
+  options->addOption("--cluster.agency-prefix", "agency prefix",
+                     new StringParameter(&_agencyPrefix),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
   options->addObsoleteOption("--cluster.my-local-info", "this server's local info", false);
   options->addObsoleteOption("--cluster.my-id", "this server's id", false);
@@ -122,13 +123,15 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "replication factor for system collections",
                      new UInt32Parameter(&_systemReplicationFactor));
 
-  options->addHiddenOption("--cluster.create-waits-for-sync-replication",
-                           "active coordinator will wait for all replicas to create collection",
-                           new BooleanParameter(&_createWaitsForSyncReplication));
+  options->addOption("--cluster.create-waits-for-sync-replication",
+                     "active coordinator will wait for all replicas to create collection",
+                     new BooleanParameter(&_createWaitsForSyncReplication),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption("--cluster.index-create-timeout",
-                           "amount of time (in seconds) the coordinator will wait for an index to be created before giving up",
-                           new DoubleParameter(&_indexCreationTimeout));
+  options->addOption("--cluster.index-create-timeout",
+                     "amount of time (in seconds) the coordinator will wait for an index to be created before giving up",
+                     new DoubleParameter(&_indexCreationTimeout),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
 void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
