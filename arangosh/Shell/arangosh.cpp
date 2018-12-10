@@ -25,6 +25,7 @@
 #include "Basics/directories.h"
 
 #include "ApplicationFeatures/BasicPhase.h"
+#include "ApplicationFeatures/CommunicationPhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/GreetingsPhase.h"
 #include "ApplicationFeatures/LanguageFeature.h"
@@ -62,6 +63,7 @@ int main(int argc, char* argv[]) {
 
     try {
       server.addFeature(new application_features::BasicFeaturePhase(server, true));
+      server.addFeature(new application_features::CommunicationFeaturePhase(server));
       server.addFeature(new application_features::GreetingsFeaturePhase(server, true));
       server.addFeature(new application_features::V8ShellFeaturePhase(server));
 

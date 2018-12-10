@@ -120,6 +120,8 @@ devel
 
 * use `-std=c++14` for ArangoDB compilation
 
+* Add license key checking to enterprise version in Docker containers.
+
 
 v3.4.0-rc.5 (XXXX-XX-XX)
 ------------------------
