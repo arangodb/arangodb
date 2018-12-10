@@ -168,7 +168,6 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   VPackBuilder local;
   Result glc = getLocalCollections(local);
-  LOG_TOPIC(ERR, Logger::AGENCY) << local.toJson(); 
   if (!glc.ok()) {
     // FIXMEMAINTENANCE: if this fails here, then result is empty, is this
     // intended? I also notice that there is another Result object "tmp"
