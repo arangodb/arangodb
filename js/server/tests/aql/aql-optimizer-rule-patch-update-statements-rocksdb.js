@@ -32,7 +32,6 @@ var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
 var db = require("@arangodb").db;
 var removeAlwaysOnClusterRules = helper.removeAlwaysOnClusterRules;
-var removeClusterNodes = helper.removeClusterNodes;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -73,8 +72,8 @@ function optimizerRuleTestSuite () {
 
     testRuleDisabled : function () {
       var queries = [ 
-        "FOR doc IN " + c.name() + " UPDATE doc WITH { test: 1 } IN " + c.name(),
-        "FOR doc IN " + c.name() + " UPDATE doc WITH { test: 1 } IN " + c.name() + " RETURN doc"
+        "FOR doc IN " + c.name() + " REMOVE doc IN " + c.name(),
+        "FOR doc IN " + c.name() + " REMOVE doc IN " + c.name() + " RETURN doc",
       ];
 
       queries.forEach(function(query) {
@@ -89,9 +88,14 @@ function optimizerRuleTestSuite () {
 
     testRuleNoEffect : function () {
       var queries = [ 
-        "UPDATE 'test0' WITH { test: 1 } IN " + c.name(), // nothing returned
-        "FOR doc1 IN " + c.name() + " FOR doc2 IN " + c.name() + " UPDATE doc1 WITH { test: 1 } IN " + c.name() + " RETURN doc1", // must not kick in here
-        "FOR doc1 IN " + c.name() + " FOR doc2 IN " + c.name() + " UPDATE doc1 WITH { test: 1 } IN " + c.name() + " RETURN doc2" // must not kick in here
+        "REMOVE 'test0' IN " + c.name(), // nothing returned
+        "REMOVE { test: 1 } IN " + c.name(), // nothing returned
+        "FOR doc1 IN " + c.name() + " REMOVE doc1 IN " + c.name() + " RETURN doc1.value", // must not kick in here
+        "FOR doc1 IN " + c.name() + " REMOVE doc1 IN " + c.name() + " FILTER doc1.value == 2 RETURN doc1", // must not kick in here
+        "FOR i IN 1..10 FOR doc1 IN " + c.name() + " REMOVE doc1 IN " + c.name() + " RETURN doc1", // must not kick in here
+        "FOR doc1 IN " + c.name() + " FOR i IN 1..10 REMOVE doc1 IN " + c.name() + " RETURN doc1", // must not kick in here
+        "FOR doc1 IN " + c.name() + " FOR doc2 IN " + c.name() + " REMOVE doc1 IN " + c.name() + " RETURN doc1", // must not kick in here
+        "FOR doc1 IN " + c.name() + " FOR doc2 IN " + c.name() + " REMOVE doc1 IN " + c.name() + " RETURN doc2", // must not kick in here
       ];
 
       queries.forEach(function(query) {
@@ -105,10 +109,13 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRuleHasEffect : function () {
+      c.ensureIndex({ type: "skiplist", fields: ["x"] });
+
       var queries = [ 
-        "FOR doc IN " + c.name() + " UPDATE doc WITH { test: 1 } IN " + c.name(), // nothing returned
-        "FOR doc IN " + c.name() + " UPDATE doc WITH { test: 1 } IN " + c.name() + " RETURN 1", // different values returned
-        "FOR doc IN " + c.name() + " FILTER doc.value > 100 UPDATE doc WITH { test: 1 } IN " + c.name() // nothing returned
+        "FOR doc IN " + c.name() + " REMOVE doc IN " + c.name(), // nothing returned
+        "FOR doc IN " + c.name() + " REMOVE doc IN " + c.name() + " RETURN 1", // different values returned
+        "FOR doc IN " + c.name() + " FILTER doc.value > 100 REMOVE doc IN " + c.name(), // nothing returned
+        "FOR doc IN " + c.name() + " FILTER doc.x > 100 REMOVE doc IN " + c.name(), // using index
       ];
 
       queries.forEach(function(query) {
@@ -116,35 +123,13 @@ function optimizerRuleTestSuite () {
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
       });
     },
-    
-    /*
-    testResultsUpdateOld2 : function () {
-      var query = "FOR doc IN " + c.name() + " UPDATE doc WITH { value: -1, bang: true } IN " + c.name() + " RETURN OLD";
-      var result = AQL_EXPLAIN(query, {}, { optimizer: { rules: ["+remove-data-modification-out-variables"] } });
-      assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
-      assertNotEqual(-1, result.plan.rules.indexOf("remove-data-modification-out-variables"), query);
-
-      result = AQL_EXECUTE(query).json;
-      assertEqual(2000, result.length);
-
-      for (var i = 0; i < result.length; ++i) {
-        assertTrue(result[i].value >= 0);
-        assertUndefined(result[i].bang);
-      }
-      
-      c.toArray().forEach(function(doc) {
-        assertEqual(-1, doc.value);
-        assertTrue(doc.bang);
-      });
-    },
-    */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test results
 ////////////////////////////////////////////////////////////////////////////////
 
-    testResultsAfterModification : function () {
-      var query = "FOR doc IN " + c.name() + " UPDATE doc WITH { value: -1 } IN " + c.name() + " RETURN doc";
+    testResultsAfterRemove : function () {
+      var query = "FOR doc IN " + c.name() + " REMOVE doc IN " + c.name() + " RETURN doc";
       var result = AQL_EXPLAIN(query, { }); 
       assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
 
@@ -154,15 +139,17 @@ function optimizerRuleTestSuite () {
       for (var i = 0; i < result.length; ++i) {
         assertTrue(result[i].value >= 0);
       }
+
+      assertEqual(0, c.count());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test results
 ////////////////////////////////////////////////////////////////////////////////
 
-    testResultsOld : function () {
-      var query = "FOR doc IN " + c.name() + " UPDATE doc WITH { value: -1 } IN " + c.name() + " RETURN OLD";
-      var result = AQL_EXPLAIN(query, { }); 
+    testResultsAfterRemoveReturnOld : function () {
+      var query = "FOR doc IN " + c.name() + " REMOVE doc IN " + c.name() + " RETURN OLD";
+      var result = AQL_EXPLAIN(query, {}, { optimizer: { rules: ["-remove-data-modification-out-variables"] } });
       assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
 
       result = AQL_EXECUTE(query).json;
@@ -171,55 +158,12 @@ function optimizerRuleTestSuite () {
       for (var i = 0; i < result.length; ++i) {
         assertTrue(result[i].value >= 0);
       }
+     
+      assertEqual(0, c.count()); 
     },
     
-    /*
-    testResultsReplaceOld2 : function () {
-      var query = "FOR doc IN " + c.name() + " REPLACE doc WITH { xy: -1, bang: true } IN " + c.name() + " RETURN OLD";
-      var result = AQL_EXPLAIN(query, {}, { optimizer: { rules: ["+remove-data-modification-out-variables"] } });
-      assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
-      assertNotEqual(-1, result.plan.rules.indexOf("remove-data-modification-out-variables"), query);
-
-      result = AQL_EXECUTE(query).json;
-      assertEqual(2000, result.length);
-
-      for (var i = 0; i < result.length; ++i) {
-        assertTrue(result[i].value >= 0);
-        assertUndefined(result[i].xy);
-        assertUndefined(result[i].bang);
-      }
-      
-      c.toArray().forEach(function(doc) {
-        assertUndefined(doc.value);
-        assertEqual(-1, doc.xy);
-        assertTrue(doc.bang);
-      });
-    },
-    */
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test results
-////////////////////////////////////////////////////////////////////////////////
-
-    testResultsNew : function () {
-      var query = "FOR doc IN " + c.name() + " UPDATE doc WITH { value: -1 } IN " + c.name() + " RETURN NEW";
-      var result = AQL_EXPLAIN(query, { }); 
-      assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
-
-      result = AQL_EXECUTE(query).json;
-      assertEqual(2000, result.length);
-
-      for (var i = 0; i < result.length; ++i) {
-        assertEqual(-1, result[i].value);
-      }
-    }
-
   };
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(optimizerRuleTestSuite);
 

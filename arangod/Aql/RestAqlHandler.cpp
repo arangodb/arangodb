@@ -370,7 +370,7 @@ RestStatus RestAqlHandler::execute() {
       } else if (suffixes[0] == "instantiate") {
         createQueryFromVelocyPack();
       } else {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Unknown API";
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Unknown POST API: " << suffixes;
         generateError(rest::ResponseCode::NOT_FOUND,
                       TRI_ERROR_HTTP_NOT_FOUND);
       }
@@ -378,7 +378,7 @@ RestStatus RestAqlHandler::execute() {
     }
     case rest::RequestType::PUT: {
       if (suffixes.size() != 2) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unknown PUT API";
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unknown PUT API: " << suffixes;
         generateError(rest::ResponseCode::NOT_FOUND,
                       TRI_ERROR_HTTP_NOT_FOUND);
       } else {
@@ -388,7 +388,7 @@ RestStatus RestAqlHandler::execute() {
     }
     case rest::RequestType::GET: {
       if (suffixes.size() != 2) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Unknown GET API";
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Unknown GET API: " << suffixes;
         generateError(rest::ResponseCode::NOT_FOUND,
                       TRI_ERROR_HTTP_NOT_FOUND);
       } else {
