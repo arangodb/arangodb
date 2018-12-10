@@ -30,6 +30,9 @@
 
 namespace arangodb {
 
+/// Dummy index class that contains the logic to build indexes
+/// without an exclusive lock. It wraps the actual index implementation
+/// and adds some required synchronization logic on top
 class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
 
  public:
@@ -89,13 +92,6 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
                         LocalDocumentId const& documentId,
                         arangodb::velocypack::Slice const&,
                         OperationMode mode) override;
-//
-//  Result updateInternal(transaction::Methods* trx, RocksDBMethods*,
-//                        LocalDocumentId const& oldDocumentId,
-//                        arangodb::velocypack::Slice const& oldDoc,
-//                        LocalDocumentId const& newDocumentId,
-//                        velocypack::Slice const& newDoc,
-//                        OperationMode mode) override;
 
   /// remove index elements and put it in the specified write batch.
   Result removeInternal(transaction::Methods* trx, RocksDBMethods*,
@@ -116,17 +112,18 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
     _wrapped->recalculateEstimates();
   }
   
-  /// @brief fill the index
-  /// @param unlock will be called when the index lock can be released
-  Result fillIndex(std::function<void()> const& unlock);
+  /// @brief fill index, will exclusively lock the collection
+  Result fillIndexFast();
   
-private:
-  
+  /// @brief fill the index, assume already locked exclusively
+  /// @param unlock called when collection lock can be released
   Result fillIndexBackground(std::function<void()> const& unlock);
   
  private:
   std::shared_ptr<arangodb::RocksDBIndex> _wrapped;
+  
   std::atomic<bool> _hasError;
+  std::mutex _errorMutex;
   Result _errorResult;
   
   std::mutex _removedDocsMutex;

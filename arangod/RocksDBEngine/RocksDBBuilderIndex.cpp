@@ -71,29 +71,18 @@ Result RocksDBBuilderIndex::insertInternal(transaction::Methods* trx, RocksDBMet
                                            arangodb::velocypack::Slice const& slice,
                                            OperationMode mode) {
   Result r = _wrapped->insertInternal(trx, mthd, documentId, slice, mode);
-  if (!r.ok() && !_hasError.load(std::memory_order_acquire)) {
-    _errorResult = r;
-    _hasError.store(true, std::memory_order_release);
+  if (r.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) ||
+      r.is(TRI_ERROR_LOCK_TIMEOUT) ||
+      r.is(TRI_ERROR_DEADLOCK) ||
+      r.is(TRI_ERROR_ARANGO_CONFLICT)) {
+    bool expected = false;
+    if (!r.ok() && !_hasError.compare_exchange_strong(expected, true, std::memory_order_release)) {
+      std::lock_guard<std::mutex> guard(_errorMutex);
+      _errorResult = r;
+    }
   }
   return Result();
 }
-
-//Result RocksDBBuilderIndex::updateInternal(transaction::Methods* trx, RocksDBMethods* mthd,
-//                                           LocalDocumentId const& oldDocumentId,
-//                                           arangodb::velocypack::Slice const& oldDoc,
-//                                           LocalDocumentId const& newDocumentId,
-//                                           arangodb::velocypack::Slice const& newDoc,
-//                                           OperationMode mode) {
-//  // It is illegal to call this method on the primary index
-//  // RocksDBPrimaryIndex must override this method accordingly
-//  TRI_ASSERT(type() != TRI_IDX_TYPE_PRIMARY_INDEX);
-//
-//  Result res = removeInternal(trx, mthd, oldDocumentId, oldDoc, mode);
-//  if (!res.ok()) {
-//    return res;
-//  }
-//  return insertInternal(trx, mthd, newDocumentId, newDoc, mode);
-//}
 
 /// remove index elements and put it in the specified write batch.
 Result RocksDBBuilderIndex::removeInternal(transaction::Methods* trx, RocksDBMethods* mthd,
@@ -112,9 +101,15 @@ Result RocksDBBuilderIndex::removeInternal(transaction::Methods* trx, RocksDBMet
   }
   
   Result r = _wrapped->removeInternal(trx, mthd, documentId, slice, mode);
-  if (!r.ok() && !_hasError.load(std::memory_order_acquire)) {
-    _errorResult = r;
-    _hasError.store(true, std::memory_order_release);
+  if (r.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) ||
+      r.is(TRI_ERROR_LOCK_TIMEOUT) ||
+      r.is(TRI_ERROR_DEADLOCK) ||
+      r.is(TRI_ERROR_ARANGO_CONFLICT)) {
+    bool expected = false;
+    if (!r.ok() && !_hasError.compare_exchange_strong(expected, true, std::memory_order_release)) {
+      std::lock_guard<std::mutex> guard(_errorMutex);
+      _errorResult = r;
+    }
   }
   return Result();
 }
@@ -127,6 +122,12 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(std::function<void()> 
   //  2. Track deleted document IDs so we can avoid indexing them
   //  3. Avoid conflicts on unique index keys by using rocksdb::Transaction snapshot conflict checking
   //  4. Supress unique constraint violations / conflicts or client drivers
+  
+  auto lockedDocsGuard = scopeGuard([&] { // clear all the processed documents
+    std::lock_guard<std::mutex> guard(_lockedDocsMutex);
+    _lockedDocs.clear();
+    _lockedDocsCond.notify_all();
+  });
   
   // fillindex can be non transactional, we just need to clean up
   RocksDBEngine* engine = rocksutils::globalRocksEngine();
@@ -177,7 +178,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(std::function<void()> 
   } else {
     rtrx->DisableIndexing(); // we never check for existing index keys
   }
-  RocksDBSubTrxMethods batched(state, rtrx.get());
+  RocksDBSideTrxMethods batched(state, rtrx.get());
   
   RocksDBIndex* internal = _wrapped.get();
   TRI_ASSERT(internal != nullptr);
@@ -186,6 +187,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(std::function<void()> 
   while (it->Valid() && it->key().compare(upper) < 0) {
     
     if (_hasError.load(std::memory_order_acquire)) {
+      std::lock_guard<std::mutex> guard(_errorMutex);
       res = _errorResult; // a Writer got an error
       break;
     }
@@ -197,7 +199,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(std::function<void()> 
         continue;
       }
       std::lock_guard<std::mutex> guard2(_lockedDocsMutex);
-      _lockedDocs.insert(docId.id());// must be done under _removedDocsMutex
+      _lockedDocs.insert(docId.id());
     }
     
     res = internal->insertInternal(&trx, &batched, docId,
@@ -215,7 +217,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(std::function<void()> 
         break;
       }
       { // clear all the processed documents
-        std::lock_guard<std::mutex> guard2(_lockedDocsMutex);
+        std::lock_guard<std::mutex> guard(_lockedDocsMutex);
         _lockedDocs.clear();
         _lockedDocsCond.notify_all();
       }
@@ -239,11 +241,6 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(std::function<void()> 
   if (res.ok()) {
     res = trx.commit(); // required to commit selectivity estimates
   }
-  
-  // clear all the processed documents
-  std::lock_guard<std::mutex> guard2(_lockedDocsMutex);
-  _lockedDocs.clear();
-  _lockedDocsCond.notify_all();
   
   return res;
 }
@@ -331,15 +328,12 @@ static arangodb::Result fillIndexFast(transaction::Methods& trx,
 
 /// non-transactional: fill index with existing documents
 /// from this collection
-arangodb::Result RocksDBBuilderIndex::fillIndex(std::function<void()> const& unlock) {
-//  TRI_ASSERT(trx.state()->collection(_collection.id(), AccessMode::Type::WRITE));
+arangodb::Result RocksDBBuilderIndex::fillIndexFast() {
   
-#if 0
   RocksDBCollection* coll = static_cast<RocksDBCollection*>(_collection.getPhysical());
-  unlock(); // we do not need the outer lock
   SingleCollectionTransaction trx(transaction::StandaloneContext::Create(_collection.vocbase()),
                                   _collection, AccessMode::Type::EXCLUSIVE);
-  res = trx.begin();
+  Result res = trx.begin();
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -355,6 +349,4 @@ arangodb::Result RocksDBBuilderIndex::fillIndex(std::function<void()> const& unl
     rocksdb::WriteBatch batch(32 * 1024 * 1024);
     return ::fillIndexFast<rocksdb::WriteBatch, RocksDBBatchedMethods>(trx, this, coll, batch);
   }
-#endif
-    return fillIndexBackground(unlock);
 }

@@ -368,14 +368,12 @@ std::shared_ptr<Index> ClusterCollection::createIndex(
   WRITE_LOCKER(guard, _exclusiveLock);
   std::shared_ptr<Index> idx;
 
-  {
-    WRITE_LOCKER(guard, _indexesLock);
-    idx = findIndex(info, _indexes);
-    if (idx) {
-      created = false;
-      // We already have this index.
-      return idx;
-    }
+  WRITE_LOCKER(guard2, _indexesLock);
+  idx = lookupIndex(info);
+  if (idx) {
+    created = false;
+    // We already have this index.
+    return idx;
   }
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;

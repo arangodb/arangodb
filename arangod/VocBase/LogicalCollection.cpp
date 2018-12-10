@@ -590,7 +590,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
   getIndexesVPack(result, Index::makeFlags(), [](arangodb::Index const* idx) {
     // we have to exclude the primary and the edge index here, because otherwise
     // at least the MMFiles engine will try to create it
-    // AND exclude arangosearch indexes
+    // AND exclude hidden indexes
     return (idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
             idx->type() != arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX &&
             !idx->isHidden());

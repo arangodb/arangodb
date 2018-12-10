@@ -249,10 +249,10 @@ class RocksDBBatchedWithIndexMethods final : public RocksDBMethods {
   rocksdb::WriteBatchWithIndex* _wb;
 };
   
-/// transaction wrapper, uses the current rocksdb transaction and non-tracking methods
-class RocksDBSubTrxMethods final : public RocksDBMethods {
+/// transaction wrapper, uses the provided rocksdb transaction
+class RocksDBSideTrxMethods final : public RocksDBMethods {
 public:
-  explicit RocksDBSubTrxMethods(RocksDBTransactionState* state,
+  explicit RocksDBSideTrxMethods(RocksDBTransactionState* state,
                                 rocksdb::Transaction* trx);
   
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,

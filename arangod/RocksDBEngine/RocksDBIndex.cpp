@@ -53,8 +53,10 @@ using namespace arangodb::rocksutils;
 
 uint64_t const arangodb::RocksDBIndex::ESTIMATOR_SIZE = 4096;
 
-inline static uint64_t ensureObjectId(uint64_t oid) {
-  return (oid != 0) ? oid : TRI_NewTickServer();
+namespace {
+  inline uint64_t ensureObjectId(uint64_t oid) {
+    return (oid != 0) ? oid : TRI_NewTickServer();
+  }
 }
 
 RocksDBIndex::RocksDBIndex(
@@ -68,7 +70,7 @@ RocksDBIndex::RocksDBIndex(
     bool useCache
 )
     : Index(id, collection, attributes, unique, sparse),
-      _objectId(ensureObjectId(objectId)),
+      _objectId(::ensureObjectId(objectId)),
       _cf(cf),
       _cache(nullptr),
       _cachePresent(false),
@@ -94,7 +96,7 @@ RocksDBIndex::RocksDBIndex(
     bool useCache
 )
     : Index(id, collection, info),
-      _objectId(ensureObjectId(basics::VelocyPackHelper::stringUInt64(info.get("objectId")))),
+      _objectId(::ensureObjectId(basics::VelocyPackHelper::stringUInt64(info.get("objectId")))),
       _cf(cf),
       _cache(nullptr),
       _cachePresent(false),

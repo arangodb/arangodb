@@ -2433,14 +2433,11 @@ int ClusterInfo::ensureIndexCoordinator(
 
   // check index id
   uint64_t iid = 0;
-
   VPackSlice const idSlice = slice.get(StaticStrings::IndexId);
-  if (idSlice.isString()) {
-    // use predefined index id
+  if (idSlice.isString()) { // use predefined index id
     iid = arangodb::basics::StringUtils::uint64(idSlice.copyString());
   }
-  if (iid == 0) {
-    // no id set, create a new one!
+  if (iid == 0) { // no id set, create a new one!
     iid = uniqid();
   }
   std::string const idString = arangodb::basics::StringUtils::itoa(iid);

@@ -312,8 +312,8 @@ void RocksDBCollection::prepareIndexes(
 }
 
 std::shared_ptr<Index> RocksDBCollection::createIndex(
-    arangodb::velocypack::Slice const& info, bool restore,
-    bool& created) {
+    arangodb::velocypack::Slice const& info,
+    bool restore, bool& created) {
   TRI_ASSERT(info.isObject());
   Result res;
   
@@ -345,7 +345,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
   }
 
   RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-
+  
   // Step 2. We are sure that we do not have an index of this type.
   // We also hold the lock. Create it
   const bool generateKey = !restore;
@@ -367,11 +367,10 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
   }
   
   auto buildIdx = std::make_shared<RocksDBBuilderIndex>(std::static_pointer_cast<RocksDBIndex>(idx));
-
+  
   // Step 3. add index to collection entry (for removal after a crash)
-  if (!engine->inRecovery()) {
-    // read collection info from database
-    RocksDBKey key;
+  if (!engine->inRecovery()) { // manually modify collection entry, other methods need lock
+    RocksDBKey key; // read collection info from database
     key.constructCollection(_logicalCollection.vocbase().id(), _logicalCollection.id());
     rocksdb::PinnableSlice value;
     rocksdb::Status s = engine->db()->Get(rocksdb::ReadOptions(),
@@ -399,13 +398,21 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
                                                 RocksDBLogValue::Empty());
     }
   }
+  
+  bool inBackground = basics::VelocyPackHelper::getBooleanValue(
+                        info, StaticStrings::IndexInBackground, false);
 
   // Step 4. fill index
   if (res.ok()) {
-    _indexes.emplace_back(buildIdx); // add index to indexes list
-    res = buildIdx->fillIndex([&] {
+    if (inBackground) { // allow concurrent inserts into index
+      _indexes.emplace_back(buildIdx);
+      res = buildIdx->fillIndexBackground([&] {
+        unlockGuard.fire();
+      });
+    } else {
       unlockGuard.fire();
-    });
+      res = buildIdx->fillIndexFast(); // will lock again internally
+    }
   }
 
   // Step 5. cleanup

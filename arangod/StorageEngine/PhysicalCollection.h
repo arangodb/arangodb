@@ -119,8 +119,7 @@ class PhysicalCollection {
   /// @brief create or restore an index
   /// @param restore utilize specified ID, assume index has to be created
   virtual std::shared_ptr<Index> createIndex(
-      arangodb::velocypack::Slice const& info, bool restore,
-      bool& created) = 0;
+      arangodb::velocypack::Slice const& info, bool restore, bool& created) = 0;
 
   virtual bool dropIndex(TRI_idx_iid_t iid) = 0;
 
