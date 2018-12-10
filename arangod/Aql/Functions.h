@@ -44,18 +44,13 @@ class ExpressionContext;
 
 typedef SmallVector<AqlValue> VPackFunctionParameters;
 
-typedef std::function<AqlValue(arangodb::aql::ExpressionContext*, transaction::Methods*,
-                                VPackFunctionParameters const&)>
-    FunctionImplementation;
+typedef AqlValue(*FunctionImplementation)(arangodb::aql::ExpressionContext*, transaction::Methods*,
+                                          VPackFunctionParameters const&);
 
 struct Functions {
 
  public:
    static void init();
-
-   /// @brief extract a function parameter from the arguments
-   static AqlValue ExtractFunctionParameterValue(
-       VPackFunctionParameters const& parameters, size_t position);
 
    /// @brief helper function. not callable as a "normal" AQL function
    static void Stringify(transaction::Methods* trx,
@@ -323,6 +318,8 @@ struct Functions {
     static AqlValue GeoMultiPoint(arangodb::aql::ExpressionContext*, transaction::Methods*,
                                   VPackFunctionParameters const&);
     static AqlValue GeoPolygon(arangodb::aql::ExpressionContext*, transaction::Methods*,
+                               VPackFunctionParameters const&);
+    static AqlValue GeoMultiPolygon(arangodb::aql::ExpressionContext*, transaction::Methods*,
                                VPackFunctionParameters const&);
     static AqlValue GeoLinestring(arangodb::aql::ExpressionContext*, transaction::Methods*,
                                   VPackFunctionParameters const&);

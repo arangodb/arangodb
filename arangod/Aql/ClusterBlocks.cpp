@@ -113,11 +113,11 @@ bool OurLessThan::operator()(
     int cmp;
 
     if (attributePath.empty()) {
-#ifdef USE_IRESEARCH
+#if 0 // #ifdef USE_IRESEARCH
       TRI_ASSERT(reg.comparator);
       cmp = (*reg.comparator)(reg.scorer.get(), _trx, lhs, rhs);
 #else
-      cmp = AqlValue::Compare(_trx, lhs, rhs, true);
+    cmp = AqlValue::Compare(_trx, lhs, rhs, true);
 #endif
     } else {
       // Take attributePath into consideration:
@@ -1090,8 +1090,13 @@ std::pair<ExecutionState, size_t> RemoteBlock::skipSome(size_t atMost) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
     }
     size_t skipped = 0;
-    if (slice.hasKey("skipped")) {
-      skipped = slice.get("skipped").getNumericValue<size_t>();
+    VPackSlice s = slice.get("skipped");
+    if (s.isNumber()) {
+      int64_t value = s.getNumericValue<int64_t>();
+      if (value < 0) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "skipped cannot be negative");
+      }
+      skipped = s.getNumericValue<size_t>();
     }
 
     // TODO Check if we can get better with HASMORE/DONE
@@ -1670,7 +1675,7 @@ bool SingleRemoteOperationBlock::getOne(arangodb::aql::AqlItemBlock* aqlres,
   opOptions.keepNull = !nodeOps.nullMeansRemove;
   opOptions.mergeObjects = nodeOps.mergeObjects;
   opOptions.returnNew = !!NEW;
-  opOptions.returnOld = !!OLD;
+  opOptions.returnOld = (!!OLD) || out;
   opOptions.waitForSync = nodeOps.waitForSync;
   opOptions.silent = false;
   opOptions.overwrite = nodeOps.overwrite;
@@ -1741,19 +1746,22 @@ bool SingleRemoteOperationBlock::getOne(arangodb::aql::AqlItemBlock* aqlres,
 
   // only copy 1st row of registers inherited from previous frame(s)
   TRI_ASSERT(result.ok());
-  VPackSlice outDocument = VPackSlice::noneSlice();
+  VPackSlice outDocument = VPackSlice::nullSlice();
   if (result.buffer) {
     outDocument = result.slice().resolveExternal();
   }
 
-  VPackSlice oldDocument = VPackSlice::noneSlice();
-  VPackSlice newDocument = VPackSlice::noneSlice();
+  VPackSlice oldDocument = VPackSlice::nullSlice();
+  VPackSlice newDocument = VPackSlice::nullSlice();
   if (outDocument.isObject()) {
-    if (outDocument.hasKey("old")){
-      oldDocument = outDocument.get("old");
-    }
-    if (outDocument.hasKey("new")){
+    if (NEW && outDocument.hasKey("new")) {
       newDocument = outDocument.get("new");
+    }
+    if (outDocument.hasKey("old")) {
+      outDocument = outDocument.get("old");
+      if (OLD) {
+        oldDocument = outDocument;
+      }
     }
   }
   
@@ -1761,29 +1769,17 @@ bool SingleRemoteOperationBlock::getOne(arangodb::aql::AqlItemBlock* aqlres,
 
   // place documents as in the out variable slots of the result
   if (out) {
-    if (!outDocument.isNone()) {
-      aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(outRegId), outDocument);
-    } else {
-      aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(outRegId), VPackSlice::nullSlice());
-    }
+    aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(outRegId), outDocument);
   }
 
   if (OLD) {
     TRI_ASSERT(opOptions.returnOld);
-    if (!oldDocument.isNone()) {
-      aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(oldRegId), oldDocument);
-    } else {
-      aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(oldRegId), VPackSlice::nullSlice());
-    }
+    aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(oldRegId), oldDocument);
   }
 
   if (NEW) {
     TRI_ASSERT(opOptions.returnNew);
-    if (!newDocument.isNone()) {
-      aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(newRegId), newDocument);
-    } else {
-      aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(newRegId), VPackSlice::nullSlice());
-    }
+    aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(newRegId), newDocument);
   }
 
   throwIfKilled();  // check if we were aborted

@@ -25,14 +25,18 @@
 #define ARANGODB_DUMP_DUMP_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+
 #include "Basics/Mutex.h"
 #include "Utils/ClientManager.h"
 #include "Utils/ClientTaskQueue.h"
 
 namespace arangodb {
-
 namespace httpclient {
 class SimpleHttpResult;
+}
+
+namespace maskings {
+class Maskings;
 }
 
 class ManagedDirectory;
@@ -64,6 +68,7 @@ class DumpFeature : public application_features::ApplicationFeature {
   struct Options {
     std::vector<std::string> collections{};
     std::string outputPath{};
+    std::string maskingsFile{};
     uint64_t initialChunkSize{1024 * 1024 * 8};
     uint64_t maxChunkSize{1024 * 1024 * 64};
     uint32_t threadCount{2};
@@ -87,13 +92,15 @@ class DumpFeature : public application_features::ApplicationFeature {
 
   /// @brief Stores all necessary data to dump a single collection or shard
   struct JobData {
-    JobData(ManagedDirectory&, DumpFeature&, Options const&, Stats&,
-            VPackSlice const&, uint64_t const, std::string const&,
-            std::string const&, std::string const&);
+    JobData(ManagedDirectory&, DumpFeature&, Options const&,
+            maskings::Maskings * maskings, Stats&,VPackSlice const&,
+            uint64_t const, std::string const&, std::string const&,
+            std::string const&);
 
     ManagedDirectory& directory;
     DumpFeature& feature;
     Options const& options;
+    maskings::Maskings* maskings;
     Stats& stats;
 
     VPackSlice const collectionInfo;
@@ -112,6 +119,7 @@ class DumpFeature : public application_features::ApplicationFeature {
   Stats _stats;
   Mutex _workerErrorLock;
   std::queue<Result> _workerErrors;
+  std::unique_ptr<maskings::Maskings> _maskings;
 
   Result runDump(httpclient::SimpleHttpClient& client, std::string const& dbName);
   Result runClusterDump(httpclient::SimpleHttpClient& client, std::string const& dbName);

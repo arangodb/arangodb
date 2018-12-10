@@ -1141,25 +1141,10 @@ void Condition::storeAttributeAccess(
   auto variable = varAccess.first;
 
   if (variable != nullptr) {
-    auto it = variableUsage.find(variable);
-
-    if (it == variableUsage.end()) {
-      // nothing recorded yet for variable
-      it = variableUsage.emplace(variable, AttributeUsageType()).first;
-    }
-
     std::string attributeName;
     TRI_AttributeNamesToString(varAccess.second, attributeName, false);
 
-    auto it2 = (*it).second.find(attributeName);
-
-    if (it2 == (*it).second.end()) {
-      // nothing recorded yet for attribute name in this variable
-      it2 = (*it).second.emplace(attributeName, UsagePositionType()).first;
-    }
-
-    auto& dst = (*it2).second;
-
+    auto& dst = variableUsage[variable][attributeName];
     if (!dst.empty() && dst.back().first == position) {
       // already have this attribute for this variable. can happen in case a
       // condition refers to itself (e.g. a.x == a.x)
@@ -1504,7 +1489,7 @@ AstNode* Condition::transformNodePostorder(AstNode* node) {
 
     bool distributeOverChildren = false;
     bool mustCollapse = false;
-    size_t const n = node->numMembers();
+    size_t n = node->numMembers();
 
     for (size_t i = 0; i < n; ++i) {
       // process subnodes first
@@ -1520,6 +1505,8 @@ AstNode* Condition::transformNodePostorder(AstNode* node) {
 
     if (mustCollapse) {
       node = collapse(node);
+      // collapsing may change n
+      n = node->numMembers();
     }
 
     if (distributeOverChildren) {
@@ -1533,6 +1520,7 @@ AstNode* Condition::transformNodePostorder(AstNode* node) {
       //   AND        AND
       //  a   c      b   c
       //
+    
       auto newOperator = _ast->createNode(NODE_TYPE_OPERATOR_NARY_OR);
 
       std::vector<::PermutationState> clauses;
@@ -1621,8 +1609,6 @@ AstNode* Condition::transformNodePostorder(AstNode* node) {
     if (mustCollapse) {
       node = collapse(node);
     }
-
-    return node;
   }
 
   // we only need to handle nary and/or, the rest was handled in preorder

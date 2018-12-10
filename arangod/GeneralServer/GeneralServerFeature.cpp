@@ -125,10 +125,6 @@ GeneralServerFeature::GeneralServerFeature(
   if (_numIoThreads > _maxIoThreads) {
     _numIoThreads = _maxIoThreads;
   }
-
-  // TODO The following features are too high
-  // startsAfter("Agency"); Only need to know if it is enabled during start that is clear before
-  // startsAfter("FoxxQueues");
 }
 
 void GeneralServerFeature::collectOptions(
@@ -146,13 +142,15 @@ void GeneralServerFeature::collectOptions(
   options->addOption(
       "--server.io-threads",
       "Number of threads used to handle IO",
-      new UInt64Parameter(&_numIoThreads));
+      new UInt64Parameter(&_numIoThreads),
+      arangodb::options::makeFlags(arangodb::options::Flags::Dynamic));
 
   options->addSection("http", "HttpServer features");
 
-  options->addHiddenOption("--http.allow-method-override",
-                           "allow HTTP method override using special headers",
-                           new BooleanParameter(&_allowMethodOverride));
+  options->addOption("--http.allow-method-override",
+                     "allow HTTP method override using special headers",
+                     new BooleanParameter(&_allowMethodOverride),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--http.keep-alive-timeout",
                      "keep-alive timeout in seconds",
@@ -311,9 +309,8 @@ void GeneralServerFeature::defineHandlers() {
           AuthenticationFeature>("Authentication");
   TRI_ASSERT(authentication != nullptr);
 
-  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY.load();
-  auto traverserEngineRegistry =
-      TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY.load();
+  auto queryRegistry = QueryRegistryFeature::registry();
+  auto traverserEngineRegistry =  TraverserEngineRegistryFeature::registry();
   if (_combinedRegistries == nullptr) {
     _combinedRegistries = std::make_unique<std::pair<aql::QueryRegistry*, traverser::TraverserEngineRegistry*>> (queryRegistry, traverserEngineRegistry);
   } else {

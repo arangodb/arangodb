@@ -229,7 +229,7 @@ static inline v8::Handle<v8::String> v8Utf8StringFactory(v8::Isolate* isolate, v
 
 /// @brief "not yet implemented" handler for sharding
 #define TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(collection) \
-  if (collection != nullptr && !collection->isLocal()) {              \
+  if (collection && ServerState::instance()->isCoordinator()) {       \
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);                \
   }
 
@@ -411,6 +411,9 @@ struct TRI_v8_global_t {
 
   /// @brief Buffer template
   v8::Persistent<v8::FunctionTemplate> BufferTempl;
+  
+  /// @brief stream query cursor templace
+  v8::Persistent<v8::FunctionTemplate> StreamQueryCursorTempl;
 
   /// @brief "Buffer" constant
   v8::Persistent<v8::String> BufferConstant;

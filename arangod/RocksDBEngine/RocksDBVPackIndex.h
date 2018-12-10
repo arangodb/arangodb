@@ -160,7 +160,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
   double selectivityEstimate(arangodb::StringRef const& = arangodb::StringRef()) const override;
 
   RocksDBCuckooIndexEstimator<uint64_t>* estimator() override;
-  bool needToPersistEstimate() const override;
+  void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>) override;
+  void recalculateEstimates() override;
 
   void toVelocyPack(VPackBuilder&,
                     std::underlying_type<Index::Serialize>::type) const override;
@@ -204,16 +205,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
                                       IndexIteratorOptions const&) override;
-
-
-  rocksdb::SequenceNumber serializeEstimate(
-      std::string& output, rocksdb::SequenceNumber seq) const override;
-
-  bool deserializeEstimate(arangodb::RocksDBSettingsManager* mgr) override;
   
-  void recalculateEstimates() override;
-  
-  void afterTruncate() override;
+  void afterTruncate(TRI_voc_tick_t tick) override;
 
  protected:
   Result insertInternal(transaction::Methods*, RocksDBMethods*,

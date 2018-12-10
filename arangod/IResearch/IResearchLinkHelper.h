@@ -51,6 +51,15 @@ struct IResearchLinkHelper {
   static velocypack::Slice const& emptyIndexSlice();
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief compare two link definitions for equivalience if used to create a
+  ///        link instance
+  //////////////////////////////////////////////////////////////////////////////
+  static bool equal(
+    arangodb::velocypack::Slice const& lhs,
+    arangodb::velocypack::Slice const& rhs
+  );
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief validate and copy required fields from the 'definition' into
   ///        'normalized'
   //////////////////////////////////////////////////////////////////////////////
@@ -64,6 +73,18 @@ struct IResearchLinkHelper {
   /// @brief IResearch Link index type string value
   ////////////////////////////////////////////////////////////////////////////////
   static std::string const& type() noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief validate the link specifications for:
+  ///        * valid link meta
+  ///        * collection existence
+  ///        * collection permissions
+  ///        * valid link meta
+  //////////////////////////////////////////////////////////////////////////////
+  static arangodb::Result validateLinks(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& links
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief updates the collections in 'vocbase' to match the specified

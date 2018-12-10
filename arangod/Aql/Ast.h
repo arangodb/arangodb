@@ -471,8 +471,8 @@ class Ast {
   static bool IsOrOperatorType(AstNodeType);
 
   /// @brief create an AST node from vpack
-  AstNode* nodeFromVPack(arangodb::velocypack::Slice const&, bool);
-
+  AstNode* nodeFromVPack(arangodb::velocypack::Slice const&, bool copyStringValues);
+  
   /// @brief resolve an attribute access
   static AstNode const* resolveConstAttributeAccess(AstNode const*);
 
@@ -611,6 +611,9 @@ class Ast {
 
   /// @brief whether or not the query contains a traversal
   bool _containsTraversal;
+  
+  /// @brief whether or not the query contains bind parameters
+  bool _containsBindParameters;
 
   /// @brief a singleton no-op node instance
   static AstNode const NopNode;

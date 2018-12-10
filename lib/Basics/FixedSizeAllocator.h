@@ -61,7 +61,7 @@ class FixedSizeAllocator {
       if (this != &other) {
         TRI_ASSERT(_itemSize == other._itemSize);
 
-        delete [] _alloc;
+        delete[] _alloc;
         _nrAlloc = other._nrAlloc;
         _nrUsed = other._nrUsed;
         _alloc = other._alloc;
@@ -155,8 +155,7 @@ class FixedSizeAllocator {
   void allocateBlock() {
     size_t const size = 128 << (std::min)(size_t(8), _blocks.size());
     auto block = std::make_unique<MemoryBlock>(_itemSize, size);
-    _blocks.emplace_back(block.get());
-    block.release();
+    _blocks.emplace_back(std::move(block));
   }
 
   std::vector<std::unique_ptr<MemoryBlock>> _blocks;

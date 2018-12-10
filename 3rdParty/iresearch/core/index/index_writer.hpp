@@ -150,15 +150,15 @@ class IRESEARCH_API index_writer:
     ////////////////////////////////////////////////////////////////////////////
     /// @brief a wrapper around a segment_writer::document with commit/rollback
     ////////////////////////////////////////////////////////////////////////////
-    class IRESEARCH_API document: public segment_writer::document {
+    class IRESEARCH_API document : public segment_writer::document {
      public:
       document(
         flush_context_ptr&& ctx,
         const segment_context_ptr& segment,
         const segment_writer::update_context& update
       );
-      document(document&& other);
-      ~document();
+      document(document&& other) NOEXCEPT;
+      ~document() NOEXCEPT;
 
      private:
       flush_context& ctx_; // reference to flush_context for rollback operations
@@ -177,7 +177,7 @@ class IRESEARCH_API index_writer:
       other.segment_use_count_ = 0;
     }
 
-    ~documents_context();
+    ~documents_context() NOEXCEPT;
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief create a document to filled by the caller
@@ -473,7 +473,7 @@ class IRESEARCH_API index_writer:
   ////////////////////////////////////////////////////////////////////////////
   /// @brief destructor 
   ////////////////////////////////////////////////////////////////////////////
-  ~index_writer();
+  ~index_writer() NOEXCEPT;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @returns overall number of buffered documents in a writer 
@@ -520,9 +520,15 @@ class IRESEARCH_API index_writer:
   /// @param reader the index reader to import 
   /// @param desired format that will be used for segment creation,
   ///        nullptr == use index_writer's codec
+  /// @param progress callback triggered for consolidation steps, if the
+  ///        callback returns false then consolidation is aborted
   /// @returns true on success
   ////////////////////////////////////////////////////////////////////////////
-  bool import(const index_reader& reader, format::ptr codec = nullptr);
+  bool import(
+    const index_reader& reader,
+    format::ptr codec = nullptr,
+    const merge_writer::flush_progress_t& progress = {}
+  );
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief opens new index writer
@@ -542,12 +548,20 @@ class IRESEARCH_API index_writer:
   /// @brief begins the two-phase transaction
   /// @returns true if transaction has been sucessflully started
   ////////////////////////////////////////////////////////////////////////////
-  bool begin();
+  bool begin() {
+    SCOPED_LOCK(commit_lock_);
+
+    return start();
+  }
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief rollbacks the two-phase transaction 
   ////////////////////////////////////////////////////////////////////////////
-  void rollback();
+  void rollback() {
+    SCOPED_LOCK(commit_lock_);
+
+    abort();
+  }
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief make all buffered changes visible for readers
@@ -555,12 +569,19 @@ class IRESEARCH_API index_writer:
   /// Note that if begin() has been already called commit() is 
   /// relatively lightweight operation 
   ////////////////////////////////////////////////////////////////////////////
-  void commit();
+  void commit() {
+    SCOPED_LOCK(commit_lock_);
+
+    start();
+    finish();
+  }
 
   ////////////////////////////////////////////////////////////////////////////
-  /// @brief closes writer object 
+  /// @brief clears index writer's reader cache
   ////////////////////////////////////////////////////////////////////////////
-  void close();
+  void purge_cached_readers() NOEXCEPT {
+    cached_readers_.clear();
+  }
 
  private:
   typedef std::vector<index_file_refs::ref_t> file_refs_t;
@@ -733,7 +754,7 @@ class IRESEARCH_API index_writer:
     /// @brief flush current writer state into a materialized segment
     /// @return success
     ////////////////////////////////////////////////////////////////////////////
-    bool flush();
+    void flush();
 
     // returns context for "insert" operation
     segment_writer::update_context make_update_context();
@@ -756,7 +777,7 @@ class IRESEARCH_API index_writer:
     ////////////////////////////////////////////////////////////////////////////
     /// @brief reset segment state to the initial state
     ////////////////////////////////////////////////////////////////////////////
-    void reset();
+    void reset() NOEXCEPT;
   };
 
   struct segment_limits {
@@ -940,6 +961,7 @@ class IRESEARCH_API index_writer:
 
   bool start(); // starts transaction
   void finish(); // finishes transaction
+  void abort(); // aborts transaction
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   readers_cache cached_readers_; // readers by segment name

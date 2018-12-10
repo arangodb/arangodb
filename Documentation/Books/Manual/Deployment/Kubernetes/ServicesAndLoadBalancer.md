@@ -73,7 +73,7 @@ additions:
 ## Load balancer
 
 If you want full control of the `Services` needed to access the ArangoDB deployment
-from outside your Kubernetes cluster, set `spec.externalAccess.Type` of the `ArangoDeployment` to `None`
+from outside your Kubernetes cluster, set `spec.externalAccess.type` of the `ArangoDeployment` to `None`
 and create a `Service` as specified below.
 
 Create  a `Service` of type `LoadBalancer` or `NodePort`, depending on your

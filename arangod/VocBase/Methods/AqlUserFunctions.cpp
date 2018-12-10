@@ -49,9 +49,11 @@ using namespace arangodb;
 
 namespace {
 std::string const collectionName("_aqlfunctions");
-  // Must not start with `_`, may contain alphanumerical characters, should have at least one set of double colons followed by more alphanumerical characters.
+
+// Must not start with `_`, may contain alphanumerical characters, should have at least one set of double colons followed by more alphanumerical characters.
 std::regex const funcRegEx("[a-zA-Z0-9][a-zA-Z0-9_]*(::[a-zA-Z0-9_]+)+", std::regex::ECMAScript);
-  // we may filter less restrictive:
+
+// we may filter less restrictive:
 std::regex const funcFilterRegEx("[a-zA-Z0-9_]+(::[a-zA-Z0-9_]*)*", std::regex::ECMAScript);
 
 bool isValidFunctionName(std::string const& testName) {
@@ -66,6 +68,7 @@ void reloadAqlUserFunctions() {
   std::string const def("reloadAql");
   V8DealerFeature::DEALER->addGlobalContextMethod(def);
 }
+
 } // unnamed - namespace
 
 Result arangodb::unregisterUserFunction(
@@ -98,7 +101,7 @@ Result arangodb::unregisterUserFunction(
       nullptr,
       arangodb::aql::PART_MAIN
     );
-    auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY.load();
+    auto queryRegistry = QueryRegistryFeature::registry();
     aql::QueryResult queryResult = query.executeSync(queryRegistry);
 
     if (queryResult.code != TRI_ERROR_NO_ERROR) {
@@ -170,7 +173,7 @@ Result arangodb::unregisterUserFunctionsGroup(
       nullptr,
       arangodb::aql::PART_MAIN
     );
-    auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY.load();
+    auto queryRegistry = QueryRegistryFeature::registry();
     aql::QueryResult queryResult = query.executeSync(queryRegistry);
 
     if (queryResult.code != TRI_ERROR_NO_ERROR) {
@@ -312,7 +315,7 @@ Result arangodb::registerUserFunction(
     SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
 
     res = trx.begin();
-    if (!res.ok()) {
+    if (res.fail()) {
       return res;
     }
 
@@ -376,7 +379,7 @@ Result arangodb::toArrayUserFunctions(
     nullptr,
     arangodb::aql::PART_MAIN
   );
-  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY.load();
+  auto queryRegistry = QueryRegistryFeature::registry();
   aql::QueryResult queryResult = query.executeSync(queryRegistry);
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {

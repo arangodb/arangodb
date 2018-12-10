@@ -50,6 +50,7 @@ class RocksDBOptionFeature final
 
   int64_t _transactionLockTimeout;
   std::string _walDirectory;
+  uint64_t _totalWriteBufferSize;
   uint64_t _writeBufferSize;
   uint64_t _maxWriteBufferNumber;
   uint64_t _maxTotalWalSize;
@@ -71,6 +72,7 @@ class RocksDBOptionFeature final
   int64_t _level0CompactionTrigger;
   int64_t _level0SlowdownTrigger;
   int64_t _level0StopTrigger;
+  bool _enforceBlockCacheSizeLimit;
   bool _blockAlignDataBlocks;
   bool _enablePipelinedWrite;
   bool _optimizeFiltersForHits;

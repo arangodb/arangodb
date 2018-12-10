@@ -119,6 +119,12 @@ void AqlFunctionFeature::toVelocyPack(VPackBuilder& builder) {
   builder.close();
 }
 
+bool AqlFunctionFeature::exists(std::string const& name) const {
+  auto it = _functionNames.find(name);
+
+  return it != _functionNames.end();
+}
+
 Function const* AqlFunctionFeature::byName(std::string const& name) {
   auto it = _functionNames.find(name);
 
@@ -352,6 +358,7 @@ void AqlFunctionFeature::addGeometryConstructors() {
   add({"GEO_POINT", ".,.", flags, &Functions::GeoPoint});
   add({"GEO_MULTIPOINT", ".", flags, &Functions::GeoMultiPoint});
   add({"GEO_POLYGON", ".", flags, &Functions::GeoPolygon});
+  add({"GEO_MULTIPOLYGON", ".", flags, &Functions::GeoMultiPolygon});
   add({"GEO_LINESTRING", ".", flags, &Functions::GeoLinestring});
   add({"GEO_MULTILINESTRING", ".", flags, &Functions::GeoMultiLinestring});
 }

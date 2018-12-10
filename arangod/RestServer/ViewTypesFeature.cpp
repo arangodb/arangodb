@@ -29,8 +29,33 @@
 
 namespace {
 
+struct InvalidViewFactory: public arangodb::ViewFactory {
+  virtual arangodb::Result create(
+      arangodb::LogicalView::ptr&,
+      TRI_vocbase_t&,
+      arangodb::velocypack::Slice const& definition
+  ) const override {
+    return arangodb::Result(
+      TRI_ERROR_BAD_PARAMETER,
+      std::string("failure to create view without a factory for definition: ") + definition.toString()
+    );
+  }
+
+  virtual arangodb::Result instantiate(
+      arangodb::LogicalView::ptr&,
+    TRI_vocbase_t&,
+    arangodb::velocypack::Slice const& definition,
+    uint64_t
+  ) const override {
+    return arangodb::Result(
+      TRI_ERROR_BAD_PARAMETER,
+      std::string("failure to instantiate view without a factory for definition: ") + definition.toString()
+    );
+  }
+};
+
 std::string const FEATURE_NAME("ViewTypes");
-arangodb::ViewTypesFeature::ViewFactory const INVALID{};
+InvalidViewFactory const INVALID;
 
 } // namespace
 
@@ -43,17 +68,10 @@ ViewTypesFeature::ViewTypesFeature(
   startsAfter("BasicsPhase");
 }
 
-arangodb::Result ViewTypesFeature::emplace(
+Result ViewTypesFeature::emplace(
     LogicalDataSource::Type const& type,
     ViewFactory const& factory
 ) {
-  if (!factory) {
-    return arangodb::Result(
-      TRI_ERROR_BAD_PARAMETER,
-      std::string("view factory undefined during view factory registration for view type '") + type.name() + "'"
-    );
-  }
-
   auto* feature =
     arangodb::application_features::ApplicationServer::lookupFeature("Bootstrap");
   auto* bootstrapFeature = dynamic_cast<BootstrapFeature*>(feature);
@@ -66,7 +84,7 @@ arangodb::Result ViewTypesFeature::emplace(
     );
   }
 
-  if (!_factories.emplace(&type, factory).second) {
+  if (!_factories.emplace(&type, &factory).second) {
     return arangodb::Result(
       TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
       std::string("view factory previously registered during view factory registration for view type '") + type.name() + "'"
@@ -76,12 +94,13 @@ arangodb::Result ViewTypesFeature::emplace(
   return arangodb::Result();
 }
 
-ViewTypesFeature::ViewFactory const& ViewTypesFeature::factory(
+ViewFactory const& ViewTypesFeature::factory(
     LogicalDataSource::Type const& type
 ) const noexcept {
   auto itr = _factories.find(&type);
+  TRI_ASSERT(itr == _factories.end() || false == !(itr->second)); // ViewTypesFeature::emplace(...) inserts non-nullptr
 
-  return itr == _factories.end() ? INVALID : itr->second;
+  return itr == _factories.end() ? INVALID : *(itr->second);
 }
 
 /*static*/ std::string const& ViewTypesFeature::name() {

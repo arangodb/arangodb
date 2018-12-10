@@ -27,7 +27,7 @@
 #include "Aql/ExecutionNode.h"
 #include "types.h"
 
-#ifdef USE_IRESEARCH
+#if 0 // #ifdef USE_IRESEARCH
 #include "search/sort.hpp"
 #endif
 
@@ -37,7 +37,7 @@ namespace aql {
 /// @brief sort element for block, consisting of register, sort direction,
 /// and a possible attribute path to dig into the document
 struct SortRegister {
-#ifdef USE_IRESEARCH
+#if 0 // #ifdef USE_IRESEARCH
   typedef int(*CompareFunc)(
     irs::sort::prepared const* scorer,
     transaction::Methods* trx,
@@ -57,7 +57,7 @@ struct SortRegister {
     SortElement const& element
   ) noexcept;
 
-#ifdef USE_IRESEARCH
+#if 0 // #ifdef USE_IRESEARCH
   SortRegister(
       RegisterId reg,
       SortElement const& element,

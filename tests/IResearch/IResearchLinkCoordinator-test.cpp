@@ -30,6 +30,7 @@
 #include "utils/log.hpp"
 
 #include "ApplicationFeatures/BasicPhase.h"
+#include "ApplicationFeatures/CommunicationPhase.h"
 #include "ApplicationFeatures/ClusterPhase.h"
 #include "ApplicationFeatures/DatabasePhase.h"
 #include "ApplicationFeatures/GreetingsPhase.h"
@@ -46,7 +47,6 @@
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
-#include "Agency/AgencyFeature.h"
 #include "Agency/Store.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
@@ -113,13 +113,9 @@ struct IResearchLinkCoordinatorSetup {
 
     // register factories & normalizers
     auto& indexFactory = const_cast<arangodb::IndexFactory&>(engine.indexFactory());
-    indexFactory.emplaceFactory(
+    indexFactory.emplace(
       arangodb::iresearch::DATA_SOURCE_TYPE.name(),
-      arangodb::iresearch::IResearchLinkCoordinator::make
-    );
-    indexFactory.emplaceNormalizer(
-      arangodb::iresearch::DATA_SOURCE_TYPE.name(),
-      arangodb::iresearch::IResearchLinkHelper::normalize
+      arangodb::iresearch::IResearchLinkCoordinator::factory()
     );
 
     arangodb::tests::init();
@@ -139,6 +135,7 @@ struct IResearchLinkCoordinatorSetup {
     arangodb::application_features::ApplicationFeature* tmpFeature;
 
     buildFeatureEntry(new arangodb::application_features::BasicFeaturePhase(server, false), false);
+    buildFeatureEntry(new arangodb::application_features::CommunicationFeaturePhase(server), false);
     buildFeatureEntry(new arangodb::application_features::ClusterFeaturePhase(server), false);
     buildFeatureEntry(new arangodb::application_features::DatabaseFeaturePhase(server), false);
     buildFeatureEntry(new arangodb::application_features::GreetingsFeaturePhase(server, false), false);
@@ -277,7 +274,7 @@ SECTION("test_create_drop") {
     auto const collectionId = "1";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection\", \"replicationFactor\":1 }"
+      "{ \"name\": \"testCollection\", \"replicationFactor\":1, \"shards\":{} }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -293,18 +290,16 @@ SECTION("test_create_drop") {
   // no view specified
   {
     auto json = arangodb::velocypack::Parser::fromJson("{}");
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::make(
-      *logicalCollection.get(), json->slice(), 1, true
-    );
+    std::shared_ptr<arangodb::Index> link;
+    CHECK((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == arangodb::iresearch::IResearchLinkCoordinator::factory().instantiate(link, *logicalCollection.get(), json->slice(), 1, true).errorNumber()));
     CHECK(!link);
   }
 
   // no view can be found
   {
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"view\": 42 }");
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::make(
-      *logicalCollection.get(), json->slice(), 1, true
-    );
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"view\": \"42\" }");
+    std::shared_ptr<arangodb::Index> link;
+    CHECK((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == arangodb::iresearch::IResearchLinkCoordinator::factory().instantiate(link, *logicalCollection.get(), json->slice(), 1, true).errorNumber()));
     CHECK(!link);
   }
 
@@ -313,9 +308,10 @@ SECTION("test_create_drop") {
 
   // valid link creation
   {
-    auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"id\" : \"42\", \"type\": \"arangosearch\", \"view\": 42 }");
+    auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"id\" : \"42\", \"type\": \"arangosearch\", \"view\": \"42\" }");
     auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" }");
-    auto logicalView = vocbase->createView(viewJson->slice());
+    arangodb::LogicalView::ptr logicalView;
+    REQUIRE((arangodb::LogicalView::create(logicalView, *vocbase, viewJson->slice()).ok()));
     REQUIRE(logicalView);
     auto const viewId = std::to_string(logicalView->planId());
     CHECK("42" == viewId);
@@ -390,7 +386,7 @@ SECTION("test_create_drop") {
     CHECK(!arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *logicalView));
 
     // drop view
-    CHECK(vocbase->dropView(logicalView->planId(), false).ok());
+    CHECK(logicalView->drop().ok());
     CHECK(nullptr == ci->getView(vocbase->name(), viewId));
 
     // old index remains valid
@@ -419,9 +415,10 @@ SECTION("test_create_drop") {
 
   // ensure jSON is still valid after unload()
   {
-    auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"id\":\"42\", \"type\": \"arangosearch\", \"view\": 42 }");
+    auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"id\":\"42\", \"type\": \"arangosearch\", \"view\": \"42\" }");
     auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" }");
-    auto logicalView = vocbase->createView(viewJson->slice());
+    arangodb::LogicalView::ptr logicalView;
+    REQUIRE((arangodb::LogicalView::create(logicalView, *vocbase, viewJson->slice()).ok()));
     REQUIRE(logicalView);
     auto const viewId = std::to_string(logicalView->planId());
     CHECK("42" == viewId);

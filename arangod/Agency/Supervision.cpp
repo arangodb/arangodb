@@ -53,20 +53,20 @@ struct HealthRecord {
   std::string advertisedEndpoint;
   std::string lastAcked;
   std::string hostId;
+  std::string serverVersion;
+  std::string engine;
   size_t version;
 
   explicit HealthRecord() : version(0) {}
 
   HealthRecord(
-    std::string const& sn, std::string const& ep, std::string const& ho) :
-    shortName(sn), endpoint(ep), hostId(ho), version(0) {}
+    std::string const& sn, std::string const& ep, std::string const& ho,
+    std::string const& en, std::string const& sv, std::string const& ae) :
+    shortName(sn), endpoint(ep), advertisedEndpoint(ae), hostId(ho),
+    serverVersion(sv), engine(en), version(0) {}
 
-  HealthRecord(Node const& node) {
+  explicit HealthRecord(Node const& node) {
     *this = node;
-  }
-
-  HealthRecord(HealthRecord const& other) {
-    *this = other;
   }
 
   HealthRecord& operator=(Node const& node) {
@@ -88,12 +88,22 @@ struct HealthRecord {
         if (node.has("SyncTime")) {
           syncTime = node.hasAsString("SyncTime").first;
         }
-        if (node.has("LastAcked")) {
-          lastAcked = node.hasAsString("LastAcked").first;
+        if (node.has("LastAckedTime")) {
+          lastAcked = node.hasAsString("LastAckedTime").first;
         }
         if (node.has("AdvertisedEndpoint")) {
           version = 3;
           advertisedEndpoint = node.hasAsString("AdvertisedEndpoint").first;
+        } else {
+          advertisedEndpoint.clear();
+        }
+        if (node.has("Engine") && node.has("Version")) {
+          version = 4;
+          engine = node.hasAsString("Engine").first;
+          serverVersion = node.hasAsString("Version").first;
+        } else {
+          engine.clear();
+          serverVersion.clear();
         }
       } else if (node.has("LastHeartbeatStatus")) {
         version = 1;
@@ -109,36 +119,32 @@ struct HealthRecord {
     return *this;
   }
 
-  HealthRecord& operator=(HealthRecord const& other) {
-    shortName = other.shortName;
-    syncStatus = other.syncStatus;
-    status = other.status;
-    advertisedEndpoint = other.advertisedEndpoint;
-    endpoint = other.endpoint;
-    hostId = other.hostId;
-    version = other.version;
-    return *this;
-  }
-
   void toVelocyPack(VPackBuilder& obj) const {
     TRI_ASSERT(obj.isOpenObject());
     obj.add("ShortName", VPackValue(shortName));
     obj.add("Endpoint", VPackValue(endpoint));
-    obj.add("AdvertisedEndpoint", VPackValue(advertisedEndpoint));
     obj.add("Host", VPackValue(hostId));
     obj.add("SyncStatus", VPackValue(syncStatus));
     obj.add("Status", VPackValue(status));
-    if (syncTime.empty()) {
-      obj.add("Timestamp",
-              VPackValue(timepointToString(std::chrono::system_clock::now())));
-    } else {
-      obj.add("SyncTime", VPackValue(syncTime));
-      obj.add("LastAcked", VPackValue(lastAcked));
+    obj.add("Version", VPackValue(serverVersion));
+    obj.add("Engine", VPackValue(engine));
+    if (!advertisedEndpoint.empty()) {
+      obj.add("AdvertisedEndpoint", VPackValue(advertisedEndpoint));
     }
+    obj.add("Timestamp",
+            VPackValue(timepointToString(std::chrono::system_clock::now())));
+    obj.add("SyncTime", VPackValue(syncTime));
+    obj.add("LastAckedTime", VPackValue(lastAcked));
   }
 
   bool statusDiff(HealthRecord const& other) {
-    return (status != other.status || syncStatus != other.syncStatus);
+    return status != other.status ||
+      syncStatus != other.syncStatus ||
+      advertisedEndpoint != other.advertisedEndpoint ||
+      serverVersion != other.serverVersion ||
+      engine != other.engine ||
+      hostId != other.hostId ||
+      endpoint != other.endpoint;
   }
 
   friend std::ostream& operator<<(std::ostream& o, HealthRecord const& hr) {
@@ -443,29 +449,42 @@ std::vector<check_t> Supervision::check(std::string const& type) {
 
       shortName = tmp_shortName.first;
 
-      // "/arango/Current/<serverId>/endpoint"
+      // "/arango/Current/ServersRegistered/<server-id>/endpoint"
       std::string endpoint;
       std::string epPath = serverID + "/endpoint";
       if (serversRegistered.has(epPath)) {
         endpoint = serversRegistered.hasAsString(epPath).first;
       }
-      // "/arango/Current/<serverId>/host"
+      // "/arango/Current/ServersRegistered/<server-id>/host"
       std::string hostId;
       std::string hoPath = serverID + "/host";
       if (serversRegistered.has(hoPath)) {
         hostId = serversRegistered.hasAsString(hoPath).first;
       }
-
-      // "/arango/Current/<serverId>/externalEndpoint"
-      /*std::string externalEndpoint;
-      std::string extEndPath = serverID + "/externalEndpoint";
+      // "/arango/Current/ServersRegistered/<server-id>/serverVersion"
+      std::string serverVersion;
+      std::string svPath = serverID + "/versionString";
+      if (serversRegistered.has(svPath)) {
+        serverVersion = serversRegistered.hasAsString(svPath).first;
+      }
+      // "/arango/Current/ServersRegistered/<server-id>/engine"
+      std::string engine;
+      std::string enPath = serverID + "/engine";
+      if (serversRegistered.has(enPath)) {
+        engine = serversRegistered.hasAsString(enPath).first;
+      }
+      //"/arango/Current/<serverId>/externalEndpoint"
+      std::string externalEndpoint;
+      std::string extEndPath = serverID + "/advertisedEndpoint";
       if (serversRegistered.has(extEndPath)) {
         externalEndpoint = serversRegistered.hasAsString(extEndPath).first;
-      }*/
+      }
 
       // Health records from persistence, from transience and a new one
-      HealthRecord transist(shortName, endpoint, hostId);
-      HealthRecord persist(shortName, endpoint, hostId);
+      HealthRecord transist(
+        shortName, endpoint, hostId, engine, serverVersion, externalEndpoint);
+      HealthRecord persist(
+        shortName, endpoint, hostId, engine, serverVersion, externalEndpoint);
 
       // Get last health entries from transient and persistent key value stores
       if (_transient.has(healthPrefix + serverID)) {
@@ -491,6 +510,13 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       transist.lastAcked = timepointToString(lastAckedTime);
       transist.syncTime = syncTime;
       transist.syncStatus = syncStatus;
+
+      // update volatile values that may change
+      transist.advertisedEndpoint = externalEndpoint;
+      transist.serverVersion = serverVersion;
+      transist.engine = engine;
+      transist.hostId = hostId;
+      transist.endpoint = endpoint;
 
       // Calculate elapsed since lastAcked
       auto elapsed = std::chrono::duration<double>(
@@ -801,7 +827,10 @@ void Supervision::run() {
 // Guarded by caller
 bool Supervision::isShuttingDown() {
   _lock.assertLockedByCurrentThread();
-  return _snapshot.hasAsBool("Shutdown").first;
+  if (_snapshot.has("Shutdown")) {
+    return _snapshot.hasAsBool("Shutdown").first;
+  }
+  return false;
 }
 
 // Guarded by caller
@@ -993,6 +1022,7 @@ bool Supervision::handleJobs() {
   shrinkCluster();
   enforceReplication();
   cleanupLostCollections(_snapshot, _agent, std::to_string(_jobId++));
+  readyOrphanedIndexCreations();
   workJobs();
 
   return true;
@@ -1014,6 +1044,109 @@ void Supervision::workJobs() {
 
 }
 
+
+void Supervision::readyOrphanedIndexCreations() {
+  _lock.assertLockedByCurrentThread();
+
+  if (_snapshot.has(planColPrefix) && _snapshot.has(curColPrefix)) {
+    auto const& plannedDBs = _snapshot(planColPrefix).children();
+    auto const& currentDBs = _snapshot(curColPrefix);
+
+    for (auto const& db : plannedDBs) {
+      std::string const& dbname = db.first;
+      auto const& database = *(db.second);
+      auto const& plannedCols = database.children();
+      for (auto const& col : plannedCols) {
+        auto const& colname = col.first;
+        std::string const& colPath = dbname + "/" + colname + "/";
+        auto const& collection = *(col.second);
+        std::unordered_set<std::string> built;
+        Slice indexes;
+        if (collection.has("indexes")) {
+          indexes = collection("indexes").getArray();
+          if (indexes.length() > 0) {
+            for (auto const& planIndex : VPackArrayIterator(indexes)) {
+              if (planIndex.hasKey("isBuilding") && collection.has("shards")) {
+                auto const& planId = planIndex.get("id");
+                auto const& shards = collection("shards");
+                if (collection.has("numberOfShards") &&
+                    collection("numberOfShards").isUInt()) {
+                  auto const& nshards = collection("numberOfShards").getUInt();
+                  if (nshards == 0) {
+                    continue;
+                  }
+                  size_t nIndexes = 0;
+                  for (auto const& sh : shards.children()) {
+
+                    auto const& shname = sh.first;
+
+                    if (currentDBs.has(colPath + shname + "/indexes")) {
+                      auto const& curIndexes =
+                        currentDBs(colPath + shname + "/indexes").slice();
+                      for (auto const& curIndex : VPackArrayIterator(curIndexes)) {
+                        auto const& curId = curIndex.get("id");
+                        if (planId == curId) {
+                          ++nIndexes;
+                        }
+                      }
+                    }
+                  }
+                  if (nIndexes == nshards) {
+                    built.emplace(planId.copyString());
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        // We have some indexes, that have been built and are isBuilding still
+        if (!built.empty()) {
+
+          auto envelope = std::make_shared<Builder>();
+          { VPackArrayBuilder trxs(envelope.get());
+            { VPackArrayBuilder trx(envelope.get());
+              { VPackObjectBuilder operation(envelope.get());
+                envelope->add(VPackValue(_agencyPrefix + "/" + PLAN_VERSION));
+                { VPackObjectBuilder o(envelope.get());
+                  envelope->add("op", VPackValue("increment")); }
+                envelope->add(
+                  VPackValue(
+                    _agencyPrefix + planColPrefix + colPath + "indexes"));
+                VPackArrayBuilder value(envelope.get());
+                for (auto const& planIndex :
+                       VPackArrayIterator(indexes)) {
+                  if (built.find(
+                        planIndex.get("id").copyString()) != built.end()) {
+                    { VPackObjectBuilder props(envelope.get());
+                      for (auto const& prop : VPackObjectIterator(planIndex)) {
+                        auto const& key = prop.key.copyString();
+                        if (key != "isBuilding") {
+                          envelope->add(key, prop.value);
+                        }
+                      }}
+                  } else {
+                    envelope->add(planIndex);
+                  }
+                }
+              }
+              { VPackObjectBuilder precondition(envelope.get());
+                envelope->add(
+                  VPackValue(
+                    _agencyPrefix + planColPrefix + colPath + "indexes"));
+                envelope->add(indexes); }
+            }}
+
+          write_ret_t res = _agent->write(envelope);
+          if (!res.successful()) {
+            LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+              << "failed to report ready index to agency. Will retry.";
+          }
+        }
+      }
+    }
+  }
+}
 
 void Supervision::enforceReplication() {
   _lock.assertLockedByCurrentThread();

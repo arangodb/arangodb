@@ -34,10 +34,10 @@ NS_LOCAL
 
 MSVC_ONLY(__pragma(warning(push)))
 MSVC_ONLY(__pragma(warning(disable:4457))) // variable hides function param
-iresearch::index_file_refs::ref_t load_newest_index_meta(
-  iresearch::index_meta& meta,
-  const iresearch::directory& dir,
-  const iresearch::format* codec
+irs::index_file_refs::ref_t load_newest_index_meta(
+  irs::index_meta& meta,
+  const irs::directory& dir,
+  const irs::format* codec
 ) NOEXCEPT {
   // if a specific codec was specified
   if (codec) {
@@ -48,7 +48,7 @@ iresearch::index_file_refs::ref_t load_newest_index_meta(
         return nullptr;
       }
 
-      iresearch::index_file_refs::ref_t ref;
+      irs::index_file_refs::ref_t ref;
       std::string filename;
 
       // ensure have a valid ref to a filename
@@ -59,8 +59,8 @@ iresearch::index_file_refs::ref_t load_newest_index_meta(
           return nullptr;
         }
 
-        ref = iresearch::directory_utils::reference(
-          const_cast<iresearch::directory&>(dir), filename
+        ref = irs::directory_utils::reference(
+          const_cast<irs::directory&>(dir), filename
         );
       }
 
@@ -76,13 +76,13 @@ iresearch::index_file_refs::ref_t load_newest_index_meta(
     }
   }
 
-  std::unordered_set<iresearch::string_ref> codecs;
-  auto visitor = [&codecs](const iresearch::string_ref& name)->bool {
+  std::unordered_set<irs::string_ref> codecs;
+  auto visitor = [&codecs](const irs::string_ref& name)->bool {
     codecs.insert(name);
     return true;
   };
 
-  if (!iresearch::formats::visit(visitor)) {
+  if (!irs::formats::visit(visitor)) {
     return nullptr;
   }
 
@@ -92,11 +92,11 @@ iresearch::index_file_refs::ref_t load_newest_index_meta(
     irs::index_file_refs::ref_t ref;
   } newest;
 
-  newest.mtime = (iresearch::integer_traits<time_t>::min)();
+  newest.mtime = (irs::integer_traits<time_t>::min)();
 
   try {
     for (auto& name: codecs) {
-      auto codec = iresearch::formats::get(name);
+      auto codec = irs::formats::get(name);
 
       if (!codec) {
         continue; // try the next codec
@@ -108,7 +108,7 @@ iresearch::index_file_refs::ref_t load_newest_index_meta(
         continue; // try the next codec
       }
 
-      iresearch::index_file_refs::ref_t ref;
+      irs::index_file_refs::ref_t ref;
       std::string filename;
 
       // ensure have a valid ref to a filename
@@ -140,7 +140,7 @@ iresearch::index_file_refs::ref_t load_newest_index_meta(
 
     newest.reader->read(dir, meta, *(newest.ref));
 
-    return std::move(newest.ref);
+    return newest.ref;
   } catch (...) {
     IR_LOG_EXCEPTION();
   }
@@ -182,10 +182,10 @@ class directory_reader_impl :
   // open a new directory reader
   // if codec == nullptr then use the latest file for all known codecs
   // if cached != nullptr then try to reuse its segments
-  static composite_reader::ptr open(
+  static index_reader::ptr open(
     const directory& dir,
     const format* codec = nullptr,
-    const composite_reader::ptr& cached = nullptr
+    const index_reader::ptr& cached = nullptr
   );
 
  private:
@@ -263,10 +263,10 @@ directory_reader_impl::directory_reader_impl(
     file_refs_(std::move(file_refs)) {
 }
 
-/*static*/ composite_reader::ptr directory_reader_impl::open(
+/*static*/ index_reader::ptr directory_reader_impl::open(
     const directory& dir,
     const format* codec /*= nullptr*/,
-    const composite_reader::ptr& cached /*= nullptr*/) {
+    const index_reader::ptr& cached /*= nullptr*/) {
   index_meta meta;
   index_file_refs::ref_t meta_file_ref = load_newest_index_meta(meta, dir, codec);
 

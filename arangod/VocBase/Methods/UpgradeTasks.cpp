@@ -17,12 +17,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Gräter
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "UpgradeTasks.h"
 #include "Agency/AgencyComm.h"
 #include "Basics/Common.h"
+#include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterComm.h"
@@ -31,9 +32,11 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
+#include "MMFiles/MMFilesEngine.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -157,18 +160,7 @@ arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
   }
 
   bool created = false;
-  auto ctx = arangodb::transaction::StandaloneContext::Create(vocbase);
-  arangodb::SingleCollectionTransaction trx(
-    ctx, collection, arangodb::AccessMode::Type::EXCLUSIVE
-  );
-
-  res = trx.begin();
-
-  if (res.fail()) {
-    return res;
-  }
-
-  auto newIndex = collection.createIndex(&trx, newDesc.slice(), created);
+  auto newIndex = collection.getPhysical()->createIndex(newDesc.slice(), /*restore*/true, created);
 
   if (!created) {
     res.reset(TRI_ERROR_INTERNAL);
@@ -176,7 +168,6 @@ arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
 
   TRI_ASSERT(newIndex->id() == iid); // will break cluster otherwise
   TRI_ASSERT(newIndex->type() == Index::TRI_IDX_TYPE_GEO_INDEX);
-  res = trx.finish(res);
 
   return res;
 }
@@ -289,114 +280,11 @@ bool UpgradeTasks::addDefaultUserOther(
   return true;
 }
 
-bool UpgradeTasks::updateUserModels(
-    TRI_vocbase_t& vocbase,
-    arangodb::velocypack::Slice const& slice
-) {
-  TRI_ASSERT(vocbase.isSystem());
-  // TODO isn't this done on the fly ?
-  return true;
-}
-
-bool UpgradeTasks::createModules(
-    TRI_vocbase_t& vocbase,
-    arangodb::velocypack::Slice const& slice
-) {
-  return ::createSystemCollection(&vocbase, "_modules");
-}
-
 bool UpgradeTasks::setupAnalyzers(
     TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& slice
 ) {
   return ::createSystemCollection(&vocbase, "_iresearch_analyzers");
-}
-
-bool UpgradeTasks::createRouting(
-    TRI_vocbase_t& vocbase,
-    arangodb::velocypack::Slice const& slice
-) {
-  return ::createSystemCollection(&vocbase, "_routing");
-}
-
-bool UpgradeTasks::insertRedirections(
-    TRI_vocbase_t& vocbase,
-    arangodb::velocypack::Slice const& slice
-) {
-  std::vector<std::string> toRemove;  // remove in a different trx
-  auto cb = [&toRemove](VPackSlice const& doc) {
-    TRI_ASSERT(doc.isObject());
-    VPackSlice url = doc.get("url"), action = doc.get("action");
-    if (url.isObject() && action.isObject() &&
-        action.get("options").isObject()) {
-      VPackSlice v = action.get("options").get("destination");
-      if (v.isString()) {
-        std::string path = v.copyString();
-        if (path.find("_admin/html") != std::string::npos ||
-            path.find("_admin/aardvark") != std::string::npos) {
-          toRemove.push_back(doc.get(StaticStrings::KeyString).copyString());
-        }
-      }
-    }
-  };
-
-  auto res = methods::Collections::all(vocbase, "_routing", cb);
-
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  auto ctx = transaction::StandaloneContext::Create(vocbase);
-  SingleCollectionTransaction trx(ctx, "_routing", AccessMode::Type::WRITE);
-
-  res = trx.begin();
-
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  OperationOptions opts;
-
-  opts.waitForSync = true;
-
-  for (std::string const& key : toRemove) {
-    VPackBuilder b;
-    b(VPackValue(VPackValueType::Object))(StaticStrings::KeyString,
-                                          VPackValue(key))();
-    trx.remove("_routing", b.slice(), opts);  // check results
-  }
-
-  std::vector<std::string> paths = {"/", "/_admin/html",
-                                    "/_admin/html/index.html"};
-  std::string dest = "/_db/" + vocbase.name() + "/_admin/aardvark/index.html";
-  OperationResult opres;
-
-  for (std::string const& path : paths) {
-    VPackBuilder bb;
-    bb.openObject();
-    bb.add("url", VPackValue(path));
-    bb.add("action", VPackValue(VPackValueType::Object));
-    bb.add("do", VPackValue("@arangodb/actions/redirectRequest"));
-    bb.add("options", VPackValue(VPackValueType::Object));
-    bb.add("permanently", VPackSlice::trueSlice());
-    bb.add("destination", VPackValue(dest));
-    bb.close();
-    bb.close();
-    bb.add("priority", VPackValue(-1000000));
-    bb.close();
-    opres = trx.insert("_routing", bb.slice(), opts);
-    if (opres.fail()) {
-      THROW_ARANGO_EXCEPTION(opres.result);
-    }
-  }
-
-  res = trx.finish(opres.result);
-
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  return true;
 }
 
 bool UpgradeTasks::setupAqlFunctions(
@@ -478,4 +366,18 @@ bool UpgradeTasks::setupAppBundles(
     arangodb::velocypack::Slice const& slice
 ) {
   return ::createSystemCollection(&vocbase, "_appbundles");
+}
+
+bool UpgradeTasks::persistLocalDocumentIds(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& slice
+) {
+  if (EngineSelectorFeature::engineName() == MMFilesEngine::EngineName) {
+    Result res = basics::catchToResult([&vocbase]() -> Result {
+      MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
+      return engine->persistLocalDocumentIds(vocbase);
+    });
+    return res.ok();
+  }
+  return true;
 }

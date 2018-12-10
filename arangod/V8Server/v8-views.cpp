@@ -66,14 +66,12 @@ std::shared_ptr<arangodb::LogicalView> GetViewFromArgument(
     TRI_vocbase_t& vocbase,
     v8::Handle<v8::Value> const val
 ) {
-  // number
-  if (val->IsNumber() || val->IsNumberObject()) {
-    uint64_t id = TRI_ObjectToUInt64(val, true);
+  arangodb::CollectionNameResolver resolver(vocbase);
 
-    return vocbase.lookupView(id);
-  }
-
-  return vocbase.lookupView(TRI_ObjectToString(val));
+  return (val->IsNumber() || val->IsNumberObject())
+    ? resolver.getView(TRI_ObjectToUInt64(val, true))
+    : resolver.getView(TRI_ObjectToString(val))
+    ;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -199,11 +197,19 @@ static void JS_CreateViewVocbase(
   );
 
   try {
-    auto view = vocbase.createView(builder.slice());
+    LogicalView::ptr view;
+    auto res = LogicalView::create(view, vocbase, builder.slice());
 
-    TRI_ASSERT(view != nullptr);
+    if (!res.ok()) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+    }
+
+    if (!view) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "problem creating view");
+    }
 
     v8::Handle<v8::Value> result = WrapView(isolate, view);
+
     if (result.IsEmpty()) {
       TRI_V8_THROW_EXCEPTION_MEMORY();
     }
@@ -260,7 +266,7 @@ static void JS_DropViewVocbase(
   // end of parameter parsing
   // ...........................................................................
 
-  auto view = vocbase.lookupView(name);
+  auto view = CollectionNameResolver(vocbase).getView(name);
 
   if (view) {
     if (!canUse(auth::Level::RW, vocbase)) { // as per https://github.com/arangodb/backlog/issues/459
@@ -268,7 +274,12 @@ static void JS_DropViewVocbase(
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "insufficient rights to drop view");
     }
 
-    auto res = vocbase.dropView(view->id(), allowDropSystem);
+    // prevent dropping of system views
+    if (!allowDropSystem && view->system()) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "insufficient rights to drop system view");
+    }
+
+    auto res = view->drop();
 
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION(res);
@@ -319,7 +330,12 @@ static void JS_DropViewVocbaseObj(
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "insufficient rights to drop view");
   }
 
-  auto res = view->vocbase().dropView(view->id(), allowDropSystem);
+  // prevent dropping of system views
+  if (!allowDropSystem && view->system()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "insufficient rights to drop system view");
+  }
+
+  auto res = view->drop();
 
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -365,7 +381,7 @@ static void JS_ViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     viewBuilder.openObject();
 
-    auto res = view->toVelocyPack(viewBuilder, true, false);
+    auto res = view->properties(viewBuilder, true, false);
 
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION(res); // skip view
@@ -402,8 +418,13 @@ static void JS_ViewsVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "insufficient rights to get views");
   }
 
-  auto views = vocbase.views();
+  std::vector<LogicalView::ptr> views;
 
+  LogicalView::enumerate(vocbase, [&views](LogicalView::ptr const& view)->bool {
+    views.emplace_back(view);
+
+    return true;
+  });
   std::sort(views.begin(), views.end(),
             [](std::shared_ptr<LogicalView> const& lhs,
                std::shared_ptr<LogicalView> const& rhs) -> bool {
@@ -423,7 +444,7 @@ static void JS_ViewsVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     if (!canUse(auth::Level::RO, vocbase)) { // as per https://github.com/arangodb/backlog/issues/459
     //if (!canUse(auth::Level::RO, vocbase, &view->name())) {
-      continue; // skip views that are not authorised to be read
+      continue; // skip views that are not authorized to be read
     }
 
     // skip views for which the full view definition cannot be generated, as per https://github.com/arangodb/backlog/issues/459
@@ -432,7 +453,7 @@ static void JS_ViewsVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
       viewBuilder.openObject();
 
-      if (!view->toVelocyPack(viewBuilder, true, false).ok()) {
+      if (!view->properties(viewBuilder, true, false).ok()) {
         continue; // skip view
       }
     } catch(...) {
@@ -542,16 +563,12 @@ static void JS_PropertiesViewVocbase(
 
       builderCurrent.openObject();
 
-      auto resCurrent = viewPtr->toVelocyPack(builderCurrent, true, false);
+      auto resCurrent = viewPtr->properties(builderCurrent, true, false);
 
       if (!resCurrent.ok()) {
         TRI_V8_THROW_EXCEPTION(resCurrent);
       }
     }
-
-    auto doSync = arangodb::application_features::ApplicationServer::getFeature<
-      DatabaseFeature
-    >("Database")->forceSyncProperties();
 
     auto view = resolver.getView(viewPtr->id()); // ensure have the latest definition
 
@@ -559,7 +576,7 @@ static void JS_PropertiesViewVocbase(
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
 
-    auto res = view->updateProperties(builder.slice(), partialUpdate, doSync);
+    auto res = view->properties(builder.slice(), partialUpdate);
 
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
@@ -585,7 +602,7 @@ static void JS_PropertiesViewVocbase(
 
   builder.openObject();
 
-  auto res = view->toVelocyPack(builder, true, false);
+  auto res = view->properties(builder, true, false);
 
   builder.close();
 
@@ -641,7 +658,7 @@ static void JS_RenameViewVocbase(
 
     viewBuilder.openObject();
 
-    auto res = view->toVelocyPack(viewBuilder, true, false);
+    auto res = view->properties(viewBuilder, true, false);
 
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION(res); // skip view
@@ -650,7 +667,7 @@ static void JS_RenameViewVocbase(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL); // skip view
   }
 
-  auto res = view->vocbase().renameView(view->id(), name);
+  auto res = view->rename(std::string(name));
 
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);

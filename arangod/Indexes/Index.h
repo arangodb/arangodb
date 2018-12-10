@@ -322,8 +322,9 @@ class Index {
   // called when the index is dropped
   virtual int drop();
 
-  // called after the collection was truncated
-  virtual void afterTruncate() = 0;
+  /// @brief called after the collection was truncated
+  /// @param tick at which truncate was applied
+  virtual void afterTruncate(TRI_voc_tick_t tick) {};
 
   // give index a hint about the expected size
   virtual int sizeHint(transaction::Methods*, size_t);
@@ -367,6 +368,23 @@ class Index {
                       std::shared_ptr<basics::LocalTaskQueue> queue);
 
   static size_t sortWeight(arangodb::aql::AstNode const* node);
+  
+ protected:
+  
+  /// @brief generate error result
+  /// @param code the error key
+  /// @param key the conflicting key
+  arangodb::Result& addErrorMsg(Result& r, int code, std::string const& key = "") {
+    if (code != TRI_ERROR_NO_ERROR) {
+      r.reset(code);
+      return addErrorMsg(r, key);
+    }
+    return r;
+  }
+
+  /// @brief generate error result
+  /// @param key the conflicting key
+  arangodb::Result& addErrorMsg(Result& r, std::string const& key = "");
 
  protected:
   TRI_idx_iid_t const _iid;

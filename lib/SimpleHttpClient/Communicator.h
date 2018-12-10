@@ -81,7 +81,7 @@ struct RequestInProgress {
   bool _aborted;
 };
 
-struct CurlHandle {
+struct CurlHandle : public std::enable_shared_from_this<CurlHandle> {
   explicit CurlHandle(RequestInProgress* rip) : _handle(nullptr), _rip(rip) {
     _handle = curl_easy_init();
     if (_handle == nullptr) {
@@ -95,6 +95,8 @@ struct CurlHandle {
       curl_easy_cleanup(_handle);
     }
   }
+
+  std::shared_ptr<CurlHandle> getSharedPtr() {return shared_from_this();}
 
   CurlHandle(CurlHandle& other) = delete;
   CurlHandle& operator=(CurlHandle& other) = delete;
@@ -227,7 +229,7 @@ class Communicator {
   std::vector<NewRequest> _newRequests;
 
   Mutex _handlesLock;
-  std::unordered_map<uint64_t, std::unique_ptr<CurlHandle>> _handlesInProgress;
+  std::unordered_map<uint64_t, std::shared_ptr<CurlHandle>> _handlesInProgress;
 
   CURLM* _curl;
   CURLMcode _mc;
@@ -245,15 +247,17 @@ class Communicator {
   std::vector<RequestInProgress const*> requestsInProgress();
   void createRequestInProgress(NewRequest&& newRequest);
   void handleResult(CURL*, CURLcode);
-  void transformResult(CURL*, HeadersInProgress&&,
-                       std::unique_ptr<basics::StringBuffer>, HttpResponse*);
   /// @brief curl will strip standalone ".". ArangoDB allows using . as a key
   /// so this thing will analyse the url and urlencode any unsafe .'s
   std::string createSafeDottedCurlUrl(std::string const& originalUrl);
 
-  void callErrorFn(RequestInProgress*, int const&, std::unique_ptr<GeneralResponse>);
-  void callErrorFn(Ticket const&, Destination const&, Callbacks const&, int const&, std::unique_ptr<GeneralResponse>);
-  void callSuccessFn(Ticket const&, Destination const&, Callbacks const&, std::unique_ptr<GeneralResponse>);
+  // these function are static because they are called by a lambda function
+  //  that could execute after Communicator object destroyed.
+  static void transformResult(CURL*, HeadersInProgress&&,
+                       std::unique_ptr<basics::StringBuffer>, HttpResponse*);
+  static void callErrorFn(RequestInProgress*, int const&, std::unique_ptr<GeneralResponse>);
+  static void callErrorFn(Ticket const&, Destination const&, Callbacks const&, int const&, std::unique_ptr<GeneralResponse>);
+  static void callSuccessFn(Ticket const&, Destination const&, Callbacks const&, std::unique_ptr<GeneralResponse>);
 
  private:
   static size_t readBody(void*, size_t, size_t, void*);

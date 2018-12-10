@@ -28,6 +28,12 @@
 
 #include "Indexes/Index.h"
 
+namespace arangodb {
+
+struct IndexTypeFactory; // forward declaration
+
+}
+
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
@@ -37,6 +43,10 @@ class IResearchMMFilesLink final
   DECLARE_SHARED_PTR(Index);
 
   virtual ~IResearchMMFilesLink();
+
+  void afterTruncate(TRI_voc_tick_t /*tick*/) override {
+    IResearchLink::afterTruncate();
+  };
 
   virtual void batchInsert(
     transaction::Methods* trx,
@@ -51,12 +61,13 @@ class IResearchMMFilesLink final
   }
 
   virtual int drop() override {
-    return IResearchLink::drop();
+    return IResearchLink::drop().errorNumber();
   }
-    
-  void afterTruncate() override {
-    IResearchLink::afterTruncate();
-  };
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the factory for this type of index
+  //////////////////////////////////////////////////////////////////////////////
+  static arangodb::IndexTypeFactory const& factory();
 
   virtual bool hasBatchInsert() const override {
     return IResearchLink::hasBatchInsert();
@@ -86,17 +97,6 @@ class IResearchMMFilesLink final
   virtual void load() override {
     IResearchLink::load();
   }
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief create and initialize an iResearch View Link instance
-  /// @return nullptr on failure
-  ////////////////////////////////////////////////////////////////////////////////
-  static ptr make(
-    arangodb::LogicalCollection& collection,
-    arangodb::velocypack::Slice const& definition,
-    TRI_idx_iid_t id,
-    bool isClusterConstructor
-  ) noexcept;
 
   virtual bool matchesDefinition(
     arangodb::velocypack::Slice const& slice
@@ -136,13 +136,16 @@ class IResearchMMFilesLink final
   }
 
   virtual void unload() override {
-    int res = IResearchLink::unload();
-    if (res != TRI_ERROR_NO_ERROR) {
+    auto res = IResearchLink::unload();
+
+    if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
     }
   }
 
  private:
+  struct IndexFactory; // forward declaration
+
   IResearchMMFilesLink(
     TRI_idx_iid_t iid,
     arangodb::LogicalCollection& collection

@@ -46,6 +46,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(
 )
     : application_features::ApplicationFeature(server, "RocksDBOption"),
       _transactionLockTimeout(rocksDBTrxDefaults.transaction_lock_timeout),
+      _totalWriteBufferSize(rocksDBDefaults.db_write_buffer_size),
       _writeBufferSize(rocksDBDefaults.write_buffer_size),
       _maxWriteBufferNumber(rocksDBDefaults.max_write_buffer_number),
       _maxTotalWalSize(80 << 20),
@@ -71,6 +72,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(
       _level0CompactionTrigger(2),
       _level0SlowdownTrigger(rocksDBDefaults.level0_slowdown_writes_trigger),
       _level0StopTrigger(rocksDBDefaults.level0_stop_writes_trigger),
+      _enforceBlockCacheSizeLimit(false),
       _blockAlignDataBlocks(rocksDBTableOptionsDefaults.block_align),
       _enablePipelinedWrite(rocksDBDefaults.enable_pipelined_write),
       _optimizeFiltersForHits(rocksDBDefaults.optimize_filters_for_hits),
@@ -93,6 +95,15 @@ RocksDBOptionFeature::RocksDBOptionFeature(
     --_maxBackgroundJobs;
   } // if
 #endif
+      
+  if (_totalWriteBufferSize == 0) {
+    // unlimited write buffer size... now set to some fraction of physical RAM
+    if (TRI_PhysicalMemory >= (static_cast<uint64_t>(4) << 30)) {
+      _totalWriteBufferSize = static_cast<uint64_t>((TRI_PhysicalMemory - (static_cast<uint64_t>(2) << 30)) * 0.4);
+    } else {
+      _totalWriteBufferSize = (512 << 20);
+    }
+  }
 
   setOptional(true);
   startsAfter("BasicsPhase");
@@ -118,6 +129,11 @@ void RocksDBOptionFeature::collectOptions(
                      " a transaction attempts to lock a document. A negative value "
                      "is not recommended as it can lead to deadlocks (0 = no waiting, < 0 no timeout)",
                      new Int64Parameter(&_transactionLockTimeout));
+  
+  options->addOption("--rocksdb.total-write-buffer-size",
+                     "maximum total size of in-memory write buffers (0 = unbounded)",
+                     new UInt64Parameter(&_totalWriteBufferSize),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Dynamic));
 
   options->addOption("--rocksdb.write-buffer-size",
                      "amount of data to build up in memory before converting "
@@ -132,13 +148,14 @@ void RocksDBOptionFeature::collectOptions(
                      "maximum total size of WAL files that will force flush stale column families",
                      new UInt64Parameter(&_maxTotalWalSize));
 
-  options->addHiddenOption(
+  options->addOption(
       "--rocksdb.delayed_write_rate",
       "limited write rate to DB (in bytes per second) if we are writing to the "
       "last mem-table allowed and we allow more than 3 mem-tables, or if we "
       "have surpassed a certain number of level-0 files and need to slowdown "
       "writes",
-      new UInt64Parameter(&_delayedWriteRate));
+      new UInt64Parameter(&_delayedWriteRate),
+      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--rocksdb.min-write-buffer-number-to-merge",
                      "minimum number of write buffers that will be merged "
@@ -183,34 +200,39 @@ void RocksDBOptionFeature::collectOptions(
                      "whether or not RocksDB statistics should be turned on",
                      new BooleanParameter(&_enableStatistics));
 
-  options->addHiddenOption(
+  options->addOption(
       "--rocksdb.optimize-filters-for-hits",
       "this flag specifies that the implementation should optimize the filters "
       "mainly for cases where keys are found rather than also optimize for "
       "keys missed. This would be used in cases where the application knows "
       "that there are very few misses or the performance in the case of "
       "misses is not important",
-      new BooleanParameter(&_optimizeFiltersForHits));
+      new BooleanParameter(&_optimizeFiltersForHits),
+      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
 #ifdef __linux__
-  options->addHiddenOption("--rocksdb.use-direct-reads",
-                           "use O_DIRECT for reading files",
-                           new BooleanParameter(&_useDirectReads));
+  options->addOption("--rocksdb.use-direct-reads",
+                     "use O_DIRECT for reading files",
+                     new BooleanParameter(&_useDirectReads),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption("--rocksdb.use-direct-io-for-flush-and-compaction",
-                           "use O_DIRECT for flush and compaction",
-                           new BooleanParameter(&_useDirectIoForFlushAndCompaction));
+  options->addOption("--rocksdb.use-direct-io-for-flush-and-compaction",
+                     "use O_DIRECT for flush and compaction",
+                     new BooleanParameter(&_useDirectIoForFlushAndCompaction),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 #endif
 
-  options->addHiddenOption("--rocksdb.use-fsync",
-                           "issue an fsync when writing to disk (set to true "
-                           "for issuing fdatasync only)",
-                           new BooleanParameter(&_useFSync));
+  options->addOption("--rocksdb.use-fsync",
+                     "issue an fsync when writing to disk (set to true "
+                     "for issuing fdatasync only)",
+                     new BooleanParameter(&_useFSync),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption(
+  options->addOption(
       "--rocksdb.max-background-jobs",
       "Maximum number of concurrent background jobs (compactions and flushes)",
-      new Int32Parameter(&_maxBackgroundJobs));
+      new Int32Parameter(&_maxBackgroundJobs),
+      arangodb::options::makeFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Dynamic));
 
   options->addOption("--rocksdb.max-subcompactions",
                      "maximum number of concurrent subjobs for a background "
@@ -241,19 +263,25 @@ void RocksDBOptionFeature::collectOptions(
 
   options->addOption("--rocksdb.block-cache-size",
                      "size of block cache in bytes",
-                     new UInt64Parameter(&_blockCacheSize));
+                     new UInt64Parameter(&_blockCacheSize),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Dynamic));
 
   options->addOption("--rocksdb.block-cache-shard-bits",
                      "number of shard bits to use for block cache (use -1 for default value)",
                      new Int64Parameter(&_blockCacheShardBits));
+  
+  options->addOption("--rocksdb.enforce-block-cache-size-limit",
+                     "if true, strictly enforces the block cache size limit",
+                     new BooleanParameter(&_enforceBlockCacheSizeLimit));
 
   options->addOption("--rocksdb.table-block-size",
                      "approximate size (in bytes) of user data packed per block",
                      new UInt64Parameter(&_tableBlockSize));
 
-  options->addHiddenOption("--rocksdb.recycle-log-file-num",
-                           "number of log files to keep around for recycling",
-                           new UInt64Parameter(&_recycleLogFileNum));
+  options->addOption("--rocksdb.recycle-log-file-num",
+                     "number of log files to keep around for recycling",
+                     new UInt64Parameter(&_recycleLogFileNum),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--rocksdb.compaction-read-ahead-size",
@@ -263,13 +291,15 @@ void RocksDBOptionFeature::collectOptions(
       "reads.",
       new UInt64Parameter(&_compactionReadaheadSize));
   
-  options->addHiddenOption("--rocksdb.use-file-logging",
-                           "use a file-base logger for RocksDB's own logs",
-                           new BooleanParameter(&_useFileLogging));
+  options->addOption("--rocksdb.use-file-logging",
+                     "use a file-base logger for RocksDB's own logs",
+                     new BooleanParameter(&_useFileLogging),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption("--rocksdb.wal-recovery-skip-corrupted",
-                           "skip corrupted records in WAL recovery",
-                           new BooleanParameter(&_skipCorrupted));
+  options->addOption("--rocksdb.wal-recovery-skip-corrupted",
+                     "skip corrupted records in WAL recovery",
+                     new BooleanParameter(&_skipCorrupted),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
 void RocksDBOptionFeature::validateOptions(
@@ -277,6 +307,11 @@ void RocksDBOptionFeature::validateOptions(
   if (_writeBufferSize > 0 && _writeBufferSize < 1024 * 1024) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "invalid value for '--rocksdb.write-buffer-size'";
+    FATAL_ERROR_EXIT();
+  }
+  if (_totalWriteBufferSize > 0 && _totalWriteBufferSize < 64 * 1024 * 1024) {
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "invalid value for '--rocksdb.total-write-buffer-size'";
     FATAL_ERROR_EXIT();
   }
   if (_maxBytesForLevelMultiplier <= 0.0) {
@@ -332,6 +367,7 @@ void RocksDBOptionFeature::start() {
   LOG_TOPIC(TRACE, Logger::ROCKSDB) << "using RocksDB options:"
                                     << " wal_dir: '" << _walDirectory << "'"
                                     << ", write_buffer_size: " << _writeBufferSize
+                                    << ", total_write_buffer_size: " << _totalWriteBufferSize
                                     << ", max_write_buffer_number: " << _maxWriteBufferNumber
                                     << ", max_total_wal_size: " << _maxTotalWalSize
                                     << ", delayed_write_rate: " << _delayedWriteRate
@@ -346,6 +382,7 @@ void RocksDBOptionFeature::start() {
                                     << ", num_threads_low: " << _numThreadsLow
                                     << ", block_cache_size: " << _blockCacheSize
                                     << ", block_cache_shard_bits: " << _blockCacheShardBits
+                                    << ", block_cache_strict_capacity_limit: " << _enforceBlockCacheSizeLimit
                                     << ", table_block_size: " << _tableBlockSize
                                     << ", recycle_log_file_num: " << _recycleLogFileNum
                                     << ", compaction_read_ahead_size: " << _compactionReadaheadSize

@@ -266,8 +266,6 @@ function optimizerRuleTestSuite() {
         "FOR v IN " + colName + " SORT v.d ASC FILTER v.d > 5 RETURN [v.d]",
         "FOR v IN " + colName + " SORT v.d FILTER v.d > 2 LIMIT 3 RETURN [v.d]",
         "FOR v IN " + colName + " FILTER v.d > 2 SORT v.d LIMIT 3 RETURN [v.d]",
-        "FOR v IN " + colName + " FOR w IN 1..10 FILTER v.d > 2 SORT v.d RETURN [v.d]",
-        "FOR v IN " + colName + " FOR w IN 1..10 SORT v.d FILTER v.d > 2 RETURN [v.d]",
         "FOR v IN " + colName + " LET x = (FOR w IN " + colNameOther + " RETURN w.f) FILTER v.a > 4 SORT v.a RETURN [v.a]",
         "FOR v IN " + colName + " LET x = (FOR w IN " + colNameOther + " RETURN w.f) SORT v.a FILTER v.a > 4 RETURN [v.a]"
       ];
@@ -306,7 +304,51 @@ function optimizerRuleTestSuite() {
                       );
         }
       });
+    },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test that rule has an effect on the FILTER and the SORT
+////////////////////////////////////////////////////////////////////////////////
+
+    testRuleHasEffectCombineSortFilter2 : function () {
+      var queries = [ 
+        "FOR v IN " + colName + " FOR w IN 1..10 FILTER v.d > 2 SORT v.d RETURN [v.d]",
+        "FOR v IN " + colName + " FOR w IN 1..10 SORT v.d FILTER v.d > 2 RETURN [v.d]",
+      ];
+
+      queries.forEach(function(query) {
+        var result;
+        result = AQL_EXPLAIN(query, { }, paramIndexRangeFilter);
+        assertEqual([ IndexesRule, FilterRemoveRule ], 
+          removeAlwaysOnClusterRules(result.plan.rules), query);
+        hasNoFilterNode(result);
+
+        hasIndexNodeWithRanges(result);
+
+        result = AQL_EXPLAIN(query, { }, paramIndexRangeSortFilter);
+        assertEqual([ IndexesRule, FilterRemoveRule ], removeAlwaysOnClusterRules(result.plan.rules), query);
+        hasNoFilterNode(result);
+        hasIndexNodeWithRanges(result);
+
+        var QResults = [];
+        QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
+        QResults[1] = AQL_EXECUTE(query, { }, paramIndexRangeFilter).json;
+        QResults[2] = AQL_EXECUTE(query, { }, paramIndexRangeSortFilter).json;
+
+        assertTrue(isEqual(QResults[0], QResults[1]), "result is equal?");
+        assertTrue(isEqual(QResults[0], QResults[2]), "result is equal?");
+
+        var allResults = getQueryMultiplePlansAndExecutions(query, {});
+        for (var j = 1; j < allResults.results.length; j++) {
+            assertTrue(isEqual(allResults.results[0],
+                               allResults.results[j]),
+                       "while executing '" + query +
+                       "' this plan gave the wrong results: " + JSON.stringify(allResults.plans[j]) +
+                       " Should be: '" + JSON.stringify(allResults.results[0]) +
+                       "', but is: " + JSON.stringify(allResults.results[j]) + "'"
+                      );
+        }
+      });
     },
 
 ////////////////////////////////////////////////////////////////////////////////

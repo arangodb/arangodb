@@ -278,33 +278,23 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
                                VPackBuilder& output) {
   TRI_ASSERT(collection != nullptr);
   READ_LOCKER(readLocker, collection->vocbase()._inventoryLock);
-
-  SingleCollectionTransaction trx(
-    transaction::V8Context::CreateWhenRequired(collection->vocbase(), false),
-    *collection,
-    create ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::READ
-  );
-  Result res = trx.begin();
-
-  if (!res.ok()) {
-    return res;
-  }
+  Result res;
 
   bool created = false;
   std::shared_ptr<arangodb::Index> idx;
 
   if (create) {
     try {
-      idx = collection->createIndex(&trx, definition, created);
+      idx = collection->createIndex(definition, created);
     } catch (arangodb::basics::Exception const& e) {
-      return Result(e.code(), e.what());
+      return res.reset(e.code(), e.what());
     }
     TRI_ASSERT(idx != nullptr);
   } else {
     idx = collection->lookupIndex(definition);
     if (idx == nullptr) {
       // Index not found
-      return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
+      return res.reset(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
     }
   }
 
@@ -314,19 +304,14 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
   try {
     idx->toVelocyPack(tmp, Index::makeFlags(Index::Serialize::Estimates));
   } catch (...) {
-    return Result(TRI_ERROR_OUT_OF_MEMORY);
-  }
-  // builder->close();
-  res = trx.commit();
-  if (!res.ok()) {
-    return res;
+    return res.reset(TRI_ERROR_OUT_OF_MEMORY);
   }
 
   std::string iid = StringUtils::itoa(idx->id());
   VPackBuilder b;
   b.openObject();
   b.add("isNewlyCreated", VPackValue(created));
-  b.add("id",
+  b.add(StaticStrings::IndexId,
         VPackValue(collection->name() + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
   b.close();
   output = VPackCollection::merge(tmp.slice(), b.slice(), false);
@@ -343,7 +328,7 @@ Result Indexes::ensureIndexCoordinator(
 
   auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
   int res = ClusterInfo::instance()->ensureIndexCoordinator(
-      dbName, cid, indexDef, create, &arangodb::Index::Compare, resultBuilder,
+      dbName, cid, indexDef, create, resultBuilder,
       errorMsg, cluster->indexCreationTimeout());
   return Result(res, errorMsg);
 }

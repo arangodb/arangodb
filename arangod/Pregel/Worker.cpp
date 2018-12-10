@@ -156,7 +156,7 @@ void Worker<V, E, M>::setupWorker() {
     package.close();
     _callConductor(Utils::finishedStartupPath, package);
   };
-  
+
   if (_config.lazyLoading()) {
     // TODO maybe lazy loading needs to be performed on another thread too
     std::set<std::string> activeSet = _algorithm->initialActiveSet();
@@ -173,9 +173,8 @@ void Worker<V, E, M>::setupWorker() {
     // of time. Therefore this is performed asynchronous
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-    scheduler->post(
-        [this, callback] { _graphStore->loadShards(&_config, callback); },
-        false);
+    scheduler->queue(RequestPriority::LOW,
+                     [this, callback] { _graphStore->loadShards(&_config, callback); });
   }
 }
 
@@ -335,7 +334,7 @@ void Worker<V, E, M>::_startProcessing() {
   }
   size_t i = 0;
   do {
-    scheduler->post([this, start, end, i] {
+    scheduler->queue(RequestPriority::LOW, [this, start, end, i] {
       if (_state != WorkerState::COMPUTING) {
         LOG_TOPIC(WARN, Logger::PREGEL) << "Execution aborted prematurely.";
         return;
@@ -345,7 +344,7 @@ void Worker<V, E, M>::_startProcessing() {
       if (_processVertices(i, vertices) && _state == WorkerState::COMPUTING) {
         _finishedProcessing();  // last thread turns the lights out
       }
-    }, false);
+      });
     start = end;
     end = end + delta;
     if (total < end + delta) {  // swallow the rest
@@ -685,7 +684,7 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  scheduler->post([this] {
+  scheduler->queue(RequestPriority::LOW, [this] {
     if (_state != WorkerState::RECOVERING) {
       LOG_TOPIC(WARN, Logger::PREGEL) << "Compensation aborted prematurely.";
       return;
@@ -722,7 +721,7 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
     _workerAggregators->serializeValues(package);
     package.close();
     _callConductor(Utils::finishedRecoveryPath, package);
-    }, false);
+    });
 }
 
 template <typename V, typename E, typename M>
@@ -745,10 +744,10 @@ void Worker<V, E, M>::_callConductor(std::string const& path,
   if (ServerState::instance()->isRunningInCluster() == false) {
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-    scheduler->post([path, message] {
+    scheduler->queue(RequestPriority::LOW, [path, message] {
       VPackBuilder response;
       PregelFeature::handleConductorRequest(path, message.slice(), response);
-    }, false);
+      });
   } else {
     std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
     std::string baseUrl =

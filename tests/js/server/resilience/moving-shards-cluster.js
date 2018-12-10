@@ -119,11 +119,21 @@ function MovingShardsSuite () {
     } catch (err) {
       console.error(
         "Exception for POST /_admin/cluster/cleanOutServer:", err.stack);
-      return {};
+      return {cleanedServers:[]};
+    }
+    if (res.statusCode !== 200) {
+      return {cleanedServers:[]};
     }
     var body = res.body;
     if (typeof body === "string") {
-      body = JSON.parse(body);
+      try {
+        body = JSON.parse(body);
+      } catch (err2) {
+      }
+    }
+    if (typeof body !== "object" || !body.hasOwnProperty("cleanedServers") ||
+        typeof body.cleanedServers !== "object") {
+      return {cleanedServers:[]};
     }
     return body;
   }
@@ -464,8 +474,16 @@ function MovingShardsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSetup : function () {
-      dbservers = getDBServers();
-      assertTrue(waitForSynchronousReplication("_system"));
+      for (var count = 0; count < 120; ++count) {
+        dbservers = getDBServers();
+        if (dbservers.length === 5) {
+          assertTrue(waitForSynchronousReplication("_system"));
+          return;
+        }
+        console.log("Waiting for 5 dbservers to be present:", JSON.stringify(dbservers));
+        wait(1.0);
+      }
+      assertTrue(false, "Timeout waiting for 5 dbservers.");
     },
 
 ////////////////////////////////////////////////////////////////////////////////

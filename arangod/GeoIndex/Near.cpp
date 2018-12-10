@@ -262,12 +262,11 @@ void NearUtils<CMP>::reportFound(LocalDocumentId lid,
   }
 
   if (!_params.pointsOnly) {
-    auto const& it = _seenDocs.find(lid.id());
-    if (it != _seenDocs.end()) {
+    auto result = _seenDocs.insert(lid.id());
+    if (!result.second) {
       _rejection++;
       return;  // ignore repeated documents
     }
-    _seenDocs.emplace(lid.id());
   }
 
   // possibly expensive point rejection, but saves parsing of document

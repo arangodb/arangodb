@@ -28,36 +28,45 @@
 
 namespace arangodb {
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief LogicalView factory for both end-user and internal instantiation
+////////////////////////////////////////////////////////////////////////////////
+struct ViewFactory {
+  virtual ~ViewFactory() = default; // define to silence warning
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief LogicalView factory for end-user validation instantiation and
+  ///        persistence
+  /// @return if success then 'view' is set, else 'view' state is undefined
+  //////////////////////////////////////////////////////////////////////////////
+  virtual Result create(
+    LogicalView::ptr& view,
+    TRI_vocbase_t& vocbase,
+    velocypack::Slice const& definition
+  ) const = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief LogicalView factory for internal instantiation only
+  //////////////////////////////////////////////////////////////////////////////
+  virtual Result instantiate(
+    LogicalView::ptr& view,
+    TRI_vocbase_t& vocbase,
+    velocypack::Slice const& definition,
+    uint64_t planVersion // cluster plan version ('0' by default for non-cluster)
+  ) const = 0;
+};
+
 class ViewTypesFeature final: public application_features::ApplicationFeature {
  public:
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief typedef for a LogicalView factory function
-  /// This typedef is used when registering the factory function for any view
-  /// type. the creator function is called when a view is first created or
-  /// re-opened after a server restart. the VelocyPack Slice will contain all
-  /// information about the view's general and implementation-specific properties.
-  /// @param preCommit called before completing view creation (IFF returns true)
-  ///                  e.g. before persisting definition to filesystem
-  ///                  IFF preCommit == false then skip invocation
-  //////////////////////////////////////////////////////////////////////////////
-  typedef std::function<std::shared_ptr<LogicalView>(
-    TRI_vocbase_t& vocbase, // database
-    velocypack::Slice const& definition, // view definition
-    bool isNew, // new view mark
-    uint64_t planVersion, // cluster plan version ('0' by default for non-cluster)
-    LogicalView::PreCommitCallback const& preCommit
-  )> ViewFactory;
-
   explicit ViewTypesFeature(application_features::ApplicationServer& server);
 
   /// @return 'factory' for 'type' was added successfully
-  arangodb::Result emplace(
+  Result emplace(
     LogicalDataSource::Type const& type,
     ViewFactory const& factory
   );
 
-  /// @return factory for the specified type or false if no such type
+  /// @return factory for the specified type or a failing placeholder if no such type
   ViewFactory const& factory(
     LogicalDataSource::Type const& type
   ) const noexcept;
@@ -67,7 +76,7 @@ class ViewTypesFeature final: public application_features::ApplicationFeature {
   void unprepare() override final;
 
  private:
-  std::unordered_map<LogicalDataSource::Type const*, ViewFactory> _factories;
+  std::unordered_map<LogicalDataSource::Type const*, ViewFactory const*> _factories;
 };
 
 } // arangodb

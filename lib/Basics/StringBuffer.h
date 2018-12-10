@@ -241,11 +241,18 @@ namespace basics {
 
 /// @brief string buffer with formatting routines
 class StringBuffer {
-  StringBuffer() = delete;
   StringBuffer(StringBuffer const&) = delete;
   StringBuffer& operator=(StringBuffer const&) = delete;
 
  public:
+  /// @brief creates an uninitialized string buffer
+  StringBuffer() {
+    _buffer._buffer = nullptr;
+    _buffer._current = nullptr;
+    _buffer._len = 0;
+    _buffer._initializeMemory = false;
+  }
+
   /// @brief initializes the string buffer
   explicit StringBuffer(bool initializeMemory) {
     TRI_InitStringBuffer(&_buffer, initializeMemory);
@@ -299,14 +306,6 @@ class StringBuffer {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
-    char* buffer = new char[bufferSize];
-
-    if (buffer == nullptr) {
-      (void)inflateEnd(&strm);
-
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
     size_t len = this->length();
 
     if (len < skip) {
@@ -317,6 +316,12 @@ class StringBuffer {
 
     strm.avail_in = (int)len;
     strm.next_in = ((unsigned char*)this->c_str()) + skip;
+    
+    auto guard = scopeGuard([&strm] {
+      (void)inflateEnd(&strm);
+    });
+    
+    auto buffer = std::make_unique<char[]>(bufferSize);
 
     do {
       if (strm.avail_in == 0) {
@@ -325,7 +330,7 @@ class StringBuffer {
 
       do {
         strm.avail_out = (uInt)bufferSize;
-        strm.next_out = (unsigned char*)buffer;
+        strm.next_out = (unsigned char*)buffer.get();
 
         res = ::inflate(&strm, Z_NO_FLUSH);
         TRI_ASSERT(res != Z_STREAM_ERROR);
@@ -334,19 +339,13 @@ class StringBuffer {
           case Z_NEED_DICT:
           case Z_DATA_ERROR:
           case Z_MEM_ERROR: {
-            (void)inflateEnd(&strm);
-            delete[] buffer;
-
             return TRI_ERROR_INTERNAL;
           }
         }
 
-        out.write(buffer, bufferSize - strm.avail_out);
+        out.write(buffer.get(), bufferSize - strm.avail_out);
       } while (strm.avail_out == 0);
     } while (res != Z_STREAM_END);
-
-    (void)inflateEnd(&strm);
-    delete[] buffer;
 
     if (res != Z_STREAM_END) {
       return TRI_ERROR_NO_ERROR;
@@ -394,16 +393,15 @@ class StringBuffer {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
-    char* buffer = new char[bufferSize];
-
-    if (buffer == nullptr) {
-      (void)inflateEnd(&strm);
-
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
     strm.avail_in = (int)len;
     strm.next_in = start;
+    
+    auto guard = scopeGuard([&strm] {
+      (void)inflateEnd(&strm);
+    });
+
+    
+    auto buffer = std::make_unique<char[]>(bufferSize);
 
     do {
       if (strm.avail_in == 0) {
@@ -412,7 +410,7 @@ class StringBuffer {
 
       do {
         strm.avail_out = (uInt)bufferSize;
-        strm.next_out = (unsigned char*)buffer;
+        strm.next_out = (unsigned char*)buffer.get();
 
         res = ::inflate(&strm, Z_NO_FLUSH);
         TRI_ASSERT(res != Z_STREAM_ERROR);
@@ -421,19 +419,13 @@ class StringBuffer {
           case Z_NEED_DICT:
           case Z_DATA_ERROR:
           case Z_MEM_ERROR: {
-            (void)inflateEnd(&strm);
-            delete[] buffer;
-
             return TRI_ERROR_INTERNAL;
           }
         }
 
-        out.appendText(buffer, bufferSize - strm.avail_out);
+        out.appendText(buffer.get(), bufferSize - strm.avail_out);
       } while (strm.avail_out == 0);
     } while (res != Z_STREAM_END);
-
-    (void)inflateEnd(&strm);
-    delete[] buffer;
 
     if (res != Z_STREAM_END) {
       return TRI_ERROR_NO_ERROR;

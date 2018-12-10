@@ -36,11 +36,11 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/OpenFilesTracker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Maskings/Maskings.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomGenerator.h"
 #include "Shell/ClientFeature.h"
@@ -133,6 +133,7 @@ std::pair<arangodb::Result, uint64_t> startBatch(
                      body.c_str(), body.size()));
   auto check = ::checkHttpResponse(client, response);
   if (check.fail()) {
+    LOG_TOPIC(ERR, arangodb::Logger::DUMP) << "An error occurred while creating dump context: " << check.errorMessage();
     return {check, 0};
   }
 
@@ -200,7 +201,7 @@ void flushWal(arangodb::httpclient::SimpleHttpClient& client) {
   if (check.fail()) {
     // TODO should we abort early here?
     LOG_TOPIC(ERR, arangodb::Logger::DUMP)
-        << "got invalid response from server: " + check.errorMessage();
+        << "Got invalid response from server when flushing WAL: " + check.errorMessage();
   }
 }
 
@@ -212,8 +213,8 @@ bool isIgnoredHiddenEnterpriseCollection(
         strncmp(name.c_str(), "_from_", 6) == 0 ||
         strncmp(name.c_str(), "_to_", 4) == 0) {
       LOG_TOPIC(INFO, arangodb::Logger::DUMP)
-          << "Dump ignoring collection " << name
-          << ". Will be created via SmartGraphs of a full dump. If you want to "
+          << "Dump is ignoring collection '" << name
+          << "'. Will be created via SmartGraphs of a full dump. If you want to "
              "dump this collection anyway use 'arangodump --force'. "
              "However this is not recommended and you should instead dump "
              "the EdgeCollection of the SmartGraph instead.";
@@ -222,6 +223,28 @@ bool isIgnoredHiddenEnterpriseCollection(
   }
 #endif
   return false;
+}
+
+arangodb::Result dumpJsonObjects(arangodb::DumpFeature::JobData& jobData,
+                                 arangodb::ManagedDirectory::File& file,
+                                 arangodb::basics::StringBuffer const& body) {
+  arangodb::basics::StringBuffer masked(1, false);
+  arangodb::basics::StringBuffer const* result = &body;
+
+  if (jobData.maskings != nullptr) {
+    jobData.maskings->mask(jobData.name, body, masked);
+    result = &masked;
+  }
+  
+  file.write(result->c_str(), result->length());
+
+  if (file.status().fail()) {
+    return {TRI_ERROR_CANNOT_WRITE_FILE};
+  } 
+
+  jobData.stats.totalWritten += static_cast<uint64_t>(result->length());
+
+  return {TRI_ERROR_NO_ERROR};
 }
 
 /// @brief dump the actual data from an individual collection
@@ -234,11 +257,12 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
   using arangodb::basics::StringUtils::boolean;
   using arangodb::basics::StringUtils::itoa;
   using arangodb::basics::StringUtils::uint64;
+  using arangodb::basics::StringUtils::urlEncode;
 
   uint64_t fromTick = minTick;
   uint64_t chunkSize =
       jobData.options.initialChunkSize;  // will grow adaptively up to max
-  std::string baseUrl = "/_api/replication/dump?collection=" + name +
+  std::string baseUrl = "/_api/replication/dump?collection=" + urlEncode(name) +
                         "&batchId=" + itoa(batchId) + "&ticks=false";
   if (jobData.options.clusterMode) {
     // we are in cluster mode, must specify dbserver
@@ -262,6 +286,7 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
         client.request(arangodb::rest::RequestType::GET, url, nullptr, 0));
     auto check = ::checkHttpResponse(client, response);
     if (check.fail()) {
+      LOG_TOPIC(ERR, arangodb::Logger::DUMP) << "An error occurred while dumping collection '" << name << "': " << check.errorMessage();
       return check;
     }
 
@@ -292,16 +317,16 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
     }
     if (!headerExtracted) {  // NOT else, fallthrough from outer or inner above
       return {TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-              "got invalid response from server: required header is missing"};
+              std::string("got invalid response from server: required header is missing while dumping collection '") + name + "'"};
     }
 
     // now actually write retrieved data to dump file
     arangodb::basics::StringBuffer const& body = response->getBody();
-    file.write(body.c_str(), body.length());
-    if (file.status().fail()) {
-      return {TRI_ERROR_CANNOT_WRITE_FILE};
-    } 
-    jobData.stats.totalWritten += static_cast<uint64_t>(body.length());
+    arangodb::Result result = dumpJsonObjects(jobData, file, body);
+
+    if (result.fail()) {
+      return result;
+    }
 
     if (!checkMore || fromTick == 0) {
       // all done, return successful
@@ -393,6 +418,21 @@ arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& client,
 
   arangodb::Result result{TRI_ERROR_NO_ERROR};
 
+  bool dumpStructure = true;
+
+  if (dumpStructure && jobData.maskings != nullptr) {
+    dumpStructure = jobData.maskings->shouldDumpStructure(jobData.name);
+  }
+
+  if (!dumpStructure) {
+    if (jobData.options.progress) {
+      LOG_TOPIC(INFO, arangodb::Logger::DUMP)
+          << "# Dumping collection '" << jobData.name << "'...";
+    }
+
+    return result;
+  }
+
   // prep hex string of collection name
   std::string const hexString(
       arangodb::rest::SslInterface::sslMD5(jobData.name));
@@ -437,18 +477,26 @@ arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& client,
     }
   }
 
-  if (result.ok() && jobData.options.dumpData) {
-    // save the actual data
-    auto file = jobData.directory.writableFile(
-        jobData.name + "_" + hexString + ".data.json", true);
-    if (!::fileOk(file.get())) {
-      return ::fileError(file.get(), true);
+  if (result.ok()) {
+    bool dumpData = jobData.options.dumpData;
+
+    if (dumpData && jobData.maskings != nullptr) {
+      dumpData = jobData.maskings->shouldDumpData(jobData.name);
     }
 
-    if (jobData.options.clusterMode) {
-      result = ::handleCollectionCluster(client, jobData, *file);
-    } else {
-      result = ::handleCollection(client, jobData, *file);
+    if (dumpData) {
+      // save the actual data
+      auto file = jobData.directory.writableFile(
+          jobData.name + "_" + hexString + ".data.json", true);
+      if (!::fileOk(file.get())) {
+        return ::fileError(file.get(), true);
+      }
+
+      if (jobData.options.clusterMode) {
+        result = ::handleCollectionCluster(client, jobData, *file);
+      } else {
+        result = ::handleCollection(client, jobData, *file);
+      }
     }
   }
 
@@ -468,13 +516,14 @@ void handleJobResult(std::unique_ptr<arangodb::DumpFeature::JobData>&& jobData,
 namespace arangodb {
 
 DumpFeature::JobData::JobData(ManagedDirectory& dir, DumpFeature& feat,
-                              Options const& opts, Stats& stat,
-                              VPackSlice const& info, uint64_t const batch,
+                              Options const& opts, maskings::Maskings* maskings,
+                              Stats& stat, VPackSlice const& info, uint64_t const batch,
                               std::string const& c, std::string const& n,
                               std::string const& t)
     : directory{dir},
       feature{feat},
       options{opts},
+      maskings{maskings},
       stats{stat},
       collectionInfo{info},
       batchId{batch},
@@ -555,6 +604,9 @@ void DumpFeature::collectOptions(
 
   options->addOption("--tick-end", "last tick to be included in data dump",
                      new UInt64Parameter(&_options.tickEnd));
+
+  options->addOption("--maskings", "file with maskings definition",
+                     new StringParameter(&_options.maskingsFile));
 }
 
 void DumpFeature::validateOptions(
@@ -623,6 +675,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
       client.request(rest::RequestType::GET, url, nullptr, 0));
   auto check = ::checkHttpResponse(client, response);
   if (check.fail()) {
+    LOG_TOPIC(ERR, arangodb::Logger::DUMP) << "An error occurred while fetching inventory: " << check.errorMessage();
     return check;
   }
 
@@ -715,7 +768,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
 
     // queue job to actually dump collection
     auto jobData = std::make_unique<JobData>(
-        *_directory, *this, _options, _stats, collection, batchId,
+        *_directory, *this, _options, _maskings.get(), _stats, collection, batchId,
         std::to_string(cid), name, collectionType);
     _clientTaskQueue.queueJob(std::move(jobData));
   }
@@ -743,6 +796,7 @@ Result DumpFeature::runClusterDump(httpclient::SimpleHttpClient& client,
       client.request(rest::RequestType::GET, url, nullptr, 0));
   auto check = ::checkHttpResponse(client, response);
   if (check.fail()) {
+    LOG_TOPIC(ERR, arangodb::Logger::DUMP) << "An error occurred while fetching inventory: " << check.errorMessage();
     return check;
   }
 
@@ -854,7 +908,7 @@ Result DumpFeature::runClusterDump(httpclient::SimpleHttpClient& client,
 
     // queue job to actually dump collection
     auto jobData = std::make_unique<JobData>(
-        *_directory, *this, _options, _stats, collection, 0 /* batchId */,
+        *_directory, *this, _options, _maskings.get(), _stats, collection, 0 /* batchId */,
         std::to_string(cid), name, "" /* collectionType */);
     _clientTaskQueue.queueJob(std::move(jobData));
   }
@@ -952,8 +1006,18 @@ void DumpFeature::reportError(Result const& error) {
   }
 }
 
-/// @brief main method to run dump
 void DumpFeature::start() {
+  if (!_options.maskingsFile.empty()) {
+    maskings::MaskingsResult m = maskings::Maskings::fromFile(_options.maskingsFile);
+
+    if (m.status != maskings::MaskingsResult::VALID) {
+      LOG_TOPIC(FATAL, Logger::CONFIG) << m.message;
+      FATAL_ERROR_EXIT();
+    }
+
+    _maskings = std::move(m.maskings);
+  }
+
   _exitCode = EXIT_SUCCESS;
 
   // generate a fake client id that we sent to the server
@@ -998,8 +1062,7 @@ void DumpFeature::start() {
   std::tie(result, _options.clusterMode) =
       _clientManager.getArangoIsCluster(*httpClient);
   if (result.fail()) {
-    LOG_TOPIC(FATAL, Logger::FIXME)
-        << "Error: could not detect ArangoDB instance type";
+    LOG_TOPIC(FATAL, arangodb::Logger::RESTORE) << "Error: could not detect ArangoDB instance type: " << result.errorMessage();
     FATAL_ERROR_EXIT();
   }
 
@@ -1031,9 +1094,12 @@ void DumpFeature::start() {
     } else {
       res = runClusterDump(*httpClient, dbName);
     }
+  } catch (basics::Exception const& ex) {
+    LOG_TOPIC(ERR, Logger::FIXME) << "caught exception: " << ex.what();
+    res = {ex.code(), ex.what()};
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, Logger::FIXME) << "caught exception: " << ex.what();
-    res = {TRI_ERROR_INTERNAL};
+    res = {TRI_ERROR_INTERNAL, ex.what()};
   } catch (...) {
     LOG_TOPIC(ERR, Logger::FIXME) << "caught unknown exception";
     res = {TRI_ERROR_INTERNAL};

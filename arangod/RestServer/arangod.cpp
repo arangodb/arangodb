@@ -29,6 +29,7 @@
 #include "Actions/ActionFeature.h"
 #include "Agency/AgencyFeature.h"
 #include "ApplicationFeatures/AgencyPhase.h"
+#include "ApplicationFeatures/CommunicationPhase.h"
 #include "ApplicationFeatures/AQLPhase.h"
 #include "ApplicationFeatures/BasicPhase.h"
 #include "ApplicationFeatures/ClusterPhase.h"
@@ -81,6 +82,7 @@
 #include "RestServer/FortuneFeature.h"
 #include "RestServer/FrontendFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
+#include "RestServer/LanguageCheckFeature.h"
 #include "RestServer/LockfileFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ScriptFeature.h"
@@ -151,6 +153,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
 
     // Adding the Phases
     server.addFeature(new application_features::AgencyFeaturePhase(server));
+    server.addFeature(new application_features::CommunicationFeaturePhase(server));
     server.addFeature(new application_features::AQLFeaturePhase(server));
     server.addFeature(new application_features::BasicFeaturePhase(server, false));
     server.addFeature(new application_features::ClusterFeaturePhase(server));
@@ -185,6 +188,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new GeneralServerFeature(server));
     server.addFeature(new GreetingsFeature(server));
     server.addFeature(new InitDatabaseFeature(server, nonServerFeatures));
+    server.addFeature(new LanguageCheckFeature(server));
     server.addFeature(new LanguageFeature(server));
     server.addFeature(new LockfileFeature(server));
     server.addFeature(new LoggerBufferFeature(server));
@@ -272,7 +276,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
         << ex.what();
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "arangod terminated because of an xception of "
+        << "arangod terminated because of an exception of "
            "unknown type";
   }
   exit(EXIT_FAILURE);
@@ -305,6 +309,12 @@ static void WINAPI ServiceMain(DWORD dwArgc, LPSTR* lpszArgv) {
 #endif
 
 int main(int argc, char* argv[]) {
+#ifdef __linux__
+#if USE_ENTERPRISE
+  arangodb::checkLicenseKey();
+#endif
+#endif
+
   TRI_GET_ARGV(argc, argv);
 #if _WIN32
   if (argc > 1 && TRI_EqualString("--start-service", argv[1])) {

@@ -105,28 +105,31 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "supervision time, after which a server is considered to have failed [s]",
       new DoubleParameter(&_supervisionGracePeriod));
 
-  options->addHiddenOption("--agency.compaction-step-size",
-                           "step size between state machine compactions",
-                           new UInt64Parameter(&_compactionStepSize));
+  options->addOption("--agency.compaction-step-size",
+                     "step size between state machine compactions",
+                     new UInt64Parameter(&_compactionStepSize),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--agency.compaction-keep-size",
                      "keep as many indices before compaction point",
                      new UInt64Parameter(&_compactionKeepSize));
 
-  options->addHiddenOption("--agency.wait-for-sync",
-                           "wait for hard disk syncs on every persistence call "
-                           "(required in production)",
-                           new BooleanParameter(&_waitForSync));
+  options->addOption("--agency.wait-for-sync",
+                     "wait for hard disk syncs on every persistence call "
+                     "(required in production)",
+                     new BooleanParameter(&_waitForSync),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption("--agency.max-append-size",
-                           "maximum size of appendEntries document (# log entries)",
-                           new UInt64Parameter(&_maxAppendSize));
+  options->addOption("--agency.max-append-size",
+                     "maximum size of appendEntries document (# log entries)",
+                     new UInt64Parameter(&_maxAppendSize),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption(
+  options->addOption(
     "--agency.disaster-recovery-id",
     "allows for specification of the id for this agent; dangerous option for disaster recover only!",
-    new StringParameter(&_recoveryId));
-
+    new StringParameter(&_recoveryId),
+    arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
 void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -261,7 +264,7 @@ void AgencyFeature::prepare() {
   if (!feature->agencyPrefix().empty()) {
     arangodb::consensus::Supervision::setAgencyPrefix(
       std::string("/") + feature->agencyPrefix());
-    arangodb::consensus::Job::agencyPrefix = feature->agencyPrefix();;
+    arangodb::consensus::Job::agencyPrefix = feature->agencyPrefix();
   }
 
   std::string endpoint;

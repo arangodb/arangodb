@@ -516,37 +516,45 @@ WindowsServiceFeature::WindowsServiceFeature(application_features::ApplicationSe
 
 void WindowsServiceFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   
-  options->addHiddenOption("--start-service",
-                           "used to start as windows service",
-                           new BooleanParameter(&_startAsService));
+  options->addOption("--start-service",
+                     "used to start as windows service",
+                     new BooleanParameter(&_startAsService),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Command));
 
-  options->addHiddenOption("--install-service",
-                           "used to register a service with windows",
-                           new BooleanParameter(&_installService));
+  options->addOption("--install-service",
+                     "used to register a service with windows",
+                     new BooleanParameter(&_installService),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Command));
 
-  options->addHiddenOption("--uninstall-service",
-                           "used to UNregister a service with windows",
-                           new BooleanParameter(&_unInstallService));
+  options->addOption("--uninstall-service",
+                     "used to UNregister a service with windows",
+                     new BooleanParameter(&_unInstallService),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Command));
 
-  options->addHiddenOption("--uninstall-service-force",
-                           "specify to ovrerride the protection to uninstall the service of another installation",
-                           new BooleanParameter(&_forceUninstall));
+  options->addOption("--uninstall-service-force",
+                     "specify to ovrerride the protection to uninstall the service of another installation",
+                     new BooleanParameter(&_forceUninstall),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Command));
 
-  options->addHiddenOption("--servicectl-start",
-                           "command an already registered service to start",
-                           new BooleanParameter(&_startService));
+  options->addOption("--servicectl-start",
+                     "command an already registered service to start",
+                     new BooleanParameter(&_startService),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Command));
 
-  options->addHiddenOption("--servicectl-start-wait",
-                           "command an already registered service to start and wait till its up",
-                           new BooleanParameter(&_startWaitService));
+  options->addOption("--servicectl-start-wait",
+                     "command an already registered service to start and wait till its up",
+                     new BooleanParameter(&_startWaitService),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Command));
 
-  options->addHiddenOption("--servicectl-stop",
-                           "command an already registered service to stop",
-                           new BooleanParameter(&_stopService));
+  options->addOption("--servicectl-stop",
+                     "command an already registered service to stop",
+                     new BooleanParameter(&_stopService),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Command));
 
-  options->addHiddenOption("--servicectl-stop-wait",
-                           "command an already registered service to stop and wait till its gone",
-                           new BooleanParameter(&_stopWaitService));
+  options->addOption("--servicectl-stop-wait",
+                     "command an already registered service to stop and wait till its gone",
+                     new BooleanParameter(&_stopWaitService),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Command));
 }
 
 void WindowsServiceFeature::abortService(uint16_t exitCode) {

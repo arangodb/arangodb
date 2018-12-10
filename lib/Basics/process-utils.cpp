@@ -66,7 +66,7 @@ uint64_t TRI_PhysicalMemory;
 /// @brief all external processes
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::vector<ExternalProcess*> ExternalProcesses;
+std::vector<ExternalProcess*> ExternalProcesses;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lock for protected access to vector ExternalProcesses
@@ -1174,11 +1174,6 @@ static ExternalProcess* getExternalProcess(TRI_pid_t pid) {
   if (kill(pid, 0) == 0) {
     ExternalProcess* external = new ExternalProcess();
 
-    if (external == nullptr) {
-      // gracefully handle out of memory
-      return nullptr;
-    }
-
     external->_pid = pid;
     external->_status = TRI_EXT_RUNNING;
 
@@ -1197,11 +1192,6 @@ static ExternalProcess* getExternalProcess(TRI_pid_t pid) {
   hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
   if (hProcess != nullptr) {
     ExternalProcess* external = new ExternalProcess();
-
-    if (external == nullptr) {
-      // gracefully handle out of memory
-      return nullptr;
-    }
 
     external->_pid = pid;
     external->_status = TRI_EXT_RUNNING;

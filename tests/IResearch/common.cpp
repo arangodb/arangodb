@@ -32,6 +32,7 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/Ast.h"
 #include "ClusterEngine/ClusterEngine.h"
+#include "Random/RandomGenerator.h"
 #include "Basics/files.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "V8/v8-utils.h"
@@ -132,6 +133,7 @@ namespace tests {
 void init(bool withICU /*= false*/) {
   arangodb::transaction::Methods::clearDataSourceRegistrationCallbacks();
   ClusterEngine::Mocking = true;
+  arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
 }
 
 // @Note: once V8 is initialized all 'CATCH' errors will result in SIGILL
@@ -220,7 +222,7 @@ arangodb::aql::QueryResult executeQuery(
 
   arangodb::aql::QueryResult result;
   while (true) {
-    auto state = query.execute(arangodb::QueryRegistryFeature::QUERY_REGISTRY, result);
+    auto state = query.execute(arangodb::QueryRegistryFeature::registry(), result);
     if (state == arangodb::aql::ExecutionState::WAITING) {
       ss->waitForAsyncResponse();
     } else {
@@ -256,9 +258,7 @@ std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
     return nullptr;
   }
 
-  return std::unique_ptr<arangodb::aql::ExecutionPlan>(
-    arangodb::aql::ExecutionPlan::instantiateFromAst(query.ast())
-  );
+  return arangodb::aql::ExecutionPlan::instantiateFromAst(query.ast());
 }
 
 uint64_t getCurrentPlanVersion() {

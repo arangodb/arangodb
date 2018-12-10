@@ -115,18 +115,19 @@ V8DealerFeature::V8DealerFeature(
 }
 
 void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-
   options->addSection("javascript", "Configure the Javascript engine");
 
-  options->addHiddenOption(
+  options->addOption(
       "--javascript.gc-frequency",
       "JavaScript time-based garbage collection frequency (each x seconds)",
-      new DoubleParameter(&_gcFrequency));
+      new DoubleParameter(&_gcFrequency),
+      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption(
+  options->addOption(
       "--javascript.gc-interval",
       "JavaScript request-based garbage collection interval (each x requests)",
-      new UInt64Parameter(&_gcInterval));
+      new UInt64Parameter(&_gcInterval),
+      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--javascript.app-path", "directory for Foxx applications",
                      new StringParameter(&_appPath));
@@ -136,10 +137,11 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "path to the directory containing JavaScript startup scripts",
       new StringParameter(&_startupDirectory));
 
-  options->addHiddenOption(
+  options->addOption(
       "--javascript.module-directory",
       "additional paths containing JavaScript modules",
-      new VectorParameter<StringParameter>(&_moduleDirectories));
+      new VectorParameter<StringParameter>(&_moduleDirectories),
+      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
   
   options->addOption(
      "--javascript.copy-installation",
@@ -156,25 +158,29 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "minimum number of V8 contexts that keep available for executing JavaScript actions",
       new UInt64Parameter(&_nrMinContexts));
 
-  options->addHiddenOption(
+  options->addOption(
       "--javascript.v8-contexts-max-invocations",
       "maximum number of invocations for each V8 context before it is disposed",
-      new UInt64Parameter(&_maxContextInvocations));
+      new UInt64Parameter(&_maxContextInvocations),
+      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption(
+  options->addOption(
       "--javascript.v8-contexts-max-age",
       "maximum age for each V8 context (in seconds) before it is disposed",
-      new DoubleParameter(&_maxContextAge));
+      new DoubleParameter(&_maxContextAge),
+      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption(
+  options->addOption(
       "--javascript.allow-admin-execute",
       "for testing purposes allow '_admin/execute', NEVER enable on production",
-      new BooleanParameter(&_allowAdminExecute));
+      new BooleanParameter(&_allowAdminExecute),
+      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption(
+  options->addOption(
       "--javascript.enabled",
       "enable the V8 JavaScript engine",
-      new BooleanParameter(&_enableJS));
+      new BooleanParameter(&_enableJS),
+      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
 void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -260,10 +266,28 @@ void V8DealerFeature::prepare() {
 void V8DealerFeature::start() {
   if (_copyInstallation) {
     copyInstallationFiles(); // will exit process if it fails
+  } else {
+    // don't copy JS files on startup
+    // now check if we have a js directory inside the database directory, and if it looks good
+    auto dbPathFeature = application_features::ApplicationServer::getFeature<DatabasePathFeature>(DatabasePathFeature::name());
+    const std::string dbJSPath = FileUtils::buildFilename(dbPathFeature->directory(), "js");
+    const std::string checksumFile = FileUtils::buildFilename(dbJSPath, StaticStrings::checksumFileJs);
+    const std::string serverPath = FileUtils::buildFilename(dbJSPath, "server");
+    const std::string commonPath = FileUtils::buildFilename(dbJSPath, "common");
+    if (FileUtils::isDirectory(dbJSPath) &&
+        FileUtils::exists(checksumFile) &&
+        FileUtils::isDirectory(serverPath) &&
+        FileUtils::isDirectory(commonPath)) {
+      // only load node modules from original startup path
+      _nodeModulesDirectory = _startupDirectory;
+      // js directory inside database directory looks good. now use it!
+      _startupDirectory = dbJSPath;
+    }
   }
 
-  LOG_TOPIC(DEBUG, Logger::V8) << "effective startup-directory is '" << _startupDirectory <<
-                                  "', effective module-directories are " << _moduleDirectories;
+  LOG_TOPIC(DEBUG, Logger::V8) << "effective startup-directory: " << _startupDirectory <<
+                                  ", effective module-directories: " << _moduleDirectories << 
+                                  ", node-modules-directory: " << _nodeModulesDirectory;
   
   _startupLoader.setDirectory(_startupDirectory);
   ServerState::instance()->setJavaScriptPath(_startupDirectory);
@@ -281,7 +305,6 @@ void V8DealerFeature::start() {
 
     if (!_appPath.empty()) {
       paths.push_back(std::string("application '" + _appPath + "'"));
-
 
       // create app directory if it does not exist
       if (!basics::FileUtils::isDirectory(_appPath)) {
@@ -383,6 +406,7 @@ void V8DealerFeature::copyInstallationFiles() {
     // these do not need JavaScript support
     return;
   }
+
   // get base path from DatabasePathFeature
   auto dbPathFeature = application_features::ApplicationServer::getFeature<DatabasePathFeature>();
   const std::string copyJSPath = FileUtils::buildFilename(dbPathFeature->directory(), "js");
@@ -392,6 +416,8 @@ void V8DealerFeature::copyInstallationFiles() {
     FATAL_ERROR_EXIT();
   }
   TRI_ASSERT(!copyJSPath.empty());
+  
+  _nodeModulesDirectory = _startupDirectory;
   
   const std::string checksumFile = FileUtils::buildFilename(_startupDirectory, StaticStrings::checksumFileJs);
   const std::string copyChecksumFile = FileUtils::buildFilename(copyJSPath, StaticStrings::checksumFileJs);
@@ -442,7 +468,7 @@ void V8DealerFeature::copyInstallationFiles() {
     std::string const versionAppendix = std::regex_replace(rest::Version::getServerVersion(), std::regex("-.*$"), "");
     std::string const nodeModulesPath = FileUtils::buildFilename("js", "node", "node_modules");
     std::string const nodeModulesPathVersioned = basics::FileUtils::buildFilename("js", versionAppendix, "node", "node_modules");
-    auto filter = [&nodeModulesPath, &nodeModulesPathVersioned, this](std::string const& filename) -> bool{
+    auto filter = [&nodeModulesPath, &nodeModulesPathVersioned](std::string const& filename) -> bool{
       if (filename.size() >= nodeModulesPath.size()) {
         std::string normalized = filename;
         FileUtils::normalizePath(normalized);
@@ -450,7 +476,6 @@ void V8DealerFeature::copyInstallationFiles() {
         if (normalized.substr(normalized.size() - nodeModulesPath.size(), nodeModulesPath.size()) == nodeModulesPath ||
             normalized.substr(normalized.size() - nodeModulesPathVersioned.size(), nodeModulesPathVersioned.size()) == nodeModulesPathVersioned) {
           // filter it out!
-          _nodeModulesDirectory = _startupDirectory;
           return true;
         }
       }
@@ -464,8 +489,6 @@ void V8DealerFeature::copyInstallationFiles() {
         << "': " << error;
       FATAL_ERROR_EXIT();
     }
-    // need to keep it because of js/node/node_modules, which we intentionally do not copy!
-    _moduleDirectories.push_back(_startupDirectory);
   }
   _startupDirectory = copyJSPath;
 }
@@ -1398,7 +1421,7 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
       directories.insert(directories.end(), _moduleDirectories.begin(),
                          _moduleDirectories.end());
       directories.emplace_back(_startupDirectory);
-      if (!_nodeModulesDirectory.empty()) {
+      if (!_nodeModulesDirectory.empty() && _nodeModulesDirectory != _startupDirectory) {
         directories.emplace_back(_nodeModulesDirectory);
       }
 

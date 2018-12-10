@@ -66,7 +66,7 @@ class RocksDBIndex : public Index {
   bool isPersistent() const override final { return true; }
 
   int drop() override;
-  virtual void afterTruncate() override;
+  virtual void afterTruncate(TRI_voc_tick_t tick) override;
 
   void load() override;
   void unload() override;
@@ -101,13 +101,6 @@ class RocksDBIndex : public Index {
   void createCache();
   void destroyCache();
 
-  virtual rocksdb::SequenceNumber serializeEstimate(
-      std::string& output, rocksdb::SequenceNumber seq) const;
-
-  virtual bool deserializeEstimate(RocksDBSettingsManager* mgr);
-
-  virtual void recalculateEstimates();
-
   /// insert index elements into the specified write batch.
   virtual Result insertInternal(transaction::Methods* trx, RocksDBMethods*,
                                 LocalDocumentId const& documentId,
@@ -139,7 +132,8 @@ class RocksDBIndex : public Index {
                                     bool unique);
 
   virtual RocksDBCuckooIndexEstimator<uint64_t>* estimator();
-  virtual bool needToPersistEstimate() const;
+  virtual void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>);
+  virtual void recalculateEstimates() {}
 
  protected:
   RocksDBIndex(

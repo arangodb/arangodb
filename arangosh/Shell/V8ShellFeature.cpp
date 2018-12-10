@@ -86,23 +86,26 @@ V8ShellFeature::V8ShellFeature(
 void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("javascript", "Configure the Javascript engine");
 
-  options->addHiddenOption("--javascript.startup-directory",
-                           "startup paths containing the Javascript files",
-                           new StringParameter(&_startupDirectory));
+  options->addOption("--javascript.startup-directory",
+                     "startup paths containing the Javascript files",
+                     new StringParameter(&_startupDirectory),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption("--javascript.client-module",
-                           "client module to use at startup",
-                           new StringParameter(&_clientModule));
+  options->addOption("--javascript.client-module",
+                     "client module to use at startup",
+                     new StringParameter(&_clientModule),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
   
   options->addOption("--javascript.copy-directory",
                      "target directory to copy files from 'javascript.startup-directory' into"
                      "(only used when `--javascript.copy-installation` is enabled)",
                      new StringParameter(&_copyDirectory));
 
-  options->addHiddenOption(
+  options->addOption(
       "--javascript.module-directory",
       "additional paths containing JavaScript modules",
-      new VectorParameter<StringParameter>(&_moduleDirectories));
+      new VectorParameter<StringParameter>(&_moduleDirectories),
+      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
   
   options->addOption("--javascript.current-module-directory",
                      "add current directory to module path",
@@ -241,6 +244,8 @@ void V8ShellFeature::copyInstallationFiles() {
   
   LOG_TOPIC(DEBUG, Logger::V8) << "Copying JS installation files from '" << _startupDirectory << "' to '" << _copyDirectory << "'";
   int res = TRI_ERROR_NO_ERROR;
+        
+  _nodeModulesDirectory = _startupDirectory;
 
   if (FileUtils::exists(_copyDirectory)) {
     res = TRI_RemoveDirectory(_copyDirectory.c_str());
@@ -262,7 +267,7 @@ void V8ShellFeature::copyInstallationFiles() {
   std::string const versionAppendix = std::regex_replace(rest::Version::getServerVersion(), std::regex("-.*$"), "");
   std::string const nodeModulesPath = FileUtils::buildFilename("js", "node", "node_modules");
   std::string const nodeModulesPathVersioned = basics::FileUtils::buildFilename("js", versionAppendix, "node", "node_modules");
-  auto filter = [&nodeModulesPath, &nodeModulesPathVersioned, this](std::string const& filename) -> bool{
+  auto filter = [&nodeModulesPath, &nodeModulesPathVersioned](std::string const& filename) -> bool{
     if (filename.size() >= nodeModulesPath.size()) {
       std::string normalized = filename;
       FileUtils::normalizePath(normalized);
@@ -270,7 +275,6 @@ void V8ShellFeature::copyInstallationFiles() {
       if (normalized.substr(normalized.size() - nodeModulesPath.size(), nodeModulesPath.size()) == nodeModulesPath ||
           normalized.substr(normalized.size() - nodeModulesPathVersioned.size(), nodeModulesPathVersioned.size()) == nodeModulesPathVersioned) {
         // filter it out!
-        _nodeModulesDirectory = _startupDirectory;
         return true;
       }
     }

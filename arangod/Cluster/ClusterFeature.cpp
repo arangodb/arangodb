@@ -54,6 +54,7 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
     _requestedRole(ServerState::RoleEnum::ROLE_UNDEFINED) {
   setOptional(true);
   startsAfter("DatabasePhase");
+  startsAfter("CommunicationPhase");
 }
 
 ClusterFeature::~ClusterFeature() {
@@ -101,8 +102,9 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "agency endpoint to connect to",
                      new VectorParameter<StringParameter>(&_agencyEndpoints));
 
-  options->addHiddenOption("--cluster.agency-prefix", "agency prefix",
-                           new StringParameter(&_agencyPrefix));
+  options->addOption("--cluster.agency-prefix", "agency prefix",
+                     new StringParameter(&_agencyPrefix),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
   options->addObsoleteOption("--cluster.my-local-info", "this server's local info", false);
   options->addObsoleteOption("--cluster.my-id", "this server's id", false);
@@ -122,13 +124,15 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "replication factor for system collections",
                      new UInt32Parameter(&_systemReplicationFactor));
 
-  options->addHiddenOption("--cluster.create-waits-for-sync-replication",
-                           "active coordinator will wait for all replicas to create collection",
-                           new BooleanParameter(&_createWaitsForSyncReplication));
+  options->addOption("--cluster.create-waits-for-sync-replication",
+                     "active coordinator will wait for all replicas to create collection",
+                     new BooleanParameter(&_createWaitsForSyncReplication),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption("--cluster.index-create-timeout",
-                           "amount of time (in seconds) the coordinator will wait for an index to be created before giving up",
-                           new DoubleParameter(&_indexCreationTimeout));
+  options->addOption("--cluster.index-create-timeout",
+                     "amount of time (in seconds) the coordinator will wait for an index to be created before giving up",
+                     new DoubleParameter(&_indexCreationTimeout),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
 void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -255,14 +259,7 @@ void ClusterFeature::prepare() {
   // create an instance (this will not yet create a thread)
   ClusterComm::instance();
 
-#ifdef DEBUG_SYNC_REPLICATION
-  bool startClusterComm = true;
-#else
-  bool startClusterComm = false;
-#endif
-
   if (ServerState::instance()->isAgent() || _enableCluster) {
-    startClusterComm = true;
     AuthenticationFeature* af = AuthenticationFeature::instance();
     // nullptr happens only during shutdown
     if (af->isActive() && !af->hasUserdefinedJwt()) {
@@ -270,11 +267,6 @@ void ClusterFeature::prepare() {
                                                   << " provide --server.jwt-secret which is used throughout the cluster.";
       FATAL_ERROR_EXIT();
     }
-  }
-
-  if (startClusterComm) {
-    // initialize ClusterComm library, must call initialize only once
-    ClusterComm::initialize();
   }
 
   // return if cluster is disabled
@@ -361,6 +353,11 @@ void ClusterFeature::prepare() {
 }
 
 void ClusterFeature::start() {
+
+  if (ServerState::instance()->isAgent() || _enableCluster) {
+    ClusterComm::initialize();
+  }
+
   // return if cluster is disabled
   if (!_enableCluster) {
     startHeartbeatThread(nullptr, 5000, 5, std::string());
@@ -440,6 +437,8 @@ void ClusterFeature::stop() {
       }
     }
   }
+
+  ClusterComm::instance()->stopBackgroundThreads();
 }
 
 
@@ -448,7 +447,7 @@ void ClusterFeature::unprepare() {
     ClusterComm::cleanup();
     return;
   }
-  
+
   if (_heartbeatThread != nullptr) {
     _heartbeatThread->beginShutdown();
   }
@@ -479,7 +478,6 @@ void ClusterFeature::unprepare() {
   // Try only once to unregister because maybe the agencycomm
   // is shutting down as well...
 
-
   // Remove from role list
   ServerState::RoleEnum role = ServerState::instance()->getRole();
   std::string alk = ServerState::roleToAgencyListKey(role);
@@ -501,7 +499,6 @@ void ClusterFeature::unprepare() {
   }
 
   AgencyCommManager::MANAGER->stop();
-  ClusterComm::cleanup();
 
   ClusterInfo::cleanup();
 }

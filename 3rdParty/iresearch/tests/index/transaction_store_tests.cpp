@@ -316,7 +316,7 @@ class transaction_store_tests: public test_base {
 
     std::ofstream out(path.native());
 
-    flush_timers(out);
+    irs::timer_utils::flush_stats(out);
     out.close();
     std::cout << "Path to timing log: " << path.utf8_absolute() << std::endl;
 
@@ -5663,7 +5663,6 @@ TEST_F(transaction_store_tests, read_reopen) {
   ASSERT_EQ(2, reader.docs_count()); // +1 for invalid doc
   ASSERT_EQ(1, reader.size());
   ASSERT_NE(reader.begin(), reader.end());
-  ASSERT_EQ(size_t(0), size_t(&*(reader.end())));
 
   // read 1st generation (via new reader)
   {
@@ -5673,7 +5672,6 @@ TEST_F(transaction_store_tests, read_reopen) {
     ASSERT_EQ(1, reader0.size());
     ASSERT_NE(reader0.begin(), reader0.end());
     ASSERT_NE(&*(reader.begin()), &*(reader0.begin()));
-    ASSERT_EQ(size_t(0), size_t(&*(reader0.end())));
   }
 
   // read 1st generation (via reopen)
@@ -5707,7 +5705,6 @@ TEST_F(transaction_store_tests, read_reopen) {
     ASSERT_EQ(1, reader0.size());
     ASSERT_NE(reader0.begin(), reader0.end());
     ASSERT_NE(&*(reader.begin()), &*(reader0.begin()));
-    ASSERT_EQ(size_t(0), size_t(&*(reader0.end())));
   }
 }
 

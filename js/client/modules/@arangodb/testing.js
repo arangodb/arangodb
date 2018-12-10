@@ -2,28 +2,28 @@
 /* global print */
 'use strict';
 
-// //////////////////////////////////////////////////////////////////////////////
-// / DISCLAIMER
-// /
-// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
-// / Copyright 2014 triagens GmbH, Cologne, Germany
-// /
-// / Licensed under the Apache License, Version 2.0 (the "License")
-// / you may not use this file except in compliance with the License.
-// / You may obtain a copy of the License at
-// /
-// /     http://www.apache.org/licenses/LICENSE-2.0
-// /
-// / Unless required by applicable law or agreed to in writing, software
-// / distributed under the License is distributed on an "AS IS" BASIS,
-// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// / See the License for the specific language governing permissions and
-// / limitations under the License.
-// /
-// / Copyright holder is ArangoDB GmbH, Cologne, Germany
-// /
-// / @author Max Neunhoeffer
-// //////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////
+// DISCLAIMER
+// 
+// Copyright 2016-2018 ArangoDB GmbH, Cologne, Germany
+// Copyright 2014 triagens GmbH, Cologne, Germany
+// 
+// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+// 
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// 
+// Copyright holder is ArangoDB GmbH, Cologne, Germany
+// 
+// @author Max Neunhoeffer
+// /////////////////////////////////////////////////////////////////////////////
 
 let functionsDocumentation = {
   'all': 'run all tests (marked with [x])',
@@ -49,6 +49,7 @@ let optionsDocumentation = [
   '   - `skipRanges`: if set to true the ranges tests are skipped',
   '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
   '   - `skipNondeterministic`: if set, nondeterministic tests are skipped.',
+  '   - `skipGrey`: if set, grey tests are skipped.',
   '   - `testBuckets`: split tests in to buckets and execute on, for example',
   '       10/2 will split into 10 buckets and execute the third bucket.',
   '',
@@ -110,6 +111,7 @@ let optionsDocumentation = [
   '   - `extraArgs`: list of extra commandline arguments to add to arangod',
   '',
   '   - `testFailureText`: filename of the testsummary file',
+  '   - `getSockStat`: on linux collect socket stats before shutdown',
   '   - `verbose`: if set to true, be more verbose',
   '   - `extremeVerbosity`: if set to true, then there will be more test run',
   '     output, especially for cluster tests.',
@@ -135,6 +137,7 @@ const optionsDefaults = {
   'extraArgs': {},
   'extremeVerbosity': false,
   'force': true,
+  'getSockStat': true,
   'arangosearch':true,
   'jsonReply': false,
   'loopEternal': false,
@@ -156,6 +159,7 @@ const optionsDefaults = {
   'skipMemoryIntense': false,
   'skipNightly': true,
   'skipNondeterministic': false,
+  'skipGrey': false,
   'skipTimeCritical': false,
   'storageEngine': 'rocksdb',
   'test': undefined,
@@ -195,8 +199,36 @@ const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
 let failedRuns = {
 };
+
 let allTests = [
 ];
+
+// /////////////////////////////////////////////////////////////////////////////
+// blacklisting
+// /////////////////////////////////////////////////////////////////////////////
+
+let useBlacklist = false;
+
+let blacklistTests = {};
+
+function skipTest(type, name) {
+  let ntype = type.toUpperCase();
+  return useBlacklist && !!blacklistTests[ntype + ":" + name];
+}
+
+function loadBlacklist(name) {
+  let content = fs.read("BLACKLIST");
+  let a = _.filter(
+    _.map(content.split("\n"),
+          function(x) {return x.trim();}),
+    function(x) {return x.length > 0 && x[0] !== '#';});
+
+  for (let i = 0; i < a.length; ++i) {
+    blacklistTests[a[i]] = true;
+  }
+
+  useBlacklist = true;
+}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: all
@@ -249,6 +281,11 @@ function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
   let onlyFailedMessages = '';
   let failedMessages = '';
   let SuccessMessages = '';
+  let bucketName = "";
+  if (options.testBuckets) {
+    let n = options.testBuckets.split('/');
+    bucketName = "_" + n[0];
+  }
   try {
     /* jshint forin: false */
     for (let testrunName in res) {
@@ -300,7 +337,7 @@ function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
       }
 
       if (isSuccess) {
-        SuccessMessages += '* Test "' + testrunName + '"\n';
+        SuccessMessages += '* Test "' + testrunName + bucketName + '"\n';
 
         for (let name in successCases) {
           if (!successCases.hasOwnProperty(name)) {
@@ -316,7 +353,7 @@ function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
           }
         }
       } else {
-        let m = '* Test "' + testrunName + '"\n';
+        let m = '* Test "' + testrunName + bucketName + '"\n';
         onlyFailedMessages += m;
         failedMessages += m;
 
@@ -440,7 +477,7 @@ function findTestCases(options) {
   let allTestFiles = {};
   for (let testSuiteName in allTestPaths) {
     var myList = [];
-    let files =  tu.scanTestPaths(allTestPaths[testSuiteName]);
+    let files = tu.scanTestPaths(allTestPaths[testSuiteName]);
     if (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined')) {
       for (let j = 0; j < files.length; j++) {
         let foo = {};
@@ -452,11 +489,11 @@ function findTestCases(options) {
     } else {
       myList = myList.concat(files);
     }
+
     if (!filterTestcases || (myList.length > 0)) {
       allTestFiles[testSuiteName] = myList;
     }
   }
-  // print(allTestPaths)
   return [found, allTestFiles];
 }
 
@@ -539,6 +576,7 @@ function autoTest(options) {
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief load the available testsuites
 // //////////////////////////////////////////////////////////////////////////////
+
 function loadTestSuites () {
   let testSuites = _.filter(fs.list(fs.join(__dirname, 'testsuites')),
                             function (p) {
@@ -568,8 +606,16 @@ function iterateTests(cases, options, jsonReply) {
   // tests to run
   let caselist = [];
 
+  const expandWildcard = ( name ) => {
+    if (!name.endsWith('*')) {
+      return name;
+    }
+    const prefix = name.substring(0, name.length - 1);
+    return allTests.filter( ( s ) => s.startsWith(prefix) ).join(',');
+  };
+
   for (let n = 0; n < cases.length; ++n) {
-    let splitted = cases[n].split(/[,;\.|]/);
+    let splitted = expandWildcard(cases[n]).split(/[,;|]/);
 
     for (let m = 0; m < splitted.length; ++m) {
       let which = splitted[m];
@@ -610,6 +656,7 @@ function iterateTests(cases, options, jsonReply) {
   for (let n = 0; n < caselist.length; ++n) {
     const currentTest = caselist[n];
     var localOptions = _.cloneDeep(options);
+    localOptions.skipTest = skipTest;
 
     print(BLUE + '================================================================================');
     print('Executing test', currentTest);
@@ -619,19 +666,33 @@ function iterateTests(cases, options, jsonReply) {
       print(CYAN + 'with options:', localOptions, RESET);
     }
 
-    let result = testFuncs[currentTest](localOptions);
-    // grrr...normalize structure
-    delete result.status;
-    delete result.failed;
-    delete result.crashed;
+    let result;
+    let status = true;
 
-    let status = Object.values(result).every(testCase => testCase.status === true);
-    let failed = Object.values(result).reduce((prev, testCase) => prev + !testCase.status, 0);
-    if (!status) {
-      globalStatus = false;
+    if (skipTest("SUITE", currentTest)) {
+      result = {
+        failed: 0,
+        status: true,
+        crashed: false,
+      };
+
+      print(YELLOW + "[SKIPPED] " + currentTest + RESET + "\n");
+    } else {
+      result = testFuncs[currentTest](localOptions);
+      // grrr...normalize structure
+      delete result.status;
+      delete result.failed;
+      delete result.crashed;
+
+      status = Object.values(result).every(testCase => testCase.status === true);
+      let failed = Object.values(result).reduce((prev, testCase) => prev + !testCase.status, 0);
+      if (!status) {
+        globalStatus = false;
+      }
+      result.failed = failed;
+      result.status = status;
     }
-    result.failed = failed;
-    result.status = status;
+
     results[currentTest] = result;
 
     if (status && localOptions.cleanup) {
@@ -639,6 +700,7 @@ function iterateTests(cases, options, jsonReply) {
     } else {
       cleanup = false;
     }
+
     if (pu.serverCrashed) {
       failedRuns[currentTest] = pu.serverFailMessages;
       pu.serverFailMessages = "";
@@ -653,8 +715,8 @@ function iterateTests(cases, options, jsonReply) {
       pu.cleanupDBDirectories(options);
     } else {
       print('not cleaning up as some tests weren\'t successful:\n' +
-            pu.getCleanupDBDirectories() +
-           cleanup + ' - ' + globalStatus + ' - ' + pu.serverCrashed);
+            pu.getCleanupDBDirectories() + " " +
+            cleanup + ' - ' + globalStatus + ' - ' + pu.serverCrashed + "\n");
     }
   } else {
     print("not cleaning up since we didn't start the server ourselves\n");
@@ -712,12 +774,13 @@ function unitTest (cases, options) {
   }
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief exports
-// //////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////
+// exports
+// /////////////////////////////////////////////////////////////////////////////
 
 exports.unitTest = unitTest;
 
 exports.internalMembers = internalMembers;
 exports.testFuncs = testFuncs;
 exports.unitTestPrettyPrintResults = unitTestPrettyPrintResults;
+exports.loadBlacklist = loadBlacklist;

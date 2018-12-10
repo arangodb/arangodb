@@ -30,7 +30,7 @@ using namespace arangodb::aql;
 Function::Function(std::string const& name,
                    char const* arguments,
                    std::underlying_type<Flags>::type flags,
-                   FunctionImplementation const& implementation)
+                   FunctionImplementation implementation)
     : name(name),
       arguments(arguments),
       flags(flags),

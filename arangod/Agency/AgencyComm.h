@@ -84,7 +84,8 @@ enum class AgencyReadOperationType { READ };
 // --SECTION--                                          AgencyValueOperationType
 // -----------------------------------------------------------------------------
 
-enum class AgencyValueOperationType { ERASE, SET, OBSERVE, UNOBSERVE, PUSH, PREPEND };
+enum class AgencyValueOperationType {
+  ERASE, SET, OBSERVE, UNOBSERVE, PUSH, PREPEND, REPLACE };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         AgencySimpleOperationType
@@ -132,6 +133,8 @@ class AgencyOperationType {
             return "prepend";
           case AgencyValueOperationType::ERASE:
             return "erase";
+          case AgencyValueOperationType::REPLACE:
+            return "replace";
           default:
             return "unknown_operation_type";
         }
@@ -198,6 +201,9 @@ class AgencyOperation {
   AgencyOperation(std::string const& key, AgencyValueOperationType opType,
                   VPackSlice const value);
 
+  AgencyOperation(std::string const& key, AgencyValueOperationType opType,
+                  VPackSlice const newValue, VPackSlice const oldValue);
+
  public:
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
   void toGeneralBuilder(arangodb::velocypack::Builder& builder) const;
@@ -211,6 +217,7 @@ class AgencyOperation {
   std::string const _key;
   AgencyOperationType _opType;
   VPackSlice _value;
+  VPackSlice _value2;
 };
 
 // -----------------------------------------------------------------------------
@@ -566,7 +573,8 @@ class AgencyCommManager {
                        std::string& url);
 
   void addEndpoint(std::string const&);
-  void removeEndpoint(std::string const&);
+  /// removes old endpoints, adds new ones
+  void updateEndpoints(std::vector<std::string> const& endpoints);
   std::string endpointsString() const;
   std::vector<std::string> endpoints() const;
   std::shared_ptr<VPackBuilder> summery() const;
@@ -675,8 +683,6 @@ class AgencyComm {
 
   AgencyCommResult unregisterCallback(
     std::string const& key, std::string const& endpoint);
-
-  void updateEndpoints(arangodb::velocypack::Slice const&);
 
   bool lockRead(std::string const&, double, double);
 

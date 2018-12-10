@@ -69,10 +69,18 @@ IResearchLink::IResearchLink(
 }
 
 IResearchLink::~IResearchLink() {
-  if (_dropCollectionInDestructor) {
-    drop();
-  } else {
+  if (!_dropCollectionInDestructor) {
     unload(); // disassociate from view if it has not been done yet
+
+    return;
+  }
+
+  auto res = drop();
+
+  if (!res.ok()) {
+    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+      << "failed to drop arangosearch view link in link destructor: "
+      << res.errorNumber() << " " << res.errorMessage();
   }
 }
 
@@ -85,6 +93,21 @@ bool IResearchLink::operator==(LogicalView const& view) const noexcept {
 
 bool IResearchLink::operator==(IResearchLinkMeta const& meta) const noexcept {
   return _meta == meta;
+}
+
+void IResearchLink::afterTruncate() {
+  ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
+  SCOPED_LOCK(mutex);
+
+  if (!_view) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED); // IResearchView required
+  }
+
+  auto res = _view->drop(_view->id(), false);
+
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
 }
 
 void IResearchLink::batchInsert(
@@ -126,52 +149,39 @@ bool IResearchLink::canBeDropped() const {
   return true; // valid for a link to be dropped from an iResearch view
 }
 
-int IResearchLink::drop() {
+arangodb::Result IResearchLink::drop() {
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
 
   if (!_view) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // IResearchView required
+    return arangodb::Result(
+      TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED, // IResearchView required
+      std::string("failed to drop collection '") + _collection.name() + "' from an unset arangosearch view"
+    );
   }
 
   auto res = _view->drop(_collection.id());
 
   if (!res.ok()) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed to drop collection '" << _collection.name()
-      << "' from arangosearch view '" << _view->name() << "': " << res.errorMessage();
-
-    return res.errorNumber();
+    return arangodb::Result(
+      res.errorNumber(),
+      std::string("failed to drop collection '") + _collection.name() + "' from arangosearch view '" + _view->name() + "': " + res.errorMessage()
+    );
   }
 
   _dropCollectionInDestructor = false; // will do drop now
   _defaultGuid = _view->guid(); // remember view ID just in case (e.g. call to toVelocyPack(...) after unload())
 
-  TRI_voc_cid_t vid = _view->id();
+  auto view = _view;
   _view = nullptr; // mark as unassociated
   _viewLock.unlock(); // release read-lock on the IResearch View
 
   // FIXME TODO this workaround should be in ClusterInfo when moving 'Plan' to 'Current', i.e. IResearchViewDBServer::drop
   if (arangodb::ServerState::instance()->isDBServer()) {
-    return _collection.vocbase().dropView(vid, true).errorNumber(); // cluster-view in ClusterInfo should already not have cid-view
+    return view->drop(); // cluster-view in ClusterInfo should already not have cid-view
   }
 
-  return TRI_ERROR_NO_ERROR;
-}
-
-void IResearchLink::afterTruncate() {
-  ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
-  SCOPED_LOCK(mutex);
-
-  if (!_view) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED); // IResearchView required
-  }
-
-  auto res = _view->drop(_view->id(), false);
-
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
+  return arangodb::Result();
 }
 
 bool IResearchLink::hasBatchInsert() const {
@@ -186,36 +196,35 @@ TRI_idx_iid_t IResearchLink::id() const noexcept {
   return _id;
 }
 
-bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
+arangodb::Result IResearchLink::init(
+    arangodb::velocypack::Slice const& definition
+) {
   // disassociate from view if it has not been done yet
-  if (TRI_ERROR_NO_ERROR != unload()) {
-    return false;
+  if (!unload().ok()) {
+    return arangodb::Result(TRI_ERROR_INTERNAL, "failed to unload link");
   }
 
   std::string error;
   IResearchLinkMeta meta;
 
   if (!meta.init(definition, error)) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "error parsing view link parameters from json: " << error;
-    TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
-
-    return false; // failed to parse metadata
+    return arangodb::Result(
+      TRI_ERROR_BAD_PARAMETER,
+      std::string("error parsing view link parameters from json: ") + error
+    );
   }
 
   if (!definition.isObject()
-      || !(definition.get(StaticStrings::ViewIdField).isString() ||
-           definition.get(StaticStrings::ViewIdField).isNumber<TRI_voc_cid_t>())) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "error finding view for link '" << _id << "'";
-    TRI_set_errno(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-
-    return false;
+      || !definition.get(StaticStrings::ViewIdField).isString()) {
+    return arangodb::Result(
+      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+      std::string("error finding view for link '") + std::to_string(_id) + "'"
+    );
   }
 
   // we continue to support the old and new ID format
   auto idSlice = definition.get(StaticStrings::ViewIdField);
-  std::string viewId = idSlice.isString() ? idSlice.copyString() : std::to_string(idSlice.getUInt());
+  auto viewId = idSlice.copyString();
   auto& vocbase = _collection.vocbase();
   auto logicalView = vocbase.lookupView(viewId); // will only contain IResearchView (even for a DBServer)
 
@@ -224,15 +233,15 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
     auto* ci = ClusterInfo::instance();
 
     if (!ci) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "failure to find 'ClusterInfo' instance for lookup of link '" << _id << "'";
-      TRI_set_errno(TRI_ERROR_INTERNAL);
-
-      return false;
+      return arangodb::Result(
+        TRI_ERROR_INTERNAL,
+        std::string("failure to find 'ClusterInfo' instance for lookup of link '") + std::to_string(_id) + "'"
+      );
     }
 
     auto logicalWiew = ci->getView(vocbase.name(), viewId);
     auto* wiew = LogicalView::cast<IResearchViewDBServer>(logicalWiew.get());
+
     if (wiew) {
       // FIXME figure out elegant way of testing for cluster wide LogicalCollection
       if (_collection.id() == _collection.planId() && _collection.isAStub()) {
@@ -255,7 +264,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
           }
         }
 
-        return true; // leave '_view' uninitialized to mark the index as unloaded/unusable
+        return arangodb::Result(); // leave '_view' uninitialized to mark the index as unloaded/unusable
       }
 
       logicalView = wiew->ensure(_collection.id()); // repoint LogicalView at the per-cid instance
@@ -264,41 +273,38 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
 
   if (!logicalView
       || arangodb::iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "error finding view: '" << viewId << "' for link '" << _id << "' : no such view";
-
-    return false; // no such view
+    return arangodb::Result(
+      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+      std::string("error finding view: '") + viewId + "' for link '" + std::to_string(_id) + "' : no such view"
+    );
   }
 
   auto* view = LogicalView::cast<IResearchView>(logicalView.get());
 
   if (!view) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "error finding view: '" << viewId << "' for link '" << _id << "'";
-
-    return false;
+    return arangodb::Result(
+      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+      std::string("error finding view: '") + viewId + "' for link '" + std::to_string(_id) + "'"
+    );
   }
 
   auto viewSelf = view->self();
 
   if (!viewSelf) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "error read-locking view: '" << viewId
-      << "' for link '" << _id << "'";
-
-    return false;
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      std::string("error read-locking view: '") + viewId + "' for link '" + std::to_string(_id) + "'"
+    );
   }
 
   _viewLock = std::unique_lock<ReadMutex>(viewSelf->mutex()); // aquire read-lock before checking view
 
   if (!viewSelf->get()) {
     _viewLock.unlock();
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "error getting view: '" << viewId << "' for link '" << _id << "'";
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "have raw view '" << view->guid() << "'";
-
-    return false;
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      std::string("error getting view: '") + viewId + "' for link '" + std::to_string(_id) + "', have raw view '" + view->guid() + "'"
+    );
   }
 
   _dropCollectionInDestructor = view->emplace(_collection.id()); // track if this is the instance that called emplace
@@ -315,7 +321,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
     }
   }
 
-  return true;
+  return arangodb::Result();
 }
 
 Result IResearchLink::insert(
@@ -488,7 +494,7 @@ char const* IResearchLink::typeName() const {
   return IResearchLinkHelper::type().c_str();
 }
 
-int IResearchLink::unload() {
+arangodb::Result IResearchLink::unload() {
   WriteMutex mutex(_mutex); // '_view' can be asynchronously read
   SCOPED_LOCK(mutex);
 
@@ -501,14 +507,7 @@ int IResearchLink::unload() {
   // FIXME TODO remove once LogicalCollection::drop(...) will drop its indexes explicitly
   if (_collection.deleted()
       || TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_DELETED == _collection.status()) {
-    auto res = drop();
-
-    LOG_TOPIC_IF(WARN, arangodb::iresearch::TOPIC, TRI_ERROR_NO_ERROR != res)
-        << "failed to drop collection from view while unloading dropped "
-        << "arangosearch link '" << _id << "' for arangosearch view '"
-        << _view->name() << "'";
-
-    return res;
+    return drop();
   }
 
   _dropCollectionInDestructor = false; // valid link (since unload(..) called), should not be dropped

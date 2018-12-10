@@ -27,6 +27,9 @@
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
+
+#include "Aql/types.h"
+#include "Cluster/ResultT.h"
 #include "Replication/common-defines.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
@@ -304,31 +307,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
 
   int createCollection(VPackSlice, arangodb::LogicalCollection**);
 
- protected:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief condition locker to wake up holdReadLockCollection jobs
-  //////////////////////////////////////////////////////////////////////////////
-
-  static arangodb::basics::ConditionVariable _condVar;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief global set of ids of holdReadLockCollection jobs, an
-  /// id mapping to false here indicates that a request to get the
-  /// read lock has been started, the mapped value holds the
-  /// actual transaction. if the read lock is not yet acquired, the
-  /// shared_ptr will contain a nullptr still.
-  /// To cancel the read lock,
-  /// remove the entry here (under the protection of the mutex of
-  /// condVar) and send a broadcast to the condition variable,
-  /// the job with that id is terminated. If it timeouts, then
-  /// the read lock is released automatically and the entry here
-  /// is deleted.
-  //////////////////////////////////////////////////////////////////////////////
-
-  static std::unordered_map<std::string,
-                            std::shared_ptr<SingleCollectionTransaction>>
-      _holdReadLockJobs;
-
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief minimum chunk size
@@ -341,6 +319,28 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   static uint64_t const _maxChunkSize;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief timeout for tombstones
+  //////////////////////////////////////////////////////////////////////////////
+
+  static std::chrono::hours const _tombstoneTimeout;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief lock for the tombstone list
+  ///        I do not think that this will ever be a bottleneck,
+  ///        if it is we can easily make one lock per vocbase by
+  ///        modifying the tombstones map.
+  //////////////////////////////////////////////////////////////////////////////
+
+  static basics::ReadWriteLock _tombLock;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief tombstones, should only be used, if a lock is cancelled
+  ///        before it was actually registered and therefor only seldomly
+  //////////////////////////////////////////////////////////////////////////////
+
+  static std::unordered_map<std::string, std::chrono::time_point<std::chrono::steady_clock>> _tombstones;
 
  protected:
 
@@ -409,6 +409,53 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   virtual void handleCommandDump() = 0;
+
+ private:
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Cleanup tombstones that have expired
+  //////////////////////////////////////////////////////////////////////////////
+  void timeoutTombstones() const;
+
+  bool isTombstoned(aql::QueryId id) const;
+
+  void registerTombstone(aql::QueryId id) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Create a blocking transaction for the given collectionName,
+  ///        It will be registered with the given id, and it will have
+  ///        the given time to live.
+  //////////////////////////////////////////////////////////////////////////////
+  Result createBlockingTransaction(aql::QueryId id,
+                                   LogicalCollection& col,
+                                   double ttl,
+                                   AccessMode::Type access) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Test if we already have the read-lock
+  ///        Will return true, if we have it and can use it
+  ///        Will return false, if we are still in the process of getting it.
+  ///        Will return error, if the lock has expired.
+  //////////////////////////////////////////////////////////////////////////////
+
+  ResultT<bool> isLockHeld(aql::QueryId id) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief compute a local checksum for the given collection
+  ///        Will return error if the lock has expired.
+  //////////////////////////////////////////////////////////////////////////////
+  
+  ResultT<std::string> computeCollectionChecksum(aql::QueryId readLockId,
+                                                 LogicalCollection* col) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Cacnel the lock with the given id
+  ///        Will return true, if we did have the lock
+  ///        Will return false, if we were still in the process of getting it.
+  ///        Will return error if the lock has expired or is not found.
+  //////////////////////////////////////////////////////////////////////////////
+
+  ResultT<bool> cancelBlockingTransaction(aql::QueryId id) const;
 };
 }
 #endif

@@ -58,7 +58,7 @@ CacheManagerFeature::CacheManagerFeature(
       _manager(nullptr),
       _rebalancer(nullptr),
       _cacheSize((TRI_PhysicalMemory >= (static_cast<uint64_t>(4) << 30))
-                  ? static_cast<uint64_t>((TRI_PhysicalMemory - (static_cast<uint64_t>(2) << 30)) * 0.3)
+                  ? static_cast<uint64_t>((TRI_PhysicalMemory - (static_cast<uint64_t>(2) << 30)) * 0.25)
                   : (256 << 20)),
       _rebalancingInterval(static_cast<uint64_t>(2 * 1000 * 1000)) {
   setOptional(true);
@@ -72,7 +72,8 @@ void CacheManagerFeature::collectOptions(
   options->addSection("cache", "Configure the hash cache");
 
   options->addOption("--cache.size", "size of cache in bytes",
-                     new UInt64Parameter(&_cacheSize));
+                     new UInt64Parameter(&_cacheSize),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Dynamic));
 
   options->addOption("--cache.rebalancing-interval",
                      "microseconds between rebalancing attempts",
@@ -105,7 +106,7 @@ void CacheManagerFeature::start() {
 
   auto scheduler = SchedulerFeature::SCHEDULER;
   auto postFn = [scheduler](std::function<void()> fn) -> bool {
-    scheduler->post(fn, false);
+    scheduler->queue(RequestPriority::LOW, fn);
     return true;
   };
   _manager.reset(new Manager(postFn, _cacheSize));

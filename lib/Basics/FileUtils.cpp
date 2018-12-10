@@ -35,7 +35,6 @@
 #include <functional>
 
 #include "Basics/Exceptions.h"
-#include "Basics/OpenFilesTracker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
@@ -72,6 +71,29 @@ std::string removeTrailingSeparator(std::string const& name) {
 
 void normalizePath(std::string& name) {
   std::replace(name.begin(), name.end(), '/', TRI_DIR_SEPARATOR_CHAR);
+
+#ifdef _WIN32
+  // for Windows the situation is a bit more complicated,
+  // as a mere replacement of all forward slashes to backslashes
+  // may leave us with a double backslash for sequences like "bla/\foo".
+  // in this case we collapse duplicate dir separators to a single one.
+  // we intentionally ignore the first 2 characters, because they may
+  // contain a network share filename such as "\\foo\bar"
+  
+  size_t const n = name.size();
+  size_t out = 0;
+
+  for (size_t i = 0; i < n; ++i) {
+    if (name[i] == TRI_DIR_SEPARATOR_CHAR && out > 1 && name[out - 1] == TRI_DIR_SEPARATOR_CHAR) {
+      continue;
+    }
+    name[out++] = name[i];
+  }
+
+  if (out != n) {
+    name.resize(out);
+  }
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -151,13 +173,13 @@ static void fillStringBuffer(int fd, std::string const& filename,
 }
 
 std::string slurp(std::string const& filename) {
-  int fd = TRI_TRACKED_OPEN_FILE(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+  int fd = TRI_OPEN(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
   if (fd == -1) {
     throwFileReadError(filename);
   }
 
-  TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
+  TRI_DEFER(TRI_CLOSE(fd));
 
   constexpr size_t chunkSize = 8192;
   StringBuffer buffer(chunkSize, false);
@@ -168,13 +190,13 @@ std::string slurp(std::string const& filename) {
 }
 
 void slurp(std::string const& filename, StringBuffer& result) {
-  int fd = TRI_TRACKED_OPEN_FILE(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+  int fd = TRI_OPEN(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
   if (fd == -1) {
     throwFileReadError(filename);
   }
 
-  TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
+  TRI_DEFER(TRI_CLOSE(fd));
 
   result.reset();
   constexpr size_t chunkSize = 8192;
@@ -192,7 +214,7 @@ static void throwFileWriteError(std::string const& filename) {
 }
 
 void spit(std::string const& filename, char const* ptr, size_t len, bool sync) {
-  int fd = TRI_TRACKED_CREATE_FILE(filename.c_str(),
+  int fd = TRI_CREATE(filename.c_str(),
                                    O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC,
                                    S_IRUSR | S_IWUSR | S_IRGRP);
 
@@ -200,7 +222,7 @@ void spit(std::string const& filename, char const* ptr, size_t len, bool sync) {
     throwFileWriteError(filename);
   }
 
-  TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
+  TRI_DEFER(TRI_CLOSE(fd));
 
   while (0 < len) {
     ssize_t n = TRI_WRITE(fd, ptr, static_cast<TRI_write_t>(len));

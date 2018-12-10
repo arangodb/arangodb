@@ -48,73 +48,14 @@ namespace basics {
 namespace StringUtils {
 
 // -----------------------------------------------------------------------------
-// STRING AND STRING POINTER
-// -----------------------------------------------------------------------------
-
-/// @brief creates a C string using new
-char* duplicate(std::string const&);
-
-/// @brief creates a C string using new
-char* duplicate(char const*, size_t);
-
-/// @brief creates a C string using new
-char* duplicate(char const*);
-
-/// @brief deletes and clears a string
-///
-/// The string is cleared using memset and then deleted. The pointer is
-/// set to 0.
-void destroy(char*&);
-
-/// @brief deletes and clears a string
-///
-/// The string is cleared using memset and then deleted. The pointer is
-/// set to 0.
-void destroy(char*&, size_t);
-
-/// @brief deletes but does not clear a character string
-///
-/// The pointer deleted and then set to 0.
-void erase(char*&);
-
-// -----------------------------------------------------------------------------
 // STRING CONVERSION
 // -----------------------------------------------------------------------------
-
-/// @brief capitalize string
-///
-/// This method converts characters at the beginning of a word to uppercase
-/// and remove any whitespaces. If first is true the first character of the
-/// first word is also converted to uppercase. Name must not be empty.
-std::string capitalize(std::string const& name, bool first = true);
-
-/// @brief separate words
-///
-/// This method converts all characters to lowercase and separates
-/// the words with a given character. Name must not be empty.
-std::string separate(std::string const& name, char separator = '-');
 
 /// @brief escape unicode
 ///
 /// This method escapes a unicode character string by replacing the unicode
 /// characters by a \\uXXXX sequence.
 std::string escapeUnicode(std::string const& name, bool escapeSlash = true);
-
-/// @brief escape html
-std::string escapeHtml(std::string const& name);
-
-/// @brief escape xml
-std::string escapeXml(std::string const& name);
-
-/// @brief escape hex for all non-printable characters (including space)
-std::string escapeHex(std::string const& name, char quote = '%');
-
-/// @brief escape hex
-std::string escapeHex(std::string const& name, std::string const& specials,
-                      char quote = '%');
-
-/// @brief escape as C code
-std::string escapeC(std::string const& name);
 
 /// @brief splits a string
 std::vector<std::string> split(std::string const& source, char delim = ',',
@@ -241,16 +182,6 @@ unsigned int levenshteinDistance(std::string const& str1, std::string const& str
   
 /// @brief calculates the levenshtein distance between the input strings
 size_t levenshteinDistance(std::vector<uint32_t> vect1, std::vector<uint32_t> vect2);
-
-/// @brief unicode hexadecimal characters to utf8
-bool unicodeToUTF8(char const* inputStr, size_t const& len,
-                   std::string& outputStr);
-
-/// @brief converts an utf16 symbol which needs UTF16 to UTF8
-///        The conversion correspond to the specification:
-///        http://en.wikipedia.org/wiki/UTF-16#Code_points_U.2B10000_to_U.2B10FFFF
-bool convertUTF16ToUTF8(char const* high_surrogate, char const* low_surrogate,
-                        std::string& outputStr);
 
 /// @brief url encodes the string
 std::string urlEncode(std::string const& str);

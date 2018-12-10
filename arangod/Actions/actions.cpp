@@ -32,32 +32,21 @@
 
 using namespace arangodb::basics;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief actions
-////////////////////////////////////////////////////////////////////////////////
+static std::unordered_map<std::string, std::shared_ptr<TRI_action_t>> Actions;
 
-static std::unordered_map<std::string, TRI_action_t*> Actions;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief prefix actions
-////////////////////////////////////////////////////////////////////////////////
+static std::unordered_map<std::string, std::shared_ptr<TRI_action_t>> PrefixActions;
 
-static std::unordered_map<std::string, TRI_action_t*> PrefixActions;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief actions lock
-////////////////////////////////////////////////////////////////////////////////
-
 static ReadWriteLock ActionsLock;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief defines an action
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_action_t* TRI_DefineActionVocBase(std::string const& name,
-                                      TRI_action_t* action) {
+std::shared_ptr<TRI_action_t> TRI_DefineActionVocBase(std::string const& name,
+                                                      std::shared_ptr<TRI_action_t> action) {
   std::string url = name;
 
+  // strip leading slash
   while (!url.empty() && url[0] == '/') {
     url = url.substr(1);
   }
@@ -65,40 +54,30 @@ TRI_action_t* TRI_DefineActionVocBase(std::string const& name,
   action->_url = url;
   action->_urlParts = StringUtils::split(url, "/").size();
   
-  std::unordered_map<std::string, TRI_action_t*>* which;
+  std::unordered_map<std::string, std::shared_ptr<TRI_action_t>>* which;
 
-  WRITE_LOCKER(writeLocker, ActionsLock);
-
-  // create a new action and store the callback function
   if (action->_isPrefix) {
     which = &PrefixActions;
   } else {
     which = &Actions;
   }
 
-  auto it = which->find(url);
+  WRITE_LOCKER(writeLocker, ActionsLock);
 
-  if (it == which->end()) {
-    which->emplace(url, action);
-  } else {
-    TRI_action_t* oldAction = (*it).second;
+  // create a new action and store the callback function
+  auto it = which->emplace(url, action);
 
-    delete action;
-    action = oldAction;
+  if (!it.second) {
+    return (*(it.first)).second;
   }
 
   // some debug output
-  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "created JavaScript " << (action->_isPrefix ? "prefix " : "") << " action '" << url << "'";
-
-  // return old or new action description
+  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "created JavaScript " << (action->_isPrefix ? "prefix " : "") << "action '" << url << "'";
   return action;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an action
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_action_t* TRI_LookupActionVocBase(arangodb::GeneralRequest* request) {
+std::shared_ptr<TRI_action_t> TRI_LookupActionVocBase(arangodb::GeneralRequest* request) {
   // check if we know a callback
   std::vector<std::string> suffixes = request->decodedSuffixes();
 
@@ -117,39 +96,39 @@ TRI_action_t* TRI_LookupActionVocBase(arangodb::GeneralRequest* request) {
     auto it = PrefixActions.find(name);
 
     if (it != PrefixActions.end()) {
+      // found a prefix match
       return (*it).second;
     }
 
-    readLocker.unlock();
-
+    // no match. no strip last suffix and try again
+    
     if (suffixes.empty()) {
+      // no further suffix left to strip
+      readLocker.unlock();
       break;
     }
 
-    suffixes.pop_back();
-    name = StringUtils::join(suffixes, '/');
 
-    readLocker.lock();
+    auto const& suffix = suffixes.back();
+    size_t suffixLength = suffix.size();
+    suffixes.pop_back();
+
+    TRI_ASSERT(name.size() >= suffixLength);
+    name.resize(name.size() - suffixLength);
+    // skip over '/' char at the end
+    if (!name.empty() && name.back() == '/') {
+      name.resize(name.size() - 1);
+    }
   }
 
   return nullptr;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes all defined actions
-////////////////////////////////////////////////////////////////////////////////
-
 void TRI_CleanupActions() {
   WRITE_LOCKER(writeLocker, ActionsLock);
 
-  for (auto& it : Actions) {
-    delete it.second;
-  }
   Actions.clear();
-
-  for (auto& it : PrefixActions) {
-    delete it.second;
-  }
   PrefixActions.clear();
 }
 
@@ -157,10 +136,10 @@ void TRI_VisitActions(std::function<void(TRI_action_t*)> const& visitor) {
   READ_LOCKER(writeLocker, ActionsLock);
   
   for (auto& it : Actions) {
-    visitor(it.second);
+    visitor(it.second.get());
   }
   
   for (auto& it : PrefixActions) {
-    visitor(it.second);
+    visitor(it.second.get());
   }
 }

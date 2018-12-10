@@ -213,11 +213,14 @@ class Node {
   /// @brief Part of relative path which exists
   bool has(std::string const&) const;
 
-  /// @brief Is UInt
+  /// @brief Is Int
   bool isInt() const;
 
   /// @brief Is UInt
   bool isUInt() const;
+  
+  /// @brief Is number
+  bool isNumber() const;
 
   /// @brief Is boolean
   bool isBool() const;
@@ -230,47 +233,47 @@ class Node {
 
   /// @brief accessor to Node object
   /// @return  second is true if url exists, first populated if second true
-  std::pair<Node const &, bool> hasAsNode(std::string const &) const;
+  std::pair<Node const&, bool> hasAsNode(std::string const&) const;
 
   /// @brief accessor to Node object
   /// @return  second is true if url exists, first populated if second true
-  std::pair<Node &, bool> hasAsWritableNode(std::string const &);
+  std::pair<Node&, bool> hasAsWritableNode(std::string const&);
 
   /// @brief accessor to Node's type
   /// @return  second is true if url exists, first populated if second true
-  std::pair<NodeType, bool> hasAsType(std::string const &) const;
+  std::pair<NodeType, bool> hasAsType(std::string const&) const;
 
   /// @brief accessor to Node's Slice value
   /// @return  second is true if url exists, first populated if second true
-  std::pair<Slice, bool> hasAsSlice(std::string const &) const;
+  std::pair<Slice, bool> hasAsSlice(std::string const&) const;
 
   /// @brief accessor to Node's uint64_t value
   /// @return  second is true if url exists, first populated if second true
-  std::pair<uint64_t, bool> hasAsUInt(std::string const &) const;
+  std::pair<uint64_t, bool> hasAsUInt(std::string const&) const;
 
   /// @brief accessor to Node's bool value
   /// @return  second is true if url exists, first populated if second true
-  std::pair<bool, bool> hasAsBool(std::string const &) const;
+  std::pair<bool, bool> hasAsBool(std::string const&) const;
 
   /// @brief accessor to Node's std::string value
   /// @return  second is true if url exists, first populated if second true
-  std::pair<std::string, bool> hasAsString(std::string const &) const;
+  std::pair<std::string, bool> hasAsString(std::string const&) const;
 
   /// @brief accessor to Node's _children
   /// @return  second is true if url exists, first populated if second true
-  std::pair<Children, bool> hasAsChildren(std::string const &) const;
+  std::pair<Children, bool> hasAsChildren(std::string const&) const;
 
   /// @brief accessor to Node then write to builder
   /// @return  second is true if url exists, first is ignored
-  std::pair<void *, bool> hasAsBuilder(std::string const &, Builder&, bool showHidden = false) const;
+  std::pair<void *, bool> hasAsBuilder(std::string const&, Builder&, bool showHidden = false) const;
 
   /// @brief accessor to Node's value as a Builder object
   /// @return  second is true if url exists, first populated if second true
-  std::pair<Builder, bool> hasAsBuilder(std::string const &) const;
+  std::pair<Builder, bool> hasAsBuilder(std::string const&) const;
 
   /// @brief accessor to Node's Array
   /// @return  second is true if url exists, first populated if second true
-  std::pair<Slice, bool> hasAsArray(std::string const &) const;
+  std::pair<Slice, bool> hasAsArray(std::string const&) const;
 
   //
   // These two operator() functions could be "protected" once
@@ -285,6 +288,12 @@ class Node {
   /// @brief Get string value (throws if type NODE or if conversion fails)
   std::string getString() const;
 
+  /// @brief Get array value
+  Slice getArray() const;
+
+  /// @brief Get insigned value (throws if type NODE or if conversion fails)
+  uint64_t getUInt() const;
+
   //
   // The protected accessors are the "old" interface.  They throw.
   //  Please use the hasAsXXX replacements.
@@ -296,17 +305,11 @@ protected:
   /// @brief Get integer value (throws if type NODE or if conversion fails)
   int64_t getInt() const;
 
-  /// @brief Get insigned value (throws if type NODE or if conversion fails)
-  uint64_t getUInt() const;
-
   /// @brief Get bool value (throws if type NODE or if conversion fails)
   bool getBool() const;
 
   /// @brief Get double value (throws if type NODE or if conversion fails)
   double getDouble() const;
-
-  /// @brief Get array value
-  Slice getArray() const;
 
  public:
   /// @brief Clear key value store

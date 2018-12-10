@@ -69,22 +69,26 @@ void SchedulerFeature::collectOptions(
 
   // max / min number of threads
   options->addOption("--server.maximal-threads", std::string("maximum number of request handling threads to run (0 = use system-specific default of ") + std::to_string(defaultNumberOfThreads()) + ")",
-                     new UInt64Parameter(&_nrMaximalThreads));
+                     new UInt64Parameter(&_nrMaximalThreads),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Dynamic));
 
-  options->addHiddenOption("--server.minimal-threads",
-                           "minimum number of request handling threads to run",
-                           new UInt64Parameter(&_nrMinimalThreads));
+  options->addOption("--server.minimal-threads",
+                     "minimum number of request handling threads to run",
+                     new UInt64Parameter(&_nrMinimalThreads),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--server.maximal-queue-size", "size of the priority 2 fifo",
                      new UInt64Parameter(&_fifo2Size));
 
-  options->addHiddenOption(
+  options->addOption(
       "--server.scheduler-queue-size",
       "number of simultaneously queued requests inside the scheduler",
-      new UInt64Parameter(&_queueSize));
+      new UInt64Parameter(&_queueSize),
+      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption("--server.prio1-size", "size of the priority 1 fifo",
-                           new UInt64Parameter(&_fifo1Size));
+  options->addOption("--server.prio1-size", "size of the priority 1 fifo",
+                     new UInt64Parameter(&_fifo1Size),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
   // obsolete options
   options->addObsoleteOption("--server.threads", "number of threads", true);
@@ -97,6 +101,9 @@ void SchedulerFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions>) {
   if (_nrMaximalThreads == 0) {
     _nrMaximalThreads = defaultNumberOfThreads();
+  }
+  if (_nrMinimalThreads < 2) {
+    _nrMinimalThreads = 2;
   }
 
   if (_queueSize == 0) {
@@ -136,7 +143,7 @@ void SchedulerFeature::start() {
     LOG_TOPIC(WARN, arangodb::Logger::THREADS)
         << "--server.maximal-threads (" << _nrMaximalThreads << ") should be at least "
         << (_nrMinimalThreads + 1) << ", raising it";
-    _nrMaximalThreads = _nrMinimalThreads + 1;
+    _nrMaximalThreads = _nrMinimalThreads;
   }
 
   TRI_ASSERT(2 <= _nrMinimalThreads);
@@ -300,7 +307,7 @@ bool CtrlHandler(DWORD eventType) {
 
 void SchedulerFeature::buildScheduler() {
   _scheduler = std::make_shared<Scheduler>(_nrMinimalThreads, _nrMaximalThreads,
-                                           _queueSize, _fifo1Size, _fifo2Size);
+                                           _fifo1Size, _fifo2Size);
 
   SCHEDULER = _scheduler.get();
 }

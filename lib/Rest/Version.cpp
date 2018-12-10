@@ -177,6 +177,12 @@ void Version::initialize() {
   Values["sse42"] = "false";
 #endif
 
+#ifdef __AVX2__
+  Values["avx2"] = "true";
+#else
+  Values["avx2"] = "false";
+#endif
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   Values["maintainer-mode"] = "true";
 #else

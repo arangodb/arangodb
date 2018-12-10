@@ -47,6 +47,8 @@
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 
+#include <iostream>
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -63,8 +65,11 @@ V8ClientConnection::V8ClientConnection()
   _vpackOptions.buildUnindexedObjects = true;
   _vpackOptions.buildUnindexedArrays = true;
   _builder.onFailure([this](int error, std::string const& msg) {
-    _lastHttpReturnCode = 503;
-    _lastErrorMessage = msg;
+    std::unique_lock<std::mutex> guard(_lock, std::try_to_lock);
+    if (guard) {
+      _lastHttpReturnCode = 503;
+      _lastErrorMessage = msg;
+    }
   });
 }
 
@@ -81,7 +86,15 @@ void V8ClientConnection::createConnection() {
   req->timeout(std::chrono::seconds(30));
   try {
     auto res = newConnection->sendRequest(std::move(req));
+
     _lastHttpReturnCode = res->statusCode();
+    if (_lastHttpReturnCode >= 400) {
+      auto const& headers = res->messageHeader().meta;
+      auto it = headers.find("http/1.1");
+      if (it != headers.end()) {
+        _lastErrorMessage = (*it).second;
+      }
+    }
     
     if (_lastHttpReturnCode == 200) {
       _connection = std::move(newConnection);
@@ -117,7 +130,7 @@ void V8ClientConnection::createConnection() {
         if (version.first < 3) {
           // major version of server is too low
           //_client->disconnect();
-          shutdownConnection(); 
+          shutdownConnection();
           _lastErrorMessage = "Server version number ('" + versionString +
           "') is too low. Expecting 3.0 or higher";
           return;
@@ -131,6 +144,7 @@ void V8ClientConnection::createConnection() {
 }
 
 void V8ClientConnection::setInterrupted(bool interrupted) {
+  std::lock_guard<std::mutex> guard(_lock);
   if (interrupted && _connection.get() != nullptr) {
     _connection->cancel();
     _connection.reset();
@@ -155,21 +169,26 @@ std::string V8ClientConnection::endpointSpecification() const {
 
 void V8ClientConnection::connect(ClientFeature* client) {
   TRI_ASSERT(client);
-  
+  std::lock_guard<std::mutex> guard(_lock);
+
   _requestTimeout = std::chrono::duration<double>(client->requestTimeout());
   _databaseName = client->databaseName();
   _builder.endpoint(client->endpoint());
-  if (!client->username().empty()) {
-    _builder.user(client->username()).password(client->password());
-    _builder.authenticationType(fuerte::AuthenticationType::Basic);
-  } else if (!client->jwtSecret().empty()) {
+  // check jwtSecret first, as it is empty by default,
+  // but username defaults to "root" in most configurations
+  if (!client->jwtSecret().empty()) {
     _builder.jwtToken(fuerte::jwt::generateInternalToken(client->jwtSecret(), "arangosh"));
     _builder.authenticationType(fuerte::AuthenticationType::Jwt);
+  } else if (!client->username().empty()) {
+    _builder.user(client->username()).password(client->password());
+    _builder.authenticationType(fuerte::AuthenticationType::Basic);
   }
   createConnection();
 }
 
 void V8ClientConnection::reconnect(ClientFeature* client) {
+  std::lock_guard<std::mutex> guard(_lock);
+  
   _requestTimeout = std::chrono::duration<double>(client->requestTimeout());
   _databaseName = client->databaseName();
   _builder.endpoint(client->endpoint());

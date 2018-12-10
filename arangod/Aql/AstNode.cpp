@@ -374,42 +374,12 @@ AstNode::AstNode(AstNodeType type)
   value.type = VALUE_TYPE_NULL;
 }
 
-/// @brief create a node, with defining a value type
-AstNode::AstNode(AstNodeType type, AstNodeValueType valueType) : AstNode(type) {
-  value.type = valueType;
-  TRI_ASSERT(flags == 0);
-  TRI_ASSERT(computedValue == nullptr);
-}
-
-/// @brief create a boolean node, with defining a value
-AstNode::AstNode(bool v, AstNodeValueType valueType)
-    : AstNode(NODE_TYPE_VALUE, valueType) {
-  TRI_ASSERT(valueType == VALUE_TYPE_BOOL);
-  value.value._bool = v;
-  TRI_ASSERT(flags == 0);
-  TRI_ASSERT(computedValue == nullptr);
-  setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
-}
-
-/// @brief create an int node, with defining a value
-AstNode::AstNode(int64_t v, AstNodeValueType valueType)
-    : AstNode(NODE_TYPE_VALUE, valueType) {
-  TRI_ASSERT(valueType == VALUE_TYPE_INT);
-  value.value._int = v;
-  TRI_ASSERT(flags == 0);
-  TRI_ASSERT(computedValue == nullptr);
-  setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
-}
-
-/// @brief create a string node, with defining a value
-AstNode::AstNode(char const* v, size_t length, AstNodeValueType valueType)
-    : AstNode(NODE_TYPE_VALUE, valueType) {
-  TRI_ASSERT(valueType == VALUE_TYPE_STRING);
-  setStringValue(v, length);
-  TRI_ASSERT(flags == 0);
-  TRI_ASSERT(computedValue == nullptr);
-  setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
-}
+/// @brief create a node, with defining a value 
+AstNode::AstNode(AstNodeValue value)
+    : type(NODE_TYPE_VALUE), 
+      flags(makeFlags(DETERMINED_CONSTANT, VALUE_CONSTANT, DETERMINED_SIMPLE, VALUE_SIMPLE, DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER)),
+      value(value), 
+      computedValue(nullptr) {}
 
 /// @brief create the node from VPack
 AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
@@ -619,7 +589,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
 }
 
 /// @brief create the node
-AstNode::AstNode(std::function<void(AstNode*)> registerNode,
+AstNode::AstNode(std::function<void(AstNode*)> const& registerNode,
                  std::function<char const*(std::string const&)> registerString,
                  arangodb::velocypack::Slice const& slice)
     : AstNode(getNodeTypeFromVPack(slice)) {
@@ -999,34 +969,31 @@ void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
     return;
   }
   if (type == NODE_TYPE_ARRAY) {
-    {
-      VPackArrayBuilder guard(&builder);
-      size_t const n = numMembers();
-      for (size_t i = 0; i < n; ++i) {
-        auto member = getMemberUnchecked(i);
-        if (member != nullptr) {
-          member->toVelocyPackValue(builder);
-        }
+    builder.openArray(false);
+    size_t const n = numMembers();
+    for (size_t i = 0; i < n; ++i) {
+      auto member = getMemberUnchecked(i);
+      if (member != nullptr) {
+        member->toVelocyPackValue(builder);
       }
     }
+    builder.close();
     return;
   }
 
   if (type == NODE_TYPE_OBJECT) {
-    {
-      size_t const n = numMembers();
-      VPackObjectBuilder guard(&builder);
-
-      for (size_t i = 0; i < n; ++i) {
-        auto member = getMemberUnchecked(i);
-        if (member != nullptr) {
-          builder.add(VPackValuePair(member->getStringValue(),
-                                     member->getStringLength(),
-                                     VPackValueType::String));
-          member->getMember(0)->toVelocyPackValue(builder);
-        }
+    builder.openObject();
+    size_t const n = numMembers();
+    for (size_t i = 0; i < n; ++i) {
+      auto member = getMemberUnchecked(i);
+      if (member != nullptr) {
+        builder.add(VPackValuePair(member->getStringValue(),
+                                    member->getStringLength(),
+                                    VPackValueType::String));
+        member->getMember(0)->toVelocyPackValue(builder);
       }
     }
+    builder.close();
     return;
   }
 
@@ -1132,13 +1099,14 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
   size_t const n = members.size();
   if (n > 0) {
     builder.add(VPackValue("subNodes"));
-    VPackArrayBuilder guard(&builder);
+    builder.openArray(false);
     for (size_t i = 0; i < n; ++i) {
       AstNode* member = getMemberUnchecked(i);
       if (member != nullptr) {
         member->toVelocyPack(builder, verbose);
       }
     }
+    builder.close();
   }
 }
 
@@ -1151,13 +1119,11 @@ bool AstNode::containsNodeType(AstNodeType searchType) const {
   // iterate sub-nodes
   size_t const n = members.size();
 
-  if (n > 0) {
-    for (size_t i = 0; i < n; ++i) {
-      AstNode* member = getMemberUnchecked(i);
+  for (size_t i = 0; i < n; ++i) {
+    AstNode* member = getMemberUnchecked(i);
 
-      if (member != nullptr && member->containsNodeType(searchType)) {
-        return true;
-      }
+    if (member != nullptr && member->containsNodeType(searchType)) {
+      return true;
     }
   }
 
@@ -1396,7 +1362,7 @@ bool AstNode::isAttributeAccessForVariable(
   }
   auto node = this;
 
-  basics::StringBuffer indexBuff(false);
+  basics::StringBuffer indexBuff;
 
   while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
          node->type == NODE_TYPE_INDEXED_ACCESS ||
@@ -1638,7 +1604,7 @@ bool AstNode::isConstant() const {
     size_t const n = numMembers();
 
     for (size_t i = 0; i < n; ++i) {
-      auto member = getMember(i);
+      auto member = getMemberUnchecked(i);
 
       if (!member->isConstant()) {
         setFlag(DETERMINED_CONSTANT);
@@ -1654,7 +1620,7 @@ bool AstNode::isConstant() const {
     size_t const n = numMembers();
 
     for (size_t i = 0; i < n; ++i) {
-      auto member = getMember(i);
+      auto member = getMemberUnchecked(i);
       if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
         auto value = member->getMember(0);
 
@@ -2192,7 +2158,7 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
     getMember(1)->stringify(buffer, verbose, failIfLong);
     return;
   }
-
+  
   if (type == NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ ||
       type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NE ||
       type == NODE_TYPE_OPERATOR_BINARY_ARRAY_LT ||
@@ -2222,6 +2188,23 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
     getMember(1)->stringify(buffer, verbose, failIfLong);
     buffer->appendChar(':');
     getMember(2)->stringify(buffer, verbose, failIfLong);
+    return;
+  }
+  
+  if (type == NODE_TYPE_OPERATOR_NARY_AND ||
+      type == NODE_TYPE_OPERATOR_NARY_OR) {
+    // not used by V8
+    size_t const n = numMembers();
+    for (size_t i = 0; i < n; ++i) {
+      if (i > 0) {
+        if (type == NODE_TYPE_OPERATOR_NARY_AND) {
+          buffer->appendText(" AND ");
+        } else {
+          buffer->appendText(" OR ");
+        }
+      }
+      getMember(i)->stringify(buffer, verbose, failIfLong);
+    }
     return;
   }
 
@@ -2635,8 +2618,9 @@ void AstNode::markFinalized(AstNode* subtreeRoot) {
   }
 
   subtreeRoot->setFlag(AstNodeFlagType::FLAG_FINALIZED);
-  for (size_t i = 0; i < subtreeRoot->numMembers(); ++i) {
-    markFinalized(subtreeRoot->getMember(i));
+  size_t const n = subtreeRoot->numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    markFinalized(subtreeRoot->getMemberUnchecked(i));
   }
 }
 

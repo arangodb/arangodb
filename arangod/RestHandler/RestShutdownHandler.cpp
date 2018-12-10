@@ -28,6 +28,8 @@
 
 #include "Agency/AgencyComm.h"
 #include "Cluster/ClusterFeature.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Rest/HttpRequest.h"
 #include "Utils/ExecContext.h"
@@ -51,8 +53,13 @@ RestStatus RestShutdownHandler::execute() {
   }
   
   AuthenticationFeature* af = AuthenticationFeature::instance();
-  if (af->isEnabled() && !_request->user().empty()) {
-    auth::Level lvl = af->userManager()->databaseAuthLevel(_request->user(), "_system", /*configured*/true);
+  if (af->isActive() && !_request->user().empty()) {
+    auth::Level lvl = auth::Level::NONE;
+    if (af->userManager() != nullptr) {
+      lvl = af->userManager()->databaseAuthLevel(_request->user(), "_system", /*configured*/true);
+    } else {
+      lvl = auth::Level::RW;
+    }
     if (lvl < auth::Level::RW) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     "you need admin rights to trigger shutdown");
@@ -85,9 +92,7 @@ RestStatus RestShutdownHandler::execute() {
         ApplicationServer::getFeature<ClusterFeature>("Cluster");
     clusterFeature->setUnregisterOnShutdown(true);
   }
-
-  ApplicationServer::server->beginShutdown();
-  
+ 
   try {
     VPackBuilder result;
     result.add(VPackValue("OK"));
@@ -95,6 +100,15 @@ RestStatus RestShutdownHandler::execute() {
   } catch (...) {
     // Ignore the error
   }
-
+  rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+  // don't block the response for workers waiting on this callback
+  // this should allow workers to go into the IDLE state
+  scheduler->queue(RequestPriority::HIGH, [this] {
+    // Give the server 2 seconds to send the reply:
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    // Go down:
+    ApplicationServer::server->beginShutdown();
+    });
+    
   return RestStatus::DONE;
 }

@@ -33,6 +33,7 @@
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 using namespace arangodb;
 
@@ -472,7 +473,7 @@ RestStatus RestAgencyHandler::handleInquire() {
       generateError(rest::ResponseCode::REQUEST_TIMEOUT, 408);
     } else {
       if (failed) { // Some/all requests failed
-        generateResult(rest::ResponseCode::PRECONDITION_FAILED, body.slice());
+        generateResult(rest::ResponseCode::NOT_FOUND, body.slice());
       } else {          // All good (or indeed unknown in case 1)
         generateResult(rest::ResponseCode::OK, body.slice());
       }
@@ -547,6 +548,8 @@ RestStatus RestAgencyHandler::handleConfig() {
     body.add("commitIndex", Value(last));
     _agent->lastAckedAgo(body);
     body.add("configuration", _agent->config().toBuilder()->slice());
+    body.add("engine", VPackValue(EngineSelectorFeature::engineName()));
+    body.add("version", VPackValue(ARANGODB_VERSION));
   }
 
   generateResult(rest::ResponseCode::OK, body.slice());

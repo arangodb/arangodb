@@ -36,6 +36,7 @@ const wait = internal.wait;
 const request = require("@arangodb/request");
 const cluster = require("@arangodb/cluster");
 const supervisionState = cluster.supervisionState;
+const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 
 function getDBServers() {
   var tmp = global.ArangoClusterInfo.getDBServers();
@@ -174,11 +175,21 @@ function MovingShardsWithViewSuite (options) {
     } catch (err) {
       console.error(
         "Exception for POST /_admin/cluster/cleanOutServer:", err.stack);
-      return {};
+      return {cleanedServers:[]};
+    }
+    if (res.statusCode !== 200) {
+      return {cleanedServers:[]};
     }
     var body = res.body;
     if (typeof body === "string") {
-      body = JSON.parse(body);
+      try {
+        body = JSON.parse(body);
+      } catch (err2) {
+      }
+    }
+    if (typeof body !== "object" || !body.hasOwnProperty("cleanedServers") ||
+        typeof body.cleanedServers !== "object") {
+      return {cleanedServers:[]};
     }
     return body;
   }
@@ -530,9 +541,10 @@ function MovingShardsWithViewSuite (options) {
       // actual servers that have the corresponding view index
       const serversPerShard = getViewServersPerShard();
       for(const [shard, leader] of Object.entries(leadersPerShard)) {
-        assertTrue(serversPerShard[shard].has(leader),
+        assertTrue(serversPerShard.hasOwnProperty(shard)
+          && serversPerShard[shard].has(leader),
           `Expected shard ${shard} to be available on ${leader}, but it's not. `
-          + `${{leadersPerShard, serversPerShard}}`);
+          + `${JSON.stringify({ leadersPerShard, serversPerShard })}`);
       }
     });
   }
@@ -762,10 +774,8 @@ function MovingShardsWithViewSuite (options) {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
-      for (var i = 0; i < c.length; ++i) {
-        v[i].drop();
-        c[i].drop();
-      }
+      v.forEach(v => v.drop());
+      c.forEach(c => c.drop());
       c = [];
       v = [];
       resetCleanedOutServers();
@@ -776,8 +786,16 @@ function MovingShardsWithViewSuite (options) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSetup : function () {
-      assertTrue(waitForSynchronousReplication("_system"));
-      waitAndAssertViewEqualCollectionServers();
+      for (var count = 0; count < 120; ++count) {
+        dbservers = getDBServers();
+        if (dbservers.length === 5) {
+          assertTrue(waitForSynchronousReplication("_system"));
+          waitAndAssertViewEqualCollectionServers();
+          return;
+        }
+        console.log("Waiting for 5 dbservers to be present:", JSON.stringify(dbservers));
+        wait(1.0);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1040,11 +1058,15 @@ function MovingShardsWithViewSuite (options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(function MovingShardsWithViewSuite_nodata() {
-  return MovingShardsWithViewSuite({ useData: false });
+  let derivedSuite = {};
+  deriveTestSuite(MovingShardsWithViewSuite({ useData: false }), derivedSuite, "_nodata");
+  return derivedSuite;
 });
 
 jsunity.run(function MovingShardsWithViewSuite_data() {
-  return MovingShardsWithViewSuite({ useData: true });
+  let derivedSuite = {};
+  deriveTestSuite(MovingShardsWithViewSuite({ useData: true }), derivedSuite, "_data");
+  return derivedSuite;
 });
 
 return jsunity.done();

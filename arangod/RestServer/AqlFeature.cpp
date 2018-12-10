@@ -32,7 +32,7 @@ using namespace arangodb::application_features;
 
 namespace {
 // number of leases currently handed out
-// the two highest bit of the value has a special meaning
+// the highest bit of the value has a special meaning
 // and must be masked out.
 // if it is set, then a new lease can be acquired.
 // if not set, then no new lease can be acquired.
@@ -81,9 +81,8 @@ void AqlFeature::stop() {
   LOG_TOPIC(DEBUG, Logger::QUERIES) << "AQL feature stopped";
 
   // Wait until all AQL queries are done
-  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY.load();
-  auto traverserEngineRegistry =
-      TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY.load();
+  auto queryRegistry = QueryRegistryFeature::registry();
+  auto traverserEngineRegistry = TraverserEngineRegistryFeature::registry();
   TRI_ASSERT(queryRegistry != nullptr);
   TRI_ASSERT(traverserEngineRegistry != nullptr);
   while (true) {
@@ -108,7 +107,7 @@ void AqlFeature::stop() {
         << " registered traverser engines to terminate and for " << n
         << " registered queries to terminate and for " << m
         << " feature leases to be released";
-    std::this_thread::sleep_for(std::chrono::microseconds(500000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(250));
   }
 }
 

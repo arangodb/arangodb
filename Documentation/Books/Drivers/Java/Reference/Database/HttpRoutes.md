@@ -3,11 +3,10 @@
 
 ## ArangoDatabase.route
 
-```
-ArangoDatabase.route(String... path) : ArangoRoute
-```
+`ArangoDatabase.route(String... path) : ArangoRoute`
 
-Returns a new _ArangoRoute_ instance for the given path (relative to the database) that can be used to perform arbitrary requests.
+Returns a new _ArangoRoute_ instance for the given path
+(relative to the database) that can be used to perform arbitrary requests.
 
 **Arguments**
 

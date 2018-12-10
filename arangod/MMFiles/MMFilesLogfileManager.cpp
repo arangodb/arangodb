@@ -156,15 +156,17 @@ void MMFilesLogfileManager::collectOptions(std::shared_ptr<ProgramOptions> optio
   options->addSection(
       Section("wal", "Configure the WAL of the MMFiles engine", "wal", false, false));
 
-  options->addHiddenOption(
+  options->addOption(
       "--wal.allow-oversize-entries",
       "allow entries that are bigger than '--wal.logfile-size'",
-      new BooleanParameter(&_allowOversizeEntries));
+      new BooleanParameter(&_allowOversizeEntries),
+      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption(
+  options->addOption(
       "--wal.use-mlock",
       "mlock WAL logfiles in memory (may require elevated privileges or limits)",
-      new BooleanParameter(&_useMLock));
+      new BooleanParameter(&_useMLock),
+      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--wal.directory", "logfile directory",
                      new StringParameter(&_directory));
@@ -185,8 +187,10 @@ void MMFilesLogfileManager::collectOptions(std::shared_ptr<ProgramOptions> optio
       "continue recovery even if re-applying operations fails",
       new BooleanParameter(&_ignoreRecoveryErrors));
 
-  options->addHiddenOption("--wal.flush-timeout", "flush timeout (in milliseconds)",
-                     new UInt64Parameter(&_flushTimeout));
+  options->addOption("--wal.flush-timeout", 
+                     "flush timeout (in milliseconds)",
+                     new UInt64Parameter(&_flushTimeout),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--wal.logfile-size", "size of each logfile (in bytes)",
                      new UInt32Parameter(&_filesize));
@@ -199,24 +203,28 @@ void MMFilesLogfileManager::collectOptions(std::shared_ptr<ProgramOptions> optio
                      "maximum number of reserve logfiles to maintain",
                      new UInt32Parameter(&_reserveLogfiles));
 
-  options->addHiddenOption("--wal.slots", "number of logfile slots to use",
-                           new UInt32Parameter(&_numberOfSlots));
+  options->addOption("--wal.slots",  
+                     "number of logfile slots to use",
+                     new UInt32Parameter(&_numberOfSlots),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--wal.sync-interval",
       "interval for automatic, non-requested disk syncs (in milliseconds)",
       new UInt64Parameter(&_syncInterval));
 
-  options->addHiddenOption(
+  options->addOption(
       "--wal.throttle-when-pending",
       "throttle writes when at least this many operations are waiting for "
       "collection (set to 0 to deactivate write-throttling)",
-      new UInt64Parameter(&_throttleWhenPending));
+      new UInt64Parameter(&_throttleWhenPending),
+      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption(
+  options->addOption(
       "--wal.throttle-wait",
       "maximum wait time per operation when write-throttled (in milliseconds)",
-      new UInt64Parameter(&_maxThrottleWait));
+      new UInt64Parameter(&_maxThrottleWait),
+      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
 void MMFilesLogfileManager::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -1767,7 +1775,7 @@ int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
   double const end = TRI_microtime() + maxWaitTime;
 
   while (true) {
-    if (_lastCollectedId >= logfileId) {
+    if (_lastCollectedId.load() >= logfileId) {
       return TRI_ERROR_NO_ERROR;
     }
 
@@ -1787,7 +1795,7 @@ int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
 
     LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
         << "still waiting for collector. logfileId: " << logfileId
-        << " lastCollected: " << _lastCollectedId << ", result: " << res;
+        << " lastCollected: " << _lastCollectedId.load() << ", result: " << res;
 
     if (res != TRI_ERROR_LOCK_TIMEOUT && res != TRI_ERROR_NO_ERROR) {
       // some error occurred
@@ -2303,6 +2311,9 @@ int MMFilesLogfileManager::inspectLogfiles() {
   LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
       << "setting max HLC value to " << _recoverState->maxRevisionId;
   TRI_HybridLogicalClock(_recoverState->maxRevisionId);
+
+  // track maximum local document id as well
+  LocalDocumentId::track(_recoverState->maxLocalDocumentId);
 
   return TRI_ERROR_NO_ERROR;
 }

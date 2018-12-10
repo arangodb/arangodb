@@ -1,0 +1,6 @@
+# Greylist information
+
+In this file we collect information about which tests are currently
+greylisted. Please add a reason and date, and possibly links to issues
+or PRs.
+
