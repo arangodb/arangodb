@@ -35,8 +35,26 @@ const db = internal.db;
 
 function backgroundIndexSuite() {
   'use strict';
-  let cn = "UnitTestsCollectionIdx";
-  let tasks = require("@arangodb/tasks");
+  const cn = "UnitTestsCollectionIdx";
+  const tasks = require("@arangodb/tasks");
+  const tasksCompleted = () => {
+    return 0 == tasks.get().filter((task) => {
+      return (task.id.match(/^UnitTest/) || task.name.match(/^UnitTest/))
+    }).length;
+  };
+  const waitForTasks = () => {
+    const time = require("internal").time;
+    const start = time();
+    while (!tasksCompleted()) {
+      if (time() - start > 300) { // wait for 5 minutes maximum
+        fail("Timeout creating documents after 5 minutes: " + c.count());
+      }
+      require("internal").wait(0.5, false);
+    }
+    require('internal').wal.flush(true, true);
+    // wait an extra second for good measure
+    require("internal").wait(1.0, false);
+  };
 
   return {
 
@@ -74,8 +92,9 @@ function backgroundIndexSuite() {
       let n = 9;
       for (let i = 0; i < n; ++i) {
         let command = `let c = require("internal").db._collection("${cn}"); 
-                       let x = 10; while(x-- > 0) {
-                         let docs = []; 
+                         let x = 10;
+                         while(x-- > 0) {
+                           let docs = []; 
                          for(let i = 0; i < 1000; i++) {
                            docs.push({value:i})
                          } 
@@ -87,34 +106,27 @@ function backgroundIndexSuite() {
       // create the index on the main thread
       c.ensureIndex({type: 'hash', fields: ['value'], unique: false});
 
-      let time = require("internal").time;
-      let start = time();
-      while (true) {
-        if (c.count() === 100000) {
-          break;
-        }
-        if (time() - start > 300) { // wait for 5 minutes maximum
-          fail("Timeout creating documents after 5 minutes: " + c.count());
-        }
-        require("internal").wait(0.5, false);
-      }
+      // wait for insertion tasks to complete
+      waitForTasks();
+      
+      // sanity check
+      assertEqual(c.count(), 100000);
 
-      // 250 entries of each value [0,999]
-      for (let i = 0; i < 1000; i++) {
+      // 100 entries of each value [0,999]
+      /*for (let i = 0; i < 1000; i++) {
         let cursor = db._query("FOR doc IN @@coll FILTER doc.value == @val RETURN 1", 
                                {'@coll': cn, 'val': i}, {count:true});
         assertEqual(cursor.count(), 100);
-      }
+      }*/
 
-      const estimate = 1000.0 / 100000.0;
-
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
       let indexes = c.getIndexes(true);
       for (let i of indexes) {
         switch (i.type) {
           case 'primary':
             break;
           case 'hash':
-            assertEqual(i.selectivityEstimate, estimate);
+            assertEqual(i.selectivityEstimate, 0.01);
             break;
           default:
             fail();
@@ -122,6 +134,8 @@ function backgroundIndexSuite() {
       }
     },
 
+    // if we run this in isolation, it passes, but the count is off otherwise.
+    // the slow part of the test is the individual sanity checks
     testInsertParallelUnique: function () {
       let c = require("internal").db._collection(cn);
       // first lets add some initial documents
@@ -139,36 +153,36 @@ function backgroundIndexSuite() {
         let command = `let c = require("internal").db._collection("${cn}"); 
                        let x = ${i} * 10000; 
                        while(x < ${i + 1} * 10000) {
-                        let docs = []; 
-                        for(let i = 0; i < 1000; i++) {
-                          docs.push({value: x++})
-                        } 
-                        c.save(docs);
-                      }`;
+                         let docs = []; 
+                         for(let i = 0; i < 1000; i++) {
+                           docs.push({value: x++})
+                         } 
+                         let res = c.save(docs);
+                         res.map((obj) => {
+                           if (obj.error) {
+                             require('internal').print(JSON.stringify(obj));
+                           }
+                         });
+                       }`;
         tasks.register({ name: "UnitTestsIndexInsert" + i, command: command });
       }
 
       // create the index on the main thread
       c.ensureIndex({type: 'hash', fields: ['value'], unique: true});
 
-      let time = require("internal").time;
-      let start = time();
-      while (true) {
-        if (c.count() === 50000) {
-          break;
-        }
-        if (time() - start > 300) { // wait for 5 minutes maximum
-          fail("Timeout creating documents after 5 minutes: " + c.count());
-        }
-        require("internal").wait(0.5, false);
-      }
-
-      // 250 entries of each value [0,999]
+      // wait for insertion tasks to complete
+      waitForTasks();
+      
+      // sanity checks
+      const scanDocs = db._query("FOR doc IN @@coll RETURN doc", 
+                                 {'@coll': cn}, {count:true, optimizer: {rules: ["-use-indexes"]}}).toArray();
+      assertEqual(scanDocs.length, 50000);
       for (let i = 0; i < 50000; i++) {
-        let cursor = db._query("FOR doc IN @@coll FILTER doc.value == @val RETURN 1", 
+        const cursor = db._query("FOR doc IN @@coll FILTER doc.value == @val RETURN 1", 
                                {'@coll': cn, 'val': i}, {count:true});
         assertEqual(cursor.count(), 1);
       }
+      assertEqual(c.count(), 50000);*/
 
       let indexes = c.getIndexes(true);
       for (let i of indexes) {
@@ -201,17 +215,17 @@ function backgroundIndexSuite() {
         let command = `let c = require("internal").db._collection("${cn}"); 
                        let x = ${i} * 10000; 
                        while(x < ${i + 1} * 10000) {
-                        let docs = []; 
-                        for(let i = 0; i < 1000; i++) {
-                          docs.push({value: x++})
-                        } 
-                        c.save(docs);
-                      }`;
+                         let docs = []; 
+                         for(let i = 0; i < 1000; i++) {
+                           docs.push({value: x++})
+                         } 
+                         c.save(docs);
+                       }`;
         tasks.register({ name: "UnitTestsIndexInsert" + i, command: command });
       }
 
-      c.save({value: 1 }); // now trigger a conflict
-      //tasks.register({ name: "UnitTestsIndexInsert6" + i, command: `require("internal").db._collection("${cn}").save({value: 1 });` });
+      // now insert a document that will cause a conflict while indexing
+      c.save({value: 1 });
 
       try {
         // create the index on the main thread
@@ -221,17 +235,11 @@ function backgroundIndexSuite() {
         assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum, err);
       }
 
-      let time = require("internal").time;
-      let start = time();
-      while (true) {
-        if (c.count() === 50001) {
-          break;
-        }
-        if (time() - start > 300) { // wait for 5 minutes maximum
-          fail("Timeout creating documents after 5 minutes: " + c.count());
-        }
-        require("internal").wait(0.5, false);
-      }
+      // wait for insertion tasks to complete
+      waitForTasks();
+      
+      // sanity checks
+      assertEqual(c.count(), 50001);
 
       let indexes = c.getIndexes();
       for (let i of indexes) {

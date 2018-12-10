@@ -138,7 +138,7 @@ arangodb::Result convertStatus(rocksdb::Status const& status, StatusHint hint, s
         // should actually not occur with our RocksDB configuration
         return {TRI_ERROR_RESOURCE_LIMIT, prefix + "failed to acquire lock due to lock number limit"+ postfix };
       }
-      return {TRI_ERROR_ARANGO_CONFLICT};
+      return {TRI_ERROR_ARANGO_CONFLICT, "write-write conflict"};
     case rocksdb::Status::Code::kExpired:
       return {TRI_ERROR_INTERNAL, prefix + "key expired; TTL was set in error"+ postfix};
     case rocksdb::Status::Code::kTryAgain:
