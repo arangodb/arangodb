@@ -1,6 +1,9 @@
 devel
 -----
 
+* fixed TypeError being thrown instead of validation errors when Foxx manifest
+  validation fails
+
 * fix internal issue #2786: improved confirmation dialog when clicking the
   Truncate button in the Web UI
 
