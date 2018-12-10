@@ -2557,9 +2557,17 @@ std::shared_ptr<LogicalCollection> ClusterMethods::createCollectionOnCoordinator
     bool enforceReplicationFactor
 ) {
   auto col = std::make_unique<LogicalCollection>(vocbase, parameters, true, 0);
-    // Collection is a temporary collection object that undergoes sanity checks etc.
-    // It is not used anywhere and will be cleaned up after this call.
-    // Persist collection will return the real object.
+
+  // Bogus id
+  if (col->id() == 0) {
+    LOG_TOPIC(ERR, Logger::CLUSTER)
+      << "Failed to create collection: shutting down!";
+    return nullptr;
+  }
+  
+  // Collection is a temporary collection object that undergoes sanity checks etc.
+  // It is not used anywhere and will be cleaned up after this call.
+  // Persist collection will return the real object.
   return persistCollectionInAgency(
     col.get(), ignoreDistributeShardsLikeErrors, waitForSyncReplication,
     enforceReplicationFactor, parameters);
