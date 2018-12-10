@@ -249,6 +249,11 @@ void ClusterInfo::cleanup() {
 
 uint64_t ClusterInfo::uniqid(uint64_t count) {
   while (true) {
+
+    if (application_features::ApplicationServer::isStopping()) {
+      return 0; // bogus unique id, when shutting down
+    }
+    
     uint64_t oldValue;
     {
       // The quick path, we have enough in our private reserve:
@@ -2442,6 +2447,9 @@ int ClusterInfo::ensureIndexCoordinator(
   if (iid == 0) {
     // no id set, create a new one!
     iid = uniqid();
+    if (iid == 0) {
+      return setErrormsg(TRI_ERROR_SHUTTING_DOWN, errorMsg);
+    }
   }
   std::string const idString = arangodb::basics::StringUtils::itoa(iid);
 

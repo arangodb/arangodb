@@ -149,6 +149,11 @@ class TraditionalKeyGenerator : public KeyGenerator {
         return std::string();
       }
 
+      if (tick == 0) {
+        // shutting down!
+        return std::string();
+      }
+
       if (tick <= _lastValue) {
         tick = ++_lastValue;
       } else {
@@ -255,7 +260,12 @@ class PaddedKeyGenerator : public KeyGenerator {
       MUTEX_LOCKER(mutexLocker, _lock);
     
       if (tick == UINT64_MAX || _lastValue >= UINT64_MAX - 1ULL) {
-        // oops, out of keys!
+        // oops, out of keys 
+        return std::string();
+      }
+
+      if (tick == 0) {
+        // shutting down
         return std::string();
       }
 

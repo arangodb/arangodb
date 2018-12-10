@@ -1039,14 +1039,20 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
         << "could not drop collection: " << ex.what();
   } catch (...) {}
 
+  // We always need a new id
+  TRI_voc_tick_t newIdTick = ci->uniqid(1);
+
+  // Uniqid 0 is bogus, we are shutting down if 0 was received
+  if (newIdTick == 0) {
+    return Result(TRI_ERROR_SHUTTING_DOWN);
+  }
+  
   // now re-create the collection
 
   // Build up new information that we need to merge with the given one
   VPackBuilder toMerge;
   toMerge.openObject();
 
-  // We always need a new id
-  TRI_voc_tick_t newIdTick = ci->uniqid(1);
   std::string newId = StringUtils::itoa(newIdTick);
   toMerge.add("id", VPackValue(newId));
 

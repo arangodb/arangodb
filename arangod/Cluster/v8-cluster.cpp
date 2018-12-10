@@ -538,6 +538,10 @@ static void JS_UniqidAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   AgencyComm comm;
   uint64_t result = comm.uniqid(count, timeout);
 
+  if (result == 0) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_SHUTTING_DOWN, "shutting down");
+  }
+
   std::string const value = StringUtils::itoa(result);
 
   TRI_V8_RETURN_STD_STRING(value);

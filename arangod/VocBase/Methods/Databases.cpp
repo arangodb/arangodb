@@ -201,6 +201,10 @@ arangodb::Result Databases::create(std::string const& dbName,
     }
 
     uint64_t const id = ClusterInfo::instance()->uniqid();
+    if (id == 0) { // Shutting down
+      return Result(TRI_ERROR_SHUTTING_DOWN);
+    }
+    
     VPackBuilder builder;
     try {
       VPackObjectBuilder b(&builder);
@@ -289,9 +293,9 @@ arangodb::Result Databases::create(std::string const& dbName,
   }
 
   if (upgradeRes.fail()) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "Could not create database "
-    << upgradeRes.errorMessage();
-    return upgradeRes;
+    LOG_TOPIC(ERR, Logger::FIXME)
+      << "Could not create database " << upgradeRes.errorMessage();
+    return std::move(upgradeRes);
   }
 
   // Entirely Foxx related:

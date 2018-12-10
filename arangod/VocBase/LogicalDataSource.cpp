@@ -205,8 +205,9 @@ LogicalDataSource::LogicalDataSource(
    _guid(ensureGuid(std::move(guid), _id, _planId, _name, system)),
    _deleted(deleted),
    _system(system) {
-  TRI_ASSERT(_id);
-  TRI_ASSERT(!_guid.empty());
+
+  //TRI_ASSERT(_id);
+  //TRI_ASSERT(!_guid.empty());
 }
 
 Result LogicalDataSource::properties(

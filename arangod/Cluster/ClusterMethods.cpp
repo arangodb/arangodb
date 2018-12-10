@@ -31,6 +31,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ResultT.h"
 #include "Graph/Traverser.h"
 #include "Indexes/Index.h"
 #include "Utils/CollectionNameResolver.h"
@@ -510,20 +511,21 @@ static void collectResultsFromAllShards(
 /// fetched from ClusterInfo and with random_shuffle to mix it up.
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>> DistributeShardsEvenly(
-    ClusterInfo* ci,
-    uint64_t numberOfShards,
-    uint64_t replicationFactor,
-    std::vector<std::string>& dbServers,
-    bool warnAboutReplicationFactor) {
+using shard_map_t =
+  std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>>;
 
-  auto shards = std::make_shared<std::unordered_map<std::string, std::vector<std::string>>>();
+static ResultT<shard_map_t> DistributeShardsEvenly(
+  ClusterInfo* ci, uint64_t numberOfShards, uint64_t replicationFactor,
+  std::vector<std::string>& dbServers, bool warnAboutReplicationFactor) {
+
+  auto shards =
+    std::make_shared<std::unordered_map<std::string, std::vector<std::string>>>();
 
   if (dbServers.size() == 0) {
     ci->loadCurrentDBServers();
     dbServers = ci->getCurrentDBServers();
     if (dbServers.empty()) {
-      return shards;
+      return ResultT<shard_map_t>::success(shards);
     }
     random_shuffle(dbServers.begin(), dbServers.end());
   }
@@ -535,6 +537,10 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
 
   // fetch a unique id for each shard to create
   uint64_t const id = ci->uniqid(numberOfShards);
+
+  if (id == 0) { // shutting down
+    return ResultT<shard_map_t>::error(TRI_ERROR_SHUTTING_DOWN);
+  }
 
   size_t leaderIndex = 0;
   size_t followerIndex = 0;
@@ -574,7 +580,7 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
     shards->emplace(shardId, serverIds);
   }
 
-  return shards;
+  return ResultT<shard_map_t>::success(shards);
 }
 
 
@@ -613,6 +619,13 @@ CloneShardDistribution(ClusterInfo* ci, LogicalCollection* col,
   auto numberOfShards = static_cast<uint64_t>(col->numberOfShards());
   // fetch a unique id for each shard to create
   uint64_t const id = ci->uniqid(numberOfShards);
+
+  if (id == 0) {
+    std::string const errorMessage = "shutting down";
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE, errorMessage);
+  }
+
   for (uint64_t i = 0; i < numberOfShards; ++i) {
     // determine responsible server(s)
     std::string shardId = "s" + StringUtils::itoa(id + i);
@@ -2621,14 +2634,20 @@ std::shared_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
           }), dbServers.end());
     }
     std::random_shuffle(dbServers.begin(), dbServers.end());
-    shards = DistributeShardsEvenly(
-      ci, numberOfShards, replicationFactor, dbServers, !col->system()
-    );
+
+    auto distRes = DistributeShardsEvenly(
+      ci, numberOfShards, replicationFactor, dbServers, !col->system());
+    if (!distRes.ok()) {
+      auto const& result = distRes.copy_result();
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        result.errorNumber(), result.errorMessage());
+    }
+    shards = distRes.get();
   }
 
   if (shards->empty() && !col->isSmart()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "no database servers found in cluster");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL, "no database servers found in cluster");
   }
 
   col->setShardMap(shards);
