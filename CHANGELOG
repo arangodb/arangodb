@@ -1,6 +1,9 @@
 v3.2.18 (XXXX-XX-XX)
 --------------------
 
+* fixed TypeError being thrown instead of validation errors when Foxx manifest
+  validation fails
+
 * disable startup warning for Linux kernel variable `vm.overcommit_memory` settings
   values of 0 or 1.
   Effectively `overcommit_memory` settings value of 0 or 1 fix two memory-allocation
