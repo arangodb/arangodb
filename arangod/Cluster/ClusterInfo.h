@@ -359,16 +359,6 @@ class ClusterInfo {
   );
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief ask about a view in current.
-  /// If it is not found in the cache (and not currently loading plan), then the
-  /// cache is reloaded once.
-  //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<LogicalView> getViewCurrent(
-    DatabaseID const& vocbase,
-    ViewID const& viewID
-  );
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about all views of a database
   //////////////////////////////////////////////////////////////////////////////
 
@@ -659,7 +649,7 @@ class ClusterInfo {
   /// @brief ensure an index in coordinator.
   //////////////////////////////////////////////////////////////////////////////
 
-  int ensureIndexCoordinatorWithoutRollback(
+  int ensureIndexCoordinatorInner(
       std::string const& databaseName, std::string const& collectionID,
       std::string const& idSlice, arangodb::velocypack::Slice const& slice,
       bool create, arangodb::velocypack::Builder& resultBuilder,

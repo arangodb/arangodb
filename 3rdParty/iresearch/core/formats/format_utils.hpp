@@ -97,6 +97,13 @@ inline int64_t checksum(const index_input& in) {
   index_input::ptr dup;
   if (0 != in.file_pointer()) {
     dup = in.dup();
+
+    if (!dup) {
+      IR_FRMT_ERROR("Failed to duplicate input in: %s", __FUNCTION__);
+
+      throw io_error("failed to duplicate input");
+    }
+
     dup->seek(0);
     stream = dup.get();
   }

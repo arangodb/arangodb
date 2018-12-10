@@ -53,7 +53,7 @@ class AsyncMeta;
 
 class IResearchViewDBServer final: public arangodb::LogicalViewClusterInfo {
  public:
-  virtual ~IResearchViewDBServer();
+  virtual ~IResearchViewDBServer() noexcept;
 
   using LogicalView::drop;
 
@@ -122,7 +122,8 @@ class IResearchViewDBServer final: public arangodb::LogicalViewClusterInfo {
     TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& info,
     arangodb::DatabasePathFeature const& dbPathFeature,
-    uint64_t planVersion
+    uint64_t planVersion,
+    std::shared_ptr<AsyncMeta> meta = nullptr
   );
 };
 

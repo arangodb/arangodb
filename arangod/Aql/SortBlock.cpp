@@ -49,11 +49,11 @@ class OurLessThan {
       auto const& lhs = _buffer[a.first]->getValueReference(a.second, reg.reg);
       auto const& rhs = _buffer[b.first]->getValueReference(b.second, reg.reg);
 
-#ifdef USE_IRESEARCH
+#if 0 // #ifdef USE_IRESEARCH
       TRI_ASSERT(reg.comparator);
       int const cmp = (*reg.comparator)(reg.scorer.get(), _trx, lhs, rhs);
 #else
-      int const cmp = AqlValue::Compare(_trx, lhs, rhs, true);
+    int const cmp = AqlValue::Compare(_trx, lhs, rhs, true);
 #endif
 
       if (cmp < 0) {

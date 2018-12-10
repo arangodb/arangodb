@@ -72,8 +72,9 @@ BootstrapFeature::BootstrapFeature(
 }
 
 void BootstrapFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addHiddenOption("hund", "make ArangoDB bark on startup",
-                           new BooleanParameter(&_bark));
+  options->addOption("hund", "make ArangoDB bark on startup",
+                     new BooleanParameter(&_bark),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
 // Local Helper functions
@@ -320,10 +321,10 @@ void BootstrapFeature::start() {
 
   if (ServerState::isSingleServer(role) && AgencyCommManager::isEnabled()) {
     // simon: this is set to correct value in the heartbeat thread
-    ServerState::instance()->setServerMode(ServerState::Mode::TRYAGAIN);
+    ServerState::setServerMode(ServerState::Mode::TRYAGAIN);
   } else {
     // Start service properly:
-    ServerState::instance()->setServerMode(ServerState::Mode::DEFAULT);
+    ServerState::setServerMode(ServerState::Mode::DEFAULT);
   }
 
   LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "ArangoDB (version " << ARANGODB_VERSION_FULL

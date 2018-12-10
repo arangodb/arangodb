@@ -519,8 +519,8 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
 
   auto shards = std::make_shared<std::unordered_map<std::string, std::vector<std::string>>>();
 
-  ci->loadCurrentDBServers();
   if (dbServers.size() == 0) {
+    ci->loadCurrentDBServers();
     dbServers = ci->getCurrentDBServers();
     if (dbServers.empty()) {
       return shards;
@@ -2565,6 +2565,7 @@ std::shared_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
   std::string distributeShardsLike = col->distributeShardsLike();
   std::vector<std::string> avoid = col->avoidServers();
   ClusterInfo* ci = ClusterInfo::instance();
+  ci->loadCurrentDBServers();
   std::vector<std::string> dbServers = ci->getCurrentDBServers();
   std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>> shards = nullptr;
 

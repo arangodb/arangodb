@@ -509,7 +509,17 @@ index_writer::active_segment_context::~active_segment_context() {
   if (ctx_) {
     --*segments_active_; // track here since garanteed to have 1 ref per active segment
   }
-  if (flush_ctx_) { ctx_.reset(); SCOPED_LOCK(flush_ctx_->mutex_); flush_ctx_->pending_segment_context_cond_.notify_all(); } // FIXME TODO remove once col_writer tail is fixed to flush() multiple times without overwrite (since then the tail will be in a different context)
+
+  if (flush_ctx_) {
+    ctx_.reset();
+
+    try {
+      SCOPED_LOCK(flush_ctx_->mutex_);
+      flush_ctx_->pending_segment_context_cond_.notify_all();
+    } catch (...) {
+      // lock may throw
+    }
+  } // FIXME TODO remove once col_writer tail is fixed to flush() multiple times without overwrite (since then the tail will be in a different context)
 }
 
 index_writer::active_segment_context& index_writer::active_segment_context::operator=(
@@ -554,17 +564,19 @@ index_writer::documents_context::document::document(
   segment_->buffered_docs_.store(writer.docs_cached());
 }
 
-index_writer::documents_context::document::document(document&& other)
+index_writer::documents_context::document::document(document&& other) NOEXCEPT
   : segment_writer::document(*(other.segment_->writer_)),
     ctx_(other.ctx_), // GCC does not allow moving of references
     segment_(std::move(other.segment_)),
     update_id_(std::move(other.update_id_)) {
 }
 
-index_writer::documents_context::document::~document() {
+index_writer::documents_context::document::~document() NOEXCEPT {
   if (!segment_) {
     return; // another instance will call commit()
   }
+
+  assert(segment_->writer_);
 
   try {
     segment_->writer_->commit();
@@ -577,15 +589,24 @@ index_writer::documents_context::document::~document() {
   }
 
   if (!--segment_->active_count_) {
-    SCOPED_LOCK(ctx_.mutex_); // lock due to context modification and notification
-    ctx_.pending_segment_context_cond_.notify_all(); // in case ctx is in flush_all()
+    try {
+      SCOPED_LOCK(ctx_.mutex_); // lock due to context modification and notification
+      ctx_.pending_segment_context_cond_.notify_all(); // in case ctx is in flush_all()
+    } catch (...) {
+      // lock may throw
+    }
   }
 }
 
-index_writer::documents_context::~documents_context() {
+index_writer::documents_context::~documents_context() NOEXCEPT {
   // FIXME TODO move emplace into active_segment_context destructor
   assert(segment_.ctx().use_count() == segment_use_count_); // failure may indicate a dangling 'document' instance
-  writer_.get_flush_context()->emplace(std::move(segment_)); // commit segment
+
+  try {
+    writer_.get_flush_context()->emplace(std::move(segment_)); // commit segment
+  } catch (...) {
+    reset(); // abort segment
+  }
 }
 
 void index_writer::documents_context::reset() NOEXCEPT {
@@ -706,11 +727,17 @@ index_writer::flush_context_ptr index_writer::documents_context::update_segment(
       writer.name().c_str(), writer.docs_cached(), writer.memory_active(), limits.segment_docs_max, limits.segment_memory_max
     );
 
-    if (!segment.flush()) {
-      throw index_error(string_utils::to_string(
+    try {
+      segment.flush();
+    } catch (...) {
+      IR_FRMT_ERROR(
         "while flushing segment '%s', error: failed to flush segment",
         segment.writer_meta_.meta.name.c_str()
-      ));
+      );
+
+      segment.reset();
+
+      throw;
     }
   }
 
@@ -872,9 +899,9 @@ index_writer::segment_context::segment_context(
   assert(meta_generator_);
 }
 
-bool index_writer::segment_context::flush() {
+void index_writer::segment_context::flush() {
   if (!writer_ || !writer_->initialized() || !writer_->docs_cached()) {
-    return true; // skip flushing an empty writer
+    return; // skip flushing an empty writer
   }
 
   auto flushed_docs_count = flushed_update_contexts_.size();
@@ -895,16 +922,17 @@ bool index_writer::segment_context::flush() {
   auto& segment = flushed_.back();
 
   // flush segment_writer
-  if (!writer_->flush(segment)) {
+  try {
+    writer_->flush(segment);
+  } catch (...) {
+    // failed to flush segment
     flushed_.pop_back();
     flushed_update_contexts_.resize(flushed_docs_count);
 
-    return false; // failed to flush segment
+    throw;
   }
 
   writer_->reset(); // mark segment as already flushed
-
-  return true;
 }
 
 index_writer::segment_context::ptr index_writer::segment_context::make(
@@ -1002,7 +1030,7 @@ void index_writer::segment_context::remove(filter::ptr&& filter) {
   );
 }
 
-void index_writer::segment_context::reset() {
+void index_writer::segment_context::reset() NOEXCEPT {
   active_count_.store(0);
   buffered_docs_.store(0);
   dirty_ = false;
@@ -1015,8 +1043,6 @@ void index_writer::segment_context::reset() {
 
   if (writer_->initialized()) {
     writer_->reset(); // try to reduce number of files flushed below
-    writer_->flush(writer_meta_); // flush segment even for empty segments since this will clear internal segment_writer state
-    writer_meta_.meta = segment_meta(); // reset to invalid
   }
 
   dir_.clear_refs(); // release refs only after clearing writer state to ensure 'writer_' does not hold any files
@@ -1188,16 +1214,13 @@ index_writer::ptr index_writer::make(
   return writer;
 }
 
-index_writer::~index_writer() {
+index_writer::~index_writer() NOEXCEPT {
   assert(!segments_active_.load()); // failure may indicate a dangling 'document' instance
-  close();
+  cached_readers_.clear();
+  write_lock_.reset(); // reset write lock if any
+  pending_state_.reset(); // reset pending state (if any) before destroying flush contexts
   flush_context_ = nullptr;
   flush_context_pool_.clear(); // ensue all tracked segment_contexts are released before segment_writer_pool_ is deallocated
-}
-
-void index_writer::close() {
-  cached_readers_.clear(); // cached_readers_ read/modified during flush()
-  write_lock_.reset();
 }
 
 uint64_t index_writer::buffered_docs() const {
@@ -1372,7 +1395,7 @@ bool index_writer::consolidate(
       SCOPED_LOCK(ctx->mutex_); // lock due to context modification
 
       lock.unlock(); // can release commit lock, we guarded against commit by locked flush context
-      index_utils::write_index_segment(dir, consolidation_segment); // persist segment meta
+      index_utils::flush_index_segment(dir, consolidation_segment); // persist segment meta
       ctx->segment_mask_.reserve(
         ctx->segment_mask_.size() + candidates.size()
       );
@@ -1439,7 +1462,7 @@ bool index_writer::consolidate(
         }
       }
 
-      index_utils::write_index_segment(dir, consolidation_segment);// persist segment meta
+      index_utils::flush_index_segment(dir, consolidation_segment);// persist segment meta
       ctx->segment_mask_.reserve(
         ctx->segment_mask_.size() + candidates.size()
       );
@@ -1504,7 +1527,7 @@ bool index_writer::import(
     return false; // import failure (no files created, nothing to clean up)
   }
 
-  index_utils::write_index_segment(dir, segment);
+  index_utils::flush_index_segment(dir, segment);
 
   auto refs = extract_refs(dir);
 
@@ -1660,9 +1683,7 @@ index_writer::pending_context_t index_writer::flush_all() {
     segment_flush_locks.emplace_back(entry.segment_->flush_mutex_); // prevent concurrent modification of segment_context properties during flush_context::emplace(...)
 
     // force a flush of the underlying segment_writer
-    if (!entry.segment_->flush()) {
-      return pending_context_t(); // failed to flush segment
-    }
+    entry.segment_->flush();
 
     entry.doc_id_end_ =
       std::min(entry.segment_->uncomitted_doc_id_begin_, entry.doc_id_end_); // update so that can use valid value below
@@ -1725,7 +1746,7 @@ index_writer::pending_context_t index_writer::flush_all() {
 
       to_sync.register_partial_sync(segment_id, write_document_mask(dir, segment.meta, docs_mask));
       segment.meta.size = 0; // reset for new write
-      index_utils::write_index_segment(dir, segment); // write with new mask
+      index_utils::flush_index_segment(dir, segment); // write with new mask
     }
   }
 
@@ -1838,7 +1859,7 @@ index_writer::pending_context_t index_writer::flush_all() {
 
     // persist segment meta
     if (pending_consolidation) {
-      index_utils::write_index_segment(dir, pending_segment.segment);
+      index_utils::flush_index_segment(dir, pending_segment.segment);
     }
 
     // register full segment sync
@@ -2013,7 +2034,7 @@ index_writer::pending_context_t index_writer::flush_all() {
         write_document_mask(
           dir, segment_ctx.segment_.meta, segment_ctx.docs_mask_
         );
-        index_utils::write_index_segment(dir, segment_ctx.segment_); // write with new mask
+        index_utils::flush_index_segment(dir, segment_ctx.segment_); // write with new mask
       }
 
       // register full segment sync
@@ -2023,7 +2044,6 @@ index_writer::pending_context_t index_writer::flush_all() {
   }
 
   pending_meta->update_generation(meta_); // clone index metadata generation
-  cached_readers_.purge(ctx->segment_mask_); // release cached readers
 
   modified |= !to_sync.empty(); // new files added
 
@@ -2038,17 +2058,13 @@ index_writer::pending_context_t index_writer::flush_all() {
   pending_context.ctx = std::move(ctx); // retain flush context reference
   pending_context.meta = std::move(pending_meta); // retain meta pending flush
   pending_context.to_sync = std::move(to_sync);
-  meta_.segments_ = pending_context.meta->segments_; // create copy
 
   return pending_context;
 }
 
-bool index_writer::begin() {
-  SCOPED_LOCK(commit_lock_);
-  return start();
-}
-
 bool index_writer::start() {
+  assert(!commit_lock_.try_lock()); // already locked
+
   REGISTER_TIMER_DETAILED();
 
   if (pending_state_) {
@@ -2072,65 +2088,84 @@ bool index_writer::start() {
     throw illegal_state();
   }
 
-  // sync all pending files
+  auto update_generation = make_finally([this, &pending_meta]()NOEXCEPT{
+    meta_.update_generation(pending_meta);
+  });
+
+  auto sync = [&dir](const std::string& file) {
+    if (!dir.sync(file)) {
+      throw io_error(string_utils::to_string(
+        "failed to sync file, path: %s",
+        file.c_str()
+      ));
+    }
+
+    return true;
+  };
+
   try {
-    auto update_generation = make_finally([this, &pending_meta] {
-      meta_.update_generation(pending_meta);
-    });
-
-    auto sync = [&dir](const std::string& file) {
-      if (!dir.sync(file)) {
-        throw detailed_io_error(string_utils::to_string(
-          "failed to sync file, path: %s",
-          file.c_str()
-        ));
-      }
-
-      return true;
-    };
-
-    // sync files
+    // sync all pending files
     to_commit.to_sync.visit(sync, pending_meta);
+
+    // track all refs
+    file_refs_t pending_refs;
+    append_segments_refs(pending_refs, dir, pending_meta);
+    pending_refs.emplace_back(
+      directory_utils::reference(dir, writer_->filename(pending_meta), true)
+    );
+
+    meta_.segments_ = to_commit.meta->segments_; // create copy
+
+    // 1st phase of the transaction successfully finished here,
+    // set to_commit as active flush context containing pending meta
+    pending_state_.commit = memory::make_shared<committed_state_t::element_type>(
+      std::piecewise_construct,
+      std::forward_as_tuple(std::move(to_commit.meta)),
+      std::forward_as_tuple(std::move(pending_refs))
+    );
   } catch (...) {
-    // in case of syncing error, just clear pending meta & peform rollback
-    // next commit will create another meta & sync all pending files
-    writer_->rollback();
-    pending_state_.reset(); // flush is rolled back
+    writer_->rollback(); // rollback started transaction
+
     throw;
   }
 
-  // track all refs
-  file_refs_t pending_refs;
+  // ...........................................................................
+  // only noexcept operations below
+  // ...........................................................................
 
-  append_segments_refs(pending_refs, dir, pending_meta);
-  pending_refs.emplace_back(
-    directory_utils::reference(dir, writer_->filename(pending_meta), true)
-  );
-
-  // 1st phase of the transaction successfully finished here,
-  // set to_commit as active flush context containing pending meta
-  pending_state_.commit = memory::make_shared<committed_state_t::element_type>(
-    std::piecewise_construct,
-    std::forward_as_tuple(std::move(to_commit.meta)),
-    std::forward_as_tuple(std::move(pending_refs))
-  );
+  cached_readers_.purge(to_commit.ctx->segment_mask_); // release cached readers
   pending_state_.ctx = std::move(to_commit.ctx);
 
   return true;
 }
 
 void index_writer::finish() {
+  assert(!commit_lock_.try_lock()); // already locked
+
   REGISTER_TIMER_DETAILED();
 
   if (!pending_state_) {
     return;
   }
 
+  auto reset_state = irs::make_finally([this]()NOEXCEPT {
+    // release reference to flush_context
+    pending_state_.reset();
+  });
+
   // ...........................................................................
   // lightweight 2nd phase of the transaction
   // ...........................................................................
 
-  writer_->commit();
+  try {
+    if (!writer_->commit()) {
+      throw illegal_state();
+    }
+  } catch (...) {
+    abort(); // rollback transaction
+
+    throw;
+  }
 
   // ...........................................................................
   // after here transaction successfull (only noexcept operations below)
@@ -2140,18 +2175,10 @@ void index_writer::finish() {
     &committed_state_, std::move(pending_state_.commit)
   );
   meta_.last_gen_ = committed_state_->first->gen_; // update 'last_gen_' to last commited/valid generation
-  pending_state_.reset(); // flush is complete, release reference to flush_context
 }
 
-void index_writer::commit() {
-  SCOPED_LOCK(commit_lock_);
-
-  start();
-  finish();
-}
-
-void index_writer::rollback() {
-  SCOPED_LOCK(commit_lock_);
+void index_writer::abort() {
+  assert(!commit_lock_.try_lock()); // already locked
 
   if (!pending_state_) {
     // there is no open transaction

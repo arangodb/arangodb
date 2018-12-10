@@ -209,7 +209,7 @@ class IRESEARCH_API index_meta {
   index_segments_t segments_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 
-  uint64_t next_generation() const;
+  uint64_t next_generation() const NOEXCEPT;
 }; // index_meta
 
 NS_END

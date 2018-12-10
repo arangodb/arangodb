@@ -81,9 +81,9 @@ class DumpRestoreHelper {
       this.restoreOldConfig.activateEncryption();
     }
 
-    this.arangorestore = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreConfig, this.dumpOptions);
-    this.arangorestoreOld = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreOldConfig, this.dumpOptions);
-    this.arangodump = pu.run.arangoDumpRestoreWithConfig.bind(this, this.dumpConfig, this.dumpOptions);
+    this.arangorestore = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreConfig, this.dumpOptions, this.instanceInfo.rootDir);
+    this.arangorestoreOld = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreOldConfig, this.dumpOptions, this.instanceInfo.rootDir);
+    this.arangodump = pu.run.arangoDumpRestoreWithConfig.bind(this, this.dumpConfig, this.dumpOptions, this.instanceInfo.rootDir);
   }
 
   print (s) {

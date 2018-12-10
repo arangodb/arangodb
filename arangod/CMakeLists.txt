@@ -460,6 +460,7 @@ SET(ARANGOD_SOURCES
   RestServer/FortuneFeature.cpp
   RestServer/FrontendFeature.cpp
   RestServer/InitDatabaseFeature.cpp
+  RestServer/LanguageCheckFeature.cpp
   RestServer/LockfileFeature.cpp
   RestServer/QueryRegistryFeature.cpp
   RestServer/ScriptFeature.cpp
@@ -543,6 +544,7 @@ SET(ARANGOD_SOURCES
   VocBase/Methods/UpgradeTasks.cpp
   VocBase/Methods/Version.cpp
   VocBase/KeyGenerator.cpp
+  VocBase/KeyLockInfo.cpp
   VocBase/LogicalCollection.cpp
   VocBase/LogicalDataSource.cpp
   VocBase/LogicalView.cpp

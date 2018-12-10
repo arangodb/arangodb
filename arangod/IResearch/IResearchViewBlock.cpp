@@ -492,10 +492,17 @@ bool IResearchViewBlock::next(
       auto scoreRegs = ctx.curRegs;
 
       for (size_t i = 0; i < numSorts; ++i) {
+        // in 3.4 we assume all scorers return float_t
+        auto const score = _order.get<float_t>(_scrVal.c_str(), i);
+
         ctx.res->setValue(
           ctx.pos,
           ++scoreRegs,
+#if 0
           _order.to_string<AqlValue, std::char_traits<char>>(_scrVal.c_str(), i)
+#else
+          AqlValue(AqlValueHintDouble(double_t(score)))
+#endif
         );
       }
 

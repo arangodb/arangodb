@@ -69,22 +69,26 @@ void SchedulerFeature::collectOptions(
 
   // max / min number of threads
   options->addOption("--server.maximal-threads", std::string("maximum number of request handling threads to run (0 = use system-specific default of ") + std::to_string(defaultNumberOfThreads()) + ")",
-                     new UInt64Parameter(&_nrMaximalThreads));
+                     new UInt64Parameter(&_nrMaximalThreads),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Dynamic));
 
-  options->addHiddenOption("--server.minimal-threads",
-                           "minimum number of request handling threads to run",
-                           new UInt64Parameter(&_nrMinimalThreads));
+  options->addOption("--server.minimal-threads",
+                     "minimum number of request handling threads to run",
+                     new UInt64Parameter(&_nrMinimalThreads),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--server.maximal-queue-size", "size of the priority 2 fifo",
                      new UInt64Parameter(&_fifo2Size));
 
-  options->addHiddenOption(
+  options->addOption(
       "--server.scheduler-queue-size",
       "number of simultaneously queued requests inside the scheduler",
-      new UInt64Parameter(&_queueSize));
+      new UInt64Parameter(&_queueSize),
+      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption("--server.prio1-size", "size of the priority 1 fifo",
-                           new UInt64Parameter(&_fifo1Size));
+  options->addOption("--server.prio1-size", "size of the priority 1 fifo",
+                     new UInt64Parameter(&_fifo1Size),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
   // obsolete options
   options->addObsoleteOption("--server.threads", "number of threads", true);

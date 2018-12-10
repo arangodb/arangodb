@@ -108,12 +108,9 @@ class ClusterCollection final : public PhysicalCollection {
   /// @brief Find index by definition
   std::shared_ptr<Index> lookupIndex(velocypack::Slice const&) const override;
 
-  std::shared_ptr<Index> createIndex(transaction::Methods* trx,
-                                     arangodb::velocypack::Slice const& info,
-                                     bool& created) override;
-  /// @brief Restores an index from VelocyPack.
-  int restoreIndex(transaction::Methods*, velocypack::Slice const&,
-                   std::shared_ptr<Index>&) override;
+  std::shared_ptr<Index> createIndex(arangodb::velocypack::Slice const& info,
+                                     bool restore, bool& created) override;
+
   /// @brief Drop an index with the given iid.
   bool dropIndex(TRI_idx_iid_t iid) override;
   std::unique_ptr<IndexIterator> getAllIterator(
@@ -161,6 +158,7 @@ class ClusterCollection final : public PhysicalCollection {
                 arangodb::ManagedDocumentResult& result,
                 OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
                 bool lock, TRI_voc_tick_t& revisionId,
+                KeyLockInfo* /*keyLockInfo*/,
                 std::function<Result(void)> callbackDuringLock) override;
 
   Result update(arangodb::transaction::Methods* trx,
@@ -183,6 +181,7 @@ class ClusterCollection final : public PhysicalCollection {
                 arangodb::ManagedDocumentResult& previous,
                 OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
                 bool lock, TRI_voc_rid_t& prevRev, TRI_voc_rid_t& revisionId,
+                KeyLockInfo* /*keyLockInfo*/,
                 std::function<Result(void)> callbackDuringLock) override;
 
   bool hasAllPersistentLocalIds() const override { return false; }

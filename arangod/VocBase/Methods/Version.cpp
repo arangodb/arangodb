@@ -40,9 +40,7 @@
 using namespace arangodb;
 using namespace arangodb::methods;
 
-namespace {
-
-static uint64_t parseVersion(char const* str, size_t len) {
+uint64_t Version::parseVersion(const char *str, size_t len) {
   uint64_t result = 0;
   uint64_t tmp = 0;
   for (size_t i = 0; i < len; i++) {
@@ -54,7 +52,7 @@ static uint64_t parseVersion(char const* str, size_t len) {
       tmp = 0;
     } else {
       // stop at first other character (e.g. "3.4.devel")
-      while (result > 0 && result < 10000) {
+      while (result > 0 && result < 100) {
         // do we have 5 digits already? if we, then boost the version
         // number accordingly. this can happen for version strings
         // such as "3.4.devel" or "4.devel"
@@ -64,14 +62,16 @@ static uint64_t parseVersion(char const* str, size_t len) {
     }
   }
 
-  return result + tmp;
+  return result*100 + tmp;
 }
 
+uint64_t Version::parseVersion(const char *str) {
+  return parseVersion(str, strlen(str));
 }
 
 /// @brief "(((major * 100) + minor) * 100) + patch"
 uint64_t Version::current() {
-  return parseVersion(ARANGODB_VERSION, strlen(ARANGODB_VERSION));
+  return parseVersion(ARANGODB_VERSION);
 }
 
 VersionResult Version::check(TRI_vocbase_t* vocbase) {

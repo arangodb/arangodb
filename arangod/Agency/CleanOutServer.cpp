@@ -123,6 +123,12 @@ JOB_STATUS CleanOutServer::status() {
         reportTrx.add("op", VPackValue("push"));
         reportTrx.add("new", VPackValue(_server));
       }
+      reportTrx.add(VPackValue("/Target/ToBeCleanedServers"));
+      {
+        VPackObjectBuilder guard4(&reportTrx);
+        reportTrx.add("op", VPackValue("erase"));
+        reportTrx.add("val", VPackValue(_server));
+      }
       addRemoveJobFromSomewhere(reportTrx, "Pending", _jobId);
       Builder job;
       _snapshot.hasAsBuilder(pendingPrefix + _jobId, job);
@@ -311,6 +317,14 @@ bool CleanOutServer::start() {
       addRemoveJobFromSomewhere(*pending, "ToDo", _jobId);
 
       addBlockServer(*pending, _server, _jobId);
+
+      // Put ourselves in list of servers to be cleaned:
+      pending->add(VPackValue("/Target/ToBeCleanedServers"));
+      {
+        VPackObjectBuilder guard4(pending.get());
+        pending->add("op", VPackValue("push"));
+        pending->add("new", VPackValue(_server));
+      }
 
       // Schedule shard relocations
       if (!scheduleMoveShards(pending)) {

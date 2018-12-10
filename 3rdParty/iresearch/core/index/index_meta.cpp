@@ -162,7 +162,7 @@ bool index_meta::operator==(const index_meta& other) const NOEXCEPT {
   return true;
 }
 
-uint64_t index_meta::next_generation() const {
+uint64_t index_meta::next_generation() const NOEXCEPT {
   return type_limits<type_t::index_gen_t>::valid(gen_) ? (gen_ + 1) : 1;
 }
 

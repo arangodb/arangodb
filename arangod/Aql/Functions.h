@@ -44,9 +44,8 @@ class Query;
 
 typedef SmallVector<AqlValue> VPackFunctionParameters;
 
-typedef std::function<AqlValue(arangodb::aql::Query*, transaction::Methods*,
-                                VPackFunctionParameters const&)>
-    FunctionImplementation;
+typedef AqlValue(*FunctionImplementation)(arangodb::aql::Query*, transaction::Methods*,
+                                VPackFunctionParameters const&);
 
 struct Functions {
 
@@ -322,6 +321,8 @@ struct Functions {
                                VPackFunctionParameters const&);
     static AqlValue GeoLinestring(arangodb::aql::Query*, transaction::Methods*,
                                   VPackFunctionParameters const&);
+    static AqlValue GeoMultiPolygon(arangodb::aql::Query*, transaction::Methods*,
+                                    VPackFunctionParameters const&);
     static AqlValue GeoMultiLinestring(arangodb::aql::Query*, transaction::Methods*,
                                        VPackFunctionParameters const&);
     static AqlValue Flatten(arangodb::aql::Query*, transaction::Methods*,

@@ -1573,6 +1573,7 @@ Result RestReplicationHandler::processRestoreDataBatch(
 
 Result RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
                                                   bool force) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (!collection.isObject()) {
     std::string errorMsg = "collection declaration is invalid";
     return {TRI_ERROR_HTTP_BAD_PARAMETER, errorMsg};
@@ -1612,6 +1613,11 @@ Result RestReplicationHandler::processRestoreIndexes(VPackSlice const& collectio
     // we don't care about deleted collections
     return {};
   }
+  
+  std::shared_ptr<LogicalCollection> coll = _vocbase.lookupCollection(name);
+  if (!coll) {
+    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  }
 
   Result fres;
 
@@ -1620,56 +1626,38 @@ Result RestReplicationHandler::processRestoreIndexes(VPackSlice const& collectio
 
   // look up the collection
   try {
-    auto ctx = transaction::StandaloneContext::Create(_vocbase);
-    SingleCollectionTransaction trx(ctx, name, AccessMode::Type::EXCLUSIVE);
-    Result res = trx.begin();
 
-    if (!res.ok()) {
-      std::string errorMsg = "unable to start transaction: " + res.errorMessage();
-      res.reset(res.errorNumber(), errorMsg);
-      THROW_ARANGO_EXCEPTION(res);
-    }
-
-    LogicalCollection* collection = trx.documentCollection();
-    auto physical = collection->getPhysical();
+    auto physical = coll->getPhysical();
     TRI_ASSERT(physical != nullptr);
+    
     for (VPackSlice const& idxDef : VPackArrayIterator(indexes)) {
-      std::shared_ptr<arangodb::Index> idx;
-
       // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
-      if (! ServerState::instance()->isCoordinator()) {
-        arangodb::velocypack::Slice value = idxDef.get(StaticStrings::IndexType);
-        if (value.isString()) {
-          std::string const typeString = value.copyString();
-          if ((typeString == "primary") ||(typeString == "edge")) {
-            LOG_TOPIC(DEBUG, Logger::REPLICATION)
-                << "processRestoreIndexes silently ignoring primary or edge "
-                << "index: " << idxDef.toJson();
-            continue;
-          }
+      arangodb::velocypack::Slice value = idxDef.get(StaticStrings::IndexType);
+      if (value.isString()) {
+        std::string const typeString = value.copyString();
+        if ((typeString == "primary") ||(typeString == "edge")) {
+          LOG_TOPIC(DEBUG, Logger::REPLICATION)
+              << "processRestoreIndexes silently ignoring primary or edge "
+              << "index: " << idxDef.toJson();
+          continue;
         }
       }
 
-      res = physical->restoreIndex(&trx, idxDef, idx);
-
-      if (res.errorNumber() == TRI_ERROR_NOT_IMPLEMENTED) {
-        continue;
-      }
-
-      if (res.fail()) {
-        std::string errorMsg = "could not create index: " + res.errorMessage();
-        res.reset(res.errorNumber(), errorMsg);
-        break;
+      std::shared_ptr<arangodb::Index> idx;
+      bool created = false;
+      try {
+        idx = physical->createIndex(idxDef, /*restore*/true, created);
+      } catch(basics::Exception& e) {
+        if (e.code() == TRI_ERROR_NOT_IMPLEMENTED) {
+          continue;
+        } else {
+          std::string errorMsg = "could not create index: " + e.message();
+          fres.reset(e.code(), errorMsg);
+          break;
+        }
       }
       TRI_ASSERT(idx != nullptr);
     }
-
-    if (res.fail()) {
-      return res;
-    }
-    res = trx.commit();
-    return res;
-
   } catch (arangodb::basics::Exception const& ex) {
     // fix error handling
     std::string errorMsg =

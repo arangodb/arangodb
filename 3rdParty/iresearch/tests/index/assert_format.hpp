@@ -221,7 +221,7 @@ class term_reader : public iresearch::term_reader {
  * index_meta_writer 
  * ------------------------------------------------------------------*/
 
-struct index_meta_writer: public iresearch::index_meta_writer {
+struct index_meta_writer: public irs::index_meta_writer {
   virtual std::string filename(
     const iresearch::index_meta& meta
   ) const override;
@@ -229,7 +229,7 @@ struct index_meta_writer: public iresearch::index_meta_writer {
     iresearch::directory& dir, 
     iresearch::index_meta& meta
   ) override;
-  virtual void commit() override;
+  virtual bool commit() override;
   virtual void rollback() NOEXCEPT override;
 };
 
@@ -253,11 +253,9 @@ struct index_meta_reader : public iresearch::index_meta_reader {
  * ------------------------------------------------------------------*/
 
 struct segment_meta_writer : public iresearch::segment_meta_writer {
-  virtual std::string filename(
-    const iresearch::segment_meta& meta
-  ) const override;
   virtual void write(
     iresearch::directory& dir,
+    std::string& filename,
     const iresearch::segment_meta& meta
   ) override;
 };
@@ -304,7 +302,7 @@ class field_reader : public iresearch::field_reader {
   field_reader( const index_segment& data );
   field_reader(field_reader&& other) NOEXCEPT;
 
-  virtual bool prepare(const irs::directory& dir, const irs::segment_meta& meta, const irs::document_mask& mask) override;
+  virtual void prepare(const irs::directory& dir, const irs::segment_meta& meta, const irs::document_mask& mask) override;
   virtual const iresearch::term_reader* field(const iresearch::string_ref& field) const override;
   virtual iresearch::field_iterator::ptr iterator() const override;
   virtual size_t size() const override;

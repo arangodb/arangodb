@@ -231,41 +231,21 @@ struct IResearchViewDBServer::ViewFactory: public arangodb::ViewFactory {
         );
       }
 
-      auto wiew = std::shared_ptr<IResearchViewDBServer>(
-        new IResearchViewDBServer(vocbase, definition, *feature, planVersion)
-      );
-
       std::string error;
-      IResearchViewMeta meta;
+      auto meta = std::make_shared<AsyncMeta>();
 
-      if (!meta.init(definition, error)) {
+      if (!meta->init(definition, error)) {
         return arangodb::Result(
           TRI_ERROR_BAD_PARAMETER,
           error.empty()
-          ? (std::string("failed to initialize arangosearch View '") + wiew->name() + "' from definition: " + definition.toString())
-          : (std::string("failed to initialize arangosearch View '") + wiew->name() + "' from definition, error in attribute '" + error + "': " + definition.toString())
+          ? (std::string("failed to initialize arangosearch View '") + static_cast<std::string>(name) + "' from definition: " + definition.toString())
+          : (std::string("failed to initialize arangosearch View '") + static_cast<std::string>(name) + "' from definition, error in attribute '" + error + "': " + definition.toString())
         );
       }
 
-      // search for the previous view instance and check if it's meta is the same
-      {
-        auto oldLogicalWiew =
-          ci->getViewCurrent(vocbase.name(), std::to_string(wiew->id()));
-        auto* oldWiew = arangodb::LogicalView::cast<IResearchViewDBServer>(
-          oldLogicalWiew.get()
-        );
-
-        if (oldWiew && *(oldWiew->_meta) == meta) {
-          wiew->_meta = oldWiew->_meta;
-        }
-      }
-
-      if (!(wiew->_meta)) {
-        wiew->_meta = std::make_shared<AsyncMeta>();
-        static_cast<IResearchViewMeta&>(*(wiew->_meta)) = std::move(meta);
-      }
-
-      view = wiew;
+      view = std::shared_ptr<IResearchViewDBServer>(
+        new IResearchViewDBServer(vocbase, definition, *feature, planVersion, std::move(meta))
+      );
 
       return arangodb::Result();
     }
@@ -279,36 +259,6 @@ struct IResearchViewDBServer::ViewFactory: public arangodb::ViewFactory {
 
     if (view) {
       return arangodb::Result(); // resuse view from vocbase
-    }
-
-    auto* ci = ClusterInfo::instance();
-    std::shared_ptr<AsyncMeta> meta;
-
-    // reference meta from cluster-wide view if available to
-    // avoid memory and thread allocation
-    // if not availble then the meta will be reassigned when
-    // the per-cid instance is associated with the cluster-wide view
-    if (ci) {
-      auto planId = arangodb::basics::VelocyPackHelper::stringUInt64(
-        definition.get(arangodb::StaticStrings::DataSourcePlanId)
-      ); // planId set in ensure(...)
-      auto wiewId = std::to_string(planId);
-      auto logicalWiew = ci->getView(vocbase.name(), wiewId); // here if creating per-cid view during loadPlan()
-      auto* wiew = arangodb::LogicalView::cast<IResearchViewDBServer>(
-        logicalWiew.get()
-      );
-
-      // if not found in 'Plan' then search in 'Current'
-      if (!wiew) {
-        logicalWiew = ci->getViewCurrent(vocbase.name(), wiewId); // here if creating per-cid view outisde of loadPlan()
-        wiew = arangodb::LogicalView::cast<IResearchViewDBServer>(
-          logicalWiew.get()
-        );
-      }
-
-      if (wiew) {
-        meta = wiew->_meta;
-      }
     }
 
     // no view for shard
@@ -328,29 +278,39 @@ struct IResearchViewDBServer::ViewFactory: public arangodb::ViewFactory {
       );
     }
 
-    if (meta) {
-      res = arangodb::LogicalView::cast<IResearchView>(*impl).updateProperties(meta);
-
-      if (!res.ok()) {
-        return res;
-      }
-    }
-
     // a wrapper to remove the view from vocbase if it no longer has any links
     // hold a reference to the original view in the deleter so that the view is
     // still valid for the duration of the pointer wrapper
     view = std::shared_ptr<arangodb::LogicalView>(
       impl.get(),
-      [impl](arangodb::LogicalView*)->void {
-        static const auto visitor = [](TRI_voc_cid_t)->bool { return false; };
+      [impl] (arangodb::LogicalView*) noexcept -> void {
         auto& vocbase = impl->vocbase();
 
-        // same view in vocbase and with no collections
-        if (impl.get() == vocbase.lookupView(impl->id()).get() // avoid double dropView(...)
-            && impl->visitCollections(visitor)
-            && !impl->drop().ok()) { // per-cid collections always system
-          LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-            << "failure to drop stale arangosearch View '" << impl->name() << "' while from database '" << vocbase.name() << "'";
+        // suppress any errors in destructor
+
+        try {
+          // same view in vocbase and with no collections
+          if (impl == vocbase.lookupView(impl->id()) // avoid double dropView(...)
+              && impl->visitCollections([](TRI_voc_cid_t){ return false; })
+              && !impl->drop().ok()) { // per-cid collections always system
+            LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+              << "failure to drop stale arangosearch View '" << impl->name() << "' while from database '" << vocbase.name() << "'";
+          }
+        } catch (basics::Exception const& e) {
+          LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+            << "caught exception while dropping stale arangosearch View '" << impl->name()
+            << "' while from database '" << vocbase.name()
+            << "', errorCode: '" << e.code()
+            << "', error: '" << e.message();
+        } catch (std::exception const& e) {
+          LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+            << "caught exception while dropping stale arangosearch View '" << impl->name()
+            << "' while from database '" << vocbase.name()
+            << "', error: '" << e.what() << "'";
+        } catch (...) {
+          LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+            << "caught an unspecified exception while dropping stale arangosearch View '" << impl->name()
+            << "' while from database '" << vocbase.name() << "'";
         }
       }
     );
@@ -362,12 +322,14 @@ struct IResearchViewDBServer::ViewFactory: public arangodb::ViewFactory {
 IResearchViewDBServer::IResearchViewDBServer(
     TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& info,
-    arangodb::DatabasePathFeature const& dbPathFeature,
-    uint64_t planVersion
-): LogicalViewClusterInfo(vocbase, info, planVersion) {
+    arangodb::DatabasePathFeature const& /*dbPathFeature*/,
+    uint64_t planVersion,
+    std::shared_ptr<AsyncMeta> meta /*=nullptr*/
+) : LogicalViewClusterInfo(vocbase, info, planVersion),
+    _meta(std::move(meta)) {
 }
 
-IResearchViewDBServer::~IResearchViewDBServer() {
+IResearchViewDBServer::~IResearchViewDBServer() noexcept {
   _collections.clear(); // ensure view distructors called before mutex is deallocated
 }
 

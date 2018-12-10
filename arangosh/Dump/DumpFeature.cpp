@@ -133,6 +133,7 @@ std::pair<arangodb::Result, uint64_t> startBatch(
                      body.c_str(), body.size()));
   auto check = ::checkHttpResponse(client, response);
   if (check.fail()) {
+    LOG_TOPIC(ERR, arangodb::Logger::DUMP) << "An error occurred while creating dump context: " << check.errorMessage();
     return {check, 0};
   }
 
@@ -200,7 +201,7 @@ void flushWal(arangodb::httpclient::SimpleHttpClient& client) {
   if (check.fail()) {
     // TODO should we abort early here?
     LOG_TOPIC(ERR, arangodb::Logger::DUMP)
-        << "got invalid response from server: " + check.errorMessage();
+        << "Got invalid response from server when flushing WAL: " + check.errorMessage();
   }
 }
 
@@ -212,8 +213,8 @@ bool isIgnoredHiddenEnterpriseCollection(
         strncmp(name.c_str(), "_from_", 6) == 0 ||
         strncmp(name.c_str(), "_to_", 4) == 0) {
       LOG_TOPIC(INFO, arangodb::Logger::DUMP)
-          << "Dump ignoring collection " << name
-          << ". Will be created via SmartGraphs of a full dump. If you want to "
+          << "Dump is ignoring collection '" << name
+          << "'. Will be created via SmartGraphs of a full dump. If you want to "
              "dump this collection anyway use 'arangodump --force'. "
              "However this is not recommended and you should instead dump "
              "the EdgeCollection of the SmartGraph instead.";
@@ -234,11 +235,12 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
   using arangodb::basics::StringUtils::boolean;
   using arangodb::basics::StringUtils::itoa;
   using arangodb::basics::StringUtils::uint64;
+  using arangodb::basics::StringUtils::urlEncode;
 
   uint64_t fromTick = minTick;
   uint64_t chunkSize =
       jobData.options.initialChunkSize;  // will grow adaptively up to max
-  std::string baseUrl = "/_api/replication/dump?collection=" + name +
+  std::string baseUrl = "/_api/replication/dump?collection=" + urlEncode(name) +
                         "&batchId=" + itoa(batchId) + "&ticks=false";
   if (jobData.options.clusterMode) {
     // we are in cluster mode, must specify dbserver
@@ -262,6 +264,7 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
         client.request(arangodb::rest::RequestType::GET, url, nullptr, 0));
     auto check = ::checkHttpResponse(client, response);
     if (check.fail()) {
+      LOG_TOPIC(ERR, arangodb::Logger::DUMP) << "An error occurred while dumping collection '" << name << "': " << check.errorMessage();
       return check;
     }
 
@@ -292,14 +295,14 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
     }
     if (!headerExtracted) {  // NOT else, fallthrough from outer or inner above
       return {TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-              "got invalid response from server: required header is missing"};
+              std::string("got invalid response from server: required header is missing while dumping collection '") + name + "'"};
     }
 
     // now actually write retrieved data to dump file
     arangodb::basics::StringBuffer const& body = response->getBody();
     file.write(body.c_str(), body.length());
     if (file.status().fail()) {
-      return {TRI_ERROR_CANNOT_WRITE_FILE};
+      return {TRI_ERROR_CANNOT_WRITE_FILE, std::string("cannot write file '") + file.path() + "': " + file.status().errorMessage()};
     } else {
       jobData.stats.totalWritten += (uint64_t)body.length();
     }
@@ -624,6 +627,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
       client.request(rest::RequestType::GET, url, nullptr, 0));
   auto check = ::checkHttpResponse(client, response);
   if (check.fail()) {
+    LOG_TOPIC(ERR, arangodb::Logger::DUMP) << "An error occurred while fetching inventory: " << check.errorMessage();
     return check;
   }
 
@@ -744,6 +748,7 @@ Result DumpFeature::runClusterDump(httpclient::SimpleHttpClient& client,
       client.request(rest::RequestType::GET, url, nullptr, 0));
   auto check = ::checkHttpResponse(client, response);
   if (check.fail()) {
+    LOG_TOPIC(ERR, arangodb::Logger::DUMP) << "An error occurred while fetching inventory: " << check.errorMessage();
     return check;
   }
 
@@ -1006,8 +1011,7 @@ void DumpFeature::start() {
   std::tie(result, _options.clusterMode) =
       _clientManager.getArangoIsCluster(*httpClient);
   if (result.fail()) {
-    LOG_TOPIC(FATAL, Logger::FIXME)
-        << "Error: could not detect ArangoDB instance type";
+    LOG_TOPIC(FATAL, arangodb::Logger::RESTORE) << "Error: could not detect ArangoDB instance type: " << result.errorMessage();
     FATAL_ERROR_EXIT();
   }
 
@@ -1039,9 +1043,12 @@ void DumpFeature::start() {
     } else {
       res = runClusterDump(*httpClient, dbName);
     }
+  } catch (basics::Exception const& ex) {
+    LOG_TOPIC(ERR, Logger::FIXME) << "caught exception: " << ex.what();
+    res = {ex.code(), ex.what()};
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, Logger::FIXME) << "caught exception: " << ex.what();
-    res = {TRI_ERROR_INTERNAL};
+    res = {TRI_ERROR_INTERNAL, ex.what()};
   } catch (...) {
     LOG_TOPIC(ERR, Logger::FIXME) << "caught unknown exception";
     res = {TRI_ERROR_INTERNAL};

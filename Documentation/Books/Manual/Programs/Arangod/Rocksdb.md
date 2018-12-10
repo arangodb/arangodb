@@ -38,7 +38,11 @@ Default: 2.
 The total amount of data to build up in all in-memory buffers (backed by log
 files). This option, together with the block cache size configuration option,
 can be used to limit memory usage. If set to 0, the memory usage is not limited.
-Default: 0 (disabled).
+
+If set to a value larger than 0, this will cap memory usage for write buffers 
+but may have an effect on performance. If there is less than 4GiB of RAM on the 
+system, the default value is 512MiB. If there is more, the default is 
+`(system RAM size - 2GiB) * 0.5`.
 
 `--rocksdb.min-write-buffer-number-to-merge`
 
@@ -153,9 +157,18 @@ Number of threads for low priority operations (e.g. compaction). Default: number
 
 `--rocksdb.block-cache-size`
 
-This is the size of the block cache in bytes. Increasing this may improve
+This is the maximum size of the block cache in bytes. Increasing this may improve
 performance.  If there is less than 4GiB of RAM on the system, the default value
 is 256MiB. If there is more, the default is `(system RAM size - 2GiB) * 0.3`.
+
+`--rocksdb.enforce-block-cache-size-limit`
+
+Whether or not the maximum size of the RocksDB block cache is strictly enforced.
+This option can be set to limit the memory usage of the block cache to at most the
+specified size. If then inserting a data block into the cache would exceed the 
+cache's capacity, the data block will not be inserted. If the flag is not set,
+a data block may still get inserted into the cache. It is evicted later, but the
+cache may temporarily grow beyond its capacity limit. 
 
 `--rocksdb.block-cache-shard-bits`
 
