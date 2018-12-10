@@ -249,18 +249,19 @@ void RocksDBEngine::collectOptions(
                      "timeout after which unused WAL files are deleted",
                      new DoubleParameter(&_pruneWaitTime));
 
-  options->addHiddenOption("--rocksdb.wal-file-timeout-initial",
-                           "initial timeout after which unused WAL files "
-                           "deletion kicks in after server start",
-                           new DoubleParameter(&_pruneWaitTimeInitial));
+  options->addOption("--rocksdb.wal-file-timeout-initial",
+                     "initial timeout after which unused WAL files deletion kicks in after server start",
+                     new DoubleParameter(&_pruneWaitTimeInitial),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--rocksdb.throttle",
                      "enable write-throttling",
                      new BooleanParameter(&_useThrottle));
 
-  options->addHiddenOption("--rocksdb.debug-logging",
-                           "true to enable rocksdb debug logging",
-                           new BooleanParameter(&_debugLogging));
+  options->addOption("--rocksdb.debug-logging",
+                     "true to enable rocksdb debug logging",
+                     new BooleanParameter(&_debugLogging),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
 #ifdef USE_ENTERPRISE
   collectEnterpriseOptions(options);

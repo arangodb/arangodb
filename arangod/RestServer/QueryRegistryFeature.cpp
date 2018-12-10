@@ -113,8 +113,9 @@ void QueryRegistryFeature::collectOptions(
   options->addOption("--query.optimizer-max-plans", "maximum number of query plans to create for a query",
                      new UInt64Parameter(&_maxQueryPlans));
 
-  options->addHiddenOption("--query.registry-ttl", "default time-to-live of query snippets (in seconds)",
-                           new DoubleParameter(&_queryRegistryTTL));
+  options->addOption("--query.registry-ttl", "default time-to-live of query snippets (in seconds)",
+                     new DoubleParameter(&_queryRegistryTTL),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
 void QueryRegistryFeature::validateOptions(
