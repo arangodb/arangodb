@@ -115,8 +115,9 @@ void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--console.pager", "enable paging",
                      new BooleanParameter(&_pager));
 
-  options->addHiddenOption("--console.pager-command", "pager command",
-                           new StringParameter(&_pagerCommand));
+  options->addOption("--console.pager-command", "pager command",
+                     new StringParameter(&_pagerCommand),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--console.prompt", "prompt used in REPL. prompt components are: '%t': current time as timestamp, '%p': duration of last command in seconds, '%d': name of current database, '%e': current endpoint, '%E': current endpoint without protocol, '%u': current user",
                      new StringParameter(&_prompt));

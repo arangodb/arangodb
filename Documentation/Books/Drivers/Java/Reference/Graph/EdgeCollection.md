@@ -3,9 +3,7 @@
 
 ## ArangoGraph.edgeCollection
 
-```
-ArangoGraph.edgeCollection(String name) : ArangoEdgeColleciton
-```
+`ArangoGraph.edgeCollection(String name) : ArangoEdgeCollection`
 
 Returns a _ArangoEdgeCollection_ instance for the given edge collection name.
 
@@ -27,9 +25,7 @@ ArangoEdgeCollection collection = graph.edgeCollection("some-edge-collection");
 
 ## ArangoGraph.getEdgeDefinitions
 
-```
-ArangoGraph.getEdgeDefinitions() : Collection<String>
-```
+`ArangoGraph.getEdgeDefinitions() : Collection<String>`
 
 Fetches all edge collections from the graph and returns a list of collection names.
 
@@ -45,9 +41,7 @@ Collection<String> collections = graph.getEdgeDefinitions();
 
 ## ArangoGraph.addEdgeDefinition
 
-```
-ArangoGraph.addEdgeDefinition(EdgeDefinition definition) : GraphEntity
-```
+`ArangoGraph.addEdgeDefinition(EdgeDefinition definition) : GraphEntity`
 
 Adds the given edge definition to the graph.
 
@@ -74,11 +68,10 @@ graph.addEdgeDefinition(edgeDefinition);
 
 ## ArangoGraph.replaceEdgeDefinition
 
-```
-ArangoGraph.replaceEdgeDefinition(EdgeDefinition definition) : GraphEntity
-```
+`ArangoGraph.replaceEdgeDefinition(EdgeDefinition definition) : GraphEntity`
 
-Change one specific edge definition. This will modify all occurrences of this definition in all graphs known to your database.
+Change one specific edge definition. This will modify all occurrences of this
+definition in all graphs known to your database.
 
 **Arguments**
 
@@ -103,11 +96,11 @@ graph.replaceEdgeDefinition(edgeDefinition);
 
 ## ArangoGraph.removeEdgeDefinition
 
-```
-ArangoGraph.removeEdgeDefinition(String definitionName) : GraphEntity
-```
+`ArangoGraph.removeEdgeDefinition(String definitionName) : GraphEntity`
 
-Remove one edge definition from the graph. This will only remove the edge collection, the vertex collections remain untouched and can still be used in your queries.
+Remove one edge definition from the graph. This will only remove the
+edge collection, the vertex collections remain untouched and can still
+be used in your queries.
 
 **Arguments**
 

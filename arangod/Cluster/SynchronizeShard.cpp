@@ -379,7 +379,7 @@ static arangodb::Result cancelBarrier(
     }
   } else {
     std::string error ("CancelBarrier: failed to send message to leader : status ");
-    error += comres->status;
+    error += ClusterCommResult::stringifyStatus(comres->status);
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << error;
     return arangodb::Result(TRI_ERROR_INTERNAL, error);
   }

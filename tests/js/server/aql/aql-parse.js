@@ -119,6 +119,12 @@ function ahuacatlParseTestSuite () {
       assertParseError(errors.ERROR_QUERY_PARSE.code, "return 1 + 1 +"); 
       assertParseError(errors.ERROR_QUERY_PARSE.code, "return (1"); 
       assertParseError(errors.ERROR_QUERY_PARSE.code, "for f1 in x1"); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "return 00"); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "return 01"); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "return 1."); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "return -");
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "return +");
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "return ."); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -163,6 +169,79 @@ function ahuacatlParseTestSuite () {
       assertEqual([ ], getParameters(getParseResults("return /* @@nada */ 1")));
       assertEqual([ ], getParameters(getParseResults("/*   @nada   */ return /* @@nada */ /*@@nada*/ 1 /*@nada*/")));
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test number parsing
+////////////////////////////////////////////////////////////////////////////////
+
+    testNumbers : function () {
+      function getRoot(query) { return getParseResults(query).ast[0]; }
+
+      var returnNode = getRoot("return 0").subNodes[0];
+      assertEqual("return", returnNode.type);
+      assertEqual("value", returnNode.subNodes[0].type);
+      assertEqual(0, returnNode.subNodes[0].value);
+      
+      returnNode = getRoot("return 1").subNodes[0];
+      assertEqual("return", returnNode.type);
+      assertEqual("value", returnNode.subNodes[0].type);
+      assertEqual(1, returnNode.subNodes[0].value);
+      
+      returnNode = getRoot("return 9993835").subNodes[0];
+      assertEqual("return", returnNode.type);
+      assertEqual("value", returnNode.subNodes[0].type);
+      assertEqual(9993835, returnNode.subNodes[0].value);
+      
+      returnNode = getRoot("return .24982").subNodes[0];
+      assertEqual("return", returnNode.type);
+      assertEqual("value", returnNode.subNodes[0].type);
+      assertEqual(0.24982, returnNode.subNodes[0].value);
+      
+      returnNode = getRoot("return 1.2").subNodes[0];
+      assertEqual("return", returnNode.type);
+      assertEqual("value", returnNode.subNodes[0].type);
+      assertEqual(1.2, returnNode.subNodes[0].value);
+      
+      returnNode = getRoot("return 13442.029285").subNodes[0];
+      assertEqual("return", returnNode.type);
+      assertEqual("value", returnNode.subNodes[0].type);
+      assertEqual(13442.029285, returnNode.subNodes[0].value);
+      
+      returnNode = getRoot("return 12345").subNodes[0];
+      assertEqual("return", returnNode.type);
+      assertEqual("value", returnNode.subNodes[0].type);
+      assertEqual(12345, returnNode.subNodes[0].value);
+      
+      returnNode = getRoot("return -1").subNodes[0];
+      assertEqual("return", returnNode.type);
+      assertEqual("unary minus", returnNode.subNodes[0].type);
+      assertEqual("value", returnNode.subNodes[0].subNodes[0].type);
+      assertEqual(1, returnNode.subNodes[0].subNodes[0].value);
+      
+      returnNode = getRoot("return -193817872892").subNodes[0];
+      assertEqual("return", returnNode.type);
+      assertEqual("unary minus", returnNode.subNodes[0].type);
+      assertEqual("value", returnNode.subNodes[0].subNodes[0].type);
+      assertEqual(193817872892, returnNode.subNodes[0].subNodes[0].value);
+      
+      returnNode = getRoot("return -.95264").subNodes[0];
+      assertEqual("return", returnNode.type);
+      assertEqual("unary minus", returnNode.subNodes[0].type);
+      assertEqual("value", returnNode.subNodes[0].subNodes[0].type);
+      assertEqual(0.95264, returnNode.subNodes[0].subNodes[0].value);
+      
+      returnNode = getRoot("return -12345").subNodes[0];
+      assertEqual("return", returnNode.type);
+      assertEqual("unary minus", returnNode.subNodes[0].type);
+      assertEqual("value", returnNode.subNodes[0].subNodes[0].type);
+      assertEqual(12345, returnNode.subNodes[0].subNodes[0].value);
+      
+      returnNode = getRoot("return -92.4987521").subNodes[0];
+      assertEqual("return", returnNode.type);
+      assertEqual("unary minus", returnNode.subNodes[0].type);
+      assertEqual("value", returnNode.subNodes[0].subNodes[0].type);
+      assertEqual(92.4987521, returnNode.subNodes[0].subNodes[0].value);
+    },      
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test string parsing
@@ -262,8 +341,7 @@ function ahuacatlParseTestSuite () {
         try {
           AQL_EXECUTE(query[0]);
           fail();
-        }
-        catch (err) {
+        } catch (err) {
           assertEqual(errors.ERROR_QUERY_PARSE.code, err.errorNum);
           assertMatch(/at position \d+:\d+/, err.errorMessage);
           var matches = err.errorMessage.match(/at position (\d+):(\d+)/);
@@ -278,11 +356,6 @@ function ahuacatlParseTestSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
-
 jsunity.run(ahuacatlParseTestSuite);
 
 return jsunity.done();
-

@@ -40,7 +40,7 @@ ADB_IGNORE_UNUSED static auto& TOPIC = logTopic();
 /// @brief the current implementation version of the iresearch interface
 ///        e.g. which how data is stored in iresearch
 ////////////////////////////////////////////////////////////////////////////////
-size_t const LATEST_VERSION = 0;
+size_t const LATEST_VERSION = 1;
 
 struct StaticStrings {
   ////////////////////////////////////////////////////////////////////////////////
