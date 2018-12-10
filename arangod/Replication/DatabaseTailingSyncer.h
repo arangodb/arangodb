@@ -52,7 +52,9 @@ class DatabaseTailingSyncer final : public TailingSyncer {
   /// and filtering on the collection name until no more data is available
   Result syncCollectionFinalize(std::string const& collectionName) {
     TRI_voc_tick_t dummy = 0;
-    return syncCollectionCatchupInternal(collectionName, true, dummy);
+    bool dummyDidTimeout = false;
+    double dummyTimeout = 300.0;
+    return syncCollectionCatchupInternal(collectionName, dummyTimeout, true, dummy, dummyDidTimeout);
   }
 
   /// @brief catch up with changes in a leader shard by doing the same
@@ -66,14 +68,18 @@ class DatabaseTailingSyncer final : public TailingSyncer {
   /// `syncCollectionFinalize` to finish off the rest.
   /// Internally, both use `syncCollectionCatchupInternal`.
   Result syncCollectionCatchup(std::string const& collectionName,
-                               TRI_voc_tick_t& until) {
-    return syncCollectionCatchupInternal(collectionName, false, until);
+                               double timeout,
+                               TRI_voc_tick_t& until,
+                               bool& didTimeout) {
+    return syncCollectionCatchupInternal(collectionName, timeout, false, until, didTimeout);
   }
 
  protected:
 
   Result syncCollectionCatchupInternal(std::string const& collectionName,
-                                       bool hard, TRI_voc_tick_t& until);
+                                       double timeout,
+                                       bool hard, TRI_voc_tick_t& until,
+                                       bool& didTimeout);
   /// @brief save the current applier state
   Result saveApplierState() override;
 

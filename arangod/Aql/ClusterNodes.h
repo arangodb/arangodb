@@ -409,6 +409,7 @@ class GatherNode final : public ExecutionNode {
 /// @brief class RemoteNode
 class SingleRemoteOperationNode final : public ExecutionNode, public CollectionAccessingNode {
   friend class ExecutionBlock;
+  friend class RedundantCalculationsReplacer;
   friend class SingleRemoteOperationBlock;
   /// @brief constructor with an id
  public:
@@ -464,7 +465,7 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
   /// @brief getVariablesUsedHere, returning a vector
   std::vector<Variable const*> getVariablesUsedHere() const override final {
     std::vector<Variable const*> vec;
-    if(_inVariable){
+    if (_inVariable) {
       vec.push_back(_inVariable);
     }
     return vec;
@@ -473,7 +474,7 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(
       std::unordered_set<Variable const*>& vars) const override final {
-    if(_inVariable){
+    if (_inVariable) {
       vars.emplace(_inVariable);
     }
   }

@@ -397,13 +397,11 @@ std::shared_ptr<Index> ClusterCollection::lookupIndex(
 }
 
 std::shared_ptr<Index> ClusterCollection::createIndex(
-    transaction::Methods* trx, arangodb::velocypack::Slice const& info,
+    arangodb::velocypack::Slice const& info, bool restore,
     bool& created) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   // prevent concurrent dropping
-  bool isLocked =
-      trx->isLocked(&_logicalCollection, AccessMode::Type::EXCLUSIVE);
-  CONDITIONAL_WRITE_LOCKER(guard, _exclusiveLock, !isLocked);
+  WRITE_LOCKER(guard, _exclusiveLock);
   std::shared_ptr<Index> idx;
 
   {
@@ -433,15 +431,6 @@ std::shared_ptr<Index> ClusterCollection::createIndex(
   addIndex(idx);
   created = true;
   return idx;
-}
-
-/// @brief Restores an index from VelocyPack.
-int ClusterCollection::restoreIndex(transaction::Methods* trx,
-                                    velocypack::Slice const& info,
-                                    std::shared_ptr<Index>& idx) {
-  // The coordinator can never get into this state!
-  TRI_ASSERT(false);
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief Drop an index with the given iid.
@@ -522,7 +511,9 @@ Result ClusterCollection::insert(arangodb::transaction::Methods*,
                                  arangodb::velocypack::Slice const,
                                  arangodb::ManagedDocumentResult&,
                                  OperationOptions&, TRI_voc_tick_t&, bool,
-                                 TRI_voc_tick_t&, std::function<Result(void)>) {
+                                 TRI_voc_tick_t&, 
+                                 KeyLockInfo* /*keyLock*/,
+                                 std::function<Result(void)>) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -549,7 +540,8 @@ Result ClusterCollection::remove(
     arangodb::transaction::Methods* trx, arangodb::velocypack::Slice slice,
     arangodb::ManagedDocumentResult& previous, OperationOptions& options,
     TRI_voc_tick_t& resultMarkerTick, bool, TRI_voc_rid_t& prevRev,
-    TRI_voc_rid_t& revisionId, std::function<Result(void)> /*callbackDuringLock*/) {
+    TRI_voc_rid_t& revisionId, KeyLockInfo* /*keyLock*/,
+    std::function<Result(void)> /*callbackDuringLock*/) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

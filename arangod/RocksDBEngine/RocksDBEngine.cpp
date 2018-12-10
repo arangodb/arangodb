@@ -248,17 +248,19 @@ void RocksDBEngine::collectOptions(
                      "timeout after which unused WAL files are deleted",
                      new DoubleParameter(&_pruneWaitTime));
 
-  options->addHiddenOption("--rocksdb.wal-file-timeout-initial",
-                           "initial timeout after which unused WAL files deletion kicks in after server start",
-                           new DoubleParameter(&_pruneWaitTimeInitial));
+  options->addOption("--rocksdb.wal-file-timeout-initial",
+                     "initial timeout after which unused WAL files deletion kicks in after server start",
+                     new DoubleParameter(&_pruneWaitTimeInitial),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--rocksdb.throttle",
                      "enable write-throttling",
                      new BooleanParameter(&_useThrottle));
 
-  options->addHiddenOption("--rocksdb.debug-logging",
-                           "true to enable rocksdb debug logging",
-                           new BooleanParameter(&_debugLogging));
+  options->addOption("--rocksdb.debug-logging",
+                     "true to enable rocksdb debug logging",
+                     new BooleanParameter(&_debugLogging),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
 #ifdef USE_ENTERPRISE
   collectEnterpriseOptions(options);
@@ -467,7 +469,10 @@ void RocksDBEngine::start() {
   rocksdb::BlockBasedTableOptions tableOptions;
   if (opts->_blockCacheSize > 0) {
     tableOptions.block_cache = rocksdb::NewLRUCache(
-        opts->_blockCacheSize, static_cast<int>(opts->_blockCacheShardBits));
+        opts->_blockCacheSize, 
+        static_cast<int>(opts->_blockCacheShardBits), 
+        /*strict_capacity_limit*/ opts->_enforceBlockCacheSizeLimit
+    );
     // tableOptions.cache_index_and_filter_blocks =
     // opts->_compactionReadaheadSize > 0;
   } else {
@@ -1282,7 +1287,7 @@ arangodb::Result RocksDBEngine::dropCollection(
   // remove from map
   {
     WRITE_LOCKER(guard, _mapLock);
-    _collectionMap.erase(collection.id());
+    _collectionMap.erase(coll->objectId());
   }
   
   // delete indexes, RocksDBIndex::drop() has its own check

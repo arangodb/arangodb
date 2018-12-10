@@ -54,6 +54,38 @@ function optimizerIndexesTestSuite () {
       db._drop("UnitTestsCollection");
     },
 
+    testMultiIndexesOrCondition : function () {
+      let values = [ 
+        [ "abc", true, true ],
+        [ "abc", false, true ],
+        [ "abc", true, false ]
+      ];
+
+      values.forEach(function(v) {
+        c.update("test2", { test1: v[0], test2: v[1], test3: v[2] });
+        let q = "FOR doc IN UnitTestsCollection FILTER doc.value == 2 && doc.test1 == 'abc' && (doc.test2 || doc.test3) RETURN doc";
+        var results = AQL_EXECUTE(q);
+        assertEqual(1, results.json.length);
+        assertEqual(2, results.json[0].value);
+        assertEqual(v[0], results.json[0].test1);
+        assertEqual(v[1], results.json[0].test2);
+        assertEqual(v[2], results.json[0].test3);
+
+        let plan = AQL_EXPLAIN(q).plan;
+        let nodes = plan.nodes;
+        let nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+        let indexNode = nodes[nodeTypes.indexOf("IndexNode")];
+        assertEqual("n-ary or", indexNode.condition.type);
+        assertEqual(2, indexNode.condition.subNodes.length);
+        assertEqual("n-ary and", indexNode.condition.subNodes[0].type);
+        assertEqual("compare ==", indexNode.condition.subNodes[0].subNodes[0].type);
+        assertEqual("n-ary and", indexNode.condition.subNodes[1].type);
+        assertEqual("compare ==", indexNode.condition.subNodes[1].subNodes[0].type);
+      });
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test same results for const access queries
 ////////////////////////////////////////////////////////////////////////////////
@@ -3741,7 +3773,7 @@ function optimizerIndexesMultiCollectionTestSuite () {
       var idx = subNodeTypes.indexOf("IndexNode");
       assertNotEqual(-1, idx, query); // index used for inner query
       assertEqual("hash", plan.nodes[sub].subquery.nodes[idx].indexes[0].type);
-      assertEqual(-1, subNodeTypes.indexOf("SortNode"), query); // we're filtering on a constant, but we're in an inner loop
+      assertNotEqual(-1, subNodeTypes.indexOf("SortNode"), query); // we're filtering on a constant, but we're in an inner loop
     },
 
 ////////////////////////////////////////////////////////////////////////////////

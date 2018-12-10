@@ -213,7 +213,10 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& r
       // prevent guessing database names (issue #5030)
       auth::Level lvl = auth::Level::NONE;
       if (req.authenticated()) {
-        if (_auth->userManager() != nullptr) {
+        // If we are authenticated and the user name is empty, then we must
+        // have been authenticated with a superuser JWT token. In this case,
+        // we must not check the databaseAuthLevel here.
+        if (_auth->userManager() != nullptr && !req.user().empty()) {
           lvl = _auth->userManager()->databaseAuthLevel(req.user(), req.databaseName());
         } else {
           lvl = auth::Level::RW;
@@ -444,9 +447,8 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
                           std::move(handler));
   });
 
-  uint64_t messageId = handler->messageId();
-
   if (!ok) {
+    uint64_t messageId = handler->messageId();
     addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
                      handler->request()->contentTypeResponse(), messageId,
                      TRI_ERROR_QUEUE_FULL);

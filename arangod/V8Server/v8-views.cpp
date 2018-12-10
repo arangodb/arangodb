@@ -444,7 +444,7 @@ static void JS_ViewsVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     if (!canUse(auth::Level::RO, vocbase)) { // as per https://github.com/arangodb/backlog/issues/459
     //if (!canUse(auth::Level::RO, vocbase, &view->name())) {
-      continue; // skip views that are not authorised to be read
+      continue; // skip views that are not authorized to be read
     }
 
     // skip views for which the full view definition cannot be generated, as per https://github.com/arangodb/backlog/issues/459

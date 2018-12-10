@@ -7,6 +7,10 @@
 ArangoSpark.save[T](rdd: JavaRDD[T], collection: String, options: WriteOptions)
 ```
 
+```
+ArangoSpark.save[T](dataset: Dataset[T], collection: String, options: WriteOptions)
+```
+
 Save data from rdd into ArangoDB
 
 **Arguments**
@@ -60,6 +64,68 @@ JavaSparkContext sc = ...
 List<MyBean> docs = ...
 JavaRDD<MyBean> documents = sc.parallelize(docs);
 ArangoSpark.save(documents, "myCollection", new WriteOptions().database("myDB"));
+```
+## ArangoSpark.saveDF
+
+```
+ArangoSpark.saveDF(dataframe: DataFrame, collection: String, options: WriteOptions)
+```
+
+Save data from dataframe into ArangoDB
+
+**Arguments**
+
+- **dataframe**: DataFrame`
+
+  The dataFrame with the data to save
+
+- **collection**: `String`
+
+  The collection to save in
+
+- **options**: `WriteOptions`
+
+  - **database**: `String`
+
+    Database to write into
+
+  - **hosts**: `String`
+
+    Alternative hosts to context property `arangodb.hosts`
+
+  - **user**: `String`
+
+    Alternative user to context property `arangodb.user`
+
+  - **password**: `String`
+
+    Alternative password to context property `arangodb.password`
+
+  - **useSsl**: `Boolean`
+
+    Alternative useSsl to context property `arangodb.useSsl`
+
+  - **sslKeyStoreFile**: `String`
+
+    Alternative sslKeyStoreFile to context property `arangodb.ssl.keyStoreFile`
+
+  - **sslPassPhrase**: `String`
+
+    Alternative sslPassPhrase to context property `arangodb.ssl.passPhrase`
+
+  - **sslProtocol**: `String`
+
+    Alternative sslProtocol to context property `arangodb.ssl.protocol`
+
+**Examples**
+
+```Java
+JavaSparkContext sc = ...
+List<MyBean> docs = ...
+JavaRDD<MyBean> documents = sc.parallelize(docs);
+SQLContext sql = SQLContext.getOrCreate(sc);
+DataFrame df = sql.createDataFrame(documents, MyBean.class);
+ArangoSpark.saveDF(documents, "myCollection", new WriteOptions().database("myDB"));
 ```
 
 ## ArangoSpark.load

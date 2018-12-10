@@ -340,30 +340,32 @@ std::shared_ptr<Index> RocksDBCollection::lookupIndex(
 }
 
 std::shared_ptr<Index> RocksDBCollection::createIndex(
-    transaction::Methods* trx, arangodb::velocypack::Slice const& info,
+    arangodb::velocypack::Slice const& info, bool restore,
     bool& created) {
-  // prevent concurrent dropping
-  bool isLocked =
-    trx->isLocked(&_logicalCollection, AccessMode::Type::EXCLUSIVE);
-  CONDITIONAL_WRITE_LOCKER(guard, _exclusiveLock, !isLocked);
-  std::shared_ptr<Index> idx;
-
-  {
-    WRITE_LOCKER(guard, _indexesLock);
-    idx = findIndex(info, _indexes);
-    if (idx) {
-      created = false; // We already have this index.
-      return idx;
-    }
+  TRI_ASSERT(info.isObject());
+  SingleCollectionTransaction trx( // prevent concurrent dropping
+    transaction::StandaloneContext::Create(_logicalCollection.vocbase()),
+    _logicalCollection,
+    AccessMode::Type::EXCLUSIVE);
+  Result res = trx.begin();
+  
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+    
+  std::shared_ptr<Index> idx = lookupIndex(info);
+  if (idx) {
+    created = false; // We already have this index.
+    return idx;
   }
 
   RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
 
   // We are sure that we do not have an index of this type.
   // We also hold the lock. Create it
-
+  const bool generateKey = !restore;
   idx = engine->indexFactory().prepareIndexFromSlice(
-    info, true, _logicalCollection, false
+    info, generateKey, _logicalCollection, false
   );
   if (!idx) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
@@ -373,7 +375,12 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
   TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
   TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX);
   
-  Result res = fillIndexes(trx, idx);
+  std::shared_ptr<Index> other = PhysicalCollection::lookupIndex(idx->id());
+  if (other) { // index already exists
+    return other;
+  }
+  
+  res = fillIndexes(&trx, idx);
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -401,20 +408,23 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
     WRITE_LOCKER(guard, _indexesLock);
     addIndex(idx);
   }
-  auto builder = _logicalCollection.toVelocyPackIgnore(
-      {"path", "statusString"}, true, /*forPersistence*/ true);
-  VPackBuilder indexInfo;
-  idx->toVelocyPack(indexInfo, Index::makeFlags(Index::Serialize::ObjectId));
-  res = engine->writeCreateCollectionMarker(
-    _logicalCollection.vocbase().id(),
-    _logicalCollection.id(),
-    builder.slice(),
-    RocksDBLogValue::IndexCreate(
+  
+  if (!engine->inRecovery()) {
+    auto builder = _logicalCollection.toVelocyPackIgnore(
+        {"path", "statusString"}, true, /*forPersistence*/ true);
+    VPackBuilder indexInfo;
+    idx->toVelocyPack(indexInfo, Index::makeFlags(Index::Serialize::ObjectId));
+    res = engine->writeCreateCollectionMarker(
       _logicalCollection.vocbase().id(),
       _logicalCollection.id(),
-      indexInfo.slice()
-    )
-  );
+      builder.slice(),
+      RocksDBLogValue::IndexCreate(
+        _logicalCollection.vocbase().id(),
+        _logicalCollection.id(),
+        indexInfo.slice()
+      )
+    );
+  }
 
   if (res.fail()) {
     // We could not persist the index creation. Better abort
@@ -431,123 +441,15 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
     idx->drop();
     THROW_ARANGO_EXCEPTION(res);
   }
+  
+  res = trx.commit();
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+  
   created = true;
 
   return idx;
-}
-
-/// @brief Restores an index from VelocyPack.
-int RocksDBCollection::restoreIndex(transaction::Methods* trx,
-                                    velocypack::Slice const& info,
-                                    std::shared_ptr<Index>& idx) {
-  // The coordinator can never get into this state!
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  idx.reset();  // Clear it to make sure.
-
-  if (!info.isObject()) {
-    return TRI_ERROR_INTERNAL;
-  }
-    
-  // check if we already have this index
-  auto oldIdx = lookupIndex(info);
-  if (oldIdx) {
-    idx = oldIdx;
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  
-  RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-
-  // We create a new Index object to make sure that the index
-  // is not handed out except for a successful case.
-  std::shared_ptr<Index> newIdx;
-  try {
-    newIdx = engine->indexFactory().prepareIndexFromSlice(
-      info, false, _logicalCollection, false
-    );
-  } catch (arangodb::basics::Exception const& e) {
-    // Something with index creation went wrong.
-    // Just report.
-    return e.code();
-  }
-  if (!newIdx) { // simon: probably something wrong with ArangoSearch Links
-    LOG_TOPIC(ERR, Logger::ENGINES) << "index creation failed while restoring";
-    return TRI_ERROR_ARANGO_INDEX_CREATION_FAILED;
-  }
-
-  TRI_ASSERT(newIdx != nullptr);
-  auto const id = newIdx->id();
-
-  TRI_UpdateTickServer(id);
-
-  for (auto& it : _indexes) {
-    if (it->id() == id) {
-      // index already exists
-      idx = it;
-      return TRI_ERROR_NO_ERROR;
-    }
-  }
-
-  TRI_ASSERT(newIdx.get()->type() !=
-             Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
-
-  Result res = fillIndexes(trx, newIdx);
-  if (!res.ok()) {
-    return res.errorNumber();
-  }
-  
-  // we need to sync the selectivity estimates
-  res = engine->settingsManager()->sync(false);
-  if (res.fail()) {
-    LOG_TOPIC(WARN, Logger::ENGINES) << "could not sync settings: "
-    << res.errorMessage();
-  }
-  
-  rocksdb::Status s = engine->db()->GetRootDB()->FlushWAL(true);
-  if (!s.ok()) {
-    LOG_TOPIC(WARN, Logger::ENGINES) << "could not flush wal: "
-    << s.ToString();
-  }
-  
-
-  addIndex(newIdx);
-  
-  auto builder = _logicalCollection.toVelocyPackIgnore(
-      {"path", "statusString"}, true, /*forPersistence*/ true);
-  
-  VPackBuilder indexInfo;
-  newIdx->toVelocyPack(indexInfo, Index::makeFlags(Index::Serialize::ObjectId));
-  TRI_ASSERT(engine != nullptr);
-  res = engine->writeCreateCollectionMarker(
-    _logicalCollection.vocbase().id(),
-    _logicalCollection.id(),
-    builder.slice(),
-    RocksDBLogValue::IndexCreate(
-      _logicalCollection.vocbase().id(),
-      _logicalCollection.id(),
-      indexInfo.slice()
-    )
-  );
-
-  if (res.fail()) {
-    // We could not persist the index creation. Better abort
-    // Remove the Index in the local list again.
-    size_t i = 0;
-    WRITE_LOCKER(guard, _indexesLock);
-    for (auto index : _indexes) {
-      if (index == newIdx) {
-        _indexes.erase(_indexes.begin() + i);
-        break;
-      }
-      ++i;
-    }
-    newIdx->drop();
-    return res.errorNumber();
-  }
-
-  idx = newIdx;
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief Drop an index with the given iid.
@@ -644,7 +546,7 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
   auto state = RocksDBTransactionState::toState(trx);
   RocksDBMethods* mthds = state->rocksdbMethods();
 
-  if (state->isExclusiveTransactionOnSingleCollection() &&
+  if (state->isOnlyExclusiveTransaction() &&
       state->hasHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE) &&
       static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->canUseRangeDeleteInWal() &&
       _numberDocuments >= 32 * 1024) {
@@ -886,6 +788,7 @@ Result RocksDBCollection::insert(
     arangodb::velocypack::Slice const slice,
     arangodb::ManagedDocumentResult& mdr, OperationOptions& options,
     TRI_voc_tick_t& resultMarkerTick, bool, TRI_voc_tick_t& revisionId,
+    KeyLockInfo* /*keyLockInfo*/,
     std::function<Result(void)> callbackDuringLock) {
   // store the tick that was used for writing the document
   // note that we don't need it for this engine
@@ -916,7 +819,7 @@ Result RocksDBCollection::insert(
     // up to the SavePoint. this can be super-expensive for bigger transactions.
     // to keep things simple, we are not checking for unique constraint violations
     // in secondary indexes here, but defer it to the regular index insertion check
-    VPackSlice keySlice = newSlice.get(StaticStrings::KeyString);
+    VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(newSlice);
     if (keySlice.isString()) {
       LocalDocumentId const documentId = primaryIndex()->lookupKey(trx, StringRef(keySlice));
       if (documentId.isSet()) {
@@ -1199,7 +1102,8 @@ Result RocksDBCollection::remove(
     arangodb::transaction::Methods* trx, arangodb::velocypack::Slice slice,
     arangodb::ManagedDocumentResult& previous, OperationOptions& options,
     TRI_voc_tick_t& resultMarkerTick, bool, TRI_voc_rid_t& prevRev,
-    TRI_voc_rid_t& revisionId, std::function<Result(void)> callbackDuringLock) {
+    TRI_voc_rid_t& revisionId, KeyLockInfo* /*keyLockInfo*/,
+    std::function<Result(void)> callbackDuringLock) {
   // store the tick that was used for writing the document
   // note that we don't need it for this engine
   resultMarkerTick = 0;
@@ -1618,7 +1522,6 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
 
       if (entry) {
         Result status = _cache->insert(entry);
-
         if (status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
           // the writeLock uses cpu_relax internally, so we can try yield
           std::this_thread::yield();

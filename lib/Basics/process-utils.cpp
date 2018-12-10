@@ -66,7 +66,7 @@ uint64_t TRI_PhysicalMemory;
 /// @brief all external processes
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::vector<ExternalProcess*> ExternalProcesses;
+std::vector<ExternalProcess*> ExternalProcesses;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lock for protected access to vector ExternalProcesses

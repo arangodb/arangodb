@@ -897,9 +897,7 @@ IResearchView::~IResearchView() {
     if (_storePersisted) {
       try {
         // NOTE: do not commit writer so as not to go out-of-sync with the WAL (i.e. flush thread)
-        _storePersisted._writer->close();
         _storePersisted._writer.reset();
-        _storePersisted._directory->close();
         _storePersisted._directory.reset();
       } catch (...) {
         // must not propagate exception out of destructor
@@ -1255,9 +1253,7 @@ arangodb::Result IResearchView::dropImpl() {
   try {
     if (_storePersisted) {
       _storePersisted._reader.reset(); // reset reader to release file handles
-      _storePersisted._writer->close();
       _storePersisted._writer.reset();
-      _storePersisted._directory->close();
       _storePersisted._directory.reset();
     }
 
@@ -1903,7 +1899,7 @@ arangodb::Result IResearchView::updateProperties(
             && !arangodb::ExecContext::CURRENT->canUseCollection(vocbase().name(), collection->name(), arangodb::auth::Level::RO)) {
           return arangodb::Result(
             TRI_ERROR_FORBIDDEN,
-            std::string("while updating arangosearch definition, error: collection '") + collection->name() + "' not authorised for read access"
+            std::string("while updating arangosearch definition, error: collection '") + collection->name() + "' not authorized for read access"
           );
         }
       }

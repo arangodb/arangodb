@@ -196,36 +196,35 @@ TRI_idx_iid_t IResearchLink::id() const noexcept {
   return _id;
 }
 
-bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
+arangodb::Result IResearchLink::init(
+    arangodb::velocypack::Slice const& definition
+) {
   // disassociate from view if it has not been done yet
   if (!unload().ok()) {
-    return false;
+    return arangodb::Result(TRI_ERROR_INTERNAL, "failed to unload link");
   }
 
   std::string error;
   IResearchLinkMeta meta;
 
   if (!meta.init(definition, error)) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "error parsing view link parameters from json: " << error;
-    TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
-
-    return false; // failed to parse metadata
+    return arangodb::Result(
+      TRI_ERROR_BAD_PARAMETER,
+      std::string("error parsing view link parameters from json: ") + error
+    );
   }
 
   if (!definition.isObject()
-      || !(definition.get(StaticStrings::ViewIdField).isString() ||
-           definition.get(StaticStrings::ViewIdField).isNumber<TRI_voc_cid_t>())) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "error finding view for link '" << _id << "'";
-    TRI_set_errno(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-
-    return false;
+      || !definition.get(StaticStrings::ViewIdField).isString()) {
+    return arangodb::Result(
+      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+      std::string("error finding view for link '") + std::to_string(_id) + "'"
+    );
   }
 
   // we continue to support the old and new ID format
   auto idSlice = definition.get(StaticStrings::ViewIdField);
-  std::string viewId = idSlice.isString() ? idSlice.copyString() : std::to_string(idSlice.getUInt());
+  auto viewId = idSlice.copyString();
   auto& vocbase = _collection.vocbase();
   auto logicalView = vocbase.lookupView(viewId); // will only contain IResearchView (even for a DBServer)
 
@@ -234,15 +233,15 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
     auto* ci = ClusterInfo::instance();
 
     if (!ci) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "failure to find 'ClusterInfo' instance for lookup of link '" << _id << "'";
-      TRI_set_errno(TRI_ERROR_INTERNAL);
-
-      return false;
+      return arangodb::Result(
+        TRI_ERROR_INTERNAL,
+        std::string("failure to find 'ClusterInfo' instance for lookup of link '") + std::to_string(_id) + "'"
+      );
     }
 
     auto logicalWiew = ci->getView(vocbase.name(), viewId);
     auto* wiew = LogicalView::cast<IResearchViewDBServer>(logicalWiew.get());
+
     if (wiew) {
       // FIXME figure out elegant way of testing for cluster wide LogicalCollection
       if (_collection.id() == _collection.planId() && _collection.isAStub()) {
@@ -265,7 +264,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
           }
         }
 
-        return true; // leave '_view' uninitialized to mark the index as unloaded/unusable
+        return arangodb::Result(); // leave '_view' uninitialized to mark the index as unloaded/unusable
       }
 
       logicalView = wiew->ensure(_collection.id()); // repoint LogicalView at the per-cid instance
@@ -274,41 +273,38 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
 
   if (!logicalView
       || arangodb::iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "error finding view: '" << viewId << "' for link '" << _id << "' : no such view";
-
-    return false; // no such view
+    return arangodb::Result(
+      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+      std::string("error finding view: '") + viewId + "' for link '" + std::to_string(_id) + "' : no such view"
+    );
   }
 
   auto* view = LogicalView::cast<IResearchView>(logicalView.get());
 
   if (!view) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "error finding view: '" << viewId << "' for link '" << _id << "'";
-
-    return false;
+    return arangodb::Result(
+      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+      std::string("error finding view: '") + viewId + "' for link '" + std::to_string(_id) + "'"
+    );
   }
 
   auto viewSelf = view->self();
 
   if (!viewSelf) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "error read-locking view: '" << viewId
-      << "' for link '" << _id << "'";
-
-    return false;
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      std::string("error read-locking view: '") + viewId + "' for link '" + std::to_string(_id) + "'"
+    );
   }
 
   _viewLock = std::unique_lock<ReadMutex>(viewSelf->mutex()); // aquire read-lock before checking view
 
   if (!viewSelf->get()) {
     _viewLock.unlock();
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "error getting view: '" << viewId << "' for link '" << _id << "'";
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "have raw view '" << view->guid() << "'";
-
-    return false;
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      std::string("error getting view: '") + viewId + "' for link '" + std::to_string(_id) + "', have raw view '" + view->guid() + "'"
+    );
   }
 
   _dropCollectionInDestructor = view->emplace(_collection.id()); // track if this is the instance that called emplace
@@ -325,7 +321,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
     }
   }
 
-  return true;
+  return arangodb::Result();
 }
 
 Result IResearchLink::insert(

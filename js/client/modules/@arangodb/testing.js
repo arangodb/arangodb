@@ -111,6 +111,7 @@ let optionsDocumentation = [
   '   - `extraArgs`: list of extra commandline arguments to add to arangod',
   '',
   '   - `testFailureText`: filename of the testsummary file',
+  '   - `getSockStat`: on linux collect socket stats before shutdown',
   '   - `verbose`: if set to true, be more verbose',
   '   - `extremeVerbosity`: if set to true, then there will be more test run',
   '     output, especially for cluster tests.',
@@ -136,6 +137,7 @@ const optionsDefaults = {
   'extraArgs': {},
   'extremeVerbosity': false,
   'force': true,
+  'getSockStat': true,
   'arangosearch':true,
   'jsonReply': false,
   'loopEternal': false,
@@ -279,6 +281,11 @@ function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
   let onlyFailedMessages = '';
   let failedMessages = '';
   let SuccessMessages = '';
+  let bucketName = "";
+  if (options.testBuckets) {
+    let n = options.testBuckets.split('/');
+    bucketName = "_" + n[0];
+  }
   try {
     /* jshint forin: false */
     for (let testrunName in res) {
@@ -330,7 +337,7 @@ function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
       }
 
       if (isSuccess) {
-        SuccessMessages += '* Test "' + testrunName + '"\n';
+        SuccessMessages += '* Test "' + testrunName + bucketName + '"\n';
 
         for (let name in successCases) {
           if (!successCases.hasOwnProperty(name)) {
@@ -346,7 +353,7 @@ function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
           }
         }
       } else {
-        let m = '* Test "' + testrunName + '"\n';
+        let m = '* Test "' + testrunName + bucketName + '"\n';
         onlyFailedMessages += m;
         failedMessages += m;
 

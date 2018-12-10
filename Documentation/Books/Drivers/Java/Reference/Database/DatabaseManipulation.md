@@ -6,9 +6,7 @@ These functions implement the
 
 ## ArangoDB.createDatabase
 
-```
-ArangoDB.createDatabase(String name) : Boolean
-```
+`ArangoDB.createDatabase(String name) : Boolean`
 
 Creates a new database with the given name.
 
@@ -27,9 +25,7 @@ arango.createDatabase("myDB");
 
 ## ArangoDatabase.create()
 
-```
-ArangoDatabase.create() : Boolean
-```
+`ArangoDatabase.create() : Boolean`
 
 Creates the database.
 
@@ -45,9 +41,7 @@ db.create();
 
 ## ArangoDatabase.exists()
 
-```
-ArangoDatabase.exists() : boolean
-```
+`ArangoDatabase.exists() : boolean`
 
 Checks whether the database exists
 
@@ -61,9 +55,7 @@ boolean exists = db.exists();
 
 ## ArangoDatabase.getInfo
 
-```
-ArangoDatabase.getInfo() : DatabaseEntity
-```
+`ArangoDatabase.getInfo() : DatabaseEntity`
 
 Retrieves information about the current database
 
@@ -77,9 +69,7 @@ DatabaseEntity info = db.getInfo();
 
 ## ArangoDB.getDatabases
 
-```
-ArangoDB.getDatabases() : Collection<String>
-```
+`ArangoDB.getDatabases() : Collection<String>`
 
 Retrieves a list of all existing databases
 
@@ -92,9 +82,7 @@ Collection<String> names = arango.getDatabases();
 
 ## ArangoDatabase.drop
 
-```
-ArangoDatabase.drop() : Boolean
-```
+`ArangoDatabase.drop() : Boolean`
 
 Deletes the database from the server.
 

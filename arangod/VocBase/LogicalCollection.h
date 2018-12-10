@@ -41,11 +41,12 @@ typedef std::string ServerID;      // ID of a server
 typedef std::string ShardID;       // ID of a shard
 typedef std::unordered_map<ShardID, std::vector<ServerID>> ShardMap;
 
-class LocalDocumentId;
 class FollowerInfo;
 class Index;
 class IndexIterator;
 class KeyGenerator;
+struct KeyLockInfo;
+class LocalDocumentId;
 class ManagedDocumentResult;
 struct OperationOptions;
 class PhysicalCollection;
@@ -256,8 +257,7 @@ class LogicalCollection : public LogicalDataSource {
   // SECTION: Indexes
 
   /// @brief Create a new Index based on VelocyPack description
-  virtual std::shared_ptr<Index> createIndex(transaction::Methods*,
-                                             velocypack::Slice const&, bool&);
+  virtual std::shared_ptr<Index> createIndex(velocypack::Slice const&, bool&);
 
   /// @brief Find index by definition
   std::shared_ptr<Index> lookupIndex(velocypack::Slice const&) const;
@@ -284,7 +284,7 @@ class LogicalCollection : public LogicalDataSource {
                 TRI_voc_tick_t& resultMarkerTick, bool lock) {
     TRI_voc_tick_t unused;
     return insert(trx, slice, result, options, resultMarkerTick, lock, unused,
-                  nullptr);
+                  nullptr, nullptr);
   }
 
   /**
@@ -296,6 +296,7 @@ class LogicalCollection : public LogicalDataSource {
                 ManagedDocumentResult& result, OperationOptions& options,
                 TRI_voc_tick_t& resultMarkerTick, bool lock,
                 TRI_voc_tick_t& revisionId,
+                KeyLockInfo* keyLockInfo,
                 std::function<Result(void)> callbackDuringLock);
 
   Result update(transaction::Methods*, velocypack::Slice,
@@ -313,6 +314,7 @@ class LogicalCollection : public LogicalDataSource {
   Result remove(transaction::Methods*, velocypack::Slice,
                 OperationOptions&, TRI_voc_tick_t&, bool lock,
                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
+                KeyLockInfo* keyLockInfo,
                 std::function<Result(void)> callbackDuringLock);
 
   bool readDocument(transaction::Methods* trx,

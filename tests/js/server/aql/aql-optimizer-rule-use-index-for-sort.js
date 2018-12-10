@@ -224,7 +224,8 @@ function optimizerRuleTestSuite() {
         ["FOR v IN " + colName + " SORT CONCAT(TO_STRING(v.a), \"lol\") RETURN [v.a]", true],
         // TODO: limit blocks sort atm.
         ["FOR v IN " + colName + " FILTER v.a > 2 LIMIT 3 SORT v.a RETURN [v.a]", true],
-        ["FOR v IN " + colName + " FOR w IN " + colNameOther + " SORT v.a RETURN [v.a]", true]
+        ["FOR v IN " + colName + " FOR w IN " + colNameOther + " SORT v.a RETURN [v.a]", true],
+        ["FOR v IN " + colName + " FOR w IN 1..10 SORT v.d RETURN [v.d]", false],
       ];
 
       queries.forEach(function(query) {
@@ -261,7 +262,6 @@ function optimizerRuleTestSuite() {
         "FOR v IN " + colName + " SORT v.d ASC RETURN [v.d]",
 
         "FOR v IN " + colName + " SORT v.d FILTER v.a > 2 LIMIT 3 RETURN [v.d]  ",
-        "FOR v IN " + colName + " FOR w IN 1..10 SORT v.d RETURN [v.d]",
 
         "FOR v IN " + colName + " LET x = (FOR w IN " + colNameOther + " RETURN w.f ) SORT v.a RETURN [v.a]"
       ];
@@ -298,7 +298,6 @@ function optimizerRuleTestSuite() {
     //   the index can't fullfill all the sorting.
     ////////////////////////////////////////////////////////////////////////////////
     testRuleHasEffectButSortsStill : function () {
-
       var queries = [
         "FOR v IN " + colName + " FILTER v.a == 1 SORT v.a, v.c RETURN [v.a, v.b, v.c]",
         "FOR v IN " + colName + " LET x = (FOR w IN " 

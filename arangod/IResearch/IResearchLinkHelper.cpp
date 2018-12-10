@@ -50,13 +50,12 @@ namespace {
 std::string const& LINK_TYPE = arangodb::iresearch::DATA_SOURCE_TYPE.name();
 
 bool createLink(
-    arangodb::transaction::Methods& trx,
     arangodb::LogicalCollection& collection,
     arangodb::LogicalView const& view,
     arangodb::velocypack::Slice definition
 ) {
   bool isNew = false;
-  auto link = collection.createIndex(&trx, definition, isNew);
+  auto link = collection.createIndex(definition, isNew);
   LOG_TOPIC_IF(DEBUG, arangodb::iresearch::TOPIC, link)
       << "added link '" << link->id() << "'";
 
@@ -64,7 +63,6 @@ bool createLink(
 }
 
 bool createLink(
-    arangodb::transaction::Methods& trx,
     arangodb::LogicalCollection& collection,
     arangodb::iresearch::IResearchViewCoordinator const& view,
     arangodb::velocypack::Slice definition
@@ -241,30 +239,6 @@ arangodb::Result modifyLinks(
 
   static std::vector<std::string> const EMPTY;
   arangodb::ExecContextScope scope(arangodb::ExecContext::superuser()); // required to remove links from non-RW collections
-  arangodb::transaction::Methods trx(
-    trxCtx,
-    EMPTY, // readCollections
-    EMPTY, // writeCollections
-    collectionsToLock, // exclusiveCollections
-    arangodb::transaction::Options() // use default lock timeout
-  );
-  auto* trxResolver = trx.resolver();
-
-  if (!trxResolver) {
-    return arangodb::Result(
-      TRI_ERROR_ARANGO_ILLEGAL_STATE,
-      std::string("failed to find collection name resolver while updating arangosearch view '") + view.name() + "'"
-    );
-  }
-
-  auto res = trx.begin();
-
-  if (!res.ok()) {
-    return arangodb::Result(
-      res.errorNumber(),
-      std::string("failed to start transaction while updating arangosearch view '") + view.name() + "' error: " + res.errorMessage()
-    );
-  }
 
   {
     std::unordered_set<TRI_voc_cid_t> collectionsToRemove; // track removal for potential reindex
@@ -275,7 +249,7 @@ arangodb::Result modifyLinks(
       auto& state = *itr;
       auto& collectionName = collectionsToLock[state._collectionsToLockOffset];
 
-      state._collection = trxResolver->getCollection(collectionName);
+      state._collection = trxCtx->resolver().getCollection(collectionName);
 
       if (!state._collection) {
         // remove modification state if removal of non-existant link on non-existant collection
@@ -412,7 +386,6 @@ arangodb::Result modifyLinks(
   for (auto& state: linkModifications) {
     if (state._valid && state._linkDefinitionsOffset < linkDefinitions.size()) {
       state._valid = createLink(
-        trx,
         *(state._collection),
         view,
         linkDefinitions[state._linkDefinitionsOffset].first.slice()
@@ -431,15 +404,7 @@ arangodb::Result modifyLinks(
   }
 
   if (error.empty()) {
-    auto res = trx.commit();
-
-    return res.ok()
-      ? arangodb::Result()
-      : arangodb::Result(
-          res.errorNumber(),
-          std::string("failed to commit transaction while updating arangosearch view '") + view.name() + "' error: " + res.errorMessage()
-        )
-      ;
+    return arangodb::Result();
   }
 
   return arangodb::Result(
@@ -474,6 +439,48 @@ namespace iresearch {
   } emptySlice;
 
   return emptySlice._slice;
+}
+
+/*static*/ bool IResearchLinkHelper::equal(
+    arangodb::velocypack::Slice const& lhs,
+    arangodb::velocypack::Slice const& rhs
+) {
+  if (!lhs.isObject() || !rhs.isObject()) {
+    return false;
+  }
+
+  auto lhsViewSlice = lhs.get(StaticStrings::ViewIdField);
+  auto rhsViewSlice = rhs.get(StaticStrings::ViewIdField);
+
+  if (!lhsViewSlice.equals(rhsViewSlice)) {
+    if (!lhsViewSlice.isString() || !rhsViewSlice.isString()) {
+      return false;
+    }
+
+    auto ls = lhsViewSlice.copyString();
+    auto rs = lhsViewSlice.copyString();
+
+    if (ls.size() > rs.size()) {
+      std::swap(ls, rs);
+    }
+
+    // in the cluster, we may have identifiers of the form
+    // `cxxx/` and `cxxx/yyy` which should be considered equal if the
+    // one is a prefix of the other up to the `/`
+    if (ls.empty() ||
+        ls.back() != '/' ||
+        ls.compare(rs.substr(0, ls.size()))) {
+      return false;
+    }
+  }
+
+  std::string errorField;
+  IResearchLinkMeta lhsMeta;
+  IResearchLinkMeta rhsMeta;
+
+  return lhsMeta.init(lhs, errorField)
+         && rhsMeta.init(rhs, errorField)
+         && lhsMeta == rhsMeta;
 }
 
 /*static*/ arangodb::Result IResearchLinkHelper::normalize(
@@ -564,7 +571,7 @@ namespace iresearch {
         && !arangodb::ExecContext::CURRENT->canUseCollection(vocbase.name(), collection->name(), arangodb::auth::Level::RO)) {
       return arangodb::Result(
         TRI_ERROR_FORBIDDEN,
-        std::string("while validating arangosearch link definition, error: collection '") + collectionName.copyString() + "' not authorised for read access"
+        std::string("while validating arangosearch link definition, error: collection '") + collectionName.copyString() + "' not authorized for read access"
       );
     }
 

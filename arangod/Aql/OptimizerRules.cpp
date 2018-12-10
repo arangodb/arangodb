@@ -55,6 +55,8 @@
 #include "GeoIndex/Index.h"
 #include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
 #include "VocBase/Methods/Collections.h"
 
@@ -571,6 +573,10 @@ std::vector<arangodb::aql::ExecutionNode::NodeType> const
 std::vector<arangodb::aql::ExecutionNode::NodeType> const
     patchUpdateStatementsNodeTypes{arangodb::aql::ExecutionNode::UPDATE,
                                    arangodb::aql::ExecutionNode::REPLACE};
+std::vector<arangodb::aql::ExecutionNode::NodeType> const
+    patchUpdateRemoveStatementsNodeTypes{arangodb::aql::ExecutionNode::UPDATE,
+                                         arangodb::aql::ExecutionNode::REPLACE,
+                                         arangodb::aql::ExecutionNode::REMOVE};
 
 int indexOf(std::vector<std::string> const& haystack,
             std::string const& needle) {
@@ -2228,7 +2234,14 @@ class arangodb::aql::RedundantCalculationsReplacer final
         }
         break;
       }
-
+     
+#if 0 
+      // TODO: figure out if this does any harm
+      case EN::REMOTESINGLE: {
+        replaceInVariable<SingleRemoteOperationNode>(en);
+        break;
+      }
+#endif
       default: {
         // ignore all other types of nodes
       }
@@ -3122,6 +3135,9 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
 #ifdef USE_IRESEARCH
       case EN::ENUMERATE_IRESEARCH_VIEW:
 #endif
+        // found some other FOR loop
+        return true;
+
       case EN::SUBQUERY:
       case EN::FILTER:
         return false;  // skip. we don't care.
@@ -5848,17 +5864,51 @@ void arangodb::aql::removeDataModificationOutVariablesRule(
 
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
-  plan->findNodesOfType(nodes, ::removeDataModificationOutVariablesNodeTypes,
-                        true);
+  plan->findNodesOfType(nodes, ::removeDataModificationOutVariablesNodeTypes, true);
 
   for (auto const& n : nodes) {
     auto node = ExecutionNode::castTo<ModificationNode*>(n);
     TRI_ASSERT(node != nullptr);
 
-    if (!n->isVarUsedLater(node->getOutVariableOld())) {
+    Variable const* old = node->getOutVariableOld();
+    if (!n->isVarUsedLater(old)) {
       // "$OLD" is not used later
       node->clearOutVariableOld();
       modified = true;
+    } else {
+      switch (n->getType()) {
+        case EN::UPDATE:
+        case EN::REPLACE: {
+          Variable const* inVariable = ExecutionNode::castTo<UpdateReplaceNode const*>(n)->inKeyVariable();
+          if (inVariable != nullptr) {
+            auto setter = plan->getVarSetBy(inVariable->id);
+            if (setter != nullptr && (setter->getType() == EN::ENUMERATE_COLLECTION || setter->getType() == EN::INDEX)) {
+              std::unordered_map<VariableId, Variable const*> replacements;
+              replacements.emplace(old->id, inVariable);
+              RedundantCalculationsReplacer finder(plan->getAst(), replacements);
+              plan->root()->walk(finder);
+              modified = true;
+            }
+          }
+          break;
+        }
+        case EN::REMOVE: {
+          Variable const* inVariable = ExecutionNode::castTo<RemoveNode const*>(n)->inVariable();
+          TRI_ASSERT(inVariable != nullptr);
+          auto setter = plan->getVarSetBy(inVariable->id);
+          if (setter != nullptr && (setter->getType() == EN::ENUMERATE_COLLECTION || setter->getType() == EN::INDEX)) {
+            std::unordered_map<VariableId, Variable const*> replacements;
+            replacements.emplace(old->id, inVariable);
+            RedundantCalculationsReplacer finder(plan->getAst(), replacements);
+            plan->root()->walk(finder);
+            modified = true;
+          }
+          break;
+        }
+        default: {
+          // do nothing
+        }
+      }
     }
 
     if (!n->isVarUsedLater(node->getOutVariableNew())) {
@@ -5884,7 +5934,18 @@ void arangodb::aql::patchUpdateStatementsRule(
   // no need to dive into subqueries here
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
-  plan->findNodesOfType(nodes, ::patchUpdateStatementsNodeTypes, false);
+
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  if (engine->typeName() == "mmfiles") {
+    // MMFiles: we can update UPDATE/REPLACE but not REMOVE
+    // this is because in MMFiles the iteration over a collection may
+    // use the primary index, but a REMOVE may at the same time remove
+    // the documents from this index. this would not be safe
+    plan->findNodesOfType(nodes, ::patchUpdateStatementsNodeTypes, false);
+  } else {
+    // other engines: we can update UPDATE/REPLACE as well as REMOVE
+    plan->findNodesOfType(nodes, ::patchUpdateRemoveStatementsNodeTypes, false);
+  }
 
   bool modified = false;
 

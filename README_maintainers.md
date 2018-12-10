@@ -548,9 +548,9 @@ Debugging symbols
 Releases are supported by a public symbol server so you will be able to debug cores.
 Please replace XX with the Major & Minor release number. Note that you should run the latest version of a release series before reporting bugs.
 Either [WinDbg](http://go.microsoft.com/fwlink/p/?linkid=84137) or Visual studio support setting the symbol path
-via the environment variable or in the menu. Given we want to store the symbols on *e:\symbol_cach* we add the arangodb symbolserver like this:
+via the environment variable or in the menu. Given we want to store the symbols on *e:\symbol_cache* we add the arangodb symbolserver like this:
 
-    set _NT_SYMBOL_PATH=cache*e:\symbol_cache\cache;srv*e:\symbol_cache\arango*https://download.arangodb.com/repositories/symsrv_arangodbXX/;SRV*e:\symbol_cache\ms*http://msdl.microsoft.com/download/symbols
+    set _NT_SYMBOL_PATH=SRV*e:\symbol_cache\arango*https://download.arangodb.com/symsrv_arangodbXX/;SRV*e:\symbol_cache\ms*http://msdl.microsoft.com/download/symbols
 
 You then will be able to see stack traces in the debugger.
 
@@ -579,8 +579,7 @@ This means i.e. for ArangoDB 3.1.11:
 
  https://download.arangodb.com/symsrv_arangodb31/arangod.pdb/A8B899D2EDFC40E994C30C32FCE5FB346/arangod.pd_
 
-This file is a microsoft cabinet file, which is a little bit compressed. You can dismantle it so the windows explorer offers you its proper handler by renaming it to .cab; click on the now named `arangod.cab`, copy the contained arangod.pdb into your symbol path.
-
+This file is a microsoft cabinet file, which is a little bit compressed. You can extract it by invoking `cabextract` or dismantle it so the windows explorer offers you its proper handler by renaming it to .cab; click on the now named `arangod.cab`, copy the contained arangod.pdb into your symbol path.
 
 Coredump analysis
 -----------------
@@ -597,6 +596,12 @@ These commands for `-c` mean:
     q            quit the debugger
 
 If you don't specify them via -c you can also use them in an interactive manner.
+
+Alternatively you can also directly specify the symbol path via the `-y` parameter (replace XX):
+
+    cdb -z <dump file> -y 'SRV*e:\symbol_cache*https://download.arangodb.com/symsrv_arangodbXX;SRV*e:\symbol_cache\ms*http://msdl.microsoft'
+
+and use the commands above to obtain stacktraces.
 
 --------------------------------------------------------------------------------
 

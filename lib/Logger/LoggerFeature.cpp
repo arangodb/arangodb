@@ -65,8 +65,9 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("log.application", "");
   options->addOldOption("log.facility", "");
 
-  options->addHiddenOption("--log", "the global or topic-specific log level",
-                           new VectorParameter<StringParameter>(&_levels));
+  options->addOption("--log", "the global or topic-specific log level",
+                     new VectorParameter<StringParameter>(&_levels),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
   options->addSection("log", "Configure the logging");
 
@@ -94,49 +95,60 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "log server role",
                      new BooleanParameter(&_showRole));
 
-  options->addHiddenOption("--log.prefix",
-                           "prefix log message with this string",
-                           new StringParameter(&_prefix));
+  options->addOption("--log.prefix",
+                     "prefix log message with this string",
+                     new StringParameter(&_prefix),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption("--log.file",
-                           "shortcut for '--log.output file://<filename>'",
-                           new StringParameter(&_file));
+  options->addOption("--log.file",
+                     "shortcut for '--log.output file://<filename>'",
+                     new StringParameter(&_file),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption("--log.line-number",
-                           "append line number and file name",
-                           new BooleanParameter(&_lineNumber));
+  options->addOption("--log.line-number",
+                     "append line number and file name",
+                     new BooleanParameter(&_lineNumber),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption("--log.shorten-filenames",
-                           "shorten filenames in log output (use with --log.line-number)",
-                           new BooleanParameter(&_shortenFilenames));
+  options->addOption("--log.shorten-filenames",
+                     "shorten filenames in log output (use with --log.line-number)",
+                     new BooleanParameter(&_shortenFilenames),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption("--log.thread",
-                           "show thread identifier in log message",
-                           new BooleanParameter(&_threadId));
+  options->addOption("--log.thread",
+                     "show thread identifier in log message",
+                     new BooleanParameter(&_threadId),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption("--log.thread-name",
-                           "show thread name in log message",
-                           new BooleanParameter(&_threadName));
+  options->addOption("--log.thread-name",
+                     "show thread name in log message",
+                     new BooleanParameter(&_threadName),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption("--log.performance",
-                           "shortcut for '--log.level performance=trace'",
-                           new BooleanParameter(&_performance));
+  options->addOption("--log.performance",
+                     "shortcut for '--log.level performance=trace'",
+                     new BooleanParameter(&_performance),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption("--log.keep-logrotate",
-                           "keep the old log file after receiving a sighup",
-                           new BooleanParameter(&_keepLogRotate));
+  options->addOption("--log.keep-logrotate",
+                     "keep the old log file after receiving a sighup",
+                     new BooleanParameter(&_keepLogRotate),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption("--log.foreground-tty",
-                           "also log to tty if backgrounded",
-                           new BooleanParameter(&_foregroundTty));
+  options->addOption("--log.foreground-tty",
+                     "also log to tty if backgrounded",
+                     new BooleanParameter(&_foregroundTty),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption("--log.force-direct",
-                           "do not start a seperate thread for logging",
-                           new BooleanParameter(&_forceDirect));
+  options->addOption("--log.force-direct",
+                     "do not start a seperate thread for logging",
+                     new BooleanParameter(&_forceDirect),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption("--log.request-parameters",
-                           "include full URLs and HTTP request parameters in trace logs",
-                           new BooleanParameter(&_logRequestParameters));
+  options->addOption("--log.request-parameters",
+                     "include full URLs and HTTP request parameters in trace logs",
+                     new BooleanParameter(&_logRequestParameters),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
 void LoggerFeature::loadOptions(

@@ -30,6 +30,7 @@ AQLFeaturePhase::AQLFeaturePhase(ApplicationServer& server)
   setOptional(false);
   startsAfter("V8Phase");
 
+  startsAfter("CommunicationPhase");
   startsAfter("Aql");
   startsAfter("AQLFunctions");
   startsAfter("IResearchAnalyzer");

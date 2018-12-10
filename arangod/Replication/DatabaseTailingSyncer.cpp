@@ -102,7 +102,9 @@ Result DatabaseTailingSyncer::saveApplierState() {
 /// @brief finalize the synchronization of a collection by tailing the WAL
 /// and filtering on the collection name until no more data is available
 Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
-    std::string const& collectionName, bool hard, TRI_voc_tick_t& until) {
+    std::string const& collectionName, double timeout, bool hard, TRI_voc_tick_t& until,
+    bool& didTimeout) {
+  didTimeout = false;
 
   setAborted(false);
   // fetch master state just once
@@ -121,11 +123,11 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
 
   if (hard) {
     LOG_TOPIC(DEBUG, Logger::REPLICATION)
-        << "starting syncCollectionFinalize:" << collectionName << ", fromTick "
+        << "starting syncCollectionFinalize: " << collectionName << ", fromTick "
         << fromTick;
   } else {
     LOG_TOPIC(DEBUG, Logger::REPLICATION)
-        << "starting syncCollectionCatchup:" << collectionName << ", fromTick "
+        << "starting syncCollectionCatchup: " << collectionName << ", fromTick "
         << fromTick;
   }
 
@@ -231,8 +233,9 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
 
     // If this is non-hard, we employ some heuristics to stop early:
     if (!hard) {
-      if (clock.now() - startTime > std::chrono::seconds(1) && _ongoingTransactions.empty()) {
+      if (clock.now() - startTime > std::chrono::duration<double>(timeout) && _ongoingTransactions.empty()) {
         checkMore = false;
+        didTimeout = true;
       } else {
         TRI_voc_tick_t lastTick = 0;
         header = response->getHeaderField(

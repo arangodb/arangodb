@@ -57,6 +57,7 @@
 #include "Utils/Events.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/OperationOptions.h"
+#include "VocBase/KeyLockInfo.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Methods/Indexes.h"
@@ -277,7 +278,7 @@ bool transaction::Methods::removeStatusChangeCallback(
   } else if (!_state) {
     return false; // nothing to add to
   }
-  
+
   auto* statusChangeCallbacks = getStatusChangeCallbacks(*_state, false);
   if (statusChangeCallbacks) {
     auto it = std::find(statusChangeCallbacks->begin(), statusChangeCallbacks->end(), callback);
@@ -553,6 +554,8 @@ bool transaction::Methods::sortOrs(
     root->removeMemberUnchecked(0);
   }
 
+  std::unordered_set<std::string> seenIndexConditions;
+
   // and rebuild
   for (size_t i = 0; i < n; ++i) {
     if (parts[i].operatorType ==
@@ -564,8 +567,26 @@ bool transaction::Methods::sortOrs(
     }
 
     auto conditionData = static_cast<ConditionData*>(parts[i].data);
-    root->addMember(conditionData->first);
-    usedIndexes.emplace_back(conditionData->second);
+    bool isUnique = true;
+
+    if (!usedIndexes.empty()) {
+      // try to find duplicate condition parts, and only return each
+      // unique condition part once
+      try {
+        std::string conditionString = conditionData->first->toString() + " - " + std::to_string(conditionData->second.getIndex()->id());
+        isUnique = seenIndexConditions.emplace(std::move(conditionString)).second;
+          // we already saw the same combination of index & condition
+          // don't add it again
+      } catch (...) {
+        // condition stringification may fail. in this case, we simply carry own
+        // without simplifying the condition
+      }
+    }
+
+    if (isUnique) {
+      root->addMember(conditionData->first);
+      usedIndexes.emplace_back(conditionData->second);
+    }
   }
 
   return true;
@@ -760,7 +781,7 @@ transaction::Methods::Methods(
     ).release();
     TRI_ASSERT(_state != nullptr);
     TRI_ASSERT(_state->isTopLevelTransaction());
-    
+
     // register the transaction in the context
     _transactionContextPtr->registerTransaction(_state);
   }
@@ -1629,12 +1650,13 @@ OperationResult transaction::Methods::insertLocal(
   // options.overwrite => !needsLock
   TRI_ASSERT(!options.overwrite || !needsLock);
 
+  bool const isMMFiles = EngineSelectorFeature::isMMFiles();
+
   // Assert my assumption that we don't have a lock only with mmfiles single
   // document operations.
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   {
-    bool const isMMFiles = EngineSelectorFeature::isMMFiles();
     bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
     if (!isMock) {
       // needsLock => isMMFiles
@@ -1686,6 +1708,11 @@ OperationResult transaction::Methods::insertLocal(
     followers = collection->followers()->get();
   }
 
+  // we may need to lock individual keys here so we can ensure that even with concurrent
+  // operations on the same keys we have the same order of data application on leader
+  // and followers
+  KeyLockInfo keyLockInfo;
+
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
     // Block operation early if we are not supposed to perform it:
@@ -1697,13 +1724,16 @@ OperationResult transaction::Methods::insertLocal(
       }
 
       replicationType = ReplicationType::LEADER;
+      if (isMMFiles && needsLock) {
+        keyLockInfo.shouldLock = true;
+      }
       // We cannot be silent if we may have to replicate later.
       // If we need to get the followers under the single document operation's
       // lock, we don't know yet if we will have followers later and thus cannot
       // be silent.
       // Otherwise, if we already know the followers to replicate to, we can
       // just check if they're empty.
-      if (needsToGetFollowersUnderLock || !followers->empty()) {
+      if (needsToGetFollowersUnderLock || keyLockInfo.shouldLock || !followers->empty()) {
         options.silent = false;
       }
     } else {  // we are a follower following theLeader
@@ -1741,7 +1771,7 @@ OperationResult transaction::Methods::insertLocal(
     TRI_ASSERT(needsLock == !isLocked(collection, AccessMode::Type::WRITE));
     Result res = collection->insert(this, value, documentResult, options,
                                     resultMarkerTick, needsLock, revisionId,
-                                    updateFollowers);
+                                    &keyLockInfo, updateFollowers);
 
     TRI_voc_rid_t previousRevisionId = 0;
     ManagedDocumentResult previousDocumentResult; // return OLD
@@ -1826,7 +1856,7 @@ OperationResult transaction::Methods::insertLocal(
       return OperationResult{std::move(res), options};
     }
   }
-  
+
   // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
   if (res.ok() && options.waitForSync && maxTick > 0 &&
       isSingleOperationTransaction()) {
@@ -2254,14 +2284,13 @@ OperationResult transaction::Methods::removeLocal(
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
   bool const needsLock = !isLocked(collection, AccessMode::Type::WRITE);
+  bool const isMMFiles = EngineSelectorFeature::isMMFiles();
 
   // Assert my assumption that we don't have a lock only with mmfiles single
   // document operations.
 
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   {
-    bool const isMMFiles = EngineSelectorFeature::isMMFiles();
     bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
     if (!isMock) {
       // needsLock => isMMFiles
@@ -2306,6 +2335,11 @@ OperationResult transaction::Methods::removeLocal(
     followers = collection->followers()->get();
   }
 
+  // we may need to lock individual keys here so we can ensure that even with concurrent
+  // operations on the same keys we have the same order of data application on leader
+  // and followers
+  KeyLockInfo keyLockInfo;
+
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
     // Block operation early if we are not supposed to perform it:
@@ -2317,6 +2351,9 @@ OperationResult transaction::Methods::removeLocal(
       }
 
       replicationType = ReplicationType::LEADER;
+      if (isMMFiles && needsLock) {
+        keyLockInfo.shouldLock = true;
+      }
       // We cannot be silent if we may have to replicate later.
       // If we need to get the followers under the single document operation's
       // lock, we don't know yet if we will have followers later and thus cannot
@@ -2375,7 +2412,7 @@ OperationResult transaction::Methods::removeLocal(
 
     Result res =
         collection->remove(this, value, options, resultMarkerTick, needsLock,
-                           actualRevision, previous, updateFollowers);
+                           actualRevision, previous, &keyLockInfo, updateFollowers);
 
     if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
       maxTick = resultMarkerTick;
@@ -2432,7 +2469,7 @@ OperationResult transaction::Methods::removeLocal(
       return OperationResult{std::move(res), options};
     }
   }
-  
+
   // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
   if (res.ok() && options.waitForSync && maxTick > 0 &&
       isSingleOperationTransaction()) {
@@ -2557,7 +2594,7 @@ OperationResult transaction::Methods::truncateLocal(
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
       }
-      
+
       // fetch followers
       followers = followerInfo->get();
       if (followers->size() > 0) {
@@ -2687,14 +2724,14 @@ OperationResult transaction::Methods::count(std::string const& collectionName,
 /// @brief count the number of documents in a collection
 OperationResult transaction::Methods::countCoordinator(
     std::string const& collectionName, transaction::CountType type) {
-  
+
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr happens only during controlled shutdown
     return OperationResult(TRI_ERROR_SHUTTING_DOWN);
   }
-  
+
   // First determine the collection ID from the name:
   auto collinfo = ci->getCollectionNT(vocbase().name(), collectionName);
   if (collinfo == nullptr) {
@@ -2707,7 +2744,7 @@ OperationResult transaction::Methods::countCoordinator(
 #endif
 
 OperationResult transaction::Methods::countCoordinatorHelper(
-    std::shared_ptr<LogicalCollection> const& collinfo, std::string const& collectionName, transaction::CountType type) { 
+    std::shared_ptr<LogicalCollection> const& collinfo, std::string const& collectionName, transaction::CountType type) {
   TRI_ASSERT(collinfo != nullptr);
   auto& cache = collinfo->countCache();
 
@@ -2723,24 +2760,24 @@ OperationResult transaction::Methods::countCoordinatorHelper(
     // no cache hit, or detailed results requested
     std::vector<std::pair<std::string, uint64_t>> count;
     auto res = arangodb::countOnCoordinator(
-      vocbase().name(), collectionName, *this, count 
+      vocbase().name(), collectionName, *this, count
     );
 
     if (res != TRI_ERROR_NO_ERROR) {
       return OperationResult(res);
     }
-    
+
     int64_t total = 0;
     OperationResult opRes = buildCountResult(count, type, total);
     cache.store(total);
     return opRes;
-  } 
+  }
 
   // cache hit!
   TRI_ASSERT(documents >= 0);
   TRI_ASSERT(type != transaction::CountType::Detailed);
 
-  // return number from cache  
+  // return number from cache
   VPackBuilder resultBuilder;
   resultBuilder.add(VPackValue(documents));
   return OperationResult(Result(), resultBuilder.buffer(), nullptr);
@@ -3242,7 +3279,7 @@ transaction::Methods::indexesForCollectionCoordinator(
     std::string const& name) const {
   auto clusterInfo = arangodb::ClusterInfo::instance();
   auto collection = clusterInfo->getCollection(vocbase().name(), name);
-  
+
   // update selectivity estimates if they were expired
   collection->clusterIndexEstimates(true);
   return collection->getIndexes();
@@ -3435,17 +3472,23 @@ Result Methods::replicateOperations(
   double const timeout = chooseTimeout(count, body->size() * followers->size());
 
   size_t nrDone = 0;
-  cc->performRequests(requests, timeout, nrDone, Logger::REPLICATION, false);
-  // If any would-be-follower refused to follow there must be a
-  // new leader in the meantime, in this case we must not allow
-  // this operation to succeed, we simply return with a refusal
-  // error (note that we use the follower version, since we have
-  // lost leadership):
-  if (findRefusal(requests)) {
-    return Result{TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED};
-  }
 
-  // Otherwise we drop all followers that were not successful:
+  cc->performRequests(requests,
+                      timeout,
+                      nrDone, Logger::REPLICATION, false);
+  // If any would-be-follower refused to follow there are two possiblities:
+  // (1) there is a new leader in the meantime, or
+  // (2) the follower was restarted and forgot that it is a follower.
+  // Unfortunately, we cannot know which is the case.
+  // In case (1) case we must not allow
+  // this operation to succeed, since the new leader is now responsible.
+  // In case (2) we at least have to drop the follower such that it
+  // resyncs and we can be sure that it is in sync again.
+  // Therefore, we drop the follower here (just in case), and refuse to
+  // return with a refusal error (note that we use the follower version,
+  // since we have lost leadership):
+
+  // We drop all followers that were not successful:
   for (size_t i = 0; i < followers->size(); ++i) {
     bool replicationWorked =
       requests[i].done &&
@@ -3473,6 +3516,9 @@ Result Methods::replicateOperations(
     }
   }
 
-  // we return "ok" here still.
+  if (findRefusal(requests)) {
+    return Result{TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED};
+  }
+
   return Result{};
 }
