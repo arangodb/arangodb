@@ -1,8 +1,13 @@
-v3.4.0-rc.5 (2018-11-29)
+
+v3.4.1 (XXXX-XX-XX)
 ------------------------
 
 * fixed TypeError being thrown instead of validation errors when Foxx manifest
   validation fails
+
+
+v3.4.0-rc.5 (2018-11-29)
+------------------------
 
 * Persist and check default language (locale) selection.
   Previously we would not check if the language (`--default-language`) had changed 
