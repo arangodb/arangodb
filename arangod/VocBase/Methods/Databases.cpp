@@ -289,7 +289,7 @@ arangodb::Result Databases::create(std::string const& dbName,
   }
 
   if (upgradeRes.fail()) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "Could not create database "
+    LOG_TOPIC(ERR, Logger::FIXME) << "Could not create database: "
     << upgradeRes.errorMessage();
     return upgradeRes;
   }
