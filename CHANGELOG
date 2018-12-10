@@ -1,6 +1,9 @@
 v3.3.21 (XXXX-XX-XX)
 --------------------
 
+* fixed TypeError being thrown instead of validation errors when Foxx manifest
+  validation fails
+
 * fixed issue #7586: a running query within the user interface was not shown
   if the active view was `Running Queries` or `Slow Query History`.
 
