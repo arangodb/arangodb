@@ -279,11 +279,15 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
             break;
           }
           if (!r.is(TRI_ERROR_ARANGO_CONFLICT) || ++tries == 10) {
-            LOG_TOPIC(WARN, Logger::FIXME) << "Updating user failed with error: " << r.errorMessage() << ". giving up!";
+            LOG_TOPIC(WARN, Logger::CLUSTER)
+              << "Updating user failed with error: " << r.errorMessage()
+              << ". giving up!";
             return r;
           }
           // try again in case of conflict
-          LOG_TOPIC(TRACE, Logger::FIXME) << "Updating user failed with error: " << r.errorMessage() << ". trying again";
+          LOG_TOPIC(TRACE, Logger::CLUSTER)
+            << "Updating user failed with error: " << r.errorMessage()
+            << ". trying again";
         }
       }
 
@@ -292,6 +296,11 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
     } else {
       auto col = vocbase->createCollection(infoSlice);
       TRI_ASSERT(col != nullptr);
+
+      if (col->id() == 0) {
+        return Result(
+          TRI_ERROR_SHUTTING_DOWN, "Failed creating collection: shutting down");
+      }
 
       // do not grant rights on system collections
       // in case of success we grant the creating user RW access

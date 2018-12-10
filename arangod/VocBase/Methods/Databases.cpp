@@ -121,9 +121,8 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
   return Result();
 }
 
-arangodb::Result Databases::create(std::string const& dbName,
-                                   VPackSlice const& inUsers,
-                                   VPackSlice const& inOptions) {
+arangodb::Result Databases::create(
+  std::string const& dbName, VPackSlice const& inUsers, VPackSlice const& inOptions) {
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
