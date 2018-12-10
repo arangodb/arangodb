@@ -40,8 +40,6 @@ NS_BEGIN(iresearch)
 class IResearchRocksDBLink final
   : public arangodb::RocksDBIndex, public IResearchLink {
  public:
-  DECLARE_SHARED_PTR(Index);
-
   virtual ~IResearchRocksDBLink();
 
   virtual void afterTruncate(TRI_voc_tick_t/*tick*/) override {

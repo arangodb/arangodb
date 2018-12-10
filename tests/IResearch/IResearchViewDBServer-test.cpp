@@ -45,6 +45,7 @@
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLinkMeta.h"
+#include "IResearch/IResearchMMFilesLink.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewDBServer.h"
 #include "RestServer/DatabaseFeature.h"
@@ -56,6 +57,7 @@
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
+#include "utils/utf8_path.hpp"
 #include "velocypack/Parser.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/LogicalCollection.h"
@@ -96,6 +98,7 @@ struct IResearchViewDBServerSetup {
     arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::WARN);
 
     // suppress log messages since tests check error conditions
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(), arangodb::LogLevel::FATAL);
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
@@ -179,6 +182,7 @@ struct IResearchViewDBServerSetup {
     arangodb::ServerState::instance()->setRole(arangodb::ServerState::RoleEnum::ROLE_SINGLE);
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(), arangodb::LogLevel::DEFAULT);
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
     arangodb::AgencyCommManager::MANAGER.reset();
   }
@@ -323,10 +327,10 @@ SECTION("test_drop_cid") {
   static auto visitor = [](TRI_voc_cid_t)->bool { return false; };
   CHECK((false == impl->visitCollections(visitor)));
   CHECK((false == !vocbase.lookupView(view->id())));
-  CHECK((TRI_ERROR_NO_ERROR == impl->drop(123).errorNumber()));
+  CHECK((TRI_ERROR_NO_ERROR == impl->unlink(123).errorNumber()));
   CHECK((true == !vocbase.lookupView(viewId)));
   CHECK((true == impl->visitCollections(visitor)));
-  CHECK((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == impl->drop(123).errorNumber())); // no longer present
+  CHECK((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == impl->unlink(123).errorNumber())); // no longer present
 }
 
 SECTION("test_drop_database") {
@@ -538,6 +542,7 @@ SECTION("test_query") {
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
+    auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"view\": \"testView\", \"includeAllFields\": true }");
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE(nullptr != logicalCollection);
     auto logicalWiew = vocbase.createView(createJson->slice());
@@ -547,6 +552,11 @@ SECTION("test_query") {
     auto logicalView = wiewImpl->ensure(logicalCollection->id());
     REQUIRE((false == !logicalView));
     auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
+    std::shared_ptr<arangodb::Index> index;
+    REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), 42, false).ok()));
+    REQUIRE((false == !index));
+    auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+    REQUIRE((false == !link));
 
     // fill with test data
     {
@@ -563,7 +573,7 @@ SECTION("test_query") {
       CHECK((trx.begin().ok()));
 
       for (size_t i = 0; i < 12; ++i) {
-        viewImpl->insert(trx, 1, arangodb::LocalDocumentId(i), doc->slice(), meta);
+        CHECK((link->insert(&trx, arangodb::LocalDocumentId(i), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
       }
 
       CHECK((trx.commit().ok()));
@@ -930,6 +940,7 @@ SECTION("test_transaction_snapshot") {
   static std::vector<std::string> const EMPTY;
   auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"consolidationIntervalMsec\": 0 }");
   auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
+  auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"view\": \"testView\", \"includeAllFields\": true }");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   REQUIRE(nullptr != logicalCollection);
@@ -941,6 +952,11 @@ SECTION("test_transaction_snapshot") {
   REQUIRE((false == !logicalView));
   auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
   REQUIRE((nullptr != viewImpl));
+  std::shared_ptr<arangodb::Index> index;
+  REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), 42, false).ok()));
+  REQUIRE((false == !index));
+  auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+  REQUIRE((false == !link));
 
   // add a single document to view (do not sync)
   {
@@ -955,7 +971,7 @@ SECTION("test_transaction_snapshot") {
       arangodb::transaction::Options()
     );
     CHECK((trx.begin().ok()));
-    viewImpl->insert(trx, 42, arangodb::LocalDocumentId(0), doc->slice(), meta);
+    CHECK((link->insert(&trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
     CHECK((trx.commit().ok()));
   }
 
@@ -1449,7 +1465,7 @@ SECTION("test_visitCollections") {
     static auto visitor = [&cids](TRI_voc_cid_t cid)->bool { return 1 == cids.erase(cid); };
     CHECK((true == wiew->visitCollections(visitor))); // all collections expected
     CHECK((true == cids.empty()));
-    CHECK((true == impl->drop(123).ok()));
+    CHECK((true == impl->unlink(123).ok()));
     CHECK((true == wiew->visitCollections(visitor))); // no collections in view
   }
 }

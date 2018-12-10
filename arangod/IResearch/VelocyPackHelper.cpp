@@ -29,40 +29,6 @@
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
-arangodb::velocypack::Slice const& emptyArraySlice() {
-  struct EmptyArray {
-    arangodb::velocypack::Builder _builder;
-    arangodb::velocypack::Slice _slice;
-
-    EmptyArray() {
-      _builder.openArray();
-      _builder.close();
-      _slice = _builder.slice();
-    }
-  };
-
-  static const EmptyArray empty;
-
-  return empty._slice;
-}
-
-arangodb::velocypack::Slice const& emptyObjectSlice() {
-  struct EmptyObject {
-    arangodb::velocypack::Builder _builder;
-    arangodb::velocypack::Slice _slice;
-
-    EmptyObject() {
-      _builder.openObject();
-      _builder.close();
-      _slice = _builder.slice();
-    }
-  };
-
-  static const EmptyObject empty;
-
-  return empty._slice;
-}
-
 bool mergeSlice(
     arangodb::velocypack::Builder& builder,
     arangodb::velocypack::Slice const& slice
