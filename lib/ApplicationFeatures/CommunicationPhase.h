@@ -20,27 +20,37 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AQLPhase.h"
+#ifndef ARANGODB_APPLICATION_FEATURES_COMM_FEATURE_PHASE_H
+#define ARANGODB_APPLICATION_FEATURES_COMM_FEATURE_PHASE_H 1
+
+#include "ApplicationFeaturePhase.h"
 
 namespace arangodb {
 namespace application_features {
 
-AQLFeaturePhase::AQLFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "AQLPhase") {
-  setOptional(false);
-  startsAfter("V8Phase");
+class CommunicationFeaturePhase : public ApplicationFeaturePhase {
+ public:
+  explicit CommunicationFeaturePhase(ApplicationServer& server);
+  /**
+   * @brief decide whether we may freely communicate or not.
+   */
+  bool getCommAllowed() {
+    switch (state()) {
+    case ApplicationServer::FeatureState::UNINITIALIZED:
+    case ApplicationServer::FeatureState::INITIALIZED:
+    case ApplicationServer::FeatureState::VALIDATED:
+    case ApplicationServer::FeatureState::PREPARED:
+    case ApplicationServer::FeatureState::STARTED:
+    case ApplicationServer::FeatureState::STOPPED:
+      return true;
+    case ApplicationServer::FeatureState::UNPREPARED:
+      return false;
+    }
+    return false;
+  }
+};
 
-  startsAfter("CommunicationPhase");
-  startsAfter("Aql");
-  startsAfter("AQLFunctions");
-  startsAfter("IResearchAnalyzer");
-  startsAfter("ArangoSearch");
-  startsAfter("OptimizerRules");
-  startsAfter("Pregel");
-  startsAfter("QueryRegistry");
-  startsAfter("SystemDatabase");
-  startsAfter("TraverserEngineRegistry");
-}
+}  // namespace application_features
+}  // namespace arangodb
 
-} // application_features
-} // arangodb
+#endif

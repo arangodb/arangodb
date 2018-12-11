@@ -24,7 +24,7 @@
 #ifndef ARANGODB_IRESEARCH__IRESEARCH_LINK_COORDINATOR_H
 #define ARANGODB_IRESEARCH__IRESEARCH_LINK_COORDINATOR_H 1
 
-#include "Indexes/Index.h"
+#include "IResearchLink.h"
 #include "ClusterEngine/ClusterIndex.h"
 #include "IResearch/IResearchLinkMeta.h"
 
@@ -43,9 +43,9 @@ class IResearchViewCoordinator;
 /// @brief common base class for functionality required to link an ArangoDB
 ///        LogicalCollection with an IResearchView on a coordinator in cluster
 ////////////////////////////////////////////////////////////////////////////////
-class IResearchLinkCoordinator final: public arangodb::ClusterIndex {
+class IResearchLinkCoordinator final
+  : public arangodb::ClusterIndex, public IResearchLink {
  public:
-  DECLARE_SHARED_PTR(Index);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief destructor
@@ -72,7 +72,7 @@ class IResearchLinkCoordinator final: public arangodb::ClusterIndex {
   }
 
   virtual void batchInsert(
-    transaction::Methods* trx,
+    transaction::Methods& trx,
     std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& documents,
     std::shared_ptr<arangodb::basics::LocalTaskQueue> queue
   ) override {
@@ -81,20 +81,12 @@ class IResearchLinkCoordinator final: public arangodb::ClusterIndex {
 
   virtual bool canBeDropped() const override { return true; }
 
-  virtual int drop() override { return TRI_ERROR_NO_ERROR; }
+  virtual arangodb::Result drop() override { return arangodb::Result(); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the factory for this type of index
   //////////////////////////////////////////////////////////////////////////////
   static arangodb::IndexTypeFactory const& factory();
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief finds first link between specified collection and view
-  ////////////////////////////////////////////////////////////////////////////////
-  static std::shared_ptr<IResearchLinkCoordinator> find(
-    LogicalCollection const& collection,
-    LogicalView const& view
-  );
 
   virtual bool hasBatchInsert() const override { return true; }
 
@@ -102,7 +94,7 @@ class IResearchLinkCoordinator final: public arangodb::ClusterIndex {
   virtual bool hasSelectivityEstimate() const override { return false; }
 
   virtual arangodb::Result insert(
-    transaction::Methods* trx,
+    transaction::Methods& trx,
     LocalDocumentId const& documentId,
     VPackSlice const& doc,
     OperationMode mode
@@ -116,6 +108,17 @@ class IResearchLinkCoordinator final: public arangodb::ClusterIndex {
   // IResearch does not provide a fixed default sort order
   virtual bool isSorted() const override { return false; }
 
+  virtual arangodb::IndexIterator* iteratorForCondition(
+    arangodb::transaction::Methods* trx,
+    arangodb::ManagedDocumentResult* result,
+    arangodb::aql::AstNode const* condNode,
+    arangodb::aql::Variable const* var,
+    arangodb::IndexIteratorOptions const& opts
+  ) override {
+    TRI_ASSERT(false); // should not be called
+    return nullptr;
+  }
+
   virtual void load() override { /* NOOP */ }
 
   virtual bool matchesDefinition(
@@ -125,7 +128,7 @@ class IResearchLinkCoordinator final: public arangodb::ClusterIndex {
   virtual size_t memory() const override { return _meta.memory(); }
 
   arangodb::Result remove(
-    transaction::Methods* trx,
+    transaction::Methods& trx,
     LocalDocumentId const& documentId,
     VPackSlice const& doc,
     OperationMode mode
@@ -160,7 +163,7 @@ class IResearchLinkCoordinator final: public arangodb::ClusterIndex {
   ////////////////////////////////////////////////////////////////////////////////
   IResearchLinkCoordinator(
     TRI_idx_iid_t id,
-    LogicalCollection& collection
+    arangodb::LogicalCollection& collection
   );
 
   ////////////////////////////////////////////////////////////////////////////////

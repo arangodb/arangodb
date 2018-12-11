@@ -2410,9 +2410,17 @@ OperationResult transaction::Methods::removeLocal(
 
     TRI_ASSERT(needsLock == !isLocked(collection, AccessMode::Type::WRITE));
 
-    Result res =
-        collection->remove(this, value, options, resultMarkerTick, needsLock,
-                           actualRevision, previous, &keyLockInfo, updateFollowers);
+    auto res = collection->remove(
+      *this,
+      value,
+      options,
+      resultMarkerTick,
+      needsLock,
+      actualRevision,
+      previous,
+      &keyLockInfo,
+      updateFollowers
+    );
 
     if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
       maxTick = resultMarkerTick;
@@ -2622,11 +2630,13 @@ OperationResult transaction::Methods::truncateLocal(
 
   TRI_ASSERT(isLocked(collection, AccessMode::Type::WRITE));
 
-  Result res = collection->truncate(this, options);;
+  auto res = collection->truncate(*this, options);;
+
   if (res.fail()) {
     if (lockResult.is(TRI_ERROR_LOCKED)) {
       unlockRecursive(cid, AccessMode::Type::WRITE);
     }
+
     return OperationResult(res);
   }
 
@@ -2658,37 +2668,34 @@ OperationResult transaction::Methods::truncateLocal(
       }
 
       size_t nrDone = 0;
-      size_t nrGood = cc->performRequests(requests, 120.0,
-                                          nrDone, Logger::REPLICATION, false);
-      if (nrGood < followers->size()) {
-        // If any would-be-follower refused to follow there must be a
-        // new leader in the meantime, in this case we must not allow
-        // this operation to succeed, we simply return with a refusal
-        // error (note that we use the follower version, since we have
-        // lost leadership):
-        if (findRefusal(requests)) {
-          return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
-        }
-        // we drop all followers that were not successful:
-        for (size_t i = 0; i < followers->size(); ++i) {
-          bool replicationWorked =
-              requests[i].done &&
-              requests[i].result.status == CL_COMM_RECEIVED &&
-              (requests[i].result.answer_code ==
-                    rest::ResponseCode::ACCEPTED ||
-                requests[i].result.answer_code == rest::ResponseCode::OK);
-          if (!replicationWorked) {
-            auto const& followerInfo = collection->followers();
-            if (followerInfo->remove((*followers)[i])) {
-              LOG_TOPIC(WARN, Logger::REPLICATION)
-                  << "truncateLocal: dropping follower " << (*followers)[i]
-                  << " for shard " << collectionName;
-            } else {
-              LOG_TOPIC(ERR, Logger::REPLICATION)
-                  << "truncateLocal: could not drop follower "
-                  << (*followers)[i] << " for shard " << collectionName;
-              THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
-            }
+      cc->performRequests(requests, 120.0, nrDone, Logger::REPLICATION, false);
+      // If any would-be-follower refused to follow there must be a
+      // new leader in the meantime, in this case we must not allow
+      // this operation to succeed, we simply return with a refusal
+      // error (note that we use the follower version, since we have
+      // lost leadership):
+      if (findRefusal(requests)) {
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+      }
+      // we drop all followers that were not successful:
+      for (size_t i = 0; i < followers->size(); ++i) {
+        bool replicationWorked =
+            requests[i].done &&
+            requests[i].result.status == CL_COMM_RECEIVED &&
+            (requests[i].result.answer_code ==
+                  rest::ResponseCode::ACCEPTED ||
+              requests[i].result.answer_code == rest::ResponseCode::OK);
+        if (!replicationWorked) {
+          auto const& followerInfo = collection->followers();
+          if (followerInfo->remove((*followers)[i])) {
+            LOG_TOPIC(WARN, Logger::REPLICATION)
+                << "truncateLocal: dropping follower " << (*followers)[i]
+                << " for shard " << collectionName;
+          } else {
+            LOG_TOPIC(ERR, Logger::REPLICATION)
+                << "truncateLocal: could not drop follower "
+                << (*followers)[i] << " for shard " << collectionName;
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
           }
         }
       }

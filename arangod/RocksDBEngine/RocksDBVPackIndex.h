@@ -209,22 +209,31 @@ class RocksDBVPackIndex : public RocksDBIndex {
   void afterTruncate(TRI_voc_tick_t tick) override;
 
  protected:
-  Result insertInternal(transaction::Methods*, RocksDBMethods*,
-                        LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice const&,
-                        OperationMode mode) override;
+  Result insertInternal(
+    transaction::Methods& trx,
+    RocksDBMethods* methods,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+  ) override;
 
-  Result updateInternal(transaction::Methods* trx, RocksDBMethods*,
-                        LocalDocumentId const& oldDocumentId,
-                        arangodb::velocypack::Slice const& oldDoc,
-                        LocalDocumentId const& newDocumentId,
-                        velocypack::Slice const& newDoc,
-                        OperationMode mode) override;
+  Result removeInternal(
+    transaction::Methods& trx,
+    RocksDBMethods* methods,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+  ) override;
 
-  Result removeInternal(transaction::Methods*, RocksDBMethods*,
-                        LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice const&,
-                        OperationMode mode) override;
+  Result updateInternal(
+    transaction::Methods& trx,
+    RocksDBMethods* methods,
+    LocalDocumentId const& oldDocumentId,
+    velocypack::Slice const& oldDoc,
+    LocalDocumentId const& newDocumentId,
+    velocypack::Slice const& newDoc,
+    Index::OperationMode mode
+  ) override;
 
  private:
   /// @brief return the number of paths

@@ -107,16 +107,6 @@ class PhysicalCollection {
   /// @brief Find index by iid
   std::shared_ptr<Index> lookupIndex(TRI_idx_iid_t) const;
   std::vector<std::shared_ptr<Index>> getIndexes() const;
-  template<typename F>
-  void enumerateIndexes(F&& f) {
-    _indexesLock.readLock(); // avoid including ReadLocker.h
-    try {
-      for (auto& idx : _indexes) {
-        std::forward<F>(f)(idx);
-      }
-    } catch(...) {}
-    _indexesLock.unlockRead();
-  }
                        
   void getIndexesVPack(velocypack::Builder&, unsigned flags,
                        std::function<bool(arangodb::Index const*)> const& filter) const;
@@ -143,8 +133,10 @@ class PhysicalCollection {
   // -- SECTION DML Operations --
   ///////////////////////////////////
 
-  virtual Result truncate(transaction::Methods* trx,
-                          OperationOptions& options) = 0;
+  virtual Result truncate(
+    transaction::Methods& trx,
+    OperationOptions& options
+  ) = 0;
 
   /// @brief Defer a callback to be executed when the collection
   ///        can be dropped. The callback is supposed to drop
@@ -214,14 +206,18 @@ class PhysicalCollection {
                          ManagedDocumentResult& previous,
                          std::function<Result(void)> callbackDuringLock) = 0;
 
-  virtual Result remove(arangodb::transaction::Methods* trx,
-                        arangodb::velocypack::Slice slice,
-                        arangodb::ManagedDocumentResult& previous,
-                        OperationOptions& options,
-                        TRI_voc_tick_t& resultMarkerTick, bool lock,
-                        TRI_voc_rid_t& prevRev, TRI_voc_rid_t& revisionId,
-                        KeyLockInfo* keyLockInfo,
-                        std::function<Result(void)> callbackDuringLock) = 0;
+  virtual Result remove(
+    transaction::Methods& trx,
+    velocypack::Slice slice,
+    ManagedDocumentResult& previous,
+    OperationOptions& options,
+    TRI_voc_tick_t& resultMarkerTick,
+    bool lock,
+    TRI_voc_rid_t& prevRev,
+    TRI_voc_rid_t& revisionId,
+    KeyLockInfo* keyLockInfo,
+    std::function<Result(void)> callbackDuringLock
+  ) = 0;
 
  protected:
   PhysicalCollection(

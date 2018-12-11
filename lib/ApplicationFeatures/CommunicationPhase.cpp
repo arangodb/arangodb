@@ -17,29 +17,17 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AQLPhase.h"
+#include "CommunicationPhase.h"
 
 namespace arangodb {
 namespace application_features {
 
-AQLFeaturePhase::AQLFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "AQLPhase") {
+CommunicationFeaturePhase::CommunicationFeaturePhase(ApplicationServer& server)
+    : ApplicationFeaturePhase(server, "CommunicationPhase") {
   setOptional(false);
-  startsAfter("V8Phase");
-
-  startsAfter("CommunicationPhase");
-  startsAfter("Aql");
-  startsAfter("AQLFunctions");
-  startsAfter("IResearchAnalyzer");
-  startsAfter("ArangoSearch");
-  startsAfter("OptimizerRules");
-  startsAfter("Pregel");
-  startsAfter("QueryRegistry");
-  startsAfter("SystemDatabase");
-  startsAfter("TraverserEngineRegistry");
 }
 
 } // application_features

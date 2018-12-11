@@ -6,6 +6,19 @@ devel
   e.g. FOR edge IN edgeCollection FILTER edge._from == "v/1" RETURN edge._to
   is fully covered by RocksDB edge index. For MMFiles this rule does not apply.
 
+* reverted accidental change to error handling in geo index
+
+  In previous versions, if non-valid geo coordinates were contained in the
+  indexed field of a document, the document was simply ignored an not indexed.
+  In 3.4.0, this was accidentally changed to generate an error, which caused
+  the upgrade procedure to break in some cases.
+
+* fixed TypeError being thrown instead of validation errors when Foxx manifest
+  validation fails
+
+* fix internal issue #2786: improved confirmation dialog when clicking the
+  Truncate button in the Web UI
+
 * make `--help-all` now also show all hidden program options
 
   Previously hidden program options were only returned when invoking arangod or
@@ -124,6 +137,10 @@ devel
 * upgraded JEMalloc version to 5.1.0
 
 * use `-std=c++14` for ArangoDB compilation
+
+* Add license key checking to enterprise version in Docker containers.
+
+
 
 
 v3.4.0-rc.5 (XXXX-XX-XX)

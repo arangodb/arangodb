@@ -67,6 +67,7 @@
 #include "ExpressionContextMock.h"
 
 #include "IResearch/ExpressionFilter.h"
+#include "index/directory_reader.hpp"
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
 #include "search/all_filter.hpp"

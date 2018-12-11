@@ -152,9 +152,10 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
                     std::underlying_type<Index::Serialize>::type) const override;
 
   void batchInsert(
-      transaction::Methods*,
-      std::vector<std::pair<LocalDocumentId, arangodb::velocypack::Slice>> const&,
-      std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) override;
+    transaction::Methods& trx,
+    std::vector<std::pair<LocalDocumentId, velocypack::Slice>> const& docs,
+    std::shared_ptr<basics::LocalTaskQueue> queue
+  ) override;
 
   bool hasBatchInsert() const override { return false; }
 
@@ -178,15 +179,21 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   void afterTruncate(TRI_voc_tick_t tick) override;
 
-  Result insertInternal(transaction::Methods*, RocksDBMethods*,
-                        LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice const&,
-                        OperationMode mode) override;
+  Result insertInternal(
+    transaction::Methods& trx,
+    RocksDBMethods* methods,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+  ) override;
 
-  Result removeInternal(transaction::Methods*, RocksDBMethods*,
-                        LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice const&,
-                        OperationMode mode) override;
+  Result removeInternal(
+    transaction::Methods& trx,
+    RocksDBMethods* methods,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+  ) override;
 
  private:
   /// @brief create the iterator

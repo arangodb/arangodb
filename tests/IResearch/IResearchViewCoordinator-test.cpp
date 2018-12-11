@@ -30,6 +30,7 @@
 #include "utils/log.hpp"
 
 #include "ApplicationFeatures/BasicPhase.h"
+#include "ApplicationFeatures/CommunicationPhase.h"
 #include "ApplicationFeatures/ClusterPhase.h"
 #include "ApplicationFeatures/DatabasePhase.h"
 #include "ApplicationFeatures/GreetingsPhase.h"
@@ -61,6 +62,7 @@
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchLinkMeta.h"
@@ -137,6 +139,7 @@ struct IResearchViewCoordinatorSetup {
     arangodb::application_features::ApplicationFeature* tmpFeature;
 
     buildFeatureEntry(new arangodb::application_features::BasicFeaturePhase(server, false), false);
+    buildFeatureEntry(new arangodb::application_features::CommunicationFeaturePhase(server), false);
     buildFeatureEntry(new arangodb::application_features::ClusterFeaturePhase(server), false);
     buildFeatureEntry(new arangodb::application_features::DatabaseFeaturePhase(server), false);
     buildFeatureEntry(new arangodb::application_features::GreetingsFeaturePhase(server, false), false);
@@ -174,6 +177,7 @@ struct IResearchViewCoordinatorSetup {
     orderedFeatures = arangodb::application_features::ApplicationServer::server->getOrderedFeatures();
 
     // suppress log messages since tests check error conditions
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(), arangodb::LogLevel::FATAL);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::ENGINES.name(), arangodb::LogLevel::FATAL); // suppress ERROR {engines} failed to instantiate index, error: ...
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR); // suppress ERROR recovery failure due to error from callback
     arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::FATAL);
@@ -219,6 +223,7 @@ struct IResearchViewCoordinatorSetup {
     arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::ENGINES.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(), arangodb::LogLevel::DEFAULT);
     arangodb::ClusterInfo::cleanup(); // reset ClusterInfo::instance() before DatabaseFeature::unprepare()
     arangodb::application_features::ApplicationServer::server = nullptr;
 
@@ -1174,13 +1179,13 @@ SECTION("test_update_links_partial_remove") {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
     REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get() == &(index->collection())));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -1220,13 +1225,13 @@ SECTION("test_update_links_partial_remove") {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection2->id()));
     REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get() == &(index->collection())));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -1266,13 +1271,13 @@ SECTION("test_update_links_partial_remove") {
   {
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection3->id()));
     REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get() == &(index->collection())));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -1399,13 +1404,13 @@ SECTION("test_update_links_partial_remove") {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
     REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get() == &(index->collection())));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -1446,13 +1451,13 @@ SECTION("test_update_links_partial_remove") {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection3->id()));
     REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get() == &(index->collection())));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -1509,7 +1514,7 @@ SECTION("test_update_links_partial_remove") {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
     REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     CHECK(!link);
   }
 
@@ -1517,7 +1522,7 @@ SECTION("test_update_links_partial_remove") {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection2->id()));
     REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     CHECK(!link);
   }
 
@@ -1525,7 +1530,7 @@ SECTION("test_update_links_partial_remove") {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection3->id()));
     REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     CHECK(!link);
   }
 }
@@ -1719,13 +1724,13 @@ SECTION("test_update_links_partial_add") {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
     REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get() == &(index->collection())));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -1765,13 +1770,13 @@ SECTION("test_update_links_partial_add") {
   {
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection3->id()));
     REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get() == &(index->collection())));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -1913,13 +1918,13 @@ SECTION("test_update_links_partial_add") {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
     REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get() == &(index->collection())));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -1960,13 +1965,13 @@ SECTION("test_update_links_partial_add") {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection2->id()));
     REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get() == &(index->collection())));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -2007,13 +2012,13 @@ SECTION("test_update_links_partial_add") {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection3->id()));
     REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get() == &(index->collection())));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -2081,7 +2086,7 @@ SECTION("test_update_links_partial_add") {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
     REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     CHECK(!link);
   }
 
@@ -2089,7 +2094,7 @@ SECTION("test_update_links_partial_add") {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection2->id()));
     REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     CHECK(!link);
   }
 
@@ -2097,7 +2102,7 @@ SECTION("test_update_links_partial_add") {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection3->id()));
     REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     CHECK(!link);
   }
 
@@ -2327,13 +2332,13 @@ SECTION("test_update_links_replace") {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
     REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get() == &(index->collection())));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -2373,13 +2378,13 @@ SECTION("test_update_links_replace") {
   {
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection3->id()));
     REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get() == &(index->collection())));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -2503,13 +2508,13 @@ SECTION("test_update_links_replace") {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection2->id()));
     REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get() == &(index->collection())));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -2625,13 +2630,13 @@ SECTION("test_update_links_replace") {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
     REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get() == &(index->collection())));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -2685,7 +2690,7 @@ SECTION("test_update_links_replace") {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
     REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     CHECK(!link);
   }
 
@@ -2693,7 +2698,7 @@ SECTION("test_update_links_replace") {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection2->id()));
     REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     CHECK(!link);
   }
 
@@ -2701,7 +2706,7 @@ SECTION("test_update_links_replace") {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection3->id()));
     REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     CHECK(!link);
   }
 }
@@ -2915,13 +2920,13 @@ SECTION("test_update_links_clear") {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
     REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get() == &(index->collection())));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -2962,13 +2967,13 @@ SECTION("test_update_links_clear") {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection2->id()));
     REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get() == &(index->collection())));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -3008,13 +3013,13 @@ SECTION("test_update_links_clear") {
   {
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection3->id()));
     REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get() == &(index->collection())));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -3113,7 +3118,7 @@ SECTION("test_update_links_clear") {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
     REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     CHECK(!link);
   }
 
@@ -3122,7 +3127,7 @@ SECTION("test_update_links_clear") {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection2->id()));
     REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     CHECK(!link);
   }
 
@@ -3131,7 +3136,7 @@ SECTION("test_update_links_clear") {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection3->id()));
     REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     CHECK(!link);
   }
 
@@ -3275,14 +3280,14 @@ SECTION("test_drop_link") {
       // get new version from plan
       auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection->id()));
       REQUIRE(updatedCollection);
-      auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
-      CHECK(link);
+      auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
+      REQUIRE((link));
       linkId = link->id();
 
       auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
       REQUIRE((false == !index));
       CHECK((true == index->canBeDropped()));
-      CHECK((updatedCollection.get() == index->collection()));
+      CHECK((updatedCollection.get() == &(index->collection())));
       CHECK((index->fieldNames().empty()));
       CHECK((index->fields().empty()));
       CHECK((true == index->hasBatchInsert()));
@@ -3368,7 +3373,7 @@ SECTION("test_drop_link") {
       // get new version from plan
       auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection->id()));
       REQUIRE(updatedCollection);
-      auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+      auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
       CHECK(!link);
     }
 
