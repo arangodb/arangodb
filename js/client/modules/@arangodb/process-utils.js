@@ -562,6 +562,8 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
     runProcdump(options, instanceInfo, rootDir, res.pid);
     Object.assign(instanceInfo.exitStatus, 
                   statusExternal(res.pid, true));
+    statusExternal(instanceInfo.monitor.pid, true);
+    instanceInfo.monitor.pid = null;
   } else {
     res = executeExternalAndWait(cmd, args);
     instanceInfo.pid = res.pid;
