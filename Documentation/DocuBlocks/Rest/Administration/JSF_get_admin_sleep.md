@@ -1,10 +1,10 @@
 
 @startDocuBlock JSF_get_admin_sleep
-@brief Suspend the execution for a specified duration before returnig
+@brief Suspend the execution for a specified duration before returning
 
 @RESTHEADER{GET /_admin/sleep, Sleep for a specified amount of seconds}
 
-@RESTQUERYPARAMETERS
+@RESTURLPARAMETERS
 
 @RESTURLPARAM{duration,integer,required}
 wait `duration` seconds until the reply is sent.
