@@ -68,7 +68,7 @@ class ClusterIndex : public Index {
   bool hasSelectivityEstimate() const override;
 
   double selectivityEstimate(arangodb::StringRef const& = arangodb::StringRef()) const override;
-  
+
   /// @brief update the cluster selectivity estimate
   void updateClusterSelectivityEstimate(double estimate) override;
 
@@ -76,7 +76,25 @@ class ClusterIndex : public Index {
   void unload() override {}
   size_t memory() const override { return 0; }
 
-  int drop() override { return TRI_ERROR_NOT_IMPLEMENTED; }
+  Result insert(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+  ) override {
+    return Result(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  Result remove(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    arangodb::velocypack::Slice const& doc,
+    Index::OperationMode mode
+  ) override {
+    return Result(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  Result drop() override { return Result(TRI_ERROR_NOT_IMPLEMENTED); }
 
   bool hasCoveringIterator() const override;
 
@@ -96,21 +114,23 @@ class ClusterIndex : public Index {
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
 
+  virtual arangodb::IndexIterator* iteratorForCondition(
+    arangodb::transaction::Methods* trx,
+    arangodb::ManagedDocumentResult* result,
+    arangodb::aql::AstNode const* condNode,
+    arangodb::aql::Variable const* var,
+    arangodb::IndexIteratorOptions const& opts
+  ) override {
+    TRI_ASSERT(false); // should not be called
+    return nullptr;
+  }
+
   /// @brief provides a size hint for the index
-  int sizeHint(transaction::Methods* /*trx*/, size_t /*size*/) override final {
-    // nothing to do here
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  Result insert(transaction::Methods* trx, LocalDocumentId const& documentId,
-                velocypack::Slice const& doc, OperationMode mode) override {
-    return TRI_ERROR_NOT_IMPLEMENTED;
-  }
-
-  Result remove(transaction::Methods* trx, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const& doc,
-                OperationMode mode) override {
-    return TRI_ERROR_NOT_IMPLEMENTED;
+  Result sizeHint(
+      transaction::Methods& /*trx*/,
+      size_t /*size*/
+  ) override final {
+    return Result(); // nothing to do here
   }
 
   void updateProperties(velocypack::Slice const&);

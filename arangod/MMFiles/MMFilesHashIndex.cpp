@@ -474,24 +474,27 @@ bool MMFilesHashIndex::matchesDefinition(VPackSlice const& info) const {
   return true;
 }
 
-Result MMFilesHashIndex::insert(transaction::Methods* trx,
-                                LocalDocumentId const& documentId,
-                                VPackSlice const& doc,
-                                OperationMode mode) {
+Result MMFilesHashIndex::insert(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+) {
   if (_unique) {
-    return insertUnique(trx, documentId, doc, mode);
+    return insertUnique(&trx, documentId, doc, mode);
   }
 
-  return insertMulti(trx, documentId, doc, mode);
+  return insertMulti(&trx, documentId, doc, mode);
 }
 
 /// @brief removes an entry from the hash array part of the hash index
-Result MMFilesHashIndex::remove(transaction::Methods* trx,
-                                LocalDocumentId const& documentId,
-                                VPackSlice const& doc,
-                                OperationMode mode) {
+Result MMFilesHashIndex::remove(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+) {
   Result res;
-  
   std::vector<MMFilesHashIndexElement*> elements;
   int r = fillElement<MMFilesHashIndexElement>(elements, documentId, doc);
 
@@ -505,9 +508,9 @@ Result MMFilesHashIndex::remove(transaction::Methods* trx,
   for (auto& hashElement : elements) {
     int result;
     if (_unique) {
-      result = removeUniqueElement(trx, hashElement, mode);
+      result = removeUniqueElement(&trx, hashElement, mode);
     } else {
-      result = removeMultiElement(trx, hashElement, mode);
+      result = removeMultiElement(&trx, hashElement, mode);
     }
 
     // we may be looping through this multiple times, and if an error
@@ -522,14 +525,15 @@ Result MMFilesHashIndex::remove(transaction::Methods* trx,
 }
 
 void MMFilesHashIndex::batchInsert(
-    transaction::Methods* trx,
-    std::vector<std::pair<LocalDocumentId, VPackSlice>> const& documents,
-    std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) {
+    transaction::Methods& trx,
+    std::vector<std::pair<LocalDocumentId, velocypack::Slice>> const& documents,
+    std::shared_ptr<basics::LocalTaskQueue> queue
+) {
   TRI_ASSERT(queue != nullptr);
   if (_unique) {
-    batchInsertUnique(trx, documents, queue);
+    batchInsertUnique(&trx, documents, queue);
   } else {
-    batchInsertMulti(trx, documents, queue);
+    batchInsertMulti(&trx, documents, queue);
   }
 }
 
@@ -545,7 +549,7 @@ void MMFilesHashIndex::unload() {
 }
 
 /// @brief provides a size hint for the hash index
-int MMFilesHashIndex::sizeHint(transaction::Methods* trx, size_t size) {
+Result MMFilesHashIndex::sizeHint(transaction::Methods& trx, size_t size) {
   if (_sparse) {
     // for sparse indexes, we assume that we will have less index entries
     // than if the index would be fully populated
@@ -553,7 +557,7 @@ int MMFilesHashIndex::sizeHint(transaction::Methods* trx, size_t size) {
   }
 
   ManagedDocumentResult result;
-  MMFilesIndexLookupContext context(trx, &_collection, &result, numPaths());
+  MMFilesIndexLookupContext context(&trx, &_collection, &result, numPaths());
 
   if (_unique) {
     return _uniqueArray->_hashArray->resize(&context, size);

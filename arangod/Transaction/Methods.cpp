@@ -2410,9 +2410,17 @@ OperationResult transaction::Methods::removeLocal(
 
     TRI_ASSERT(needsLock == !isLocked(collection, AccessMode::Type::WRITE));
 
-    Result res =
-        collection->remove(this, value, options, resultMarkerTick, needsLock,
-                           actualRevision, previous, &keyLockInfo, updateFollowers);
+    auto res = collection->remove(
+      *this,
+      value,
+      options,
+      resultMarkerTick,
+      needsLock,
+      actualRevision,
+      previous,
+      &keyLockInfo,
+      updateFollowers
+    );
 
     if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
       maxTick = resultMarkerTick;
@@ -2622,11 +2630,13 @@ OperationResult transaction::Methods::truncateLocal(
 
   TRI_ASSERT(isLocked(collection, AccessMode::Type::WRITE));
 
-  Result res = collection->truncate(this, options);
+  auto res = collection->truncate(*this, options);;
+
   if (res.fail()) {
     if (lockResult.is(TRI_ERROR_LOCKED)) {
       unlockRecursive(cid, AccessMode::Type::WRITE);
     }
+
     return OperationResult(res);
   }
 

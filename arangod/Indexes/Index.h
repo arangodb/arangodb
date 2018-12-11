@@ -302,32 +302,38 @@ class Index {
   virtual void toVelocyPackFigures(arangodb::velocypack::Builder&) const;
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackFigures() const;
 
-  virtual Result insert(transaction::Methods*,
-                        LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice const&,
-                        OperationMode mode) = 0;
-  virtual Result remove(transaction::Methods*,
-                        LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice const&,
-                        OperationMode mode) = 0;
-
   virtual void batchInsert(
-      transaction::Methods*,
-      std::vector<std::pair<LocalDocumentId, arangodb::velocypack::Slice>> const&,
-      std::shared_ptr<arangodb::basics::LocalTaskQueue> queue);
+    transaction::Methods& trx,
+    std::vector<std::pair<LocalDocumentId, arangodb::velocypack::Slice>> const& docs,
+    std::shared_ptr<arangodb::basics::LocalTaskQueue> queue
+  );
+
+  virtual Result insert(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    arangodb::velocypack::Slice const& doc,
+    OperationMode mode
+  ) = 0;
+
+  virtual Result remove(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    arangodb::velocypack::Slice const& doc,
+    OperationMode mode
+  ) = 0;
 
   virtual void load() = 0;
   virtual void unload() = 0;
 
   // called when the index is dropped
-  virtual int drop();
+  virtual Result drop();
 
   /// @brief called after the collection was truncated
   /// @param tick at which truncate was applied
   virtual void afterTruncate(TRI_voc_tick_t tick) {};
 
   // give index a hint about the expected size
-  virtual int sizeHint(transaction::Methods*, size_t);
+  virtual Result sizeHint(transaction::Methods& trx, size_t size);
 
   virtual bool hasBatchInsert() const;
 
@@ -343,13 +349,13 @@ class Index {
   virtual arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode*,
                                                       arangodb::aql::Variable const*) const;
 
-  virtual IndexIterator* iteratorForCondition(transaction::Methods*,
-                                              ManagedDocumentResult*,
-                                              arangodb::aql::AstNode const*,
-                                              arangodb::aql::Variable const*,
-                                              IndexIteratorOptions const&) {
-    return nullptr; // IResearch will never use this
-  };
+  virtual IndexIterator* iteratorForCondition(
+    transaction::Methods* trx,
+    ManagedDocumentResult* result,
+    aql::AstNode const* condNode,
+    aql::Variable const* var,
+    IndexIteratorOptions const& opts
+  ) = 0;
 
   bool canUseConditionPart(arangodb::aql::AstNode const* access,
                            arangodb::aql::AstNode const* other,
