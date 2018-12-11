@@ -86,13 +86,19 @@ class MMFilesGeoIndex final : public MMFilesIndex, public geo_index::Index {
 
   bool matchesDefinition(velocypack::Slice const& info) const override;
 
-  Result insert(transaction::Methods*, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const&,
-                OperationMode mode) override;
+  Result insert(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    arangodb::Index::OperationMode mode
+  ) override;
 
-  Result remove(transaction::Methods*, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const&,
-                OperationMode mode) override;
+  Result remove(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    arangodb::Index::OperationMode mode
+  ) override;
 
   IndexIterator* iteratorForCondition(transaction::Methods*,
                                       ManagedDocumentResult*,

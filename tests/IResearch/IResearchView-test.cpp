@@ -461,7 +461,7 @@ SECTION("test_cleanup") {
       arangodb::transaction::Options()
     );
     CHECK((trx.begin().ok()));
-    CHECK((link->insert(&trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+    CHECK((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
     CHECK((trx.commit().ok()));
     CHECK(view->commit().ok());
   }
@@ -479,7 +479,7 @@ SECTION("test_cleanup") {
       arangodb::transaction::Options()
     );
     CHECK((trx.begin().ok()));
-    CHECK((link->remove(&trx, arangodb::LocalDocumentId(0), arangodb::velocypack::Slice::emptyObjectSlice(), arangodb::Index::OperationMode::normal).ok()));
+    CHECK((link->remove(trx, arangodb::LocalDocumentId(0), arangodb::velocypack::Slice::emptyObjectSlice(), arangodb::Index::OperationMode::normal).ok()));
     CHECK((trx.commit().ok()));
     CHECK(view->commit().ok());
   }
@@ -668,7 +668,7 @@ SECTION("test_drop_cid") {
         arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
       CHECK((trx.commit().ok()));
       CHECK(view->commit().ok());
     }
@@ -743,7 +743,7 @@ SECTION("test_drop_cid") {
         arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
       CHECK((trx.commit().ok()));
       CHECK(view->commit().ok());
     }
@@ -818,7 +818,7 @@ SECTION("test_drop_cid") {
         arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
       CHECK((trx.commit().ok()));
       CHECK(view->commit().ok());
     }
@@ -910,7 +910,7 @@ SECTION("test_drop_cid") {
         arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
       CHECK((trx.commit().ok()));
       CHECK(view->commit().ok());
     }
@@ -997,7 +997,7 @@ SECTION("test_drop_cid") {
         arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
       CHECK((trx.commit().ok()));
       CHECK(view->commit().ok());
     }
@@ -1158,7 +1158,7 @@ SECTION("test_truncate_cid") {
        arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
       CHECK((trx.commit().ok()));
       CHECK(view->commit().ok());
     }
@@ -1233,7 +1233,7 @@ SECTION("test_truncate_cid") {
        arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
       CHECK((trx.commit().ok()));
       CHECK(view->commit().ok());
     }
@@ -1619,10 +1619,10 @@ SECTION("test_insert") {
 
       linkMeta._includeAllFields = true;
       CHECK((trx.begin().ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
       CHECK((trx.commit().ok()));
       CHECK(view->commit().ok());
     }
@@ -1675,8 +1675,8 @@ SECTION("test_insert") {
 
       linkMeta._includeAllFields = true;
       CHECK((trx.begin().ok()));
-      link->batchInsert(&trx, batch, taskQueuePtr);
-      link->batchInsert(&trx, batch, taskQueuePtr); // 2nd time
+      link->batchInsert(trx, batch, taskQueuePtr);
+      link->batchInsert(trx, batch, taskQueuePtr); // 2nd time
       CHECK((TRI_ERROR_NO_ERROR == taskQueue.status()));
       CHECK((trx.commit().ok()));
       CHECK(view->commit().ok());
@@ -1722,10 +1722,10 @@ SECTION("test_insert") {
 
       linkMeta._includeAllFields = true;
       CHECK((trx.begin().ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
       CHECK((trx.commit().ok()));
       CHECK(view->commit().ok());
     }
@@ -1772,10 +1772,10 @@ SECTION("test_insert") {
 
       linkMeta._includeAllFields = true;
       CHECK((trx.begin().ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
       CHECK((trx.commit().ok()));
     }
 
@@ -1822,7 +1822,7 @@ SECTION("test_insert") {
 
       linkMeta._includeAllFields = true;
       CHECK((trx.begin().ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
       CHECK((trx.commit().ok()));
     }
 
@@ -1872,8 +1872,8 @@ SECTION("test_insert") {
 
       linkMeta._includeAllFields = true;
       CHECK((trx.begin().ok()));
-      link->batchInsert(&trx, batch, taskQueuePtr);
-      link->batchInsert(&trx, batch, taskQueuePtr); // 2nd time
+      link->batchInsert(trx, batch, taskQueuePtr);
+      link->batchInsert(trx, batch, taskQueuePtr); // 2nd time
       CHECK((TRI_ERROR_NO_ERROR == taskQueue.status()));
       CHECK((trx.commit().ok()));
       CHECK(view->commit().ok());
@@ -1926,8 +1926,8 @@ SECTION("test_insert") {
 
       linkMeta._includeAllFields = true;
       CHECK((trx.begin().ok()));
-      link->batchInsert(&trx, batch, taskQueuePtr);
-      link->batchInsert(&trx, batch, taskQueuePtr); // 2nd time
+      link->batchInsert(trx, batch, taskQueuePtr);
+      link->batchInsert(trx, batch, taskQueuePtr); // 2nd time
       CHECK((TRI_ERROR_NO_ERROR == taskQueue.status()));
       CHECK((trx.commit().ok()));
     }
@@ -2023,7 +2023,7 @@ SECTION("test_query") {
       CHECK((trx.begin().ok()));
 
       for (size_t i = 0; i < 12; ++i) {
-        CHECK((link->insert(&trx, arangodb::LocalDocumentId(i), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+        CHECK((link->insert(trx, arangodb::LocalDocumentId(i), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
       }
 
       CHECK((trx.commit().ok()));
@@ -2489,7 +2489,7 @@ SECTION("test_unregister_link") {
         arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
       CHECK((trx.commit().ok()));
       CHECK((view->commit().ok()));
     }
@@ -2594,7 +2594,7 @@ SECTION("test_unregister_link") {
         arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
       CHECK((trx.commit().ok()));
       CHECK((view->commit().ok()));
     }
@@ -2873,7 +2873,7 @@ SECTION("test_tracked_cids") {
         arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
       CHECK((trx.commit().ok()));
       feature->executeCallbacks(); // commit to persisted store
     }
@@ -3271,7 +3271,7 @@ SECTION("test_transaction_snapshot") {
       arangodb::transaction::Options()
     );
     CHECK((trx.begin().ok()));
-    CHECK((link->insert(&trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+    CHECK((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
     CHECK((trx.commit().ok()));
   }
 
@@ -3351,7 +3351,7 @@ SECTION("test_transaction_snapshot") {
       arangodb::transaction::Options()
     );
     CHECK((trx.begin().ok()));
-    CHECK((link->insert(&trx, arangodb::LocalDocumentId(1), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+    CHECK((link->insert(trx, arangodb::LocalDocumentId(1), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
     CHECK((trx.commit().ok()));
   }
 

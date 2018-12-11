@@ -276,7 +276,7 @@ class LogicalCollection : public LogicalDataSource {
               ManagedDocumentResult& result, bool);
 
   /// @brief processes a truncate operation
-  Result truncate(transaction::Methods* trx, OperationOptions&);
+  Result truncate(transaction::Methods& trx, OperationOptions& options);
 
   // convenience function for downwards-compatibility
   Result insert(transaction::Methods* trx, velocypack::Slice const slice,
@@ -311,11 +311,17 @@ class LogicalCollection : public LogicalDataSource {
                  ManagedDocumentResult& previous,
                  std::function<Result(void)> callbackDuringLock);
 
-  Result remove(transaction::Methods*, velocypack::Slice,
-                OperationOptions&, TRI_voc_tick_t&, bool lock,
-                TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                KeyLockInfo* keyLockInfo,
-                std::function<Result(void)> callbackDuringLock);
+  Result remove(
+    transaction::Methods& trx,
+    velocypack::Slice slice,
+    OperationOptions& options,
+    TRI_voc_tick_t& resultMarkerTick,
+    bool lock,
+    TRI_voc_rid_t& prevRev,
+    ManagedDocumentResult& previous,
+    KeyLockInfo* keyLockInfo,
+    std::function<Result(void)> callbackDuringLock
+  );
 
   bool readDocument(transaction::Methods* trx,
                     LocalDocumentId const& token,

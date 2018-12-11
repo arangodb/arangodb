@@ -125,7 +125,10 @@ class ClusterCollection final : public PhysicalCollection {
   // -- SECTION DML Operations --
   ///////////////////////////////////
 
-  Result truncate(transaction::Methods* trx, OperationOptions&) override;
+  Result truncate(
+    transaction::Methods& trx,
+    OperationOptions& options
+  ) override;
 
   void deferDropCollection(
     std::function<bool(LogicalCollection&)> const& callback
@@ -172,13 +175,18 @@ class ClusterCollection final : public PhysicalCollection {
                  TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
                  std::function<Result(void)> callbackDuringLock) override;
 
-  Result remove(arangodb::transaction::Methods* trx,
-                arangodb::velocypack::Slice slice,
-                arangodb::ManagedDocumentResult& previous,
-                OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
-                bool lock, TRI_voc_rid_t& prevRev, TRI_voc_rid_t& revisionId,
-                KeyLockInfo* /*keyLockInfo*/,
-                std::function<Result(void)> callbackDuringLock) override;
+  Result remove(
+    transaction::Methods& trx,
+    velocypack::Slice slice,
+    ManagedDocumentResult& previous,
+    OperationOptions& options,
+    TRI_voc_tick_t& resultMarkerTick,
+    bool lock,
+    TRI_voc_rid_t& prevRev,
+    TRI_voc_rid_t& revisionId,
+    KeyLockInfo* keyLockInfo,
+    std::function<Result(void)> callbackDuringLock
+  ) override;
 
  protected:
   /// @brief Inject figures that are specific to StorageEngine

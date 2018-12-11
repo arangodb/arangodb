@@ -94,8 +94,8 @@ class IResearchLink {
   ///        '_meta' params
   ////////////////////////////////////////////////////////////////////////////////
   virtual void batchInsert(
-    transaction::Methods* trx,
-    std::vector<std::pair<LocalDocumentId, arangodb::velocypack::Slice>> const& batch,
+    arangodb::transaction::Methods& trx,
+    std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& batch,
     std::shared_ptr<arangodb::basics::LocalTaskQueue> queue
   ); // arangodb::Index override
 
@@ -133,10 +133,10 @@ class IResearchLink {
   /// @brief insert an ArangoDB document into an iResearch View using '_meta' params
   ////////////////////////////////////////////////////////////////////////////////
   arangodb::Result insert(
-    transaction::Methods* trx,
-    LocalDocumentId const& documentId,
-    VPackSlice const& doc,
-    Index::OperationMode mode
+    arangodb::transaction::Methods& trx,
+    arangodb::LocalDocumentId const& documentId,
+    arangodb::velocypack::Slice const& doc,
+    arangodb::Index::OperationMode mode
   ); // arangodb::Index override
 
   bool isSorted() const; // arangodb::Index override
@@ -177,10 +177,10 @@ class IResearchLink {
   /// @brief remove an ArangoDB document from an iResearch View
   ////////////////////////////////////////////////////////////////////////////////
   arangodb::Result remove(
-    transaction::Methods* trx,
+    arangodb::transaction::Methods& trx,
     arangodb::LocalDocumentId const& documentId,
-    VPackSlice const& doc,
-    Index::OperationMode mode
+    arangodb::velocypack::Slice const& doc,
+    arangodb::Index::OperationMode mode
   ); // arangodb::Index override
 
   ///////////////////////////////////////////////////////////////////////////////

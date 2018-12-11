@@ -214,9 +214,12 @@ bool MMFilesFulltextIndex::matchesDefinition(VPackSlice const& info) const {
   return true;
 }
 
-Result MMFilesFulltextIndex::insert(transaction::Methods*,
-                                    LocalDocumentId const& documentId,
-                                    VPackSlice const& doc, OperationMode mode) {
+Result MMFilesFulltextIndex::insert(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+) {
   Result res;
   int r = TRI_ERROR_NO_ERROR;
   std::set<std::string> words = wordlist(doc);
@@ -229,9 +232,12 @@ Result MMFilesFulltextIndex::insert(transaction::Methods*,
   return res;
 }
 
-Result MMFilesFulltextIndex::remove(transaction::Methods*,
-                                    LocalDocumentId const& documentId,
-                                    VPackSlice const& doc, OperationMode mode) {
+Result MMFilesFulltextIndex::remove(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+) {
   Result res;
   int r = TRI_ERROR_NO_ERROR;
   std::set<std::string> words = wordlist(doc);
