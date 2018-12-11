@@ -101,6 +101,7 @@ bool TRI_StartThread(TRI_thread_t* thread, TRI_tid_t* threadId,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_JoinThread(TRI_thread_t* thread) {
+  TRI_ASSERT(thread != nullptr);
   DWORD result = WaitForSingleObject(*thread, INFINITE);
 
   switch (result) {
@@ -136,7 +137,8 @@ int TRI_JoinThread(TRI_thread_t* thread) {
 int TRI_DetachThread(TRI_thread_t* thread) {
   // If the function succeeds, the return value is nonzero.
   // If the function fails, the return value is zero. To get extended error information, call GetLastError. 
-  BOOL res = CloseHandle(thread);
+  TRI_ASSERT(thread != nullptr);
+  BOOL res = CloseHandle(*thread);
 
   if (res == 0) { 
     DWORD result = GetLastError();
@@ -157,7 +159,8 @@ bool TRI_IsSelfThread(TRI_thread_t* thread) {
   // TODO: Change the TRI_thread_t into a structure which stores the thread id
   // as well as the thread handle. This can then be passed around
   // ...........................................................................
-  return (GetCurrentThreadId() == GetThreadId(thread));
+  TRI_ASSERT(thread != nullptr);
+  return (GetCurrentThreadId() == GetThreadId(*thread));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
