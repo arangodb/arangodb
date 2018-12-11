@@ -417,17 +417,21 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
 
   // Step 5. cleanup
   if (res.ok()) {
-    { // swap in actual index
+    {
       WRITE_LOCKER(indexGuard, _indexesLock);
-      for (size_t i = 0; i < _indexes.size(); i++) {
-        if (_indexes[i]->id() == buildIdx->id()) {
-          _indexes[i] = idx;
-          break;
+      if (inBackground) { // swap in actual index
+        for (size_t i = 0; i < _indexes.size(); i++) {
+          if (_indexes[i]->id() == buildIdx->id()) {
+            _indexes[i] = idx;
+            break;
+          }
         }
+      } else {
+        _indexes.push_back(idx);
       }
     }
 
-    // we should sync the selectivity estimates
+    // we should sync the selectivity estimates TODO fix
     res = engine->settingsManager()->sync(false);
     if (res.fail()) { // not critical
       LOG_TOPIC(WARN, Logger::ENGINES) << "could not sync settings: "

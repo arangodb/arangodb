@@ -8,7 +8,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,10 +22,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler, Lucas Dohmen
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author 2018 Simon Grätzer, Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
@@ -104,7 +103,7 @@ function backgroundIndexSuite() {
       }
 
       // create the index on the main thread
-      c.ensureIndex({type: 'hash', fields: ['value'], unique: false});
+      c.ensureIndex({type: 'hash', fields: ['value'], unique: false, inBackground: true});
 
       // wait for insertion tasks to complete
       waitForTasks();
@@ -168,7 +167,7 @@ function backgroundIndexSuite() {
       }
 
       // create the index on the main thread
-      c.ensureIndex({type: 'hash', fields: ['value'], unique: true});
+      c.ensureIndex({type: 'hash', fields: ['value'], unique: true, inBackground: true });
 
       // wait for insertion tasks to complete
       waitForTasks();
@@ -229,7 +228,7 @@ function backgroundIndexSuite() {
 
       try {
         // create the index on the main thread
-        c.ensureIndex({type: 'hash', fields: ['value'], unique: true});
+        c.ensureIndex({type: 'hash', fields: ['value'], unique: true, inBackground: true});
         fail();
       } catch(err) {
         assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum, err);
