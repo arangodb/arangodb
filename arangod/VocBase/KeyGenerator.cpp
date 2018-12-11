@@ -194,7 +194,9 @@ class TraditionalKeyGeneratorSingle final : public TraditionalKeyGenerator {
  public:
   /// @brief create the generator
   explicit TraditionalKeyGeneratorSingle(bool allowUserKeys) 
-    : TraditionalKeyGenerator(allowUserKeys), _lastValue(0) {}
+    : TraditionalKeyGenerator(allowUserKeys), _lastValue(0) {
+    TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  }
   
   /// @brief build a VelocyPack representation of the generator in the builder
   void toVelocyPack(arangodb::velocypack::Builder& builder) const override {
@@ -252,11 +254,19 @@ class TraditionalKeyGeneratorSingle final : public TraditionalKeyGenerator {
 };
 
 /// @brief traditional key generator for a coordinator
+/// please note that coordinator-based key generators are frequently
+/// created and discarded, so ctor & dtor need to be very efficient.
+/// additionally, do not put any state into this object, as for the
+/// same logical collection the ClusterInfo may create many different 
+/// temporary LogicalCollection objects one after the other, which
+/// will also discard the collection's particular KeyGenerator object!
 class TraditionalKeyGeneratorCluster final : public TraditionalKeyGenerator {
  public:
   /// @brief create the generator
   explicit TraditionalKeyGeneratorCluster(bool allowUserKeys)
-    : TraditionalKeyGenerator(allowUserKeys) {}
+    : TraditionalKeyGenerator(allowUserKeys) {
+    TRI_ASSERT(ServerState::instance()->isCoordinator());
+  }
   
  private:
   /// @brief generate a key value (internal)
@@ -385,7 +395,9 @@ class PaddedKeyGeneratorSingle final : public PaddedKeyGenerator {
  public:
   /// @brief create the generator
   explicit PaddedKeyGeneratorSingle(bool allowUserKeys) 
-    : PaddedKeyGenerator(allowUserKeys), _lastValue(0) {}
+    : PaddedKeyGenerator(allowUserKeys), _lastValue(0) {
+    TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  }
   
   /// @brief build a VelocyPack representation of the generator in the builder
   void toVelocyPack(arangodb::velocypack::Builder& builder) const override {
@@ -441,11 +453,19 @@ class PaddedKeyGeneratorSingle final : public PaddedKeyGenerator {
 };
 
 /// @brief padded key generator for a coordinator
+/// please note that coordinator-based key generators are frequently
+/// created and discarded, so ctor & dtor need to be very efficient.
+/// additionally, do not put any state into this object, as for the
+/// same logical collection the ClusterInfo may create many different 
+/// temporary LogicalCollection objects one after the other, which
+/// will also discard the collection's particular KeyGenerator object!
 class PaddedKeyGeneratorCluster final : public PaddedKeyGenerator {
  public:
   /// @brief create the generator
   explicit PaddedKeyGeneratorCluster(bool allowUserKeys)
-    : PaddedKeyGenerator(allowUserKeys) {}
+    : PaddedKeyGenerator(allowUserKeys) {
+    TRI_ASSERT(ServerState::instance()->isCoordinator());
+  }
 
  private:
   /// @brief generate a key value (internal)
