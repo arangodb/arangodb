@@ -40,6 +40,15 @@
     },
     toString: function (v) {
       return v.major + '.' + v.minor + '.' + v.patch;
+    },
+    toDocuVersion: function (v) {
+      var version;
+      if (v.toLowerCase().indexOf('devel') >= 0 || v.toLowerCase().indexOf('rc') >= 0) {
+        version = 'devel';
+      } else {
+        version = v.substring(0, 3);
+      }
+      return version;
     }
   };
 
