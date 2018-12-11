@@ -42,7 +42,7 @@ bool StoreCallback::operator()(arangodb::ClusterCommResult* res) {
         res->result->getHttpReturnCode() <  500) {
       
       if (_agent != nullptr) {
-        _agent->removeStoreCallback(_url, _body);
+        _agent->trashStoreCallback(_url, _body);
       }
       
     }
