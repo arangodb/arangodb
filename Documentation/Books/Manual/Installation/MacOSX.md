@@ -4,11 +4,11 @@ Installing ArangoDB on MacOS
 ArangoDB under MacOS can be installed via:
 
 1. [Homebrew](#homebrew)
-2. [*DMG* Package](#package-installation)
-3. [*Tar.gz* Archive](#installing-using-the-archive)
+2. [_DMG_ Package](#package-installation)
+3. [_tar.gz_ Archive](#installing-using-the-archive)
 
 {% hint 'info' %}
-When installing ArangoDB via the macOS package manager Homebrew,
+When installing ArangoDB via the MacOS package manager Homebrew,
 only the Community Edition is available.
 {% endhint %}
 
@@ -16,7 +16,7 @@ Homebrew
 --------
 
 {% hint 'warning' %}
-Please note that the homebrew installation is updated a few days after the
+The Homebrew installation is updated a few days after the
 official release of a new version.
 {% endhint %}
 
@@ -54,10 +54,12 @@ Then remove the LaunchAgent:
 
     rm ~/Library/LaunchAgents/homebrew.mxcl.arangodb.plist
 
-**Note**: If the latest ArangoDB Version is not shown in homebrew, you
-also need to update homebrew:
+{% hint 'tip' %}
+If the latest ArangoDB version is not shown in Homebrew, you
+also need to update Homebrew:
 
     brew update
+{% endhint %}
 
 ### Known issues
 
@@ -72,7 +74,7 @@ Package Installation
 --------------------
 
 Visit the official [Download](https://www.arangodb.com/download) page of the
-ArangoDB web site and download the *DMG* Package for Mac OS X.
+ArangoDB website and download the *DMG* Package for MacOS.
 
 ### Graphical App
 
@@ -112,7 +114,7 @@ Installing using the archive
 ----------------------------
 
 Visit the official [Download](https://www.arangodb.com/download) page of the ArangoDB
-web site and download the *Tar.gz* Archive for Mac OS X.
+website and download the _tar.gz_ archive for MacOS.
 
 Starting from 3.4.0 a _tar.gz_ package is also available for MacOS. To install ArangoDB
 using the `tar.gz` archive, just extract it.
