@@ -1,5 +1,5 @@
-Features and Improvements
-=========================
+Features and Improvements in ArangoDB 2.6
+=========================================
 
 The following list shows in detail which features have been added or improved in
 ArangoDB 2.6. ArangoDB 2.6 also contains several bugfixes that are not listed

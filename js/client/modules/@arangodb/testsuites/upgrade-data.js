@@ -89,7 +89,7 @@ const byMinimumSuportedVersion = (version) => {
 /// set up the test according to the testcase.
 ////////////////////////////////////////////////////////////////////////////////
 const unpackOldData = (engine, version, options, serverOptions) => {
-  const archiveName = `upgrade-data-${engine}-${version}`;
+  const archiveName = `upgrade-data-${version}-${engine}`;
   const dataFile = fs.join(options.upgradeDataPath,
     'data',
     `${archiveName}.tar.gz`);
@@ -120,10 +120,10 @@ const unpackOldData = (engine, version, options, serverOptions) => {
 
 const upgradeData = (engine, version) => {
   return (options) => {
-    const testName = `upgrade_data_${engine}_${version}`;
+    const testName = `upgrade_data_${version}_${engine}`;
     const dataFile = fs.join(options.upgradeDataPath,
       'data',
-      `upgrade-data-${engine}-${version}.tar.gz`);
+      `upgrade-data-${version}-${engine}.tar.gz`);
     if (options.storageEngine !== engine) {
       // engine mismatch, skip!
       const res = {};
@@ -211,17 +211,21 @@ exports.setup = function(testFns, defaultFns, opts, fnDocs, optionsDoc) {
   const functionsDocumentation = {};
   const configurations = fs.list('upgrade-data-tests/data').map(
     (filename) => {
-      const re = /upgrade-data-(mmfiles|rocksdb)-(\d+(?:\.\d+)*)\.tar\.gz/;
+      const re = /upgrade-data-(\d+(?:\.\d+)*)-(mmfiles|rocksdb)\.tar\.gz/;
       const matches = re.exec(filename);
       return {
-        engine: matches[1],
-        version: matches[2]
+        engine: matches[2],
+        version: matches[1]
       };
     }
   ).sort((a, b) => {
+    const versionDiff = compareSemVer(a.version, b.version);
+    if (versionDiff !== 0) {
+      return versionDiff;
+    }
     if (a.engine < b.engine) return -1;
     if (a.engine > b.engine) return 1;
-    return compareSemVer(a.version, b.version);
+    return 0;
   });
 
   for (let i = 0; i < configurations.length; i++) {
@@ -229,7 +233,7 @@ exports.setup = function(testFns, defaultFns, opts, fnDocs, optionsDoc) {
       engine,
       version
     } = configurations[i];
-    const testName = `upgrade_data_${engine}_${version}`;
+    const testName = `upgrade_data_${version}_${engine}`;
     testFns[testName] = upgradeData(engine, version);
     defaultFns.push(testName);
     functionsDocumentation[testName] =

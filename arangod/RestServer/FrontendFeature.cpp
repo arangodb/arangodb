@@ -43,9 +43,10 @@ FrontendFeature::FrontendFeature(
 void FrontendFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("frontend", "Configure the frontend");
 
-  options->addHiddenOption("--frontend.version-check",
-                           "alert the user if new versions are available",
-                           new BooleanParameter(&_versionCheck));
+  options->addOption("--frontend.version-check",
+                     "alert the user if new versions are available",
+                     new BooleanParameter(&_versionCheck),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
 void FrontendFeature::prepare() {

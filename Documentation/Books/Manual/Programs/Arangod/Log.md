@@ -22,8 +22,6 @@ level = queries=trace
 level = info
 ```
 
-Note that there must not be any whitespace around the second `=`.
-
 The available log levels are:
 
 - `fatal`: only logs fatal errors
