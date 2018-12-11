@@ -66,7 +66,7 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
     return _wrapped->memory();
   }
   
-  int drop() override {
+  Result drop() override {
     return _wrapped->drop();
   }
   
@@ -88,13 +88,13 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
   }
 
   /// insert index elements into the specified write batch.
-  Result insertInternal(transaction::Methods* trx, RocksDBMethods*,
+  Result insertInternal(transaction::Methods& trx, RocksDBMethods*,
                         LocalDocumentId const& documentId,
                         arangodb::velocypack::Slice const&,
                         OperationMode mode) override;
 
   /// remove index elements and put it in the specified write batch.
-  Result removeInternal(transaction::Methods* trx, RocksDBMethods*,
+  Result removeInternal(transaction::Methods& trx, RocksDBMethods*,
                         LocalDocumentId const& documentId,
                         arangodb::velocypack::Slice const&,
                         OperationMode mode) override;
@@ -118,6 +118,17 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
   /// @brief fill the index, assume already locked exclusively
   /// @param unlock called when collection lock can be released
   Result fillIndexBackground(std::function<void()> const& unlock);
+  
+  virtual IndexIterator* iteratorForCondition(
+    transaction::Methods* trx,
+    ManagedDocumentResult* result,
+    aql::AstNode const* condNode,
+    aql::Variable const* var,
+    IndexIteratorOptions const& opts
+  ) { 
+    TRI_ASSERT(false);
+    return nullptr;
+  }
   
  private:
   std::shared_ptr<arangodb::RocksDBIndex> _wrapped;

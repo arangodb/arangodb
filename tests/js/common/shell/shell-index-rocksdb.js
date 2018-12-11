@@ -91,9 +91,9 @@ function backgroundIndexSuite() {
       let n = 9;
       for (let i = 0; i < n; ++i) {
         let command = `let c = require("internal").db._collection("${cn}"); 
-                         let x = 10;
-                         while(x-- > 0) {
-                           let docs = []; 
+                       let x = 10;
+                       while(x-- > 0) {
+                         let docs = []; 
                          for(let i = 0; i < 1000; i++) {
                            docs.push({value:i})
                          } 
@@ -112,11 +112,11 @@ function backgroundIndexSuite() {
       assertEqual(c.count(), 100000);
 
       // 100 entries of each value [0,999]
-      /*for (let i = 0; i < 1000; i++) {
+      for (let i = 0; i < 1000; i++) {
         let cursor = db._query("FOR doc IN @@coll FILTER doc.value == @val RETURN 1", 
                                {'@coll': cn, 'val': i}, {count:true});
         assertEqual(cursor.count(), 100);
-      }*/
+      }
 
       internal.waitForEstimatorSync(); // make sure estimates are consistent
       let indexes = c.getIndexes(true);
@@ -156,12 +156,7 @@ function backgroundIndexSuite() {
                          for(let i = 0; i < 1000; i++) {
                            docs.push({value: x++})
                          } 
-                         let res = c.save(docs);
-                         res.map((obj) => {
-                           if (obj.error) {
-                             require('internal').print(JSON.stringify(obj));
-                           }
-                         });
+                         c.save(docs);
                        }`;
         tasks.register({ name: "UnitTestsIndexInsert" + i, command: command });
       }
@@ -181,7 +176,7 @@ function backgroundIndexSuite() {
                                {'@coll': cn, 'val': i}, {count:true});
         assertEqual(cursor.count(), 1);
       }
-      assertEqual(c.count(), 50000);*/
+      assertEqual(c.count(), 50000);
 
       let indexes = c.getIndexes(true);
       for (let i of indexes) {

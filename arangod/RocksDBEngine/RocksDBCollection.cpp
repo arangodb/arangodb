@@ -366,7 +366,6 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
     }
   }
   
-<<<<<<< HEAD
   auto buildIdx = std::make_shared<RocksDBBuilderIndex>(std::static_pointer_cast<RocksDBIndex>(idx));
   
   // Step 3. add index to collection entry (for removal after a crash)
@@ -414,27 +413,6 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
       unlockGuard.fire();
       res = buildIdx->fillIndexFast(); // will lock again internally
     }
-=======
-  res = fillIndexes(trx, idx);
-
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  // we need to sync the selectivity estimates
-  res = engine->settingsManager()->sync(false);
-
-  if (res.fail()) {
-    LOG_TOPIC(WARN, Logger::ENGINES) << "could not sync settings: "
-    << res.errorMessage();
-  }
-
-  rocksdb::Status s = engine->db()->GetRootDB()->FlushWAL(true);
-
-  if (!s.ok()) {
-    LOG_TOPIC(WARN, Logger::ENGINES) << "could not flush wal: "
-    << s.ToString();
->>>>>>> devel
   }
 
   // Step 5. cleanup
@@ -517,7 +495,6 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
     // invalid index id or primary index
     return true;
   }
-<<<<<<< HEAD
   
   std::shared_ptr<arangodb::Index> toRemove;
   {
@@ -526,22 +503,6 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
     for (std::shared_ptr<Index>& idx : _indexes) {
       if (iid == idx->id()) {
         toRemove = std::move(idx);
-=======
-
-  size_t i = 0;
-  WRITE_LOCKER(guard, _indexesLock);
-  for (std::shared_ptr<Index> index : _indexes) {
-    RocksDBIndex* cindex = static_cast<RocksDBIndex*>(index.get());
-    TRI_ASSERT(cindex != nullptr);
-
-    if (iid == cindex->id()) {
-      auto rv = cindex->drop().errorNumber();
-
-      if (rv == TRI_ERROR_NO_ERROR) {
-        // trigger compaction before deleting the object
-        cindex->cleanup();
-
->>>>>>> devel
         _indexes.erase(_indexes.begin() + i);
         break;
       }
@@ -559,8 +520,8 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
   RocksDBIndex* cindex = static_cast<RocksDBIndex*>(toRemove.get());
   TRI_ASSERT(cindex != nullptr);
 
-  int res = cindex->drop();
-  if (res == TRI_ERROR_NO_ERROR) {
+  Result res = cindex->drop();
+  if (res.ok()) {
     events::DropIndex("", std::to_string(iid), TRI_ERROR_NO_ERROR);
 
     // trigger compaction before deleting the object
@@ -580,7 +541,7 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
       )
     );
   }
-  return res == TRI_ERROR_NO_ERROR;
+  return res.ok();
 }
 
 std::unique_ptr<IndexIterator> RocksDBCollection::getAllIterator(transaction::Methods* trx) const {
@@ -1329,110 +1290,6 @@ void RocksDBCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
   }
 }
 
-<<<<<<< HEAD
-=======
-template<typename WriteBatchType, typename MethodsType>
-static arangodb::Result fillIndex(
-    transaction::Methods& trx,
-    RocksDBIndex* ridx,
-    std::unique_ptr<IndexIterator> it,
-    WriteBatchType& batch,
-    RocksDBCollection* rcol
-) {
-  auto state = RocksDBTransactionState::toState(&trx);
-
-  // fillindex can be non transactional, we just need to clean up
-  rocksdb::DB* db = rocksutils::globalRocksDB()->GetRootDB();
-  TRI_ASSERT(db != nullptr);
-
-  uint64_t numDocsWritten = 0;
-  // write batch will be reset every x documents
-  MethodsType batched(state, &batch);
-
-  arangodb::Result res;
-  auto cb = [&](LocalDocumentId const& documentId, VPackSlice slice) {
-    if (res.ok()) {
-      res = ridx->insertInternal(trx, &batched, documentId, slice,
-                                 Index::OperationMode::normal);
-
-      if (res.ok()) {
-        numDocsWritten++;
-      }
-    }
-  };
-
-  rocksdb::WriteOptions wo;
-
-  bool hasMore = true;
-  while (hasMore && res.ok()) {
-    hasMore = it->nextDocument(cb, 250);
-
-    if (TRI_VOC_COL_STATUS_DELETED == it->collection()->status()
-        || it->collection()->deleted()) {
-      res = TRI_ERROR_INTERNAL;
-    } else if (application_features::ApplicationServer::isStopping()) {
-      res = TRI_ERROR_SHUTTING_DOWN;
-    }
-
-    if (res.ok()) {
-      rocksdb::Status s = db->Write(wo, batch.GetWriteBatch());
-      if (!s.ok()) {
-        res = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
-        break;
-      }
-    }
-    
-    batch.Clear();
-  }
-
-  // we will need to remove index elements created before an error
-  // occurred, this needs to happen since we are non transactional
-  if (res.fail()) {
-    RocksDBKeyBounds bounds = ridx->getBounds();
-    arangodb::Result res2 = rocksutils::removeLargeRange(rocksutils::globalRocksDB(), bounds,
-                                                         true, /*useRangeDel*/numDocsWritten > 25000);
-    if (res2.fail()) {
-      LOG_TOPIC(WARN, Logger::ENGINES) << "was not able to roll-back "
-      << "index creation: " << res2.errorMessage();
-    }
-  }
-  
-  return res;
-}
-
-/// non-transactional: fill index with existing documents
-/// from this collection
-arangodb::Result RocksDBCollection::fillIndexes(
-    transaction::Methods& trx,
-    std::shared_ptr<arangodb::Index> added
-) {
-  TRI_ASSERT(trx.state()->collection(
-    _logicalCollection.id(), AccessMode::Type::EXCLUSIVE
-  ));
-
-  std::unique_ptr<IndexIterator> it(new RocksDBAllIndexIterator(
-    &_logicalCollection, &trx, primaryIndex()
-  ));
-
-  RocksDBIndex* ridx = static_cast<RocksDBIndex*>(added.get());
-
-  if (ridx->unique()) {
-    // unique index. we need to keep track of all our changes because we need to avoid
-    // duplicate index keys. must therefore use a WriteBatchWithIndex
-    rocksdb::WriteBatchWithIndex batch(ridx->columnFamily()->GetComparator(), 32 * 1024 * 1024);
-    return fillIndex<rocksdb::WriteBatchWithIndex, RocksDBBatchedWithIndexMethods>(
-            trx, ridx, std::move(it), batch, this);
-  } else {
-    // non-unique index. all index keys will be unique anyway because they contain the document id
-    // we can therefore get away with a cheap WriteBatch
-    rocksdb::WriteBatch batch(32 * 1024 * 1024);
-    return fillIndex<rocksdb::WriteBatch, RocksDBBatchedMethods>(
-            trx, ridx, std::move(it), batch, this);
-  }
-  return Result();
-}
-
->>>>>>> devel
 Result RocksDBCollection::insertDocument(
     arangodb::transaction::Methods* trx, LocalDocumentId const& documentId,
     VPackSlice const& doc, OperationOptions& options) const {

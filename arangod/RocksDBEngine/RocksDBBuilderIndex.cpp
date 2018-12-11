@@ -66,7 +66,7 @@ void RocksDBBuilderIndex::toVelocyPack(VPackBuilder& builder,
 }
 
 /// insert index elements into the specified write batch.
-Result RocksDBBuilderIndex::insertInternal(transaction::Methods* trx, RocksDBMethods* mthd,
+Result RocksDBBuilderIndex::insertInternal(transaction::Methods& trx, RocksDBMethods* mthd,
                                            LocalDocumentId const& documentId,
                                            arangodb::velocypack::Slice const& slice,
                                            OperationMode mode) {
@@ -85,7 +85,7 @@ Result RocksDBBuilderIndex::insertInternal(transaction::Methods* trx, RocksDBMet
 }
 
 /// remove index elements and put it in the specified write batch.
-Result RocksDBBuilderIndex::removeInternal(transaction::Methods* trx, RocksDBMethods* mthd,
+Result RocksDBBuilderIndex::removeInternal(transaction::Methods& trx, RocksDBMethods* mthd,
                                            LocalDocumentId const& documentId,
                                            arangodb::velocypack::Slice const& slice,
                                            OperationMode mode) {
@@ -202,7 +202,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(std::function<void()> 
       _lockedDocs.insert(docId.id());
     }
     
-    res = internal->insertInternal(&trx, &batched, docId,
+    res = internal->insertInternal(trx, &batched, docId,
                                    VPackSlice(it->value().data()),
                                    Index::OperationMode::normal);
     if (res.fail()) {
@@ -283,7 +283,7 @@ static arangodb::Result fillIndexFast(transaction::Methods& trx,
   it->Seek(bounds.start());
   while (it->Valid() && it->key().compare(upper) < 0) {
   
-    res = ridx->insertInternal(&trx, &batched, RocksDBKey::documentId(it->key()),
+    res = ridx->insertInternal(trx, &batched, RocksDBKey::documentId(it->key()),
                                VPackSlice(it->value().data()),
                                Index::OperationMode::normal);
     if (res.fail()) {
