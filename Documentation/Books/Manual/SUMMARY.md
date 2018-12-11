@@ -302,6 +302,7 @@
     * [AWS](Deployment/Cloud/AWS.md)
     * [Azure](Deployment/Cloud/Azure.md)
   * [Production Checklist](Deployment/ProductionChecklist.md)
+  * [Migrating from a _Single Instance_ to a _Cluster_](Deployment/MigratingSingleInstanceCluster.md)
 * [Backup & Restore](BackupRestore/README.md)
 * [Upgrading](Upgrading/README.md)
   * [General Upgrade Information](Upgrading/GeneralInfo/README.md)
