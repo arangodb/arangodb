@@ -8,7 +8,8 @@ We even document in detail, how to set up a cluster by simply starting
 various ArangoDB processes on different machines, either directly
 or using Docker containers.
 
-- [Single instance](Single.md)
+- [Single Instance](Single.md)
+- [Single Instance vs. Cluster](../Architecture/DifferenceSingleCluster.md)
 - [Cluster](Cluster.md)
   - [DC/OS, Apache Mesos and Marathon](Mesos.md)
   - [Generic & Docker](ArangoDBStarter.md)

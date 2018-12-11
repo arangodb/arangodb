@@ -217,6 +217,7 @@
   * [Arangobench](Troubleshooting/Arangobench.md)
 #
 * [Architecture](Architecture/README.md)
+  * [Single Instance vs. Cluster](Architecture/DifferenceSingleCluster.md)
   * [Write-ahead log](Architecture/WriteAheadLog.md)
   * [Storage Engines](Architecture/StorageEngines.md)
 #
