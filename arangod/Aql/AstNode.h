@@ -71,7 +71,7 @@ enum AstNodeFlagType : AstNodeFlagsType {
   FLAG_BIND_PARAMETER =          0x0020000,  // node was created from a bind parameter
   FLAG_FINALIZED =               0x0040000,  // node has been finalized and should not be modified; only set and checked in maintainer mode
 };
-
+  
 /// @brief enumeration of AST node value types
 /// note: these types must be declared in asc. sort order
 enum AstNodeValueType : uint8_t {
@@ -93,15 +93,29 @@ static_assert(VALUE_TYPE_DOUBLE < VALUE_TYPE_STRING,
 
 /// @brief AST node value
 struct AstNodeValue {
-  union {
+  union Value {
     int64_t _int;
     double _double;
     bool _bool;
     char const* _string;
     void* _data;
-  } value;
+
+    // constructors for union values
+    explicit Value(int64_t value) : _int(value) {}
+    explicit Value(double value) : _double(value) {}
+    explicit Value(bool value) : _bool(value) {}
+    explicit Value(char const* value) : _string(value) {}
+  };
+  
+  Value value;
   uint32_t length;  // only used for string values
   AstNodeValueType type;
+  
+  AstNodeValue() : value(int64_t(0)), length(0), type(VALUE_TYPE_NULL) {}
+  explicit AstNodeValue(int64_t value) : value(value), length(0), type(VALUE_TYPE_INT) {}
+  explicit AstNodeValue(double value) : value(value), length(0), type(VALUE_TYPE_DOUBLE) {}
+  explicit AstNodeValue(bool value) : value(value), length(0), type(VALUE_TYPE_BOOL) {}
+  explicit AstNodeValue(char const* value, uint32_t length) : value(value), length(length), type(VALUE_TYPE_STRING) {}
 };
 
 /// @brief enumeration of AST node types
@@ -182,6 +196,8 @@ enum AstNodeType : uint32_t {
   NODE_TYPE_WITH = 74,
   NODE_TYPE_SHORTEST_PATH = 75,
   NODE_TYPE_VIEW = 76,
+  NODE_TYPE_PARAMETER_DATASOURCE = 77,
+  NODE_TYPE_FOR_VIEW = 78,
 };
 
 static_assert(NODE_TYPE_VALUE < NODE_TYPE_ARRAY, "incorrect node types order");
@@ -195,28 +211,29 @@ struct AstNode {
   static std::unordered_map<int, std::string const> const TypeNames;
   static std::unordered_map<int, std::string const> const ValueTypeNames;
 
+  /// @brief helper for building flags
+  template <typename... Args>
+  static inline std::underlying_type<AstNodeFlagType>::type makeFlags(AstNodeFlagType flag, Args... args) {
+    return static_cast<std::underlying_type<AstNodeFlagType>::type>(flag) + makeFlags(args...);
+  }
+    
+  static inline std::underlying_type<AstNodeFlagType>::type makeFlags() {
+    return static_cast<std::underlying_type<AstNodeFlagType>::type>(0);
+  }
+
   /// @brief create the node
   explicit AstNode(AstNodeType);
-
-  /// @brief create a node, with defining a value type
-  AstNode(AstNodeType, AstNodeValueType);
-
-  /// @brief create a boolean node, with defining a value type
-  AstNode(bool, AstNodeValueType);
-
-  /// @brief create a boolean node, with defining a value type
-  AstNode(int64_t, AstNodeValueType);
-
-  /// @brief create a string node, with defining a value type
-  AstNode(char const*, size_t, AstNodeValueType);
+  
+  /// @brief create a node, with defining a value
+  explicit AstNode(AstNodeValue value);
 
   /// @brief create the node from VPack
-  AstNode(Ast*, arangodb::velocypack::Slice const& slice);
+  explicit AstNode(Ast*, arangodb::velocypack::Slice const& slice);
 
   /// @brief create the node from VPack
-  AstNode(std::function<void(AstNode*)> registerNode,
-          std::function<char const*(std::string const&)> registerString,
-          arangodb::velocypack::Slice const& slice);
+  explicit AstNode(std::function<void(AstNode*)> const& registerNode,
+                   std::function<char const*(std::string const&)> registerString,
+                   arangodb::velocypack::Slice const& slice);
 
   /// @brief destroy the node
   ~AstNode();
@@ -312,6 +329,11 @@ struct AstNode {
                       AstNodeFlagType valueFlag) const {
     flags |= (typeFlag | valueFlag);
   }
+  
+  /// @brief remove a flag for the node
+  inline void removeFlag(AstNodeFlagType flag) const {
+    flags &= ~flag;
+  }
 
   /// @brief whether or not the node value is trueish
   bool isTrue() const;
@@ -360,21 +382,6 @@ struct AstNode {
 
   /// @brief whether or not a value node is of array type
   inline bool isObject() const { return (type == NODE_TYPE_OBJECT); }
-
-  inline bool isDataSource() const noexcept {
-    switch (type) {
-      case NODE_TYPE_COLLECTION:
-      case NODE_TYPE_VIEW:
-        return true;
-      case NODE_TYPE_PARAMETER:
-        return value.type == VALUE_TYPE_STRING
-          && value.length
-          && value.value._string
-          && '@' == value.value._string[0];
-      default:
-        return false;
-    }
-  }
 
   /// @brief whether or not a value node is of type attribute access that
   /// refers to a variable reference
@@ -537,13 +544,19 @@ struct AstNode {
     if (i >= members.size()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "member out of range");
     }
-    members.at(i) = node;
+    members[i] = node;
   }
 
   /// @brief remove a member from the node
   inline void removeMemberUnchecked(size_t i) {
     TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
     members.erase(members.begin() + i);
+  }
+  
+  /// @brief remove all members from the node at once
+  void removeMembers() {
+    TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+    members.clear();
   }
 
   /// @brief return a member of the node
@@ -652,7 +665,7 @@ struct AstNode {
   /// @brief set the string value of a node
   inline void setStringValue(char const* v, size_t length) {
     TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
-  // note: v may contain the NUL byte and is not necessarily
+    // note: v may contain the NUL byte and is not necessarily
     // null-terminated itself (if from VPack)
     value.type = VALUE_TYPE_STRING;
     value.value._string = v;
@@ -689,6 +702,9 @@ struct AstNode {
 
   /// @brief clone a node, recursively
   AstNode* clone(Ast*) const;
+  
+  /// @brief validate that given node is an object with const-only values
+  bool isConstObject() const;
 
   /// @brief append a string representation of the node into a string buffer
   /// the string representation does not need to be JavaScript-compatible

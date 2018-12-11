@@ -527,12 +527,18 @@ void TRI_UpdateTicksDatafile(MMFilesDatafile*, MMFilesMarker const*);
 /// also may set datafile's min/max tick values
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IterateDatafile(MMFilesDatafile*,
-                         bool (*iterator)(MMFilesMarker const*, void*,
-                                          MMFilesDatafile*),
-                         void* data);
+bool TRI_IterateDatafile(
+  MMFilesDatafile*,
+  bool (*iterator)(MMFilesMarker const*, void*, MMFilesDatafile*),
+  void* data);
 
-bool TRI_IterateDatafile(MMFilesDatafile*,
-                         std::function<bool(MMFilesMarker const*, MMFilesDatafile*)> const& cb);
+arangodb::Result TRI_IterateDatafile(
+    MMFilesDatafile*,
+    arangodb::Result (*iterator)(MMFilesMarker const*, void*, MMFilesDatafile*),
+    void* data);
+
+bool TRI_IterateDatafile(
+    MMFilesDatafile*,
+    std::function<bool(MMFilesMarker const*, MMFilesDatafile*)> const& cb);
 
 #endif

@@ -1,5 +1,5 @@
-Features and Improvements
-=========================
+Features and Improvements in ArangoDB 3.3
+=========================================
 
 The following list shows in detail which features have been added or improved in
 ArangoDB 3.3. ArangoDB 3.3 also contains several bugfixes that are not listed
@@ -227,7 +227,7 @@ The following options have been added to it:
   - `--ldap.roles-exclude`
   - `--ldap.superuser-role`
 
-  Please refer to [LDAP](../Administration/Configuration/Ldap.md) for a detailed
+  Please refer to [LDAP](../Programs/Arangod/Ldap.md) for a detailed
   explanation.
 
 

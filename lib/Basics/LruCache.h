@@ -88,23 +88,24 @@ class LruCache {
       }
     }
 
-    const value_t& get(const key_t& key) {
+    value_t const* get(const key_t& key) {
       auto it = _cache_items_map.find(key);
       if (it == _cache_items_map.end()) {
-        throw std::range_error("There is no such key in cache");
+        return nullptr;
       } else {
         _cache_items_list.splice(_cache_items_list.begin(), _cache_items_list, it->second);
-        return it->second->second;
+        return &it->second->second;
       }
     }
 
-    void remove(key_t const& key) {
+    bool remove(key_t const& key) {
       auto it = _cache_items_map.find(key);
       if (it == _cache_items_map.end()) {
-        throw std::range_error("There is no such key in cache");
+        return false;
       } else {
         _cache_items_list.erase(it->second);
         _cache_items_map.erase(it);
+        return true;
       }
     }
 

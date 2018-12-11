@@ -60,21 +60,197 @@ add_definitions("-DFUERTE_STANDALONE_ASIO=1")
 # VERSION information
 # ------------------------------------------------------------------------------
 
-set(ARANGODB_VERSION_MAJOR      "3")
-set(ARANGODB_VERSION_MINOR      "4")
-if (NOT DEFINED ARANGODB_VERSION_REVISION)
-  set(ARANGODB_VERSION_REVISION   "devel")
-endif()
-set(ARANGODB_PACKAGE_REVISION   "1")
-# version for the windows rc file needs to be numeric:
-if (ARANGODB_VERSION_REVISION GREATER -1)
-  set(ARANGODB_NUMERIC_VERSION_REVISION "${ARANGODB_VERSION_REVISION}")
+# stable release:   MAJOR.MINOR.PATCH
+# hot fix:          MAJOR.MINOR.PATCH-FIXNUMBER
+# unstable release: MAJOR.MINOR.PATCH-TYPE.NUMBER
+# devel:            MAJOR.MINOR.0-devel
+#
+# These are mapped to the following variables:
+#
+# ARANGODB_VERSION_MAJOR = MAJOR
+# ARANGODB_VERSION_MINOR = MINOR
+# ARANGODB_VERSION_PATCH = PATCH
+#
+# for pre-releases, otherwise empty:
+#
+# ARANGODB_VERSION_PRELEASE_TYPE   = TYPE
+# ARANGODB_VERSION_PRELEASE_NUMBER = NUMBER
+#
+# This will set the following variables
+#
+# ARANGODB_DEBIAN_UPSTREAM
+# ARANGODB_DEBIAN_REVISION
+#
+# ARANGODB_RPM_UPSTREAM
+# ARANGODB_RPM_REVISION
+
+set(ARANGODB_VERSION_MAJOR "3")
+set(ARANGODB_VERSION_MINOR "5")
+
+# when building the nightly ARANGODB_VERSION_PATCH will be set
+if (NOT DEFINED ARANGODB_VERSION_PATCH)
+  set(ARANGODB_VERSION_PATCH "0")
+  set(ARANGODB_VERSION_RELEASE_TYPE "devel")
+  set(ARANGODB_VERSION_RELEASE_NUMBER "")
 else()
-  set(ARANGODB_NUMERIC_VERSION_REVISION 1337)
+  unset (ARANGODB_VERSION_RELEASE_TYPE) # do not remove space
+  unset (ARANGODB_VERSION_RELEASE_NUMBER) # do not remove space
 endif()
 
-set(ARANGODB_VERSION
-    "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.${ARANGODB_VERSION_REVISION}")
+# unset TYPE and NUMBER in case they are empty
+if (DEFINED ARANGODB_VERSION_RELEASE_TYPE)
+  if (ARANGODB_VERSION_RELEASE_TYPE STREQUAL "")
+    unset (ARANGODB_VERSION_RELEASE_TYPE) # do not remove space
+    unset (ARANGODB_VERSION_RELEASE_NUMBER) # do not remove space
+  endif()
+else()
+  unset (ARANGODB_VERSION_RELEASE_NUMBER) # do not remove space
+endif()
+
+if (DEFINED ARANGODB_VERSION_RELEASE_NUMBER)
+  if (ARANGODB_VERSION_RELEASE_NUMBER STREQUAL "")
+    unset (ARANGODB_VERSION_RELEASE_NUMBER) # do not remove space
+  endif()
+endif()
+
+# semantic version
+set(ARANGODB_PLAIN_VERSION "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.${ARANGODB_VERSION_PATCH}")
+
+if (DEFINED ARANGODB_VERSION_RELEASE_TYPE)
+  if (DEFINED ARANGODB_VERSION_RELEASE_NUMBER)
+    set(ARANGODB_VERSION "${ARANGODB_PLAIN_VERSION}-${ARANGODB_VERSION_RELEASE_TYPE}.${ARANGODB_VERSION_RELEASE_NUMBER}")
+  else()
+    set(ARANGODB_VERSION "${ARANGODB_PLAIN_VERSION}-${ARANGODB_VERSION_RELEASE_TYPE}")
+  endif()
+else()
+  set(ARANGODB_VERSION "${ARANGODB_PLAIN_VERSION}")
+endif()
+set(ARANGODB_JS_VERSION "js")
+
+message(STATUS "ARANGODB PLAIN VERSION: ${ARANGODB_PLAIN_VERSION}")
+message(STATUS "ARANGODB VERSION: ${ARANGODB_VERSION}")
+message(STATUS "ARANGODB JS VERSION: ${ARANGODB_JS_VERSION}")
+
+################################################################################
+# DEBIAN, RPM, MacOS version
+################################################################################
+
+if (DEFINED ARANGODB_VERSION_RELEASE_TYPE)
+
+  # devel
+  if (ARANGODB_VERSION_PATCH STREQUAL "0" AND ARANGODB_VERSION_RELEASE_TYPE STREQUAL "devel")
+    set(ARANGODB_DEBIAN_UPSTREAM "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.0~~${ARANGODB_VERSION_PATCH}")
+    set(ARANGODB_DEBIAN_REVISION "1")
+
+    set(ARANGODB_RPM_UPSTREAM "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.0")
+    set(ARANGODB_RPM_REVISION "0.1.devel")
+
+    set(ARANGODB_DARWIN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
+    set(ARANGODB_DARWIN_REVISION "devel")
+
+  # nightly
+  elseif (ARANGODB_VERSION_PATCH STREQUAL "0" AND ARANGODB_VERSION_RELEASE_TYPE STREQUAL "nightly")
+    set(ARANGODB_DEBIAN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
+    set(ARANGODB_DEBIAN_REVISION "1")
+
+    set(ARANGODB_RPM_UPSTREAM "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.0")
+    set(ARANGODB_RPM_REVISION "0.2.nightly")
+
+    set(ARANGODB_DARWIN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
+    set(ARANGODB_DARWIN_REVISION "nightly")
+
+  # unstable version
+  elseif (   ARANGODB_VERSION_RELEASE_TYPE STREQUAL "alpha"
+          OR ARANGODB_VERSION_RELEASE_TYPE STREQUAL "beta"
+          OR ARANGODB_VERSION_RELEASE_TYPE STREQUAL "milestone"
+          OR ARANGODB_VERSION_RELEASE_TYPE STREQUAL "preview"
+          OR ARANGODB_VERSION_RELEASE_TYPE STREQUAL "rc")
+    if (NOT DEFINED ARANGODB_VERSION_RELEASE_NUMBER)
+      message(FATAL_ERROR "ARANGODB_VERSION_RELEASE_NUMBER is missing")
+    endif()
+
+    if (ARANGODB_VERSION_RELEASE_TYPE STREQUAL "alpha")
+      set(ARANGODB_RPM_REVISION_NUMBER 100)
+    elseif (ARANGODB_VERSION_RELEASE_TYPE STREQUAL "beta")
+      set(ARANGODB_RPM_REVISION_NUMBER 200)
+    elseif (ARANGODB_VERSION_RELEASE_TYPE STREQUAL "milestone")
+      set(ARANGODB_RPM_REVISION_NUMBER 300)
+    elseif (ARANGODB_VERSION_RELEASE_TYPE STREQUAL "preview")
+      set(ARANGODB_RPM_REVISION_NUMBER 400)
+    elseif (ARANGODB_VERSION_RELEASE_TYPE STREQUAL "rc")
+      set(ARANGODB_RPM_REVISION_NUMBER 500)
+    endif()
+
+    MATH(EXPR ARANGODB_RPM_REVISION_NUMBER "${ARANGODB_RPM_REVISION_NUMBER}+${ARANGODB_VERSION_RELEASE_NUMBER}")
+
+    set(ARANGODB_DEBIAN_UPSTREAM "${ARANGODB_PLAIN_VERSION}~${ARANGODB_VERSION_RELEASE_TYPE}.${ARANGODB_VERSION_RELEASE_NUMBER}")
+    set(ARANGODB_DEBIAN_REVISION "1")
+
+    set(ARANGODB_RPM_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
+    set(ARANGODB_RPM_REVISION "0.${ARANGODB_RPM_REVISION_NUMBER}")
+
+    set(ARANGODB_DARWIN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
+    set(ARANGODB_DARWIN_REVISION "${ARANGODB_VERSION_RELEASE_TYPE}.${ARANGODB_VERSION_RELEASE_NUMBER}")
+
+  # hot-fix
+  else()
+    if (DEFINED ARANGODB_VERSION_RELEASE_NUMBER)
+      message(FATAL_ERROR "ARANGODB_VERSION_RELEASE_NUMBER must be empty for type ${ARANGODB_VERSION_RELEASE_TYPE}")
+    endif()
+
+    set(ARANGODB_DEBIAN_UPSTREAM "${ARANGODB_PLAIN_VERSION}.${ARANGODB_VERSION_RELEASE_TYPE}")
+    set(ARANGODB_DEBIAN_REVISION "1")
+
+    set(ARANGODB_RPM_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
+    set(ARANGODB_RPM_REVISION "1.${ARANGODB_VERSION_RELEASE_TYPE}")
+
+    set(ARANGODB_DARWIN_UPSTREAM "${ARANGODB_PLAIN_VERSION}.${ARANGODB_VERSION_RELEASE_TYPE}")
+    set(ARANGODB_DARWIN_REVISION "")
+  endif()
+else()
+
+  # stable version
+  set(ARANGODB_DEBIAN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
+  set(ARANGODB_DEBIAN_REVISION "1")
+
+  set(ARANGODB_RPM_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
+  set(ARANGODB_RPM_REVISION "1.0")
+
+  set(ARANGODB_DARWIN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
+  set(ARANGODB_DARWIN_REVISION "")
+endif()
+
+message(STATUS "DEBIAN VERSION: ${ARANGODB_DEBIAN_UPSTREAM} / ${ARANGODB_DEBIAN_REVISION}")
+message(STATUS "RPM VERSION:    ${ARANGODB_RPM_UPSTREAM} / ${ARANGODB_RPM_REVISION}")
+message(STATUS "DARWIN VERSION: ${ARANGODB_DARWIN_UPSTREAM} / ${ARANGODB_DARWIN_REVISION}")
+
+
+################################################################################
+# Windows version
+################################################################################
+
+# PATCH needs to be numeric for the windows rc file
+set(ARANGODB_WINDOWS_UPSTREAM "${ARANGODB_VERSION}")
+
+if (ARANGODB_VERSION_PATCH GREATER -1)
+  set(ARANGODB_WINDOWS_PATCH "${ARANGODB_VERSION_PATCH}")
+else()
+  set(ARANGODB_WINDOWS_PATCH 1337)
+endif()
+
+message(STATUS "WINDOWS VERSION: ${ARANGODB_WINDOWS_UPSTREAM}")
+
+################################################################################
+# SNAP version
+################################################################################
+
+set(ARANGODB_SNAP_REVISION "1")
+
+message(STATUS "SNAP REVISION: ${ARANGODB_SNAP_REVISION}")
+
+# ------------------------------------------------------------------------------
+# 
+# ------------------------------------------------------------------------------
 
 if (WIN32)
   # path containing the OpenSSL find-module and libraries
@@ -232,7 +408,7 @@ option(HOMEBREW
 if (WIN32)
   set(WINDOWS TRUE)
   set(MSBUILD TRUE)
-  add_definitions(-D_USE_MATH_DEFINES -DNOMINMAX)
+  add_definitions(-D_USE_MATH_DEFINES -DNOMINMAX -D_WIN32_WINNT=_WIN32_WINNT_VISTA -DINCL_EXTRA_HTON_FUNCTIONS -DPSAPI_VERSION=1)
 elseif (UNIX AND NOT APPLE)
   if(CMAKE_SYSTEM_NAME MATCHES ".*Linux")
     set(LINUX TRUE)
@@ -378,8 +554,22 @@ if (CMAKE_COMPILER_IS_GNUCC)
 endif ()
 
 if (CMAKE_COMPILER_IS_GNUCC OR APPLE)
-  set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std=c++11")
+  if (CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 6)
+    set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std=c++11")
+  else()
+    set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std=c++14")
+  endif()
 endif ()
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+  if (MSVC_VERSION VERSION_LESS 1915)
+    message(FATAL_ERROR "ArangoDB Requires at least MSVC 2017 update 15.8!")
+  endif()
+
+  # MSVC2018.1 - MSVC2018.7 does not correctly support alignas()
+  # MSVC2018.8 requires the following define
+  add_definitions(-D_ENABLE_EXTENDED_ALIGNED_STORAGE)
+endif()
 
 if (CMAKE_COMPILER_IS_CLANG)
   if (APPLE)
@@ -393,9 +583,9 @@ if (CMAKE_COMPILER_IS_CLANG)
   endif ()
 endif ()
 
-# need c++11
+# need c++14
 # XXX this should really be set on a per target level using cmake compile_features capabilties
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 
 # need threads
 find_package(Threads REQUIRED)
@@ -411,7 +601,7 @@ if (MSVC)
   # http://lists.boost.org/boost-users/2016/04/85968.php
   add_definitions("-D_ENABLE_ATOMIC_ALIGNMENT_FIX")
 
-  set(MSVC_LIBS Shlwapi.lib;crypt32.lib;WINMM.LIB;Ws2_32.lib)
+  set(MSVC_LIBS Shlwapi.lib;crypt32.lib;WINMM.LIB;Ws2_32.lib;Psapi.lib)
 
   set(CMAKE_EXE_LINKER_FLAGS
     "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE /SAFESEH:NO /MACHINE:x64 /ignore:4099 ${BASE_LD_FLAGS}"
@@ -838,6 +1028,7 @@ endif()
 # ZLIB_VERSION
 # ZLIB_LIBS
 # ZLIB_INCLUDE_DIR
+
 add_definitions(-DBOOST_ALL_NO_LIB=1) #disable boost autolink on windows
 add_subdirectory(3rdParty)
 
@@ -856,6 +1047,7 @@ include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKS
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/s2geometry/${ARANGO_S2GEOMETRY_VERSION}/src)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION})
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/date/include)
+
 # ------------------------------------------------------------------------------
 # RocksDB
 # ------------------------------------------------------------------------------
@@ -863,9 +1055,9 @@ include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/date/include)
 add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ARANGO_ROCKSDB_VERSION}\")
 include_directories(${ROCKSDB_INCLUDE_DIR})
 
-set(ROCKSDB_LIBS rocksdb;snappystatic)
+set(ROCKSDB_LIBS rocksdb;${SNAPPY_LIB})
 
-add_dependencies(rocksdb snappystatic)
+add_dependencies(rocksdb ${SNAPPY_LIB})
 
 if (USE_JEMALLOC)
   add_dependencies(rocksdb jemalloc)
@@ -880,9 +1072,6 @@ include_directories(SYSTEM ${ASIO_INCLUDES})
 add_definitions("-DVELOCYPACK_XXHASH=1")
 
 set(V8_LINK_DIRECTORIES "${LINK_DIRECTORIES}" CACHE INTERNAL "" FORCE)
-foreach (LINK_DIR ${V8_LINK_DIRECTORIES})
-  link_directories("${LINK_DIR}")
-endforeach()
 
 ################################################################################
 ## ICU
@@ -897,16 +1086,22 @@ include_directories(SYSTEM ${ICU_INCLUDE_DIR})
 include_directories(SYSTEM ${V8_INCLUDE_DIR})
 add_definitions("-DARANGODB_V8_VERSION=\"${V8_VERSION}\"")
 
+foreach (LINK_DIR ${V8_LINK_DIRECTORIES})
+  link_directories("${LINK_DIR}")
+endforeach()
+
 ################################################################################
 ## ZLIB
 ################################################################################
 
 include_directories(SYSTEM ${ZLIB_INCLUDE_DIR})
 add_definitions("-DARANGODB_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
+link_directories("${PROJECT_BINARY_DIR}/bin")
 
 ################################################################################
 ## cURL
 ################################################################################
+
 add_definitions(-DCURL_STATICLIB=1)
 include_directories(SYSTEM
   ${CURL_SRC_DIR}/include/
@@ -923,6 +1118,7 @@ if (MSVC)
   include(generate_product_version)
 endif()
 
+add_subdirectory(Documentation)
 include(ArangoDBInstall)
 include(frontend/aardvark)
 if (NOT(SKIP_PACKAGING))
@@ -1039,7 +1235,6 @@ add_subdirectory(lib)
 add_subdirectory(arangosh)
 add_subdirectory(arangod)
 
-add_subdirectory(Documentation)
 
 if (USE_CATCH_TESTS)
   add_subdirectory(tests)
@@ -1052,6 +1247,16 @@ add_dependencies(arangoexport  zlibstatic)
 add_dependencies(arangoimport  zlibstatic)
 add_dependencies(arangorestore zlibstatic)
 add_dependencies(arangosh      zlibstatic)
+
+if(UNIX)
+  add_dependencies(arangobench   man)
+  add_dependencies(arangod       man)
+  add_dependencies(arangodump    man)
+  add_dependencies(arangoexport  man)
+  add_dependencies(arangoimport  man)
+  add_dependencies(arangorestore man)
+  add_dependencies(arangosh      man)
+endif()
 
 if (NOT USE_PRECOMPILED_V8)
   # all binaries depend on v8_build because it contains ICU as well

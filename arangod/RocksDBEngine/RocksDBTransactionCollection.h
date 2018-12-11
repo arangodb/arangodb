@@ -43,28 +43,6 @@ class RocksDBTransactionCollection final : public TransactionCollection {
                                AccessMode::Type accessType, int nestingLevel);
   ~RocksDBTransactionCollection();
 
-  /// @brief request a main-level lock for a collection
-  /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
-  /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
-  /// returns any other error code otherwise
-  int lockRecursive() override;
-
-  /// @brief request a lock for a collection
-  /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
-  /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
-  /// returns any other error code otherwise
-  int lockRecursive(AccessMode::Type, int nestingLevel) override;
-
-  /// @brief request an unlock for a collection
-  int unlockRecursive(AccessMode::Type, int nestingLevel) override;
-
-  /// @brief check whether a collection is locked in a specific mode in a
-  /// transaction
-  bool isLocked(AccessMode::Type, int nestingLevel) const override;
-
-  /// @brief check whether a collection is locked at all
-  bool isLocked() const override;
-
   /// @brief whether or not any write operations for the collection happened
   bool hasOperations() const override;
 
@@ -88,7 +66,7 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   /// @brief add an operation for a transaction collection
   void addOperation(TRI_voc_document_operation_e operationType,
                     TRI_voc_rid_t revisionId);
-
+  
   /**
    * @brief Prepare collection for commit by placing index blockers
    * @param trxId        Active transaction ID
@@ -122,13 +100,12 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
   /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
   /// returns any other error code otherwise
-  int doLock(AccessMode::Type, int nestingLevel);
+  int doLock(AccessMode::Type, int nestingLevel) override;
 
   /// @brief request an unlock for a collection
-  int doUnlock(AccessMode::Type, int nestingLevel);
+  int doUnlock(AccessMode::Type, int nestingLevel) override;
 
  private:
-  AccessMode::Type _lockType;  // collection lock type, used for exclusive locks
   int _nestingLevel;  // the transaction level that added this collection
   uint64_t _initialNumberDocuments;
   TRI_voc_rid_t _revision;
@@ -137,12 +114,14 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   uint64_t _numRemoves;
   bool _usageLocked;
 
+  struct IndexOperations {
+    std::vector<uint64_t> inserts;
+    std::vector<uint64_t> removals;
+  };
+  
   /// @brief A list where all indexes with estimates can store their operations
   ///        Will be applied to the inserter on commit and not applied on abort
-  std::unordered_map<uint64_t,
-                     std::pair<std::vector<uint64_t>, std::vector<uint64_t>>>
-      _trackedIndexOperations;
-
+  std::unordered_map<uint64_t, IndexOperations> _trackedIndexOperations;
 };
 }
 

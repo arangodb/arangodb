@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"  // required for RocksDBColumnFamily.h
+#include "Indexes/IndexFactory.h"
 #include "IResearch/IResearchFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -35,6 +36,71 @@
 
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief IResearchLinkCoordinator-specific implementation of an
+///        IndexTypeFactory
+////////////////////////////////////////////////////////////////////////////////
+struct IResearchRocksDBLink::IndexFactory: public arangodb::IndexTypeFactory {
+  virtual bool equal(
+    arangodb::velocypack::Slice const& lhs,
+    arangodb::velocypack::Slice const& rhs
+  ) const override {
+    return arangodb::iresearch::IResearchLinkHelper::equal(lhs, rhs);
+  }
+
+  virtual arangodb::Result instantiate(
+    std::shared_ptr<arangodb::Index>& index,
+    arangodb::LogicalCollection& collection,
+    arangodb::velocypack::Slice const& definition,
+    TRI_idx_iid_t id,
+    bool isClusterConstructor
+  ) const override {
+    try {
+      auto link = std::shared_ptr<IResearchRocksDBLink>(
+        new IResearchRocksDBLink(id, collection)
+      );
+      auto res = link->init(definition);
+
+      if (!res.ok()) {
+        return res;
+      }
+
+      index = link;
+    } catch (arangodb::basics::Exception const& e) {
+      IR_LOG_EXCEPTION();
+
+      return arangodb::Result(
+        e.code(),
+        std::string("caught exception while creating arangosearch view RocksDB link '") + std::to_string(id) + "': " + e.what()
+      );
+    } catch (std::exception const& e) {
+      IR_LOG_EXCEPTION();
+
+      return arangodb::Result(
+        TRI_ERROR_INTERNAL,
+        std::string("caught exception while creating arangosearch view RocksDB link '") + std::to_string(id) + "': " + e.what()
+      );
+    } catch (...) {
+      IR_LOG_EXCEPTION();
+
+      return arangodb::Result(
+        TRI_ERROR_INTERNAL,
+        std::string("caught exception while creating arangosearch view RocksDB link '") + std::to_string(id) + "'"
+      );
+    }
+
+    return arangodb::Result();
+  }
+
+  virtual arangodb::Result normalize(
+    arangodb::velocypack::Builder& normalized,
+    arangodb::velocypack::Slice definition,
+    bool isCreation
+  ) const override {
+    return IResearchLinkHelper::normalize(normalized, definition, isCreation);
+  }
+};
 
 IResearchRocksDBLink::IResearchRocksDBLink(
     TRI_idx_iid_t iid,
@@ -52,50 +118,33 @@ IResearchRocksDBLink::~IResearchRocksDBLink() {
   // NOOP
 }
 
-/*static*/ IResearchRocksDBLink::ptr IResearchRocksDBLink::make(
-    arangodb::LogicalCollection& collection,
-    arangodb::velocypack::Slice const& definition,
-    TRI_idx_iid_t id,
-    bool isClusterConstructor
-) noexcept {
-  try {
-    PTR_NAMED(IResearchRocksDBLink, ptr, id, collection);
+/*static*/ arangodb::IndexTypeFactory const& IResearchRocksDBLink::factory() {
+  static const IndexFactory factory;
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto* link =
-        dynamic_cast<arangodb::iresearch::IResearchRocksDBLink*>(ptr.get());
-#else
-    auto* link =
-        static_cast<arangodb::iresearch::IResearchRocksDBLink*>(ptr.get());
-#endif
-
-    return link && link->init(definition) ? ptr : nullptr;
-  } catch (arangodb::basics::Exception& e) {
-    LOG_TOPIC(WARN, Logger::DEVEL)
-      << "caught exception while creating IResearch view RocksDB link '" << id << "': " << e.code() << " " << e.what();
-    IR_LOG_EXCEPTION();
-  } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, Logger::DEVEL)
-      << "caught exception while creating IResearch view RocksDB link '" << id << "': " << e.what();
-    IR_LOG_EXCEPTION();
-  } catch (...) {
-    LOG_TOPIC(WARN, Logger::DEVEL)
-      << "caught exception while creating IResearch view RocksDB link '" << id << "'";
-    IR_LOG_EXCEPTION();
-  }
-
-  return nullptr;
+  return factory;
 }
 
-void IResearchRocksDBLink::toVelocyPack(arangodb::velocypack::Builder& builder,
-                                        bool withFigures,
-                                        bool forPersistence) const {
-  TRI_ASSERT(!builder.isOpenObject());
-  builder.openObject();
-  bool success = json(builder, forPersistence);
-  TRI_ASSERT(success);
+void IResearchRocksDBLink::toVelocyPack(
+    arangodb::velocypack::Builder& builder,
+    std::underlying_type<arangodb::Index::Serialize>::type flags
+) const {
+  if (builder.isOpenObject()) {
+    THROW_ARANGO_EXCEPTION(arangodb::Result(
+      TRI_ERROR_BAD_PARAMETER,
+      std::string("failed to generate link definition for arangosearch view RocksDB link '") + std::to_string(arangodb::Index::id()) + "'"
+    ));
+  }
 
-  if (withFigures) {
+  builder.openObject();
+
+  if (!json(builder)) {
+    THROW_ARANGO_EXCEPTION(arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      std::string("failed to generate link definition for arangosearch view RocksDB link '") + std::to_string(arangodb::Index::id()) + "'"
+    ));
+  }
+
+  if (arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Figures)) {
     VPackBuilder figuresBuilder;
 
     figuresBuilder.openObject();
@@ -131,5 +180,5 @@ NS_END      // iresearch
 NS_END  // arangodb
 
 // -----------------------------------------------------------------------------
-// --SECTION-- END-OF-FILE
+// --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

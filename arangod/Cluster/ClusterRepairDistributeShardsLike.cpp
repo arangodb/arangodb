@@ -93,9 +93,9 @@ DistributeShardsLikeRepairer::readCollections(
 
       for (auto const& it : ObjectIterator(collectionSlice)) {
         std::string const& key = it.key.copyString();
-        if (key == "name") {
+        if (key == StaticStrings::DataSourceName) {
           collectionName = it.value.copyString();
-        } else if (key == "id") {
+        } else if (key == StaticStrings::DataSourceId) {
           std::string const id = it.value.copyString();
           TRI_ASSERT(id == collectionId);
         } else if (key == "replicationFactor" && it.value.isInteger()) {
@@ -108,9 +108,9 @@ DistributeShardsLikeRepairer::readCollections(
           repairingDistributeShardsLike.emplace(it.value.copyString());
         } else if (key == "shards") {
           shardsSlice = it.value;
-        } else if (key == "deleted") {
+        } else if (key == StaticStrings::DataSourceDeleted) {
           deleted = it.value.getBool();
-        } else if (key == "isSmart") {
+        } else if (key == StaticStrings::IsSmart) {
           isSmart = it.value.getBool();
         }
       }
@@ -432,7 +432,7 @@ ResultT<std::list<RepairOperation>> DistributeShardsLikeRepairer::fixShard(
           collection, proto, shardId, protoShardId);
 
   if (maybeFixServerOrderOperationResult.fail()) {
-    return maybeFixServerOrderOperationResult;
+    return std::move(maybeFixServerOrderOperationResult);
   }
 
   if (auto const& maybeFixServerOrderOperation =
@@ -457,7 +457,7 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
 
   auto collectionMapResult = readCollections(planCollections);
   if (collectionMapResult.fail()) {
-    return collectionMapResult;
+    return std::move(collectionMapResult);
   }
   std::map<CollectionID, struct Collection> collectionMap =
       collectionMapResult.get();

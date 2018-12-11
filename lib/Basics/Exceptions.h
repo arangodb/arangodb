@@ -93,7 +93,7 @@ class Exception final : public virtual std::exception {
 
  public:
   char const* what() const noexcept override;
-  std::string message() const;
+  std::string const& message() const noexcept;
   int code() const noexcept;
   void addToMessage(std::string const&);
  private:
@@ -106,10 +106,32 @@ class Exception final : public virtual std::exception {
   int const _code;
 };
 
-Result catchToResult(std::function<Result()> fn,
-                     int defaultError = TRI_ERROR_INTERNAL);
-Result catchVoidToResult(std::function<void()> fn,
-                         int defaultError = TRI_ERROR_INTERNAL);
+template<typename F>
+Result catchToResult(F&& fn, int defaultError = TRI_ERROR_INTERNAL) {
+  // TODO check whether there are other specific exceptions we should catch
+  Result result{TRI_ERROR_NO_ERROR};
+  try {
+    result = std::forward<F>(fn)();
+  } catch (arangodb::basics::Exception const& e) {
+    result.reset(e.code(), e.message());
+  } catch (std::bad_alloc const&) {
+    result.reset(TRI_ERROR_OUT_OF_MEMORY);
+  } catch (std::exception const& e) {
+    result.reset(defaultError, e.what());
+  } catch (...) {
+    result.reset(defaultError);
+  }
+  return result;
+}
+
+template<typename F>
+Result catchVoidToResult(F&& fn, int defaultError = TRI_ERROR_INTERNAL) {
+  auto wrapped = [&fn]() -> Result {
+    std::forward<F>(fn)();
+    return Result{TRI_ERROR_NO_ERROR};
+  };
+  return catchToResult(wrapped, defaultError);
+}
 
 }
 }

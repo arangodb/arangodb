@@ -49,20 +49,9 @@ function ArangoDatabase (connection) {
     this[name] = obj;
   };
 
-  this._viewList = {};
   this._registerView = function (name, obj) {
     // store the view in our own list
-    this._viewList[name] = obj;
-  };
-  this._unregisterView = function(name) {
-    if (this._viewList[name] !== undefined) {
-      delete this._viewList[name];
-    }
-  };
-  this._renameView = function (from, to) {
-    // store the view in our own list
-    this._viewList[to] = this._viewList[from];
-    delete this._viewList[from];
+    this[name] = obj;
   };
 }
 
@@ -488,11 +477,12 @@ ArangoDatabase.prototype._flushCache = function () {
 
   for (name in this) {
     if (this.hasOwnProperty(name)) {
-      var collection = this[name];
+      var collOrView = this[name];
 
-      if (collection instanceof this._collectionConstructor) {
+      if (collOrView instanceof this._collectionConstructor ||
+         collOrView instanceof this._viewConstructor) {
         // reset the collection status
-        collection._status = null;
+        collOrView._status = null;
         this[name] = undefined;
       }
     }
@@ -991,7 +981,7 @@ ArangoDatabase.prototype._parse = function (query) {
   if (typeof query === 'object' && typeof query.toAQL === 'function') {
     query = { query: query.toAQL() };
   } else {
-    query = { query: query };
+    query = { query };
   }
 
   const requestResult = this._connection.POST('/_api/query', query);
@@ -1206,7 +1196,7 @@ ArangoDatabase.prototype._createView = function (name, type, properties) {
 
   if (nname !== undefined) {
     this._registerView(nname, new this._viewConstructor(this, requestResult));
-    return this._viewList[nname];
+    return this[nname];
   }
 
   return undefined;
@@ -1219,9 +1209,9 @@ ArangoDatabase.prototype._createView = function (name, type, properties) {
 ArangoDatabase.prototype._dropView = function (id) {
   var name;
 
-  for (name in this._viewList) {
-    if (this._viewList.hasOwnProperty(name)) {
-      var view = this._viewList[name];
+  for (name in this) {
+    if (this.hasOwnProperty(name)) {
+      var view = this[name];
 
       if (view instanceof this._viewConstructor) {
         if (view._id === id || view._name === id) {
@@ -1232,6 +1222,7 @@ ArangoDatabase.prototype._dropView = function (id) {
   }
 
   var v = this._view(id);
+
   if (v) {
     return v.drop();
   }
@@ -1277,10 +1268,13 @@ ArangoDatabase.prototype._views = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._view = function (id) {
-  if (this._viewList[id] && this._viewList[id] instanceof
-      this._viewConstructor) {
-    return this._viewList[id];
+  if (typeof id !== 'number'
+      && this.hasOwnProperty(id)
+      && this[id]
+      && this[id] instanceof this._viewConstructor) {
+    return this[id];
   }
+
   var url = this._viewurl(id);
   var requestResult = this._connection.GET(url);
 
@@ -1298,7 +1292,7 @@ ArangoDatabase.prototype._view = function (id) {
 
   if (name !== undefined) {
     this._registerView(name, new this._viewConstructor(this, requestResult));
-    return this._viewList[name];
+    return this[name];
   }
 
   return null;

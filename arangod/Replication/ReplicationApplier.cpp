@@ -386,11 +386,15 @@ void ReplicationApplier::removeState() {
   if (!applies()) {
     return;
   }
+  
+  std::string const filename = getStateFilename();
+  if (filename.empty()) {
+    // will happen during testing and for coordinator engine
+    return;
+  }
 
   WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
   _state.reset(false);
-
-  std::string const filename = getStateFilename();
 
   if (TRI_ExistsFile(filename.c_str())) {
     LOG_TOPIC(TRACE, Logger::REPLICATION) << "removing replication state file '"
@@ -436,6 +440,11 @@ bool ReplicationApplier::loadState() {
   }
 
   std::string const filename = getStateFilename();
+  if (filename.empty()) {
+    // will happen during testing and for coordinator engine
+    return false;
+  }
+
   LOG_TOPIC(TRACE, Logger::REPLICATION)
       << "looking for replication state file '" << filename << "' for " << _databaseName;
 
@@ -486,11 +495,16 @@ void ReplicationApplier::persistState(bool doSync) {
   if (!applies()) {
     return;
   }
+  
+  std::string const filename = getStateFilename();
+  if (filename.empty()) {
+    // will happen during testing and for coordinator engine
+    return;
+  }
 
   VPackBuilder builder;
   _state.toVelocyPack(builder, false);
 
-  std::string const filename = getStateFilename();
   LOG_TOPIC(TRACE, Logger::REPLICATION)
       << "saving replication applier state to file '" << filename << "' for " << _databaseName;
 
@@ -617,28 +631,32 @@ void ReplicationApplier::doStop(Result const& r, bool joinThread) {
   }
 
   if (joinThread) {
+    
+    auto start = std::chrono::steady_clock::now();
     while (_state.isShuttingDown()) {
       writeLocker.unlock();
-      std::this_thread::sleep_for(std::chrono::microseconds(50 * 1000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+      if (std::chrono::steady_clock::now() - start > std::chrono::minutes(3)) {
+        LOG_TOPIC(ERR, Logger::REPLICATION) << "replication applier is not stopping";
+        TRI_ASSERT(false);
+        start = std::chrono::steady_clock::now();;
+      }
       writeLocker.lock();
     }
     
     TRI_ASSERT(!_state.isActive() && !_state.isShuttingDown());
-  
     // wipe aborted flag. this will be passed on to the syncer
     static_cast<ApplierThread*>(_thread.get())->setAborted(false);
 
     // steal thread
-    Thread* t = _thread.release();
+    std::unique_ptr<Thread> t = std::move(_thread);
+    TRI_ASSERT(_thread.get() == nullptr);
     // now _thread is empty
     // and release the write lock so when "thread" goes
     // out of scope, it actually can call the thread
     // deleter without holding the write lock (which would
     // deadlock)
     writeLocker.unlock();
-
-    // now delete without holding the lock
-    delete t;
   }
 }
   

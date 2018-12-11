@@ -47,6 +47,8 @@ class VstConnection final : public Connection {
   explicit VstConnection(EventLoopService& loop,
                          detail::ConnectionConfiguration const&);
 
+  ~VstConnection();
+
  public:
   // this function prepares the request for sending
   // by creating a RequestItem and setting:
@@ -66,14 +68,22 @@ class VstConnection final : public Connection {
   Connection::State state() const override final {
     return _state.load(std::memory_order_acquire);
   }
-
+  
+  /// @brief cancel the connection, unusable afterwards
+  void cancel() override final;
+  
+ protected:
+ 
   /// Activate the connection.
   void startConnection() override final;
-  
-  /// called on shutdown, always call superclass
-  void shutdownConnection(const ErrorCondition) override;
 
  private:
+  
+  // Connect with a given number of retries
+  void tryConnect(unsigned retries);
+  
+  /// shutdown connection, cancel async operations
+  void shutdownConnection(const ErrorCondition);
   
   void restartConnection(const ErrorCondition);
   
@@ -149,7 +159,8 @@ class VstConnection final : public Connection {
   static_assert((WRITE_LOOP_ACTIVE & READ_LOOP_ACTIVE) == 0, "");
   
   /// elements to send out
-  boost::lockfree::queue<vst::RequestItem*> _writeQueue;
+  boost::lockfree::queue<vst::RequestItem*,
+    boost::lockfree::capacity<1024>> _writeQueue;
 };
 
 }}}}  // namespace arangodb::fuerte::v1::vst

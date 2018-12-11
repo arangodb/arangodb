@@ -36,14 +36,18 @@
 #include <thread>
 #include <chrono>
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::httpclient;
 using namespace arangodb::options;
 
-ClientFeature::ClientFeature(application_features::ApplicationServer* server,
-                             bool allowJwtSecret, double connectionTimeout,
-                             double requestTimeout)
+namespace arangodb {
+
+ClientFeature::ClientFeature(
+    application_features::ApplicationServer& server,
+    bool allowJwtSecret,
+    double connectionTimeout,
+    double requestTimeout
+)
     : ApplicationFeature(server, "Client"),
       _databaseName("_system"),
       _authentication(true),
@@ -60,9 +64,15 @@ ClientFeature::ClientFeature(application_features::ApplicationServer* server,
       _retries(DEFAULT_RETRIES),
       _warn(false),
       _warnConnect(true),
-      _haveServerPassword(false) {
+      _haveServerPassword(false)
+#if _WIN32
+      ,_codePage(65001), // default to UTF8
+      _originalCodePage(UINT16_MAX)
+#endif
+  {
   setOptional(true);
   requiresElevatedPrivileges(false);
+  startsAfter("CommunicationPhase");
   startsAfter("GreetingsPhase");
 }
 
@@ -95,14 +105,15 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   if (_allowJwtSecret) {
     // currently the option is only present for arangosh, but none
     // of the other client tools 
-    options->addHiddenOption(
+    options->addOption(
         "--server.ask-jwt-secret",
         "if this option is specified, the user will be prompted "
         "for a JWT secret. This option is not compatible with "
         "--server.username or --server.password. If specified, it will be used for all "
         "connections - even when a new connection to another server is "
         "created",
-        new BooleanParameter(&_askJwtSecret));
+        new BooleanParameter(&_askJwtSecret),
+        arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
   } 
 
   options->addOption("--server.connection-timeout",
@@ -114,24 +125,28 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   // note: the max-packet-size is used for all client tools that use the
   // SimpleHttpClient. fuerte does not use this
-  options->addHiddenOption(
+  options->addOption(
       "--server.max-packet-size",
       "maximum packet size (in bytes) for client/server communication",
-      new UInt64Parameter(&_maxPacketSize));
+      new UInt64Parameter(&_maxPacketSize),
+      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  std::unordered_set<uint64_t> sslProtocols = {1, 2, 3, 4, 5};
+  std::unordered_set<uint64_t> const sslProtocols = availableSslProtocols();
 
   options->addSection("ssl", "Configure SSL communication");
   options->addOption("--ssl.protocol",
-                     "ssl protocol (1 = SSLv2, 2 = SSLv2 or SSLv3 "
-                     "(negotiated), 3 = SSLv3, 4 = "
-                     "TLSv1, 5 = TLSv1.2)",
+                     availableSslProtocolsDescription(),
                      new DiscreteValuesParameter<UInt64Parameter>(
                          &_sslProtocol, sslProtocols));
+#if _WIN32
+  options->addOption("--console.code-page", "Windows code page to use; defaults to UTF8",
+                     new UInt16Parameter(&_codePage),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+#endif
 }
 
 void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  if (_sslProtocol == 1) {
+  if (_sslProtocol == SslProtocol::SSL_V2) {
     LOG_TOPIC(FATAL, arangodb::Logger::SSL) << "SSLv2 is not supported any longer because of security vulnerabilities in this protocol";
     FATAL_ERROR_EXIT();
   }
@@ -300,6 +315,23 @@ std::vector<std::string> ClientFeature::httpEndpoints() {
   return {http};
 }
 
+void ClientFeature::start() {
+#if _WIN32
+  _originalCodePage = GetConsoleOutputCP();
+  if (IsValidCodePage(_codePage)) {
+    SetConsoleOutputCP(_codePage);
+  }
+#endif
+}
+
+void ClientFeature::stop() {
+#if _WIN32
+  if (IsValidCodePage(_originalCodePage)) {
+    SetConsoleOutputCP(_originalCodePage);
+  }
+#endif
+}
+
 int ClientFeature::runMain(
     int argc, char* argv[],
     std::function<int(int argc, char* argv[])> const& mainFunc) {
@@ -317,3 +349,5 @@ int ClientFeature::runMain(
     return EXIT_FAILURE;
   }
 }
+  
+} // arangodb

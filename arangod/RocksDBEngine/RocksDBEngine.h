@@ -78,7 +78,7 @@ struct Options;
 class RocksDBEngine final : public StorageEngine {
  public:
   // create the storage engine
-  explicit RocksDBEngine(application_features::ApplicationServer*);
+  explicit RocksDBEngine(application_features::ApplicationServer& server);
   ~RocksDBEngine();
 
   // inherited from ApplicationFeature
@@ -198,7 +198,10 @@ class RocksDBEngine final : public StorageEngine {
 
   // intentionally empty, not useful for this type of engine
   void waitForSyncTick(TRI_voc_tick_t) override {}
-  void waitForSyncTimeout(double) override {}
+  
+  /// @brief return a list of the currently open WAL files
+  std::vector<std::string> currentWalFiles() const override;
+  
   Result flushWal(bool waitForSync, bool waitForCollector,
                   bool writeShutdownFile) override;
   void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
@@ -314,8 +317,6 @@ class RocksDBEngine final : public StorageEngine {
 
   void addParametersForNewCollection(arangodb::velocypack::Builder& builder,
                                      arangodb::velocypack::Slice info) override;
-  void addParametersForNewIndex(arangodb::velocypack::Builder& builder,
-                                arangodb::velocypack::Slice info) override;
 
   rocksdb::TransactionDB* db() const { return _db; }
 
@@ -326,6 +327,7 @@ class RocksDBEngine final : public StorageEngine {
                                   RocksDBLogValue&& logValue);
 
   void addCollectionMapping(uint64_t, TRI_voc_tick_t, TRI_voc_cid_t);
+  std::vector<std::pair<TRI_voc_tick_t, TRI_voc_cid_t>> collectionMappings() const;
   void addIndexMapping(uint64_t objectId, TRI_voc_tick_t,
                        TRI_voc_cid_t, TRI_idx_iid_t);
   void removeIndexMapping(uint64_t);
@@ -336,7 +338,6 @@ class RocksDBEngine final : public StorageEngine {
   CollectionPair mapObjectToCollection(uint64_t) const;
   IndexTriple mapObjectToIndex(uint64_t) const;
 
-  std::vector<std::string> currentWalFiles();
   void determinePrunableWalFiles(TRI_voc_tick_t minTickToKeep);
   void pruneWalFiles();
 
@@ -378,6 +379,8 @@ class RocksDBEngine final : public StorageEngine {
  public:
   static std::string const EngineName;
   static std::string const FeatureName;
+
+  bool canUseRangeDeleteInWal() const;
 
   rocksdb::Options const& rocksDBOptions() const {
     return _options;

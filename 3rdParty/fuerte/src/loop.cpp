@@ -50,22 +50,6 @@ EventLoopService::~EventLoopService() {
   }
 }
   
-/// forcebly stop all io contexts. service is unusable after
-void EventLoopService::forceStop() {
-  for (auto& guard : _guards) {
-    guard.reset();  // allow run() to exit
-  }
-  for (auto& ctx : _ioContexts) {
-    ctx->stop();
-  }
-  for (std::thread& thread : _threads) {
-    thread.join();
-  }
-  _guards.clear();
-  _threads.clear();
-  _ioContexts.clear();
-}
-  
 asio_ns::ssl::context& EventLoopService::sslContext() {
   std::lock_guard<std::mutex> guard(_sslContextMutex);
   if (!_sslContext) {

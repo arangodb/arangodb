@@ -26,11 +26,11 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+
 class ShellColorsFeature final : public application_features::ApplicationFeature {
  public:
-  explicit ShellColorsFeature(application_features::ApplicationServer* server);
+  explicit ShellColorsFeature(application_features::ApplicationServer& server);
 
- public:
   void prepare() override final;
 
  private:
@@ -61,6 +61,7 @@ class ShellColorsFeature final : public application_features::ApplicationFeature
  private:
   bool _initialized;
 };
+
 }
 
 #endif

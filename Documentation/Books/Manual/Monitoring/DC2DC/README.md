@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/arangosync.git / docs/Manual/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/arangosync.git / docs/Manual/ -->
 # Monitoring datacenter to datacenter replication
 
 {% hint 'info' %}
@@ -10,7 +10,7 @@ This section includes information related to the monitoring of the _datacenter
 to datacenter replication_.
 
 For a general introduction to the _datacenter to datacenter replication_, please
-refer to the [Datacenter to datacenter replication](../../Scalability/DC2DC/README.md)
+refer to the [Datacenter to datacenter replication](../../Architecture/DeploymentModes/DC2DC/README.md)
 chapter.
 
 ## Metrics

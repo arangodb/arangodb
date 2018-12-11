@@ -30,8 +30,7 @@
 using namespace arangodb;
   
 IndexIterator::IndexIterator(LogicalCollection* collection, 
-                             transaction::Methods* trx, 
-                             arangodb::Index const* index)
+                             transaction::Methods* trx)
       : _collection(collection), 
         _trx(trx) { 
   TRI_ASSERT(_collection != nullptr);

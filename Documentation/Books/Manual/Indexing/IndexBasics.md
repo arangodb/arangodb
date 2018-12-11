@@ -11,6 +11,9 @@ can be created by specifying the names of the index attributes.
 Some index types allow indexing just one attribute (e.g. fulltext index) whereas 
 other index types allow indexing multiple attributes at the same time.
 
+Learn how to use different indexes efficiently by going through the
+[ArangoDB Performance Course](https://www.arangodb.com/arangodb-performance-course/).
+
 The system attributes `_id`, `_key`, `_from` and `_to` are automatically indexed
 by ArangoDB, without the user being required to create extra indexes for them.
 `_id` and `_key` are covered by a collection's primary key, and `_from` and `_to`
@@ -179,7 +182,7 @@ the `SORT` clause of the query in the same order as they appear in the index def
 Skiplist indexes are always created in ascending order, but they can be used to access
 the indexed elements in both ascending or descending order. However, for a combined index
 (an index on multiple attributes) this requires that the sort orders in a single query
-as specified in the `SORT` clause must be either all ascending (optionally ommitted 
+as specified in the `SORT` clause must be either all ascending (optionally omitted 
 as ascending is the default) or all descending. 
 
 For example, if the skiplist index is created on attributes `value1` and `value2` 

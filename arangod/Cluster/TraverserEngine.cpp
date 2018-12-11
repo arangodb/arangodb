@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -130,7 +130,7 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
   // FIXME: in the future this needs to be replaced with
   // the new cluster wide transactions
   transaction::Options trxOpts;
-  
+
 #ifdef USE_ENTERPRISE
   VPackSlice inaccessSlice = shardsSlice.get(INACCESSIBLE);
   if (inaccessSlice.isArray()) {
@@ -201,11 +201,12 @@ bool BaseEngine::lockCollection(std::string const& shard) {
   _trx->pinData(cid);  // will throw when it fails
 
   Result lockResult = _trx->lockRecursive(cid, AccessMode::Type::READ);
-  
+
   if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
         << "Locking shard " << shard << " lead to exception '"
-        << lockResult.errorNumber() << "' (" << lockResult.errorMessage() << ") ";
+        << lockResult.errorNumber() << "' ("
+        << lockResult.errorMessage() << ")";
     return false;
   }
 
@@ -225,7 +226,7 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder) {
   // Thanks locking
   TRI_ASSERT(ServerState::instance()->isDBServer());
   TRI_ASSERT(vertex.isString() || vertex.isArray());
-  
+
   ManagedDocumentResult mmdr;
   builder.openObject();
   auto workOnOneDocument = [&](VPackSlice v) {
@@ -246,7 +247,7 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder) {
       // The collection is not known here!
       // Maybe handle differently
     }
-    
+
     StringRef vertex = id.substr(pos + 1);
     for (std::string const& shard : shards->second) {
       Result res = _trx->documentFastPathLocal(shard, vertex, mmdr, false);
@@ -261,7 +262,7 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder) {
       }
     }
   };
-  
+
   if (vertex.isArray()) {
     for (VPackSlice v : VPackArrayIterator(vertex)) {
       workOnOneDocument(v);
@@ -348,7 +349,7 @@ void BaseTraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
   // Thanks locking
   TRI_ASSERT(ServerState::instance()->isDBServer());
   TRI_ASSERT(vertex.isString() || vertex.isArray());
-  
+
   size_t read = 0;
   ManagedDocumentResult mmdr;
   builder.openObject();
@@ -375,7 +376,7 @@ void BaseTraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
       // The collection is not known here!
       // Maybe handle differently
     }
-    
+
     StringRef vertex = id.substr(pos + 1);
     for (std::string const& shard : shards->second) {
       Result res = _trx->documentFastPathLocal(shard, vertex, mmdr, false);
@@ -431,12 +432,6 @@ ShortestPathEngine::ShortestPathEngine(
   }
   TRI_ASSERT(type.isEqualString("shortestPath"));
   _opts.reset(new ShortestPathOptions(_query, optsSlice, edgesSlice));
-  TRI_ASSERT(_opts != nullptr);
-  if (_opts == nullptr) {
-    // It seems we could not generate the options
-    // without throwing an error. Must by OOM.
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
   // We create the cache, but we do not need any engines.
   _opts->activateCache(false, nullptr);
 }
@@ -473,7 +468,7 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward,
                               VPackSlice edge, size_t cursorId) {
         if (edge.isString()) {
           edge = _opts->cache()->lookupToken(eid);
-        } 
+        }
         if (edge.isNull()) {
           return;
         }
@@ -532,12 +527,6 @@ TraverserEngine::TraverserEngine(
   }
   TRI_ASSERT(type.isEqualString("traversal"));
   _opts.reset(new TraverserOptions(_query, optsSlice, edgesSlice));
-  TRI_ASSERT(_opts != nullptr);
-  if (_opts == nullptr) {
-    // It seems we could not generate the options
-    // without throwing an error. Must by OOM.
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
   // We create the cache, but we do not need any engines.
   _opts->activateCache(false, nullptr);
 }

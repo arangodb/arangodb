@@ -22,10 +22,10 @@
 
 #include "DatabasePhase.h"
 
-using namespace arangodb;
-using namespace arangodb::application_features;
+namespace arangodb {
+namespace application_features {
 
-DatabaseFeaturePhase::DatabaseFeaturePhase(ApplicationServer* server)
+DatabaseFeaturePhase::DatabaseFeaturePhase(ApplicationServer& server)
     : ApplicationFeaturePhase(server, "DatabasePhase") {
   setOptional(false);
   startsAfter("BasicsPhase");
@@ -52,6 +52,10 @@ DatabaseFeaturePhase::DatabaseFeaturePhase(ApplicationServer* server)
   startsAfter("RocksDBRecoveryManager");
   startsAfter("ServerId");
   startsAfter("StorageEngine");
+  startsAfter("SystemDatabase");
   startsAfter("TransactionManager");
   startsAfter("ViewTypes");
 }
+
+} // application_features
+} // arangodb

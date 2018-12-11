@@ -39,21 +39,28 @@
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
-ServerFeature::ServerFeature(application_features::ApplicationServer* server,
-                             int* res)
+namespace arangodb {
+
+ServerFeature::ServerFeature(
+    application_features::ApplicationServer& server,
+    int* res
+)
     : ApplicationFeature(server, "Server"),
       _vstMaxSize(1024 * 30),
       _result(res),
-      _operationMode(OperationMode::MODE_SERVER) {
+      _operationMode(OperationMode::MODE_SERVER)
+#if _WIN32
+      ,_codePage(65001), // default to UTF8
+      _originalCodePage(UINT16_MAX)
+#endif
+  {
   setOptional(true);
 
   startsAfter("AQLPhase");
-
   startsAfter("Statistics");
   startsAfter("Upgrade");
 }
@@ -64,8 +71,9 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addSection("server", "Server features");
 
-  options->addHiddenOption("--server.rest-server", "start a rest-server",
-                           new BooleanParameter(&_restServer));
+  options->addOption("--server.rest-server", "start a rest-server",
+                     new BooleanParameter(&_restServer),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
   options->addObsoleteOption("--server.session-timeout",
                              "timeout of web interface server sessions (in seconds)",
@@ -81,6 +89,11 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--vst.maxsize",
                      "maximal size (in bytes) for a VelocyPack chunk",
                      new UInt32Parameter(&_vstMaxSize));
+#if _WIN32
+  options->addOption("--console.code-page", "Windows code page to use; defaults to UTF8",
+                     new UInt16Parameter(&_codePage),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+#endif
 }
 
 void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -149,6 +162,13 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void ServerFeature::start() {
+#if _WIN32
+  _originalCodePage = GetConsoleOutputCP();
+  if (IsValidCodePage(_codePage)) {
+    SetConsoleOutputCP(_codePage);
+  }
+#endif
+
   waitForHeartbeat();
 
   *_result = EXIT_SUCCESS;
@@ -175,6 +195,14 @@ void ServerFeature::start() {
     });
   }
 
+}
+
+void ServerFeature::stop() {
+#if _WIN32
+  if (IsValidCodePage(_originalCodePage)) {
+    SetConsoleOutputCP(_originalCodePage);
+  }
+#endif
 }
 
 void ServerFeature::beginShutdown() {
@@ -210,3 +238,5 @@ std::string ServerFeature::operationModeString(OperationMode mode) {
       return "unknown";
   }
 }
+
+} // arangodb

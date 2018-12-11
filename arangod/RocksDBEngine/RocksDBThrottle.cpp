@@ -255,7 +255,8 @@ void RocksDBThrottle::ThreadLoop() {
     try {
       RecalculateThrottle();
     } catch (...) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "RecalculateThrottle() sent a throw. RocksDB?";
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+          << "RecalculateThrottle() sent a throw. RocksDB?";
       _threadRunning.store(false);
     } // try/catchxs
 

@@ -127,12 +127,12 @@ void GeneralClientConnectionAgencyMock::handleWrite(
     arangodb::basics::StringBuffer& buffer
 ) {
   auto const query = arangodb::velocypack::Parser::fromJson(_body);
-
   auto const success = _store->applyTransactions(query);
-  auto const code = std::find(success.begin(), success.end(), false) == success.end()
-    ? arangodb::rest::ResponseCode::OK
-    : arangodb::rest::ResponseCode::PRECONDITION_FAILED;
-
+  auto const code =
+    std::find_if(success.begin(), success.end(),
+                 [&](int i)->bool { return i != 0; }) == success.end() ?
+    arangodb::rest::ResponseCode::OK : arangodb::rest::ResponseCode::PRECONDITION_FAILED;
+  
   VPackBuilder bodyObj;
   bodyObj.openObject();
   bodyObj.add("results", VPackValue(VPackValueType::Array));
@@ -146,11 +146,7 @@ void GeneralClientConnectionAgencyMock::handleWrite(
 
   resp.writeHeader(&buffer);
   buffer.appendText(body);
-
-  if (_invokeCallbacks) {
-    // FIXME TODO should be done in a separate thread since some callbacks aquire non-recursive mutexes
-    _store->notifyObservers();
-  }
+  _store->notifyObservers();
 }
 
 void GeneralClientConnectionAgencyMock::response(
@@ -184,6 +180,7 @@ void GeneralClientConnectionAgencyMock::request(char const* data, size_t length)
   std::string const request(data, length);
 
   if (_trace) {
+    std::cerr << "Request()" << std::endl;
     std::cerr << request << std::endl;
   }
 

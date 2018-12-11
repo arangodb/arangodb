@@ -26,7 +26,6 @@
 #define ARANGODB_BASICS_FIXED_SIZE_ALLOCATOR_H 1
 
 #include "Basics/Common.h"
-#include "Logger/Logger.h"
 
 namespace arangodb {
 
@@ -45,10 +44,12 @@ class FixedSizeAllocator {
     
       // adjust to cache line offset (assumed to be 64 bytes) 
       _data = reinterpret_cast<char*>(
-          (reinterpret_cast<uintptr_t>(_alloc) + 63) & ~((uintptr_t)0x3fu)); 
+          (reinterpret_cast<uintptr_t>(_alloc) + 63) & ~((uintptr_t)0x3fu));
+
+      TRI_ASSERT(reinterpret_cast<uintptr_t>(_data) % sizeof(void*) == 0); 
     }
 
-    MemoryBlock(MemoryBlock&& other)
+    MemoryBlock(MemoryBlock&& other) noexcept
         : _itemSize(other._itemSize), _nrAlloc(other._nrAlloc), _nrUsed(other._nrUsed), _alloc(other._alloc), _data(other._data) {
       other._nrAlloc = 0;
       other._nrUsed = 0;
@@ -56,11 +57,11 @@ class FixedSizeAllocator {
       other._data = nullptr;
     }
     
-    MemoryBlock& operator=(MemoryBlock&& other) {
+    MemoryBlock& operator=(MemoryBlock&& other) noexcept {
       if (this != &other) {
         TRI_ASSERT(_itemSize == other._itemSize);
 
-        delete [] _alloc;
+        delete[] _alloc;
         _nrAlloc = other._nrAlloc;
         _nrUsed = other._nrUsed;
         _alloc = other._alloc;
@@ -107,6 +108,11 @@ class FixedSizeAllocator {
   explicit FixedSizeAllocator(size_t itemSize) 
       : _itemSize(itemSize), _freelist(nullptr) {
     _blocks.reserve(4);
+
+#ifndef TRI_UNALIGNED_ACCESS
+    // align _itemSize to a multiple of sizeof(void*) on system that require it
+    _itemSize += (_itemSize % sizeof(void*) == 0 ? 0 : sizeof(void*) - _itemSize % sizeof(void*));
+#endif
   }
 
   ~FixedSizeAllocator() {}
@@ -149,8 +155,7 @@ class FixedSizeAllocator {
   void allocateBlock() {
     size_t const size = 128 << (std::min)(size_t(8), _blocks.size());
     auto block = std::make_unique<MemoryBlock>(_itemSize, size);
-    _blocks.emplace_back(block.get());
-    block.release();
+    _blocks.emplace_back(std::move(block));
   }
 
   std::vector<std::unique_ptr<MemoryBlock>> _blocks;

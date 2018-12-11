@@ -1040,7 +1040,7 @@ TEST(by_range_test, boost) {
       .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("min_term")
       .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("max_term");
 
-    auto prepared = q.prepare(tests::empty_index_reader::instance());
+    auto prepared = q.prepare(irs::sub_reader::empty());
     ASSERT_EQ(irs::boost::no_boost(), irs::boost::extract(prepared->attributes()));
   }
 
@@ -1053,7 +1053,7 @@ TEST(by_range_test, boost) {
       .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("max_term");
     q.boost(boost);
 
-    auto prepared = q.prepare(tests::empty_index_reader::instance());
+    auto prepared = q.prepare(irs::sub_reader::empty());
     ASSERT_EQ(boost, irs::boost::extract(prepared->attributes()));
   }
 }
@@ -1069,8 +1069,7 @@ protected:
   }
 
   virtual irs::format::ptr get_codec() override {
-    static irs::version10::format FORMAT;
-    return irs::format::ptr(&FORMAT, [](irs::format*)->void{});
+    return irs::formats::get("1_0");
   }
 };
 

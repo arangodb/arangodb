@@ -27,12 +27,13 @@
 
 namespace arangodb {
 namespace application_features {
+
 class GreetingsFeaturePhase final : public ApplicationFeaturePhase {
  public:
-  explicit GreetingsFeaturePhase(ApplicationServer* server, bool isClient);
+  explicit GreetingsFeaturePhase(ApplicationServer& server, bool isClient);
 };
+
 }  // namespace application_features
 }  // namespace arangodb
 
 #endif
-

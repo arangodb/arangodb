@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -53,7 +53,13 @@
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
+// Timeout for read operations:
 static double const CL_DEFAULT_TIMEOUT = 120.0;
+
+// Timeout for write operations, note that these are used for communication
+// with a shard leader and we always have to assume that some follower has
+// stopped writes for some time to get in sync:
+static double const CL_DEFAULT_LONG_TIMEOUT = 900.0;
 
 namespace {
 template<typename T>
@@ -231,7 +237,12 @@ static void mergeResults(
         arr.get(StaticStrings::Error).isBoolean() && arr.get(StaticStrings::Error).getBoolean()) {
       // an error occurred, now rethrow the error
       int res = arr.get(StaticStrings::ErrorNum).getNumericValue<int>();
-      THROW_ARANGO_EXCEPTION(res);
+      VPackSlice msg = arr.get(StaticStrings::ErrorMessage);
+      if (msg.isString()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(res, msg.copyString());
+      } else {
+        THROW_ARANGO_EXCEPTION(res);
+      }
     }
     resultBody->add(arr.at(pair.second));
   }
@@ -508,8 +519,8 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
 
   auto shards = std::make_shared<std::unordered_map<std::string, std::vector<std::string>>>();
 
-  ci->loadCurrentDBServers();
   if (dbServers.size() == 0) {
+    ci->loadCurrentDBServers();
     dbServers = ci->getCurrentDBServers();
     if (dbServers.empty()) {
       return shards;
@@ -715,12 +726,10 @@ int revisionOnCoordinator(std::string const& dbname,
 
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
-  try {
-    collinfo = ci->getCollection(dbname, collname);
-  } catch (...) {
+  collinfo = ci->getCollectionNT(dbname, collname);
+  if (collinfo == nullptr) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
-  TRI_ASSERT(collinfo != nullptr);
 
   rid = 0;
 
@@ -732,7 +741,7 @@ int revisionOnCoordinator(std::string const& dbname,
   std::unordered_map<std::string, std::string> headers;
   for (auto const& p : *shards) {
     cc->asyncRequest(
-        "", coordTransactionID, "shard:" + p.first,
+        coordTransactionID, "shard:" + p.first,
         arangodb::rest::RequestType::GET,
         "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" +
             StringUtils::urlEncode(p.first) + "/revision",
@@ -743,7 +752,7 @@ int revisionOnCoordinator(std::string const& dbname,
   int count;
   int nrok = 0;
   for (count = (int)shards->size(); count > 0; count--) {
-    auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
+    auto res = cc->wait(coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
       if (res.answer_code == arangodb::rest::ResponseCode::OK) {
         std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
@@ -788,12 +797,10 @@ int warmupOnCoordinator(std::string const& dbname,
 
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
-  try {
-    collinfo = ci->getCollection(dbname, cid);
-  } catch (...) {
+  collinfo = ci->getCollectionNT(dbname, cid);
+  if (collinfo == nullptr) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
-  TRI_ASSERT(collinfo != nullptr);
 
   // If we get here, the sharding attributes are not only _key, therefore
   // we have to contact everybody:
@@ -803,7 +810,7 @@ int warmupOnCoordinator(std::string const& dbname,
   std::unordered_map<std::string, std::string> headers;
   for (auto const& p : *shards) {
     cc->asyncRequest(
-        "", coordTransactionID, "shard:" + p.first,
+        coordTransactionID, "shard:" + p.first,
         arangodb::rest::RequestType::GET,
         "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" +
             StringUtils::urlEncode(p.first) + "/loadIndexesIntoMemory",
@@ -814,7 +821,7 @@ int warmupOnCoordinator(std::string const& dbname,
   // Well actually we don't care...
   int count;
   for (count = (int)shards->size(); count > 0; count--) {
-    auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
+    auto res = cc->wait(coordTransactionID, 0, "", 0.0);
   }
   return TRI_ERROR_NO_ERROR;
 }
@@ -835,12 +842,10 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
 
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
-  try {
-    collinfo = ci->getCollection(dbname, collname);
-  } catch (...) {
+  collinfo = ci->getCollectionNT(dbname, collname);
+  if (collinfo == nullptr) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
-  TRI_ASSERT(collinfo != nullptr);
 
   // If we get here, the sharding attributes are not only _key, therefore
   // we have to contact everybody:
@@ -850,7 +855,7 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
   std::unordered_map<std::string, std::string> headers;
   for (auto const& p : *shards) {
     cc->asyncRequest(
-        "", coordTransactionID, "shard:" + p.first,
+        coordTransactionID, "shard:" + p.first,
         arangodb::rest::RequestType::GET,
         "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" +
             StringUtils::urlEncode(p.first) + "/figures",
@@ -861,7 +866,7 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
   int count;
   int nrok = 0;
   for (count = (int)shards->size(); count > 0; count--) {
-    auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
+    auto res = cc->wait(coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
       if (res.answer_code == arangodb::rest::ResponseCode::OK) {
         std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
@@ -906,12 +911,10 @@ int countOnCoordinator(std::string const& dbname, std::string const& cname,
 
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
-  try {
-    collinfo = ci->getCollection(dbname, cname);
-  } catch (...) {
+  collinfo = ci->getCollectionNT(dbname, cname);
+  if (collinfo == nullptr) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
-  TRI_ASSERT(collinfo != nullptr);
 
   auto shards = collinfo->shardIds();
   std::vector<ClusterCommRequest> requests;
@@ -971,12 +974,10 @@ int selectivityEstimatesOnCoordinator(
 
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
-  try {
-    collinfo = ci->getCollection(dbname, collname);
-  } catch (...) {
+  collinfo = ci->getCollectionNT(dbname, collname);
+  if (collinfo == nullptr) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
-  TRI_ASSERT(collinfo != nullptr);
 
   auto shards = collinfo->shardIds();
   std::vector<ClusterCommRequest> requests;
@@ -1028,10 +1029,10 @@ int selectivityEstimatesOnCoordinator(
 
         if (answer.isObject()) {
           // add to the total
-          for(auto const& identifier : VPackObjectIterator(answer.get("identifiers"))){
-            if(identifier.value.hasKey("selectivityEstimate")) {
+          for (auto const& identifier : VPackObjectIterator(answer.get("identifiers"))) {
+            if (identifier.value.hasKey("selectivityEstimate")) {
               StringRef shard_index_id(identifier.key);
-              auto split_point = std::find(shard_index_id.begin(), shard_index_id.end(),'/');
+              auto split_point = std::find(shard_index_id.begin(), shard_index_id.end(), '/');
               std::string index(split_point + 1, shard_index_id.end());
 
               double estimate = arangodb::basics::VelocyPackHelper::getNumericValue(
@@ -1096,12 +1097,10 @@ Result createDocumentOnCoordinator(
 
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
-  try {
-    collinfo = ci->getCollection(dbname, collname);
-  } catch (...) {
+  collinfo = ci->getCollectionNT(dbname, collname);
+  if (collinfo == nullptr) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
-  TRI_ASSERT(collinfo != nullptr);
   auto collid = std::to_string(collinfo->id());
 
 
@@ -1186,7 +1185,7 @@ Result createDocumentOnCoordinator(
 
   // Perform the requests
   size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
+  cc->performRequests(requests, CL_DEFAULT_LONG_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
 
   // Now listen to the results:
   if (!useMultiple) {
@@ -1242,12 +1241,10 @@ int deleteDocumentOnCoordinator(
 
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
-  try {
-    collinfo = ci->getCollection(dbname, collname);
-  } catch (...) {
+  collinfo = ci->getCollectionNT(dbname, collname);
+  if (collinfo == nullptr) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
-  TRI_ASSERT(collinfo != nullptr);
   bool useDefaultSharding = collinfo->usesDefaultShardKeys();
   auto collid = std::to_string(collinfo->id());
   bool useMultiple = slice.isArray();
@@ -1350,7 +1347,7 @@ int deleteDocumentOnCoordinator(
 
     // Perform the requests
     size_t nrDone = 0;
-    cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
+    cc->performRequests(requests, CL_DEFAULT_LONG_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
 
     // Now listen to the results:
     if (!useMultiple) {
@@ -1400,7 +1397,7 @@ int deleteDocumentOnCoordinator(
 
   // Perform the requests
   size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
+  cc->performRequests(requests, CL_DEFAULT_LONG_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
 
   // Now listen to the results:
   if (!useMultiple) {
@@ -1475,12 +1472,10 @@ int truncateCollectionOnCoordinator(std::string const& dbname,
 
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
-  try {
-    collinfo = ci->getCollection(dbname, collname);
-  } catch (...) {
+  collinfo = ci->getCollectionNT(dbname, collname);
+  if (collinfo == nullptr) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
-  TRI_ASSERT(collinfo != nullptr);
 
   // Some stuff to prepare cluster-intern requests:
   // We have to contact everybody:
@@ -1488,7 +1483,7 @@ int truncateCollectionOnCoordinator(std::string const& dbname,
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
   std::unordered_map<std::string, std::string> headers;
   for (auto const& p : *shards) {
-    cc->asyncRequest("", coordTransactionID, "shard:" + p.first,
+    cc->asyncRequest(coordTransactionID, "shard:" + p.first,
                      arangodb::rest::RequestType::PUT,
                      "/_db/" + StringUtils::urlEncode(dbname) +
                          "/_api/collection/" + p.first + "/truncate",
@@ -1498,7 +1493,7 @@ int truncateCollectionOnCoordinator(std::string const& dbname,
   unsigned int count;
   unsigned int nrok = 0;
   for (count = (unsigned int)shards->size(); count > 0; count--) {
-    auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
+    auto res = cc->wait(coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
       if (res.answer_code == arangodb::rest::ResponseCode::OK) {
         nrok++;
@@ -1514,67 +1509,6 @@ int truncateCollectionOnCoordinator(std::string const& dbname,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief rotate the active journals for the collection on all DBServers
-////////////////////////////////////////////////////////////////////////////////
-
-int rotateActiveJournalOnAllDBServers(std::string const& dbname,
-                                      std::string const& collname) {
-  // Set a few variables needed for our work:
-  ClusterInfo* ci = ClusterInfo::instance();
-  auto cc = ClusterComm::instance();
-  if (cc == nullptr) {
-    // nullptr happens only during controlled shutdown
-    return TRI_ERROR_SHUTTING_DOWN;
-  }
-
-  // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo;
-  try {
-    collinfo = ci->getCollection(dbname, collname);
-  } catch (...) {
-    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
-  }
-  TRI_ASSERT(collinfo != nullptr);
-
-  // Some stuff to prepare cluster-intern requests:
-  // We have to contact everybody:
-  unsigned int expected = 0;
-  auto shards = collinfo->shardIds();
-  CoordTransactionID coordTransactionID = TRI_NewTickServer();
-  std::unordered_map<std::string, std::string> headers;
-  for (auto const& p : *shards) {
-    auto serverList = ci->getResponsibleServer(p.first);
-    for (auto& s : *serverList) {
-      cc->asyncRequest("", coordTransactionID, "server:" + s,
-                      arangodb::rest::RequestType::PUT,
-                      "/_db/" + StringUtils::urlEncode(dbname) +
-                          "/_api/collection/" + p.first + "/rotate",
-                      std::shared_ptr<std::string>(), headers, nullptr, 600.0);
-
-      ++expected;
-    }
-  }
-
-  // Now listen to the results:
-  unsigned int nrok = 0;
-  for (unsigned int count = expected; count > 0; count--) {
-    auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
-    if (res.status == CL_COMM_RECEIVED) {
-      if (res.answer_code == arangodb::rest::ResponseCode::OK) {
-        nrok++;
-      }
-    }
-  }
-
-
-  // Note that nrok is always at least 1!
-  if (nrok < expected) {
-    return TRI_ERROR_FAILED;
-  }
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1582,7 +1516,6 @@ int getDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
     arangodb::transaction::Methods const& trx,
     VPackSlice slice, OperationOptions const& options,
-    std::unique_ptr<std::unordered_map<std::string, std::string>> headers,
     arangodb::rest::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounter,
     std::shared_ptr<VPackBuilder>& resultBody) {
@@ -1596,12 +1529,10 @@ int getDocumentOnCoordinator(
 
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
-  try {
-    collinfo = ci->getCollection(dbname, collname);
-  } catch (...) {
+  collinfo = ci->getCollectionNT(dbname, collname);
+  if (collinfo == nullptr) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
-  TRI_ASSERT(collinfo != nullptr);
 
   auto collid = std::to_string(collinfo->id());
 
@@ -1660,6 +1591,7 @@ int getDocumentOnCoordinator(
     optsUrlPart += std::string("&onlyget=true");
   }
 
+  auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
   if (canUseFastPath) {
     // All shard keys are known in all documents.
     // Contact all shards directly with the correct information.
@@ -1920,18 +1852,18 @@ int fetchEdgesFromEngines(
       VPackSlice id = e.get(StaticStrings::IdString);
       if (!id.isString()) {
         // invalid id type
-        LOG_TOPIC(ERR, Logger::FIXME) << "got invalid edge id type: " << id.typeName();
+        LOG_TOPIC(ERR, Logger::GRAPHS)
+            << "got invalid edge id type: " << id.typeName();
         continue;
       }
       StringRef idRef(id);
-      auto resE = cache.find(idRef);
-      if (resE == cache.end()) {
+      auto resE = cache.insert({idRef, e});
+      if (resE.second) {
         // This edge is not yet cached.
         allCached = false;
-        cache.emplace(idRef, e);
         result.emplace_back(e);
       } else {
-        result.emplace_back(resE->second);
+        result.emplace_back(resE.first->second);
       }
     }
     if (!allCached) {
@@ -2028,7 +1960,8 @@ void fetchVerticesFromEngines(
       VPackSlice id = val.slice().get(StaticStrings::IdString);
       if (!id.isString()) {
         // invalid id type
-        LOG_TOPIC(ERR, Logger::FIXME) << "got invalid edge id type: " << id.typeName();
+        LOG_TOPIC(ERR, Logger::GRAPHS)
+            << "got invalid edge id type: " << id.typeName();
         continue;
       }
       TRI_ASSERT(id.isString());
@@ -2418,7 +2351,7 @@ int modifyDocumentOnCoordinator(
 
     // Perform the requests
     size_t nrDone = 0;
-    cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
+    cc->performRequests(requests, CL_DEFAULT_LONG_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
 
     // Now listen to the results:
     if (!useMultiple) {
@@ -2474,7 +2407,7 @@ int modifyDocumentOnCoordinator(
 
   // Perform the requests
   size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
+  cc->performRequests(requests, CL_DEFAULT_LONG_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
 
   // Now listen to the results:
   if (!useMultiple) {
@@ -2560,7 +2493,7 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector, double maxWa
   std::unordered_map<std::string, std::string> headers;
   for (auto it = DBservers.begin(); it != DBservers.end(); ++it) {
     // set collection name (shard id)
-    cc->asyncRequest("", coordTransactionID, "server:" + *it,
+    cc->asyncRequest(coordTransactionID, "server:" + *it,
                      arangodb::rest::RequestType::PUT, url, body,
                      headers, nullptr, 120.0);
   }
@@ -2570,7 +2503,7 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector, double maxWa
   int nrok = 0;
   int globalErrorCode = TRI_ERROR_INTERNAL;
   for (count = (int)DBservers.size(); count > 0; count--) {
-    auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
+    auto res = cc->wait(coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
       if (res.answer_code == arangodb::rest::ResponseCode::OK) {
         nrok++;
@@ -2592,7 +2525,9 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector, double maxWa
   }
 
   if (nrok != (int)DBservers.size()) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not flush WAL on all servers. confirmed: " << nrok << ", expected: " << DBservers.size();
+    LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
+        << "could not flush WAL on all servers. confirmed: " << nrok
+        << ", expected: " << DBservers.size();
     return globalErrorCode;
   }
 
@@ -2630,6 +2565,7 @@ std::shared_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
   std::string distributeShardsLike = col->distributeShardsLike();
   std::vector<std::string> avoid = col->avoidServers();
   ClusterInfo* ci = ClusterInfo::instance();
+  ci->loadCurrentDBServers();
   std::vector<std::string> dbServers = ci->getCurrentDBServers();
   std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>> shards = nullptr;
 
@@ -2805,18 +2741,18 @@ int fetchEdgesFromEngines(
       VPackSlice id = e.get(StaticStrings::IdString);
       if (!id.isString()) {
         // invalid id type
-        LOG_TOPIC(ERR, Logger::FIXME) << "got invalid edge id type: " << id.typeName();
+        LOG_TOPIC(ERR, Logger::GRAPHS)
+            << "got invalid edge id type: " << id.typeName();
         continue;
       }
       StringRef idRef(id);
-      auto resE = cache.find(idRef);
-      if (resE == cache.end()) {
+      auto resE = cache.insert({idRef, e});
+      if (resE.second) {
         // This edge is not yet cached.
         allCached = false;
-        cache.emplace(idRef, e);
         result.emplace_back(e);
       } else {
-        result.emplace_back(resE->second);
+        result.emplace_back(resE.first->second);
       }
     }
     if (!allCached) {

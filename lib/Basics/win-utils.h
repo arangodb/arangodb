@@ -45,13 +45,6 @@ void ADB_WindowsEntryFunction();
 void ADB_WindowsExitFunction(int exitCode, void* data);
 
 // .............................................................................
-// windows equivalent of ftruncate (the truncation of an open file) is
-// _chsize
-// .............................................................................
-
-int ftruncate(int, long);
-
-// .............................................................................
 // windows does not have a function called getpagesize -- create one here
 // .............................................................................
 
@@ -83,7 +76,7 @@ int TRI_MapSystemError(DWORD);
 bool TRI_InitWindowsEventLog(void);
 void TRI_CloseWindowsEventlog(void);
 
-typedef void (*TRI_serviceAbort_t)(void);
+typedef void (*TRI_serviceAbort_t)(uint16_t exitCode);
 
 void TRI_SetWindowsServiceAbortFunction(TRI_serviceAbort_t);
 

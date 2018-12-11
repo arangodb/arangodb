@@ -41,7 +41,7 @@ class GlobalInitialSyncer final : public InitialSyncer {
   arangodb::Result run(bool incremental) override;
   
   /// @brief fetch the server's inventory, public method
-  Result inventory(arangodb::velocypack::Builder& builder);
+  Result getInventory(arangodb::velocypack::Builder& builder);
 
  private:
 

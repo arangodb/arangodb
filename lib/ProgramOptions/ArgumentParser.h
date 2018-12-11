@@ -46,8 +46,10 @@ class ArgumentParser {
 
       if (current.size() >= 6 && current.substr(0, 6) == "--help") {
         if (current.size() <= 7) {
+          // show all non-hidden options
           return "*";
         }
+        // show help just for a specific section
         return current.substr(7);
       }
     }

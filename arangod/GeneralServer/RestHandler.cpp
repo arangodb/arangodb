@@ -147,14 +147,21 @@ bool RestHandler::forwardRequest() {
   }
   auto auth = AuthenticationFeature::instance();
   if (auth != nullptr && auth->isActive()) {
-    VPackBuilder builder;
-    {
-      VPackObjectBuilder payload{&builder};
-      payload->add("preferred_username", VPackValue(_request->user()));
+
+    // when in superuser mode, username is empty
+    //  in this case ClusterComm will add the default superuser token
+    std::string const& username = _request->user();
+    if (!username.empty()) {
+
+      VPackBuilder builder;
+      {
+        VPackObjectBuilder payload{&builder};
+        payload->add("preferred_username", VPackValue(username));
+      }
+      VPackSlice slice = builder.slice();
+      headers.emplace(StaticStrings::Authorization,
+                      "bearer " + auth->tokenCache().generateJwt(slice));
     }
-    VPackSlice slice = builder.slice();
-    headers.emplace(StaticStrings::Authorization,
-                    "bearer " + auth->tokenCache()->generateJwt(slice));
   }
 
   auto& values = _request->values();
@@ -187,7 +194,7 @@ bool RestHandler::forwardRequest() {
     }
 
     // Send a synchronous request to that shard using ClusterComm:
-    res = cc->syncRequest("", TRI_NewTickServer(), "server:" + serverId,
+    res = cc->syncRequest(TRI_NewTickServer(), "server:" + serverId,
                           _request->requestType(),
                           "/_db/" + StringUtils::urlEncode(dbname) +
                               _request->requestPath() + params,
@@ -195,7 +202,7 @@ bool RestHandler::forwardRequest() {
   } else {
     // do we need to handle multiple payloads here? - TODO
     // here we switch from vst to http
-    res = cc->syncRequest("", TRI_NewTickServer(), "server:" + serverId,
+    res = cc->syncRequest(TRI_NewTickServer(), "server:" + serverId,
                           _request->requestType(),
                           "/_db/" + StringUtils::urlEncode(dbname) +
                               _request->requestPath() + params,
@@ -311,6 +318,42 @@ void RestHandler::runHandlerStateMachine() {
   }
 }
 
+RequestPriority RestHandler::priority(RequestLane l) const {
+  RequestPriority p = RequestPriority::LOW;
+
+  switch (l) {
+    case RequestLane::AGENCY_INTERNAL:
+    case RequestLane::CLIENT_FAST:
+    case RequestLane::CLUSTER_INTERNAL:
+    case RequestLane::SERVER_REPLICATION:
+      p = RequestPriority::HIGH;
+      break;
+
+    case RequestLane::CLIENT_AQL:
+    case RequestLane::CLIENT_SLOW:
+    case RequestLane::AGENCY_CLUSTER:
+    case RequestLane::CLUSTER_ADMIN:
+    case RequestLane::CLIENT_V8:
+    case RequestLane::CLUSTER_V8:
+    case RequestLane::TASK_V8:
+      p = RequestPriority::LOW;
+      break;
+  }
+
+  if (p == RequestPriority::HIGH) {
+    return p;
+  }
+
+  bool found;
+  _request->header(StaticStrings::XArangoFrontend, found);
+
+  if (!found) {
+    return p;
+  }
+
+  return RequestPriority::MED;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -419,7 +462,8 @@ void RestHandler::executeEngine(bool isContinue) {
         << DIAGNOSTIC_INFORMATION(ex);
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
-    Exception err(TRI_ERROR_INTERNAL, std::string("VPack error: ") + ex.what(),
+    bool const isParseError = (ex.errorCode() == arangodb::velocypack::Exception::ParseError);
+    Exception err(isParseError ? TRI_ERROR_HTTP_CORRUPTED_JSON : TRI_ERROR_INTERNAL, std::string("VPack error: ") + ex.what(),
                   __FILE__, __LINE__);
     handleError(err);
   } catch (std::bad_alloc const& ex) {

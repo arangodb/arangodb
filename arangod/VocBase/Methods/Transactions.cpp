@@ -7,6 +7,7 @@
 #include "Transaction/Methods.h"
 #include "Transaction/Options.h"
 #include "Transaction/V8Context.h"
+#include "Utils/CursorRepository.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-vpack.h"
 #include "V8/v8-helper.h"
@@ -361,6 +362,8 @@ Result executeTransactionJS(
   if (!rv.fail()) {
     rv = trx->commit();
   }
+  // if we do not remove unused V8Cursors, V8Context might not reset global state
+  vocbase.cursorRepository()->garbageCollect(/*force*/false);
 
   return rv;
 }

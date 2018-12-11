@@ -54,11 +54,11 @@ MMFilesPathBasedIndex::MMFilesPathBasedIndex(
   TRI_ASSERT(!_fields.empty());
 
   TRI_ASSERT(iid != 0);
-      
+
   fillPaths(_paths, _expanding);
 
   TRI_ASSERT(baseSize > 0);
-  
+
   _allocator.reset(new FixedSizeAllocator(baseSize + sizeof(MMFilesIndexElementValue) * numPaths()));
 }
 
@@ -74,10 +74,9 @@ void MMFilesPathBasedIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 
 /// @brief return a VelocyPack representation of the index
 void MMFilesPathBasedIndex::toVelocyPack(VPackBuilder& builder,
-                                         bool withFigures,
-                                         bool forPersistence) const {
+                                         std::underlying_type<Serialize>::type flags) const {
   builder.openObject();
-  Index::toVelocyPack(builder, withFigures, forPersistence);
+  Index::toVelocyPack(builder, flags);
   builder.add(
     arangodb::StaticStrings::IndexUnique,
     arangodb::velocypack::Value(_unique)
@@ -91,7 +90,7 @@ void MMFilesPathBasedIndex::toVelocyPack(VPackBuilder& builder,
 }
 
 /// @brief whether or not the index is implicitly unique
-/// this can be the case if the index is not declared as unique, but contains a 
+/// this can be the case if the index is not declared as unique, but contains a
 /// unique attribute such as _key
 bool MMFilesPathBasedIndex::implicitlyUnique() const {
   if (_unique) {
@@ -122,7 +121,8 @@ int MMFilesPathBasedIndex::fillElement(std::vector<T*>& elements,
                                        LocalDocumentId const& documentId,
                                        VPackSlice const& doc) {
   if (doc.isNone()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "encountered invalid marker with slice of type None";
+    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+        << "encountered invalid marker with slice of type None";
     return TRI_ERROR_INTERNAL;
   }
 

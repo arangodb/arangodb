@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EngineInfoContainerCoordinator.h"
-
+#include "Aql/AqlItemBlock.h"
 #include "Aql/AqlResult.h"
 #include "Aql/ClusterBlocks.h"
 #include "Aql/ClusterNodes.h"
@@ -92,7 +92,7 @@ Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
     double ttl = queryRegistry->defaultTTL();
     TRI_ASSERT(ttl > 0);
     try {
-      queryRegistry->insert(_id, query, ttl, true);
+      queryRegistry->insert(_id, query, ttl, true, false);
     } catch (basics::Exception const& e) {
       return {e.code(), e.message()};
     } catch (std::exception const& e) {

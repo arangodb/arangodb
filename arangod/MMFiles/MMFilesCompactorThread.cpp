@@ -41,9 +41,9 @@
 #include "MMFiles/MMFilesPrimaryIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Transaction/StandaloneContext.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
+#include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -105,23 +105,36 @@ void MMFilesCompactorThread::DropDatafileCallback(MMFilesDatafile* df, LogicalCo
     int res = datafile->rename(filename);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, Logger::COMPACTOR) << "cannot rename obsolete datafile '" << copy << "' to '" << filename << "': " << TRI_errno_string(res);
+      LOG_TOPIC(ERR, Logger::COMPACTOR)
+          << "cannot rename obsolete datafile '" << copy << "' to '"
+          << filename << "': " << TRI_errno_string(res);
+    } else {
+      LOG_TOPIC(DEBUG, Logger::COMPACTOR)
+          << "renamed obsolete datafile '" << copy << "' to '"
+          << filename << "': " << TRI_errno_string(res);
     }
   }
 
-  LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "finished compacting datafile '" << datafile->getName() << "'";
+  LOG_TOPIC(DEBUG, Logger::COMPACTOR)
+      << "finished compacting datafile '" << datafile->getName() << "'";
 
   int res = datafile->close();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(ERR, Logger::COMPACTOR) << "cannot close obsolete datafile '" << datafile->getName() << "': " << TRI_errno_string(res);
+    LOG_TOPIC(ERR, Logger::COMPACTOR)
+        << "cannot close obsolete datafile '" << datafile->getName()
+        << "': " << TRI_errno_string(res);
   } else if (datafile->isPhysical()) {
-    LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "wiping compacted datafile '" << datafile->getName() << "' from disk";
+    LOG_TOPIC(DEBUG, Logger::COMPACTOR)
+        << "wiping compacted datafile '" << datafile->getName()
+        << "' from disk";
 
     res = TRI_UnlinkFile(filename.c_str());
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, Logger::COMPACTOR) << "cannot wipe obsolete datafile '" << datafile->getName() << "': " << TRI_errno_string(res);
+      LOG_TOPIC(ERR, Logger::COMPACTOR)
+          << "cannot wipe obsolete datafile '" << datafile->getName()
+          << "': " << TRI_errno_string(res);
     }
 
     // check for .dead files
@@ -158,6 +171,7 @@ void MMFilesCompactorThread::RenameDatafileCallback(MMFilesDatafile* datafile,
   TRI_ASSERT(collection != nullptr);
   auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
   TRI_ASSERT(physical != nullptr);
+  std::string compactorName = compactor->getName();
 
   bool ok = false;
   TRI_ASSERT(datafile->fid() == compactor->fid());
@@ -173,10 +187,18 @@ void MMFilesCompactorThread::RenameDatafileCallback(MMFilesDatafile* datafile,
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC(ERR, Logger::COMPACTOR) << "unable to rename datafile '" << datafile->getName() << "' to '" << tempFilename << "': " << TRI_errno_string(res);
     } else {
+      LOG_TOPIC(DEBUG, arangodb::Logger::COMPACTOR)
+        << "renamed datafile from '" << realName << "' to '"
+        << tempFilename << "'";
+
       res = compactor->rename(realName);
 
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_TOPIC(ERR, Logger::COMPACTOR) << "unable to rename compaction file '" << compactor->getName() << "' to '" << realName << "': " << TRI_errno_string(res);
+      } else {
+        LOG_TOPIC(DEBUG, arangodb::Logger::COMPACTOR)
+          << "renamed datafile from '" << compactorName << "' to '"
+          << tempFilename << "'";
       }
     }
 
@@ -885,7 +907,7 @@ void MMFilesCompactorThread::signal() {
 
 void MMFilesCompactorThread::run() {
   MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
-  std::vector<arangodb::LogicalCollection*> collections;
+  std::vector<std::shared_ptr<arangodb::LogicalCollection>> collections;
   int numCompacted = 0;
   while (true) {
     // keep initial _state value as vocbase->_state might change during
@@ -943,8 +965,7 @@ void MMFilesCompactorThread::run() {
               try {
                 double const now = TRI_microtime();
                 if (physical->lastCompactionStamp() + MMFilesCompactionFeature::COMPACTOR->compactionCollectionInterval() <= now) {
-                  auto ce = arangodb::MMFilesCollection::toMMFilesCollection(
-                                collection)
+                  auto ce = arangodb::MMFilesCollection::toMMFilesCollection(collection.get())
                                 ->ditches()
                                 ->createMMFilesCompactionDitch(__FILE__, __LINE__);
 
@@ -954,7 +975,7 @@ void MMFilesCompactorThread::run() {
                   } else {
                     try {
                       bool wasBlocked = false;
-                      worked = compactCollection(collection, wasBlocked);
+                      worked = compactCollection(collection.get(), wasBlocked);
 
                       if (!worked && !wasBlocked) {
                         // set compaction stamp
@@ -969,7 +990,7 @@ void MMFilesCompactorThread::run() {
                       // in case an error occurs, we must still free this ditch
                     }
 
-                    arangodb::MMFilesCollection::toMMFilesCollection(collection)
+                    arangodb::MMFilesCollection::toMMFilesCollection(collection.get())
                         ->ditches()
                         ->freeDitch(ce);
                   }
@@ -1023,7 +1044,7 @@ void MMFilesCompactorThread::run() {
 
 /// @brief determine the number of documents in the collection
 uint64_t MMFilesCompactorThread::getNumberOfDocuments(
-    LogicalCollection const& collection
+    LogicalCollection& collection
 ) {
   SingleCollectionTransaction trx(
     transaction::StandaloneContext::Create(_vocbase),
@@ -1045,7 +1066,7 @@ uint64_t MMFilesCompactorThread::getNumberOfDocuments(
     return 16384; // assume some positive value 
   }
 
-  return collection.numberDocuments(&trx);
+  return collection.numberDocuments(&trx, transaction::CountType::Normal);
 }
 
 /// @brief write a copy of the marker into the datafile

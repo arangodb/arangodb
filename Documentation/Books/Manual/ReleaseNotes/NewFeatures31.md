@@ -1,5 +1,5 @@
-Features and Improvements
-=========================
+Features and Improvements in ArangoDB 3.1
+=========================================
 
 The following list shows in detail which features have been added or improved in
 ArangoDB 3.1. ArangoDB 3.1 also contains several bugfixes that are not listed
@@ -174,7 +174,7 @@ AQL query editor in the web interface.
 Audit Log
 ---------
 
-Audit logging has been added, see [Auditing](../Administration/Auditing/README.md).
+Audit logging has been added, see [Auditing](../Security/Auditing/README.md).
 
 Client tools
 ------------

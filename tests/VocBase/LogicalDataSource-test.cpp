@@ -39,12 +39,12 @@ struct LogicalDataSourceSetup {
   arangodb::application_features::ApplicationServer server;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
-  LogicalDataSourceSetup(): server(nullptr, nullptr) {
+  LogicalDataSourceSetup(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     // setup required application features
-    features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // required for TRI_vocbase_t
-    features.emplace_back(new arangodb::ShardingFeature(&server), false); 
+    features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // required for TRI_vocbase_t
+    features.emplace_back(new arangodb::ShardingFeature(server), false);
 
     for (auto& f: features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);
@@ -62,6 +62,7 @@ struct LogicalDataSourceSetup {
   }
 
   ~LogicalDataSourceSetup() {
+    arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
     // destroy application features
@@ -108,8 +109,8 @@ SECTION("test_category") {
       }
       virtual arangodb::Result drop() override { return arangodb::Result(); }
       virtual void open() override {}
-      virtual arangodb::Result rename(std::string&& newName, bool doSync) override { return arangodb::Result(); }
-      virtual arangodb::Result updateProperties(arangodb::velocypack::Slice const& properties, bool partialUpdate, bool doSync) override { return arangodb::Result(); }
+      virtual arangodb::Result rename(std::string&& newName) override { return arangodb::Result(); }
+      virtual arangodb::Result properties(arangodb::velocypack::Slice const& properties, bool partialUpdate) override { return arangodb::Result(); }
       virtual bool visitCollections(CollectionVisitor const& visitor) const override { return true; }
     };
 
@@ -142,8 +143,8 @@ SECTION("test_construct") {
       }
       virtual arangodb::Result drop() override { return arangodb::Result(); }
       virtual void open() override {}
-      virtual arangodb::Result rename(std::string&& newName, bool doSync) override { return arangodb::Result(); }
-      virtual arangodb::Result updateProperties(arangodb::velocypack::Slice const& properties, bool partialUpdate, bool doSync) override { return arangodb::Result(); }
+      virtual arangodb::Result rename(std::string&& newName) override { return arangodb::Result(); }
+      virtual arangodb::Result properties(arangodb::velocypack::Slice const& properties, bool partialUpdate) override { return arangodb::Result(); }
       virtual bool visitCollections(CollectionVisitor const& visitor) const override { return true; }
     };
 
@@ -178,8 +179,8 @@ SECTION("test_defaults") {
       }
       virtual arangodb::Result drop() override { return arangodb::Result(); }
       virtual void open() override {}
-      virtual arangodb::Result rename(std::string&& newName, bool doSync) override { return arangodb::Result(); }
-      virtual arangodb::Result updateProperties(arangodb::velocypack::Slice const& properties, bool partialUpdate, bool doSync) override { return arangodb::Result(); }
+      virtual arangodb::Result rename(std::string&& newName) override { return arangodb::Result(); }
+      virtual arangodb::Result properties(arangodb::velocypack::Slice const& properties, bool partialUpdate) override { return arangodb::Result(); }
       virtual bool visitCollections(CollectionVisitor const& visitor) const override { return true; }
     };
 

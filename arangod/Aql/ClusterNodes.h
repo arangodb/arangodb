@@ -64,6 +64,8 @@ class RemoteNode final : public ExecutionNode {
         _isResponsibleForInitializeCursor(true) {
     // note: server, ownName and queryId may be empty and filled later
   }
+  
+  RemoteNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
   /// @brief whether or not this node will forward initializeCursor or shutDown
   /// requests
@@ -76,8 +78,6 @@ class RemoteNode final : public ExecutionNode {
   bool isResponsibleForInitializeCursor() const {
     return _isResponsibleForInitializeCursor;
   }
-
-  RemoteNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
   /// @brief return the type of the node
   NodeType getType() const override final { return REMOTE; }
@@ -105,7 +105,7 @@ class RemoteNode final : public ExecutionNode {
   }
 
   /// @brief estimateCost
-  double estimateCost(size_t&) const override final;
+  CostEstimate estimateCost() const override final;
 
   /// @brief return the database
   TRI_vocbase_t* vocbase() const { return _vocbase; }
@@ -189,7 +189,7 @@ class ScatterNode : public ExecutionNode {
   }
 
   /// @brief estimateCost
-  double estimateCost(size_t&) const override;
+  CostEstimate estimateCost() const override;
 
   std::vector<std::string> const& clients() const noexcept { return _clients; }
   std::vector<std::string>& clients() noexcept { return _clients; }
@@ -266,7 +266,7 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
       std::unordered_set<Variable const*>& vars) const override final;
 
   /// @brief estimateCost
-  double estimateCost(size_t&) const override final;
+  CostEstimate estimateCost() const override final;
 
   void variable(Variable const* variable) { _variable = variable; }
 
@@ -366,7 +366,7 @@ class GatherNode final : public ExecutionNode {
   ) const override;
 
   /// @brief estimateCost
-  double estimateCost(size_t&) const override final;
+  CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, returning a vector
   std::vector<Variable const*> getVariablesUsedHere() const override final {
@@ -409,6 +409,7 @@ class GatherNode final : public ExecutionNode {
 /// @brief class RemoteNode
 class SingleRemoteOperationNode final : public ExecutionNode, public CollectionAccessingNode {
   friend class ExecutionBlock;
+  friend class RedundantCalculationsReplacer;
   friend class SingleRemoteOperationBlock;
   /// @brief constructor with an id
  public:
@@ -464,7 +465,7 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
   /// @brief getVariablesUsedHere, returning a vector
   std::vector<Variable const*> getVariablesUsedHere() const override final {
     std::vector<Variable const*> vec;
-    if(_inVariable){
+    if (_inVariable) {
       vec.push_back(_inVariable);
     }
     return vec;
@@ -473,7 +474,7 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(
       std::unordered_set<Variable const*>& vars) const override final {
-    if(_inVariable){
+    if (_inVariable) {
       vars.emplace(_inVariable);
     }
   }
@@ -497,7 +498,7 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
   }
 
   /// @brief estimateCost
-  double estimateCost(size_t&) const override final;
+  CostEstimate estimateCost() const override final;
 
   std::string const& key() const { return _key; }
 

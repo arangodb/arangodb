@@ -88,7 +88,12 @@ router.use((req, res, next) => {
   } catch (e) {
     if (e.isArangoError) {
       const status = actions.arangoErrorToHttpCode(e.errorNum);
-      res.throw(status, e.errorMessage, {
+      console.errorStack(e);
+      res.throw(status, (
+        e.codeFrame
+        ? `${e.codeFrame}\n${e}`
+        : String(e)
+      ), {
         errorNum: e.errorNum,
         cause: e
       });
@@ -181,6 +186,7 @@ serviceRouter.patch(prepareServiceRequestBody, (req, res) => {
 .queryParam('teardown', schemas.flag.default(false))
 .queryParam('setup', schemas.flag.default(true))
 .queryParam('legacy', schemas.flag.default(false))
+.queryParam('force', schemas.flag.default(false))
 .response(200, schemas.fullInfo);
 
 serviceRouter.put(prepareServiceRequestBody, (req, res) => {

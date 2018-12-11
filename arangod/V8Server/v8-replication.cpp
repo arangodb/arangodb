@@ -62,7 +62,7 @@ using namespace arangodb::rest;
 static void JS_StateLoggerReplication(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   // FIXME: use code in RestReplicationHandler and get rid of storage-engine
-  //        depended code here
+  //        dependent code here
   //        
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);

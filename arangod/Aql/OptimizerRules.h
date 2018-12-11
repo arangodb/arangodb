@@ -92,6 +92,13 @@ void splitFiltersRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule 
 /// filters are not pushed beyond limits
 void moveFiltersUpRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
 
+/// @brief simplify some conditions in CalculationNodes
+void simplifyConditionsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                            OptimizerRule const*);
+
+/// @brief fuse filter conditions that follow each other
+void fuseFiltersRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
+
 /// @brief remove redundant CalculationNodes
 void removeRedundantCalculationsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                      OptimizerRule const*);

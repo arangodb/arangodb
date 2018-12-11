@@ -60,7 +60,7 @@ class Conductor {
   const uint64_t _executionNumber;
   VPackBuilder _userParams;
   std::unique_ptr<IAlgorithm> _algorithm;
-  Mutex _callbackMutex;  // prevents concurrent calls to finishedGlobalStep
+  mutable Mutex _callbackMutex;  // prevents concurrent calls to finishedGlobalStep
 
   std::vector<CollectionID> _vertexCollections;
   std::vector<CollectionID> _edgeCollections;

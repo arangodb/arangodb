@@ -24,6 +24,7 @@
 #ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_PRIMARY_INDEX_H
 #define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_PRIMARY_INDEX_H 1
 
+#include "Basics/StringRef.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
@@ -46,17 +47,46 @@ namespace transaction {
 class Methods;
 }
 
-class RocksDBPrimaryIndexIterator final : public IndexIterator {
+class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
  public:
-  RocksDBPrimaryIndexIterator(LogicalCollection* collection,
-                              transaction::Methods* trx,
-                              RocksDBPrimaryIndex* index,
-                              std::unique_ptr<VPackBuilder> keys,
-                              bool allowCoveringIndexOptimization);
+  RocksDBPrimaryIndexEqIterator(LogicalCollection* collection,
+                                transaction::Methods* trx,
+                                RocksDBPrimaryIndex* index,
+                                std::unique_ptr<VPackBuilder> key,
+                                bool allowCoveringIndexOptimization);
 
-  ~RocksDBPrimaryIndexIterator();
+  ~RocksDBPrimaryIndexEqIterator();
 
-  char const* typeName() const override { return "primary-index-iterator"; }
+  char const* typeName() const override { return "primary-index-eq-iterator"; }
+
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
+
+  bool nextCovering(DocumentCallback const& cb, size_t limit) override;
+
+  void reset() override;
+
+  /// @brief we provide a method to provide the index attribute values
+  /// while scanning the index
+  bool hasCovering() const override { return _allowCoveringIndexOptimization; }
+
+ private:
+  RocksDBPrimaryIndex* _index;
+  std::unique_ptr<VPackBuilder> _key;
+  bool _done;
+  bool const _allowCoveringIndexOptimization;
+};
+
+class RocksDBPrimaryIndexInIterator final : public IndexIterator {
+ public:
+  RocksDBPrimaryIndexInIterator(LogicalCollection* collection,
+                                transaction::Methods* trx,
+                                RocksDBPrimaryIndex* index,
+                                std::unique_ptr<VPackBuilder> keys,
+                                bool allowCoveringIndexOptimization);
+
+  ~RocksDBPrimaryIndexInIterator();
+
+  char const* typeName() const override { return "primary-index-in-iterator"; }
 
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
 
@@ -76,7 +106,8 @@ class RocksDBPrimaryIndexIterator final : public IndexIterator {
 };
 
 class RocksDBPrimaryIndex final : public RocksDBIndex {
-  friend class RocksDBPrimaryIndexIterator;
+  friend class RocksDBPrimaryIndexEqIterator;
+  friend class RocksDBPrimaryIndexInIterator;
   friend class RocksDBAllIndexIterator;
   friend class RocksDBAnyIndexIterator;
 
@@ -102,13 +133,14 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate(StringRef const* = nullptr) const override {
+  double selectivityEstimate(StringRef const& = StringRef()) const override {
     return 1.0;
   }
 
   void load() override;
 
-  void toVelocyPack(VPackBuilder&, bool, bool) const override;
+  void toVelocyPack(VPackBuilder&,
+                    std::underlying_type<Index::Serialize>::type) const override;
 
   LocalDocumentId lookupKey(transaction::Methods* trx,
                          arangodb::StringRef key) const;
@@ -126,7 +158,8 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
                       LocalDocumentId& id,
                       TRI_voc_rid_t& revisionId) const;
 
-  bool supportsFilterCondition(arangodb::aql::AstNode const*,
+  bool supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                               arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -190,7 +190,8 @@ class ServerState {
   inline RoleEnum getRole() const { return loadRole(); }
 
   /// @brief register with agency, create / load server ID
-  bool integrateIntoCluster(RoleEnum role, std::string const& myAddr);
+  bool integrateIntoCluster(RoleEnum role,  std::string const& myAddr,
+                            std::string const& myAdvEndpoint);
 
   /// @brief unregister this server with the agency
   bool unregister();
@@ -210,11 +211,11 @@ class ServerState {
   /// @brief set the server short id
   void setShortId(uint32_t);
 
-  /// @brief get the server address
-  std::string getAddress();
+  /// @brief get the server endpoint
+  std::string getEndpoint();
 
-  /// @brief set the server address
-  void setAddress(std::string const&);
+  /// @brief get the server advertised endpoint
+  std::string getAdvertisedEndpoint();
 
   /// @brief find a host identification string
   void findHost(std::string const& fallback);
@@ -268,9 +269,16 @@ class ServerState {
 
   /// @brief validate a state transition for a coordinator server
   bool checkCoordinatorState(StateEnum);
+  
+  /// @brief check equality of engines with other registered servers
+  bool checkEngineEquality(AgencyComm&);
 
-  /// @brief register at agency
-  bool registerAtAgency(AgencyComm&, const RoleEnum&, std::string const&);
+  /// @brief register at agency, might already be done
+  bool registerAtAgencyPhase1(AgencyComm&, const RoleEnum&);
+  
+  /// @brief write the Current/ServersRegistered entry
+  bool registerAtAgencyPhase2(AgencyComm&);
+  
   /// @brief register shortname for an id
   bool registerShortName(std::string const& id, const RoleEnum&);
   
@@ -291,8 +299,12 @@ private:
   /// @brief the JavaScript startup path, can be set just once
   std::string _javaScriptStartupPath;
 
-  /// @brief the server's own address, can be set just once
-  std::string _address;
+  /// @brief the server's own endpoint, can be set just once
+  std::string _myEndpoint;
+
+  /// @brief the server's own advertised endpoint, can be set just once,
+  /// if empty, we advertise _address
+  std::string _advertisedEndpoint;
 
   /// @brief an identification string for the host a server is running on
   std::string _host;

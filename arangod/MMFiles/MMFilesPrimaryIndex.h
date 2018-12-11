@@ -27,7 +27,7 @@
 #include "Basics/AssocUnique.h"
 #include "Basics/Common.h"
 #include "Indexes/IndexIterator.h"
-#include "Indexes/IndexLookupContext.h"
+#include "MMFiles/MMFilesIndexLookupContext.h"
 #include "MMFiles/MMFilesIndex.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "VocBase/voc-types.h"
@@ -57,7 +57,7 @@ struct MMFilesPrimaryIndexHelper {
   /// @brief determines if a key corresponds to an element
   inline bool IsEqualKeyElement(void* userData, uint8_t const* key,
                                 MMFilesSimpleIndexElement const& right) const {
-    IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
+    MMFilesIndexLookupContext* context = static_cast<MMFilesIndexLookupContext*>(userData);
     TRI_ASSERT(context != nullptr);
 
     try {
@@ -83,7 +83,7 @@ struct MMFilesPrimaryIndexHelper {
       // TODO: check if we have many collisions here
       return false;
     }
-    IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
+    MMFilesIndexLookupContext* context = static_cast<MMFilesIndexLookupContext*>(userData);
     TRI_ASSERT(context != nullptr);
 
     VPackSlice l = left.slice(context);
@@ -97,16 +97,39 @@ struct MMFilesPrimaryIndexHelper {
 typedef arangodb::basics::AssocUnique<uint8_t, MMFilesSimpleIndexElement, MMFilesPrimaryIndexHelper>
     MMFilesPrimaryIndexImpl;
 
-class MMFilesPrimaryIndexIterator final : public IndexIterator {
+class MMFilesPrimaryIndexEqIterator final : public IndexIterator {
  public:
-  MMFilesPrimaryIndexIterator(LogicalCollection* collection,
-                              transaction::Methods* trx,
-                              MMFilesPrimaryIndex const* index,
-                              std::unique_ptr<VPackBuilder> keys);
+  MMFilesPrimaryIndexEqIterator(LogicalCollection* collection,
+                                transaction::Methods* trx,
+                                MMFilesPrimaryIndex const* index,
+                                std::unique_ptr<VPackBuilder> keys);
 
-  ~MMFilesPrimaryIndexIterator();
+  ~MMFilesPrimaryIndexEqIterator();
 
-  char const* typeName() const override { return "primary-index-iterator"; }
+  char const* typeName() const override { return "primary-index-eq-iterator"; }
+
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
+  
+  bool nextDocument(DocumentCallback const& cb, size_t limit) override;
+
+  void reset() override;
+
+ private:
+  MMFilesPrimaryIndex const* _index;
+  std::unique_ptr<VPackBuilder> _key;
+  bool _done;
+};
+
+class MMFilesPrimaryIndexInIterator final : public IndexIterator {
+ public:
+  MMFilesPrimaryIndexInIterator(LogicalCollection* collection,
+                                transaction::Methods* trx,
+                                MMFilesPrimaryIndex const* index,
+                                std::unique_ptr<VPackBuilder> keys);
+
+  ~MMFilesPrimaryIndexInIterator();
+
+  char const* typeName() const override { return "primary-index-in-iterator"; }
 
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
 
@@ -184,7 +207,7 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate(StringRef const* = nullptr) const override {
+  double selectivityEstimate(StringRef const& = StringRef()) const override {
     return 1.0;
   }
 
@@ -192,7 +215,8 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
 
   size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&, bool withFigures, bool forPersistence) const override;
+  void toVelocyPack(VPackBuilder&,
+                    std::underlying_type<Index::Serialize>::type) const override;
   void toVelocyPackFigures(VPackBuilder&) const override;
 
   Result insert(transaction::Methods*, LocalDocumentId const& documentId,
@@ -260,7 +284,8 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
   void invokeOnAllElementsForRemoval(
       std::function<bool(MMFilesSimpleIndexElement const&)>);
 
-  bool supportsFilterCondition(arangodb::aql::AstNode const*,
+  bool supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                               arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
 

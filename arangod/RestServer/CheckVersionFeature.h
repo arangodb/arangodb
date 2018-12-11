@@ -34,8 +34,10 @@ class CheckVersionFeature final
     : public application_features::ApplicationFeature {
  public:
   explicit CheckVersionFeature(
-      application_features::ApplicationServer* server, int* result,
-      std::vector<std::string> const& nonServerFeatures);
+    application_features::ApplicationServer& server,
+    int* result,
+    std::vector<std::string> const& nonServerFeatures
+  );
 
  private:
   bool _checkVersion;
@@ -48,10 +50,10 @@ class CheckVersionFeature final
  private:
   void checkVersion();
 
- private:
   int* _result;
   std::vector<std::string> _nonServerFeatures;
 };
+
 }
 
 #endif

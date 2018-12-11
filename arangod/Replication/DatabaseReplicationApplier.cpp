@@ -171,10 +171,12 @@ std::shared_ptr<TailingSyncer> DatabaseReplicationApplier::buildTailingSyncer(TR
 
 std::string DatabaseReplicationApplier::getStateFilename() const {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-
-  return arangodb::basics::FileUtils::buildFilename(
-    engine->databasePath(&_vocbase), "REPLICATION-APPLIER-STATE"
-  );
+  
+  std::string const path = engine->databasePath(&_vocbase);
+  if (path.empty()) {
+    return std::string();
+  }
+  return arangodb::basics::FileUtils::buildFilename(path, "REPLICATION-APPLIER-STATE");
 }
 
 } // arangodb

@@ -23,21 +23,22 @@
 
 #include "FileDescriptorsFeature.h"
 
-#include "Basics/OpenFilesTracker.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Scheduler/SchedulerFeature.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+namespace arangodb {
+
 uint64_t const FileDescriptorsFeature::RECOMMENDED = 8192;
 
 FileDescriptorsFeature::FileDescriptorsFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "FileDescriptors"), _descriptorsMinimum(0) {
   setOptional(false);
   startsAfter("GreetingsPhase");
@@ -92,11 +93,6 @@ void FileDescriptorsFeature::start() {
         << "file-descriptors limit is too low, currently "
         << StringifyLimitValue(rlim.rlim_cur) << ", please raise to at least "
         << RECOMMENDED << " (e.g. ulimit -n " << RECOMMENDED << ")";
-  }
-
-  if (rlim.rlim_cur >= 1024) {
-    // set file descriptor warning threshold value to 95% of max available descriptors
-    OpenFilesTracker::instance()->warnThreshold(uint64_t(rlim.rlim_cur * 0.95));
   }
 #endif
 }
@@ -173,3 +169,5 @@ void FileDescriptorsFeature::adjustFileDescriptors() {
   }
 #endif
 }
+
+} // arangodb

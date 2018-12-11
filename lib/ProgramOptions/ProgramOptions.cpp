@@ -22,6 +22,7 @@
 
 #include "ProgramOptions.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
+#include "Basics/files.h"
 #include "Basics/levenshtein.h"
 #include "Basics/terminal-utils.h"
 #include "ProgramOptions/Option.h"
@@ -31,6 +32,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <algorithm>
 #include <iostream>
 
 #define ARANGODB_PROGRAM_OPTIONS_PROGNAME "#progname#"
@@ -122,7 +124,7 @@ VPackBuilder ProgramOptions::toVPack(bool onlyTouched, bool detailed,
   builder.openObject();
 
   walk(
-      [&builder, &exclude, &detailed](Section const&, Option const& option) {
+      [&builder, &exclude, &detailed](Section const& section, Option const& option) {
         std::string full(option.fullName());
         if (exclude.find(full) != exclude.end()) {
           // excluded option
@@ -137,14 +139,19 @@ VPackBuilder ProgramOptions::toVPack(bool onlyTouched, bool detailed,
           builder.openObject();
           builder.add("section", VPackValue(option.section));
           builder.add("description", VPackValue(option.description));
-          builder.add("hidden", VPackValue(option.hidden));
+          builder.add("category", VPackValue(option.hasFlag(arangodb::options::Flags::Command) ? "command" : "option"));
+          builder.add("hidden", VPackValue(option.hasFlag(arangodb::options::Flags::Hidden)));
           builder.add("type", VPackValue(option.parameter->name()));
+          builder.add("obsolete", VPackValue(option.hasFlag(arangodb::options::Flags::Obsolete)));
+          builder.add("enterpriseOnly", VPackValue(section.enterpriseOnly || option.hasFlag(arangodb::options::Flags::Enterprise)));
+          builder.add("requiresValue", VPackValue(option.parameter->requiresValue()));
           std::string values = option.parameter->description();
           if (!values.empty()) {
             builder.add("values", VPackValue(values));
           }
           builder.add(VPackValue("default"));
           option.toVPack(builder);
+          builder.add("dynamic", VPackValue(option.hasFlag(arangodb::options::Flags::Dynamic)));
           builder.close();
         } else {
           option.toVPack(builder);
@@ -174,7 +181,7 @@ void ProgramOptions::walk(std::function<void(Section const&, Option const&)> con
       continue;
     }
     for (auto const& it2 : it.second.options) {
-      if (!includeObsolete && it2.second.obsolete) {
+      if (!includeObsolete && it2.second.hasFlag(arangodb::options::Flags::Obsolete)) {
         // obsolete option. ignore it
         continue;
       }
@@ -232,7 +239,7 @@ bool ProgramOptions::setValue(std::string const& name, std::string const& value)
   }
 
   auto& option = (*it2).second;
-  if (option.obsolete) {
+  if (option.hasFlag(arangodb::options::Flags::Obsolete)) {
     // option is obsolete. ignore it
     _processingResult.touch(name);
     return true;
@@ -364,7 +371,7 @@ bool ProgramOptions::unknownOption(std::string const& name) {
 // report an error (callback from parser)
 bool ProgramOptions::fail(std::string const& message) {
   _processingResult.failed(true);
-  std::cerr << "Error while processing " << _context << ":" << std::endl;
+  std::cerr << "Error while processing " << _context << " for " << TRI_Basename(_progname.c_str()) << ":" << std::endl;
   failNotice(message);
   std::cerr << std::endl;
 #ifdef _WIN32
@@ -432,7 +439,7 @@ void ProgramOptions::checkIfSealed() const {
 
 // get a list of similar options
 std::vector<std::string> ProgramOptions::similar(std::string const& value, int cutOff,
-                                  size_t maxResults) {
+                                                 size_t maxResults) {
   std::vector<std::string> result;
 
   if (_similarity != nullptr) {
@@ -465,6 +472,22 @@ std::vector<std::string> ProgramOptions::similar(std::string const& value, int c
       last = it.first;
     }
   }
+
+  if (value.size() >= 3) {
+    // additionally add all options that have the search string as part
+    // of their name
+    walk(
+        [&value, &result](Section const&, Option const& option) {
+          if (option.fullName().find(value) != std::string::npos) {
+            result.emplace_back(option.displayName());
+          }
+        },
+        false);
+  }
+    
+  // produce a unique result
+  std::sort(result.begin(), result.end());
+  result.erase(std::unique(result.begin(), result.end()), result.end());
 
   return result;
 }

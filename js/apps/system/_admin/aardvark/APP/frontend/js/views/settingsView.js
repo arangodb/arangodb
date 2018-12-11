@@ -401,22 +401,35 @@
                   );
                 }
                 if (data.replicationFactor && frontendConfig.isCluster) {
-                  tableContent.push(
-                    window.modalView.createTextEntry(
-                      'change-replication-factor',
-                      'Replication factor',
-                      data.replicationFactor,
-                      'The replicationFactor parameter is the total number of copies being kept, that is, it is one plus the number of followers. Must be a number.',
-                      '',
-                      true,
-                      [
-                        {
-                          rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
-                          msg: 'Must be a number.'
-                        }
-                      ]
-                    )
-                  );
+                  if (data.replicationFactor === 'satellite') {
+                    tableContent.push(
+                      window.modalView.createReadOnlyEntry(
+                        'change-replication-factor',
+                        'Replication factor',
+                        data.replicationFactor,
+                        'This collection is a satellite collection. The replicationFactor is not changeable.',
+                        '',
+                        true
+                      )
+                    );
+                  } else {
+                    tableContent.push(
+                      window.modalView.createTextEntry(
+                        'change-replication-factor',
+                        'Replication factor',
+                        data.replicationFactor,
+                        'The replicationFactor parameter is the total number of copies being kept, that is, it is one plus the number of followers. Must be a number.',
+                        '',
+                        true,
+                        [
+                          {
+                            rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
+                            msg: 'Must be a number.'
+                          }
+                        ]
+                      )
+                    );
+                  }
                 }
 
                 // prevent "unexpected sync method error"

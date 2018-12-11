@@ -85,6 +85,8 @@ bool RestQueryHandler::readQueryProperties() {
   result.add("maxSlowQueries", VPackValue(queryList->maxSlowQueries()));
   result.add("slowQueryThreshold",
               VPackValue(queryList->slowQueryThreshold()));
+  result.add("slowStreamingQueryThreshold",
+              VPackValue(queryList->slowStreamingQueryThreshold()));
   result.add("maxQueryStringLength",
               VPackValue(queryList->maxQueryStringLength()));
   result.close();
@@ -115,6 +117,7 @@ bool RestQueryHandler::readQuery(bool slow) {
     result.add("started", VPackValue(timeString));
     result.add("runTime", VPackValue(q.runTime));
     result.add("state", VPackValue(QueryExecutionState::toString(q.state)));
+    result.add("stream", VPackValue(q.stream));
     result.close();
   }
   result.close();
@@ -240,6 +243,7 @@ bool RestQueryHandler::replaceProperties() {
   bool trackBindVars = queryList->trackBindVars();
   size_t maxSlowQueries = queryList->maxSlowQueries();
   double slowQueryThreshold = queryList->slowQueryThreshold();
+  double slowStreamingQueryThreshold = queryList->slowStreamingQueryThreshold();
   size_t maxQueryStringLength = queryList->maxQueryStringLength();
 
   VPackSlice attribute;
@@ -267,6 +271,11 @@ bool RestQueryHandler::replaceProperties() {
   if (attribute.isNumber()) {
     slowQueryThreshold = attribute.getNumber<double>();
   }
+  
+  attribute = body.get("slowStreamingQueryThreshold");
+  if (attribute.isNumber()) {
+    slowStreamingQueryThreshold = attribute.getNumber<double>();
+  }
 
   attribute = body.get("maxQueryStringLength");
   if (attribute.isInteger()) {
@@ -278,6 +287,7 @@ bool RestQueryHandler::replaceProperties() {
   queryList->trackBindVars(trackBindVars);
   queryList->maxSlowQueries(maxSlowQueries);
   queryList->slowQueryThreshold(slowQueryThreshold);
+  queryList->slowStreamingQueryThreshold(slowStreamingQueryThreshold);
   queryList->maxQueryStringLength(maxQueryStringLength);
 
   return readQueryProperties();
@@ -319,7 +329,7 @@ bool RestQueryHandler::parseQuery() {
   auto parseResult = query.parse();
 
   if (parseResult.code != TRI_ERROR_NO_ERROR) {
-    generateError(rest::ResponseCode::BAD, parseResult.code,
+    generateError(GeneralResponse::responseCode(parseResult.code), parseResult.code,
                   parseResult.details);
     return true;
   }

@@ -375,8 +375,10 @@ char* Utf8Helper::toupper(char const* src,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Utf8Helper::tokenize(std::set<std::string>& words,
-                          std::string const& text, size_t minimalLength,
-                          size_t maximalLength, bool lowerCase) {
+                          arangodb::velocypack::StringRef const& text, 
+                          size_t minimalLength,
+                          size_t maximalLength, 
+                          bool lowerCase) {
   UErrorCode status = U_ZERO_ERROR;
   UnicodeString word;
 
@@ -397,7 +399,7 @@ bool Utf8Helper::tokenize(std::set<std::string>& words,
     // lower case string
     int32_t lowerLength = 0;
     char* lower =
-        tolower(text.c_str(), (int32_t)textLength, lowerLength);
+        tolower(text.data(), (int32_t)textLength, lowerLength);
 
     if (lower == nullptr) {
       // out of memory
@@ -413,7 +415,7 @@ bool Utf8Helper::tokenize(std::set<std::string>& words,
                                 &textUtf16Length);
     TRI_Free(lower);
   } else {
-    textUtf16 = TRI_Utf8ToUChar(text.c_str(), (int32_t)textLength,
+    textUtf16 = TRI_Utf8ToUChar(text.data(), (int32_t)textLength,
                                 &textUtf16Length);
   }
 

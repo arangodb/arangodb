@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/arangosync.git / docs/Manual/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/arangosync.git / docs/Manual/ -->
 # Datacenter to datacenter replication administration
 
 {% hint 'info' %}
@@ -10,7 +10,7 @@ This Section includes information related to the administration of the _datacent
 to datacenter replication_.
 
 For a general introduction to the _datacenter to datacenter replication_, please
-refer to the [Datacenter to datacenter replication](../../Scalability/DC2DC/README.md)
+refer to the [Datacenter to datacenter replication](../../Architecture/DeploymentModes/DC2DC/README.md)
 chapter.
 
 ## Starting synchronization
@@ -104,9 +104,19 @@ arangosync stop sync \
   --auth.password=<password of auth.user>
 ```
 
-The command will wait until synchronization has completely stopped before returning.
+The command will first ensure that all shards in the receiving cluster are
+completely in-sync with the shards in the sending cluster.
+In order to achieve that, the sending cluster will be switched to read/only mode.
+After the synchronization has stopped, the sending cluster will be switched
+back to read/write mode.
+
+The command will then wait until synchronization has completely stopped before returning.
 If the synchronization is not completely stopped within a reasonable period (2 minutes by default)
 the command will fail.
+
+If you do not want to wait for all shards in the receiving cluster to be
+completely in-sync with the shards in the sending cluster, add an `--ensure-in-sync=false`
+argument to the `stop sync` command.
 
 If the source datacenter is no longer available it is not possible to stop synchronization in
 a graceful manner. If that happens abort the synchronization with the following command:

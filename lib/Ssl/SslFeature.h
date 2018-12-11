@@ -30,17 +30,18 @@
 #include "Basics/asio_ns.h"
 
 namespace arangodb {
+
 class SslFeature final : public application_features::ApplicationFeature {
  public:
-  explicit SslFeature(application_features::ApplicationServer* server);
+  explicit SslFeature(application_features::ApplicationServer& server);
 
- public:
   void prepare() override final;
   void unprepare() override final;
 
  private:
   static const asio::ssl::detail::openssl_init<true> sslBase;
 };
+
 }
 
 #endif

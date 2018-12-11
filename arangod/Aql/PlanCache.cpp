@@ -75,16 +75,9 @@ void PlanCache::store(
   auto entry = std::make_unique<PlanCacheEntry>(queryString.extract(SIZE_MAX), plan->toVelocyPack(plan->getAst(), true)); 
 
   WRITE_LOCKER(writeLocker, _lock);
-
-  auto it = _plans.find(vocbase);
-
-  if (it == _plans.end()) {
-    // create entry for the current database
-    it = _plans.emplace(vocbase, std::unordered_map<uint64_t, std::shared_ptr<PlanCacheEntry>>()).first;
-  }
-
+  
   // store cache entry
-  (*it).second.emplace(hash, std::move(entry));
+  _plans[vocbase].insert({hash, std::move(entry)});
 }
 
 /// @brief invalidate all queries for a particular database

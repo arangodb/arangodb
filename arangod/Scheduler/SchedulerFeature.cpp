@@ -44,16 +44,18 @@
 #include <chrono>
 #include <thread>
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
+namespace arangodb {
+
 Scheduler* SchedulerFeature::SCHEDULER = nullptr;
 
 SchedulerFeature::SchedulerFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "Scheduler"), _scheduler(nullptr) {
   setOptional(true);
   startsAfter("GreetingsPhase");
@@ -69,22 +71,26 @@ void SchedulerFeature::collectOptions(
 
   // max / min number of threads
   options->addOption("--server.maximal-threads", std::string("maximum number of request handling threads to run (0 = use system-specific default of ") + std::to_string(defaultNumberOfThreads()) + ")",
-                     new UInt64Parameter(&_nrMaximalThreads));
+                     new UInt64Parameter(&_nrMaximalThreads),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Dynamic));
 
-  options->addHiddenOption("--server.minimal-threads",
-                           "minimum number of request handling threads to run",
-                           new UInt64Parameter(&_nrMinimalThreads));
+  options->addOption("--server.minimal-threads",
+                     "minimum number of request handling threads to run",
+                     new UInt64Parameter(&_nrMinimalThreads),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--server.maximal-queue-size", "size of the priority 2 fifo",
                      new UInt64Parameter(&_fifo2Size));
 
-  options->addHiddenOption(
+  options->addOption(
       "--server.scheduler-queue-size",
       "number of simultaneously queued requests inside the scheduler",
-      new UInt64Parameter(&_queueSize));
+      new UInt64Parameter(&_queueSize),
+      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption("--server.prio1-size", "size of the priority 1 fifo",
-                           new UInt64Parameter(&_fifo1Size));
+  options->addOption("--server.prio1-size", "size of the priority 1 fifo",
+                     new UInt64Parameter(&_fifo1Size),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
   // obsolete options
   options->addObsoleteOption("--server.threads", "number of threads", true);
@@ -97,6 +103,9 @@ void SchedulerFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions>) {
   if (_nrMaximalThreads == 0) {
     _nrMaximalThreads = defaultNumberOfThreads();
+  }
+  if (_nrMinimalThreads < 2) {
+    _nrMinimalThreads = 2;
   }
 
   if (_queueSize == 0) {
@@ -120,7 +129,7 @@ void SchedulerFeature::start() {
 
   if (_nrMaximalThreads > 8 * N) {
     LOG_TOPIC(WARN, arangodb::Logger::THREADS)
-        << "--server.threads (" << _nrMaximalThreads
+        << "--server.maximal-threads (" << _nrMaximalThreads
         << ") is more than eight times the number of cores (" << N
         << "), this might overload the server";
   }
@@ -134,9 +143,9 @@ void SchedulerFeature::start() {
 
   if (_nrMinimalThreads >= _nrMaximalThreads) {
     LOG_TOPIC(WARN, arangodb::Logger::THREADS)
-        << "--server.threads (" << _nrMaximalThreads << ") should be at least "
+        << "--server.maximal-threads (" << _nrMaximalThreads << ") should be at least "
         << (_nrMinimalThreads + 1) << ", raising it";
-    _nrMaximalThreads = _nrMinimalThreads + 1;
+    _nrMaximalThreads = _nrMinimalThreads;
   }
 
   TRI_ASSERT(2 <= _nrMinimalThreads);
@@ -157,15 +166,16 @@ void SchedulerFeature::start() {
 
   LOG_TOPIC(DEBUG, Logger::STARTUP) << "scheduler has started";
 
-  V8DealerFeature* dealer =
-      ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-  if (dealer->isEnabled()) {
-    dealer->defineContextUpdate(
-        [](v8::Isolate* isolate, v8::Handle<v8::Context> context, size_t) {
-          TRI_InitV8Dispatcher(isolate, context);
-        },
-        nullptr);
-  }
+  try {
+    auto* dealer = ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
+    if (dealer->isEnabled()) {
+      dealer->defineContextUpdate(
+          [](v8::Isolate* isolate, v8::Handle<v8::Context> context, size_t) {
+            TRI_InitV8Dispatcher(isolate, context);
+          },
+          nullptr);
+    }
+  } catch(...) {}
 }
 
 void SchedulerFeature::beginShutdown() {
@@ -307,7 +317,6 @@ bool CtrlHandler(DWORD eventType) {
 #else
 
 extern "C" void c_exit_handler(int signal) {
-
   static bool seen = false;
 
   if (signal == SIGQUIT || signal == SIGTERM || signal == SIGINT) {
@@ -373,3 +382,5 @@ void SchedulerFeature::buildControlCHandler() {
 
 #endif
 }
+
+} // arangodb

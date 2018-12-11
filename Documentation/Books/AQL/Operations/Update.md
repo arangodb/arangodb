@@ -230,6 +230,23 @@ FOR i IN 1..1000
   OPTIONS { ignoreRevs: false }
 ```
 
+In contrast to the MMFiles engine, the RocksDB engine does not require collection-level
+locks. Different write operations on the same collection do not block each other, as
+long as there are no _write-write conficts_ on the same documents. From an application
+development perspective it can be desired to have exclusive write access on collections,
+to simplify the development. Note that writes do not block reads in RocksDB.
+Exclusive access can also speed up modification queries, because we avoid conflict checks.
+
+Use the *exclusive* option to achieve this effect on a per query basis:
+
+```js
+FOR doc IN collection
+  UPDATE doc 
+  WITH { updated: true } IN collection 
+  OPTIONS { exclusive: true }
+```
+
+
 Returning the modified documents
 --------------------------------
 

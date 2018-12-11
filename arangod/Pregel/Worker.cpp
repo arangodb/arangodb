@@ -173,8 +173,8 @@ void Worker<V, E, M>::setupWorker() {
     // of time. Therefore this is performed asynchronous
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-    scheduler->post(
-                    [this, callback] { _graphStore->loadShards(&_config, callback); });
+    scheduler->queue(RequestPriority::LOW,
+                     [this, callback] { _graphStore->loadShards(&_config, callback); });
   }
 }
 
@@ -334,7 +334,7 @@ void Worker<V, E, M>::_startProcessing() {
   }
   size_t i = 0;
   do {
-    scheduler->post([this, start, end, i] {
+    scheduler->queue(RequestPriority::LOW, [this, start, end, i] {
       if (_state != WorkerState::COMPUTING) {
         LOG_TOPIC(WARN, Logger::PREGEL) << "Execution aborted prematurely.";
         return;
@@ -344,7 +344,7 @@ void Worker<V, E, M>::_startProcessing() {
       if (_processVertices(i, vertices) && _state == WorkerState::COMPUTING) {
         _finishedProcessing();  // last thread turns the lights out
       }
-    });
+      });
     start = end;
     end = end + delta;
     if (total < end + delta) {  // swallow the rest
@@ -683,7 +683,7 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  scheduler->post([this] {
+  scheduler->queue(RequestPriority::LOW, [this] {
     if (_state != WorkerState::RECOVERING) {
       LOG_TOPIC(WARN, Logger::PREGEL) << "Compensation aborted prematurely.";
       return;
@@ -720,7 +720,7 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
     _workerAggregators->serializeValues(package);
     package.close();
     _callConductor(Utils::finishedRecoveryPath, package);
-  });
+    });
 }
 
 template <typename V, typename E, typename M>
@@ -743,10 +743,10 @@ void Worker<V, E, M>::_callConductor(std::string const& path,
   if (ServerState::instance()->isRunningInCluster() == false) {
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-    scheduler->post([path, message] {
+    scheduler->queue(RequestPriority::LOW, [path, message] {
       VPackBuilder response;
       PregelFeature::handleConductorRequest(path, message.slice(), response);
-    });
+      });
   } else {
     std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
     std::string baseUrl =
@@ -755,10 +755,12 @@ void Worker<V, E, M>::_callConductor(std::string const& path,
     std::unordered_map<std::string, std::string> headers;
     auto body = std::make_shared<std::string const>(message.toJson());
     cc->asyncRequest(
-        "", coordinatorTransactionID, "server:" + _config.coordinatorId(),
+        coordinatorTransactionID, "server:" + _config.coordinatorId(),
         rest::RequestType::POST, baseUrl + path, body, headers, nullptr,
         120.0,  // timeout
         true);  // single request, no answer expected
+    // Forget about it
+    cc->drop(coordinatorTransactionID, 0, "");
   }
 }
 
@@ -779,7 +781,7 @@ void Worker<V, E, M>::_callConductorWithResponse(
     std::unordered_map<std::string, std::string> headers;
 
     std::unique_ptr<ClusterCommResult> result = cc->syncRequest(
-        "", coordinatorTransactionID, "server:" + _config.coordinatorId(),
+        coordinatorTransactionID, "server:" + _config.coordinatorId(),
         rest::RequestType::POST, baseUrl + path, message.toJson(), headers,
         120.0);
     if (result->status == CL_COMM_SENT || result->status == CL_COMM_RECEIVED) {

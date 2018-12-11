@@ -20,7 +20,8 @@
     "EXIT_ALREADY_RUNNING"         : { "code" : 20, "message" : "already running" },
     "EXIT_COULD_NOT_BIND_PORT"     : { "code" : 21, "message" : "port blocked" },
     "EXIT_COULD_NOT_LOCK"          : { "code" : 22, "message" : "could not lock - another process could be running" },
-    "EXIT_RECOVERY"                : { "code" : 23, "message" : "recovery failed" }
+    "EXIT_RECOVERY"                : { "code" : 23, "message" : "recovery failed" },
+    "EXIT_DB_NOT_EMPTY"            : { "code" : 24, "message" : "database not empty" }
   };
 }());
 

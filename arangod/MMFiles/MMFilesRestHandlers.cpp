@@ -23,6 +23,7 @@
 
 #include "MMFilesRestHandlers.h"
 #include "GeneralServer/RestHandlerFactory.h"
+#include "MMFiles/MMFilesRestCollectionHandler.h"
 #include "MMFiles/MMFilesRestExportHandler.h"
 #include "MMFiles/MMFilesRestReplicationHandler.h"
 #include "MMFiles/MMFilesRestWalHandler.h"
@@ -32,6 +33,8 @@ using namespace arangodb;
 
 void MMFilesRestHandlers::registerResources(
     rest::RestHandlerFactory* handlerFactory) {
+  handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::COLLECTION_PATH,
+                                   RestHandlerCreator<MMFilesRestCollectionHandler>::createNoData);
   handlerFactory->addPrefixHandler(
       "/_admin/wal", RestHandlerCreator<MMFilesRestWalHandler>::createNoData);
 

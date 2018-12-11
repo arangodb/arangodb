@@ -621,7 +621,7 @@ TEST_F(tfidf_test, test_make) {
     auto scorer = irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::NIL);
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::tfidf_sort&>(*scorer);
-    ASSERT_EQ(false, scr.normalize());
+    ASSERT_FALSE(scr.normalize());
   }
 
   // invalid args

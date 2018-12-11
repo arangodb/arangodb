@@ -49,11 +49,11 @@ class OurLessThan {
       auto const& lhs = _buffer[a.first]->getValueReference(a.second, reg.reg);
       auto const& rhs = _buffer[b.first]->getValueReference(b.second, reg.reg);
 
-#ifdef USE_IRESEARCH
+#if 0 // #ifdef USE_IRESEARCH
       TRI_ASSERT(reg.comparator);
       int const cmp = (*reg.comparator)(reg.scorer.get(), _trx, lhs, rhs);
 #else
-      int const cmp = AqlValue::Compare(_trx, lhs, rhs, true);
+    int const cmp = AqlValue::Compare(_trx, lhs, rhs, true);
 #endif
 
       if (cmp < 0) {
@@ -91,7 +91,6 @@ SortBlock::~SortBlock() {}
 
 std::pair<ExecutionState, arangodb::Result> SortBlock::initializeCursor(
     AqlItemBlock* items, size_t pos) {
-  DEBUG_BEGIN_BLOCK(); 
   auto res = ExecutionBlock::initializeCursor(items, pos);
 
   if (res.first == ExecutionState::WAITING ||
@@ -104,15 +103,10 @@ std::pair<ExecutionState, arangodb::Result> SortBlock::initializeCursor(
   _pos = 0;
 
   return res; 
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();  
 }
 
 std::pair<ExecutionState, arangodb::Result> SortBlock::getOrSkipSome(
     size_t atMost, bool skipping, AqlItemBlock*& result, size_t& skipped) {
-  DEBUG_BEGIN_BLOCK();
-
   TRI_ASSERT(result == nullptr && skipped == 0);
   
   if (_mustFetchAll) {
@@ -132,13 +126,9 @@ std::pair<ExecutionState, arangodb::Result> SortBlock::getOrSkipSome(
   }
 
   return ExecutionBlock::getOrSkipSome(atMost, skipping, result, skipped);
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 void SortBlock::doSorting() {
-  DEBUG_BEGIN_BLOCK();  
-
   size_t sum = 0;
   for (auto const& block : _buffer) {
     sum += block->size();
@@ -301,5 +291,4 @@ void SortBlock::doSorting() {
   for (auto& x : newbuffer) {
     delete x;
   }
-  DEBUG_END_BLOCK();  
 }

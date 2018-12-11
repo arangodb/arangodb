@@ -110,22 +110,25 @@ class RollingVector {
     _data.push_back(value);
   }
 
+  void push_back(T&& value) {
+    _data.push_back(std::move(value));
+  }
+
   void pop_front() {
     TRI_ASSERT(!empty());
     ++_start;
     if (_start == _data.size()) {
       // use the opportunity to reset the start value
-      _data.clear();
-      _start = 0;
+      clear();
     }
   }
   
   void pop_back() {
     TRI_ASSERT(!empty());
     _data.pop_back();
-    if (_data.empty()) {
+    if (_start == _data.size()) {
       // use the opportunity to reset the start value
-      _start = 0;
+      clear();
     }
   }
 
@@ -144,6 +147,7 @@ class RollingVector {
   }
 
   T& back() {
+    TRI_ASSERT(!empty());
     return _data.back();
   }
 
@@ -164,11 +168,13 @@ class RollingVector {
     _data.shrink_to_fit();
   }
 
+  void swap(RollingVector& other) {
+    std::swap(_data, other._data);
+    std::swap(_start, other._start);
+  }
  private:
   size_t _start;
   std::vector<T> _data;
-
-  static_assert(std::is_trivial<T>::value, "RollingVector is only safe for trivial types");
 };
 
 }

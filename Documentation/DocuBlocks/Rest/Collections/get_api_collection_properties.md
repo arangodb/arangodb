@@ -4,6 +4,12 @@
 
 @RESTHEADER{GET /_api/collection/{collection-name}/properties, Read properties of a collection}
 
+@HINTS
+{% hint 'warning' %}
+Accessing collections by their numeric ID is deprecated from version 3.4.0 on.
+You should reference them via their names instead.
+{% endhint %}
+
 @RESTURLPARAMETERS
 
 @RESTURLPARAM{collection-name,string,required}
@@ -47,6 +53,8 @@ In a cluster setup, the result will also contain the following attributes:
   determine the target shard for documents.
 
 - *replicationFactor*: contains how many copies of each shard are kept on different DBServers.
+
+- *shardingStrategy*: the sharding strategy selected for the collection.
 
 @RESTRETURNCODES
 

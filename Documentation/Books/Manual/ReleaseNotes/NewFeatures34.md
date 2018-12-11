@@ -1,5 +1,5 @@
-Features and Improvements
-=========================
+Features and Improvements in ArangoDB 3.4
+=========================================
 
 The following list shows in detail which features have been added or improved in
 ArangoDB 3.4. ArangoDB 3.4 also contains several bug fixes that are not listed
@@ -12,13 +12,15 @@ ArangoSearch is a sophisticated, integrated full-text search solution over
 a user-defined set of attributes and collections. It is the first type of
 view in ArangoDB.
 
-[ArangoSearch tutorial](https://www.arangodb.com/tutorials/arangosearch/)
-[ArangoSearch overview](../Views/ArangoSearch/README.md)
-[ArangoSearch in AQL](../../AQL/Views/ArangoSearch/index.html)
+- [ArangoSearch tutorial](https://www.arangodb.com/tutorials/arangosearch/)
+- [ArangoSearch overview](../Views/ArangoSearch/README.md)
+- [ArangoSearch in AQL](../../AQL/Views/ArangoSearch/index.html)
 
 
 New geo index implementation
 ----------------------------
+
+### S2 based geo index
 
 The geo index in ArangoDB has been reimplemented based on [S2 library](http://s2geometry.io/)
 functionality. The new geo index allows indexing points, but also indexing of more
@@ -26,11 +28,16 @@ complex geographical objects. The new implementation is much faster than the pre
 the RocksDB engine.
 
 Additionally, several AQL functions have been added to facilitate working with
-geographical data: `GEO_POINT`, `GEO_MULTIPOINT`, `GEO_POLYGON`, `GEO_LINESTRING` and
-`GEO_MULTILINESTRING`. These functions will produce GeoJSON objects.
+geographical data: `GEO_POINT`, `GEO_MULTIPOINT`, `GEO_LINESTRING`, `GEO_MULTILINESTRING`,
+`GEO_POLYGON` and `GEO_MULTIPOLYGON`. These functions will produce GeoJSON objects.
 
 Additionally there are new geo AQL functions `GEO_CONTAINS`, `GEO_INTERSECTS` and `GEO_EQUALS`
 for querying and comparing GeoJSON objects.
+
+### AQL Editor GeoJSON Support
+
+As a feature on top, the web ui embedded AQL editor now supports also displaying all
+GeoJSON supported data. 
 
 
 RocksDB storage engine
@@ -155,7 +162,7 @@ per-query/per-transaction basis.
 For AQL queries, all data-modification operations now support the `exclusive` option, e.g.
 
     FOR doc IN collection
-      UPDATE doc WITH { updated: true } OPTIONS { exclusive: true }
+      UPDATE doc WITH { updated: true } IN collection OPTIONS { exclusive: true }
 
 JavaScript-based transactions can specify which collections to lock exclusively in the
 `exclusive` sub-attribute of their `collections` attribute:
@@ -175,7 +182,10 @@ to RocksDB collections, so it should be used with extreme care.
 
 ### RocksDB library upgrade
 
-The version of the bundled RocksDB library was upgraded from 5.9 to 5.15.
+The version of the bundled RocksDB library was upgraded from 5.6 to 5.16.
+
+The version of the bundled Snappy compression library used by RocksDB was upgraded from
+1.1.3 to 1.1.7.
 
 
 Collection and document operations
@@ -377,6 +387,16 @@ coordinator's startup.
 Previous versions of ArangoDB did not detect the usage of different storage
 engines in a cluster, but the runtime behavior of the cluster was undefined.
 
+### Advertised endpoints
+
+It is now possible to configure the endpoints advertised by the
+coordinators to clients to be different from the endpoints which are
+used for cluster internal communication. This is important for client
+drivers which refresh the list of endpoints during the lifetime of the
+cluster (which they should do!). In this way one can make the cluster
+advertise a load balancer or a separate set of IP addresses for external
+access. The new option is called `--cluster.my-advertised-endpoint`.
+
 ### Startup safety checks
 
 The new option `--cluster.require-persisted-id` can be used to prevent the startup
@@ -481,8 +501,11 @@ The following AQL functions have been added in ArangoDB 3.4:
 * `SORTED_UNIQUE`: same as `SORTED`, but additionally removes duplicates
 * `COUNT_DISTINCT`: counts the number of distinct / unique items in an array
 * `LEVENSHTEIN_DISTANCE`: calculates the Levenshtein distance between two string values
+* `REGEX_MATCHES`: finds matches in a string using a regular expression
 * `REGEX_SPLIT`: splits a string using a regular expression
+* `UUID`: generates a universally unique identifier value
 * `TOKENS`: splits a string into tokens using a language-specific text analyzer
+* `VERSION`: returns the server version as a string
  
 The following AQL functions have been added to make working with geographical 
 data easier:
@@ -505,6 +528,11 @@ COLLECT statement:
 * `UNIQUE`
 * `SORTED_UNIQUE`
 * `COUNT_DISTINCT`
+
+The following function aliases have been created for existing AQL functions:
+
+* `CONTAINS_ARRAY` is an alias for `POSITION`
+* `KEYS` is an alias for `ATTRIBUTES`
 
 ### Distributed COLLECT
 
@@ -603,6 +631,33 @@ of V8 anymore, except for user-defined functions.
 If no user-defined functions are used in AQL, end users do not need to put aside
 dedicated V8 contexts for executing AQL queries with ArangoDB 3.4, making server
 configuration less complex and easier to understand.
+
+### AQL optimizer query planning improvements
+ 
+The AQL query optimizer will by default now create at most 128 different execution
+plans per AQL query. In previous versions the maximum number of plans was 192.
+
+Normally the AQL query optimizer will generate a single execution plan per AQL query, 
+but there are some cases in which it creates multiple competing plans. More plans
+can lead to better optimized queries, however, plan creation has its costs. The
+more plans are created and shipped through the optimization pipeline, the more
+time will be spent in the optimizer.
+To make the optimizer better cope with some edge cases, the maximum number of plans
+created is now strictly enforced and was lowered compared to previous versions of
+ArangoDB. This helps a specific class of complex queries.
+
+Note that the default maximum value can be adjusted globally by setting the startup 
+option `--query.optimizer-max-plans` or on a per-query basis by setting a query's
+`maxNumberOfPlans` option.
+
+### Condition simplification
+
+The query optimizer rule `simplify-conditions` has been added to simplify certain
+expressions inside CalculationNodes, which can speed up runtime evaluation of these
+expressions.
+
+The optimizer rule `fuse-filters` has been added to merge adjacent FILTER conditions
+into a single FILTER condition where possible, allowing to save some runtime registers.
 
 ### Single document optimizations
 
@@ -730,6 +785,22 @@ This is a change to previous versions of ArangoDB, in which the `fullCount`
 value was produced by the sequential last `LIMIT` statement in a query,
 regardless if the `LIMIT` was on the top level of the query or in a subquery.
 
+The `fullCount` result value will now also be returned for queries that are served
+from the query results cache.
+
+### Relaxed restrictions for LIMIT values
+
+The `offset` and `count` values used in an AQL LIMIT clause can now be expressions, as
+long as the expressions can be resolved at query compile time.
+For example, the following query will now work:
+
+    FOR doc IN collection
+      LIMIT 0, CEIL(@percent * @count / 100) 
+      RETURN doc
+
+Previous versions of ArangoDB required the `offset` and `count` values to be
+either number literals or numeric bind parameter values.
+
 ### Improved sparse index support
 
 The AQL query optimizer can now use sparse indexes in more cases than it was able to
@@ -758,11 +829,70 @@ the optimizer in 3.4 will now be able to use a sparse index on `value`:
 The optimizer in 3.3 was not able to detect this, and refused to use sparse indexes
 for such queries.
 
+### Query results cache
+
+The AQL query results cache in ArangoDB 3.4 has got additional parameters to 
+control which queries should be stored in the cache.
+
+In addition to the already existing configuration option `--query.cache-entries`
+that controls the maximum number of query results cached in each database's
+query results cache, there now exist the following extra options:
+
+- `--query.cache-entries-max-size`: maximum cumulated size of the results stored
+  in each database's query results cache
+- `--query.cache-entry-max-size`: maximum size for an individual cache result
+- `--query.cache-include-system-collections`: whether or not results of queries
+  that involve system collections should be stored in the query results cache
+
+These options allow more effective control of the amount of memory used by the
+query results cache, and can be used to better utilitize the cache memory.
+
+The cache configuration can be changed at runtime using the `properties` function
+of the cache. For example, to limit the per-database number of cache entries to
+256 MB and to limit the per-database cumulated size of query results to 64 MB, 
+and the maximum size of each individual cache entry to 1MB, the following call
+could be used:
+
+```
+require("@arangodb/aql/cache").properties({
+  maxResults: 256,
+  maxResultsSize: 64 * 1024 * 1024,
+  maxEntrySize: 1024 * 1024,
+  includeSystem: false
+});
+```
+
+The contents of the query results cache can now also be inspected at runtime using 
+the cache's new `toArray` function:
+
+```
+require("@arangodb/aql/cache").toArray();
+```
+
+This will show all query results currently stored in the query results cache of
+the current database, along with their query strings, sizes, number of results
+and original query run times.
+
+The functionality is also available via HTTP REST APIs.
+
+
 ### Miscellaneous changes
 
-The `NEAR` AQL function now does not default to a limit of 100 documents any more
-when no limit value was specified. The previously used limit value of 100 was an
-arbitrary limit that acted contrary to user expectations.
+When creating query execution plans for a query, the query optimizer was fetching
+the number of documents of the underlying collections in case multiple query
+execution plans were generated. The optimizer used these counts as part of its 
+internal decisions and execution plan costs calculations. 
+
+Fetching the number of documents of a collection can have measurable overhead in a
+cluster, so ArangoDB 3.4 now caches the "number of documents" that are referred to
+when creating query execution plans. This may save a few roundtrips in case the
+same collections are frequently accessed using AQL queries. 
+
+The "number of documents" value was not and is not supposed to be 100% accurate 
+in this stage, as it is used for rough cost estimates only. It is possible however
+that when explaining an execution plan, the "number of documents" estimated for
+a collection is using a cached stale value, and that the estimates change slightly
+over time even if the underlying collection is not modified.
 
 
 Streaming AQL Cursors
@@ -793,7 +923,7 @@ undesired. Creating a streaming cursor for such queries will solve both problems
 Please note that streaming cursors will use resources all the time till you
 fetch the last chunk of results.
 
-Depending on the storage engine you use this has different consequences:
+Depending on the storage engine used this has different consequences:
 
 - **MMFiles**: While before collection locks would only be held during the creation of the cursor
   (the first request) and thus until the result set was well prepared,
@@ -802,33 +932,38 @@ Depending on the storage engine you use this has different consequences:
 
   While Multiple reads are possible, one write operation will effectively stop
   all other actions from happening on the collections in question.
-- **Rocksdb**: Reading occurs on the state of the data when the query
+- **RocksDB**: Reading occurs on the state of the data when the query
   was started. Writing however will happen during working with the cursor.
   Thus be prepared for possible conflicts if you have other writes on the collections,
   and probably overrule them by `ignoreErrors: True`, else the query
   will abort by the time the conflict happenes.
 
 Taking into account the above consequences, you shouldn't use streaming
-cursors light minded for data modification queries.
+cursors light-minded for data modification queries.
 
 Please note that the query options `cache`, `count` and `fullCount` will not work with streaming
 cursors. Additionally, the query statistics, warnings and profiling data will only be available
-when the last result batch for the query is sent.
+when the last result batch for the query is sent. Using a streaming cursor will also prevent
+the query results being stored in the AQL query results cache.
 
 By default, query cursors created via the cursor API are non-streaming in ArangoDB 3.4,
 but streaming can be enabled on a per-query basis by setting the `stream` attribute
 in the request to the cursor API at endpoint `/_api/cursor`.
 
-However, streaming cursors are enabled for the following parts of ArangoDB in 3.4:
+However, streaming cursors are enabled automatically for the following parts of ArangoDB in 3.4:
 
 * when exporting data from collections using the arangoexport binary
-* when using `db.<collection>.toArray()` from the Arango shell.
+* when using `db.<collection>.toArray()` from the Arango shell
+
+Please note that AQL queries consumed in a streaming fashion have their own, adjustable
+"slow query" threshold. That means the "slow query" threshold can be configured seperately for 
+regular queries and streaming queries.
 
 Native implementations
 ----------------------
 
-The following internal and external functionality has been ported from JavaScript-based
-implementations to C++-based implementations in ArangoDB 3.4:
+The following internal and user-facing functionality has been ported from 
+JavaScript-based implementations to C++-based implementations in ArangoDB 3.4:
 
 * the statistics gathering background thread
 * the REST APIs for
@@ -838,36 +973,52 @@ implementations to C++-based implementations in ArangoDB 3.4:
     - edge management
 * the implementations of all built-in AQL functions
 * all other parts of AQL except user-defined functions
+* database creation and setup
+* all the DBserver internal maintenance tasks for shard creation, index
+  creation and the like in the cluster
 
-By making the listed functionality not use and depend on the V8 JavaScript engine,
-the respective functionality can now be invoked more efficiently, without requiring
-the conversion of data between ArangoDB's native format and V8's internal format.
+By making the listed functionality not use and not depend on the V8 JavaScript 
+engine, the respective functionality can now be invoked more efficiently in the
+server, without requiring the conversion of data between ArangoDB's native format 
+and V8's internal formats. For the maintenance operations this will lead to
+improved stability in the cluster.
 
-As less functionality depends on the V8 JavaScript engine, an ArangoDB 3.4 server
-will not require as many V8 contexts as previous versions.
+As a consequence, ArangoDB agency and database server nodes in an ArangoDB 3.4 
+cluster will now turn off the V8 JavaScript engine at startup entirely and automatically.
+The V8 engine will still be enabled on cluster coordinators, single servers and
+active failover instances. But even the latter instance types will not require as 
+many V8 contexts as previous versions of ArangoDB.
 This should reduce problems with servers running out of available V8 contexts or
 using a lot of memory just for keeping V8 contexts around.
-
-As a consequence, ArangoDB agency nodes in 3.4 will now turn off the V8 JavaScript
-engine at startup automatically.
 
 
 Foxx
 ----
 
-Foxx CLI
+The functions `uuidv4` and `genRandomBytes` have been added to the `crypto` module.
+
+The functions `hexSlice`, `hexWrite` have been added to the `Buffer` object.
+
+The functions `Buffer.from`, `Buffer.of`, `Buffer.alloc` and `Buffer.allocUnsafe`
+have been added to the `Buffer` object for improved compatibility with node.js.
 
 
 Security
 --------
 
-### Ownership for cursors and jobs
+### Ownership for cursors, jobs and tasks
 
-Cursors for AQL query results and jobs created by the APIs at endpoints `/_api/cursor`
-and `/_api/job` are now tied to the user that first created the cursor/job.
+Cursors for AQL query results created by the API at endpoint `/_api/cursor` 
+are now tied to the user that first created the cursor.
 
-Follow-up requests to consume or remove data of an already created cursor or job will
+Follow-up requests to consume or remove data of an already created cursor will
 now be denied if attempted by a different user.
+
+The same mechanism is also in place for the following APIs:
+
+- jobs created via the endpoint `/_api/job`
+- tasks created via the endpoint `/_api/tasks`
+
 
 ### Dropped support for SSLv2
 
@@ -881,6 +1032,16 @@ library by default in recent versions. ArangoDB is following this step.
 Clients that use SSLv2 with ArangoDB should change the protocol from SSLv2 to TLSv12
 if possible, by adjusting the value of the `--ssl.protocol` startup option for the
 `arangod` server and all client tools.
+
+
+Distribution Packages
+---------------------
+
+In addition to the OS-specific packages (eg. _rpm_ for Red Hat / CentOS, _deb_ for
+Debian, NSIS installer for Windows etc.) starting from 3.4.0 new `tar.gz` archive packages
+are available for Linux and Mac. They correspond to the `.zip` packages for Windows,
+which can be used for portable installations, and to easily run different ArangoDB
+versions on the same machine (e.g. for testing).
 
 
 Client tools
@@ -956,3 +1117,16 @@ often undesired in logs anyway.
 Another positive side effect of turning off the escaping is that it will slightly
 reduce the CPU overhead for logging. However, this will only be noticable when the
 logging is set to a very verbose level (e.g. log levels debug or trace).
+
+
+### Active Failover
+
+The _Active Failover_ mode is now officially supported for multiple slaves.
+
+Additionally you can now send read-only requests to followers, so you can
+use them for read scaling. To make sure only requests that are intended for
+this use-case are served by the follower you need to add a
+`X-Arango-Allow-Dirty-Read: true` header to HTTP requests.
+
+For more information see
+[Active Failover Architecture](../Architecture/DeploymentModes/ActiveFailover/Architecture.md).

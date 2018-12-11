@@ -42,6 +42,7 @@ QueryOptions::QueryOptions() :
       profile(PROFILE_LEVEL_NONE),
       allPlans(false),
       verbosePlans(false),
+      stream(false),
       silent(false),
       failOnWarning(false),
       cache(false),
@@ -66,6 +67,9 @@ QueryOptions::QueryOptions() :
   // "cache" only defaults to true if query cache is turned on
   auto queryCacheMode = QueryCache::instance()->mode();
   cache = (queryCacheMode == CACHE_ALWAYS_ON);
+
+  maxNumberOfPlans = q->maxQueryPlans();
+  TRI_ASSERT(maxNumberOfPlans > 0);
 }
   
 void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
@@ -86,6 +90,9 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
   value = slice.get("maxNumberOfPlans"); 
   if (value.isNumber()) {
     maxNumberOfPlans = value.getNumber<size_t>();
+    if (maxNumberOfPlans == 0) {
+      maxNumberOfPlans = 1;
+    }
   }
   value = slice.get("maxWarningCount"); 
   if (value.isNumber()) {
@@ -111,6 +118,11 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
     profile = static_cast<ProfileLevel>(value.getNumber<uint32_t>());
   }
   
+  value = slice.get("stream");
+  if (value.isBool()) {
+    stream = value.getBool();
+  } 
+  
   value = slice.get("allPlans");
   if (value.isBool()) {
     allPlans = value.getBool();
@@ -118,6 +130,10 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
   value = slice.get("verbosePlans");
   if (value.isBool()) {
     verbosePlans = value.getBool();
+  } 
+  value = slice.get("stream");
+  if (value.isBool()) {
+    stream = value.getBool();
   } 
   value = slice.get("silent");
   if (value.isBool()) {
@@ -200,6 +216,7 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRule
   builder.add("profile", VPackValue(static_cast<uint32_t>(profile)));
   builder.add("allPlans", VPackValue(allPlans));
   builder.add("verbosePlans", VPackValue(verbosePlans));
+  builder.add("stream", VPackValue(stream));
   builder.add("silent", VPackValue(silent));
   builder.add("failOnWarning", VPackValue(failOnWarning));
   builder.add("cache", VPackValue(cache));

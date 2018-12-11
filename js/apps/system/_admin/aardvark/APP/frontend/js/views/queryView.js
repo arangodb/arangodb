@@ -396,28 +396,26 @@
         this.breadcrumb(name);
       }
 
-      $('#lastQuery').hide().fadeIn(500)
-        .on('click', function () {
-          $('#updateCurrentQuery').hide();
-          self.aqlEditor.setValue(self.state.lastQuery.query, 1);
-          self.fillBindParamTable(self.state.lastQuery.bindParam);
-          self.updateBindParams();
+      $('#lastQuery').hide().fadeIn(500).on('click', function () {
+        $('#updateCurrentQuery').hide();
+        self.aqlEditor.setValue(self.state.lastQuery.query, 1);
+        self.fillBindParamTable(self.state.lastQuery.bindParam);
+        self.updateBindParams();
 
-          self.collection.each(function (model) {
-            model = model.toJSON();
+        self.collection.each(function (model) {
+          model = model.toJSON();
 
-            if (model.value === self.state.lastQuery.query) {
-              self.breadcrumb(model.name);
-            } else {
-              self.breadcrumb();
-            }
-          });
+          if (model.value === self.state.lastQuery.query) {
+            self.breadcrumb(model.name);
+          } else {
+            self.breadcrumb();
+          }
+        });
 
-          $('#lastQuery').fadeOut(500, function () {
-            $(this).remove();
-          });
-        }
-      );
+        $('#lastQuery').fadeOut(500, function () {
+          $(this).remove();
+        });
+      });
     },
 
     deleteAQL: function (name) {
@@ -560,7 +558,16 @@
         window.modalView.createReadOnlyEntry(
           'debug-download-package-disclaimer',
           'Disclaimer',
-          'This will generate a package containing a lot of commonly required information about your query and environment that helps the ArangoDB Team to reproduce your issue. This debug package will include collection names and created indexes, including attribute names and bind parameters. All string values will be obfuscated in a not-reversable way. If the below check box is not checked this package will not include any data. If the below check box is checked it will include a sample data-set again obfuscating all string values, all number values are not obfuscated. In order to check if any sensitive data is shared open the package locally and check if it contains anything that you are not allowed/willing to share and obfuscate it before. Including this package in bug reports will lower the amout of questioning back and forth until the issue is reproduced.',
+          '<p>This will generate a package containing a lot of commonly required information about your query and environment that helps the ArangoDB Team to reproduce your issue. This debug package will include:</p>' +
+            '<ul>' +
+            '<li>collection names</li>' +
+            '<li>collection indexes</li>' +
+            '<li>attribute names</li>' +
+            '<li>bind parameters</li>' +
+            '</ul>' +
+            '<p>Additionally, samples of your data will be included with all <b>string values obfuscated</b> in a non-reversible way if below checkbox is ticked.</p>' +
+            '<p>If disabled, this package will not include any data.</p>' +
+            '<p>Please open the package locally and check if it contains anything that you are not allowed/willing to share and obfuscate it before uploading. Including this package in bug reports will lower the amount of questioning back and forth to reproduce the issue on our side and is much appreciated.</p>',
           undefined,
           false,
           false
@@ -571,7 +578,7 @@
           'debug-download-package-examples',
           'Include obfuscated examples',
           'includeExamples',
-          'Includes an example set of documents, obfuscating all String values inside the data. This helps the Team in many ways as many issues are related to the document structure / format and the indexes defined on them.',
+          'Includes an example set of documents, obfuscating all string values inside the data. This helps the ArangoDB Team as many issues are related to the document structure / format and the indexes defined on them.',
           true
         )
       );
@@ -1419,6 +1426,7 @@
       this.queryPreview.getSession().setMode('ace/mode/aql');
       this.queryPreview.setReadOnly(true);
       this.queryPreview.setFontSize('13px');
+      this.queryPreview.setShowPrintMargin(false);
 
       // auto focus this editor
       $('#aqlEditor .ace_text-input').focus();
@@ -1603,13 +1611,12 @@
       }
 
       var content = this.aqlEditor.getValue();
-        // check for already existing entry
+      // check for already existing entry
       var quit = false;
       _.each(this.customQueries, function (v) {
         if (v.name === saveName) {
           v.value = content;
           quit = true;
-          return;
         }
       });
 
@@ -1878,7 +1885,13 @@
       var self = this;
       var result;
 
-      if (window.location.hash === '#queries') {
+      var activeSubView = 'query';
+      try {
+        activeSubView = window.App.naviView.activeSubMenu.route;
+      } catch (ignore) {
+      }
+
+      if (window.location.hash === '#queries' && activeSubView === 'query') {
         var outputEditor = ace.edit('outputEditor' + counter);
 
         var maxHeight = $('.centralRow').height() - 250;
@@ -1950,11 +1963,21 @@
 
             var markers = [];
             _.each(data.result, function (geo) {
-              if (geo.type === 'Point' || geo.type === 'MultiPoint') {
+              var geometry = {};
+              if (geo.hasOwnProperty('geometry')) {
+                geometry = geo.geometry;
+              } else {
+                geometry = geo;
+              }
+
+              if (geometry.type === 'Point' || geometry.type === 'MultiPoint') {
                 // reverse neccessary if we are using GeoJSON order
                 // L.marker(geo.coordinates.reverse()).addTo(self.maps[counter]);
                 try {
-                  geojson = new L.GeoJSON(geo, {
+                  geojson = new L.GeoJSON(geometry, {
+                    onEachFeature: function (feature, layer, x) {
+                      layer.bindPopup('<pre style="width: 250px; max-height: 250px;">' + JSON.stringify(geo, null, 2) + '</pre>');
+                    },
                     pointToLayer: function (feature, latlng) {
                       var res = L.circleMarker(latlng, geojsonMarkerOptions);
                       markers.push(res);
@@ -1964,10 +1987,13 @@
                 } catch (ignore) {
                   invalidGeoJSON++;
                 }
-              } else if (geo.type === 'Polygon' || geo.type === 'LineString' || geo.type === 'MultiLineString' || geo.type === 'MultiPolygon') {
+              } else if (geometry.type === 'Polygon' || geometry.type === 'LineString' || geometry.type === 'MultiLineString' || geometry.type === 'MultiPolygon') {
                 try {
-                  geojson = new L.GeoJSON(geo, {
-                    style: geoStyle
+                  geojson = new L.GeoJSON(geometry, {
+                    style: geoStyle,
+                    onEachFeature: function (feature, layer) {
+                      layer.bindPopup('<pre style="width: 250px;">' + JSON.stringify(feature, null, 2) + '</pre>');
+                    }
                   }).addTo(self.maps[counter]);
                   markers.push(geojson);
                 } catch (ignore) {
@@ -1979,7 +2005,7 @@
               if (position === data.result.length) {
                 if (markers.length > 0) {
                   try {
-                    var show = new L.featureGroup(markers);
+                    var show = new L.FeatureGroup(markers);
                     self.maps[counter].fitBounds(show.getBounds());
                   } catch (ignore) {
                   }
@@ -2017,8 +2043,14 @@
             } else {
               $('#' + result.defaultType + '-switch').addClass('active').css('display', 'inline');
             }
-          } else {
-            $('#json-switch').addClass('active').css('display', 'inline');
+            $('#json-switch').css('display', 'inline');
+
+            // fallback
+            if (result.fallback && (result.fallback === 'geo' || result.fallback === 'geotable')) {
+              $('#geo-switch').addClass('disabled').css('display', 'inline').css('opacity', '0.5');
+              $('#geo-switch').addClass('tippy').attr('title', 'No internet collection. Map is not available.');
+              arangoHelper.createTooltips();
+            }
           }
 
           var appendSpan = function (value, icon, css) {
@@ -2307,7 +2339,7 @@
               if (error.code === 409) {
                 return;
               }
-              if (error.code !== 400 && error.code !== 404 && error.code !== 500 && error.code !== 403) {
+              if (error.code !== 400 && error.code !== 404 && error.code !== 500 && error.code !== 403 && error.code !== 501) {
                 arangoHelper.arangoNotification('Query', 'Successfully aborted.');
               }
             }
@@ -2331,9 +2363,9 @@
 
           // var outputPosition = $(element + ' .fa-caret-down').first().offset();
           queryProfile
-          .css('position', 'absolute')
-          .css('left', 215)
-          .css('top', 55);
+            .css('position', 'absolute')
+            .css('left', 215)
+            .css('top', 55);
 
           // $("#el").offset().top - $(document).scrollTop()
           var profileWidth = 590;
@@ -2367,7 +2399,7 @@
           queryProfile.append(
             '<i class="fa fa-close closeProfile"></i>' +
             '<span class="profileHeader">Profiling information</span>' +
-            '<div class="pure-g pure-table pure-table-body"></div>' +
+            '<div class="pure-g pure-table pure-table-body" style="width: auto;"></div>' +
             '<div class="prof-progress"></div>' +
             '<div class="prof-progress-label"></div>' +
             '<div class="clear"></div>'
@@ -2469,8 +2501,17 @@
 
       // check if result could be displayed as graph
       // case a) result has keys named vertices and edges
-      if (result[0]) {
-        if (result[0].vertices && result[0].edges) {
+
+      var index = 0;
+      for (var i = 0; i < result.length; i++) {
+        if (result[i]) {
+          index = i;
+          break;
+        }
+      }
+
+      if (result[index]) {
+        if (result[index].vertices && result[index].edges) {
           var hitsa = 0;
           var totala = 0;
 
@@ -2544,9 +2585,17 @@
             if (typeof obj === 'object') {
               if (obj.hasOwnProperty('coordinates') && obj.hasOwnProperty('type')) {
                 if (obj.type === 'Point' || obj.type === 'MultiPoint' ||
-                    obj.type === 'Polygon' || obj.type === 'MultiPolygon' ||
-                    obj.type === 'LineString' || obj.type === 'MultiLineString') {
+                  obj.type === 'Polygon' || obj.type === 'MultiPolygon' ||
+                  obj.type === 'LineString' || obj.type === 'MultiLineString') {
                   geojson++;
+                }
+              } else if (obj.hasOwnProperty('geometry')) {
+                if (obj.geometry.hasOwnProperty('coordinates') && obj.geometry.hasOwnProperty('type')) {
+                  if (obj.geometry.type === 'Point' || obj.geometry.type === 'MultiPoint' ||
+                    obj.geometry.type === 'Polygon' || obj.geometry.type === 'MultiPolygon' ||
+                    obj.geometry.type === 'LineString' || obj.geometry.type === 'MultiLineString') {
+                    geojson++;
+                  }
                 }
               }
             }
@@ -2588,7 +2637,7 @@
 
       if (!found) {
       // if all check fails, then just display as json
-        if (result.length === geojson) {
+        if (result.length !== 0 && result.length === geojson) {
           toReturn.defaultType = 'geo';
         } else {
           toReturn.defaultType = 'json';
@@ -2597,13 +2646,14 @@
 
       if (toReturn.defaultType === 'geo' || toReturn.defaultType === 'geotable') {
         if (!window.activeInternetConnection) {
+          // mark the type we wanted to render
+          toReturn.fallback = toReturn.defaultType;
+
           if (toReturn.defaultType === 'geo') {
             toReturn.defaultType = 'json';
           } else {
             toReturn.defaultType = 'table';
           }
-          // notify user
-          arangoHelper.arangoMessage('Map', 'No internet connection available. Not able to render the map. Falling back to: ' + toReturn.defaultType);
         }
       }
 
@@ -2621,6 +2671,14 @@
       var found = this.aqlEditor.find(text);
 
       if (!found && pos) {
+        try {
+          row = parseInt(row);
+          if (row > 0) {
+            row = row - 1;
+          }
+        } catch (ignore) {
+        }
+
         this.aqlEditor.selection.moveCursorToPosition({row: row, column: 0});
         this.aqlEditor.selection.selectLine();
       }
@@ -2696,7 +2754,7 @@
       var headers = {}; // quick lookup cache
       var pos = 0;
       _.each(data.original, function (obj) {
-        if (first === true) {
+        if (first === true && obj) {
           tableDescription.titles = Object.keys(obj);
           tableDescription.titles.forEach(function (t) {
             headers[String(t)] = pos++;
@@ -2795,6 +2853,9 @@
           if (originCallback) {
             originCallback();
           }
+        },
+        error: function (data, resp) {
+          arangoHelper.arangoError('User Queries', resp.responseText);
         }
       });
     },
@@ -2814,7 +2875,7 @@
             // if nested array or object found, do not offer csv download
             try {
               tmp = JSON.parse(entry);
-              // if parse succes -> arr or obj found
+              // if parse success -> arr or obj found
               if (typeof tmp === 'object') {
                 status = false;
               }

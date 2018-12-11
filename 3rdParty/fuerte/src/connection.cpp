@@ -34,7 +34,7 @@ Connection::~Connection() {
 // sendRequest and wait for it to finished.
 std::unique_ptr<Response> Connection::sendRequest(
     std::unique_ptr<Request> request) {
-  FUERTE_LOG_TRACE << "start sync request" << std::endl;
+  FUERTE_LOG_TRACE << "sendRequest (sync): before send" << std::endl;
 
   WaitGroup wg;
   auto rv = std::unique_ptr<Response>(nullptr);
@@ -44,7 +44,6 @@ std::unique_ptr<Response> Connection::sendRequest(
                 std::unique_ptr<Request> request,
                 std::unique_ptr<Response> response) {
     WaitGroupDone done(wg);
-    FUERTE_LOG_TRACE << "sendRequest (sync): onError" << std::endl;
     rv = std::move(response);
     error = e;
   };

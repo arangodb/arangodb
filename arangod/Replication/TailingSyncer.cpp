@@ -37,6 +37,7 @@
 #include "Replication/ReplicationTransaction.h"
 #include "Rest/HttpRequest.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -111,8 +112,11 @@ TailingSyncer::TailingSyncer(
   }
 
   // FIXME: move this into engine code
-  std::string engineName = EngineSelectorFeature::ENGINE->typeName();
+  std::string const& engineName = EngineSelectorFeature::ENGINE->typeName();
   _supportsSingleOperations = (engineName == "mmfiles");
+ 
+  // Replication for RocksDB expects only one open transaction at a time 
+  _supportsMultipleOpenTransactions = (engineName != "rocksdb");
 }
 
 TailingSyncer::~TailingSyncer() { abortOngoingTransactions(); }
@@ -158,32 +162,33 @@ void TailingSyncer::abortOngoingTransactions() noexcept {
 /// @brief whether or not a marker should be skipped
 bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick,
                                VPackSlice const& slice) {
+  TRI_ASSERT(slice.isObject());
+  
   bool tooOld = false;
-  std::string const tick = VelocyPackHelper::getStringValue(slice, "tick", "");
-
-  if (!tick.empty()) {
-    tooOld = (NumberUtils::atoi_zero<TRI_voc_tick_t>(
-                  tick.data(), tick.data() + tick.size()) < firstRegularTick);
-
+  VPackSlice tickSlice = slice.get("tick");
+  
+  if (tickSlice.isString() && tickSlice.getStringLength() > 0) {
+    VPackValueLength len = 0;
+    char const* str = tickSlice.getStringUnchecked(len);
+    tooOld = (NumberUtils::atoi_zero<TRI_voc_tick_t>(str, str + len) < firstRegularTick);
+    
     if (tooOld) {
       int typeValue = VelocyPackHelper::getNumericValue<int>(slice, "type", 0);
       // handle marker type
       TRI_replication_operation_e type =
-          static_cast<TRI_replication_operation_e>(typeValue);
-
+      static_cast<TRI_replication_operation_e>(typeValue);
+      
       if (type == REPLICATION_MARKER_DOCUMENT ||
           type == REPLICATION_MARKER_REMOVE ||
           type == REPLICATION_TRANSACTION_START ||
           type == REPLICATION_TRANSACTION_ABORT ||
           type == REPLICATION_TRANSACTION_COMMIT) {
         // read "tid" entry from marker
-        std::string const id =
-            VelocyPackHelper::getStringValue(slice, "tid", "");
-
-        if (!id.empty()) {
-          TRI_voc_tid_t tid = NumberUtils::atoi_zero<TRI_voc_tid_t>(
-              id.data(), id.data() + id.size());
-
+        VPackSlice tidSlice = slice.get("tid");
+        if (tidSlice.isString() && tidSlice.getStringLength() > 0) {
+          str = tidSlice.getStringUnchecked(len);
+          TRI_voc_tid_t tid = NumberUtils::atoi_zero<TRI_voc_tid_t>(str, str + len);
+          
           if (tid > 0 &&
               _ongoingTransactions.find(tid) != _ongoingTransactions.end()) {
             // must still use this marker as it belongs to a transaction we need
@@ -204,7 +209,8 @@ bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick,
     return false;
   }
 
-  if (_state.applier._restrictType.empty() && _state.applier._includeSystem) {
+  if (_state.applier._restrictType == ReplicationApplierConfiguration::RestrictType::None && 
+      _state.applier._includeSystem) {
     return false;
   }
 
@@ -228,10 +234,11 @@ bool TailingSyncer::isExcludedCollection(std::string const& masterName) const {
 
   bool found = (it != _state.applier._restrictCollections.end());
 
-  if (_state.applier._restrictType == "include" && !found) {
+  if (_state.applier._restrictType == ReplicationApplierConfiguration::RestrictType::Include && !found) {
     // collection should not be included
     return true;
-  } else if (_state.applier._restrictType == "exclude" && found) {
+  } else if (_state.applier._restrictType == ReplicationApplierConfiguration::RestrictType::Exclude && found) {
+    // collection should be excluded
     return true;
   }
 
@@ -251,7 +258,7 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
   VPackSlice const nameSlice = slice.get("db");
   if (!nameSlice.isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                                   "create database marker did not contain name");
+                                   "create/drop database marker did not contain name");
   }
   std::string name = nameSlice.copyString();
   if (name.empty() || (name[0] >= '0' && name[0] <= '9')) {
@@ -259,8 +266,17 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
     return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
 
+  auto* sysDbFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::SystemDatabaseFeature
+  >();
+
+  if (!sysDbFeature) {
+    return arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
   if (type == REPLICATION_DATABASE_CREATE) {
     VPackSlice const data = slice.get("data");
+
     if (!data.isObject()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                                      "create database marker did not contain data");
@@ -268,13 +284,16 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
     TRI_ASSERT(data.get("name") == nameSlice);
 
     TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
+
     if (vocbase != nullptr && name != TRI_VOC_SYSTEM_DATABASE) {
       LOG_TOPIC(WARN, Logger::REPLICATION)
           << "seeing database creation marker "
           << "for an already existing db. Dropping db...";
-      TRI_vocbase_t* system = DatabaseFeature::DATABASE->systemDatabase();
-      TRI_ASSERT(system);
-      Result res = methods::Databases::drop(system, name);
+
+      auto system = sysDbFeature->use();
+      TRI_ASSERT(system.get());
+      auto res = methods::Databases::drop(system.get(), name);
+
       if (res.fail()) {
         LOG_TOPIC(ERR, Logger::REPLICATION) << res.errorMessage();
         return res;
@@ -284,25 +303,30 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
     VPackSlice users = VPackSlice::emptyArraySlice();
     Result res =
         methods::Databases::create(name, users, VPackSlice::emptyObjectSlice());
+
     return res;
   } else if (type == REPLICATION_DATABASE_DROP) {
     TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
+
     if (vocbase != nullptr && name != TRI_VOC_SYSTEM_DATABASE) {
-      TRI_vocbase_t* system = DatabaseFeature::DATABASE->systemDatabase();
-      TRI_ASSERT(system != nullptr);
+      auto system = sysDbFeature->use();
+      TRI_ASSERT(system.get());
       // delete from cache by id and name
       _state.vocbases.erase(std::to_string(vocbase->id()));
       _state.vocbases.erase(name);
 
-      Result res = methods::Databases::drop(system, name);
+      auto res = methods::Databases::drop(system.get(), name);
 
       if (res.fail()) {
         LOG_TOPIC(ERR, Logger::REPLICATION) << res.errorMessage();
       }
+
       return res;
     }
+
     return TRI_ERROR_NO_ERROR;  // ignoring because it's idempotent
   }
+
   TRI_ASSERT(false);
   return Result(TRI_ERROR_INTERNAL);  // unreachable
 }
@@ -481,6 +505,8 @@ Result TailingSyncer::startTransaction(VPackSlice const& slice) {
   LOG_TOPIC(TRACE, Logger::REPLICATION)
       << "starting replication transaction " << tid;
 
+  TRI_ASSERT(_ongoingTransactions.empty() || _supportsMultipleOpenTransactions);
+
   auto trx = std::make_unique<ReplicationTransaction>(*vocbase);
   Result res = trx->begin();
 
@@ -553,6 +579,8 @@ Result TailingSyncer::commitTransaction(VPackSlice const& slice) {
   Result res = trx->commit();
   
   _ongoingTransactions.erase(it);
+
+  TRI_ASSERT(_ongoingTransactions.empty() || _supportsMultipleOpenTransactions);
   return res;
 }
 
@@ -614,7 +642,7 @@ Result TailingSyncer::renameCollection(VPackSlice const& slice) {
         << "Renaming system collection " << col->name();
   }
 
-  return Result(vocbase->renameCollection(col, name, true));
+  return vocbase->renameCollection(col->id(), name);
 }
 
 /// @brief changes the properties of a collection,
@@ -650,9 +678,9 @@ Result TailingSyncer::changeCollection(VPackSlice const& slice) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  auto* col = resolveCollection(*vocbase, slice).get();
+  auto col = resolveCollection(*vocbase, slice);
 
-  if (col == nullptr) {
+  if (!col) {
     if (isDeleted) {
       // not a problem if a collection that is going to be deleted anyway
       // does not exist on slave
@@ -663,11 +691,50 @@ Result TailingSyncer::changeCollection(VPackSlice const& slice) {
   }
 
   arangodb::CollectionGuard guard(vocbase, col);
-  bool doSync = DatabaseFeature::DATABASE->forceSyncProperties();
 
-  return guard.collection()->updateProperties(data, doSync);
+  return guard.collection()->properties(data, false); // always a full-update
 }
 
+/// @brief truncate a collections. Assumes no trx are running
+Result TailingSyncer::truncateCollection(arangodb::velocypack::Slice const& slice) {
+  if (!slice.isObject()) {
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                  "collection slice is no object");
+  }
+  
+  TRI_vocbase_t* vocbase = resolveVocbase(slice);
+  if (vocbase == nullptr) {
+    return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+  auto* col = resolveCollection(*vocbase, slice).get();
+  if (col == nullptr) {
+    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  }
+  
+  if (!_ongoingTransactions.empty()) {
+    const char* msg = "Encountered truncate but still have ongoing transactions";
+    LOG_TOPIC(ERR, Logger::REPLICATION) << msg;
+    return Result(TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION, msg);
+  }
+  
+  SingleCollectionTransaction trx(transaction::StandaloneContext::Create(*vocbase),
+                                  *col, AccessMode::Type::EXCLUSIVE);
+  trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+  trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
+  Result res = trx.begin();
+  if (!res.ok()) {
+    return res;
+  }
+  
+  OperationOptions opts;
+  OperationResult opRes = trx.truncate(col->name(), opts);
+  
+  if (opRes.fail()) {
+    return opRes.result;
+  }
+  
+  return trx.finish(opRes.result);
+}
 
 /// @brief changes the properties of a view,
 /// based on the VelocyPack provided
@@ -676,17 +743,19 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "view marker slice is no object");
   }
-  
+
   VPackSlice data = slice.get("data");
+
   if (!data.isObject()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "data slice is no object in view change marker");
   }
-  
+
   VPackSlice d = data.get("deleted");
   bool const isDeleted = (d.isBool() && d.getBool());
-  
+
   TRI_vocbase_t* vocbase = resolveVocbase(slice);
+
   if (vocbase == nullptr) {
     if (isDeleted) {
       // not a problem if a view that is going to be deleted anyway
@@ -695,66 +764,71 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
     }
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-  
+
   VPackSlice guidSlice = data.get(StaticStrings::DataSourceGuid);
+
   if (!guidSlice.isString() || guidSlice.getStringLength() == 0) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "no guid specified for view");
   }
+
   auto view = vocbase->lookupView(guidSlice.copyString());
+
   if (view == nullptr) {
     if (isDeleted) {
       // not a problem if a collection that is going to be deleted anyway
       // does not exist on slave
       return Result();
     }
+
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
-  
-  
+
   VPackSlice nameSlice = data.get(StaticStrings::DataSourceName);
+
   if (nameSlice.isString() && !nameSlice.isEqualString(view->name())) {
-    int res = vocbase->renameView(view, nameSlice.copyString());
-    if (res != TRI_ERROR_NO_ERROR) {
+    auto res = view->rename(nameSlice.copyString());
+
+    if (!res.ok()) {
       return res;
     }
   }
-  
+
   VPackSlice properties = data.get("properties");
+
   if (properties.isObject()) {
-    bool doSync = DatabaseFeature::DATABASE->forceSyncProperties();
-    return view->updateProperties(properties, false, doSync);
+    return view->properties(properties, false); // always a full-update
   }
+
   return {};
 }
 
 /// @brief apply a single marker from the continuous log
 Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
-                                     TRI_voc_tick_t firstRegularTick) {
+                                     TRI_voc_tick_t firstRegularTick,
+                                     TRI_voc_tick_t& markerTick) {
+  // reset found tick value to 0
+  markerTick = 0;
+
   if (!slice.isObject()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "marker slice is no object");
   }
-
+  
   // fetch marker "type"
   int typeValue = VelocyPackHelper::getNumericValue<int>(slice, "type", 0);
 
   // fetch "tick"
-  std::string const tick = VelocyPackHelper::getStringValue(slice, "tick", "");
-
-  if (!tick.empty()) {
-    TRI_voc_tick_t newTick = NumberUtils::atoi_zero<TRI_voc_tick_t>(
-        tick.data(), tick.data() + tick.size());
-    if (newTick >= firstRegularTick) {
-      WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
-      if (newTick > _applier->_state._lastProcessedContinuousTick) {
-        _applier->_state._lastProcessedContinuousTick = newTick;
-      }
-    }
+  VPackSlice tickSlice = slice.get("tick");
+  if (tickSlice.isString()) {
+    VPackValueLength length;
+    char const* p = tickSlice.getStringUnchecked(length);
+    // update the caller's tick
+    markerTick = NumberUtils::atoi_zero<TRI_voc_tick_t>(p, p + length);
   }
 
   // handle marker type
-  TRI_replication_operation_e type = (TRI_replication_operation_e)typeValue;
+  TRI_replication_operation_e type = static_cast<TRI_replication_operation_e>(typeValue);
   if (type == REPLICATION_MARKER_DOCUMENT ||
       type == REPLICATION_MARKER_REMOVE) {
     try {
@@ -768,22 +842,22 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
     }
   }
 
-  else if (type == REPLICATION_TRANSACTION_START) {
+  if (type == REPLICATION_TRANSACTION_START) {
     return startTransaction(slice);
   }
 
-  else if (type == REPLICATION_TRANSACTION_ABORT) {
+  if (type == REPLICATION_TRANSACTION_ABORT) {
     return abortTransaction(slice);
   }
 
-  else if (type == REPLICATION_TRANSACTION_COMMIT) {
+  if (type == REPLICATION_TRANSACTION_COMMIT) {
     return commitTransaction(slice);
   }
 
-  else if (type == REPLICATION_COLLECTION_CREATE) {
+  if (type == REPLICATION_COLLECTION_CREATE) {
     if (_ignoreRenameCreateDrop) {
       LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Ignoring collection marker";
-      return TRI_ERROR_NO_ERROR;
+      return Result();
     }
 
     TRI_vocbase_t* vocbase = resolveVocbase(slice);
@@ -799,33 +873,45 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
     }
 
     return createCollection(*vocbase, slice.get("data"), nullptr);
-  } else if (type == REPLICATION_COLLECTION_DROP) {
+  } 
+  
+  if (type == REPLICATION_COLLECTION_DROP) {
     if (_ignoreRenameCreateDrop) {
       return TRI_ERROR_NO_ERROR;
     }
 
     return dropCollection(slice, false);
-  } else if (type == REPLICATION_COLLECTION_RENAME) {
+  } 
+  
+  if (type == REPLICATION_COLLECTION_RENAME) {
     if (_ignoreRenameCreateDrop) {
       // do not execute rename operations
       return Result();
     }
 
     return renameCollection(slice);
-  } else if (type == REPLICATION_COLLECTION_CHANGE) {
+  } 
+  
+  if (type == REPLICATION_COLLECTION_CHANGE) {
     return changeCollection(slice);
+  } 
+  
+  if (type == REPLICATION_COLLECTION_TRUNCATE) {
+    return truncateCollection(slice);
   }
 
-  else if (type == REPLICATION_INDEX_CREATE) {
+  if (type == REPLICATION_INDEX_CREATE) {
     return createIndex(slice);
-  } else if (type == REPLICATION_INDEX_DROP) {
+  } 
+  
+  if (type == REPLICATION_INDEX_DROP) {
     return dropIndex(slice);
   }
   
-  else if (type == REPLICATION_VIEW_CREATE) {
+  if (type == REPLICATION_VIEW_CREATE) {
     if (_ignoreRenameCreateDrop) {
       LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Ignoring view create marker";
-      return TRI_ERROR_NO_ERROR;
+      return Result();
     }
     
     TRI_vocbase_t* vocbase = resolveVocbase(slice);
@@ -837,19 +923,23 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
     }
     
     return createView(*vocbase, slice.get("data"));
-  } else if (type == REPLICATION_VIEW_DROP) {
+  } 
+  
+  if (type == REPLICATION_VIEW_DROP) {
     if (_ignoreRenameCreateDrop) {
       LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Ignoring view drop marker";
-      return TRI_ERROR_NO_ERROR;
+      return Result();
     }
     
     return dropView(slice, false);
-  } else if (type == REPLICATION_VIEW_CHANGE) {
+  } 
+  
+  if (type == REPLICATION_VIEW_CHANGE) {
     return changeView(slice);
   }
   
-  else if (type == REPLICATION_DATABASE_CREATE ||
-             type == REPLICATION_DATABASE_DROP) {
+  if (type == REPLICATION_DATABASE_CREATE ||
+      type == REPLICATION_DATABASE_DROP) {
     if (_ignoreDatabaseMarkers) {
       LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Ignoring database marker";
       return Result();
@@ -928,13 +1018,13 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response,
 
     Result res;
     bool skipped;
+    TRI_voc_tick_t markerTick = 0; 
 
     if (skipMarker(firstRegularTick, slice)) {
       // entry is skipped
-      res.reset();
       skipped = true;
     } else {
-      res = applyLogMarker(slice, firstRegularTick);
+      res = applyLogMarker(slice, firstRegularTick, markerTick);
       skipped = false;
     }
 
@@ -964,6 +1054,12 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response,
     // update tick value
     // postApplyMarker(processedMarkers, skipped);
     WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
+  
+    if (markerTick > firstRegularTick &&
+        markerTick > _applier->_state._lastProcessedContinuousTick) {
+      TRI_ASSERT(markerTick > 0);
+      _applier->_state._lastProcessedContinuousTick = markerTick;
+    }
 
     if (_applier->_state._lastProcessedContinuousTick >
         _applier->_state._lastAppliedContinuousTick) {
@@ -1014,7 +1110,9 @@ Result TailingSyncer::runInternal() {
 
   setAborted(false);
 
-  TRI_DEFER(sendRemoveBarrier());
+  TRI_DEFER(if (!_state.isChildSyncer) {
+    _state.barrier.remove(_state.connection);
+  });
   uint64_t shortTermFailsInRow = 0;
 
 retry:
@@ -1081,10 +1179,17 @@ retry:
 
   if (res.fail()) {
     // stop ourselves
-    {
+    LOG_TOPIC(INFO, Logger::REPLICATION) << "stopping applier: " << res.errorMessage();
+    try {
       WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
       _applier->_state._totalRequests++;
       getLocalState();
+    } catch (basics::Exception const& ex) {
+      res = Result(ex.code(), ex.what());
+    } catch (std::exception const& ex) {
+      res = Result(TRI_ERROR_INTERNAL, ex.what());
+    } catch (...) {
+      res.reset(TRI_ERROR_INTERNAL, "caught unknown exception");
     }
 
     _applier->stop(res);
@@ -1304,10 +1409,8 @@ Result TailingSyncer::runContinuousSync() {
   // get the applier into a sensible start state by fetching the list of
   // open transactions from the master
   TRI_voc_tick_t fetchTick = safeResumeTick;
-  if (safeResumeTick > 0 && safeResumeTick == fromTick) {
-    // special case in which from and to are equal
-    fetchTick = safeResumeTick;
-  } else {
+  TRI_voc_tick_t lastScannedTick = safeResumeTick; // hint where server MAY scan from
+  if (safeResumeTick <= 0 || safeResumeTick != fromTick) {
     // adjust fetchTick so we can tail starting from the tick containing
     // the open transactions we did not commit locally
     Result res = fetchOpenTransactions(safeResumeTick, fromTick, fetchTick);
@@ -1349,7 +1452,8 @@ Result TailingSyncer::runContinuousSync() {
     
     Result res = processMasterLog(
         sharedStatus, 
-        fetchTick, 
+        fetchTick,
+        lastScannedTick,
         fromTick, 
         _state.applier._ignoreErrors, 
         worked,
@@ -1463,8 +1567,10 @@ Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick,
   setProgress(progress);
 
   // send request
-  std::unique_ptr<SimpleHttpResult> response(_state.connection.client->request(
-      rest::RequestType::GET, url, nullptr, 0));
+  std::unique_ptr<httpclient::SimpleHttpResult> response;
+  _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
+    response.reset(client->request(rest::RequestType::GET, url, nullptr, 0));
+  });
 
   if (replutils::hasFailed(response.get())) {
     return replutils::buildHttpError(response.get(), url, _state.connection);
@@ -1498,17 +1604,18 @@ Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick,
 
   TRI_voc_tick_t readTick = StringUtils::uint64(header);
 
-  if (!fromIncluded && _requireFromPresent && fromTick > 0 &&
-      (!_state.master.simulate32Client() || fromTick != readTick)) {
-    return Result(
-        TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT,
-        std::string("required init tick value '") +
-            StringUtils::itoa(fromTick) +
-            "' is not present (anymore?) on master at " +
-            _state.master.endpoint + ". Last tick available on master is '" +
-            StringUtils::itoa(readTick) +
-            "'. It may be required to do a full resync and increase the number "
-            "of historic logfiles/WAL file timeout on the master.");
+  if (!fromIncluded && fromTick > 0 && (!_state.master.simulate32Client() || fromTick != readTick)) {
+    const std::string msg = std::string("required init tick value '") +
+                            StringUtils::itoa(fromTick) +
+                            "' is not present (anymore?) on master at " +
+                            _state.master.endpoint + ". Last tick available on master is '" +
+                            StringUtils::itoa(readTick) +
+                            "'. It may be required to do a full resync and increase the number "
+                            "of historic logfiles/WAL file timeout on the master.";
+    if (_requireFromPresent) { // hard fail
+      return Result(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT, msg);
+    }
+    LOG_TOPIC(WARN, Logger::REPLICATION) << msg;
   }
 
   startTick = readTick;
@@ -1547,6 +1654,8 @@ Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick,
     _ongoingTransactions.emplace(StringUtils::uint64(it.copyString()), nullptr);
   }
 
+  TRI_ASSERT(_ongoingTransactions.size() <= 1 || _supportsMultipleOpenTransactions);
+
   {
     std::string const progress =
         "fetched initial master state for from tick " +
@@ -1561,21 +1670,30 @@ Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick,
 }
 
 /// @brief fetch data for the continuous synchronization
+/// @param fetchTick tick from which we want results
+/// @param lastScannedTick tick which the server MAY start scanning from
+/// @param firstRegularTick if we got openTransactions server will return the
+///                         only operations belonging to these for ticks < firstRegularTick
 void TailingSyncer::fetchMasterLog(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
                                    TRI_voc_tick_t fetchTick,
+                                   TRI_voc_tick_t lastScannedTick,
                                    TRI_voc_tick_t firstRegularTick) {
+  
   try {
     std::string const url =
         tailingBaseUrl("tail") +
         "chunkSize=" + StringUtils::itoa(_state.applier._chunkSize) +
         "&barrier=" + StringUtils::itoa(_state.barrier.id) +
         "&from=" + StringUtils::itoa(fetchTick) +
-        "&firstRegular=" + StringUtils::itoa(firstRegularTick) +
+        "&lastScanned=" + StringUtils::itoa(lastScannedTick) +
+        (firstRegularTick > fetchTick
+          ? "&firstRegular=" + StringUtils::itoa(firstRegularTick) : "") +
         "&serverId=" + _state.localServerIdString +
         "&includeSystem=" + (_state.applier._includeSystem ? "true" : "false");
 
     // send request
     setProgress(std::string("fetching master log from tick ") + StringUtils::itoa(fetchTick) +
+        ", last scanned tick " + StringUtils::itoa(lastScannedTick) +
         ", first regular tick " + StringUtils::itoa(firstRegularTick) +
         ", barrier: " + StringUtils::itoa(_state.barrier.id) +
         ", open transactions: " + std::to_string(_ongoingTransactions.size()) +
@@ -1600,8 +1718,10 @@ void TailingSyncer::fetchMasterLog(std::shared_ptr<Syncer::JobSynchronizer> shar
     
     std::string body = builder.slice().toJson();
 
-    std::unique_ptr<SimpleHttpResult> response(_state.connection.client->request(
-        rest::RequestType::PUT, url, body.c_str(), body.size()));
+    std::unique_ptr<httpclient::SimpleHttpResult> response;
+    _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
+      response.reset(client->request(rest::RequestType::PUT, url, body.c_str(), body.size()));
+    });
 
     if (replutils::hasFailed(response.get())) {
       // failure
@@ -1619,7 +1739,7 @@ void TailingSyncer::fetchMasterLog(std::shared_ptr<Syncer::JobSynchronizer> shar
 
 /// @brief apply continuous synchronization data from a batch
 Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
-                                       TRI_voc_tick_t& fetchTick,
+                                       TRI_voc_tick_t& fetchTick, TRI_voc_tick_t& lastScannedTick,
                                        TRI_voc_tick_t firstRegularTick,
                                        uint64_t& ignoreCount, bool& worked, bool& mustFetchBatch) {
   LOG_TOPIC(TRACE, Logger::REPLICATION) 
@@ -1632,7 +1752,7 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
   TRI_ASSERT(mustFetchBatch || _workInParallel);
 
   if (mustFetchBatch) {
-    fetchMasterLog(sharedStatus, fetchTick, firstRegularTick);
+    fetchMasterLog(sharedStatus, fetchTick, lastScannedTick, firstRegularTick);
   }
   
   // make sure that on the next invocation we will fetch a new batch
@@ -1668,7 +1788,7 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
 
   // was the specified from value included the result?
   bool const fromIncluded = getBoolHeader(response, StaticStrings::ReplicationHeaderFromPresent);
-  TRI_voc_tick_t const lastScannedTick = getUIntHeader(response, StaticStrings::ReplicationHeaderLastScanned);
+  lastScannedTick = getUIntHeader(response, StaticStrings::ReplicationHeaderLastScanned);
 
   if (!hasHeader(response, StaticStrings::ReplicationHeaderLastIncluded)) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
@@ -1719,18 +1839,20 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
     _applier->_state._lastAvailableContinuousTick = tick;
   }
 
-  if (!fromIncluded && _requireFromPresent && fetchTick > 0 &&
-      (!_state.master.simulate32Client() || originalFetchTick != tick)) {
-    return Result(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT,
-                  std::string("required follow tick value '") +
-                      StringUtils::itoa(fetchTick) +
-                      "' is not present (anymore?) on master at " +
-                      _state.master.endpoint +
-                      ". Last tick available on master is '" +
-                      StringUtils::itoa(tick) +
-                      "'. It may be required to do a full resync and increase "
-                      "the number " +
-                      "of historic logfiles/WAL file timeout on the master");
+  if (!fromIncluded && fetchTick > 0 && (!_state.master.simulate32Client() || originalFetchTick != tick)) {
+    const std::string msg = std::string("required follow tick value '") +
+                            StringUtils::itoa(fetchTick) +
+                            "' is not present (anymore?) on master at " +
+                            _state.master.endpoint +
+                            ". Last tick available on master is '" +
+                            StringUtils::itoa(tick) +
+                            "'. It may be required to do a full resync and increase "
+                            "the number " +
+                            "of historic logfiles/WAL file timeout on the master";
+    if (_requireFromPresent) { // hard fail
+      return Result(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT, msg);
+    }
+    LOG_TOPIC(WARN, Logger::REPLICATION) << msg;
   }
  
   // already fetch next batch of data in the background... 
@@ -1741,8 +1863,9 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
     // (that would be duplicate work)
     mustFetchBatch = false;
     auto self = shared_from_this();
-    sharedStatus->request([this, self, sharedStatus, fetchTick, firstRegularTick]() {
-      fetchMasterLog(sharedStatus, fetchTick, firstRegularTick);
+    sharedStatus->request([this, self, sharedStatus, fetchTick,
+                           lastScannedTick, firstRegularTick]() {
+      fetchMasterLog(sharedStatus, fetchTick, lastScannedTick, firstRegularTick);
     });
   }
 
@@ -1831,7 +1954,7 @@ void TailingSyncer::checkParallel() {
     return;
   }
 
-  std::string engineName = EngineSelectorFeature::ENGINE->typeName();
+  std::string const& engineName = EngineSelectorFeature::ENGINE->typeName();
   if (engineName == "rocksdb" && _state.master.engine == engineName) {
     // master and slave are both on RocksDB... that means we do not need
     // to post the list of open transactions every time, and we can

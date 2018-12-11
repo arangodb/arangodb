@@ -229,8 +229,8 @@ ArangoCollection.prototype._edgesQuery = function (vertex, direction) {
   return requestResult.edges;
 };
 
-ArangoCollection.prototype.shards = function () {
-  var requestResult = this._database._connection.GET(this._baseurl('shards'));
+ArangoCollection.prototype.shards = function (details) {
+  var requestResult = this._database._connection.GET(this._baseurl('shards') + '?details=' + (details ? 'true' : 'false'));
 
   arangosh.checkRequestResult(requestResult);
 
@@ -399,6 +399,19 @@ ArangoCollection.prototype.properties = function (properties) {
 
 ArangoCollection.prototype.rotate = function () {
   var requestResult = this._database._connection.PUT(this._baseurl('rotate'), null);
+
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult.result;
+};
+
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief recalculate counts of a acollection
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.recalculateCount = function () {
+  var requestResult = this._database._connection.PUT(this._baseurl('recalculateCount'), null);
 
   arangosh.checkRequestResult(requestResult);
 
@@ -598,9 +611,12 @@ ArangoCollection.prototype.refresh = function () {
 // / @brief gets all indexes
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.getIndexes = ArangoCollection.prototype.indexes = function (withStats) {
-  var requestResult = this._database._connection.GET(this._indexurl() +
-    '&withStats=' + (withStats || false));
+ArangoCollection.prototype.getIndexes = ArangoCollection.prototype.indexes = function (withStats, withLinks) {
+  let url = this._indexurl() + '&withStats=' + (withStats || false);
+  if (withLinks) {
+    url += '&withLinks=true';
+  }
+  var requestResult = this._database._connection.GET(url);
 
   arangosh.checkRequestResult(requestResult);
 
@@ -1260,7 +1276,7 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
 
   if (rev === null || ignoreRevs) {
     requestResult = this._database._connection.PATCH(url, data);
-  }else {
+  } else {
     requestResult = this._database._connection.PATCH(url, data,
       {'if-match': JSON.stringify(rev) });
   }

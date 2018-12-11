@@ -25,7 +25,14 @@
 #define ARANGODB_IRESEARCH__IRESEARCH_LINK_COORDINATOR_H 1
 
 #include "Indexes/Index.h"
-#include "IResearchLinkMeta.h"
+#include "ClusterEngine/ClusterIndex.h"
+#include "IResearch/IResearchLinkMeta.h"
+
+namespace arangodb {
+
+struct IndexTypeFactory; // forward declaration
+
+}
 
 namespace arangodb {
 namespace iresearch {
@@ -36,9 +43,9 @@ class IResearchViewCoordinator;
 /// @brief common base class for functionality required to link an ArangoDB
 ///        LogicalCollection with an IResearchView on a coordinator in cluster
 ////////////////////////////////////////////////////////////////////////////////
-class IResearchLinkCoordinator final: public arangodb::Index {
+class IResearchLinkCoordinator final: public arangodb::ClusterIndex {
  public:
-  DECLARE_SPTR(Index);
+  DECLARE_SHARED_PTR(Index);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief destructor
@@ -76,6 +83,11 @@ class IResearchLinkCoordinator final: public arangodb::Index {
 
   virtual int drop() override { return TRI_ERROR_NO_ERROR; }
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the factory for this type of index
+  //////////////////////////////////////////////////////////////////////////////
+  static arangodb::IndexTypeFactory const& factory();
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief finds first link between specified collection and view
   ////////////////////////////////////////////////////////////////////////////////
@@ -106,17 +118,6 @@ class IResearchLinkCoordinator final: public arangodb::Index {
 
   virtual void load() override { /* NOOP */ }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief create and initialize an iResearch View Link instance
-  /// @return nullptr on failure
-  ////////////////////////////////////////////////////////////////////////////////
-  static ptr make(
-    arangodb::LogicalCollection& collection,
-    arangodb::velocypack::Slice const& definition,
-    TRI_idx_iid_t id,
-    bool isClusterConstructor
-  ) noexcept;
-
   virtual bool matchesDefinition(
     arangodb::velocypack::Slice const& slice
   ) const override;
@@ -137,11 +138,10 @@ class IResearchLinkCoordinator final: public arangodb::Index {
   /// @brief fill and return a JSON description of a IResearchLink object
   /// @param withFigures output 'figures' section with e.g. memory size
   ////////////////////////////////////////////////////////////////////////////////
-  using Index::toVelocyPack; // for Index::toVelocyPack(bool, bool)
+  using Index::toVelocyPack; // for Index::toVelocyPack(bool, unsigned)
   virtual void toVelocyPack(
     arangodb::velocypack::Builder& builder,
-    bool withFigures,
-    bool forPeristence
+    std::underlying_type<arangodb::Index::Serialize>::type flags
   ) const override;
 
   virtual IndexType type() const override {
@@ -153,6 +153,7 @@ class IResearchLinkCoordinator final: public arangodb::Index {
   virtual void unload() override { /* NOOP */ }
 
  private:
+  struct IndexFactory; // forward declaration
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief construct an uninitialized IResearch link, must call init(...) after
@@ -166,7 +167,7 @@ class IResearchLinkCoordinator final: public arangodb::Index {
   /// @brief initialize from the specified definition
   /// @return success
   ////////////////////////////////////////////////////////////////////////////////
-  bool init(VPackSlice definition);
+  arangodb::Result init(arangodb::velocypack::Slice const& definition);
 
   IResearchLinkMeta _meta; // how this collection should be indexed
   std::shared_ptr<IResearchViewCoordinator> _view; // effectively the IResearch view itself (nullptr == not associated)

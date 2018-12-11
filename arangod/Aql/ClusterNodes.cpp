@@ -115,17 +115,18 @@ void RemoteNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
 }
 
 /// @brief estimateCost
-double RemoteNode::estimateCost(size_t& nrItems) const {
+CostEstimate RemoteNode::estimateCost() const {
   if (_dependencies.size() == 1) {
-    // This will usually be the case, however, in the context of the
-    // instantiation it is possible that there is no dependency...
-    double depCost = _dependencies[0]->estimateCost(nrItems);
-    return depCost + nrItems;  // we need to process them all
+    CostEstimate estimate = _dependencies[0]->getCost();
+    estimate.estimatedCost += estimate.estimatedNrItems;
+    return estimate;
   }
   // We really should not get here, but if so, do something bordering on
   // sensible:
-  nrItems = 1;
-  return 1.0;
+  CostEstimate estimate = CostEstimate::empty();
+  estimate.estimatedNrItems = 1;
+  estimate.estimatedCost = 1.0;
+  return estimate;
 }
 
 /// @brief construct a scatter node
@@ -191,9 +192,10 @@ void ScatterNode::writeClientsToVelocyPack(VPackBuilder& builder) const {
 }
 
 /// @brief estimateCost
-double ScatterNode::estimateCost(size_t& nrItems) const {
-  double const depCost = _dependencies[0]->getCost(nrItems);
-  return depCost + nrItems * _clients.size();
+CostEstimate ScatterNode::estimateCost() const {
+  CostEstimate estimate = _dependencies[0]->getCost();
+  estimate.estimatedCost += estimate.estimatedNrItems * _clients.size();
+  return estimate;
 }
 
 /// @brief construct a distribute node
@@ -272,9 +274,10 @@ void DistributeNode::getVariablesUsedHere(std::unordered_set<Variable const*>& v
 }
 
 /// @brief estimateCost
-double DistributeNode::estimateCost(size_t& nrItems) const {
-  double depCost = _dependencies[0]->getCost(nrItems);
-  return depCost + nrItems;
+CostEstimate DistributeNode::estimateCost() const {
+  CostEstimate estimate = _dependencies[0]->getCost();
+  estimate.estimatedCost += estimate.estimatedNrItems;
+  return estimate;
 }
 
 /*static*/ Collection const* GatherNode::findCollection(
@@ -366,7 +369,7 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
     ExecutionEngine& engine,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
 ) const {
-  if (elements().empty()) {
+  if (_elements.empty()) {
     return std::make_unique<UnsortingGatherBlock>(engine, *this);
   }
 
@@ -374,34 +377,34 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
 }
 
 /// @brief estimateCost
-double GatherNode::estimateCost(size_t& nrItems) const {
-  double depCost = _dependencies[0]->getCost(nrItems);
-  return depCost + nrItems;
+CostEstimate GatherNode::estimateCost() const {
+  CostEstimate estimate = _dependencies[0]->getCost();
+  estimate.estimatedCost += estimate.estimatedNrItems;
+  return estimate;
 }
 
-SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan,
-                                                     size_t id,
-                                                     NodeType mode,
-                                                     bool replaceIndexNode,
-                                                     std::string const& key,
-                                                     Collection const* collection,
-                                                     ModificationOptions const& options,
-                                                     Variable const* in,
-                                                     Variable const* out,
-                                                     Variable const* OLD,
-                                                     Variable const* NEW
-                                                     )
-  : ExecutionNode(plan, id)
-  , CollectionAccessingNode(collection)
-  , _replaceIndexNode(replaceIndexNode)
-  , _key(key)
-  , _mode(mode)
-  , _inVariable(in)
-  , _outVariable(out)
-  , _outVariableOld(OLD)
-  , _outVariableNew(NEW)
-  , _options(options)
-{
+SingleRemoteOperationNode::SingleRemoteOperationNode(
+    ExecutionPlan* plan,
+    size_t id,
+    NodeType mode,
+    bool replaceIndexNode,
+    std::string const& key,
+    Collection const* collection,
+    ModificationOptions const& options,
+    Variable const* in,
+    Variable const* out,
+    Variable const* OLD,
+    Variable const* NEW
+) : ExecutionNode(plan, id),
+    CollectionAccessingNode(collection),
+    _replaceIndexNode(replaceIndexNode),
+    _key(key),
+    _mode(mode),
+    _inVariable(in),
+    _outVariable(out),
+    _outVariableOld(OLD),
+    _outVariableNew(NEW),
+    _options(options) {
   if (_mode == NodeType::INDEX) { //select
     TRI_ASSERT(!_key.empty());
     TRI_ASSERT(_inVariable== nullptr);
@@ -411,16 +414,10 @@ SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan,
   } else if (_mode == NodeType::REMOVE) {
     TRI_ASSERT(!_key.empty());
     TRI_ASSERT(_inVariable == nullptr);
-    TRI_ASSERT(_outVariable == nullptr);
     TRI_ASSERT(_outVariableNew == nullptr);
   } else if (_mode == NodeType::INSERT) {
     TRI_ASSERT(_key.empty());
-    TRI_ASSERT(_outVariable == nullptr);
-  } else if (_mode == NodeType::UPDATE) {
-    TRI_ASSERT(_outVariable == nullptr);
-  } else if (_mode == NodeType::REPLACE) {
-    TRI_ASSERT(_outVariable == nullptr);
-  } else {
+  } else if (_mode != NodeType::UPDATE && _mode != NodeType::REPLACE) {
     TRI_ASSERT(false);
   }
 }
@@ -445,7 +442,7 @@ void SingleRemoteOperationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned
   nodes.add("mode", VPackValue(ExecutionNode::getTypeString(_mode)));
   nodes.add("replaceIndexNode", VPackValue(_replaceIndexNode));
 
-  if(!_key.empty()){
+  if (!_key.empty()) {
     nodes.add("key", VPackValue(_key));
   }
 
@@ -485,15 +482,7 @@ void SingleRemoteOperationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned
 }
 
 /// @brief estimateCost
-double SingleRemoteOperationNode::estimateCost(size_t& nrItems) const {
-  if (_dependencies.size() == 1) {
-    // This will usually be the case, however, in the context of the
-    // instantiation it is possible that there is no dependency...
-    double depCost = _dependencies[0]->estimateCost(nrItems);
-    return depCost + nrItems;  // we need to process them all
-  }
-  // We really should not get here, but if so, do something bordering on
-  // sensible:
-  nrItems = 1;
-  return 1.0;
+CostEstimate SingleRemoteOperationNode::estimateCost() const {
+  CostEstimate estimate = _dependencies[0]->getCost();
+  return estimate;
 }

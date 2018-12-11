@@ -64,27 +64,6 @@ class RocksDBVPackComparator final : public rocksdb::Comparator {
 
  private:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Compares two keys by type.
-  ///
-  /// If two keys are not of the same type, we can short-circuit the comparison
-  /// early.
-  //////////////////////////////////////////////////////////////////////////////
-  // int compareType(rocksdb::Slice const& lhs, rocksdb::Slice const& rhs)
-  // const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Compares keys in standard lexicographic order.
-  ///
-  /// We have taken care to optimize our keyspace so that most keys can simply
-  /// be compared lexicographically (and thus use the highly-optimized system
-  /// memcmp). The exception to this rule is when a key contains VelocyPack
-  /// data. Unfortunately, VelocyPack is not lexicographically comparable, so we
-  /// must handle those keys separately.
-  //////////////////////////////////////////////////////////////////////////////
-  // int compareLexicographic(rocksdb::Slice const& lhs,
-  //                         rocksdb::Slice const& rhs) const;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Compares two IndexValue keys or two UniqueIndexValue keys
   /// (containing VelocyPack data and more).
   //////////////////////////////////////////////////////////////////////////////

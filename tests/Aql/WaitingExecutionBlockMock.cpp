@@ -81,8 +81,10 @@ WaitingExecutionBlockMock::getSome(size_t atMost) {
 std::pair<arangodb::aql::ExecutionState, size_t> WaitingExecutionBlockMock::skipSome(
   size_t atMost
 ) {
+  traceSkipSomeBegin(atMost);
   if (!_hasWaited) {
     _hasWaited = true;
+    traceSkipSomeEnd(0, ExecutionState::WAITING);
     return {ExecutionState::WAITING, 0};
   }
   _hasWaited = false;
@@ -91,7 +93,9 @@ std::pair<arangodb::aql::ExecutionState, size_t> WaitingExecutionBlockMock::skip
   size_t skipped = (std::min)(max - _inflight, atMost);
   _inflight += skipped;
   if (_inflight < max) {
+    traceSkipSomeEnd(skipped, ExecutionState::HASMORE);
     return {ExecutionState::HASMORE, skipped};
   }
+  traceSkipSomeEnd(skipped, ExecutionState::DONE);
   return {ExecutionState::DONE, skipped};
 }

@@ -53,8 +53,10 @@ using namespace arangodb::rest;
 BenchFeature* ARANGOBENCH;
 #include "Benchmark/test-cases.h"
 
-BenchFeature::BenchFeature(application_features::ApplicationServer* server,
-                           int* result)
+BenchFeature::BenchFeature(
+    application_features::ApplicationServer& server,
+    int* result
+)
     : ApplicationFeature(server, "Bench"),
       _async(false),
       _concurreny(1),

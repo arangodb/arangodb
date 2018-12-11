@@ -72,7 +72,7 @@ class IndexIterator {
   IndexIterator& operator=(IndexIterator const&) = delete;
   IndexIterator() = delete;
 
-  IndexIterator(LogicalCollection*, transaction::Methods*, arangodb::Index const*);
+  IndexIterator(LogicalCollection*, transaction::Methods*);
 
   virtual ~IndexIterator() {}
 
@@ -113,8 +113,8 @@ class IndexIterator {
 /// @brief Special iterator if the condition cannot have any result
 class EmptyIndexIterator final : public IndexIterator {
  public:
-  EmptyIndexIterator(LogicalCollection* collection, transaction::Methods* trx, arangodb::Index const* index)
-      : IndexIterator(collection, trx, index) {}
+  EmptyIndexIterator(LogicalCollection* collection, transaction::Methods* trx)
+      : IndexIterator(collection, trx) {}
 
   ~EmptyIndexIterator() {}
 
@@ -142,7 +142,7 @@ class MultiIndexIterator final : public IndexIterator {
    MultiIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
                       arangodb::Index const* index,
                       std::vector<IndexIterator*> const& iterators)
-     : IndexIterator(collection, trx, index), 
+     : IndexIterator(collection, trx), 
        _iterators(iterators), 
        _currentIdx(0), 
        _current(nullptr),

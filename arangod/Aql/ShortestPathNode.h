@@ -84,9 +84,6 @@ class ShortestPathNode : public GraphNode {
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
 
-  /// @brief the cost of a traversal node
-  double estimateCost(size_t&) const override final;
-
   /// @brief Test if this node uses an in variable or constant for start
   bool usesStartInVariable() const {
     return _inStartVariable != nullptr;

@@ -25,13 +25,19 @@
 #include "IResearchCommon.h"
 #include "IResearchLinkCoordinator.h"
 #include "IResearchLinkHelper.h"
+
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/VelocyPackHelper.h"
+#include "RestServer/ViewTypesFeature.h"
+#include "Transaction/Methods.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/ExecContext.h"
 #include "VocBase/Methods/Indexes.h"
 #include "VocBase/LogicalCollection.h"
 #include <velocypack/Builder.h>
@@ -43,219 +49,142 @@ namespace {
 typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
 typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
 
-using namespace arangodb::iresearch;
-
-arangodb::Result dropLink(
-    IResearchLinkCoordinator const& link,
-    arangodb::LogicalCollection& collection,
-    VPackBuilder& builder
-) {
-  TRI_ASSERT(builder.isEmpty());
-
-  builder.openObject();
-  builder.add("id", VPackValue(link.id()));
-  builder.close();
-
-  return arangodb::methods::Indexes::drop(&collection, builder.slice());
-}
-
-arangodb::Result createLink(
-    arangodb::LogicalCollection& collection,
-    IResearchViewCoordinator const& view,
-    VPackSlice link,
-    VPackBuilder& builder
-) {
-  TRI_ASSERT(builder.isEmpty());
-
-  static const std::function<bool(irs::string_ref const& key)> acceptor = [](
-      irs::string_ref const& key
-  )->bool {
-    // ignored fields
-    return key != arangodb::StaticStrings::IndexType
-      && key != StaticStrings::ViewIdField;
-  };
-
-  builder.openObject();
-  builder.add(
-    arangodb::StaticStrings::IndexType,
-    arangodb::velocypack::Value(IResearchLinkHelper::type())
-  );
-  builder.add(
-    StaticStrings::ViewIdField, arangodb::velocypack::Value(view.guid())
-  );
-
-  if (!mergeSliceSkipKeys(builder, link, acceptor)) {
-    return arangodb::Result(
-      TRI_ERROR_INTERNAL,
-      std::string("failed to update link definition with the view name while updating IResearch view '")
-      + std::to_string(view.id()) + "' collection '" + collection.name() + "'"
-    );
-  }
-
-  builder.close();
-
-  VPackBuilder tmp;
-
-  return arangodb::methods::Indexes::ensureIndex(
-    &collection, builder.slice(), true, tmp
-  );
-}
-
-arangodb::Result updateLinks(
-    VPackSlice newLinks,
-    VPackSlice currentLinks,
-    IResearchViewCoordinator const& view,
-    bool partialUpdate,
-    std::unordered_set<TRI_voc_cid_t> currentCids, // intentional copy
-    bool& modified,
-    VPackBuilder& viewNewProperties,
-    std::unordered_set<TRI_voc_cid_t>& newCids
-) {
-  if (!newLinks.isObject()) {
-    newLinks = VPackSlice::emptyObjectSlice();
-  }
-
-  arangodb::CollectionNameResolver resolver(view.vocbase());
-  arangodb::Result res;
-  std::string error;
-  VPackBuilder builder;
-  IResearchLinkMeta linkMeta;
-
-  // process new links
-  for (VPackObjectIterator linksItr(newLinks); linksItr.valid(); ++linksItr) {
-    auto const collectionNameOrIdSlice = linksItr.key();
-
-    if (!collectionNameOrIdSlice.isString()) {
-      return {
-        TRI_ERROR_BAD_PARAMETER,
-        std::string("error parsing link parameters from json for IResearch view '")
-          + view.name()
-          + "' offset '"
-          + std::to_string(linksItr.index())
-          + '"'
-      };
-    }
-
-    auto const collectionNameOrId = collectionNameOrIdSlice.copyString();
-    auto const collection = resolver.getCollection(collectionNameOrId);
-
-    if (!collection) {
-      return { TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND };
-    }
-
-    auto const link = linksItr.value();
-
-    builder.clear();
-    res.reset();
-
-    auto const existingLink = IResearchLinkCoordinator::find(*collection, view);
-
-    if (link.isNull()) {
-      if (existingLink) {
-        res = dropLink(*existingLink, *collection, builder);
-
-        // do not need to drop link afterwards
-        currentCids.erase(collection->id());
-        modified = true;
-      }
-    } else {
-      if (!linkMeta.init(link, error)) {
-        return { TRI_ERROR_BAD_PARAMETER, error };
-      }
-
-      // append link definition
-      {
-        VPackObjectBuilder const guard(&viewNewProperties, collectionNameOrId);
-        linkMeta.json(viewNewProperties);
-      }
-
-      currentCids.erase(collection->id()); // already processed
-      newCids.emplace(collection->id()); // new collection
-
-      if (existingLink) {
-        if (*existingLink == linkMeta) {
-          // nothing to do
-          continue;
-        }
-
-        res = dropLink(*existingLink, *collection, builder);
-
-        if (!res.ok()) {
-          return res;
-        }
-
-        builder.clear();
-      }
-
-      res = createLink(*collection, view, link, builder);
-      modified = true;
-    }
-
-    if (!res.ok()) {
-      return res;
-    }
-  }
-
-  // process the rest of the nonprocessed collections
-  for (auto const cid : currentCids) {
-    auto const collection = resolver.getCollection(cid);
-
-    if (!collection) {
-      return { TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND };
-    }
-
-    if (!partialUpdate) {
-      auto const link = IResearchLinkCoordinator::find(*collection, view);
-
-      if (!link) {
-        return {
-          TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
-          std::string("no link between view '")
-            + view.name()
-            + "' and collection '"
-            + std::to_string(cid)
-            + "' found"
-        };
-      }
-
-      builder.clear();
-      res = dropLink(*link, *collection, builder);
-      modified = true;
-    } else {
-      auto link = currentLinks.get(collection->name());
-
-      if (!link.isObject()) {
-        auto const collectiondId = std::to_string(collection->id());
-        link = currentLinks.get(collectiondId);
-
-        if (!link.isObject()) {
-          // inconsistent links
-          return { TRI_ERROR_BAD_PARAMETER };
-        }
-
-        viewNewProperties.add(collectiondId, link);
-      } else {
-        viewNewProperties.add(collection->name(), link);
-      }
-
-      newCids.emplace(collection->id());
-    }
-
-    if (!res.ok()) {
-      return res;
-    }
-  }
-
-  return res;
-}
-
 }
 
 namespace arangodb {
-
-using namespace basics;
-
 namespace iresearch {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief IResearchView-specific implementation of a ViewFactory
+////////////////////////////////////////////////////////////////////////////////
+struct IResearchViewCoordinator::ViewFactory: public arangodb::ViewFactory {
+  virtual arangodb::Result create(
+      arangodb::LogicalView::ptr& view,
+      TRI_vocbase_t& vocbase,
+      arangodb::velocypack::Slice const& definition
+  ) const override {
+    auto* ci = ClusterInfo::instance();
+
+    if (!ci) {
+      return arangodb::Result(
+        TRI_ERROR_INTERNAL,
+        std::string("failure to find 'ClusterInfo' instance while creating arangosearch View in database '") + vocbase.name() + "'"
+      );
+    }
+
+    auto& properties = definition.isObject() ? definition : emptyObjectSlice(); // if no 'info' then assume defaults
+    auto links = properties.hasKey(StaticStrings::LinksField)
+               ? properties.get(StaticStrings::LinksField)
+               : arangodb::velocypack::Slice::emptyObjectSlice();
+    auto res = IResearchLinkHelper::validateLinks(vocbase, links);
+
+    if (!res.ok()) {
+      return res;
+    }
+
+    arangodb::LogicalView::ptr impl;
+
+    res = instantiate(impl, vocbase, definition, 0);
+
+    if (!res.ok()) {
+      return res;
+    }
+
+    if (!impl) {
+      return arangodb::Result(
+        TRI_ERROR_INTERNAL,
+        std::string("failure during instantiation while creating arangosearch View in database '") + vocbase.name() + "'"
+      );
+    }
+
+    arangodb::velocypack::Builder builder;
+
+    builder.openObject();
+    res = impl->properties(builder, true, true); // include links so that Agency will always have a full definition
+
+    if (!res.ok()) {
+      return res;
+    }
+
+    builder.close();
+
+    std::string error;
+    auto resNum = ci->createViewCoordinator(
+      vocbase.name(), std::to_string(impl->id()), builder.slice(), error
+    );
+
+    if (TRI_ERROR_NO_ERROR != resNum) {
+      if (error.empty()) {
+        error = TRI_errno_string(resNum);
+      }
+
+      return arangodb::Result(
+        resNum,
+        std::string("failure during ClusterInfo persistance of created view while creating arangosearch View in database '") + vocbase.name() + "', error: " + error
+      );
+    }
+
+    // create links on a best-effor basis
+    // link creation failure does not cause view creation failure
+    try {
+      std::unordered_set<TRI_voc_cid_t> collections;
+
+      res = IResearchLinkHelper::updateLinks(
+        collections, vocbase, *impl, links
+      );
+
+      if (!res.ok()) {
+        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+          << "failed to create links while creating arangosearch view '" << impl->name() <<  "': " << res.errorNumber() << " " <<  res.errorMessage();
+      }
+    } catch (arangodb::basics::Exception const& e) {
+      IR_LOG_EXCEPTION();
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "caught exception while creating links while creating arangosearch view '" << impl->name() << "': " << e.code() << " " << e.what();
+    } catch (std::exception const& e) {
+      IR_LOG_EXCEPTION();
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "caught exception while creating links while creating arangosearch view '" << impl->name() << "': " << e.what();
+    } catch (...) {
+      IR_LOG_EXCEPTION();
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "caught exception while creating links while creating arangosearch view '" << impl->name() << "'";
+    }
+
+    view = ci->getView(vocbase.name(), std::to_string(impl->id())); // refresh view from Agency
+
+    if (view) {
+      view->open(); // open view to match the behaviour in StorageEngine::openExistingDatabase(...) and original behaviour of TRI_vocbase_t::createView(...)
+    }
+
+    return arangodb::Result();
+  }
+
+  virtual arangodb::Result instantiate(
+      arangodb::LogicalView::ptr& view,
+      TRI_vocbase_t& vocbase,
+      arangodb::velocypack::Slice const& definition,
+      uint64_t planVersion
+  ) const override {
+    std::string error;
+    auto impl = std::shared_ptr<IResearchViewCoordinator>(
+      new IResearchViewCoordinator(vocbase, definition, planVersion)
+    );
+
+    if (!impl->_meta.init(definition, error)) {
+      return arangodb::Result(
+        TRI_ERROR_BAD_PARAMETER,
+        error.empty()
+        ? (std::string("failed to initialize arangosearch View '") + impl->name() + "' from definition: " + definition.toString())
+        : (std::string("failed to initialize arangosearch View '") + impl->name() + "' from definition, error in attribute '" + error + "': " + definition.toString())
+      );
+    }
+
+    view = impl;
+
+    return arangodb::Result();
+  }
+};
 
 arangodb::Result IResearchViewCoordinator::appendVelocyPackDetailed(
   arangodb::velocypack::Builder& builder,
@@ -268,7 +197,22 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPackDetailed(
     );
   }
 
-  if (!_meta.json(builder)) {
+  static const std::function<bool(irs::string_ref const& key)> acceptor = [](
+      irs::string_ref const& key
+  )->bool {
+    return key != StaticStrings::VersionField; // ignored fields
+  };
+  static const std::function<bool(irs::string_ref const& key)> persistenceAcceptor = [](
+      irs::string_ref const&
+  )->bool {
+    return true;
+  };
+  arangodb::velocypack::Builder sanitizedBuilder;
+
+  sanitizedBuilder.openObject();
+
+  if (!_meta.json(sanitizedBuilder)
+      || !mergeSliceSkipKeys(builder, sanitizedBuilder.close().slice(), forPersistence ? persistenceAcceptor : acceptor)) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
       std::string("failure to generate definition while generating properties jSON for IResearch View in database '") + vocbase().name() + "'"
@@ -279,6 +223,47 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPackDetailed(
 
   // links are not persisted, their definitions are part of the corresponding collections
   if (!forPersistence) {
+    // open up a read transaction and add all linked collections to verify that
+    // the current user has access
+
+    std::vector<std::string> collections;
+    for (auto& entry: _collections) {
+      collections.emplace_back(entry.second.first);
+    }
+
+    Result result = arangodb::basics::catchToResult([this, &collections]() -> arangodb::Result {
+      static std::vector<std::string> const EMPTY;
+      // use default lock timeout
+      arangodb::transaction::Options options;
+      options.waitForSync = false;
+      options.allowImplicitCollections = false;
+
+      transaction::StandaloneContext ctx{vocbase()};
+      std::shared_ptr<transaction::StandaloneContext> ptr;
+      arangodb::transaction::Methods trx(
+        std::shared_ptr<transaction::StandaloneContext>(ptr, &ctx),
+        collections, // readCollections
+        EMPTY, // writeCollections
+        EMPTY, // exclusiveCollections
+        options
+      );
+      auto res = trx.begin();
+
+      if (!res.ok()) {
+        return res; // nothing more to output
+      }
+
+      trx.commit();
+      return res;
+    });
+    if (result.fail()) {
+      IR_LOG_EXCEPTION();
+      return arangodb::Result(result.errorNumber(),
+                              "caught exception while generating json for "
+                              "arangosearch view '" + name() + "': " +
+                              result.errorMessage());
+    }
+
     ReadMutex mutex(_mutex);
     SCOPED_LOCK(mutex); // '_collections' can be asynchronously modified
 
@@ -300,11 +285,14 @@ bool IResearchViewCoordinator::emplace(
     std::string const& key,
     arangodb::velocypack::Slice const& value
 ) {
+  LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+      << "beginning IResearchViewCoordinator::emplace";
   static const std::function<bool(irs::string_ref const& key)> acceptor = [](
       irs::string_ref const& key
   )->bool {
-    return key != arangodb::StaticStrings::IndexType
-      && key != StaticStrings::ViewIdField; // ignored fields
+    return key != arangodb::StaticStrings::IndexId
+        && key != arangodb::StaticStrings::IndexType
+        && key != StaticStrings::ViewIdField; // ignored fields
   };
   arangodb::velocypack::Builder builder;
 
@@ -313,7 +301,8 @@ bool IResearchViewCoordinator::emplace(
   // strip internal keys (added in createLink(...)) from externally visible link definition
   if (!mergeSliceSkipKeys(builder, value, acceptor)) {
     LOG_TOPIC(WARN, iresearch::TOPIC)
-      << "failed to generate externally visible link definition while emplacing link definition into IResearch view '"
+      << "failed to generate externally visible link definition while emplacing "
+      << "link definition into arangosearch view '"
       << name() << "' collection '" << cid << "'";
 
     return false;
@@ -331,70 +320,10 @@ bool IResearchViewCoordinator::emplace(
   ).second;
 }
 
-/*static*/ std::shared_ptr<LogicalView> IResearchViewCoordinator::make(
-    TRI_vocbase_t& vocbase,
-    velocypack::Slice const& info,
-    bool isNew,
-    uint64_t planVersion,
-    LogicalView::PreCommitCallback const& preCommit
-) {
-  auto view = std::shared_ptr<IResearchViewCoordinator>(
-    new IResearchViewCoordinator(vocbase, info, planVersion)
-  );
-  auto& properties = info.isObject() ? info : emptyObjectSlice(); // if no 'info' then assume defaults
-  std::string error;
+/*static*/ arangodb::ViewFactory const& IResearchViewCoordinator::factory() {
+  static const ViewFactory factory;
 
-  if (!view->_meta.init(properties, error)) {
-    LOG_TOPIC(WARN, iresearch::TOPIC)
-        << "failed to initialize IResearch view from definition, error: " << error;
-
-    return nullptr;
-  }
-
-  if (preCommit && !preCommit(view)) {
-    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-      << "Failure during pre-commit while constructing IResearch View in database '" << vocbase.id() << "'";
-
-    return nullptr;
-  }
-
-  if (isNew) {
-    arangodb::velocypack::Builder builder;
-    auto* ci = ClusterInfo::instance();
-
-    if (!ci) {
-      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "Failure to find ClusterInfo instance while constructing IResearch View in database '" << vocbase.id() << "'";
-
-      return nullptr;
-    }
-
-    builder.openObject();
-
-    auto res = view->toVelocyPack(builder, true, true); // include links so that Agency will always have a full definition
-
-    if (!res.ok()) {
-      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "Failure to generate definitionf created view while constructing IResearch View in database '" << vocbase.id() << "', error: " << res.errorMessage();
-
-      return nullptr;
-    }
-
-    builder.close();
-
-    auto resNum = ci->createViewCoordinator(
-      vocbase.name(), std::to_string(view->id()), builder.slice(), error
-    );
-
-    if (TRI_ERROR_NO_ERROR != resNum) {
-      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "Failure during commit of created view while constructing IResearch View in database '" << vocbase.id() << "', error: " << error;
-
-      return nullptr;
-    }
-  }
-
-  return view;
+  return factory;
 }
 
 IResearchViewCoordinator::IResearchViewCoordinator(
@@ -420,21 +349,60 @@ bool IResearchViewCoordinator::visitCollections(
   return true;
 }
 
-arangodb::Result IResearchViewCoordinator::updateProperties(
+arangodb::Result IResearchViewCoordinator::properties(
     velocypack::Slice const& slice,
-    bool partialUpdate,
-    bool /*doSync*/
+    bool partialUpdate
 ) {
+  auto* engine = arangodb::ClusterInfo::instance();
+
+  if (!engine) {
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      std::string("failure to get storage engine while updating arangosearch view '") + name() + "'"
+    );
+  }
+
   try {
-    IResearchViewMeta meta;
+    auto links = slice.hasKey(StaticStrings::LinksField)
+               ? slice.get(StaticStrings::LinksField)
+               : arangodb::velocypack::Slice::emptyObjectSlice();
+    auto res = IResearchLinkHelper::validateLinks(vocbase(), links);
+
+    if (!res.ok()) {
+      return res;
+    }
+
+    // check link auth as per https://github.com/arangodb/backlog/issues/459
+    if (arangodb::ExecContext::CURRENT) {
+      // check existing links
+      for (auto& entry: _collections) {
+        auto collection =
+          engine->getCollection(vocbase().name(), std::to_string(entry.first));
+
+        if (collection
+            && !arangodb::ExecContext::CURRENT->canUseCollection(vocbase().name(), collection->name(), arangodb::auth::Level::RO)) {
+          return arangodb::Result(
+            TRI_ERROR_FORBIDDEN,
+            std::string("while updating arangosearch definition, error: collection '") + collection->name() + "' not authorized for read access"
+          );
+        }
+      }
+    }
+
     std::string error;
+    IResearchViewMeta meta;
 
     auto const& defaults = partialUpdate
       ? _meta
       : IResearchViewMeta::DEFAULT();
 
     if (!meta.init(slice, error, defaults)) {
-      return { TRI_ERROR_BAD_PARAMETER, error };
+      return arangodb::Result(
+        TRI_ERROR_BAD_PARAMETER,
+        error.empty()
+        ? (std::string("failed to update arangosearch view '") + name() + "' from definition: " + slice.toString())
+        : (std::string("failed to update arangosearch view '") + name() + "' from definition, error in attribute '" + error + "': " + slice.toString())
+      );
     }
 
     // reset non-updatable values to match current meta
@@ -442,25 +410,16 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
 
     // only trigger persisting of properties if they have changed
     if (_meta != meta) {
-      auto* engine = arangodb::ClusterInfo::instance();
-
-      if (!engine) {
-        return arangodb::Result(
-          TRI_ERROR_INTERNAL,
-          std::string("failure to get storage engine while updating IResearch View '") + name() + "'"
-        );
-      }
-
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-        meta.json(builder);
+      meta.json(builder);
 
-        auto result = toVelocyPack(builder, false, true);
+      auto result = properties(builder, false, true);
 
-        if (!result.ok()) {
-          return result;
-        }
+      if (!result.ok()) {
+        return result;
+      }
 
       builder.close();
       result = engine->setViewPropertiesCoordinator(
@@ -472,7 +431,7 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
       }
     }
 
-    if (!slice.hasKey(StaticStrings::LinksField) && partialUpdate) {
+    if (links.isEmptyObject() && partialUpdate) {
       return arangodb::Result(); // nothing more to do
     }
 
@@ -499,102 +458,91 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
       currentLinks.close();
     }
 
-    arangodb::velocypack::Builder viewNewProperties;
-    bool modified = false;
-    std::unordered_set<TRI_voc_cid_t> newCids;
-    auto links = slice.hasKey(StaticStrings::LinksField)
-               ? slice.get(StaticStrings::LinksField)
-               : arangodb::velocypack::Slice::emptyObjectSlice(); // used for !partialUpdate
+    std::unordered_set<TRI_voc_cid_t> collections;
 
+    if (partialUpdate) {
+      return IResearchLinkHelper::updateLinks(
+        collections, vocbase(), *this, links
+      );
+    }
 
-    viewNewProperties.openObject();
-
-    return updateLinks(
-      links,
-      currentLinks.slice(),
-      *this,
-      partialUpdate,
-      currentCids,
-      modified,
-      viewNewProperties,
-      newCids
+    return IResearchLinkHelper::updateLinks(
+      collections, vocbase(), *this, links, currentCids
     );
   } catch (arangodb::basics::Exception& e) {
     LOG_TOPIC(WARN, iresearch::TOPIC)
-      << "caught exception while updating properties for IResearch view '" << id() << "': " << e.code() << " " << e.what();
+      << "caught exception while updating properties for arangosearch view '" << name() << "': " << e.code() << " " << e.what();
     IR_LOG_EXCEPTION();
 
     return arangodb::Result(
       e.code(),
-      std::string("error updating properties for IResearch view '") + StringUtils::itoa(id()) + "'"
+      std::string("error updating properties for arangosearch view '") + name() + "'"
     );
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, iresearch::TOPIC)
-      << "caught exception while updating properties for IResearch view '" << id() << "': " << e.what();
+      << "caught exception while updating properties for arangosearch view '" << name() << "': " << e.what();
     IR_LOG_EXCEPTION();
 
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
-      std::string("error updating properties for IResearch view '") + StringUtils::itoa(id()) + "'"
+      std::string("error updating properties for arangosearch view '") + name() + "'"
     );
   } catch (...) {
     LOG_TOPIC(WARN, iresearch::TOPIC)
-      << "caught exception while updating properties for IResearch view '" << id() << "'";
+      << "caught exception while updating properties for arangosearch view '" << name() << "'";
     IR_LOG_EXCEPTION();
 
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
-      std::string("error updating properties for IResearch view '") + StringUtils::itoa(id()) + "'"
+      std::string("error updating properties for arangosearch view '") + name() + "'"
+    );
+  }
+}
+
+Result IResearchViewCoordinator::dropImpl() {
+  auto* engine = arangodb::ClusterInfo::instance();
+
+  if (!engine) {
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      std::string("failure to get storage engine while dropping arangosearch view '") + name() + "'"
     );
   }
 
-  return {};
-}
-
-Result IResearchViewCoordinator::drop() {
   // drop links first
   {
     std::unordered_set<TRI_voc_cid_t> currentCids;
 
     visitCollections([&currentCids](TRI_voc_cid_t cid)->bool { currentCids.emplace(cid); return true; });
 
-    arangodb::velocypack::Builder builder;
-    bool modified;
-    std::unordered_set<TRI_voc_cid_t> newCids;
-    auto res = updateLinks(
-      arangodb::velocypack::Slice::emptyObjectSlice(),
-      arangodb::velocypack::Slice::emptyObjectSlice(),
+    // check link auth as per https://github.com/arangodb/backlog/issues/459
+    if (arangodb::ExecContext::CURRENT) {
+      for (auto& entry: currentCids) {
+        auto collection =
+          engine->getCollection(vocbase().name(), std::to_string(entry));
+
+        if (collection
+            && !arangodb::ExecContext::CURRENT->canUseCollection(vocbase().name(), collection->name(), arangodb::auth::Level::RO)) {
+          return arangodb::Result(TRI_ERROR_FORBIDDEN);
+        }
+      }
+    }
+
+    std::unordered_set<TRI_voc_cid_t> collections;
+    auto res = IResearchLinkHelper::updateLinks(
+      collections,
+      vocbase(),
       *this,
-      false,
-      currentCids,
-      modified,
-      builder,
-      newCids
+      arangodb::velocypack::Slice::emptyObjectSlice(),
+      currentCids
     );
 
     if (!res.ok()) {
       return arangodb::Result(
         res.errorNumber(),
-        std::string("failed to remove links while removing IResearch view '") + name() + "': " + res.errorMessage()
+        std::string("failed to remove links while removing arangosearch view '") + name() + "': " + res.errorMessage()
       );
     }
-  }
-
-  // drop view then
-  std::string errorMsg;
-
-  int const res = ClusterInfo::instance()->dropViewCoordinator(
-    vocbase().name(), // database name
-    StringUtils::itoa(id()), // cluster-wide view id
-    errorMsg
-  );
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
-      << "Could not drop view in agency, error: " << errorMsg
-      << ", errorCode: " << res;
-
-    return { res, errorMsg };
   }
 
   return {};

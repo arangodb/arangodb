@@ -22,10 +22,10 @@
 
 #include "BasicPhase.h"
 
-using namespace arangodb;
-using namespace arangodb::application_features;
+namespace arangodb {
+namespace application_features {
 
-BasicFeaturePhase::BasicFeaturePhase(ApplicationServer* server, bool isClient)
+BasicFeaturePhase::BasicFeaturePhase(ApplicationServer& server, bool isClient)
     : ApplicationFeaturePhase(server, "BasicsPhase") {
   setOptional(false);
   startsAfter("GreetingsPhase");
@@ -57,3 +57,6 @@ BasicFeaturePhase::BasicFeaturePhase(ApplicationServer* server, bool isClient)
     startsAfter("WindowsService");
   }
 }
+
+} // application_features
+} // arangodb

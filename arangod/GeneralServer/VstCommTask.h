@@ -47,6 +47,9 @@ class VstCommTask final : public GeneralCommTask {
     return arangodb::Endpoint::TransportType::VST;
   }
 
+  // whether or not this task can mix sync and async I/O
+  bool canUseMixedIO() const override; 
+  
  protected:
   // read data check if chunk and message are complete
   // if message is complete execute a request

@@ -24,6 +24,7 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <array>
 #include <unordered_set>
 
 #include "velocypack/velocypack-common.h"
@@ -34,6 +35,35 @@
 #include "velocypack/StringRef.h"
 
 using namespace arangodb::velocypack;
+
+namespace {
+// Find the actual bytes of the attribute name of the VPack value
+// at position base, also determine the length len of the attribute.
+// This takes into account the different possibilities for the format
+// of attribute names:
+static uint8_t const* findAttrName(uint8_t const* base, uint64_t& len) {
+  uint8_t const b = *base;
+  if (b >= 0x40 && b <= 0xbe) {
+    // short UTF-8 string
+    len = b - 0x40;
+    return base + 1;
+  }
+  if (b == 0xbf) {
+    // long UTF-8 string
+    len = 0;
+    // read string length
+    for (size_t i = 8; i >= 1; i--) {
+      len = (len << 8) + base[i];
+    }
+    return base + 1 + 8;  // string starts here
+  }
+
+  // translate attribute name
+  return findAttrName(arangodb::velocypack::Slice(base).makeKey().start(), len);
+}
+
+} // namespace
+
   
 std::string Builder::toString() const {
   Options options;
@@ -52,46 +82,10 @@ std::string Builder::toJson() const {
   return buffer;
 }
   
-void Builder::doActualSort(std::vector<SortEntry>& entries) {
-  VELOCYPACK_ASSERT(entries.size() > 1);
-  std::sort(entries.begin(), entries.end(),
-            [](SortEntry const& a, SortEntry const& b) {
-    // return true iff a < b:
-    uint8_t const* pa = a.nameStart;
-    uint64_t sizea = a.nameSize;
-    uint8_t const* pb = b.nameStart;
-    uint64_t sizeb = b.nameSize;
-    size_t const compareLength = checkOverflow((std::min)(sizea, sizeb));
-    int res = memcmp(pa, pb, compareLength);
-
-    return (res < 0 || (res == 0 && sizea < sizeb));
-  });
-};
-
-uint8_t const* Builder::findAttrName(uint8_t const* base, uint64_t& len) {
-  uint8_t const b = *base;
-  if (b >= 0x40 && b <= 0xbe) {
-    // short UTF-8 string
-    len = b - 0x40;
-    return base + 1;
-  }
-  if (b == 0xbf) {
-    // long UTF-8 string
-    len = 0;
-    // read string length
-    for (size_t i = 8; i >= 1; i--) {
-      len = (len << 8) + base[i];
-    }
-    return base + 1 + 8;  // string starts here
-  }
-
-  // translate attribute name
-  return findAttrName(Slice(base).makeKey().start(), len);
-}
-
 void Builder::sortObjectIndexShort(uint8_t* objBase,
                                    std::vector<ValueLength>& offsets) const {
-  auto cmp = [&](ValueLength a, ValueLength b) -> bool {
+  std::sort(offsets.begin(), offsets.end(), [objBase](ValueLength const& a, 
+                                                      ValueLength const& b) {
     uint8_t const* aa = objBase + a;
     uint8_t const* bb = objBase + b;
     if (*aa >= 0x40 && *aa <= 0xbe && *bb >= 0x40 && *bb <= 0xbe) {
@@ -108,8 +102,7 @@ void Builder::sortObjectIndexShort(uint8_t* objBase,
       int c = memcmp(aa, bb, checkOverflow(m));
       return (c < 0 || (c == 0 && lena < lenb));
     }
-  };
-  std::sort(offsets.begin(), offsets.end(), cmp);
+  });
 }
 
 void Builder::sortObjectIndexLong(uint8_t* objBase,
@@ -117,30 +110,31 @@ void Builder::sortObjectIndexLong(uint8_t* objBase,
   _sortEntries.clear();
 
   size_t const n = offsets.size();
+  VELOCYPACK_ASSERT(n > 1);
   _sortEntries.reserve(n);
   for (size_t i = 0; i < n; i++) {
     SortEntry e;
     e.offset = offsets[i];
-    e.nameStart = findAttrName(objBase + e.offset, e.nameSize);
+    e.nameStart = ::findAttrName(objBase + e.offset, e.nameSize);
     _sortEntries.push_back(e);
   }
   VELOCYPACK_ASSERT(_sortEntries.size() == n);
-  doActualSort(_sortEntries);
+  std::sort(_sortEntries.begin(), _sortEntries.end(), [](SortEntry const& a, 
+                                                         SortEntry const& b) noexcept(checkOverflow(UINT64_MAX)) {
+    // return true iff a < b:
+    uint64_t sizea = a.nameSize;
+    uint64_t sizeb = b.nameSize;
+    size_t const compareLength = checkOverflow((std::min)(sizea, sizeb));
+    int res = memcmp(a.nameStart, b.nameStart, compareLength);
+
+    return (res < 0 || (res == 0 && sizea < sizeb));
+  });
 
   // copy back the sorted offsets
   for (size_t i = 0; i < n; i++) {
     offsets[i] = _sortEntries[i].offset;
   }
   _sortEntries.clear();
-}
-
-void Builder::sortObjectIndex(uint8_t* objBase,
-                              std::vector<ValueLength>& offsets) {
-  if (offsets.size() > 32) {
-    sortObjectIndexLong(objBase, offsets);
-  } else {
-    sortObjectIndexShort(objBase, offsets);
-  }
 }
 
 void Builder::removeLast() {
@@ -393,6 +387,8 @@ Builder& Builder::close() {
     return *this;
   }
 
+  // from here on we are sure that we are dealing with Object types only.
+
   // fix head byte in case a compact Array / Object was originally requested
   _start[tos] = 0x0b;
 
@@ -472,9 +468,11 @@ Builder& Builder::close() {
   }
 
   // And, if desired, check attribute uniqueness:
-  if (options->checkAttributeUniqueness && index.size() > 1) {
-    // check uniqueness of attribute names
-    checkAttributeUniqueness(Slice(_start + tos));
+  if (options->checkAttributeUniqueness && 
+      index.size() > 1 &&
+      !checkAttributeUniqueness(Slice(_start + tos))) {
+    // duplicate attribute name!
+    throw Exception(Exception::DuplicateAttributeName);
   }
 
   // Now the array or object is complete, we pop a ValueLength
@@ -486,7 +484,7 @@ Builder& Builder::close() {
 
 // checks whether an Object value has a specific key attribute
 bool Builder::hasKey(std::string const& key) const {
-  if (_stack.empty()) {
+  if (VELOCYPACK_UNLIKELY(_stack.empty())) {
     throw Exception(Exception::BuilderNeedOpenObject);
   }
   ValueLength const& tos = _stack.back();
@@ -508,7 +506,7 @@ bool Builder::hasKey(std::string const& key) const {
 
 // return the value for a specific key of an Object value
 Slice Builder::getKey(std::string const& key) const {
-  if (_stack.empty()) {
+  if (VELOCYPACK_UNLIKELY(_stack.empty())) {
     throw Exception(Exception::BuilderNeedOpenObject);
   }
   ValueLength const tos = _stack.back();
@@ -543,7 +541,7 @@ uint8_t* Builder::set(Value const& item) {
       break;
     }
     case ValueType::Bool: {
-      if (ctype != Value::CType::Bool) {
+      if (VELOCYPACK_UNLIKELY(ctype != Value::CType::Bool)) {
         throw Exception(Exception::BuilderUnexpectedValue,
                         "Must give bool for ValueType::Bool");
       }
@@ -585,7 +583,7 @@ uint8_t* Builder::set(Value const& item) {
         // precaution
         throw Exception(Exception::BuilderExternalsDisallowed);
       }
-      if (ctype != Value::CType::VoidPtr) {
+      if (VELOCYPACK_UNLIKELY(ctype != Value::CType::VoidPtr)) {
         throw Exception(Exception::BuilderUnexpectedValue,
                         "Must give void pointer for ValueType::External");
       }
@@ -613,7 +611,7 @@ uint8_t* Builder::set(Value const& item) {
           throw Exception(Exception::BuilderUnexpectedValue,
                           "Must give number for ValueType::SmallInt");
       }
-      if (vv < -6 || vv > 9) {
+      if (VELOCYPACK_UNLIKELY(vv < -6 || vv > 9)) {
         throw Exception(Exception::NumberOutOfRange,
                         "Number out of range of ValueType::SmallInt");
       }
@@ -647,7 +645,7 @@ uint8_t* Builder::set(Value const& item) {
       uint64_t v = 0;
       switch (ctype) {
         case Value::CType::Double:
-          if (item.getDouble() < 0.0) {
+          if (VELOCYPACK_UNLIKELY(item.getDouble() < 0.0)) {
             throw Exception(
                 Exception::BuilderUnexpectedValue,
                 "Must give non-negative number for ValueType::UInt");
@@ -655,7 +653,7 @@ uint8_t* Builder::set(Value const& item) {
           v = static_cast<uint64_t>(item.getDouble());
           break;
         case Value::CType::Int64:
-          if (item.getInt64() < 0) {
+          if (VELOCYPACK_UNLIKELY(item.getInt64() < 0)) {
             throw Exception(
                 Exception::BuilderUnexpectedValue,
                 "Must give non-negative number for ValueType::UInt");
@@ -739,7 +737,7 @@ uint8_t* Builder::set(Value const& item) {
       break;
     }
     case ValueType::Binary: {
-      if (ctype != Value::CType::String && ctype != Value::CType::CharPtr) {
+      if (VELOCYPACK_UNLIKELY(ctype != Value::CType::String && ctype != Value::CType::CharPtr)) {
         throw Exception(
             Exception::BuilderUnexpectedValue,
             "Must provide std::string or char const* for ValueType::Binary");
@@ -846,48 +844,95 @@ uint8_t* Builder::set(ValuePair const& pair) {
                   "ValueType::Custom are valid for ValuePair argument");
 }
 
-void Builder::checkAttributeUniqueness(Slice const& obj) const {
+bool Builder::checkAttributeUniqueness(Slice obj) const {
   VELOCYPACK_ASSERT(options->checkAttributeUniqueness == true);
+  VELOCYPACK_ASSERT(obj.isObject());
+  VELOCYPACK_ASSERT(obj.length() >= 2);
 
   if (obj.isSorted()) {
     // object attributes are sorted
-    Slice previous = obj.keyAt(0);
-    ValueLength len;
-    char const* p = previous.getString(len);
+    return checkAttributeUniquenessSorted(obj);
+  }
+
+  return checkAttributeUniquenessUnsorted(obj);
+}
+
+bool Builder::checkAttributeUniquenessSorted(Slice obj) const {
+  ObjectIterator it(obj, false);
+
+  // fetch initial key
+  Slice previous = it.key(true);
+  ValueLength len;
+  char const* p = previous.getString(len);
   
-    ValueLength const n = obj.length();
+  // advance to next key already  
+  it.next();
 
-    // compare each two adjacent attribute names
-    for (ValueLength i = 1; i < n; ++i) {
-      Slice current = obj.keyAt(i);
-      // keyAt() guarantees a string as returned type
-      VELOCYPACK_ASSERT(current.isString());
+  do {
+    Slice const current = it.key(true);
+    VELOCYPACK_ASSERT(current.isString());
+    
+    ValueLength len2;
+    char const* q = current.getStringUnchecked(len2);
 
-      ValueLength len2;
-      char const* q = current.getString(len2);
-
-      if (len == len2 && memcmp(p, q, checkOverflow(len2)) == 0) {
-        // identical key
-        throw Exception(Exception::DuplicateAttributeName);
-      }
-      // re-use already calculated values for next round
-      len = len2;
-      p = q;
+    if (len == len2 && memcmp(p, q, checkOverflow(len2)) == 0) {
+      // identical key
+      return false;
     }
+    // re-use already calculated values for next round
+    len = len2;
+    p = q;
+    it.next();
+  } while (it.valid());
+
+  // all keys unique
+  return true;
+}
+
+bool Builder::checkAttributeUniquenessUnsorted(Slice obj) const {
+  // cutoff value for linear attribute uniqueness scan
+  // unsorted objects with this amount of attributes (or less) will
+  // be validated using a non-allocating scan over the attributes
+  // objects with more attributes will use a validation routine that
+  // will use an std::unordered_set for O(1) lookups but with heap
+  // allocations
+  constexpr ValueLength LinearAttributeUniquenessCutoff = 4;
+
+  ObjectIterator it(obj, true);
+
+  if (it.size() <= LinearAttributeUniquenessCutoff) {
+    std::array<StringRef, LinearAttributeUniquenessCutoff> keys;
+    do {
+      // key() guarantees a String as returned type
+      StringRef key = it.key(true).stringRef();
+      ValueLength index = it.index();
+      if (index > 0) {
+        // compare with all other already looked-at keys
+        for (ValueLength i = 0; i < index; ++i) {
+          if (keys[i].equals(key)) {
+            return false;
+          }
+        }
+      }
+      keys[index] = key;
+      it.next();
+    } while (it.valid());
   } else {
     std::unordered_set<StringRef> keys;
-    ObjectIterator it(obj, true);
-
-    while (it.valid()) {
+    do {
       Slice const key = it.key(true);
       // key() guarantees a String as returned type
       VELOCYPACK_ASSERT(key.isString());
-      if (!keys.emplace(StringRef(key)).second) {
-        throw Exception(Exception::DuplicateAttributeName);
+      if (!keys.emplace(key).second) {
+        // identical key
+        return false;
       }
       it.next();
-    }
+    } while (it.valid());
   }
+  
+  // all keys unique
+  return true;
 }
 
 // Add all subkeys and subvalues into an object from an ObjectIterator

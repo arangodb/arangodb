@@ -61,7 +61,7 @@ class RecoveryManager {
   void stopMonitoring(Conductor*);
   int filterGoodServers(std::vector<ServerID> const& servers,
                         std::vector<ServerID>& goodServers);
-  void updatedFailedServers();
+  void updatedFailedServers(std::vector<ServerID> const& failedServers);
   // bool allServersAvailable(std::vector<ServerID> const& dbServers);
 };
 

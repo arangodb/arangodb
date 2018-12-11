@@ -23,14 +23,16 @@
 #include "TraverserEngineRegistryFeature.h"
 #include "Cluster/TraverserEngineRegistry.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 
-traverser::TraverserEngineRegistry*
-    TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY = nullptr;
+namespace arangodb {
+
+std::atomic<traverser::TraverserEngineRegistry*>
+  TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY{nullptr};
 
 TraverserEngineRegistryFeature::TraverserEngineRegistryFeature(
-    ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "TraverserEngineRegistry") {
   setOptional(false);
   startsAfter("V8Phase");
@@ -47,11 +49,13 @@ void TraverserEngineRegistryFeature::validateOptions(
 void TraverserEngineRegistryFeature::prepare() {
   // create the engine registery
   _engineRegistry.reset(new traverser::TraverserEngineRegistry());
-  TRAVERSER_ENGINE_REGISTRY = _engineRegistry.get();
+  TRAVERSER_ENGINE_REGISTRY.store(_engineRegistry.get(), std::memory_order_release);
 }
 void TraverserEngineRegistryFeature::start() {
 }
 
 void TraverserEngineRegistryFeature::unprepare() {
-  TRAVERSER_ENGINE_REGISTRY = nullptr;
+  TRAVERSER_ENGINE_REGISTRY.store(nullptr, std::memory_order_release);
 }
+
+} // arangodb

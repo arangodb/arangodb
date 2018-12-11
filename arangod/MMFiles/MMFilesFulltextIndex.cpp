@@ -28,7 +28,6 @@
 #include "Basics/StringRef.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Indexes/IndexResult.h"
 #include "Logger/Logger.h"
 #include "MMFiles/mmfiles-fulltext-index.h"
 #include "MMFiles/mmfiles-fulltext-query.h"
@@ -45,11 +44,9 @@ void MMFilesFulltextIndex::extractWords(std::set<std::string>& words,
                                         VPackSlice value, int level) const {
   if (value.isString()) {
     // extract the string value for the indexed attribute
-    std::string text = value.copyString();
-
     // parse the document text
     arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(
-        words, text, _minWordLength, TRI_FULLTEXT_MAX_WORD_LENGTH, true);
+        words, value.stringRef(), _minWordLength, TRI_FULLTEXT_MAX_WORD_LENGTH, true);
     // We don't care for the result. If the result is false, words stays
     // unchanged and is not indexed
   } else if (value.isArray() && level == 0) {
@@ -109,7 +106,8 @@ MMFilesFulltextIndex::MMFilesFulltextIndex(
 
 MMFilesFulltextIndex::~MMFilesFulltextIndex() {
   if (_fulltextIndex != nullptr) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "destroying fulltext index";
+    LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+        << "destroying fulltext index";
     TRI_FreeFtsIndex(_fulltextIndex);
   }
 }
@@ -119,10 +117,10 @@ size_t MMFilesFulltextIndex::memory() const {
 }
 
 /// @brief return a VelocyPack representation of the index
-void MMFilesFulltextIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
-                                        bool forPersistence) const {
+void MMFilesFulltextIndex::toVelocyPack(VPackBuilder& builder,
+       std::underlying_type<Index::Serialize>::type flags) const {
   builder.openObject();
-  Index::toVelocyPack(builder, withFigures, forPersistence);
+  Index::toVelocyPack(builder, flags);
   builder.add(
     arangodb::StaticStrings::IndexUnique,
     arangodb::velocypack::Value(false)
@@ -185,13 +183,13 @@ bool MMFilesFulltextIndex::matchesDefinition(VPackSlice const& info) const {
     return false;
   }
   if (_unique != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                   info, arangodb::StaticStrings::IndexUnique.c_str(), false
+                   info, arangodb::StaticStrings::IndexUnique, false
                  )
      ) {
     return false;
   }
   if (_sparse != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                   info, arangodb::StaticStrings::IndexSparse.c_str(), true
+                   info, arangodb::StaticStrings::IndexSparse, true
                  )
      ) {
     return false;
@@ -219,27 +217,32 @@ bool MMFilesFulltextIndex::matchesDefinition(VPackSlice const& info) const {
 Result MMFilesFulltextIndex::insert(transaction::Methods*,
                                     LocalDocumentId const& documentId,
                                     VPackSlice const& doc, OperationMode mode) {
-  int res = TRI_ERROR_NO_ERROR;
+  Result res;
+  int r = TRI_ERROR_NO_ERROR;
   std::set<std::string> words = wordlist(doc);
-
   if (!words.empty()) {
-    res =
-        TRI_InsertWordsMMFilesFulltextIndex(_fulltextIndex, documentId, words);
+    r = TRI_InsertWordsMMFilesFulltextIndex(_fulltextIndex, documentId, words);
   }
-  return IndexResult(res, this);
+  if (r != TRI_ERROR_NO_ERROR) {
+    addErrorMsg(res, r);
+  }
+  return res;
 }
 
 Result MMFilesFulltextIndex::remove(transaction::Methods*,
                                     LocalDocumentId const& documentId,
                                     VPackSlice const& doc, OperationMode mode) {
-  int res = TRI_ERROR_NO_ERROR;
+  Result res;
+  int r = TRI_ERROR_NO_ERROR;
   std::set<std::string> words = wordlist(doc);
 
   if (!words.empty()) {
-    res =
-        TRI_RemoveWordsMMFilesFulltextIndex(_fulltextIndex, documentId, words);
+    r = TRI_RemoveWordsMMFilesFulltextIndex(_fulltextIndex, documentId, words);
   }
-  return IndexResult(res, this);
+  if (r != TRI_ERROR_NO_ERROR) {
+    addErrorMsg(res, r);
+  }
+  return res;
 }
 
 void MMFilesFulltextIndex::unload() {
@@ -247,7 +250,7 @@ void MMFilesFulltextIndex::unload() {
 }
 
 IndexIterator* MMFilesFulltextIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult*, 
+    transaction::Methods* trx, ManagedDocumentResult*,
     aql::AstNode const* condNode, aql::Variable const* var,
     IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
@@ -285,7 +288,7 @@ IndexIterator* MMFilesFulltextIndex::iteratorForCondition(
       TRI_QueryMMFilesFulltextIndex(_fulltextIndex, ft);
 
   return new MMFilesFulltextIndexIterator(
-    &_collection, trx, this, std::move(results)
+    &_collection, trx, std::move(results)
   );
 }
 

@@ -242,7 +242,7 @@ class min_match_disjunction : public doc_iterator_base {
   template<typename Iterator>
   inline void pop(Iterator begin, Iterator end) {
     // lambda here gives ~20% speedup on GCC
-    irs::pop_heap(begin, end, [](const doc_iterator_t& lhs, const doc_iterator_t& rhs) {
+    detail::pop_heap(begin, end, [](const doc_iterator_t& lhs, const doc_iterator_t& rhs) {
       const auto lhs_doc = lhs->value();
       const auto rhs_doc = rhs->value();
       return (lhs_doc > rhs_doc || (lhs_doc == rhs_doc && lhs.est > rhs.est));
@@ -388,9 +388,7 @@ class min_match_disjunction : public doc_iterator_base {
     std::for_each(
       lead(), itrs_.end(),
       [this, lhs](doc_iterator_t& it) {
-        const auto* score = it.score;
-        score->evaluate();
-        ord_->add(lhs, score->c_str());
+        detail::score_add(lhs, *ord_, it);
     });
   }
 

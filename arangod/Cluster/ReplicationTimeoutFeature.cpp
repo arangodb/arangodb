@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,14 +25,17 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
-using namespace arangodb;
 using namespace arangodb::options;
-  
+
+namespace arangodb {
+
 double ReplicationTimeoutFeature::timeoutFactor = 1.0;
 double ReplicationTimeoutFeature::timeoutPer4k = 0.1;
 double ReplicationTimeoutFeature::lowerLimit = 0.5;
 
-ReplicationTimeoutFeature::ReplicationTimeoutFeature(application_features::ApplicationServer* server)
+ReplicationTimeoutFeature::ReplicationTimeoutFeature(
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "ReplicationTimeout") {
   setOptional(true);
   startsAfter("DatabasePhase");
@@ -45,9 +48,10 @@ void ReplicationTimeoutFeature::collectOptions(std::shared_ptr<ProgramOptions> o
                      "all synchronous replication timeouts are multiplied by this factor",
                      new DoubleParameter(&timeoutFactor));
 
-  options->addHiddenOption("--cluster.synchronous-replication-timeout-per-4k",
+  options->addOption("--cluster.synchronous-replication-timeout-per-4k",
                      "all synchronous replication timeouts are increased by this amount per 4096 bytes (in seconds)",
-                     new DoubleParameter(&timeoutPer4k));
+                     new DoubleParameter(&timeoutPer4k),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
 void ReplicationTimeoutFeature::prepare() {
@@ -55,3 +59,5 @@ void ReplicationTimeoutFeature::prepare() {
   TRI_ASSERT(EngineSelectorFeature::ENGINE != nullptr);
   lowerLimit = EngineSelectorFeature::ENGINE->minimumSyncReplicationTimeout();
 }
+
+} // arangodb

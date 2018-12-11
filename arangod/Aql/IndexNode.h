@@ -108,7 +108,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
       std::unordered_set<Variable const*>& vars) const override final;
 
   /// @brief estimateCost
-  double estimateCost(size_t&) const override final;
+  CostEstimate estimateCost() const override final;
 
   /// @brief getIndexes, hand out the indexes used
   std::vector<transaction::Methods::IndexHandle> const& getIndexes() const { return _indexes; }

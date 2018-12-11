@@ -43,10 +43,6 @@ class TraversalBlock final : public ExecutionBlock {
 
   ~TraversalBlock();
 
-  Type getType() const override final {
-    return Type::TRAVERSAL;
-  }
-
   /// @brief initializeCursor
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 

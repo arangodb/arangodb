@@ -106,14 +106,12 @@ int TRI_MMFileUnlock(void* memoryAddress, size_t numOfBytes);
 
 static inline int TRI_MSync(int fd, char const* begin, char const* end) {
   size_t pageSize = arangodb::PageSizeFeature::getPageSize();
-  uintptr_t p = (intptr_t)begin;
-  uintptr_t q = (intptr_t)end;
-  uintptr_t g = (intptr_t)pageSize;
+  uintptr_t p = (uintptr_t)begin;
+  uintptr_t g = (uintptr_t)pageSize;
 
   char* b = (char*)((p / g) * g);
-  char* e = (char*)(((q + g - 1) / g) * g);
 
-  return TRI_FlushMMFile(fd, b, e - b, MS_SYNC);
+  return TRI_FlushMMFile(fd, b, end - b, MS_SYNC);
 }
 
 #endif

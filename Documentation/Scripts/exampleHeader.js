@@ -107,7 +107,7 @@ const log = function (a) {
   appender(internal.stopCaptureMode());
 };
 
-var logCurlRequestRaw = internal.appendCurlRequest(shellAppender,jsonAppender, rawAppender);
+var logCurlRequestRaw = internal.appendCurlRequest(shellAppender, jsonAppender, rawAppender);
 var logCurlRequest = function () {
   if ((arguments.length > 1) &&
       (arguments[1] !== undefined) &&
@@ -172,28 +172,25 @@ var runTestLine = function(line, testName, sourceFN, sourceLine, lineCount, show
 /* jshint ignore:start */
     if (!showCmd || isLoop) {
       eval(line);
-    }
-    else {
+    } else {
       eval("XXX = " + line);
     }
 /* jshint ignore:end */
     if (expectError !== undefined) {
-       throw new Error("expected to throw with " + expectError + " but didn't!");
+      throw new Error("expected to throw with " + expectError + " but didn't!");
     }
   }
   catch (err) {
     if (expectError !== undefined) {
       if (err.errorNum === errors[expectError].code) {
         print(err);
-      }
-      else {
+      } else {
         print(err);
         createErrorMessage(err, line, testName, sourceFN, sourceLine, lineCount, " caught unexpected exception!");
       }
-    }
-    else {
-        createErrorMessage(err, line, testName, sourceFN, sourceLine, lineCount, " caught an exception!\n");
-        print(err);
+    } else {
+      createErrorMessage(err, line, testName, sourceFN, sourceLine, lineCount, " caught an exception!\n");
+      print(err);
     }
   }
   if (showCmd && XXX !== undefined) {
@@ -207,7 +204,7 @@ var runTestFunc = function (execFunction, testName, sourceFile) {
     return('done with  ' + testName);
   } catch (err) {
     allErrors += '\nRUN FAILED: ' + testName + ' from testfile: ' + sourceFile + ', ' + err + '\n' + err.stack + '\n';
-    return hashes + '\nfailed with  ' + testName + ', ', err, '\n' + hashes;
+    return hashes + '\nfailed with  ' + testName + ', ' + err + '\n' + hashes;
   }
 };
 
@@ -218,13 +215,14 @@ var runTestFuncCatch = function (execFunction, testName, expectError) {
   } catch (err) {
     if (err.num !== expectError.code) {
       allErrors += '\nRUN FAILED: ' + testName + ', ' + err + '\n' + err.stack + '\n';
-      return hashes + '\nfailed with  ' + testName + ', ', err, '\n' + hashes;
+      return hashes + '\nfailed with  ' + testName + ', ' + err + '\n' + hashes;
     }
   }
 };
 
 var checkForOrphanTestCollections = function(msg) {
-  var cols = db._collections().map(function(c){
+  const colsAndViews = db._collections().concat(db._views());
+  var cols = colsAndViews.map(function(c){
       return c.name();
   });
   var orphanColls = [];
@@ -256,19 +254,27 @@ var addIgnoreCollection = function(collectionName) {
   ignoreCollectionAlreadyThere.push(collectionName);
 };
 
+var addIgnoreView = function(viewName) {
+  addIgnoreCollection(viewName);
+};
+
 var removeIgnoreCollection = function(collectionName) {
   // print("from now on checking again whether this collection dropped: " + collectionName);
-  for (j=0; j < collectionAlreadyThere.length; j++) {
+  for (j = 0; j < collectionAlreadyThere.length; j++) {
     if (collectionAlreadyThere[j] === collectionName) {
       collectionAlreadyThere[j] = undefined;
     }
   }
-  for (j=0; j < ignoreCollectionAlreadyThere.length; j++) {
+  for (j = 0; j < ignoreCollectionAlreadyThere.length; j++) {
     if (ignoreCollectionAlreadyThere[j] === collectionName) {
       ignoreCollectionAlreadyThere[j] = undefined;
     }
   }
 
+};
+
+var removeIgnoreView = function (viewName) {
+  removeIgnoreCollection(viewName);
 };
 
 var checkIgnoreCollectionAlreadyThere = function () {
@@ -281,6 +287,6 @@ var checkIgnoreCollectionAlreadyThere = function () {
 
 // Set the first available list of already there collections:
 var err = allErrors;
-checkForOrphanTestCollections('Collections already there which we will ignore from now on:');
+checkForOrphanTestCollections('Collections or views already there which we will ignore from now on:');
 print(allErrors + '\n');
 allErrors = err;

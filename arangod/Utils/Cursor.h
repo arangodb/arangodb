@@ -65,19 +65,19 @@ class Cursor {
  public:
   CursorId id() const { return _id; }
 
-  size_t batchSize() const { return _batchSize; }
+  inline size_t batchSize() const { return _batchSize; }
 
-  bool hasCount() const { return _hasCount; }
+  inline bool hasCount() const { return _hasCount; }
 
-  double ttl() const { return _ttl; }
+  inline double ttl() const { return _ttl; }
 
-  double expires() const { return _expires; }
+  inline double expires() const { return _expires; }
 
-  bool isUsed() const { return _isUsed; }
+  inline bool isUsed() const { return _isUsed; }
 
-  bool isDeleted() const { return _isDeleted; }
+  inline bool isDeleted() const { return _isDeleted; }
 
-  void deleted() { _isDeleted = true; }
+  void setDeleted() { _isDeleted = true; }
 
   void use() {
     TRI_ASSERT(!_isDeleted);
@@ -93,6 +93,8 @@ class Cursor {
   }
 
   virtual CursorType type() const = 0;
+  
+  virtual void kill() {}
 
   virtual size_t count() const = 0;
 

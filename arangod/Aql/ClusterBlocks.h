@@ -121,10 +121,6 @@ class ScatterBlock final : public BlockWithClients {
                std::vector<std::string> const& shardIds)
       : BlockWithClients(engine, ep, shardIds) {}
 
-  Type getType() const override final {
-    return Type::SCATTER;
-  }
-
   /// @brief initializeCursor
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
@@ -155,10 +151,6 @@ class DistributeBlock final : public BlockWithClients {
   DistributeBlock(ExecutionEngine* engine, DistributeNode const* ep,
                   std::vector<std::string> const& shardIds,
                   Collection const* collection);
-
-  Type getType() const override final {
-    return Type::DISTRIBUTE;
-  }
 
   /// @brief initializeCursor
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
@@ -249,18 +241,7 @@ class RemoteBlock final : public ExecutionBlock {
   /// @brief handleAsyncResult
   bool handleAsyncResult(ClusterCommResult* result) override;
 
-  Type getType() const override final {
-    return Type::REMOTE;
-  }
-
  private:
-  /// @brief internal method to send a request
-  /// TODO:Deprecated!
-  std::unique_ptr<arangodb::ClusterCommResult> sendRequest(
-      rest::RequestType type, std::string const& urlPart,
-      std::string const& body) const;
-
-
   /**
    * @brief Handle communication errors in Async case.
    *
@@ -321,10 +302,6 @@ class UnsortingGatherBlock final : public ExecutionBlock {
   /// @brief skipSome
   std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final;
 
-  Type getType() const override final {
-    return Type::UNSORTING_GATHER;
-  }
-
  private:
   /// @brief _atDep: currently pulling blocks from _dependencies.at(_atDep),
   size_t _atDep{};
@@ -374,10 +351,6 @@ class SortingGatherBlock final : public ExecutionBlock {
   /// @brief skipSome
   std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final;
 
-  Type getType() const override final {
-    return Type::SORTING_GATHER;
-  }
-
  private:
   
   void clearBuffers() noexcept;
@@ -414,6 +387,9 @@ class SortingGatherBlock final : public ExecutionBlock {
   /// @brief _gatherBlockPos: pairs (i, _pos in _buffer.at(i)), i.e. the same as
   /// the usual _pos but one pair per dependency
   std::vector<std::pair<size_t, size_t>> _gatherBlockPos;
+  
+  /// @brief whether or not the dependency at index is done
+  std::vector<bool> _gatherBlockPosDone;
 
   /// @brief sort elements for this block
   std::vector<SortRegister> _sortRegisters;
@@ -421,8 +397,6 @@ class SortingGatherBlock final : public ExecutionBlock {
   /// @brief sorting strategy
   std::unique_ptr<SortingStrategy> _strategy;
 }; // SortingGatherBlock
-
-
 
 class SingleRemoteOperationBlock final : public ExecutionBlock {
   /// @brief constructors/destructors
@@ -443,8 +417,6 @@ class SingleRemoteOperationBlock final : public ExecutionBlock {
 
   /// @brief skipSome
   std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final;
-
-  Type getType() const override {return Type::SINGLEOPERATION; }
 
  private:
   /// @brief _colectionName: the name of the sharded collection

@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CollectBlock.h"
+#include "Aql/Aggregator.h"
 #include "Aql/AqlValue.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
@@ -255,7 +256,6 @@ SortedCollectBlock::SortedCollectBlock(ExecutionEngine* engine,
 
 std::pair<ExecutionState, arangodb::Result> SortedCollectBlock::initializeCursor(
     AqlItemBlock* items, size_t pos) {
-  DEBUG_BEGIN_BLOCK();
   auto res = ExecutionBlock::initializeCursor(items, pos);
 
   if (res.first == ExecutionState::WAITING ||
@@ -264,16 +264,11 @@ std::pair<ExecutionState, arangodb::Result> SortedCollectBlock::initializeCursor
     return res;
   }
 
-  DEBUG_BEGIN_BLOCK();
   _currentGroup.reset();
   _pos = 0;
   _lastBlock = nullptr;
-  DEBUG_END_BLOCK();
 
   return res;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
@@ -517,11 +512,8 @@ void SortedCollectBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
              ++r) {
           it->reduce(getValueForRegister(cur, r, reg));
         }
-        res->setValue(row, _aggregateRegisters[j].first, it->stealValue());
-      } else {
-        res->emplaceValue(row, _aggregateRegisters[j].first,
-                          AqlValueHintNull());
       }
+      res->setValue(row, _aggregateRegisters[j].first, it->stealValue());
       ++j;
     }
 
@@ -677,9 +669,26 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
   };
 
   auto* en = ExecutionNode::castTo<CollectNode const*>(_exeNode);
+  
+  std::vector<std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const*> aggregatorFactories;   
+  if (en->_aggregateVariables.empty()) {
+    // no aggregate registers. this means we'll only count the number of items
+    if (en->_count) {
+      aggregatorFactories.emplace_back(Aggregator::factoryFromTypeString("LENGTH"));
+    }
+  } else {
+    // we do have aggregate registers. create them as empty AqlValues
+    aggregatorFactories.reserve(_aggregateRegisters.size());
+
+    // initialize aggregators
+    for (auto const& r : en->_aggregateVariables) {
+      aggregatorFactories.emplace_back(
+          Aggregator::factoryFromTypeString(r.second.second));
+    }
+  }
 
   // if no group exists for the current row yet, this builds a new group.
-  auto buildNewGroup = [this, en](
+  auto buildNewGroup = [this, &aggregatorFactories](
       const AqlItemBlock* cur, size_t const pos,
       const size_t n) -> std::pair<std::unique_ptr<AggregateValuesType>,
                                    std::vector<AqlValue>> {
@@ -693,23 +702,11 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
     }
 
     auto aggregateValues = std::make_unique<AggregateValuesType>();
+    aggregateValues->reserve(aggregatorFactories.size());
 
-    if (en->_aggregateVariables.empty()) {
-      // no aggregate registers. this means we'll only count the number of items
-      if (en->_count) {
-        aggregateValues->emplace_back(Aggregator::fromTypeString(_trx, "LENGTH"));
-      }
-    } else {
-      // we do have aggregate registers. create them as empty AqlValues
-      aggregateValues->reserve(_aggregateRegisters.size());
-
-      // initialize aggregators
-      for (auto const& r : en->_aggregateVariables) {
-        aggregateValues->emplace_back(
-            Aggregator::fromTypeString(_trx, r.second.second));
-      }
+    for (auto const& it : aggregatorFactories) {
+      aggregateValues->emplace_back((*it)(_trx));
     }
-
     return std::make_pair(std::move(aggregateValues), group);
   };
 
@@ -946,7 +943,6 @@ DistinctCollectBlock::~DistinctCollectBlock() {
 
 std::pair<ExecutionState, arangodb::Result> DistinctCollectBlock::initializeCursor(
     AqlItemBlock* items, size_t pos) {
-  DEBUG_BEGIN_BLOCK();
   auto res = ExecutionBlock::initializeCursor(items, pos);
 
   if (res.first == ExecutionState::WAITING ||
@@ -955,16 +951,11 @@ std::pair<ExecutionState, arangodb::Result> DistinctCollectBlock::initializeCurs
     return res;
   }
 
-  DEBUG_BEGIN_BLOCK();
   _pos = 0;
   _res = nullptr;
   clearValues();
-  DEBUG_END_BLOCK();
 
   return res;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 void DistinctCollectBlock::clearValues() {
@@ -1134,27 +1125,17 @@ std::pair<ExecutionState, arangodb::Result> CountCollectBlock::initializeCursor(
 
 std::pair<ExecutionState, Result> CountCollectBlock::getOrSkipSome(size_t atMost, bool skipping,
                                                                    AqlItemBlock*& result, size_t& skipped) {
-  DEBUG_BEGIN_BLOCK();
-
   TRI_ASSERT(result == nullptr && skipped == 0);
   
   if (_done) {
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
+
+  TRI_ASSERT(_dependencies.size() == 1);
   
-  while (!_done) {  
-    if (_buffer.empty()) {
-      auto upstreamRes = ExecutionBlock::getBlock(DefaultBatchSize());
-      if (upstreamRes.first == ExecutionState::WAITING) {
-        return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
-      }
-      if (upstreamRes.first == ExecutionState::DONE ||
-          !upstreamRes.second) {
-        _done = true;
-      }
-    }
-  
-    if (!_buffer.empty()) {
+  while (!_done) { 
+    // consume all the buffers we still have queued 
+    while (!_buffer.empty()) {
       AqlItemBlock* cur = _buffer.front();
       TRI_ASSERT(cur != nullptr);
       _count += cur->size();
@@ -1164,6 +1145,18 @@ std::pair<ExecutionState, Result> CountCollectBlock::getOrSkipSome(size_t atMost
       _buffer.pop_front();
       _pos = 0;
       returnBlock(cur);
+    }
+
+    auto upstreamRes = _dependencies[0]->skipSome(DefaultBatchSize());
+    if (upstreamRes.first == ExecutionState::WAITING) {
+      return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
+    }
+    if (upstreamRes.first == ExecutionState::DONE ||
+        upstreamRes.second == 0) {
+      _done = true;
+    }
+    if (upstreamRes.second > 0) {
+      _count += upstreamRes.second;
     }
   
     throwIfKilled();  // check if we were aborted
@@ -1183,7 +1176,4 @@ std::pair<ExecutionState, Result> CountCollectBlock::getOrSkipSome(size_t atMost
   result = res.release();
 
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }

@@ -88,7 +88,7 @@ var TextHighlightRules = require("./text_highlight_rules").TextHighlightRules;
 var AqlHighlightRules = function() {
 
     var keywords = (
-        "for|return|filter|sort|limit|let|collect|asc|desc|in|into|insert|update|remove|replace|upsert|options|with|and|or|not|distinct|graph|shortest_path|outbound|inbound|any|all|none|aggregate|like"
+        "for|return|filter|search|sort|limit|let|collect|asc|desc|in|into|insert|update|remove|replace|upsert|options|with|and|or|not|distinct|graph|shortest_path|outbound|inbound|any|all|none|aggregate|like"
     );
 
     var builtinFunctions = (
@@ -105,6 +105,9 @@ var AqlHighlightRules = function() {
         "first_list|first_document|parse_identifier|current_user|current_database|" +
         "collections|document|union|union_distinct|intersection|flatten|is_same_collection|" +
         "ltrim|rtrim|find_first|find_last|split|substitute|md5|sha1|hash|random_token|to_base64|" +
+        "to_hex|encode_uri_component|soundex|assert|warn|is_key|sorted|sorted_unique|count_distinct|" +
+        "levenshtein_distance|regex_matches|regex_split|uuid|" +
+        "tokens|exists|starts_with|phrase|min_match|boost|analyzer|" +
         "to_hex|encode_uri_component|soundex|assert|warn|is_key|sorted|sorted_unique|count_distinct|" +
         "geo_point|geo_multipoint|geo_polygon|geo_linestring|geo_multilinestring|geo_contains|geo_intersects|" +
         "geo_equals|geo_distance|AQL_LAST_ENTRY)"

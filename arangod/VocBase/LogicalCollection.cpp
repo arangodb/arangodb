@@ -139,36 +139,6 @@ arangodb::LogicalDataSource::Type const& readType(
 
 } // namespace
 
-/// @brief This the "copy" constructor used in the cluster
-///        it is required to create objects that survive plan
-///        modifications and can be freed
-LogicalCollection::LogicalCollection(LogicalCollection const& other)
-    : LogicalDataSource(other),
-      _internalVersion(0),
-      _isAStub(other._isAStub),
-      _type(other.type()),
-      _status(other.status()),
-      _isSmart(other.isSmart()),
-      _isLocal(false),
-      _waitForSync(other.waitForSync()),
-      _version(other._version),
-      _allowUserKeys(other.allowUserKeys()),
-      _keyOptions(other._keyOptions),
-      _keyGenerator(KeyGenerator::factory(VPackSlice(keyOptions()))),
-      _physical(other.getPhysical()->clone(*this)),
-      _clusterEstimateTTL(0),
-      _followers(), // intentionally empty here
-      _sharding() {
-  TRI_ASSERT(_physical != nullptr);
-
-  _sharding = std::make_unique<ShardingInfo>(*other._sharding.get(), this);
-  
-  if (ServerState::instance()->isDBServer() ||
-      !ServerState::instance()->isRunningInCluster()) {
-    _followers.reset(new FollowerInfo(this));
-  }
-}
-
 // The Slice contains the part of the plan that
 // is relevant for this collection.
 LogicalCollection::LogicalCollection(
@@ -177,7 +147,7 @@ LogicalCollection::LogicalCollection(
     bool isAStub,
     uint64_t planVersion /*= 0*/
 ): LogicalDataSource(
-     category(),
+     LogicalCollection::category(),
      ::readType(info, StaticStrings::DataSourceType, TRI_COL_TYPE_UNKNOWN),
      vocbase,
      arangodb::basics::VelocyPackHelper::extractIdValue(info),
@@ -194,25 +164,22 @@ LogicalCollection::LogicalCollection(
      ),
      Helper::readBooleanValue(info, StaticStrings::DataSourceDeleted, false)
    ),
+      _version(Helper::readNumericValue<uint32_t>(info, "version", currentVersion())),
       _internalVersion(0),
-      _isAStub(isAStub),
       _type(Helper::readNumericValue<TRI_col_type_e, int>(
         info, StaticStrings::DataSourceType, TRI_COL_TYPE_UNKNOWN)
       ),
       _status(Helper::readNumericValue<TRI_vocbase_col_status_e, int>(
           info, "status", TRI_VOC_COL_STATUS_CORRUPTED)),
-      _isSmart(Helper::readBooleanValue(info, "isSmart", false)),
-      _isLocal(!ServerState::instance()->isCoordinator()),
-      _waitForSync(Helper::readBooleanValue(info, "waitForSync", false)),
-      _version(Helper::readNumericValue<uint32_t>(info, "version",
-                                                  currentVersion())),
+      _isAStub(isAStub),
+      _isSmart(Helper::readBooleanValue(info, StaticStrings::IsSmart, false)),
+      _waitForSync(Helper::readBooleanValue(info, StaticStrings::WaitForSyncString, false)),
       _allowUserKeys(Helper::readBooleanValue(info, "allowUserKeys", true)),
       _keyOptions(nullptr),
       _keyGenerator(),
       _physical(
         EngineSelectorFeature::ENGINE->createPhysicalCollection(*this, info)
       ),
-      _clusterEstimateTTL(0),
       _sharding() {
   TRI_ASSERT(info.isObject());
 
@@ -230,7 +197,7 @@ LogicalCollection::LogicalCollection(
   }
 
   TRI_ASSERT(!guid().empty());
-  
+
   // update server's tick value
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id()));
 
@@ -240,9 +207,9 @@ LogicalCollection::LogicalCollection(
   if (!keyOpts.isNone()) {
     _keyOptions = VPackBuilder::clone(keyOpts).steal();
   }
-  
+
   _sharding = std::make_unique<ShardingInfo>(info, this);
-  
+
   if (ServerState::instance()->isDBServer() ||
       !ServerState::instance()->isRunningInCluster()) {
     _followers.reset(new FollowerInfo(this));
@@ -253,15 +220,15 @@ LogicalCollection::LogicalCollection(
   // together.
   prepareIndexes(info.get("indexes"));
 }
-   
-LogicalCollection::~LogicalCollection() {}
 
 /*static*/ LogicalDataSource::Category const& LogicalCollection::category() noexcept {
   static const Category category;
 
   return category;
 }
-  
+
+LogicalCollection::~LogicalCollection() {}
+
 // SECTION: sharding
 ShardingInfo* LogicalCollection::shardingInfo() const {
   TRI_ASSERT(_sharding != nullptr);
@@ -317,7 +284,7 @@ void LogicalCollection::setShardMap(std::shared_ptr<ShardMap> const& map) {
   TRI_ASSERT(_sharding != nullptr);
   _sharding->setShardMap(map);
 }
-  
+
 int LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice slice,
                                            bool docComplete, std::string& shardID) {
   bool usesDefaultShardKeys;
@@ -364,8 +331,23 @@ void LogicalCollection::invokeOnAllElements(
 }
 
 // @brief Return the number of documents in this collection
-uint64_t LogicalCollection::numberDocuments(transaction::Methods* trx) const {
-  return getPhysical()->numberDocuments(trx);
+uint64_t LogicalCollection::numberDocuments(transaction::Methods* trx, transaction::CountType type) {
+  // detailed results should have been handled in the levels above us
+  TRI_ASSERT(type != transaction::CountType::Detailed);
+
+  int64_t documents = transaction::CountCache::NotPopulated;
+  if (type == transaction::CountType::ForceCache) {
+    // always return from the cache, regardless what's in it
+    documents = _countCache.get();
+  } else if (type == transaction::CountType::TryCache) {
+    documents = _countCache.get(transaction::CountCache::Ttl);
+  }
+  if (documents == transaction::CountCache::NotPopulated) {
+    documents = static_cast<int64_t>(getPhysical()->numberDocuments(trx));
+    _countCache.store(documents);
+  }
+  TRI_ASSERT(documents >= 0);
+  return static_cast<uint64_t>(documents);
 }
 
 uint32_t LogicalCollection::internalVersion() const { return _internalVersion; }
@@ -425,8 +407,6 @@ TRI_voc_rid_t LogicalCollection::revision(transaction::Methods* trx) const {
   return _physical->revision(trx);
 }
 
-bool LogicalCollection::isLocal() const { return _isLocal; }
-
 bool LogicalCollection::waitForSync() const { return _waitForSync; }
 
 bool LogicalCollection::isSmart() const { return _isSmart; }
@@ -435,53 +415,26 @@ std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
   return _followers;
 }
 
-// SECTION: Indexes
-std::unordered_map<std::string, double> LogicalCollection::clusterIndexEstimates(bool doNotUpdate){
-  READ_LOCKER(readlock, _clusterEstimatesLock);
-  if (doNotUpdate) {
-    return _clusterEstimates;
-  }
-
-  double ctime = TRI_microtime(); // in seconds
-  auto needEstimateUpdate = [this,ctime](){
-    if(_clusterEstimates.empty()) {
-      LOG_TOPIC(TRACE, Logger::CLUSTER) << "update because estimate is not availabe";
-      return true;
-    } else if (ctime - _clusterEstimateTTL > 60.0) {
-      LOG_TOPIC(TRACE, Logger::CLUSTER) << "update because estimate is too old: " << ctime - _clusterEstimateTTL;
-      return true;
-    }
-    return false;
-  };
-
-  if (needEstimateUpdate()){
-    readlock.unlock();
-    WRITE_LOCKER(writelock, _clusterEstimatesLock);
-
-    if(needEstimateUpdate()){
-      selectivityEstimatesOnCoordinator(vocbase().name(), name(), _clusterEstimates);
-      _clusterEstimateTTL = TRI_microtime();
-    }
-
-    return _clusterEstimates;
-  }
-
-  return _clusterEstimates;
+std::unordered_map<std::string, double> LogicalCollection::clusterIndexEstimates(bool allowUpdate) {
+  return getPhysical()->clusterIndexEstimates(allowUpdate);
 }
 
-void LogicalCollection::clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates){
-  WRITE_LOCKER(lock, _clusterEstimatesLock);
-  _clusterEstimates = std::move(estimates);
+void LogicalCollection::clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates) {
+  getPhysical()->clusterIndexEstimates(std::move(estimates));
 }
 
-std::vector<std::shared_ptr<arangodb::Index>>
-LogicalCollection::getIndexes() const {
+void LogicalCollection::flushClusterIndexEstimates() {
+  getPhysical()->flushClusterIndexEstimates();
+}
+
+std::vector<std::shared_ptr<arangodb::Index>> LogicalCollection::getIndexes() const {
   return getPhysical()->getIndexes();
 }
 
-void LogicalCollection::getIndexesVPack(VPackBuilder& result, bool withFigures,
-                                        bool forPersistence, std::function<bool(arangodb::Index const*)> const& filter) const {
-  getPhysical()->getIndexesVPack(result, withFigures, forPersistence, filter);
+void LogicalCollection::getIndexesVPack(VPackBuilder& result,
+                                        std::underlying_type<Index::Serialize>::type flags,
+                                        std::function<bool(arangodb::Index const*)> const& filter) const {
+  getPhysical()->getIndexesVPack(result, flags, filter);
 }
 
 bool LogicalCollection::allowUserKeys() const { return _allowUserKeys; }
@@ -499,10 +452,20 @@ bool LogicalCollection::allowUserKeys() const { return _allowUserKeys; }
 // not fail. the WAL entry for the rename will be written *after* the call
 // to "renameCollection" returns
 
-Result LogicalCollection::rename(std::string&& newName, bool doSync) {
+Result LogicalCollection::rename(std::string&& newName) {
   // Should only be called from inside vocbase.
   // Otherwise caching is destroyed.
   TRI_ASSERT(!ServerState::instance()->isCoordinator());  // NOT YET IMPLEMENTED
+  auto* databaseFeature = application_features::ApplicationServer::lookupFeature<
+    DatabaseFeature
+  >("Database");
+
+  if (!databaseFeature) {
+    return Result(
+      TRI_ERROR_INTERNAL,
+      "failed to find feature 'Database' while renaming collection"
+    );
+  }
 
   // Check for illegal states.
   switch (_status) {
@@ -527,6 +490,7 @@ Result LogicalCollection::rename(std::string&& newName, bool doSync) {
       return TRI_ERROR_INTERNAL;
   }
 
+  auto doSync = databaseFeature->forceSyncProperties();
   std::string oldName = name();
 
   // Okay we can finally rename safely
@@ -602,7 +566,8 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
 
   std::unordered_set<std::string> ignoreKeys{"allowUserKeys", "cid", "count",
                                              "statusString", "version",
-                                             "distributeShardsLike", "objectId"};
+                                             "distributeShardsLike", "objectId",
+                                             "indexes"};
   VPackBuilder params = toVelocyPackIgnore(ignoreKeys, false, false);
   { VPackObjectBuilder guard(&result);
 
@@ -622,7 +587,14 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
   }
 
   result.add(VPackValue("indexes"));
-  getIndexesVPack(result, false, false);
+  getIndexesVPack(result, Index::makeFlags(), [](arangodb::Index const* idx) {
+    // we have to exclude the primary and the edge index here, because otherwise
+    // at least the MMFiles engine will try to create it
+    // AND exclude arangosearch indexes
+    return (idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
+            idx->type() != arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX &&
+            idx->type() != arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK);
+  });
   result.add("planVersion", VPackValue(planVersion()));
   result.add("isReady", VPackValue(isReady));
   result.add("allInSync", VPackValue(allInSync));
@@ -651,7 +623,6 @@ arangodb::Result LogicalCollection::appendVelocyPack(
     // with 'forPersistence' added by LogicalDataSource::toVelocyPack
     // FIXME TODO is this needed in !forPersistence???
     result.add(StaticStrings::DataSourceDeleted, VPackValue(deleted()));
-    result.add(StaticStrings::DataSourceGuid, VPackValue(guid()));
     result.add(StaticStrings::DataSourceSystem, VPackValue(system()));
   }
 
@@ -659,25 +630,25 @@ arangodb::Result LogicalCollection::appendVelocyPack(
   result.add("allowUserKeys", VPackValue(_allowUserKeys));
 
   // keyoptions
-  result.add(VPackValue("keyOptions"));
+  result.add("keyOptions", VPackValue(VPackValueType::Object));
   if (_keyGenerator != nullptr) {
-    result.openObject();
     _keyGenerator->toVelocyPack(result);
-    result.close();
-  } else {
-    result.openArray();
-    result.close();
   }
+  result.close();
 
   // Physical Information
   getPhysical()->getPropertiesVPack(result);
 
   // Indexes
   result.add(VPackValue("indexes"));
-  getIndexesVPack(result, false, forPersistence);
+  auto flags = Index::makeFlags();
+  if (forPersistence) {
+    flags = Index::makeFlags(Index::Serialize::ObjectId);
+  }
+  getIndexesVPack(result, flags);
 
   // Cluster Specific
-  result.add("isSmart", VPackValue(_isSmart));
+  result.add(StaticStrings::IsSmart, VPackValue(_isSmart));
 
   if (!forPersistence) {
     // with 'forPersistence' added by LogicalDataSource::toVelocyPack
@@ -700,15 +671,15 @@ void LogicalCollection::toVelocyPackIgnore(VPackBuilder& result,
     bool forPersistence) const {
   TRI_ASSERT(result.isOpenObject());
   VPackBuilder b = toVelocyPackIgnore(ignoreKeys, translateCids, forPersistence);
-  result.add(VPackObjectIterator(b.slice())); 
-} 
+  result.add(VPackObjectIterator(b.slice()));
+}
 
 VPackBuilder LogicalCollection::toVelocyPackIgnore(
     std::unordered_set<std::string> const& ignoreKeys, bool translateCids,
     bool forPersistence) const {
   VPackBuilder full;
   full.openObject();
-  toVelocyPack(full, translateCids, forPersistence);
+    properties(full, translateCids, forPersistence);
   full.close();
   return VPackCollection::remove(full.slice(), ignoreKeys);
 }
@@ -719,8 +690,10 @@ void LogicalCollection::includeVelocyPackEnterprise(VPackBuilder&) const {
 
 void LogicalCollection::increaseInternalVersion() { ++_internalVersion; }
 
-arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
-                                                     bool doSync) {
+arangodb::Result LogicalCollection::properties(
+    velocypack::Slice const& slice,
+    bool partialUpdate
+) {
   // the following collection properties are intentionally not updated,
   // as updating them would be very complicated:
   // - _cid
@@ -730,8 +703,28 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
   // - _isVolatile
   // ... probably a few others missing here ...
 
+  auto* databaseFeature = application_features::ApplicationServer::lookupFeature<
+    DatabaseFeature
+  >("Database");
+
+  if (!databaseFeature) {
+    return Result(
+      TRI_ERROR_INTERNAL,
+      "failed to find feature 'Database' while updating collection"
+    );
+   }
+
+  auto* engine = EngineSelectorFeature::ENGINE;
+
+  if (!engine) {
+    return Result(
+      TRI_ERROR_INTERNAL,
+      "failed to find a storage engine while updating collection"
+    );
+  }
+
   MUTEX_LOCKER(guard, _infoLock); // prevent simultanious updates
-  
+
   size_t rf = _sharding->replicationFactor();
   VPackSlice rfSl = slice.get("replicationFactor");
   if (!rfSl.isNone()) {
@@ -746,8 +739,9 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
       if ((!isSatellite() && rf == 0) || rf > 10) {
         return Result(TRI_ERROR_BAD_PARAMETER, "bad value for replicationFactor");
       }
-      
-      if (!_isLocal && rf != _sharding->replicationFactor()) { // sanity checks
+
+      if (ServerState::instance()->isCoordinator()
+          && rf != _sharding->replicationFactor()) { // sanity checks
         if (!_sharding->distributeShardsLike().empty()) {
           return Result(TRI_ERROR_FORBIDDEN, "Cannot change replicationFactor, "
                         "please change " + _sharding->distributeShardsLike());
@@ -781,6 +775,8 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
     }
   }
 
+  auto doSync = !engine->inRecovery() && databaseFeature->forceSyncProperties();
+
   // The physical may first reject illegal properties.
   // After this call it either has thrown or the properties are stored
   Result res = getPhysical()->updateProperties(slice, doSync);
@@ -792,14 +788,12 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
   _waitForSync = Helper::getBooleanValue(slice, "waitForSync", _waitForSync);
   _sharding->replicationFactor(rf);
 
-  if (!_isLocal) {
+  if (ServerState::instance()->isCoordinator()) {
     // We need to inform the cluster as well
     return ClusterInfo::instance()->setCollectionPropertiesCoordinator(
       vocbase().name(), std::to_string(id()), this
     );
   }
-
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
   engine->changeCollection(vocbase(), id(), *this, doSync);
 
@@ -838,10 +832,9 @@ std::shared_ptr<Index> LogicalCollection::lookupIndex(
   return getPhysical()->lookupIndex(info);
 }
 
-std::shared_ptr<Index> LogicalCollection::createIndex(transaction::Methods* trx,
-                                                      VPackSlice const& info,
+std::shared_ptr<Index> LogicalCollection::createIndex(VPackSlice const& info,
                                                       bool& created) {
-  auto idx = _physical->createIndex(trx, info, created);
+  auto idx = _physical->createIndex(info, /*restore*/ false, created);
   if (idx) {
     if (DatabaseFeature::DATABASE != nullptr &&
         DatabaseFeature::DATABASE->versionTracker() != nullptr) {
@@ -895,11 +888,17 @@ void LogicalCollection::deferDropCollection(
 /// @brief reads an element from the document collection
 Result LogicalCollection::read(transaction::Methods* trx, StringRef const& key,
                                ManagedDocumentResult& result, bool lock) {
+  TRI_IF_FAILURE("LogicalCollection::read") {
+    return Result(TRI_ERROR_DEBUG);
+  }
   return getPhysical()->read(trx, key, result, lock);
 }
 
 Result LogicalCollection::read(transaction::Methods* trx, arangodb::velocypack::Slice const& key,
             ManagedDocumentResult& result, bool lock) {
+  TRI_IF_FAILURE("LogicalCollection::read") {
+    return Result(TRI_ERROR_DEBUG);
+  }
   return getPhysical()->read(trx, key, result, lock);
 }
 
@@ -908,80 +907,95 @@ Result LogicalCollection::read(transaction::Methods* trx, arangodb::velocypack::
 /// the read-cache
 ////////////////////////////////////////////////////////////////////////////////
 
-void LogicalCollection::truncate(transaction::Methods* trx,
-                                 OperationOptions& options) {
-  getPhysical()->truncate(trx, options);
+Result LogicalCollection::truncate(transaction::Methods* trx,
+                                   OperationOptions& options) {
+  TRI_IF_FAILURE("LogicalCollection::truncate") {
+    return Result(TRI_ERROR_DEBUG);
+  }
+  return getPhysical()->truncate(trx, options);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts a document or edge into the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-Result LogicalCollection::insert(transaction::Methods* trx,
-                                 VPackSlice const slice,
-                                 ManagedDocumentResult& result,
-                                 OperationOptions& options,
-                                 TRI_voc_tick_t& resultMarkerTick, bool lock,
-                                 TRI_voc_tick_t& revisionId) {
+Result LogicalCollection::insert(
+    transaction::Methods* trx, VPackSlice const slice,
+    ManagedDocumentResult& result, OperationOptions& options,
+    TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_tick_t& revisionId,
+    KeyLockInfo* keyLockInfo,
+    std::function<Result(void)> callbackDuringLock) {
+  TRI_IF_FAILURE("LogicalCollection::insert") {
+    return Result(TRI_ERROR_DEBUG);
+  }
   resultMarkerTick = 0;
   return getPhysical()->insert(trx, slice, result, options, resultMarkerTick,
-                               lock, revisionId);
+                               lock, revisionId, keyLockInfo, std::move(callbackDuringLock));
 }
 
 /// @brief updates a document or edge in a collection
-Result LogicalCollection::update(transaction::Methods* trx,
-                                 VPackSlice const newSlice,
-                                 ManagedDocumentResult& result,
-                                 OperationOptions& options,
-                                 TRI_voc_tick_t& resultMarkerTick, bool lock,
-                                 TRI_voc_rid_t& prevRev,
-                                 ManagedDocumentResult& previous) {
-  resultMarkerTick = 0;
+Result LogicalCollection::update(
+    transaction::Methods* trx, VPackSlice const newSlice,
+    ManagedDocumentResult& result, OperationOptions& options,
+    TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev,
+    ManagedDocumentResult& previous,
+    std::function<Result(void)> callbackDuringLock) {
+  TRI_IF_FAILURE("LogicalCollection::update") {
+    return Result(TRI_ERROR_DEBUG);
+  }
 
+  resultMarkerTick = 0;
   if (!newSlice.isObject()) {
     return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
   prevRev = 0;
-
   VPackSlice key = newSlice.get(StaticStrings::KeyString);
   if (key.isNone()) {
     return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
   return getPhysical()->update(trx, newSlice, result, options, resultMarkerTick,
-                               lock, prevRev, previous, key);
+                               lock, prevRev, previous, key,
+                               std::move(callbackDuringLock));
 }
 
 /// @brief replaces a document or edge in a collection
-Result LogicalCollection::replace(transaction::Methods* trx,
-                                  VPackSlice const newSlice,
-                                  ManagedDocumentResult& result,
-                                  OperationOptions& options,
-                                  TRI_voc_tick_t& resultMarkerTick, bool lock,
-                                  TRI_voc_rid_t& prevRev,
-                                  ManagedDocumentResult& previous) {
+Result LogicalCollection::replace(
+    transaction::Methods* trx, VPackSlice const newSlice,
+    ManagedDocumentResult& result, OperationOptions& options,
+    TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev,
+    ManagedDocumentResult& previous,
+    std::function<Result(void)> callbackDuringLock) {
+  TRI_IF_FAILURE("LogicalCollection::replace") {
+    return Result(TRI_ERROR_DEBUG);
+  }
   resultMarkerTick = 0;
-
   if (!newSlice.isObject()) {
     return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
   prevRev = 0;
   return getPhysical()->replace(trx, newSlice, result, options,
-                                resultMarkerTick, lock, prevRev, previous);
+                                resultMarkerTick, lock, prevRev, previous,
+                                std::move(callbackDuringLock));
 }
 
 /// @brief removes a document or edge
-Result LogicalCollection::remove(transaction::Methods* trx,
-                                 VPackSlice const slice,
-                                 OperationOptions& options,
-                                 TRI_voc_tick_t& resultMarkerTick, bool lock,
-                                 TRI_voc_rid_t& prevRev,
-                                 ManagedDocumentResult& previous) {
+Result LogicalCollection::remove(
+    transaction::Methods* trx, VPackSlice const slice,
+    OperationOptions& options, TRI_voc_tick_t& resultMarkerTick, bool lock,
+    TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
+    KeyLockInfo* keyLockInfo,
+    std::function<Result(void)> callbackDuringLock) {
+  TRI_IF_FAILURE("LogicalCollection::remove") {
+    return Result(TRI_ERROR_DEBUG);
+  }
   resultMarkerTick = 0;
   TRI_voc_rid_t revisionId = 0;
-  return getPhysical()->remove(trx, slice, previous, options, resultMarkerTick, lock, prevRev, revisionId);
+  return getPhysical()->remove(trx, slice, previous, options, resultMarkerTick,
+                               lock, prevRev, revisionId, keyLockInfo,
+                               std::move(callbackDuringLock));
 }
 
 bool LogicalCollection::readDocument(transaction::Methods* trx,
@@ -1033,7 +1047,7 @@ ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) co
 
   trx.invokeOnAllElements(name(), [&hash, &withData, &withRevisions, &trx, &collection](LocalDocumentId const& token) {
     collection->readDocumentWithCallback(&trx, token, [&](LocalDocumentId const&, VPackSlice slice) {
-      uint64_t localHash = transaction::helpers::extractKeyFromDocument(slice).hashString(); 
+      uint64_t localHash = transaction::helpers::extractKeyFromDocument(slice).hashString();
 
       if (withRevisions) {
         localHash += transaction::helpers::extractRevSliceFromDocument(slice).hash();
@@ -1050,7 +1064,7 @@ ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) co
           // was already handled before
           VPackValueLength keyLength;
           char const* key = it.key.getString(keyLength);
-          if (keyLength >= 3 && 
+          if (keyLength >= 3 &&
               key[0] == '_' &&
               ((keyLength == 3 && memcmp(key, "_id", 3) == 0) ||
               (keyLength == 4 && (memcmp(key, "_key", 4) == 0 || memcmp(key, "_rev", 4) == 0)))) {
@@ -1058,8 +1072,8 @@ ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) co
             continue;
           }
 
-          localHash ^= it.key.hash(seed) ^ 0xba5befd00d; 
-          localHash += it.value.normalizedHash(seed) ^ 0xd4129f526421; 
+          localHash ^= it.key.hash(seed) ^ 0xba5befd00d;
+          localHash += it.value.normalizedHash(seed) ^ 0xd4129f526421;
         }
       }
 
@@ -1080,26 +1094,4 @@ ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) co
   }
 
   return ChecksumResult(std::move(b));
-}
-
-Result LogicalCollection::compareChecksums(VPackSlice checksumSlice, std::string const& referenceChecksum) const {
-  if (!checksumSlice.isString()) {
-    return Result(
-      TRI_ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT,
-      std::string("Checksum must be a string but is ") + checksumSlice.typeName()
-    );
-  }
-
-  auto checksum = checksumSlice.copyString();
-
-  if (checksum != referenceChecksum) {
-    return Result(
-      TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
-      "'checksum' is wrong. Expected: "
-        + referenceChecksum
-        + ". Actual: " + checksum
-    );
-  }
-
-  return Result();
 }

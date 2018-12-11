@@ -101,11 +101,11 @@ void CalculationBlock::fillBlockWithReference(AqlItemBlock* result) {
 
 /// @brief shared code for executing a simple or a V8 expression
 void CalculationBlock::executeExpression(AqlItemBlock* result) {
-  DEBUG_BEGIN_BLOCK();
   bool const hasCondition = (ExecutionNode::castTo<CalculationNode const*>(_exeNode)
                                  ->_conditionVariable != nullptr);
   TRI_ASSERT(!hasCondition); // currently not implemented
 
+  Query* query = _engine->getQuery();
   size_t const n = result->size();
 
   for (size_t i = 0; i < n; i++) {
@@ -124,7 +124,7 @@ void CalculationBlock::executeExpression(AqlItemBlock* result) {
 
     // execute the expression
     bool mustDestroy;
-    BaseExpressionContext ctx(i, result, _inVars, _inRegs);
+    BaseExpressionContext ctx(query, i, result, _inVars, _inRegs);
     AqlValue a = _expression->execute(_trx, &ctx, mustDestroy);
     AqlValueGuard guard(a, mustDestroy);
 
@@ -135,12 +135,10 @@ void CalculationBlock::executeExpression(AqlItemBlock* result) {
     guard.steal(); // itemblock has taken over now
     throwIfKilled();  // check if we were aborted
   }
-  DEBUG_END_BLOCK();
 }
 
 /// @brief doEvaluation, private helper to do the work
 void CalculationBlock::doEvaluation(AqlItemBlock* result) {
-  DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(result != nullptr);
 
   if (_isReference) {
@@ -182,20 +180,20 @@ void CalculationBlock::doEvaluation(AqlItemBlock* result) {
     // the V8 handle scope and the scope guard
     executeExpression(result);
   }
-  DEBUG_END_BLOCK();
 }
 
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
 CalculationBlock::getSome(size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
 
   if (_done) {
+    traceGetSomeEnd(nullptr, ExecutionState::DONE);
     return {ExecutionState::DONE, nullptr};
   }
 
   auto res = ExecutionBlock::getSomeWithoutRegisterClearout(atMost);
   if (res.first == ExecutionState::WAITING) {
+    traceGetSomeEnd(nullptr, ExecutionState::WAITING);
     return res;
   }
   if (res.second == nullptr) {
@@ -209,7 +207,4 @@ CalculationBlock::getSome(size_t atMost) {
   clearRegisters(res.second.get());
   traceGetSomeEnd(res.second.get(), res.first);
   return res;
-
-  // cppcheck-suppress *
-  DEBUG_END_BLOCK();
 }

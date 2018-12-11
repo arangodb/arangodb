@@ -36,8 +36,6 @@ Using an identifier:
     var url = "/_api/view/"+ view._id;
 
     var response = logCurlRequest('DELETE', url);
-    db._viewList[viewName] = undefined;
-
     assert(response.code === 200);
 
     logJsonResponse(response);
@@ -53,8 +51,6 @@ Using a name:
     var url = "/_api/view/testView";
 
     var response = logCurlRequest('DELETE', url);
-    db._viewList[viewName] = undefined;
-
     assert(response.code === 200);
 
     logJsonResponse(response);

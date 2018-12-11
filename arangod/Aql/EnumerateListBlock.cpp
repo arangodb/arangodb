@@ -51,7 +51,6 @@ EnumerateListBlock::~EnumerateListBlock() {}
 
 std::pair<ExecutionState, arangodb::Result> EnumerateListBlock::initializeCursor(
     AqlItemBlock* items, size_t pos) {
-  DEBUG_BEGIN_BLOCK();  
   auto res = ExecutionBlock::initializeCursor(items, pos);
 
   if (res.first == ExecutionState::WAITING ||
@@ -65,12 +64,10 @@ std::pair<ExecutionState, arangodb::Result> EnumerateListBlock::initializeCursor
   _inflight = 0;
 
   return res;
-  DEBUG_END_BLOCK();  
 }
 
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
 EnumerateListBlock::getSome(size_t atMost) {
-  DEBUG_BEGIN_BLOCK();  
   traceGetSomeBegin(atMost);
   if (_done) {
     TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
@@ -116,7 +113,7 @@ EnumerateListBlock::getSome(size_t atMost) {
       // special handling here. calculate docvec length only once
       if (_index == 0) {
         // we require the total number of items
-        _docVecSize = inVarReg.docvecSize();
+        _docVecSize = inVarReg.length();
       }
       sizeInVar = _docVecSize;
     }
@@ -137,7 +134,7 @@ EnumerateListBlock::getSome(size_t atMost) {
       for (size_t j = 0; j < toSend; j++) {
         // add the new register value . . .
         bool mustDestroy;
-        AqlValue a = getAqlValue(inVarReg, mustDestroy);
+        AqlValue a = getAqlValue(inVarReg, sizeInVar, mustDestroy);
         AqlValueGuard guard(a, mustDestroy);
 
         // deep copy of the inVariable.at(_pos) with correct memory
@@ -169,20 +166,21 @@ EnumerateListBlock::getSome(size_t atMost) {
   clearRegisters(res.get());
   traceGetSomeEnd(res.get(), getHasMoreState());
   return {getHasMoreState(), std::move(res)};
-  DEBUG_END_BLOCK();  
 }
 
 std::pair<ExecutionState, size_t> EnumerateListBlock::skipSome(size_t atMost) {
-  DEBUG_BEGIN_BLOCK();  
+  traceSkipSomeBegin(atMost);
   if (_done) {
     size_t skipped = _inflight;
     _inflight = 0;
+    traceSkipSomeEnd(skipped, ExecutionState::DONE);
     return {ExecutionState::DONE, skipped};
   }
   while (_inflight < atMost) {
     size_t toFetch = (std::min)(DefaultBatchSize(), atMost - _inflight);
     BufferState bufferState = getBlockIfNeeded(toFetch);
     if (bufferState == BufferState::WAITING) {
+      traceSkipSomeEnd(0, ExecutionState::WAITING);
       return {ExecutionState::WAITING, 0};
     }
     if (bufferState == BufferState::NO_MORE_BLOCKS) {
@@ -236,19 +234,18 @@ std::pair<ExecutionState, size_t> EnumerateListBlock::skipSome(size_t atMost) {
 
   size_t skipped = _inflight;
   _inflight = 0;
-  return {getHasMoreState(), skipped};
-  DEBUG_END_BLOCK();  
+  ExecutionState state = getHasMoreState();
+  traceSkipSomeEnd(skipped, state);
+  return {state, skipped};
 }
 
 /// @brief create an AqlValue from the inVariable using the current _index
-AqlValue EnumerateListBlock::getAqlValue(AqlValue const& inVarReg, bool& mustDestroy) {
-  DEBUG_BEGIN_BLOCK();  
+AqlValue EnumerateListBlock::getAqlValue(AqlValue const& inVarReg, size_t n, bool& mustDestroy) {
   TRI_IF_FAILURE("EnumerateListBlock::getAqlValue") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  return inVarReg.at(_trx, _index++, mustDestroy, true);
-  DEBUG_END_BLOCK();  
+  return inVarReg.at(_trx, _index++, n, mustDestroy, true);
 }
 
 void EnumerateListBlock::throwArrayExpectedException(AqlValue const& value) {

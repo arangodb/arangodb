@@ -37,7 +37,7 @@ irs::sort::ptr make_from_object(
     const irs::string_ref& args) {
   assert(json.IsObject());
 
-  PTR_NAMED(irs::bm25_sort, ptr);
+  auto ptr = irs::memory::make_shared<irs::bm25_sort>();
 
   #ifdef IRESEARCH_DEBUG
     auto& scorer = dynamic_cast<irs::bm25_sort&>(*ptr);
@@ -106,7 +106,7 @@ irs::sort::ptr make_from_array(
      case 0: // parse `b` coefficient
       if (!arg.IsNumber()) {
         IR_FRMT_ERROR(
-          "Non-float value on position '%u' while constructing bm25 scorer from jSON arguments: %s",
+          "Non-float value at position '%u' while constructing bm25 scorer from jSON arguments: %s",
           i, args.c_str()
         );
 
@@ -118,7 +118,7 @@ irs::sort::ptr make_from_array(
      case 1: // parse `b` coefficient
       if (!arg.IsNumber()) {
         IR_FRMT_ERROR(
-          "Non-float value on position '%u' while constructing bm25 scorer from jSON arguments: %s",
+          "Non-float value at position '%u' while constructing bm25 scorer from jSON arguments: %s",
           i, args.c_str()
         );
 
@@ -130,15 +130,13 @@ irs::sort::ptr make_from_array(
     }
   }
 
-  PTR_NAMED(irs::bm25_sort, ptr, k, b);
-  return ptr;
+  return irs::memory::make_shared<irs::bm25_sort>(k, b);
 }
 
 irs::sort::ptr make_json(const irs::string_ref& args) {
   if (args.null()) {
     // default args
-    PTR_NAMED(irs::bm25_sort, ptr);
-    return ptr;
+    return irs::memory::make_shared<irs::bm25_sort>();
   }
 
   rapidjson::Document json;
@@ -196,7 +194,7 @@ const frequency EMPTY_FREQ;
 
 struct stats final : stored_attribute {
   DECLARE_ATTRIBUTE_TYPE();
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
 
   stats() = default;
 
@@ -218,26 +216,26 @@ typedef bm25_sort::score_t score_t;
 
 class scorer : public iresearch::sort::scorer_base<bm25::score_t> {
  public:
-  DECLARE_FACTORY(scorer);
+  DEFINE_FACTORY_INLINE(scorer);
 
   scorer(
       float_t k, 
       iresearch::boost::boost_t boost,
       const bm25::stats* stats,
-      const frequency* freq)
+      const frequency* freq) NOEXCEPT
     : freq_(freq ? freq : &EMPTY_FREQ),
       num_(boost * (k + 1) * (stats ? stats->idf : 1.f)),
       norm_const_(k) {
     assert(freq_);
   }
 
-  virtual void score(byte_type* score_buf) override {
+  virtual void score(byte_type* score_buf) NOEXCEPT override {
     const float_t freq = tf();
     score_cast(score_buf) = num_ * freq / (norm_const_ + freq);
   }
 
  protected:
-  FORCE_INLINE float_t tf() const {
+  FORCE_INLINE float_t tf() const NOEXCEPT {
     return float_t(std::sqrt(freq_->value));
   };
 
@@ -248,14 +246,14 @@ class scorer : public iresearch::sort::scorer_base<bm25::score_t> {
 
 class norm_scorer final : public scorer {
  public:
-  DECLARE_FACTORY(norm_scorer);
+  DEFINE_FACTORY_INLINE(norm_scorer);
 
   norm_scorer(
       float_t k, 
       iresearch::boost::boost_t boost,
       const bm25::stats* stats,
       const frequency* freq,
-      const iresearch::norm* norm)
+      const iresearch::norm* norm) NOEXCEPT
     : scorer(k, boost, stats, freq),
       norm_(norm) {
     assert(norm_);
@@ -267,7 +265,7 @@ class norm_scorer final : public scorer {
     }
   }
 
-  virtual void score(byte_type* score_buf) override {
+  virtual void score(byte_type* score_buf) NOEXCEPT override {
     const float_t freq = tf();
     score_cast(score_buf) = num_ * freq / (norm_const_ + norm_length_ * norm_->read() + freq);
   }
@@ -279,7 +277,7 @@ class norm_scorer final : public scorer {
 
 class collector final : public iresearch::sort::collector {
  public:
-  collector(float_t k, float_t b)
+  collector(float_t k, float_t b) NOEXCEPT
     : k_(k), b_(b) {
   }
 
@@ -311,6 +309,7 @@ class collector final : public iresearch::sort::collector {
     // precomputed idf value
     bm25stats->idf =
       float_t(std::log(1 + ((docs_with_field - docs_with_term + 0.5)/(docs_with_term + 0.5))));
+    assert(bm25stats->idf >= 0);
 
     if (b_ == 0.f) {
       // BM11 without norms
@@ -338,11 +337,11 @@ class collector final : public iresearch::sort::collector {
   float_t b_;
 }; // collector
 
-class sort final : iresearch::sort::prepared_base<bm25::score_t> {
+class sort final : iresearch::sort::prepared_basic<bm25::score_t> {
  public:
-  DECLARE_FACTORY(prepared);
+  DEFINE_FACTORY_INLINE(prepared);
 
-  sort(float_t k, float_t b)
+  sort(float_t k, float_t b) NOEXCEPT
     : k_(k), b_(b) {
   }
 
@@ -390,14 +389,6 @@ class sort final : iresearch::sort::prepared_base<bm25::score_t> {
       query_attrs.get<bm25::stats>().get(),
       doc_attrs.get<frequency>().get()
     );
-  }
-
-  virtual void add(score_t& dst, const score_t& src) const override {
-    dst += src;
-  }
-
-  virtual bool less(const score_t& lhs, const score_t& rhs) const override {
-    return lhs < rhs;
   }
 
  private:

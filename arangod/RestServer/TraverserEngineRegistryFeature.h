@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+
 namespace traverser {
 class TraverserEngineRegistry;
 }
@@ -33,10 +34,13 @@ class TraverserEngineRegistry;
 class TraverserEngineRegistryFeature final
     : public application_features::ApplicationFeature {
  public:
-  static traverser::TraverserEngineRegistry* TRAVERSER_ENGINE_REGISTRY;
+      
+  static traverser::TraverserEngineRegistry* registry() {
+    return TRAVERSER_ENGINE_REGISTRY.load(std::memory_order_acquire);
+  }
 
   explicit TraverserEngineRegistryFeature(
-      application_features::ApplicationServer* server);
+      application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -50,6 +54,7 @@ class TraverserEngineRegistryFeature final
 
  private:
   std::unique_ptr<traverser::TraverserEngineRegistry> _engineRegistry;
+  static std::atomic<traverser::TraverserEngineRegistry*> TRAVERSER_ENGINE_REGISTRY;
 };
 
 }  // namespace arangodb

@@ -27,58 +27,24 @@
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/ExpressionContext.h"
+#include "Indexes/IndexIterator.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
 
 #include "utils/attributes.hpp"
 #include "IResearch/ExpressionFilter.h"
+#include "IResearch/IResearchExpressionContext.h"
 #include "IResearch/IResearchView.h"
+#include "IResearch/IResearchDocument.h"
 
-NS_BEGIN(iresearch)
+namespace iresearch {
 class score;
-NS_END // iresearch
+} // iresearch
 
-NS_BEGIN(arangodb)
-NS_BEGIN(aql)
-class AqlItemBlock;
-class ExecutionEngine;
-NS_END // aql
-
-NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
 class IResearchViewNode;
-
-///////////////////////////////////////////////////////////////////////////////
-/// @class ViewExpressionContext
-///////////////////////////////////////////////////////////////////////////////
-class ViewExpressionContext final : public aql::ExpressionContext {
- public:
-  explicit ViewExpressionContext(IResearchViewNode const& node)
-    : _node(&node) {
-    TRI_ASSERT(_node);
-  }
-
-  virtual size_t numRegisters() const override;
-
-  virtual aql::AqlValue const& getRegisterValue(size_t i) const override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
-  virtual aql::Variable const* getVariable(size_t i) const override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
-  virtual aql::AqlValue getVariableValue(
-    aql::Variable const* variable,
-    bool doCopy,
-    bool& mustDestroy
-  ) const override;
-
-  aql::AqlItemBlock const* _data{};
-  IResearchViewNode const* _node;
-  size_t _pos{};
-}; // ViewExpressionContext
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class IResearchViewBlockBase
@@ -86,7 +52,7 @@ class ViewExpressionContext final : public aql::ExpressionContext {
 class IResearchViewBlockBase : public aql::ExecutionBlock {
  public:
   IResearchViewBlockBase(
-    arangodb::iresearch::PrimaryKeyIndexReader const& reader,
+    irs::index_reader const& reader,
     aql::ExecutionEngine&,
     IResearchViewNode const&
   );
@@ -100,32 +66,53 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
   virtual std::pair<aql::ExecutionState, Result> initializeCursor(aql::AqlItemBlock* items, size_t pos) override;
 
  protected:
-  bool readDocument(size_t segmentId, irs::doc_id_t docId);
+  class ReadContext {
+   private:
+    static IndexIterator::DocumentCallback copyDocumentCallback(ReadContext& ctx);
+
+   public:
+    explicit ReadContext(aql::RegisterId curRegs)
+      : curRegs(curRegs),
+        callback(copyDocumentCallback(*this)) {
+    }
+
+    aql::RegisterId const curRegs;
+    size_t pos{};
+    std::unique_ptr<aql::AqlItemBlock> res;
+    IndexIterator::DocumentCallback const callback;
+  }; // ReadContext
+
+  bool readDocument(
+    irs::doc_id_t docId,
+    irs::columnstore_reader::values_reader_f const& pkValues,
+    IndexIterator::DocumentCallback const& callback
+  );
+
+  bool readDocument(
+    DocumentPrimaryKey::type const& key,
+    IndexIterator::DocumentCallback const& callback
+  );
 
   virtual void reset();
 
   virtual bool next(
-    aql::AqlItemBlock& res,
-    aql::RegisterId curReg,
-    size_t& pos,
+    ReadContext& ctx,
     size_t limit
   ) = 0;
 
   virtual size_t skip(size_t count) = 0;
 
+  std::vector<DocumentPrimaryKey::type> _keys; // buffer for primary keys
   irs::attribute_view _filterCtx; // filter context
   ViewExpressionContext _ctx;
-  iresearch::PrimaryKeyIndexReader const& _reader;
+  irs::index_reader const& _reader;
   irs::filter::prepared::ptr _filter;
   irs::order::prepared _order;
   iresearch::ExpressionExecutionContext _execCtx; // expression execution context
-  ManagedDocumentResult _mmdr;
+  size_t _inflight; // The number of documents inflight if we hit a WAITING state.
   bool _hasMore;
   bool _volatileSort;
   bool _volatileFilter;
-
-  /// @brief The number of documents inflight if we hit a WAITING state.
-  size_t _inflight;
 }; // IResearchViewBlockBase
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -134,14 +121,10 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
 class IResearchViewUnorderedBlock : public IResearchViewBlockBase {
  public:
   IResearchViewUnorderedBlock(
-    PrimaryKeyIndexReader const& reader,
+    irs::index_reader const& reader,
     aql::ExecutionEngine& engine,
     IResearchViewNode const& node
   );
-
-  Type getType() const override {
-    return Type::IRESEARCH_VIEW_UNORDERED;
-  }
 
  protected:
   virtual void reset() override final {
@@ -153,14 +136,16 @@ class IResearchViewUnorderedBlock : public IResearchViewBlockBase {
   }
 
   virtual bool next(
-    aql::AqlItemBlock& res,
-    aql::RegisterId curReg,
-    size_t& pos,
+    ReadContext& ctx,
     size_t limit
   ) override;
 
   virtual size_t skip(size_t count) override;
 
+  // resets _itr and _pkReader
+  virtual bool resetIterator();
+
+  irs::columnstore_reader::values_reader_f _pkReader; // current primary key reader
   irs::doc_iterator::ptr _itr;
   size_t _readerOffset;
 }; // IResearchViewUnorderedBlock
@@ -171,67 +156,27 @@ class IResearchViewUnorderedBlock : public IResearchViewBlockBase {
 class IResearchViewBlock final : public IResearchViewUnorderedBlock {
  public:
   IResearchViewBlock(
-    PrimaryKeyIndexReader const& reader,
+    irs::index_reader const& reader,
     aql::ExecutionEngine& engine,
     IResearchViewNode const& node
   );
 
-  Type getType() const override final {
-    return Type::IRESEARCH_VIEW;
-  }
-
  protected:
   virtual bool next(
-    aql::AqlItemBlock& res,
-    aql::RegisterId curReg,
-    size_t& pos,
+    ReadContext& ctx,
     size_t limit
   ) override;
 
   virtual size_t skip(size_t count) override;
 
  private:
-  void resetIterator();
+  virtual bool resetIterator() override;
 
   irs::score const* _scr;
   irs::bytes_ref _scrVal;
 }; // IResearchViewBlock
 
-///////////////////////////////////////////////////////////////////////////////
-/// @class IResearchViewOrderedBlock
-///////////////////////////////////////////////////////////////////////////////
-class IResearchViewOrderedBlock final : public IResearchViewBlockBase {
- public:
-  IResearchViewOrderedBlock(
-    PrimaryKeyIndexReader const& reader,
-    aql::ExecutionEngine& engine,
-    IResearchViewNode const& node
-  );
-
-  Type getType() const override final {
-    return Type::IRESEARCH_VIEW_ORDERED;
-  }
-
- protected:
-  virtual void reset() override {
-    IResearchViewBlockBase::reset();
-    _skip = 0;
-  }
-
-  virtual bool next(
-    aql::AqlItemBlock& res,
-    aql::RegisterId curReg,
-    size_t& pos,
-    size_t limit
-  ) override;
-
-  virtual size_t skip(size_t count) override;
-
- private:
-  size_t _skip{};
-}; // IResearchViewOrderedBlock
-
-NS_END // iresearch
-NS_END // arangodb
+} // iresearch
+} // arangodb
 
 #endif // ARANGOD_IRESEARCH__ENUMERATE_VIEW_BLOCK_H 

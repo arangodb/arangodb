@@ -531,9 +531,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
   ExecutionEngine* engine = nullptr;
 
   try {
-    if (!plan->varUsageComputed()) {
-      plan->findVarUsage();
-    }
+    plan->findVarUsage();
     if (planRegisters) {
       plan->planRegisters();
     }

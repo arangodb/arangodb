@@ -26,20 +26,20 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+
 class VersionFeature final : public application_features::ApplicationFeature {
  public:
-  explicit VersionFeature(application_features::ApplicationServer* server);
+  explicit VersionFeature(application_features::ApplicationServer& server);
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
- public:
   bool printVersion() const { return _printVersion; }
 
  private:
   bool _printVersion;
 };
+
 }
 
 #endif

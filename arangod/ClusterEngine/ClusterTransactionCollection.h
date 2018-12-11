@@ -41,28 +41,6 @@ class ClusterTransactionCollection final : public TransactionCollection {
                                AccessMode::Type accessType, int nestingLevel);
   ~ClusterTransactionCollection();
 
-  /// @brief request a main-level lock for a collection
-  /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
-  /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
-  /// returns any other error code otherwise
-  int lockRecursive() override;
-
-  /// @brief request a lock for a collection
-  /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
-  /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
-  /// returns any other error code otherwise
-  int lockRecursive(AccessMode::Type, int nestingLevel) override;
-
-  /// @brief request an unlock for a collection
-  int unlockRecursive(AccessMode::Type, int nestingLevel) override;
-
-  /// @brief check whether a collection is locked in a specific mode in a
-  /// transaction
-  bool isLocked(AccessMode::Type, int nestingLevel) const override;
-
-  /// @brief check whether a collection is locked at all
-  bool isLocked() const override;
-
   /// @brief whether or not any write operations for the collection happened
   bool hasOperations() const override;
 
@@ -80,17 +58,15 @@ class ClusterTransactionCollection final : public TransactionCollection {
   /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
   /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
   /// returns any other error code otherwise
-  int doLock(AccessMode::Type, int nestingLevel);
+  int doLock(AccessMode::Type, int nestingLevel) override;
 
   /// @brief request an unlock for a collection
-  int doUnlock(AccessMode::Type, int nestingLevel);
+  int doUnlock(AccessMode::Type, int nestingLevel) override;
 
  private:
   AccessMode::Type _lockType;  // collection lock type, used for exclusive locks
   int _nestingLevel;  // the transaction level that added this collection
   bool _usageLocked;  // is this already locked
-  /// @brief shared ptr to the collection so we can safely use _collection
-  std::shared_ptr<LogicalCollection> _sharedCollection;
 };
 }
 

@@ -66,12 +66,6 @@ class AqlTransaction : public transaction::Methods {
   /// @brief add a collection to the transaction
   Result processCollection(aql::Collection*);
 
-  /// @brief add a coordinator collection to the transaction
-  Result processCollectionCoordinator(aql::Collection*);
-
-  /// @brief add a regular collection to the transaction
-  Result processCollectionNormal(aql::Collection* collection);
-
   /// @brief documentCollection
   LogicalCollection* documentCollection(TRI_voc_cid_t cid);
 
@@ -86,11 +80,6 @@ class AqlTransaction : public transaction::Methods {
   /// in a second round, we need to lock the shards in exactly the right
   /// order via an HTTP call. This method is used to implement that HTTP action.
   int lockCollections() override;
-
-  /// @brief count the number of documents in a collection
-  /// Handle locks based on the collections known to this transaction
-  /// (Coordinator only)
-  OperationResult count(std::string const& collectionName, bool aggregate) override;
 
  protected:
   AqlTransaction(

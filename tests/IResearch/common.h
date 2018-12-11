@@ -31,6 +31,7 @@
 #include <string>
 #include <vector>
 
+#undef NO_INLINE // to avoid GCC warning
 #include "search/filter.hpp"
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -49,6 +50,8 @@ class Isolate; // forward declaration
 
 namespace arangodb {
 
+class DatabasePathFeature; // forward declaration
+
 namespace aql {
 class ExpressionContext;
 }
@@ -60,6 +63,18 @@ class ByExpression;
 namespace tests {
 
 void init(bool withICU = false);
+
+template <typename T, typename U>
+std::shared_ptr<T> scopedPtr(T*& ptr, U* newValue) {
+  auto* location = &ptr;
+  auto* oldValue = ptr;
+  ptr = newValue;
+  return std::shared_ptr<T>(oldValue, [location](T* p)->void { *location = p; });
+}
+
+// @Note: once V8 is initialized all 'CATCH' errors will result in SIGILL
+void v8Init();
+
 v8::Isolate* v8Isolate();
 
 bool assertRules(
@@ -83,6 +98,8 @@ std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
 );
 
 uint64_t getCurrentPlanVersion();
+
+void setDatabasePath(arangodb::DatabasePathFeature& feature);
 
 }
 }

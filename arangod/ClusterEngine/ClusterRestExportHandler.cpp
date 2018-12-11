@@ -23,18 +23,6 @@
 
 #include "ClusterRestExportHandler.h"
 #include "Basics/Exceptions.h"
-#include "Basics/MutexLocker.h"
-#include "Basics/VelocyPackHelper.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "Utils/Cursor.h"
-#include "Utils/CursorRepository.h"
-#include "VocBase/ticks.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Dumper.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::rest;
@@ -46,6 +34,6 @@ ClusterRestExportHandler::ClusterRestExportHandler(GeneralRequest* request,
 RestStatus ClusterRestExportHandler::execute() {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                   TRI_ERROR_CLUSTER_UNSUPPORTED,
-                  "'/_api/export' is not yet supported in a cluster");
+                  "'/_api/export' is not supported in a cluster");
     return RestStatus::DONE;
 }

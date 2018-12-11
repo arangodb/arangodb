@@ -36,7 +36,7 @@ class CallOnceRequestCallback {
   CallOnceRequestCallback() : _invoked(), _cb(nullptr) {
     _invoked.clear();
   }
-  CallOnceRequestCallback(RequestCallback cb)
+  explicit CallOnceRequestCallback(RequestCallback cb)
       : _invoked(), _cb(std::move(cb)) {
     _invoked.clear();
   }

@@ -39,7 +39,7 @@ namespace velocypack {
 template <typename T>
 class Buffer {
  public:
-  Buffer() : _buffer(_local), _capacity(sizeof(_local)), _size(0) {
+  Buffer() noexcept : _buffer(_local), _capacity(sizeof(_local)), _size(0) {
     poison(_buffer, _capacity);
     initWithNone();
   }
@@ -120,7 +120,11 @@ class Buffer {
     return *this;
   }
 
-  ~Buffer() { clear(); }
+  ~Buffer() { 
+    if (_buffer != _local) {
+      delete[] _buffer;
+    }
+  }
 
   inline T* data() noexcept { return _buffer; }
   inline T const* data() const noexcept { return _buffer; }
@@ -168,14 +172,14 @@ class Buffer {
   }
 
   void clear() noexcept {
-    reset();
+    _size = 0;
     if (_buffer != _local) {
       delete[] _buffer;
       _buffer = _local;
       _capacity = sizeof(_local);
       poison(_buffer, _capacity);
-      initWithNone();
     }
+    initWithNone();
   }
 
   inline T& operator[](size_t position) noexcept {
@@ -225,6 +229,8 @@ class Buffer {
     return append(value.data(), value.size());
   }
 
+  // reserves len *extra* bytes of storage space
+  // this should probably be renamed to reserveExtra
   inline void reserve(ValueLength len) {
     VELOCYPACK_ASSERT(_size <= _capacity);
 
@@ -251,8 +257,8 @@ class Buffer {
 
     // need reallocation
     ValueLength newLen = _size + len;
-    static constexpr double growthFactor = 1.25;
-    if (_size > 0 && newLen < growthFactor * _size) {
+    constexpr double growthFactor = 1.25;
+    if (newLen < growthFactor * _size) {
       // ensure the buffer grows sensibly and not by 1 byte only
       newLen = static_cast<ValueLength>(growthFactor * _size);
     }

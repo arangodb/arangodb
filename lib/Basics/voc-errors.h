@@ -660,11 +660,6 @@ constexpr int TRI_ERROR_REPLICATION_NO_START_TICK                               
 /// tick, but that start tick is not present on the logger server anymore.
 constexpr int TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT                      = 1414;
 
-/// 1415: ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT
-/// "the checksum format is wrong"
-///  "Will be raised when the format of the checksum is wrong")
-constexpr int TRI_ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT                       = 1415;
-
 /// 1416: ERROR_REPLICATION_WRONG_CHECKSUM
 /// "wrong checksum"
 /// Will be raised when a new born follower submits a wrong checksum
@@ -972,6 +967,12 @@ constexpr int TRI_ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN                   
 /// the view ID already exists.
 constexpr int TRI_ERROR_CLUSTER_VIEW_ID_EXISTS                                  = 1498;
 
+/// 1499: ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION
+/// "could not drop collection in plan"
+/// Will be raised when a coordinator in a cluster cannot drop a collection
+/// entry in the Plan hierarchy in the agency.
+constexpr int TRI_ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION                       = 1499;
+
 /// 1500: ERROR_QUERY_KILLED
 /// "query killed"
 /// Will be raised when a running query is killed by an explicit admin command.
@@ -1025,9 +1026,9 @@ constexpr int TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN                             
 constexpr int TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED                            = 1521;
 
 /// 1522: ERROR_QUERY_TOO_MANY_COLLECTIONS
-/// "too many collections"
-/// Will be raised when the number of collections in a query is beyond the
-/// allowed value.
+/// "too many collections/shards"
+/// Will be raised when the number of collections or shards in a query is
+/// beyond the allowed value.
 constexpr int TRI_ERROR_QUERY_TOO_MANY_COLLECTIONS                              = 1522;
 
 /// 1530: ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED
@@ -1433,7 +1434,7 @@ constexpr int TRI_ERROR_GRAPH_CREATE_MISSING_NAME                               
 constexpr int TRI_ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION                  = 1923;
 
 /// 1924: ERROR_GRAPH_NOT_FOUND
-/// "graph not found"
+/// "graph '%s' not found"
 /// a graph with this name could not be found.
 constexpr int TRI_ERROR_GRAPH_NOT_FOUND                                         = 1924;
 
@@ -1835,6 +1836,26 @@ constexpr int TRI_ERROR_QUEUE_UNKNOWN                                           
 /// "named queue is full"
 /// Will be returned if a queue with this name is full.
 constexpr int TRI_ERROR_QUEUE_FULL                                              = 21003;
+
+/// 6001: ERROR_ACTION_ALREADY_REGISTERED
+/// "maintenance action already registered"
+/// Action with this description has been registered already
+constexpr int TRI_ERROR_ACTION_ALREADY_REGISTERED                               = 6001;
+
+/// 6002: ERROR_ACTION_OPERATION_UNABORTABLE
+/// "this maintenance action cannot be stopped"
+/// This maintenance action cannot be stopped once it is started
+constexpr int TRI_ERROR_ACTION_OPERATION_UNABORTABLE                            = 6002;
+
+/// 6003: ERROR_ACTION_UNFINISHED
+/// "maintenance action still processing"
+/// This maintenance action is still processing
+constexpr int TRI_ERROR_ACTION_UNFINISHED                                       = 6003;
+
+/// 6004: ERROR_NO_SUCH_ACTION
+/// "no such maintenance action"
+/// No such maintenance action exists
+constexpr int TRI_ERROR_NO_SUCH_ACTION                                          = 6004;
 
 
 /// register all errors for ArangoDB

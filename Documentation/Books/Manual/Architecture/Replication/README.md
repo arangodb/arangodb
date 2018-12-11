@@ -12,9 +12,9 @@ Cluster.
 
 Asynchronous replication is used:
 
-- between the _master_ and the _slave_ of an ArangoDB [_Master/Slave_](../../Scalability/MasterSlave/README.md) setup
-- between the _Leader_ and the _Follower_ of an ArangoDB [_Active Failover_](../../Scalability/ActiveFailover/README.md) setup
-- between multiple ArangoDB [Data Centers](../../Scalability/DC2DC/README.md) (inside the same Data Center replication is synchronous)
+- between the _master_ and the _slave_ of an ArangoDB [_Master/Slave_](../../Architecture/DeploymentModes/MasterSlave/README.md) setup
+- between the _Leader_ and the _Follower_ of an ArangoDB [_Active Failover_](../../Architecture/DeploymentModes/ActiveFailover/README.md) setup
+- between multiple ArangoDB [Data Centers](../../Architecture/DeploymentModes/DC2DC/README.md) (inside the same Data Center replication is synchronous)
 
 Synchronous replication
 -----------------------

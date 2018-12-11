@@ -28,13 +28,14 @@
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-actions.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 
+namespace arangodb {
+
 ActionFeature* ActionFeature::ACTION = nullptr;
 
-ActionFeature::ActionFeature(application_features::ApplicationServer* server)
+ActionFeature::ActionFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Action"),
       _allowUseDatabase(false) {
   setOptional(true);
@@ -44,11 +45,12 @@ ActionFeature::ActionFeature(application_features::ApplicationServer* server)
 void ActionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "Server features");
 
-  options->addHiddenOption(
+  options->addOption(
       "--server.allow-use-database",
       "allow change of database in REST actions, only needed for "
       "unittests",
-      new BooleanParameter(&_allowUseDatabase));
+      new BooleanParameter(&_allowUseDatabase),
+      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
 void ActionFeature::start() {
@@ -69,3 +71,5 @@ void ActionFeature::unprepare() {
 
   ACTION = nullptr;
 }
+
+} // arangodb

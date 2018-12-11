@@ -26,12 +26,14 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
-using namespace arangodb;
 using namespace arangodb::options;
 
+namespace arangodb {
+
 ShutdownFeature::ShutdownFeature(
-    application_features::ApplicationServer* server,
-    std::vector<std::string> const& features)
+    application_features::ApplicationServer& server,
+    std::vector<std::string> const& features
+)
     : ApplicationFeature(server, "Shutdown") {
   setOptional(true);
   startsAfter("GreetingsPhase");
@@ -44,3 +46,5 @@ ShutdownFeature::ShutdownFeature(
 }
 
 void ShutdownFeature::start() { server()->beginShutdown(); }
+
+} // arangodb

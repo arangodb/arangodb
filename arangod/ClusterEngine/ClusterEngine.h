@@ -25,6 +25,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
+#include "Basics/StaticStrings.h"
 #include "ClusterEngine/Common.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/AccessMode.h"
@@ -50,20 +51,21 @@ struct Options;
 class ClusterEngine final : public StorageEngine {
  public:
   // create the storage engine
-  explicit ClusterEngine(application_features::ApplicationServer*);
+  explicit ClusterEngine(application_features::ApplicationServer& server);
   ~ClusterEngine();
 
   void setActualEngine(StorageEngine* e) { _actualEngine = e; }
   StorageEngine* actualEngine() const { return _actualEngine; }
   bool isRocksDB() const;
   bool isMMFiles() const;
+  bool isMock() const;
   ClusterEngineType engineType() const;
 
   // storage engine overrides
   // ------------------------
 
-  char const* typeName() const override {
-    return _actualEngine ? _actualEngine->typeName() : nullptr;
+  std::string const& typeName() const override {
+    return _actualEngine ? _actualEngine->typeName() : StaticStrings::Empty;
   }
 
   // inherited from ApplicationFeature
@@ -126,9 +128,13 @@ class ClusterEngine final : public StorageEngine {
     arangodb::velocypack::Builder& result
   ) override;
 
-  std::string versionFilename(TRI_voc_tick_t id) const override;
+  std::string versionFilename(TRI_voc_tick_t id) const override {
+    // the cluster engine does not have any versioning information
+    return std::string();
+  }
   std::string databasePath(TRI_vocbase_t const* vocbase) const override {
-    return _basePath;
+    // the cluster engine does not have any database path
+    return std::string();
   }
   std::string collectionPath(
       TRI_vocbase_t const& vocbase,
@@ -195,7 +201,10 @@ class ClusterEngine final : public StorageEngine {
 
   // intentionally empty, not useful for this type of engine
   void waitForSyncTick(TRI_voc_tick_t) override {}
-  void waitForSyncTimeout(double) override {}
+  
+  /// @brief return a list of the currently open WAL files
+  std::vector<std::string> currentWalFiles() const override { return std::vector<std::string>(); }
+
   Result flushWal(bool waitForSync, bool waitForCollector,
                   bool writeShutdownFile) override {
     return TRI_ERROR_NO_ERROR;
@@ -312,8 +321,6 @@ class ClusterEngine final : public StorageEngine {
 
   void addParametersForNewCollection(arangodb::velocypack::Builder& builder,
                                      arangodb::velocypack::Slice info) override;
-  void addParametersForNewIndex(arangodb::velocypack::Builder& builder,
-                                arangodb::velocypack::Slice info) override;
 
   // management methods for synchronizing with external persistent stores
   TRI_voc_tick_t currentTick() const override {
@@ -339,6 +346,9 @@ class ClusterEngine final : public StorageEngine {
  public:
   static std::string const EngineName;
   static std::string const FeatureName;
+
+  // mock mode
+  static bool Mocking;
 
  private:
   /// path to arangodb data dir

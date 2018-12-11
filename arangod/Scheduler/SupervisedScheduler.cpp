@@ -106,7 +106,7 @@ SupervisedScheduler::~SupervisedScheduler() {}
 
 void SupervisedScheduler::post(std::function<void()> const& callback)
 {
-  queue(RequestPriority::POST, callback);
+  queue(RequestPriority::HIGH, callback);
 }
 
 bool SupervisedScheduler::queue(RequestPriority prio, std::function<void()> const&handler)

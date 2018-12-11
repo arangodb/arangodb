@@ -152,16 +152,14 @@ struct BaseOptions {
                               std::string const& collectionName,
                               std::string const& attributeName,
                               aql::AstNode* condition);
-
- private:
-  aql::FixedVarExpressionContext* _ctx;
-
- protected:
+  
   EdgeCursor* nextCursorLocal(ManagedDocumentResult*, StringRef vid,
                               std::vector<LookupInfo>&);
 
  protected:
   aql::Query* _query;
+  
+  aql::FixedVarExpressionContext* _ctx;
 
   transaction::Methods* _trx;
 

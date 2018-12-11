@@ -26,22 +26,21 @@
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
-#include "RocksDBEngine/RocksDBEngine.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 
 #ifdef __linux__
 #include <sys/sysinfo.h>
 #endif
 
-using namespace arangodb;
 using namespace arangodb::basics;
 
-EnvironmentFeature::EnvironmentFeature(
-    application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "Environment") {
-  setOptional(false);
-  startsAfter("GreetingsPhase");
+namespace arangodb {
 
+EnvironmentFeature::EnvironmentFeature(
+    application_features::ApplicationServer& server
+)
+    : ApplicationFeature(server, "Environment") {
+  setOptional(true);
+  startsAfter("GreetingsPhase");
   startsAfter("MaxMapCount");
 }
 
@@ -60,7 +59,7 @@ void EnvironmentFeature::prepare() {
   if (sizeof(void*) == 4) {
     // 32 bit build
     LOG_TOPIC(WARN, arangodb::Logger::MEMORY)
-        << "this is a 32 bit build of ArangoDB. "
+        << "this is a 32 bit build of ArangoDB, which is unsupported. "
         << "it is recommended to run a 64 bit build instead because it can "
         << "address significantly bigger regions of memory";
   }
@@ -76,6 +75,56 @@ void EnvironmentFeature::prepare() {
     }
   }
 
+  // check overcommit_memory & overcommit_ratio
+  try {
+    std::string value =
+        basics::FileUtils::slurp("/proc/sys/vm/overcommit_memory");
+    uint64_t v = basics::StringUtils::uint64(value);
+
+    if (v == 2) {
+      // from https://www.kernel.org/doc/Documentation/sysctl/vm.txt:
+      //
+      //   When this flag is 0, the kernel attempts to estimate the amount
+      //   of free memory left when userspace requests more memory.
+      //   When this flag is 1, the kernel pretends there is always enough
+      //   memory until it actually runs out.
+      //   When this flag is 2, the kernel uses a "never overcommit"
+      //   policy that attempts to prevent any overcommit of memory.
+      std::string ratio =
+          basics::FileUtils::slurp("/proc/sys/vm/overcommit_ratio");
+      uint64_t r = basics::StringUtils::uint64(ratio);
+      // from https://www.kernel.org/doc/Documentation/sysctl/vm.txt:
+      //
+      //  When overcommit_memory is set to 2, the committed address
+      //  space is not permitted to exceed swap plus this percentage
+      //  of physical RAM.
+
+      struct sysinfo info;
+      int res = sysinfo(&info);
+      if (res == 0) {
+        double swapSpace = static_cast<double>(info.totalswap);
+        double ram = static_cast<double>(TRI_PhysicalMemory);
+        double rr = (ram >= swapSpace)
+            ? 100.0 * ((ram - swapSpace) / ram)
+            : 0.0;
+        if (static_cast<double>(r) < 0.99 * rr) {
+          LOG_TOPIC(WARN, Logger::MEMORY)
+            << "/proc/sys/vm/overcommit_ratio is set to '" << r
+            << "'. It is recommended to set it to at least '" << std::llround(rr)
+            << "' (100 * (max(0, (RAM - Swap Space)) / RAM)) to utilize all "
+            << "available RAM. Setting it to this value will minimize swap "
+            << "usage, but may result in more out-of-memory errors, while "
+            << "setting it to 100 will allow the system to use both all "
+            << "available RAM and swap space.";
+          LOG_TOPIC(WARN, Logger::MEMORY) << "execute 'sudo bash -c \"echo "
+                                          << std::llround(rr) << " > "
+                                          << "/proc/sys/vm/overcommit_ratio\"'";
+        }
+      }
+    }
+  } catch (...) {
+    // file not found or value not convertible into integer
+  }
 
   // test local ipv6 support
   try {
@@ -238,76 +287,37 @@ void EnvironmentFeature::prepare() {
       // file not found
     }
   }
-
-#endif
-}
-
-void EnvironmentFeature::start() {
-#ifdef __linux__
+  
+  // check kernel ASLR settings
   try {
     std::string value =
-        basics::FileUtils::slurp("/proc/sys/vm/overcommit_memory");
+        basics::FileUtils::slurp("/proc/sys/kernel/randomize_va_space");
     uint64_t v = basics::StringUtils::uint64(value);
-    // from https://www.kernel.org/doc/Documentation/sysctl/vm.txt:
+    // from man proc:
     //
-    //   When this flag is 0, the kernel attempts to estimate the amount
-    //   of free memory left when userspace requests more memory.
-    //   When this flag is 1, the kernel pretends there is always enough
-    //   memory until it actually runs out.
-    //   When this flag is 2, the kernel uses a "never overcommit"
-    //   policy that attempts to prevent any overcommit of memory.
-    std::string ratio =
-        basics::FileUtils::slurp("/proc/sys/vm/overcommit_ratio");
-    uint64_t r = basics::StringUtils::uint64(ratio);
-    // from https://www.kernel.org/doc/Documentation/sysctl/vm.txt:
-    //
-    //  When overcommit_memory is set to 2, the committed address
-    //  space is not permitted to exceed swap plus this percentage
-    //  of physical RAM.
-
-    if (EngineSelectorFeature::engineName() == RocksDBEngine::EngineName) {
-      if (v != 2) {
-        LOG_TOPIC(WARN, Logger::MEMORY)
-          << "/proc/sys/vm/overcommit_memory is set to '" << v
-          << "'. It is recommended to set it to a value of 2";
-        LOG_TOPIC(WARN, Logger::MEMORY) << "execute 'sudo bash -c \"echo 2 > "
-                                        << "/proc/sys/vm/overcommit_memory\"'";
-      }
-    } else {
-      if (v == 1) {
-        LOG_TOPIC(WARN, Logger::MEMORY)
-          << "/proc/sys/vm/overcommit_memory is set to '" << v
-          << "'. It is recommended to set it to a value of 0 or 2";
-        LOG_TOPIC(WARN, Logger::MEMORY) << "execute 'sudo bash -c \"echo 2 > "
-                                        << "/proc/sys/vm/overcommit_memory\"'";
-      }
+    // 0 – No randomization. Everything is static.
+    // 1 – Conservative randomization. Shared libraries, stack, mmap(), VDSO and heap are randomized.
+    // 2 – Full randomization. In addition to elements listed in the previous point, memory managed through brk() is also randomized.
+    char const* s = nullptr;
+    switch (v) {
+      case 0: 
+        s = "nothing"; 
+        break;
+      case 1: 
+        s = "shared libraries, stack, mmap, VDSO and heap"; 
+        break;
+      case 2: 
+        s = "shared libraries, stack, mmap, VDSO, heap and memory managed through brk()"; 
+        break;
     }
-    if (v == 2) {
-      struct sysinfo info;
-      int res = sysinfo(&info);
-      if (res == 0) {
-        double swapSpace = static_cast<double>(info.totalswap);
-        double ram = static_cast<double>(TRI_PhysicalMemory);
-        double rr = (ram >= swapSpace)
-            ? 100.0 * ((ram - swapSpace) / ram)
-            : 0.0;
-        if (static_cast<double>(r) < 0.99 * rr) {
-          LOG_TOPIC(WARN, Logger::MEMORY)
-            << "/proc/sys/vm/overcommit_ratio is set to '" << r
-            << "'. It is recommended to set it to at least '" << std::llround(rr)
-            << "' (100 * (max(0, (RAM - Swap Space)) / RAM)) to utilize all "
-            << "available RAM. Setting it to this value will minimize swap "
-            << "usage, but may result in more out-of-memory errors, while "
-            << "setting it to 100 will allow the system to use both all "
-            << "available RAM and swap space.";
-          LOG_TOPIC(WARN, Logger::MEMORY) << "execute 'sudo bash -c \"echo "
-                                          << std::llround(rr) << " > "
-                                          << "/proc/sys/vm/overcommit_ratio\"'";
-        }
-      }
+    if (s != nullptr) {
+      LOG_TOPIC(DEBUG, Logger::FIXME) << "host ASLR is in use for " << s;
     }
   } catch (...) {
     // file not found or value not convertible into integer
   }
+
 #endif
 }
+
+} // arangodb

@@ -28,6 +28,7 @@
 #include "Cache/Manager.h"
 #include "Cache/TransactionalCache.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
+#include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBMethods.h"
@@ -63,7 +64,7 @@ RocksDBIndex::RocksDBIndex(
       _cf(cf),
       _cache(nullptr),
       _cachePresent(false),
-      _cacheEnabled(useCache && !collection.system()) {
+      _cacheEnabled(useCache && !collection.system() && CacheManagerFeature::MANAGER != nullptr) {
   TRI_ASSERT(cf != nullptr && cf != RocksDBColumnFamily::definitions());
 
   if (_cacheEnabled) {
@@ -89,7 +90,7 @@ RocksDBIndex::RocksDBIndex(
       _cf(cf),
       _cache(nullptr),
       _cachePresent(false),
-      _cacheEnabled(useCache && !collection.system()) {
+      _cacheEnabled(useCache && !collection.system() && CacheManagerFeature::MANAGER != nullptr) {
   TRI_ASSERT(cf != nullptr && cf != RocksDBColumnFamily::definitions());
 
   if (_objectId == 0) {
@@ -157,10 +158,10 @@ void RocksDBIndex::unload() {
 }
 
 /// @brief return a VelocyPack representation of the index
-void RocksDBIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
-                                bool forPersistence) const {
-  Index::toVelocyPack(builder, withFigures, forPersistence);
-  if (forPersistence) {
+void RocksDBIndex::toVelocyPack(VPackBuilder& builder,
+                                std::underlying_type<Serialize>::type flags) const {
+  Index::toVelocyPack(builder, flags);
+  if (Index::hasFlag(flags, Index::Serialize::ObjectId)) {
     // If we store it, it cannot be 0
     TRI_ASSERT(_objectId != 0);
     builder.add("objectId", VPackValue(std::to_string(_objectId)));
@@ -201,30 +202,15 @@ void RocksDBIndex::destroyCache() {
   _cachePresent = false;
 }
 
-rocksdb::SequenceNumber RocksDBIndex::serializeEstimate(
-    std::string&, rocksdb::SequenceNumber seq) const {
-  // All indexes that do not have an estimator do not serialize anything.
-  return seq;
-}
-
-bool RocksDBIndex::deserializeEstimate(RocksDBSettingsManager*) {
-  // All indexes that do not have an estimator do not deserialize anything.
-  // So the estimate is always recreatable.
-  // We do not advance anything here.
-  return true;
-}
-
-void RocksDBIndex::recalculateEstimates() {
-  // Nothing to do.
-  return;
-}
-
 int RocksDBIndex::drop() {
-  // edge index needs to be dropped with prefix_same_as_start = false
+  auto* coll = toRocksDBCollection(_collection);
+  // edge index needs to be dropped with prefixSameAsStart = false
   // otherwise full index scan will not work
-  bool prefix_same_as_start = this->type() != Index::TRI_IDX_TYPE_EDGE_INDEX;
-  arangodb::Result r = rocksutils::removeLargeRange(
-    rocksutils::globalRocksDB(), this->getBounds(), prefix_same_as_start);
+  bool const prefixSameAsStart = this->type() != Index::TRI_IDX_TYPE_EDGE_INDEX;
+  bool const useRangeDelete = coll->numberDocuments() >= 32 * 1024;
+
+  arangodb::Result r = rocksutils::removeLargeRange(rocksutils::globalRocksDB(), this->getBounds(),
+                                                    prefixSameAsStart, useRangeDelete);
 
   // Try to drop the cache as well.
   if (_cachePresent) {
@@ -241,9 +227,8 @@ int RocksDBIndex::drop() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   //check if documents have been deleted
   size_t numDocs = rocksutils::countKeyRange(rocksutils::globalRocksDB(),
-                                             this->getBounds(), prefix_same_as_start);
+                                             this->getBounds(), prefixSameAsStart);
   if (numDocs > 0) {
-
     std::string errorMsg("deletion check in index drop failed - not all documents in the index have been deleted. remaining: ");
     errorMsg.append(std::to_string(numDocs));
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
@@ -253,14 +238,13 @@ int RocksDBIndex::drop() {
   return r.errorNumber();
 }
 
-int RocksDBIndex::afterTruncate() {
+void RocksDBIndex::afterTruncate(TRI_voc_tick_t) {
   // simply drop the cache and re-create it
   if (_cacheEnabled) {
     destroyCache();
     createCache();
     TRI_ASSERT(_cachePresent);
   }
-  return TRI_ERROR_NO_ERROR;
 }
 
 Result RocksDBIndex::updateInternal(transaction::Methods* trx, RocksDBMethods* mthd,
@@ -272,6 +256,7 @@ Result RocksDBIndex::updateInternal(transaction::Methods* trx, RocksDBMethods* m
   // It is illegal to call this method on the primary index
   // RocksDBPrimaryIndex must override this method accordingly
   TRI_ASSERT(type() != TRI_IDX_TYPE_PRIMARY_INDEX);
+
   Result res = removeInternal(trx, mthd, oldDocumentId, oldDoc, mode);
   if (!res.ok()) {
     return res;
@@ -357,6 +342,6 @@ RocksDBCuckooIndexEstimator<uint64_t>* RocksDBIndex::estimator() {
   return nullptr;
 }
 
-bool RocksDBIndex::needToPersistEstimate() const {
-  return false;
+void RocksDBIndex::setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>) {
+  // Nothing to do.
 }

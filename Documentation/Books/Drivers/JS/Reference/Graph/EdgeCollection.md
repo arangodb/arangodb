@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/arangodbjs.git / docs/Drivers/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/arangojs.git / docs/Drivers/ -->
 # GraphEdgeCollection API
 
 The _GraphEdgeCollection API_ extends the
@@ -12,7 +12,7 @@ Deletes the edge with the given _documentHandle_ from the collection.
 
 **Arguments**
 
-* **documentHandle**: `string`
+- **documentHandle**: `string`
 
   The handle of the edge to retrieve. This can be either the `_id` or the `_key`
   of an edge in the collection, or an edge (i.e. an object with an `_id` or
@@ -21,49 +21,107 @@ Deletes the edge with the given _documentHandle_ from the collection.
 **Examples**
 
 ```js
-const graph = db.graph('some-graph');
-const collection = graph.edgeCollection('edges');
+const graph = db.graph("some-graph");
+const collection = graph.edgeCollection("edges");
 
-await collection.remove('some-key')
+await collection.remove("some-key");
 // document 'edges/some-key' no longer exists
 
 // -- or --
 
-await collection.remove('edges/some-key')
+await collection.remove("edges/some-key");
 // document 'edges/some-key' no longer exists
 ```
 
-## graphEdgeCollection.edge
+## graphEdgeCollection.documentExists
 
-`async graphEdgeCollection.edge(documentHandle): Object`
+`async graphEdgeCollection.documentExists(documentHandle): boolean`
+
+Checks whether the edge with the given _documentHandle_ exists.
+
+**Arguments**
+
+- **documentHandle**: `string`
+
+  The handle of the edge to retrieve. This can be either the `_id` or the
+  `_key` of a edge in the collection, or an edge (i.e. an object with an
+  `_id` or `_key` property).
+
+**Examples**
+
+```js
+const graph = db.graph("some-graph");
+const collection = graph.edgeCollection("edges");
+
+const exists = await collection.documentExists("some-key");
+if (exists === false) {
+  // the edge does not exist
+}
+```
+
+## graphEdgeCollection.document
+
+`async graphEdgeCollection.document(documentHandle, [opts]): Object`
+
+Alias: `graphEdgeCollection.edge`.
 
 Retrieves the edge with the given _documentHandle_ from the collection.
 
 **Arguments**
 
-* **documentHandle**: `string`
+- **documentHandle**: `string`
 
   The handle of the edge to retrieve. This can be either the `_id` or the `_key`
   of an edge in the collection, or an edge (i.e. an object with an `_id` or
   `_key` property).
 
+- **opts**: `Object` (optional)
+
+  If _opts_ is set, it must be an object with any of the following properties:
+
+  - **graceful**: `boolean` (Default: `false`)
+
+    If set to `true`, the method will return `null` instead of throwing an
+    error if the edge does not exist.
+
+  - **allowDirtyRead**: `boolean` (Default: `false`)
+
+    {% hint 'info' %}
+    This option is only available when targeting ArangoDB 3.4 or later,
+    see [Compatibility](../../GettingStarted/README.md#compatibility).
+    {% endhint %}
+
+    If set to `true`, the request will explicitly permit ArangoDB to return a
+    potentially dirty or stale result and arangojs will load balance the
+    request without distinguishing between leaders and followers.
+
+If a boolean is passed instead of an options object, it will be interpreted as
+the _graceful_ option.
+
 **Examples**
 
 ```js
-const graph = db.graph('some-graph');
-const collection = graph.edgeCollection('edges');
+const graph = db.graph("some-graph");
+const collection = graph.edgeCollection("edges");
 
-const edge = await collection.edge('some-key');
+const edge = await collection.document("some-key");
 // the edge exists
-assert.equal(edge._key, 'some-key');
-assert.equal(edge._id, 'edges/some-key');
+assert.equal(edge._key, "some-key");
+assert.equal(edge._id, "edges/some-key");
 
 // -- or --
 
-const edge = await collection.edge('edges/some-key');
+const edge = await collection.document("edges/some-key");
 // the edge exists
-assert.equal(edge._key, 'some-key');
-assert.equal(edge._id, 'edges/some-key');
+assert.equal(edge._key, "some-key");
+assert.equal(edge._id, "edges/some-key");
+
+// -- or --
+
+const edge = await collection.document("some-key", true);
+if (edge === null) {
+  // the edge does not exist
+}
 ```
 
 ## graphEdgeCollection.save
@@ -75,18 +133,18 @@ _data_.
 
 **Arguments**
 
-* **data**: `Object`
+- **data**: `Object`
 
   The data of the new edge. If _fromId_ and _toId_ are not specified, the _data_
-  needs to contain the properties __from_ and __to_.
+  needs to contain the properties **from\_ and **to\_.
 
-* **fromId**: `string` (optional)
+- **fromId**: `string` (optional)
 
   The handle of the start vertex of this edge. This can be either the `_id` of a
   document in the database, the `_key` of an edge in the collection, or a
   document (i.e. an object with an `_id` or `_key` property).
 
-* **toId**: `string` (optional)
+- **toId**: `string` (optional)
 
   The handle of the end vertex of this edge. This can be either the `_id` of a
   document in the database, the `_key` of an edge in the collection, or a
@@ -96,17 +154,17 @@ _data_.
 
 ```js
 const db = new Database();
-const graph = db.graph('some-graph');
-const collection = graph.edgeCollection('edges');
+const graph = db.graph("some-graph");
+const collection = graph.edgeCollection("edges");
 const edge = await collection.save(
-  {some: 'data'},
-  'vertices/start-vertex',
-  'vertices/end-vertex'
+  { some: "data" },
+  "vertices/start-vertex",
+  "vertices/end-vertex"
 );
-assert.equal(edge._id, 'edges/' + edge._key);
-assert.equal(edge.some, 'data');
-assert.equal(edge._from, 'vertices/start-vertex');
-assert.equal(edge._to, 'vertices/end-vertex');
+assert.equal(edge._id, "edges/" + edge._key);
+assert.equal(edge.some, "data");
+assert.equal(edge._from, "vertices/start-vertex");
+assert.equal(edge._to, "vertices/end-vertex");
 ```
 
 ## graphEdgeCollection.edges
@@ -117,7 +175,7 @@ Retrieves a list of all edges of the document with the given _documentHandle_.
 
 **Arguments**
 
-* **documentHandle**: `string`
+- **documentHandle**: `string`
 
   The handle of the document to retrieve the edges of. This can be either the
   `_id` of a document in the database, the `_key` of an edge in the collection,
@@ -127,17 +185,17 @@ Retrieves a list of all edges of the document with the given _documentHandle_.
 
 ```js
 const db = new Database();
-const graph = db.graph('some-graph');
-const collection = graph.edgeCollection('edges');
+const graph = db.graph("some-graph");
+const collection = graph.edgeCollection("edges");
 await collection.import([
-  ['_key', '_from', '_to'],
-  ['x', 'vertices/a', 'vertices/b'],
-  ['y', 'vertices/a', 'vertices/c'],
-  ['z', 'vertices/d', 'vertices/a']
+  ["_key", "_from", "_to"],
+  ["x", "vertices/a", "vertices/b"],
+  ["y", "vertices/a", "vertices/c"],
+  ["z", "vertices/d", "vertices/a"]
 ]);
-const edges = await collection.edges('vertices/a');
+const edges = await collection.edges("vertices/a");
 assert.equal(edges.length, 3);
-assert.deepEqual(edges.map(edge => edge._key), ['x', 'y', 'z']);
+assert.deepEqual(edges.map(edge => edge._key), ["x", "y", "z"]);
 ```
 
 ## graphEdgeCollection.inEdges
@@ -149,7 +207,7 @@ _documentHandle_.
 
 **Arguments**
 
-* **documentHandle**: `string`
+- **documentHandle**: `string`
 
   The handle of the document to retrieve the edges of. This can be either the
   `_id` of a document in the database, the `_key` of an edge in the collection,
@@ -159,17 +217,17 @@ _documentHandle_.
 
 ```js
 const db = new Database();
-const graph = db.graph('some-graph');
-const collection = graph.edgeCollection('edges');
+const graph = db.graph("some-graph");
+const collection = graph.edgeCollection("edges");
 await collection.import([
-  ['_key', '_from', '_to'],
-  ['x', 'vertices/a', 'vertices/b'],
-  ['y', 'vertices/a', 'vertices/c'],
-  ['z', 'vertices/d', 'vertices/a']
+  ["_key", "_from", "_to"],
+  ["x", "vertices/a", "vertices/b"],
+  ["y", "vertices/a", "vertices/c"],
+  ["z", "vertices/d", "vertices/a"]
 ]);
-const edges = await collection.inEdges('vertices/a');
+const edges = await collection.inEdges("vertices/a");
 assert.equal(edges.length, 1);
-assert.equal(edges[0]._key, 'z');
+assert.equal(edges[0]._key, "z");
 ```
 
 ## graphEdgeCollection.outEdges
@@ -181,7 +239,7 @@ _documentHandle_.
 
 **Arguments**
 
-* **documentHandle**: `string`
+- **documentHandle**: `string`
 
   The handle of the document to retrieve the edges of. This can be either the
   `_id` of a document in the database, the `_key` of an edge in the collection,
@@ -191,17 +249,17 @@ _documentHandle_.
 
 ```js
 const db = new Database();
-const graph = db.graph('some-graph');
-const collection = graph.edgeCollection('edges');
+const graph = db.graph("some-graph");
+const collection = graph.edgeCollection("edges");
 await collection.import([
-  ['_key', '_from', '_to'],
-  ['x', 'vertices/a', 'vertices/b'],
-  ['y', 'vertices/a', 'vertices/c'],
-  ['z', 'vertices/d', 'vertices/a']
+  ["_key", "_from", "_to"],
+  ["x", "vertices/a", "vertices/b"],
+  ["y", "vertices/a", "vertices/c"],
+  ["z", "vertices/d", "vertices/a"]
 ]);
-const edges = await collection.outEdges('vertices/a');
+const edges = await collection.outEdges("vertices/a");
 assert.equal(edges.length, 2);
-assert.deepEqual(edges.map(edge => edge._key), ['x', 'y']);
+assert.deepEqual(edges.map(edge => edge._key), ["x", "y"]);
 ```
 
 ## graphEdgeCollection.traversal
@@ -213,13 +271,13 @@ contained in this edge collection.
 
 **Arguments**
 
-* **startVertex**: `string`
+- **startVertex**: `string`
 
   The handle of the start vertex. This can be either the `_id` of a document in
   the database, the `_key` of an edge in the collection, or a document (i.e. an
   object with an `_id` or `_key` property).
 
-* **opts**: `Object`
+- **opts**: `Object`
 
   See
   [the HTTP API documentation](../../../..//HTTP/Traversal/index.html)
@@ -235,18 +293,18 @@ contained in this edge collection.
 
 ```js
 const db = new Database();
-const graph = db.graph('some-graph');
-const collection = graph.edgeCollection('edges');
+const graph = db.graph("some-graph");
+const collection = graph.edgeCollection("edges");
 await collection.import([
-  ['_key', '_from', '_to'],
-  ['x', 'vertices/a', 'vertices/b'],
-  ['y', 'vertices/b', 'vertices/c'],
-  ['z', 'vertices/c', 'vertices/d']
+  ["_key", "_from", "_to"],
+  ["x", "vertices/a", "vertices/b"],
+  ["y", "vertices/b", "vertices/c"],
+  ["z", "vertices/c", "vertices/d"]
 ]);
-const result = await collection.traversal('vertices/a', {
-  direction: 'outbound',
-  visitor: 'result.vertices.push(vertex._key);',
-  init: 'result.vertices = [];'
+const result = await collection.traversal("vertices/a", {
+  direction: "outbound",
+  visitor: "result.vertices.push(vertex._key);",
+  init: "result.vertices = [];"
 });
-assert.deepEqual(result.vertices, ['a', 'b', 'c', 'd']);
+assert.deepEqual(result.vertices, ["a", "b", "c", "d"]);
 ```

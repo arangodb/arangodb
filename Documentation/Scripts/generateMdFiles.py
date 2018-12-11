@@ -147,12 +147,14 @@ def getRestBodyParam():
 def getRestDescription():
     #print >>sys.stderr, "RESTDESCRIPTION"
     if thisVerb['description']:
-        #print >> sys.stderr, thisVerb['description']
-        return RX3[0].sub(RX3[1], thisVerb['description'])
+        description = thisVerb['description']
+        #print >> sys.stderr, description
+        description = RX4[0].sub(RX4[1], description)
+        return RX3[0].sub(RX3[1], description)
     else:
         #print >> sys.stderr, "ELSE"
         return ""
-        
+
 def getRestReplyBodyParam(param):
     rc = "\n**Response Body**\n"
 
@@ -214,6 +216,7 @@ SIMPL_REPL_VALIDATE_DICT = {
 }
 SIMPL_REPL_DICT = {
     "\\"                    : "\\\\",
+    "@HINTS"                : "",
     "@RESTDESCRIPTION"      : getRestDescription,
     "@RESTURLPARAMETERS"    : "\n**Path Parameters**\n",
     "@RESTQUERYPARAMETERS"  : "\n**Query Parameters**\n",
@@ -236,6 +239,7 @@ SIMPLE_RX = re.compile(
 r'''
 \\|                                 # the backslash...
 @RESTDESCRIPTION|                   # -> <empty>
+@HINTS|                             # -> <inject hints>
 @RESTURLPARAMETERS|                 # -> \n**Path Parameters**\n
 @RESTQUERYPARAMETERS|               # -> \n**Query Parameters**\n
 @RESTHEADERPARAMETERS|              # -> \n**Header Parameters**\n
@@ -337,6 +341,8 @@ RX2 = [
 ]
 
 RX3 = (re.compile(r'\*\*Example:\*\*((?:.|\n)*?)</code></pre>'), r"")
+
+RX4 = (re.compile(r'<!-- Hints Start -->.*<!-- Hints End -->', re.DOTALL), r"")
 
 match_RESTHEADER = re.compile(r"@RESTHEADER\{(.*)\}")
 match_RESTRETURNCODE = re.compile(r"@RESTRETURNCODE\{(.*)\}")
@@ -733,7 +739,9 @@ def loadProgramOptionBlocks():
 
             # Output table header with column labels (one table per section)
             output.append('\n<h2>{} Options</h2>'.format(groupName.title()))
-            output.append('<table class="program-options"><thead><tr>')
+            if program in ['arangod']:
+                output.append('\nAlso see <a href="{0}.html">{0} details</a>.'.format(groupName.title()))
+            output.append('\n<table class="program-options"><thead><tr>')
             output.append('<th>{}</th><th>{}</th><th>{}</th>'.format('Name', 'Type', 'Description'))
             output.append('</tr></thead><tbody>')
 
@@ -748,7 +756,7 @@ def loadProgramOptionBlocks():
                 default = json.dumps(option["default"])
 
                 # Parse and re-format the optional field for possible values
-                # (not fully safe, but ', 'is unlikely to occur in strings)
+                # (not fully safe, but ', ' is unlikely to occur in strings)
                 try:
                     optionList = option["values"].partition('Possible values: ')[2].split(', ')
                     values = formatList(optionList, '<br/>Possible values:\n')
@@ -758,6 +766,11 @@ def loadProgramOptionBlocks():
                 # Expected data type for argument
                 valueType = option["type"]
 
+                # Enterprise Edition has EE only options marked
+                enterprise = ""
+                if option.setdefault("enterpriseOnly", False):
+                    enterprise = "<em>Enterprise Edition only</em><br/>"
+
                 # Upper-case first letter, period at the end, HTML entities
                 description = option["description"].strip()
                 description = description[0].upper() + description[1:]
@@ -766,7 +779,7 @@ def loadProgramOptionBlocks():
                 description = escape(description)
 
                 # Description, default value and possible values separated by line breaks
-                descriptionCombined = '\n'.join([description, '<br/>Default: <code>{}</code>'.format(default), values])
+                descriptionCombined = '\n'.join([enterprise, description, '<br/>Default: <code>{}</code>'.format(default), values])
 
                 output.append('<tr><td><code>{}</code></td><td>{}</td><td>{}</td></tr>'.format(optionName, valueType, descriptionCombined))
 

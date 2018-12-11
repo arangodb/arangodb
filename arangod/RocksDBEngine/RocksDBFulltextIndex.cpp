@@ -29,7 +29,6 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/tri-strings.h"
-#include "Indexes/IndexResult.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -85,10 +84,10 @@ RocksDBFulltextIndex::RocksDBFulltextIndex(
 }
 
 /// @brief return a VelocyPack representation of the index
-void RocksDBFulltextIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
-                                        bool forPersistence) const {
+void RocksDBFulltextIndex::toVelocyPack(VPackBuilder& builder,
+                  std::underlying_type<Serialize>::type flags) const {
   builder.openObject();
-  RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
+  RocksDBIndex::toVelocyPack(builder, flags);
   builder.add(
     arangodb::StaticStrings::IndexUnique,
     arangodb::velocypack::Value(false)
@@ -154,14 +153,14 @@ bool RocksDBFulltextIndex::matchesDefinition(VPackSlice const& info) const {
   }
 
   if (_unique != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                   info, arangodb::StaticStrings::IndexUnique.c_str(), false
+                   info, arangodb::StaticStrings::IndexUnique, false
                  )
      ) {
     return false;
   }
 
   if (_sparse != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                   info, arangodb::StaticStrings::IndexSparse.c_str(), true
+                   info, arangodb::StaticStrings::IndexSparse, true
                  )
      ) {
     return false;
@@ -191,28 +190,29 @@ Result RocksDBFulltextIndex::insertInternal(transaction::Methods* trx,
                                             LocalDocumentId const& documentId,
                                             VPackSlice const& doc,
                                             OperationMode mode) {
+  Result res;
   std::set<std::string> words = wordlist(doc);
   if (words.empty()) {
-    return TRI_ERROR_NO_ERROR;
+    return res;
   }
 
   // now we are going to construct the value to insert into rocksdb
   // unique indexes have a different key structure
   RocksDBValue value = RocksDBValue::VPackIndexValue();
 
-  int res = TRI_ERROR_NO_ERROR;
   // size_t const count = words.size();
   for (std::string const& word : words) {
     RocksDBKeyLeaser key(trx);
     key->constructFulltextIndexValue(_objectId, StringRef(word), documentId);
 
-    Result r = mthd->Put(_cf, key.ref(), value.string(), rocksutils::index);
-    if (!r.ok()) {
-      res = r.errorNumber();
+    rocksdb::Status s = mthd->Put(_cf, key.ref(), value.string());
+    if (!s.ok()) {
+      res.reset(rocksutils::convertStatus(s, rocksutils::index));
+      addErrorMsg(res);
       break;
     }
   }
-  return IndexResult(res, this);
+  return res;
 }
 
 Result RocksDBFulltextIndex::removeInternal(transaction::Methods* trx,
@@ -220,25 +220,27 @@ Result RocksDBFulltextIndex::removeInternal(transaction::Methods* trx,
                                             LocalDocumentId const& documentId,
                                             VPackSlice const& doc,
                                             OperationMode mode) {
+  Result res;
+  
   std::set<std::string> words = wordlist(doc);
   if (words.empty()) {
-    return IndexResult();
+    return res;
   }
 
   // now we are going to construct the value to insert into rocksdb
   // unique indexes have a different key structure
-  int res = TRI_ERROR_NO_ERROR;
   for (std::string const& word : words) {
     RocksDBKeyLeaser key(trx);
     key->constructFulltextIndexValue(_objectId, StringRef(word), documentId);
 
-    Result r = mthd->Delete(_cf, key.ref());
-    if (!r.ok()) {
-      res = r.errorNumber();
+    rocksdb::Status s = mthd->Delete(_cf, key.ref());
+    if (!s.ok()) {
+      res.reset(rocksutils::convertStatus(s, rocksutils::index));
+      addErrorMsg(res);
       break;
     }
   }
-  return IndexResult(res, this);
+  return res;
 }
 
 /// @brief walk over the attribute. Also Extract sub-attributes and elements in
@@ -247,11 +249,9 @@ static void ExtractWords(std::set<std::string>& words, VPackSlice const value,
                          size_t minWordLength, int level) {
   if (value.isString()) {
     // extract the string value for the indexed attribute
-    std::string text = value.copyString();
-
     // parse the document text
     arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(
-        words, text, minWordLength, TRI_FULLTEXT_MAX_WORD_LENGTH, true);
+        words, value.stringRef(), minWordLength, TRI_FULLTEXT_MAX_WORD_LENGTH, true);
     // We don't care for the result. If the result is false, words stays
     // unchanged and is not indexed
   } else if (value.isArray() && level == 0) {
@@ -508,6 +508,6 @@ IndexIterator* RocksDBFulltextIndex::iteratorForCondition(transaction::Methods* 
   }
 
   return new RocksDBFulltextIndexIterator(
-    &_collection, trx, this, std::move(results)
+    &_collection, trx, std::move(results)
   );
 }

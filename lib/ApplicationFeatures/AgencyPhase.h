@@ -27,10 +27,12 @@
 
 namespace arangodb {
 namespace application_features {
+
 class AgencyFeaturePhase : public ApplicationFeaturePhase {
  public:
-  explicit AgencyFeaturePhase(ApplicationServer* server);
+  explicit AgencyFeaturePhase(ApplicationServer& server);
 };
+
 }  // namespace application_features
 }  // namespace arangodb
 

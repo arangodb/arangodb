@@ -152,7 +152,6 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   TRI_ASSERT(_options != nullptr);
   VPackSlice opts = _options->slice();
 
-
   bool stream = VelocyPackHelper::getBooleanValue(opts, "stream", false);
   size_t batchSize =
       VelocyPackHelper::getNumericValue<size_t>(opts, "batchSize", 1000);
@@ -166,8 +165,9 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
     } else {
       CursorRepository* cursors = _vocbase.cursorRepository();
       TRI_ASSERT(cursors != nullptr);
-      Cursor* cursor = cursors->createQueryStream(
-          querySlice.copyString(), bindVarsBuilder, _options, batchSize, ttl);
+      Cursor* cursor = cursors->createQueryStream(querySlice.copyString(),
+                                                  bindVarsBuilder, _options,
+                                                  batchSize, ttl, /*contextExt*/false);
    
       return generateCursorResult(rest::ResponseCode::CREATED, cursor);
     }
@@ -287,7 +287,7 @@ RestStatus RestCursorHandler::handleQueryResult() {
         result.add("count", VPackValue(n));
       }
       result.add("cached", VPackValue(_queryResult.cached));
-      if (_queryResult.cached || !_queryResult.extra) {
+      if (!_queryResult.extra) {
         result.add("extra", VPackValue(VPackValueType::Object));
         // no warnings
         result.add("warnings", VPackSlice::emptyArraySlice());
@@ -297,6 +297,8 @@ RestStatus RestCursorHandler::handleQueryResult() {
       }
       result.add(StaticStrings::Error, VPackValue(false));
       result.add(StaticStrings::Code, VPackValue(static_cast<int>(ResponseCode::CREATED)));
+    } catch (std::exception const& ex) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ex.what());
     } catch (...) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }

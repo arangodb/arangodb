@@ -427,17 +427,6 @@ JOB_STATUS FailedLeader::status() {
   }
 
   if (done) {
-    // Remove shard to /arango/Target/FailedServers/<server> array
-    Builder del;
-    { VPackArrayBuilder a(&del);
-      { VPackObjectBuilder o(&del);
-        del.add(VPackValue(failedServersPrefix + "/" + _from));
-        { VPackObjectBuilder erase(&del);
-          del.add("op", VPackValue("erase"));
-          del.add("val", VPackValue(_shard));
-        }}}
-
-    write_ret_t res = singleWriteTransaction(_agent, del);
     if (finish("", shard)) {
       LOG_TOPIC(INFO, Logger::SUPERVISION)
         << "Finished failedLeader for " + _shard + " from " + _from + " to " + _to;

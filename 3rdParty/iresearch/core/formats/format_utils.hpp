@@ -25,6 +25,7 @@
 #define IRESEARCH_FORMATS_UTILS_H
 
 #include "store/store_utils.hpp"
+#include "utils/string_utils.hpp"
 #include "index/field_meta.hpp"
 
 NS_ROOT
@@ -81,8 +82,10 @@ inline int64_t check_footer(index_input& in, int64_t checksum) {
   validate_footer(in);
 
   if (checksum != in.read_long()) {
-    // invalid checksum
-    throw index_error();
+    throw index_error(string_utils::to_string(
+      "while checking footer, error: invalid checksum '" IR_UINT64_T_SPECIFIER "'",
+      checksum
+    ));
   }
 
   return checksum;
@@ -94,6 +97,13 @@ inline int64_t checksum(const index_input& in) {
   index_input::ptr dup;
   if (0 != in.file_pointer()) {
     dup = in.dup();
+
+    if (!dup) {
+      IR_FRMT_ERROR("Failed to duplicate input in: %s", __FUNCTION__);
+
+      throw io_error("failed to duplicate input");
+    }
+
     dup->seek(0);
     stream = dup.get();
   }

@@ -73,10 +73,22 @@ class UserManager {
   }
 
   /// Tells coordinator to reload its data. Only called in HeartBeat thread
-  void outdate() { _outdated = true; }
+  void setGlobalVersion(uint64_t version) {
+    _globalVersion.store(version, std::memory_order_release);
+  }
+  
+  /// @brief reload user cache and token caches
+  void triggerLocalReload() {
+    _globalVersion.fetch_add(1, std::memory_order_release);
+  }
+  
+  /// @brief used for caching
+  uint64_t globalVersion() {
+    return _globalVersion.load(std::memory_order_acquire);
+  }
 
-  /// Trigger eventual reload, user facing API call
-  void reloadAllUsers();
+  /// Trigger eventual reload on all other coordinators (and in TokenCache)
+  void triggerGlobalReload();
 
   /// Create the root user with a default password, will fail if the user
   /// already exists. Only ever call if you can guarantee to be in charge
@@ -95,6 +107,8 @@ class UserManager {
   /// Access user without modifying it
   Result accessUser(std::string const& user, ConstUserCallback&&);
 
+  /// @brief does this user exists in the db
+  bool userExists(std::string const& user);
   /// Serialize user into legacy format for REST API
   velocypack::Builder serializeUser(std::string const& user);
   Result removeUser(std::string const& user);
@@ -104,10 +118,12 @@ class UserManager {
   bool checkPassword(std::string const& username, std::string const& password);
 
   /// Convenience method to refresh user rights
+  /// returns true if the user was actually refreshed and the caller may
+  /// need to update its own caches
 #ifdef USE_ENTERPRISE
-  void refreshUser(std::string const& username);
+  bool refreshUser(std::string const& username);
 #else
-  inline void refreshUser(std::string const& username) {}
+  inline bool refreshUser(std::string const& username) { return false; }
 #endif
 
   auth::Level databaseAuthLevel(std::string const& username,
@@ -154,8 +170,9 @@ class UserManager {
   /// Protect the _userCache access
   basics::ReadWriteLock _userCacheLock;
 
-  /// @brief need to sync _userCache from database
-  std::atomic<bool> _outdated;
+  /// @brief used to update caches
+  std::atomic<uint64_t> _globalVersion;
+  std::atomic<uint64_t> _internalVersion;
 
   /// Caches permissions and other user info
   UserMap _userCache;

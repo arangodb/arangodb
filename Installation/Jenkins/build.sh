@@ -946,6 +946,9 @@ if test -n "${TARGET_DIR}";  then
          touch arangosh/.keepme
                                
          tar -u -f "${TARFILE_TMP}" \
+             tests/js \
+             tests/rb \
+             tests/arangodbRspecLib \
              VERSION \
              utils \
              scripts \

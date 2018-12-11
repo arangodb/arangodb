@@ -28,12 +28,12 @@
 #include <unordered_set>
 
 #include "index/index_writer.hpp"
+#include "velocypack/Builder.h"
 #include "VocBase/voc-types.h"
 
 NS_BEGIN(arangodb)
 NS_BEGIN(velocypack)
 
-class Builder; // forward declarations
 struct ObjectBuilder; // forward declarations
 class Slice; // forward declarations
 
@@ -51,60 +51,48 @@ NS_BEGIN(iresearch)
 /// @brief metadata describing the IResearch view
 ////////////////////////////////////////////////////////////////////////////////
 struct IResearchViewMeta {
-  struct CommitMeta {
-    class ConsolidationPolicy {
-     public:
-      struct Hash {
-        size_t operator()(ConsolidationPolicy const& value) const noexcept;
-      };
+  class ConsolidationPolicy {
+   public:
+    ConsolidationPolicy() = default;
+    ConsolidationPolicy(
+      irs::index_writer::consolidation_policy_t&& policy,
+      arangodb::velocypack::Builder&& properties
+    ) noexcept: _policy(std::move(policy)), _properties(std::move(properties)) {
+    }
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief enum of possible consolidation policy thresholds
-      ////////////////////////////////////////////////////////////////////////////////
-      enum class Type {
-        BYTES, // {threshold} > segment_bytes / (all_segment_bytes / #segments)
-        BYTES_ACCUM, // {threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes
-        COUNT, // {threshold} > segment_docs{valid} / (all_segment_docs{valid} / #segments)
-        FILL,  // {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})
-      };
+    irs::index_writer::consolidation_policy_t const& policy() const noexcept {
+      return _policy;
+    }
 
-      ConsolidationPolicy(Type type, size_t segmentThreshold, float threshold);
-      ConsolidationPolicy(ConsolidationPolicy const& other);
-      ConsolidationPolicy(ConsolidationPolicy&& other) noexcept;
-      ConsolidationPolicy& operator=(ConsolidationPolicy const& other);
-      ConsolidationPolicy& operator=(ConsolidationPolicy&& other) noexcept;
-      bool operator==(ConsolidationPolicy const& other) const noexcept;
-      static const ConsolidationPolicy& DEFAULT(Type type); // default values for a given type
-      irs::index_writer::consolidation_policy_t const& policy() const noexcept;
-      size_t segmentThreshold() const noexcept;
-      float threshold() const noexcept;
-      Type type() const noexcept;
+    arangodb::velocypack::Slice properties() const noexcept {
+      return _properties.slice();
+    }
 
-     private:
-      irs::index_writer::consolidation_policy_t _policy;
-      size_t _segmentThreshold; // apply policy if number of segments is >= value (0 == disable)
-      float _threshold; // consolidation policy threshold
-      Type _type;
-    };
-
-    typedef std::vector<ConsolidationPolicy> ConsolidationPolicies;
-
-    size_t _cleanupIntervalStep; // issue cleanup after <count> commits (0 == disable)
-    size_t _commitIntervalMsec; // issue commit after <interval> milliseconds (0 == disable)
-    ConsolidationPolicies _consolidationPolicies;
-
-    bool operator==(CommitMeta const& other) const;
-    bool operator!=(CommitMeta const& other) const;
+   private:
+    irs::index_writer::consolidation_policy_t _policy; // policy instance (false == disable)
+    arangodb::velocypack::Builder _properties; // normalized policy definition
   };
 
   struct Mask {
-    bool _commit;
+    bool _cleanupIntervalStep;
+    bool _consolidationIntervalMsec;
+    bool _consolidationPolicy;
     bool _locale;
+    bool _version;
+    bool _writebufferActive;
+    bool _writebufferIdle;
+    bool _writebufferSizeMax;
     explicit Mask(bool mask = false) noexcept;
   };
 
-  CommitMeta _commit;
+  size_t _cleanupIntervalStep; // issue cleanup after <count> commits (0 == disable)
+  size_t _consolidationIntervalMsec; // issue consolidation after <interval> milliseconds (0 == disable)
+  ConsolidationPolicy _consolidationPolicy; // the consolidation policy to use
   std::locale _locale; // locale used for ordering processed attribute names
+  uint32_t _version; // the version of the iresearch interface e.g. which how data is stored in iresearch (default == latest)
+  size_t _writebufferActive; // maximum number of concurrent segments before segment aquisition blocks, e.g. max number of concurrent transacitons) (0 == unlimited)
+  size_t _writebufferIdle; // maximum number of segments cached in the pool
+  size_t _writebufferSizeMax; // maximum memory byte size per segment before a segment flush is triggered (0 == unlimited)
   // NOTE: if adding fields don't forget to modify the default constructor !!!
   // NOTE: if adding fields don't forget to modify the copy constructor !!!
   // NOTE: if adding fields don't forget to modify the move constructor !!!
@@ -258,4 +246,5 @@ struct IResearchViewMetaState {
 
 NS_END // iresearch
 NS_END // arangodb
+
 #endif

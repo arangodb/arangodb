@@ -25,6 +25,7 @@
 
 #include "SimpleHttpClient.h"
 
+#include "ApplicationFeatures/CommunicationPhase.h"
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpResponse.h"
@@ -48,7 +49,7 @@ std::unordered_map<std::string, std::string> const
     SimpleHttpClient::NO_HEADERS{};
 
 /// @brief default value for max packet size
-size_t SimpleHttpClientParams::MaxPacketSize = 256 * 1024 * 1024;
+size_t SimpleHttpClientParams::MaxPacketSize = 512 * 1024 * 1024;
 
 SimpleHttpClient::SimpleHttpClient(GeneralClientConnection* connection,
                                    SimpleHttpClientParams const& params)
@@ -179,6 +180,11 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
       break;
     }
 
+    if (application_features::ApplicationServer::isStopping()) {
+      // abort this client, will also lead to exiting this loop next
+      setAborted(true);
+    }
+
     if (isAborted()) {
       break;
     }
@@ -230,15 +236,25 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
     std::unordered_map<std::string, std::string> const& headers) {
   // ensure connection has not yet been invalidated
   TRI_ASSERT(_connection != nullptr);
-
+  if (isAborted()) {
+    return nullptr;
+  }
+  
   // ensure that result is empty
   TRI_ASSERT(_result == nullptr);
 
   // create a new result
   _result = new SimpleHttpResult();
+  auto resultGuard = scopeGuard([this] {
+    delete _result;
+    _result = nullptr;
+  });
 
   // reset error message
   _errorMessage = "";
+
+  auto comm = application_features::ApplicationServer::getFeature<
+    arangodb::application_features::CommunicationFeaturePhase>("CommunicationPhase");
 
   // set body
   setRequest(method, rewriteLocation(location), body, bodyLength, headers);
@@ -317,8 +333,6 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
 
           if (_connection->isInterrupted()) {
             this->close();
-            delete _result;
-            _result = nullptr;
             setErrorMessage("Command locally aborted");
             return nullptr;
           }
@@ -398,6 +412,11 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
         break;
     }
 
+    if (!comm->getCommAllowed()) {
+      setErrorMessage("Command locally aborted");
+      return nullptr;
+    }
+
     remainingTime = endTime - TRI_microtime();
     if (isAborted()) {
       setErrorMessage("Client request aborted");
@@ -412,8 +431,8 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
 
   // set result type in getResult()
   SimpleHttpResult* result = getResult(haveSentRequest);
-
   _result = nullptr;
+  resultGuard.cancel(); // doesn't matter but do it anyway
 
   return result;
 }

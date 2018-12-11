@@ -139,7 +139,7 @@
         window.versionHelper.fromString(data.version);
 
         $('.navbar #currentVersion').html(
-          data.version.substr(0, 7) + '<i class="fa fa-check-circle"></i>'
+          data.version + '<i class="fa fa-check-circle"></i>'
         );
 
         window.parseVersions = function (json) {

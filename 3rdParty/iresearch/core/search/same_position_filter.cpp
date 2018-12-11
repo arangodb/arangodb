@@ -37,7 +37,7 @@ NS_ROOT
 
 class same_position_iterator final : public conjunction {
  public:
-  typedef std::vector<position::cref> positions_t;
+  typedef std::vector<position::ref> positions_t;
 
   same_position_iterator(
       conjunction::doc_iterators_t&& itrs,
@@ -83,7 +83,7 @@ class same_position_iterator final : public conjunction {
     auto target = type_limits<type_t::pos_t>::min();
 
     for (auto begin = pos_.begin(), end = pos_.end(); begin != end;) {
-      const position& pos = *begin;
+      position& pos = *begin;
 
       if (target != pos.seek(target)) {
         target = pos.value();
@@ -110,7 +110,7 @@ class same_position_query final : public filter::prepared {
   typedef states_cache<terms_states_t> states_t;
   typedef std::vector<attribute_store> stats_t;
 
-  DECLARE_SPTR(same_position_query);
+  DECLARE_SHARED_PTR(same_position_query);
 
   explicit same_position_query(states_t&& states, stats_t&& stats)
     : states_(std::move(states)), stats_(std::move(stats)) {
@@ -157,7 +157,7 @@ class same_position_query final : public filter::prepared {
         // positions not found
         return doc_iterator::empty();
       }
-      positions.emplace_back(std::cref(*pos));
+      positions.emplace_back(std::ref(*pos));
 
       // add base iterator
       itrs.emplace_back(doc_iterator::make<basic_doc_iterator>(
@@ -328,7 +328,7 @@ filter::prepared::ptr by_same_position::prepare(
     ++term_itr;
   }
 
-  auto q = memory::make_unique<same_position_query>(
+  auto q = memory::make_shared<same_position_query>(
     std::move(query_states),
     std::move(stats)
   );

@@ -25,7 +25,6 @@
 
 #include "Actions/actions.h"
 #include "Basics/StringUtils.h"
-#include "Basics/tri-strings.h"
 #include "Rest/HttpRequest.h"
 #include "Statistics/RequestStatistics.h"
 #include "VocBase/vocbase.h"
@@ -37,15 +36,10 @@ using namespace arangodb::rest;
 RestActionHandler::RestActionHandler(GeneralRequest* request,
                                      GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response),
-      _action(nullptr),
-      _dataLock(),
-      _data(nullptr) {
-  _action = TRI_LookupActionVocBase(request);
-}
+      _action(TRI_LookupActionVocBase(request)),
+      _data(nullptr) {}
 
 RestStatus RestActionHandler::execute() {
-  TRI_action_result_t result;
-
   // check the request path
   if (_request->databaseName() == TRI_VOC_SYSTEM_DATABASE) {
     if (StringUtils::isPrefix(_request->requestPath(), "/_admin/aardvark")) {
@@ -56,34 +50,30 @@ RestStatus RestActionHandler::execute() {
   // need an action
   if (_action == nullptr) {
     generateNotImplemented(_request->requestPath());
+    return RestStatus::DONE;
   }
 
-  // execute
-  else {
-    // extract the sub-request type
-    rest::RequestType type = _request->requestType();
+  // extract the sub-request type
+  rest::RequestType type = _request->requestType();
 
-    // execute one of the HTTP methods
-    switch (type) {
-      case rest::RequestType::GET:
-      case rest::RequestType::POST:
-      case rest::RequestType::PUT:
-      case rest::RequestType::DELETE_REQ:
-      case rest::RequestType::HEAD:
-      case rest::RequestType::OPTIONS:
-      case rest::RequestType::PATCH: {
-        result = executeAction();
-        break;
-      }
-
-      default:
-        result.isValid = true;
-        generateNotImplemented("METHOD");
-        break;
+  // execute one of the HTTP methods
+  switch (type) {
+    case rest::RequestType::GET:
+    case rest::RequestType::POST:
+    case rest::RequestType::PUT:
+    case rest::RequestType::DELETE_REQ:
+    case rest::RequestType::HEAD:
+    case rest::RequestType::OPTIONS:
+    case rest::RequestType::PATCH: {
+      executeAction();
+      break;
     }
+
+    default:
+      generateNotImplemented("METHOD");
+      break;
   }
 
-  // handler has finished, generate result
   return RestStatus::DONE;
 }
 
@@ -92,11 +82,21 @@ bool RestActionHandler::cancel() {
   return _action->cancel(&_dataLock, &_data);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief executes an action
-////////////////////////////////////////////////////////////////////////////////
+void RestActionHandler::executeAction() {
+  // handle redirections for web interface here
+  rest::RequestType type = _request->requestType();
+  if (type == rest::RequestType::GET) {
+    std::vector<std::string> const& suffixes = _request->decodedSuffixes();
+    if (suffixes.empty() ||
+        (suffixes.size() == 2 && suffixes[0] == "_admin" && suffixes[1] == "html")) {
+      // request to just /
+      _response->setResponseCode(rest::ResponseCode::MOVED_PERMANENTLY);
+      _response->setHeaderNC(StaticStrings::Location, "/_db/" + StringUtils::encodeURIComponent(_vocbase.name()) + "/_admin/aardvark/index.html");
+      return;
+    }
+  }
 
-TRI_action_result_t RestActionHandler::executeAction() {
   TRI_action_result_t result = _action->execute(
     &_vocbase, _request.get(), _response.get(), &_dataLock, &_data
   );
@@ -108,6 +108,4 @@ TRI_action_result_t RestActionHandler::executeAction() {
       generateNotImplemented(_action->_url);
     }
   }
-
-  return result;
 }

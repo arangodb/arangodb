@@ -31,6 +31,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Rest/HttpRequest.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "Utils/ExecContext.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
@@ -85,12 +86,12 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
         agency.getValues("Plan/Databases/" + vocbase->name());
     if (!commRes.successful()) {
       // Error in communication, note that value not found is not an error
-      LOG_TOPIC(TRACE, Logger::REQUESTS)
+      LOG_TOPIC(TRACE, Logger::COMMUNICATION)
           << "rest database handler: no agency communication";
       return Result(commRes.errorCode(), commRes.errorMessage());
     }
 
-    VPackSlice value = commRes.slice()[0].get(
+    VPackSlice value = commRes.slice()[0].get<std::string>(
         {AgencyCommManager::path(), "Plan", "Databases", vocbase->name()});
     if (value.isObject() && value.hasKey("name")) {
       VPackValueLength l = 0;
@@ -128,8 +129,6 @@ arangodb::Result Databases::create(std::string const& dbName,
   if (exec != nullptr) {
     if (!exec->isAdminUser()) {
       return TRI_ERROR_FORBIDDEN;
-    } else if (!exec->isSuperuser() && ServerState::readOnly()) {
-      return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
     }
   }
 
@@ -298,7 +297,12 @@ arangodb::Result Databases::create(std::string const& dbName,
   // Entirely Foxx related:
   if (ServerState::instance()->isSingleServerOrCoordinator()) {
     try {
-      TRI_ExpireFoxxQueueDatabaseCache(databaseFeature->systemDatabase());
+      auto* sysDbFeature = arangodb::application_features::ApplicationServer::getFeature<
+        arangodb::SystemDatabaseFeature
+      >();
+      auto database = sysDbFeature->use();
+
+      TRI_ExpireFoxxQueueDatabaseCache(database.get());
     } catch(...) {
       // it is of no real importance if cache invalidation fails, because
       // the cache entry has a ttl
@@ -341,7 +345,7 @@ namespace  {
       
       vocbase->release();
       // sleep
-      std::this_thread::sleep_for(std::chrono::microseconds(10000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     return TRI_ERROR_NO_ERROR;
   }
@@ -354,8 +358,6 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
   if (exec != nullptr) {
     if (exec->systemAuthLevel() != auth::Level::RW) {
       return TRI_ERROR_FORBIDDEN;
-    } else if (!exec->isSuperuser() && ServerState::readOnly()) {
-      return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
     }
   }
 

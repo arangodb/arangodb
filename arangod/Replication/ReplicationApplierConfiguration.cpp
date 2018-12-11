@@ -52,16 +52,17 @@ ReplicationApplierConfiguration::ReplicationApplierConfiguration()
       _idleMaxWaitTime(5 * 500 * 1000),
       _initialSyncMaxWaitTime(300 * 1000 * 1000),
       _autoResyncRetries(2),
+      _maxPacketSize(512 * 1024 * 1024),
       _sslProtocol(0),
       _skipCreateDrop(false),
       _autoStart(false),
       _adaptivePolling(true),
       _autoResync(false),
       _includeSystem(true),
-      _requireFromPresent(false),
+      _requireFromPresent(true),
       _incremental(false),
       _verbose(false),
-      _restrictType(),
+      _restrictType(RestrictType::None),
       _restrictCollections() {}
 
 /// @brief reset the configuration to defaults
@@ -82,16 +83,17 @@ void ReplicationApplierConfiguration::reset() {
   _idleMaxWaitTime = 5 * 500 * 1000;
   _initialSyncMaxWaitTime = 300 * 1000 * 1000;
   _autoResyncRetries = 2;
+  _maxPacketSize = 512 * 1024 * 1024;
   _sslProtocol = 0;
   _skipCreateDrop = false;
   _autoStart = false; 
   _adaptivePolling = true;
   _autoResync = false;
   _includeSystem = true;
-  _requireFromPresent = false;
+  _requireFromPresent = true;
   _incremental = false;
   _verbose = false;
-  _restrictType.clear();
+  _restrictType = RestrictType::None;
   _restrictCollections.clear();
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _force32mode = false; 
@@ -133,15 +135,16 @@ void ReplicationApplierConfiguration::toVelocyPack(VPackBuilder& builder, bool i
   builder.add("adaptivePolling", VPackValue(_adaptivePolling));
   builder.add("autoResync", VPackValue(_autoResync));
   builder.add("autoResyncRetries", VPackValue(_autoResyncRetries));
+  builder.add("maxPacketSize", VPackValue(_maxPacketSize));
   builder.add("includeSystem", VPackValue(_includeSystem));
   builder.add("requireFromPresent", VPackValue(_requireFromPresent));
   builder.add("verbose", VPackValue(_verbose));
   builder.add("incremental", VPackValue(_incremental));
-  builder.add("restrictType", VPackValue(_restrictType));
+  builder.add("restrictType", VPackValue(restrictTypeToString(_restrictType)));
 
   builder.add("restrictCollections", VPackValue(VPackValueType::Array));
-  for (auto& it : _restrictCollections) {
-    builder.add(VPackValue(it.first));
+  for (std::string const& it : _restrictCollections) {
+    builder.add(VPackValue(it));
   }
   builder.close();  // restrictCollections
 
@@ -201,12 +204,13 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
     if (value.isString()) {
       configuration._jwt = value.copyString();
     } else {
+      // use internal JWT token in any cluster setup
       auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
       if (cluster->isEnabled()) {
         auto af = AuthenticationFeature::instance();
         if (af != nullptr) {
           // nullptr happens only during controlled shutdown
-          configuration._jwt = af->tokenCache()->jwtToken();
+          configuration._jwt = af->tokenCache().jwtToken();
         }
       }
     }
@@ -295,7 +299,7 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
 
   value = slice.get("restrictType");
   if (value.isString()) {
-    configuration._restrictType = value.copyString();
+    configuration._restrictType = restrictTypeFromString(value.copyString());
   }
 
   value = slice.get("restrictCollections");
@@ -304,7 +308,7 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
 
     for (auto const& it : VPackArrayIterator(value)) {
       if (it.isString()) {
-        configuration._restrictCollections.emplace(it.copyString(), true);
+        configuration._restrictCollections.emplace(it.copyString());
       }
     }
   }
@@ -345,6 +349,11 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
   if (value.isNumber()) {
     configuration._autoResyncRetries = value.getNumber<uint64_t>();
   }
+  
+  value = slice.get("maxPacketSize");
+  if (value.isNumber()) {
+    configuration._maxPacketSize = value.getNumber<uint64_t>();
+  }
 
   // read the endpoint
   value = slice.get("endpoint");
@@ -373,12 +382,35 @@ void ReplicationApplierConfiguration::validate() const {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "invalid value for <endpoint>");
   }
 
-  if (!_restrictType.empty() && _restrictType != "include" && _restrictType != "exclude") {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "invalid value for <restrictType>");
+  if ((_restrictType == RestrictType::None && !_restrictCollections.empty()) ||
+      (_restrictType != RestrictType::None && _restrictCollections.empty())) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "invalid value for <restrictCollections> or <restrictType>");
+  }
+}
+  
+ReplicationApplierConfiguration::RestrictType ReplicationApplierConfiguration::restrictTypeFromString(std::string const& value) {
+  if (value.empty() || value == "none") {
+    return RestrictType::None;
+  }
+  if (value == "include") {
+    return RestrictType::Include;
+  }
+  if (value == "exclude") {
+    return RestrictType::Exclude;
   }
 
-  if ((_restrictType.empty() && !_restrictCollections.empty()) ||
-      (!_restrictType.empty() && _restrictCollections.empty())) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "invalid value for <restrictCollections> or <restrictType>");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "invalid value for <restrictType>");
+}
+
+std::string ReplicationApplierConfiguration::restrictTypeToString(ReplicationApplierConfiguration::RestrictType type) {
+  switch (type) {
+    case RestrictType::Include:
+      return "include";
+    case RestrictType::Exclude:
+      return "exclude";
+    case RestrictType::None:
+    default: {
+      return "";
+    }
   }
 }

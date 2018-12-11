@@ -34,13 +34,14 @@
 #include "Rest/GeneralResponse.h"
 #include "VocBase/vocbase.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 
+namespace arangodb {
+
 ReplicationFeature* ReplicationFeature::INSTANCE = nullptr;
 
-ReplicationFeature::ReplicationFeature(ApplicationServer* server)
+ReplicationFeature::ReplicationFeature(ApplicationServer& server)
     : ApplicationFeature(server, "Replication"),
       _replicationApplierAutoStart(true),
       _enableActiveFailover(false) {
@@ -49,23 +50,26 @@ ReplicationFeature::ReplicationFeature(ApplicationServer* server)
   startsAfter("BasicsPhase");
   startsAfter("Database");
   startsAfter("StorageEngine");
+  startsAfter("SystemDatabase");
 }
 
 void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("replication", "Configure the replication");
-  options->addHiddenOption("--replication.auto-start",
-                           "switch to enable or disable the automatic start "
-                           "of replication appliers",
-                           new BooleanParameter(&_replicationApplierAutoStart));
+  options->addOption("--replication.auto-start",
+                     "switch to enable or disable the automatic start "
+                     "of replication appliers",
+                     new BooleanParameter(&_replicationApplierAutoStart),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
   options->addSection("database", "Configure the database");
   options->addOldOption("server.disable-replication-applier",
                         "replication.auto-start");
   options->addOldOption("database.replication-applier",
                         "replication.auto-start");
-  options->addHiddenOption("--replication.automatic-failover",
-                           "Please use `--replication.active-failover` instead",
-                           new BooleanParameter(&_enableActiveFailover));
+  options->addOption("--replication.automatic-failover",
+                     "Please use `--replication.active-failover` instead",
+                     new BooleanParameter(&_enableActiveFailover),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
   options->addOption("--replication.active-failover",
                       "Enable active-failover during asynchronous replication",
                       new BooleanParameter(&_enableActiveFailover));
@@ -74,7 +78,7 @@ void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
 void ReplicationFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
   auto feature = ApplicationServer::getFeature<ClusterFeature>("Cluster");
   if (_enableActiveFailover && feature->agencyEndpoints().empty()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC(FATAL, arangodb::Logger::REPLICATION)
     << "automatic failover needs to be started with agency endpoint configured";
     FATAL_ERROR_EXIT();
   }
@@ -85,7 +89,7 @@ void ReplicationFeature::prepare() {
     setEnabled(false);
     return;
   }
-  
+
   INSTANCE = this;
 }
 
@@ -141,17 +145,20 @@ void ReplicationFeature::startApplier(TRI_vocbase_t* vocbase) {
 
   if (vocbase->replicationApplier()->autoStart()) {
     if (!_replicationApplierAutoStart) {
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "replication applier explicitly deactivated for database '"
-                << vocbase->name() << "'";
+      LOG_TOPIC(INFO, arangodb::Logger::REPLICATION)
+          << "replication applier explicitly deactivated for database '"
+          << vocbase->name() << "'";
     } else {
       try {
         vocbase->replicationApplier()->startTailing(0, false, 0);
       } catch (std::exception const& ex) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "unable to start replication applier for database '"
-                  << vocbase->name() << "': " << ex.what();
+        LOG_TOPIC(WARN, arangodb::Logger::REPLICATION)
+            << "unable to start replication applier for database '"
+            << vocbase->name() << "': " << ex.what();
       } catch (...) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "unable to start replication applier for database '"
-                  << vocbase->name() << "'";
+        LOG_TOPIC(WARN, arangodb::Logger::REPLICATION)
+            << "unable to start replication applier for database '"
+            << vocbase->name() << "'";
       }
     }
   }
@@ -239,3 +246,5 @@ void ReplicationFeature::prepareFollowerResponse(GeneralResponse* response,
     }
   }
 }
+
+} // arangodb

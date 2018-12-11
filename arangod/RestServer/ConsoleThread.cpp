@@ -120,7 +120,8 @@ void ConsoleThread::inner() {
 
     // read and eval .arangod.rc from home directory if it exists
     char const* startupScript = R"SCRIPT(
-start_pretty_print();
+start_pretty_print(true);
+start_color_print('arangodb', true);
 
 (function () {
   var __fs__ = require("fs");
@@ -181,7 +182,7 @@ start_pretty_print();
 
       {
         MUTEX_LOCKER(mutexLocker, serverConsoleMutex);
-        input = console.prompt("arangod> ", "arangod", eof);
+        input = console.prompt("arangod> ", "arangod>", eof);
       }
 
       if (eof == ShellBase::EOF_FORCE_ABORT || (eof == ShellBase::EOF_ABORT && lastEmpty)) {

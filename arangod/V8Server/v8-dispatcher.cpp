@@ -95,9 +95,6 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (exec->databaseAuthLevel() != auth::Level::RW) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                      "registerTask() needs db RW permissions");
-    } else if (!exec->isSuperuser() && ServerState::readOnly()) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
-                                     "server is in read-only mode");
     }
   }
 
@@ -241,6 +238,7 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 static void JS_UnregisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  using arangodb::Task;
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -253,9 +251,6 @@ static void JS_UnregisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (exec->databaseAuthLevel() != auth::Level::RW) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                      "registerTask() needs db RW permissions");
-    } else if (!exec->isSuperuser() && ServerState::readOnly()) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
-                                     "server is in read-only mode");
     }
   }
 
@@ -269,6 +264,7 @@ static void JS_UnregisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 static void JS_GetTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  using arangodb::Task;
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -445,8 +441,12 @@ void TRI_InitV8Dispatcher(v8::Isolate* isolate,
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_GET_TASK"), JS_GetTask);
 }
 
-void TRI_ShutdownV8Dispatcher() { Task::shutdownTasks(); }
+void TRI_ShutdownV8Dispatcher() {
+  using arangodb::Task;
+  Task::shutdownTasks();
+}
 
 void TRI_RemoveDatabaseTasksV8Dispatcher(std::string const& name) {
+  using arangodb::Task;
   Task::removeTasksForDatabase(name);
 }

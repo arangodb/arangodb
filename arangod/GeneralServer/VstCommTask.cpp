@@ -96,6 +96,13 @@ VstCommTask::VstCommTask(GeneralServer &server, GeneralServer::IoContext &contex
       ->vstMaxSize();
 }
 
+// whether or not this task can mix sync and async I/O
+bool VstCommTask::canUseMixedIO() const {
+  // in case SSL is used, we cannot use a combination of sync and async I/O
+  // because that will make TLS fall apart
+  return !_peer->isEncrypted();
+}
+
 /// @brief send simple response including response body
 void VstCommTask::addSimpleResponse(rest::ResponseCode code, rest::ContentType respType,
                                     uint64_t messageId, velocypack::Buffer<uint8_t>&& buffer) {
@@ -286,25 +293,16 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header,
     LOG_TOPIC(ERR, Logger::REQUESTS) << "Unknown VST encryption type";
   }
 
-  if (_auth->isActive()) { // will just fail if method is NONE
-    auto entry = _auth->tokenCache()->checkAuthentication(_authMethod, authString);
-    _authorized = entry.authenticated();
-    if (_authorized) {
-      _authenticatedUser = std::move(entry._username);
-    } else {
-      _authenticatedUser.clear();
-    }
-  } else {
-    _authorized = true;
-    _authenticatedUser = std::move(user); // may be empty
-  }
+  auto entry = _auth->tokenCache().checkAuthentication(_authMethod, authString);
+  _authorized = entry.authenticated();
 
-  if (_authorized) {
-    // mop: hmmm...user should be completely ignored if there is no auth IMHO
-    // obi: user who sends authentication expects a reply
+  if (_authorized || !_auth->isActive()) {
+    _authenticatedUser = std::move(entry._username);
+    // simon: drivers expect a response for their auth request
     addErrorResponse(ResponseCode::OK, rest::ContentType::VPACK, messageId, TRI_ERROR_NO_ERROR,
                      "auth successful");
   } else {
+    _authenticatedUser.clear();
     addErrorResponse(rest::ResponseCode::UNAUTHORIZED, rest::ContentType::VPACK, messageId,
                      TRI_ERROR_HTTP_UNAUTHORIZED);
   }
@@ -360,20 +358,24 @@ bool VstCommTask::processRead(double startTime) {
   if (doExecute) {
     VPackSlice header = message.header();
 
-    LOG_TOPIC(DEBUG, Logger::REQUESTS)
-        << "\"vst-request-header\",\"" << (void*)this << "/"
-        << chunkHeader._messageID << "\"," << message.header().toJson() << "\"";
+    if (Logger::logRequestParameters()) {
+      LOG_TOPIC(DEBUG, Logger::REQUESTS)
+          << "\"vst-request-header\",\"" << (void*)this << "/"
+          << chunkHeader._messageID << "\"," << message.header().toJson() << "\"";
 
-    /*LOG_TOPIC(DEBUG, Logger::REQUESTS)
-        << "\"vst-request-payload\",\"" << (void*)this << "/"
-        << chunkHeader._messageID << "\"," << VPackSlice(message.payload()).toJson()
-        << "\"";*/
+      /*LOG_TOPIC(DEBUG, Logger::REQUESTS)
+          << "\"vst-request-payload\",\"" << (void*)this << "/"
+          << chunkHeader._messageID << "\"," << VPackSlice(message.payload()).toJson()
+          << "\"";
+      */
+    }
 
     // get type of request, message header is validated earlier
     TRI_ASSERT(header.isArray() && header.length() >= 2);
     TRI_ASSERT(header.at(1).isNumber<int>()); // va
 
     int type = header.at(1).getNumber<int>();
+
     // handle request types
     if (type == 1000) { // auth
       handleAuthHeader(header, chunkHeader._messageID);
@@ -392,6 +394,7 @@ bool VstCommTask::processRead(double startTime) {
       }
 
       RequestFlow cont = prepareExecution(*req.get());
+
       if (cont == RequestFlow::Continue) {
         auto resp = std::make_unique<VstResponse>(rest::ResponseCode::SERVER_ERROR,
                                                   chunkHeader._messageID);

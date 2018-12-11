@@ -26,13 +26,15 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+
 class InitDatabaseFeature final
     : public application_features::ApplicationFeature {
  public:
-  InitDatabaseFeature(application_features::ApplicationServer* server,
-                 std::vector<std::string> const& nonServerFeatures);
+  InitDatabaseFeature(
+    application_features::ApplicationServer& server,
+    std::vector<std::string> const& nonServerFeatures
+  );
 
- public:
   std::string const& defaultPassword() const { return _password; }
   bool isInitDatabase() const { return _initDatabase; }
   bool restoreAdmin() const { return _restoreAdmin; }
@@ -51,10 +53,10 @@ class InitDatabaseFeature final
   void checkEmptyDatabase();
   std::string readPassword(std::string const&);
 
- private:
   bool _seenPassword = false;
   std::vector<std::string> _nonServerFeatures;
 };
+
 }
 
 #endif

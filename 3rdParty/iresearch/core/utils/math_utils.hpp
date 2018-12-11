@@ -151,7 +151,7 @@ FORCE_INLINE uint64_t pop64(uint64_t v) NOEXCEPT{
 }
 
 FORCE_INLINE uint32_t ctz32(uint32_t v) NOEXCEPT {
-  assert(v); // 0 does not supported
+  assert(v); // 0 is not supported
 #if  __GNUC__ >= 4
   return __builtin_ffs(v) - 1; // __builit_ffs returns `index`+1
 #elif defined(_MSC_VER)
@@ -164,7 +164,7 @@ FORCE_INLINE uint32_t ctz32(uint32_t v) NOEXCEPT {
 }
 
 FORCE_INLINE uint64_t ctz64(uint64_t v) NOEXCEPT {
-  assert(v); // 0 does not supported
+  assert(v); // 0 is not supported
 #if  __GNUC__ >= 4
   return __builtin_ffsll(v) - 1; // __builit_ffsll returns `index`+1
 #elif defined(_MSC_VER)
@@ -177,7 +177,7 @@ FORCE_INLINE uint64_t ctz64(uint64_t v) NOEXCEPT {
 }
 
 FORCE_INLINE uint32_t clz32(uint32_t v) NOEXCEPT {
-  assert(v); // 0 does not supported
+  assert(v); // 0 is not supported
 #if  __GNUC__ >= 4
   return __builtin_clz(v);
 #elif defined(_MSC_VER)
@@ -190,7 +190,7 @@ FORCE_INLINE uint32_t clz32(uint32_t v) NOEXCEPT {
 }
 
 FORCE_INLINE uint64_t clz64(uint64_t v) NOEXCEPT {
-  assert(v); // 0 does not supported
+  assert(v); // 0 is not supported
 #if  __GNUC__ >= 4
   return __builtin_clzll(v);
 #elif defined(_MSC_VER)

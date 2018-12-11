@@ -129,31 +129,31 @@ fi
 
 echo Starting agency ... 
 for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
-    port=$(( $AG_BASE + $aid ))
-    AGENCY_ENDPOINTS+="--cluster.agency-endpoint $TRANSPORT://$ADDRESS:$port "
+    PORT=$(( $AG_BASE + $aid ))
+    AGENCY_ENDPOINTS+="--cluster.agency-endpoint $TRANSPORT://$ADDRESS:$PORT "
     $ARANGOD \
         -c none \
         --agency.activate true \
         --agency.compaction-step-size $COMP \
         --agency.compaction-keep-size $KEEP \
         --agency.endpoint $TRANSPORT://$ENDPOINT:$AG_BASE \
-        --agency.my-address $TRANSPORT://$ADDRESS:$port \
+        --agency.my-address $TRANSPORT://$ADDRESS:$PORT \
         --agency.pool-size $NRAGENTS \
         --agency.size $NRAGENTS \
         --agency.supervision true \
         --agency.supervision-frequency $SFRE \
         --agency.supervision-grace-period 5.0 \
         --agency.wait-for-sync false \
-        --database.directory active/data$port \
+        --database.directory active/data$PORT \
         --javascript.enabled false \
-        --server.endpoint $TRANSPORT://$ENDPOINT:$port \
+        --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
         --server.statistics false \
-        --log.file active/$port.log \
+        --log.file active/$PORT.log \
         --log.level $LOG_LEVEL_AGENCY \
         $STORAGE_ENGINE \
         $AUTHENTICATION \
         $SSLKEYFILE \
-        | tee active/$PORT.stdout 2>&1 &
+        2>&1 | tee active/$PORT.stdout &
 done
 
 start() {
@@ -182,7 +182,7 @@ start() {
         $STORAGE_ENGINE \
         $AUTHENTICATION \
         $SSLKEYFILE \
-        | tee active/$PORT.stdout 2>&1 &
+        2>&1 | tee active/$PORT.stdout &
 }
 
 PORTTOPDB=`expr $SS_BASE + $NRSINGLESERVERS - 1`

@@ -31,6 +31,8 @@
 
 #include "GeneralServer/GeneralServer.h"
 
+#include "GeneralServer/GeneralServer.h"
+
 namespace arangodb {
 namespace rest {
 class Scheduler;
@@ -84,8 +86,8 @@ class Socket {
     }
   }
 
-  void post(std::function<void()> handler) {
-    _context.post(handler);
+  void post(std::function<void()>&& handler) {
+    _context.post(std::move(handler));
   }
 
   bool runningInThisThread() { return true; }

@@ -56,7 +56,7 @@ std::string RestAuthHandler::generateJwt(std::string const& username,
   }
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
-  return af->tokenCache()->generateJwt(bodyBuilder.slice());
+  return af->tokenCache().generateJwt(bodyBuilder.slice());
 }
 
 RestStatus RestAuthHandler::execute() {

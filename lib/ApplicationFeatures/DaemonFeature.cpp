@@ -22,24 +22,24 @@
 
 #include "DaemonFeature.h"
 
-#include <fstream>
-#include <iostream>
 #include <thread>
 #include <chrono>
 
 #include "Basics/FileUtils.h"
+#include "Basics/StringUtils.h"
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-DaemonFeature::DaemonFeature(application_features::ApplicationServer* server)
+namespace arangodb {
+
+DaemonFeature::DaemonFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Daemon") {
   setOptional(true);
   startsAfter("GreetingsPhase");
@@ -50,16 +50,19 @@ DaemonFeature::DaemonFeature(application_features::ApplicationServer* server)
 }
 
 void DaemonFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addHiddenOption("--daemon",
-                           "background the server, running it as daemon",
-                           new BooleanParameter(&_daemon));
+  options->addOption("--daemon",
+                     "background the server, running it as daemon",
+                     new BooleanParameter(&_daemon),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption("--pid-file", "pid-file in daemon mode",
-                           new StringParameter(&_pidFile));
+  options->addOption("--pid-file", "pid-file in daemon mode",
+                     new StringParameter(&_pidFile),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption("--working-directory",
-                           "working directory in daemon mode",
-                           new StringParameter(&_workingDirectory));
+  options->addOption("--working-directory",
+                     "working directory in daemon mode",
+                     new StringParameter(&_workingDirectory),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
 void DaemonFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -146,15 +149,30 @@ void DaemonFeature::checkPidFile() {
     } else if (FileUtils::exists(_pidFile) && FileUtils::size(_pidFile) > 0) {
       LOG_TOPIC(INFO, Logger::STARTUP) << "pid-file '" << _pidFile
                                        << "' already exists, verifying pid";
+      std::string oldPidS;
+      try {
+        oldPidS = arangodb::basics::FileUtils::slurp(_pidFile);
+      }
+      catch (arangodb::basics::Exception const& ex) {
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Couldn't read PID file '"
+                                                << _pidFile << "' - "
+                                                << ex.what();
+        FATAL_ERROR_EXIT();
+      }
 
-      std::ifstream f(_pidFile.c_str());
+      basics::StringUtils::trimInPlace(oldPidS);
 
-      // file can be opened
-      if (f) {
+      if (!oldPidS.empty()) {
         TRI_pid_t oldPid;
 
-        f >> oldPid;
-
+        try {
+          oldPid = std::stol(oldPidS);
+        }
+        catch (std::invalid_argument const& ex) {
+          LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "pid-file '" << _pidFile
+                                                    << "' doesn't contain a number.";
+          FATAL_ERROR_EXIT();
+        }
         if (oldPid == 0) {
           LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "pid-file '" << _pidFile
                                                     << "' is unreadable";
@@ -225,8 +243,9 @@ int DaemonFeature::forkProcess() {
  
   TRI_ASSERT(pid == 0); // we are in the child
 
-  // child    
+  // child   
   LogAppender::allowStdLogging(false);
+  Logger::clearCachedPid(); 
 
   // change the file mode mask
   umask(0);
@@ -315,15 +334,14 @@ void DaemonFeature::remapStandardFileDescriptors() {
 }
 
 void DaemonFeature::writePidFile(int pid) {
-  std::ofstream out(_pidFile.c_str(), std::ios::trunc);
-
-  if (!out) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot write pid-file '"
-                                              << _pidFile << "'";
-    FATAL_ERROR_EXIT();
+  try {
+    arangodb::basics::FileUtils::spit(_pidFile, std::to_string(pid), true);
   }
-
-  out << pid;
+  catch (arangodb::basics::Exception const& ex) {
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot write pid-file '"
+                                                << _pidFile << "' - "
+                                                << ex.what();
+  }
 }
 
 int DaemonFeature::waitForChildProcess(int pid) {
@@ -376,3 +394,5 @@ int DaemonFeature::waitForChildProcess(int pid) {
   // enough time has elapsed... we now abort our loop
   return EXIT_SUCCESS;
 }
+
+} // arangodb

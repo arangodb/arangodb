@@ -123,6 +123,7 @@ void Version::initialize() {
   Values["reactor-type"] = getBoostReactorType();
   Values["server-version"] = getServerVersion();
   Values["sizeof int"] = arangodb::basics::StringUtils::itoa(sizeof(int));
+  Values["sizeof long"] = arangodb::basics::StringUtils::itoa(sizeof(long));
   Values["sizeof void*"] = arangodb::basics::StringUtils::itoa(sizeof(void*));
 #ifdef TRI_UNALIGNED_ACCESS
   Values["unaligned-access"] = "true";
@@ -136,6 +137,9 @@ void Version::initialize() {
 
 #if USE_ENTERPRISE
   Values["enterprise-version"] = ARANGODB_ENTERPRISE_VERSION;
+  Values["license"] = "enterprise";
+#else
+  Values["license"] = "community";
 #endif
 
 #if HAVE_ARANGODB_BUILD_REPOSITORY
@@ -171,6 +175,12 @@ void Version::initialize() {
   Values["sse42"] = "true";
 #else
   Values["sse42"] = "false";
+#endif
+
+#ifdef __AVX2__
+  Values["avx2"] = "true";
+#else
+  Values["avx2"] = "false";
 #endif
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

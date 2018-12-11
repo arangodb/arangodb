@@ -30,7 +30,7 @@ User functions can take any number of input arguments and should
 provide one result via a `return` statement. User functions should be kept 
 purely functional and thus free of side effects and state, and state modification.
 
-Modification of global variables is unsupported, as is changing
+Modification of global variables is unsupported, as is reading or changing
 the data of any collection from inside an AQL user function.
 
 User function code is late-bound, and may thus not rely on any variables

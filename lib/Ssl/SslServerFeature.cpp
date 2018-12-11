@@ -35,7 +35,8 @@ using namespace arangodb::options;
 SslServerFeature* SslServerFeature::SSL = nullptr;
 
 SslServerFeature::SslServerFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "SslServer"),
       _cafile(),
       _keyfile(),
@@ -72,17 +73,17 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "ssl ciphers to use, see OpenSSL documentation",
                      new StringParameter(&_cipherList));
 
-  std::unordered_set<uint64_t> sslProtocols = {1, 2, 3, 4, 5};
+  std::unordered_set<uint64_t> const sslProtocols = availableSslProtocols();
 
   options->addOption("--ssl.protocol",
-                     "ssl protocol (1 = SSLv2, 2 = SSLv2 or SSLv3 (negotiated), 3 = SSLv3, 4 = "
-                     "TLSv1, 5 = TLSv1.2)",
+                     availableSslProtocolsDescription(),
                      new DiscreteValuesParameter<UInt64Parameter>(
                          &_sslProtocol, sslProtocols));
 
-  options->addHiddenOption("--ssl.options",
-                           "ssl connection options, see OpenSSL documentation",
-                           new UInt64Parameter(&_sslOptions));
+  options->addOption("--ssl.options",
+                     "ssl connection options, see OpenSSL documentation",
+                     new UInt64Parameter(&_sslOptions),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--ssl.ecdh-curve",
@@ -92,7 +93,7 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
 void SslServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // check for SSLv2
-  if (_sslProtocol == 1) {
+  if (_sslProtocol == SslProtocol::SSL_V2) {
     LOG_TOPIC(FATAL, arangodb::Logger::SSL) << "SSLv2 is not supported any longer because of security vulnerabilities in this protocol";
     FATAL_ERROR_EXIT();
   }

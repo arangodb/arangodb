@@ -227,14 +227,14 @@ Task::~Task() {}
 
 void Task::setOffset(double offset) {
   _offset = std::chrono::microseconds(static_cast<long long>(offset * 1000000));
-  _periodic = false;
+  _periodic.store(false);
 }
 
 void Task::setPeriod(double offset, double period) {
   _offset = std::chrono::microseconds(static_cast<long long>(offset * 1000000));
   _interval =
       std::chrono::microseconds(static_cast<long long>(period * 1000000));
-  _periodic = true;
+  _periodic.store(true);
 }
 
 void Task::setParameter(
@@ -272,7 +272,6 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
 
       execContext.reset(ExecContext::create(_user, dbname));
       allowContinue = execContext->canUseDatabase(dbname, auth::Level::RW);
-      allowContinue = allowContinue && !ServerState::readOnly();
     }
 
     // permissions might have changed since starting this task
@@ -283,13 +282,13 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
 
     // now do the work:
     SchedulerFeature::SCHEDULER->queue(
-        PriorityRequestLane(RequestLane::TASK_V8), [self, this, execContext] {
+      RequestPriority::LOW, [self, this, execContext] {
           ExecContextScope scope(_user.empty() ? ExecContext::superuser()
                                                : execContext.get());
 
           work(execContext.get());
 
-          if (_periodic && !SchedulerFeature::SCHEDULER->isStopping()) {
+          if (_periodic.load() && !SchedulerFeature::SCHEDULER->isStopping()) {
             // requeue the task
             queue(_interval);
           } else {
@@ -320,8 +319,7 @@ void Task::queue(std::chrono::microseconds offset) {
 
 void Task::cancel() {
   // this will prevent the task from dispatching itself again
-  _periodic = false;
-
+  _periodic.store(false);
   _taskHandle.cancel();
 }
 
@@ -343,7 +341,7 @@ void Task::toVelocyPack(VPackBuilder& builder) const {
   builder.add("name", VPackValue(_name));
   builder.add("created", VPackValue(_created));
 
-  if (_periodic) {
+  if (_periodic.load()) {
     builder.add("type", VPackValue("periodic"));
     builder.add("period", VPackValue(_interval.count() / 1000000.0));
   } else {

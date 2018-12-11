@@ -26,11 +26,14 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
-using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-LoggerBufferFeature::LoggerBufferFeature(application_features::ApplicationServer* server)
+namespace arangodb {
+
+LoggerBufferFeature::LoggerBufferFeature(
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "LoggerBuffer") {
   setOptional(true);
   startsAfter("Logger");
@@ -39,3 +42,5 @@ LoggerBufferFeature::LoggerBufferFeature(application_features::ApplicationServer
 void LoggerBufferFeature::prepare() {
   LogBuffer::initialize();
 }
+
+} // arangodb

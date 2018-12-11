@@ -65,8 +65,10 @@ bool Logger::_useEscaped(true);
 bool Logger::_useLocalTime(false);
 bool Logger::_keepLogRotate(false);
 bool Logger::_useMicrotime(false);
+bool Logger::_logRequestParameters(true);
 bool Logger::_showRole(false);
 char Logger::_role('\0');
+TRI_pid_t Logger::_cachedPid(0);
 std::string Logger::_outputPrefix("");
 
 std::unique_ptr<LogThread> Logger::_loggingThread(nullptr);
@@ -259,6 +261,16 @@ void Logger::setKeepLogrotate(bool keep) {
   _keepLogRotate = keep;
 }
 
+// NOTE: this function should not be called if the logging is active.
+void Logger::setLogRequestParameters(bool log) {
+  if (_active) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "cannot change logging of request parameters if logging is active");
+  }
+
+  _logRequestParameters = log;
+}
+
 std::string const& Logger::translateLogLevel(LogLevel level) {
   switch (level) {
     case LogLevel::DEFAULT:
@@ -329,7 +341,17 @@ void Logger::log(char const* function, char const* file, int line,
   }
 
   // append the process / thread identifier
-  out << '[' << Thread::currentProcessId();
+
+  // we only determine our pid once, as currentProcessId() will
+  // likely do a syscall.
+  // this read-check-update sequence is not thread-safe, but this
+  // should not matter, as the pid value is only changed from 0 to the
+  // actual pid and never changes afterwards
+  if (_cachedPid == 0) {
+    _cachedPid = Thread::currentProcessId();
+  }
+  TRI_ASSERT(_cachedPid != 0);
+  out << '[' << _cachedPid;
 
   if (_showThreadIdentifier) {
     out << '-' << Thread::currentThreadNumber();
@@ -444,6 +466,8 @@ void Logger::shutdown() {
 
   // cleanup appenders
   LogAppender::shutdown();
+  
+  _cachedPid = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

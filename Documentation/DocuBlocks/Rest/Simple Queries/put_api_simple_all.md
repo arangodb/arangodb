@@ -4,6 +4,13 @@
 
 @RESTHEADER{PUT /_api/simple/all, Return all documents}
 
+@HINTS
+{% hint 'warning' %}
+This route should no longer be used.
+All endpoints for Simple Queries are deprecated from version 3.4.0 on.
+They are superseded by AQL queries.
+{% endhint %}
+
 @RESTALLBODYPARAM{query,string,required}
 Contains the query.
 
@@ -26,7 +33,7 @@ as body with the following attributes:
 - *stream*: Create this cursor as a stream query (optional). 
 
 
-Returns a cursor containing the result, see [Http Cursor](../AqlQueryCursor/README.md) for details.
+Returns a cursor containing the result, see [HTTP Cursor](../AqlQueryCursor/README.md) for details.
 
 @RESTRETURNCODES
 

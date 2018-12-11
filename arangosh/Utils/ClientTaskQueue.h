@@ -107,6 +107,16 @@ class ClientTaskQueue {
    * @return `true` if there are no pending jobs
    */
   bool isQueueEmpty() const noexcept;
+  
+  /**
+   * @brief Determines the number of currently queued jobs, the number
+   * of total workers and the number of busy workers
+   *
+   * Thread-safe.
+   *
+   * @return number of queued jobs, number of workers, number of busy workers
+   */
+  std::tuple<size_t, size_t, size_t> statistics() const noexcept;
 
   /**
    * @brief Determines if all workers are currently busy processing a job
@@ -238,6 +248,20 @@ inline bool ClientTaskQueue<JobData>::isQueueEmpty() const noexcept {
 }
 
 template <typename JobData>
+inline std::tuple<size_t, size_t, size_t> ClientTaskQueue<JobData>::statistics() const noexcept {
+  size_t busy = 0;
+  size_t workers = 0;
+  MUTEX_LOCKER(lock, _jobsLock);
+  for (auto& worker : _workers) {
+    ++workers;
+    if (worker->isIdle()) {
+      ++busy;
+    }
+  }
+  return std::make_tuple(_jobs.size(), workers, busy);
+}
+
+template <typename JobData>
 inline bool ClientTaskQueue<JobData>::allWorkersBusy() const noexcept {
   try {
     MUTEX_LOCKER(lock, _workersLock);
@@ -298,7 +322,7 @@ inline void ClientTaskQueue<JobData>::waitForIdle() noexcept {
       }
 
       CONDITION_LOCKER(lock, _workersCondition);
-      lock.wait(std::chrono::milliseconds(500));
+      lock.wait(std::chrono::milliseconds(250));
     }
   } catch (...) {
   }

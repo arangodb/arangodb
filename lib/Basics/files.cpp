@@ -28,6 +28,7 @@
 #include <Shlwapi.h>
 #include <chrono>
 #include <thread>
+#include <unicode/locid.h>
 #endif
 
 #include <algorithm>
@@ -37,7 +38,6 @@
 #include "Basics/FileUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
-#include "Basics/OpenFilesTracker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
@@ -51,39 +51,50 @@
 using namespace arangodb::basics;
 using namespace arangodb;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read buffer size (used for bulk file reading)
-////////////////////////////////////////////////////////////////////////////////
+namespace {
 
-#define READBUFFER_SIZE 8192
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief a static buffer of zeros, used to initialize files
-////////////////////////////////////////////////////////////////////////////////
-
-static char NullBuffer[4096];
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief already initialized
-////////////////////////////////////////////////////////////////////////////////
-
-static bool Initialized = false;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief names of blocking files
-////////////////////////////////////////////////////////////////////////////////
-
 #ifdef TRI_HAVE_WIN32_FILE_LOCKING
 std::vector<std::pair<std::string, HANDLE>> OpenedFiles;
 #else
 std::vector<std::pair<std::string, int>> OpenedFiles;
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief lock for protected access to vector OpenedFiles
-////////////////////////////////////////////////////////////////////////////////
-
 static basics::ReadWriteLock OpenedFilesLock;
+
+/// @brief struct to remove all opened lockfiles on shutdown
+struct LockfileRemover {
+  LockfileRemover() {}
+
+  ~LockfileRemover() {
+    WRITE_LOCKER(locker, OpenedFilesLock);
+
+    for (auto const& it : OpenedFiles) {
+#ifdef TRI_HAVE_WIN32_FILE_LOCKING
+      HANDLE fd = it.second;
+      CloseHandle(fd);
+#else
+      int fd = it.second;
+      TRI_CLOSE(fd);
+#endif
+
+      TRI_UnlinkFile(it.first.c_str());
+    }
+
+    OpenedFiles.clear();
+  }
+};
+
+/// @brief this instance will remove all lockfiles in its dtor
+static LockfileRemover remover;
+}
+
+/// @brief read buffer size (used for bulk file reading)
+#define READBUFFER_SIZE 8192
+
+/// @brief a static buffer of zeros, used to initialize files
+static char NullBuffer[4096];
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the character is a directory separator
@@ -109,41 +120,6 @@ static void NormalizePath(std::string& path) {
       it = TRI_DIR_SEPARATOR_CHAR;
     }
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief callback function for removing all locked files by a process
-////////////////////////////////////////////////////////////////////////////////
-
-static void RemoveAllLockedFiles(void) {
-  WRITE_LOCKER(locker, OpenedFilesLock);
-
-  for (auto const& it : OpenedFiles) {
-#ifdef TRI_HAVE_WIN32_FILE_LOCKING
-    HANDLE fd = it.second;
-    CloseHandle(fd);
-#else
-    int fd = it.second;
-    TRI_TRACKED_CLOSE_FILE(fd);
-#endif
-
-    TRI_UnlinkFile(it.first.c_str());
-  }
-
-  OpenedFiles.clear();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initializes some structures which are needed by the file functions
-////////////////////////////////////////////////////////////////////////////////
-
-static void InitializeLockFiles(void) {
-  if (Initialized) {
-    return;
-  }
-
-  Initialized = true;
-  atexit(&RemoveAllLockedFiles);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -188,14 +164,10 @@ static void ListTreeRecursively(char const* full, char const* path,
 ////////////////////////////////////////////////////////////////////////////////
 
 static std::string LocateConfigDirectoryEnv() {
-  char const* v = getenv("ARANGODB_CONFIG_PATH");
-
-  if (v == nullptr) {
+  std::string r;
+  if (!TRI_GETENV("ARANGODB_CONFIG_PATH", r)) {
     return std::string();
   }
-
-  std::string r(v);
-
   NormalizePath(r);
   while (!r.empty() && IsDirSeparatorChar(r[r.size() - 1])) {
     r.pop_back();
@@ -352,7 +324,8 @@ bool TRI_ExistsFile(char const* path) {
 int TRI_ChMod(char const* path, long mode, std::string& err) {
   int res;
 #ifdef _WIN32
-  res = _chmod(path, static_cast<int>(mode));
+  UnicodeString wpath(path);
+  res = _wchmod(wpath.getTerminatedBuffer(), static_cast<int>(mode));
 #else
   res = chmod(path, mode);
 #endif
@@ -679,18 +652,26 @@ std::vector<std::string> TRI_FilesDirectory(char const* path) {
   std::string filter(path);
   filter.append("\\*");
 
-  struct _finddata_t fd;
-  intptr_t handle = _findfirst(filter.c_str(), &fd);
+  struct _wfinddata_t fd;
+
+  UnicodeString wfilter(filter.c_str());
+  
+  intptr_t handle = _wfindfirst(wfilter.getTerminatedBuffer(), &fd);
 
   if (handle == -1) {
     return result;
   }
 
+  std::string ufn;
+  UnicodeString fn;
   do {
-    if (strcmp(fd.name, ".") != 0 && strcmp(fd.name, "..") != 0) {
-      result.emplace_back(fd.name);
+    if (wcscmp(fd.name, L".") != 0 && wcscmp(fd.name, L"..") != 0) {
+      ufn.clear();
+      fn = fd.name;
+      fn.toUTF8String<std::string>(ufn);
+      result.emplace_back(ufn);
     }
-  } while (_findnext(handle, &fd) != -1);
+  } while (_wfindnext(handle, &fd) != -1);
 
   _findclose(handle);
 
@@ -748,7 +729,11 @@ int TRI_RenameFile(char const* old, char const* filename, long* systemError,
   TRI_ERRORBUF;
 #ifdef _WIN32
   BOOL moveResult = 0;
-  moveResult = MoveFileExA(old, filename,
+
+  UnicodeString oldf(old);
+  UnicodeString newf(filename);
+
+  moveResult = MoveFileExW(oldf.getTerminatedBuffer(), newf.getTerminatedBuffer(),
                            MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING);
 
   if (!moveResult) {
@@ -867,7 +852,7 @@ int TRI_WriteFile(char const* filename, char const* data, size_t length) {
   int fd;
   bool result;
 
-  fd = TRI_TRACKED_CREATE_FILE(filename, O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+  fd = TRI_CREATE(filename, O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
                   S_IRUSR | S_IWUSR);
 
   if (fd == -1) {
@@ -876,7 +861,7 @@ int TRI_WriteFile(char const* filename, char const* data, size_t length) {
 
   result = TRI_WritePointer(fd, data, length);
 
-  TRI_TRACKED_CLOSE_FILE(fd);
+  TRI_CLOSE(fd);
 
   if (!result) {
     return TRI_errno();
@@ -915,7 +900,7 @@ bool TRI_fsync(int fd) {
 char* TRI_SlurpFile(char const* filename,
                     size_t* length) {
   TRI_set_errno(TRI_ERROR_NO_ERROR);
-  int fd = TRI_TRACKED_OPEN_FILE(filename, O_RDONLY | TRI_O_CLOEXEC);
+  int fd = TRI_OPEN(filename, O_RDONLY | TRI_O_CLOEXEC);
 
   if (fd == -1) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -929,7 +914,7 @@ char* TRI_SlurpFile(char const* filename,
     int res = TRI_ReserveStringBuffer(&result, READBUFFER_SIZE);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      TRI_TRACKED_CLOSE_FILE(fd);
+      TRI_CLOSE(fd);
       TRI_AnnihilateStringBuffer(&result);
 
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -943,7 +928,7 @@ char* TRI_SlurpFile(char const* filename,
     }
 
     if (n < 0) {
-      TRI_TRACKED_CLOSE_FILE(fd);
+      TRI_CLOSE(fd);
 
       TRI_AnnihilateStringBuffer(&result);
 
@@ -958,7 +943,7 @@ char* TRI_SlurpFile(char const* filename,
     *length = TRI_LengthStringBuffer(&result);
   }
 
-  TRI_TRACKED_CLOSE_FILE(fd);
+  TRI_CLOSE(fd);
   return result._buffer;
 }
 
@@ -980,11 +965,10 @@ int TRI_CreateLockFile(char const* filename) {
       return TRI_ERROR_NO_ERROR;
     }
   }
-  
-  InitializeLockFiles();
 
-  HANDLE fd = CreateFile(filename, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS,
-                  FILE_ATTRIBUTE_NORMAL, NULL);
+  UnicodeString fn(filename);
+  HANDLE fd = CreateFileW(fn.getTerminatedBuffer(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS,
+                         FILE_ATTRIBUTE_NORMAL, NULL);
 
   if (fd == INVALID_HANDLE_VALUE) {
     TRI_SYSTEM_ERROR();
@@ -1047,9 +1031,7 @@ int TRI_CreateLockFile(char const* filename) {
     }
   }
   
-  InitializeLockFiles();
-
-  int fd = TRI_TRACKED_CREATE_FILE(filename, O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+  int fd = TRI_CREATE(filename, O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
                       S_IRUSR | S_IWUSR);
 
   if (fd == -1) {
@@ -1064,7 +1046,7 @@ int TRI_CreateLockFile(char const* filename) {
   if (rv == -1) {
     int res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
-    TRI_TRACKED_CLOSE_FILE(fd);
+    TRI_CLOSE(fd);
     TRI_UNLINK(filename);
 
     return res;
@@ -1082,7 +1064,7 @@ int TRI_CreateLockFile(char const* filename) {
   if (rv == -1) {
     int res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
-    TRI_TRACKED_CLOSE_FILE(fd);
+    TRI_CLOSE(fd);
     TRI_UNLINK(filename);
 
     return res;
@@ -1132,7 +1114,7 @@ int TRI_VerifyLockFile(char const* filename) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  int fd = TRI_TRACKED_OPEN_FILE(filename, O_RDWR | TRI_O_CLOEXEC);
+  int fd = TRI_OPEN(filename, O_RDWR | TRI_O_CLOEXEC);
 
   if (fd < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -1150,7 +1132,7 @@ int TRI_VerifyLockFile(char const* filename) {
          sizeof(buffer));  // not really necessary, but this shuts up valgrind
   ssize_t n = TRI_READ(fd, buffer, static_cast<TRI_read_t>(sizeof(buffer)));
 
-  TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
+  TRI_DEFER(TRI_CLOSE(fd));
 
   if (n <= 0 || n == sizeof(buffer)) {
     return TRI_ERROR_NO_ERROR;
@@ -1178,7 +1160,6 @@ int TRI_VerifyLockFile(char const* filename) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "found existing lockfile '" << filename << "' of previous process with pid " << pid << ", and that process seems to be still running";
   }
 
-#ifdef TRI_HAVE_SETLK
   struct flock lock;
   
   lock.l_start = 0;
@@ -1213,7 +1194,6 @@ int TRI_VerifyLockFile(char const* filename) {
               << "' failed: " << TRI_last_error()
               << ". a possible reason is that the filesystem does not support file-locking";
   }
-#endif
   
   return TRI_ERROR_ARANGO_DATADIR_LOCKED;
 }
@@ -1227,8 +1207,6 @@ int TRI_VerifyLockFile(char const* filename) {
 #ifdef TRI_HAVE_WIN32_FILE_LOCKING
 
 int TRI_DestroyLockFile(char const* filename) {
-  InitializeLockFiles();
-  
   WRITE_LOCKER(locker, OpenedFilesLock);
   for (size_t i = 0; i < OpenedFiles.size(); ++i) {
     if (OpenedFiles[i].first == filename) {
@@ -1247,13 +1225,11 @@ int TRI_DestroyLockFile(char const* filename) {
 #else
 
 int TRI_DestroyLockFile(char const* filename) {
-  InitializeLockFiles();
-  
   WRITE_LOCKER(locker, OpenedFilesLock);
   for (size_t i = 0; i < OpenedFiles.size(); ++i) {
     if (OpenedFiles[i].first == filename) {
 
-      int fd = TRI_TRACKED_OPEN_FILE(filename, O_RDWR | TRI_O_CLOEXEC);
+      int fd = TRI_OPEN(filename, O_RDWR | TRI_O_CLOEXEC);
 
       if (fd < 0) {
         return TRI_ERROR_NO_ERROR;
@@ -1267,7 +1243,7 @@ int TRI_DestroyLockFile(char const* filename) {
       lock.l_whence = SEEK_SET;
       // release the lock
       int res = fcntl(fd, F_SETLK, &lock);
-      TRI_TRACKED_CLOSE_FILE(fd);
+      TRI_CLOSE(fd);
 
       if (res == 0) {
         TRI_UnlinkFile(filename);
@@ -1275,7 +1251,7 @@ int TRI_DestroyLockFile(char const* filename) {
 
       // close lock file descriptor
       fd = OpenedFiles[i].second;
-      TRI_TRACKED_CLOSE_FILE(fd);
+      TRI_CLOSE(fd);
 
       OpenedFiles.erase(OpenedFiles.begin() + i);
 
@@ -1499,13 +1475,13 @@ std::string TRI_BinaryName(char const* argv0) {
 
 std::string TRI_LocateBinaryPath(char const* argv0) {
 #if _WIN32
-  char buff[4096];
-  int res = GetModuleFileName(NULL, buff, sizeof(buff));
+  wchar_t buff[4096];
+  int res = GetModuleFileNameW(NULL, buff, sizeof(buff));
 
   if (res != 0) {
     buff[4095] = '\0';
 
-    char* q = buff + res;
+    wchar_t* q = buff + res;
 
     while (buff < q) {
       if (*q == '\\' || *q == '/') {
@@ -1516,7 +1492,13 @@ std::string TRI_LocateBinaryPath(char const* argv0) {
       --q;
     }
 
-    return std::string(buff);
+    size_t len = q - buff;
+
+    UnicodeString fn(buff, static_cast<int32_t>(len));
+    std::string ufn;
+    fn.toUTF8String<std::string>(ufn);
+    
+    return ufn;
   }
 
   return std::string();
@@ -1538,10 +1520,9 @@ std::string TRI_LocateBinaryPath(char const* argv0) {
 
   // check PATH variable
   else {
-    p = getenv("PATH");
-
-    if (p != nullptr) {
-      std::vector<std::string> files = basics::StringUtils::split(std::string(p), ':', '\0');
+    std::string pv;
+    if (TRI_GETENV("PATH", pv)) {
+      std::vector<std::string> files = basics::StringUtils::split(pv, ':', '\0');
 
       for (auto const& prefix : files) {
         std::string full;
@@ -1691,7 +1672,11 @@ bool TRI_CopyFile(std::string const& src, std::string const& dst,
                   std::string& error) {
 #ifdef _WIN32
   TRI_ERRORBUF;
-  bool rc = CopyFile(src.c_str(), dst.c_str(), true) != 0;
+
+  UnicodeString s(src.c_str());
+  UnicodeString d(dst.c_str());
+
+  bool rc = CopyFileW(s.getTerminatedBuffer(), d.getTerminatedBuffer(), true) != 0;
   if (!rc) {
     TRI_SYSTEM_ERROR();
     error = "failed to copy " + src + " to " + dst + ": " + TRI_GET_ERRORBUF;
@@ -1821,14 +1806,15 @@ bool TRI_CopySymlink(std::string const& srcItem, std::string const& dstItem,
 #ifdef _WIN32
 
 std::string TRI_HomeDirectory() {
-  char const* drive = getenv("HOMEDRIVE");
-  char const* path = getenv("HOMEPATH");
+  std::string drive;
+  std::string path;
 
-  if (drive == nullptr || path == nullptr) {
+  if (! TRI_GETENV("HOMEDRIVE", drive) ||
+      ! TRI_GETENV("HOMEPATH", path)) {
     return std::string();
   }
   
-  return std::string(drive) + std::string(path);
+  return drive + path;
 }
 
 #else
@@ -1865,7 +1851,7 @@ int TRI_Crc32File(char const* path, uint32_t* crc) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  fin = fopen(path, "rb");
+  fin = TRI_FOPEN(path, "rb");
 
   if (fin == nullptr) {
     TRI_Free(buffer);
@@ -1933,7 +1919,7 @@ static std::string getTempPath() {
   // ..........................................................................
 
 #define LOCAL_MAX_PATH_BUFFER 2049
-  TCHAR tempPathName[LOCAL_MAX_PATH_BUFFER];
+  wchar_t tempPathName[LOCAL_MAX_PATH_BUFFER];
   DWORD dwReturnValue = 0;
   // ..........................................................................
   // Attempt to locate the path where the users temporary files are stored
@@ -1950,15 +1936,17 @@ static std::string getTempPath() {
      The path specified by the USERPROFILE environment variable.
      The Windows directory.
   */
-  dwReturnValue = GetTempPath(LOCAL_MAX_PATH_BUFFER, tempPathName);
+  dwReturnValue = GetTempPathW(LOCAL_MAX_PATH_BUFFER, tempPathName);
 
   if ((dwReturnValue > LOCAL_MAX_PATH_BUFFER) || (dwReturnValue == 0)) {
     // something wrong
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "GetTempPathA failed: LOCAL_MAX_PATH_BUFFER="
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "GetTempPathW failed: LOCAL_MAX_PATH_BUFFER="
                                               << LOCAL_MAX_PATH_BUFFER << ":dwReturnValue=" << dwReturnValue;
   }
 
-  std::string result(tempPathName);
+  UnicodeString tmpPathW(tempPathName, dwReturnValue);
+  std::string result;
+  tmpPathW.toUTF8String<std::string>(result);
   // ...........................................................................
   // Whether or not UNICODE is defined, we assume that the temporary file name
   // fits in the ascii set of characters. This is a small compromise so that
@@ -1979,8 +1967,14 @@ static std::string getTempPath() {
 }
 
 static int mkDTemp(char* s, size_t bufferSize) {
-  auto rc = _mktemp_s(s, bufferSize);
+  std::string out;
+  UnicodeString sw(s);
+  // this will overwrite the _XXX part of the string:
+  auto rc = _wmktemp_s((wchar_t*)sw.getTerminatedBuffer(), bufferSize);
   if (rc == 0) {
+    // if it worked out, we need to return the utf8 version:
+    sw.toUTF8String<std::string>(out);
+    memcpy(s, out.c_str(), bufferSize);
     rc = TRI_MKDIR(s, 0700);
   }
   return rc;
@@ -2017,14 +2011,23 @@ static std::unique_ptr<char[]> SystemTempPath;
 /// @brief user-defined temp path
 static std::string UserTempPath;
 
-static void SystemTempPathCleaner(void) {
-  char* path = SystemTempPath.get();
+class SystemTempPathSweeper {
+  std::string _systemTempPath;
+public:
+  SystemTempPathSweeper() : _systemTempPath(){};
 
-  if (path != nullptr) {
-    // delete directory iff directory is empty
-    TRI_RMDIR(path);
+  ~SystemTempPathSweeper(void) {
+    if (!_systemTempPath.empty()) {
+      // delete directory iff directory is empty
+      TRI_RMDIR(_systemTempPath.c_str());
+    }
   }
-}
+  void init(const char *path) {
+    _systemTempPath = path;
+  }
+};
+
+SystemTempPathSweeper SystemTempPathSweeperInstance;
 
 // The TempPath is set but not created
 void TRI_SetTempPath(std::string const& temp) {
@@ -2092,7 +2095,10 @@ std::string TRI_GetTempPath() {
       // directory could not be created
       // this may be a race, a permissions problem or something else
       if (++tries >= 10) {
-        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "failed to create a temporary directory - giving up";
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "UserTempPath: " << UserTempPath << ", system: " << system << ", user temp path exists: " << TRI_IsDirectory(UserTempPath.c_str()) << ", res: " << res << ", SystemTempPath: " << SystemTempPath.get();
+#endif
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "failed to create a temporary directory - giving up!";
         FATAL_ERROR_ABORT();
       }
       // sleep for a random amout of time and try again soon
@@ -2101,11 +2107,12 @@ std::string TRI_GetTempPath() {
       std::this_thread::sleep_for(std::chrono::milliseconds(5 + RandomGenerator::interval(uint64_t(20))));
     }
 
-    atexit(SystemTempPathCleaner);
+    SystemTempPathSweeperInstance.init(SystemTempPath.get());
   }
 
   return std::string(path);
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a temporary file name
@@ -2150,7 +2157,7 @@ int TRI_GetTempName(char const* directory, std::string& result, bool createFile,
       errorMessage = std::string("Tempfile already exists! ") + filename;
     } else {
       if (createFile) {
-        FILE* fd = fopen(filename.c_str(), "wb");
+        FILE* fd = TRI_FOPEN(filename.c_str(), "wb");
 
         if (fd != nullptr) {
           fclose(fd);
@@ -2251,12 +2258,12 @@ int TRI_CreateDatafile(std::string const& filename, size_t maximalSize) {
   TRI_ERRORBUF;
 
   // open the file
-  int fd = TRI_TRACKED_CREATE_FILE(filename.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC | TRI_NOATIME,
+  int fd = TRI_CREATE(filename.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC | TRI_NOATIME,
                       S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 
   TRI_IF_FAILURE("CreateDatafile1") {
     // intentionally fail
-    TRI_TRACKED_CLOSE_FILE(fd);
+    TRI_CLOSE(fd);
     fd = -1;
     errno = ENOSPC;
   }
@@ -2314,7 +2321,7 @@ int TRI_CreateDatafile(std::string const& filename, size_t maximalSize) {
           LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot create datafile '" << filename << "': " << TRI_GET_ERRORBUF;
         }
 
-        TRI_TRACKED_CLOSE_FILE(fd);
+        TRI_CLOSE(fd);
         TRI_UnlinkFile(filename.c_str());
 
         return -1;
@@ -2330,7 +2337,7 @@ int TRI_CreateDatafile(std::string const& filename, size_t maximalSize) {
   if (offset == (TRI_lseek_t)-1) {
     TRI_SYSTEM_ERROR();
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    TRI_TRACKED_CLOSE_FILE(fd);
+    TRI_CLOSE(fd);
 
     // remove empty file
     TRI_UnlinkFile(filename.c_str());
@@ -2345,7 +2352,8 @@ int TRI_CreateDatafile(std::string const& filename, size_t maximalSize) {
 
 bool TRI_PathIsAbsolute(std::string const& path) {
 #if _WIN32
-  return !PathIsRelative(path.c_str());
+  UnicodeString upath(path.c_str(), (uint16_t) path.length());
+  return !PathIsRelativeW(upath.getTerminatedBuffer());
 #else  
   return (!path.empty()) && path.c_str()[0] == '/';
 #endif
@@ -2366,3 +2374,27 @@ void TRI_InitializeFiles() {
 
 void TRI_ShutdownFiles() {}
 
+
+bool TRI_GETENV(char const* which, std::string &value) {
+#ifdef _WIN32
+  UnicodeString uwhich(which);
+  wchar_t const *v = _wgetenv(uwhich.getTerminatedBuffer());
+
+  if (v == nullptr) {
+    return false;
+  }
+  value.clear();
+  UnicodeString vu(v);
+  vu.toUTF8String<std::string>(value);
+  return true;
+#else
+  char const* v = getenv(which);
+
+  if (v == nullptr) {
+    return false;
+  }
+  value.clear();
+  value = v;
+  return true;
+#endif
+}

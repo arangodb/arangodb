@@ -29,18 +29,16 @@ namespace arangodb {
 
 class FoxxQueuesFeature final : public application_features::ApplicationFeature {
  public:
-  explicit FoxxQueuesFeature(application_features::ApplicationServer* server);
+  explicit FoxxQueuesFeature(application_features::ApplicationServer& server);
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
  private:
   double _pollInterval;
   bool _enabled;
-
- public:
 };
+
 }
 
 #endif

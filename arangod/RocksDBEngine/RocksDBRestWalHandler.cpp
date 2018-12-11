@@ -109,14 +109,14 @@ void RocksDBRestWalHandler::flush() {
     // got a request body
     VPackSlice value = slice.get("waitForSync");
     if (value.isString()) {
-      waitForSync = (value.copyString() == "true");
+      waitForSync = basics::StringUtils::boolean(value.copyString());
     } else if (value.isBoolean()) {
       waitForSync = value.getBoolean();
     }
 
     value = slice.get("waitForCollector");
     if (value.isString()) {
-      waitForCollector = (value.copyString() == "true");
+      waitForCollector = basics::StringUtils::boolean(value.copyString());
     } else if (value.isBoolean()) {
       waitForCollector = value.getBoolean();
     }
@@ -127,25 +127,9 @@ void RocksDBRestWalHandler::flush() {
     }
   } else {
     // no request body
-    bool found;
-    {
-      std::string const& v = _request->value("waitForSync", found);
-      if (found) {
-        waitForSync = (v == "1" || v == "true");
-      }
-    }
-    {
-      std::string const& v = _request->value("waitForCollector", found);
-      if (found) {
-        waitForCollector = (v == "1" || v == "true");
-      }
-    }
-    {
-      std::string const& v = _request->value("maxWaitTime", found);
-      if (found) {
-        maxWaitTime = basics::StringUtils::doubleDecimal(v);
-      }
-    }
+    waitForSync = _request->parsedValue("waitForSync", waitForSync);
+    waitForCollector = _request->parsedValue("waitForCollector", waitForCollector);
+    maxWaitTime = _request->parsedValue("maxWaitTime", maxWaitTime);
   }
 
   int res = TRI_ERROR_NO_ERROR;

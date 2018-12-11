@@ -30,10 +30,11 @@
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
-#include "Aql/Ast.h"
-#include "Aql/Query.h"
-#include "Aql/ExecutionPlan.h"
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/Ast.h"
+#include "Aql/ExecutionPlan.h"
+#include "Aql/ExpressionContext.h"
+#include "Aql/Query.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -42,13 +43,13 @@
 #include "IResearch/IResearchViewMeta.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/ExpressionFilter.h"
-#include "IResearch/SystemDatabaseFeature.h"
 #include "IResearch/AqlHelper.h"
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -76,7 +77,7 @@ struct IResearchFilterSetup {
   std::unique_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
-  IResearchFilterSetup(): server(nullptr, nullptr) {
+  IResearchFilterSetup(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
     arangodb::aql::AqlFunctionFeature* functions = nullptr;
 
@@ -86,21 +87,21 @@ struct IResearchFilterSetup {
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
 
     // setup required application features
-    features.emplace_back(new arangodb::AuthenticationFeature(&server), true);
-    features.emplace_back(new arangodb::DatabaseFeature(&server), false);
-    features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // must be first
-    arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
+    features.emplace_back(new arangodb::AuthenticationFeature(server), true);
+    features.emplace_back(new arangodb::DatabaseFeature(server), false);
+    features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // must be first
+    arangodb::application_features::ApplicationServer::server->addFeature(features.back().first); // need QueryRegistryFeature feature to be added now in order to create the system database
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
-    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(&server), false); // must be before AqlFeature
-    features.emplace_back(new arangodb::ViewTypesFeature(&server), false); // required for IResearchFeature
-    features.emplace_back(new arangodb::AqlFeature(&server), true);
-    features.emplace_back(functions = new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
-    features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);
-    features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false); // must be before AqlFeature
+    features.emplace_back(new arangodb::ViewTypesFeature(server), false); // required for IResearchFeature
+    features.emplace_back(new arangodb::AqlFeature(server), true);
+    features.emplace_back(functions = new arangodb::aql::AqlFunctionFeature(server), true); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
+    features.emplace_back(new arangodb::iresearch::IResearchFeature(server), true);
 
     #if USE_ENTERPRISE
-      features.emplace_back(new arangodb::LdapFeature(&server), false); // required for AuthenticationFeature with USE_ENTERPRISE
+      features.emplace_back(new arangodb::LdapFeature(server), false); // required for AuthenticationFeature with USE_ENTERPRISE
     #endif
 
     for (auto& f : features) {
@@ -121,9 +122,11 @@ struct IResearchFilterSetup {
     functions->add(arangodb::aql::Function{
       "_NONDETERM_",
       ".",
-      false, // fake non-deterministic
-      true,
-      [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
+      arangodb::aql::Function::makeFlags(
+        // fake non-deterministic
+        arangodb::aql::Function::Flags::CanRunOnDBServer
+      ),
+      [](arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
         TRI_ASSERT(!params.empty());
         return params[0];
     }});
@@ -132,9 +135,13 @@ struct IResearchFilterSetup {
     functions->add(arangodb::aql::Function{
       "_FORWARD_",
       ".",
-      true, // fake deterministic
-      true,
-      [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
+      arangodb::aql::Function::makeFlags(
+        // fake deterministic
+        arangodb::aql::Function::Flags::Deterministic,
+        arangodb::aql::Function::Flags::Cacheable,
+        arangodb::aql::Function::Flags::CanRunOnDBServer
+      ),
+      [](arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
         TRI_ASSERT(!params.empty());
         return params[0];
     }});
@@ -152,7 +159,7 @@ struct IResearchFilterSetup {
 
   ~IResearchFilterSetup() {
     system.reset(); // destroy before reseting the 'ENGINE'
-    arangodb::AqlFeature(&server).stop(); // unset singleton instance
+    arangodb::AqlFeature(server).stop(); // unset singleton instance
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
@@ -1313,33 +1320,33 @@ SECTION("BinaryIn") {
     );
   }
 
-  assertExpressionFilter("FOR d IN VIEW myView FILTER [1,2,'3'] in d.a RETURN d");
+  assertExpressionFilter("FOR d IN myView FILTER [1,2,'3'] in d.a RETURN d");
 
   // non-deterministic expression name in array
   assertExpressionFilter("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')] in ['1','2','3'] RETURN d");
 
   // self-reference
-  assertExpressionFilter("FOR d IN VIEW myView FILTER d in [1,2,3] RETURN d");
-  assertExpressionFilter("FOR d IN VIEW myView FILTER d[*] in [1,2,3] RETURN d");
-  assertExpressionFilter("FOR d IN VIEW myView FILTER d.a[*] in [1,2,3] RETURN d");
+  assertExpressionFilter("FOR d IN myView FILTER d in [1,2,3] RETURN d");
+  assertExpressionFilter("FOR d IN myView FILTER d[*] in [1,2,3] RETURN d");
+  assertExpressionFilter("FOR d IN myView FILTER d.a[*] in [1,2,3] RETURN d");
 
   // no reference provided
-  assertFilterExecutionFail("LET x={} FOR d IN VIEW myView FILTER d.a in [1,x.a,3] RETURN d", &ExpressionContextMock::EMPTY);
+  assertFilterExecutionFail("LET x={} FOR d IN myView FILTER d.a in [1,x.a,3] RETURN d", &ExpressionContextMock::EMPTY);
 
   // false expression
   {
     irs::Or expected;
     expected.add<irs::empty>();
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER [] in [1,2,3] RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ['d'] in [1,2,3] RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER 'd.a' in [1,2,3] RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER null in [1,2,3] RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER true in [1,2,3] RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER false in [1,2,3] RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER 4 in [1,2,3] RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER 4.5 in [1,2,3] RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER 1..2 in [1,2,3] RETURN d", expected, &ExpressionContextMock::EMPTY); // by some reason arangodb evaluates it to false
+    assertFilterSuccess("FOR d IN myView FILTER [] in [1,2,3] RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER ['d'] in [1,2,3] RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER 'd.a' in [1,2,3] RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER null in [1,2,3] RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER true in [1,2,3] RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER false in [1,2,3] RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER 4 in [1,2,3] RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER 4.5 in [1,2,3] RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER 1..2 in [1,2,3] RETURN d", expected, &ExpressionContextMock::EMPTY); // by some reason arangodb evaluates it to false
   }
 
   // true expression
@@ -1347,7 +1354,7 @@ SECTION("BinaryIn") {
     irs::Or expected;
     expected.add<irs::all>();
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER 4 in [1,2,3,4] RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER 4 in [1,2,3,4] RETURN d", expected, &ExpressionContextMock::EMPTY);
   }
 
   // not a value in array
@@ -1939,7 +1946,7 @@ SECTION("BinaryIn") {
     range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER d.a in 'a'..4 RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER d.a in 'a'..4 RETURN d", expected, &ExpressionContextMock::EMPTY);
   }
 
   // heterogeneous range
@@ -1952,7 +1959,7 @@ SECTION("BinaryIn") {
     range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER d.a in 1..null RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER d.a in 1..null RETURN d", expected, &ExpressionContextMock::EMPTY);
   }
 
   // heterogeneous range
@@ -1965,8 +1972,8 @@ SECTION("BinaryIn") {
     range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER d.a in false..5.5 RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER d.a in 1..4..5 RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER d.a in false..5.5 RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER d.a in 1..4..5 RETURN d", expected, &ExpressionContextMock::EMPTY);
   }
 
   // heterogeneous range
@@ -1979,9 +1986,9 @@ SECTION("BinaryIn") {
     range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER d.a in 'false'..1 RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER d.a in 0..true RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER d.a in null..true RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER d.a in 'false'..1 RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER d.a in 0..true RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER d.a in null..true RETURN d", expected, &ExpressionContextMock::EMPTY);
   }
 
   // range as reference
@@ -2013,27 +2020,27 @@ SECTION("BinaryIn") {
   assertExpressionFilter("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] in _NONDETERM_(4)..5 RETURN d");
 
   // self-reference
-  assertExpressionFilter("FOR d IN VIEW myView FILTER d in 4..5 RETURN d");
-  assertExpressionFilter("for d in VIEW myView filter d[*] in 4..5 return d");
-  assertExpressionFilter("for d in VIEW myView filter d.a[*] in 4..5 return d");
-  assertExpressionFilter("FOR d IN VIEW myView FILTER d.a in d.b..5 RETURN d");
-  assertFilterExecutionFail("LET x={} FOR d IN VIEW myView FILTER 4..5 in x.a RETURN d", &ExpressionContextMock::EMPTY); // no reference to x
-  assertFilterExecutionFail("LET x={} FOR d IN VIEW myView FILTER 4 in x.a RETURN d", &ExpressionContextMock::EMPTY); // no reference to x
-  assertExpressionFilter("for d in VIEW myView filter 4..5 in d.a return d"); // self-reference
-  assertExpressionFilter("FOR d IN VIEW myView FILTER 4 in d.b..5 RETURN d"); // self-reference
+  assertExpressionFilter("FOR d IN myView FILTER d in 4..5 RETURN d");
+  assertExpressionFilter("for d IN myView filter d[*] in 4..5 return d");
+  assertExpressionFilter("for d IN myView filter d.a[*] in 4..5 return d");
+  assertExpressionFilter("FOR d IN myView FILTER d.a in d.b..5 RETURN d");
+  assertFilterExecutionFail("LET x={} FOR d IN myView FILTER 4..5 in x.a RETURN d", &ExpressionContextMock::EMPTY); // no reference to x
+  assertFilterExecutionFail("LET x={} FOR d IN myView FILTER 4 in x.a RETURN d", &ExpressionContextMock::EMPTY); // no reference to x
+  assertExpressionFilter("for d IN myView filter 4..5 in d.a return d"); // self-reference
+  assertExpressionFilter("FOR d IN myView FILTER 4 in d.b..5 RETURN d"); // self-reference
 
   // false expression
   {
     irs::Or expected;
     expected.add<irs::empty>();
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER [] in 4..5 RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ['d'] in 4..5 RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER 'd.a' in 4..5 RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER null in 4..5 RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER true in 4..5 RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER false in 4..5 RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER 4.3 in 4..5 RETURN d", expected, &ExpressionContextMock::EMPTY); // ArangoDB feature
+    assertFilterSuccess("FOR d IN myView FILTER [] in 4..5 RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER ['d'] in 4..5 RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER 'd.a' in 4..5 RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER null in 4..5 RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER true in 4..5 RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER false in 4..5 RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER 4.3 in 4..5 RETURN d", expected, &ExpressionContextMock::EMPTY); // ArangoDB feature
   }
 
   // true expression
@@ -2041,8 +2048,8 @@ SECTION("BinaryIn") {
     irs::Or expected;
     expected.add<irs::all>();
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER 4 in 4..5 RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER 4 in 4..4+1 RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER 4 in 4..5 RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER 4 in 4..4+1 RETURN d", expected, &ExpressionContextMock::EMPTY);
   }
 }
 
@@ -3269,23 +3276,23 @@ SECTION("BinaryNotIn") {
     );
   }
 
-  assertExpressionFilter("FOR d IN VIEW myView FILTER [1,2,'3'] not in d.a RETURN d");
+  assertExpressionFilter("FOR d IN myView FILTER [1,2,'3'] not in d.a RETURN d");
 
   // self-reference
-  assertExpressionFilter("FOR d IN VIEW myView FILTER d not in [1,2,3] RETURN d");
-  assertExpressionFilter("FOR d IN VIEW myView FILTER d[*] not in [1,2,3] RETURN d");
-  assertExpressionFilter("FOR d IN VIEW myView FILTER d.a[*] not in [1,2,3] RETURN d");
-  assertExpressionFilter("FOR d IN VIEW myView FILTER 4 not in [1,d,3] RETURN d");
+  assertExpressionFilter("FOR d IN myView FILTER d not in [1,2,3] RETURN d");
+  assertExpressionFilter("FOR d IN myView FILTER d[*] not in [1,2,3] RETURN d");
+  assertExpressionFilter("FOR d IN myView FILTER d.a[*] not in [1,2,3] RETURN d");
+  assertExpressionFilter("FOR d IN myView FILTER 4 not in [1,d,3] RETURN d");
 
   // no reference provided
-  assertFilterExecutionFail("LET x={} FOR d IN VIEW myView FILTER d.a not in [1,x.a,3] RETURN d", &ExpressionContextMock::EMPTY);
+  assertFilterExecutionFail("LET x={} FOR d IN myView FILTER d.a not in [1,x.a,3] RETURN d", &ExpressionContextMock::EMPTY);
 
   // false expression
   {
     irs::Or expected;
     expected.add<irs::empty>();
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER 4 not in [1,2,3,4] RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER 4 not in [1,2,3,4] RETURN d", expected, &ExpressionContextMock::EMPTY);
   }
 
   // true expression
@@ -3293,15 +3300,15 @@ SECTION("BinaryNotIn") {
     irs::Or expected;
     expected.add<irs::all>();
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER [] not in [1,2,3] RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ['d'] not in [1,2,3] RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER 'd.a' not in [1,2,3] RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER null not in [1,2,3] RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER true not in [1,2,3] RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER false not in [1,2,3] RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER 4 not in [1,2,3] RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER 4.5 not in [1,2,3] RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER 1..2 not in [1,2,3] RETURN d", expected, &ExpressionContextMock::EMPTY); // by some reason arangodb evaluates it to true
+    assertFilterSuccess("FOR d IN myView FILTER [] not in [1,2,3] RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER ['d'] not in [1,2,3] RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER 'd.a' not in [1,2,3] RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER null not in [1,2,3] RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER true not in [1,2,3] RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER false not in [1,2,3] RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER 4 not in [1,2,3] RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER 4.5 not in [1,2,3] RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER 1..2 not in [1,2,3] RETURN d", expected, &ExpressionContextMock::EMPTY); // by some reason arangodb evaluates it to true
   }
 
   // true expression, boost
@@ -3309,15 +3316,15 @@ SECTION("BinaryNotIn") {
     irs::Or expected;
     expected.add<irs::all>().boost(1.5);
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER BOOST([] not in [1,2,3],1.5) RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER BOOST(['d'] not in [1,2,3],1.5) RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER BOOST('d.a' not in [1,2,3],1.5) RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER BOOST(null not in [1,2,3],1.5) RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER BOOST(true not in [1,2,3],1.5) RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER BOOST(false not in [1,2,3],1.5) RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER BOOST(4 not in [1,2,3],1.5) RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER BOOST(4.5 not in [1,2,3],1.5) RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER BOOST(1..2 not in [1,2,3],1.5) RETURN d", expected, &ExpressionContextMock::EMPTY); // by some reason arangodb evaluates it to true
+    assertFilterSuccess("FOR d IN myView FILTER BOOST([] not in [1,2,3],1.5) RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER BOOST(['d'] not in [1,2,3],1.5) RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER BOOST('d.a' not in [1,2,3],1.5) RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER BOOST(null not in [1,2,3],1.5) RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER BOOST(true not in [1,2,3],1.5) RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER BOOST(false not in [1,2,3],1.5) RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER BOOST(4 not in [1,2,3],1.5) RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER BOOST(4.5 not in [1,2,3],1.5) RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER BOOST(1..2 not in [1,2,3],1.5) RETURN d", expected, &ExpressionContextMock::EMPTY); // by some reason arangodb evaluates it to true
   }
 
   // not a value in array
@@ -3831,7 +3838,7 @@ SECTION("BinaryNotIn") {
     range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER d.a not in 'a'..4 RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER d.a not in 'a'..4 RETURN d", expected, &ExpressionContextMock::EMPTY);
   }
 
   // heterogeneous range
@@ -3844,7 +3851,7 @@ SECTION("BinaryNotIn") {
     range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER d.a not in 1..null RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER d.a not in 1..null RETURN d", expected, &ExpressionContextMock::EMPTY);
   }
 
   // heterogeneous range
@@ -3857,8 +3864,8 @@ SECTION("BinaryNotIn") {
     range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER d.a not in false..5.5 RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER d.a not in 1..4..5 RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER d.a not in false..5.5 RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER d.a not in 1..4..5 RETURN d", expected, &ExpressionContextMock::EMPTY);
   }
 
   // heterogeneous range
@@ -3871,9 +3878,9 @@ SECTION("BinaryNotIn") {
     range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER d.a not in 'false'..1 RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER d.a not in 0..true RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER d.a not in null..true RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER d.a not in 'false'..1 RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER d.a not in 0..true RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER d.a not in null..true RETURN d", expected, &ExpressionContextMock::EMPTY);
   }
 
   // range as reference
@@ -3904,30 +3911,30 @@ SECTION("BinaryNotIn") {
   assertExpressionFilter("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] not in _NONDETERM_(4)..5 RETURN d");
 
   // self-reference
-  assertExpressionFilter("FOR d IN VIEW myView FILTER d not in 4..5 RETURN d");
-  assertExpressionFilter("for d in VIEW myView FILTER d[*] not in 4..5 RETURN d");
-  assertExpressionFilter("for d in VIEW myView FILTER d.a[*] not in 4..5 RETURN d");
-  assertExpressionFilter("FOR d IN VIEW myView FILTER d.a not in d.b..5 RETURN d");
-  assertExpressionFilter("FOR d IN VIEW myView FILTER 4..5 not in d.a RETURN d");
-  assertExpressionFilter("FOR d IN VIEW myView FILTER [1,2,'3'] not in d.a RETURN d");
-  assertExpressionFilter("FOR d IN VIEW myView FILTER 4 not in d.a RETURN d");
-  assertFilterExecutionFail("LET x={} FOR d IN VIEW myView FILTER 4..5 not in x.a RETURN d", &ExpressionContextMock::EMPTY); // no reference to x
-  assertFilterExecutionFail("LET x={} FOR d IN VIEW myView FILTER 4 in not x.a RETURN d", &ExpressionContextMock::EMPTY); // no reference to x
-  assertExpressionFilter("for d in VIEW myView filter 4..5 not in d.a return d"); // self-reference
-  assertExpressionFilter("FOR d IN VIEW myView FILTER 4 not in d.b..5 RETURN d"); // self-reference
+  assertExpressionFilter("FOR d IN myView FILTER d not in 4..5 RETURN d");
+  assertExpressionFilter("for d IN myView FILTER d[*] not in 4..5 RETURN d");
+  assertExpressionFilter("for d IN myView FILTER d.a[*] not in 4..5 RETURN d");
+  assertExpressionFilter("FOR d IN myView FILTER d.a not in d.b..5 RETURN d");
+  assertExpressionFilter("FOR d IN myView FILTER 4..5 not in d.a RETURN d");
+  assertExpressionFilter("FOR d IN myView FILTER [1,2,'3'] not in d.a RETURN d");
+  assertExpressionFilter("FOR d IN myView FILTER 4 not in d.a RETURN d");
+  assertFilterExecutionFail("LET x={} FOR d IN myView FILTER 4..5 not in x.a RETURN d", &ExpressionContextMock::EMPTY); // no reference to x
+  assertFilterExecutionFail("LET x={} FOR d IN myView FILTER 4 in not x.a RETURN d", &ExpressionContextMock::EMPTY); // no reference to x
+  assertExpressionFilter("for d IN myView filter 4..5 not in d.a return d"); // self-reference
+  assertExpressionFilter("FOR d IN myView FILTER 4 not in d.b..5 RETURN d"); // self-reference
 
   // true expression
   {
     irs::Or expected;
     expected.add<irs::all>();
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER [] not in 4..5 RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ['d'] not in 4..5 RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER 'd.a' not in 4..5 RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER null not in 4..5 RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER true not in 4..5 RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER false not in 4..5 RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER 4.3 not in 4..5 RETURN d", expected, &ExpressionContextMock::EMPTY); // ArangoDB feature
+    assertFilterSuccess("FOR d IN myView FILTER [] not in 4..5 RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER ['d'] not in 4..5 RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER 'd.a' not in 4..5 RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER null not in 4..5 RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER true not in 4..5 RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER false not in 4..5 RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER 4.3 not in 4..5 RETURN d", expected, &ExpressionContextMock::EMPTY); // ArangoDB feature
   }
 
   // false expression
@@ -3935,8 +3942,8 @@ SECTION("BinaryNotIn") {
     irs::Or expected;
     expected.add<irs::empty>();
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER 4 not in 4..5 RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER 4 not in 4..4+1 RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER 4 not in 4..5 RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER 4 not in 4..4+1 RETURN d", expected, &ExpressionContextMock::EMPTY);
   }
 }
 

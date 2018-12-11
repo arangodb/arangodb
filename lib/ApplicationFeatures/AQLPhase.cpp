@@ -22,14 +22,15 @@
 
 #include "AQLPhase.h"
 
-using namespace arangodb;
-using namespace arangodb::application_features;
+namespace arangodb {
+namespace application_features {
 
-AQLFeaturePhase::AQLFeaturePhase(ApplicationServer* server)
+AQLFeaturePhase::AQLFeaturePhase(ApplicationServer& server)
     : ApplicationFeaturePhase(server, "AQLPhase") {
   setOptional(false);
   startsAfter("V8Phase");
 
+  startsAfter("CommunicationPhase");
   startsAfter("Aql");
   startsAfter("AQLFunctions");
   startsAfter("IResearchAnalyzer");
@@ -40,3 +41,6 @@ AQLFeaturePhase::AQLFeaturePhase(ApplicationServer* server)
   startsAfter("SystemDatabase");
   startsAfter("TraverserEngineRegistry");
 }
+
+} // application_features
+} // arangodb

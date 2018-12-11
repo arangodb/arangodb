@@ -44,27 +44,6 @@ using namespace arangodb::basics;
 using namespace std;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hex dump with ':' separator
-////////////////////////////////////////////////////////////////////////////////
-
-static std::string hexdump(std::string const& s) {
-  std::ostringstream oss;
-  oss.imbue(locale());
-  bool first = true;
-
-  for (std::string::const_iterator it = s.begin();  it != s.end();  it++) {
-    oss << (first ? "" : ":") << hex << setw(2) << setfill('y') << std::string::traits_type::to_int_type(*it);
-    first = false;
-  }
-
-  return oss.str();
-}
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
@@ -147,38 +126,6 @@ SECTION("test_Tolower") {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test_convertUTF16ToUTF8
-////////////////////////////////////////////////////////////////////////////////
-
-SECTION("test_convertUTF16ToUTF8") {
-  string result;
-  bool isOk;
-
-  // both surrogates are valid
-  isOk = StringUtils::convertUTF16ToUTF8("D8A4\0", "dd42\0", result);
-
-  CHECK(isOk);
-  CHECK(result.length() ==  (size_t) 4);
-  CHECK("f0:b9:85:82" ==  hexdump(result));
-
-  result.clear();
-
-  // wrong low surrogate
-  isOk = StringUtils::convertUTF16ToUTF8("DD42", "D8A4", result);
-
-  CHECK(! isOk);
-  CHECK(result.empty());
-
-  result.clear();
-
-  // wrong high surrogate
-  isOk = StringUtils::convertUTF16ToUTF8("DC00", "DC1A", result);
-
-  CHECK(! isOk);
-  CHECK(result.empty());
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test_uint64
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -192,8 +139,13 @@ SECTION("test_uint64") {
   CHECK(12ULL ==  StringUtils::uint64("00012"));
   CHECK(1234ULL ==  StringUtils::uint64("1234"));
   CHECK(1234ULL ==  StringUtils::uint64("1234a"));
+#ifdef TRI_STRING_UTILS_USE_FROM_CHARS
+  CHECK(0ULL ==  StringUtils::uint64("-1"));
+  CHECK(0ULL ==  StringUtils::uint64("-12345"));
+#else
   CHECK(18446744073709551615ULL ==  StringUtils::uint64("-1"));
   CHECK(18446744073709539271ULL ==  StringUtils::uint64("-12345"));
+#endif
   CHECK(1234ULL ==  StringUtils::uint64("1234.56"));
   CHECK(0ULL ==  StringUtils::uint64("1234567890123456789012345678901234567890"));
   CHECK(0ULL ==  StringUtils::uint64("@"));

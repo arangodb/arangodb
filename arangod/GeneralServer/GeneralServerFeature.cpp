@@ -32,6 +32,7 @@
 #include "Basics/StringUtils.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/MaintenanceRestHandler.h"
 #include "Cluster/RestAgencyCallbacksHandler.h"
 #include "Cluster/RestClusterHandler.h"
 #include "Cluster/TraverserEngineRegistry.h"
@@ -43,6 +44,7 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestHandler/RestAdminDatabaseHandler.h"
 #include "RestHandler/RestAdminLogHandler.h"
 #include "RestHandler/RestAdminRoutingHandler.h"
 #include "RestHandler/RestAdminServerHandler.h"
@@ -76,6 +78,7 @@
 #include "RestHandler/RestSimpleQueryHandler.h"
 #include "RestHandler/RestStatusHandler.h"
 #include "RestHandler/RestTasksHandler.h"
+#include "RestHandler/RestTestHandler.h"
 #include "RestHandler/RestTransactionHandler.h"
 #include "RestHandler/RestUploadHandler.h"
 #include "RestHandler/RestUsersHandler.h"
@@ -92,20 +95,24 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
-using namespace arangodb;
 using namespace arangodb::rest;
 using namespace arangodb::options;
+
+namespace arangodb {
+
+static uint64_t const _maxIoThreads = 64;
 
 rest::RestHandlerFactory* GeneralServerFeature::HANDLER_FACTORY = nullptr;
 rest::AsyncJobManager* GeneralServerFeature::JOB_MANAGER = nullptr;
 GeneralServerFeature* GeneralServerFeature::GENERAL_SERVER = nullptr;
 
 GeneralServerFeature::GeneralServerFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "GeneralServer"),
       _allowMethodOverride(false),
       _proxyCheck(true),
-      _numIoThreads(8) {
+      _numIoThreads(0) {
   setOptional(true);
   startsAfter("AQLPhase");
 
@@ -113,9 +120,11 @@ GeneralServerFeature::GeneralServerFeature(
   startsAfter("Upgrade");
   startsAfter("SslServer");
 
-  // TODO The following features are too high
-  // startsAfter("Agency"); Only need to know if it is enabled during start that is clear before
-  // startsAfter("FoxxQueues");
+  _numIoThreads = (std::max)(static_cast<uint64_t>(1),
+    static_cast<uint64_t>(TRI_numberProcessors() / 4));
+  if (_numIoThreads > _maxIoThreads) {
+    _numIoThreads = _maxIoThreads;
+  }
 }
 
 void GeneralServerFeature::collectOptions(
@@ -133,13 +142,15 @@ void GeneralServerFeature::collectOptions(
   options->addOption(
       "--server.io-threads",
       "Number of threads used to handle IO",
-      new UInt64Parameter(&_numIoThreads));
+      new UInt64Parameter(&_numIoThreads),
+      arangodb::options::makeFlags(arangodb::options::Flags::Dynamic));
 
   options->addSection("http", "HttpServer features");
 
-  options->addHiddenOption("--http.allow-method-override",
-                           "allow HTTP method override using special headers",
-                           new BooleanParameter(&_allowMethodOverride));
+  options->addOption("--http.allow-method-override",
+                     "allow HTTP method override using special headers",
+                     new BooleanParameter(&_allowMethodOverride),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--http.keep-alive-timeout",
                      "keep-alive timeout in seconds",
@@ -197,8 +208,15 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   }
 
   // we need at least one io thread and context
-  if (_numIoThreads <= 0) {
+
+  if (_numIoThreads == 0) {
+    LOG_TOPIC(WARN, Logger::FIXME)
+      << "Need at least one io-context thread.";
     _numIoThreads = 1;
+  } else if (_numIoThreads > _maxIoThreads) {
+    LOG_TOPIC(WARN, Logger::FIXME)
+      << "IO-contexts are limited to " << _maxIoThreads;
+      _numIoThreads = _maxIoThreads;
   }
 }
 
@@ -221,13 +239,6 @@ void GeneralServerFeature::start() {
 
   for (auto& server : _servers) {
     server->startListening();
-  }
-
-  // initially populate the authentication cache. otherwise no one
-  // can access the new database
-  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
-  if (um != nullptr) {
-    um->outdate();
   }
 }
 
@@ -299,9 +310,8 @@ void GeneralServerFeature::defineHandlers() {
           AuthenticationFeature>("Authentication");
   TRI_ASSERT(authentication != nullptr);
 
-  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
-  auto traverserEngineRegistry =
-      TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY;
+  auto queryRegistry = QueryRegistryFeature::registry();
+  auto traverserEngineRegistry =  TraverserEngineRegistryFeature::registry();
   if (_combinedRegistries == nullptr) {
     _combinedRegistries = std::make_unique<std::pair<aql::QueryRegistry*, traverser::TraverserEngineRegistry*>> (queryRegistry, traverserEngineRegistry);
   } else {
@@ -323,10 +333,6 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::BATCH_PATH,
       RestHandlerCreator<RestBatchHandler>::createNoData);
-
-  _handlerFactory->addPrefixHandler(
-      RestVocbaseBaseHandler::COLLECTION_PATH,
-      RestHandlerCreator<RestCollectionHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::CONTROL_PREGEL_PATH,
@@ -472,6 +478,9 @@ void GeneralServerFeature::defineHandlers() {
       traverserEngineRegistry);
 
   // And now some handlers which are registered in both /_api and /_admin
+  _handlerFactory->addHandler(
+      "/_admin/actions", RestHandlerCreator<MaintenanceRestHandler>::createNoData);
+
   _handlerFactory->addPrefixHandler(
       "/_api/job", RestHandlerCreator<arangodb::RestJobHandler>::createData<
                        AsyncJobManager*>,
@@ -502,6 +511,10 @@ void GeneralServerFeature::defineHandlers() {
       "/_admin/version", RestHandlerCreator<RestVersionHandler>::createNoData);
 
   // further admin handlers
+  _handlerFactory->addPrefixHandler(
+      "/_admin/database/target-version",
+      RestHandlerCreator<arangodb::RestAdminDatabaseHandler>::createNoData);
+
   _handlerFactory->addPrefixHandler(
       "/_admin/log",
       RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData);
@@ -549,6 +562,15 @@ void GeneralServerFeature::defineHandlers() {
   }
 
   // ...........................................................................
+  // test handler
+  // ...........................................................................
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  _handlerFactory->addPrefixHandler(
+    "/_api/test",
+    RestHandlerCreator<RestTestHandler>::createNoData);
+#endif
+
+  // ...........................................................................
   // actions defined in v8
   // ...........................................................................
 
@@ -560,3 +582,5 @@ void GeneralServerFeature::defineHandlers() {
   TRI_ASSERT(engine != nullptr);  // Engine not loaded. Startup broken
   engine->addRestHandlers(*_handlerFactory);
 }
+
+} // arangodb

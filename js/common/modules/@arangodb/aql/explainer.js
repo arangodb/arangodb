@@ -8,6 +8,9 @@ var db = require('@arangodb').db,
   print = internal.print,
   colors = { };
 
+// max elements to print from array/objects
+const maxMembersToPrint = 20;
+
 let uniqueValue = 0;
 
 const anonymize = function(doc) {
@@ -123,7 +126,7 @@ function collection (v) {
 
 function view (v) {
   'use strict';
-  return colors.COLOR_RED + 'VIEW( ' + v + ' )' + colors.COLOR_RESET;
+  return colors.COLOR_RED + v + colors.COLOR_RESET;
 }
 
 function attribute (v) {
@@ -332,7 +335,7 @@ function printIndexes (indexes) {
       var ranges;
       if (indexes[i].hasOwnProperty('condition')) {
         ranges = indexes[i].condition;
-      } else {
+      } else { 
         ranges = '[ ' + indexes[i].ranges + ' ]';
       }
 
@@ -371,6 +374,7 @@ function printFunctions (functions) {
 
   let maxNameLen = String('Name').length;
   let maxDeterministicLen = String('Deterministic').length;
+  let maxCacheableLen = String('Cacheable').length;
   let maxV8Len = String('Uses V8').length;
   funcArray.forEach(function (f) {
     let l = String(f.name).length;
@@ -381,16 +385,20 @@ function printFunctions (functions) {
   let line = ' ' + 
     header('Name') + pad(1 + maxNameLen - 'Name'.length) + '   ' +
     header('Deterministic') + pad(1 + maxDeterministicLen - 'Deterministic'.length) + '   ' +
+    header('Cacheable') + pad(1 + maxCacheableLen - 'Cacheable'.length) + '   ' +
     header('Uses V8') + pad(1 + maxV8Len - 'Uses V8'.length);
 
   stringBuilder.appendLine(line);
 
   for (var i = 0; i < funcArray.length; ++i) {
-    let deterministic = String(funcArray[i].isDeterministic);
-    let usesV8 = String(funcArray[i].usesV8);
+    // prevent "undefined"
+    let deterministic = String(funcArray[i].isDeterministic || false);
+    let cacheable = String(funcArray[i].cacheable || false);
+    let usesV8 = String(funcArray[i].usesV8 || false);
     line = ' ' +
       variable(funcArray[i].name) + pad(1 + maxNameLen - funcArray[i].name.length) + '   ' +
       value(deterministic) + pad(1 + maxDeterministicLen - deterministic.length) + '   ' +
+      value(cacheable) + pad(1 + maxCacheableLen - cacheable.length) + '   ' +
       value(usesV8) + pad(1 + maxV8Len - usesV8.length);
 
     stringBuilder.appendLine(line);
@@ -684,11 +692,11 @@ function processQuery (query, explain) {
           maxCallsLen = String(n.calls).length;
         }
         if (String(n.items).length > maxItemsLen) {
-          maxCallsLen = String(n.items).length;
+          maxItemsLen = String(n.items).length;
         }
         let l = String(nodes[n.id].runtime.toFixed(3)).length;
         if (l > maxRuntimeLen) {
-          maxCallsLen = l;
+          maxRuntimeLen = l;
         }
       }
     });
@@ -774,9 +782,9 @@ function processQuery (query, explain) {
         return value(JSON.stringify(node.value));
       case 'object':
         if (node.hasOwnProperty('subNodes')) {
-          if (node.subNodes.length > 20) {
-            // print only the first 20 values from the objects
-            return '{ ' + node.subNodes.slice(0, 20).map(buildExpression).join(', ') + ', ... }';
+          if (node.subNodes.length > maxMembersToPrint) {
+            // print only the first few values from the object
+            return '{ ' + node.subNodes.slice(0, maxMembersToPrint).map(buildExpression).join(', ') + ', ... }';
           }
           return '{ ' + node.subNodes.map(buildExpression).join(', ') + ' }';
         }
@@ -787,9 +795,9 @@ function processQuery (query, explain) {
         return '[ ' + buildExpression(node.subNodes[0]) + ' ] : ' + buildExpression(node.subNodes[1]);
       case 'array':
         if (node.hasOwnProperty('subNodes')) {
-          if (node.subNodes.length > 20) {
-            // print only the first 20 values from the array
-            return '[ ' + node.subNodes.slice(0, 20).map(buildExpression).join(', ') + ', ... ]';
+          if (node.subNodes.length > maxMembersToPrint) {
+            // print only the first few values from the array
+            return '[ ' + node.subNodes.slice(0, maxMembersToPrint).map(buildExpression).join(', ') + ', ... ]';
           }
           return '[ ' + node.subNodes.map(buildExpression).join(', ') + ' ]';
         }
@@ -872,6 +880,9 @@ function processQuery (query, explain) {
           return bracketize(node, node.subNodes.map(function (sub) { return buildExpression(sub); }).join(' && '));
         }
         return '';
+      case 'parameter':
+      case 'datasource parameter':
+        return value('@' + node.name);
       default:
         return 'unhandled node type (' + node.type + ')';
     }
@@ -977,11 +988,12 @@ function processQuery (query, explain) {
     if (node.hasOwnProperty('condition') && node.condition.type && node.condition.type === 'n-ary or') {
       idx.condition = buildExpression(node.condition.subNodes[i]);
     } else {
-      if (variable !== false) {
+      if (variable !== false && variable !== undefined) {
         idx.condition = variable;
-      } else {
-        idx.condition = '*'; // empty condition. this is likely an index used for sorting only
       }
+    }
+    if (idx.condition === '' || idx.condition === undefined) {
+      idx.condition = '*'; // empty condition. this is likely an index used for sorting or scanning only
     }
     indexes.push(idx);
   };
@@ -1001,7 +1013,11 @@ function processQuery (query, explain) {
       case 'EnumerateListNode':
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */');
       case 'EnumerateViewNode':
-        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + view(node.view) + '   ' + annotation('/* view query */');
+        var condition = '';
+        if (node.condition && node.condition.hasOwnProperty('type')) {
+          condition = ' ' + keyword('SEARCH') + ' ' + buildExpression(node.condition);
+        }
+        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + view(node.view) + condition + '   ' + annotation('/* view query */');
       case 'IndexNode':
         collectionVariables[node.outVariable.id] = node.collection;
         node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, false); });
@@ -1420,15 +1436,13 @@ function processQuery (query, explain) {
         return keyword('DISTRIBUTE');
       case 'ScatterNode':
         return keyword('SCATTER');
-      case 'ScatterViewNode':
-        return keyword('SCATTER VIEW');
       case 'GatherNode':
         return keyword('GATHER') + ' ' + node.elements.map(function (node) {
             if (node.path && node.path.length) {
               return variableName(node.inVariable) + node.path.map(function(n) { return '.' + attribute(n); }) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
             }
             return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
-          }).join(', ');
+          }).join(', ') + (node.sortmode === 'unset' ? '' : '  ' + annotation('/* sort mode: ' + node.sortmode + ' */'));
     }
 
     return 'unhandled node type (' + node.type + ')';
@@ -1456,6 +1470,7 @@ function processQuery (query, explain) {
         'EnumerateViewNode',
         'IndexRangeNode',
         'IndexNode',
+        'TraversalNode',
         'SubqueryNode' ].indexOf(node.type) !== -1) {
       level++;
     } else if (isLeafNode && subqueries.length > 0) {
@@ -1487,6 +1502,7 @@ function processQuery (query, explain) {
 
   var printNode = function (node) {
     preHandle(node);
+    node.runtime = Math.abs(node.runtime);
     var line = ' ' +
       pad(1 + maxIdLen - String(node.id).length) + variable(node.id) + '   ' +
       keyword(node.type) + pad(1 + maxTypeLen - String(node.type).length) + '   ';
@@ -1603,6 +1619,7 @@ function profileQuery(data, shouldPrint) {
     throw 'ArangoStatement needs initial data';
   }
   let options =  data.options || { };
+  options.silent = true;
   setColors(options.colors === undefined ? true : options.colors);
 
   stringBuilder.clearOutput();
@@ -1645,7 +1662,8 @@ function debug(query, bindVars, options) {
     version: db._version(true),
     database: db._name(),
     query: input,
-    collections: {}
+    collections: {},
+    views: {}
   };
 
   result.fancy = require('@arangodb/aql/explainer').explain(input, { colors: false }, false);
@@ -1699,31 +1717,45 @@ function debug(query, bindVars, options) {
   // add collection information
   collections.forEach(function(collection) {
     let c = db._collection(collection.name);
-    let examples;
-    if (input.options.examples) {
-      // include example data from collections
-      let max = 10; // default number of documents 
-      if (typeof input.options.examples === 'number') {
-        max = input.options.examples;
+    if (c === null) {
+      // probably a view...
+      let v = db._view(collection.name);
+      if (v === null) {
+        return;
       }
-      if (max > 100) {
-        max = 100;
-      } else if (max < 0) {
-        max = 0;
+      
+      result.views[collection.name] = { 
+        type: v.type(),
+        properties: v.properties()
+      };
+    } else {
+      // a collection
+      let examples;
+      if (input.options.examples) {
+        // include example data from collections
+        let max = 10; // default number of documents 
+        if (typeof input.options.examples === 'number') {
+          max = input.options.examples;
+        }
+        if (max > 100) {
+          max = 100;
+        } else if (max < 0) {
+          max = 0;
+        }
+        examples = db._query("FOR doc IN @@collection LIMIT @max RETURN doc", { max, "@collection": collection.name }).toArray();
+        if (input.options.anonymize) {
+          examples = examples.map(anonymize);
+        }
       }
-      examples = db._query("FOR doc IN @@collection LIMIT @max RETURN doc", { max, "@collection": collection.name }).toArray();
-      if (input.options.anonymize) {
-        examples = examples.map(anonymize);
-      }
+      result.collections[collection.name] = { 
+        type: c.type(),
+        properties: c.properties(),
+        indexes: c.getIndexes(true),
+        count: c.count(),
+        counts: c.count(true),
+        examples
+      };
     }
-    result.collections[collection.name] = { 
-      type: c.type(),
-      properties: c.properties(),
-      indexes: c.getIndexes(true),
-      count: c.count(),
-      counts: c.count(true),
-      examples
-    };
   });
   
   result.graphs = graphs;
@@ -1798,6 +1830,15 @@ function inspectDump(filename, outfile) {
       print("/* collection '" + collection + "' needs " + missing + " more document(s) */");
     }
     print();
+  });
+  print();
+
+  // views
+  print("/* views */");
+  Object.keys(data.views || {}).forEach(function(view) {
+    let details = data.views[view];
+    print("db._dropView(" + JSON.stringify(view) + ");");
+    print("db._createView(" + JSON.stringify(view) + ", " + JSON.stringify(details.type) + ", " + JSON.stringify(details.properties) + ");");
   });
   print();
   

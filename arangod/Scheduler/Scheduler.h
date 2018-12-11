@@ -41,6 +41,7 @@
 
 namespace arangodb {
 class ListenTask;
+class SchedulerThread;
 
 namespace velocypack {
 class Builder;
@@ -64,6 +65,9 @@ class Scheduler {
     uint64_t _running;
     uint64_t _working;
     uint64_t _queued;
+    uint64_t _fifo1;
+    uint64_t _fifo2;
+    uint64_t _fifo3;
   };
 
   // Enqueues a task at highest priority
@@ -81,6 +85,7 @@ private:
     std::function<void(bool cancelled)> _handler;
     const clock::time_point _due;
     std::atomic<bool> _cancelled;
+
 
     DelayedWorkItem() {};
 
@@ -110,8 +115,8 @@ public:
     WorkHandle() {};
     WorkHandle(std::shared_ptr<DelayedWorkItem> &item) : _guard(std::make_shared<WorkGuard>(item)) {}
     WorkHandle(WorkHandle const &handle) : _guard(handle._guard) {}
-    void cancel() { _guard->cancel(); }
-    void detach() { _guard->detach(); }
+    void cancel() { if (_guard) { _guard->cancel(); } }
+    void detach() { if (_guard) { _guard->detach(); } }
   };
 
   // postDelay returns a WorkHandler. You can cancel the job by calling cancel. The job is also
@@ -167,7 +172,7 @@ public:
 
   std::unique_ptr<SchedulerCronThread> _cronThread;
 };
-}
-}
+}  // namespace rest
+}  // namespace arangodb
 
 #endif

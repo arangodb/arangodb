@@ -64,12 +64,12 @@
 * Project Home: https://github.com/google/googletest
 * License: [BSD License](https://github.com/google/googletest/blob/master/googletest/LICENSE) 
 
-### ICU 58.1
+### ICU
 
 * Project Home: http://site.icu-project.org/
-* License: [ICU License](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8/v5.7.0.0/third_party/icu/LICENSE)
+* License: [ICU License](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8/v5.7.492.77/third_party/icu/LICENSE)
 
-### jemalloc 4.5.0
+### jemalloc
 
 * Project Home: https://github.com/jemalloc/jemalloc
 * License: [free as-is license](https://raw.githubusercontent.com/jemalloc/jemalloc/dev/COPYING)
@@ -89,33 +89,27 @@ exception from the GPL license:
 * GitHub: https://github.com/arangodb/linenoise-ng
 * License: [BSD-style 2-Clause License](https://github.com/antirez/linenoise/blob/master/LICENSE)
 
-### RocksDB 5.1.4
+### RocksDB
 
 * GitHub: https://github.com/facebook/rocksdb
-* License: [BSD License](https://github.com/arangodb/arangodb/blob/devel/3rdParty/rocksdb/v5.1.4/LICENSE)
+* License: [BSD License](https://github.com/arangodb/arangodb/blob/devel/3rdParty/rocksdb/v5.16.X/LICENSE.Apache)
 
 ### short_alloc
 
 * Project Home: https://howardhinnant.github.io/stack_alloc.html
 * License: [MIT License](https://howardhinnant.github.io/short_alloc.h/)
 
-### snappy d53de18
+### snappy
 
 * Project Home: http://google.github.io/snappy/
-* License: [BSD-style 3-Clause license](https://github.com/arangodb/arangodb/blob/devel/3rdParty/snappy/google-snappy-d53de18/COPYING)
-
-### Valgrind
-
-* Project Home: http://valgrind.org/
-* uses valgrind.h header file only, none of the other files
-* License: [BSD-style 4-Clause license](https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/valgrind/valgrind.h)
+* License: [BSD-style 3-Clause license](https://github.com/arangodb/arangodb/blob/devel/3rdParty/snappy/snappy-1.1.7/COPYING)
 
 ### xxHash
 
 * GitHub: https://github.com/Cyan4973/xxHash/
 * License: [BSD License](https://github.com/Cyan4973/xxHash/blob/master/LICENSE)
 
-### zlib 1.2.7
+### zlib
 
 * Project Home: http://www.zlib.net/
 * License: [free as-is license](http://www.zlib.net/zlib_license.html)

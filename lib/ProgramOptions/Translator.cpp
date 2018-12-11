@@ -76,24 +76,21 @@ std::string arangodb::options::EnvironmentTranslator(std::string const& value,
 
         if (q < e) {
           std::string k = std::string(t, q);
-          char const* v = getenv(k.c_str());
           std::string vv;
-
-          if (v != nullptr && *v == '\0') {
-            v = nullptr;
-          }
-
-          if (v == nullptr) {
+          if (!TRI_GETENV(k.c_str(), vv) || (vv.length() == 0)) {
             auto iter = environment.find(k);
 
             if (iter != environment.end()) {
-              v = iter->second.c_str();
+              vv = iter->second;
             }
           }
 
-          if (v == nullptr) {
+          if (vv.length() == 0) {
+            if (k == "PID") {
+              vv = std::to_string(Thread::currentProcessId());
+            }
 #if _WIN32
-            if (TRI_EqualString(k.c_str(), "ROOTDIR")) {
+            else if (k == "ROOTDIR") {
               vv = TRI_LocateInstallDirectory(nullptr, binaryPath);
 
               if (!vv.empty()) {
@@ -103,13 +100,8 @@ std::string arangodb::options::EnvironmentTranslator(std::string const& value,
                   vv.pop_back();
                 }
               }
-            } else 
+            } 
 #endif
-            if (TRI_EqualString(k.c_str(), "PID")) {
-              vv = std::to_string(Thread::currentProcessId());
-            }
-          } else {
-            vv = v;
           }
 
           result += vv;

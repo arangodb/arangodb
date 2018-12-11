@@ -239,23 +239,22 @@ LENGTH("foobar") // 6
 LENGTH("电脑坏了") // 4
 ```
 
+*LENGTH()* can also determine the [number of elements](Array.md#length) in an array,
+the [number of attribute keys](Document.md#length) of an object / document and
+the [amount of documents](Miscellaneous.md#length) in a collection.
+
 LEVENSHTEIN_DISTANCE()
-------
+----------------------
 
 `LEVENSHTEIN_DISTANCE(value1, value2) → levenshteinDistance`
 
-Return the calculated Levenshtein distance between the input strings *value1* and *value2*.
+Calculate the [Levenshtein distance](https://en.wikipedia.org/wiki/Levenshtein_distance)
+between two strings.
 
 - **value1** (string): a string
 - **value2** (string): a string
-
-`LEVENSHTEIN_DISTANCE(value1, value2) → levenshteinDistance`
-
-Return the calculated Levenshtein distance between the input strings *value1* and *value2*.
-
-- **value1** (string): a string
-- **value2** (string): a string
-- returns **levenshteinDistance** (number): calculated Levenshtein distance between the input strings *value1* and *value2*
+- returns **levenshteinDistance** (number): calculated Levenshtein distance
+  between the input strings *value1* and *value2*
 
 ```js
 LEVENSHTEIN_DISTANCE("foobar", "bar") // 3
@@ -263,10 +262,6 @@ LEVENSHTEIN_DISTANCE(" ", "") // 1
 LEVENSHTEIN_DISTANCE("The quick brown fox jumps over the lazy dog", "The quick black dog jumps over the brown fox") // 13
 LEVENSHTEIN_DISTANCE("der mötör trötet", "der trötet") // 6
 ```
-
-*LENGTH()* can also determine the [number of elements](Array.md#length) in an array,
-the [number of attribute keys](Document.md#length) of an object / document and
-the [amount of documents](Miscellaneous.md#length) in a collection.
 
 LIKE()
 ------
@@ -366,10 +361,75 @@ RANDOM_TOKEN(8) // "zGl09z42"
 RANDOM_TOKEN(8) // "m9w50Ft9"
 ```
 
+REGEX_MATCHES()
+------------
+
+`REGEX_MATCHES(text, regex, caseInsensitive) → stringArray`
+
+Return the matches in the given string *text*, using the *regex*.
+
+- **text** (string): the string to search in
+- **regex** (string): a regular expression to use for matching the *text*
+- returns **stringArray** (array): an array of strings containing the matches
+
+The regular expression may consist of literal characters and the following 
+characters and sequences:
+
+- `.` – the dot matches any single character except line terminators.
+  To include line terminators, use `[\s\S]` instead to simulate `.` with *DOTALL* flag.
+- `\d` – matches a single digit, equivalent to `[0-9]`
+- `\s` – matches a single whitespace character
+- `\S` – matches a single non-whitespace character
+- `\t` – matches a tab character
+- `\r` – matches a carriage return
+- `\n` – matches a line-feed character
+- `[xyz]` – set of characters. Matches any of the enclosed characters
+  (here: *x*, *y* or *z*)
+- `[^xyz]` – negated set of characters. Matches any other character than the
+  enclosed ones (i.e. anything but *x*, *y* or *z* in this case)
+- `[x-z]` – range of characters. Matches any of the characters in the 
+  specified range, e.g. `[0-9A-F]` to match any character in
+  *0123456789ABCDEF*
+- `[^x-z]` – negated range of characters. Matches any other character than the
+  ones specified in the range
+- `(xyz)` – defines and matches a pattern group
+- `(x|y)` – matches either *x* or *y*
+- `^` – matches the beginning of the string (e.g. `^xyz`)
+- <code>$</code> – matches the end of the string (e.g. <code>xyz$</code>)
+
+Note that the characters `.`, `*`, `?`, `[`, `]`, `(`, `)`, `{`, `}`, `^`, 
+and `$` have a special meaning in regular expressions and may need to be 
+escaped using a backslash, which requires escaping itself (`\\`). A literal
+backslash needs to be escaped using another escaped backslash, i.e. `\\\\`.
+In arangosh, the amount of backslashes needs to be doubled.
+
+Characters and sequences may optionally be repeated using the following
+quantifiers:
+
+- `x*` – matches zero or more occurrences of *x*
+- `x+` – matches one or more occurrences of *x*
+- `x?` – matches one or zero occurrences of *x*
+- `x{y}` – matches exactly *y* occurrences of *x*
+- `x{y,z}` – matches between *y* and *z* occurrences of *x*
+- `x{y,}` – matches at least *y* occurences of *x*
+
+Note that `xyz+` matches *xyzzz*, but if you want to match *xyzxyz* instead,
+you need to define a pattern group by wrapping the subexpression in parentheses
+and place the quantifier right behind it: `(xyz)+`.
+
+If the regular expression in *regex* is invalid, a warning will be raised
+and the function will return *null*.
+
+```js
+REGEX_MATCHES("My-us3r_n4m3", "^[a-z0-9_-]{3,16}$", true) // ["My-us3r_n4m3"]
+REGEX_MATCHES("#4d82h4", "^#?([a-f0-9]{6}|[a-f0-9]{3})$", true) // null
+REGEX_MATCHES("john@doe.com", "^([a-z0-9_\.-]+)@([\da-z-]+)\.([a-z\.]{2,6})$", false) // ["john@doe.com", "john", "doe", "com"]
+```
+
 REGEX_SPLIT()
 ------------
 
-`REGEX_SPLIT(text, splitExpression, caseInsensitive, limit) → strArray`
+`REGEX_SPLIT(text, splitExpression, caseInsensitive, limit) → stringArray`
 
 Split the given string *text* into a list of strings, using the *separator*.
 
@@ -377,7 +437,7 @@ Split the given string *text* into a list of strings, using the *separator*.
 - **splitExpression** (string): a regular expression to use for splitting the *text*
 - **limit** (number, *optional*): limit the number of split values in the result.
   If no *limit* is given, the number of splits returned is not bounded.
-- returns **strArray** (array): an array of strings
+- returns **stringArray** (array): an array of strings
 
 The regular expression may consist of literal characters and the following 
 characters and sequences:
@@ -535,7 +595,7 @@ REVERSE()
 
 `REVERSE(value) → reversedString`
 
-Return the reverse of the string *str*.
+Return the reverse of the string *value*.
 
 - **value** (string): a string
 - returns **reversedString** (string): a new string with the characters in
@@ -823,11 +883,11 @@ All other characters are returned unchanged.
 - returns **upperCaseString** (string): *value* with lower-case characters converted
   to upper-case characters
   
-  UUID()
-  -----------
-  
-  `UUID() → UUIDString`
-  
-  Return a random and uniquely generated UUID.
+UUID()
+------
 
-  - returns **UUIDString** (string): a universally unique identifier
+`UUID() → UUIDString`
+
+Return a universally unique identifier value.
+
+- returns **UUIDString** (string): a universally unique identifier

@@ -49,8 +49,8 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 const download = require('internal').download;
 
 const testPaths = {
-  'authentication': ['js/client/tests/authentication'],
-  'authentication_server': ['js/server/tests/authentication'],
+  'authentication': [tu.pathForTesting('client/authentication')],
+  'authentication_server': [tu.pathForTesting('server/authentication')],
   'authentication_parameters': []
 };
 
@@ -72,6 +72,8 @@ function authenticationClient (options) {
   print(CYAN + 'Client Authentication tests...' + RESET);
   let testCases = tu.scanTestPaths(testPaths.authentication);
 
+  testCases = tu.splitBuckets(options, testCases);
+
   return tu.performTests(options, testCases, 'authentication', tu.runInArangosh, {
     'server.authentication': 'true',
     'server.jwt-secret': 'haxxmann',
@@ -81,6 +83,9 @@ function authenticationClient (options) {
 
 function authenticationServer (options) {
   let testCases = tu.scanTestPaths(testPaths.authentication_server);
+
+  testCases = tu.splitBuckets(options, testCases);
+
   if ((testCases.length === 0) || (options.skipAuthentication === true)) {
     print('skipping Authentication tests!');
     return {

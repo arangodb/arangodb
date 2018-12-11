@@ -133,7 +133,7 @@ UpgradeResult Upgrade::startup(
       break;  // just run tasks that weren't run yet
     case VersionResult::UPGRADE_NEEDED: {
       if (!isUpgrade) {
-        // we do not perform upgrades without beeing told so during startup
+        // we do not perform upgrades without being told so during startup
         LOG_TOPIC(ERR, Logger::STARTUP)
             << "Database directory version (" << vinfo.databaseVersion
             << ") is lower than current version (" << vinfo.serverVersion
@@ -144,16 +144,16 @@ UpgradeResult Upgrade::startup(
         LOG_TOPIC(ERR, Logger::STARTUP)
             << "It seems like you have upgraded the ArangoDB binary.";
         LOG_TOPIC(ERR, Logger::STARTUP)
-            << "If this is what you wanted to do, please restart with the'";
-        LOG_TOPIC(ERR, Logger::STARTUP) << "  --database.auto-upgrade true'";
+            << "If this is what you wanted to do, please restart with the";
+        LOG_TOPIC(ERR, Logger::STARTUP) << "  --database.auto-upgrade true";
         LOG_TOPIC(ERR, Logger::STARTUP)
-            << "option to upgrade the data in the database directory.'";
+            << "option to upgrade the data in the database directory.";
 
         LOG_TOPIC(ERR, Logger::STARTUP) << "Normally you can use the control "
                                            "script to upgrade your database'";
-        LOG_TOPIC(ERR, Logger::STARTUP) << "  /etc/init.d/arangodb stop'";
-        LOG_TOPIC(ERR, Logger::STARTUP) << "  /etc/init.d/arangodb upgrade'";
-        LOG_TOPIC(ERR, Logger::STARTUP) << "  /etc/init.d/arangodb start'";
+        LOG_TOPIC(ERR, Logger::STARTUP) << "  /etc/init.d/arangodb stop";
+        LOG_TOPIC(ERR, Logger::STARTUP) << "  /etc/init.d/arangodb upgrade";
+        LOG_TOPIC(ERR, Logger::STARTUP) << "  /etc/init.d/arangodb start";
         LOG_TOPIC(ERR, Logger::STARTUP)
         << "----------------------------------------------------------------------'";
         return UpgradeResult(TRI_ERROR_BAD_PARAMETER, vinfo.status);
@@ -224,33 +224,11 @@ void methods::Upgrade::registerTasks() {
           /*system*/ Flags::DATABASE_EXCEPT_SYSTEM,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
           /*database*/ DATABASE_INIT, &UpgradeTasks::addDefaultUserOther);
-  addTask("updateUserModels",
-          "convert documents in _users collection to new format",
-          /*system*/ Flags::DATABASE_SYSTEM,
-          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
-          /*database*/ DATABASE_UPGRADE,  // DATABASE_EXISTING
-          &UpgradeTasks::updateUserModels);
-  addTask("createModules", "setup _modules collection",
-          /*system*/ Flags::DATABASE_ALL,
-          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
-          /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
-          &UpgradeTasks::createModules);
-  // FIXME simon: Determine whether this is still necessary
   addTask("setupAnalyzers", "setup _iresearch_analyzers collection",
           /*system*/ Flags::DATABASE_SYSTEM,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
           /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
           &UpgradeTasks::setupAnalyzers);
-  addTask("createRouting", "setup _routing collection",
-          /*system*/ Flags::DATABASE_ALL,
-          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
-          /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
-          &UpgradeTasks::createRouting);
-  addTask("insertRedirectionsAll", "insert default routes for admin interface",
-          /*system*/ Flags::DATABASE_ALL,
-          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
-          /*database*/ DATABASE_INIT | DATABASE_EXISTING,
-          &UpgradeTasks::insertRedirections);
   addTask("setupAqlFunctions", "setup _aqlfunctions collection",
           /*system*/ Flags::DATABASE_ALL,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
@@ -291,6 +269,11 @@ void methods::Upgrade::registerTasks() {
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
           /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
           &UpgradeTasks::setupAppBundles);
+  addTask("persistLocalDocumentIds", "convert collection data from old format",
+          /*system*/ Flags::DATABASE_ALL,
+          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
+          /*database*/ DATABASE_UPGRADE,
+          &UpgradeTasks::persistLocalDocumentIds);
 }
 
 UpgradeResult methods::Upgrade::runTasks(

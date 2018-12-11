@@ -33,83 +33,77 @@ namespace velocypack {
 class Builder;
 }
 
-namespace aql {
-struct AqlValue;
-}
-
 class ManagedDocumentResult {
  public:
   ManagedDocumentResult() :
-    _length(0),
-    _localDocumentId(),
     _vpack(nullptr),
-    _managed(false),
-    _useString(false) {}
-  ~ManagedDocumentResult() { reset(); }
-  ManagedDocumentResult(ManagedDocumentResult const& other) = delete;
-  ManagedDocumentResult& operator=(ManagedDocumentResult const& other) = delete;
+    _managed(false) {}
+  
+  ManagedDocumentResult(ManagedDocumentResult const& other) = default;
+  ManagedDocumentResult& operator=(ManagedDocumentResult const& other) = default;
 
-  ManagedDocumentResult& operator=(ManagedDocumentResult&& other) {
-    if (other._useString) {
-      setManaged(std::move(other._string), other._localDocumentId);
-      other._managed = false;
-      other.reset();
-    } else if (other._managed) {
-      reset();
-      _vpack = other._vpack;
-      _length = other._length;
-      _localDocumentId = other._localDocumentId;
-      _managed = true;
-      other._managed = false;
-      other.reset();
-    } else {
-      setUnmanaged(other._vpack, other._localDocumentId);
-    }
+  ManagedDocumentResult& operator=(ManagedDocumentResult&& other) noexcept {
+    _string = std::move(other._string);
+    _vpack = other._vpack;
+    _localDocumentId = other._localDocumentId;
+    _managed = other._managed;
+
+    other.clear();
     return *this;
   }
 
-  ManagedDocumentResult(ManagedDocumentResult&& other) = delete;
+  ManagedDocumentResult(ManagedDocumentResult&& other) noexcept 
+    : _string(std::move(other._string)),
+      _vpack(other._vpack),
+      _localDocumentId(other._localDocumentId),
+      _managed(other._managed) {
+    other.clear();
+  }
 
-  void clone(ManagedDocumentResult& cloned) const;
-
-  //add unmanaged vpack 
   void setUnmanaged(uint8_t const* vpack, LocalDocumentId const& documentId);
 
   void setManaged(uint8_t const* vpack, LocalDocumentId const& documentId);
-  void setManaged(std::string&& str, LocalDocumentId const& documentId);
-
-  inline LocalDocumentId localDocumentId() const { return _localDocumentId; }
   
-  void reset() noexcept;
-
-  std::string* prepareStringUsage() { 
-    reset();
-    _useString = true;
+  std::string* setManaged(LocalDocumentId const& documentId) {
+    _string.clear();
+    _vpack = nullptr;
+    _localDocumentId = documentId;
+    _managed = true;
     return &_string; 
   }
   
-  void setManagedAfterStringUsage(LocalDocumentId const& documentId);
+  inline LocalDocumentId localDocumentId() const { return _localDocumentId; }
+  
+  void clear() noexcept {
+    _string.clear();
+    _vpack = nullptr;
+    _localDocumentId.clear();
+    _managed = false;
+  }
   
   inline uint8_t const* vpack() const {
+    if (_managed) {
+      return reinterpret_cast<uint8_t const*>(_string.data());
+    }
     TRI_ASSERT(_vpack != nullptr);
     return _vpack;
   }
-  
-  inline bool empty() const { return _vpack == nullptr; }
 
+  inline bool empty() const {
+    return (!_managed && _vpack == nullptr);
+  }
+   
   inline bool canUseInExternal() const {
-    return (!_managed && !_useString);
+    return !_managed;
   }
   
   void addToBuilder(velocypack::Builder& builder, bool allowExternals) const;
 
  private:
-  uint64_t _length;
-  LocalDocumentId _localDocumentId;
-  uint8_t* _vpack;
   std::string _string;
+  uint8_t* _vpack;
+  LocalDocumentId _localDocumentId;
   bool _managed;
-  bool _useString;
 };
 
 }

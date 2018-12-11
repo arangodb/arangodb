@@ -29,12 +29,13 @@
 #endif
 #endif
 
-using namespace arangodb;
 using namespace arangodb::basics;
 
 namespace {
 static char const* NoColor = "";
 }
+
+namespace arangodb {
 
 char const* ShellColorsFeature::SHELL_COLOR_RED = NoColor;
 char const* ShellColorsFeature::SHELL_COLOR_BOLD_RED = NoColor;
@@ -57,7 +58,8 @@ char const* ShellColorsFeature::SHELL_COLOR_BRIGHT = NoColor;
 char const* ShellColorsFeature::SHELL_COLOR_RESET = NoColor;
 
 ShellColorsFeature::ShellColorsFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "ShellColors"), _initialized(false) {
   setOptional(false);
 
@@ -129,3 +131,5 @@ bool ShellColorsFeature::prepareConsole() {
   return true;
 #endif
 }
+
+} // arangodb

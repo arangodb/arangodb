@@ -113,6 +113,7 @@ std::string const StaticStrings::AccessControlMaxAge("access-control-max-age");
 std::string const StaticStrings::AccessControlRequestHeaders(
     "access-control-request-headers");
 std::string const StaticStrings::Allow("allow");
+std::string const StaticStrings::AllowDirtyReads("x-arango-allow-dirty-read");
 std::string const StaticStrings::Async("x-arango-async");
 std::string const StaticStrings::AsyncId("x-arango-async-id");
 std::string const StaticStrings::Authorization("authorization");
@@ -144,7 +145,7 @@ std::string const StaticStrings::LeaderEndpoint("x-arango-endpoint");
 std::string const StaticStrings::Location("location");
 std::string const StaticStrings::NoSniff("nosniff");
 std::string const StaticStrings::Origin("origin");
-std::string const StaticStrings::Queue("x-arango-queue");
+std::string const StaticStrings::PotentialDirtyRead("x-arango-potential-dirty-read");
 std::string const StaticStrings::RequestForwardedTo(
     "x-arango-request-forwarded-to");
 std::string const StaticStrings::ResponseCode("x-arango-response-code");
@@ -153,6 +154,7 @@ std::string const StaticStrings::Unlimited = "unlimited";
 std::string const StaticStrings::WwwAuthenticate("www-authenticate");
 std::string const StaticStrings::XContentTypeOptions("x-content-type-options");
 std::string const StaticStrings::XArangoNoLock("x-arango-nolock");
+std::string const StaticStrings::XArangoFrontend("x-arango-frontend");
 
 // mime types
 std::string const StaticStrings::MimeTypeJson(
@@ -162,9 +164,11 @@ std::string const StaticStrings::MimeTypeVPack("application/x-velocypack");
 std::string const StaticStrings::MultiPartContentType("multipart/form-data");
 
 // collection attributes
+std::string const StaticStrings::DistributeShardsLike("distributeShardsLike");
+std::string const StaticStrings::IsSmart("isSmart");
 std::string const StaticStrings::NumberOfShards("numberOfShards");
 std::string const StaticStrings::ReplicationFactor("replicationFactor");
-std::string const StaticStrings::DistributeShardsLike("distributeShardsLike");
+std::string const StaticStrings::ShardKeys("shardKeys");
 
 // graph attribute names
 std::string const StaticStrings::GraphCollection("_graphs");
@@ -186,5 +190,9 @@ std::string const StaticStrings::GraphDropCollection("dropCollection");
 std::string const StaticStrings::GraphCreateCollections("createCollections");
 std::string const StaticStrings::GraphCreateCollection("createCollection");
 
+// Replication
+std::string const StaticStrings::ReplicationSoftLockOnly("doSoftLockOnly");
+
 // misc strings
 std::string const StaticStrings::LastValue("lastValue");
+std::string const StaticStrings::checksumFileJs("JS_SHA1SUM.txt");

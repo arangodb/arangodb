@@ -48,6 +48,7 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class CollectionNameResolver;
 
 namespace transaction {
 class Context;
@@ -69,6 +70,7 @@ class Ast;
 class ExecutionEngine;
 class ExecutionPlan;
 class Query;
+struct QueryCacheResultEntry;
 struct QueryProfile;
 class QueryRegistry;
 
@@ -77,9 +79,8 @@ enum QueryPart { PART_MAIN, PART_DEPENDENT };
 
 /// @brief an AQL query
 class Query {
-
  private:
-   enum ExecutionPhase { INITIALIZE, EXECUTE, FINALIZE };
+  enum ExecutionPhase { INITIALIZE, EXECUTE, FINALIZE };
 
  private:
   Query(Query const&) = delete;
@@ -113,6 +114,7 @@ class Query {
   TEST_VIRTUAL Query* clone(QueryPart, bool);
 
  public:
+  constexpr static uint64_t DontCache = 0;
   
 /// @brief whether or not the query is killed
   bool killed() const;
@@ -141,6 +143,7 @@ class Query {
 
   velocypack::Slice optionsSlice() const { return _options->slice(); }
   TEST_VIRTUAL QueryOptions const& queryOptions() const { return _queryOptions; }
+  TEST_VIRTUAL QueryOptions& queryOptions() { return _queryOptions; }
 
   void increaseMemoryUsage(size_t value) { _resourceMonitor.increaseMemoryUsage(value); }
   void decreaseMemoryUsage(size_t value) { _resourceMonitor.decreaseMemoryUsage(value); }
@@ -162,8 +165,17 @@ class Query {
   /// @brief get the vocbase
   inline TRI_vocbase_t& vocbase() const { return _vocbase; }
 
+  inline Collection* addCollection(std::string const& name, AccessMode::Type accessType) {
+    // Either collection or view
+    return _collections.add(name, accessType);
+  }
+
+  inline Collection* addCollection(StringRef name, AccessMode::Type accessType) {
+    return _collections.add(name.toString(), accessType);
+  }
+
   /// @brief collections
-  inline Collections* collections() { return &_collections; }
+  inline Collections const* collections() const { return &_collections; }
 
   /// @brief return the names of collections used in the query
   std::vector<std::string> collectionNames() const {
@@ -206,7 +218,7 @@ class Query {
   /// @brief register a warning
   virtual void registerWarning(int, char const* = nullptr);
 
-  void prepare(QueryRegistry*, uint64_t queryHash);
+  void prepare(QueryRegistry*);
 
   /// @brief execute an AQL query
   aql::ExecutionState execute(QueryRegistry*, QueryResult& res);
@@ -283,6 +295,12 @@ class Query {
   /// @brief get a description of the query's current state
   std::string getStateString() const;
 
+  /// @brief note that the query uses the view
+  void addView(std::string const& name) {
+    // Either collection or view
+    _views.emplace(name);
+  }
+
   /// @brief look up a graph in the _graphs collection
   graph::Graph const* lookupGraphByName(std::string const& name);
 
@@ -298,9 +316,15 @@ class Query {
     return _sharedState;
   }
   
+  /// @brief pass-thru a resolver object from the transaction context
+  CollectionNameResolver const& resolver();
+  
  private:
   /// @brief initializes the query
   void init();
+  
+  /// @brief calculate a hash for the query, once
+  uint64_t hash() const;
 
   /// @brief prepare an AQL query, this is a preparation for execute, but
   /// execute calls it internally. The purpose of this separate method is
@@ -311,8 +335,8 @@ class Query {
   /// @brief log a query
   void log();
 
-  /// @brief calculate a hash value for the query and bind parameters
-  uint64_t hash();
+  /// @brief calculate a hash value for the query string and bind parameters
+  uint64_t calculateHash() const;
 
   /// @brief whether or not the query cache can be used for the query
   bool canUseQueryCache() const;
@@ -323,22 +347,19 @@ class Query {
   /// @brief enter a new state
   void enterState(QueryExecutionState::ValueType);
 
-  /// @brief cleanup plan and engine for current query. Synchronous variant,
-  //         will block this thread in WAITING case.
-  void cleanupPlanAndEngineSync(int, VPackBuilder* statsBuilder = nullptr) noexcept;
+  /// @brief cleanup plan and engine for current query. synchronous variant,
+  /// will block this thread in WAITING case.
+  void cleanupPlanAndEngineSync(int errorCode, VPackBuilder* statsBuilder = nullptr) noexcept;
 
   /// @brief cleanup plan and engine for current query can issue WAITING
-  ExecutionState cleanupPlanAndEngine(int, VPackBuilder* statsBuilder = nullptr);
+  ExecutionState cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBuilder = nullptr);
 
   /// @brief create a transaction::Context
   std::shared_ptr<transaction::Context> createTransactionContext();
-
-  /// @brief returns the next query id
-  static TRI_voc_tick_t NextId();
-
- public:
-  constexpr static uint64_t DontCache = 0;
   
+  /// @brief returns the next query id
+  static TRI_voc_tick_t nextId();
+
  private:
   /// @brief query id
   TRI_voc_tick_t _id;
@@ -440,6 +461,20 @@ class Query {
 
   /// @brief shared state 
   std::shared_ptr<SharedQueryState> _sharedState;
+
+  /// @brief names of views used by the query. needed for the query cache
+  std::unordered_set<std::string> _views;
+  
+  /// @brief query cache entry built by the query
+  /// only populated when the query has generated its result(s) and before storing
+  /// the cache entry in the query cache
+  std::unique_ptr<QueryCacheResultEntry> _cacheEntry;
+
+  /// @brief hash for this query. will be calculated only once when needed
+  mutable uint64_t _queryHash = DontCache;
+  
+  /// @brief whether or not the hash was already calculated
+  mutable bool _queryHashCalculated = false;
 };
 
 }

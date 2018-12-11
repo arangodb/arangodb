@@ -77,7 +77,7 @@ void CollectionAccessingNode::toVelocyPack(arangodb::velocypack::Builder& builde
   builder.add("satellite", VPackValue(_collection->isSatellite()));
   
   if (ServerState::instance()->isCoordinator()) {
-    builder.add("numberOfShards", VPackValue(_collection->numberOfShards()));
+    builder.add(StaticStrings::NumberOfShards, VPackValue(_collection->numberOfShards()));
   }
   
   if (!_restrictedTo.empty()) {
@@ -88,7 +88,7 @@ void CollectionAccessingNode::toVelocyPack(arangodb::velocypack::Builder& builde
 void CollectionAccessingNode::toVelocyPackHelperPrimaryIndex(arangodb::velocypack::Builder& builder) const {
   auto col = _collection->getCollection();
   builder.add(VPackValue("indexes"));
-  col->getIndexesVPack(builder, false, false, [](arangodb::Index const* idx) {
+  col->getIndexesVPack(builder, Index::makeFlags(Index::Serialize::Basics), [](arangodb::Index const* idx) {
       return (idx->type() == arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX);
     });
 }

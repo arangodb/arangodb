@@ -29,7 +29,7 @@
 using namespace iresearch;
 
 TEST(memory_index_output_tests, reset) {
-  memory_file file;
+  memory_file file{ irs::memory_allocator::global() };
   memory_index_output out(file);
 
   std::vector<std::string> data0{

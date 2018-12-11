@@ -23,12 +23,18 @@
 #ifndef APPLICATION_FEATURES_STATISTICS_FEATURE_H
 #define APPLICATION_FEATURES_STATISTICS_FEATURE_H 1
 
+#include <array>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/Mutex.h"
 #include "Basics/Thread.h"
+#include "Rest/CommonDefines.h"
 #include "Statistics/figures.h"
 
 namespace arangodb {
 namespace basics {
+
+extern Mutex TRI_RequestsStatisticsMutex;
 
 extern std::vector<double> const TRI_BytesReceivedDistributionVectorStatistics;
 extern std::vector<double> const TRI_BytesSentDistributionVectorStatistics;
@@ -39,7 +45,8 @@ extern StatisticsCounter TRI_AsyncRequestsStatistics;
 extern StatisticsCounter TRI_HttpConnectionsStatistics;
 extern StatisticsCounter TRI_TotalRequestsStatistics;
 
-extern std::vector<StatisticsCounter> TRI_MethodRequestsStatistics;
+constexpr size_t MethodRequestsStatisticsSize = ((size_t)arangodb::rest::RequestType::ILLEGAL) + 1;
+extern std::array<StatisticsCounter, MethodRequestsStatisticsSize> TRI_MethodRequestsStatistics;
 
 extern StatisticsDistribution TRI_BytesReceivedDistributionStatistics;
 extern StatisticsDistribution TRI_BytesSentDistributionStatistics;
@@ -69,14 +76,13 @@ class StatisticsFeature final
   static StatisticsFeature* STATISTICS;
 
  public:
-  explicit StatisticsFeature(application_features::ApplicationServer* server);
+  explicit StatisticsFeature(application_features::ApplicationServer& server);
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
-  void unprepare() override final;
+  void stop() override final;
 
   static stats::Descriptions const* descriptions() {
     if (STATISTICS != nullptr) {
@@ -84,7 +90,7 @@ class StatisticsFeature final
     }
     return nullptr;
   }
-      
+
  private:
   bool _statistics;
 
@@ -92,6 +98,7 @@ class StatisticsFeature final
   std::unique_ptr<StatisticsThread> _statisticsThread;
   std::unique_ptr<StatisticsWorker> _statisticsWorker;
 };
+
 }
 
 #endif

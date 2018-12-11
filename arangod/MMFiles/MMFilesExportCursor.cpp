@@ -144,7 +144,7 @@ Result MMFilesExportCursor::dumpSync(VPackBuilder& builder) {
       // mark the cursor as deleted
       delete _ex;
       _ex = nullptr;
-      this->deleted();
+      this->setDeleted();
     }
   } catch (arangodb::basics::Exception const& ex) {
     return Result(ex.code(), ex.what());

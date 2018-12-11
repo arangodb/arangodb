@@ -438,12 +438,6 @@ global.DEFINE_MODULE('console', (function () {
 
   exports.levelStack = function (lvl, e, msg) {
     let logStrings = [];
-    if (msg) {
-      logStrings.push(msg);
-    }
-    if (e.codeFrame) {
-      logStrings.push(e.codeFrame);
-    }
     let err = e;
     while (err) {
       if (!msg && err === e) {
@@ -454,9 +448,16 @@ global.DEFINE_MODULE('console', (function () {
           logStrings.push(err.stack);
         }
       } else {
-        logStrings.push(`via ${err.stack}`);
+        logStrings.push(`\nvia ${err.stack}`);
       }
       err = err.cause;
+    }
+    if (e.codeFrame) {
+      logStrings[0] = `\n${logStrings[0]}`;
+      logStrings.unshift(e.codeFrame);
+    }
+    if (msg) {
+      logStrings.unshift(msg);
     }
     exports.logLvlLines(lvl, logStrings);
   };

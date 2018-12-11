@@ -31,6 +31,7 @@
 #include <velocypack/Value.h>
 
 #include <iosfwd>
+#include <functional>
 
 namespace arangodb {
 
@@ -42,7 +43,7 @@ class StringRef {
   constexpr StringRef() : _data(""), _length(0) {}
 
   /// @brief create a StringRef from an std::string
-  explicit StringRef(std::string const& str) : _data(str.c_str()), _length(str.size()) {}
+  explicit StringRef(std::string const& str) noexcept : _data(str.data()), _length(str.size()) {}
   
   /// @brief create a StringRef from a null-terminated C string
   explicit StringRef(char const* data) : _data(data), _length(strlen(data)) {}

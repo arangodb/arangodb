@@ -92,6 +92,12 @@ class GraphOperations {
                                boost::optional<TRI_voc_rid_t> rev,
                                bool waitForSync, bool returnOld);
 
+  /// @brief Remove an edge or vertex and all incident edges in the graph
+  OperationResult removeEdgeOrVertex(const std::string& collectionName,
+                                     const std::string& key,
+                                     boost::optional<TRI_voc_rid_t> rev,
+                                     bool waitForSync, bool returnOld);
+
   OperationResult updateEdge(const std::string& definitionName,
                              const std::string& key, VPackSlice document,
                              boost::optional<TRI_voc_rid_t> rev,
@@ -163,8 +169,12 @@ class GraphOperations {
   /// collection, this does nothing and returns success.
   ////////////////////////////////////////////////////////////////////////////////
   OperationResult changeEdgeDefinitionForGraph(
-      const Graph& graph, const EdgeDefinition& edgeDefinition,
+      Graph& graph, EdgeDefinition const& edgeDefinition,
       bool waitForSync, transaction::Methods& trx);
+
+  void checkForUsedEdgeCollections(
+      const Graph& graph, const std::string& collectionName,
+      std::unordered_set<std::string>& possibleEdgeCollections);
 
  private:
   using VPackBufferPtr = std::shared_ptr<velocypack::Buffer<uint8_t>>;

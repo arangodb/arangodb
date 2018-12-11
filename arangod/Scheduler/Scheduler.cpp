@@ -116,10 +116,7 @@ void Scheduler::runCron() {
   while (!isStopping()) {
 
     tick++;
-
     auto now = clock::now();
-
-
     clock::duration sleepTime = std::chrono::milliseconds(50);
 
     while (_priorityQueue.size() > 0) {
@@ -162,4 +159,3 @@ Scheduler::WorkHandle Scheduler::postDelay(clock::duration delay,
 
   return handle;
 }
-

@@ -317,8 +317,8 @@ function check-dangling-anchors()
     fail=0
     rm -f /tmp/failduplicatetags.txt
     find /tmp/tags -type f | while IFS= read -r htmlf; do
-        sort "${htmlf}" |grep -v ^$ > /tmp/sorted.txt
-        sort -u "${htmlf}" |grep -v ^$ > /tmp/sortedunique.txt
+        (sort "${htmlf}" |grep -v ^$ > /tmp/sorted.txt) || true
+        (sort -u "${htmlf}" |grep -v ^$ > /tmp/sortedunique.txt) || true
         if test "$(comm -3 /tmp/sorted.txt /tmp/sortedunique.txt|wc -l)" -ne 0; then
             echo "${ERR_COLOR}"
             echo "in ${htmlf}: "
@@ -713,9 +713,9 @@ function build-books()
     done
 
     check-docublocks ""
-    check-dangling-anchors ""
     echo "${STD_COLOR}##### Generating redirect index.html${RESET}"; \
     echo '<html><head><meta http-equiv="refresh" content="0; url=Manual/"></head><body></body></html>' > books/index.html
+    check-dangling-anchors ""
 }
 
 function build-dist-books()

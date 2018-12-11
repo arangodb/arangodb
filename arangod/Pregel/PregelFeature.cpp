@@ -71,7 +71,6 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 
 static PregelFeature* Instance = nullptr;
-static std::atomic<uint64_t> _uniqueId;
 
 std::pair<Result, uint64_t> PregelFeature::startExecution(
     TRI_vocbase_t& vocbase, std::string algorithm,
@@ -86,6 +85,7 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
   // check the access rights to collections
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
+    TRI_ASSERT(params.isObject());
     VPackSlice storeSlice = params.get("store");
     bool storeResults = !storeSlice.isBool() || storeSlice.getBool();
     for (std::string const& vc : vertexCollections) {
@@ -205,7 +205,7 @@ uint64_t PregelFeature::createExecutionNumber() {
   return TRI_NewServerSpecificTick();
 }
 
-PregelFeature::PregelFeature(application_features::ApplicationServer* server)
+PregelFeature::PregelFeature(application_features::ApplicationServer& server)
     : application_features::ApplicationFeature(server, "Pregel") {
   setOptional(true);
   startsAfter("V8Phase");
@@ -287,14 +287,14 @@ void PregelFeature::cleanupWorker(uint64_t executionNumber) {
   // unmapping etc might need a few seconds
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  scheduler->post([this, executionNumber] {
+  scheduler->queue(RequestPriority::LOW, [this, executionNumber] {
     MUTEX_LOCKER(guard, _mutex);
 
     auto wit = _workers.find(executionNumber);
     if (wit != _workers.end()) {
       _workers.erase(executionNumber);
     }
-  });
+    });
 }
 
 void PregelFeature::cleanupAll() {

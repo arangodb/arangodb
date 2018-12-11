@@ -24,10 +24,11 @@
 #include "Logger/Logger.h"
 #include "Rest/Version.h"
 
-using namespace arangodb;
+namespace arangodb {
 
 GreetingsFeature::GreetingsFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "Greetings") {
   setOptional(false);
   startsAfter("Logger");
@@ -40,3 +41,5 @@ void GreetingsFeature::prepare() {
 void GreetingsFeature::unprepare() {
   LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "ArangoDB has been shut down";
 }
+
+} // arangodb

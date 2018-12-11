@@ -35,12 +35,14 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
-using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+namespace arangodb {
+
 PrivilegeFeature::PrivilegeFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "Privilege"),
       _numericUid(0), _numericGid(0) {
   setOptional(true);
@@ -51,23 +53,27 @@ void PrivilegeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "Server features");
 
 #ifdef ARANGODB_HAVE_SETUID
-  options->addHiddenOption("--uid",
-                           "switch to user-id after reading config files",
-                           new StringParameter(&_uid));
+  options->addOption("--uid",
+                     "switch to user-id after reading config files",
+                     new StringParameter(&_uid),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption("--server.uid",
-                           "switch to user-id after reading config files",
-                           new StringParameter(&_uid));
+  options->addOption("--server.uid",
+                     "switch to user-id after reading config files",
+                     new StringParameter(&_uid),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 #endif
 
 #ifdef ARANGODB_HAVE_SETGID
-  options->addHiddenOption("--gid",
-                           "switch to group-id after reading config files",
-                           new StringParameter(&_gid));
+  options->addOption("--gid",
+                     "switch to group-id after reading config files",
+                     new StringParameter(&_gid),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption("--server.gid",
-                           "switch to group-id after reading config files",
-                           new StringParameter(&_gid));
+  options->addOption("--server.gid",
+                     "switch to group-id after reading config files",
+                     new StringParameter(&_gid),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 #endif
 }
 
@@ -99,8 +105,9 @@ void PrivilegeFeature::extractPrivileges() {
       if (g != nullptr) {
         gidNumber = g->gr_gid;
       } else {
+        TRI_set_errno(TRI_ERROR_SYS_ERROR);
         LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot convert groupname '" << _gid
-                   << "' to numeric gid";
+                   << "' to numeric gid: " << TRI_last_error();
         FATAL_ERROR_EXIT();
       }
 #else
@@ -191,3 +198,5 @@ void PrivilegeFeature::dropPrivilegesPermanently() {
   }
 #endif
 }
+
+} // arangodb

@@ -39,21 +39,20 @@ class ReadWriteSpinLock {
 public:
   ReadWriteSpinLock() : _state(0) {}
 
-  // TODO: remove these - copyable locks are potentially flawed!
-  ReadWriteSpinLock(ReadWriteSpinLock const& other)
-  {
+  // only needed for cache::Metadata
+  ReadWriteSpinLock(ReadWriteSpinLock&& other) {
     auto val = other._state.load(std::memory_order_relaxed);
     TRI_ASSERT(val == 0);
     _state.store(val, std::memory_order_relaxed);
   }
-  ReadWriteSpinLock& operator=(ReadWriteSpinLock const& other) {
+  ReadWriteSpinLock& operator=(ReadWriteSpinLock&& other) {
     auto val = other._state.load(std::memory_order_relaxed);
     TRI_ASSERT(val == 0);
     val = _state.exchange(val, std::memory_order_relaxed);
-    TRI_ASSERT(val == 0); 
+    TRI_ASSERT(val == 0);
     return *this;
   }
-
+  
   bool tryWriteLock() {
     // order_relaxed is an optimization, cmpxchg will synchronize side-effects
     auto state = _state.load(std::memory_order_relaxed);    

@@ -135,7 +135,7 @@ class CollectNode : public ExecutionNode {
                        bool withProperties) const override final;
 
   /// @brief estimateCost
-  double estimateCost(size_t&) const override final;
+  CostEstimate estimateCost() const override final;
 
   /// @brief whether or not the count flag is set
   bool count() const { return _count; }

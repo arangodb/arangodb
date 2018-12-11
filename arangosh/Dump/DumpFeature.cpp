@@ -27,6 +27,7 @@
 #include <iostream>
 #include <thread>
 
+#include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -35,12 +36,13 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/OpenFilesTracker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Maskings/Maskings.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "Random/RandomGenerator.h"
 #include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -53,6 +55,10 @@
 
 namespace {
 
+/// @brief fake client id we will send to the server. the server keeps
+/// track of all connected clients
+static uint64_t clientId = 0;
+
 /// @brief name of the feature to report to application server
 constexpr auto FeatureName = "Dump";
 
@@ -60,8 +66,8 @@ constexpr auto FeatureName = "Dump";
 constexpr uint64_t MinChunkSize = 1024 * 128;
 
 /// @brief maximum amount of data to fetch from server in a single batch
-constexpr uint64_t MaxChunkSize = 1024 * 1024 * 96;
 // NB: larger value may cause tcp issues (check exact limits)
+constexpr uint64_t MaxChunkSize = 1024 * 1024 * 96;
 
 /// @brief generic error for if server returns bad/unexpected json
 const arangodb::Result ErrorMalformedJsonResponse = {
@@ -77,9 +83,16 @@ arangodb::Result checkHttpResponse(
             "got invalid response from server: " + client.getErrorMessage()};
   }
   if (response->wasHttpError()) {
-    return {TRI_ERROR_INTERNAL, "got invalid response from server: HTTP " +
-                                    itoa(response->getHttpReturnCode()) + ": " +
-                                    response->getHttpReturnMessage()};
+    int errorNum = TRI_ERROR_INTERNAL;
+    std::string errorMsg = response->getHttpReturnMessage();
+    std::shared_ptr<arangodb::velocypack::Builder> bodyBuilder(response->getBodyVelocyPack());
+    arangodb::velocypack::Slice error = bodyBuilder->slice();
+    if (!error.isNone() && error.hasKey(arangodb::StaticStrings::ErrorMessage)) {
+      errorNum = error.get(arangodb::StaticStrings::ErrorNum).getNumericValue<int>();
+      errorMsg = error.get(arangodb::StaticStrings::ErrorMessage).copyString();
+    }
+    return {errorNum, "got invalid response from server: HTTP " +
+                      itoa(response->getHttpReturnCode()) + ": " + errorMsg};
   }
   return {TRI_ERROR_NO_ERROR};
 }
@@ -104,22 +117,23 @@ arangodb::Result fileError(arangodb::ManagedDirectory::File* file,
 
 /// @brief start a batch via the replication API
 std::pair<arangodb::Result, uint64_t> startBatch(
-    arangodb::httpclient::SimpleHttpClient& client, std::string DBserver) {
+    arangodb::httpclient::SimpleHttpClient& client, std::string const& DBserver) {
   using arangodb::basics::VelocyPackHelper;
   using arangodb::basics::StringUtils::uint64;
 
-  static std::string const url = "/_api/replication/batch";
-  static std::string const body = "{\"ttl\":300}";
+  std::string url = "/_api/replication/batch?serverId=" + std::to_string(clientId);
+  std::string const body = "{\"ttl\":300}";
   std::string urlExt;
   if (!DBserver.empty()) {
-    urlExt = "?DBserver=" + DBserver;
+    url += "&DBserver=" + DBserver;
   }
 
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
-      client.request(arangodb::rest::RequestType::POST, url + urlExt,
+      client.request(arangodb::rest::RequestType::POST, url,
                      body.c_str(), body.size()));
   auto check = ::checkHttpResponse(client, response);
   if (check.fail()) {
+    LOG_TOPIC(ERR, arangodb::Logger::DUMP) << "An error occurred while creating dump context: " << check.errorMessage();
     return {check, 0};
   }
 
@@ -140,19 +154,18 @@ std::pair<arangodb::Result, uint64_t> startBatch(
 
 /// @brief prolongs a batch to ensure we can complete our dump
 void extendBatch(arangodb::httpclient::SimpleHttpClient& client,
-                 std::string DBserver, uint64_t batchId) {
+                 std::string const& DBserver, uint64_t batchId) {
   using arangodb::basics::StringUtils::itoa;
   TRI_ASSERT(batchId > 0);
 
-  std::string const url = "/_api/replication/batch/" + itoa(batchId);
-  static std::string const body = "{\"ttl\":300}";
-  std::string urlExt;
+  std::string url = "/_api/replication/batch/" + itoa(batchId) + "?serverId=" + std::to_string(clientId);
+  std::string const body = "{\"ttl\":300}";
   if (!DBserver.empty()) {
-    urlExt = "?DBserver=" + DBserver;
+    url += "&DBserver=" + DBserver;
   }
 
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
-      client.request(arangodb::rest::RequestType::PUT, url + urlExt,
+      client.request(arangodb::rest::RequestType::PUT, url,
                      body.c_str(), body.size()));
   // ignore any return value
 }
@@ -163,14 +176,13 @@ void endBatch(arangodb::httpclient::SimpleHttpClient& client,
   using arangodb::basics::StringUtils::itoa;
   TRI_ASSERT(batchId > 0);
 
-  std::string const url = "/_api/replication/batch/" + itoa(batchId);
-  std::string urlExt;
+  std::string url = "/_api/replication/batch/" + itoa(batchId) + "?serverId=" + std::to_string(clientId);
   if (!DBserver.empty()) {
-    urlExt = "?DBserver=" + DBserver;
+    url += "&DBserver=" + DBserver;
   }
 
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
-      client.request(arangodb::rest::RequestType::DELETE_REQ, url + urlExt,
+      client.request(arangodb::rest::RequestType::DELETE_REQ, url,
                      nullptr, 0));
   // ignore any return value
 
@@ -189,7 +201,7 @@ void flushWal(arangodb::httpclient::SimpleHttpClient& client) {
   if (check.fail()) {
     // TODO should we abort early here?
     LOG_TOPIC(ERR, arangodb::Logger::DUMP)
-        << "got invalid response from server: " + check.errorMessage();
+        << "Got invalid response from server when flushing WAL: " + check.errorMessage();
   }
 }
 
@@ -201,8 +213,8 @@ bool isIgnoredHiddenEnterpriseCollection(
         strncmp(name.c_str(), "_from_", 6) == 0 ||
         strncmp(name.c_str(), "_to_", 4) == 0) {
       LOG_TOPIC(INFO, arangodb::Logger::DUMP)
-          << "Dump ignoring collection " << name
-          << ". Will be created via SmartGraphs of a full dump. If you want to "
+          << "Dump is ignoring collection '" << name
+          << "'. Will be created via SmartGraphs of a full dump. If you want to "
              "dump this collection anyway use 'arangodump --force'. "
              "However this is not recommended and you should instead dump "
              "the EdgeCollection of the SmartGraph instead.";
@@ -211,6 +223,28 @@ bool isIgnoredHiddenEnterpriseCollection(
   }
 #endif
   return false;
+}
+
+arangodb::Result dumpJsonObjects(arangodb::DumpFeature::JobData& jobData,
+                                 arangodb::ManagedDirectory::File& file,
+                                 arangodb::basics::StringBuffer const& body) {
+  arangodb::basics::StringBuffer masked(1, false);
+  arangodb::basics::StringBuffer const* result = &body;
+
+  if (jobData.maskings != nullptr) {
+    jobData.maskings->mask(jobData.name, body, masked);
+    result = &masked;
+  }
+  
+  file.write(result->c_str(), result->length());
+
+  if (file.status().fail()) {
+    return {TRI_ERROR_CANNOT_WRITE_FILE};
+  } 
+
+  jobData.stats.totalWritten += static_cast<uint64_t>(result->length());
+
+  return {TRI_ERROR_NO_ERROR};
 }
 
 /// @brief dump the actual data from an individual collection
@@ -223,11 +257,12 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
   using arangodb::basics::StringUtils::boolean;
   using arangodb::basics::StringUtils::itoa;
   using arangodb::basics::StringUtils::uint64;
+  using arangodb::basics::StringUtils::urlEncode;
 
   uint64_t fromTick = minTick;
   uint64_t chunkSize =
       jobData.options.initialChunkSize;  // will grow adaptively up to max
-  std::string baseUrl = "/_api/replication/dump?collection=" + name +
+  std::string baseUrl = "/_api/replication/dump?collection=" + urlEncode(name) +
                         "&batchId=" + itoa(batchId) + "&ticks=false";
   if (jobData.options.clusterMode) {
     // we are in cluster mode, must specify dbserver
@@ -251,6 +286,7 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
         client.request(arangodb::rest::RequestType::GET, url, nullptr, 0));
     auto check = ::checkHttpResponse(client, response);
     if (check.fail()) {
+      LOG_TOPIC(ERR, arangodb::Logger::DUMP) << "An error occurred while dumping collection '" << name << "': " << check.errorMessage();
       return check;
     }
 
@@ -281,16 +317,15 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
     }
     if (!headerExtracted) {  // NOT else, fallthrough from outer or inner above
       return {TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-              "got invalid response server: required header is missing"};
+              std::string("got invalid response from server: required header is missing while dumping collection '") + name + "'"};
     }
 
     // now actually write retrieved data to dump file
     arangodb::basics::StringBuffer const& body = response->getBody();
-    file.write(body.c_str(), body.length());
-    if (file.status().fail()) {
-      return {TRI_ERROR_CANNOT_WRITE_FILE};
-    } else {
-      jobData.stats.totalWritten += (uint64_t)body.length();
+    arangodb::Result result = dumpJsonObjects(jobData, file, body);
+
+    if (result.fail()) {
+      return result;
     }
 
     if (!checkMore || fromTick == 0) {
@@ -383,6 +418,21 @@ arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& client,
 
   arangodb::Result result{TRI_ERROR_NO_ERROR};
 
+  bool dumpStructure = true;
+
+  if (dumpStructure && jobData.maskings != nullptr) {
+    dumpStructure = jobData.maskings->shouldDumpStructure(jobData.name);
+  }
+
+  if (!dumpStructure) {
+    if (jobData.options.progress) {
+      LOG_TOPIC(INFO, arangodb::Logger::DUMP)
+          << "# Dumping collection '" << jobData.name << "'...";
+    }
+
+    return result;
+  }
+
   // prep hex string of collection name
   std::string const hexString(
       arangodb::rest::SslInterface::sslMD5(jobData.name));
@@ -427,18 +477,26 @@ arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& client,
     }
   }
 
-  if (result.ok() && jobData.options.dumpData) {
-    // save the actual data
-    auto file = jobData.directory.writableFile(
-        jobData.name + "_" + hexString + ".data.json", true);
-    if (!::fileOk(file.get())) {
-      return ::fileError(file.get(), true);
+  if (result.ok()) {
+    bool dumpData = jobData.options.dumpData;
+
+    if (dumpData && jobData.maskings != nullptr) {
+      dumpData = jobData.maskings->shouldDumpData(jobData.name);
     }
 
-    if (jobData.options.clusterMode) {
-      result = ::handleCollectionCluster(client, jobData, *file);
-    } else {
-      result = ::handleCollection(client, jobData, *file);
+    if (dumpData) {
+      // save the actual data
+      auto file = jobData.directory.writableFile(
+          jobData.name + "_" + hexString + ".data.json", true);
+      if (!::fileOk(file.get())) {
+        return ::fileError(file.get(), true);
+      }
+
+      if (jobData.options.clusterMode) {
+        result = ::handleCollectionCluster(client, jobData, *file);
+      } else {
+        result = ::handleCollection(client, jobData, *file);
+      }
     }
   }
 
@@ -458,13 +516,14 @@ void handleJobResult(std::unique_ptr<arangodb::DumpFeature::JobData>&& jobData,
 namespace arangodb {
 
 DumpFeature::JobData::JobData(ManagedDirectory& dir, DumpFeature& feat,
-                              Options const& opts, Stats& stat,
-                              VPackSlice const& info, uint64_t const batch,
+                              Options const& opts, maskings::Maskings* maskings,
+                              Stats& stat, VPackSlice const& info, uint64_t const batch,
                               std::string const& c, std::string const& n,
                               std::string const& t)
     : directory{dir},
       feature{feat},
       options{opts},
+      maskings{maskings},
       stats{stat},
       collectionInfo{info},
       batchId{batch},
@@ -472,7 +531,7 @@ DumpFeature::JobData::JobData(ManagedDirectory& dir, DumpFeature& feat,
       name{n},
       type{t} {}
 
-DumpFeature::DumpFeature(application_features::ApplicationServer* server,
+DumpFeature::DumpFeature(application_features::ApplicationServer& server,
                          int& exitCode)
     : ApplicationFeature(server, DumpFeature::featureName()),
       _clientManager{Logger::DUMP},
@@ -530,7 +589,7 @@ void DumpFeature::collectOptions(
   options->addOption("--include-system-collections",
                      "include system collections",
                      new BooleanParameter(&_options.includeSystemCollections));
-
+  
   options->addOption("--output-directory", "output directory",
                      new StringParameter(&_options.outputPath));
 
@@ -545,6 +604,9 @@ void DumpFeature::collectOptions(
 
   options->addOption("--tick-end", "last tick to be included in data dump",
                      new UInt64Parameter(&_options.tickEnd));
+
+  options->addOption("--maskings", "file with maskings definition",
+                     new StringParameter(&_options.maskingsFile));
 }
 
 void DumpFeature::validateOptions(
@@ -613,6 +675,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
       client.request(rest::RequestType::GET, url, nullptr, 0));
   auto check = ::checkHttpResponse(client, response);
   if (check.fail()) {
+    LOG_TOPIC(ERR, arangodb::Logger::DUMP) << "An error occurred while fetching inventory: " << check.errorMessage();
     return check;
   }
 
@@ -633,7 +696,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
   if (!collections.isArray()) {
     return ::ErrorMalformedJsonResponse;
   }
-  
+
   // get the view list
   VPackSlice views = body.get("views");
   if (!views.isArray()) {
@@ -645,7 +708,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
   if (res.fail()) {
     return res;
   }
-  
+
   // Step 2. Store view definition files
   res = storeViews(views);
   if (res.fail()) {
@@ -705,11 +768,11 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
 
     // queue job to actually dump collection
     auto jobData = std::make_unique<JobData>(
-        *_directory, *this, _options, _stats, collection, batchId,
+        *_directory, *this, _options, _maskings.get(), _stats, collection, batchId,
         std::to_string(cid), name, collectionType);
     _clientTaskQueue.queueJob(std::move(jobData));
   }
-  
+
   // wait for all jobs to finish, then check for errors
   _clientTaskQueue.waitForIdle();
   {
@@ -733,6 +796,7 @@ Result DumpFeature::runClusterDump(httpclient::SimpleHttpClient& client,
       client.request(rest::RequestType::GET, url, nullptr, 0));
   auto check = ::checkHttpResponse(client, response);
   if (check.fail()) {
+    LOG_TOPIC(ERR, arangodb::Logger::DUMP) << "An error occurred while fetching inventory: " << check.errorMessage();
     return check;
   }
 
@@ -753,19 +817,19 @@ Result DumpFeature::runClusterDump(httpclient::SimpleHttpClient& client,
   if (!collections.isArray()) {
     return ::ErrorMalformedJsonResponse;
   }
-  
+
   // get the view list
   VPackSlice views = body.get("views");
   if (!views.isArray()) {
     views = VPackSlice::emptyArraySlice();
   }
-  
+
   // Step 1. Store view definition files
   Result res = storeDumpJson(body, dbname);
   if (res.fail()) {
     return res;
   }
-  
+
   // Step 2. Store view definition files
   res = storeViews(views);
   if (res.fail()) {
@@ -844,7 +908,7 @@ Result DumpFeature::runClusterDump(httpclient::SimpleHttpClient& client,
 
     // queue job to actually dump collection
     auto jobData = std::make_unique<JobData>(
-        *_directory, *this, _options, _stats, collection, 0 /* batchId */,
+        *_directory, *this, _options, _maskings.get(), _stats, collection, 0 /* batchId */,
         std::to_string(cid), name, "" /* collectionType */);
     _clientTaskQueue.queueJob(std::move(jobData));
   }
@@ -860,10 +924,10 @@ Result DumpFeature::runClusterDump(httpclient::SimpleHttpClient& client,
 
   return {TRI_ERROR_NO_ERROR};
 }
-  
+
 Result DumpFeature::storeDumpJson(VPackSlice const& body,
                                   std::string const& dbName) const {
-  
+
   // read the server's max tick value
   std::string const tickString =
   basics::VelocyPackHelper::getStringValue(body, "tick", "");
@@ -872,27 +936,20 @@ Result DumpFeature::storeDumpJson(VPackSlice const& body,
   }
   LOG_TOPIC(INFO, Logger::DUMP)
   << "Last tick provided by server is: " << tickString;
-  
-  // set the local max tick value
-  uint64_t maxTick = basics::StringUtils::uint64(tickString);
-  // check if the user specified a max tick value
-  if (_options.tickEnd > 0 && maxTick > _options.tickEnd) {
-    maxTick = _options.tickEnd;
-  }
-  
+
   try {
     VPackBuilder meta;
     meta.openObject();
     meta.add("database", VPackValue(dbName));
     meta.add("lastTickAtDumpStart", VPackValue(tickString));
     meta.close();
-    
+
     // save last tick in file
     auto file = _directory->writableFile("dump.json", true);
     if (!::fileOk(file.get())) {
       return ::fileError(file.get(), true);
     }
-    
+
     std::string const metaString = meta.slice().toJson();
     file->write(metaString.c_str(), metaString.size());
     if (file->status().fail()) {
@@ -907,14 +964,14 @@ Result DumpFeature::storeDumpJson(VPackSlice const& body,
   }
   return {};
 }
-  
+
 Result DumpFeature::storeViews(VPackSlice const& views) const {
   for (VPackSlice view : VPackArrayIterator(views)) {
     auto nameSlice = view.get(StaticStrings::DataSourceName);
     if (!nameSlice.isString() || nameSlice.getStringLength() == 0) {
       continue; // ignore
     }
-    
+
     try {
       std::string fname = nameSlice.copyString();
       fname.append(".view.json");
@@ -923,7 +980,7 @@ Result DumpFeature::storeViews(VPackSlice const& views) const {
       if (!::fileOk(file.get())) {
         return ::fileError(file.get(), true);
       }
-      
+
       std::string const viewString = view.toJson();
       file->write(viewString.c_str(), viewString.size());
       if (file->status().fail()) {
@@ -949,9 +1006,22 @@ void DumpFeature::reportError(Result const& error) {
   }
 }
 
-/// @brief main method to run dump
 void DumpFeature::start() {
+  if (!_options.maskingsFile.empty()) {
+    maskings::MaskingsResult m = maskings::Maskings::fromFile(_options.maskingsFile);
+
+    if (m.status != maskings::MaskingsResult::VALID) {
+      LOG_TOPIC(FATAL, Logger::CONFIG) << m.message;
+      FATAL_ERROR_EXIT();
+    }
+
+    _maskings = std::move(m.maskings);
+  }
+
   _exitCode = EXIT_SUCCESS;
+
+  // generate a fake client id that we sent to the server
+  ::clientId = RandomGenerator::interval(static_cast<uint64_t>(0x0000FFFFFFFFFFFFULL));
 
   double const start = TRI_microtime();
 
@@ -992,8 +1062,7 @@ void DumpFeature::start() {
   std::tie(result, _options.clusterMode) =
       _clientManager.getArangoIsCluster(*httpClient);
   if (result.fail()) {
-    LOG_TOPIC(FATAL, Logger::FIXME)
-        << "Error: could not detect ArangoDB instance type";
+    LOG_TOPIC(FATAL, arangodb::Logger::RESTORE) << "Error: could not detect ArangoDB instance type: " << result.errorMessage();
     FATAL_ERROR_EXIT();
   }
 
@@ -1025,9 +1094,12 @@ void DumpFeature::start() {
     } else {
       res = runClusterDump(*httpClient, dbName);
     }
+  } catch (basics::Exception const& ex) {
+    LOG_TOPIC(ERR, Logger::FIXME) << "caught exception: " << ex.what();
+    res = {ex.code(), ex.what()};
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, Logger::FIXME) << "caught exception: " << ex.what();
-    res = {TRI_ERROR_INTERNAL};
+    res = {TRI_ERROR_INTERNAL, ex.what()};
   } catch (...) {
     LOG_TOPIC(ERR, Logger::FIXME) << "caught unknown exception";
     res = {TRI_ERROR_INTERNAL};

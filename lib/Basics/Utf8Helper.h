@@ -26,6 +26,7 @@
 #define ARANGODB_BASICS_UTF8HELPER_H 1
 
 #include "Basics/Common.h"
+#include <velocypack/StringRef.h>
 
 #include <unicode/coll.h>
 #include <unicode/regex.h>
@@ -134,7 +135,7 @@ class Utf8Helper {
   /// @brief returns the words of a UTF-8 string.
   //////////////////////////////////////////////////////////////////////////////
 
-  bool tokenize(std::set<std::string>& words, std::string const& text,
+  bool tokenize(std::set<std::string>& words, arangodb::velocypack::StringRef const& text,
                 size_t minimalWordLength, size_t maximalWordLength,
                 bool lowerCase);
 

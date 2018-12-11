@@ -56,7 +56,6 @@ VstRequest::VstRequest(ConnectionInfo const& connectionInfo,
   _contentType = ContentType::VPACK;
   _contentTypeResponse = ContentType::VPACK;
   parseHeaderInformation();
-  _user = "root";
 }
 
 VPackSlice VstRequest::payload(VPackOptions const* options) {
@@ -121,8 +120,8 @@ void VstRequest::parseHeaderInformation() {
   
   try {
     TRI_ASSERT(vHeader.isArray());
-    int version = vHeader.at(0).getInt();  //version
-    int type = vHeader.at(1).getInt();  //type
+    auto version = vHeader.at(0).getInt();  //version
+    auto type = vHeader.at(1).getInt();  //type
     _databaseName = vHeader.at(2).copyString();                 // database
     _type = meta::toEnum<RequestType>(vHeader.at(3).getInt());  // request type
     _requestPath = vHeader.at(4).copyString();  // request (path)

@@ -51,7 +51,7 @@ class WaitGroup {
   // call done() when the event has finished.
   void add(unsigned int increment = 1) {
     assert(increment > 0);
-    std::lock_guard<std::mutex> lock(_mutex);
+    std::unique_lock<std::mutex> lock(_mutex);
     _counter += increment;
   }
 
@@ -61,6 +61,7 @@ class WaitGroup {
     std::unique_lock<std::mutex> lock(_mutex);
     _counter--;
     if (_counter == 0) {
+      //lock.unlock();
       _conditionVar.notify_all();
     }
   }

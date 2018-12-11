@@ -22,10 +22,10 @@
 
 #include "FinalPhase.h"
 
-using namespace arangodb;
-using namespace arangodb::application_features;
+namespace arangodb {
+namespace application_features {
 
-FinalFeaturePhase::FinalFeaturePhase(ApplicationServer* server)
+FinalFeaturePhase::FinalFeaturePhase(ApplicationServer& server)
     : ApplicationFeaturePhase(server, "FinalPhase") {
   setOptional(false);
   startsAfter("AgencyPhase");
@@ -34,3 +34,6 @@ FinalFeaturePhase::FinalFeaturePhase(ApplicationServer* server)
   startsAfter("Script");
   startsAfter("Shutdown");
 }
+
+} // application_features
+} // arangodb

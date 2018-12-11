@@ -181,13 +181,12 @@ void DatabaseManagerThread::run() {
         std::this_thread::sleep_for(std::chrono::microseconds(waitTime()));
 
         // The following is only necessary after a wait:
-        auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+        auto queryRegistry = QueryRegistryFeature::registry();
         if (queryRegistry != nullptr) {
           queryRegistry->expireQueries();
         }
-
-        auto engineRegistry
-          = TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY;
+        
+        auto engineRegistry = TraverserEngineRegistryFeature::registry();
         if (engineRegistry != nullptr) {
           engineRegistry->expireEngines();
         }
@@ -220,14 +219,15 @@ void DatabaseManagerThread::run() {
   }
 }
 
-DatabaseFeature::DatabaseFeature(ApplicationServer* server)
+DatabaseFeature::DatabaseFeature(
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "Database"),
       _maximalJournalSize(TRI_JOURNAL_DEFAULT_SIZE),
       _defaultWaitForSync(false),
       _forceSyncProperties(true),
       _ignoreDatafileErrors(false),
       _throwCollectionNotLoadedError(false),
-      _vocbase(nullptr),
       _databasesLists(new DatabasesLists()),
       _isInitiallyEmpty(false),
       _checkVersion(false),
@@ -240,7 +240,7 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
   startsAfter("EngineSelector");
   startsAfter("InitDatabase");
   startsAfter("StorageEngine");
-  
+
   DATABASE = nullptr;
 }
 
@@ -248,7 +248,7 @@ DatabaseFeature::~DatabaseFeature() {
   // clean up
   auto p = _databasesLists.load();
   delete p;
-  
+
   DATABASE = nullptr;
 }
 
@@ -260,33 +260,37 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "creating a collection",
                      new UInt64Parameter(&_maximalJournalSize));
 
-  options->addHiddenOption("--database.wait-for-sync",
-                           "default wait-for-sync behavior, can be overwritten "
-                           "when creating a collection",
-                           new BooleanParameter(&_defaultWaitForSync));
+  options->addOption("--database.wait-for-sync",
+                     "default wait-for-sync behavior, can be overwritten "
+                     "when creating a collection",
+                     new BooleanParameter(&_defaultWaitForSync),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption("--database.force-sync-properties",
-                           "force syncing of collection properties to disk, "
-                           "will use waitForSync value of collection when "
-                           "turned off",
-                           new BooleanParameter(&_forceSyncProperties));
+  options->addOption("--database.force-sync-properties",
+                     "force syncing of collection properties to disk, "
+                     "will use waitForSync value of collection when "
+                     "turned off",
+                     new BooleanParameter(&_forceSyncProperties),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption(
+  options->addOption(
       "--database.ignore-datafile-errors",
       "load collections even if datafiles may contain errors",
-      new BooleanParameter(&_ignoreDatafileErrors));
+      new BooleanParameter(&_ignoreDatafileErrors),
+      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption(
+  options->addOption(
       "--database.throw-collection-not-loaded-error",
       "throw an error when accessing a collection that is still loading",
-      new AtomicBooleanParameter(&_throwCollectionNotLoadedError));
+      new AtomicBooleanParameter(&_throwCollectionNotLoadedError),
+      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
   // the following option was removed in 3.2
   // index-creation is now automatically parallelized via the Boost ASIO thread pool
   options->addObsoleteOption(
       "--database.index-threads",
       "threads to start for parallel background index creation", true);
-  
+
   // the following hidden option was removed in 3.4
   options->addObsoleteOption(
       "--database.check-30-revisions",
@@ -315,8 +319,6 @@ void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 }
 
-void DatabaseFeature::prepare() {}
-
 void DatabaseFeature::start() {
   // set singleton
   DATABASE = this;
@@ -338,7 +340,7 @@ void DatabaseFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-  if (systemDatabase() == nullptr) {
+  if (!lookupDatabase(TRI_VOC_SYSTEM_DATABASE)) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "No _system database found in database directory. Cannot start!";
     FATAL_ERROR_EXIT();
@@ -392,10 +394,10 @@ void DatabaseFeature::stop() {
       continue;
     }
 
-    vocbase->processCollections([](LogicalCollection* collection) { 
+    vocbase->processCollections([](LogicalCollection* collection) {
       // no one else must modify the collection's status while we are in here
       collection->executeWhileStatusWriteLocked([collection]() {
-        collection->close(); 
+        collection->close();
       });
     }, true);
   }
@@ -471,7 +473,7 @@ void DatabaseFeature::recoveryDone() {
     if (vocbase->replicationApplier()) {
       ReplicationFeature* replicationFeature =
       static_cast<ReplicationFeature*>(ApplicationServer::lookupFeature("Replication"));
-      
+
       if (replicationFeature != nullptr) {
         replicationFeature->startApplier(vocbase);
       }
@@ -508,10 +510,10 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
     TRI_ASSERT(!ServerState::instance()->isCoordinator());
     id = TRI_NewTickServer();
   }
-  
+
   std::unique_ptr<TRI_vocbase_t> vocbase;
   VPackBuilder builder;
-  
+
   // create database in storage engine
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
@@ -532,13 +534,13 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
         return TRI_ERROR_ARANGO_DUPLICATE_NAME;
       }
     }
-    
+
     builder.openObject();
     builder.add("database", VPackValue(id));
     builder.add("id", VPackValue(std::to_string(id)));
     builder.add("name", VPackValue(name));
     builder.close();
-    
+
     // createDatabase must return a valid database or throw
     int status = TRI_ERROR_NO_ERROR;
     vocbase = engine->createDatabase(id, builder.slice(), status);
@@ -557,19 +559,19 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
         << vocbase->name() << "' failed: " << ex.what();
         return TRI_ERROR_INTERNAL;
       }
-      
+
       // enable deadlock detection
       vocbase->_deadlockDetector.enabled(!ServerState::instance()->isRunningInCluster());
-      
+
       // FIXME why do we not n this
       // create application directories
       V8DealerFeature* dealer =
       ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
       auto appPath = dealer->appPath();
-      
+
       // create app directory for database if it does not exist
       int res = createApplicationDirectory(name, appPath);
-      
+
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(res);
       }
@@ -620,7 +622,7 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
 
   result = vocbase.release();
   events::CreateDatabase(name, res);
-    
+
   if (DatabaseFeature::DATABASE != nullptr &&
       DatabaseFeature::DATABASE->versionTracker() != nullptr) {
     DatabaseFeature::DATABASE->versionTracker()->track("create database");
@@ -639,7 +641,7 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_voc_tick_t id = 0;
-  int res;
+  int res = TRI_ERROR_NO_ERROR;
   {
     MUTEX_LOCKER(mutexLocker, _databasesMutex);
 
@@ -650,19 +652,48 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
       newLists = new DatabasesLists(*oldLists);
 
       auto it = newLists->_databases.find(name);
+
       if (it == newLists->_databases.end()) {
         // not found
         delete newLists;
         events::DropDatabase(name, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
         return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
-      } else {
-        vocbase = it->second;
-        id = vocbase->id();
-        // mark as deleted
-
-        newLists->_databases.erase(it);
-        newLists->_droppedDatabases.insert(vocbase);
       }
+
+      vocbase = it->second;
+      id = vocbase->id();
+      // mark as deleted
+
+      // call LogicalDataSource::drop() to allow instances to clean up internal
+      // state (e.g. for LogicalView implementations)
+      TRI_vocbase_t::dataSourceVisitor visitor = [&res, &vocbase](
+          arangodb::LogicalDataSource& dataSource
+      )->bool {
+        // skip LogicalCollection since their internal state is always in the
+        // StorageEngine (optimization)
+        if (arangodb::LogicalCollection::category() == dataSource.category()) {
+          return true;
+        }
+
+        auto result = dataSource.drop();
+
+        if (!result.ok()) {
+          res = result.errorNumber();
+          LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+            << "failed to drop DataSource '" << dataSource.name() << "' while dropping database '" << vocbase->name() << "': " << result.errorNumber() << " " << result.errorMessage();
+        }
+
+        return true; // try next DataSource
+      };
+
+      vocbase->visitDataSources(visitor, true); // aquire a write lock to avoid potential deadlocks
+
+      if (TRI_ERROR_NO_ERROR != res) {
+        return res;
+      }
+
+      newLists->_databases.erase(it);
+      newLists->_droppedDatabases.insert(vocbase);
     } catch (...) {
       delete newLists;
       return TRI_ERROR_OUT_OF_MEMORY;
@@ -697,7 +728,7 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
   }
 
   events::DropDatabase(name, res);
-  
+
   if (DatabaseFeature::DATABASE != nullptr &&
       DatabaseFeature::DATABASE->versionTracker() != nullptr) {
     DatabaseFeature::DATABASE->versionTracker()->track("drop database");
@@ -725,7 +756,7 @@ int DatabaseFeature::dropDatabase(TRI_voc_tick_t id, bool waitForDeletion,
       }
     }
   }
-  
+
   if (name.empty()) {
     return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
   }
@@ -818,7 +849,7 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
 
 /// @brief return the list of all database names
 void DatabaseFeature::inventory(VPackBuilder& result,
-                                TRI_voc_tick_t maxTick, 
+                                TRI_voc_tick_t maxTick,
                                 std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter) {
   result.openObject();
   {
@@ -840,11 +871,6 @@ void DatabaseFeature::inventory(VPackBuilder& result,
     }
   }
   result.close();
-}
-
-void DatabaseFeature::useSystemDatabase() {
-  TRI_vocbase_t* result = useDatabase(TRI_VOC_SYSTEM_DATABASE);
-  TRI_ASSERT(result != nullptr);
 }
 
 TRI_vocbase_t* DatabaseFeature::useDatabase(std::string const& name) {
@@ -954,20 +980,18 @@ void DatabaseFeature::enumerateDatabases(
 }
 
 void DatabaseFeature::updateContexts() {
-  TRI_ASSERT(_vocbase != nullptr);
-
   V8DealerFeature* dealer =
   ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
+
   if (!dealer->isEnabled()) {
     return;
   }
 
-  useSystemDatabase();
+  auto* vocbase = useDatabase(TRI_VOC_SYSTEM_DATABASE);
+  TRI_ASSERT(vocbase);
 
-  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+  auto queryRegistry = QueryRegistryFeature::registry();
   TRI_ASSERT(queryRegistry != nullptr);
-
-  auto vocbase = _vocbase;
 
   dealer->defineContextUpdate(
       [queryRegistry, vocbase](v8::Isolate* isolate,
@@ -1117,7 +1141,7 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
 
   auto oldLists = _databasesLists.load();
   auto newLists = new DatabasesLists(*oldLists);
-  
+
   ServerState::RoleEnum role = arangodb::ServerState::instance()->getRole();
 
   try {
@@ -1131,9 +1155,9 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
         // ignore deleted databases here
         continue;
       }
-      
+
       std::string const databaseName = it.get("name").copyString();
-      
+
       // create app directory for database if it does not exist
       res = createApplicationDirectory(databaseName, appPath);
 
@@ -1154,12 +1178,6 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
           << database->name() << "' failed: " << ex.what();
           FATAL_ERROR_EXIT();
         }
-      }
-
-      if (databaseName == TRI_VOC_SYSTEM_DATABASE) {
-        // found the system database
-        TRI_ASSERT(_vocbase == nullptr);
-        _vocbase = database;
       }
 
       newLists->_databases.insert(std::make_pair(database->name(), database));

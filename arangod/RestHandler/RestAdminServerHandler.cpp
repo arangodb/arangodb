@@ -132,7 +132,6 @@ void RestAdminServerHandler::handleAvailability() {
     case ServerState::Mode::MAINTENANCE: 
     case ServerState::Mode::REDIRECT:
     case ServerState::Mode::TRYAGAIN: 
-    //case ServerState::Mode::READ_ONLY:
     case ServerState::Mode::INVALID:
       TRI_ASSERT(!available);
       break;
@@ -154,9 +153,14 @@ void RestAdminServerHandler::handleMode() {
   } else if (requestType == rest::RequestType::PUT) {
     
     AuthenticationFeature* af = AuthenticationFeature::instance();
-    if (af->isEnabled() && !_request->user().empty()) {
-      auth::Level lvl = af->userManager()->databaseAuthLevel(_request->user(),
-                                          TRI_VOC_SYSTEM_DATABASE, /*configured*/true);
+    if (af->isActive() && !_request->user().empty()) {
+      auth::Level lvl = auth::Level::NONE;
+      if (af->userManager() != nullptr) {
+        lvl = af->userManager()->databaseAuthLevel(_request->user(),
+                                                   TRI_VOC_SYSTEM_DATABASE, /*configured*/true);
+      } else {
+        lvl = auth::Level::RW;
+      }
       if (lvl < auth::Level::RW) {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
         return;

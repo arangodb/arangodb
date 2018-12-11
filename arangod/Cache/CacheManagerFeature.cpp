@@ -33,29 +33,32 @@
 #include "Basics/process-utils.h"
 #include "Cache/CacheManagerFeatureThreads.h"
 #include "Cache/Manager.h"
+#include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::cache;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
+namespace arangodb {
+
 Manager* CacheManagerFeature::MANAGER = nullptr;
 const uint64_t CacheManagerFeature::minRebalancingInterval = 500 * 1000;
 
 CacheManagerFeature::CacheManagerFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "CacheManager"),
       _manager(nullptr),
       _rebalancer(nullptr),
       _cacheSize((TRI_PhysicalMemory >= (static_cast<uint64_t>(4) << 30))
-                  ? static_cast<uint64_t>((TRI_PhysicalMemory - (static_cast<uint64_t>(2) << 30)) * 0.3)
+                  ? static_cast<uint64_t>((TRI_PhysicalMemory - (static_cast<uint64_t>(2) << 30)) * 0.25)
                   : (256 << 20)),
       _rebalancingInterval(static_cast<uint64_t>(2 * 1000 * 1000)) {
   setOptional(true);
@@ -69,7 +72,8 @@ void CacheManagerFeature::collectOptions(
   options->addSection("cache", "Configure the hash cache");
 
   options->addOption("--cache.size", "size of cache in bytes",
-                     new UInt64Parameter(&_cacheSize));
+                     new UInt64Parameter(&_cacheSize),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Dynamic));
 
   options->addOption("--cache.rebalancing-interval",
                      "microseconds between rebalancing attempts",
@@ -85,7 +89,7 @@ void CacheManagerFeature::validateOptions(
     FATAL_ERROR_EXIT();
   }
 
-  if (_cacheSize < (CacheManagerFeature::minRebalancingInterval)) {
+  if (_rebalancingInterval < (CacheManagerFeature::minRebalancingInterval)) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "invalid value for `--cache.rebalancing-interval', need at least "
         << (CacheManagerFeature::minRebalancingInterval);
@@ -94,9 +98,15 @@ void CacheManagerFeature::validateOptions(
 }
 
 void CacheManagerFeature::start() {
+  if (ServerState::instance()->isAgent()) {
+    // we intentionally do not activate the cache on an agency node, as it
+    // is not needed there
+    return;
+  }
+
   auto scheduler = SchedulerFeature::SCHEDULER;
   auto postFn = [scheduler](std::function<void()> fn) -> bool {
-    scheduler->post(fn);
+    scheduler->queue(RequestPriority::LOW, fn);
     return true;
   };
   _manager.reset(new Manager(postFn, _cacheSize));
@@ -121,3 +131,5 @@ void CacheManagerFeature::stop() {
 }
 
 void CacheManagerFeature::unprepare() { MANAGER = nullptr; }
+
+} // arangodb

@@ -33,13 +33,15 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/StorageEngine.h"
 
-using namespace arangodb;
 using namespace arangodb::options;
+
+namespace arangodb {
 
 StorageEngine* EngineSelectorFeature::ENGINE = nullptr;
 
 EngineSelectorFeature::EngineSelectorFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "EngineSelector"), 
       _engine("auto"), 
       _hasStarted(false) {
@@ -86,7 +88,6 @@ void EngineSelectorFeature::prepare() {
   TRI_ASSERT(_engine != "auto");
   
   if (ServerState::instance()->isCoordinator()) {
-    
     ClusterEngine* ce = application_features::ApplicationServer::getFeature<ClusterEngine>("ClusterEngine");
     ENGINE = ce;
 
@@ -146,6 +147,11 @@ void EngineSelectorFeature::start() {
 void EngineSelectorFeature::unprepare() {
   // unregister storage engine
   ENGINE = nullptr;
+  
+  if (ServerState::instance()->isCoordinator()) {
+    ClusterEngine* ce = application_features::ApplicationServer::getFeature<ClusterEngine>("ClusterEngine");
+    ce->setActualEngine(nullptr);
+  }
 }
 
 // return the names of all available storage engines
@@ -166,10 +172,20 @@ std::unordered_map<std::string, std::string> EngineSelectorFeature::availableEng
   };
 }
   
-char const* EngineSelectorFeature::engineName() {
+std::string const& EngineSelectorFeature::engineName() {
   return ENGINE->typeName();
 }
     
 std::string const& EngineSelectorFeature::defaultEngine() {
   return RocksDBEngine::EngineName;
 }
+
+bool EngineSelectorFeature::isMMFiles() {
+  return engineName() == MMFilesEngine::EngineName;
+}
+
+bool EngineSelectorFeature::isRocksDB() {
+  return engineName() == RocksDBEngine::EngineName;
+}
+
+} // arangodb

@@ -28,17 +28,16 @@
 #include "Basics/process-utils.h"
 
 namespace arangodb {
+
 class DaemonFeature final : public application_features::ApplicationFeature {
  public:
-  explicit DaemonFeature(application_features::ApplicationServer* server);
+  explicit DaemonFeature(application_features::ApplicationServer& server);
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void daemonize() override final;
   void unprepare() override final;
 
- public:
   void setDaemon(bool value) { _daemon = value; }
   static void remapStandardFileDescriptors();
 
@@ -56,6 +55,7 @@ class DaemonFeature final : public application_features::ApplicationFeature {
  private:
   std::string _current;
 };
+
 }
 
 #endif

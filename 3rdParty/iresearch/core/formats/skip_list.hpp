@@ -59,7 +59,10 @@ class IRESEARCH_API skip_writer: util::noncopyable {
   /// @param skip_0 skip interval for level 0
   /// @param skip_n skip interval for levels 1..n
   //////////////////////////////////////////////////////////////////////////////
-  skip_writer(size_t skip_0, size_t skip_n) NOEXCEPT;
+  skip_writer(
+    size_t skip_0,
+    size_t skip_n
+  ) NOEXCEPT;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @returns number of elements to skip at the 0 level
@@ -81,8 +84,14 @@ class IRESEARCH_API skip_writer: util::noncopyable {
   /// @param max_levels maximum number of levels in a skip-list
   /// @param count total number of elements to store in a skip-list
   /// @param write write function
+  /// @param alloc memory file allocator
   //////////////////////////////////////////////////////////////////////////////
-  void prepare(size_t max_levels, size_t count, const write_f& write = nop);
+  void prepare(
+    size_t max_levels,
+    size_t count,
+    const write_f& write = nop,
+    const memory_allocator& alloc = memory_allocator::global()
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief adds skip at the specified number of elements
@@ -99,7 +108,7 @@ class IRESEARCH_API skip_writer: util::noncopyable {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief resets skip reader internal state
   //////////////////////////////////////////////////////////////////////////////
-  void reset();
+  void reset() NOEXCEPT;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @returns true if skip_writer was succesfully prepared
@@ -112,10 +121,11 @@ class IRESEARCH_API skip_writer: util::noncopyable {
   static void nop(size_t, index_output&) { }
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
+
   std::vector<memory_output> levels_;
-  write_f write_; // write function
   size_t skip_0_; // skip interval for 0 level
   size_t skip_n_; // skip interval for 1..n levels
+  write_f write_; // write function
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // skip_writer
 
@@ -187,14 +197,21 @@ class IRESEARCH_API skip_reader: util::noncopyable {
 
  private:
   struct level final : public index_input {
-    level(index_input::ptr&& stream, size_t step, uint64_t begin, uint64_t end) NOEXCEPT;
-    level(const level& rhs);
+    level(
+      index_input::ptr&& stream,
+      size_t step,
+      uint64_t begin,
+      uint64_t end,
+      uint64_t child = 0,
+      size_t skipped = 0,
+      doc_id_t doc = type_limits<type_t::doc_id_t>::invalid()
+    ) NOEXCEPT;
     level(level&& rhs) NOEXCEPT;
 
-    ptr dup() const NOEXCEPT override;
+    ptr dup() const override;
     uint8_t read_byte() override;
     size_t read_bytes(byte_type* b, size_t count) override;
-    ptr reopen() const NOEXCEPT override;
+    ptr reopen() const override;
     size_t file_pointer() const override;
     size_t length() const override;
     bool eof() const override;

@@ -31,6 +31,7 @@
 #include <signal.h>
 #include <fstream>
 #include <iostream>
+#include <unicode/locid.h>
 
 #include "3rdParty/valgrind/valgrind.h"
 #include "unicode/normalizer2.h"
@@ -67,6 +68,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -100,9 +102,7 @@ TRI_Utf8ValueNFC::TRI_Utf8ValueNFC(v8::Handle<v8::Value> const obj)
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_Utf8ValueNFC::~TRI_Utf8ValueNFC() {
-  if (_str != nullptr) {
-    TRI_Free(_str);
-  }
+  TRI_Free(_str);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -171,13 +171,16 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
   char* content = TRI_SlurpFile(filename, &length);
 
   if (content == nullptr) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot load java script file '"
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot load JavaScript file '"
                                             << filename
                                             << "': " << TRI_last_error();
     return false;
   }
 
-  // detect shebang
+  auto guard = scopeGuard([&content] {
+    TRI_FreeString(content);
+  });
+  
   size_t bangOffset = 0;
   if (stripShebang) {
     if (strncmp(content, "#!", 2) == 0) {
@@ -192,13 +195,14 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
   }
 
   if (useGlobalContext) {
-    char const* prologue = "(function() { ";
-    char const* epilogue = "/* end-of-file */ })()";
+    constexpr char const* prologue = "(function() { ";
+    constexpr char const* epilogue = "/* end-of-file */ })()";
 
     char* contentWrapper = TRI_Concatenate3String(
         prologue, content + bangOffset, epilogue);
 
     TRI_FreeString(content);
+    content = nullptr;
 
     length += strlen(prologue) + strlen(epilogue);
     content = contentWrapper;
@@ -209,7 +213,7 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
 
   if (content == nullptr) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "cannot load java script file '" << filename
+        << "cannot load JavaScript file '" << filename
         << "': " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
     return false;
   }
@@ -217,8 +221,6 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
   v8::Handle<v8::String> name = TRI_V8_STRING(isolate, filename);
   v8::Handle<v8::String> source =
       TRI_V8_PAIR_STRING(isolate, content + bangOffset, (int)length);
-
-  TRI_FreeString(content);
 
   v8::TryCatch tryCatch;
 
@@ -231,7 +233,7 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
 
   // compilation failed, print errors that happened during compilation
   if (script.IsEmpty()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot load java script file '"
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot load JavaScript file '"
                                             << filename
                                             << "': compilation failed.";
     return false;
@@ -251,7 +253,7 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
     }
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "loaded java script file: '"
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "loaded JavaScript file: '"
                                             << filename << "'";
   return true;
 }
@@ -312,7 +314,7 @@ static void JS_Options(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   VPackBuilder builder =
-      ApplicationServer::server->options({"server.password"});
+      ApplicationServer::server->options({"server.password", "ldap.bindpasswd"});
   auto result = TRI_VPackToV8(isolate, builder.slice());
 
   TRI_V8_RETURN(result);
@@ -577,6 +579,9 @@ static std::string GetEndpointFromUrl(std::string const& url) {
 ///
 /// If @FA{outfile} is not specified, the result body will be returned in the
 /// @LIT{body} attribute of the result object.
+///
+/// `process-utils.js` depends on simple http client error messages.
+///   this needs to be adjusted if this is ever changed!
 ////////////////////////////////////////////////////////////////////////////////
 
 void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -1279,10 +1284,18 @@ static void JS_Getline(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
+#ifdef _WIN32
+  std::wstring wline;
+  _setmode(_fileno(stdin), _O_U16TEXT);
+  std::getline(std::wcin, wline);
+
+  TRI_V8_RETURN_STD_WSTRING(wline);
+#else
   std::string line;
   getline(std::cin, line);
 
   TRI_V8_RETURN_STD_STRING(line);
+#endif
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2259,7 +2272,8 @@ static void JS_CopyRecursive(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_SYS_ERROR, errMsg);
   }
 
-  if (!FileUtils::copyRecursive(source, destination, systemErrorStr)) {
+  std::function<bool(std::string const&)> const passAllFilter = [](std::string const&) { return false; };
+  if (!FileUtils::copyRecursive(source, destination, passAllFilter, systemErrorStr)) {
     std::string errMsg = "cannot copy directory [" + source + "] to [" +
                          destination + " ] : " + std::to_string(errorNo) +
                          ": " + systemErrorStr;
@@ -2637,10 +2651,20 @@ static void JS_Append(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("append(<filename>, <content>)");
   }
 
-  TRI_Utf8ValueNFC name(args[0]);
+#if _WIN32 // the wintendo needs utf16 filenames
+  v8::String::Value str(args[0]);
+  std::wstring name {
+    reinterpret_cast<wchar_t *>(*str),
+      static_cast<size_t>(str.length())};
+#else
+  TRI_Utf8ValueNFC str(args[0]);
+  std::string name(*str, str.length());
+#endif
+    
+  std::ofstream file;
 
-  if (*name == nullptr) {
-    TRI_V8_THROW_TYPE_ERROR("<filename> must be a string");
+  if (name.empty()) {
+    TRI_V8_THROW_TYPE_ERROR("<filename> must be a non-empty string");
   }
 
   if (args[1]->IsObject() && V8Buffer::hasInstance(isolate, args[1])) {
@@ -2653,9 +2677,7 @@ static void JS_Append(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                      "invalid <content> buffer value");
     }
 
-    std::ofstream file;
-
-    file.open(*name, std::ios::out | std::ios::binary | std::ios::app);
+    file.open(name, std::ios::out | std::ios::binary | std::ios::app);
 
     if (file.is_open()) {
       file.write(data, size);
@@ -2669,9 +2691,7 @@ static void JS_Append(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_TYPE_ERROR("<content> must be a string");
     }
 
-    std::ofstream file;
-
-    file.open(*name, std::ios::out | std::ios::binary | std::ios::app);
+    file.open(name, std::ios::out | std::ios::binary | std::ios::app);
 
     if (file.is_open()) {
       file.write(*content, content.length());
@@ -2695,10 +2715,16 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() < 2) {
     TRI_V8_THROW_EXCEPTION_USAGE("write(<filename>, <content>)");
   }
-
-  TRI_Utf8ValueNFC name(args[0]);
-
-  if (*name == nullptr) {
+#if _WIN32 // the wintendo needs utf16 filenames
+  v8::String::Value str(args[0]);
+  std::wstring name {
+    reinterpret_cast<wchar_t *>(*str),
+      static_cast<size_t>(str.length())};
+#else
+  TRI_Utf8ValueNFC str(args[0]);
+  std::string name(*str, str.length());
+#endif
+  if (name.length() == 0) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a string");
   }
 
@@ -2722,7 +2748,7 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
     errno = 0;
     // disable exceptions in the stream object:
     file.exceptions(std::ifstream::goodbit);
-    file.open(*name, std::ios::out | std::ios::binary);
+    file.open(name, std::ios::out | std::ios::binary);
 
     if (file.is_open() && file.good()) {
       file.write(data, size);
@@ -2752,7 +2778,7 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
     errno = 0;
     // disable exceptions in the stream object:
     file.exceptions(std::ifstream::goodbit);
-    file.open(*name, std::ios::out | std::ios::binary);
+    file.open(name, std::ios::out | std::ios::binary);
 
     if (file.is_open() && file.good()) {
       file << *content;
@@ -3594,6 +3620,38 @@ static void convertStatusToV8(v8::FunctionCallbackInfo<v8::Value> const& args,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief lists all running external processes
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_GetExternalSpawned(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  // extract the arguments
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("getExternalSpawned()");
+  }
+
+  v8::Handle<v8::Array> spawnedProcesses =
+      v8::Array::New(isolate, static_cast<int>(ExternalProcesses.size()));
+
+  uint32_t i = 0;
+  for (auto const& process : ExternalProcesses) {
+    v8::Handle<v8::Object> oneProcess = v8::Object::New(isolate);
+    ExternalId external;
+    external._pid = process->_pid;
+    auto external_status = TRI_CheckExternalProcess(external, false);
+    convertStatusToV8(args, oneProcess, external_status, external);
+    spawnedProcesses->Set(i, oneProcess);
+    i++;
+  }
+
+  TRI_V8_RETURN(spawnedProcesses);
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a external program
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4157,7 +4215,7 @@ static void JS_SplitWordlist(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::set<std::string> wordList;
 
   if (!Utf8Helper::DefaultUtf8Helper.tokenize(
-          wordList, stringToTokenize, minLength, maxLength, lowerCase)) {
+          wordList, arangodb::velocypack::StringRef(stringToTokenize), minLength, maxLength, lowerCase)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "SplitWordlist failed!");
   }
 
@@ -4770,6 +4828,11 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_SPLIT_WORDS_ICU"),
                                JS_SplitWordlist);
+
+
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYS_GET_EXTERNAL_SPAWNED"),
+                               JS_GetExternalSpawned);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_KILL_EXTERNAL"),
                                JS_KillExternal);
@@ -4873,10 +4936,6 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalVariableVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "PATH_SEPARATOR"),
                                TRI_V8_ASCII_STRING(isolate, TRI_DIR_SEPARATOR_STR));
-
-  TRI_AddGlobalVariableVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "VALGRIND"),
-      v8::Boolean::New(isolate, (RUNNING_ON_VALGRIND > 0)));
 
 #ifdef COVERAGE
   TRI_AddGlobalVariableVocbase(

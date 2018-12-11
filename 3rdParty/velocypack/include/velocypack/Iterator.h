@@ -42,7 +42,7 @@ class ArrayIterator {
  public:
   ArrayIterator() = delete;
 
-  explicit ArrayIterator(Slice const& slice)
+  explicit ArrayIterator(Slice slice)
       : _slice(slice), _size(_slice.length()), _position(0), _current(nullptr) { 
     if (slice.type() != ValueType::Array) {
       throw Exception(Exception::InvalidValueType, "Expecting Array slice");
@@ -50,11 +50,8 @@ class ArrayIterator {
     reset();
   }
 
-  ArrayIterator(ArrayIterator const& other) noexcept
-      : _slice(other._slice),
-        _size(other._size),
-        _position(other._position),
-        _current(other._current) {}
+  ArrayIterator(ArrayIterator const& other) noexcept = default;
+  ArrayIterator(ArrayIterator&& other) noexcept = default;
 
   ArrayIterator& operator=(ArrayIterator const& other) = delete;
   ArrayIterator& operator=(ArrayIterator&& other) = default;
@@ -176,7 +173,7 @@ class ArrayIterator {
 class ObjectIterator {
  public:
   struct ObjectPair {
-    ObjectPair(Slice const& key, Slice const& value) : key(key), value(value) {}
+    ObjectPair(Slice key, Slice value) : key(key), value(value) {}
     Slice const key;
     Slice const value;
   };
@@ -186,7 +183,7 @@ class ObjectIterator {
   // The useSequentialIteration flag indicates whether or not the iteration
   // simply jumps from key/value pair to key/value pair without using the
   // index. The default `false` is to use the index if it is there.
-  explicit ObjectIterator(Slice const& slice, bool useSequentialIteration = false)
+  explicit ObjectIterator(Slice slice, bool useSequentialIteration = false)
       : _slice(slice), _size(_slice.length()), _position(0), _current(nullptr),
         _useSequentialIteration(useSequentialIteration) {
     if (!slice.isObject()) {
@@ -204,12 +201,8 @@ class ObjectIterator {
     }
   }
 
-  ObjectIterator(ObjectIterator const& other) noexcept
-      : _slice(other._slice),
-        _size(other._size),
-        _position(other._position),
-        _current(other._current),
-        _useSequentialIteration(other._useSequentialIteration) {}
+  ObjectIterator(ObjectIterator const& other) noexcept = default;
+  ObjectIterator(ObjectIterator&& other) noexcept = default;
 
   ObjectIterator& operator=(ObjectIterator const& other) = delete;
   ObjectIterator& operator=(ObjectIterator&& other) = default;
@@ -274,7 +267,7 @@ class ObjectIterator {
   inline bool valid() const noexcept { return (_position < _size); }
 
   inline Slice key(bool translate = true) const {
-    if (_position >= _size) {
+    if (VELOCYPACK_UNLIKELY(_position >= _size)) {
       throw Exception(Exception::IndexOutOfBounds);
     }
     if (_current != nullptr) {
@@ -285,7 +278,7 @@ class ObjectIterator {
   }
 
   inline Slice value() const {
-    if (_position >= _size) {
+    if (VELOCYPACK_UNLIKELY(_position >= _size)) {
       throw Exception(Exception::IndexOutOfBounds);
     }
     if (_current != nullptr) {

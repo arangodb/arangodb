@@ -109,23 +109,21 @@ LogicalCollection* Collections::Context::coll() const { return &_coll; }
 
 void Collections::enumerate(
     TRI_vocbase_t* vocbase,
-    std::function<void(LogicalCollection&)> const& func) {
+    std::function<void(std::shared_ptr<LogicalCollection> const&)> const& func
+) {
   if (ServerState::instance()->isCoordinator()) {
     std::vector<std::shared_ptr<LogicalCollection>> colls =
         ClusterInfo::instance()->getCollections(vocbase->name());
 
     for (std::shared_ptr<LogicalCollection> const& c : colls) {
       if (!c->deleted()) {
-        func(*c);
+        func(c);
       }
     }
   } else {
-    std::vector<arangodb::LogicalCollection*> colls =
-        vocbase->collections(false);
-
-    for (LogicalCollection* c : colls) {
+    for (auto& c: vocbase->collections(false)) {
       if (!c->deleted()) {
-        func(*c);
+        func(c);
       }
     }
   }
@@ -142,20 +140,22 @@ Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
 
   if (ServerState::instance()->isCoordinator()) {
     try {
-      auto coll = ClusterInfo::instance()->getCollection(vocbase->name(), name);
-
-      // check authentication after ensuring the collection exists
-      if (exec != nullptr &&
-          !exec->canUseCollection(vocbase->name(), coll->name(),
-                                  auth::Level::RO)) {
-        return Result(TRI_ERROR_FORBIDDEN,
-                      "No access to collection '" + name + "'");
-      }
+      auto coll = ClusterInfo::instance()->getCollectionNT(vocbase->name(), name);
 
       if (coll) {
-        func(*coll);
+        // check authentication after ensuring the collection exists
+        if (exec != nullptr &&
+            !exec->canUseCollection(vocbase->name(), coll->name(),
+                                  auth::Level::RO)) {
+          return Result(TRI_ERROR_FORBIDDEN,
+                        "No access to collection '" + name + "'");
+        }
+
+        func(coll);
 
         return Result();
+      } else {
+        return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
       }
     } catch (basics::Exception const& ex) {
       return Result(ex.code(), ex.what());
@@ -179,7 +179,7 @@ Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
                     "No access to collection '" + name + "'");
     }
     try {
-      func(*coll);
+      func(coll);
     } catch (basics::Exception const& ex) {
       return Result(ex.code(), ex.what());
     } catch (std::exception const& ex) {
@@ -211,8 +211,6 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
     if (!exec->canUseDatabase(vocbase->name(), auth::Level::RW)) {
       return Result(TRI_ERROR_FORBIDDEN,
                     "cannot create collection in " + vocbase->name());
-    } else if (!exec->isSuperuser() && ServerState::readOnly()) {
-      return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
     }
   }
 
@@ -268,16 +266,31 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
       if (name[0] != '_' && um != nullptr && exe != nullptr &&
           !exe->isSuperuser()) {
         // this should not fail, we can not get here without database RW access
-        um->updateUser(ExecContext::CURRENT->user(), [&](auth::User& entry) {
-          entry.grantCollection(vocbase->name(), name, auth::Level::RW);
-          return TRI_ERROR_NO_ERROR;
-        });
+        // however, there may be races for updating the users account, so we try a
+        // few times in case of a conflict
+        int tries = 0;
+        while (true) {
+          Result r = um->updateUser(ExecContext::CURRENT->user(), [&](auth::User& entry) {
+            entry.grantCollection(vocbase->name(), name, auth::Level::RW);
+            return TRI_ERROR_NO_ERROR;
+          });
+          if (r.ok() || r.is(TRI_ERROR_USER_NOT_FOUND)) {
+            // it seems to be allowed to created collections with an unknown user
+            break;
+          }
+          if (!r.is(TRI_ERROR_ARANGO_CONFLICT) || ++tries == 10) {
+            LOG_TOPIC(WARN, Logger::FIXME) << "Updating user failed with error: " << r.errorMessage() << ". giving up!";
+            return r;
+          }
+          // try again in case of conflict
+          LOG_TOPIC(TRACE, Logger::FIXME) << "Updating user failed with error: " << r.errorMessage() << ". trying again";
+        }
       }
 
       // reload otherwise collection might not be in yet
-      func(*col);
+      func(col);
     } else {
-      arangodb::LogicalCollection* col = vocbase->createCollection(infoSlice);
+      auto col = vocbase->createCollection(infoSlice);
       TRI_ASSERT(col != nullptr);
 
       // do not grant rights on system collections
@@ -287,13 +300,28 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
       if (name[0] != '_' && um != nullptr && exe != nullptr &&
           !exe->isSuperuser()) {
         // this should not fail, we can not get here without database RW access
-        um->updateUser(ExecContext::CURRENT->user(), [&](auth::User& u) {
-          u.grantCollection(vocbase->name(), name, auth::Level::RW);
-          return TRI_ERROR_NO_ERROR;
-        });
+        // however, there may be races for updating the users account, so we try a
+        // few times in case of a conflict
+        int tries = 0;
+        while (true) {
+          Result r = um->updateUser(ExecContext::CURRENT->user(), [&](auth::User& entry) {
+            entry.grantCollection(vocbase->name(), name, auth::Level::RW);
+            return TRI_ERROR_NO_ERROR;
+          });
+          if (r.ok() || r.is(TRI_ERROR_USER_NOT_FOUND)) {
+            // it seems to be allowed to created collections with an unknown user
+            break;
+          }
+          if (!r.is(TRI_ERROR_ARANGO_CONFLICT) || ++tries == 10) {
+            LOG_TOPIC(WARN, Logger::FIXME) << "Updating user failed with error: " << r.errorMessage() << ". giving up!";
+            return r;
+          }
+          // try again in case of conflict
+          LOG_TOPIC(TRACE, Logger::FIXME) << "Updating user failed with error: " << r.errorMessage() << ". trying again";
+        }
       }
 
-      func(*col);
+      func(col);
     }
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
@@ -386,32 +414,34 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
   return TRI_ERROR_NO_ERROR;
 }
 
-Result Collections::updateProperties(LogicalCollection* coll,
-                                     VPackSlice const& props) {
+Result Collections::updateProperties(
+    LogicalCollection& collection,
+    velocypack::Slice const& props,
+    bool partialUpdate
+) {
   ExecContext const* exec = ExecContext::CURRENT;
+
   if (exec != nullptr) {
-    bool canModify = exec->canUseCollection(coll->name(), auth::Level::RW);
+    bool canModify = exec->canUseCollection(collection.name(), auth::Level::RW);
+
     if ((exec->databaseAuthLevel() != auth::Level::RW || !canModify)) {
       return TRI_ERROR_FORBIDDEN;
-    } else if (!exec->isSuperuser() && ServerState::readOnly()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
-                                     "server is in read-only mode");
     }
   }
 
   if (ServerState::instance()->isCoordinator()) {
     ClusterInfo* ci = ClusterInfo::instance();
+    auto info = ci->getCollection(
+      collection.vocbase().name(), std::to_string(collection.id())
+    );
 
-    TRI_ASSERT(coll);
-
-    auto info =
-        ci->getCollection(coll->vocbase().name(), std::to_string(coll->id()));
-
-    return info->updateProperties(props, false);
+    return info->properties(props, partialUpdate);
   } else {
     auto ctx =
-        transaction::V8Context::CreateWhenRequired(coll->vocbase(), false);
-    SingleCollectionTransaction trx(ctx, *coll, AccessMode::Type::EXCLUSIVE);
+      transaction::V8Context::CreateWhenRequired(collection.vocbase(), false);
+    SingleCollectionTransaction trx(
+      ctx, collection, AccessMode::Type::EXCLUSIVE
+    );
     Result res = trx.begin();
 
     if (!res.ok()) {
@@ -419,15 +449,15 @@ Result Collections::updateProperties(LogicalCollection* coll,
     }
 
     // try to write new parameter to file
-    bool doSync = DatabaseFeature::DATABASE->forceSyncProperties();
-    arangodb::Result updateRes = coll->updateProperties(props, doSync);
+    auto updateRes = collection.properties(props, partialUpdate);
 
     if (!updateRes.ok()) {
       return updateRes;
     }
 
-    auto physical = coll->getPhysical();
+    auto physical = collection.getPhysical();
     TRI_ASSERT(physical != nullptr);
+
     return physical->persistProperties();
   }
 }
@@ -468,8 +498,11 @@ static int RenameGraphCollections(TRI_vocbase_t* vocbase,
   return TRI_ERROR_NO_ERROR;
 }
 
-Result Collections::rename(LogicalCollection* coll, std::string const& newName,
-                           bool doOverride) {
+Result Collections::rename(
+    LogicalCollection& collection,
+    std::string const& newName,
+    bool doOverride
+) {
   if (ServerState::instance()->isCoordinator()) {
     // renaming a collection in a cluster is unsupported
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
@@ -482,20 +515,46 @@ Result Collections::rename(LogicalCollection* coll, std::string const& newName,
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
     if (!exec->canUseDatabase(auth::Level::RW) ||
-        !exec->canUseCollection(coll->name(), auth::Level::RW)) {
+        !exec->canUseCollection(collection.name(), auth::Level::RW)) {
       return TRI_ERROR_FORBIDDEN;
     }
   }
 
-  std::string const oldName(coll->name());
-  int res = coll->vocbase().renameCollection(coll, newName, doOverride);
+  // check required to pass shell-collection-rocksdb-noncluster.js::testSystemSpecial
+  if (collection.system()) {
+    return TRI_set_errno(TRI_ERROR_FORBIDDEN);
+  }
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    return Result(res, "cannot rename collection");
+  if (!doOverride) {
+    auto isSystem = TRI_vocbase_t::IsSystemName(collection.name());
+
+    if (isSystem && !TRI_vocbase_t::IsSystemName(newName)) {
+      // a system collection shall not be renamed to a non-system collection name
+      return arangodb::Result(
+        TRI_ERROR_ARANGO_ILLEGAL_NAME,
+        "a system collection shall not be renamed to a non-system collection name"
+      );
+    } else if (!isSystem && TRI_vocbase_t::IsSystemName(newName)) {
+      return arangodb::Result(
+        TRI_ERROR_ARANGO_ILLEGAL_NAME,
+        "a non-system collection shall not be renamed to a system collection name"
+      );
+    }
+
+    if (!TRI_vocbase_t::IsAllowedName(isSystem, arangodb::velocypack::StringRef(newName))) {
+      return TRI_ERROR_ARANGO_ILLEGAL_NAME;
+    }
+  }
+
+  std::string const oldName(collection.name());
+  auto res = collection.vocbase().renameCollection(collection.id(), newName);
+
+  if (!res.ok()) {
+    return res;
   }
 
   // rename collection inside _graphs as well
-  return RenameGraphCollections(&(coll->vocbase()), oldName, newName);
+  return RenameGraphCollections(&(collection.vocbase()), oldName, newName);
 }
 
 #ifndef USE_ENTERPRISE
@@ -515,7 +574,7 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
   ClusterInfo* ci = ClusterInfo::instance();
   std::string errorMsg;
 
-  int res = ci->dropCollectionCoordinator(databaseName, cid, errorMsg, 120.0);
+  int res = ci->dropCollectionCoordinator(databaseName, cid, errorMsg, 300.0);
   if (res != TRI_ERROR_NO_ERROR) {
     return Result(res, errorMsg);
   }
@@ -533,14 +592,11 @@ Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
         !exec->canUseCollection(coll->name(), auth::Level::RW)) {
       return Result(TRI_ERROR_FORBIDDEN,
                     "Insufficient rights to drop collection " + coll->name());
-    } else if (!exec->isSuperuser() && ServerState::readOnly()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
-                                     "server is in read-only mode");
     }
   }
 
   TRI_ASSERT(coll);
-  auto& dbname = coll->vocbase().name();
+  auto const& dbname = coll->vocbase().name();
   std::string const collName = coll->name();
 
   Result res;
@@ -563,9 +619,23 @@ Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
 
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (res.ok() && um != nullptr) {
-    um->enumerateUsers([&](auth::User& entry) -> bool {
-      return entry.removeCollection(dbname, collName);
-    });
+    int tries = 0;
+    while (true) {
+      res = um->enumerateUsers([&](auth::User& entry) -> bool {
+        return entry.removeCollection(dbname, collName);
+      });
+
+      if (res.ok() || !res.is(TRI_ERROR_ARANGO_CONFLICT)) {
+        break;
+      }
+      
+      if (++tries == 10) {
+        LOG_TOPIC(WARN, Logger::FIXME) << "Enumerating users failed with " << res.errorMessage() << ". giving up!";
+        break;
+      }
+      // try again in case of conflict
+      LOG_TOPIC(TRACE, Logger::FIXME) << "Enumerating users failed with error: " << res.errorMessage() << ". trying again";
+    }
   }
   return res;
 }
@@ -573,15 +643,12 @@ Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
 Result Collections::warmup(TRI_vocbase_t& vocbase,
                            LogicalCollection const& coll) {
   ExecContext const* exec = ExecContext::CURRENT;  // disallow expensive ops
-
-  if (!exec->isSuperuser() && ServerState::readOnly()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
-                                   "server is in read-only mode");
+  if (exec != nullptr && !exec->canUseCollection(coll.name(), auth::Level::RO)) {
+    return Result(TRI_ERROR_FORBIDDEN);
   }
 
   if (ServerState::instance()->isCoordinator()) {
     auto cid = std::to_string(coll.id());
-
     return warmupOnCoordinator(vocbase.name(), cid);
   }
 
@@ -595,7 +662,7 @@ Result Collections::warmup(TRI_vocbase_t& vocbase,
 
   auto idxs = coll.getIndexes();
   auto poster = [](std::function<void()> fn) -> void {
-    SchedulerFeature::SCHEDULER->post(fn);
+    SchedulerFeature::SCHEDULER->queue(RequestPriority::LOW, fn);
   };
   auto queue = std::make_shared<basics::LocalTaskQueue>(poster);
 
@@ -641,7 +708,7 @@ Result Collections::revisionId(Context& ctxt, TRI_voc_rid_t& rid) {
     arangodb::aql::Query query(false, vocbase, aql::QueryString(q), binds,
                                std::make_shared<VPackBuilder>(),
                                arangodb::aql::PART_MAIN);
-    auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+    auto queryRegistry = QueryRegistryFeature::registry();
     TRI_ASSERT(queryRegistry != nullptr);
     aql::QueryResult queryResult = query.executeSync(queryRegistry);
 

@@ -126,31 +126,6 @@ let appendHeaders = function(appender, headers) {
   };
 
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief rebuilds the routing cache
-  // //////////////////////////////////////////////////////////////////////////////
-
-  exports.routingCache = function () {
-    if (exports.arango) {
-      return exports.arango.GET('/_admin/routing/routes', null);
-    }
-
-    throw 'not connected';
-  };
-
-  // //////////////////////////////////////////////////////////////////////////////
-  // / @brief rebuilds the authentication cache
-  // //////////////////////////////////////////////////////////////////////////////
-
-  exports.reloadAuth = function () {
-    if (exports.arango) {
-      exports.arango.POST('/_admin/auth/reload', null);
-      return;
-    }
-
-    throw 'not connected';
-  };
-
-  // //////////////////////////////////////////////////////////////////////////////
   // / @brief logs a request in curl format
   // //////////////////////////////////////////////////////////////////////////////
 
@@ -158,12 +133,17 @@ let appendHeaders = function(appender, headers) {
     return function (method, url, body, headers) {
       var response;
       var curl;
-      var i;
       var jsonBody = false;
 
       if ((typeof body !== 'string') && (body !== undefined)) {
         jsonBody = true;
         body = exports.inspect(body);
+      }
+      if (headers === undefined || headers === null || headers === '') {
+        headers = {};
+      }
+      if (!headers.hasOwnProperty('Accept') && !headers.hasOwnProperty('accept')) {
+        headers['accept'] = 'application/json';
       }
 
       curl = 'shell> curl ';
@@ -185,12 +165,12 @@ let appendHeaders = function(appender, headers) {
       } else if (method === 'HEAD') {
         response = exports.arango.HEAD_RAW(url, headers);
         curl += '-X ' + method + ' ';
-      } else if (method === 'OPTION') {
+      } else if (method === 'OPTION' || method === 'OPTIONS') {
         response = exports.arango.OPTION_RAW(url, body, headers);
         curl += '-X ' + method + ' ';
       }
       if (headers !== undefined && headers !== '') {
-        for (i in headers) {
+        for (let i in headers) {
           if (headers.hasOwnProperty(i)) {
             curl += "--header '" + i + ': ' + headers[i] + "' ";
           }

@@ -40,7 +40,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Graph/GraphManager.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
@@ -166,7 +165,7 @@ const std::shared_ptr<const Graph> GraphCache::getGraph(
     CacheType::iterator it;
     bool insertSuccess;
     std::tie(it, insertSuccess) =
-        _cache.emplace(name, std::make_pair(now, graph));
+        _cache.insert({name, std::make_pair(now, graph)});
 
     if (!insertSuccess) {
       it->second.first = now;

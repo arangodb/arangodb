@@ -25,7 +25,9 @@
 #include "Aql/Function.h"
 #include "Aql/Parser.h"
 #include "Aql/Quantifier.h"
+#include "Aql/Query.h"
 #include "Basics/tri-strings.h"
+#include "Transaction/Context.h"
 #include "VocBase/AccessMode.h"
 %}
 
@@ -62,38 +64,55 @@ void Aqlerror(YYLTYPE* locp,
 
 /// @brief check if any of the variables used in the INTO expression were
 /// introduced by the COLLECT itself, in which case it would fail
-static Variable const* CheckIntoVariables(AstNode const* collectVars,
-                                          std::unordered_set<Variable const*> const& vars) {
-  if (collectVars == nullptr || collectVars->type != NODE_TYPE_ARRAY) {
-    return nullptr;
+static void CheckIntoVariables(Parser* parser, AstNode const* expression,
+                               int line, int column,
+                               std::unordered_set<Variable const*> const& variablesIntroduced) {
+  if (expression == nullptr) {
+    return;
   }
+  
+  std::unordered_set<Variable const*> varsInAssignment;
+  Ast::getReferencedVariables(expression, varsInAssignment);
 
-  size_t const n = collectVars->numMembers();
-  for (size_t i = 0; i < n; ++i) {
-    auto member = collectVars->getMember(i);
-
-    if (member != nullptr) {
-      TRI_ASSERT(member->type == NODE_TYPE_ASSIGN);
-      auto v = static_cast<Variable*>(member->getMember(0)->getData());
-      if (vars.find(v) != vars.end()) {
-        return v;
-      }
+  for (auto const& it : varsInAssignment) {
+    if (variablesIntroduced.find(it) != variablesIntroduced.end()) {
+      std::string msg("use of COLLECT variable '" + it->name + "' inside same COLLECT's INTO expression");
+      parser->registerParseError(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN, msg.c_str(), it->name.c_str(), line, column);
+      return;
     }
   }
-
-  return nullptr;
 }
 
 /// @brief register variables in the scope
-static void RegisterAssignVariables(arangodb::aql::Scopes* scopes, AstNode const* vars) { 
+static void RegisterAssignVariables(Parser* parser, arangodb::aql::Scopes* scopes, 
+                                    int line, int column,
+                                    std::unordered_set<Variable const*>& variablesIntroduced, 
+                                    AstNode const* vars) {
+  std::unordered_set<Variable const*> varsInAssignment;
+   
   size_t const n = vars->numMembers();
+
   for (size_t i = 0; i < n; ++i) {
-    auto member = vars->getMember(i);
+    auto member = vars->getMemberUnchecked(i);
 
     if (member != nullptr) {
       TRI_ASSERT(member->type == NODE_TYPE_ASSIGN);
+      // check if any of the assignment refers to a variable introduced by this very
+      // same COLLECT, e.g. COLLECT aggregate x = .., y = x 
+      varsInAssignment.clear();
+      Ast::getReferencedVariables(member->getMember(1), varsInAssignment);
+      for (auto const& it : varsInAssignment) {
+        if (variablesIntroduced.find(it) != variablesIntroduced.end()) {
+          std::string msg("use of COLLECT variable '" + it->name + "' inside same COLLECT");
+          parser->registerParseError(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN, msg.c_str(), it->name.c_str(), line, column);
+          return;
+        }
+      }
+
+      // keep track of the variable for our assignment
       auto v = static_cast<Variable*>(member->getMember(0)->getData());
       scopes->addVariable(v);
+      variablesIntroduced.emplace(v);
     }
   }
 }
@@ -103,10 +122,11 @@ static bool ValidateAggregates(Parser* parser, AstNode const* aggregates) {
   size_t const n = aggregates->numMembers();
 
   for (size_t i = 0; i < n; ++i) {
-    auto member = aggregates->getMember(i);
+    auto member = aggregates->getMemberUnchecked(i);
 
     if (member != nullptr) {
       TRI_ASSERT(member->type == NODE_TYPE_ASSIGN);
+      
       auto func = member->getMember(1);
 
       bool isValid = true;
@@ -122,7 +142,7 @@ static bool ValidateAggregates(Parser* parser, AstNode const* aggregates) {
         }
       }
 
-      if (! isValid) {
+      if (!isValid) {
         parser->registerError(TRI_ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION);
         return false;
       }
@@ -196,8 +216,6 @@ static AstNode const* GetIntoExpression(AstNode const* node) {
 %token T_WITH "WITH keyword"
 %token T_INTO "INTO keyword"
 %token T_AGGREGATE "AGGREGATE keyword"
-
-%token T_VIEW "VIEW keyword"
 
 %token T_GRAPH "GRAPH keyword"
 %token T_SHORTEST_PATH "SHORTEST_PATH keyword"
@@ -321,6 +339,7 @@ static AstNode const* GetIntoExpression(AstNode const* node) {
 %type <node> array;
 %type <node> optional_array_elements;
 %type <node> array_elements_list;
+%type <node> for_options;
 %type <node> object;
 %type <node> options;
 %type <node> optional_object_elements;
@@ -338,8 +357,8 @@ static AstNode const* GetIntoExpression(AstNode const* node) {
 %type <node> reference;
 %type <node> simple_value;
 %type <node> value_literal;
-%type <node> collection_name;
 %type <node> in_or_into_collection;
+%type <node> in_or_into_collection_name;
 %type <node> bind_parameter;
 %type <strval> variable_name;
 %type <node> numeric_value;
@@ -391,7 +410,8 @@ optional_with:
       parser->pushStack(node);
      } with_collection_list {
       auto node = static_cast<AstNode*>(parser->popStack());
-      auto withNode = parser->ast()->createNodeWithCollections(node);
+      auto const& resolver = parser->query()->resolver();
+      auto withNode = parser->ast()->createNodeWithCollections(node, resolver);
       parser->ast()->addOperation(withNode);
      }
    ;
@@ -460,14 +480,56 @@ statement_block_statement:
 
 for_statement:
     T_FOR variable_name T_IN expression {
+      // first open a new scope
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
 
-      auto node = parser->ast()->createNodeFor($2.value, $2.length, $4, true);
+      // now create an out variable for the FOR statement
+      // this prepares us to handle the optional SEARCH condition, which may
+      // or may not refer to the FOR's variable
+      parser->pushStack(parser->ast()->createNodeVariable($2.value, $2.length, true));
+    } for_options {
+      // now we can handle the optional SEARCH condition and OPTIONS.
+      AstNode* variableNode = static_cast<AstNode*>(parser->popStack());
+      TRI_ASSERT(variableNode != nullptr);
+      Variable* variable = static_cast<Variable*>(variableNode->getData());
+     
+      AstNode* node = nullptr; 
+      AstNode* search = nullptr; 
+      AstNode* options = nullptr; 
+
+      if ($6 != nullptr) {
+        // we got a SEARCH and/or OPTIONS clause
+        TRI_ASSERT($6->type == NODE_TYPE_ARRAY);
+        TRI_ASSERT($6->numMembers() == 2);
+
+        search = $6->getMemberUnchecked(0);
+        if (search->type == NODE_TYPE_NOP) {
+          search = nullptr;
+        }
+        options = $6->getMemberUnchecked(1);
+        if (options->type == NODE_TYPE_NOP) {
+          options = nullptr;
+        }
+      }
+
+      if (search != nullptr) {
+        // we got a SEARCH clause. this is always a view.
+        node = parser->ast()->createNodeForView(variable, $4, search, options);
+        
+        if ($4->type != NODE_TYPE_PARAMETER_DATASOURCE &&
+            $4->type != NODE_TYPE_VIEW && 
+            $4->type != NODE_TYPE_COLLECTION) {
+          parser->registerParseError(TRI_ERROR_QUERY_PARSE, "SEARCH condition used on non-view", yylloc.first_line, yylloc.first_column);
+        }
+      } else {
+        node = parser->ast()->createNodeFor(variable, $4, options);
+      }
+        
       parser->ast()->addOperation(node);
     }
-    | T_FOR traversal_statement {
+  | T_FOR traversal_statement {
     }
-    | T_FOR shortest_path_statement {
+  | T_FOR shortest_path_statement {
     }
   ;
 
@@ -537,7 +599,7 @@ let_element:
 
 count_into:
     T_WITH T_STRING T_INTO variable_name {
-      if (! TRI_CaseEqualString($2.value, "COUNT")) {
+      if (!TRI_CaseEqualString($2.value, "COUNT")) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'COUNT'", $2.value, yylloc.first_line, yylloc.first_column);
       }
 
@@ -574,7 +636,8 @@ collect_statement:
       auto scopes = parser->ast()->scopes();
 
       if (StartCollectScope(scopes)) {
-        RegisterAssignVariables(scopes, $1);
+        std::unordered_set<Variable const*> variables;
+        RegisterAssignVariables(parser, scopes, yylloc.first_line, yylloc.first_column, variables, $1);
       }
 
       auto node = parser->ast()->createNodeCollectCount($1, $2.value, $2.length, $3);
@@ -582,26 +645,20 @@ collect_statement:
     }
   | T_COLLECT aggregate collect_optional_into options {
       /* AGGREGATE var = expr OPTIONS ... */
+      std::unordered_set<Variable const*> variablesIntroduced;
       auto scopes = parser->ast()->scopes();
 
       if (StartCollectScope(scopes)) {
-        RegisterAssignVariables(scopes, $2);
+        RegisterAssignVariables(parser, scopes, yylloc.first_line, yylloc.first_column, variablesIntroduced, $2);
       }
 
       // validate aggregates
-      if (! ValidateAggregates(parser, $2)) {
+      if (!ValidateAggregates(parser, $2)) {
         YYABORT;
       }
 
       if ($3 != nullptr && $3->type == NODE_TYPE_ARRAY) {
-        std::unordered_set<Variable const*> vars;
-        Ast::getReferencedVariables($3->getMember(1), vars);
-
-        Variable const* used = CheckIntoVariables($2, vars);
-        if (used != nullptr) {
-          std::string msg("use of COLLECT variable '" + used->name + "' IN INTO expression");
-          parser->registerParseError(TRI_ERROR_QUERY_PARSE, msg.c_str(), yylloc.first_line, yylloc.first_column);
-        }
+        CheckIntoVariables(parser, $3->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
       }
 
       AstNode const* into = GetIntoVariable(parser, $3);
@@ -612,11 +669,12 @@ collect_statement:
     }
   | collect_variable_list aggregate collect_optional_into options {
       /* COLLECT var = expr AGGREGATE var = expr OPTIONS ... */
+      std::unordered_set<Variable const*> variablesIntroduced;
       auto scopes = parser->ast()->scopes();
 
       if (StartCollectScope(scopes)) {
-        RegisterAssignVariables(scopes, $1);
-        RegisterAssignVariables(scopes, $2);
+        RegisterAssignVariables(parser, scopes, yylloc.first_line, yylloc.first_column, variablesIntroduced, $1);
+        RegisterAssignVariables(parser, scopes, yylloc.first_line, yylloc.first_column, variablesIntroduced, $2);
       }
 
       if (! ValidateAggregates(parser, $2)) {
@@ -624,19 +682,7 @@ collect_statement:
       }
 
       if ($3 != nullptr && $3->type == NODE_TYPE_ARRAY) {
-        std::unordered_set<Variable const*> vars;
-        Ast::getReferencedVariables($3->getMember(1), vars);
-
-        Variable const* used = CheckIntoVariables($1, vars);
-        if (used != nullptr) {
-          std::string msg("use of COLLECT variable '" + used->name + "' IN INTO expression");
-          parser->registerParseError(TRI_ERROR_QUERY_PARSE, msg.c_str(), yylloc.first_line, yylloc.first_column);
-        }
-        used = CheckIntoVariables($2, vars);
-        if (used != nullptr) {
-          std::string msg("use of COLLECT variable '" + used->name + "' IN INTO expression");
-          parser->registerParseError(TRI_ERROR_QUERY_PARSE, msg.c_str(), yylloc.first_line, yylloc.first_column);
-        }
+        CheckIntoVariables(parser, $3->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
       }
 
       // note all group variables
@@ -664,7 +710,7 @@ collect_statement:
           for (auto& it : groupVars) {
             if (variablesUsed.find(it) != variablesUsed.end()) {
               parser->registerParseError(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN,
-                "use of unknown variable '%s' in aggregate expression", it->name.c_str(), yylloc.first_line, yylloc.first_column);
+                "use of unknown variable '%s' in AGGREGATE expression", it->name.c_str(), yylloc.first_line, yylloc.first_column);
               break;
             }
           }
@@ -679,21 +725,15 @@ collect_statement:
     }
   | collect_variable_list collect_optional_into options {
       /* COLLECT var = expr INTO var OPTIONS ... */
+      std::unordered_set<Variable const*> variablesIntroduced;
       auto scopes = parser->ast()->scopes();
 
       if (StartCollectScope(scopes)) {
-        RegisterAssignVariables(scopes, $1);
+        RegisterAssignVariables(parser, scopes, yylloc.first_line, yylloc.first_column, variablesIntroduced, $1);
       }
 
       if ($2 != nullptr && $2->type == NODE_TYPE_ARRAY) {
-        std::unordered_set<Variable const*> vars;
-        Ast::getReferencedVariables($2->getMember(1), vars);
-
-        Variable const* used = CheckIntoVariables($1, vars);
-        if (used != nullptr) {
-          std::string msg("use of COLLECT variable '" + used->name + "' IN INTO expression");
-          parser->registerParseError(TRI_ERROR_QUERY_PARSE, msg.c_str(), yylloc.first_line, yylloc.first_column);
-        }
+        CheckIntoVariables(parser, $2->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
       }
 
       AstNode const* into = GetIntoVariable(parser, $2);
@@ -704,10 +744,11 @@ collect_statement:
     }
   | collect_variable_list collect_optional_into keep options {
       /* COLLECT var = expr INTO var KEEP ... OPTIONS ... */
+      std::unordered_set<Variable const*> variablesIntroduced;
       auto scopes = parser->ast()->scopes();
 
       if (StartCollectScope(scopes)) {
-        RegisterAssignVariables(scopes, $1);
+        RegisterAssignVariables(parser, scopes, yylloc.first_line, yylloc.first_column, variablesIntroduced, $1);
       }
 
       if ($2 == nullptr &&
@@ -716,14 +757,7 @@ collect_statement:
       }
 
       if ($2 != nullptr && $2->type == NODE_TYPE_ARRAY) {
-        std::unordered_set<Variable const*> vars;
-        Ast::getReferencedVariables($2->getMember(1), vars);
-
-        Variable const* used = CheckIntoVariables($1, vars);
-        if (used != nullptr) {
-          std::string msg("use of COLLECT variable '" + used->name + "' IN INTO expression");
-          parser->registerParseError(TRI_ERROR_QUERY_PARSE, msg.c_str(), yylloc.first_line, yylloc.first_column);
-        }
+        CheckIntoVariables(parser, $2->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
       }
 
       AstNode const* into = GetIntoVariable(parser, $2);
@@ -796,7 +830,7 @@ variable_list:
 
 keep:
     T_STRING {
-      if (! TRI_CaseEqualString($1.value, "KEEP")) {
+      if (!TRI_CaseEqualString($1.value, "KEEP")) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'KEEP'", $1.value, yylloc.first_line, yylloc.first_column);
       }
 
@@ -860,12 +894,12 @@ sort_direction:
   ;
 
 limit_statement:
-    T_LIMIT simple_value {
+    T_LIMIT expression {
       auto offset = parser->ast()->createNodeValueInt(0);
       auto node = parser->ast()->createNodeLimit(offset, $2);
       parser->ast()->addOperation(node);
     }
-  | T_LIMIT simple_value T_COMMA simple_value {
+  | T_LIMIT expression T_COMMA expression {
       auto node = parser->ast()->createNodeLimit($2, $4);
       parser->ast()->addOperation(node);
     }
@@ -880,17 +914,17 @@ return_statement:
   ;
 
 in_or_into_collection:
-    T_IN collection_name {
+    T_IN in_or_into_collection_name {
       $$ = $2;
     }
-  | T_INTO collection_name {
+  | T_INTO in_or_into_collection_name {
        $$ = $2;
      }
    ;
 
 remove_statement:
     T_REMOVE expression in_or_into_collection options {
-      if (! parser->configureWriteQuery($3, $4)) {
+      if (!parser->configureWriteQuery($3, $4)) {
         YYABORT;
       }
       auto node = parser->ast()->createNodeRemove($2, $3, $4);
@@ -900,7 +934,7 @@ remove_statement:
 
 insert_statement:
     T_INSERT expression in_or_into_collection options {
-      if (! parser->configureWriteQuery($3, $4)) {
+      if (!parser->configureWriteQuery($3, $4)) {
         YYABORT;
       }
       auto node = parser->ast()->createNodeInsert($2, $3, $4);
@@ -910,7 +944,7 @@ insert_statement:
 
 update_parameters:
     expression in_or_into_collection options {
-      if (! parser->configureWriteQuery($2, $3)) {
+      if (!parser->configureWriteQuery($2, $3)) {
         YYABORT;
       }
 
@@ -918,7 +952,7 @@ update_parameters:
       parser->ast()->addOperation(node);
     }
   | expression T_WITH expression in_or_into_collection options {
-      if (! parser->configureWriteQuery($4, $5)) {
+      if (!parser->configureWriteQuery($4, $5)) {
         YYABORT;
       }
 
@@ -934,7 +968,7 @@ update_statement:
 
 replace_parameters:
     expression in_or_into_collection options {
-      if (! parser->configureWriteQuery($2, $3)) {
+      if (!parser->configureWriteQuery($2, $3)) {
         YYABORT;
       }
 
@@ -942,7 +976,7 @@ replace_parameters:
       parser->ast()->addOperation(node);
     }
   | expression T_WITH expression in_or_into_collection options {
-      if (! parser->configureWriteQuery($4, $5)) {
+      if (!parser->configureWriteQuery($4, $5)) {
         YYABORT;
       }
 
@@ -1267,9 +1301,9 @@ compound_value:
 array:
     T_ARRAY_OPEN {
       auto node = parser->ast()->createNodeArray();
-      parser->pushStack(node);
+      parser->pushArray(node);
     } optional_array_elements T_ARRAY_CLOSE {
-      $$ = static_cast<AstNode*>(parser->popStack());
+      $$ = parser->popArray();
     }
   ;
 
@@ -1289,6 +1323,55 @@ array_elements_list:
     }
   ;
 
+for_options:
+    /* empty */ {
+      $$ = nullptr;
+    }
+  | T_STRING expression {
+      if ($2 == nullptr) {
+        ABORT_OOM
+      }
+
+      // we always return an array with two values: SEARCH and OPTIONS
+      // as only one of these values will be set here, the other value is NOP
+      auto node = parser->ast()->createNodeArray(2);
+      // only one extra qualifier. now we need to check if it is SEARCH or OPTIONS
+
+      if (TRI_CaseEqualString($1.value, "SEARCH")) {
+        // found SEARCH
+        node->addMember($2);
+        node->addMember(parser->ast()->createNodeNop());
+      } else { 
+        // everything else must be OPTIONS
+        if (!TRI_CaseEqualString($1.value, "OPTIONS")) {
+          parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'SEARCH' or 'OPTIONS'", $1.value, yylloc.first_line, yylloc.first_column);
+        }
+
+        node->addMember(parser->ast()->createNodeNop());
+        node->addMember($2);
+      }
+
+      $$ = node;
+    }
+  | T_STRING expression T_STRING expression {
+      if ($2 == nullptr) {
+        ABORT_OOM
+      }
+      
+      // two extra qualifiers. we expect them in the order: SEARCH, then OPTIONS
+
+      if (!TRI_CaseEqualString($1.value, "SEARCH") ||
+          !TRI_CaseEqualString($3.value, "OPTIONS")) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'SEARCH' and 'OPTIONS'", $1.value, yylloc.first_line, yylloc.first_column);
+      }
+
+      auto node = parser->ast()->createNodeArray(2);
+      node->addMember($2);
+      node->addMember($4);
+      $$ = node;
+    }
+  ;
+
 options:
     /* empty */ {
       $$ = nullptr;
@@ -1298,7 +1381,7 @@ options:
         ABORT_OOM
       }
 
-      if (! TRI_CaseEqualString($1.value, "OPTIONS")) {
+      if (!TRI_CaseEqualString($1.value, "OPTIONS")) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'OPTIONS'", $1.value, yylloc.first_line, yylloc.first_column);
       }
 
@@ -1433,7 +1516,8 @@ graph_subject:
     graph_collection {
       auto node = parser->ast()->createNodeArray();
       node->addMember($1);
-      $$ = parser->ast()->createNodeCollectionList(node);
+      auto const& resolver = parser->query()->resolver();
+      $$ = parser->ast()->createNodeCollectionList(node, resolver);
     }
   | graph_collection T_COMMA {
       auto node = parser->ast()->createNodeArray();
@@ -1441,7 +1525,8 @@ graph_subject:
       node->addMember($1);
     } graph_collection_list {
       auto node = static_cast<AstNode*>(parser->popStack());
-      $$ = parser->ast()->createNodeCollectionList(node);
+      auto const& resolver = parser->query()->resolver();
+      $$ = parser->ast()->createNodeCollectionList(node, resolver);
     }
   | T_GRAPH bind_parameter {
       // graph name
@@ -1477,16 +1562,8 @@ graph_direction_steps:
   ;
 
 reference:
-  T_VIEW T_STRING {
-      auto* ast = parser->ast();
-      auto* node = ast->createNodeView($2.value);
-
-      TRI_ASSERT(node != nullptr);
-
-      $$ = node;
-    }
-  | T_STRING {
-      // variable or collection
+    T_STRING {
+      // variable or collection or view
       auto ast = parser->ast();
       AstNode* node = nullptr;
 
@@ -1509,8 +1586,9 @@ reference:
       }
 
       if (node == nullptr) {
-        // variable not found. so it must have been a collection
-        node = ast->createNodeCollection($1.value, arangodb::AccessMode::Type::READ);
+        // variable not found. so it must have been a collection or view
+        auto const& resolver = parser->query()->resolver();
+        node = ast->createNodeDataSource(resolver, $1.value, $1.length, arangodb::AccessMode::Type::READ, true, false);
       }
 
       TRI_ASSERT(node != nullptr);
@@ -1682,32 +1760,31 @@ value_literal:
     }
   ;
 
-collection_name:
+in_or_into_collection_name:
     T_STRING {
-      $$ = parser->ast()->createNodeCollection($1.value, arangodb::AccessMode::Type::WRITE);
+      auto const& resolver = parser->query()->resolver();
+      $$ = parser->ast()->createNodeCollection(resolver, $1.value, $1.length, arangodb::AccessMode::Type::WRITE);
     }
   | T_QUOTED_STRING {
-      $$ = parser->ast()->createNodeCollection($1.value, arangodb::AccessMode::Type::WRITE);
-    }
-  | bind_parameter {
-      $$ = $1;
-    }
-  ;
-
-bind_parameter:
-  T_VIEW T_DATA_SOURCE_PARAMETER {
-      if ($2.length < 2 || $2.value[0] != '@') {
-        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), $2.value, yylloc.first_line, yylloc.first_column);
-      }
-
-      $$ = parser->ast()->createNodeParameterView($2.value, $2.length);
+      auto const& resolver = parser->query()->resolver();
+      $$ = parser->ast()->createNodeCollection(resolver, $1.value, $1.length, arangodb::AccessMode::Type::WRITE);
     }
   | T_DATA_SOURCE_PARAMETER {
       if ($1.length < 2 || $1.value[0] != '@') {
         parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), $1.value, yylloc.first_line, yylloc.first_column);
       }
 
-      $$ = parser->ast()->createNodeParameterCollection($1.value, $1.length);
+      $$ = parser->ast()->createNodeParameterDatasource($1.value, $1.length);
+    }
+  ;
+
+bind_parameter:
+    T_DATA_SOURCE_PARAMETER {
+      if ($1.length < 2 || $1.value[0] != '@') {
+        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), $1.value, yylloc.first_line, yylloc.first_column);
+      }
+
+      $$ = parser->ast()->createNodeParameterDatasource($1.value, $1.length);
     }
   | T_PARAMETER {
       $$ = parser->ast()->createNodeParameter($1.value, $1.length);

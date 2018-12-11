@@ -4,9 +4,13 @@ Cluster Administration
 This _Section_ includes information related to the administration of an ArangoDB Cluster.
 
 For a general introduction to the ArangoDB Cluster, please refer to the
-Cluster [chapter](../../Scalability/Cluster/README.md).
+Cluster [chapter](../../Architecture/DeploymentModes/Cluster/README.md).
 
-Please also check the following talks:
+There is also a detailed
+[Cluster Administration Course](https://www.arangodb.com/arangodb-cluster-course/)
+for download.
+
+Please check the following talks as well:
 
 | # | Date            | Title                                                                       | Who                                     | Link                                                                                                            |
 |---|-----------------|-----------------------------------------------------------------------------|-----------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------|
@@ -18,8 +22,8 @@ Enabling synchronous replication
 --------------------------------
 
 For an introduction about _Synchronous Replication_ in Cluster, please refer
-to the [_Cluster Architecture_](../../Scalability/Cluster/Architecture.md#synchronous-replication) section. 
-                                                               
+to the [_Cluster Architecture_](../../Architecture/DeploymentModes/Cluster/Architecture.md#synchronous-replication) section. 
+
 Synchronous replication can be enabled per _collection_. When creating a
 _collection_ you may specify the number of _replicas_ using the
 *replicationFactor* parameter. The default value is set to `1` which
@@ -36,7 +40,7 @@ Example:
 127.0.0.1:8530@_system> db._create("test", {"replicationFactor": 3})
 ```
 
-In the above case, any write operation will require 2 replicas to
+In the above case, any write operation will require 3 replicas to
 report success from now on. 
 
 Preparing growth
@@ -64,7 +68,7 @@ Sharding
 --------
 
 For an introduction about _Sharding_ in Cluster, please refer to the
-[_Cluster Architecture_](../../Scalability/Cluster/Architecture.md#sharding) section. 
+[_Cluster Architecture_](../../Architecture/DeploymentModes/Cluster/Architecture.md#sharding) section. 
 
 Number of _shards_ can be configured at _collection_ creation time, e.g. the UI,
 or the _ArangoDB Shell_:
@@ -111,6 +115,36 @@ included in the list of attribute paths for the index:
 | a, b      | a, b, c   |     allowed |
 | a, b, c   | a, b      | not allowed |
 | a, b, c   | a, b, c   |     allowed |
+
+Sharding strategy
+-----------------
+
+strategy to use for the collection. Since ArangoDB 3.4 there are
+different sharding strategies to select from when creating a new 
+collection. The selected *shardingStrategy* value will remain
+fixed for the collection and cannot be changed afterwards. This is
+important to make the collection keep its sharding settings and
+always find documents already distributed to shards using the same
+initial sharding algorithm.
+
+The available sharding strategies are:
+- `community-compat`: default sharding used by ArangoDB community
+  versions before ArangoDB 3.4
+- `enterprise-compat`: default sharding used by ArangoDB enterprise
+  versions before ArangoDB 3.4
+- `enterprise-smart-edge-compat`: default sharding used by smart edge
+  collections in ArangoDB enterprise versions before ArangoDB 3.4
+- `hash`: default sharding used by ArangoDB 3.4 for new collections
+  (excluding smart edge collections)
+- `enterprise-hash-smart-edge`: default sharding used by ArangoDB 3.4 
+  for new smart edge collections
+
+If no sharding strategy is specified, the default will be `hash` for
+all collections, and `enterprise-hash-smart-edge` for all smart edge
+collections (requires the *Enterprise Edition* of ArangoDB). 
+Manually overriding the sharding strategy does not yet provide a 
+benefit, but it may later in case other sharding strategies are added.
+
 
 Moving/Rebalancing _shards_
 ---------------------------

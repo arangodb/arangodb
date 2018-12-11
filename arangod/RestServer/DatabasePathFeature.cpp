@@ -30,13 +30,16 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-DatabasePathFeature::DatabasePathFeature(ApplicationServer* server)
-    : ApplicationFeature(server, "DatabasePath"),
+namespace arangodb {
+
+DatabasePathFeature::DatabasePathFeature(
+    application_features::ApplicationServer& server
+)
+  : ApplicationFeature(server, DatabasePathFeature::name()),
       _requiredDirectoryState("any") {
   setOptional(false);
   startsAfter("GreetingsPhase");
@@ -166,3 +169,4 @@ std::string DatabasePathFeature::subdirectoryName(std::string const& subDirector
   return basics::FileUtils::buildFilename(_directory, subDirectory);
 }
 
+} // arangodb

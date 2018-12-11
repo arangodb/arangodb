@@ -143,7 +143,8 @@ function readOnly (options) {
       const res = request[r[1]]({
         url: `${adbInstance.arangods[0].url}${r[2]}`,
         body: Object.keys(r[4]).length ? JSON.stringify(r[4]) : '',
-        auth: { username: r[3], password: '' }
+        auth: { username: r[3], password: '' },
+        timeout: 60.0
       });
       try {
         bodies.push(JSON.parse(res.body));
@@ -173,7 +174,6 @@ function readOnly (options) {
     users.save('test', '', true);
     users.save('test2', '', true);
     users.grantDatabase('test', '_system', 'ro');
-    users.grantCollection('test', '_system', 'testcol', 'ro');
 
     db._createDatabase('testdb2');
     db._useDatabase('testdb2');

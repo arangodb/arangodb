@@ -48,6 +48,7 @@ struct WalAccessResult : public Result {
   WalAccessResult(WalAccessResult const& other) = default;
   WalAccessResult& operator=(WalAccessResult const& other)  = default;
 */
+  using Result::reset;
   bool fromTickIncluded() const { return _fromTickIncluded; }
   TRI_voc_tick_t lastIncludedTick() const { return _lastIncludedTick; }
   TRI_voc_tick_t lastScannedTick() const { return _lastScannedTick; }
@@ -56,7 +57,7 @@ struct WalAccessResult : public Result {
 
   Result& reset(int errorNumber, bool ft, TRI_voc_tick_t included, TRI_voc_tick_t lastScannedTick,
                 TRI_voc_tick_t latest) {
-    _errorNumber = errorNumber;
+    reset(errorNumber);
     _fromTickIncluded = ft;
     _lastIncludedTick = included;
     _lastScannedTick = lastScannedTick;
@@ -84,6 +85,16 @@ class WalAccess {
  public:
   struct Filter {
     Filter() {}
+    
+    /// tick last scanned by the last iteration
+    /// is used to find batches in rocksdb
+    uint64_t tickLastScanned = 0;
+    
+    /// first tick to use
+    uint64_t tickStart = 0;
+    
+    /// last tick to include
+    uint64_t tickEnd = UINT64_MAX;
 
     /// In case collection is == 0,
     bool includeSystem = false;
@@ -121,13 +132,11 @@ class WalAccess {
 
   /// should return the list of transactions started, but not committed in that
   /// range (range can be adjusted)
-  virtual WalAccessResult openTransactions(
-      uint64_t tickStart, uint64_t tickEnd, Filter const& filter,
+  virtual WalAccessResult openTransactions(Filter const& filter,
       TransactionCallback const&) const = 0;
 
-  virtual WalAccessResult tail(uint64_t tickStart, uint64_t tickEnd,
+  virtual WalAccessResult tail(Filter const& filter,
                                size_t chunkSize, TRI_voc_tid_t barrierId,
-                               Filter const& filter,
                                MarkerCallback const&) const = 0;
 };
 
@@ -165,7 +174,7 @@ struct WalAccessContext {
 
  public:
   /// @brief arbitrary collection filter (inclusive)
-  WalAccess::Filter _filter;
+  const WalAccess::Filter _filter;
   /// @brief callback for marker output
   WalAccess::MarkerCallback _callback;
 

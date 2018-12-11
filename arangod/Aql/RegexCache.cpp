@@ -31,26 +31,7 @@
 
 using namespace arangodb::aql;
 
-RegexCache::~RegexCache() {
-  clear();
-}
-
-void RegexCache::clear() noexcept {
-  clear(_regexCache);
-  clear(_likeCache);
-}
-
-icu::RegexMatcher* RegexCache::buildRegexMatcher(char const* ptr, size_t length, bool caseInsensitive) {
-  buildRegexPattern(_temp, ptr, length, caseInsensitive);
-
-  return fromCache(_temp, _regexCache);
-}
-
-icu::RegexMatcher* RegexCache::buildLikeMatcher(char const* ptr, size_t length, bool caseInsensitive) {
-  buildLikePattern(_temp, ptr, length, caseInsensitive);
-
-  return fromCache(_temp, _likeCache);
-}
+namespace {
 
 static void escapeRegexParams(std::string &out, const char* ptr, size_t length) {
   for (size_t i = 0; i < length; ++i) {
@@ -65,8 +46,30 @@ static void escapeRegexParams(std::string &out, const char* ptr, size_t length) 
   }
 }
 
-icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue splitExpression, arangodb::transaction::Methods* trx, bool& isEmptyExpression) {
+} // namespace
 
+RegexCache::~RegexCache() {
+  clear();
+}
+
+void RegexCache::clear() noexcept {
+  _regexCache.clear();
+  _likeCache.clear();
+}
+
+icu::RegexMatcher* RegexCache::buildRegexMatcher(char const* ptr, size_t length, bool caseInsensitive) {
+  buildRegexPattern(_temp, ptr, length, caseInsensitive);
+
+  return fromCache(_temp, _regexCache);
+}
+
+icu::RegexMatcher* RegexCache::buildLikeMatcher(char const* ptr, size_t length, bool caseInsensitive) {
+  buildLikePattern(_temp, ptr, length, caseInsensitive);
+
+  return fromCache(_temp, _likeCache);
+}
+
+icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue const& splitExpression, arangodb::transaction::Methods* trx, bool& isEmptyExpression) {
   std::string rx;
 
   AqlValueMaterializer materializer(trx);
@@ -84,53 +87,39 @@ icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue splitExpression, arang
       }
 
       arangodb::velocypack::ValueLength length;
-      const char *str = it.getString(length);
-      escapeRegexParams(rx, str, length);
+      char const* str = it.getString(length);
+      ::escapeRegexParams(rx, str, length);
     }
-  }
-  else if (splitExpression.isString()) {
+  } else if (splitExpression.isString()) {
     arangodb::velocypack::ValueLength length;
-    const char* str = slice.getString(length);
-    escapeRegexParams(rx, str, length);
-    if (rx.length() == 0) {
+    char const* str = slice.getString(length);
+    ::escapeRegexParams(rx, str, length);
+    if (rx.empty()) {
       isEmptyExpression = true;
     }
-  }
-  else {
+  } else {
     rx.clear();
   }
   return fromCache(rx, _likeCache);
 }
 
-void RegexCache::clear(std::unordered_map<std::string, icu::RegexMatcher*>& cache) noexcept {
-  try {
-    for (auto& it : cache) {
-      delete it.second;
-    }
-    cache.clear();
-  } catch (...) {
-  }
-}
-
 /// @brief get matcher from cache, or insert a new matcher for the specified pattern
 icu::RegexMatcher* RegexCache::fromCache(std::string const& pattern,
-                                         std::unordered_map<std::string, icu::RegexMatcher*>& cache) {
+                                         std::unordered_map<std::string, std::unique_ptr<icu::RegexMatcher>>& cache) {
   auto it = cache.find(pattern);
 
   if (it != cache.end()) {
-    return (*it).second;
+    return (*it).second.get();
   }
 
-  icu::RegexMatcher* matcher = arangodb::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern);
+  auto matcher = std::unique_ptr<icu::RegexMatcher>(arangodb::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern));
 
-  try {
-    // insert into cache, no matter if pattern is valid or not
-    cache.emplace(_temp, matcher);
-    return matcher;
-  } catch (...) {
-    delete matcher;
-    throw;
-  }
+  auto p = matcher.get();
+
+  // insert into cache, no matter if pattern is valid or not
+  cache.emplace(pattern, std::move(matcher));
+
+  return p;
 }
 
 /// @brief compile a REGEX pattern from a string
@@ -209,4 +198,58 @@ void RegexCache::buildLikePattern(std::string& out,
 
   // always anchor the pattern
   out.push_back('$');
+}
+
+/// @brief inspect a LIKE pattern from a string, and remove all
+/// of its escape characters. will stop at the first wildcards found.
+/// returns a pair with the following meaning:
+/// - first: true if the inspection aborted prematurely because a
+///   wildcard was found, and false if the inspection analyzed at the
+///   complete string
+/// - second: true if the found wildcard is the last byte in the pattern,
+///   false otherwise. can only be true if first is also true
+std::pair<bool, bool> RegexCache::inspectLikePattern(std::string& out,
+                                                     char const* ptr, size_t length) {
+  out.reserve(length);
+  bool escaped = false;
+
+  for (size_t i = 0; i < length; ++i) {
+    char const c = ptr[i];
+
+    if (c == '\\') {
+      if (escaped) {
+        // literal backslash
+        out.push_back('\\');
+      }
+      escaped = !escaped;
+    } else {
+      if (c == '%' || c == '_') {
+        if (escaped) {
+          // literal %
+          out.push_back(c);
+        } else {
+          // wildcard found
+          bool wildcardIsLastChar = (i == length - 1);
+          return std::make_pair(true, wildcardIsLastChar);
+        }
+      } else if (c == '?' || c == '+' || c == '[' || c == '(' || c == ')' ||
+                 c == '{' || c == '}' || c == '^' || c == '$' || c == '|' ||
+                 c == '\\' || c == '.' || c == '*') {
+        // character with special meaning in a regex
+        out.push_back(c);
+      } else {
+        if (escaped) {
+          // found a backslash followed by no special character
+          out.push_back('\\');
+        }
+
+        // literal character
+        out.push_back(c);
+      }
+
+      escaped = false;
+    }
+  }
+
+  return std::make_pair(false, false);
 }

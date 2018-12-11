@@ -20,6 +20,13 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef _WIN32
+#include <tchar.h>
+#include <unicode/locid.h>
+#include <string.h>
+#include <locale.h>
+#endif
+
 #include "ConsoleFeature.h"
 
 #include "ApplicationFeatures/ShellColorsFeature.h"
@@ -34,7 +41,6 @@
 #include <iomanip>
 #include <iostream>
 
-using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
@@ -46,10 +52,11 @@ static const int BACKGROUND_WHITE =
 static const int INTENSITY = FOREGROUND_INTENSITY | BACKGROUND_INTENSITY;
 #endif
 
-ConsoleFeature::ConsoleFeature(application_features::ApplicationServer* server)
+namespace arangodb {
+
+ConsoleFeature::ConsoleFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Console"),
 #ifdef _WIN32
-      _codePage(-1),
       _cygwinShell(false),
 #endif
       _quiet(false),
@@ -69,14 +76,11 @@ ConsoleFeature::ConsoleFeature(application_features::ApplicationServer* server)
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("BasicsPhase");
-
   if (!_supportsColors) {
     _colors = false;
   }
 
 #if _WIN32
-  _codePage = GetConsoleOutputCP();
-
   CONSOLE_SCREEN_BUFFER_INFO info;
   GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &info);
 
@@ -111,16 +115,12 @@ void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--console.pager", "enable paging",
                      new BooleanParameter(&_pager));
 
-  options->addHiddenOption("--console.pager-command", "pager command",
-                           new StringParameter(&_pagerCommand));
+  options->addOption("--console.pager-command", "pager command",
+                     new StringParameter(&_pagerCommand),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--console.prompt", "prompt used in REPL. prompt components are: '%t': current time as timestamp, '%p': duration of last command in seconds, '%d': name of current database, '%e': current endpoint, '%E': current endpoint without protocol, '%u': current user",
                      new StringParameter(&_prompt));
-
-#if _WIN32
-  options->addHiddenOption("--console.code-page", "Windows code page to use",
-                           new UInt16Parameter(&_codePage));
-#endif
 }
 
 void ConsoleFeature::prepare() {
@@ -133,12 +133,6 @@ void ConsoleFeature::prepare() {
 
 void ConsoleFeature::start() {
   openLog();
-
-#if _WIN32
-  if (_codePage != -1) {
-    SetConsoleOutputCP(_codePage);
-  }
-#endif
 }
 
 void ConsoleFeature::unprepare() {
@@ -308,23 +302,26 @@ std::string ConsoleFeature::readPassword() {
   TRI_DEFER(TRI_SetStdinVisibility(true));
 
   std::string password;
+
+#ifdef _WIN32
+  std::wstring wpassword;
+  _setmode(_fileno(stdin), _O_U16TEXT);
+  std::getline(std::wcin, wpassword);
+  UnicodeString pw(wpassword.c_str(), static_cast<int32_t>(wpassword.length()));
+  pw.toUTF8String<std::string>(password);
+#else
   std::getline(std::cin, password);
+#endif
   return password;
 }
 
 void ConsoleFeature::printWelcomeInfo() {
-  if (!_quiet) {
-    if (_pager) {
-      std::ostringstream s;
+  if (!_quiet && _pager) {
+    std::ostringstream s;
 
-      s << "Using pager '" << _pagerCommand << "' for output buffering.";
+    s << "Using pager '" << _pagerCommand << "' for output buffering.";
 
-      printLine(s.str());
-    }
-
-    if (_prettyPrint) {
-      printLine("Pretty printing values.");
-    }
+    printLine(s.str());
   }
 }
 
@@ -369,7 +366,7 @@ void ConsoleFeature::print(std::string const& message) {
 
 void ConsoleFeature::openLog() {
   if (!_auditFile.empty()) {
-    _toAuditFile = fopen(_auditFile.c_str(), "w");
+    _toAuditFile = TRI_FOPEN(_auditFile.c_str(), "w");
 
     std::ostringstream s;
 
@@ -518,3 +515,5 @@ void ConsoleFeature::stopPager() {
   }
 #endif
 }
+
+} // arangodb

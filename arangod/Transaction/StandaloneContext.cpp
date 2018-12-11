@@ -38,7 +38,7 @@ transaction::StandaloneContext::StandaloneContext(TRI_vocbase_t& vocbase)
 std::shared_ptr<arangodb::velocypack::CustomTypeHandler> transaction::StandaloneContext::orderCustomTypeHandler() {
   if (_customTypeHandler == nullptr) {
     _customTypeHandler.reset(
-      transaction::Context::createCustomTypeHandler(&_vocbase, &resolver())
+      transaction::Context::createCustomTypeHandler(_vocbase, resolver())
     );
     _options.customTypeHandler = _customTypeHandler.get();
     _dumpOptions.customTypeHandler = _customTypeHandler.get();

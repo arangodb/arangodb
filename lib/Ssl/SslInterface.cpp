@@ -342,22 +342,6 @@ int sslRand(int32_t* value) {
   return 0;
 }
 
-void salt64(uint64_t& result) {
-  std::string salt = SaltGenerator.random(8);
-  char* saltChar = const_cast<char*>(salt.c_str());
-  uint64_t* saltInt = reinterpret_cast<uint64_t*>(saltChar);
-  result = *saltInt;
-}
-
-void saltChar(char*& result, size_t length) {
-  if (length == 0) {
-    result = nullptr;
-    return;
-  }
-
-  std::string salt = SaltGenerator.random(length);
-  result = StringUtils::duplicate(salt);
-}
 }
 }
 }

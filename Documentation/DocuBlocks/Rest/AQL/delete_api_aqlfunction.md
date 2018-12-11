@@ -82,7 +82,7 @@ deletes a function:
     code : "function (x) { return x*x; }" 
   };
 
-  db._connection.POST("/_api/aqlfunction", JSON.stringify(body));
+  db._connection.POST("/_api/aqlfunction", body);
   var response = logCurlRequest('DELETE', url);
 
   assert(response.code === 200);

@@ -34,6 +34,7 @@
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#include "Basics/Exceptions.h"
 #include "Basics/socket-utils.h"
 #include "Logger/Logger.h"
 #include "Ssl/ssl-helper.h"
@@ -213,6 +214,9 @@ void SslClientConnection::init(uint64_t sslProtocol) {
   SSL_METHOD SSL_CONST* meth = nullptr;
 
   switch (SslProtocol(sslProtocol)) {
+    case SSL_V2:
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "support for SSLv2 has been dropped");
+
 #ifndef OPENSSL_NO_SSL3_METHOD
     case SSL_V3:
       meth = SSLv3_method();

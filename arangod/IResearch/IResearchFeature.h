@@ -43,7 +43,9 @@ bool isScorer(arangodb::aql::Function const& func) noexcept;
 
 class IResearchFeature final : public application_features::ApplicationFeature {
  public:
-  explicit IResearchFeature(application_features::ApplicationServer* server);
+  explicit IResearchFeature(
+    arangodb::application_features::ApplicationServer& server
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief execute an asynchronous task
@@ -77,7 +79,9 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   class Async; // forward declaration
 
   std::shared_ptr<Async> _async; // object managing async jobs (never null!!!)
-  bool _running;
+  std::atomic<bool> _running;
+  uint64_t _threads;
+  uint64_t _threadsLimit;
 };
 
 } // iresearch

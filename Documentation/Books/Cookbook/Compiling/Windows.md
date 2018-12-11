@@ -57,7 +57,7 @@ Close and reopen the Administrator command window in order to continue with the 
 
 And manually install the requirements via the `Gemfile` fetched from the ArangoDB Git repository *(needs to be run with Administrator privileges)*:
 
-    wget https://raw.githubusercontent.com/arangodb/arangodb/devel/UnitTests/HttpInterface/Gemfile
+    wget https://raw.githubusercontent.com/arangodb/arangodb/devel/tests/HttpInterface/Gemfile
     set PATH=%PATH%;C:\tools\DevKit2\bin;C:\tools\DevKit2\mingw\bin
     gem install bundler
     bundler

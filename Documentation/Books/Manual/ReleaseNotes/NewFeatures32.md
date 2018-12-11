@@ -1,5 +1,5 @@
-Features and Improvements
-=========================
+Features and Improvements in ArangoDB 3.2
+=========================================
 
 The following list shows in detail which features have been added or improved in
 ArangoDB 3.2. ArangoDB 3.2 also contains several bugfixes that are not listed
@@ -116,7 +116,7 @@ executes the query, locally. With this approach, network hops during join
 operations on sharded collections can be avoided and response times can be close to
 that of a single instance.
 
-[Satellite collections](../Administration/Satellites.md)
+[Satellite collections](../Satellites.md)
 are available in the *Enterprise Edition*.
 
 
@@ -349,7 +349,7 @@ Client tools
 Authentication
 --------------
 
-* added [LDAP](../Administration/Configuration/Ldap.md) authentication (Enterprise only)
+* added [LDAP](../Programs/Arangod/Ldap.md) authentication (Enterprise only)
 
 
 Authorization

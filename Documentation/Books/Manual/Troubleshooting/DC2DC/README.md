@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/arangosync.git / docs/Manual/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/arangosync.git / docs/Manual/ -->
 # Troubleshooting datacenter to datacenter replication
 
 {% hint 'info' %}
@@ -14,7 +14,7 @@ This section includes information on how to troubleshoot the
 _datacenter to datacenter replication_.
 
 For a general introduction to the _datacenter to datacenter replication_, please
-refer to the [Datacenter to datacenter replication](../../Scalability/DC2DC/README.md)
+refer to the [Datacenter to datacenter replication](../../Architecture/DeploymentModes/DC2DC/README.md)
 chapter.
 
 ## What means are available to monitor status

@@ -105,7 +105,7 @@ global.DEFINE_MODULE('fs', (function () {
   // / @brief normalizes a path string
   // //////////////////////////////////////////////////////////////////////////////
 
-  var splitDeviceRe =
+  const splitDeviceRe =
   /^([a-zA-Z]:|[\\\/]{2}[^\\\/]+[\\\/]+[^\\\/]+)?([\\\/])?([\s\S]*?)$/;
 
   function normalizeUNCRoot (device) {

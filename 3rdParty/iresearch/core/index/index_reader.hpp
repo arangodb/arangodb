@@ -37,61 +37,102 @@
 
 NS_ROOT
 
-/* -------------------------------------------------------------------
-* index_reader
-* ------------------------------------------------------------------*/
-
 struct sub_reader;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @struct index_reader
+/// @brief generic interface for accessing an index
+////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API index_reader {
-  DECLARE_SPTR(index_reader);
-  DECLARE_FACTORY(index_reader);
+  class reader_iterator
+      : public std::iterator<std::forward_iterator_tag, const sub_reader> {
+   public:
+    typedef std::iterator<std::forward_iterator_tag, const sub_reader> iterator_t;
 
-  typedef std::function<bool(const field_meta&, data_input&)> document_visitor_f;
-  typedef forward_iterator_impl<sub_reader> reader_iterator_impl;
-  typedef forward_iterator<reader_iterator_impl> reader_iterator;
+    iterator_t::reference operator*() const {
+      // can't mark NOEXCEPT because of virtual operator[]
+      assert(i_ < reader_->size());
+      return (*reader_)[i_];
+    }
+
+    iterator_t::pointer operator->() const {
+      return &(**this);
+    }
+
+    reader_iterator& operator++() NOEXCEPT {
+      ++i_;
+      return *this;
+    }
+
+    reader_iterator operator++(int) NOEXCEPT {
+      auto it = *this;
+      ++(*this);
+      return it;
+    }
+
+    bool operator==(const reader_iterator& rhs) const NOEXCEPT {
+      assert(reader_ == rhs.reader_);
+      return i_ == rhs.i_;
+    }
+
+    bool operator!=(const reader_iterator& rhs) const NOEXCEPT {
+      return !(*this == rhs);
+    }
+
+   private:
+    friend struct index_reader;
+
+    explicit reader_iterator(
+        const index_reader& reader,
+        size_t i = 0
+    ) NOEXCEPT
+      : reader_(&reader), i_(i) {
+    }
+
+    const index_reader* reader_;
+    size_t i_;
+  }; // reader_iterator
+
+  DECLARE_SHARED_PTR(const index_reader);
+  DEFINE_FACTORY_INLINE(index_reader);
 
   virtual ~index_reader();
 
   // number of live documents
   virtual uint64_t live_docs_count() const = 0;
 
-  // number of live documents for the specified field
-  virtual uint64_t docs_count(const string_ref& field) const = 0;
-
   // total number of documents including deleted
   virtual uint64_t docs_count() const = 0;
 
-  // first sub-segment
-  virtual reader_iterator begin() const = 0;
-
-  // after the last sub-segment
-  virtual reader_iterator end() const = 0;
+  // return the i'th sub_reader
+  virtual const sub_reader& operator[](size_t i) const = 0;
 
   // returns number of sub-segments in current reader
   virtual size_t size() const = 0;
-}; // index_reader
 
-/* -------------------------------------------------------------------
-* sub_reader
-* ------------------------------------------------------------------*/
-
-struct IRESEARCH_API sub_reader : index_reader {
-  typedef iresearch::iterator<doc_id_t> docs_iterator_t;
-
-  DECLARE_SPTR(sub_reader);
-  DECLARE_FACTORY(sub_reader);
-
-  using index_reader::docs_count;
-
-  // returns number of live documents by the specified field
-  virtual uint64_t docs_count(const string_ref& field) const override {
-    const term_reader* rdr = this->field(field);
-    return nullptr == rdr ? 0 : rdr->docs_count();
+  // first sub-segment
+  reader_iterator begin() const {
+    return reader_iterator(*this, 0);
   }
 
+  // after the last sub-segment
+  reader_iterator end() const {
+    return reader_iterator(*this, size());
+  }
+}; // index_reader
+
+////////////////////////////////////////////////////////////////////////////////
+/// @struct sub_reader
+/// @brief generic interface for accessing an index segment
+////////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API sub_reader : index_reader {
+  DECLARE_SHARED_PTR(const sub_reader);
+  DEFINE_FACTORY_INLINE(sub_reader);
+
+  static const sub_reader& empty() NOEXCEPT;
+
   // returns iterator over the live documents in current segment
-  virtual docs_iterator_t::ptr docs_iterator() const = 0;
+  virtual doc_iterator::ptr docs_iterator() const = 0;
 
   virtual field_iterator::ptr fields() const = 0;
 
@@ -116,24 +157,5 @@ struct IRESEARCH_API sub_reader : index_reader {
 NS_END
 
 MSVC_ONLY(template class IRESEARCH_API std::function<bool(iresearch::doc_id_t)>); // sub_reader::value_visitor_f
-
-NS_ROOT
-
-// -------------------------------------------------------------------
-// composite_reader
-// -------------------------------------------------------------------
-
-class IRESEARCH_API composite_reader: public index_reader {
- public:
-  DECLARE_SPTR(composite_reader);
-
-  // return the i'th sub_reader
-  virtual const sub_reader& operator[](size_t i) const = 0;
-
-  // return the base doc_id for the i'th sub_reader
-  virtual doc_id_t base(size_t i) const = 0;
-};
-
-NS_END
 
 #endif

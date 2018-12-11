@@ -39,6 +39,8 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LocalDocumentId.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -113,9 +115,15 @@ static bool FindRange(std::vector<uint8_t const*> const& markers,
 Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
                              arangodb::LogicalCollection* coll,
                              std::string const& keysId) {
-  std::string progress =
-      "collecting local keys for collection '" + coll->name() + "'";
-  syncer.setProgress(progress);
+  double const startTime = TRI_microtime();
+
+  syncer.setProgress(std::string("collecting local keys for collection '") + coll->name() + "'");
+  
+  if (syncer.isAborted()) {
+    return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
+  }
+  
+  InitialSyncerIncrementalSyncStats stats;
 
   // fetch all local keys from primary index
   std::vector<uint8_t const*> markers;
@@ -175,15 +183,15 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
     // The LogicalCollection is protected by trx.
     // Neither it nor it's indexes can be invalidated
 
-    markers.reserve(trx.documentCollection()->numberDocuments(&trx));
+    markers.reserve(trx.documentCollection()->numberDocuments(&trx, transaction::CountType::Normal));
 
     uint64_t iterations = 0;
-    ManagedDocumentResult mmdr;
+    ManagedDocumentResult mdr;
     trx.invokeOnAllElements(
-        trx.name(), [&syncer, &trx, &mmdr, &markers,
+        trx.name(), [&syncer, &trx, &mdr, &markers,
                      &iterations](LocalDocumentId const& token) {
-          if (trx.documentCollection()->readDocument(&trx, token, mmdr)) {
-            markers.emplace_back(mmdr.vpack());
+          if (trx.documentCollection()->readDocument(&trx, token, mdr)) {
+            markers.emplace_back(mdr.vpack());
 
             if (++iterations % 10000 == 0) {
               if (syncer.isAborted()) {
@@ -203,10 +211,8 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
       syncer._state.barrier.extend(syncer._state.connection);
     }
 
-    std::string progress = "sorting " + std::to_string(markers.size()) +
-                           " local key(s) for collection '" + coll->name() +
-                           "'";
-    syncer.setProgress(progress);
+    syncer.setProgress(std::string("sorting ") + std::to_string(markers.size()) +
+                           " local key(s) for collection '" + coll->name() + "'");
 
     // sort all our local keys
     std::sort(
@@ -252,31 +258,23 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
 
   std::string url =
       baseUrl + "/" + keysId + "?chunkSize=" + std::to_string(chunkSize);
-  progress = "fetching remote keys chunks for collection '" + coll->name() +
-             "' from " + url;
-  syncer.setProgress(progress);
+  syncer.setProgress(std::string("fetching remote keys chunks for collection '") + coll->name() + "' from " + url);
+    
+  double t = TRI_microtime();
 
-  std::unique_ptr<httpclient::SimpleHttpResult> response(
-      syncer._state.connection.client->retryRequest(rest::RequestType::GET, url,
-                                                    nullptr, 0));
+  std::unique_ptr<httpclient::SimpleHttpResult> response;
+  syncer._state.connection.lease([&](httpclient::SimpleHttpClient* client) {
+    response.reset(client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
+  });
+    
+  stats.waitedForInitial += TRI_microtime() - t;
 
-  if (response == nullptr || !response->isComplete()) {
-    return Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
-                  std::string("could not connect to master at ") +
-                      syncer._state.master.endpoint + ": " +
-                      syncer._state.connection.client->getErrorMessage());
+  if (replutils::hasFailed(response.get())) {
+    return buildHttpError(response.get(), url, syncer._state.connection);
   }
 
   TRI_ASSERT(response != nullptr);
-
-  if (response->wasHttpError()) {
-    return Result(TRI_ERROR_REPLICATION_MASTER_ERROR,
-                  std::string("got invalid response from master at ") +
-                      syncer._state.master.endpoint + ": HTTP " +
-                      basics::StringUtils::itoa(response->getHttpReturnCode()) +
-                      ": " + response->getHttpReturnMessage());
-  }
-
+  
   VPackBuilder builder;
   Result r = replutils::parseResponse(builder, response.get());
 
@@ -350,6 +348,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
       keyBuilder.close();
 
       trx.remove(coll->name(), keyBuilder.slice(), options);
+      ++stats.numDocsRemoved;
     }
 
     // last high
@@ -376,6 +375,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
       keyBuilder.close();
 
       trx.remove(coll->name(), keyBuilder.slice(), options);
+      ++stats.numDocsRemoved;
     }
 
     trx.commit();
@@ -412,16 +412,15 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
     // The LogicalCollection is protected by trx.
     // Neither it nor it's indexes can be invalidated
 
-    ManagedDocumentResult mmdr;
+    ManagedDocumentResult mdr;
 
     auto physical = static_cast<MMFilesCollection*>(
         trx.documentCollection()->getPhysical());
     auto idx = physical->primaryIndex();
 
     size_t const currentChunkId = i;
-    progress = "processing keys chunk " + std::to_string(currentChunkId) +
-               " for collection '" + coll->name() + "'";
-    syncer.setProgress(progress);
+    syncer.setProgress(std::string("processing keys chunk ") + std::to_string(currentChunkId) +
+                       " for collection '" + coll->name() + "'");
 
     if (!syncer._state.isChildSyncer) {
       syncer._batch.extend(syncer._state.connection, syncer._progress);
@@ -481,32 +480,25 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
       std::string url = baseUrl + "/" + keysId +
                         "?type=keys&chunk=" + std::to_string(i) +
                         "&chunkSize=" + std::to_string(chunkSize);
-      progress = "fetching keys chunk " + std::to_string(currentChunkId) +
-                 " for collection '" + coll->name() + "' from " + url;
-      syncer.setProgress(progress);
-
-      std::unique_ptr<httpclient::SimpleHttpResult> response(
-          syncer._state.connection.client->retryRequest(rest::RequestType::PUT,
-                                                        url, nullptr, 0));
-
-      if (response == nullptr || !response->isComplete()) {
-        return Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
-                      std::string("could not connect to master at ") +
-                          syncer._state.master.endpoint + ": " +
-                          syncer._state.connection.client->getErrorMessage());
+      syncer.setProgress(std::string("fetching keys chunk ") + std::to_string(currentChunkId) +
+                         " for collection '" + coll->name() + "' from " + url);
+    
+      double t = TRI_microtime();
+      
+      std::unique_ptr<httpclient::SimpleHttpResult> response;
+      syncer._state.connection.lease([&](httpclient::SimpleHttpClient* client) {
+        response.reset(client->retryRequest(rest::RequestType::PUT, url, nullptr, 0));
+      });
+    
+      stats.waitedForKeys += TRI_microtime() - t;
+      ++stats.numKeysRequests;
+      
+      if (replutils::hasFailed(response.get())) {
+        return buildHttpError(response.get(), url, syncer._state.connection);
       }
 
       TRI_ASSERT(response != nullptr);
-
-      if (response->wasHttpError()) {
-        return Result(
-            TRI_ERROR_REPLICATION_MASTER_ERROR,
-            std::string("got invalid response from master at ") +
-                syncer._state.master.endpoint + ": HTTP " +
-                basics::StringUtils::itoa(response->getHttpReturnCode()) +
-                ": " + response->getHttpReturnMessage());
-      }
-
+      
       VPackBuilder builder;
       Result r = replutils::parseResponse(builder, response.get());
 
@@ -539,6 +531,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
           keyBuilder.close();
 
           trx.remove(coll->name(), keyBuilder.slice(), options);
+          ++stats.numDocsRemoved;
           ++nextStart;
         } else {
           break;
@@ -597,6 +590,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
             keyBuilder.close();
 
             trx.remove(coll->name(), keyBuilder.slice(), options);
+            ++stats.numDocsRemoved;
             ++nextStart;
           } else if (res == 0) {
             // key match
@@ -619,9 +613,9 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
             toFetch.emplace_back(i);
           } else {
             TRI_voc_rid_t currentRevisionId = 0;
-            if (physical->readDocument(&trx, element.localDocumentId(), mmdr)) {
+            if (physical->readDocument(&trx, element.localDocumentId(), mdr)) {
               currentRevisionId = transaction::helpers::extractRevFromDocument(
-                  VPackSlice(mmdr.vpack()));
+                  VPackSlice(mdr.vpack()));
             }
 
             if (TRI_RidToString(currentRevisionId) != pair.at(1).copyString()) {
@@ -672,35 +666,27 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
                             std::to_string(currentChunkId) +
                             "&chunkSize=" + std::to_string(chunkSize) +
                             "&offset=" + std::to_string(offsetInChunk);
-          progress = "fetching documents chunk " +
-                     std::to_string(currentChunkId) + " for collection '" +
-                     coll->name() + "' from " + url;
+          syncer.setProgress(std::string("fetching documents chunk ") +
+                             std::to_string(currentChunkId) + " for collection '" +
+                             coll->name() + "' from " + url);
+      
+          double t = TRI_microtime();
 
-          syncer.setProgress(progress);
-
-          std::unique_ptr<httpclient::SimpleHttpResult> response(
-              syncer._state.connection.client->retryRequest(
-                  rest::RequestType::PUT, url, keyJsonString.c_str(),
-                  keyJsonString.size()));
-
-          if (response == nullptr || !response->isComplete()) {
-            return Result(
-                TRI_ERROR_REPLICATION_NO_RESPONSE,
-                std::string("could not connect to master at ") +
-                    syncer._state.master.endpoint + ": " +
-                    syncer._state.connection.client->getErrorMessage());
+          std::unique_ptr<httpclient::SimpleHttpResult> response;
+          syncer._state.connection.lease([&](httpclient::SimpleHttpClient* client) {
+            response.reset(client->retryRequest(rest::RequestType::PUT, url, keyJsonString.c_str(),
+                                                keyJsonString.size()));
+          });
+      
+          stats.waitedForDocs += TRI_microtime() - t;
+          stats.numDocsRequested += toFetch.size();
+          ++stats.numDocsRequests;
+          
+          if (replutils::hasFailed(response.get())) {
+            return buildHttpError(response.get(), url, syncer._state.connection);
           }
-
+          
           TRI_ASSERT(response != nullptr);
-
-          if (response->wasHttpError()) {
-            return Result(
-                TRI_ERROR_REPLICATION_MASTER_ERROR,
-                std::string("got invalid response from master at ") +
-                    syncer._state.master.endpoint + ": HTTP " +
-                    basics::StringUtils::itoa(response->getHttpReturnCode()) +
-                    ": " + response->getHttpReturnMessage());
-          }
 
           VPackBuilder builder;
           Result r = replutils::parseResponse(builder, response.get());
@@ -764,10 +750,10 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
               LocalDocumentId conflictId =
                   physical->lookupKey(&trx, conflict.slice());
               if (conflictId.isSet()) {
-                ManagedDocumentResult mmdr;
-                bool success = physical->readDocument(&trx, conflictId, mmdr);
+                ManagedDocumentResult mdr;
+                bool success = physical->readDocument(&trx, conflictId, mdr);
                 if (success) {
-                  VPackSlice conflictingKey(mmdr.vpack());
+                  VPackSlice conflictingKey(mdr.vpack());
                   return trx.remove(coll->name(), conflictingKey, options);
                 }
               }
@@ -813,6 +799,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
                 }
               }
             }
+            ++stats.numDocsInserted;
           }
 
           if (foundLength >= toFetch.size()) {
@@ -831,6 +818,18 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
       return res;
     }
   }
+  
+  syncer.setProgress(
+      std::string("incremental sync statistics for collection '") + coll->name() + "': " + 
+      "keys requests: " + std::to_string(stats.numKeysRequests) + ", " +
+      "docs requests: " + std::to_string(stats.numDocsRequests) + ", " +
+      "number of documents requested: " + std::to_string(stats.numDocsRequested) + ", " +
+      "number of documents inserted: " + std::to_string(stats.numDocsInserted) + ", " +
+      "number of documents removed: " + std::to_string(stats.numDocsRemoved) + ", " +
+      "waited for initial: " + std::to_string(stats.waitedForInitial) + " s, " +
+      "waited for keys: " + std::to_string(stats.waitedForKeys) + " s, " +
+      "waited for docs: " + std::to_string(stats.waitedForDocs) + " s, " + 
+      "total time: " + std::to_string(TRI_microtime() - startTime) + " s");
 
   return Result();
 }

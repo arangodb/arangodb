@@ -28,6 +28,7 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
+#include "Basics/StringRef.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -42,7 +43,6 @@ class LocalTaskQueue;
 class IndexIterator;
 class LogicalCollection;
 class ManagedDocumentResult;
-class StringRef;
 struct IndexIteratorOptions;
 
 namespace velocypack {
@@ -168,6 +168,9 @@ class Index {
     return _useExpansion;
   }
 
+  /// @brief whether or not the index covers all the attributes passed in
+  virtual bool covers(std::unordered_set<std::string> const& attributes) const;
+
   /// @brief return the underlying collection
   inline LogicalCollection* collection() const { return &_collection; }
 
@@ -249,10 +252,10 @@ class Index {
   /// The extra StringRef is only used in the edge index as direction
   /// attribute attribute, a Slice would be more flexible.
   virtual double selectivityEstimate(
-      arangodb::StringRef const* extra = nullptr) const;
+      arangodb::StringRef const& extra = arangodb::StringRef()) const;
   
   /// @brief update the cluster selectivity estimate
-  virtual void updateClusterSelectivityEstimate(double estimate = 0.1) {
+  virtual void updateClusterSelectivityEstimate(double /*estimate*/) {
     TRI_ASSERT(false); // should never be called except on Coordinator
   }
 
@@ -262,9 +265,39 @@ class Index {
   virtual bool implicitlyUnique() const;
 
   virtual size_t memory() const = 0;
+  
+  /// @brief serialization flags for indexes.
+  /// note that these must be mutually exclusive when bit-ORed
+  enum class Serialize : uint8_t {
+    /// @brief serialize figures for index
+    Basics = 0,
+    /// @brief serialize figures for index
+    Figures = 2,
+    /// @brief serialize object ids for persistence
+    ObjectId = 4,
+    /// @brief serialize selectivity estimates
+    Estimates = 8
+  };
+  
+  /// @brief helper for building flags
+  template <typename... Args>
+  static inline constexpr std::underlying_type<Serialize>::type makeFlags(Serialize flag, Args... args) {
+    return static_cast<std::underlying_type<Serialize>::type>(flag) + makeFlags(args...);
+  }
+  
+  static inline constexpr std::underlying_type<Serialize>::type makeFlags() {
+    return static_cast<std::underlying_type<Serialize>::type>(Serialize::Basics);
+  }
+  
+  static inline constexpr bool hasFlag(std::underlying_type<Serialize>::type flags,
+                                       Serialize aflag) {
+    return (flags & static_cast<std::underlying_type<Serialize>::type>(aflag)) != 0;
+  }
 
-  virtual void toVelocyPack(arangodb::velocypack::Builder&, bool withFigures, bool forPersistence) const;
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(bool withFigures, bool forPersistence) const;
+  /// serialize an index to velocypack, using the serialization flags above
+  virtual void toVelocyPack(arangodb::velocypack::Builder&,
+                            std::underlying_type<Index::Serialize>::type flags) const;
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(std::underlying_type<Serialize>::type flags) const;
 
   virtual void toVelocyPackFigures(arangodb::velocypack::Builder&) const;
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackFigures() const;
@@ -289,15 +322,17 @@ class Index {
   // called when the index is dropped
   virtual int drop();
 
-  // called after the collection was truncated
-  virtual int afterTruncate();
+  /// @brief called after the collection was truncated
+  /// @param tick at which truncate was applied
+  virtual void afterTruncate(TRI_voc_tick_t tick) {};
 
   // give index a hint about the expected size
   virtual int sizeHint(transaction::Methods*, size_t);
 
   virtual bool hasBatchInsert() const;
 
-  virtual bool supportsFilterCondition(arangodb::aql::AstNode const*,
+  virtual bool supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                                       arangodb::aql::AstNode const*,
                                        arangodb::aql::Variable const*, size_t,
                                        size_t&, double&) const;
 
@@ -333,8 +368,23 @@ class Index {
                       std::shared_ptr<basics::LocalTaskQueue> queue);
 
   static size_t sortWeight(arangodb::aql::AstNode const* node);
+  
+ protected:
+  
+  /// @brief generate error result
+  /// @param code the error key
+  /// @param key the conflicting key
+  arangodb::Result& addErrorMsg(Result& r, int code, std::string const& key = "") {
+    if (code != TRI_ERROR_NO_ERROR) {
+      r.reset(code);
+      return addErrorMsg(r, key);
+    }
+    return r;
+  }
 
-  //returns estimate for index in cluster - the bool is true if the index was found
+  /// @brief generate error result
+  /// @param key the conflicting key
+  arangodb::Result& addErrorMsg(Result& r, std::string const& key = "");
 
  protected:
   TRI_idx_iid_t const _iid;

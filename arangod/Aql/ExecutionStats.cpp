@@ -51,16 +51,11 @@ void ExecutionStats::toVelocyPack(VPackBuilder& builder, bool reportFullCount) c
   if (!nodes.empty()) {
     builder.add("nodes", VPackValue(VPackValueType::Array));
     for (std::pair<size_t const, ExecutionStats::Node> const& pair : nodes) {
-      // the block type should always be set here
-      TRI_ASSERT(pair.second.type != ExecutionBlock::Type::_UNDEFINED);
-
       builder.openObject();
       builder.add("id", VPackValue(pair.first));
       builder.add("calls", VPackValue(pair.second.calls));
       builder.add("items", VPackValue(pair.second.items));
       builder.add("runtime", VPackValue(pair.second.runtime));
-      builder.add("blockType",
-                  VPackValue(ExecutionBlock::typeToString(pair.second.type)));
       builder.close();
     }
     builder.close();
@@ -88,11 +83,9 @@ void ExecutionStats::add(ExecutionStats const& summand) {
   // intentionally no modification of executionTime
   
   for(auto const& pair : summand.nodes) {
-    auto it = nodes.find(pair.first);
-    if (it != nodes.end()) {
-      it->second += pair.second;
-    } else {
-      nodes.emplace(pair);
+    auto result = nodes.insert(pair);
+    if (!result.second) {
+      result.first->second += pair.second;
     }
   }
 }
@@ -140,8 +133,6 @@ ExecutionStats::ExecutionStats(VPackSlice const& slice)
       node.calls = val.get("calls").getNumber<size_t>();
       node.items = val.get("items").getNumber<size_t>();
       node.runtime = val.get("runtime").getNumber<double>();
-      node.type =
-          ExecutionBlock::typeFromString(val.get("blockType").copyString());
       nodes.emplace(nid, node);
     }
   }

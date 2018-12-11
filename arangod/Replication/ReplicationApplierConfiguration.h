@@ -35,6 +35,12 @@ class Slice;
 /// @brief struct containing a replication apply configuration
 class ReplicationApplierConfiguration {
  public:
+  enum class RestrictType {
+    None,
+    Include,
+    Exclude
+  };
+
   std::string _endpoint;
   std::string _database;
   std::string _username;
@@ -51,17 +57,18 @@ class ReplicationApplierConfiguration {
   uint64_t _idleMaxWaitTime;
   uint64_t _initialSyncMaxWaitTime;
   uint64_t _autoResyncRetries;
+  uint64_t _maxPacketSize;
   uint32_t _sslProtocol;
-  bool _skipCreateDrop;
-  bool _autoStart;
+  bool _skipCreateDrop; /// shards/indexes/views are created by schmutz++
+  bool _autoStart; /// start applier after server start
   bool _adaptivePolling;
-  bool _autoResync;
+  bool _autoResync; /// resync completely if we miss updates
   bool _includeSystem;
-  bool _requireFromPresent;
-  bool _incremental;
+  bool _requireFromPresent; /// while tailing WAL: master must have the clients requested tick
+  bool _incremental; /// use incremental sync if we got local data
   bool _verbose;
-  std::string _restrictType;
-  std::unordered_map<std::string, bool> _restrictCollections;
+  RestrictType _restrictType;
+  std::set<std::string> _restrictCollections;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool _force32mode = false; // force client to act like 3.2
 #endif
@@ -94,6 +101,9 @@ class ReplicationApplierConfiguration {
   static ReplicationApplierConfiguration fromVelocyPack(ReplicationApplierConfiguration const& existing,
                                                         arangodb::velocypack::Slice slice, 
                                                         std::string const& databaseName);
+
+  static RestrictType restrictTypeFromString(std::string const& value);
+  static std::string restrictTypeToString(RestrictType type);
 };
 
 }

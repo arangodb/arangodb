@@ -38,13 +38,10 @@ class RestCollectionHandler : public arangodb::RestVocbaseBaseHandler {
  public:
   char const* name() const override final { return "RestCollectionHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
-  RestStatus execute() override;
-
- private:
-  void handleCommandGet();
-  void handleCommandPost();
-  void handleCommandPut();
-  void handleCommandDelete();
+  RestStatus execute() override final;
+  
+ protected:
+  
   void collectionRepresentation(VPackBuilder& builder, std::string const& name,
                                 bool showProperties, bool showFigures,
                                 bool showCount, bool detailedCount);
@@ -62,6 +59,15 @@ class RestCollectionHandler : public arangodb::RestVocbaseBaseHandler {
                                 methods::Collections::Context& ctxt,
                                 bool showProperties, bool showFigures,
                                 bool showCount, bool detailedCount);
+  
+  virtual Result handleExtraCommandPut(LogicalCollection& coll, std::string const& command,
+                                       velocypack::Builder& builder) = 0;
+  
+ private:
+  void handleCommandGet();
+  void handleCommandPost();
+  void handleCommandPut();
+  void handleCommandDelete();
 };
 
 }

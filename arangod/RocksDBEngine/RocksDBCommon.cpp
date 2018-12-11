@@ -94,9 +94,8 @@ std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(
   TRI_ASSERT(rocks->db() != nullptr);
   return rocks->mapObjectToCollection(objectId);
 }
-  
-std::tuple<TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t> mapObjectToIndex(
-                                                              uint64_t objectId) {
+
+std::tuple<TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t> mapObjectToIndex(uint64_t objectId) {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
   RocksDBEngine* rocks = static_cast<RocksDBEngine*>(engine);
@@ -125,7 +124,7 @@ std::size_t countKeys(rocksdb::DB* db, rocksdb::ColumnFamilyHandle* cf) {
 }
 
 /// @brief iterate over all keys in range and count them
-std::size_t countKeyRange(rocksdb::DB* db, 
+std::size_t countKeyRange(rocksdb::DB* db,
                           RocksDBKeyBounds const& bounds,
                           bool prefix_same_as_start) {
   rocksdb::Slice lower(bounds.start());
@@ -153,13 +152,14 @@ std::size_t countKeyRange(rocksdb::DB* db,
 
 /// @brief helper method to remove large ranges of data
 /// Should mainly be used to implement the drop() call
-Result removeLargeRange(rocksdb::TransactionDB* db,
+Result removeLargeRange(rocksdb::DB* db,
                         RocksDBKeyBounds const& bounds,
-                        bool prefix_same_as_start) {
-  LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "removing large range: " << bounds;
-  
+                        bool prefixSameAsStart,
+                        bool useRangeDelete) {
+  LOG_TOPIC(DEBUG, Logger::ENGINES) << "removing large range: " << bounds;
+
   rocksdb::ColumnFamilyHandle* cf = bounds.columnFamily();
-  rocksdb::DB* bDB = db->GetBaseDB();
+  rocksdb::DB* bDB = db->GetRootDB();
   TRI_ASSERT(bDB != nullptr);
 
   try {
@@ -167,28 +167,43 @@ Result removeLargeRange(rocksdb::TransactionDB* db,
     rocksdb::Slice lower(bounds.start());
     rocksdb::Slice upper(bounds.end());
     {
-      rocksdb::Status status =
-          rocksdb::DeleteFilesInRange(bDB, cf, &lower, &upper);
-      if (!status.ok()) {
+      rocksdb::Status s = rocksdb::DeleteFilesInRange(bDB, cf, &lower, &upper);
+      if (!s.ok()) {
         // if file deletion failed, we will still iterate over the remaining
         // keys, so we don't need to abort and raise an error here
-        arangodb::Result r = rocksutils::convertStatus(status);
-        LOG_TOPIC(WARN, arangodb::Logger::ROCKSDB)
+        arangodb::Result r = rocksutils::convertStatus(s);
+        LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
             << "RocksDB file deletion failed: " << r.errorMessage();
       }
     }
-    
+
     // go on and delete the remaining keys (delete files in range does not
     // necessarily find them all, just complete files)
-    rocksdb::Comparator const* cmp = cf->GetComparator();
-    rocksdb::WriteBatch batch;
+    if (useRangeDelete) {
+      rocksdb::WriteOptions wo;
+      rocksdb::Status s = bDB->DeleteRange(wo, cf, lower, upper);
+      if (!s.ok()) {
+        LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+        << "RocksDB key deletion failed: " << s.ToString();
+        return rocksutils::convertStatus(s);
+      }
+      return {};
+    }
+
+    // go on and delete the remaining keys (delete files in range does not
+    // necessarily find them all, just complete files)
     rocksdb::ReadOptions readOptions;
     readOptions.iterate_upper_bound = &upper;
-    readOptions.prefix_same_as_start = prefix_same_as_start; // for edge index
-    readOptions.total_order_seek = !prefix_same_as_start;
+    readOptions.prefix_same_as_start = prefixSameAsStart; // for edge index
+    readOptions.total_order_seek = !prefixSameAsStart;
     readOptions.verify_checksums = false;
     readOptions.fill_cache = false;
     std::unique_ptr<rocksdb::Iterator> it(bDB->NewIterator(readOptions, cf));
+    
+    rocksdb::WriteOptions wo;
+
+    rocksdb::Comparator const* cmp = cf->GetComparator();
+    rocksdb::WriteBatch batch;
 
     size_t total = 0;
     size_t counter = 0;
@@ -199,46 +214,48 @@ Result removeLargeRange(rocksdb::TransactionDB* db,
       ++counter;
       batch.Delete(cf, it->key());
       if (counter >= 1000) {
-        LOG_TOPIC(DEBUG, Logger::FIXME) << "intermediate delete write";
+        LOG_TOPIC(DEBUG, Logger::ENGINES) << "intermediate delete write";
         // Persist deletes all 1000 documents
-        rocksdb::Status status = bDB->Write(rocksdb::WriteOptions(), &batch);
+        rocksdb::Status status = bDB->Write(wo, &batch);
         if (!status.ok()) {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+          LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
               << "RocksDB key deletion failed: " << status.ToString();
-          return TRI_ERROR_INTERNAL;
+          return rocksutils::convertStatus(status);
         }
         batch.Clear();
         counter = 0;
       }
     }
-  
-    LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "removing large range, deleted in total: " << total;
+
+    LOG_TOPIC(DEBUG, Logger::ENGINES)
+        << "removing large range, deleted in total: " << total;
 
     if (counter > 0) {
-      LOG_TOPIC(DEBUG, Logger::FIXME) << "intermediate delete write";
+      LOG_TOPIC(DEBUG, Logger::ENGINES) << "intermediate delete write";
       // We still have sth to write
       // now apply deletion batch
       rocksdb::Status status = bDB->Write(rocksdb::WriteOptions(), &batch);
 
       if (!status.ok()) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
             << "RocksDB key deletion failed: " << status.ToString();
-        return TRI_ERROR_INTERNAL;
+        return rocksutils::convertStatus(status);
       }
     }
-    return TRI_ERROR_NO_ERROR;
+
+    return {};
   } catch (arangodb::basics::Exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
         << "caught exception during RocksDB key prefix deletion: " << ex.what();
-    return ex.code();
+    return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
         << "caught exception during RocksDB key prefix deletion: " << ex.what();
-    return TRI_ERROR_INTERNAL;
+    return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
         << "caught unknown exception during RocksDB key prefix deletion";
-    return TRI_ERROR_INTERNAL;
+    return Result(TRI_ERROR_INTERNAL, "unknown exception during RocksDB key prefix deletion");
   }
 }
 

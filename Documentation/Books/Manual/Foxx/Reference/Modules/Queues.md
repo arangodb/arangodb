@@ -15,7 +15,7 @@ Please note that Foxx queues are database-specific. Queues and jobs are always
 relative to the database in which they are created or accessed.
 
 For disabling the Foxx queues feature or adjusting the polling interval see the
-[`foxx.queues` and `foxx.queues-poll-interval` options](../../../Administration/Configuration/GeneralArangod.md#foxx-queues).
+[`foxx.queues` and `foxx.queues-poll-interval` options](../../../Programs/Arangod/Foxx.md).
 
 For the low-level functionality see the chapter on the
 [task management module](../../../Appendix/JavaScriptModules/Tasks.md).
@@ -190,7 +190,7 @@ Returns the job id.
 
     See *script.maxFailures*.
 
-  * **repeatTimes**: `number | Function` (Default: `0`)
+  * **repeatTimes**: `number` (Default: `0`)
 
     If set to a positive number, the job will be repeated this many times
     (not counting recovery when using *maxFailures*).

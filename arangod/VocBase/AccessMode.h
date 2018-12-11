@@ -41,7 +41,7 @@ struct AccessMode {
 
   static_assert(AccessMode::Type::NONE < AccessMode::Type::READ &&
                 AccessMode::Type::READ < AccessMode::Type::WRITE &&
-                AccessMode::Type::READ < AccessMode::Type::EXCLUSIVE,
+                AccessMode::Type::WRITE < AccessMode::Type::EXCLUSIVE,
                 "AccessMode::Type total order fail");
   
   static bool isNone(Type type) {

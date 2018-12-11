@@ -15,7 +15,7 @@ ArangoDB. Since version 3.4, the default storage engine is RocksDB.
 
 | MMFiles | RocksDB |
 |---|---|
-| default | optional |
+| optional | default |
 | dataset needs to fit into memory | work with as much data as fits on disk |
 | indexes in memory | hot set in memory, data and indexes on disk |
 | slow restart due to index rebuilding | fast startup (no rebuilding of indexes) |
@@ -76,11 +76,11 @@ The entire user transaction will not necessarily have ACID properties in this ca
 The threshold values for transaction sizes can be configured globally using the
 startup options
 
-* [`--rocksdb.intermediate-commit-size`](../Administration/Configuration/RocksDB.md#non-pass-through-options)
+* [`--rocksdb.intermediate-commit-size`](../Programs/Arangod/Rocksdb.md#non-pass-through-options)
 
-* [`--rocksdb.intermediate-commit-count`](../Administration/Configuration/RocksDB.md#non-pass-through-options)
+* [`--rocksdb.intermediate-commit-count`](../Programs/Arangod/Rocksdb.md#non-pass-through-options)
 
-* [`--rocksdb.max-transaction-size`](../Administration/Configuration/RocksDB.md#non-pass-through-options)
+* [`--rocksdb.max-transaction-size`](../Programs/Arangod/Rocksdb.md#non-pass-through-options)
 
 It is also possible to override these thresholds per transaction.
 

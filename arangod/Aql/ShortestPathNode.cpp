@@ -178,7 +178,7 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan,
       _graphObj = plan->getAst()->query()->lookupGraphByName(graphName);
 
       if (_graphObj == nullptr) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
+        THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_GRAPH_NOT_FOUND, graphName.c_str());
       }
 
       auto const& eColls = _graphObj->edgeCollections();
@@ -305,12 +305,6 @@ ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan,
   c->_toCondition = _toCondition->clone(_plan->getAst());
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
-}
-
-double ShortestPathNode::estimateCost(size_t& nrItems) const {
-  size_t incoming = 0;
-  double depCost = _dependencies.at(0)->getCost(incoming);
-  return depCost + (incoming * _options->estimateCost(nrItems));
 }
 
 void ShortestPathNode::prepareOptions() {

@@ -152,12 +152,27 @@ class BreadthFirstEnumerator final
     return depth;
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Build the enumerated path for the given index in the schreier
-  ///        vector.
-  //////////////////////////////////////////////////////////////////////////////
+  /**
+   * @brief Helper function to validate if the path contains the given
+   *        vertex.
+   *
+   * @param index The index of the path to search for
+   * @param vertex The vertex that should be checked against.
+   *
+   * @return true if the vertex is already in the path 
+   */
+  bool pathContainsVertex(size_t index, StringRef vertex) const;
 
-  void computeEnumeratedPath(size_t index);
+  /**
+   * @brief Helper function to validate if the path contains the given
+   *        edge.
+   *
+   * @param index The index of the path to search for
+   * @param edge The edge that should be checked against.
+   *
+   * @return true if the edge is already in the path 
+   */
+  bool pathContainsEdge(size_t index, graph::EdgeDocumentToken const& edge) const;
 };
 }
 }

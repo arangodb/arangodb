@@ -37,13 +37,14 @@
 #error missing thread support for openssl, please recomple OpenSSL with threads
 #endif
 
-using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-const asio::ssl::detail::openssl_init<true> SslFeature::sslBase{};
+namespace arangodb {
 
-SslFeature::SslFeature(application_features::ApplicationServer* server)
+const asio_ns::ssl::detail::openssl_init<true> SslFeature::sslBase{};
+
+SslFeature::SslFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Ssl") {
   setOptional(true);
   startsAfter("GreetingsPhase");
@@ -54,3 +55,5 @@ void SslFeature::prepare() {
 
 void SslFeature::unprepare() {
 }
+
+} // arangodb

@@ -49,6 +49,10 @@ class KeyGenerator {
 
   /// @brief create a key generator based on the options specified
   static KeyGenerator* factory(arangodb::velocypack::Slice);
+  
+  /// @brief whether or not the key generator has dynamic state
+  /// that needs to be stored and recovered
+  virtual bool hasDynamicState() const { return true; }
 
   /// @brief generate a key
   virtual std::string generate() = 0;

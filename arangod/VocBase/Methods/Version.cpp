@@ -54,7 +54,7 @@ static uint64_t parseVersion(char const* str, size_t len) {
       tmp = 0;
     } else {
       // stop at first other character (e.g. "3.4.devel")
-      while (result > 0 && result < 10000) {
+      while (result > 0 && result < 100) {
         // do we have 5 digits already? if we, then boost the version
         // number accordingly. this can happen for version strings
         // such as "3.4.devel" or "4.devel"
@@ -64,7 +64,7 @@ static uint64_t parseVersion(char const* str, size_t len) {
     }
   }
 
-  return result + tmp;
+  return result*100 + tmp;
 }
 
 }
@@ -155,7 +155,10 @@ Result Version::write(TRI_vocbase_t* vocbase,
   TRI_ASSERT(engine != nullptr);
   
   std::string versionFile = engine->versionFilename(vocbase->id());
-  TRI_ASSERT(!versionFile.empty());
+  if (versionFile.empty()) {
+    // cluster engine
+    return Result();
+  }
     
   VPackOptions opts;
   opts.buildUnindexedObjects = true;

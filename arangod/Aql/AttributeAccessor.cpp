@@ -32,37 +32,85 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+namespace {
+
+class AttributeAccessorKey final : public AttributeAccessor {
+ public:
+  explicit AttributeAccessorKey(Variable const* variable) : AttributeAccessor(variable) {}
+
+  AqlValue get(transaction::Methods* trx, ExpressionContext* context, bool& mustDestroy) override {
+    AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
+    return value.getKeyAttribute(trx, mustDestroy, true);
+  }
+};
+
+class AttributeAccessorId final : public AttributeAccessor {
+ public:
+  explicit AttributeAccessorId(Variable const* variable) : AttributeAccessor(variable) {}
+
+  AqlValue get(transaction::Methods* trx, ExpressionContext* context, bool& mustDestroy) override {
+    AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
+    return value.getIdAttribute(trx, mustDestroy, true);
+  }
+};
+
+class AttributeAccessorFrom final : public AttributeAccessor {
+ public:
+  explicit AttributeAccessorFrom(Variable const* variable) : AttributeAccessor(variable) {}
+
+  AqlValue get(transaction::Methods* trx, ExpressionContext* context, bool& mustDestroy) override {
+    AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
+    return value.getFromAttribute(trx, mustDestroy, true);
+  }
+};
+
+class AttributeAccessorTo final : public AttributeAccessor {
+ public:
+  explicit AttributeAccessorTo(Variable const* variable) : AttributeAccessor(variable) {}
+
+  AqlValue get(transaction::Methods* trx, ExpressionContext* context, bool& mustDestroy) override {
+    AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
+    return value.getToAttribute(trx, mustDestroy, true);
+  }
+};
+
+class AttributeAccessorSingle final : public AttributeAccessor {
+ public:
+  explicit AttributeAccessorSingle(Variable const* variable, std::string&& path) 
+      : AttributeAccessor(variable), _path(std::move(path)) {}
+
+  AqlValue get(transaction::Methods* trx, ExpressionContext* context, bool& mustDestroy) override {
+    AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
+    // use optimized version for single attribute (e.g. variable.attr)
+    return value.get(trx, _path, mustDestroy, true);
+  }
+
+ private:
+  std::string const _path;
+};
+
+class AttributeAccessorMulti final : public AttributeAccessor {
+ public:
+  explicit AttributeAccessorMulti(Variable const* variable, std::vector<std::string>&& path) 
+      : AttributeAccessor(variable), _path(std::move(path)) {}
+
+  AqlValue get(transaction::Methods* trx, ExpressionContext* context, bool& mustDestroy) override {
+    AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
+    // use general version for multiple attributes (e.g. variable.attr.subattr)
+    return value.get(trx, _path, mustDestroy, true);
+  }
+
+ private:
+  std::vector<std::string> const _path;
+};
+
+} // namespace
+
 /// @brief create the accessor
 AttributeAccessor::AttributeAccessor(
-    std::vector<std::string>&& attributeParts, Variable const* variable,
-    bool dataIsFromCollection)
-    : _attributeParts(attributeParts),
-      _variable(variable),
-      _type(EXTRACT_MULTI) {
+    Variable const* variable)
+    : _variable(variable) {}
 
-  TRI_ASSERT(_variable != nullptr);
-  TRI_ASSERT(!_attributeParts.empty());
-
-  // determine accessor type
-  // it is only safe to use the optimized accessor functions for system attributes
-  // when the input data are collection documents. it is not safe to use them for
-  // non-collection data, as the optimized functions may easily create out-of-bounds
-  // accesses in that case
-  if (_attributeParts.size() == 1) {
-    if (dataIsFromCollection && attributeParts[0] == StaticStrings::KeyString) {
-      _type = EXTRACT_KEY;
-    } else if (dataIsFromCollection && attributeParts[0] == StaticStrings::IdString) {
-      _type = EXTRACT_ID;
-    } else if (dataIsFromCollection && attributeParts[0] == StaticStrings::FromString) {
-      _type = EXTRACT_FROM;
-    } else if (dataIsFromCollection && attributeParts[0] == StaticStrings::ToString) {
-      _type = EXTRACT_TO;
-    } else {
-      _type = EXTRACT_SINGLE;
-    }
-  }
-}
-  
 /// @brief replace the variable in the accessor
 void AttributeAccessor::replaceVariable(std::unordered_map<VariableId, Variable const*> const& replacements) {
   for (auto const& it : replacements) {
@@ -73,43 +121,28 @@ void AttributeAccessor::replaceVariable(std::unordered_map<VariableId, Variable 
   }
 }
 
-/// @brief execute the accessor
-AqlValue AttributeAccessor::getSystem(transaction::Methods* trx,
-                                      ExpressionContext* context, bool& mustDestroy) {
-  AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
-  // get the AQL value
-  switch (_type) {
-    case EXTRACT_KEY:
-      return value.getKeyAttribute(trx, mustDestroy, true);
-    case EXTRACT_ID:
-      return value.getIdAttribute(trx, mustDestroy, true);
-    case EXTRACT_FROM:
-      return value.getFromAttribute(trx, mustDestroy, true);
-    case EXTRACT_TO:
-      return value.getToAttribute(trx, mustDestroy, true);
-    default: {
-      mustDestroy = false;
-      return AqlValue(AqlValueHintNull());
+AttributeAccessor* AttributeAccessor::create(std::vector<std::string>&& path, Variable const* variable, bool dataIsFromCollection) {
+  TRI_ASSERT(variable != nullptr);
+  TRI_ASSERT(!path.empty());
+
+  // determine accessor type
+  // it is only safe to use the optimized accessor functions for system attributes
+  // when the input data are collection documents. it is not safe to use them for
+  // non-collection data, as the optimized functions may easily create out-of-bounds
+  // accesses in that case
+  if (path.size() == 1) {
+    if (dataIsFromCollection && path[0] == StaticStrings::KeyString) {
+      return new AttributeAccessorKey(variable);
+    } else if (dataIsFromCollection && path[0] == StaticStrings::IdString) {
+      return new AttributeAccessorId(variable);
+    } else if (dataIsFromCollection && path[0] == StaticStrings::FromString) {
+      return new AttributeAccessorFrom(variable);
+    } else if (dataIsFromCollection && path[0] == StaticStrings::ToString) {
+      return new AttributeAccessorTo(variable);
+    } else {
+      return new AttributeAccessorSingle(variable, std::move(path[0]));
     }
   }
+      
+  return new AttributeAccessorMulti(variable, std::move(path));
 }
-
-/// @brief execute the accessor
-AqlValue AttributeAccessor::getDynamic(transaction::Methods* trx,
-                                       ExpressionContext* context, bool& mustDestroy) {
-  AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
-  // get the AQL value
-  switch (_type) {
-    case EXTRACT_SINGLE:
-      // use optimized version for single attribute (e.g. variable.attr)
-      return value.get(trx, _attributeParts[0], mustDestroy, true);
-    case EXTRACT_MULTI:
-      // use general version for multiple attributes (e.g. variable.attr.subattr)
-      return value.get(trx, _attributeParts, mustDestroy, true);
-    default: {
-      mustDestroy = false;
-      return AqlValue(AqlValueHintNull());
-    }
-  }
-}
-

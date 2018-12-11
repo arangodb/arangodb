@@ -28,15 +28,25 @@
 
 #include "RocksDBEngine/RocksDBIndex.h"
 
+namespace arangodb {
+
+struct IndexTypeFactory; // forward declaration
+
+}
+
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
 class IResearchRocksDBLink final
   : public arangodb::RocksDBIndex, public IResearchLink {
  public:
-  DECLARE_SPTR(Index);
+  DECLARE_SHARED_PTR(Index);
 
   virtual ~IResearchRocksDBLink();
+
+  virtual void afterTruncate(TRI_voc_tick_t/*tick*/) override {
+    IResearchLink::afterTruncate();
+  };
 
   virtual void batchInsert(
     transaction::Methods* trx,
@@ -52,8 +62,14 @@ class IResearchRocksDBLink final
 
   virtual int drop() override {
     writeRocksWalMarker();
-    return IResearchLink::drop();
+
+    return IResearchLink::drop().errorNumber();
   }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the factory for this type of index
+  //////////////////////////////////////////////////////////////////////////////
+  static arangodb::IndexTypeFactory const& factory();
 
   virtual bool hasBatchInsert() const override {
     return IResearchLink::hasBatchInsert();
@@ -81,17 +97,6 @@ class IResearchRocksDBLink final
     IResearchLink::load();
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief create and initialize a RocksDB IResearch View Link instance
-  /// @return nullptr on failure
-  ////////////////////////////////////////////////////////////////////////////////
-  static ptr make(
-    arangodb::LogicalCollection& collection,
-    arangodb::velocypack::Slice const& definition,
-    TRI_idx_iid_t id,
-    bool isClusterConstructor
-  ) noexcept;
-
   virtual bool matchesDefinition(
     arangodb::velocypack::Slice const& slice
   ) const override {
@@ -116,11 +121,10 @@ class IResearchRocksDBLink final
   /// @brief fill and return a JSON description of a IResearchLink object
   /// @param withFigures output 'figures' section with e.g. memory size
   ////////////////////////////////////////////////////////////////////////////////
-  using Index::toVelocyPack; // for Index::toVelocyPack(bool, bool)
+  using Index::toVelocyPack; // for Index::toVelocyPack(bool, unsigned)
   virtual void toVelocyPack(
     arangodb::velocypack::Builder& builder,
-    bool withFigures,
-    bool forPeristence
+    std::underlying_type<arangodb::Index::Serialize>::type flags
   ) const override;
 
   virtual IndexType type() const override {
@@ -132,18 +136,22 @@ class IResearchRocksDBLink final
   }
 
   virtual void unload() override {
-    int res = IResearchLink::unload();
-    if (res != TRI_ERROR_NO_ERROR) {
+    auto res = IResearchLink::unload();
+
+    if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
     }
   }
 
  private:
-  void writeRocksWalMarker();
+  struct IndexFactory; // forward declaration
+
   IResearchRocksDBLink(
     TRI_idx_iid_t iid,
     arangodb::LogicalCollection& collection
   );
+
+  void writeRocksWalMarker();
 };
 
 NS_END // iresearch

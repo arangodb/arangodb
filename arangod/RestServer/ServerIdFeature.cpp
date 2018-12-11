@@ -30,17 +30,21 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 
-using namespace arangodb;
 using namespace arangodb::options;
+
+namespace arangodb {
 
 TRI_server_id_t ServerIdFeature::SERVERID = 0;
 
 ServerIdFeature::ServerIdFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "ServerId") {
   setOptional(false);
-  startsAfter("Database");
   startsAfter("BasicsPhase");
+  startsAfter("Database");
+  startsAfter("SystemDatabase");
+  startsAfter("InitDatabase");
 }
 
 void ServerIdFeature::start() {
@@ -175,3 +179,5 @@ int ServerIdFeature::determineId(bool checkVersion) {
 
   return res;
 }
+
+} // arangodb

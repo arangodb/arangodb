@@ -39,7 +39,6 @@ using namespace arangodb::rest;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
 GeneralServer::GeneralServer(uint64_t numIoThreads) :
   _numIoThreads(numIoThreads),
   _contexts(numIoThreads)
@@ -56,8 +55,8 @@ void GeneralServer::startListening() {
     LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "trying to bind to endpoint '"
                                               << it.first << "' for requests";
 
-    // distribute endpoints acorss all io contexts
-    IoContext &ioContext = _contexts[i % _numIoThreads];
+    // distribute endpoints across all io contexts
+    IoContext& ioContext = _contexts[i++ % _numIoThreads];
     bool ok = openEndpoint(ioContext, it.second);
 
     if (ok) {
@@ -109,7 +108,7 @@ GeneralServer::IoThread::~IoThread() {
   shutdown();
 }
 
-GeneralServer::IoThread::IoThread(IoContext &iocontext) :
+GeneralServer::IoThread::IoThread(IoContext& iocontext) :
   Thread("Io"), _iocontext(iocontext) {}
 
 void GeneralServer::IoThread::run() {
@@ -121,8 +120,8 @@ GeneralServer::IoContext::IoContext() :
   _clients(0),
   _thread(*this),
   _asioIoContext(1),  // only a single thread per context
-  _asioWork(_asioIoContext)
-{
+  _asioWork(_asioIoContext),
+  _stopped(false) {
   _thread.start();
 }
 
@@ -133,7 +132,6 @@ GeneralServer::IoContext::~IoContext() {
 void GeneralServer::IoContext::stop() {
   _asioIoContext.stop();
 }
-
 
 GeneralServer::IoContext &GeneralServer::selectIoContext()
 {

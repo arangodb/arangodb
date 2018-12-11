@@ -369,18 +369,22 @@ VPackSlice transaction::helpers::extractRevSliceFromDocument(VPackSlice slice) {
   return slice.get(StaticStrings::RevString);
 }
 
-OperationResult transaction::helpers::buildCountResult(std::vector<std::pair<std::string, uint64_t>> const& count, bool details) {
+OperationResult transaction::helpers::buildCountResult(std::vector<std::pair<std::string, uint64_t>> const& count, 
+                                                       transaction::CountType type, int64_t& total) {
+  total = 0;
   VPackBuilder resultBuilder;
 
-  if (details) {
+  if (type == transaction::CountType::Detailed) {
     resultBuilder.openObject();
     for (auto const& it : count) {
+      total += it.second;
       resultBuilder.add(it.first, VPackValue(it.second));
     }
     resultBuilder.close();
   } else {
     uint64_t result = 0;
     for (auto const& it : count) {
+      total += it.second;
       result += it.second;
     }
     resultBuilder.add(VPackValue(result));

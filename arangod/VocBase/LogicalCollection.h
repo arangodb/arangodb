@@ -29,6 +29,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Indexes/IndexIterator.h"
+#include "Transaction/CountCache.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/voc-types.h"
 
@@ -40,17 +41,19 @@ typedef std::string ServerID;      // ID of a server
 typedef std::string ShardID;       // ID of a shard
 typedef std::unordered_map<ShardID, std::vector<ServerID>> ShardMap;
 
-class LocalDocumentId;
 class FollowerInfo;
 class Index;
 class IndexIterator;
 class KeyGenerator;
+struct KeyLockInfo;
+class LocalDocumentId;
 class ManagedDocumentResult;
 struct OperationOptions;
 class PhysicalCollection;
 class Result;
 class ShardingInfo;
 class StringRef;
+
 namespace transaction {
 class Methods;
 }
@@ -72,7 +75,7 @@ class ChecksumResult : public Result {
   velocypack::Builder _builder;
 };
 
-class LogicalCollection: public LogicalDataSource {
+class LogicalCollection : public LogicalDataSource {
   friend struct ::TRI_vocbase_t;
 
  public:
@@ -83,32 +86,26 @@ class LogicalCollection: public LogicalDataSource {
     bool isAStub,
     uint64_t planVersion = 0
   );
-
-  virtual ~LogicalCollection();
-
-  enum CollectionVersions { VERSION_30 = 5, VERSION_31 = 6, VERSION_33 = 7 };
-
- protected:  // If you need a copy outside the class, use clone below.
-  explicit LogicalCollection(LogicalCollection const&);
-
- private:
+  LogicalCollection(LogicalCollection const&) = delete;
   LogicalCollection& operator=(LogicalCollection const&) = delete;
-
- public:
+  virtual ~LogicalCollection();
+  
+  enum CollectionVersions {
+    VERSION_30 = 5,
+    VERSION_31 = 6,
+    VERSION_33 = 7,
+    VERSION_34 = 8
+  };
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the category representing a logical collection
   //////////////////////////////////////////////////////////////////////////////
   static Category const& category() noexcept;
 
-  virtual std::unique_ptr<LogicalCollection> clone() {
-    return std::unique_ptr<LogicalCollection>(new LogicalCollection(*this));
-  }
-
   /// @brief hard-coded minimum version number for collections
   static constexpr uint32_t minimumVersion() { return VERSION_30; }
   /// @brief current version for collections
-  static constexpr uint32_t currentVersion() { return VERSION_33; }
+  static constexpr uint32_t currentVersion() { return VERSION_34; }
 
   // SECTION: Meta Information
   uint32_t version() const { return _version; }
@@ -146,11 +143,10 @@ class LogicalCollection: public LogicalDataSource {
   TRI_vocbase_col_status_e tryFetchStatus(bool&);
   std::string statusString() const;
 
-  uint64_t numberDocuments(transaction::Methods*) const;
+  uint64_t numberDocuments(transaction::Methods*, transaction::CountType type);
 
   // SECTION: Properties
   TRI_voc_rid_t revision(transaction::Methods*) const;
-  bool isLocal() const;
   bool waitForSync() const;
   bool isSmart() const;
   bool isAStub() const { return _isAStub; }
@@ -196,24 +192,20 @@ class LogicalCollection: public LogicalDataSource {
       transaction::Methods* trx,
       std::function<bool(LocalDocumentId const&)> callback);
 
-  // Estimates
-  std::unordered_map<std::string, double> clusterIndexEstimates(bool doNotUpdate=false);
-  void clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates);
-
-  double clusterIndexEstimatesTTL() const {
-    return _clusterEstimateTTL;
-  }
-
-  void clusterIndexEstimatesTTL(double ttl) {
-    _clusterEstimateTTL = ttl;
-  }
-  // End - Estimates
+  /// @brief fetches current index selectivity estimates
+  /// if allowUpdate is true, will potentially make a cluster-internal roundtrip to
+  /// fetch current values!
+  std::unordered_map<std::string, double> clusterIndexEstimates(bool allowUpdate);
   
-  //// SECTION: Indexes
+  /// @brief sets the current index selectivity estimates
+  void clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates);
+  
+  /// @brief flushes the current index selectivity estimates
+  void flushClusterIndexEstimates();
 
   std::vector<std::shared_ptr<Index>> getIndexes() const;
 
-  void getIndexesVPack(velocypack::Builder&, bool withFigures, bool forPersistence,
+  void getIndexesVPack(velocypack::Builder&, uint8_t,
                        std::function<bool(arangodb::Index const*)> const& filter =
                          [](arangodb::Index const*) -> bool { return true; }) const;
 
@@ -229,7 +221,7 @@ class LogicalCollection: public LogicalDataSource {
   void unload();
 
   virtual arangodb::Result drop() override;
-  virtual Result rename(std::string&& name, bool doSync) override;
+  virtual Result rename(std::string&& name) override;
   virtual void setStatus(TRI_vocbase_col_status_e);
 
   // SECTION: Serialization
@@ -247,7 +239,11 @@ class LogicalCollection: public LogicalDataSource {
                                                bool allInSync) const;
 
   // Update this collection.
-  virtual arangodb::Result updateProperties(velocypack::Slice const&, bool);
+  using LogicalDataSource::properties;
+  virtual arangodb::Result properties(
+    velocypack::Slice const& slice,
+    bool partialUpdate
+  ) override;
 
   /// @brief return the figures for a collection
   virtual std::shared_ptr<velocypack::Builder> figures() const;
@@ -261,8 +257,7 @@ class LogicalCollection: public LogicalDataSource {
   // SECTION: Indexes
 
   /// @brief Create a new Index based on VelocyPack description
-  virtual std::shared_ptr<Index> createIndex(transaction::Methods*,
-                                             velocypack::Slice const&, bool&);
+  virtual std::shared_ptr<Index> createIndex(velocypack::Slice const&, bool&);
 
   /// @brief Find index by definition
   std::shared_ptr<Index> lookupIndex(velocypack::Slice const&) const;
@@ -281,33 +276,46 @@ class LogicalCollection: public LogicalDataSource {
               ManagedDocumentResult& result, bool);
 
   /// @brief processes a truncate operation
-  /// NOTE: This function throws on error
-  void truncate(transaction::Methods* trx, OperationOptions&);
+  Result truncate(transaction::Methods* trx, OperationOptions&);
 
-  Result insert(transaction::Methods*, velocypack::Slice const,
-                ManagedDocumentResult& result, OperationOptions&,
-                TRI_voc_tick_t&, bool lock, TRI_voc_tick_t& revisionId);
   // convenience function for downwards-compatibility
   Result insert(transaction::Methods* trx, velocypack::Slice const slice,
                 ManagedDocumentResult& result, OperationOptions& options,
                 TRI_voc_tick_t& resultMarkerTick, bool lock) {
     TRI_voc_tick_t unused;
-    return insert(trx, slice, result, options, resultMarkerTick, lock, unused);
+    return insert(trx, slice, result, options, resultMarkerTick, lock, unused,
+                  nullptr, nullptr);
   }
 
-  Result update(transaction::Methods*, velocypack::Slice const,
+  /**
+  * @param callbackDuringLock Called immediately after a successful insert. If
+  * it returns a failure, the insert will be rolled back. If the insert wasn't
+  * successful, it isn't called. May be nullptr.
+  */
+  Result insert(transaction::Methods* trx, velocypack::Slice slice,
+                ManagedDocumentResult& result, OperationOptions& options,
+                TRI_voc_tick_t& resultMarkerTick, bool lock,
+                TRI_voc_tick_t& revisionId,
+                KeyLockInfo* keyLockInfo,
+                std::function<Result(void)> callbackDuringLock);
+
+  Result update(transaction::Methods*, velocypack::Slice,
                 ManagedDocumentResult& result, OperationOptions&,
-                TRI_voc_tick_t&, bool, TRI_voc_rid_t& prevRev,
-                ManagedDocumentResult& previous);
+                TRI_voc_tick_t&, bool lock, TRI_voc_rid_t& prevRev,
+                ManagedDocumentResult& previous,
+                std::function<Result(void)> callbackDuringLock);
 
-  Result replace(transaction::Methods*, velocypack::Slice const,
+  Result replace(transaction::Methods*, velocypack::Slice,
                  ManagedDocumentResult& result, OperationOptions&,
-                 TRI_voc_tick_t&, bool /*lock*/, TRI_voc_rid_t& prevRev,
-                 ManagedDocumentResult& previous);
+                 TRI_voc_tick_t&, bool lock, TRI_voc_rid_t& prevRev,
+                 ManagedDocumentResult& previous,
+                 std::function<Result(void)> callbackDuringLock);
 
-  Result remove(transaction::Methods*, velocypack::Slice const,
-                OperationOptions&, TRI_voc_tick_t&, bool,
-                TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous);
+  Result remove(transaction::Methods*, velocypack::Slice,
+                OperationOptions&, TRI_voc_tick_t&, bool lock,
+                TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
+                KeyLockInfo* keyLockInfo,
+                std::function<Result(void)> callbackDuringLock);
 
   bool readDocument(transaction::Methods* trx,
                     LocalDocumentId const& token,
@@ -338,12 +346,10 @@ class LogicalCollection: public LogicalDataSource {
   // Get a reference to this KeyGenerator.
   // Caller is not allowed to free it.
   inline KeyGenerator* keyGenerator() const { return _keyGenerator.get(); }
+  
+  transaction::CountCache& countCache() { return _countCache; }
 
   ChecksumResult checksum(bool, bool) const;
-
-  // compares the checksum value passed in the Slice (must be of type String)
-  // with the checksum provided in the reference checksum
-  Result compareChecksums(velocypack::Slice checksumSlice, std::string const& referenceChecksum) const;
   
   std::unique_ptr<FollowerInfo> const& followers() const;
 
@@ -357,61 +363,56 @@ class LogicalCollection: public LogicalDataSource {
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);
 
-  // SECTION: Indexes (local only)
-  // @brief create index with the given definition.
-  bool openIndex(velocypack::Slice const&, transaction::Methods*);
-
   void increaseInternalVersion();
+
+  transaction::CountCache _countCache;
 
  protected:
   virtual void includeVelocyPackEnterprise(velocypack::Builder& result) const;
 
   // SECTION: Meta Information
-  //
+  
+  mutable basics::ReadWriteLock _lock;  // lock protecting the status and name
+  
+  /// @brief collection format version
+  uint32_t _version;
+  
   // @brief Internal version used for caching
   uint32_t _internalVersion;
-
-  bool const _isAStub;
-
+  
   // @brief Collection type
   TRI_col_type_e const _type;
-
+  
   // @brief Current state of this colletion
   TRI_vocbase_col_status_e _status;
+
+  /// @brief is this a global collection on a DBServer
+  bool const _isAStub;
 
   // @brief Flag if this collection is a smart one. (Enterprise only)
   bool _isSmart;
 
   // SECTION: Properties
-  bool _isLocal;
-
   bool _waitForSync;
-
-  uint32_t _version;
 
   bool const _allowUserKeys;
 
   // SECTION: Key Options
-  // TODO Really VPack?
-  std::shared_ptr<velocypack::Buffer<uint8_t> const>
-      _keyOptions;  // options for key creation
+  
+  // @brief options for key creation, TODO Really VPack?
+  std::shared_ptr<velocypack::Buffer<uint8_t> const> _keyOptions;
   std::unique_ptr<KeyGenerator> _keyGenerator;
  
   std::unique_ptr<PhysicalCollection> _physical;
 
-  mutable basics::ReadWriteLock _lock;  // lock protecting the status and name
-
   mutable arangodb::Mutex _infoLock;  // lock protecting the info
 
-  std::unordered_map<std::string, double> _clusterEstimates;
-  double _clusterEstimateTTL; //only valid if above vector is not empty
-  basics::ReadWriteLock _clusterEstimatesLock;
-  
   // the following contains in the cluster/DBserver case the information
   // which other servers are in sync with this shard. It is unset in all
   // other cases.
   std::unique_ptr<FollowerInfo> _followers;
-
+  
+  /// @brief sharding information
   std::unique_ptr<ShardingInfo> _sharding; 
 };
 

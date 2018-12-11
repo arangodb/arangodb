@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/arangodbjs.git / docs/Drivers/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/arangojs.git / docs/Drivers/ -->
 # Cursor API
 
 _Cursor_ instances provide an abstraction over the HTTP API's limitations.
@@ -178,7 +178,7 @@ Advances the cursor by applying the function _fn_ to each value in the cursor's
 remaining result list until the cursor is exhausted or _fn_ returns a value that
 evaluates to `true`.
 
-Returns `true` if _fn_ returned a value that evalutes to `true`, or `false`
+Returns `true` if _fn_ returned a value that evaluates to `true`, or `false`
 otherwise.
 
 Equivalent to _Array.prototype.some_ (except async).

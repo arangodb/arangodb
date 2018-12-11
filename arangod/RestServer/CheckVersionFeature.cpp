@@ -34,14 +34,17 @@
 #include "VocBase/Methods/Version.h"
 #include "VocBase/vocbase.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+namespace arangodb {
+
 CheckVersionFeature::CheckVersionFeature(
-    ApplicationServer* server, int* result,
-    std::vector<std::string> const& nonServerFeatures)
+    application_features::ApplicationServer& server,
+    int* result,
+    std::vector<std::string> const& nonServerFeatures
+)
     : ApplicationFeature(server, "CheckVersion"),
       _checkVersion(false),
       _result(result),
@@ -53,6 +56,7 @@ CheckVersionFeature::CheckVersionFeature(
   startsAfter("DatabasePath");
   startsAfter("EngineSelector");
   startsAfter("ServerId");
+  startsAfter("SystemDatabase");
 }
 
 void CheckVersionFeature::collectOptions(
@@ -61,9 +65,10 @@ void CheckVersionFeature::collectOptions(
 
   options->addOldOption("check-version", "database.check-version");
 
-  options->addHiddenOption("--database.check-version",
-                           "checks the versions of the database and exit",
-                           new BooleanParameter(&_checkVersion));
+  options->addOption("--database.check-version",
+                     "checks the versions of the database and exit",
+                     new BooleanParameter(&_checkVersion),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Command));
 }
 
 void CheckVersionFeature::validateOptions(
@@ -89,6 +94,10 @@ void CheckVersionFeature::validateOptions(
   DatabaseFeature* databaseFeature =
       ApplicationServer::getFeature<DatabaseFeature>("Database");
   databaseFeature->enableCheckVersion();
+
+  // we can turn off all warnings about environment here, because they
+  // wil show up on a regular start later anyway
+  ApplicationServer::disableFeatures({"Environment"});
 }
 
 void CheckVersionFeature::start() {
@@ -204,3 +213,5 @@ void CheckVersionFeature::checkVersion() {
     FATAL_ERROR_EXIT_CODE(*_result);
   }
 }
+
+} // arangodb

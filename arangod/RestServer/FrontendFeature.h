@@ -26,17 +26,18 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+
 class FrontendFeature final : public application_features::ApplicationFeature {
  public:
-  explicit FrontendFeature(application_features::ApplicationServer* server);
+  explicit FrontendFeature(application_features::ApplicationServer& server);
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
 
  private:
   bool _versionCheck;
 };
+
 }
 
 #endif

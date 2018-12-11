@@ -10,6 +10,16 @@ View
 
 Returns the view with the given name or null if no such view exists.
 
+    @startDocuBlockInline viewDatabaseGet
+    @EXAMPLE_ARANGOSH_OUTPUT{viewDatabaseGet}
+    ~ db._createView("example", "arangosearch", {});
+      | view = db._view("example");
+      // or, alternatively
+      view = db["example"]
+    ~ db._dropView("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock viewDatabaseGet
+
 `db._view(view-identifier)`
 
 Returns the view with the given identifier or null if no such view exists.
@@ -23,16 +33,9 @@ Get a view by name:
 
     @startDocuBlockInline viewDatabaseNameKnown
     @EXAMPLE_ARANGOSH_OUTPUT{viewDatabaseNameKnown}
-      db._view("demo");
+      db._view("demoView");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock viewDatabaseNameKnown
-
-Get a view by id:
-
-```
-arangosh> db._view(123456);
-[ArangoView 123456, "demo"]
-```
 
 Unknown view:
 
@@ -50,24 +53,33 @@ Create
 
 `db._createView(view-name, view-type, view-properties)`
 
-*view-type* must be one of the supported [View Types](README.md)
-
-*view-properties* view configuration specific to each view-type
-
 Creates a new view named *view-name* of type *view-type* with properties
-*view-properties*. If the view name already exists or if the name format is
-invalid, an error is thrown. For more information on valid view names please
-refer to the [naming conventions](../NamingConventions/README.md).
+*view-properties*.
+
+*view-name* is a string and the name of the view. No view or collection with the
+same name may already exist in the current database. For more information on
+valid view names please refer to the [naming conventions
+](../NamingConventions/README.md).
+
+*view-type* must be the string `"arangosearch"`, as it is currently the only
+supported view type.
+
+*view-properties* is an optional object containing view configuration specific
+to each view-type. Currently, only ArangoSearch Views are supported. See
+[ArangoSearch View definition
+](../../Views/ArangoSearch/DetailedOverview.md#view-definitionmodification) for
+details.
 
 **Examples**
 
-Create a view:
+    @startDocuBlockInline viewDatabaseCreate
+    @EXAMPLE_ARANGOSH_OUTPUT{viewDatabaseCreate}
+      v = db._createView("example", "arangosearch");
+      v.properties()
+      db._dropView("example")
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock viewDatabaseCreate
 
-```
-arangosh> v = db._createView("example", \<view-type\>, \<view-properties\>);
-arangosh> v.properties();
-arangosh> db._dropView("example");
-```
 
 All Views
 ---------
@@ -81,13 +93,15 @@ Returns all views of the given database.
 
 **Examples**
 
-Query views:
+List all views:
 
-```
-arangosh> db._createView("example", \<view-type\>, \<view-properties\>);
-arangosh> db._views();
-arangosh> db._dropView("example");
-```
+    @startDocuBlockInline viewDatabaseList
+    @EXAMPLE_ARANGOSH_OUTPUT{viewDatabaseList}
+    ~ db._createView("exampleView", "arangosearch");
+      db._views();
+    ~ db._dropView("exampleView");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock viewDatabaseList
 
 Drop
 ----
@@ -108,9 +122,10 @@ thrown if there is no such view.
 
 Drop a view:
 
-```
-arangosh> db._createView("example", \<view-type\>, \<view-properties\>);
-arangosh> v = db._view("example");
-arangosh> db._dropView("example");
-arangosh> v;
-```
+    @startDocuBlockInline viewDatabaseDrop
+    @EXAMPLE_ARANGOSH_OUTPUT{viewDatabaseDrop}
+      db._createView("exampleView", "arangosearch");
+      db._dropView("exampleView");
+      db._view("exampleView");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock viewDatabaseDrop

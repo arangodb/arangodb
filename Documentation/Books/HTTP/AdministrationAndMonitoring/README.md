@@ -33,6 +33,8 @@ Cluster
 
 @startDocuBlock get_admin_server_mode
 
+@startDocuBlock put_admin_server_mode
+
 @startDocuBlock get_admin_server_id
 
 @startDocuBlock get_admin_server_role

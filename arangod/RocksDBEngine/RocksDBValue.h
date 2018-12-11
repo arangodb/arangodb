@@ -100,12 +100,8 @@ class RocksDBValue {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the numeric value from the key field of a VPackSlice
-  ///
-  /// May be called only on values of the following types: KeyGeneratorValue.
   //////////////////////////////////////////////////////////////////////////////
-  static uint64_t keyValue(RocksDBValue const&);
   static uint64_t keyValue(rocksdb::Slice const&);
-  static uint64_t keyValue(std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Centroid of shape or point on the sphere surface in degrees

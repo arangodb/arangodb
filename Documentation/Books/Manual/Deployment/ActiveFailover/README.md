@@ -4,7 +4,7 @@ Active Failover Deployment
 This _Section_ describes how to deploy an _Active Failover_ environment.
 
 For a general introduction to _Active Failover_, please refer to the
-[Active Failover](../../Scalability/ActiveFailover/README.md) chapter.
+[Active Failover](../../Architecture/DeploymentModes/ActiveFailover/README.md) chapter.
 
 There are two main ways to start an _Active Failover_ setup:
 

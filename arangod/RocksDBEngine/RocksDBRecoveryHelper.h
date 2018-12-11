@@ -45,6 +45,10 @@ class RocksDBRecoveryHelper {
 
   virtual void SingleDeleteCF(uint32_t column_family_id,
                                 const rocksdb::Slice& key) {}
+  
+  virtual void DeleteRangeCF(uint32_t column_family_id,
+                             const rocksdb::Slice& begin_key,
+                             const rocksdb::Slice& end_key) {}
 
   virtual void LogData(const rocksdb::Slice& blob) {}
 };

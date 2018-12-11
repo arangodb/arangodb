@@ -389,13 +389,15 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   serverArray->ForceSet(AddressKey, TRI_V8_STD_STRING(isolate, info.serverAddress));
   TRI_GET_GLOBAL_STRING(PortKey);
   serverArray->ForceSet(PortKey, v8::Number::New(isolate, info.serverPort));
+  TRI_GET_GLOBAL_STRING(EndpointKey);
+  serverArray->ForceSet(EndpointKey, TRI_V8_STD_STRING(isolate, Endpoint::uriForm(info.endpoint)));
   TRI_GET_GLOBAL_STRING(ServerKey);
   req->ForceSet(ServerKey, serverArray);
 
   TRI_GET_GLOBAL_STRING(PortTypeKey);
   req->ForceSet(
       PortTypeKey, TRI_V8_STD_STRING(isolate, info.portType()),
-      static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum));
+      static_cast<v8::PropertyAttribute>(v8::ReadOnly));
 
   v8::Handle<v8::Object> clientArray = v8::Object::New(isolate);
   clientArray->ForceSet(AddressKey, TRI_V8_STD_STRING(isolate, info.clientAddress));
@@ -1037,23 +1039,19 @@ static void JS_DefineAction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // create an action with the given options
-  v8_action_t* action = new v8_action_t();
-  ParseActionOptions(isolate, v8g, action, options);
+  auto action = std::make_shared<v8_action_t>();
+  ParseActionOptions(isolate, v8g, action.get(), options);
 
   // store an action with the given name
-  TRI_action_t* result = TRI_DefineActionVocBase(name, action);
+  // note: this may return a previous action for the same name
+  std::shared_ptr<TRI_action_t> actionForName = TRI_DefineActionVocBase(name, action);
+  
+  v8_action_t* v8ActionForName = dynamic_cast<v8_action_t*>(actionForName.get());
 
-  // and define the callback
-  if (result != nullptr) {
-    action = dynamic_cast<v8_action_t*>(result);
-
-    if (action != nullptr) {
-      action->createCallback(isolate, callback);
-    } else {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot create callback for V8 action";
-    }
+  if (v8ActionForName != nullptr) {
+    v8ActionForName->createCallback(isolate, callback);
   } else {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot define V8 action";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot create callback for V8 action";
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -1424,7 +1422,7 @@ static int clusterSendToAllServers(
   DBServers = ci->getCurrentDBServers();
   std::unordered_map<std::string, std::string> headers;
   for (auto const& sid : DBServers) {
-    cc->asyncRequest("", coordTransactionID, "server:" + sid, method, url,
+    cc->asyncRequest(coordTransactionID, "server:" + sid, method, url,
                      reqBodyString, headers, nullptr, 3600.0);
   }
 
@@ -1432,14 +1430,14 @@ static int clusterSendToAllServers(
   size_t count = DBServers.size();
 
   for (; count > 0; count--) {
-    auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
+    auto res = cc->wait(coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_TIMEOUT) {
-      cc->drop("", coordTransactionID, 0, "");
+      cc->drop(coordTransactionID, 0, "");
       return TRI_ERROR_CLUSTER_TIMEOUT;
     }
     if (res.status == CL_COMM_ERROR || res.status == CL_COMM_DROPPED ||
         res.status == CL_COMM_BACKEND_UNAVAILABLE) {
-      cc->drop("", coordTransactionID, 0, "");
+      cc->drop(coordTransactionID, 0, "");
       return TRI_ERROR_INTERNAL;
     }
   }

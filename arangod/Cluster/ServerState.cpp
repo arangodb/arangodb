@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,8 +24,6 @@
 #include "ServerState.h"
 
 #include <iomanip>
-#include <iostream>
-#include <sstream>
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
@@ -38,10 +36,11 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ClusterInfo.h"
-
 #include "Logger/Logger.h"
+#include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -59,7 +58,8 @@ ServerState::ServerState()
       _id(),
       _shortId(0),
       _javaScriptStartupPath(),
-      _address(),
+      _myEndpoint(),
+      _advertisedEndpoint(),
       _host(),
       _state(STATE_UNDEFINED),
       _initialized(false),
@@ -90,17 +90,32 @@ void ServerState::findHost(std::string const& fallback) {
 
   // Now look at the contents of the file /etc/machine-id, if it exists:
   std::string name = "/etc/machine-id";
-  try {
-    _host = arangodb::basics::FileUtils::slurp(name);
-    while (!_host.empty() &&
-           (_host.back() == '\r' || _host.back() == '\n' ||
-            _host.back() == ' ')) {
-      _host.erase(_host.size() - 1);
-    }
-    if (!_host.empty()) {
-      return;
-    }
-  } catch (...) { }
+  if (arangodb::basics::FileUtils::exists(name)) {
+    try {
+      _host = arangodb::basics::FileUtils::slurp(name);
+      while (!_host.empty() &&
+             (_host.back() == '\r' || _host.back() == '\n' ||
+              _host.back() == ' ')) {
+        _host.erase(_host.size() - 1);
+      }
+      if (!_host.empty()) {
+        return;
+      }
+    } catch (...) { }
+  }
+
+#ifdef __APPLE__
+  static_assert(sizeof(uuid_t) == 16, "");
+  uuid_t localUuid;
+  struct timespec timeout;
+  timeout.tv_sec = 5;
+  timeout.tv_nsec = 0;
+  int res = gethostuuid(localUuid, &timeout);
+  if (res == 0) {
+    _host = StringUtils::encodeHex(reinterpret_cast<char*>(localUuid), sizeof(uuid_t));
+    return;
+  }
+#endif
 
   // Finally, as a last resort, take the fallback, coming from
   // the ClusterFeature with the value of --cluster.my-address
@@ -318,11 +333,17 @@ bool ServerState::unregister() {
 /// @brief try to integrate into a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
-                                       std::string const& myAddress) {
+bool ServerState::integrateIntoCluster(ServerState::RoleEnum role, std::string const& myEndpoint,
+                                       std::string const& advEndpoint) {
   WRITE_LOCKER(writeLocker, _lock);
 
   AgencyComm comm;
+  if (!checkEngineEquality(comm)) {
+    LOG_TOPIC(FATAL, arangodb::Logger::ENGINES)
+      << "the usage of different storage engines in the "
+      << "cluster is unsupported and may cause issues";
+    return false;
+  }
 
   // if (have persisted id) {
   //   use the persisted id
@@ -348,19 +369,22 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
       << "Restarting with persisted UUID " << id;
   }
   _id = id;
+  _myEndpoint = myEndpoint;
+  _advertisedEndpoint = advEndpoint;
+  TRI_ASSERT(!_myEndpoint.empty());
 
-  if (!registerAtAgency(comm, role, id)) {
-    FATAL_ERROR_EXIT();
+  if (!registerAtAgencyPhase1(comm, role)) {
+    return false;
   }
 
   Logger::setRole(roleToString(role)[0]);
   _role.store(role, std::memory_order_release);
 
   LOG_TOPIC(DEBUG, Logger::CLUSTER) << "We successfully announced ourselves as "
-    << roleToString(role) << " and our id is "
-    << id;
+    << roleToString(role) << " and our id is " << id;
 
-  return true;
+  // now overwrite the entry in /Current/ServersRegistered/<myId>
+  return registerAtAgencyPhase2(comm);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -390,7 +414,8 @@ std::string ServerState::roleToAgencyKey(ServerState::RoleEnum role) {
 void mkdir (std::string const& path) {
   if (!TRI_IsDirectory(path.c_str())) {
     if (!arangodb::basics::FileUtils::createDirectory(path)) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Couldn't create file directory " << path << " (UUID)";
+      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER)
+          << "Couldn't create file directory " << path << " (UUID)";
       FATAL_ERROR_EXIT();
     }
   }
@@ -411,16 +436,18 @@ bool ServerState::hasPersistedId() {
 
 bool ServerState::writePersistedId(std::string const& id) {
   std::string uuidFilename = getUuidFilename();
-  mkdir(FileUtils::dirname(uuidFilename));
-  std::ofstream ofs(uuidFilename);
-  if (!ofs.is_open()) {
-    LOG_TOPIC(FATAL, Logger::CLUSTER)
-      << "Couldn't write id file " << getUuidFilename();
+  // try to create underlying directory
+  int error;
+  FileUtils::createDirectory(FileUtils::dirname(uuidFilename), &error);
+
+  try {
+    arangodb::basics::FileUtils::spit(uuidFilename, id, true);
+  } catch (arangodb::basics::Exception const& ex) {
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Cannot write UUID file '"
+                                              << uuidFilename << "': "
+                                              << ex.what();
     FATAL_ERROR_EXIT();
-    return false;
   }
-  ofs << id << std::endl;
-  ofs.close();
 
   return true;
 }
@@ -433,32 +460,63 @@ std::string ServerState::generatePersistedId(RoleEnum const& role) {
 }
 
 std::string ServerState::getPersistedId() {
+  std::string uuidFilename = getUuidFilename();
   if (hasPersistedId()) {
-    std::string uuidFilename = getUuidFilename();
-    std::ifstream ifs(uuidFilename);
-
-    std::string id;
-    if (ifs.is_open()) {
-      std::getline(ifs, id);
-      ifs.close();
-      return id;
+    try {
+      auto uuidBuf = arangodb::basics::FileUtils::slurp(uuidFilename);
+      basics::StringUtils::trimInPlace(uuidBuf);
+      if (!uuidBuf.empty()) {
+        return uuidBuf;
+      }
+    } catch (arangodb::basics::Exception const& ex) {
+      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER)
+        << "Couldn't read UUID file '" << uuidFilename << "' - " << ex.what();
+      FATAL_ERROR_EXIT();
     }
   }
 
-  LOG_TOPIC(FATAL, Logger::STARTUP) << "Couldn't open UUID file '" << getUuidFilename() << "'";
+  LOG_TOPIC(FATAL, Logger::STARTUP)
+      << "Couldn't open UUID file '" << uuidFilename << "'";
   FATAL_ERROR_EXIT();
+}
+
+static constexpr char const* currentServersRegisteredPref = "/Current/ServersRegistered/";
+
+/// @brief check equality of engines with other registered servers
+bool ServerState::checkEngineEquality(AgencyComm& comm) {
+  std::string engineName = EngineSelectorFeature::engineName();
+
+  AgencyCommResult result = comm.getValues(currentServersRegisteredPref);
+  if (result.successful()) { // no error if we cannot reach agency directly
+
+    auto slicePath = AgencyCommManager::slicePath(currentServersRegisteredPref);
+    VPackSlice servers = result.slice()[0].get(slicePath);
+    if (!servers.isObject()) {
+      return true; // do not do anything harsh here
+    }
+
+    for (VPackObjectIterator::ObjectPair pair : VPackObjectIterator(servers)) {
+      if (pair.value.isObject()) {
+        VPackSlice engineStr = pair.value.get("engine");
+        if (engineStr.isString() && !engineStr.isEqualString(engineName)) {
+          return false;
+        }
+      }
+    }
+  }
+
+  return true;
 }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief create an id for a specified role
 //////////////////////////////////////////////////////////////////////////////
 
-bool ServerState::registerAtAgency(AgencyComm& comm,
-                                   const ServerState::RoleEnum& role,
-                                   std::string const& id) {
+bool ServerState::registerAtAgencyPhase1(AgencyComm& comm,
+                                         const ServerState::RoleEnum& role) {
 
   std::string agencyListKey = roleToAgencyListKey(role);
-  std::string idKey = "Latest" + roleToAgencyKey(role) + "Id";
+  std::string latestIdKey = "Latest" + roleToAgencyKey(role) + "Id";
 
   VPackBuilder builder;
   builder.add(VPackValue("none"));
@@ -482,8 +540,8 @@ bool ServerState::registerAtAgency(AgencyComm& comm,
     return false;
   }
 
-  std::string planUrl = "Plan/" + agencyListKey + "/" + id;
-  std::string currentUrl = "Current/" + agencyListKey + "/" + id;
+  std::string planUrl = "Plan/" + agencyListKey + "/" + _id;
+  std::string currentUrl = "Current/" + agencyListKey + "/" + _id;
 
   AgencyWriteTransaction preg(
     {AgencyOperation(planUrl, AgencyValueOperationType::SET, builder.slice()),
@@ -498,17 +556,17 @@ bool ServerState::registerAtAgency(AgencyComm& comm,
   // ok to fail..if it failed we are already registered
   comm.sendTransactionWithFailover(creg, 0.0);
 
-  std::string targetIdStr = "Target/" + idKey;
-  std::string targetUrl = "Target/MapUniqueToShortID/" + id;
+  std::string targetIdPath = "Target/" + latestIdKey;
+  std::string targetUrl = "Target/MapUniqueToShortID/" + _id;
 
   size_t attempts {0};
   while (attempts++ < 300) {
-    AgencyReadTransaction readValueTrx(std::vector<std::string>{AgencyCommManager::path(targetIdStr),
+    AgencyReadTransaction readValueTrx(std::vector<std::string>{AgencyCommManager::path(targetIdPath),
                                                                 AgencyCommManager::path(targetUrl)});
     AgencyCommResult result = comm.sendTransactionWithFailover(readValueTrx, 0.0);
 
     if (!result.successful()) {
-      LOG_TOPIC(WARN, Logger::CLUSTER) << "Couldn't fetch " << targetIdStr
+      LOG_TOPIC(WARN, Logger::CLUSTER) << "Couldn't fetch " << targetIdPath
         << " and " << targetUrl;
       std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;
@@ -516,27 +574,35 @@ bool ServerState::registerAtAgency(AgencyComm& comm,
 
     VPackSlice mapSlice = result.slice()[0].get(
     std::vector<std::string>(
-      {AgencyCommManager::path(), "Target", "MapUniqueToShortID", id}));
+      {AgencyCommManager::path(), "Target", "MapUniqueToShortID", _id}));
 
     // already registered
     if (!mapSlice.isNone()) {
+      VPackSlice s = mapSlice.get("TransactionID");
+      if (s.isNumber()) {
+        uint32_t shortId = s.getNumericValue<uint32_t>();
+        setShortId(shortId);
+        LOG_TOPIC(DEBUG, Logger::CLUSTER) << "restored short id " << shortId << " from agency";
+      } else {
+        LOG_TOPIC(WARN, Logger::CLUSTER) << "unable to restore short id from agency";
+      }
       return true;
     }
 
-    VPackSlice latestId = result.slice()[0].get(
+    VPackSlice latestIdSlice = result.slice()[0].get(
     std::vector<std::string>(
-      {AgencyCommManager::path(), "Target", idKey}));
+      {AgencyCommManager::path(), "Target", latestIdKey}));
 
     uint32_t num = 0;
     std::unique_ptr<AgencyPrecondition> latestIdPrecondition;
     VPackBuilder latestIdBuilder;
-    if (latestId.isNumber()) {
-      num = latestId.getNumber<uint32_t>();
+    if (latestIdSlice.isNumber()) {
+      num = latestIdSlice.getNumber<uint32_t>();
       latestIdBuilder.add(VPackValue(num));
-      latestIdPrecondition.reset(new AgencyPrecondition(targetIdStr,
+      latestIdPrecondition.reset(new AgencyPrecondition(targetIdPath,
                   AgencyPrecondition::Type::VALUE, latestIdBuilder.slice()));
     } else {
-      latestIdPrecondition.reset(new AgencyPrecondition(targetIdStr,
+      latestIdPrecondition.reset(new AgencyPrecondition(targetIdPath,
                   AgencyPrecondition::Type::EMPTY, true));
     }
 
@@ -553,7 +619,7 @@ bool ServerState::registerAtAgency(AgencyComm& comm,
     std::vector<AgencyPrecondition> preconditions;
 
     operations.push_back(
-      AgencyOperation(targetIdStr, AgencySimpleOperationType::INCREMENT_OP)
+      AgencyOperation(targetIdPath, AgencySimpleOperationType::INCREMENT_OP)
     );
     operations.push_back(
       AgencyOperation(targetUrl, AgencyValueOperationType::SET, localIdBuilder.slice())
@@ -574,7 +640,41 @@ bool ServerState::registerAtAgency(AgencyComm& comm,
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 
-  LOG_TOPIC(FATAL, Logger::STARTUP) << "Couldn't register shortname for " << id;
+  LOG_TOPIC(FATAL, Logger::STARTUP) << "Couldn't register shortname for " << _id;
+  return false;
+}
+
+bool ServerState::registerAtAgencyPhase2(AgencyComm& comm) {
+  TRI_ASSERT(!_id.empty() && !_myEndpoint.empty());
+
+  while (!application_features::ApplicationServer::isStopping()) {
+    VPackBuilder builder;
+    try {
+      VPackObjectBuilder b(&builder);
+      builder.add("endpoint", VPackValue(_myEndpoint));
+      builder.add("advertisedEndpoint", VPackValue(_advertisedEndpoint));
+      builder.add("host", VPackValue(getHost()));
+      builder.add("version", VPackValue(rest::Version::getNumericServerVersion()));
+      builder.add("versionString", VPackValue(rest::Version::getServerVersion()));
+      builder.add("engine", VPackValue(EngineSelectorFeature::engineName()));
+    } catch (...) {
+      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "out of memory";
+      FATAL_ERROR_EXIT();
+    }
+
+    auto result = comm.setValue(currentServersRegisteredPref + _id, builder.slice(), 0.0);
+
+    if (result.successful()) {
+      return true;
+    } else {
+      LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
+      << "failed to register server in agency: http code: "
+      << result.httpCode() << ", body: '" << result.body() << "', retrying ...";
+    }
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+  }
+
   return false;
 }
 
@@ -633,22 +733,18 @@ void ServerState::setShortId(uint32_t id) {
 /// @brief get the server address
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string ServerState::getAddress() {
+std::string ServerState::getEndpoint() {
   READ_LOCKER(readLocker, _lock);
-  return _address;
+  return _myEndpoint;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set the server address
+/// @brief get the server advertised endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-void ServerState::setAddress(std::string const& address) {
-  if (address.empty()) {
-    return;
-  }
-
-  WRITE_LOCKER(writeLocker, _lock);
-  _address = address;
+std::string ServerState::getAdvertisedEndpoint() {
+  READ_LOCKER(readLocker, _lock);
+  return _advertisedEndpoint;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -794,6 +890,10 @@ Result ServerState::propagateClusterReadOnly(bool mode) {
     if (!r.successful()) {
       return Result(TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED, r.errorMessage());
     }
+    // This is propagated to all servers via the heartbeat, which happens
+    // once per second. So to ensure that every server has taken note of
+    // the change, we delay here for 2 seconds.
+    std::this_thread::sleep_for(std::chrono::seconds(2));
   }
   setReadOnly(mode);
   return Result();

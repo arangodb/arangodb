@@ -248,7 +248,7 @@ std::string const& GeneralRequest::header(std::string const& key) const {
 }
 
 std::string const& GeneralRequest::value(std::string const& key,
-                                      bool& found) const {
+                                         bool& found) const {
   if (!_values.empty()) {
     auto it = _values.find(key);
     

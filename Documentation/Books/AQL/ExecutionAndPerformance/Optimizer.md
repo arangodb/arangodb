@@ -135,7 +135,7 @@ Here is the meaning of these rules in context of this query:
 * `use-indexes`: use an index to iterate over a collection instead of performing a
   full collection scan. In the example case this makes sense, as the index can be
   used for filtering and sorting.
-* `remove-filter-covered-by-index`: remove an unnessary filter whose functionality
+* `remove-filter-covered-by-index`: remove an unnecessary filter whose functionality
   is already covered by an index. In this case the index only returns documents 
   matching the filter.
 * `use-index-for-sort`: removes a `SORT` operation if it is already satisfied by
@@ -414,10 +414,10 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
   The intention of this rule is to move calculations down in the processing pipeline
   as far as possible (below *FILTER*, *LIMIT* and *SUBQUERY* nodes) so they are executed
   as late as possible and not before their results are required.
-* `patch-update-statements`: will appear if an *UpdateNode* was patched to not buffer
-  its input completely, but to process it in smaller batches. The rule will fire for an
-  *UPDATE* query that is fed by a full collection scan, and that does not use any other
-  indexes and subqueries.
+* `patch-update-statements`: will appear if an *UpdateNode* or *ReplaceNode* was patched 
+  to not buffer its input completely, but to process it in smaller batches. The rule will 
+  fire for an *UPDATE* or *REPLACE* query that is fed by a full collection scan or an index
+  scan only, and that does not use any other collections, indexes, subqueries or traversals.
 * `optimize-traversals`: will appear if either the edge or path output variable in an
   AQL traversal was optimized away, or if a *FILTER* condition from the query was moved
   in the *TraversalNode* for early pruning of results.
@@ -428,6 +428,10 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
 * `replace-function-with-index`: will appear when a deprecated index function such as
    `FULLTEXT`, `NEAR`, `WITHIN` or `WITHIN_RECTANGLE` is replaced with a regular
    subquery.
+* `fuse-filters`: will appear if the optimizer merges adjacent FILTER nodes together into
+   a single FILTER node
+* `simplify-conditions`: will appear if the optimizer replaces parts in a CalculationNode's
+   expression with simpler expressions 
 * `remove-sort-rand`: will appear when a *SORT RAND()* expression is removed by
   moving the random iteration into an *EnumerateCollectionNode*. This optimizer rule
   is specific for the MMFiles storage engine.

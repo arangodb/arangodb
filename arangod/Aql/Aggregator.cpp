@@ -83,7 +83,7 @@ class MemoryBlockAllocator {
   public:
   /// @brief create a temporary storage instance
   explicit MemoryBlockAllocator(size_t blockSize)
-      : blocks(), blockSize(blockSize), current(nullptr), end(nullptr) {}
+      : blockSize(blockSize), current(nullptr), end(nullptr) {}
 
   /// @brief destroy a temporary storage instance
   ~MemoryBlockAllocator() {
@@ -99,10 +99,10 @@ class MemoryBlockAllocator {
     end = nullptr;
   }
 
-  /// @brief register a short string
+  /// @brief register a short data value
   char* store(char const* p, size_t length) {
     if (current == nullptr || (current + length > end)) {
-      allocateBlock();
+      allocateBlock(length);
     }
 
     TRI_ASSERT(!blocks.empty());
@@ -118,8 +118,9 @@ class MemoryBlockAllocator {
 
   private:
   /// @brief allocate a new block of memory
-  void allocateBlock() {
-    char* buffer = new char[blockSize];
+  void allocateBlock(size_t minLength) {
+    size_t length = std::max(minLength, blockSize);
+    char* buffer = new char[length];
 
     try {
       blocks.emplace_back(buffer);
@@ -128,7 +129,7 @@ class MemoryBlockAllocator {
       throw;
     }
     current = buffer;
-    end = current + blockSize;
+    end = current + length;
   }
 
   /// @brief already allocated blocks
@@ -225,14 +226,16 @@ struct AggregatorMax final : public Aggregator {
 
 struct AggregatorSum final : public Aggregator {
   explicit AggregatorSum(transaction::Methods* trx)
-      : Aggregator(trx), sum(0.0), invalid(false) {}
+      : Aggregator(trx), sum(0.0), invalid(false), invoked(false) {}
 
   void reset() override {
     sum = 0.0;
     invalid = false;
+    invoked = false;
   }
 
   void reduce(AqlValue const& cmpValue) override {
+    invoked = true;
     if (!invalid) {
       if (cmpValue.isNull(true)) {
         // ignore `null` values here
@@ -252,19 +255,18 @@ struct AggregatorSum final : public Aggregator {
   }
 
   AqlValue stealValue() override {
-    if (invalid || std::isnan(sum) || sum == HUGE_VAL || sum == -HUGE_VAL) {
+    if (invalid || !invoked || std::isnan(sum) || sum == HUGE_VAL || sum == -HUGE_VAL) {
       return AqlValue(AqlValueHintNull());
     }
 
-    builder.clear();
-    builder.add(VPackValue(sum));
-    AqlValue temp(builder.slice());
+    double v = sum;
     reset();
-    return temp;
+    return AqlValue(AqlValueHintDouble(v));
   }
 
   double sum;
   bool invalid;
+  bool invoked;
 };
 
 /// @brief the single-server variant of AVERAGE
@@ -339,6 +341,8 @@ struct AggregatorAverageStep1 final : public AggregatorAverage {
     reset();
     return temp;
   }
+  
+  arangodb::velocypack::Builder builder;
 };
 
 /// @brief the coordinator variant of AVERAGE, aggregating partial sums and counts
@@ -471,6 +475,8 @@ struct AggregatorVarianceBaseStep1 final : public AggregatorVarianceBase {
     reset();
     return temp;
   }
+  
+  arangodb::velocypack::Builder builder;
 };
 
 /// @brief the coordinator variant of VARIANCE
@@ -659,6 +665,7 @@ struct AggregatorUnique : public Aggregator {
 
   MemoryBlockAllocator allocator;
   std::unordered_set<velocypack::Slice, basics::VelocyPackHelper::VPackHash, basics::VelocyPackHelper::VPackEqual> seen;
+  arangodb::velocypack::Builder builder;
 };
 
 /// @brief the coordinator variant of UNIQUE
@@ -736,6 +743,7 @@ struct AggregatorSortedUnique : public Aggregator {
 
   MemoryBlockAllocator allocator;
   std::set<velocypack::Slice, basics::VelocyPackHelper::VPackLess<true>> seen;
+  arangodb::velocypack::Builder builder;
 };
 
 /// @brief the coordinator variant of SORTED_UNIQUE
@@ -800,6 +808,7 @@ struct AggregatorCountDistinct : public Aggregator {
 
   MemoryBlockAllocator allocator;
   std::unordered_set<velocypack::Slice, basics::VelocyPackHelper::VPackHash, basics::VelocyPackHelper::VPackEqual> seen;
+  arangodb::velocypack::Builder builder;
 };
 
 /// @brief the coordinator variant of COUNT_DISTINCT
@@ -996,13 +1005,11 @@ std::unordered_map<std::string, std::string> const aliases = {
 
 std::unique_ptr<Aggregator> Aggregator::fromTypeString(transaction::Methods* trx,
                                                        std::string const& type) {
-  auto it = ::aggregators.find(translateAlias(type));
+  // will always return a valid generator function or throw an exception
+  auto generator = Aggregator::factoryFromTypeString(type);
+  TRI_ASSERT(generator != nullptr);
 
-  if (it != ::aggregators.end()) { 
-    return (*it).second.generator(trx);
-  }
-  // aggregator function name should have been validated before
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid aggregator type");
+  return (*generator)(trx);
 }
 
 std::unique_ptr<Aggregator> Aggregator::fromVPack(transaction::Methods* trx,
@@ -1013,6 +1020,16 @@ std::unique_ptr<Aggregator> Aggregator::fromVPack(transaction::Methods* trx,
   if (variable.isString()) {
     return fromTypeString(trx, variable.copyString());
   }
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid aggregator type");
+}
+
+std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const* Aggregator::factoryFromTypeString(std::string const& type) {
+  auto it = ::aggregators.find(translateAlias(type));
+
+  if (it != ::aggregators.end()) { 
+    return &((*it).second.generator);
+  }
+  // aggregator function name should have been validated before
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid aggregator type");
 }
 

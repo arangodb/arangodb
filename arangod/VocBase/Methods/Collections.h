@@ -44,6 +44,9 @@ namespace methods {
 /// Common code for collection REST handler and v8-collections
 struct Collections {
   struct Context {
+    Context(Context const&) = delete;
+    Context& operator=(Context const&) = delete;
+
     Context(TRI_vocbase_t& vocbase, LogicalCollection& coll);
     Context(
       TRI_vocbase_t& vocbase,
@@ -65,7 +68,7 @@ struct Collections {
     bool const _responsibleForTrx;
   };
 
-  typedef std::function<void(LogicalCollection&)> const& FuncCallback;
+  typedef std::function<void(std::shared_ptr<LogicalCollection> const&)> const& FuncCallback;
   typedef std::function<void(velocypack::Slice const&)> const& DocCallback;
 
   static void enumerate(TRI_vocbase_t* vocbase, FuncCallback);
@@ -85,11 +88,17 @@ struct Collections {
   static Result unload(TRI_vocbase_t* vocbase, LogicalCollection* coll);
 
   static Result properties(Context& ctxt, velocypack::Builder&);
-  static Result updateProperties(LogicalCollection* coll,
-                                 velocypack::Slice const&);
+  static Result updateProperties(
+    LogicalCollection& collection,
+    velocypack::Slice const& props,
+    bool partialUpdate
+  );
 
-  static Result rename(LogicalCollection* coll, std::string const& newName,
-                       bool doOverride);
+  static Result rename(
+    LogicalCollection& collection,
+    std::string const& newName,
+    bool doOverride
+  );
 
   static Result drop(TRI_vocbase_t*, LogicalCollection* coll,
                      bool allowDropSystem, double timeout);

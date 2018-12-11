@@ -28,10 +28,12 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringRef.h"
 #include "Basics/Result.h"
-#include "Utils/OperationResult.h"
+#include "Rest/CommonDefines.h"
+#include "Transaction/CountCache.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Options.h"
 #include "Transaction/Status.h"
+#include "Utils/OperationResult.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
@@ -47,44 +49,32 @@
 namespace arangodb {
 
 namespace basics {
-
 struct AttributeName;
 class StringBuffer;
-
 }
 
 namespace velocypack {
-
 class Builder;
-
 }
 
 namespace aql {
-
 class Ast;
 struct AstNode;
 class SortCondition;
 struct Variable;
-
 }
 
 namespace rest {
-
 enum class ResponseCode;
-
 }
 
 namespace traverser {
-
 class BaseEngine;
-
 }
 
 namespace transaction {
-
 class Context;
 struct Options;
-
 }
 
 /// @brief forward declarations
@@ -111,7 +101,7 @@ class Methods {
    public:
     IndexHandle() = default;
     void toVelocyPack(arangodb::velocypack::Builder& builder,
-                      bool withFigures) const;
+            std::underlying_type<Index::Serialize>::type flags) const;
     bool operator==(IndexHandle const& other) const {
       return other._index.get() == _index.get();
     }
@@ -125,7 +115,6 @@ class Methods {
     std::shared_ptr<arangodb::Index> getIndex() const;
   };
 
-  using VPackBuilder = arangodb::velocypack::Builder;
   using VPackSlice = arangodb::velocypack::Slice;
 
   /// @brief transaction::Methods
@@ -170,6 +159,7 @@ class Methods {
   /// @param callback nullptr and empty functers are ignored, treated as success
   /// @return success
   bool addStatusChangeCallback(StatusChangeCallback const* callback);
+  bool removeStatusChangeCallback(StatusChangeCallback const* callback);
 
   /// @brief clear all called for LogicalDataSource instance association events
   /// @note not thread-safe on the assumption of static factory registration
@@ -207,6 +197,7 @@ class Methods {
 
   /// @brief add a transaction hint
   void addHint(transaction::Hints::Hint hint) { _localHints.set(hint); }
+  bool hasHint(transaction::Hints::Hint hint) const { return _localHints.has(hint); }
 
   /// @brief whether or not the transaction consists of a single operation only
   bool isSingleOperationTransaction() const;
@@ -263,9 +254,6 @@ class Methods {
   bool isEdgeCollection(std::string const& collectionName) const;
   bool isDocumentCollection(std::string const& collectionName) const;
   TRI_col_type_e getCollectionType(std::string const& collectionName) const;
-
-  /// @brief return the name of a collection
-  std::string collectionName(TRI_voc_cid_t cid);
 
   /// @brief Iterate over all elements of the collection.
   ENTERPRISE_VIRT void invokeOnAllElements(std::string const& collectionName,
@@ -338,12 +326,8 @@ class Methods {
   OperationResult truncate(std::string const& collectionName,
                            OperationOptions const& options);
 
-  /// @brief rotate all active journals of the collection
-  OperationResult rotateActiveJournal(std::string const& collectionName,
-                                      OperationOptions const& options);
-
   /// @brief count the number of documents in a collection
-  virtual OperationResult count(std::string const& collectionName, bool details);
+  virtual OperationResult count(std::string const& collectionName, CountType type);
 
   /// @brief Gets the best fitting index for an AQL condition.
   /// note: the caller must have read-locked the underlying collection when
@@ -456,7 +440,6 @@ class Methods {
 #endif
 
  private:
-
   /// @brief build a VPack object with _id, _key and _rev and possibly
   /// oldRef (if given), the result is added to the builder in the
   /// argument as a single object.
@@ -527,20 +510,18 @@ class Methods {
   OperationResult rotateActiveJournalCoordinator(std::string const& collectionName,
                                                  OperationOptions const& options);
 
-  OperationResult rotateActiveJournalLocal(std::string const& collectionName,
-                                           OperationOptions const& options);
-
-
  protected:
-
-  OperationResult countCoordinator(std::string const& collectionName,
-                                   bool details);
-
-  OperationResult countLocal(std::string const& collectionName);
-
   /// @brief return the transaction collection for a document collection
   ENTERPRISE_VIRT TransactionCollection* trxCollection(TRI_voc_cid_t cid,
                                AccessMode::Type type = AccessMode::Type::READ) const;
+
+  OperationResult countCoordinator(std::string const& collectionName,
+                                   CountType type);
+
+  OperationResult countCoordinatorHelper(
+      std::shared_ptr<LogicalCollection> const& collinfo, std::string const& collectionName, CountType type);
+
+  OperationResult countLocal(std::string const& collectionName, CountType type);
 
   /// @brief return the collection
   arangodb::LogicalCollection* documentCollection(
@@ -559,8 +540,15 @@ class Methods {
   ENTERPRISE_VIRT Result unlockRecursive(TRI_voc_cid_t, AccessMode::Type);
 
  private:
+  /// @brief replicates operations from leader to follower(s)
+  Result replicateOperations(LogicalCollection* collection,
+                             arangodb::velocypack::Slice const& inputValue,
+                             arangodb::velocypack::Builder const& resultBuilder,
+                             std::shared_ptr<std::vector<std::string> const>& followers,
+                             arangodb::rest::RequestType requestType,
+                             std::string const& pathAppendix);
 
-/// @brief Helper create a Cluster Communication document
+  /// @brief Helper create a Cluster Communication document
   OperationResult clusterResultDocument(
       rest::ResponseCode const& responseCode,
       std::shared_ptr<arangodb::velocypack::Builder> const& resultBody,
@@ -638,6 +626,12 @@ class Methods {
     std::string name;
   }
   _collectionCache;
+
+  Result replicateOperations(
+      LogicalCollection const& collection,
+      std::shared_ptr<const std::vector<std::string>> const& followers,
+      OperationOptions const& options, VPackSlice value,
+      TRI_voc_document_operation_e operation, VPackBuilder& resultBuilder);
 };
 
 }

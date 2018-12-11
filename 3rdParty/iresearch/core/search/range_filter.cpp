@@ -192,7 +192,7 @@ filter::prepared::ptr by_range::prepare(
 
   scorer.score(index, ord);
 
-  auto q = memory::make_unique<range_query>(std::move(states));
+  auto q = memory::make_shared<range_query>(std::move(states));
 
   // apply boost
   irs::boost::apply(q->attributes(), this->boost() * boost);

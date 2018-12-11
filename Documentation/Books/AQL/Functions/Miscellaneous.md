@@ -250,35 +250,35 @@ RETURN 1 == 1 && FAIL("error") ? true : false // aborted with error
 
 ### NOOPT()
 
-`NOOPT(expression) → retVal`
+`NOOPT(value) → retVal`
 
-No-operation that prevents query compile-time optimizations. Constant expressions
-can be forced to be evaluated at runtime with this.
+No-operation that prevents certain query compile-time and run-time optimizations. 
+Constant expressions can be forced to be evaluated at runtime with this.
+This function is marked as non-deterministic so its argument withstands
+query optimization. There is no need to call this function explicitly, it is 
+mainly used for internal testing.
 
-If there is a C++ implementation as well as a JavaScript implementation of an
-AQL function, then it will enforce the use of the C++ version.
-
-- **expression** (any): arbitrary expression
-- returns **retVal** (any): the return value of the *expression*
+- **value** (any): a value of arbitrary type
+- returns **retVal** (any): *value*
 
 ```js
 // differences in execution plan (explain)
 FOR i IN 1..3 RETURN (1 + 1)      // const assignment
 FOR i IN 1..3 RETURN NOOPT(1 + 1) // simple expression
 
-NOOPT( RAND() ) // C++ implementation
-V8( RAND() )    // JavaScript implementation
+NOOPT( 123 ) // evaluates 123 at runtime
+NOOPT( CONCAT("a", "b") ) // evaluates concatenation at runtime
 ```
 
 ### PASSTHRU()
 
 `PASSTHRU(value) → retVal`
 
-This function is marked as non-deterministic so its argument withstands
-query optimization.
+Simply returns its call argument unmodified. There is no need to call this function 
+explicitly, it is mainly used for internal testing.
 
 - **value** (any): a value of arbitrary type
-- returns **retVal** (any): *value*, without optimizations
+- returns **retVal** (any): *value*
 
 ### SLEEP()
 
@@ -298,9 +298,9 @@ SLEEP(0.02) // wait 20 milliseconds
 
 `V8(expression) → retVal`
 
-No-operation that enforces the usage of the V8 JavaScript engine. If there is a
-JavaScript implementation of an AQL function, for which there is also a C++
-implementation, the JavaScript version will be used.
+No-operation that enforces the usage of the V8 JavaScript engine. There is
+no need to call this function explicitly, it is mainly used for internal
+testing.
 
 - **expression** (any): arbitrary expression
 - returns **retVal** (any): the return value of the *expression*
@@ -308,6 +308,18 @@ implementation, the JavaScript version will be used.
 ```js
 // differences in execution plan (explain)
 FOR i IN 1..3 RETURN (1 + 1)          // const assignment
-FOR i IN 1..3 RETURN V8(1 + 1)        // const assignment
-FOR i IN 1..3 RETURN NOOPT(V8(1 + 1)) // v8 expression
+FOR i IN 1..3 RETURN V8(1 + 1)        // simple expression
+```
+
+### VERSION()
+
+`VERSION() → serverVersion`
+
+Returns the server version as a string. In a cluster, returns the version
+of the coordinator.
+
+- returns **serverVersion** (string): the server version string
+
+```js
+RETURN VERSION()        // e.g. "3.4.0" 
 ```

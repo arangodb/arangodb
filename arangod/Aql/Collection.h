@@ -79,7 +79,7 @@ struct Collection {
     return _name;
   }
 
-  /// @brief count the LOCAL number of documents in the collection
+  /// @brief count the number of documents in the collection
   size_t count(transaction::Methods* trx) const;
 
   /// @brief returns the collection's plan id
@@ -131,8 +131,6 @@ struct Collection {
   /// @brief currently handled shard. this is a temporary variable that will
   /// only be filled during plan creation
   std::string _currentShard;
-  
-  int64_t mutable _numberDocuments;
   
   AccessMode::Type _accessType;
 

@@ -45,21 +45,25 @@ class RocksDBLogValue {
 
   static RocksDBLogValue DatabaseCreate(TRI_voc_tick_t id);
   static RocksDBLogValue DatabaseDrop(TRI_voc_tick_t id);
-  static RocksDBLogValue CollectionCreate(TRI_voc_tick_t vocbaseId,
+  
+  static RocksDBLogValue CollectionCreate(TRI_voc_tick_t dbid,
                                           TRI_voc_cid_t cid);
-  static RocksDBLogValue CollectionDrop(TRI_voc_tick_t vocbaseId,
+  static RocksDBLogValue CollectionDrop(TRI_voc_tick_t dbid,
                                         TRI_voc_cid_t cid,
                                         StringRef const& uuid);
-  static RocksDBLogValue CollectionRename(TRI_voc_tick_t vocbaseId,
+  static RocksDBLogValue CollectionRename(TRI_voc_tick_t dbid,
                                           TRI_voc_cid_t cid,
                                           StringRef const& oldName);
-  static RocksDBLogValue CollectionChange(TRI_voc_tick_t vocbaseId,
+  static RocksDBLogValue CollectionChange(TRI_voc_tick_t dbid,
                                           TRI_voc_cid_t cid);
+  static RocksDBLogValue CollectionTruncate(TRI_voc_tick_t dbid,
+                                            TRI_voc_cid_t cid,
+                                            uint64_t objectId);
 
-  static RocksDBLogValue IndexCreate(TRI_voc_tick_t vocbaseId,
+  static RocksDBLogValue IndexCreate(TRI_voc_tick_t dbid,
                                      TRI_voc_cid_t cid,
                                      VPackSlice const& indexInfo);
-  static RocksDBLogValue IndexDrop(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid,
+  static RocksDBLogValue IndexDrop(TRI_voc_tick_t dbid, TRI_voc_cid_t cid,
                                    TRI_idx_iid_t indexId);
 
   static RocksDBLogValue ViewCreate(TRI_voc_tick_t, TRI_voc_cid_t);
@@ -90,8 +94,13 @@ class RocksDBLogValue {
   static TRI_voc_cid_t collectionId(rocksdb::Slice const&);
   static TRI_voc_cid_t viewId(rocksdb::Slice const&);
   static TRI_idx_iid_t indexId(rocksdb::Slice const&);
-  // ==== For DocumentRemoveV2 and SingleRemoveV2 ====
+  
+  /// CollectionTruncate contains an object id
+  static uint64_t objectId(rocksdb::Slice const&);
+  
+  /// For DocumentRemoveV2 and SingleRemoveV2
   static TRI_voc_rid_t revisionId(rocksdb::Slice const&);
+  
   static velocypack::Slice indexSlice(rocksdb::Slice const&);
   static velocypack::Slice viewSlice(rocksdb::Slice const&);
   /// @brief get UUID from collection drop marker

@@ -68,13 +68,13 @@ struct ReplicationApplierState {
   char _progressTime[24];
   TRI_server_id_t _serverId;
   
-  /// performs inital sync or running tailing syncer
+  /// performs initial sync or running tailing syncer
   bool isActive() const {
     return (_phase == ActivityPhase::INITIAL ||
             _phase == ActivityPhase::TAILING);
   }
   
-  /// performs inital sync or running tailing syncer
+  /// performs initial sync or running tailing syncer
   bool isInitializing() const {
     return _phase == ActivityPhase::INITIAL;
   }

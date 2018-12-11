@@ -108,7 +108,7 @@ class GeneralRequest {
 
   /// @brief User exists on this server or on external auth system
   ///  and password was checked. Must not imply any access rights
-  ///  to any specific resource
+  ///  to any specific resource.
   bool authenticated() const { return _authenticated; }
   void setAuthenticated(bool a) { _authenticated = a; }
 
@@ -133,14 +133,11 @@ class GeneralRequest {
 
   // consists of the URL without the host and without any parameters.
   std::string const& requestPath() const { return _requestPath; }
-  void setRequestPath(std::string const& requestPath) {
-    _requestPath = requestPath;
-  }
-  void setRequestPath(char const* begin) {
-    _requestPath = std::string(begin);
+  void setRequestPath(std::string&& requestPath) {
+    _requestPath = std::move(requestPath);
   }
   void setRequestPath(char const* begin, char const* end) {
-    _requestPath = std::string(begin, end - begin);
+    setRequestPath(std::string(begin, end - begin));
   }
 
   // The request path consists of the URL without the host and without any

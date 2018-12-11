@@ -37,7 +37,6 @@
 #include "Aql/Query.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Sharding/ShardingFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/ExpressionFilter.h"
 #include "IResearch/IResearchCommon.h"
@@ -45,7 +44,6 @@
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
-#include "IResearch/SystemDatabaseFeature.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
@@ -54,7 +52,9 @@
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
+#include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -185,18 +185,18 @@ struct custom_sort: public irs::sort {
       );
     }
 
-    virtual void prepare_score(irs::doc_id_t& score) const override {
-      score = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+    virtual void prepare_score(irs::byte_type* score) const override {
+      score_cast(score) = irs::type_limits<irs::type_t::doc_id_t>::invalid();
     }
 
-    virtual void add(irs::doc_id_t& dst, const irs::doc_id_t& src) const override {
+    virtual void add(irs::byte_type* dst, irs::byte_type const* src) const override {
       if (sort_.scorer_add) {
-        sort_.scorer_add(dst, src);
+        sort_.scorer_add(score_cast(dst), score_cast(src));
       }
     }
 
-    virtual bool less(const irs::doc_id_t& lhs, const irs::doc_id_t& rhs) const override {
-      return sort_.scorer_less ? sort_.scorer_less(lhs, rhs) : false;
+    virtual bool less(irs::byte_type const* lhs, const irs::byte_type* rhs) const override {
+      return sort_.scorer_less ? sort_.scorer_less(score_cast(lhs), score_cast(rhs)) : false;
     }
 
    private:
@@ -211,10 +211,10 @@ struct custom_sort: public irs::sort {
   std::function<bool(const irs::doc_id_t&, const irs::doc_id_t&)> scorer_less;
   std::function<void(irs::doc_id_t&)> scorer_score;
 
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
   custom_sort(): sort(custom_sort::type()) {}
   virtual prepared::ptr prepare() const override {
-    return custom_sort::prepared::make<custom_sort::prepared>(*this);
+    return std::make_unique<custom_sort::prepared>(*this);
   }
 };
 
@@ -231,7 +231,7 @@ struct IResearchExpressionFilterSetup {
   std::unique_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
-  IResearchExpressionFilterSetup(): server(nullptr, nullptr) {
+  IResearchExpressionFilterSetup(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
     arangodb::aql::AqlFunctionFeature* functions = nullptr;
 
@@ -245,24 +245,24 @@ struct IResearchExpressionFilterSetup {
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     // setup required application features
-    features.emplace_back(new arangodb::ViewTypesFeature(&server), true);
-    features.emplace_back(new arangodb::AuthenticationFeature(&server), true);
-    features.emplace_back(new arangodb::DatabasePathFeature(&server), false);
-    features.emplace_back(new arangodb::DatabaseFeature(&server), false);
-    features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // must be first
-    arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
+    features.emplace_back(new arangodb::ViewTypesFeature(server), true);
+    features.emplace_back(new arangodb::AuthenticationFeature(server), true);
+    features.emplace_back(new arangodb::DatabasePathFeature(server), false);
+    features.emplace_back(new arangodb::DatabaseFeature(server), false);
+    features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // must be first
+    arangodb::application_features::ApplicationServer::server->addFeature(features.back().first); // need QueryRegistryFeature feature to be added now in order to create the system database
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
-    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(&server), false); // must be before AqlFeature
-    features.emplace_back(new arangodb::AqlFeature(&server), true);
-    features.emplace_back(new arangodb::ShardingFeature(&server), false);
-    features.emplace_back(new arangodb::aql::OptimizerRulesFeature(&server), true);
-    features.emplace_back(functions = new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
-    features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);
-    features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false); // must be before AqlFeature
+    features.emplace_back(new arangodb::AqlFeature(server), true);
+    features.emplace_back(new arangodb::ShardingFeature(server), false);
+    features.emplace_back(new arangodb::aql::OptimizerRulesFeature(server), true);
+    features.emplace_back(functions = new arangodb::aql::AqlFunctionFeature(server), true); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
+    features.emplace_back(new arangodb::iresearch::IResearchFeature(server), true);
 
     #if USE_ENTERPRISE
-      features.emplace_back(new arangodb::LdapFeature(&server), false); // required for AuthenticationFeature with USE_ENTERPRISE
+      features.emplace_back(new arangodb::LdapFeature(server), false); // required for AuthenticationFeature with USE_ENTERPRISE
     #endif
 
     for (auto& f : features) {
@@ -283,9 +283,11 @@ struct IResearchExpressionFilterSetup {
     functions->add(arangodb::aql::Function{
       "_REFERENCE_",
       ".",
-      false, // fake non-deterministic
-      true,
-      [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
+      arangodb::aql::Function::makeFlags(
+        // fake non-deterministic
+        arangodb::aql::Function::Flags::CanRunOnDBServer
+      ),
+      [](arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
         TRI_ASSERT(!params.empty());
         return params[0];
     }});
@@ -296,11 +298,14 @@ struct IResearchExpressionFilterSetup {
 
     analyzers->emplace("test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
     analyzers->emplace("test_csv_analyzer", "TestDelimAnalyzer", ","); // cache analyzer
+
+    auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
+    arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
   }
 
   ~IResearchExpressionFilterSetup() {
     system.reset(); // destroy before reseting the 'ENGINE'
-    arangodb::AqlFeature(&server).stop(); // unset singleton instance
+    arangodb::AqlFeature(server).stop(); // unset singleton instance
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
@@ -363,12 +368,13 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     );
     REQUIRE(writer);
 
-    for (auto doc : arangodb::velocypack::ArrayIterator(testDataRoot)) {
-      storedField.str = arangodb::iresearch::getStringRef(doc.get("name"));
-      writer->insert([&storedField](irs::segment_writer::document& doc)->bool {
-        doc.insert(irs::action::store, storedField);
-        return false; // break the loop
-      });
+    for (auto data : arangodb::velocypack::ArrayIterator(testDataRoot)) {
+      storedField.str = arangodb::iresearch::getStringRef(data.get("name"));
+
+      auto ctx = writer->documents();
+      auto doc = ctx.insert();
+      CHECK(doc.insert(irs::action::store, storedField));
+      CHECK(doc);
     }
 
     writer->commit();
@@ -415,7 +421,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
   {
     std::shared_ptr<arangodb::velocypack::Builder> bindVars;
     auto options = std::make_shared<arangodb::velocypack::Builder>();
-    std::string const queryString = "LET c=1 LET b=2 FOR d IN VIEW testView FILTER c==b RETURN d";
+    std::string const queryString = "LET c=1 LET b=2 FOR d IN testView FILTER c==b RETURN d";
 
     ExpressionContextMock ctx;
     {
@@ -496,7 +502,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
   {
     std::shared_ptr<arangodb::velocypack::Builder> bindVars;
     auto options = std::make_shared<arangodb::velocypack::Builder>();
-    std::string const queryString = "LET c=1 LET b=2 FOR d IN VIEW testView FILTER c==b RETURN d";
+    std::string const queryString = "LET c=1 LET b=2 FOR d IN testView FILTER c==b RETURN d";
 
     ExpressionContextMock ctx;
     {
@@ -577,7 +583,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
   {
     std::shared_ptr<arangodb::velocypack::Builder> bindVars;
     auto options = std::make_shared<arangodb::velocypack::Builder>();
-    std::string const queryString = "LET c=1 LET b=2 FOR d IN VIEW testView FILTER c<b RETURN d";
+    std::string const queryString = "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
 
     ExpressionContextMock ctx;
     {
@@ -674,7 +680,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
   {
     std::shared_ptr<arangodb::velocypack::Builder> bindVars;
     auto options = std::make_shared<arangodb::velocypack::Builder>();
-    std::string const queryString = "LET c=1 LET b=2 FOR d IN VIEW testView FILTER c<b RETURN d";
+    std::string const queryString = "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
 
     ExpressionContextMock ctx;
     {
@@ -771,7 +777,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
   {
     std::shared_ptr<arangodb::velocypack::Builder> bindVars;
     auto options = std::make_shared<arangodb::velocypack::Builder>();
-    std::string const queryString = "LET c=1 LET b=2 FOR d IN VIEW testView FILTER c<b RETURN d";
+    std::string const queryString = "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
 
     ExpressionContextMock ctx;
     {
@@ -868,7 +874,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
   {
     std::shared_ptr<arangodb::velocypack::Builder> bindVars;
     auto options = std::make_shared<arangodb::velocypack::Builder>();
-    std::string const queryString = "LET c=1 LET b=2 FOR d IN VIEW testView FILTER c<b RETURN d";
+    std::string const queryString = "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
 
     ExpressionContextMock ctx;
     {
@@ -949,7 +955,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
   {
     std::shared_ptr<arangodb::velocypack::Builder> bindVars;
     auto options = std::make_shared<arangodb::velocypack::Builder>();
-    std::string const queryString = "LET c=1 LET b=2 FOR d IN VIEW testView FILTER c<b RETURN d";
+    std::string const queryString = "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
 
     ExpressionContextMock ctx;
     {
@@ -1030,7 +1036,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
   {
     std::shared_ptr<arangodb::velocypack::Builder> bindVars;
     auto options = std::make_shared<arangodb::velocypack::Builder>();
-    std::string const queryString = "LET c=1 LET b=2 FOR d IN VIEW testView FILTER _REFERENCE_(c)==_REFERENCE_(b) RETURN d";
+    std::string const queryString = "LET c=1 LET b=2 FOR d IN testView FILTER _REFERENCE_(c)==_REFERENCE_(b) RETURN d";
 
     ExpressionContextMock ctx;
     {
@@ -1163,7 +1169,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
 
     std::shared_ptr<arangodb::velocypack::Builder> bindVars;
     auto options = std::make_shared<arangodb::velocypack::Builder>();
-    std::string const queryString = "LET c=1 LET b=2 FOR d IN VIEW testView FILTER _REFERENCE_(c)==_REFERENCE_(b) RETURN d";
+    std::string const queryString = "LET c=1 LET b=2 FOR d IN testView FILTER _REFERENCE_(c)==_REFERENCE_(b) RETURN d";
 
     ExpressionContextMock ctx;
     {
@@ -1234,7 +1240,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     auto prepared = filter.prepare(*reader, preparedOrder, queryCtx);
     auto const& boost = prepared->attributes().get<irs::boost>();
     CHECK(boost);
-    CHECK(1.5f == boost->get()->value);
+    CHECK(1.5f == boost->value);
 
     auto column = segment.column_reader("name");
     REQUIRE(column);
@@ -1291,7 +1297,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
   {
     std::shared_ptr<arangodb::velocypack::Builder> bindVars;
     auto options = std::make_shared<arangodb::velocypack::Builder>();
-    std::string const queryString = "LET c=1 LET b=2 FOR d IN VIEW testView FILTER _REFERENCE_(c)==_REFERENCE_(b) RETURN d";
+    std::string const queryString = "LET c=1 LET b=2 FOR d IN testView FILTER _REFERENCE_(c)==_REFERENCE_(b) RETURN d";
 
     ExpressionContextMock ctx;
     {

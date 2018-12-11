@@ -21,32 +21,42 @@ endif()
 ################################################################################
 
 option(USE_TESTS "Build tests" OFF)
+option(USE_PYRESEARCH "Build iresearch python bridge" OFF)
 option(USE_VALGRIND "Use workarounds to avoid false positives in valgrind" OFF)
+option(USE_OPTIMIZE_FOR_ARCHITECTURE "Use architecture specific low-level optimizations" OFF)
 
 if (USE_VALGRIND)
   add_definitions(-DIRESEARCH_VALGRIND)
 endif()
 
-if (MSVC AND MSVC_BUILD_THREADS)
-  set(CMAKE_C_FLAGS "/MP${MSVC_BUILD_THREADS} ${CMAKE_C_FLAGS}")
-  set(CMAKE_CXX_FLAGS "/MP${MSVC_BUILD_THREADS} ${CMAKE_CXX_FLAGS}")
+if (MSVC)
+  # FIXME TODO find a workaround or do not use alignas(...)
+  # MSVC2017.1 - MSVC2018.7 does not correctly support alignas()
+  # MSVC2017.8 requires the following define
+  add_definitions(-D_ENABLE_EXTENDED_ALIGNED_STORAGE)
+
+  if (MSVC_BUILD_THREADS)
+    set(CMAKE_C_FLAGS "/MP${MSVC_BUILD_THREADS} ${CMAKE_C_FLAGS}")
+    set(CMAKE_CXX_FLAGS "/MP${MSVC_BUILD_THREADS} ${CMAKE_CXX_FLAGS}")
+  endif()
 endif()
 
 ################################################################################
-### directories
+### setup ccache
 ################################################################################
 
-set(EXECUTABLE_OUTPUT_PATH
-  ${CMAKE_BINARY_DIR}/bin
-  CACHE PATH
-  "Executable output path"
-)
+find_program(CCACHE_FOUND ccache)
 
-set(LIBRARY_OUTPUT_PATH
-  ${CMAKE_BINARY_DIR}/bin
-  CACHE PATH 
-  "Library output path"
-)
+if(CCACHE_FOUND)
+  set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
+endif(CCACHE_FOUND)
+
+if (USE_OPTIMIZE_FOR_ARCHITECTURE)
+  include(OptimizeForArchitecture)
+  OptimizeForArchitecture()
+
+  add_definitions(${Vc_ARCHITECTURE_FLAGS})
+endif()
 
 ################################################################################
 ### find 3rd party libraries
@@ -126,6 +136,19 @@ set(IResearch_INCLUDE_DIR
   ""
 )
 
+# set output directories
+set(EXECUTABLE_OUTPUT_PATH
+  ${CMAKE_BINARY_DIR}/bin
+  CACHE PATH
+  "Executable output path"
+)
+
+set(LIBRARY_OUTPUT_PATH
+  ${CMAKE_BINARY_DIR}/bin
+  CACHE PATH 
+  "Library output path"
+)
+
 mark_as_advanced( 
   EXECUTABLE_OUTPUT_PATH 
   LIBRARY_OUTPUT_PATH
@@ -147,6 +170,10 @@ configure_file(
 add_subdirectory(core)
 add_subdirectory(external)
 add_subdirectory(utils)
+
+if (USE_PYRESEARCH)
+  add_subdirectory(python)
+endif()
 
 if (USE_TESTS)
   add_subdirectory(tests)

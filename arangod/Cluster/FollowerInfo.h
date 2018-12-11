@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,7 +38,8 @@ class FollowerInfo {
   mutable Mutex                                _mutex;
   arangodb::LogicalCollection*                 _docColl;
   std::string                                  _theLeader;
-     // if the latter is empty, the we are leading
+     // if the latter is empty, then we are leading
+  bool                                         _theLeaderTouched;
 
  public:
 
@@ -83,6 +84,7 @@ class FollowerInfo {
   void setTheLeader(std::string const& who) {
     MUTEX_LOCKER(locker, _mutex);
     _theLeader = who;
+    _theLeaderTouched = true;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -92,6 +94,15 @@ class FollowerInfo {
   std::string getLeader() const {
     MUTEX_LOCKER(locker, _mutex);
     return _theLeader;
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief see if leader was explicitly set
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool getLeaderTouched() const {
+    MUTEX_LOCKER(locker, _mutex);
+    return _theLeaderTouched;
   }
 
 };

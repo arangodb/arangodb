@@ -44,7 +44,6 @@ class StringBuffer;
 }
 
 namespace aql {
-
 class AqlItemBlock;
 struct AqlValue;
 class Ast;
@@ -56,7 +55,7 @@ class Query;
 /// @brief AqlExpression, used in execution plans and execution blocks
 class Expression {
  public:
-  enum ExpressionType : uint32_t { UNPROCESSED, JSON, SIMPLE, ATTRIBUTE_SYSTEM, ATTRIBUTE_DYNAMIC };
+  enum ExpressionType : uint32_t { UNPROCESSED, JSON, SIMPLE, ATTRIBUTE_ACCESS };
 
   Expression(Expression const&) = delete;
   Expression& operator=(Expression const&) = delete;
@@ -72,8 +71,10 @@ class Expression {
 
   /// @brief replace the root node
   void replaceNode(AstNode* node) {
-    _node = node;
-    invalidate();
+    if (node != _node) {
+      _node = node;
+      invalidateAfterReplacements();
+    }
   }
 
   /// @brief get the underlying AST node
@@ -125,14 +126,6 @@ class Expression {
   AqlValue execute(transaction::Methods* trx, ExpressionContext* ctx,
                    bool& mustDestroy);
 
-  /// @brief check whether this is a JSON expression
-  inline bool isJson() {
-    if (_type == UNPROCESSED) {
-      initExpression();
-    }
-    return _type == JSON;
-  }
-
   /// @brief get expression type as string
   std::string typeString() {
     if (_type == UNPROCESSED) {
@@ -144,8 +137,7 @@ class Expression {
         return "json";
       case SIMPLE:
         return "simple";
-      case ATTRIBUTE_SYSTEM:
-      case ATTRIBUTE_DYNAMIC:
+      case ATTRIBUTE_ACCESS:
         return "attribute";
       case UNPROCESSED: {
       }
@@ -154,8 +146,8 @@ class Expression {
     return "unknown";
   }
 
-  // @brief invoke javascript aql functions with args as param.
-  static AqlValue invokeV8Function(arangodb::aql::Query* query,
+  // @brief invoke JavaScript aql functions with args as param.
+  static AqlValue invokeV8Function(arangodb::aql::ExpressionContext* expressionContext,
                                    transaction::Methods* trx,
                                    std::string const& jsName,
                                    std::string const& ucInvokeFN,
@@ -237,12 +229,12 @@ class Expression {
 
   /// @brief execute an expression of type SIMPLE with ATTRIBUTE ACCESS
   AqlValue executeSimpleExpressionAttributeAccess(
-      AstNode const*, transaction::Methods*, bool& mustDestroy);
+      AstNode const*, transaction::Methods*, bool& mustDestroy, bool doCopy);
 
   /// @brief execute an expression of type SIMPLE with INDEXED ACCESS
   AqlValue executeSimpleExpressionIndexedAccess(
       AstNode const*, transaction::Methods*,
-      bool& mustDestroy);
+      bool& mustDestroy, bool doCopy);
 
   /// @brief execute an expression of type SIMPLE with ARRAY
   AqlValue executeSimpleExpressionArray(AstNode const*,

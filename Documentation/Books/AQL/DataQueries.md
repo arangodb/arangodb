@@ -191,14 +191,22 @@ FOR u IN users
     INSERT u IN backup
 ```
 
-As a final example, let's find some documents in collection *users* and
-remove them from collection *backup*. The link between the documents in both
-collections is established via the documents' keys:
+Subsequently, let's find some documents in collection *users* and remove them
+from collection *backup*.  The link between the documents in both collections is
+established via the documents' keys:
 
 ```js
 FOR u IN users
     FILTER u.status == "deleted"
     REMOVE u IN backup
+```
+
+The following example will remove all documents from both *users* and *backup*:
+
+```js
+LET r1 = (FOR u IN users  REMOVE u IN users)
+LET r2 = (FOR u IN backup REMOVE u IN backup)
+RETURN true
 ```
 
 ### Returning documents
@@ -286,13 +294,12 @@ must be known to the AQL executor at query-compile time and cannot change at
 runtime. Using a bind parameter to specify the
 [collection name](../Manual/Appendix/Glossary.html#collection-name) is allowed.
 
-Data-modification operations are restricted to one collection at a time. It is
-not possible to use multiple data-modification operations for the same collection
-in the same query, or follow up a data-modification operation for a specific 
-collection with a read operation for the same collection. Neither is it possible
-to follow up any data-modification operation with a traversal query (which may
-read from arbitrary collections not necessarily known at the start of the
-traversal).
+It is not possible to use multiple data-modification operations for the same
+collection in the same query, or follow up a data-modification operation for a
+specific collection with a read operation for the same collection.  Neither is
+it possible to follow up any data-modification operation with a traversal query
+(which may read from arbitrary collections not necessarily known at the start of
+the traversal).
 
 That means you may not place several `REMOVE` or `UPDATE` statements for the same 
 collection into the same query. It is however possible to modify different collections

@@ -57,7 +57,7 @@ struct IRESEARCH_API attribute {
     type_id(const string_ref& name): name_(name) {}
     operator const type_id*() const { return this; }
     static bool exists(const string_ref& name);
-    static const type_id* get(const string_ref& name);
+    static const type_id* get(const string_ref& name) NOEXCEPT;
     const string_ref& name() const { return name_; }
 
    private:
@@ -73,10 +73,10 @@ struct IRESEARCH_API attribute {
 ///        static const attribute::type_id& type() NOEXCEPT
 ///          via DECLARE_ATTRIBUTE_TYPE()/DEFINE_ATTRIBUTE_TYPE(...)
 ///        static ptr make(Args&&... args)
-///          via DECLARE_FACTORY()/DECLARE_FACTORY_DEFAULT()
+///          via DECLARE_FACTORY()/DECLARE_FACTORY()
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API stored_attribute : attribute {
-  DECLARE_PTR(stored_attribute);
+  DECLARE_UNIQUE_PTR(stored_attribute);
   virtual ~stored_attribute() = default;
 };
 
@@ -542,12 +542,34 @@ class pointer_wrapper {
     return *this;
   }
   FORCE_INLINE operator bool() const NOEXCEPT {
-    return p_ != nullptr;
+    return nullptr != p_;
+  }
+  FORCE_INLINE bool operator==(std::nullptr_t) const NOEXCEPT {
+    return nullptr == p_;
+  }
+  FORCE_INLINE bool operator!=(std::nullptr_t) const NOEXCEPT {
+    return !(*this == nullptr);
   }
 
  private:
   T* p_;
 }; // pointer_wrapper
+
+template<typename T>
+FORCE_INLINE bool operator==(
+    std::nullptr_t,
+    const pointer_wrapper<T>& rhs
+) NOEXCEPT {
+  return rhs == nullptr;
+}
+
+template<typename T>
+FORCE_INLINE bool operator!=(
+    std::nullptr_t,
+    const pointer_wrapper<T>& rhs
+) NOEXCEPT {
+  return rhs != nullptr;
+}
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief storage of data pointers to attributes

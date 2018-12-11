@@ -41,11 +41,13 @@ using namespace arangodb::aql;
   
 QueryEntryCopy::QueryEntryCopy(TRI_voc_tick_t id,
                                std::string&& queryString, 
-                               std::shared_ptr<arangodb::velocypack::Builder> bindParameters,
+                               std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
                                double started,
-                               double runTime, QueryExecutionState::ValueType state)
+                               double runTime, 
+                               QueryExecutionState::ValueType state,
+                               bool stream)
     : id(id), queryString(std::move(queryString)), bindParameters(bindParameters), 
-      started(started), runTime(runTime), state(state) {}
+      started(started), runTime(runTime), state(state), stream(stream) {}
 
 /// @brief create a query list
 QueryList::QueryList(TRI_vocbase_t*)
@@ -57,6 +59,7 @@ QueryList::QueryList(TRI_vocbase_t*)
       _trackSlowQueries(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")->trackSlowQueries()),
       _trackBindVars(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")->trackBindVars()),
       _slowQueryThreshold(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")->slowQueryThreshold()),
+      _slowStreamingQueryThreshold(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")->slowStreamingQueryThreshold()),
       _maxSlowQueries(defaultMaxSlowQueries),
       _maxQueryStringLength(defaultMaxQueryStringLength) {
   _current.reserve(64);
@@ -76,7 +79,7 @@ bool QueryList::insert(Query* query) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    auto it = _current.emplace(query->id(), query);
+    auto it = _current.insert({query->id(), query});
     if (it.second) {
       return true;
     }
@@ -108,8 +111,11 @@ void QueryList::remove(Query* query) {
   }
 
   _current.erase(it);
-    
-  if (!_trackSlowQueries || _slowQueryThreshold < 0.0) {
+
+  bool const isStreaming = query->queryOptions().stream;
+  double threshold = (isStreaming ? _slowStreamingQueryThreshold : _slowQueryThreshold);
+
+  if (!_trackSlowQueries || threshold < 0.0) {
     return;
   }
 
@@ -118,7 +124,7 @@ void QueryList::remove(Query* query) {
 
   try {
     // check if we need to push the query into the list of slow queries
-    if (now - started >= _slowQueryThreshold) {
+    if (now - started >= threshold && !query->killed()) {
       // yes.
 
       TRI_IF_FAILURE("QueryList::remove") {
@@ -147,18 +153,21 @@ void QueryList::remove(Query* query) {
           }
         }
       }
+      
       if (loadTime >= 0.1) {
-        LOG_TOPIC(WARN, Logger::QUERIES) << "slow query: '" << q << "'" << bindParameters << ", took: " << Logger::FIXED(now - started) << " s, loading took: " << Logger::FIXED(loadTime) << " s";
+        LOG_TOPIC(WARN, Logger::QUERIES) << "slow " << (isStreaming ? "streaming " : "") << "query: '" << q << "'" << bindParameters << ", took: " << Logger::FIXED(now - started) << " s, loading took: " << Logger::FIXED(loadTime) << " s";
       } else {
-        LOG_TOPIC(WARN, Logger::QUERIES) << "slow query: '" << q << "'" << bindParameters << ", took: " << Logger::FIXED(now - started) << " s";
+        LOG_TOPIC(WARN, Logger::QUERIES) << "slow " << (isStreaming ? "streaming " : "") << "query: '" << q << "'" << bindParameters << ", took: " << Logger::FIXED(now - started) << " s";
       }
 
-      _slow.emplace_back(QueryEntryCopy(
+      _slow.emplace_back(
           query->id(),
           std::move(q),
           _trackBindVars ? query->bindParameters() : nullptr,
           started, now - started,
-          QueryExecutionState::ValueType::FINISHED));
+          QueryExecutionState::ValueType::FINISHED,
+          isStreaming
+      );
 
       if (++_slowCount > _maxSlowQueries) {
         // free first element
@@ -235,11 +244,14 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
       double const started = query->startTime();
        
       result.emplace_back(
-          QueryEntryCopy(query->id(),
-                         extractQueryString(query, maxLength),
-                         _trackBindVars ? query->bindParameters() : nullptr,
-                         started, now - started,
-                         query->state()));
+          query->id(),
+          extractQueryString(query, maxLength),
+          _trackBindVars ? query->bindParameters() : nullptr,
+          started, 
+          now - started,
+          query->state(),
+          query->queryOptions().stream
+      );
     }
   }
 

@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/arangodb-java-driver.git / docs/Drivers/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/arangodb-java-driver.git / docs/Drivers/ -->
 # Accessing collections
 
 These functions implement the
@@ -6,9 +6,7 @@ These functions implement the
 
 ## ArangoDatabase.collection
 
-```
-ArangoDatabase.collection(String name) : ArangoCollection
-```
+`ArangoDatabase.collection(String name) : ArangoCollection`
 
 Returns a _ArangoCollection_ instance for the given collection name.
 
@@ -28,9 +26,7 @@ ArangoCollection collection = db.collection("myCollection");
 
 ## ArangoDatabase.getCollections
 
-```
-ArangoDatabase.getCollections() : Collection<CollectionEntity>
-```
+`ArangoDatabase.getCollections() : Collection<CollectionEntity>`
 
 Fetches all collections from the database and returns an list of collection descriptions.
 

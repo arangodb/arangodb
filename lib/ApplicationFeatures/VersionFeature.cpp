@@ -27,11 +27,12 @@
 
 #include <iostream>
 
-using namespace arangodb;
 using namespace arangodb::rest;
 using namespace arangodb::options;
 
-VersionFeature::VersionFeature(application_features::ApplicationServer* server) 
+namespace arangodb {
+
+VersionFeature::VersionFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Version"),
       _printVersion(false) {
   setOptional(false);
@@ -41,7 +42,7 @@ VersionFeature::VersionFeature(application_features::ApplicationServer* server)
 
 void VersionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--version", "reports the version and exits",
-                     new BooleanParameter(&_printVersion));
+                     new BooleanParameter(&_printVersion), arangodb::options::makeFlags(arangodb::options::Flags::Command));
 }
 
 void VersionFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
@@ -51,3 +52,5 @@ void VersionFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
     exit(EXIT_SUCCESS);
   }
 }
+
+} // arangodb

@@ -37,6 +37,7 @@ namespace arangodb {
 
 class ClusterComm;
 class Result;
+class CollectionNameResolver;
 
 namespace aql {
 

@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Aql/types.h"
+#include "Cluster/ResultT.h"
 
 struct TRI_vocbase_t;
 
@@ -48,7 +49,10 @@ public:
   /// a query for this <vocbase> and <id> combination and an exception will
   /// be thrown in that case. The time to live <ttl> is in seconds and the
   /// query will be deleted if it is not opened for that amount of time.
-  TEST_VIRTUAL void insert(QueryId id, Query* query, double ttl, bool isPrepare);
+  /// With keepLease == true the query will be kept open and it is guaranteed
+  /// that the caller can continue to use it exclusively.
+  /// This is identical to an atomic sequence of insert();open();
+  TEST_VIRTUAL void insert(QueryId id, Query* query, double ttl, bool isPrepare, bool keepLease);
 
   /// @brief open, find a query in the registry, if none is found, a nullptr
   /// is returned, otherwise, ownership of the query is transferred to the
@@ -76,6 +80,8 @@ public:
 
   void destroy(TRI_vocbase_t* vocbase, QueryId id, int errorCode);
 
+  ResultT<bool> isQueryInUse(TRI_vocbase_t* vocbase, QueryId id);
+
   /// @brief expireQueries, this deletes all expired queries from the registry
   void expireQueries();
 
@@ -101,6 +107,9 @@ public:
  private:
   /// @brief a struct for all information regarding one query in the registry
   struct QueryInfo {
+    QueryInfo(QueryInfo const&) = delete;
+    QueryInfo& operator=(QueryInfo const&) = delete;
+
     QueryInfo(QueryId id, Query* query, double ttl, bool isPrepared);
     ~QueryInfo();
 

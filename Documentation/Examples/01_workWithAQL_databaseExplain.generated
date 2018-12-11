@@ -14,8 +14,8 @@ Indexes used:
  none
 
 Functions used:
- Name    Deterministic   Uses V8
- SLEEP   false           false  
+ Name    Deterministic   Cacheable   Uses V8
+ SLEEP   false           false       false  
 
 Optimization rules applied:
  Id   RuleName

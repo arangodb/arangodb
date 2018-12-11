@@ -30,19 +30,20 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
+
 namespace httpclient {
+
 class GeneralClientConnection;
 class SimpleHttpClient;
 class SimpleHttpResult;
+
 }
 
 class ExportFeature final : public application_features::ApplicationFeature,
                                public ArangoClientHelper {
  public:
-  ExportFeature(application_features::ApplicationServer* server,
-                   int* result);
+  ExportFeature(application_features::ApplicationServer& server, int* result);
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(
       std::shared_ptr<options::ProgramOptions> options) override;
@@ -61,7 +62,6 @@ class ExportFeature final : public application_features::ApplicationFeature,
   void writeToFile(int fd, std::string const& string, std::string const& fileName);
   std::shared_ptr<VPackBuilder> httpCall(httpclient::SimpleHttpClient* httpClient, std::string const& url, arangodb::rest::RequestType, std::string postBody = "");
 
- private:
   std::vector<std::string> _collections;
   std::string _query;
   std::string _graphName;
@@ -83,6 +83,7 @@ class ExportFeature final : public application_features::ApplicationFeature,
 
   int* _result;
 };
+
 }
 
 #endif

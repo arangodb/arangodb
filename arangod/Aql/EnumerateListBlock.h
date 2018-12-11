@@ -39,11 +39,6 @@ class EnumerateListBlock final : public ExecutionBlock {
   EnumerateListBlock(ExecutionEngine*, EnumerateListNode const*);
   ~EnumerateListBlock();
 
-  Type getType() const override final {
-    return Type::ENUMERATE_LIST;
-  }
-
-  // here we release our docs from this collection
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(
@@ -54,7 +49,7 @@ class EnumerateListBlock final : public ExecutionBlock {
 
  private:
   // cppcheck-suppress *
-  AqlValue getAqlValue(AqlValue const&, bool& mustDestroy);
+  AqlValue getAqlValue(AqlValue const& inVarReg, size_t n, bool& mustDestroy);
 
   // cppcheck-suppress *
   void throwArrayExpectedException(AqlValue const& value);

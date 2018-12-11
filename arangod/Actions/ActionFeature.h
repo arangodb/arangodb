@@ -26,24 +26,23 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+
 class ActionFeature final : public application_features::ApplicationFeature {
  public:
   static ActionFeature* ACTION;
 
- public:
-  explicit ActionFeature(application_features::ApplicationServer* server);
+  explicit ActionFeature(application_features::ApplicationServer& server);
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
   void unprepare() override final;
 
- public:
   bool allowUseDatabase() { return _allowUseDatabase; }
 
  private:
   bool _allowUseDatabase;
 };
+
 }
 
 #endif

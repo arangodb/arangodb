@@ -32,7 +32,6 @@
 #include "Geo/GeoUtils.h"
 #include "GeoIndex/Near.h"
 #include "Indexes/IndexIterator.h"
-#include "Indexes/IndexResult.h"
 #include "Logger/Logger.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -48,7 +47,7 @@ struct NearIterator final : public IndexIterator {
   NearIterator(LogicalCollection* collection, transaction::Methods* trx,
                MMFilesGeoIndex const* index,
                geo::QueryParams&& params)
-      : IndexIterator(collection, trx, index),
+      : IndexIterator(collection, trx),
         _index(index),
         _near(std::move(params)) {
     if (!params.fullRange) {
@@ -61,8 +60,8 @@ struct NearIterator final : public IndexIterator {
   char const* typeName() const override { return "s2-index-iterator"; }
 
   /// internal retrieval loop
-  inline bool nextToken(
-      std::function<bool(geo_index::Document const& gdoc)>&& cb, size_t limit) {
+  template<typename F>
+  inline bool nextToken(F&& cb, size_t limit) {
     if (_near.isDone()) {
       // we already know that no further results will be returned by the index
       TRI_ASSERT(!_near.hasNearest());
@@ -71,7 +70,7 @@ struct NearIterator final : public IndexIterator {
 
     while (limit > 0 && !_near.isDone()) {
       while (limit > 0 && _near.hasNearest()) {
-        if (cb(_near.nearest())) {
+        if (std::forward<F>(cb)(_near.nearest())) {
           limit--;
         }
         _near.popNearest();
@@ -232,13 +231,12 @@ MMFilesGeoIndex::MMFilesGeoIndex(
 size_t MMFilesGeoIndex::memory() const { return _tree.bytes_used(); }
 
 /// @brief return a JSON representation of the index
-void MMFilesGeoIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
-                                   bool forPersistence) const {
+void MMFilesGeoIndex::toVelocyPack(VPackBuilder& builder,
+       std::underlying_type<arangodb::Index::Serialize>::type flags) const {
   TRI_ASSERT(_variant != geo_index::Index::Variant::NONE);
   builder.openObject();
   // Basic index
-  // RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
-  MMFilesIndex::toVelocyPack(builder, withFigures, forPersistence);
+  MMFilesIndex::toVelocyPack(builder, flags);
   _coverParams.toVelocyPack(builder);
   builder.add("geoJson",
               VPackValue(_variant == geo_index::Index::Variant::GEOJSON));
@@ -279,14 +277,14 @@ bool MMFilesGeoIndex::matchesDefinition(VPackSlice const& info) const {
   }
 
   if (_unique != basics::VelocyPackHelper::getBooleanValue(
-                   info, arangodb::StaticStrings::IndexUnique.c_str(), false
+                   info, arangodb::StaticStrings::IndexUnique, false
                  )
      ) {
     return false;
   }
 
   if (_sparse != basics::VelocyPackHelper::getBooleanValue(
-                   info, arangodb::StaticStrings::IndexSparse.c_str(), true
+                   info, arangodb::StaticStrings::IndexSparse, true
                  )
      ) {
     return false;
@@ -341,10 +339,12 @@ Result MMFilesGeoIndex::insert(transaction::Methods*,
   Result res = geo_index::Index::indexCells(doc, cells, centroid);
 
   if (res.fail()) {
-    // Invalid, no insert. Index is sparse
-    return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
+    if (res.is(TRI_ERROR_BAD_PARAMETER)) {
+      res.reset(); // Invalid, no insert. Index is sparse
+    }
+    return res;
   }
-  // LOG_TOPIC(ERR, Logger::FIXME) << "Inserting #cells " << cells.size() << "
+  // LOG_TOPIC(ERR, Logger::ENGINES) << "Inserting #cells " << cells.size() << "
   // doc: " << doc.toJson() << " center: " << centroid.toString();
   TRI_ASSERT(!cells.empty());
   TRI_ASSERT(S2::IsUnitLength(centroid));
@@ -354,7 +354,7 @@ Result MMFilesGeoIndex::insert(transaction::Methods*,
     _tree.insert(std::make_pair(cell, value));
   }
 
-  return IndexResult();
+  return res;
 }
 
 Result MMFilesGeoIndex::remove(transaction::Methods*,
@@ -367,10 +367,12 @@ Result MMFilesGeoIndex::remove(transaction::Methods*,
   Result res = geo_index::Index::indexCells(doc, cells, centroid);
 
   if (res.fail()) {  // might occur if insert is rolled back
-    // Invalid, no insert. Index is sparse
-    return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
+    if (res.is(TRI_ERROR_BAD_PARAMETER)) {
+      res.reset(); // Invalid, no remove. Index is sparse
+    }
+    return res;
   }
-  // LOG_TOPIC(ERR, Logger::FIXME) << "Removing #cells " << cells.size() << "
+  // LOG_TOPIC(ERR, Logger::ENGINES) << "Removing #cells " << cells.size() << "
   // doc: " << doc.toJson();
   TRI_ASSERT(!cells.empty());
 
@@ -384,7 +386,7 @@ Result MMFilesGeoIndex::remove(transaction::Methods*,
       }
     }
   }
-  return IndexResult();
+  return res;
 }
 
 /// @brief creates an IndexIterator for the given Condition

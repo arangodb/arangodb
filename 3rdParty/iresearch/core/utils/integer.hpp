@@ -33,7 +33,6 @@ NS_BEGIN( detail )
 
 template<class T, T min_val, T max_val>
 struct integer_traits_base {
-  static const bool is_integral = true;
   static const T const_min = min_val;
   static const T const_max = max_val;
 };
@@ -44,7 +43,6 @@ NS_ROOT
 
 template< typename T >
 struct integer_traits : std::numeric_limits < T > {
-  static const bool is_integral = true;
 };
 
 template<> struct integer_traits< int8_t > :

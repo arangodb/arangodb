@@ -25,7 +25,6 @@
 #include "ImportHelper.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/OpenFilesTracker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
@@ -246,7 +245,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   } else {
     // read filesize
     totalLength = TRI_SizeFile(fileName.c_str());
-    fd = TRI_TRACKED_OPEN_FILE(fileName.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+    fd = TRI_OPEN(fileName.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
     if (fd < 0) {
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
@@ -265,7 +264,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
 
   if (separator == nullptr) {
     if (fd != STDIN_FILENO) {
-      TRI_TRACKED_CLOSE_FILE(fd);
+      TRI_CLOSE(fd);
     }
     _errorMessages.push_back("out of memory");
     return false;
@@ -299,7 +298,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
       TRI_Free(separator);
       TRI_DestroyCsvParser(&parser);
       if (fd != STDIN_FILENO) {
-        TRI_TRACKED_CLOSE_FILE(fd);
+        TRI_CLOSE(fd);
       }
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
       return false;
@@ -326,7 +325,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   TRI_Free(separator);
 
   if (fd != STDIN_FILENO) {
-    TRI_TRACKED_CLOSE_FILE(fd);
+    TRI_CLOSE(fd);
   }
 
   waitForSenders();
@@ -363,7 +362,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
   } else {
     // read filesize
     totalLength = TRI_SizeFile(fileName.c_str());
-    fd = TRI_TRACKED_OPEN_FILE(fileName.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+    fd = TRI_OPEN(fileName.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
     if (fd < 0) {
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
@@ -391,7 +390,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
       _errorMessages.push_back(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
 
       if (fd != STDIN_FILENO) {
-        TRI_TRACKED_CLOSE_FILE(fd);
+        TRI_CLOSE(fd);
       }
       return false;
     }
@@ -402,7 +401,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
     if (n < 0) {
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
       if (fd != STDIN_FILENO) {
-        TRI_TRACKED_CLOSE_FILE(fd);
+        TRI_CLOSE(fd);
       }
       return false;
     } else if (n == 0) {
@@ -434,7 +433,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
     if (_outputBuffer.length() > _maxUploadSize) {
       if (isObject) {
         if (fd != STDIN_FILENO) {
-          TRI_TRACKED_CLOSE_FILE(fd);
+          TRI_CLOSE(fd);
         }
         _errorMessages.push_back("import file is too big. please increase the value of --batch-size "
                                  "(currently " +
@@ -459,7 +458,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
   }
 
   if (fd != STDIN_FILENO) {
-    TRI_TRACKED_CLOSE_FILE(fd);
+    TRI_CLOSE(fd);
   }
 
   waitForSenders();
@@ -568,7 +567,7 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
     _columnNames.push_back(std::move(name));
   }
   // skip removable attributes
-  if (!_removeAttributes.empty() &&
+  if (!_removeAttributes.empty() && column < _columnNames.size() &&
       _removeAttributes.find(_columnNames[column]) != _removeAttributes.end()) {
     return;
   }

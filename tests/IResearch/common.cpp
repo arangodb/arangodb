@@ -21,6 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "utils/utf8_path.hpp"
+
 #include "catch.hpp"
 #include "common.h"
 #include "ExpressionContextMock.h"
@@ -29,6 +31,11 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Ast.h"
+#include "ClusterEngine/ClusterEngine.h"
+#include "Random/RandomGenerator.h"
+#include "Basics/files.h"
+#include "RestServer/DatabasePathFeature.h"
+#include "V8/v8-utils.h"
 #include "VocBase/KeyGenerator.h"
 #include "Transaction/StandaloneContext.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -58,24 +65,24 @@ struct BoostScorer : public irs::sort {
 
     Prepared() = default;
 
-    virtual void add(score_t& dst, const score_t& src) const override {
-      dst += src;
+    virtual void add(irs::byte_type* dst, irs::byte_type const* src) const override {
+      score_cast(dst) += score_cast(src);
     }
 
     virtual irs::flags const& features() const override {
       return irs::flags::empty_instance();
     }
 
-    virtual bool less(const score_t& lhs, const score_t& rhs) const override {
-      return lhs < rhs;
+    virtual bool less(irs::byte_type const* lhs, irs::byte_type const* rhs) const override {
+      return score_cast(lhs) < score_cast(rhs);
     }
 
     virtual irs::sort::collector::ptr prepare_collector() const override {
       return nullptr;
     }
 
-    virtual void prepare_score(score_t& score) const override {
-      score = 0.f;
+    virtual void prepare_score(irs::byte_type* score) const override {
+      score_cast(score) = 0.f;
     }
 
     virtual irs::sort::scorer::ptr prepare_scorer(
@@ -125,6 +132,29 @@ namespace tests {
 
 void init(bool withICU /*= false*/) {
   arangodb::transaction::Methods::clearDataSourceRegistrationCallbacks();
+  ClusterEngine::Mocking = true;
+  arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
+}
+
+// @Note: once V8 is initialized all 'CATCH' errors will result in SIGILL
+void v8Init() {
+  struct init_t {
+    std::shared_ptr<v8::Platform> platform;
+    init_t() {
+      platform = std::shared_ptr<v8::Platform>(
+        v8::platform::CreateDefaultPlatform(),
+        [](v8::Platform* p)->void {
+          v8::V8::Dispose();
+          v8::V8::ShutdownPlatform();
+          delete p;
+        }
+      );
+      v8::V8::InitializePlatform(platform.get()); // avoid SIGSEGV duing 8::Isolate::New(...)
+      v8::V8::Initialize(); // avoid error: "Check failed: thread_data_table_"
+    }
+  };
+  static const init_t init;
+  (void)(init);
 }
 
 bool assertRules(
@@ -192,7 +222,7 @@ arangodb::aql::QueryResult executeQuery(
 
   arangodb::aql::QueryResult result;
   while (true) {
-    auto state = query.execute(arangodb::QueryRegistryFeature::QUERY_REGISTRY, result);
+    auto state = query.execute(arangodb::QueryRegistryFeature::registry(), result);
     if (state == arangodb::aql::ExecutionState::WAITING) {
       ss->waitForAsyncResponse();
     } else {
@@ -228,17 +258,23 @@ std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
     return nullptr;
   }
 
-  return std::unique_ptr<arangodb::aql::ExecutionPlan>(
-    arangodb::aql::ExecutionPlan::instantiateFromAst(query.ast())
-  );
+  return arangodb::aql::ExecutionPlan::instantiateFromAst(query.ast());
 }
 
 uint64_t getCurrentPlanVersion() {
   auto const result = arangodb::AgencyComm().getValues("Plan");
-  auto const planVersionSlice = result.slice()[0].get(
+  auto const planVersionSlice = result.slice()[0].get<std::string>(
     { arangodb::AgencyCommManager::path(), "Plan", "Version" }
   );
   return planVersionSlice.getNumber<uint64_t>();
+}
+
+void setDatabasePath(arangodb::DatabasePathFeature& feature) {
+  irs::utf8_path path;
+
+  path /= TRI_GetTempPath();
+  path /= std::string("arangodb_tests.") + std::to_string(TRI_microtime());
+  const_cast<std::string&>(feature.directory()) = path.utf8();
 }
 
 } // tests

@@ -30,21 +30,25 @@
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "RestServer/DatabaseFeature.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-MMFilesWalRecoveryFeature::MMFilesWalRecoveryFeature(ApplicationServer* server)
+namespace arangodb {
+
+MMFilesWalRecoveryFeature::MMFilesWalRecoveryFeature(
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "MMFilesWalRecovery") {
 
   setOptional(true);
   startsAfter("BasicsPhase");
 
-  startsAfter("Database"); 
+  startsAfter("Database");
   startsAfter("MMFilesLogfileManager");
   startsAfter("MMFilesPersistentIndex");
   startsAfter("ServerId");
+  startsAfter("SystemDatabase");
 
   onlyEnabledWith("MMFilesEngine");
   onlyEnabledWith("MMFilesLogfileManager");
@@ -60,9 +64,10 @@ void MMFilesWalRecoveryFeature::start() {
   TRI_ASSERT(!logfileManager->allowWrites());
 
   int res = logfileManager->runRecovery();
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "unable to finish WAL recovery: " << TRI_errno_string(res);
+    LOG_TOPIC(FATAL, arangodb::Logger::ENGINES)
+        << "unable to finish WAL recovery: " << TRI_errno_string(res);
     FATAL_ERROR_EXIT();
   }
 
@@ -70,9 +75,13 @@ void MMFilesWalRecoveryFeature::start() {
     // if we got here, the MMFilesLogfileManager has already logged a fatal error and we can simply abort
     FATAL_ERROR_EXIT();
   }
-  
+
   // notify everyone that recovery is now done
   auto databaseFeature = ApplicationServer::getFeature<DatabaseFeature>("Database");
   databaseFeature->recoveryDone();
+
+  LOG_TOPIC(INFO, arangodb::Logger::ENGINES)
+    << "DB recovery finished successfully";
 }
 
+} // arangodb

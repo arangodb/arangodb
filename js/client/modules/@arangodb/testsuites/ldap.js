@@ -46,11 +46,11 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
 const testPaths = {
-  'ldap': ['js/client/tests/authentication'],
-  'ldaprole': ['js/client/tests/authentication'],
-  'ldapsearch': ['js/client/tests/authentication'],
-  'ldaprolesimple': ['js/client/tests/authentication'],
-  'ldapsearchsimple': ['js/client/tests/authentication']
+  'ldap': [tu.pathForTesting('client/authentication')],
+  'ldaprole': [tu.pathForTesting('client/authentication')],
+  'ldapsearch': [tu.pathForTesting('client/authentication')],
+  'ldaprolesimple': [tu.pathForTesting('client/authentication')],
+  'ldapsearchsimple': [tu.pathForTesting('client/authentication')]
 };
 
 // //////////////////////////////////////////////////////////////////////////////

@@ -138,8 +138,6 @@ std::pair<ExecutionState, arangodb::Result> ShortestPathBlock::initializeCursor(
 
 /// @brief shutdown: Inform all traverser Engines to destroy themselves
 std::pair<ExecutionState, Result> ShortestPathBlock::shutdown(int errorCode) {
-  DEBUG_BEGIN_BLOCK();
-
   ExecutionState state;
   Result result;
 
@@ -164,7 +162,7 @@ std::pair<ExecutionState, Result> ShortestPathBlock::shutdown(int errorCode) {
         arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();
         std::unordered_map<std::string, std::string> headers;
         auto res = cc->syncRequest(
-            "", coordTransactionID, "server:" + it.first, RequestType::DELETE_REQ,
+            coordTransactionID, "server:" + it.first, RequestType::DELETE_REQ,
             url + arangodb::basics::StringUtils::itoa(it.second), "", headers,
             30.0);
 
@@ -183,8 +181,6 @@ std::pair<ExecutionState, Result> ShortestPathBlock::shutdown(int errorCode) {
   }
 
   return {state, result};
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 bool ShortestPathBlock::nextPath(AqlItemBlock const* items) {
@@ -284,7 +280,6 @@ bool ShortestPathBlock::nextPath(AqlItemBlock const* items) {
 
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
 ShortestPathBlock::getSome(size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
   RegisterId const nrInRegs = getNrInputRegisters();
   RegisterId const nrOutRegs = getNrOutputRegisters();
@@ -372,9 +367,6 @@ ShortestPathBlock::getSome(size_t atMost) {
     traceGetSomeEnd(res.get(), getHasMoreState());
     return {getHasMoreState(), std::move(res)};
   }
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 std::pair<ExecutionState, size_t> ShortestPathBlock::skipSome(size_t atMost) {

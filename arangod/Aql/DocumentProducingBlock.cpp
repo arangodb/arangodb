@@ -88,8 +88,7 @@ DocumentProducingBlock::DocumentProducingBlock(DocumentProducingNode const* node
 void DocumentProducingBlock::buildCallback() {
   if (!_produceResult) {
     // no result needed
-    _documentProducer = [](AqlItemBlock* res, VPackSlice, size_t registerId, size_t& row,
-              size_t fromRow) {
+    _documentProducer = [](AqlItemBlock* res, VPackSlice, size_t registerId, size_t& row, size_t fromRow) {
       if (row != fromRow) {
         // re-use already copied AQLValues
         res->copyValuesFromRow(row, static_cast<RegisterId>(registerId), fromRow);
@@ -145,7 +144,7 @@ void DocumentProducingBlock::buildCallback() {
 
         b->close();
               
-        res->emplaceValue(row, static_cast<arangodb::aql::RegisterId>(registerId), AqlValue(b.get()));
+        res->emplaceValue(row, static_cast<arangodb::aql::RegisterId>(registerId), b.get());
         
         if (row != fromRow) {
           // re-use already copied AQLValues
@@ -163,7 +162,7 @@ void DocumentProducingBlock::buildCallback() {
       handleProjections(_node, _trxPtr, slice, *b.get(), _useRawDocumentPointers);
       b->close();
             
-      res->emplaceValue(row, static_cast<arangodb::aql::RegisterId>(registerId), AqlValue(b.get()));
+      res->emplaceValue(row, static_cast<arangodb::aql::RegisterId>(registerId), b.get());
       
       if (row != fromRow) {
         // re-use already copied AQLValues

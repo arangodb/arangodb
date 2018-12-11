@@ -94,7 +94,10 @@ class Parser {
   bool configureWriteQuery(AstNode const*, AstNode* optionNode);
 
   /// @brief parse the query
-  QueryResult parse(bool);
+  void parse();
+  
+  /// @brief parse the query and return parse details
+  QueryResult parseWithDetails();
 
   /// @brief register a parse error, position is specified as line / column
   void registerParseError(int, char const*, char const*, int, int);
@@ -107,7 +110,15 @@ class Parser {
 
   /// @brief register a warning
   void registerWarning(int, char const*, int, int);
-
+  
+  /// @brief push an AstNode array element on top of the stack
+  /// the array must be removed from the stack via popArray
+  void pushArray(AstNode* array);
+  
+  /// @brief pop an array value from the parser's stack
+  /// the array must have been added to the stack via pushArray
+  AstNode* popArray();
+  
   /// @brief push an AstNode into the array element on top of the stack
   void pushArrayElement(AstNode*);
 

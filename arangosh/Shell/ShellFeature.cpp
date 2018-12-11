@@ -28,12 +28,15 @@
 #include "Shell/ClientFeature.h"
 #include "Shell/V8ShellFeature.h"
 
-using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-ShellFeature::ShellFeature(application_features::ApplicationServer* server,
-                           int* result)
+namespace arangodb {
+
+ShellFeature::ShellFeature(
+    application_features::ApplicationServer& server,
+    int* result
+)
     : ApplicationFeature(server, "Shell"),
       _jslint(),
       _result(result),
@@ -176,3 +179,5 @@ void ShellFeature::start() {
 
   *_result = ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
+
+} // arangodb

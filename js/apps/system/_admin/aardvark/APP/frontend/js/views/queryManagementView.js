@@ -23,7 +23,7 @@
       this.slowCollection = new window.QueryManagementSlow();
       this.convertModelToJSON(true);
 
-      window.setInterval(function () {
+      self.interval = window.setInterval(function () {
         if (window.location.hash === '#queries' && window.VISIBLE && self.shouldRender &&
           arangoHelper.getCurrentSub().route === 'queryManagement') {
           if (self.active) {
@@ -37,6 +37,17 @@
           }
         }
       }, self.refreshRate);
+    },
+
+    remove: function () {
+      if (this.interval) {
+        window.clearInterval(this.interval);
+      }
+      this.$el.empty().off(); /* off to unbind the events */
+      this.stopListening();
+      this.unbind();
+      delete this.el;
+      return this;
     },
 
     events: {

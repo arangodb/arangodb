@@ -276,13 +276,15 @@ void RestGraphHandler::vertexActionRead(
         Graph& graph, std::string const& collectionName,
         std::string const& key) {
 
+  // check for an etag
   bool isValidRevision;
-  TRI_voc_rid_t revision = extractRevision("if-match", isValidRevision);
+  TRI_voc_rid_t ifNoneRid = extractRevision("if-none-match", isValidRevision);
   if (!isValidRevision) {
-    revision =
-        UINT64_MAX;  // an impossible rev, so precondition failed will happen
+    ifNoneRid =
+      UINT64_MAX;  // an impossible rev, so precondition failed will happen
   }
-  auto maybeRev = boost::make_optional(revision != 0, revision);
+
+  auto maybeRev = handleRevision();
 
   GraphOperations gops{graph, _vocbase};
   OperationResult result = gops.getVertex(collectionName, key, maybeRev);
@@ -296,6 +298,14 @@ void RestGraphHandler::vertexActionRead(
       generateTransactionError(collectionName, result.result, key);
     }
     return;
+  }
+
+  if (ifNoneRid != 0) {
+    TRI_voc_rid_t const rid = TRI_ExtractRevisionId(result.slice());
+    if (ifNoneRid == rid) {
+      generateNotModified(rid);
+      return;
+    }
   }
 
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
@@ -542,13 +552,15 @@ void RestGraphHandler::edgeActionRead(
         Graph& graph,
         const std::string &definitionName, const std::string &key) {
 
+  // check for an etag
   bool isValidRevision;
-  TRI_voc_rid_t revision = extractRevision("if-match", isValidRevision);
+  TRI_voc_rid_t ifNoneRid = extractRevision("if-none-match", isValidRevision);
   if (!isValidRevision) {
-    revision =
-        UINT64_MAX;  // an impossible rev, so precondition failed will happen
+    ifNoneRid =
+      UINT64_MAX;  // an impossible rev, so precondition failed will happen
   }
-  auto maybeRev = boost::make_optional(revision != 0, revision);
+
+  auto maybeRev = handleRevision();
 
   GraphOperations gops{graph, _vocbase};
   OperationResult result = gops.getEdge(definitionName, key, maybeRev);
@@ -556,6 +568,14 @@ void RestGraphHandler::edgeActionRead(
   if (result.fail()) {
     generateTransactionError(result);
     return;
+  }
+
+  if (ifNoneRid != 0) {
+    TRI_voc_rid_t const rid = TRI_ExtractRevisionId(result.slice());
+    if (ifNoneRid == rid) {
+      generateNotModified(rid);
+      return;
+    }
   }
 
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
@@ -585,13 +605,7 @@ Result RestGraphHandler::edgeActionRemove(
 
   bool returnOld = _request->parsedValue(StaticStrings::ReturnOldString, false);
 
-  bool isValidRevision;
-  TRI_voc_rid_t revision = extractRevision("if-match", isValidRevision);
-  if (!isValidRevision) {
-    revision =
-        UINT64_MAX;  // an impossible rev, so precondition failed will happen
-  }
-  auto maybeRev = boost::make_optional(revision != 0, revision);
+  auto maybeRev = handleRevision();
 
   GraphOperations gops{graph, _vocbase};
 
@@ -827,13 +841,7 @@ Result RestGraphHandler::documentModify(
 
   // extract the revision, if single document variant and header given:
   std::unique_ptr<VPackBuilder> builder;
-  TRI_voc_rid_t revision = 0;
-  bool isValidRevision;
-  revision = extractRevision("if-match", isValidRevision);
-  if (!isValidRevision) {
-    revision = UINT64_MAX;  // an impossible revision, so precondition failed
-  }
-  auto maybeRev = boost::make_optional(revision != 0, revision);
+  auto maybeRev = handleRevision();
 
   GraphOperations gops{graph, _vocbase};
 
@@ -842,16 +850,16 @@ Result RestGraphHandler::documentModify(
   // common code another way.
   if (isPatch && colType == TRI_COL_TYPE_DOCUMENT) {
     result = gops.updateVertex(collectionName, key, body, maybeRev,
-                                waitForSync, returnOld, returnNew, keepNull);
+                               waitForSync, returnOld, returnNew, keepNull);
   } else if (!isPatch && colType == TRI_COL_TYPE_DOCUMENT) {
     result = gops.replaceVertex(collectionName, key, body, maybeRev,
-                                 waitForSync, returnOld, returnNew, keepNull);
+                                waitForSync, returnOld, returnNew, keepNull);
   } else if (isPatch && colType == TRI_COL_TYPE_EDGE) {
     result = gops.updateEdge(collectionName, key, body, maybeRev, waitForSync,
-                              returnOld, returnNew, keepNull);
+                             returnOld, returnNew, keepNull);
   } else if (!isPatch && colType == TRI_COL_TYPE_EDGE) {
     result = gops.replaceEdge(collectionName, key, body, maybeRev, waitForSync,
-                               returnOld, returnNew, keepNull);
+                              returnOld, returnNew, keepNull);
   } else {
     TRI_ASSERT(false);
   }
@@ -936,13 +944,7 @@ Result RestGraphHandler::vertexActionRemove(
 
   bool returnOld = _request->parsedValue(StaticStrings::ReturnOldString, false);
 
-  bool isValidRevision;
-  TRI_voc_rid_t revision = extractRevision("if-match", isValidRevision);
-  if (!isValidRevision) {
-    revision =
-        UINT64_MAX;  // an impossible rev, so precondition failed will happen
-  }
-  auto maybeRev = boost::make_optional(revision != 0, revision);
+  auto maybeRev = handleRevision();
 
   GraphOperations gops{graph, _vocbase};
 
@@ -1064,4 +1066,20 @@ Result RestGraphHandler::graphActionReadConfig(
 
 RequestLane RestGraphHandler::lane() const {
   return RequestLane::CLIENT_SLOW;
+}
+  
+boost::optional<TRI_voc_rid_t> RestGraphHandler::handleRevision() const {
+  bool isValidRevision;
+  TRI_voc_rid_t revision = extractRevision("if-match", isValidRevision);
+  if (!isValidRevision) {
+    revision = UINT64_MAX;  // an impossible revision, so precondition failed
+  }
+  if (revision == 0 || revision == UINT64_MAX) {
+    bool found = false;
+    std::string const& revString = _request->value("rev", found);
+    if (found) {
+      revision = TRI_StringToRid(revString.data(), revString.size(), false);
+    }
+  }
+  return boost::make_optional(revision != 0, revision);
 }

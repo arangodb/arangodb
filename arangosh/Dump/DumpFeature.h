@@ -25,6 +25,7 @@
 #define ARANGODB_DUMP_DUMP_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+
 #include "Basics/Mutex.h"
 #include "Utils/ClientManager.h"
 #include "Utils/ClientTaskQueue.h"
@@ -33,13 +34,17 @@ namespace arangodb {
 namespace httpclient {
 class SimpleHttpResult;
 }
+
+namespace maskings {
+class Maskings;
+}
+
 class ManagedDirectory;
 
 class DumpFeature : public application_features::ApplicationFeature {
  public:
-  DumpFeature(application_features::ApplicationServer* server, int& exitCode);
+  DumpFeature(application_features::ApplicationServer& server, int& exitCode);
 
- public:
   // for documentation of virtual methods, see `ApplicationFeature`
   virtual void collectOptions(
       std::shared_ptr<options::ProgramOptions>) override final;
@@ -47,7 +52,6 @@ class DumpFeature : public application_features::ApplicationFeature {
       std::shared_ptr<options::ProgramOptions> options) override final;
   virtual void start() override final;
 
- public:
   /**
    * @brief Returns the feature name (for registration with `ApplicationServer`)
    * @return The name of the feature
@@ -60,11 +64,11 @@ class DumpFeature : public application_features::ApplicationFeature {
    */
   void reportError(Result const& error);
 
- public:
   /// @brief Holds configuration data to pass between methods
   struct Options {
     std::vector<std::string> collections{};
     std::string outputPath{};
+    std::string maskingsFile{};
     uint64_t initialChunkSize{1024 * 1024 * 8};
     uint64_t maxChunkSize{1024 * 1024 * 64};
     uint32_t threadCount{2};
@@ -75,7 +79,7 @@ class DumpFeature : public application_features::ApplicationFeature {
     bool force{false};
     bool ignoreDistributeShardsLikeErrors{false};
     bool includeSystemCollections{false};
-    bool overwrite{true};
+    bool overwrite{false};
     bool progress{true};
   };
 
@@ -88,13 +92,15 @@ class DumpFeature : public application_features::ApplicationFeature {
 
   /// @brief Stores all necessary data to dump a single collection or shard
   struct JobData {
-    JobData(ManagedDirectory&, DumpFeature&, Options const&, Stats&,
-            VPackSlice const&, uint64_t const, std::string const&,
-            std::string const&, std::string const&);
+    JobData(ManagedDirectory&, DumpFeature&, Options const&,
+            maskings::Maskings * maskings, Stats&,VPackSlice const&,
+            uint64_t const, std::string const&, std::string const&,
+            std::string const&);
 
     ManagedDirectory& directory;
     DumpFeature& feature;
     Options const& options;
+    maskings::Maskings* maskings;
     Stats& stats;
 
     VPackSlice const collectionInfo;
@@ -113,14 +119,14 @@ class DumpFeature : public application_features::ApplicationFeature {
   Stats _stats;
   Mutex _workerErrorLock;
   std::queue<Result> _workerErrors;
+  std::unique_ptr<maskings::Maskings> _maskings;
 
- private:
   Result runDump(httpclient::SimpleHttpClient& client, std::string const& dbName);
   Result runClusterDump(httpclient::SimpleHttpClient& client, std::string const& dbName);
-  
   Result storeDumpJson(VPackSlice const& body, std::string const& dbName) const;
   Result storeViews(velocypack::Slice const&) const;
 };
+
 }  // namespace arangodb
 
 #endif

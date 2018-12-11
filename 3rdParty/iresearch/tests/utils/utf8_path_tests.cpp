@@ -674,6 +674,114 @@ TEST_F(utf8_path_tests, directory) {
     ASSERT_FALSE(path1.mtime(tmpTime));
     ASSERT_FALSE(path1.file_size(tmpUint));
   }
+
+  // recursive multi-level path creation (absolute)
+  {
+    std::string directory1("deleteme1");
+    std::string directory2("deleteme2/deleteme3"); // explicitly use '/' and not native
+    irs::utf8_path path1(true);
+    irs::utf8_path path2(true);
+
+    path1 /= directory1;
+    path2 /= directory1;
+    path2 /= directory2;
+
+    ASSERT_TRUE(path1.exists(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path1.exists_directory(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path1.exists_file(tmpBool) && !tmpBool);
+    ASSERT_FALSE(path1.mtime(tmpTime));
+    ASSERT_FALSE(path1.file_size(tmpUint));
+
+    ASSERT_TRUE(path2.exists(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path2.exists_directory(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path2.exists_file(tmpBool) && !tmpBool);
+    ASSERT_FALSE(path2.mtime(tmpTime));
+    ASSERT_FALSE(path2.file_size(tmpUint));
+
+    ASSERT_TRUE(path2.mkdir());
+
+    ASSERT_TRUE(path1.exists(tmpBool) && tmpBool);
+    ASSERT_TRUE(path1.exists_directory(tmpBool) && tmpBool);
+    ASSERT_TRUE(path1.exists_file(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path1.mtime(tmpTime) && tmpTime > 0);
+    ASSERT_TRUE(path1.file_size(tmpUint));
+
+    ASSERT_TRUE(path2.exists(tmpBool) && tmpBool);
+    ASSERT_TRUE(path2.exists_directory(tmpBool) && tmpBool);
+    ASSERT_TRUE(path2.exists_file(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path2.mtime(tmpTime) && tmpTime > 0);
+    ASSERT_TRUE(path2.file_size(tmpUint));
+
+    ASSERT_TRUE(path1.remove()); // recursive remove successful
+
+    ASSERT_TRUE(path1.exists(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path1.exists_directory(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path1.exists_file(tmpBool) && !tmpBool);
+    ASSERT_FALSE(path1.mtime(tmpTime));
+    ASSERT_FALSE(path1.file_size(tmpUint));
+
+    ASSERT_TRUE(path2.exists(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path2.exists_directory(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path2.exists_file(tmpBool) && !tmpBool);
+    ASSERT_FALSE(path2.mtime(tmpTime));
+    ASSERT_FALSE(path2.file_size(tmpUint));
+
+    ASSERT_FALSE(path2.remove()); // path already removed
+  }
+
+  // recursive multi-level path creation (relative)
+  {
+    std::string directory1("deleteme1");
+    std::string directory2("deleteme2/deleteme3"); // explicitly use '/' and not native
+    irs::utf8_path path1;
+    irs::utf8_path path2;
+
+    path1 /= directory1;
+    path2 /= directory1;
+    path2 /= directory2;
+
+    ASSERT_TRUE(path1.exists(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path1.exists_directory(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path1.exists_file(tmpBool) && !tmpBool);
+    ASSERT_FALSE(path1.mtime(tmpTime));
+    ASSERT_FALSE(path1.file_size(tmpUint));
+
+    ASSERT_TRUE(path2.exists(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path2.exists_directory(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path2.exists_file(tmpBool) && !tmpBool);
+    ASSERT_FALSE(path2.mtime(tmpTime));
+    ASSERT_FALSE(path2.file_size(tmpUint));
+
+    ASSERT_TRUE(path2.mkdir());
+
+    ASSERT_TRUE(path1.exists(tmpBool) && tmpBool);
+    ASSERT_TRUE(path1.exists_directory(tmpBool) && tmpBool);
+    ASSERT_TRUE(path1.exists_file(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path1.mtime(tmpTime) && tmpTime > 0);
+    ASSERT_TRUE(path1.file_size(tmpUint));
+
+    ASSERT_TRUE(path2.exists(tmpBool) && tmpBool);
+    ASSERT_TRUE(path2.exists_directory(tmpBool) && tmpBool);
+    ASSERT_TRUE(path2.exists_file(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path2.mtime(tmpTime) && tmpTime > 0);
+    ASSERT_TRUE(path2.file_size(tmpUint));
+
+    ASSERT_TRUE(path1.remove()); // recursive remove successful
+
+    ASSERT_TRUE(path1.exists(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path1.exists_directory(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path1.exists_file(tmpBool) && !tmpBool);
+    ASSERT_FALSE(path1.mtime(tmpTime));
+    ASSERT_FALSE(path1.file_size(tmpUint));
+
+    ASSERT_TRUE(path2.exists(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path2.exists_directory(tmpBool) && !tmpBool);
+    ASSERT_TRUE(path2.exists_file(tmpBool) && !tmpBool);
+    ASSERT_FALSE(path2.mtime(tmpTime));
+    ASSERT_FALSE(path2.file_size(tmpUint));
+
+    ASSERT_FALSE(path2.remove()); // path already removed
+  }
 }
 
 void validate_move(bool src_abs, bool dst_abs) {

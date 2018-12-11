@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EngineInfoContainerDBServer.h"
-
+#include "Aql/AqlItemBlock.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionEngine.h"
@@ -50,7 +50,7 @@ using namespace arangodb::aql;
 
 namespace {
 
-const double SETUP_TIMEOUT = 25.0;
+const double SETUP_TIMEOUT = 90.0;
 
 Result ExtractRemoteAndShard(VPackSlice keySlice, size_t& remoteId, std::string& shardId) {
   TRI_ASSERT(keySlice.isString()); // used as  a key in Json
@@ -150,7 +150,7 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
       }
 
       // do not set '_type' of the engine here,
-      // bacause satellite collections may consists of
+      // because satellite collections may consist of
       // multiple "main nodes"
 
       break;
@@ -335,7 +335,7 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
     previous = clone;
   }
   TRI_ASSERT(previous != nullptr);
-    
+
   plan.root(previous);
   plan.setVarUsageComputed();
   const unsigned flags = ExecutionNode::SERIALIZE_DETAILS;
@@ -553,11 +553,11 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
   }
   infoBuilder.close();  // lockInfo
   infoBuilder.add(VPackValue("options"));
-  
+
   // toVelocyPack will open & close the "options" object
 #ifdef USE_ENTERPRISE
   if (query.trx()->state()->options().skipInaccessibleCollections) {
-    
+
     aql::QueryOptions opts = query.queryOptions();
     TRI_ASSERT(opts.transactionOptions.skipInaccessibleCollections);
     for (auto const& it : _engineInfos) {
@@ -580,7 +580,7 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
 #else
   query.queryOptions().toVelocyPack(infoBuilder, true);
 #endif
-  
+
   infoBuilder.add(VPackValue("variables"));
   // This will open and close an Object.
   query.ast()->variables()->toVelocyPack(infoBuilder);
@@ -676,7 +676,7 @@ void EngineInfoContainerDBServer::DBServerInfo::injectTraverserEngines(
       infoBuilder.close();
     }
     infoBuilder.close();  // edges
-    
+
 #ifdef USE_ENTERPRISE
     if (!list.inaccessibleShards.empty()) {
       infoBuilder.add(VPackValue("inaccessible"));
@@ -849,11 +849,20 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
       for (auto const& it : edges) {
         knownEdges.emplace(it->name());
       }
+
+      TRI_ASSERT(_query);
+      auto& resolver = _query->resolver();
+
       // This case indicates we do not have a named graph. We simply use
       // ALL collections known to this query.
-      std::map<std::string, Collection*>* cs =
+      std::map<std::string, Collection*> const* cs =
           _query->collections()->collections();
       for (auto const& collection : (*cs)) {
+        if (!resolver.getCollection(collection.first)) {
+          // not a collection, filter out
+          continue;
+        }
+
         if (knownEdges.find(collection.second->name()) == knownEdges.end()) {
           // This collection is not one of the edge collections used in this
           // graph.
@@ -881,12 +890,8 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
       // Thanks to fanout...
       for (auto const& collection : (*cs)) {
         for (auto& entry : mappingServerToCollections) {
-          auto it =
-              entry.second.vertexCollections.find(collection.second->name());
-          if (it == entry.second.vertexCollections.end()) {
-            entry.second.vertexCollections.emplace(collection.second->name(),
-                                                   std::vector<ShardID>());
-          }
+          // implicity creates the map entry in case it does not exist
+          entry.second.vertexCollections[collection.second->name()];
         }
       }
     } else {
@@ -912,11 +917,8 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
       // Thanks to fanout...
       for (auto const& it : vertices) {
         for (auto& entry : mappingServerToCollections) {
-          auto vIt = entry.second.vertexCollections.find(it->name());
-          if (vIt == entry.second.vertexCollections.end()) {
-            entry.second.vertexCollections.emplace(it->name(),
-                                                   std::vector<ShardID>());
-          }
+          // implicitly creates the map entry in case it does not exist.
+          entry.second.vertexCollections[it->name()];
         }
       }
     }
@@ -955,10 +957,11 @@ Result EngineInfoContainerDBServer::buildEngines(
     // nullptr only happens on controlled shutdown
     return {TRI_ERROR_SHUTTING_DOWN};
   }
-  
+
   double ttl = QueryRegistryFeature::DefaultQueryTTL;
-  if (QueryRegistryFeature::QUERY_REGISTRY != nullptr) {
-    ttl = QueryRegistryFeature::QUERY_REGISTRY->defaultTTL();
+  auto* registry = QueryRegistryFeature::registry();
+  if (registry != nullptr) {
+    ttl = registry->defaultTTL();
   }
   TRI_ASSERT(ttl > 0);
 
@@ -993,9 +996,9 @@ Result EngineInfoContainerDBServer::buildEngines(
     // Now we send to DBServers.
     // We expect a body with {snippets: {id => engineId}, traverserEngines:
     // [engineId]}}
-                               
+
     CoordTransactionID coordTransactionID = TRI_NewTickServer();
-    auto res = cc->syncRequest("", coordTransactionID, serverDest,
+    auto res = cc->syncRequest(coordTransactionID, serverDest,
                                RequestType::POST, url, infoBuilder.toJson(),
                                headers, SETUP_TIMEOUT);
 
@@ -1076,11 +1079,19 @@ void EngineInfoContainerDBServer::addGraphNode(GraphNode* node) {
   // Add all Vertex Collections to the Transactions, Traversals do never write
   auto& vCols = node->vertexColls();
   if (vCols.empty()) {
+    TRI_ASSERT(_query);
+    auto& resolver = _query->resolver();
+
     // This case indicates we do not have a named graph. We simply use
     // ALL collections known to this query.
-    std::map<std::string, Collection*>* cs =
+    std::map<std::string, Collection*> const* cs =
         _query->collections()->collections();
     for (auto const& col : *cs) {
+      if (!resolver.getCollection(col.first)) {
+        // not a collection, filter out
+        continue;
+      }
+
       handleCollection(col.second, AccessMode::Type::READ);
     }
   } else {

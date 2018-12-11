@@ -33,81 +33,18 @@
 
 using namespace arangodb;
 
-MMFilesTransactionCollection::MMFilesTransactionCollection(TransactionState* trx, TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel)
+MMFilesTransactionCollection::MMFilesTransactionCollection(
+    TransactionState* trx, TRI_voc_cid_t cid, AccessMode::Type accessType,
+    int nestingLevel)
     : TransactionCollection(trx, cid, accessType),
       _operations{_arena},
-      _originalRevision(0), 
-      _nestingLevel(nestingLevel), 
-      _compactionLocked(false), 
-      _waitForSync(false),
-      _lockType(AccessMode::Type::NONE) {} 
+      _originalRevision(0),
+      _nestingLevel(nestingLevel),
+      _compactionLocked(false),
+      _waitForSync(false) {}
 
-MMFilesTransactionCollection::~MMFilesTransactionCollection() {}
+MMFilesTransactionCollection::~MMFilesTransactionCollection() = default;
 
-/// @brief request a main-level lock for a collection
-/// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
-/// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
-/// returns any other error code otherwise
-int MMFilesTransactionCollection::lockRecursive() { return lockRecursive(_accessType, 0); }
-
-/// @brief request a lock for a collection
-/// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
-/// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
-/// returns any other error code otherwise
-int MMFilesTransactionCollection::lockRecursive(AccessMode::Type accessType,
-                                                int nestingLevel) {
-  if (AccessMode::isWriteOrExclusive(accessType) && !AccessMode::isWriteOrExclusive(_accessType)) {
-    // wrong lock type
-    return TRI_ERROR_INTERNAL;
-  }
-
-  if (isLocked()) {
-    // already locked
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  return doLock(accessType, nestingLevel);
-}
-
-/// @brief request an unlock for a collection
-int MMFilesTransactionCollection::unlockRecursive(AccessMode::Type accessType,
-                                                  int nestingLevel) {
-  if (AccessMode::isWriteOrExclusive(accessType) && !AccessMode::isWriteOrExclusive(_accessType)) {
-    // wrong lock type: write-unlock requested but collection is read-only
-    return TRI_ERROR_INTERNAL;
-  }
-
-  if (!isLocked()) {
-    // already unlocked
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  return doUnlock(accessType, nestingLevel);
-}
-
-/// @brief check if a collection is locked in a specific mode in a transaction
-bool MMFilesTransactionCollection::isLocked(AccessMode::Type accessType, int nestingLevel) const {
-  if (AccessMode::isWriteOrExclusive(accessType) && !AccessMode::isWriteOrExclusive(_accessType)) {
-    // wrong lock type
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "logic error. checking wrong lock type";
-    return false;
-  }
-
-  return isLocked();
-}
-  
-/// @brief check whether a collection is locked at all
-bool MMFilesTransactionCollection::isLocked() const {
-  if (_collection == nullptr) {
-    return false;
-  }
-  std::string collName(_collection->name());
-  if (_transaction->isLockedShard(collName)) {
-    return true;
-  }
-  return (_lockType != AccessMode::Type::NONE);
-}
-  
 /// @brief whether or not any write operations for the collection happened
 bool MMFilesTransactionCollection::hasOperations() const {
   return (!_operations.empty());
@@ -116,12 +53,12 @@ bool MMFilesTransactionCollection::hasOperations() const {
 void MMFilesTransactionCollection::addOperation(MMFilesDocumentOperation* operation) {
   _operations.push_back(operation);
 }
-  
+
 void MMFilesTransactionCollection::freeOperations(transaction::Methods* activeTrx, bool mustRollback) {
   if (!hasOperations()) {
     return;
   }
-  
+
   bool const isSingleOperationTransaction = _transaction->hasHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   // revert all operations
@@ -161,7 +98,7 @@ bool MMFilesTransactionCollection::canAccess(AccessMode::Type accessType) const 
   }
 
   // check if access type matches
-  if (AccessMode::isWriteOrExclusive(accessType) && 
+  if (AccessMode::isWriteOrExclusive(accessType) &&
       !AccessMode::isWriteOrExclusive(_accessType)) {
     // type doesn't match. probably also a mistake by the caller
     return false;
@@ -171,7 +108,7 @@ bool MMFilesTransactionCollection::canAccess(AccessMode::Type accessType) const 
 }
 
 int MMFilesTransactionCollection::updateUsage(AccessMode::Type accessType, int nestingLevel) {
-  if (AccessMode::isWriteOrExclusive(accessType) && 
+  if (AccessMode::isWriteOrExclusive(accessType) &&
       !AccessMode::isWriteOrExclusive(_accessType)) {
     if (nestingLevel > 0) {
       // trying to write access a collection that is only marked with
@@ -217,7 +154,7 @@ int MMFilesTransactionCollection::use(int nestingLevel) {
       }
     } else {
       // use without usage-lock (lock already set externally)
-      _collection = _transaction->vocbase().lookupCollection(_cid).get();
+      _collection = _transaction->vocbase().lookupCollection(_cid);
 
       if (_collection == nullptr) {
         return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
@@ -261,7 +198,7 @@ int MMFilesTransactionCollection::use(int nestingLevel) {
       return res;
     }
   }
-  
+
   if (AccessMode::isWriteOrExclusive(_accessType) && _originalRevision == 0) {
     // store original revision at transaction start
     _originalRevision = physical->revision();
@@ -269,7 +206,7 @@ int MMFilesTransactionCollection::use(int nestingLevel) {
 
   return TRI_ERROR_NO_ERROR;
 }
-  
+
 void MMFilesTransactionCollection::unuse(int nestingLevel) {
   if (isLocked() &&
       (nestingLevel == 0 || _nestingLevel == nestingLevel)) {
@@ -298,8 +235,11 @@ void MMFilesTransactionCollection::release() {
   if (_collection != nullptr) {
     // unuse collection, remove usage-lock
     LOG_TRX(_transaction, 0) << "unusing collection " << _cid;
-
-    _transaction->vocbase().releaseCollection(_collection);
+    
+    if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) &&
+        !_transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
+      _transaction->vocbase().releaseCollection(_collection.get());
+    }
     _collection = nullptr;
   }
 }
@@ -322,11 +262,9 @@ int MMFilesTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
   }
 
   TRI_ASSERT(!isLocked());
-
-  LogicalCollection* collection = _collection;
-  TRI_ASSERT(collection != nullptr);
-
-  auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+  TRI_ASSERT(_collection);
+  
+  auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
   TRI_ASSERT(physical != nullptr);
 
   double timeout = _transaction->timeout();
@@ -334,8 +272,8 @@ int MMFilesTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
     // give up early if we cannot acquire the lock instantly
     timeout = 0.00000001;
   }
-  
-  bool const useDeadlockDetector = (!_transaction->hasHint(transaction::Hints::Hint::SINGLE_OPERATION) && 
+
+  bool const useDeadlockDetector = (!_transaction->hasHint(transaction::Hints::Hint::SINGLE_OPERATION) &&
                                     !_transaction->hasHint(transaction::Hints::Hint::NO_DLD));
 
   int res;
@@ -387,11 +325,11 @@ int MMFilesTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
   if (!AccessMode::isWriteOrExclusive(type) && AccessMode::isWriteOrExclusive(_lockType)) {
     // do not remove a write-lock if a read-unlock was requested!
     return TRI_ERROR_NO_ERROR;
-  } 
+  }
   if (AccessMode::isWriteOrExclusive(type) && !AccessMode::isWriteOrExclusive(_lockType)) {
     // we should never try to write-unlock a collection that we have only
     // read-locked
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "logic error in doUnlock";
+    LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << "logic error in doUnlock";
     TRI_ASSERT(false);
     return TRI_ERROR_INTERNAL;
   }
@@ -399,10 +337,8 @@ int MMFilesTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
   bool const useDeadlockDetector = (!_transaction->hasHint(transaction::Hints::Hint::SINGLE_OPERATION) &&
                                     !_transaction->hasHint(transaction::Hints::Hint::NO_DLD));
 
-  LogicalCollection* collection = _collection;
-  TRI_ASSERT(collection != nullptr);
-
-  auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+  TRI_ASSERT(_collection);
+  auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
   TRI_ASSERT(physical != nullptr);
 
   if (!AccessMode::isWriteOrExclusive(_lockType)) {

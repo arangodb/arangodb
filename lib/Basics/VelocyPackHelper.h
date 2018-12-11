@@ -265,15 +265,16 @@ class VelocyPackHelper {
   /// @brief returns a boolean sub-element, or a default if it does not exist
   //////////////////////////////////////////////////////////////////////////////
 
-  static bool getBooleanValue(VPackSlice const&, char const*, bool);
-  static bool readBooleanValue(VPackSlice info, std::string const& name,
-                               bool def) {
-    if (!info.isObject()) {
-      return def;
-    }
-    return getBooleanValue(info, name.c_str(), def);
-  }
+  static bool getBooleanValue(VPackSlice const&, char const* name, bool defaultValue);
+  static bool getBooleanValue(VPackSlice const&, std::string const& name, bool defaultValue);
 
+  static bool readBooleanValue(VPackSlice info, std::string const& name,
+                               bool defaultValue) {
+    if (!info.isObject()) {
+      return defaultValue;
+    }
+    return getBooleanValue(info, name, defaultValue);
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a string sub-element, or throws if <name> does not exist

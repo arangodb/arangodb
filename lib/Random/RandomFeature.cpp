@@ -27,11 +27,12 @@
 #include "ProgramOptions/Section.h"
 #include "Random/RandomGenerator.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 
-RandomFeature::RandomFeature(application_features::ApplicationServer* server)
+namespace arangodb {
+
+RandomFeature::RandomFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Random"),
       _randomGenerator((uint32_t)RandomGenerator::RandomType::MERSENNE) {
   setOptional(false);
@@ -47,15 +48,17 @@ void RandomFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   std::unordered_set<uint32_t> generators = {1, 2, 3, 4};
 #endif
 
-  options->addHiddenOption(
+  options->addOption(
       "--random.generator",
       "random number generator to use (1 = MERSENNE, 2 = RANDOM, "
       "3 = URANDOM, 4 = COMBINED (not for Windows), 5 = WinCrypt (Windows "
       "only)",
-      new DiscreteValuesParameter<UInt32Parameter>(&_randomGenerator,
-                                                   generators));
+      new DiscreteValuesParameter<UInt32Parameter>(&_randomGenerator, generators),
+      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
 void RandomFeature::prepare() {
   RandomGenerator::initialize((RandomGenerator::RandomType)_randomGenerator);
 }
+
+} // arangodb

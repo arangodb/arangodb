@@ -123,6 +123,12 @@ JOB_STATUS CleanOutServer::status() {
         reportTrx.add("op", VPackValue("push"));
         reportTrx.add("new", VPackValue(_server));
       }
+      reportTrx.add(VPackValue("/Target/ToBeCleanedServers"));
+      {
+        VPackObjectBuilder guard4(&reportTrx);
+        reportTrx.add("op", VPackValue("erase"));
+        reportTrx.add("val", VPackValue(_server));
+      }
       addRemoveJobFromSomewhere(reportTrx, "Pending", _jobId);
       Builder job;
       _snapshot.hasAsBuilder(pendingPrefix + _jobId, job);
@@ -312,6 +318,14 @@ bool CleanOutServer::start() {
 
       addBlockServer(*pending, _server, _jobId);
 
+      // Put ourselves in list of servers to be cleaned:
+      pending->add(VPackValue("/Target/ToBeCleanedServers"));
+      {
+        VPackObjectBuilder guard4(pending.get());
+        pending->add("op", VPackValue("push"));
+        pending->add("new", VPackValue(_server));
+      }
+
       // Schedule shard relocations
       if (!scheduleMoveShards(pending)) {
         finish("", "", false, "Could not schedule MoveShard.");
@@ -389,6 +403,8 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
             serversCopy.end());
         }
 
+        bool isLeader = (found == 0);
+
         // Among those a random destination:
         std::string toServer;
         if (serversCopy.empty()) {
@@ -403,7 +419,7 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
         // Schedule move into trx:
         MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
                   _jobId, database.first, collptr.first,
-                  shard.first, _server, toServer, found == 0)
+                  shard.first, _server, toServer, isLeader, false)
           .create(trx);
       }
     }

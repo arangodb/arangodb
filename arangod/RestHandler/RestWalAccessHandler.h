@@ -36,7 +36,7 @@ class RestWalAccessHandler : public arangodb::RestVocbaseBaseHandler {
 
  public:
   char const* name() const override final { return "RestWalAccessHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLUSTER_INTERNAL; }
+  RequestLane lane() const override final { return RequestLane::SERVER_REPLICATION; }
   RestStatus execute() override;
 
  private:

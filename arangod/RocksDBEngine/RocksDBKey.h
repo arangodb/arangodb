@@ -218,14 +218,14 @@ class RocksDBKey {
   /// May be called only on Document keys. Other types will throw.
   //////////////////////////////////////////////////////////////////////////////
   static LocalDocumentId documentId(rocksdb::Slice const&);
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the LocalDocumentId from an index key
   ///
   /// May be called only on Index keys. Other types will throw.
   //////////////////////////////////////////////////////////////////////////////
   static LocalDocumentId indexDocumentId(RocksDBEntryType type, rocksdb::Slice const&);
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the primary key (`_key`) from a key
   ///
@@ -282,7 +282,6 @@ class RocksDBKey {
     TRI_ASSERT(size >= sizeof(char));
 
     const auto type = static_cast<RocksDBEntryType>(data[0]);
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     switch (type) {
       case RocksDBEntryType::Database:
       case RocksDBEntryType::Collection:
@@ -294,9 +293,8 @@ class RocksDBKey {
       case RocksDBEntryType::View:
         return type;
       default:
-        TRI_ASSERT(false);
+        return RocksDBEntryType::Placeholder;
     }
-#endif
     return type;
   }
 
@@ -318,6 +316,8 @@ class RocksDBKey {
   std::string _buffer;
   rocksdb::Slice _slice;
 };
+
+std::ostream& operator<<(std::ostream&, RocksDBKey const&);
 
 }  // namespace arangodb
 

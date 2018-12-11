@@ -36,7 +36,7 @@ class ClusterRestExportHandler : public RestVocbaseBaseHandler {
 
  public:
   char const* name() const override final { return "ClusterRestExportHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLUSTER_INTERNAL; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   RestStatus execute() override;
 };
 }
