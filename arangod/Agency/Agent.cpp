@@ -1919,20 +1919,21 @@ void Agent::trashStoreCallback(std::string const& url, query_t const& body) {
 }
 
 void Agent::emptyCbTrashBin() {
-
+  
   using clock = std::chrono::steady_clock;
-
+  
+  auto envelope = std::make_shared<VPackBuilder>();
   {
     MUTEX_LOCKER(lock, _cbtLock);
-
+    
     auto early =
-      std::chrono::duration(clock::now() - _callbackLastPurged) < 10;
+      std::chrono::duration_cast<std::chrono::seconds>(
+        clock::now() - _callbackLastPurged).count() < 10;
   
     if (early || _callbackTrashBin.empty()) {
       return;
     }
     
-    auto envelope = std::make_shared<VPackBuilder>();
     { VPackArrayBuilder trxs(envelope.get());
       { VPackArrayBuilder trx(envelope.get());
         for (auto const& i : _callbackTrashBin) {

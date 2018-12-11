@@ -151,7 +151,7 @@ class Agent final : public arangodb::Thread,
   void trashStoreCallback(std::string const& url, query_t const& body);
 
   /// @brief empty callback trash bin
-  void enmptyCbTrashBin();
+  void emptyCbTrashBin();
 
  private:
   /// @brief Invoked by leader to replicate log entries ($5.3);
