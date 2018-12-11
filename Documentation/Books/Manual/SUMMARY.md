@@ -177,6 +177,7 @@
       * [Applicability](Architecture/DeploymentModes/DC2DC/Applicability.md)
       * [Requirements](Architecture/DeploymentModes/DC2DC/Requirements.md)
       * [Limitations](Architecture/DeploymentModes/DC2DC/Limitations.md)
+  * [Single Instance vs. Cluster](Architecture/DifferenceSingleCluster.md)
   * [Storage Engines](Architecture/StorageEngines.md)
   * [Replication](Architecture/Replication/README.md)
   * [Write-ahead log](Architecture/WriteAheadLog.md)

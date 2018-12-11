@@ -8,6 +8,9 @@ For installation instructions, please refer to the [Installation](../Installatio
 For _production_ deployments, please also carefully check the
 [ArangoDB Production Checklist](ProductionChecklist.md).
 
+Also check the description of
+[Single Instance vs. Cluster](../Architecture/DifferenceSingleCluster.md).
+
 By ArangoDB _Deployment Mode_:
 
 - [Single instance](SingleInstance/README.md)
