@@ -259,7 +259,7 @@ bool RocksDBEdgeIndexIterator::nextCovering(DocumentCallback const& cb, size_t l
   }
 #endif
 
-  VPackBuilder coveringBuilder;
+  transaction::BuilderLeaser coveringBuilder(_trx);
   while (limit > 0) {
     while (_builderIterator.valid()) {
       // We still have unreturned edges in memory.
@@ -272,12 +272,12 @@ bool RocksDBEdgeIndexIterator::nextCovering(DocumentCallback const& cb, size_t l
       TRI_ASSERT(_builderIterator.value().isString());
       // We always have <revision,_from> pairs, so now we need this result for the covered attributes
 
-      coveringBuilder.clear();
-      coveringBuilder.openArray();
-      coveringBuilder.add(_lastKey);
-      coveringBuilder.add(_builderIterator.value());
-      coveringBuilder.close();
-      cb(tkn, coveringBuilder.slice());
+      coveringBuilder->clear();
+      coveringBuilder->openArray();
+      coveringBuilder->add(_lastKey);
+      coveringBuilder->add(_builderIterator.value());
+      coveringBuilder->close();
+      cb(tkn, coveringBuilder->slice());
 
       limit--;
 
@@ -319,13 +319,13 @@ bool RocksDBEdgeIndexIterator::nextCovering(DocumentCallback const& cb, size_t l
               TRI_ASSERT(_builderIterator.value().isString());
               // We always have <revision,_from> pairs, so now we need this result for the covered attributes
 
-              coveringBuilder.clear();
-              coveringBuilder.openArray();
-              coveringBuilder.add(_lastKey);
-              coveringBuilder.add(_builderIterator.value());
-              coveringBuilder.close();
+              coveringBuilder->clear();
+              coveringBuilder->openArray();
+              coveringBuilder->add(_lastKey);
+              coveringBuilder->add(_builderIterator.value());
+              coveringBuilder->close();
 
-              cb(tkn, coveringBuilder.slice());
+              cb(tkn, coveringBuilder->slice());
               limit--;
 
               _builderIterator.next();
