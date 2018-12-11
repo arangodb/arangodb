@@ -168,9 +168,9 @@ static arangodb::Result getReadLockId (
     TRI_ASSERT(idSlice.isObject());
     TRI_ASSERT(idSlice.hasKey(ID));
     try {
-      id = std::stoll(idSlice.get(ID).copyString());
+      id = std::stoull(idSlice.get(ID).copyString());
     } catch (std::exception const&) {
-      error += " expecting id to be int64_t ";
+      error += " expecting id to be uint64_t ";
       error += idSlice.toJson();
       return arangodb::Result(TRI_ERROR_INTERNAL, error);
     }
