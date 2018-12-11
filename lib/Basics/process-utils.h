@@ -100,20 +100,13 @@ struct ExternalId {
 /// @brief external process description
 ////////////////////////////////////////////////////////////////////////////////
 
-struct ExternalProcess {
+struct ExternalProcess : public ExternalId {
   std::string _executable;
   size_t _numberArguments;
   char** _arguments;
 
-#ifndef _WIN32
-  TRI_pid_t _pid;
-  int _readPipe;
-  int _writePipe;
-#else
-  DWORD _pid;
+#ifdef _WIN32
   HANDLE _process;
-  HANDLE _readPipe;
-  HANDLE _writePipe;
 #endif
 
   TRI_external_status_e _status;

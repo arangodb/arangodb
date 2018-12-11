@@ -3523,10 +3523,10 @@ static void JS_HMAC(v8::FunctionCallbackInfo<v8::Value> const& args) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Convert programm stati to V8
 ////////////////////////////////////////////////////////////////////////////////
-static char const* convertProcessStatusToString(ExternalProcessStatus external) {
+static char const* convertProcessStatusToString(TRI_external_status_e processStatus) {
    char const* status = "UNKNOWN";
 
-  switch (external._status) {
+  switch (processStatus) {
     case TRI_EXT_NOT_STARTED:
       status = "NOT-STARTED";
       break;
@@ -3557,7 +3557,7 @@ static char const* convertProcessStatusToString(ExternalProcessStatus external) 
 
 static void convertPipeStatus(v8::FunctionCallbackInfo<v8::Value> const& args,
                               v8::Handle<v8::Object> &result,
-                              ExternalId &external) {
+                              ExternalId const& external) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
 
   result->Set(TRI_V8_ASCII_STRING(isolate, "pid"),
@@ -3594,14 +3594,14 @@ static void convertPipeStatus(v8::FunctionCallbackInfo<v8::Value> const& args,
 
 static void convertStatusToV8(v8::FunctionCallbackInfo<v8::Value> const& args,
                                v8::Handle<v8::Object> &result,
-                               ExternalProcessStatus &external_status,
-                               ExternalId &external) {
+                               ExternalProcessStatus const& external_status,
+                               ExternalId const& external) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
 
   convertPipeStatus(args, result, external);
 
   result->Set(TRI_V8_ASCII_STRING(isolate, "status"),
-              TRI_V8_ASCII_STRING(isolate, convertProcessStatusToString(external_status)));
+              TRI_V8_ASCII_STRING(isolate, convertProcessStatusToString(external_status._status)));
 
   if (external_status._status == TRI_EXT_TERMINATED) {
     result->Set(TRI_V8_ASCII_STRING(isolate, "exit"),
@@ -3619,6 +3619,36 @@ static void convertStatusToV8(v8::FunctionCallbackInfo<v8::Value> const& args,
   TRI_V8_TRY_CATCH_END;
 }
 
+static void convertProcessInfoToV8(v8::FunctionCallbackInfo<v8::Value> const& args,
+                                   v8::Handle<v8::Object> &result,
+                                   ExternalProcess const& external_process) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+
+  convertPipeStatus(args, result, external_process);
+
+  result->Set(TRI_V8_ASCII_STRING(isolate, "status"),
+              TRI_V8_ASCII_STRING(isolate, convertProcessStatusToString(external_process._status)));
+
+  if (external_process._status == TRI_EXT_TERMINATED) {
+    result->Set(TRI_V8_ASCII_STRING(isolate, "exit"),
+                v8::Integer::New(isolate, static_cast<int32_t>(
+                                              external_process._exitStatus)));
+  } else if (external_process._status == TRI_EXT_ABORTED) {
+    result->Set(TRI_V8_ASCII_STRING(isolate, "signal"),
+                v8::Integer::New(isolate, static_cast<int32_t>(
+                                              external_process._exitStatus)));
+  }
+  result->Set(TRI_V8_ASCII_STRING(isolate, "executable"),
+              TRI_V8_STD_STRING(isolate, external_process._executable));
+
+  v8::Handle<v8::Array> arguments =
+      v8::Array::New(isolate, static_cast<int>(external_process._numberArguments));
+  for (size_t i = 0; i < external_process._numberArguments; i++) {
+    arguments->Set(i, TRI_V8_ASCII_STRING(isolate, external_process._arguments[i]));
+  }
+  result->Set(TRI_V8_ASCII_STRING(isolate, "arguments"), arguments);
+  TRI_V8_TRY_CATCH_END;
+}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lists all running external processes
 ////////////////////////////////////////////////////////////////////////////////
@@ -3639,10 +3669,7 @@ static void JS_GetExternalSpawned(
   uint32_t i = 0;
   for (auto const& process : ExternalProcesses) {
     v8::Handle<v8::Object> oneProcess = v8::Object::New(isolate);
-    ExternalId external;
-    external._pid = process->_pid;
-    auto external_status = TRI_CheckExternalProcess(external, false);
-    convertStatusToV8(args, oneProcess, external_status, external);
+    convertProcessInfoToV8(args, oneProcess, *process);
     spawnedProcesses->Set(i, oneProcess);
     i++;
   }
@@ -3751,7 +3778,7 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
   result->Set(TRI_V8_ASCII_STRING(isolate, "status"),
-              TRI_V8_STRING(isolate, convertProcessStatusToString(external)));
+              TRI_V8_STRING(isolate, convertProcessStatusToString(external._status)));
 
   if (external._status == TRI_EXT_TERMINATED) {
     result->Set(
