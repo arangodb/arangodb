@@ -55,7 +55,8 @@ so if you delete documents from your vertex collections directly, the edges poin
 ### Anonymous graphs
 
 Sometimes you may not need all the powers of named graphs, but some of its bits may be valuable to you.
-You may use anonymous graphs in the [traversals](Traversals/README.md) and in the [Working with Edges](Edges/README.md) chapter.
+You may use anonymous graphs in the [traversals](Traversals/README.md) and in the
+[Working with Edges](Edges/README.md) chapter.
 Anonymous graphs don't have *edge definitions* describing which *vertex collection* is connected by which *edge collection*. The graph model has to be maintained in the client side code.
 This gives you more freedom than the strict *named graphs*.
 

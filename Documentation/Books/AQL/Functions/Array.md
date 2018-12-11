@@ -15,7 +15,8 @@ Apart from that, AQL also offers several language constructs:
 - [array comparison operators](../Operators.md#array-comparison-operators) to compare
   each element in an array to a value or the elements of another array,
 - loop-based operations using [FOR](../Operations/For.md),
-  [SORT](../Operations/Sort.md), [LIMIT](../Operations/Limit.md),
+  [SORT](../Operations/Sort.md),
+  [LIMIT](../Operations/Limit.md),
   as well as [COLLECT](../Operations/Collect.md) for grouping,
   which also offers efficient aggregation.
 
@@ -348,8 +349,8 @@ UNION(
 ```
 
 Note: No duplicates will be removed. In order to remove duplicates, please use
-either [UNION_DISTINCT()](#uniondistinct) or apply [UNIQUE()](#unique) on the
-result of *UNION()*:
+either [UNION_DISTINCT()](#uniondistinct) or apply
+[UNIQUE()](#unique) on the result of *UNION()*:
 
 ```js
 UNIQUE(

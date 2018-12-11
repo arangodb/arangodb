@@ -577,8 +577,8 @@ Return a substring of *value*.
 Return the string *value* with whitespace stripped from the start and/or end.
 
 The optional *type* parameter specifies from which parts of the string the
-whitespace is stripped. [LTRIM()](#ltrim) and [RTRIM()](#rtrim) are preferred
-however.
+whitespace is stripped. [LTRIM()](#ltrim) and
+[RTRIM()](#rtrim) are preferred however.
 
 - **value** (string): a string
 - **type** (number, *optional*): strip whitespace from the
