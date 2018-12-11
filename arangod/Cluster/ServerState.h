@@ -234,7 +234,7 @@ class ServerState {
   /// @brief sets the JavaScript startup path
   void setJavaScriptPath(std::string const&);
 
-  bool isFoxxmaster() const;
+  bool isFoxxmaster();
 
   std::string const& getFoxxmaster();
 

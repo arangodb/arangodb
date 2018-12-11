@@ -840,7 +840,7 @@ bool ServerState::checkCoordinatorState(StateEnum state) {
   return false;
 }
 
-bool ServerState::isFoxxmaster() const {
+bool ServerState::isFoxxmaster() {
   return /*!isRunningInCluster() ||*/ _foxxmaster == getId();
 }
 
