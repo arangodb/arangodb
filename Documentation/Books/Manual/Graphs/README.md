@@ -284,4 +284,12 @@ The above referenced chapters describe the various APIs of ArangoDBs graph engin
 
 ### Higher volume graph examples
 
-All of the above examples are rather small so they are easier to comprehend and can demonstrate the way the functionality works. There are however several datasets freely available on the web that are a lot bigger. [We collected some of them with import scripts](https://github.com/arangodb/example-datasets) so you may play around with them. Another huge graph is the [Pokec social network](https://snap.stanford.edu/data/soc-pokec.html) from Slovakia that we [used for performance testing on several databases](https://www.arangodb.com/2015/06/multi-model-benchmark/); You will find importing scripts etc. in this blogpost.
+All of the above examples are rather small so they are easier to comprehend and
+can demonstrate the way the functionality works. There are however several
+datasets freely available on the web that are a lot bigger.
+[We collected some of them with import scripts](https://github.com/arangodb/example-datasets)
+so you may play around with them. Another huge graph is the
+[Pokec social network](https://snap.stanford.edu/data/soc-pokec.html)
+from Slovakia that we
+[used for performance testing on several databases](https://www.arangodb.com/2015/06/multi-model-benchmark/);
+You will find importing scripts etc. in this blogpost.

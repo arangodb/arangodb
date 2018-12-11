@@ -70,7 +70,9 @@ This exports the collection *test* into the output directory *export* as generic
 Export XGMML
 ------------
 
-[XGMML](https://en.wikipedia.org/wiki/XGMML) is an XML application based on [GML](https://en.wikipedia.org/wiki/Graph_Modelling_Language). To view the XGMML file you can use for example [Cytoscape](http://cytoscape.org).
+[XGMML](https://en.wikipedia.org/wiki/XGMML) is an XML application based on
+[GML](https://en.wikipedia.org/wiki/Graph_Modelling_Language).
+To view the XGMML file you can use for example [Cytoscape](http://cytoscape.org).
 
 ## important note
 If you export all attributes (*--xgmml-label-only false*) keep in mind that a atrribute names type have to be the same type for all documents. It wont work if you have a attribute named rank that is in one document a string and in another document a integer.
