@@ -28,8 +28,8 @@ complex geographical objects. The new implementation is much faster than the pre
 the RocksDB engine.
 
 Additionally, several AQL functions have been added to facilitate working with
-geographical data: `GEO_POINT`, `GEO_MULTIPOINT`, `GEO_POLYGON`, `GEO_LINESTRING` and
-`GEO_MULTILINESTRING`. These functions will produce GeoJSON objects.
+geographical data: `GEO_POINT`, `GEO_MULTIPOINT`, `GEO_LINESTRING`, `GEO_MULTILINESTRING`,
+`GEO_POLYGON` and `GEO_MULTIPOLYGON`. These functions will produce GeoJSON objects.
 
 Additionally there are new geo AQL functions `GEO_CONTAINS`, `GEO_INTERSECTS` and `GEO_EQUALS`
 for querying and comparing GeoJSON objects.
