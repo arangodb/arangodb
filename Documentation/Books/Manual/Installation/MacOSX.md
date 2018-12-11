@@ -5,7 +5,7 @@ ArangoDB under MacOS can be installed via:
 
 1. [Homebrew](#homebrew)
 2. [_DMG_ Package](#package-installation)
-3. [_tar.gz_ Archive](#installing-using-the-archive)
+3. [_tar.gz_ Archive](#installing-using-the-archive) (starting from v.3.4.0)
 
 {% hint 'info' %}
 When installing ArangoDB via the MacOS package manager Homebrew,
@@ -23,15 +23,19 @@ official release of a new version.
 If you are using [_homebrew_](http://brew.sh/),
 then you can install the latest released stable version of ArangoDB using *brew* as follows:
 
-    brew install arangodb
+```
+brew install arangodb
+```
 
 This will install the current stable version of ArangoDB and all
 dependencies within your Homebrew tree. Note that the server will be
 installed as:
 
-    /usr/local/arangodb/3.4.0/sbin/arangod
+```
+/usr/local/Cellar/arangodb/3.4.0/sbin/arangod
+```
 
-You can start the server by running the command `/usr/local/arangodb/3.4.0/sbin/arangod &`.
+You can start the server by running the command `/usr/local/Cellar/arangodb/3.4.0/sbin/arangod &`.
 
 Configuration file is located at
 
@@ -39,30 +43,37 @@ Configuration file is located at
 
 The ArangoDB shell will be installed as:
 
-    /usr/local/arangodb/3.4.0/bin/arangosh
+```
+/usr/local/Cellar/arangodb/3.4.0/bin/arangosh
+```
 
 You can uninstall ArangoDB using:
 
-    brew uninstall arangodb
+```
+brew uninstall arangodb
+```
 
 However, in case you started ArangoDB using the _launchctl_, you
 need to unload it before uninstalling the server:
 
-    launchctl unload ~/Library/LaunchAgents/homebrew.mxcl.arangodb.plist
+```
+launchctl unload ~/Library/LaunchAgents/homebrew.mxcl.arangodb.plist
+```
 
 Then remove the LaunchAgent:
 
-    rm ~/Library/LaunchAgents/homebrew.mxcl.arangodb.plist
+```
+rm ~/Library/LaunchAgents/homebrew.mxcl.arangodb.plist
+```
 
 {% hint 'tip' %}
 If the latest ArangoDB version is not shown in Homebrew, you
-also need to update Homebrew:
-
-    brew update
+also need to update Homebrew executing the command `brew update`.
 {% endhint %}
 
 ### Known issues
 
+- The ArangoDB Starter is not included in v3.4.0. This issue will be fixed in a later 3.4.x version.
 - The Commandline argument parsing does not accept blanks in filenames; the CLI version below does.
 - If you need to change server endpoint while starting _homebrew_ version, you can edit arangod.conf 
   file and uncomment line with endpoint needed, e.g.:
@@ -113,8 +124,9 @@ the port used.
 Installing using the archive
 ----------------------------
 
+Starting from v.3.4.0 a _tar.gz_ package is also available for MacOS.
+
 Visit the official [Download](https://www.arangodb.com/download) page of the ArangoDB
 website and download the _tar.gz_ archive for MacOS.
 
-Starting from 3.4.0 a _tar.gz_ package is also available for MacOS. To install ArangoDB
-using the `tar.gz` archive, just extract it.
+To install, just extract the archive.
