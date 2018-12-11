@@ -752,13 +752,17 @@ void MMFilesSkiplistIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 }
 
 /// @brief inserts a document into a skiplist index
-Result MMFilesSkiplistIndex::insert(transaction::Methods* trx,
-                                    LocalDocumentId const& documentId,
-                                    VPackSlice const& doc, OperationMode mode) {
+Result MMFilesSkiplistIndex::insert(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
   Result res;
-  
+
   int r;
+
   try {
     r = fillElement<MMFilesSkiplistIndexElement>(elements, documentId, doc);
   } catch (basics::Exception const& ex) {
@@ -778,7 +782,7 @@ Result MMFilesSkiplistIndex::insert(transaction::Methods* trx,
   }
 
   ManagedDocumentResult result;
-  MMFilesIndexLookupContext context(trx, &_collection, &result, numPaths());
+  MMFilesIndexLookupContext context(&trx, &_collection, &result, numPaths());
 
   // insert into the index. the memory for the element will be owned or freed
   // by the index
@@ -841,7 +845,10 @@ Result MMFilesSkiplistIndex::insert(transaction::Methods* trx,
     LocalDocumentId rev(found->document()->localDocumentId());
     std::string existingId;
 
-    _collection.getPhysical()->readDocumentWithCallback(trx, rev, [&existingId](LocalDocumentId const&, VPackSlice doc) {
+    _collection.getPhysical()->readDocumentWithCallback(
+      &trx,
+      rev,
+      [&existingId](LocalDocumentId const&, velocypack::Slice doc)->void {
       existingId = doc.get(StaticStrings::KeyString).copyString();
     });
 
@@ -856,13 +863,16 @@ Result MMFilesSkiplistIndex::insert(transaction::Methods* trx,
 }
 
 /// @brief removes a document from a skiplist index
-Result MMFilesSkiplistIndex::remove(transaction::Methods* trx,
-                                    LocalDocumentId const& documentId,
-                                    VPackSlice const& doc, OperationMode mode) {
+Result MMFilesSkiplistIndex::remove(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
   Result res;
-
   int r;
+
   try {
     r = fillElement<MMFilesSkiplistIndexElement>(elements, documentId, doc);
   } catch (basics::Exception const& ex) {
@@ -882,7 +892,7 @@ Result MMFilesSkiplistIndex::remove(transaction::Methods* trx,
   }
 
   ManagedDocumentResult result;
-  MMFilesIndexLookupContext context(trx, &_collection, &result, numPaths());
+  MMFilesIndexLookupContext context(&trx, &_collection, &result, numPaths());
 
   // attempt the removal for skiplist indexes
   // ownership for the index element is transferred to the index

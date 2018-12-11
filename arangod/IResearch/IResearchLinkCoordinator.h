@@ -72,7 +72,7 @@ class IResearchLinkCoordinator final
   }
 
   virtual void batchInsert(
-    transaction::Methods* trx,
+    transaction::Methods& trx,
     std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& documents,
     std::shared_ptr<arangodb::basics::LocalTaskQueue> queue
   ) override {
@@ -81,7 +81,7 @@ class IResearchLinkCoordinator final
 
   virtual bool canBeDropped() const override { return true; }
 
-  virtual int drop() override { return TRI_ERROR_NO_ERROR; }
+  virtual arangodb::Result drop() override { return arangodb::Result(); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the factory for this type of index
@@ -94,7 +94,7 @@ class IResearchLinkCoordinator final
   virtual bool hasSelectivityEstimate() const override { return false; }
 
   virtual arangodb::Result insert(
-    transaction::Methods* trx,
+    transaction::Methods& trx,
     LocalDocumentId const& documentId,
     VPackSlice const& doc,
     OperationMode mode
@@ -108,6 +108,17 @@ class IResearchLinkCoordinator final
   // IResearch does not provide a fixed default sort order
   virtual bool isSorted() const override { return false; }
 
+  virtual arangodb::IndexIterator* iteratorForCondition(
+    arangodb::transaction::Methods* trx,
+    arangodb::ManagedDocumentResult* result,
+    arangodb::aql::AstNode const* condNode,
+    arangodb::aql::Variable const* var,
+    arangodb::IndexIteratorOptions const& opts
+  ) override {
+    TRI_ASSERT(false); // should not be called
+    return nullptr;
+  }
+
   virtual void load() override { /* NOOP */ }
 
   virtual bool matchesDefinition(
@@ -117,7 +128,7 @@ class IResearchLinkCoordinator final
   virtual size_t memory() const override { return _meta.memory(); }
 
   arangodb::Result remove(
-    transaction::Methods* trx,
+    transaction::Methods& trx,
     LocalDocumentId const& documentId,
     VPackSlice const& doc,
     OperationMode mode

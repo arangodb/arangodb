@@ -333,12 +333,7 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
         continue; // index was already populated when it was created
       }
 
-      link->insert(
-        &trx,
-        docId,
-        doc,
-        Index::OperationMode::internal
-      );
+      link->insert(trx, docId, doc, arangodb::Index::OperationMode::internal);
     }
 
     trx.commit();
@@ -377,10 +372,10 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(uint32_t column_family_id,
 
   for (auto link : links) {
     link->remove(
-      &trx,
+      trx,
       docId,
       arangodb::velocypack::Slice::emptyObjectSlice(),
-      Index::OperationMode::internal
+      arangodb::Index::OperationMode::internal
     );
   }
 

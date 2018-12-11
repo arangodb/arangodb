@@ -114,7 +114,10 @@ class RocksDBCollection final : public PhysicalCollection {
   // -- SECTION DML Operations --
   ///////////////////////////////////
 
-  Result truncate(transaction::Methods* trx, OperationOptions&) override;
+  Result truncate(
+    transaction::Methods& trx,
+    OperationOptions& options
+  ) override;
 
   void deferDropCollection(
     std::function<bool(LogicalCollection&)> const& callback
@@ -169,13 +172,18 @@ class RocksDBCollection final : public PhysicalCollection {
                  TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
                  std::function<Result(void)> callbackDuringLock) override;
 
-  Result remove(arangodb::transaction::Methods* trx,
-                arangodb::velocypack::Slice slice,
-                arangodb::ManagedDocumentResult& previous,
-                OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
-                bool lock, TRI_voc_rid_t& prevRev, TRI_voc_rid_t& revisionId,
-                KeyLockInfo* /*keyLockInfo*/,
-                std::function<Result(void)> callbackDuringLock) override;
+  Result remove(
+    transaction::Methods& trx,
+    velocypack::Slice slice,
+    ManagedDocumentResult& previous,
+    OperationOptions& options,
+    TRI_voc_tick_t& resultMarkerTick,
+    bool lock,
+    TRI_voc_rid_t& prevRev,
+    TRI_voc_rid_t& revisionId,
+    KeyLockInfo* keyLockInfo,
+    std::function<Result(void)> callbackDuringLock
+  ) override;
 
   /// adjust the current number of docs
   void adjustNumberDocuments(TRI_voc_rid_t revisionId, int64_t adjustment);
@@ -208,8 +216,10 @@ class RocksDBCollection final : public PhysicalCollection {
   void figuresSpecific(std::shared_ptr<velocypack::Builder>&) override;
   void addIndex(std::shared_ptr<arangodb::Index> idx);
 
-  arangodb::Result fillIndexes(transaction::Methods*,
-                               std::shared_ptr<arangodb::Index>);
+  arangodb::Result fillIndexes(
+    transaction::Methods& trx,
+    std::shared_ptr<arangodb::Index> indexes
+  );
 
   // @brief return the primary index
   // WARNING: Make sure that this instance

@@ -290,7 +290,7 @@ void IResearchLink::afterTruncate() {
 }
 
 void IResearchLink::batchInsert(
-    transaction::Methods* trx,
+    arangodb::transaction::Methods& trx,
     std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& batch,
     std::shared_ptr<arangodb::basics::LocalTaskQueue> queue
 ) {
@@ -302,15 +302,7 @@ void IResearchLink::batchInsert(
     throw std::runtime_error(std::string("failed to report status during batch insert for arangosearch link '") + arangodb::basics::StringUtils::itoa(_id) + "'");
   }
 
-  if (!trx) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed to get transaction while inserting a document into arangosearch link '" << id() << "'";
-    queue->setStatus(TRI_ERROR_BAD_PARAMETER); // 'trx' required
-
-    return;
-  }
-  
-  if (!trx->state()) {
+  if (!trx.state()) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "failed to get transaction state while inserting a document into arangosearch link '" << id() << "'";
     queue->setStatus(TRI_ERROR_BAD_PARAMETER); // transaction state required
@@ -318,7 +310,7 @@ void IResearchLink::batchInsert(
     return;
   }
 
-  auto& state = *(trx->state());
+  auto& state = *(trx.state());
   auto* key = this;
 
   // TODO FIXME find a better way to look up a ViewState
@@ -348,7 +340,7 @@ void IResearchLink::batchInsert(
     ctx = ptr.get();
     state.cookie(key, std::move(ptr));
 
-    if (!ctx || !trx->addStatusChangeCallback(&_trxCallback)) {
+    if (!ctx || !trx.addStatusChangeCallback(&_trxCallback)) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
         << "failed to store state into a TransactionState for batch insert into arangosearch link '" << id() << "', tid '" << state.id() << "'";
       queue->setStatus(TRI_ERROR_INTERNAL);
@@ -872,26 +864,19 @@ arangodb::Result IResearchLink::initDataStore(IResearchView const& view) {
 }
 
 arangodb::Result IResearchLink::insert(
-  transaction::Methods* trx,
+  arangodb::transaction::Methods& trx,
   arangodb::LocalDocumentId const& documentId,
-  VPackSlice const& doc,
-  Index::OperationMode mode
+  arangodb::velocypack::Slice const& doc,
+  arangodb::Index::OperationMode mode
 ) {
-  if (!trx) {
-    return arangodb::Result(
-      TRI_ERROR_BAD_PARAMETER,
-      std::string("failed to get transaction while inserting a document into arangosearch link '") + std::to_string(id()) + "'"
-    );
-  }
-
-  if (!trx->state()) {
+  if (!trx.state()) {
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
       std::string("failed to get transaction state while inserting a document into arangosearch link '") + std::to_string(id()) + "'"
     );
   }
 
-  auto& state = *(trx->state());
+  auto& state = *(trx.state());
   auto* key = this;
 
   // TODO FIXME find a better way to look up a ViewState
@@ -920,7 +905,7 @@ arangodb::Result IResearchLink::insert(
     ctx = ptr.get();
     state.cookie(key, std::move(ptr));
 
-    if (!ctx || !trx->addStatusChangeCallback(&_trxCallback)) {
+    if (!ctx || !trx.addStatusChangeCallback(&_trxCallback)) {
       return arangodb::Result(
         TRI_ERROR_INTERNAL,
         std::string("failed to store state into a TransactionState for insert into arangosearch link '") + std::to_string(id()) + "', tid '" + std::to_string(state.id()) + "', revision '" + std::to_string(documentId.id()) + "'"
@@ -1049,26 +1034,19 @@ size_t IResearchLink::memory() const {
 }
 
 arangodb::Result IResearchLink::remove(
-  transaction::Methods* trx,
-  LocalDocumentId const& documentId,
-  VPackSlice const& /*doc*/,
-  Index::OperationMode /*mode*/
+  arangodb::transaction::Methods& trx,
+  arangodb::LocalDocumentId const& documentId,
+  arangodb::velocypack::Slice const& /*doc*/,
+  arangodb::Index::OperationMode /*mode*/
 ) {
-  if (!trx) {
-    return arangodb::Result(
-      TRI_ERROR_BAD_PARAMETER,
-      std::string("failed to get transaction while removing a document from arangosearch link '") + std::to_string(id()) + "'"
-    );
-  }
-
-  if (!trx->state()) {
+  if (!trx.state()) {
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
       std::string("failed to get transaction state while removing a document into arangosearch link '") + std::to_string(id()) + "'"
     );
   }
 
-  auto& state = *(trx->state());
+  auto& state = *(trx.state());
   auto* key = this;
 
   // TODO FIXME find a better way to look up a ViewState
@@ -1097,7 +1075,7 @@ arangodb::Result IResearchLink::remove(
     ctx = ptr.get();
     state.cookie(key, std::move(ptr));
 
-    if (!ctx || !trx->addStatusChangeCallback(&_trxCallback)) {
+    if (!ctx || !trx.addStatusChangeCallback(&_trxCallback)) {
       return arangodb::Result(
         TRI_ERROR_INTERNAL,
         std::string("failed to store state into a TransactionState for remove from arangosearch link '") + std::to_string(id()) + "', tid '" + std::to_string(state.id()) + "', revision '" + std::to_string(documentId.id()) + "'"

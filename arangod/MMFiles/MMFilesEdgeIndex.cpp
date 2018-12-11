@@ -274,16 +274,17 @@ void MMFilesEdgeIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   builder.close();
 }
 
-Result MMFilesEdgeIndex::insert(transaction::Methods* trx,
-                                LocalDocumentId const& documentId,
-                                VPackSlice const& doc,
-                                OperationMode mode) {
+Result MMFilesEdgeIndex::insert(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+) {
   Result res;
-  
   MMFilesSimpleIndexElement fromElement(buildFromElement(documentId, doc));
   MMFilesSimpleIndexElement toElement(buildToElement(documentId, doc));
   ManagedDocumentResult result;
-  MMFilesIndexLookupContext context(trx, &_collection, &result, 1);
+  MMFilesIndexLookupContext context(&trx, &_collection, &result, 1);
 
   _edgesFrom->insert(&context, fromElement, true,
                      mode == OperationMode::rollback);
@@ -306,16 +307,17 @@ Result MMFilesEdgeIndex::insert(transaction::Methods* trx,
   return res;
 }
 
-Result MMFilesEdgeIndex::remove(transaction::Methods* trx,
-                                LocalDocumentId const& documentId,
-                                VPackSlice const& doc,
-                                OperationMode mode) {
+Result MMFilesEdgeIndex::remove(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+) {
   Result res;
-
   MMFilesSimpleIndexElement fromElement(buildFromElement(documentId, doc));
   MMFilesSimpleIndexElement toElement(buildToElement(documentId, doc));
   ManagedDocumentResult result;
-  MMFilesIndexLookupContext context(trx, &_collection, &result, 1);
+  MMFilesIndexLookupContext context(&trx, &_collection, &result, 1);
 
   try {
     _edgesFrom->remove(&context, fromElement);
@@ -332,7 +334,7 @@ Result MMFilesEdgeIndex::remove(transaction::Methods* trx,
 }
 
 void MMFilesEdgeIndex::batchInsert(
-    transaction::Methods* trx,
+    transaction::Methods& trx,
     std::vector<std::pair<LocalDocumentId, VPackSlice>> const& documents,
     std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) {
   if (documents.empty()) {
@@ -351,7 +353,7 @@ void MMFilesEdgeIndex::batchInsert(
   auto creator = [&trx, this]() -> void* {
     ManagedDocumentResult* result = new ManagedDocumentResult;
 
-    return new MMFilesIndexLookupContext(trx, &_collection, result, 1);
+    return new MMFilesIndexLookupContext(&trx, &_collection, result, 1);
   };
   auto destroyer = [](void* userData) {
     MMFilesIndexLookupContext* context = static_cast<MMFilesIndexLookupContext*>(userData);
@@ -386,7 +388,7 @@ void MMFilesEdgeIndex::unload() {
 }
 
 /// @brief provides a size hint for the edge index
-int MMFilesEdgeIndex::sizeHint(transaction::Methods* trx, size_t size) {
+Result MMFilesEdgeIndex::sizeHint(transaction::Methods& trx, size_t size) {
   // we assume this is called when setting up the index and the index
   // is still empty
   TRI_ASSERT(_edgesFrom->size() == 0);
@@ -394,7 +396,7 @@ int MMFilesEdgeIndex::sizeHint(transaction::Methods* trx, size_t size) {
   // set an initial size for the index for some new nodes to be created
   // without resizing
   ManagedDocumentResult result;
-  MMFilesIndexLookupContext context(trx, &_collection, &result, 1);
+  MMFilesIndexLookupContext context(&trx, &_collection, &result, 1);
   int err = _edgesFrom->resize(&context, size + 2049);
 
   if (err != TRI_ERROR_NO_ERROR) {

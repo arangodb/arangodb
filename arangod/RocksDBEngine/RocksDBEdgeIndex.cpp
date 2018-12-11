@@ -572,18 +572,21 @@ void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder,
   builder.close();
 }
 
-Result RocksDBEdgeIndex::insertInternal(transaction::Methods* trx,
-                                        RocksDBMethods* mthd,
-                                        LocalDocumentId const& documentId,
-                                        VPackSlice const& doc,
-                                        OperationMode mode) {
+Result RocksDBEdgeIndex::insertInternal(
+    transaction::Methods& trx,
+    RocksDBMethods* mthd,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+) {
   Result res;
-  
   VPackSlice fromTo = doc.get(_directionAttr);
   TRI_ASSERT(fromTo.isString());
   auto fromToRef = StringRef(fromTo);
-  RocksDBKeyLeaser key(trx);
+  RocksDBKeyLeaser key(&trx);
+
   key->constructEdgeIndexValue(_objectId, fromToRef, documentId);
+
   VPackSlice toFrom = _isFromIndex
                           ? transaction::helpers::extractToFromDocument(doc)
                           : transaction::helpers::extractFromFromDocument(doc);
@@ -595,31 +598,35 @@ Result RocksDBEdgeIndex::insertInternal(transaction::Methods* trx,
 
   // acquire rocksdb transaction
   rocksdb::Status s = mthd->Put(_cf, key.ref(), value.string());
+
   if (s.ok()) {
     std::hash<StringRef> hasher;
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
-    RocksDBTransactionState::toState(trx)->trackIndexInsert(
+    RocksDBTransactionState::toState(&trx)->trackIndexInsert(
       _collection.id(), id(), hash
     );
   } else {
     res.reset(rocksutils::convertStatus(s));
     addErrorMsg(res);
   }
+
   return res;
 }
 
-Result RocksDBEdgeIndex::removeInternal(transaction::Methods* trx,
-                                        RocksDBMethods* mthd,
-                                        LocalDocumentId const& documentId,
-                                        VPackSlice const& doc,
-                                        OperationMode mode) {
+Result RocksDBEdgeIndex::removeInternal(
+    transaction::Methods& trx,
+    RocksDBMethods* mthd,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+) {
   Result res;
-  
+
   // VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
   VPackSlice fromTo = doc.get(_directionAttr);
   auto fromToRef = StringRef(fromTo);
   TRI_ASSERT(fromTo.isString());
-  RocksDBKeyLeaser key(trx);
+  RocksDBKeyLeaser key(&trx);
   key->constructEdgeIndexValue(_objectId, fromToRef, documentId);
   VPackSlice toFrom = _isFromIndex
                           ? transaction::helpers::extractToFromDocument(doc)
@@ -634,7 +641,7 @@ Result RocksDBEdgeIndex::removeInternal(transaction::Methods* trx,
   if (s.ok()) {
     std::hash<StringRef> hasher;
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
-    RocksDBTransactionState::toState(trx)->trackIndexRemove(
+    RocksDBTransactionState::toState(&trx)->trackIndexRemove(
       _collection.id(), id(), hash
     );
   } else {
@@ -646,15 +653,16 @@ Result RocksDBEdgeIndex::removeInternal(transaction::Methods* trx,
 }
 
 void RocksDBEdgeIndex::batchInsert(
-    transaction::Methods* trx,
+    transaction::Methods& trx,
     std::vector<std::pair<LocalDocumentId, VPackSlice>> const& documents,
     std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) {
-  auto* mthds = RocksDBTransactionState::toMethods(trx);
+  auto* mthds = RocksDBTransactionState::toMethods(&trx);
+
   for (auto const& doc : documents) {
     VPackSlice fromTo = doc.second.get(_directionAttr);
     TRI_ASSERT(fromTo.isString());
     auto fromToRef = StringRef(fromTo);
-    RocksDBKeyLeaser key(trx);
+    RocksDBKeyLeaser key(&trx);
     key->constructEdgeIndexValue(_objectId, fromToRef, doc.first);
 
     blackListKey(fromToRef);
