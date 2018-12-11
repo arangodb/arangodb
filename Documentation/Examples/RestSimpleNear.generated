@@ -17,7 +17,7 @@ x-content-type-options: nosniff
     { 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"12065"</span>, 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/12065"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XocrWWi--_"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_X31JkAC--D"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0.002/"</span>, 
       <span class="hljs-string">"loc"</span> : [ 
         <span class="hljs-number">0.002</span>, 
@@ -27,7 +27,7 @@ x-content-type-options: nosniff
     { 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"12059"</span>, 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/12059"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XocrWWe--C"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_X31JkAC--B"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/-0.002/"</span>, 
       <span class="hljs-string">"loc"</span> : [ 
         <span class="hljs-number">-0.002</span>, 
