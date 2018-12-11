@@ -66,8 +66,8 @@ function loadBalancingClient (options) {
   const excludeAuth = (fn) => { return (fn.indexOf('-auth') === -1); };
   const excludeAsync = (fn) => { return (fn.indexOf('-async') === -1); };
   let testCases = tu.scanTestPath(testPaths.load_balancing)
-                    .filter(excludeAuth)
-                    .filter(excludeAsync);
+                    .filter(excludeAuth);
+
   options.cluster = true;
   if (options.coordinators < 2) {
     options.coordinators = 2;
