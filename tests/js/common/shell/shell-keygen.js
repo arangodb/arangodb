@@ -273,7 +273,7 @@ function TraditionalSuite () {
         lastKey = key;
       }
 
-      if (!cluster || !cluster.isCluster || !cluster.isCluster()) {
+      if (!cluster && !cluster.isCluster && !cluster.isCluster()) {
         assertEqual(lastKey, c.properties().keyOptions.lastValue);
       }
     },
@@ -295,7 +295,7 @@ function TraditionalSuite () {
         lastKey = key;
       }
 
-      if (!cluster || !cluster.isCluster || !cluster.isCluster()) {
+      if (!cluster && !cluster.isCluster && !cluster.isCluster()) {
         let hex = c.properties().keyOptions.lastValue.toString(16);
         assertEqual(lastKey, Array(16 + 1 - hex.length).join("0") + hex);
       }
