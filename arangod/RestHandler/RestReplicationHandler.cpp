@@ -2872,7 +2872,9 @@ bool RestReplicationHandler::isTombstoned(aql::QueryId id) const {
 
 void RestReplicationHandler::registerTombstone(aql::QueryId id) const {
   std::string key = IdToTombstoneKey(_vocbase, id);
-  WRITE_LOCKER(writeLocker, RestReplicationHandler::_tombLock);
-  RestReplicationHandler::_tombstones.emplace(key, std::chrono::steady_clock::now() + RestReplicationHandler::_tombstoneTimeout); 
+  {
+    WRITE_LOCKER(writeLocker, RestReplicationHandler::_tombLock);
+    RestReplicationHandler::_tombstones.emplace(key, std::chrono::steady_clock::now() + RestReplicationHandler::_tombstoneTimeout); 
+  }
   timeoutTombstones();
 }
