@@ -388,6 +388,12 @@ static arangodb::Result cancelBarrier(
   return arangodb::Result();
 }
 
+
+static inline bool isStopping() {
+  return application_features::ApplicationServer::isStopping();
+}
+
+
 arangodb::Result SynchronizeShard::getReadLock(
   std::string const& endpoint, std::string const& database,
   std::string const& collection, std::string const& clientId,
@@ -470,10 +476,6 @@ arangodb::Result SynchronizeShard::getReadLock(
   }
 
   return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT, "startReadLockOnLeader: giving up");
-}
-
-static inline bool isStopping() {
-  return application_features::ApplicationServer::isStopping();
 }
 
 arangodb::Result SynchronizeShard::startReadLockOnLeader(
