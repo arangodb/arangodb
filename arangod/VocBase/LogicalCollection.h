@@ -75,6 +75,14 @@ class ChecksumResult : public Result {
   velocypack::Builder _builder;
 };
 
+/// please note that coordinator-based logical collections are frequently
+/// created and discarded, so ctor & dtor need to be as efficient as possible.
+/// additionally, do not put any volatile state into this object in the coordinator, 
+/// as the ClusterInfo may create many different temporary physical LogicalCollection 
+/// objects (one after the other) even for the same "logical" LogicalCollection.
+/// this which will also discard the collection's volatile state each time!
+/// all state of a LogicalCollection in the coordinator case needs to be derived
+/// from the JSON info in the agency's plan entry for the collection...
 class LogicalCollection : public LogicalDataSource {
   friend struct ::TRI_vocbase_t;
 
