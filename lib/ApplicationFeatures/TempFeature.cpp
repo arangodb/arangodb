@@ -37,7 +37,10 @@ TempFeature::TempFeature(
     application_features::ApplicationServer& server,
     std::string const& appname
 )
-    : ApplicationFeature(server, "Temp"), _path(), _appname(appname) {
+    : ApplicationFeature(server, "Temp"),
+      _path(),
+      _appname(appname),
+      _systemTempPath() {
   setOptional(false);
   startsAfter("GreetingsPhase");
 }
@@ -55,6 +58,13 @@ void TempFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (!_path.empty()) {
     basics::FileUtils::makePathAbsolute(_path);
   }
+}
+
+void TempFeature::unprepare() {
+  if (!_systemTempPath.empty()) {
+    TRI_RMDIR(_systemTempPath.c_str());
+  }
+  _systemTempPath = TRI_GetTempPath();
 }
 
 void TempFeature::prepare() {
