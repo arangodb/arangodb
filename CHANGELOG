@@ -1,6 +1,12 @@
 v3.4.1 (XXXX-XX-XX)
 -------------------
 
+* fix thread shutdown in _WIN32 builds
+
+  Previous versions used a wrong comparison logic to determine the current
+  thread id when shutting down a thread, leading to threads hanging in their
+  destructors on thread shutdown
+
 * reverted accidental change to error handling in geo index
 
   In previous versions, if non-valid geo coordinates were contained in the
