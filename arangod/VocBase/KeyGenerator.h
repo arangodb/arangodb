@@ -35,6 +35,14 @@ class Builder;
 class Slice;
 }
 
+/// generic key generator interface
+///
+/// please note that coordinator-based key generators are frequently
+/// created and discarded, so ctor & dtor need to be very efficient.
+/// additionally, do not put any state into this object, as for the
+/// same logical collection the ClusterInfo may create many different 
+/// temporary LogicalCollection objects one after the other, which
+/// will also discard the collection's particular KeyGenerator object!
 class KeyGenerator {
   KeyGenerator(KeyGenerator const&) = delete;
   KeyGenerator& operator=(KeyGenerator const&) = delete;
@@ -55,6 +63,8 @@ class KeyGenerator {
   virtual bool hasDynamicState() const { return true; }
 
   /// @brief generate a key
+  /// if the returned string is empty, it means no proper key was
+  /// generated, and the caller must handle the situation
   virtual std::string generate() = 0;
 
   /// @brief validate a key

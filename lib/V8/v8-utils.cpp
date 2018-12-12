@@ -33,7 +33,6 @@
 #include <iostream>
 #include <unicode/locid.h>
 
-#include "3rdParty/valgrind/valgrind.h"
 #include "unicode/normalizer2.h"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
