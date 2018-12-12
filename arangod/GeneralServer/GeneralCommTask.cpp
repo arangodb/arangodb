@@ -470,9 +470,9 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
                                          uint64_t* jobId) {
   auto self = shared_from_this();
   if (jobId != nullptr) {
-    // use the handler id as identifier
-    *jobId = handler->handlerId();
     GeneralServerFeature::JOB_MANAGER->initAsyncJob(handler.get());
+    *jobId = handler->handlerId();
+
     // callback will persist the response with the AsyncJobManager
     auto job = std::make_unique<Job>(
         _server, std::move(handler), [self](std::shared_ptr<RestHandler> h) {

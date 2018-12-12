@@ -50,6 +50,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   virtual ~RestHandler();
 
  public:
+  void assignHandlerId();
   uint64_t handlerId() const { return _handlerId; }
   bool needsOwnThread() const { return _needsOwnThread; }
   uint64_t messageId() const;
@@ -139,7 +140,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   int finalizeEngine();
 
  protected:
-  uint64_t const _handlerId;
+  uint64_t _handlerId;
 
   std::atomic<bool> _canceled;
 

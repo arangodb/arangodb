@@ -258,6 +258,7 @@ std::vector<AsyncJobResult::IdType> AsyncJobManager::byStatus(
 ////////////////////////////////////////////////////////////////////////////////
 
 void AsyncJobManager::initAsyncJob(RestHandler* handler) {
+  handler->assignHandlerId();
   AsyncJobResult::IdType jobId = handler->handlerId();
 
   AsyncJobResult ajr(jobId, AsyncJobResult::JOB_PENDING, handler);
