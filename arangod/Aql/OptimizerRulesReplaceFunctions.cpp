@@ -71,10 +71,12 @@ struct NearOrWithinParams{
       distanceName = arr->getMember(4);
     }
 
-    if(isNear){
-      limit = arr->getMember(3);
-    } else {
-      radius = arr->getMember(3);
+    if (arr->numMembers() > 3) {
+      if (isNear) {
+        limit = arr->getMember(3);
+      } else {
+        radius = arr->getMember(3);
+      }
     }
   }
 };
