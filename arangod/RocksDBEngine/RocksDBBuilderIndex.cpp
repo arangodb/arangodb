@@ -75,13 +75,15 @@ Result RocksDBBuilderIndex::insertInternal(transaction::Methods& trx, RocksDBMet
       r.is(TRI_ERROR_LOCK_TIMEOUT) ||
       r.is(TRI_ERROR_DEADLOCK) ||
       r.is(TRI_ERROR_ARANGO_CONFLICT)) {
+    // these are expected errors; store in builder and suppress
     bool expected = false;
-    if (!r.ok() && !_hasError.compare_exchange_strong(expected, true, std::memory_order_release)) {
+    if (!r.ok() && _hasError.compare_exchange_strong(expected, true)) {
       std::lock_guard<std::mutex> guard(_errorMutex);
       _errorResult = r;
     }
+    return Result();
   }
-  return Result();
+  return r;
 }
 
 /// remove index elements and put it in the specified write batch.
@@ -105,13 +107,15 @@ Result RocksDBBuilderIndex::removeInternal(transaction::Methods& trx, RocksDBMet
       r.is(TRI_ERROR_LOCK_TIMEOUT) ||
       r.is(TRI_ERROR_DEADLOCK) ||
       r.is(TRI_ERROR_ARANGO_CONFLICT)) {
+    // these are expected errors; store in builder and suppress
     bool expected = false;
-    if (!r.ok() && !_hasError.compare_exchange_strong(expected, true, std::memory_order_release)) {
+    if (!r.ok() && _hasError.compare_exchange_strong(expected, true)) {
       std::lock_guard<std::mutex> guard(_errorMutex);
       _errorResult = r;
     }
+    return Result();
   }
-  return Result();
+  return r;
 }
 
 // Background index filler task
