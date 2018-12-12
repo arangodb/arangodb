@@ -71,10 +71,7 @@ Result RocksDBBuilderIndex::insertInternal(transaction::Methods& trx, RocksDBMet
                                            arangodb::velocypack::Slice const& slice,
                                            OperationMode mode) {
   Result r = _wrapped->insertInternal(trx, mthd, documentId, slice, mode);
-  if (r.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) ||
-      r.is(TRI_ERROR_LOCK_TIMEOUT) ||
-      r.is(TRI_ERROR_DEADLOCK) ||
-      r.is(TRI_ERROR_ARANGO_CONFLICT)) {
+  if (r.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
     // these are expected errors; store in builder and suppress
     bool expected = false;
     if (!r.ok() && _hasError.compare_exchange_strong(expected, true)) {
@@ -103,10 +100,7 @@ Result RocksDBBuilderIndex::removeInternal(transaction::Methods& trx, RocksDBMet
   }
   
   Result r = _wrapped->removeInternal(trx, mthd, documentId, slice, mode);
-  if (r.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) ||
-      r.is(TRI_ERROR_LOCK_TIMEOUT) ||
-      r.is(TRI_ERROR_DEADLOCK) ||
-      r.is(TRI_ERROR_ARANGO_CONFLICT)) {
+  if (r.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
     // these are expected errors; store in builder and suppress
     bool expected = false;
     if (!r.ok() && _hasError.compare_exchange_strong(expected, true)) {
@@ -198,11 +192,14 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(std::function<void()> 
     
     LocalDocumentId docId = RocksDBKey::documentId(it->key());
     {
+      // must acquire both locks here to prevent interleaved operations
       std::lock_guard<std::mutex> guard(_removedDocsMutex);
+      std::lock_guard<std::mutex> guard2(_lockedDocsMutex);
       if (_removedDocs.find(docId.id()) != _removedDocs.end()) {
+        _removedDocs.erase(_removedDocs.find(docId.id()));
+        it->Next();
         continue;
       }
-      std::lock_guard<std::mutex> guard2(_lockedDocsMutex);
       _lockedDocs.insert(docId.id());
     }
     

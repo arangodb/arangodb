@@ -90,7 +90,7 @@ function backgroundIndexSuite() {
       // lets insert the rest via tasks
       let n = 9;
       for (let i = 0; i < n; ++i) {
-        let command = `let c = require("internal").db._collection("${cn}"); 
+        let command = `const c = require("internal").db._collection("${cn}"); 
                        let x = 10;
                        while(x-- > 0) {
                          let docs = []; 
@@ -108,11 +108,9 @@ function backgroundIndexSuite() {
       // wait for insertion tasks to complete
       waitForTasks();
       
-      // sanity check
+      // sanity checks
       assertEqual(c.count(), 100000);
-
-      // 100 entries of each value [0,999]
-      for (let i = 0; i < 1000; i++) {
+      for (let i = 0; i < 1000; i++) { // 100 entries of each value [0,999]
         let cursor = db._query("FOR doc IN @@coll FILTER doc.value == @val RETURN 1", 
                                {'@coll': cn, 'val': i}, {count:true});
         assertEqual(cursor.count(), 100);
@@ -133,8 +131,6 @@ function backgroundIndexSuite() {
       }
     },
 
-    // if we run this in isolation, it passes, but the count is off otherwise.
-    // the slow part of the test is the individual sanity checks
     testInsertParallelUnique: function () {
       let c = require("internal").db._collection(cn);
       // first lets add some initial documents
@@ -149,7 +145,7 @@ function backgroundIndexSuite() {
 
       // lets insert the rest via tasks
       for (let i = 1; i < 5; ++i) {
-        let command = `let c = require("internal").db._collection("${cn}"); 
+        let command = `const c = require("internal").db._collection("${cn}"); 
                        let x = ${i} * 10000; 
                        while(x < ${i + 1} * 10000) {
                          let docs = []; 
@@ -168,15 +164,12 @@ function backgroundIndexSuite() {
       waitForTasks();
       
       // sanity checks
-      const scanDocs = db._query("FOR doc IN @@coll RETURN doc", 
-                                 {'@coll': cn}, {count:true, optimizer: {rules: ["-use-indexes"]}}).toArray();
-      assertEqual(scanDocs.length, 50000);
+      assertEqual(c.count(), 50000);
       for (let i = 0; i < 50000; i++) {
         const cursor = db._query("FOR doc IN @@coll FILTER doc.value == @val RETURN 1", 
                                {'@coll': cn, 'val': i}, {count:true});
         assertEqual(cursor.count(), 1);
       }
-      assertEqual(c.count(), 50000);
 
       let indexes = c.getIndexes(true);
       for (let i of indexes) {
@@ -206,7 +199,7 @@ function backgroundIndexSuite() {
 
       // lets insert the rest via tasks
       for (let i = 1; i < 5; ++i) {
-        let command = `let c = require("internal").db._collection("${cn}"); 
+        let command = `const c = require("internal").db._collection("${cn}"); 
                        let x = ${i} * 10000; 
                        while(x < ${i + 1} * 10000) {
                          let docs = []; 
@@ -245,7 +238,79 @@ function backgroundIndexSuite() {
             fail();
         }
       }
-    }
+    },
+
+    testRemoveParallel: function () {
+      let c = require("internal").db._collection(cn);
+      // first lets add some initial documents
+      let x = 0;
+      while(x < 100000) {
+        let docs = []; 
+        for(let i = 0; i < 1000; i++) {
+          docs.push({_key: "test_" + x, value: x++});
+        } 
+        c.save(docs);
+      }
+      
+      assertEqual(c.count(), 100000);
+
+      // lets remove half via tasks
+      for (let i = 0; i < 10; ++i) {
+        let command = `const c = require("internal").db._collection("${cn}"); 
+                       if (!c) {
+                         throw new Error('could not find collection');
+                       }
+                       let x = ${i} * 10000; 
+                       while(x < ${i} * 10000 + 5000) {
+                         let docs = [];
+                         for(let i = 0; i < 1000; i++) {
+                           docs.push("test_" + x++);
+                         }
+                         let removed = false;
+                         while (!removed) {
+                           const res = c.remove(docs);
+                           removed = (res.filter(r => !r.error).length === 0);
+                         }
+                       }`;
+        tasks.register({ name: "UnitTestsIndexRemove" + i, command: command });
+      }
+
+      // create the index on the main thread
+      c.ensureIndex({type: 'hash', fields: ['value'], inBackground: true });
+
+      // wait for insertion tasks to complete
+      waitForTasks();
+      
+      // sanity checks
+      assertEqual(c.count(), 50000);
+      for (let i = 0; i < 10; i++) { // check for remaining docs via index
+        for (let x = i * 10000 + 5000; x < (i+1) * 10000; x++) {
+          const cursor = db._query("FOR doc IN @@coll FILTER doc.value == @val RETURN 1", 
+                                {'@coll': cn, 'val': x}, {count:true});
+          assertEqual(cursor.count(), 1);
+        }
+      }
+      for (let i = 0; i < 10; i++) { // check for removed docs via index
+        for (let x = i * 10000; x < i * 10000 + 5000; x++) {
+          const cursor = db._query("FOR doc IN @@coll FILTER doc.value == @val RETURN 1", 
+                                {'@coll': cn, 'val': x}, {count:true});
+          assertEqual(cursor.count(), 0);
+        }
+      }
+
+      let indexes = c.getIndexes(true);
+      for (let i of indexes) {
+        switch (i.type) {
+          case 'primary':
+            break;
+          case 'hash':
+            break;
+          default:
+            fail();
+        }
+      }
+    },
+
   };
 }
 
