@@ -93,6 +93,7 @@ struct ExternalId {
   HANDLE _writePipe;
 
   ExternalId();
+  virtual ~ExternalId() {}
 };
 #endif
 
