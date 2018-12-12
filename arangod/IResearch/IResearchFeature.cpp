@@ -41,7 +41,6 @@
 #include "IResearchRocksDBRecoveryHelper.h"
 #include "IResearchView.h"
 #include "IResearchViewCoordinator.h"
-#include "IResearchViewDBServer.h"
 #include "Aql/AqlValue.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Function.h"
@@ -289,7 +288,7 @@ void registerViewFactory() {
   if (arangodb::ServerState::instance()->isCoordinator()) {
     res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchViewCoordinator::factory());
   } else if (arangodb::ServerState::instance()->isDBServer()) {
-    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchViewDBServer::factory());
+    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchView::factory());
   } else if (arangodb::ServerState::instance()->isSingleServer()) {
     res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchView::factory());
   } else {

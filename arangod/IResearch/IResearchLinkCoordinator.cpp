@@ -181,18 +181,9 @@ arangodb::Result IResearchLinkCoordinator::init(
     );
   }
 
-  if (!view->emplace(Index::collection().id(), Index::collection().name(), definition)) {
-    return arangodb::Result(
-      TRI_ERROR_INTERNAL,
-      std::string("error emplacing link to collection '") + Index::collection().name() + "' into arangosearch view '" + viewId + "' link '" + std::to_string(Index::id()) + "'"
-    );
-  }
-
   _view = view;
 
-  IResearchLink::init(definition);
-
-  return arangodb::Result();
+  return IResearchLink::init(definition);
 }
 
 bool IResearchLinkCoordinator::matchesDefinition(VPackSlice const& slice) const {

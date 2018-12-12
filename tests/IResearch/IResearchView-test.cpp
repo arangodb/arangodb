@@ -1066,7 +1066,7 @@ SECTION("test_drop_cid") {
         arangodb::DatabaseFeature
       >("Database");
 
-      CHECK_THROWS((feature->recoveryDone()));
+      CHECK_NOTHROW((feature->recoveryDone()));
     }
   }
 }
@@ -1573,7 +1573,7 @@ SECTION("test_emplace_cid") {
         arangodb::DatabaseFeature
       >("Database");
 
-      CHECK_THROWS((feature->recoveryDone()));
+      CHECK_NOTHROW((feature->recoveryDone()));
     }
   }
 }
