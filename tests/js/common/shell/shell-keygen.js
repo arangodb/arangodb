@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertEqual, assertMatch, fail, ArangoClusterComm */
+/*global arango, assertEqual, assertTrue, assertEqual, assertMatch, fail, ArangoClusterComm */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the traditional key generators
@@ -33,12 +33,17 @@ var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
 var db = arangodb.db;
 var ERRORS = arangodb.errors;
-let cluster;
+let cluster = false; // default to false
 // quick hack to check if we are arangod or arangosh
 if (typeof ArangoClusterComm === "object") {
-  cluster = require("@arangodb/cluster");
+  // arangod
+  cluster = require("@arangodb/cluster").isCluster();
 } else {
-  cluster = {};
+  // arangosh
+  if (arango) {
+    let role = arango.GET("/_admin/server/role").role;
+    cluster = (role === "COORDINATOR");
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -69,15 +74,14 @@ function TraditionalSuite () {
       try {
         c.save({ _key: "1234" }); // no user keys allowed
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertTrue(err.errorNum === ERRORS.ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED.code ||
                    err.errorNum === ERRORS.ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY.code);
       }
     },
     
     testCreateInvalidKeyNonDefaultSharding2 : function () {
-      if (!cluster || !cluster.isCluster || !cluster.isCluster()) {
+      if (!cluster) {
         return;
       }
 
@@ -86,15 +90,14 @@ function TraditionalSuite () {
       try {
         c.save({ _key: "1234" }); // no user keys allowed
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertTrue(err.errorNum === ERRORS.ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED.code ||
                    err.errorNum === ERRORS.ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY.code);
       }
     },
     
     testCreateKeyNonDefaultSharding : function () {
-      if (!cluster || !cluster.isCluster || !cluster.isCluster()) {
+      if (!cluster) {
         return;
       }
 
@@ -115,8 +118,7 @@ function TraditionalSuite () {
       try {
         c.save({ _key: "1234" }); // no user keys allowed
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertTrue(err.errorNum === ERRORS.ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED.code ||
                    err.errorNum === ERRORS.ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY.code);
       }
@@ -132,8 +134,7 @@ function TraditionalSuite () {
       try {
         c.save({ _key: "öä .mds 3 -6" }); // invalid key
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_KEY_BAD.code, err.errorNum);
       }
     },
@@ -218,7 +219,7 @@ function TraditionalSuite () {
     },
 
     testAutoincrementGeneratorInCluster : function () {
-      if (!cluster || !cluster.isCluster || !cluster.isCluster()) {
+      if (!cluster) {
         return;
       }
 
@@ -273,7 +274,9 @@ function TraditionalSuite () {
         lastKey = key;
       }
 
-      assertEqual(lastKey, c.properties().keyOptions.lastValue);
+      if (!cluster) {
+        assertEqual(lastKey, c.properties().keyOptions.lastValue);
+      }
     },
 
     testPaddedTracking : function () {
@@ -293,8 +296,10 @@ function TraditionalSuite () {
         lastKey = key;
       }
 
-      let hex = c.properties().keyOptions.lastValue.toString(16);
-      assertEqual(lastKey, Array(16 + 1 - hex.length).join("0") + hex);
+      if (!cluster) {
+        let hex = c.properties().keyOptions.lastValue.toString(16);
+        assertEqual(lastKey, Array(16 + 1 - hex.length).join("0") + hex);
+      }
     }
 
   };
