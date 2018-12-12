@@ -426,8 +426,6 @@ void Query::prepare(QueryRegistry* registry) {
   TRI_ASSERT(plan != nullptr);
   plan->findVarUsage();
 
-  enterState(QueryExecutionState::ValueType::EXECUTION);
-
   TRI_ASSERT(_engine == nullptr);
   TRI_ASSERT(_trx != nullptr);
   // note that the engine returned here may already be present in our
@@ -443,6 +441,8 @@ void Query::prepare(QueryRegistry* registry) {
   }
 
   _plan = std::move(plan);
+
+  enterState(QueryExecutionState::ValueType::EXECUTION);
 }
 
 /// @brief prepare an AQL query, this is a preparation for execute, but

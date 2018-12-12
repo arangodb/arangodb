@@ -260,18 +260,28 @@ bool RocksDBEdgeIndexIterator::nextCovering(DocumentCallback const& cb, size_t l
   }
 #endif
 
+  transaction::BuilderLeaser coveringBuilder(_trx);
   while (limit > 0) {
     while (_builderIterator.valid()) {
       // We still have unreturned edges in memory.
       // Just plainly return those.
       TRI_ASSERT(_builderIterator.value().isNumber());
-      cb(LocalDocumentId{_builderIterator.value().getNumericValue<uint64_t>()}, _lastKey);
+      LocalDocumentId tkn{_builderIterator.value().getNumericValue<uint64_t>()};
+      // Advance the iterator
+      _builderIterator.next();
+      TRI_ASSERT(_builderIterator.valid());
+      TRI_ASSERT(_builderIterator.value().isString());
+      // We always have <revision,_from> pairs, so now we need this result for the covered attributes
+
+      coveringBuilder->clear();
+      coveringBuilder->openArray();
+      coveringBuilder->add(_lastKey);
+      coveringBuilder->add(_builderIterator.value());
+      coveringBuilder->close();
+      cb(tkn, coveringBuilder->slice());
+
       limit--;
 
-      // Twice advance the iterator
-      _builderIterator.next();
-      // We always have <revision,_from> pairs
-      TRI_ASSERT(_builderIterator.valid());
       _builderIterator.next();
 
       if (limit == 0) {
@@ -302,14 +312,23 @@ bool RocksDBEdgeIndexIterator::nextCovering(DocumentCallback const& cb, size_t l
             _builderIterator = VPackArrayIterator(cachedData);
             while (_builderIterator.valid()) {
               TRI_ASSERT(_builderIterator.value().isNumber());
-              cb(LocalDocumentId{
-                  _builderIterator.value().getNumericValue<uint64_t>()}, _lastKey);
+              LocalDocumentId tkn{_builderIterator.value().getNumericValue<uint64_t>()};
+
+              // Advance the iterator
+              _builderIterator.next();
+              TRI_ASSERT(_builderIterator.valid());
+              TRI_ASSERT(_builderIterator.value().isString());
+              // We always have <revision,_from> pairs, so now we need this result for the covered attributes
+
+              coveringBuilder->clear();
+              coveringBuilder->openArray();
+              coveringBuilder->add(_lastKey);
+              coveringBuilder->add(_builderIterator.value());
+              coveringBuilder->close();
+
+              cb(tkn, coveringBuilder->slice());
               limit--;
 
-              // Twice advance the iterator
-              _builderIterator.next();
-              // We always have <revision,_from> pairs
-              TRI_ASSERT(_builderIterator.valid());
               _builderIterator.next();
             }
             _builderIterator = VPackArrayIterator(
@@ -527,7 +546,13 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(
                    !ServerState::instance()->isCoordinator() /*useCache*/),
       _directionAttr(attr),
       _isFromIndex(attr == StaticStrings::FromString),
-      _estimator(nullptr) {
+      _estimator(nullptr),
+      _coveredFields(
+         {
+           { AttributeName(attr, false) },
+           { AttributeName( (_isFromIndex ? StaticStrings::ToString : StaticStrings::FromString) , false) }
+         }
+      ) {
   TRI_ASSERT(_cf == RocksDBColumnFamily::edge());
 
   if (!ServerState::instance()->isCoordinator()) {
@@ -542,6 +567,12 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(
 }
 
 RocksDBEdgeIndex::~RocksDBEdgeIndex() {}
+
+
+std::vector<std::vector<arangodb::basics::AttributeName>> const& RocksDBEdgeIndex::coveredFields() const {
+  TRI_ASSERT(_coveredFields.size() == 2); // _from/_to or _to/_from
+  return _coveredFields;
+}
 
 /// @brief return a selectivity estimate for the index
 double RocksDBEdgeIndex::selectivityEstimate(
