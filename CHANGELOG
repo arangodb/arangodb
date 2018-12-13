@@ -1,4 +1,4 @@
-v3.3.21 (XXXX-XX-XX)
+v3.3.21 (2018-12-13)
 --------------------
 
 * fix thread shutdown in _WIN32 builds
