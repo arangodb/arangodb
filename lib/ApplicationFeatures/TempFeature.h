@@ -38,7 +38,7 @@ class TempFeature final : public application_features::ApplicationFeature {
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
-  void ~TempFeature() override final;
+  ~TempFeature();
 
   std::string _path;
   std::string _appname;

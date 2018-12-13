@@ -60,11 +60,10 @@ void TempFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 }
 
-void TempFeature::~TempFeature() {
+TempFeature::~TempFeature() {
   if (!_systemTempPath.empty()) {
     TRI_RMDIR(_systemTempPath.c_str());
   }
-  _systemTempPath = TRI_GetTempPath();
 }
 
 void TempFeature::prepare() {
