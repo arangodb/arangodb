@@ -43,11 +43,11 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
     : ExecutionBlock(engine, ep), 
       DocumentProducingBlock(ep, _trx),
       _collection(ep->collection()),
-      _cursor(
-          _trx->indexScan(_collection->name(),
+      _cursor(_trx->indexScan(_collection->name(),
                           (ep->_random ? transaction::Methods::CursorType::ANY
                                        : transaction::Methods::CursorType::ALL))),
-      _inflight(0) {
+      _inflight(0),
+      _justCreated(true) {
   TRI_ASSERT(_cursor->ok());
 
   buildCallback();
@@ -99,7 +99,10 @@ std::pair<ExecutionState, arangodb::Result> EnumerateCollectionBlock::initialize
     return res;
   }
 
-  _cursor->reset();
+  if (_justCreated) {
+    _cursor->reset();
+  }
+  _justCreated = false;
 
   return res;
 }

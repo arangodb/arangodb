@@ -21,6 +21,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBIterators.h"
+
+#include "Basics/gcd.h"
+#include "Basics/prime-numbers.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
@@ -146,11 +149,10 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
     LogicalCollection* col, transaction::Methods* trx,
     RocksDBPrimaryIndex const* index)
     : IndexIterator(col, trx),
-      _cmp(RocksDBColumnFamily::documents()->GetComparator()),
       _objectId(static_cast<RocksDBCollection*>(col->getPhysical())->objectId()),
       _bounds(RocksDBKeyBounds::CollectionDocuments(_objectId)),
-      _total(0),
-      _returned(0) {
+      _total(col->numberDocuments(trx, transaction::CountType::Normal)),
+      _totalPrime(TRI_NearPrime(_total)) {
   auto* mthds = RocksDBTransactionState::toMethods(trx);
   auto options = mthds->iteratorReadOptions();
   TRI_ASSERT(options.snapshot != nullptr);
@@ -160,52 +162,86 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
   _iterator = mthds->NewIterator(options, RocksDBColumnFamily::documents());
   TRI_ASSERT(_iterator);
 
-  _total = col->numberDocuments(trx, transaction::CountType::Normal);
-  _forward = RandomGenerator::interval(uint16_t(1)) ? true : false;
-   reset();   //initial seek
+//  _total =
+//  _forward = RandomGenerator::interval(uint16_t(1)) ? true : false;
+   reset(); //initial seek
 }
 
-bool RocksDBAnyIndexIterator::checkIter() {
-  if ( /* not  valid */            !_iterator->Valid() ||
-       /* out of range forward */  ( _forward && _cmp->Compare(_iterator->key(), _bounds.end())   > 0) ||
-       /* out of range backward */ (!_forward && _cmp->Compare(_iterator->key(), _bounds.start()) < 0)  ) {
+//bool RocksDBAnyIndexIterator::checkIter() {
+//  if ( /* not  valid */            !_iterator->Valid() ||
+//       /* out of range forward */  ( _forward && _cmp->Compare(_iterator->key(), _bounds.end())   > 0) ||
+//       /* out of range backward */ (!_forward && _cmp->Compare(_iterator->key(), _bounds.start()) < 0)  ) {
+//
+//    if (_forward) {
+//      _iterator->Seek(_bounds.start());
+//    } else {
+//      _iterator->SeekForPrev(_bounds.end());
+//    }
+//
+//    if(!_iterator->Valid()) {
+//      return false;
+//    }
+//  }
+//  return true;
+//}
 
-    if (_forward) {
-      _iterator->Seek(_bounds.start());
-    } else {
-      _iterator->SeekForPrev(_bounds.end());
-    }
-
-    if(!_iterator->Valid()) {
+bool RocksDBAnyIndexIterator::cursorNext() {
+  TRI_ASSERT(_totalPrime > 0 && _step != 0);
+  TRI_ASSERT(!outOfRange());
+  
+  uint64_t pos = _position;
+  do { //
+    pos = (pos + _step) % _totalPrime;
+    if (pos == _initial) { // done
       return false;
     }
+  } while(pos >= _total);
+  
+  if (pos > _position) {
+    do {
+      _iterator->Next();
+    } while (!outOfRange() && ++_position != pos);
+  } else if (pos < _position) {
+    do {
+      _iterator->Prev();
+    } while (!outOfRange() && --_position != pos);
   }
-  return true;
+  TRI_ASSERT(_position == pos || outOfRange());
+  
+  return !outOfRange();
 }
 
 bool RocksDBAnyIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 
-  if (limit == 0 || !_iterator->Valid() || outOfRange()) {
+  if (limit == 0 || outOfRange()) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
     return false;
   }
-
+  
   while (limit > 0) {
     cb(RocksDBKey::documentId(_iterator->key()));
     --limit;
-    _returned++;
-    _iterator->Next();
-    if (!_iterator->Valid() || outOfRange()) {
-      if (_returned < _total) {
-        _iterator->Seek(_bounds.start());
-        continue;
-      }
+    if (!cursorNext()) {
       return false;
     }
   }
+
+//  while (limit > 0) {
+//    cb(RocksDBKey::documentId(_iterator->key()));
+//    --limit;
+//    _returned++;
+//    _iterator->Next();
+//    if (!_iterator->Valid() || outOfRange()) {
+//      if (_returned < _total) {
+//        _iterator->Seek(_bounds.start());
+//        continue;
+//      }
+//      return false;
+//    }
+//  }
   return true;
 }
 
@@ -213,7 +249,7 @@ bool RocksDBAnyIndexIterator::nextDocument(
     IndexIterator::DocumentCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 
-  if (limit == 0 || !_iterator->Valid() || outOfRange()) {
+  if (limit == 0 || outOfRange()) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
@@ -224,49 +260,89 @@ bool RocksDBAnyIndexIterator::nextDocument(
     cb(RocksDBKey::documentId(_iterator->key()),
        VPackSlice(_iterator->value().data()));
     --limit;
-    _returned++;
-    _iterator->Next();
-    if (!_iterator->Valid() || outOfRange()) {
-      if (_returned < _total) {
-        _iterator->Seek(_bounds.start());
-        continue;
-      }
+    if (!cursorNext()) {
       return false;
     }
+//    _returned++;
+//    _iterator->Next();
+//    if (!_iterator->Valid() || outOfRange()) {
+//      if (_returned < _total) {
+//        _iterator->Seek(_bounds.start());
+//        continue;
+//      }
+//      return false;
+//    }
   }
   return true;
 }
 
 void RocksDBAnyIndexIterator::reset() {
+
+//  uint64_t _position;
+//  uint64_t _step;
+//  uint64_t _total;
+//  uint64_t _totalPrime;
+  
   // the assumption is that we don't reset this iterator unless
   // it is out of range or invalid
-  if (_total == 0 || (_iterator->Valid() && !outOfRange())) {
+  if (_total == 0) {
     return;
   }
-  uint64_t steps = RandomGenerator::interval(_total - 1) % 500;
-  auto initialKey = RocksDBKey();
-  
-  initialKey.constructDocument(_objectId,
-                               LocalDocumentId(RandomGenerator::interval(UINT64_MAX)));
-  _iterator->Seek(initialKey.string());
-  
-  if (checkIter()) {
-    if (_forward) {
-      while (steps-- > 0) {
-        _iterator->Next();
-        if(!checkIter()) { break; }
+//  uint64_t steps = RandomGenerator::interval(_total - 1) % 500;
+//  auto initialKey = RocksDBKey();
+//
+//  initialKey.constructDocument(_objectId,
+//                               LocalDocumentId(RandomGenerator::interval(UINT64_MAX)));
+//  _iterator->Seek(initialKey.string());
+//
+//  if (checkIter()) {
+//    if (_forward) {
+//      while (steps-- > 0) {
+//        _iterator->Next();
+//        if(!checkIter()) { break; }
+//      }
+//    } else {
+//      while (steps-- > 0) {
+//        _iterator->Prev();
+//        if(!checkIter()) { break; }
+//      }
+//    }
+//  }
+  // find a co-prime for total. We use totalPrime to get a cyclic
+  // multiplicative group of integers modulo n
+  // https://en.wikipedia.org/wiki/Lehmer_random_number_generator
+  // https://en.wikipedia.org/wiki/Multiplicative_group_of_integers_modulo_n#Cyclic_case
+  while (true) {
+    _step = RandomGenerator::interval(UINT32_MAX) % _totalPrime;
+    if (_step > 10 &&
+        arangodb::basics::binaryGcd<uint64_t>(_totalPrime, _step) == 1) {
+      _initial = 0;
+      while (_initial == 0 || _initial > _total || _initial > 4201) {
+        _initial = RandomGenerator::interval(UINT32_MAX) % _totalPrime;
       }
-    } else {
-      while (steps-- > 0) {
-        _iterator->Prev();
-        if(!checkIter()) { break; }
-      }
+      _position = _initial;
+      break;
+    }
+  }
+
+  uint64_t pos = _position;
+  if (pos < _total / 2) {
+    _iterator->Seek(_bounds.start());
+    while (!outOfRange() && pos-- != 0) {
+      _iterator->Next();
+    }
+  } else if (pos > _total / 2) {
+    _iterator->SeekForPrev(_bounds.end());
+    while (!outOfRange() && pos-- != 0) {
+      _iterator->Prev();
     }
   }
 }
 
 bool RocksDBAnyIndexIterator::outOfRange() const {
-  return _cmp->Compare(_iterator->key(), _bounds.end()) > 0;
+  return !_iterator->Valid() ||
+          _bounds.start().compare(_iterator->key()) > 0 ||
+          _bounds.end().compare(_iterator->key()) < 0;
 }
 
 RocksDBGenericIterator::RocksDBGenericIterator(rocksdb::ReadOptions& options,

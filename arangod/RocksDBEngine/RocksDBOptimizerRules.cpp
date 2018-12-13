@@ -53,7 +53,7 @@ void RocksDBOptimizerRules::registerResources() {
   OptimizerRulesFeature::registerRule("reduce-extraction-to-projection", reduceExtractionToProjectionRule, 
                OptimizerRule::reduceExtractionToProjectionRule, false, true);
   // remove SORT RAND() LIMIT 1 if appropriate
-  OptimizerRulesFeature::registerRule("remove-sort-rand-limit-1", removeSortRandRule,
+  OptimizerRulesFeature::registerRule("remove-sort-rand", removeSortRandRule,
                                       OptimizerRule::removeSortRandRule, false, true);
 }
 
@@ -288,20 +288,7 @@ void RocksDBOptimizerRules::removeSortRandRule(Optimizer* opt, std::unique_ptr<E
       current = current->getFirstDependency();
     }
     
-    if (collectionNode == nullptr || !node->hasParent()) {
-      continue; // skip
-    }
-    
-    current = node->getFirstParent();
-    bool valid = false;
-    if (current->getType() == EN::LIMIT) {
-      LimitNode* ln = ExecutionNode::castTo<LimitNode*>(current);
-      if (ln->limit() == 1 && ln->offset() == 0) {
-        valid = true;
-      }
-    }
-    
-    if (valid) {
+    if (collectionNode != nullptr) {
       // we found a node to modify!
       TRI_ASSERT(collectionNode->getType() == EN::ENUMERATE_COLLECTION);
       // set the random iteration flag for the EnumerateCollectionNode

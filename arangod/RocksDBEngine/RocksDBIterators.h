@@ -71,7 +71,8 @@ class RocksDBAllIndexIterator final : public IndexIterator {
   rocksdb::Comparator const* _cmp;
 };
 
-
+/// Use a simple LRNG to generate a cyclc sequence of pseudo
+/// random numbers https://en.wikipedia.org/wiki/Lehmer_random_number_generator
 class RocksDBAnyIndexIterator final : public IndexIterator {
  public:
   RocksDBAnyIndexIterator(LogicalCollection* collection,
@@ -89,15 +90,19 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
  private:
   bool outOfRange() const;
   bool checkIter();
+  bool cursorNext();
+  
+ private:
 
-  rocksdb::Comparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
   uint64_t const _objectId;
   RocksDBKeyBounds const _bounds;
   
+  uint64_t _initial;
+  uint64_t _position;
+  uint64_t _step;
   uint64_t _total;
-  uint64_t _returned;
-  bool _forward;
+  uint64_t _totalPrime;
 };
 
 class RocksDBGenericIterator {
