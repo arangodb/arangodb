@@ -77,7 +77,7 @@ source_group("search" ./search/*)
 source_group("store" ./store/*)
 source_group("utils" ./utils/*)
 
-if (USE_OPTIMIZE_FOR_ARCHITECTURE)
+if (USE_SIMDCOMP)
   set(IResearch_core_optimized_sources
     ./store/store_utils_optimized.cpp
   )
@@ -488,7 +488,7 @@ else()
   set(MSVC_ONLY_LIBRARIES "")
 endif()
 
-if (USE_OPTIMIZE_FOR_ARCHITECTURE)
+if (USE_SIMDCOMP)
   set(SIMD_LIBRARY_SHARED "simdcomp-shared")
   set(SIMD_LIBRARY_STATIC "simdcomp-static")
 endif()
@@ -902,7 +902,7 @@ endif()
 ### format plugin: format-1_0
 ################################################################################
 
-if (USE_OPTIMIZE_FOR_ARCHITECTURE)
+if (USE_SIMDCOMP)
   set(FORMAT_10_EXTRA_DEFS "IRESEARCH_FORMAT10_CODEC=1")
 else()
   set(FORMAT_10_EXTRA_DEFS "IRESEARCH_FORMAT10_CODEC=0")
