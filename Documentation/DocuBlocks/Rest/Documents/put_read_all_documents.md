@@ -4,15 +4,22 @@
 
 @RESTHEADER{PUT /_api/simple/all-keys, Read all documents}
 
+@HINTS
+{% hint 'warning' %}
+This route should no longer be used.
+All endpoints for Simple Queries are deprecated from version 3.4.0 on.
+They are superseded by AQL queries.
+{% endhint %}
+
 @RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{collection,string,optional}
 The name of the collection.
 **This parameter is only for an easier migration path from old versions.**
-In ArangoDB versions < 3.0, the URL path was */_api/document* and
+In ArangoDB versions < 3.0, the URL path was `/_api/document` and
 this was passed in via the query parameter "collection".
 This combination was removed. The collection name can be passed to
-*/_api/simple/all-keys* as body parameter (preferred) or as query parameter.
+`/_api/simple/all-keys` as body parameter (preferred) or as query parameter.
 
 @RESTBODYPARAM{collection,string,required,}
 The collection that should be queried
@@ -31,6 +38,16 @@ determined by the *type* attribute.
 
 Note that the results have no defined order and thus the order should
 not be relied on.
+
+Note: the *all-keys* simple query is **deprecated** as of ArangoDB 3.4.0.
+This API may get removed in future versions of ArangoDB. You can use the
+`/_api/cursor` endpoint instead with one of the below AQL queries depending
+on the desired result:
+
+- `FOR doc IN @@collection RETURN doc._id` to mimic *type: id*
+- `FOR doc IN @@collection RETURN doc._key` to mimic *type: key*
+- `FOR doc IN @@collection RETURN CONCAT("/_db/", CURRENT_DATABASE(), "/_api/document/", doc._id)`
+  to mimic *type: path*
 
 @RESTRETURNCODES
 

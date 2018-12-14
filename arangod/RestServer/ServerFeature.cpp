@@ -69,8 +69,9 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addSection("server", "Server features");
 
-  options->addHiddenOption("--server.rest-server", "start a rest-server",
-                           new BooleanParameter(&_restServer));
+  options->addOption("--server.rest-server", "start a rest-server",
+                     new BooleanParameter(&_restServer),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
   options->addObsoleteOption("--server.session-timeout",
                              "timeout of web interface server sessions (in seconds)",
@@ -87,8 +88,9 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "maximal size (in bytes) for a VelocyPack chunk",
                      new UInt32Parameter(&_vstMaxSize));
 #if _WIN32
-  options->addHiddenOption("--console.code-page", "Windows code page to use; defaults to UTF8",
-                           new UInt16Parameter(&_codePage));
+  options->addOption("--console.code-page", "Windows code page to use; defaults to UTF8",
+                     new UInt16Parameter(&_codePage),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 #endif
 }
 

@@ -3486,6 +3486,7 @@ Result Methods::replicateOperations(
       requests[i].done &&
       requests[i].result.status == CL_COMM_RECEIVED &&
       (requests[i].result.answer_code == rest::ResponseCode::ACCEPTED ||
+       requests[i].result.answer_code == rest::ResponseCode::CREATED ||
        requests[i].result.answer_code == rest::ResponseCode::OK);
     if (replicationWorked) {
       bool found;

@@ -202,6 +202,10 @@ class RemoveNode : public ModificationNode {
   void setInVariable(Variable const* var) {
     _inVariable = var;
   }
+  
+  Variable const* inVariable() const {
+    return _inVariable;
+  }
 
  private:
   /// @brief input variable
@@ -317,6 +321,14 @@ class UpdateReplaceNode : public ModificationNode {
   /// @brief set the input document variable
   void setInDocVariable(Variable const* var) {
     _inDocVariable = var;
+  }
+  
+  Variable const* inKeyVariable() const {
+    return _inKeyVariable;
+  }
+  
+  Variable const* inDocVariable() const {
+    return _inDocVariable;
   }
 
  protected:

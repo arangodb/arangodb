@@ -35,7 +35,7 @@ x-content-type-options: nosniff
     }, 
     <span class="hljs-string">"compactionStatus"</span> : { 
       <span class="hljs-string">"message"</span> : <span class="hljs-string">"skipped compaction because collection has no datafiles"</span>, 
-      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2018-12-03T18:09:26Z"</span>, 
+      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2018-12-04T17:54:25Z"</span>, 
       <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"filesCombined"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"bytesRead"</span> : <span class="hljs-number">0</span>, 
@@ -65,7 +65,7 @@ x-content-type-options: nosniff
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"traditional"</span>, 
     <span class="hljs-string">"lastValue"</span> : <span class="hljs-number">103523</span> 
   }, 
-  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hB9CF045BCD65/103516"</span>, 
+  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h506DFD5BB5B9/103516"</span>, 
   <span class="hljs-string">"statusString"</span> : <span class="hljs-string">"loaded"</span>, 
   <span class="hljs-string">"id"</span> : <span class="hljs-string">"103516"</span>, 
   <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span> 

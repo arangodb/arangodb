@@ -760,6 +760,8 @@ void Worker<V, E, M>::_callConductor(std::string const& path,
         rest::RequestType::POST, baseUrl + path, body, headers, nullptr,
         120.0,  // timeout
         true);  // single request, no answer expected
+    // Forget about it
+    cc->drop("", coordinatorTransactionID, 0, "");
   }
 }
 

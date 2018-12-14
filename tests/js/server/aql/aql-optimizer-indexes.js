@@ -3773,7 +3773,7 @@ function optimizerIndexesMultiCollectionTestSuite () {
       var idx = subNodeTypes.indexOf("IndexNode");
       assertNotEqual(-1, idx, query); // index used for inner query
       assertEqual("hash", plan.nodes[sub].subquery.nodes[idx].indexes[0].type);
-      assertEqual(-1, subNodeTypes.indexOf("SortNode"), query); // we're filtering on a constant, but we're in an inner loop
+      assertNotEqual(-1, subNodeTypes.indexOf("SortNode"), query); // we're filtering on a constant, but we're in an inner loop
     },
 
 ////////////////////////////////////////////////////////////////////////////////

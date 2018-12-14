@@ -6,11 +6,10 @@ These functions implement
 
 ## ArangoDatabase.createCollection
 
-```
-ArangoDatabase.createCollection(String name, CollectionCreateOptions options) : CollectionEntity
-```
+`ArangoDatabase.createCollection(String name, CollectionCreateOptions options) : CollectionEntity`
 
-Creates a collection with the given _options_ for this collection's name, then returns collection information from the server.
+Creates a collection with the given _options_ for this collection's name,
+then returns collection information from the server.
 
 **Arguments**
 
@@ -22,19 +21,30 @@ Creates a collection with the given _options_ for this collection's name, then r
 
   - **journalSize**: `Long`
 
-    The maximal size of a journal or datafile in bytes. The value must be at least 1048576 (1 MiB).
+    The maximal size of a journal or datafile in bytes.
+    The value must be at least 1048576 (1 MiB).
 
   - **replicationFactor**: `Integer`
 
-    (The default is 1): in a cluster, this attribute determines how many copies of each shard are kept on different DBServers. The value 1 means that only one copy (no synchronous replication) is kept. A value of k means that k-1 replicas are kept. Any two copies reside on different DBServers. Replication between them is synchronous, that is, every write operation to the "leader" copy will be replicated to all "follower" replicas, before the write operation is reported successful. If a server fails, this is detected automatically and one of the servers holding copies take over, usually without an error being reported.
+    (The default is 1): in a cluster, this attribute determines how many copies
+    of each shard are kept on different DBServers. The value 1 means that only
+    one copy (no synchronous replication) is kept. A value of k means that
+    k-1 replicas are kept. Any two copies reside on different DBServers.
+    Replication between them is synchronous, that is, every write operation to
+    the "leader" copy will be replicated to all "follower" replicas, before the
+    write operation is reported successful. If a server fails, this is detected
+    automatically and one of the servers holding copies take over, usually
+    without an error being reported.
 
   - **satellite**: `Boolean`
 
-    If the true the collection is created as a satellite collection. In this case the _replicationFactor_ is ignored.
+    If the true the collection is created as a satellite collection.
+    In this case the _replicationFactor_ is ignored.
 
   - **waitForSync**: `Boolean`
 
-    If true then the data is synchronized to disk before returning from a document create, update, replace or removal operation. (default: false)
+    If true then the data is synchronized to disk before returning from a
+    document create, update, replace or removal operation. (default: false)
 
   - **doCompact**: `Boolean`
 
@@ -42,19 +52,38 @@ Creates a collection with the given _options_ for this collection's name, then r
 
   - **isVolatile**: `Boolean`
 
-    If true then the collection data is kept in-memory only and not made persistent. Unloading the collection will cause the collection data to be discarded. Stopping or re-starting the server will also cause full loss of data in the collection. Setting this option will make the resulting collection be slightly faster than regular collections because ArangoDB does not enforce any synchronization to disk and does not calculate any CRC checksums for datafiles (as there are no datafiles). This option should therefore be used for cache-type collections only, and not for data that cannot be re-created otherwise. (The default is false)
+    If true then the collection data is kept in-memory only and not made persistent.
+    Unloading the collection will cause the collection data to be discarded.
+    Stopping or re-starting the server will also cause full loss of data in
+    the collection. Setting this option will make the resulting collection be
+    slightly faster than regular collections because ArangoDB does not enforce
+    any synchronization to disk and does not calculate any CRC checksums for
+    datafiles (as there are no datafiles). This option should therefore be used
+    for cache-type collections only, and not for data that cannot be re-created
+    otherwise. (The default is false)
 
   - **shardKeys**: `String...`
 
-    (The default is [ "_key" ]): in a cluster, this attribute determines which document attributes are used to determine the target shard for documents. Documents are sent to shards based on the values of their shard key attributes. The values of all shard key attributes in a document are hashed, and the hash value is used to determine the target shard. Note: Values of shard key attributes cannot be changed once set. This option is meaningless in a single server setup.
+    (The default is [ "_key" ]): in a cluster, this attribute determines which
+    document attributes are used to determine the target shard for documents.
+    Documents are sent to shards based on the values of their shard key attributes.
+    The values of all shard key attributes in a document are hashed, and the
+    hash value is used to determine the target shard. Note: Values of shard key
+    attributes cannot be changed once set. This option is meaningless in a
+    single server setup.
 
   - **numberOfShards**: `Integer`
 
-    (The default is 1): in a cluster, this value determines the number of shards to create for the collection. In a single server setup, this option is meaningless.
+    (The default is 1): in a cluster, this value determines the number of shards
+    to create for the collection. In a single server setup, this option is meaningless.
 
   - **isSystem**: `Boolean`
 
-    If true, create a system collection. In this case collection-name should start with an underscore. End users should normally create non-system collections only. API implementors may be required to create system collections in very special occasions, but normally a regular collection will do. (The default is false)
+    If true, create a system collection. In this case collection-name should
+    start with an underscore. End users should normally create non-system
+    collections only. API implementors may be required to create system collections
+    in very special occasions, but normally a regular collection will do.
+    (The default is false)
 
   - **type**: `CollectionType`
 
@@ -62,28 +91,41 @@ Creates a collection with the given _options_ for this collection's name, then r
 
   - **indexBuckets**: `Integer`
 
-    The: number of buckets into which indexes using a hash table are split. The default is 16 and this number has to be a power of 2 and less than or equal to 1024. For very large collections one should increase this to avoid long pauses when the hash table has to be initially built or resized, since buckets are resized individually and can be initially built in parallel. For example, 64 might be a sensible value for a collection with 100 000 000 documents. Currently, only the edge index respects this value, but other index types might follow in future ArangoDB versions. Changes (see below) are applied when the collection is loaded the next time.
+    The number of buckets into which indexes using a hash table are split.
+    The default is 16 and this number has to be a power of 2 and less than or
+    equal to 1024. For very large collections one should increase this to avoid
+    long pauses when the hash table has to be initially built or resized, since
+    buckets are resized individually and can be initially built in parallel.
+    For example, 64 might be a sensible value for a collection with
+    100 000 000 documents. Currently, only the edge index respects this value,
+    but other index types might follow in future ArangoDB versions.
+    Changes (see below) are applied when the collection is loaded the next time.
 
   - **distributeShardsLike**: `String`
 
-    (The default is ""): in an Enterprise Edition cluster, this attribute binds the specifics of sharding for the newly created collection to follow that of a specified existing collection. Note: Using this parameter has consequences for the prototype collection. It can no longer be dropped, before sharding imitating collections are dropped. Equally, backups and restores of imitating collections alone will generate warnings, which can be overridden, about missing sharding prototype.
+    (The default is ""): in an Enterprise Edition cluster, this attribute binds
+    the specifics of sharding for the newly created collection to follow that
+    of a specified existing collection. Note: Using this parameter has
+    consequences for the prototype collection. It can no longer be dropped,
+    before sharding imitating collections are dropped. Equally, backups and
+    restores of imitating collections alone will generate warnings, which can
+    be overridden, about missing sharding prototype.
 
 **Examples**
 
 ```Java
 ArangoDB arango = new ArangoDB.Builder().build();
 ArangoDatabase db = arango.db("myDB");
-db.createCollection("potatos", new CollectionCreateOptions());
-// the document collection "potatos" now exists
+db.createCollection("potatoes", new CollectionCreateOptions());
+// the document collection "potatoes" now exists
 ```
 
 ## ArangoCollection.create
 
-```
-ArangoCollection.create(CollectionCreateOptions options) : CollectionEntity
-```
+`ArangoCollection.create(CollectionCreateOptions options) : CollectionEntity`
 
-Creates a collection with the given _options_ for this collection's name, then returns collection information from the server.
+Creates a collection with the given _options_ for this collection's name,
+then returns collection information from the server.
 
 Alternative for [ArangoDatabase.createCollection](#arangodatabasecreatecollection).
 
@@ -93,19 +135,30 @@ Alternative for [ArangoDatabase.createCollection](#arangodatabasecreatecollectio
 
   - **journalSize**: `Long`
 
-    The maximal size of a journal or datafile in bytes. The value must be at least 1048576 (1 MiB).
+    The maximal size of a journal or datafile in bytes.
+    The value must be at least 1048576 (1 MiB).
 
   - **replicationFactor**: `Integer`
 
-    (The default is 1): in a cluster, this attribute determines how many copies of each shard are kept on different DBServers. The value 1 means that only one copy (no synchronous replication) is kept. A value of k means that k-1 replicas are kept. Any two copies reside on different DBServers. Replication between them is synchronous, that is, every write operation to the "leader" copy will be replicated to all "follower" replicas, before the write operation is reported successful. If a server fails, this is detected automatically and one of the servers holding copies take over, usually without an error being reported.
+    (The default is 1): in a cluster, this attribute determines how many copies
+    of each shard are kept on different DBServers. The value 1 means that only
+    one copy (no synchronous replication) is kept. A value of k means that k-1
+    replicas are kept. Any two copies reside on different DBServers.
+    Replication between them is synchronous, that is, every write operation to
+    the "leader" copy will be replicated to all "follower" replicas, before the
+    write operation is reported successful. If a server fails, this is detected
+    automatically and one of the servers holding copies take over, usually
+    without an error being reported.
 
   - **satellite**: `Boolean`
 
-    If the true the collection is created as a satellite collection. In this case the _replicationFactor_ is ignored.
+    If the true the collection is created as a satellite collection.
+    In this case the _replicationFactor_ is ignored.
 
   - **waitForSync**: `Boolean`
 
-    If true then the data is synchronized to disk before returning from a document create, update, replace or removal operation. (default: false)
+    If true then the data is synchronized to disk before returning from a
+    document create, update, replace or removal operation. (default: false)
 
   - **doCompact**: `Boolean`
 
@@ -113,19 +166,38 @@ Alternative for [ArangoDatabase.createCollection](#arangodatabasecreatecollectio
 
   - **isVolatile**: `Boolean`
 
-    If true then the collection data is kept in-memory only and not made persistent. Unloading the collection will cause the collection data to be discarded. Stopping or re-starting the server will also cause full loss of data in the collection. Setting this option will make the resulting collection be slightly faster than regular collections because ArangoDB does not enforce any synchronization to disk and does not calculate any CRC checksums for datafiles (as there are no datafiles). This option should therefore be used for cache-type collections only, and not for data that cannot be re-created otherwise. (The default is false)
+    If true then the collection data is kept in-memory only and not made persistent.
+    Unloading the collection will cause the collection data to be discarded.
+    Stopping or re-starting the server will also cause full loss of data in
+    the collection. Setting this option will make the resulting collection be
+    slightly faster than regular collections because ArangoDB does not enforce
+    any synchronization to disk and does not calculate any CRC checksums for
+    datafiles (as there are no datafiles). This option should therefore be used
+    for cache-type collections only, and not for data that cannot be re-created
+    otherwise. (The default is false)
 
   - **shardKeys**: `String...`
 
-    (The default is [ "_key" ]): in a cluster, this attribute determines which document attributes are used to determine the target shard for documents. Documents are sent to shards based on the values of their shard key attributes. The values of all shard key attributes in a document are hashed, and the hash value is used to determine the target shard. Note: Values of shard key attributes cannot be changed once set. This option is meaningless in a single server setup.
+    (The default is [ "_key" ]): in a cluster, this attribute determines which
+    document attributes are used to determine the target shard for documents.
+    Documents are sent to shards based on the values of their shard key attributes.
+    The values of all shard key attributes in a document are hashed, and the
+    hash value is used to determine the target shard. Note: Values of shard key
+    attributes cannot be changed once set. This option is meaningless in a
+    single server setup.
 
   - **numberOfShards**: `Integer`
 
-    (The default is 1): in a cluster, this value determines the number of shards to create for the collection. In a single server setup, this option is meaningless.
+    (The default is 1): in a cluster, this value determines the number of shards
+    to create for the collection. In a single server setup, this option is meaningless.
 
   - **isSystem**: `Boolean`
 
-    If true, create a system collection. In this case collection-name should start with an underscore. End users should normally create non-system collections only. API implementors may be required to create system collections in very special occasions, but normally a regular collection will do. (The default is false)
+    If true, create a system collection. In this case collection-name should
+    start with an underscore. End users should normally create non-system
+    collections only. API implementors may be required to create system collections
+    in very special occasions, but normally a regular collection will do.
+    (The default is false)
 
   - **type**: `CollectionType`
 
@@ -133,27 +205,39 @@ Alternative for [ArangoDatabase.createCollection](#arangodatabasecreatecollectio
 
   - **indexBuckets**: `Integer`
 
-    The: number of buckets into which indexes using a hash table are split. The default is 16 and this number has to be a power of 2 and less than or equal to 1024. For very large collections one should increase this to avoid long pauses when the hash table has to be initially built or resized, since buckets are resized individually and can be initially built in parallel. For example, 64 might be a sensible value for a collection with 100 000 000 documents. Currently, only the edge index respects this value, but other index types might follow in future ArangoDB versions. Changes (see below) are applied when the collection is loaded the next time.
+    The number of buckets into which indexes using a hash table are split.
+    The default is 16 and this number has to be a power of 2 and less than or
+    equal to 1024. For very large collections one should increase this to avoid
+    long pauses when the hash table has to be initially built or resized, since
+    buckets are resized individually and can be initially built in parallel.
+    For example, 64 might be a sensible value for a collection with
+    100 000 000 documents. Currently, only the edge index respects this value,
+    but other index types might follow in future ArangoDB versions.
+    Changes (see below) are applied when the collection is loaded the next time.
 
   - **distributeShardsLike**: `String`
 
-    (The default is ""): in an Enterprise Edition cluster, this attribute binds the specifics of sharding for the newly created collection to follow that of a specified existing collection. Note: Using this parameter has consequences for the prototype collection. It can no longer be dropped, before sharding imitating collections are dropped. Equally, backups and restores of imitating collections alone will generate warnings, which can be overridden, about missing sharding prototype.
+    (The default is ""): in an Enterprise Edition cluster, this attribute binds
+    the specifics of sharding for the newly created collection to follow that
+    of a specified existing collection. Note: Using this parameter has
+    consequences for the prototype collection. It can no longer be dropped,
+    before sharding imitating collections are dropped. Equally, backups and
+    restores of imitating collections alone will generate warnings, which can
+    be overridden, about missing sharding prototype.
 
 **Examples**
 
 ```Java
 ArangoDB arango = new ArangoDB.Builder().build();
 ArangoDatabase db = arango.db("myDB");
-ArangoCollection collection = db.collection("potatos");
+ArangoCollection collection = db.collection("potatoes");
 collection.create(new CollectionCreateOptions());
-// the document collection "potatos" now exists
+// the document collection "potatoes" now exists
 ```
 
 ## ArangoCollection.load
 
-```
-ArangoCollection.load() : CollectionEntity
-```
+`ArangoCollection.load() : CollectionEntity`
 
 Tells the server to load the collection into memory.
 
@@ -169,11 +253,11 @@ collection.load();
 
 ## ArangoCollection.unload
 
-```
-ArangoCollection.unload() : CollectionEntity
-```
+`ArangoCollection.unload() : CollectionEntity`
 
-Tells the server to remove the collection from memory. This call does not delete any documents. You can use the collection afterwards; in which case it will be loaded into memory, again.
+Tells the server to remove the collection from memory. This call does not
+delete any documents. You can use the collection afterwards; in which case
+it will be loaded into memory, again.
 
 **Examples**
 
@@ -187,9 +271,7 @@ collection.unload();
 
 ## ArangoCollection.changeProperties
 
-```
-ArangoCollection.changeProperties(CollectionPropertiesOptions options) : CollectionPropertiesEntity
-```
+`ArangoCollection.changeProperties(CollectionPropertiesOptions options) : CollectionPropertiesEntity`
 
 Changes the properties of the collection.
 
@@ -207,7 +289,9 @@ ArangoDB arango = new ArangoDB.Builder().build();
 ArangoDatabase db = arango.db("myDB");
 ArangoCollection collection = db.collection("some-collection");
 
-CollectionPropertiesEntity result = collection.changeProperties(new CollectionPropertiesEntity().waitForSync(true));
+CollectionPropertiesEntity result = collection.changeProperties(
+  new CollectionPropertiesEntity().waitForSync(true)
+);
 assertThat(result.getWaitForSync(), is(true));
 // the collection will now wait for data being written to disk
 // whenever a document is changed
@@ -215,9 +299,7 @@ assertThat(result.getWaitForSync(), is(true));
 
 ## ArangoCollection.rename
 
-```
-ArangoCollection.rename(String newName) : CollectionEntity
-```
+`ArangoCollection.rename(String newName) : CollectionEntity`
 
 Renames the collection
 
@@ -241,9 +323,7 @@ assertThat(result.getName(), is("new-collection-name");
 
 ## ArangoCollection.truncate
 
-```
-ArangoCollection.truncate() : CollectionEntity
-```
+`ArangoCollection.truncate() : CollectionEntity`
 
 Removes all documents from the collection, but leaves the indexes intact.
 
@@ -260,9 +340,7 @@ collection.truncate();
 
 ## ArangoCollection.drop
 
-```
-ArangoCollection.drop() : void
-```
+`ArangoCollection.drop() : void`
 
 Deletes the collection from the database.
 
