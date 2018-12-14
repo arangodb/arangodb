@@ -30,7 +30,7 @@ class Result {
  public:
   Result();
 
-  Result(bool avoidCastingErrors) = delete;
+  Result(bool /*avoidCastingErrors*/) = delete;
 
   Result(int errorNumber);
 
