@@ -685,7 +685,7 @@ arangodb::Result PhysicalCollectionMock::insert(
   result.setUnmanaged(documents.back().first.data(), docId);
 
   for (auto& index : _indexes) {
-    if (!index->insert(*trx, docId, newSlice, arangodb::Index::OperationMode::normal).ok()) {
+    if (!index->insert(*trx, docId, arangodb::velocypack::Slice(result.vpack()), arangodb::Index::OperationMode::normal).ok()) {
       return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
     }
   }

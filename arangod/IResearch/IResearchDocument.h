@@ -131,10 +131,13 @@ struct Field {
 ////////////////////////////////////////////////////////////////////////////////
 class FieldIterator : public std::iterator<std::forward_iterator_tag, Field const> {
  public:
-  static FieldIterator const END; // unified end for all field iterators
+  explicit FieldIterator(arangodb::transaction::Methods& trx);
 
-  explicit FieldIterator();
-  FieldIterator(arangodb::velocypack::Slice const& doc, IResearchLinkMeta const& linkMeta);
+  FieldIterator(
+    arangodb::transaction::Methods& trx,
+    arangodb::velocypack::Slice const& doc,
+    IResearchLinkMeta const& linkMeta
+  );
 
   Field const& operator*() const noexcept {
     return _value;
@@ -154,6 +157,7 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
   }
 
   bool operator==(FieldIterator const& rhs) const noexcept {
+    TRI_ASSERT(_trx == rhs._trx); // compatibility
     return _stack == rhs._stack;
   }
 
@@ -211,9 +215,11 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
   }
 
   std::string& nameBuffer() noexcept {
-    TRI_ASSERT(_name);
-    return *_name;
+    TRI_ASSERT(_nameBuffer);
+    return *_nameBuffer;
   }
+
+  std::string& valueBuffer();
 
   // disallow copy and assign
   FieldIterator(FieldIterator const&) = delete;
@@ -221,9 +227,16 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
 
   void next();
   bool pushAndSetValue(arangodb::velocypack::Slice slice, IResearchLinkMeta const*& topMeta);
-  bool setRegularAttribute(IResearchLinkMeta const& context);
+  bool setAttributeValue(IResearchLinkMeta const& context);
+  bool setStringValue(
+    VPackSlice const value,
+    IResearchAnalyzerFeature::AnalyzerPool::ptr const pool
+  );
+  void setNullValue(VPackSlice const value);
+  void setNumericValue(VPackSlice const value);
+  void setBoolValue(VPackSlice const value);
 
-  void resetAnalyzers(IResearchLinkMeta const& context) {
+  void resetAnalyzers(IResearchLinkMeta const& context) noexcept {
     auto const& analyzers = context._analyzers;
 
     _begin = analyzers.data();
@@ -233,7 +246,9 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
   AnalyzerIterator _begin{};
   AnalyzerIterator _end{};
   std::vector<Level> _stack;
-  std::shared_ptr<std::string> _name; // buffer for field name
+  std::shared_ptr<std::string> _nameBuffer; // buffer for field name
+  std::shared_ptr<std::string> _valueBuffer; // need temporary buffer for custom types in VelocyPack
+  arangodb::transaction::Methods* _trx;
   Field _value; // iterator's value
 }; // FieldIterator
 

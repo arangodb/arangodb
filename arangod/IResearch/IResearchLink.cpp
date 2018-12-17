@@ -359,7 +359,7 @@ void IResearchLink::batchInsert(
   auto const end = batch.end();
 
   try {
-    for (FieldIterator body; begin != end; ++begin) {
+    for (FieldIterator body(trx); begin != end; ++begin) {
       body.reset(begin->second, _meta);
 
       if (!body.valid()) {
@@ -918,7 +918,7 @@ arangodb::Result IResearchLink::insert(
   }
 
   try {
-    FieldIterator body(doc, _meta);
+    FieldIterator body(trx, doc, _meta);
 
     if (!body.valid()) {
       return arangodb::Result(); // nothing to index
