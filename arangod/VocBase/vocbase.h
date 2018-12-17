@@ -333,7 +333,7 @@ struct TRI_vocbase_t {
   /// @brief renames a view
   arangodb::Result renameView(
     TRI_voc_cid_t cid,
-    std::string const& newName
+    std::string const& oldName
   );
 
   /// @brief creates a new collection from parameter set

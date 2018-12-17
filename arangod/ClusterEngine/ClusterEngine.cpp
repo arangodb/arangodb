@@ -351,15 +351,15 @@ Result ClusterEngine::createView(
 }
 
 arangodb::Result ClusterEngine::dropView(
-    TRI_vocbase_t& vocbase,
-    LogicalView& view
+    TRI_vocbase_t const& vocbase,
+    LogicalView const& view
 ) {
   return TRI_ERROR_NOT_IMPLEMENTED;
 }
 
 void ClusterEngine::destroyView(
-    TRI_vocbase_t& /*vocbase*/,
-    LogicalView& /*view*/
+    TRI_vocbase_t const& /*vocbase*/,
+    LogicalView const& /*view*/
 ) noexcept {
   // nothing to do here
 }

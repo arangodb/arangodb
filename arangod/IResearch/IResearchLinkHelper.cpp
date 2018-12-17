@@ -29,7 +29,6 @@
 #include "IResearchLinkMeta.h"
 #include "IResearchView.h"
 #include "IResearchViewCoordinator.h"
-#include "IResearchViewDBServer.h"
 #include "VelocyPackHelper.h"
 #include "Basics/StaticStrings.h"
 #include "Logger/Logger.h"
@@ -676,19 +675,6 @@ namespace iresearch {
         modified,
         vocbase,
         LogicalView::cast<IResearchViewCoordinator>(view),
-        links,
-        stale
-      );
-    }
-
-    auto* dbServerView = dynamic_cast<IResearchViewDBServer*>(&view);
-
-    // dbserver has both IResearchViewDBServer and IResearchView instances
-    if (dbServerView) {
-      return modifyLinks<IResearchViewDBServer>(
-        modified,
-        vocbase,
-        *dbServerView,
         links,
         stale
       );
