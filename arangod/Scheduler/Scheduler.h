@@ -215,9 +215,8 @@ class Scheduler {
     return new asio_ns::steady_timer(*_ioContext);
   }
 
-  asio_ns::io_context::strand* newStrand() {
-    return new asio_ns::io_context::strand(*_ioContext);
-  }
+  asio_ns::io_context::strand* newStrand();
+  void releaseStrand(asio_ns::io_context::strand * strandDone);
 
   asio_ns::ip::tcp::acceptor* newAcceptor() {
     return new asio_ns::ip::tcp::acceptor(*_ioContext);
