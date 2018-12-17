@@ -388,6 +388,12 @@ static arangodb::Result cancelBarrier(
   return arangodb::Result();
 }
 
+
+static inline bool isStopping() {
+  return application_features::ApplicationServer::isStopping();
+}
+
+
 arangodb::Result SynchronizeShard::getReadLock(
   std::string const& endpoint, std::string const& database,
   std::string const& collection, std::string const& clientId,
@@ -423,6 +429,11 @@ arangodb::Result SynchronizeShard::getReadLock(
   size_t count = 0;
   size_t maxTries = static_cast<size_t>(std::floor(600.0 / sleepTime));
   while (++count < maxTries) { // wait for some time until read lock established:
+
+    if (isStopping()) {
+      return arangodb::Result(TRI_ERROR_SHUTTING_DOWN);
+    }
+
     // Now check that we hold the read lock:
     auto putres = cc->syncRequest(
       TRI_NewTickServer(), endpoint, rest::RequestType::PUT, url, body.toJson(),
@@ -465,10 +476,6 @@ arangodb::Result SynchronizeShard::getReadLock(
   }
 
   return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT, "startReadLockOnLeader: giving up");
-}
-
-static inline bool isStopping() {
-  return application_features::ApplicationServer::isStopping();
 }
 
 arangodb::Result SynchronizeShard::startReadLockOnLeader(
@@ -804,7 +811,7 @@ bool SynchronizeShard::first() {
           "synchronizeOneShard: synchronization failed for shard ");
         errorMessage += shard + ": shutdown in progress, giving up";
         LOG_TOPIC(INFO, Logger::MAINTENANCE) << errorMessage;
-        _result.reset(TRI_ERROR_INTERNAL, errorMessage);
+        _result.reset(TRI_ERROR_SHUTTING_DOWN, errorMessage);
         return false;
       }
 
@@ -941,6 +948,13 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
   double timeout = 300.0;
   TRI_voc_tick_t tickReached = 0;
   while (didTimeout && tries++ < 18) { // This will try to sync for at most 1 hour. (200 * 18 == 3600)
+    
+    if (isStopping()) {
+      std::string errorMessage = 
+        "synchronizeOneShard: startReadLockOnLeader (soft): shutting down";
+      return ResultT<TRI_voc_tick_t>::error(TRI_ERROR_SHUTTING_DOWN, errorMessage);
+    }
+    
     didTimeout = false;
     // Now ask for a "soft stop" on the leader, in case of mmfiles, this
     // will be a hard stop, but for rocksdb, this is a no-op:
