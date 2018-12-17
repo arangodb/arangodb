@@ -278,9 +278,7 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
       instanceInfo.exitStatus['gdbHint'] = "coredump unavailable";
       return;
     }
-    if (instanceInfo.monitor.pid !== null) {
-      instanceInfo.monitor = statusExternal(instanceInfo.monitor.pid, true);
-    }
+    pu.stopProcdump(options, instanceInfo);
     hint = analyzeCoreDumpWindows(instanceInfo);
   } else if (platform === 'darwin') {
     // fs.copyFile(binary, storeArangodPath);

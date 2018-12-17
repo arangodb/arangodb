@@ -126,7 +126,9 @@ void MMFilesDocumentOperation::revert(transaction::Methods* trx) {
     if (status != StatusType::CREATED) { 
       // remove document from indexes
       try {
-        physical->rollbackOperation(trx, _type, oldDocumentId, oldDoc, newDocumentId, newDoc);
+        physical->rollbackOperation(
+          *trx, _type, oldDocumentId, oldDoc, newDocumentId, newDoc
+        );
       } catch (...) {
       }
     }
@@ -151,7 +153,9 @@ void MMFilesDocumentOperation::revert(transaction::Methods* trx) {
     if (status != StatusType::CREATED) { 
       try {
         // restore the old index state
-        physical->rollbackOperation(trx, _type, oldDocumentId, oldDoc, newDocumentId, newDoc);
+        physical->rollbackOperation(
+          *trx, _type, oldDocumentId, oldDoc, newDocumentId, newDoc
+        );
       } catch (...) {
       }
     }
@@ -159,12 +163,15 @@ void MMFilesDocumentOperation::revert(transaction::Methods* trx) {
     // let the primary index entry point to the correct document
     MMFilesSimpleIndexElement* element = physical->primaryIndex()->lookupKeyRef(
         trx, transaction::helpers::extractKeyFromDocument(newDoc));
+
     if (element != nullptr && element->isSet()) {
       VPackSlice keySlice(transaction::helpers::extractKeyFromDocument(oldDoc));
+
       element->updateLocalDocumentId(oldDocumentId, static_cast<uint32_t>(keySlice.begin() - oldDoc.begin()));
     }
+
     physical->updateLocalDocumentId(oldDocumentId, oldDoc.begin(), 0, false);
-    
+
     // remove now obsolete new document
     if (oldDocumentId != newDocumentId) { 
       // we need to check for the same document id here
@@ -176,16 +183,18 @@ void MMFilesDocumentOperation::revert(transaction::Methods* trx) {
   } else if (_type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
     TRI_ASSERT(!_oldRevision.empty());
     TRI_ASSERT(_newRevision.empty());
-    
+
     try {
       physical->insertLocalDocumentId(_oldRevision._localDocumentId, _oldRevision._vpack, 0, true, true);
     } catch (...) {
     }
-    
+
     if (status != StatusType::CREATED) { 
       try {
         // remove from indexes again
-        physical->rollbackOperation(trx, _type, oldDocumentId, oldDoc, newDocumentId, newDoc);
+        physical->rollbackOperation(
+          *trx, _type, oldDocumentId, oldDoc, newDocumentId, newDoc
+        );
       } catch (...) {
       }
     }

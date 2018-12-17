@@ -114,8 +114,9 @@ Result Index::indexCells(VPackSlice const& doc, std::vector<S2CellId>& cells,
     S2LatLng ll = S2LatLng::FromDegrees(lat.getNumericValue<double>(),
                                         lon.getNumericValue<double>());
     if (!ll.is_valid()) {
-      return TRI_ERROR_QUERY_INVALID_GEO_VALUE;
-    }
+      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+          << "illegal geo-coordinates, ignoring entry";
+      return TRI_ERROR_NO_ERROR;    }
     centroid = ll.ToPoint();
     cells.emplace_back(centroid);
     return TRI_ERROR_NO_ERROR;

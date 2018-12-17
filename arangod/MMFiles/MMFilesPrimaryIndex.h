@@ -219,13 +219,19 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
                     std::underlying_type<Index::Serialize>::type) const override;
   void toVelocyPackFigures(VPackBuilder&) const override;
 
-  Result insert(transaction::Methods*, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const&,
-                OperationMode mode) override;
+  Result insert(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+  ) override;
 
-  Result remove(transaction::Methods*, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const&,
-                OperationMode mode) override;
+  Result remove(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    arangodb::velocypack::Slice const& doc,
+    Index::OperationMode mode
+  ) override;
 
   void load() override {}
   void unload() override;

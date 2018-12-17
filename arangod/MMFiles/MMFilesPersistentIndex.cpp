@@ -81,7 +81,7 @@ MMFilesPersistentIndexIterator::MMFilesPersistentIndexIterator(
       _probe(false) {
   TRI_idx_iid_t const id = index->id();
   std::string const prefix = MMFilesPersistentIndex::buildPrefix(
-    trx->vocbase().id(), _primaryIndex->collection()->id(), id
+    trx->vocbase().id(), _primaryIndex->collection().id(), id
   );
 
   TRI_ASSERT(prefix.size() == MMFilesPersistentIndex::keyPrefixSize());
@@ -310,14 +310,16 @@ size_t MMFilesPersistentIndex::memory() const {
 }
 
 /// @brief inserts a document into the index
-Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
-                                      LocalDocumentId const& documentId,
-                                      VPackSlice const& doc,
-                                      OperationMode mode) {
+Result MMFilesPersistentIndex::insert(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
   Result res;
-  
   int r;
+
   try {
     r = fillElement(elements, documentId, doc);
   } catch (basics::Exception const& ex) {
@@ -342,9 +344,9 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
   }
 
   ManagedDocumentResult result;
-  MMFilesIndexLookupContext context(trx, &_collection, &result, numPaths());
+  MMFilesIndexLookupContext context(&trx, &_collection, &result, numPaths());
   VPackSlice const key = transaction::helpers::extractKeyFromDocument(doc);
-  auto prefix = buildPrefix(trx->vocbase().id(), _collection.id(), _iid);
+  auto prefix = buildPrefix(trx.vocbase().id(), _collection.id(), _iid);
   VPackBuilder builder;
   std::vector<std::string> values;
 
@@ -412,7 +414,7 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
   }
 
   auto rocksTransaction =
-      static_cast<MMFilesTransactionState*>(trx->state())->rocksTransaction();
+    static_cast<MMFilesTransactionState*>(trx.state())->rocksTransaction();
   TRI_ASSERT(rocksTransaction != nullptr);
 
   auto comparator = MMFilesPersistentIndexFeature::instance()->comparator();
@@ -492,14 +494,16 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
 }
 
 /// @brief removes a document from the index
-Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
-                                      LocalDocumentId const& documentId,
-                                      VPackSlice const& doc,
-                                      OperationMode mode) {
+Result MMFilesPersistentIndex::remove(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
   Result res;
-
   int r;
+
   try {
     r = fillElement(elements, documentId, doc);
   } catch (basics::Exception const& ex) {
@@ -524,7 +528,7 @@ Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
   }
 
   ManagedDocumentResult result;
-  MMFilesIndexLookupContext context(trx, &_collection, &result, numPaths());
+  MMFilesIndexLookupContext context(&trx, &_collection, &result, numPaths());
   VPackSlice const key = transaction::helpers::extractKeyFromDocument(doc);
   VPackBuilder builder;
   std::vector<std::string> values;
@@ -544,13 +548,13 @@ Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
     std::string value;
 
     value.reserve(keyPrefixSize() + s.byteSize());
-    value.append(buildPrefix(trx->vocbase().id(), _collection.id(), _iid));
+    value.append(buildPrefix(trx.vocbase().id(), _collection.id(), _iid));
     value.append(s.startAs<char const>(), s.byteSize());
     values.emplace_back(std::move(value));
   }
 
   auto rocksTransaction =
-      static_cast<MMFilesTransactionState*>(trx->state())->rocksTransaction();
+    static_cast<MMFilesTransactionState*>(trx.state())->rocksTransaction();
   TRI_ASSERT(rocksTransaction != nullptr);
 
   size_t const count = elements.size();
@@ -571,7 +575,7 @@ Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
 }
 
 /// @brief called when the index is dropped
-int MMFilesPersistentIndex::drop() {
+Result MMFilesPersistentIndex::drop() {
   return MMFilesPersistentIndexFeature::instance()->dropIndex(
     _collection.vocbase().id(), _collection.id(), _iid
   );

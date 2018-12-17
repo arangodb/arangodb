@@ -132,33 +132,23 @@ class TraditionalKeyGenerator : public KeyGenerator {
  public:
   /// @brief create the generator
   explicit TraditionalKeyGenerator(bool allowUserKeys)
-    : KeyGenerator(allowUserKeys),
-      _lastValue(0) {}
+    : KeyGenerator(allowUserKeys) {}
   
   bool hasDynamicState() const override { return true; }
-
+  
   /// @brief generate a key
   std::string generate() override final {
     uint64_t tick = generateValue();
 
-    {
-      MUTEX_LOCKER(mutexLocker, _lock);
-      
-      if (tick == UINT64_MAX || _lastValue >= UINT64_MAX - 1ULL) {
-        // oops, out of keys!
-        return std::string();
-      }
-
-      if (tick <= _lastValue) {
-        tick = ++_lastValue;
-      } else {
-        _lastValue = tick;
-      }
+    if (ADB_UNLIKELY(tick == 0)) {
+      // unlikely case we have run out of keys
+      // returning an empty string will trigger an error on the call site
+      return std::string();
     }
 
     return arangodb::basics::StringUtils::itoa(tick);
   }
-  
+
   /// @brief validate a key
   int validate(char const* p, size_t length, bool isRestore) override {
     int res = KeyGenerator::validate(p, length, isRestore);
@@ -180,12 +170,7 @@ class TraditionalKeyGenerator : public KeyGenerator {
       uint64_t value = NumberUtils::atoi_zero<uint64_t>(p, p + length);
 
       if (value > 0) {
-        MUTEX_LOCKER(mutexLocker, _lock);
-
-        if (value > _lastValue) {
-          // and update our last value
-          _lastValue = value;
-        }
+        track(value);
       }
     }
   }
@@ -194,18 +179,14 @@ class TraditionalKeyGenerator : public KeyGenerator {
   void toVelocyPack(arangodb::velocypack::Builder& builder) const override {
     KeyGenerator::toVelocyPack(builder);
     builder.add("type", VPackValue("traditional"));
-      
-    MUTEX_LOCKER(mutexLocker, _lock);
-    builder.add(StaticStrings::LastValue, VPackValue(_lastValue));
   }
 
  protected:
+  /// @brief generate a new key value (internal)
   virtual uint64_t generateValue() = 0;
 
- private:
-  mutable arangodb::Mutex _lock;
-
-  uint64_t _lastValue;
+  /// @brief track a value (internal)
+  virtual void track(uint64_t value) = 0;
 };
 
 /// @brief traditional key generator for a single server
@@ -213,50 +194,37 @@ class TraditionalKeyGeneratorSingle final : public TraditionalKeyGenerator {
  public:
   /// @brief create the generator
   explicit TraditionalKeyGeneratorSingle(bool allowUserKeys) 
-    : TraditionalKeyGenerator(allowUserKeys) {}
-
- private:
-  /// @brief generate a key
-  uint64_t generateValue() override {
-    return TRI_NewTickServer();
+    : TraditionalKeyGenerator(allowUserKeys), _lastValue(0) {
+    TRI_ASSERT(!ServerState::instance()->isCoordinator());
   }
-};
-
-/// @brief traditional key generator for a coordinator
-class TraditionalKeyGeneratorCluster final : public TraditionalKeyGenerator {
- public:
-  /// @brief create the generator
-  explicit TraditionalKeyGeneratorCluster(bool allowUserKeys)
-    : TraditionalKeyGenerator(allowUserKeys) {}
-
- private:
-  /// @brief generate a key
-  uint64_t generateValue() override {
-    ClusterInfo* ci = ClusterInfo::instance();
-    return  ci->uniqid();
-  }
-};
-
-/// @brief base class for padded key generators
-class PaddedKeyGenerator : public KeyGenerator {
- public:
-  /// @brief create the generator
-  explicit PaddedKeyGenerator(bool allowUserKeys)
-    : KeyGenerator(allowUserKeys),
-      _lastValue(0) {}
   
-  bool hasDynamicState() const override { return true; }
+  /// @brief build a VelocyPack representation of the generator in the builder
+  void toVelocyPack(arangodb::velocypack::Builder& builder) const override {
+    TraditionalKeyGenerator::toVelocyPack(builder);
+     
+    // add our specific stuff 
+    MUTEX_LOCKER(mutexLocker, _lock);
+    builder.add(StaticStrings::LastValue, VPackValue(_lastValue));
+  }
 
-  /// @brief generate a key
-  std::string generate() override {
-    uint64_t tick = generateValue();
-    
+ private:
+  /// @brief generate a key value (internal)
+  uint64_t generateValue() override {
+    uint64_t tick = TRI_NewTickServer();
+
+    if (ADB_UNLIKELY(tick == UINT64_MAX)) {
+      // out of keys
+      return 0;
+    }
+
+    // keep track of last assigned value, and make sure the value
+    // we hand out is always higher than it
     {
       MUTEX_LOCKER(mutexLocker, _lock);
-    
-      if (tick == UINT64_MAX || _lastValue >= UINT64_MAX - 1ULL) {
+      
+      if (ADB_UNLIKELY(_lastValue >= UINT64_MAX - 1ULL)) {
         // oops, out of keys!
-        return std::string();
+        return 0;
       }
 
       if (tick <= _lastValue) {
@@ -264,6 +232,70 @@ class PaddedKeyGenerator : public KeyGenerator {
       } else {
         _lastValue = tick;
       }
+    }
+
+    return tick;
+  }
+
+  /// @brief track a key value (internal)
+  void track(uint64_t value) override {
+    MUTEX_LOCKER(mutexLocker, _lock);
+
+    if (value > _lastValue) {
+      // and update our last value
+      _lastValue = value;
+    }
+  }
+
+ private:
+  mutable arangodb::Mutex _lock;
+
+  uint64_t _lastValue;
+};
+
+/// @brief traditional key generator for a coordinator
+/// please note that coordinator-based key generators are frequently
+/// created and discarded, so ctor & dtor need to be very efficient.
+/// additionally, do not put any state into this object, as for the
+/// same logical collection the ClusterInfo may create many different 
+/// temporary LogicalCollection objects one after the other, which
+/// will also discard the collection's particular KeyGenerator object!
+class TraditionalKeyGeneratorCluster final : public TraditionalKeyGenerator {
+ public:
+  /// @brief create the generator
+  explicit TraditionalKeyGeneratorCluster(bool allowUserKeys)
+    : TraditionalKeyGenerator(allowUserKeys) {
+    TRI_ASSERT(ServerState::instance()->isCoordinator());
+  }
+  
+ private:
+  /// @brief generate a key value (internal)
+  uint64_t generateValue() override {
+    ClusterInfo* ci = ClusterInfo::instance();
+    return  ci->uniqid();
+  }
+  
+  /// @brief track a key value (internal)
+  void track(uint64_t /* value */) override {}
+};
+
+/// @brief base class for padded key generators
+class PaddedKeyGenerator : public KeyGenerator {
+ public:
+  /// @brief create the generator
+  explicit PaddedKeyGenerator(bool allowUserKeys)
+    : KeyGenerator(allowUserKeys) {}
+  
+  bool hasDynamicState() const override { return true; }
+
+  /// @brief generate a key
+  std::string generate() override {
+    uint64_t tick = generateValue();
+
+    if (ADB_UNLIKELY(tick == 0)) {
+      // unlikely case we have run out of keys
+      // returning an empty string will trigger an error on the call site
+      return std::string();
     }
 
     return encode(tick);
@@ -287,12 +319,7 @@ class PaddedKeyGenerator : public KeyGenerator {
     // check the numeric key part
     uint64_t value = decode(p, length);
     if (value > 0) {
-      MUTEX_LOCKER(mutexLocker, _lock);
-
-      if (value > _lastValue) {
-        // and update our last value
-        _lastValue = value;
-      }
+      track(value);
     }
   }
 
@@ -300,13 +327,14 @@ class PaddedKeyGenerator : public KeyGenerator {
   void toVelocyPack(arangodb::velocypack::Builder& builder) const override {
     KeyGenerator::toVelocyPack(builder);
     builder.add("type", VPackValue("padded"));
-    
-    MUTEX_LOCKER(mutexLocker, _lock);
-    builder.add(StaticStrings::LastValue, VPackValue(_lastValue));
   }
  
  protected:
+  /// @brief generate a key value (internal)
   virtual uint64_t generateValue() = 0;
+  
+  /// @brief track a value (internal)
+  virtual void track(uint64_t value) = 0;
 
  private:
   uint64_t decode(char const* p, size_t length) {
@@ -360,11 +388,6 @@ class PaddedKeyGenerator : public KeyGenerator {
 
     return std::string(&buffer[0], sizeof(uint64_t) * 2);
   }
- 
- private:
-  mutable arangodb::Mutex _lock;
-
-  uint64_t _lastValue;
 };
 
 /// @brief padded key generator for a single server
@@ -372,28 +395,87 @@ class PaddedKeyGeneratorSingle final : public PaddedKeyGenerator {
  public:
   /// @brief create the generator
   explicit PaddedKeyGeneratorSingle(bool allowUserKeys) 
-    : PaddedKeyGenerator(allowUserKeys) {}
+    : PaddedKeyGenerator(allowUserKeys), _lastValue(0) {
+    TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  }
+  
+  /// @brief build a VelocyPack representation of the generator in the builder
+  void toVelocyPack(arangodb::velocypack::Builder& builder) const override {
+    PaddedKeyGenerator::toVelocyPack(builder);
+   
+    // add our own specific values 
+    MUTEX_LOCKER(mutexLocker, _lock);
+    builder.add(StaticStrings::LastValue, VPackValue(_lastValue));
+  }
  
  private:
   /// @brief generate a key
   uint64_t generateValue() override {
-    return TRI_NewTickServer();
+    uint64_t tick = TRI_NewTickServer();
+      
+    if (ADB_UNLIKELY(tick == UINT64_MAX)) {
+      // oops, out of keys!
+      return 0;
+    }
+    
+    {
+      MUTEX_LOCKER(mutexLocker, _lock);
+    
+      if (ADB_UNLIKELY(_lastValue >= UINT64_MAX - 1ULL)) {
+        // oops, out of keys!
+        return 0;
+      }
+
+      if (tick <= _lastValue) {
+        tick = ++_lastValue;
+      } else {
+        _lastValue = tick;
+      }
+    }
+
+    return tick;
   }
+
+  /// @brief generate a key value (internal)
+  void track(uint64_t value) override {
+    MUTEX_LOCKER(mutexLocker, _lock);
+
+    if (value > _lastValue) {
+      // and update our last value
+      _lastValue = value;
+    }
+  }
+ 
+ private:
+  mutable arangodb::Mutex _lock;
+
+  uint64_t _lastValue;
 };
 
 /// @brief padded key generator for a coordinator
+/// please note that coordinator-based key generators are frequently
+/// created and discarded, so ctor & dtor need to be very efficient.
+/// additionally, do not put any state into this object, as for the
+/// same logical collection the ClusterInfo may create many different 
+/// temporary LogicalCollection objects one after the other, which
+/// will also discard the collection's particular KeyGenerator object!
 class PaddedKeyGeneratorCluster final : public PaddedKeyGenerator {
  public:
   /// @brief create the generator
   explicit PaddedKeyGeneratorCluster(bool allowUserKeys)
-    : PaddedKeyGenerator(allowUserKeys) {}
+    : PaddedKeyGenerator(allowUserKeys) {
+    TRI_ASSERT(ServerState::instance()->isCoordinator());
+  }
 
  private:
-  /// @brief generate a key
+  /// @brief generate a key value (internal)
   uint64_t generateValue() override {
     ClusterInfo* ci = ClusterInfo::instance();
     return ci->uniqid();
   }
+
+  /// @brief generate a key value (internal)
+  void track(uint64_t /* value */) override {}
 };
 
 /// @brief auto-increment key generator - not usable in cluster

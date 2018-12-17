@@ -99,6 +99,7 @@ bool createLink(
   ).ok();
 }
 
+template<typename ViewType>
 bool dropLink(
     arangodb::LogicalCollection& collection,
     arangodb::iresearch::IResearchLink const& link
@@ -107,9 +108,10 @@ bool dropLink(
   return collection.dropIndex(link.id());
 }
 
-bool dropLink(
+template<>
+bool dropLink<arangodb::iresearch::IResearchViewCoordinator>(
     arangodb::LogicalCollection& collection,
-    arangodb::iresearch::IResearchLinkCoordinator const& link
+    arangodb::iresearch::IResearchLink const& link
 ) {
   arangodb::velocypack::Builder builder;
 
@@ -123,7 +125,7 @@ bool dropLink(
   return arangodb::methods::Indexes::drop(&collection, builder.slice()).ok();
 }
 
-template<typename ViewType, typename LinkType>
+template<typename ViewType>
 arangodb::Result modifyLinks(
   std::unordered_set<TRI_voc_cid_t>& modified,
   TRI_vocbase_t& vocbase,
@@ -141,7 +143,7 @@ arangodb::Result modifyLinks(
   struct State {
     std::shared_ptr<arangodb::LogicalCollection> _collection;
     size_t _collectionsToLockOffset; // std::numeric_limits<size_t>::max() == removal only
-    std::shared_ptr<LinkType> _link;
+    std::shared_ptr<arangodb::iresearch::IResearchLink> _link;
     size_t _linkDefinitionsOffset;
     bool _stale = false; // request came from the stale list
     bool _valid = true;
@@ -265,7 +267,10 @@ arangodb::Result modifyLinks(
         );
       }
 
-      state._link = LinkType::find(*(state._collection), view);
+      state._link = arangodb::iresearch::IResearchLinkHelper::find(
+        *(state._collection),
+        view
+      );
 
       // remove modification state if removal of non-existant link
       if (!state._link // links currently does not exist
@@ -275,7 +280,7 @@ arangodb::Result modifyLinks(
             << "found link for collection '"
             << state._collection->name() << "' - slated for removal";
 
-        view.drop(state._collection->id()); // drop any stale data for the specified collection
+        view.unlink(state._collection->id()); // drop any stale data for the specified collection
         itr = linkModifications.erase(itr);
 
         continue;
@@ -377,7 +382,7 @@ arangodb::Result modifyLinks(
     if (state._link) { // link removal or recreate request
       LOG_TOPIC(DEBUG, arangodb::iresearch::TOPIC)
           << "removed link '" << state._link->id() << "'";
-      state._valid = dropLink(*(state._collection), *(state._link));
+      state._valid = dropLink<ViewType>(*(state._collection), *(state._link));
       modified.emplace(state._collection->id());
     }
   }
@@ -481,6 +486,49 @@ namespace iresearch {
   return lhsMeta.init(lhs, errorField)
          && rhsMeta.init(rhs, errorField)
          && lhsMeta == rhsMeta;
+}
+
+/*static*/ std::shared_ptr<IResearchLink> IResearchLinkHelper::find(
+    LogicalCollection const& collection,
+    TRI_idx_iid_t id
+) {
+  auto index = collection.lookupIndex(id);
+
+  if (!index || arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type()) {
+    return nullptr; // not an IResearchLink
+  }
+
+  // TODO FIXME find a better way to retrieve an IResearch Link
+  // cannot use static_cast/reinterpret_cast since Index is not related to IResearchLink
+  auto link = std::dynamic_pointer_cast<IResearchLink>(index);
+
+  if (link && link->id() == id) {
+    return link; // found required link
+  }
+
+  return nullptr;
+}
+
+/*static*/ std::shared_ptr<IResearchLink> IResearchLinkHelper::find(
+    LogicalCollection const& collection,
+    LogicalView const& view
+) {
+  for (auto& index: collection.getIndexes()) {
+    if (!index
+        || arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type()) {
+      continue; // not an IResearchLink
+    }
+
+    // TODO FIXME find a better way to retrieve an iResearch Link
+    // cannot use static_cast/reinterpret_cast since Index is not related to IResearchLink
+    auto link = std::dynamic_pointer_cast<IResearchLink>(index);
+
+    if (link && *link == view) {
+      return link; // found required link
+    }
+  }
+
+  return nullptr;
 }
 
 /*static*/ arangodb::Result IResearchLinkHelper::normalize(
@@ -591,6 +639,28 @@ namespace iresearch {
   return arangodb::Result();
 }
 
+/*static*/ bool IResearchLinkHelper::visit(
+  arangodb::LogicalCollection const& collection,
+  std::function<bool(IResearchLink& link)> const& visitor
+) {
+  for (auto& index: collection.getIndexes()) {
+    if (!index
+        || arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type()) {
+      continue; // not an IResearchLink
+    }
+
+    // TODO FIXME find a better way to retrieve an iResearch Link
+    // cannot use static_cast/reinterpret_cast since Index is not related to IResearchLink
+    auto link = std::dynamic_pointer_cast<IResearchLink>(index);
+
+    if (link && !visitor(*link)) {
+      return false; // abort requested
+    }
+  }
+
+  return true;
+}
+
 /*static*/ arangodb::Result IResearchLinkHelper::updateLinks(
     std::unordered_set<TRI_voc_cid_t>& modified,
     TRI_vocbase_t& vocbase,
@@ -602,7 +672,7 @@ namespace iresearch {
       << "beginning IResearchLinkHelper::updateLinks";
   try {
     if (arangodb::ServerState::instance()->isCoordinator()) {
-      return modifyLinks<IResearchViewCoordinator, IResearchLinkCoordinator>(
+      return modifyLinks<IResearchViewCoordinator>(
         modified,
         vocbase,
         LogicalView::cast<IResearchViewCoordinator>(view),
@@ -615,7 +685,7 @@ namespace iresearch {
 
     // dbserver has both IResearchViewDBServer and IResearchView instances
     if (dbServerView) {
-      return modifyLinks<IResearchViewDBServer, IResearchLink>(
+      return modifyLinks<IResearchViewDBServer>(
         modified,
         vocbase,
         *dbServerView,
@@ -624,7 +694,7 @@ namespace iresearch {
       );
     }
 
-    return modifyLinks<IResearchView, IResearchLink>(
+    return modifyLinks<IResearchView>(
       modified,
       vocbase,
       LogicalView::cast<IResearchView>(view),

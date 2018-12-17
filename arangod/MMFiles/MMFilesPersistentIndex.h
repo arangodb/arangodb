@@ -161,17 +161,23 @@ class MMFilesPersistentIndex final : public MMFilesPathBasedIndex {
     return value;
   }
 
-  Result insert(transaction::Methods*, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const&,
-                OperationMode mode) override;
+  Result insert(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+  ) override;
 
-  Result remove(transaction::Methods*, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const&,
-                OperationMode mode) override;
+  Result remove(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+  ) override;
 
   void unload() override {}
 
-  int drop() override;
+  Result drop() override;
 
   /// @brief attempts to locate an entry in the index
   ///
@@ -199,6 +205,7 @@ class MMFilesPersistentIndex final : public MMFilesPathBasedIndex {
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
 };
+
 }
 
 #endif
