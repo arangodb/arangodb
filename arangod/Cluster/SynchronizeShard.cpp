@@ -811,7 +811,7 @@ bool SynchronizeShard::first() {
           "synchronizeOneShard: synchronization failed for shard ");
         errorMessage += shard + ": shutdown in progress, giving up";
         LOG_TOPIC(INFO, Logger::MAINTENANCE) << errorMessage;
-        _result.reset(TRI_ERROR_INTERNAL, errorMessage);
+        _result.reset(TRI_ERROR_SHUTTING_DOWN, errorMessage);
         return false;
       }
 
@@ -952,7 +952,7 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
     if (isStopping()) {
       std::string errorMessage = 
         "synchronizeOneShard: startReadLockOnLeader (soft): shutting down";
-      return ResultT<TRI_voc_tick_t>::error(TRI_ERROR_INTERNAL, errorMessage);
+      return ResultT<TRI_voc_tick_t>::error(TRI_ERROR_SHUTTING_DOWN, errorMessage);
     }
     
     didTimeout = false;
