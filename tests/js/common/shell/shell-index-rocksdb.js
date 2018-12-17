@@ -311,6 +311,72 @@ function backgroundIndexSuite() {
       }
     },
 
+    testUpdateParallel: function () {
+      let c = require("internal").db._collection(cn);
+      // first lets add some initial documents
+      let x = 0;
+      while(x < 100000) {
+        let docs = []; 
+        for(let i = 0; i < 1000; i++) {
+          docs.push({_key: "test_" + x, value: x++});
+        } 
+        c.save(docs);
+      }
+      
+      assertEqual(c.count(), 100000);
+
+      // lets update all via tasks
+      for (let i = 0; i < 10; ++i) {
+        let command = `const c = require("internal").db._collection("${cn}"); 
+                       if (!c) {
+                         throw new Error('could not find collection');
+                       }
+                       let x = ${i * 10000}; 
+                       while(x < ${(i+1) * 10000}) {
+                         let updated = false;
+                         const current = x++;
+                         const key = "test_" + current
+                         const doc = {value: current + 100000};
+                         while (!updated) {
+                           try {
+                             const res = c.update(key, doc);
+                             updated = true;
+                           } catch (err) {}
+                         }
+                       }`;
+        tasks.register({ name: "UnitTestsIndexUpdate" + i, command: command });
+      }
+
+      // wait for insertion tasks to complete
+      waitForTasks();
+      
+      // create the index on the main thread
+      c.ensureIndex({type: 'skiplist', fields: ['value'], inBackground: true });
+
+      // sanity checks
+      assertEqual(c.count(), 100000);
+      // check for new entries via index
+      const newCursor = db._query("FOR doc IN @@coll FILTER doc.value >= @val RETURN 1", 
+                                  {'@coll': cn, 'val': 100000}, {count:true});
+      assertEqual(newCursor.count(), 100000);
+      // check for old entries via index
+      const oldCursor = db._query("FOR doc IN @@coll FILTER doc.value < @val RETURN 1", 
+                                  {'@coll': cn, 'val': 100000}, {count:true});
+      assertEqual(oldCursor.count(), 0);
+
+      let indexes = c.getIndexes(true);
+      for (let i of indexes) {
+        switch (i.type) {
+          case 'primary':
+            break;
+          case 'skiplist':
+            break;
+          default:
+            fail();
+        }
+      }
+    },
+
   };
 }
 
