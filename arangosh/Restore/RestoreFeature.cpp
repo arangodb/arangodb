@@ -385,9 +385,13 @@ arangodb::Result recreateCollection(
   result = ::sendRestoreCollection(httpClient, jobData.options,
                                    jobData.collection, cname);
 
-  if (result.fail() && jobData.options.force) {
-    LOG_TOPIC(ERR, Logger::RESTORE) << result.errorMessage();
-    result.reset();
+  if (result.fail()) {
+    if (jobData.options.force) {
+      LOG_TOPIC(WARN, Logger::RESTORE) << "Error while creating " << collectionType << " collection '" << cname << "': " << result.errorMessage();
+      result.reset();
+    } else {
+      LOG_TOPIC(ERR, Logger::RESTORE) << "Error while creating " << collectionType << " collection '" << cname << "': " << result.errorMessage();
+    }
   }
   return result;
 }
@@ -406,20 +410,25 @@ arangodb::Result restoreIndexes(
     // we actually have indexes
     if (jobData.options.progress) {
       std::string const cname =
-          arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name",
-                                                             "");
+          arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name", "");
       LOG_TOPIC(INFO, Logger::RESTORE)
           << "# Creating indexes for collection '" << cname << "'...";
     }
 
     result =
         ::sendRestoreIndexes(httpClient, jobData.options, jobData.collection);
+  
+    if (result.fail()) {
+      std::string const cname = arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name", "");
+      if (jobData.options.force) {
+        LOG_TOPIC(WARN, Logger::RESTORE) << "Error while creating indexes for collection '" << cname << "': " << result.errorMessage();
+        result.reset();
+      } else {
+        LOG_TOPIC(ERR, Logger::RESTORE) << "Error while creating indexes for collection '" << cname << "': " << result.errorMessage();
+      }
+    }
   }
 
-  if (result.fail() && jobData.options.force) {
-    LOG_TOPIC(ERR, Logger::RESTORE) << result.errorMessage();
-    result.reset();
-  }
   return result;
 }
 
@@ -500,6 +509,7 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
         length = found - buffer.begin();  // found a \n somewhere; break at line
       }
 
+
       jobData.stats.totalBatches++;
       result = ::sendRestoreData(httpClient, jobData.options, cname,
                                  buffer.begin(), length);
@@ -507,9 +517,11 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
 
       if (result.fail()) {
         if (jobData.options.force) {
-          LOG_TOPIC(ERR, Logger::RESTORE) << result.errorMessage();
+          LOG_TOPIC(WARN, Logger::RESTORE) << "Error while restoring data into collection '" << cname << "': " << result.errorMessage();
           result.reset();
           continue;
+        } else {
+          LOG_TOPIC(ERR, Logger::RESTORE) << "Error while restoring data into collection '" << cname << "': " << result.errorMessage();
         }
         return result;
       }
@@ -792,7 +804,7 @@ arangodb::Result processInputDirectory(
       // if we get here we need to trigger foxx heal
       Result res = ::triggerFoxxHeal(httpClient);
       if (res.fail()) {
-        LOG_TOPIC(WARN, Logger::RESTORE) << "Reloading of Foxx failed. In the cluster Foxx Services will be available eventually, On SingleServers send a POST to '/_api/foxx/_local/heal' on the current database, with an empty body.";
+        LOG_TOPIC(WARN, Logger::RESTORE) << "Reloading of Foxx services failed. In the cluster Foxx services will be available eventually, On single servers send a POST to '/_api/foxx/_local/heal' on the current database, with an empty body.";
       }
     }
 
@@ -1080,7 +1092,7 @@ void RestoreFeature::start() {
   std::tie(result, _options.clusterMode) =
       _clientManager.getArangoIsCluster(*httpClient);
   if (result.fail()) {
-    LOG_TOPIC(ERR, arangodb::Logger::RESTORE) << result.errorMessage();
+    LOG_TOPIC(FATAL, arangodb::Logger::RESTORE) << "Error: could not detect ArangoDB instance type: " << result.errorMessage();
     _exitCode = EXIT_FAILURE;
     return;
   }
@@ -1088,7 +1100,7 @@ void RestoreFeature::start() {
   std::tie(result, _options.indexesFirst) =
       _clientManager.getArangoIsUsingEngine(*httpClient, "rocksdb");
   if (result.fail()) {
-    LOG_TOPIC(ERR, arangodb::Logger::RESTORE) << result.errorMessage();
+    LOG_TOPIC(FATAL, arangodb::Logger::RESTORE) << "Error while trying to determine server storage engine: " << result.errorMessage();
     _exitCode = EXIT_FAILURE;
     return;
   }
@@ -1108,9 +1120,12 @@ void RestoreFeature::start() {
   try {
     result = ::processInputDirectory(*httpClient, _clientTaskQueue, *this,
                                      _options, *_directory, _stats);
+  } catch (basics::Exception const& ex) {
+    LOG_TOPIC(ERR, arangodb::Logger::RESTORE) << "caught exception: " << ex.what();
+    result = {ex.code(), ex.what()};
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::RESTORE) << "caught exception: " << ex.what();
-    result = {TRI_ERROR_INTERNAL};
+    result = {TRI_ERROR_INTERNAL, ex.what()};
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::RESTORE)
         << "caught unknown exception";

@@ -28,6 +28,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include <thread>
+#include <unordered_set>
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
@@ -45,6 +46,36 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
+
+std::unordered_set< void * > gActiveStrandMap;
+Mutex gActiveStrandMapMutex;
+
+asio_ns::io_context::strand* Scheduler::newStrand() {
+  asio_ns::io_context::strand * newbie(nullptr);
+  int count(139);
+  std::unordered_set<void *>::iterator it;
+
+  MUTEX_LOCKER(locker, gActiveStrandMapMutex);
+  do {
+    delete newbie;
+    newbie=new asio_ns::io_context::strand(*_ioContext);
+
+    it=gActiveStrandMap.find((void*)(newbie->impl_));
+  } while(gActiveStrandMap.end()!=it && --count);
+
+  if (gActiveStrandMap.end()==it) {
+    gActiveStrandMap.insert((void*)(newbie->impl_));
+  }
+
+  return newbie;
+}
+
+void Scheduler::releaseStrand(asio_ns::io_context::strand * strandDone) {
+  MUTEX_LOCKER(locker, gActiveStrandMapMutex);
+  gActiveStrandMap.erase((void*)(strandDone->impl_));
+}
+
+
 
 namespace {
   // controls how fast excess threads to io_context get pruned.

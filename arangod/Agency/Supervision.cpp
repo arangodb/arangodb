@@ -88,8 +88,8 @@ struct HealthRecord {
         if (node.has("SyncTime")) {
           syncTime = node.hasAsString("SyncTime").first;
         }
-        if (node.has("LastAcked")) {
-          lastAcked = node.hasAsString("LastAcked").first;
+        if (node.has("LastAckedTime")) {
+          lastAcked = node.hasAsString("LastAckedTime").first;
         }
         if (node.has("AdvertisedEndpoint")) {
           version = 3;

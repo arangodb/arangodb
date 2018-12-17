@@ -49,7 +49,7 @@ Upgrade Paths
     - Upgrading from 3.2 to 3.3 is supported.
     - Upgrading from 3.2 to 3.4 directly is not officially supported: the officially
       supported upgrade path in this case is 3.2 to 3.3, and then 3.3 to 3.4.	  
-  - **Important:** before upgrading between two consecutive GA releases it is recommended
+  - **Important:** before upgrading between two consecutive GA releases it is highly recommended
     to first upgrade the previous GA release to its latest hot-fix.
     - Examples: 
       - To upgrade from 3.2 to 3.3, first upgrade your 3.2 installation to 3.2.latest.
@@ -61,5 +61,6 @@ In addition to the paragraph above, rolling upgrades via the tool _Starter_ are 
 as documented in the _Section_ [Upgrading Starter Deployments](../Starter/README.md),
 with the following limitations:
 
+- Rolling upgrades between 3.3 and 3.4 are not supported before 3.3.20 and 3.4.0.
 - Rolling upgrades between 3.2 and 3.3 are not supported before 3.2.15 and 3.3.9.
   

@@ -329,7 +329,7 @@ void ClusterComm::cleanup() {
 
 void ClusterComm::startBackgroundThreads() {
 
-  for(unsigned loop=0; loop<(TRI_numberProcessors()/8+1); ++loop) {
+  for (unsigned loop = 0; loop<(TRI_numberProcessors() / 8 + 1); ++loop) {
     ClusterCommThread * thread = new ClusterCommThread();
 
     if (thread->start()) {

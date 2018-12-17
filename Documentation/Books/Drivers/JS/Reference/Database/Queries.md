@@ -15,16 +15,16 @@ Performs a database query using the given _query_ and _bindVars_, then returns a
 
 **Arguments**
 
-* **query**: `string`
+- **query**: `string`
 
   An AQL query string or a [query builder](https://npmjs.org/package/aqb)
   instance.
 
-* **bindVars**: `Object` (optional)
+- **bindVars**: `Object` (optional)
 
   An object defining the variables to bind the query to.
 
-* **opts**: `Object` (optional)
+- **opts**: `Object` (optional)
 
   Additional parameter object that will be passed to the query API.
   Possible keys are _count_ and _options_ (explained below)
@@ -36,6 +36,17 @@ Possible key options in _opts.options_ include: _failOnWarning_, _cache_,
 profile or _skipInaccessibleCollections_.
 For a complete list of query settings please reference the
 [setting options](../../../..//AQL/Invocation/WithArangosh.html#setting-options).
+
+Additionally if _opts.allowDirtyRead_ is set to `true`, the request will
+explicitly permit ArangoDB to return a potentially dirty or stale result and
+arangojs will load balance the request without distinguishing between leaders
+and followers. Note that dirty reads are only supported for read-only queries
+(e.g. not using `INSERT`, `UPDATE`, `REPLACE` or `REMOVE` expressions).
+
+{% hint 'info' %}
+Dirty reads are only available when targeting ArangoDB 3.4 or later,
+see [Compatibility](../../GettingStarted/README.md#compatibility).
+{% endhint %}
 
 If _query_ is an object with _query_ and _bindVars_ properties, those will be
 used as the values of the respective arguments instead.
@@ -58,11 +69,9 @@ const cursor = await db.query(aql`
 
 // Old-school JS with explicit bindVars:
 db.query(
-  'FOR u IN _users ' +
-  'FILTER u.authData.active == @active ' +
-  'RETURN u.user',
-  {active: true}
-).then(function (cursor) {
+  "FOR u IN _users FILTER u.authData.active == @active RETURN u.user",
+  { active: true }
+).then(function(cursor) {
   // cursor is a cursor for the query result
 });
 ```
@@ -77,9 +86,8 @@ arguments to bind variables.
 
 **Note**: If you want to pass a collection name as a bind variable, you need to
 pass a _Collection_ instance (e.g. what you get by passing the collection name
-to `db.collection`) instead. If you see the error `"array expected as operand to
-FOR loop"`, you're likely passing a collection name instead of a collection
-instance.
+to `db.collection`) instead. If you see the error `"array expected as operand to FOR loop"`,
+you're likely passing a collection name instead of a collection instance.
 
 **Examples**
 

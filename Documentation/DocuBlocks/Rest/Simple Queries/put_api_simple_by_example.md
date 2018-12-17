@@ -41,7 +41,7 @@ not set, a server-controlled default value will be used. A *batchSize* value of
 
 This will find all documents matching a given example.
 
-Returns a cursor containing the result, see [Http Cursor](../AqlQueryCursor/README.md) for details.
+Returns a cursor containing the result, see [HTTP Cursor](../AqlQueryCursor/README.md) for details.
 
 @RESTRETURNCODES
 

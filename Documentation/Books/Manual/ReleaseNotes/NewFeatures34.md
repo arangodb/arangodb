@@ -1,5 +1,5 @@
-Features and Improvements
-=========================
+Features and Improvements in ArangoDB 3.4
+=========================================
 
 The following list shows in detail which features have been added or improved in
 ArangoDB 3.4. ArangoDB 3.4 also contains several bug fixes that are not listed
@@ -1032,6 +1032,16 @@ library by default in recent versions. ArangoDB is following this step.
 Clients that use SSLv2 with ArangoDB should change the protocol from SSLv2 to TLSv12
 if possible, by adjusting the value of the `--ssl.protocol` startup option for the
 `arangod` server and all client tools.
+
+
+Distribution Packages
+---------------------
+
+In addition to the OS-specific packages (eg. _rpm_ for Red Hat / CentOS, _deb_ for
+Debian, NSIS installer for Windows etc.) starting from 3.4.0 new `tar.gz` archive packages
+are available for Linux and Mac. They correspond to the `.zip` packages for Windows,
+which can be used for portable installations, and to easily run different ArangoDB
+versions on the same machine (e.g. for testing).
 
 
 Client tools

@@ -73,6 +73,22 @@
     "section" : "",
     "type" : "boolean"
   },
+  "encryption.key-generator" : {
+    "default" : "",
+    "description" : "program providing the encryption key on stdout. If set, encryption will be enabled.",
+    "enterpriseOnly" : true,
+    "hidden" : false,
+    "section" : "encryption",
+    "type" : "string"
+  },
+  "encryption.keyfile" : {
+    "default" : "",
+    "description" : "file containing the encryption key. If set, encryption will be enabled.",
+    "enterpriseOnly" : true,
+    "hidden" : false,
+    "section" : "encryption",
+    "type" : "string"
+  },
   "force" : {
     "default" : false,
     "description" : "continue dumping even in the face of some server-side errors",
@@ -263,7 +279,7 @@
     "type" : "boolean"
   },
   "output-directory" : {
-    "default" : "/home/fceller/ArangoDB-3.4/dump",
+    "default" : "/oskar/work/ArangoDB/dump",
     "description" : "output directory",
     "enterpriseOnly" : false,
     "hidden" : false,

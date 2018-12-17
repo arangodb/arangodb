@@ -51,7 +51,7 @@ class Socket {
   Socket(Socket const& that) = delete;
   Socket(Socket&& that) = delete;
 
-  virtual ~Socket() {}
+  virtual ~Socket() {_scheduler->releaseStrand(_strand.get());}
 
   bool isEncrypted() const { return _encrypted; }
 
