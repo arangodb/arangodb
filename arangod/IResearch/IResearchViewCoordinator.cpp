@@ -86,44 +86,12 @@ struct IResearchViewCoordinator::ViewFactory: public arangodb::ViewFactory {
 
     arangodb::LogicalView::ptr impl;
 
-    res = instantiate(impl, vocbase, definition, 0);
-
-    if (!res.ok()) {
-      return res;
-    }
-
-    if (!impl) {
-      return arangodb::Result(
-        TRI_ERROR_INTERNAL,
-        std::string("failure during instantiation while creating arangosearch View in database '") + vocbase.name() + "'"
-      );
-    }
-
-    arangodb::velocypack::Builder builder;
-
-    builder.openObject();
-    res = impl->properties(builder, true, true); // include links so that Agency will always have a full definition
-
-    if (!res.ok()) {
-      return res;
-    }
-
-    builder.close();
-
-    std::string error;
-    auto resNum = ci->createViewCoordinator(
-      vocbase.name(), std::to_string(impl->id()), builder.slice(), error
+    res = arangodb::LogicalViewHelperClusterInfo::construct(
+      impl, vocbase, definition
     );
 
-    if (TRI_ERROR_NO_ERROR != resNum) {
-      if (error.empty()) {
-        error = TRI_errno_string(resNum);
-      }
-
-      return arangodb::Result(
-        resNum,
-        std::string("failure during ClusterInfo persistance of created view while creating arangosearch View in database '") + vocbase.name() + "', error: " + error
-      );
+    if (!res.ok()) {
+      return res;
     }
 
     // create links on a best-effor basis
@@ -188,10 +156,29 @@ struct IResearchViewCoordinator::ViewFactory: public arangodb::ViewFactory {
   }
 };
 
-arangodb::Result IResearchViewCoordinator::appendVelocyPackDetailed(
-  arangodb::velocypack::Builder& builder,
-  bool forPersistence
+IResearchViewCoordinator::~IResearchViewCoordinator() {
+  arangodb::LogicalViewHelperClusterInfo::destruct(*this); // cleanup of the storage engine
+}
+
+arangodb::Result IResearchViewCoordinator::appendVelocyPackImpl(
+    arangodb::velocypack::Builder& builder,
+    bool detailed,
+    bool forPersistence
 ) const {
+  if (forPersistence) {
+    auto res = arangodb::LogicalViewHelperClusterInfo::properties(
+      builder, *this
+    );
+
+    if (!res.ok()) {
+      return res;
+    }
+  }
+
+  if (!detailed) {
+    return arangodb::Result(); // nothing more to output
+  }
+
   if (!builder.isOpenObject()) {
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
@@ -328,6 +315,12 @@ bool IResearchViewCoordinator::emplace(
   return factory;
 }
 
+arangodb::Result IResearchViewCoordinator::renameImpl(
+    std::string const& oldName
+) {
+  return arangodb::LogicalViewHelperClusterInfo::rename(*this, oldName);
+}
+
 arangodb::Result IResearchViewCoordinator::unlink(TRI_voc_cid_t cid) noexcept {
   return arangodb::Result(); // NOOP since no internal store
 }
@@ -336,7 +329,7 @@ IResearchViewCoordinator::IResearchViewCoordinator(
     TRI_vocbase_t& vocbase,
     velocypack::Slice info,
     uint64_t planVersion
-) : LogicalViewClusterInfo(vocbase, info, planVersion) {
+) : LogicalView(vocbase, info, planVersion) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 }
 
@@ -416,21 +409,13 @@ arangodb::Result IResearchViewCoordinator::properties(
 
     // only trigger persisting of properties if they have changed
     if (_meta != meta) {
-      arangodb::velocypack::Builder builder;
+      auto oldMeta = std::move(_meta);
 
-      builder.openObject();
-      meta.json(builder);
+      _meta = std::move(meta); // update meta for persistence
 
-      auto result = properties(builder, false, true);
+      auto result = arangodb::LogicalViewHelperClusterInfo::properties(*this);
 
-      if (!result.ok()) {
-        return result;
-      }
-
-      builder.close();
-      result = engine->setViewPropertiesCoordinator(
-        vocbase().name(), std::to_string(id()), builder.slice()
-      );
+      _meta = std::move(oldMeta); // restore meta
 
       if (!result.ok()) {
         return result;
@@ -551,7 +536,7 @@ Result IResearchViewCoordinator::dropImpl() {
     }
   }
 
-  return {};
+  return arangodb::LogicalViewHelperClusterInfo::drop(*this);
 }
 
 } // iresearch
