@@ -55,13 +55,17 @@ function proxyLocal (method, url, qs, body, headers = {}) {
   if (body) {
     headers['content-length'] = body.length;
   }
-  const res = request({
+  const req = {
     method,
     url,
     qs,
     headers,
     body
-  });
+  };
+  if (require('internal').db._version(true)['maintainer-mode'] === 'true') {
+    req.timeout = 300;
+  }
+  const res = request(req);
   if (res.json && res.json.errorNum) {
     throw new ArangoError(res.json);
   }
