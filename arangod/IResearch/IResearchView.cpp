@@ -264,6 +264,7 @@ struct IResearchView::ViewFactory: public arangodb::ViewFactory {
 
     // NOTE: for single-server must have full list of collections to lock
     //       for cluster the shards to lock come from coordinator and are not in the definition
+    if (ServerState::instance()->isSingleServer()) {
     for (auto cid: metaState._collections) {
       auto collection = vocbase.lookupCollection(cid); // always look up in vocbase (single server or cluster per-shard collection)
       auto link =
@@ -275,6 +276,7 @@ struct IResearchView::ViewFactory: public arangodb::ViewFactory {
     view = impl;
 
     return arangodb::Result();
+    }
   }
 };
 
