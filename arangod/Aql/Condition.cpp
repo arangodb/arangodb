@@ -1489,7 +1489,7 @@ AstNode* Condition::transformNodePostorder(AstNode* node) {
 
     bool distributeOverChildren = false;
     bool mustCollapse = false;
-    size_t const n = node->numMembers();
+    size_t n = node->numMembers();
 
     for (size_t i = 0; i < n; ++i) {
       // process subnodes first
@@ -1505,6 +1505,8 @@ AstNode* Condition::transformNodePostorder(AstNode* node) {
 
     if (mustCollapse) {
       node = collapse(node);
+      // collapsing may change n
+      n = node->numMembers();
     }
 
     if (distributeOverChildren) {
@@ -1518,6 +1520,7 @@ AstNode* Condition::transformNodePostorder(AstNode* node) {
       //   AND        AND
       //  a   c      b   c
       //
+    
       auto newOperator = _ast->createNode(NODE_TYPE_OPERATOR_NARY_OR);
 
       std::vector<::PermutationState> clauses;
@@ -1606,8 +1609,6 @@ AstNode* Condition::transformNodePostorder(AstNode* node) {
     if (mustCollapse) {
       node = collapse(node);
     }
-
-    return node;
   }
 
   // we only need to handle nary and/or, the rest was handled in preorder

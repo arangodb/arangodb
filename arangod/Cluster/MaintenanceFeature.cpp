@@ -76,25 +76,27 @@ void MaintenanceFeature::init() {
 void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "Server features");
 
-  options->addHiddenOption(
+  options->addOption(
     "--server.maintenance-threads",
     "maximum number of threads available for maintenance actions",
-    new UInt32Parameter(&_maintenanceThreadsMax));
+    new UInt32Parameter(&_maintenanceThreadsMax),
+    arangodb::options::makeFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Dynamic));
 
-  options->addHiddenOption(
+  options->addOption(
     "--server.maintenance-actions-block",
     "minimum number of seconds finished Actions block duplicates",
-    new Int32Parameter(&_secondsActionsBlock));
+    new Int32Parameter(&_secondsActionsBlock),
+    arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption(
+  options->addOption(
     "--server.maintenance-actions-linger",
     "minimum number of seconds finished Actions remain in deque",
-    new Int32Parameter(&_secondsActionsLinger));
+    new Int32Parameter(&_secondsActionsLinger),
+    arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
 } // MaintenanceFeature::collectOptions
 
 void MaintenanceFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-
   if (_maintenanceThreadsMax < minThreadLimit) {
     LOG_TOPIC(WARN, Logger::MAINTENANCE)
       << "Need at least" << minThreadLimit << "maintenance-threads";
@@ -749,6 +751,32 @@ arangodb::Result MaintenanceFeature::copyAllErrors(errors_t& errors) const {
     errors.databases = _dbErrors;
   }
   return Result();
+}
+
+
+uint64_t MaintenanceFeature::shardVersion (std::string const& shname) const {
+  MUTEX_LOCKER(guard, _versionLock);
+  auto const it = _shardVersion.find(shname);
+  LOG_TOPIC(TRACE, Logger::MAINTENANCE)
+    << "getting shard version for '"  << shname << "' from " << _shardVersion;
+  return (it != _shardVersion.end()) ? it->second : 0;
+}
+
+
+uint64_t MaintenanceFeature::incShardVersion (std::string const& shname) {
+  MUTEX_LOCKER(guard, _versionLock);
+  auto ret = ++_shardVersion[shname];
+  LOG_TOPIC(TRACE, Logger::MAINTENANCE)
+    << "incremented shard version for " << shname << " to " << ret;
+  return ret;
+}
+
+void MaintenanceFeature::delShardVersion (std::string const& shname) {
+  MUTEX_LOCKER(guard, _versionLock);
+  auto const it = _shardVersion.find(shname);
+  if (it != _shardVersion.end()) {
+    _shardVersion.erase(it);
+  }
 }
 
 

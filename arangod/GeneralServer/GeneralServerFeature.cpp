@@ -115,10 +115,6 @@ GeneralServerFeature::GeneralServerFeature(
 
   startsAfter("Endpoint");
   startsAfter("Upgrade");
-
-  // TODO The following features are too high
-  // startsAfter("Agency"); Only need to know if it is enabled during start that is clear before
-  // startsAfter("FoxxQueues");
 }
 
 void GeneralServerFeature::collectOptions(
@@ -135,9 +131,10 @@ void GeneralServerFeature::collectOptions(
 
   options->addSection("http", "HttpServer features");
 
-  options->addHiddenOption("--http.allow-method-override",
-                           "allow HTTP method override using special headers",
-                           new BooleanParameter(&_allowMethodOverride));
+  options->addOption("--http.allow-method-override",
+                     "allow HTTP method override using special headers",
+                     new BooleanParameter(&_allowMethodOverride),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--http.keep-alive-timeout",
                      "keep-alive timeout in seconds",

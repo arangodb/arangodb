@@ -330,8 +330,16 @@ void TransactionState::setLockedShards(std::unordered_set<std::string> const& lo
   _lockedShards = lockedShards;
 }
    
-bool TransactionState::isExclusiveTransactionOnSingleCollection() const {
-  return ((numCollections() == 1) && (_collections[0]->accessType() == AccessMode::Type::EXCLUSIVE));
+bool TransactionState::isOnlyExclusiveTransaction() const {
+  if (!AccessMode::isWriteOrExclusive(_type)) {
+    return false;
+  }
+  for (TransactionCollection* coll : _collections) {
+    if (AccessMode::isWrite(coll->accessType())) {
+      return false;
+    }
+  }
+  return true;
 }
 
 int TransactionState::checkCollectionPermission(TRI_voc_cid_t cid,

@@ -457,6 +457,17 @@ bool IResearchViewBlock::resetIterator() {
 
   if (_scr) {
     _scrVal = _scr->value();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto const numScores = static_cast<size_t>(
+      std::distance(_scrVal.begin(), _scrVal.end())
+    )/sizeof(float_t);
+
+    auto const& viewNode = *ExecutionNode::castTo<IResearchViewNode const*>(
+      getPlanNode()
+    );
+
+    TRI_ASSERT(numScores == viewNode.sortCondition().size());
+#endif
   } else {
     _scr = &irs::score::no_score();
     _scrVal = irs::bytes_ref::NIL;
@@ -468,10 +479,6 @@ bool IResearchViewBlock::resetIterator() {
 bool IResearchViewBlock::next(
     ReadContext& ctx,
     size_t limit) {
-  TRI_ASSERT(_filter);
-  auto const& viewNode = *ExecutionNode::castTo<IResearchViewNode const*>(getPlanNode());
-  auto const numSorts = viewNode.sortCondition().size();
-
   for (size_t count = _reader.size(); _readerOffset < count; ) {
     if (!_itr && !resetIterator()) {
       continue;
@@ -485,17 +492,18 @@ bool IResearchViewBlock::next(
       }
 
       // evaluate scores
-      TRI_ASSERT(!viewNode.sortCondition().empty());
       _scr->evaluate();
 
-      // copy scores, registerId's are sequential
-      auto scoreRegs = ctx.curRegs;
+      // in arangodb we assume all scorers return float_t
+      auto begin = reinterpret_cast<const float_t*>(_scrVal.begin());
+      auto end = reinterpret_cast<const float_t*>(_scrVal.end());
 
-      for (size_t i = 0; i < numSorts; ++i) {
+      // copy scores, registerId's are sequential
+      for (auto scoreRegs = ctx.curRegs; begin != end; ++begin) {
         ctx.res->setValue(
           ctx.pos,
           ++scoreRegs,
-          _order.to_string<AqlValue, std::char_traits<char>>(_scrVal.c_str(), i)
+          AqlValue(AqlValueHintDouble(double_t(*begin)))
         );
       }
 
@@ -561,6 +569,7 @@ IResearchViewUnorderedBlock::IResearchViewUnorderedBlock(
 }
 
 bool IResearchViewUnorderedBlock::resetIterator() {
+  TRI_ASSERT(_filter);
   TRI_ASSERT(!_itr);
 
   auto& segmentReader = _reader[_readerOffset];

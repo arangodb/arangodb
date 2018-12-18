@@ -3,9 +3,7 @@
 
 ## ArangoGraph.vertexCollection
 
-```
-ArangoGraph.vertexCollection(String name) : ArangoVertexCollection
-```
+`ArangoGraph.vertexCollection(String name) : ArangoVertexCollection`
 
 Returns a _ArangoVertexCollection_ instance for the given vertex collection name.
 
@@ -27,9 +25,7 @@ ArangoVertexCollection collection = graph.vertexCollection("some-vertex-collecti
 
 ## ArangoGraph.getVertexCollections
 
-```
-ArangoGraph.getVertexCollections() : Collection<String>
-```
+`ArangoGraph.getVertexCollections() : Collection<String>`
 
 Fetches all vertex collections from the graph and returns a list of collection names.
 
@@ -45,11 +41,10 @@ Collection<String> collections = graph.getVertexCollections();
 
 ## ArangoGraph.addVertexCollection
 
-```
-ArangoGraph.addVertexCollection(String name) : GraphEntity
-```
+`ArangoGraph.addVertexCollection(String name) : GraphEntity`
 
-Adds a vertex collection to the set of collections of the graph. If the collection does not exist, it will be created.
+Adds a vertex collection to the set of collections of the graph.
+If the collection does not exist, it will be created.
 
 **Arguments**
 

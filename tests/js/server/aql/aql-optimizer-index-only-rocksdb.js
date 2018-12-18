@@ -169,18 +169,15 @@ function optimizerIndexOnlyEdgeTestSuite () {
         [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" RETURN [ doc.c, doc.d ]`, ["c", "d"] ],
         [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" && doc.b == 1 RETURN doc.x`, ["b", "x"] ],
         [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" && doc.b == 1 RETURN CONCAT(doc._from, doc.u)`, ["_from", "b", "u"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" RETURN doc._to`, ["_to"] ],
         [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" SORT doc.x RETURN doc.x`, ["x"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" SORT doc._from RETURN doc._to`, ["_to"] ],
         [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" RETURN doc.b`, ["b"] ],
         [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" RETURN [ doc._to, doc.b ]`, ["_to", "b"] ],
         [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" RETURN [ doc.a, doc.b ]`, ["a", "b"] ],
         [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" RETURN [ doc.c, doc.d ]`, ["c", "d"] ],
         [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" && doc.b == 1 RETURN doc.x`, ["b", "x"] ],
         [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" && doc.b == 1 RETURN CONCAT(doc._to, doc.u)`, ["_to", "b", "u"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" SORT doc.x RETURN doc.x`, ["x"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" SORT doc._to RETURN doc._from`, ["_from"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" RETURN doc._from`, ["_from"] ]
+        [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" SORT doc.x RETURN doc.x`, ["x"] ]
+
       ];
     
       queries.forEach(function(query) { 
@@ -191,15 +188,23 @@ function optimizerIndexOnlyEdgeTestSuite () {
         assertFalse(nodes[0].indexCoversProjections);
       });
     },
-    
+
     testEdgeIndexFromCoveringProjection : function () {
-      let query = `FOR doc IN ${c.name()} FILTER doc._from == "test/123" RETURN doc._from`;
+      let queries = [
+        [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" RETURN doc._from`, ["_from"] ],
+        [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" SORT doc._from RETURN doc._to`, ["_to"] ],
+        [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" RETURN doc._to`, ["_to"] ],
+        [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" SORT doc._to RETURN doc._from`, ["_from"] ],
+        [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" RETURN doc._from`, ["_from"] ]
+      ];
      
-      let plan = AQL_EXPLAIN(query).plan;
-      let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
-      assertEqual(1, nodes.length);
-      assertEqual(["_from"], nodes[0].projections);
-      assertTrue(nodes[0].indexCoversProjections);
+      queries.forEach(function(query) { 
+        let plan = AQL_EXPLAIN(query[0]).plan;
+        let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
+        assertEqual(1, nodes.length);
+        assertEqual(query[1], nodes[0].projections);
+        assertTrue(nodes[0].indexCoversProjections);
+      });
     },
     
     testEdgeIndexFromCoveringInProjection : function () {

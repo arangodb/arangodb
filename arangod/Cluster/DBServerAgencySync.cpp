@@ -86,30 +86,39 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
       auto cols = vocbase->collections(false);
 
       for (auto const& collection : cols) {
-        collections.add(VPackValue(collection->name()));
-
-        VPackObjectBuilder col(&collections);
-
-        collection->properties(collections,true,false);
-
-        auto const& folls = collection->followers();
-        std::string const theLeader = folls->getLeader();
-
-        collections.add("theLeader", VPackValue(theLeader));
-
-        if (theLeader.empty()) {  // we are the leader ourselves
-          // In this case we report our in-sync followers here in the format
-          // of the agency: [ leader, follower1, follower2, ... ]
-          collections.add(VPackValue("servers"));
-
-          { VPackArrayBuilder guard(&collections);
-
-            collections.add(VPackValue(arangodb::ServerState::instance()->getId()));
-
-            std::shared_ptr<std::vector<ServerID> const> srvs = folls->get();
-
-            for (auto const& s : *srvs) {
-              collections.add(VPackValue(s));
+        if (!collection->system()) {
+          collections.add(VPackValue(collection->name()));
+          
+          VPackObjectBuilder col(&collections);
+          
+          collection->properties(collections,true,false);
+          
+          auto const& folls = collection->followers();
+          std::string const theLeader = folls->getLeader();
+          bool theLeaderTouched = folls->getLeaderTouched();
+          
+          // Note that whenever theLeader was set explicitly since the collection
+          // object was created, we believe it. Otherwise, we do not accept
+          // that we are the leader. This is to circumvent the problem that
+          // after a restart we would implicitly be assumed to be the leader.
+          collections.add("theLeader", VPackValue(theLeaderTouched ? theLeader : "NOT_YET_TOUCHED"));
+          collections.add("theLeaderTouched", VPackValue(theLeaderTouched));
+          
+          if (theLeader.empty() && theLeaderTouched) {
+            // we are the leader ourselves
+            // In this case we report our in-sync followers here in the format
+            // of the agency: [ leader, follower1, follower2, ... ]
+            collections.add(VPackValue("servers"));
+            
+            { VPackArrayBuilder guard(&collections);
+              
+              collections.add(VPackValue(arangodb::ServerState::instance()->getId()));
+              
+              std::shared_ptr<std::vector<ServerID> const> srvs = folls->get();
+              
+              for (auto const& s : *srvs) {
+                collections.add(VPackValue(s));
+              }
             }
           }
         }
@@ -206,24 +215,22 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   }
 
   if (rb.isClosed()) {
-    // FIXMEMAINTENANCE: when would rb not be closed? and if "catch"
-    // just happened, would you want to be doing this anyway?
 
     auto report = rb.slice();
     if (report.isObject()) {
 
-      std::vector<std::string> agency = {maintenance::PHASE_TWO, "agency"};
-      if (report.hasKey(agency) && report.get(agency).isObject()) {
-
-        auto phaseTwo = report.get(agency);
+      std::vector<std::string> path = {maintenance::PHASE_TWO, "agency"};
+      if (report.hasKey(path) && report.get(path).isObject()) {
+        
+        auto agency = report.get(path);
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-          << "DBServerAgencySync reporting to Current: " << phaseTwo.toJson();
+          << "DBServerAgencySync reporting to Current: " << agency.toJson();
 
         // Report to current
-        if (!phaseTwo.isEmptyObject()) {
-
+        if (!agency.isEmptyObject()) {
+          
           std::vector<AgencyOperation> operations;
-          for (auto const& ao : VPackObjectIterator(phaseTwo)) {
+          for (auto const& ao : VPackObjectIterator(agency)) {
             auto const key = ao.key.copyString();
             auto const op = ao.value.get("op").copyString();
             if (op == "set") {
@@ -267,7 +274,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   } else {
     result.errorMessage = "Report from phase 1 and 2 was not closed.";
   }
-  
+
   auto took = duration<double>(clock::now() - start).count();
   if (took > 30.0) {
     LOG_TOPIC(WARN, Logger::MAINTENANCE) << "DBServerAgencySync::execute "

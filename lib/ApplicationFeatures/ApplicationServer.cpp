@@ -308,11 +308,13 @@ void ApplicationServer::collectOptions() {
   _options->addSection(
       Section("", "Global configuration", "global options", false, false));
 
-  _options->addHiddenOption("--dump-dependencies", "dump dependency graph",
-                            new BooleanParameter(&_dumpDependencies));
+  _options->addOption("--dump-dependencies", "dump dependency graph",
+                      new BooleanParameter(&_dumpDependencies),
+                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Command));
   
-  _options->addHiddenOption("--dump-options", "dump configuration options in JSON format",
-                            new BooleanParameter(&_dumpOptions));
+  _options->addOption("--dump-options", "dump configuration options in JSON format",
+                      new BooleanParameter(&_dumpOptions),
+                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Command));
 
   apply(
       [this](ApplicationFeature* feature) {
@@ -331,9 +333,9 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
   if (!_helpSection.empty()) {
     // user asked for "--help"
 
-    // translate "all" to "*"
-    if (_helpSection == "all") {
-      _helpSection = "*";
+    // translate "all" to ".", because section "all" does not exist
+    if (_helpSection == "all" || _helpSection == "hidden") {
+      _helpSection = ".";
     }
     _options->printHelp(_helpSection);
     return;
@@ -389,7 +391,7 @@ void ApplicationServer::validateOptions() {
 
   // inform about obsolete options  
   _options->walk([](Section const&, Option const& option) {
-    if (option.obsolete) {
+    if (option.hasFlag(arangodb::options::Flags::Obsolete)) {
       LOG_TOPIC(WARN, Logger::STARTUP) << "obsolete option '" << option.displayName() << "' used in configuration. "
                                        << "setting this option will not have any effect.";
     }

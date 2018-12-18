@@ -108,6 +108,11 @@ SynchronizeShard::SynchronizeShard(
   }
   TRI_ASSERT(desc.has(THE_LEADER) && !desc.get(THE_LEADER).empty());
 
+  if (!desc.has(SHARD_VERSION)) {
+    error << "local shard version must be specified. ";
+  }
+  TRI_ASSERT(desc.has(SHARD_VERSION));
+
   if (!error.str().empty()) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << "SynchronizeShard: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
@@ -163,9 +168,9 @@ static arangodb::Result getReadLockId (
     TRI_ASSERT(idSlice.isObject());
     TRI_ASSERT(idSlice.hasKey(ID));
     try {
-      id = std::stoll(idSlice.get(ID).copyString());
+      id = std::stoull(idSlice.get(ID).copyString());
     } catch (std::exception const&) {
-      error += " expecting id to be int64_t ";
+      error += " expecting id to be uint64_t ";
       error += idSlice.toJson();
       return arangodb::Result(TRI_ERROR_INTERNAL, error);
     }
@@ -810,7 +815,7 @@ bool SynchronizeShard::first() {
           "synchronizeOneShard: synchronization failed for shard ");
         errorMessage += shard + ": shutdown in progress, giving up";
         LOG_TOPIC(INFO, Logger::MAINTENANCE) << errorMessage;
-        _result.reset(TRI_ERROR_INTERNAL, errorMessage);
+        _result.reset(TRI_ERROR_SHUTTING_DOWN, errorMessage);
         return false;
       }
 
@@ -951,7 +956,7 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
     if (isStopping()) {
       std::string errorMessage = 
         "synchronizeOneShard: startReadLockOnLeader (soft): shutting down";
-      return ResultT<TRI_voc_tick_t>::error(TRI_ERROR_INTERNAL, errorMessage);
+      return ResultT<TRI_voc_tick_t>::error(TRI_ERROR_SHUTTING_DOWN, errorMessage);
     }
 
     didTimeout = false;
@@ -1110,4 +1115,16 @@ Result SynchronizeShard::catchupWithExclusiveLock(
     << "synchronizeOneShard: synchronization worked for shard " << shard;
   _result.reset(TRI_ERROR_NO_ERROR);
   return {TRI_ERROR_NO_ERROR};
+}
+
+
+void SynchronizeShard::setState(ActionState state) {
+  
+  if ((COMPLETE==state || FAILED==state) && _state != state) {
+    TRI_ASSERT(_description.has("shard"));
+    _feature.incShardVersion(_description.get("shard"));
+  }
+  
+  ActionBase::setState(state);
+  
 }
