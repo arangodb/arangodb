@@ -123,7 +123,10 @@ void Scheduler::runCron()
       if (top.first < now) {
         // It is time to scheduler this task, try to get the lock and obtain a shared_ptr
         // If this fails a default WorkItem is constructed which has disabled == true
-        top.second.lock()->run();
+        auto item = top.second.lock();
+        if (item) {
+          item->run();
+        }
         _cronQueue.pop();
       } else {
         auto then = (top.first - now);
@@ -141,14 +144,14 @@ void Scheduler::runCron()
 Scheduler::WorkHandle Scheduler::queueDelay(
     RequestLane lane,
     clock::duration delay,
-    std::function<void(bool cancelled)> const& handler
+    std::function<void(bool cancelled)> && handler
 ) {
   if (delay < std::chrono::milliseconds(1)) {
     // execute directly
     queue(lane, [handler](){ handler(false); });
   }
 
-  auto item = std::make_shared<WorkItem>(handler, lane, this);
+  auto item = std::make_shared<WorkItem>(std::move(handler), lane, this);
   std::unique_lock<std::mutex> guard(_cronQueueMutex);
   _cronQueue.emplace(clock::now() + delay, item);
 

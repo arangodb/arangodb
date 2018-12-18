@@ -97,52 +97,49 @@ public:
   typedef std::shared_ptr<WorkItem> WorkHandle;
 
   // Enqueues a task at given priority
-  virtual bool queue(RequestLane lane, std::function<void()> const&) = 0;
+  bool queue(RequestLane lane, std::function<void()> const& handler) {
+    std::function<void()> copy = handler;  // This is an intended copy operation
+    return queue(lane, std::move(handler));
+  }
 
-  // postDelay returns a WorkHandler. You can cancel the job by calling cancel. The job is also
-  // cancelled if all WorkHandles are destructed. To disable this behavior call detach.
+  virtual bool queue(RequestLane lane, std::function<void()> &&) = 0;
+
   WorkHandle queueDelay(
     RequestLane lane,
     clock::duration delay,
     std::function<void(bool cancelled)> const& handler
+  ) {
+    std::function<void(bool cancelled)> copy = handler; // This is an intended copy operation
+    return queueDelay(lane, delay, std::move(copy));
+  }
+
+  WorkHandle queueDelay(
+    RequestLane lane,
+    clock::duration delay,
+    std::function<void(bool cancelled)> && handler
   );
 
-  // TODO: This method is unintuitive to use. If you call it and you are not interested in canceling
-  // you have to call detach(). Otherwise the WorkHandle goes out of scope and the task is canceled
-  // immediately.
-
-
-  // A spinning threads looks at the queues in a cyclic way, i.e.
-  // 0 1 2 0 1 2 0 1 2 0 1 2 ..
-
-
 private:
-  class WorkItem : std::enable_shared_from_this<WorkItem> {
+  class WorkItem {
     std::function<void(bool)> _handler;
     RequestLane _lane;
     std::atomic<bool> _disable;
     Scheduler *_scheduler;
 
   public:
-    // Default constructor for weak_ptr::lock to return a "disabled" work item
-    WorkItem() :
-      _disable(true),
-      _scheduler(nullptr)
-    {}
-
     // This is not copyable or moveable
     WorkItem(WorkItem const&) = delete;
     WorkItem(WorkItem &&) = delete;
     void operator=(WorkItem const&) const = delete;
 
-    WorkItem(std::function<void(bool cancelled)> const& handler, RequestLane lane, Scheduler *scheduler) :
+    explicit WorkItem(std::function<void(bool cancelled)> const& handler, RequestLane lane, Scheduler *scheduler) :
       _handler(handler),
       _lane(lane),
       _disable(false),
       _scheduler(scheduler)
     {}
 
-    WorkItem(std::function<void(bool cancelled)> && handler, RequestLane lane, Scheduler *scheduler) :
+    explicit WorkItem(std::function<void(bool cancelled)> && handler, RequestLane lane, Scheduler *scheduler) :
       _handler(std::move(handler)),
       _lane(lane),
       _disable(false),
@@ -155,24 +152,16 @@ private:
     void doWith(bool argCancelled) {
       bool disabled = false;
       if (_disable.compare_exchange_strong(disabled, true)) {
-        auto self(shared_from_this());
         if (!disabled) {
-          // Here we need the RequestLane to do the right queue call
-          _scheduler->queue(_lane, [this, self, argCancelled]() {
-            this->_handler(argCancelled);
+          _scheduler->queue(_lane, [handler = std::move(_handler), argCancelled]() {
+            handler(argCancelled);
           });
         }
       }
     }
 
-    void cancel() {
-      doWith(true);
-    }
-
-    void run() {
-      doWith(false);
-    }
-
+    void cancel() { doWith(true); }
+    void run() { doWith(false); }
     friend Scheduler;
   };
 

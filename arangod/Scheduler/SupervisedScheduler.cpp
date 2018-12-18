@@ -104,7 +104,7 @@ SupervisedScheduler::SupervisedScheduler(uint64_t minThreads,
 
 SupervisedScheduler::~SupervisedScheduler() {}
 
-bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> const&handler)
+bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> &&handler)
 {
   size_t queueNo = (size_t) PriorityRequestLane(lane);
 
@@ -113,7 +113,7 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> const&ha
   static thread_local uint64_t lastSubmitTime_ns;
   bool doNotify = false;
 
-  WorkItem *work = new WorkItem(handler);
+  WorkItem *work = new WorkItem(std::move(handler));
 
   if (!_queue[queueNo].push(work)) {
     delete work;
@@ -163,7 +163,7 @@ Scheduler::QueueStatistics SupervisedScheduler::queueStatistics() const
   uint64_t queueLength = _jobsSubmitted.load(std::memory_order_relaxed)
     - _jobsDone.load(std::memory_order_relaxed);
 
-  return QueueStatistics{numWorker, numWorker, queueLength};
+  return QueueStatistics{numWorker, numWorker, queueLength, 0, 0, 0};
 }
 
 void SupervisedScheduler::addQueueStatistics(velocypack::Builder& b) const {
@@ -341,7 +341,7 @@ void SupervisedScheduler::sortoutLongRunningThreads() {
     }
 
     if ((now - state->_lastJobStarted) > std::chrono::seconds(5)) {
-      LOG_TOPIC(ERR, Logger::SUPERVISION) << "Detach long running thread.";
+      LOG_TOPIC(TRACE, Logger::THREADS) << "Detach long running thread.";
 
       {
         std::unique_lock<std::mutex> guard(_mutex);
@@ -410,6 +410,7 @@ void SupervisedScheduler::startOneThread()
     LOG_TOPIC(ERR, Logger::SUPERVISION) << "could not start additional worker thread";
 
   } else {
+    LOG_TOPIC(TRACE, Logger::THREADS) << "Started new thread";
     _conditionSupervisor.wait(guard);
   }
 }
@@ -438,7 +439,7 @@ void SupervisedScheduler::stopOneThread()
   _numWorker--;
 
   if (state->_thread->isRunning()) {
-      LOG_TOPIC(ERR, Logger::SUPERVISION) << "Abandon one thread.";
+      LOG_TOPIC(TRACE, Logger::THREADS) << "Abandon one thread.";
     _abandonedWorkerStates.push_back(std::move(state));
   } else {
     state.reset();  // reset the shared_ptr. At this point we delete the thread object
