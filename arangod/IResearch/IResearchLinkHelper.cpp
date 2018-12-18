@@ -25,7 +25,6 @@
 #include "IResearchCommon.h"
 #include "IResearchFeature.h"
 #include "IResearchLink.h"
-#include "IResearchLinkCoordinator.h"
 #include "IResearchLinkMeta.h"
 #include "IResearchView.h"
 #include "IResearchViewCoordinator.h"

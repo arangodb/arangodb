@@ -1,7 +1,9 @@
 devel
 -----
 
-* fixed issue #7749: AQL Query result changed for COLLECT used on empty data/array
+* fixed issue #7763: Collect after update does not execute updates
+
+* fixed issue #7749: AQL query result changed for COLLECT used on empty data/array
 
 * fixed a rare thread local dead lock situation in replication:
   If a follower tries to get in sync in the last steps it requires

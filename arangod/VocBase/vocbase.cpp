@@ -1809,6 +1809,8 @@ TRI_vocbase_t::~TRI_vocbase_t() {
     it->close(); // required to release indexes
   }
 
+  _collections.clear(); // clear vector before deallocating TRI_vocbase_t members
+  _deadCollections.clear(); // clear vector before deallocating TRI_vocbase_t members
   _dataSourceById.clear(); // clear map before deallocating TRI_vocbase_t members
   _dataSourceByName.clear(); // clear map before deallocating TRI_vocbase_t members
   _dataSourceByUuid.clear(); // clear map before deallocating TRI_vocbase_t members
