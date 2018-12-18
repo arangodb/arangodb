@@ -305,6 +305,11 @@ void Task::start() {
              ExecContext::CURRENT->isAdminUser() ||
              (!_user.empty() && ExecContext::CURRENT->user() == _user));
 
+  {
+    MUTEX_LOCKER(lock, _taskHandleMutex);
+    _taskHandle.reset();
+  }
+
   if (_offset.count() <= 0) {
     _offset = std::chrono::microseconds(1);
   }
@@ -314,12 +319,14 @@ void Task::start() {
 }
 
 void Task::queue(std::chrono::microseconds offset) {
+  MUTEX_LOCKER(lock, _taskHandleMutex);
   _taskHandle = SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW, offset, callbackFunction());
 }
 
 void Task::cancel() {
   // this will prevent the task from dispatching itself again
   _periodic.store(false);
+  MUTEX_LOCKER(lock, _taskHandleMutex);
   _taskHandle.reset();
 }
 
