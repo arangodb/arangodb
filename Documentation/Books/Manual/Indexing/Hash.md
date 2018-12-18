@@ -118,7 +118,7 @@ details, including the index-identifier, is returned.
     @endDocuBlock ensureHashIndexArray
 
 
-Creating Hash Index in Background
+<!-- Creating Hash Index in Background
 ---------------------------------
 
 {% hint 'info' %}
@@ -138,7 +138,7 @@ To create an hash index in the background in *arangosh* just specify `inBackgrou
 
 ```js
 db.collection.ensureIndex({ type: "hash", fields: [ "value" ], inBackground: true });
-```
+``` -->
 
 For more information see [Creating Indexes in Background](IndexBasics.md#creating-indexes-in-background)
 
