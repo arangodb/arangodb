@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed issue #7763: Collect after update does not execute updates
+
 * fixed a rare thread local dead lock situation in replication:
   If a follower tries to get in sync in the last steps it requires
   a lock on the leader. If the follower cancels the lock before the leader
