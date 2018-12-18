@@ -113,6 +113,7 @@ Result RocksDBBuilderIndex::removeInternal(transaction::Methods& trx, RocksDBMet
 }
 
 // Background index filler task
+// FIXME simon: not used right now because rollbacks are not correctly handled yet
 arangodb::Result RocksDBBuilderIndex::fillIndexBackground(std::function<void()> const& unlock) {
   arangodb::Result res;
   

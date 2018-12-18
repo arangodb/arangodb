@@ -27,7 +27,8 @@
 #include "IResearchLinkHelper.h"
 #include "IResearchPrimaryKeyFilter.h"
 #include "IResearchView.h"
-#include "IResearchViewDBServer.h"
+#include "IResearchViewCoordinator.h"
+#include "Aql/QueryCache.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterInfo.h"
@@ -144,8 +145,7 @@ size_t directoryMemory(
 ////////////////////////////////////////////////////////////////////////////////
 irs::utf8_path getPersistedPath(
     arangodb::DatabasePathFeature const& dbPathFeature,
-    arangodb::LogicalCollection const& collection,
-    arangodb::LogicalView const& view
+    arangodb::iresearch::IResearchLink const& link
 ) {
   irs::utf8_path dataPath(dbPathFeature.directory());
   static const std::string subPath("databases");
@@ -153,12 +153,12 @@ irs::utf8_path getPersistedPath(
 
   dataPath /= subPath;
   dataPath /= dbPath;
-  dataPath += std::to_string(collection.vocbase().id());
+  dataPath += std::to_string(link.collection().vocbase().id());
   dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
   dataPath += "-";
-  dataPath += std::to_string(collection.id()); // has to be 'id' since this can be a per-shard collection
+  dataPath += std::to_string(link.collection().id()); // has to be 'id' since this can be a per-shard collection
   dataPath += "_";
-  dataPath += std::to_string(view.planId()); // has to be 'planId' since this is a cluster-wide view
+  dataPath += std::to_string(link.id());
 
   return dataPath;
 }
@@ -430,9 +430,20 @@ arangodb::Result IResearchLink::commit() {
       return arangodb::Result();
     }
 
-    if (_dataStore._reader != reader) {
-       _dataStore._reader = reader; // update reader
+    if (_dataStore._reader == reader) {
+      return arangodb::Result(); // reader not modified
     }
+
+    _dataStore._reader = reader; // update reader
+
+    auto viewImpl = view();
+
+    // invalidate query cache if there were some data changes
+    if (viewImpl) {
+      arangodb::aql::QueryCache::instance()->invalidate(
+        &(_collection.vocbase()), viewImpl->name()
+      );
+     }
   } catch (arangodb::basics::Exception const& e) {
     return arangodb::Result(
       e.code(),
@@ -622,106 +633,177 @@ arangodb::Result IResearchLink::init(
     );
   }
 
-  // we continue to support the old and new ID format
-  auto idSlice = definition.get(StaticStrings::ViewIdField);
-  auto viewId = idSlice.copyString();
+  auto viewId = definition.get(StaticStrings::ViewIdField).copyString();
   auto& vocbase = _collection.vocbase();
-  auto logicalView = arangodb::ServerState::instance()->isCoordinator()
-                     && arangodb::ClusterInfo::instance()
-    ? arangodb::ClusterInfo::instance()->getView(vocbase.name(), viewId)
-    : vocbase.lookupView(viewId) // will only contain IResearchView (even for a DBServer)
-    ;
 
-  // creation of link on a DBServer
-  if (!logicalView && arangodb::ServerState::instance()->isDBServer()) {
-    auto* ci = ClusterInfo::instance();
+  if (arangodb::ServerState::instance()->isCoordinator()) { // coordinator link
+    auto* engine = arangodb::ClusterInfo::instance();
 
-    if (!ci) {
+    if (!engine) {
       return arangodb::Result(
         TRI_ERROR_INTERNAL,
-        std::string("failure to find 'ClusterInfo' instance for lookup of link '") + std::to_string(_id) + "'"
+        std::string("failure to get storage engine while initializing arangosearch link '") + std::to_string(_id) + "'"
       );
     }
 
-    auto logicalWiew = ci->getView(vocbase.name(), viewId);
-    auto* wiew = LogicalView::cast<IResearchViewDBServer>(logicalWiew.get());
+    auto logicalView = engine->getView(vocbase.name(), viewId);
 
-    if (wiew) {
-      // FIXME figure out elegant way of testing for cluster wide LogicalCollection
-      if (_collection.id() == _collection.planId() && _collection.isAStub()) {
-      // this is a cluster-wide collection/index/link (per-cid view links have their corresponding collections in vocbase)
-        auto clusterCol = ci->getCollectionCurrent(
-          vocbase.name(), std::to_string(_collection.id())
+    // if there is no logicalView present yet then skip this step
+    if (logicalView) {
+      if (arangodb::iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
+        return arangodb::Result(
+          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+          std::string("error finding view: '") + viewId + "' for link '" + std::to_string(_id) + "' : no such view"
         );
+      }
 
-        if (clusterCol) {
-          for (auto& entry: clusterCol->errorNum()) {
-            auto collection = vocbase.lookupCollection(entry.first); // find shard collection
+      auto* view = arangodb::LogicalView::cast<IResearchViewCoordinator>(
+        logicalView.get()
+      );
 
-            if (collection) {
-              // ensure the shard collection is registered with the cluster-wide view
-              // required from creating snapshots for per-cid views loaded from WAL
-              // only register existing per-cid view instances, do not create new per-cid view
-              // instances since they will be created/registered  by their per-cid links just below
-              wiew->ensure(collection->id(), false);
+      if (!view) {
+        return arangodb::Result(
+          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+          std::string("error finding view: '") + viewId + "' for link '" + std::to_string(_id) + "'"
+        );
+      }
+
+      viewId = view->guid(); // ensue that this is a GUID (required by operator==(IResearchView))
+
+      if (!view->emplace(_collection.id(), _collection.name(), definition)) {
+        return arangodb::Result(
+          TRI_ERROR_INTERNAL,
+          std::string("failed to link with view '") + view->name() + "' while initializing link '" + std::to_string(_id) + "'"
+        );
+      }
+    }
+  } else if (arangodb::ServerState::instance()->isDBServer()) { // db-server link
+    auto* engine = arangodb::ClusterInfo::instance();
+
+    if (!engine) {
+      return arangodb::Result(
+        TRI_ERROR_INTERNAL,
+        std::string("failure to get storage engine while initializing arangosearch link '") + std::to_string(_id) + "'"
+      );
+    }
+
+    auto clusterWideLink = _collection.id() == _collection.planId() && _collection.isAStub(); // cluster cluster-wide link
+
+    if (!clusterWideLink) {
+      auto res = initDataStore(); // prepare data-store which can then update options via the IResearchView::link(...) call
+
+      if (!res.ok()) {
+        return res;
+      }
+    }
+
+    auto logicalView = engine->getView(vocbase.name(), viewId); // valid to call ClusterInfo (initialized in ClusterFFeature::prepare()) even from Databasefeature::start()
+
+    // if there is no logicalView present yet then skip this step
+    if (logicalView) {
+      if (arangodb::iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
+        unload(); // unlock the data store directory
+        return arangodb::Result(
+          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+          std::string("error finding view: '") + viewId + "' for link '" + std::to_string(_id) + "' : no such view"
+        );
+      }
+
+      auto* view =
+        arangodb::LogicalView::cast<IResearchView>(logicalView.get());
+
+      if (!view) {
+        unload(); // unlock the data store directory
+        return arangodb::Result(
+          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+          std::string("error finding view: '") + viewId + "' for link '" + std::to_string(_id) + "'"
+        );
+      }
+
+      viewId = view->guid(); // ensue that this is a GUID (required by operator==(IResearchView))
+
+      if (clusterWideLink) { // cluster cluster-wide link
+        auto shardIds = _collection.shardIds();
+
+        // go through all shard IDs of the collection and try to link any links
+        // missing links will be populated when they are created in the per-shard collection
+        if (shardIds) {
+          for (auto& entry: *shardIds) {
+            auto collection = vocbase.lookupCollection(entry.first); // per-shard collections are always in 'vocbase'
+
+            if (!collection) {
+              continue; // missing collection should be created after Plan becomes Current
+            }
+
+            auto link = IResearchLinkHelper::find(*collection, *view);
+
+            if (link && !view->link(link->self())) {
+              return arangodb::Result(
+                TRI_ERROR_INTERNAL,
+                std::string("failed to link with view '") + view->name() + "' while initializing link '" + std::to_string(_id) + "', collection '" + collection->name() + "'"
+              );
             }
           }
         }
-
-        return arangodb::Result(); // leave '_view' uninitialized to mark the index as unloaded/unusable
+      } else { // cluster per-shard link
+        if (!view->link(_asyncSelf)) {
+          unload(); // unlock the data store directory
+          return arangodb::Result(
+            TRI_ERROR_INTERNAL,
+            std::string("failed to link with view '") + view->name() + "' while initializing link '" + std::to_string(_id) + "'"
+          );
+        }
       }
-
-      logicalView = wiew->ensure(_collection.id()); // repoint LogicalView at the per-cid instance
     }
-  }
-
-  if (!logicalView
-      || arangodb::iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
-    return arangodb::Result(
-      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-      std::string("error finding view: '") + viewId + "' for link '" + std::to_string(_id) + "' : no such view"
-    );
-  }
-
-  if (!arangodb::ServerState::instance()->isCoordinator()) { // link on coordinator does not have a data-store
-    auto* dbServerView = dynamic_cast<IResearchViewDBServer*>(logicalView.get());
-
-    // dbserver has both IResearchViewDBServer and IResearchView instances
-    auto* view = LogicalView::cast<IResearchView>(
-      dbServerView
-        ? dbServerView->ensure(_collection.id()).get()
-        : logicalView.get()
-    );
-
-    if (!view) {
-      return arangodb::Result(
-        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-        std::string("error finding view: '") + viewId + "' for link '" + std::to_string(_id) + "'"
-      );
-    }
-
-    auto res = initDataStore(*view);
+  } else if (arangodb::ServerState::instance()->isSingleServer()) { // single-server link
+    auto res = initDataStore(); // prepare data-store which can then update options via the IResearchView::link(...) call
 
     if (!res.ok()) {
       return res;
     }
 
-    if (!view->link(_asyncSelf)) {
-      unload(); // unlock the directory
-      return arangodb::Result(
-        TRI_ERROR_INTERNAL,
-        std::string("failed to link with view '") + view->name() + "' while initializing link '" + std::to_string(_id) + "'"
-      );
+    auto logicalView = vocbase.lookupView(viewId);
+
+    // if there is no logicalView present yet then skip this step
+    if (logicalView) {
+      if (arangodb::iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
+        unload(); // unlock the data store directory
+        return arangodb::Result(
+          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+          std::string("error finding view: '") + viewId + "' for link '" + std::to_string(_id) + "' : no such view"
+        );
+      }
+
+      auto* view =
+        arangodb::LogicalView::cast<IResearchView>(logicalView.get());
+
+      if (!view) {
+        unload(); // unlock the data store directory
+        return arangodb::Result(
+          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+          std::string("error finding view: '") + viewId + "' for link '" + std::to_string(_id) + "'"
+        );
+      }
+
+      viewId = view->guid(); // ensue that this is a GUID (required by operator==(IResearchView))
+
+      if (!view->link(_asyncSelf)) {
+        unload(); // unlock the directory
+        return arangodb::Result(
+          TRI_ERROR_INTERNAL,
+          std::string("failed to link with view '") + view->name() + "' while initializing link '" + std::to_string(_id) + "'"
+        );
+      }
     }
   }
 
-  const_cast<std::string&>(_viewGuid) = logicalView->guid(); // ensue that this is a GUID (required by operator==(IResearchView))
+  const_cast<std::string&>(_viewGuid) = std::move(viewId);
   const_cast<IResearchLinkMeta&>(_meta) = std::move(meta);
 
   return arangodb::Result();
 }
 
-arangodb::Result IResearchLink::initDataStore(IResearchView const& view) {
+arangodb::Result IResearchLink::initDataStore() {
   _asyncSelf->reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 
   auto* dbPathFeature = arangodb::application_features::ApplicationServer::lookupFeature<
@@ -735,26 +817,6 @@ arangodb::Result IResearchLink::initDataStore(IResearchView const& view) {
     );
   }
 
-  auto viewMeta = view.meta();
-
-  if (!viewMeta) {
-    return arangodb::Result(
-      TRI_ERROR_INTERNAL,
-      std::string("failed to get arangosearch view meta while initializing link '") + std::to_string(_id) + "'"
-    );
-  }
-
-  irs::index_writer::options options;
-
-  {
-    SCOPED_LOCK(viewMeta->read());
-
-    options.lock_repository = false; // do not lock index, ArangoDB has it's own lock
-    options.segment_count_max = viewMeta->_writebufferActive;
-    options.segment_memory_max = viewMeta->_writebufferSizeMax;
-    options.segment_pool_size = viewMeta->_writebufferIdle;
-  }
-
   auto format = irs::formats::get(IRESEARCH_STORE_FORMAT);
 
   if (!format) {
@@ -766,7 +828,7 @@ arangodb::Result IResearchLink::initDataStore(IResearchView const& view) {
 
   bool pathExists;
 
-  _dataStore._path = getPersistedPath(*dbPathFeature, _collection, view);
+  _dataStore._path = getPersistedPath(*dbPathFeature, *this);
 
   // must manually ensure that the data store directory exists (since not using a lockfile)
   if (_dataStore._path.exists_directory(pathExists)
@@ -787,6 +849,10 @@ arangodb::Result IResearchLink::initDataStore(IResearchView const& view) {
       std::string("failed to instantiate data store directory with path '") + _dataStore._path.utf8() + "' while initializing link '" + std::to_string(_id) + "'"
     );
   }
+
+  irs::index_writer::options options;
+
+  options.lock_repository = false; // do not lock index, ArangoDB has it's own lock
 
   // create writer before reader to ensure data directory is present
   _dataStore._writer = irs::index_writer::make(
@@ -1025,6 +1091,13 @@ size_t IResearchLink::memory() const {
   return size;
 }
 
+bool IResearchLink::properties(
+    irs::index_writer::segment_limits const& properties
+) {
+  // FIXME TODO update the data-store options
+  return true;
+}
+
 arangodb::Result IResearchLink::remove(
   arangodb::transaction::Methods& trx,
   arangodb::LocalDocumentId const& documentId,
@@ -1165,12 +1238,12 @@ arangodb::Result IResearchLink::unload() {
 }
 
 std::shared_ptr<IResearchView> IResearchLink::view() const {
-  // FIXME TODO change to lookup in CollectionNameResolver once per-shard views are removed
+  // IResearchView instances are in ClusterInfo for coordinator and db-server
   return std::dynamic_pointer_cast<IResearchView>(
-    arangodb::ServerState::instance()->isCoordinator()
+    arangodb::ServerState::instance()->isClusterRole()
     && arangodb::ClusterInfo::instance()
     ? arangodb::ClusterInfo::instance()->getView(_collection.vocbase().name(), _viewGuid)
-    : _collection.vocbase().lookupView(_viewGuid) // always look up in vocbase (single server or cluster per-shard view)
+    : _collection.vocbase().lookupView(_viewGuid)
   );
 }
 

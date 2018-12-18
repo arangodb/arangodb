@@ -291,13 +291,13 @@ class RocksDBEngine final : public StorageEngine {
   }
 
   arangodb::Result dropView(
-    TRI_vocbase_t& vocbase,
-    LogicalView& view
+    TRI_vocbase_t const& vocbase,
+    LogicalView const& view
   ) override;
 
   void destroyView(
-    TRI_vocbase_t& vocbase,
-    LogicalView& view
+    TRI_vocbase_t const& vocbase,
+    LogicalView const& view
   ) noexcept override;
 
   void signalCleanup(TRI_vocbase_t& vocbase) override;

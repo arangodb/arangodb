@@ -399,8 +399,11 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
     }
   }
   
+  const bool inBackground = false; // TODO simon: will be enabled in a seperate PR
+#if 0
   bool inBackground = basics::VelocyPackHelper::getBooleanValue(
                         info, StaticStrings::IndexInBackground, false);
+#endif
 
   // Step 4. fill index
   if (res.ok()) {

@@ -298,12 +298,12 @@ SECTION("test_create_drop") {
     CHECK(!link);
   }
 
-  // no view can be found
+  // no view can be found (e.g. db-server coming up with view not available from Agency yet)
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"view\": \"42\" }");
     std::shared_ptr<arangodb::Index> link;
-    CHECK((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == arangodb::iresearch::IResearchLinkCoordinator::factory().instantiate(link, *logicalCollection.get(), json->slice(), 1, true).errorNumber()));
-    CHECK(!link);
+    CHECK((arangodb::iresearch::IResearchLinkCoordinator::factory().instantiate(link, *logicalCollection.get(), json->slice(), 1, true).ok()));
+    CHECK((false ==!link));
   }
 
   auto const currentCollectionPath =

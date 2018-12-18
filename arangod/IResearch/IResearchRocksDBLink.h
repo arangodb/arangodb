@@ -40,8 +40,6 @@ NS_BEGIN(iresearch)
 class IResearchRocksDBLink final
   : public arangodb::RocksDBIndex, public IResearchLink {
  public:
-  virtual ~IResearchRocksDBLink();
-
   virtual void afterTruncate(TRI_voc_tick_t/*tick*/) override {
     IResearchLink::afterTruncate();
   };
@@ -58,11 +56,7 @@ class IResearchRocksDBLink final
     return IResearchLink::canBeDropped();
   }
 
-  virtual Result drop() override {
-    writeRocksWalMarker();
-
-    return IResearchLink::drop();
-  }
+  virtual Result drop() override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the factory for this type of index
@@ -163,8 +157,6 @@ class IResearchRocksDBLink final
     TRI_idx_iid_t iid,
     arangodb::LogicalCollection& collection
   );
-
-  void writeRocksWalMarker();
 };
 
 NS_END // iresearch

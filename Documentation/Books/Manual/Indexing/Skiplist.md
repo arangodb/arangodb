@@ -187,7 +187,7 @@ and
 will match.
 
 
-Creating Skiplist Index in Background
+<!-- Creating Skiplist Index in Background
 ---------------------------------
 
 {% hint 'info' %}
@@ -209,4 +209,4 @@ To create a Skiplist index in the background in *arangosh* just specify `inBackg
 db.collection.ensureIndex({ type: "skiplist", fields: [ "value" ], inBackground: true });
 ```
 
-For more information see [Creating Indexes in Background](IndexBasics.md#creating-indexes-in-background)
+For more information see [Creating Indexes in Background](IndexBasics.md#creating-indexes-in-background) -->

@@ -439,6 +439,21 @@ class IRESEARCH_API index_writer:
     }
   }; // segment_equal
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief limits the the writer should use for segments
+  //////////////////////////////////////////////////////////////////////////////
+  // FIXME TODO inherit options from segment_limits
+  struct segment_limits {
+    size_t segment_count_max; // @see options::max_segment_count
+    size_t segment_docs_max; // @see options::max_segment_docs
+    size_t segment_memory_max; // @see options::max_segment_memory
+    segment_limits(const options& opts) NOEXCEPT
+      : segment_count_max(opts.segment_count_max),
+        segment_docs_max(opts.segment_docs_max),
+        segment_memory_max(opts.segment_memory_max) {
+    }
+  };
+
   // works faster than std::unordered_set<string_ref>
   typedef std::unordered_set<
     const segment_meta*,
@@ -778,17 +793,6 @@ class IRESEARCH_API index_writer:
     /// @brief reset segment state to the initial state
     ////////////////////////////////////////////////////////////////////////////
     void reset() NOEXCEPT;
-  };
-
-  struct segment_limits {
-    size_t segment_count_max; // @see options::max_segment_count
-    size_t segment_docs_max; // @see options::max_segment_docs
-    size_t segment_memory_max; // @see options::max_segment_memory
-    segment_limits(const options& opts) NOEXCEPT
-      : segment_count_max(opts.segment_count_max),
-        segment_docs_max(opts.segment_docs_max),
-        segment_memory_max(opts.segment_memory_max) {
-    }
   };
 
   typedef std::shared_ptr<

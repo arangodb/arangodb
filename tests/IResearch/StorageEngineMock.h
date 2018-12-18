@@ -187,10 +187,10 @@ class StorageEngineMock: public arangodb::StorageEngine {
   virtual TRI_voc_tick_t currentTick() const override;
   virtual std::string databasePath(TRI_vocbase_t const* vocbase) const override;
   virtual void destroyCollection(TRI_vocbase_t& vocbase, arangodb::LogicalCollection& collection) override;
-  virtual void destroyView(TRI_vocbase_t& vocbase, arangodb::LogicalView& view) noexcept override;
+  virtual void destroyView(TRI_vocbase_t const& vocbase, arangodb::LogicalView const& view) noexcept override;
   virtual arangodb::Result dropCollection(TRI_vocbase_t& vocbase, arangodb::LogicalCollection& collection) override;
   virtual arangodb::Result dropDatabase(TRI_vocbase_t& vocbase) override;
-  virtual arangodb::Result dropView(TRI_vocbase_t& vocbase, arangodb::LogicalView& view) override;
+  virtual arangodb::Result dropView(TRI_vocbase_t const& vocbase, arangodb::LogicalView const& view) override;
   virtual arangodb::Result firstTick(uint64_t&) override;
   virtual std::vector<std::string> currentWalFiles() const override;
   virtual arangodb::Result flushWal(bool waitForSync, bool waitForCollector, bool writeShutdownFile) override;

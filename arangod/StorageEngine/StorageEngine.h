@@ -358,8 +358,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   // the WAL entry for view deletion will be written *after* the call
   // to "dropView" returns
   virtual arangodb::Result dropView(
-    TRI_vocbase_t& vocbase,
-    LogicalView& view
+    TRI_vocbase_t const& vocbase,
+    LogicalView const& view
   ) = 0;
 
   // perform a physical deletion of the view
@@ -367,8 +367,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   // assured that no one is using the view anymore
   // 'noexcept' becuase it may be used in destructor
   virtual void destroyView(
-    TRI_vocbase_t& vocbase,
-    LogicalView& view
+    TRI_vocbase_t const& vocbase,
+    LogicalView const& view
   ) noexcept = 0;
 
   // Returns the StorageEngine-specific implementation

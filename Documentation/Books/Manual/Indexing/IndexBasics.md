@@ -22,13 +22,13 @@ are covered by an edge collection's edge index automatically.
 Using the system attribute `_id` in user-defined indexes is not possible, but 
 indexing `_key`, `_rev`, `_from`, and `_to` is.
 
-Creating new indexes is usually done under an exclusive collection lock. The collection is not
+<!-- Creating new indexes is usually done under an exclusive collection lock. The collection is not
 available as long as the index is created.  This "foreground" index creation can be undesireable, 
 if you have to perform it on a live system without a dedicated maintenance window.
 
 For potentially long running index  creation operations the _rocksdb_ storage-engine also supports 
 creating indexes in "background". The colletion remains available durint the index creation, 
-see the section [Creating Indexes in Background](#creating-indexes-in-background) for more information.
+see the section [Creating Indexes in Background](#creating-indexes-in-background) for more information. -->
 
 ArangoDB provides the following index types:
 
@@ -549,7 +549,7 @@ based on the costs it estimates, even if a vertex centric index might
 in fact be faster. Vertex centric indexes are more likely to be chosen
 for highly connected graphs and with RocksDB storage engine.
 
-
+<!-- 
 Creating Indexes in Background
 ------------------------------
 
@@ -607,4 +607,4 @@ the background index creation needs to keep a list of removed documents in RAM. 
 if this list grows to tens of millions of entries.
 
 Building an index is always a write heavy operation (internally), it is alsways a good idea to build indexes
-during times with less load. 
+during times with less load.  -->
