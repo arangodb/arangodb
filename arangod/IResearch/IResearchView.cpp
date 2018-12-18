@@ -263,17 +263,13 @@ struct IResearchView::ViewFactory: public arangodb::ViewFactory {
     }
 
     // NOTE: for single-server must have full list of collections to lock
-    //       for cluster the shards to lock come from coordinator, so ignore pre-loading
-    if (ServerState::instance()->isSingleServer()) {
-      for (auto cid: metaState._collections) {
-        auto collection = vocbase.lookupCollection(cid); // always look up in vocbase (single server or cluster per-shard collection)
-        auto link = collection
-                  ? IResearchLinkHelper::find(*collection, *impl)
-                  : nullptr
-                  ; // add placeholders to links, when the collection comes up it'll bring up the link
+    //       for cluster the shards to lock come from coordinator and are not in the definition
+    for (auto cid: metaState._collections) {
+      auto collection = vocbase.lookupCollection(cid); // always look up in vocbase (single server or cluster per-shard collection)
+      auto link =
+        collection ? IResearchLinkHelper::find(*collection, *impl) : nullptr; // add placeholders to links, when the collection comes up it'll bring up the link
 
-        impl->_links.emplace(cid, link ? link->self() : nullptr); // add placeholders to links, when the link comes up it'll call link(...)
-      }
+      impl->_links.emplace(cid, link ? link->self() : nullptr); // add placeholders to links, when the link comes up it'll call link(...)
     }
 
     view = impl;
