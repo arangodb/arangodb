@@ -41,9 +41,6 @@ if (NOT CMAKE_OSX_DEPLOYMENT_TARGET)
   set(CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE STRING "deployment target for MacOSX; adjust to your sysem")
 endif ()
 
-# required for clang completion in editors
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
 # where to find CMAKE modules
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
@@ -264,6 +261,9 @@ if (WIN32)
 else ()
   project(arangodb3 LANGUAGES CXX C ASM VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
 endif ()
+
+# required for clang completion in editors - must be set after creating project
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Static executables:
 option(STATIC_EXECUTABLES "produce static executables" OFF)
