@@ -10,8 +10,8 @@ devel
       The COLLECT statement will eliminate all local variables in the current scope. 
       After COLLECT only the variables introduced by COLLECT itself are available.
 
-  However, the described behavior was not enforced when a COLLECT was preceeded by a
-  FOR loop that was itself preceeded by a COLLECT. In the following query the final
+  However, the described behavior was not enforced when a COLLECT was preceded by a
+  FOR loop that was itself preceded by a COLLECT. In the following query the final
   RETURN statement accesses variable `key1` though the variable should have been 
   invalidated by the COLLECT directly before it:
 
