@@ -72,6 +72,9 @@ NS_END // arangodb
 
 NS_LOCAL
 
+typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
+typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
+
 class IResearchLogTopic final : public arangodb::LogTopic {
  public:
   IResearchLogTopic(std::string const& name)

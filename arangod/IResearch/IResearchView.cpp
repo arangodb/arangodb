@@ -248,12 +248,11 @@ struct IResearchView::ViewFactory: public arangodb::ViewFactory {
     auto impl = std::shared_ptr<IResearchView>(
       new IResearchView(vocbase, definition, planVersion)
     );
-    auto meta = std::make_shared<AsyncMeta>();
     IResearchViewMetaState metaState;
 
-    if (!meta->init(definition, error)
-        || meta->_version == 0 // version 0 must be upgraded to split data-store on a per-link basis
-        || meta->_version > LATEST_VERSION
+    if (!impl->_meta.init(definition, error)
+        || impl->_meta._version == 0 // version 0 must be upgraded to split data-store on a per-link basis
+        || impl->_meta._version > LATEST_VERSION
         || !metaState.init(definition, error)) {
       return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
@@ -277,12 +276,6 @@ struct IResearchView::ViewFactory: public arangodb::ViewFactory {
       }
     }
 
-    auto res = impl->updateProperties(meta); // update separately since per-instance async jobs already started
-
-    if (!res.ok()) {
-      return res;
-    }
-
     view = impl;
 
     return arangodb::Result();
@@ -297,9 +290,29 @@ IResearchView::IResearchView(
    FlushTransaction(toString(*this)),
    _asyncFeature(nullptr),
    _asyncSelf(irs::memory::make_unique<AsyncViewPtr::element_type>(this)),
-   _meta(std::make_shared<AsyncMeta>()),
    _asyncTerminate(false),
    _inRecovery(false) {
+  // set up in-recovery insertion hooks
+  auto* databaseFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::DatabaseFeature
+  >("Database");
+
+  if (databaseFeature) {
+    auto view = _asyncSelf; // create copy for lambda
+
+    databaseFeature->registerPostRecoveryCallback([view]()->arangodb::Result {
+      auto& viewMutex = view->mutex();
+      SCOPED_LOCK(viewMutex); // ensure view does not get deallocated before call back finishes
+      auto* viewPtr = view->get();
+
+      if (viewPtr) {
+        viewPtr->verifyKnownCollections();
+      }
+
+      return arangodb::Result();
+    });
+  }
+
   _asyncFeature = arangodb::application_features::ApplicationServer::lookupFeature<
     arangodb::iresearch::IResearchFeature
   >();
@@ -321,21 +334,16 @@ IResearchView::IResearchView(
           return false; // termination requested
         }
 
-        // reload meta
+        // reload meta and metaState
         {
-          auto meta = std::atomic_load(&_meta);
-          SCOPED_LOCK(meta->read());
+          ReadMutex mutex(_mutex); // '_meta'/'_links' can be asynchronously modified
+          SCOPED_LOCK(mutex);
           auto& stateMeta = static_cast<IResearchViewMeta&>(state);
 
-          if (stateMeta != *meta) {
-            stateMeta = *meta;
+          if (stateMeta != _meta) {
+            stateMeta = _meta;
           }
-        }
 
-        // reload metaState
-        {
-          ReadMutex mutex(_mutex); // '_links' can be asynchronously modified
-          SCOPED_LOCK(mutex);
           state._links = _links;
         }
 
@@ -414,7 +422,11 @@ IResearchView::IResearchView(
 
 IResearchView::~IResearchView() {
   _asyncTerminate.store(true); // mark long-running async jobs for terminatation
-  updateProperties(_meta); // trigger reload of settings for async jobs
+
+  if (_asyncFeature) {
+    _asyncFeature->asyncNotify(); // trigger reload of settings for async jobs
+  }
+
   _asyncSelf->reset(); // the view is being deallocated, its use is no longer valid (wait for all the view users to finish)
   _flushCallback.reset(); // unregister flush callback from flush thread
 
@@ -449,9 +461,6 @@ arangodb::Result IResearchView::appendVelocyPackImpl(
   std::vector<std::string> collections;
 
   {
-    auto meta = std::atomic_load(&_meta);
-    SCOPED_LOCK(meta->read()); // '_meta' can be asynchronously updated
-
     static const std::function<bool(irs::string_ref const& key)> acceptor = [](
         irs::string_ref const& key
     )->bool {
@@ -462,22 +471,20 @@ arangodb::Result IResearchView::appendVelocyPackImpl(
     )->bool {
       return true;
     };
+
+    ReadMutex mutex(_mutex); // '_meta'/'_links' can be asynchronously modified
+    SCOPED_LOCK(mutex);
     arangodb::velocypack::Builder sanitizedBuilder;
 
     sanitizedBuilder.openObject();
 
-    if (!meta->json(sanitizedBuilder)
+    if (!_meta.json(sanitizedBuilder)
         || !mergeSliceSkipKeys(builder, sanitizedBuilder.close().slice(), forPersistence ? persistenceAcceptor : acceptor)) {
       return arangodb::Result(
         TRI_ERROR_INTERNAL,
         std::string("failure to generate definition while generating properties jSON for arangosearch View in database '") + vocbase().name() + "'"
       );
     }
-  }
-
-  {
-    ReadMutex mutex(_mutex); // '_links' can be asynchronously updated
-    SCOPED_LOCK(mutex);
 
     if (forPersistence) {
       IResearchViewMetaState metaState;
@@ -682,7 +689,11 @@ arangodb::Result IResearchView::dropImpl() {
   }
 
   _asyncTerminate.store(true); // mark long-running async jobs for terminatation
-  updateProperties(_meta); // trigger reload of settings for async jobs
+
+  if (_asyncFeature) {
+    _asyncFeature->asyncNotify(); // trigger reload of settings for async jobs
+  }
+
   _asyncSelf->reset(); // the view data-stores are being deallocated, view use is no longer valid (wait for all the view users to finish)
   _flushCallback.reset(); // unregister flush callback from flush thread
 
@@ -724,24 +735,38 @@ arangodb::Result IResearchView::dropImpl() {
 }
 
 bool IResearchView::link(AsyncLinkPtr const& link) {
-  if (!link || !link->get()) {
+  if (!link) {
+    return false; // invalid link
+  }
+
+  SCOPED_LOCK(link->mutex()); // prevent the link from being deallocated
+
+  if (!link->get()) {
     return false; // invalid link
   }
 
   auto cid = link->get()->collection().id();
-  WriteMutex mutex(_mutex); // '_links' can be asynchronously updated
+  WriteMutex mutex(_mutex); // '_meta'/'_links' can be asynchronously read
   SCOPED_LOCK(mutex);
   auto itr = _links.find(cid);
+
+  irs::index_writer::options options;
+  options.segment_count_max = _meta._writebufferActive;
+  options.segment_memory_max = _meta._writebufferSizeMax;
+  options.segment_pool_size = _meta._writebufferIdle;
+  irs::index_writer::segment_limits properties(options);
 
   if (itr == _links.end()) {
     _links.emplace(cid, link);
   } else if (arangodb::ServerState::instance()->isSingleServer()
              && !itr->second) {
     _links[cid] = link;
+    link->get()->properties(properties);
 
     return true; // single-server persisted cid placeholder substituted with actual link
   } else if (itr->second && !itr->second->get()) {
     _links[cid] = link;
+    link->get()->properties(properties);
 
     return true; // a previous link instance was unload()ed and a new instance is linking
   } else {
@@ -762,11 +787,9 @@ bool IResearchView::link(AsyncLinkPtr const& link) {
     return false;
   }
 
-  return true;
-}
+  link->get()->properties(properties);
 
-std::shared_ptr<const AsyncMeta> IResearchView::meta() const {
-  return std::atomic_load(&_meta);
+  return true;
 }
 
 arangodb::Result IResearchView::commit() {
@@ -808,17 +831,10 @@ arangodb::Result IResearchView::commit() {
 
 size_t IResearchView::memory() const {
   size_t size = sizeof(IResearchView);
-
-  {
-    auto meta = std::atomic_load(&_meta);
-    SCOPED_LOCK(meta->read()); // '_meta' can be asynchronously updated
-
-    size += meta->memory();
-  }
-
-  ReadMutex mutex(_mutex); // '_links' can be asynchronously updated
+  ReadMutex mutex(_mutex); // '_meta'/'_links' can be asynchronously updated
   SCOPED_LOCK(mutex);
 
+  size += _meta.memory() - sizeof(IResearchViewMeta); // sizeof(IResearchViewMeta) already part of sizeof(IResearchView)
   size += sizeof(decltype(_links)::value_type) * _links.size();
 
   for (auto& entry: _links) {
@@ -853,9 +869,47 @@ void IResearchView::open() {
   WriteMutex mutex(_mutex); // '_meta' can be asynchronously updated
   SCOPED_LOCK(mutex);
 
-  if (!_flushCallback) {
-    registerFlushCallback();
+  if (_flushCallback) {
+    return; // done
   }
+
+  auto* flushFeature = getFlushFeature();
+
+  if (!flushFeature) {
+    return; // feature not available
+  }
+
+  auto viewSelf = _asyncSelf;
+
+  flushFeature->registerCallback(this, [viewSelf]() {
+    static struct NoopFlushTransaction: arangodb::FlushTransaction {
+      NoopFlushTransaction(): FlushTransaction("ArangoSearchNoop") {}
+      virtual arangodb::Result commit() override {
+        return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+      }
+    } noopFlushTransaction;
+    SCOPED_LOCK_NAMED(viewSelf->mutex(), lock);
+
+    if (!*viewSelf) {
+      return arangodb::FlushFeature::FlushTransactionPtr(
+        &noopFlushTransaction, [](arangodb::FlushTransaction*)->void {}
+      );
+    }
+
+    auto trx = arangodb::FlushFeature::FlushTransactionPtr(
+      viewSelf->get(),
+      [](arangodb::FlushTransaction* trx)->void {
+        ADOPT_SCOPED_LOCK_NAMED(static_cast<IResearchView*>(trx)->_asyncSelf->mutex(), lock);
+      }
+    );
+
+    lock.release(); // unlocked in distructor above
+
+    return trx;
+  });
+
+  // noexcept
+  _flushCallback.reset(this); // track for unregistration
 }
 
 arangodb::Result IResearchView::properties(
@@ -1073,7 +1127,7 @@ arangodb::Result IResearchView::updateProperties(
       return res;
     }
 
-    WriteMutex mutex(_mutex); // '_metaState' can be asynchronously read
+    WriteMutex mutex(_mutex); // '_meta'/'_metaState' can be asynchronously read
     SCOPED_LOCK_NAMED(mutex, mtx);
 
     // check link auth as per https://github.com/arangodb/backlog/issues/459
@@ -1094,35 +1148,28 @@ arangodb::Result IResearchView::updateProperties(
 
     std::string error;
     IResearchViewMeta meta;
+    auto& initialMeta = partialUpdate ? _meta : IResearchViewMeta::DEFAULT();
 
-    {
-      auto viewMeta = std::atomic_load(&_meta);
-      SCOPED_LOCK(viewMeta->write());
-      IResearchViewMeta* metaPtr = viewMeta.get();
-      auto& initialMeta = partialUpdate ? *metaPtr : IResearchViewMeta::DEFAULT();
+    if (!meta.init(slice, error, initialMeta)) {
+      return arangodb::Result(
+        TRI_ERROR_BAD_PARAMETER,
+        error.empty()
+        ? (std::string("failed to update arangosearch view '") + name() + "' from definition: " + slice.toString())
+        : (std::string("failed to update arangosearch view '") + name() + "' from definition, error in attribute '" + error + "': " + slice.toString())
+      );
+    }
 
-      if (!meta.init(slice, error, initialMeta)) {
-        return arangodb::Result(
-          TRI_ERROR_BAD_PARAMETER,
-          error.empty()
-          ? (std::string("failed to update arangosearch view '") + name() + "' from definition: " + slice.toString())
-          : (std::string("failed to update arangosearch view '") + name() + "' from definition, error in attribute '" + error + "': " + slice.toString())
-        );
-      }
+    // reset non-updatable values to match current meta
+    meta._locale = _meta._locale;
+    meta._version = _meta._version;
+    meta._writebufferActive = _meta._writebufferActive;
+    meta._writebufferIdle = _meta._writebufferIdle;
+    meta._writebufferSizeMax = _meta._writebufferSizeMax;
 
-      // reset non-updatable values to match current meta
-      meta._locale = viewMeta->_locale;
-      meta._version = viewMeta->_version;
-      meta._writebufferActive = viewMeta->_writebufferActive;
-      meta._writebufferIdle = viewMeta->_writebufferIdle;
-      meta._writebufferSizeMax = viewMeta->_writebufferSizeMax;
+    _meta = std::move(meta);
 
-      if (arangodb::ServerState::instance()->isDBServer()) {
-        viewMeta = std::make_shared<AsyncMeta>(); // create an instance not shared with cluster-view
-      }
-
-      static_cast<IResearchViewMeta&>(*viewMeta) = std::move(meta);
-      updateProperties(viewMeta); // trigger reload of settings for async jobs
+    if (_asyncFeature) {
+      _asyncFeature->asyncNotify(); // trigger reload of settings for async jobs
     }
 
     mutex.unlock(true); // downgrade to a read-lock
@@ -1190,63 +1237,6 @@ arangodb::Result IResearchView::updateProperties(
       std::string("error updating properties for arangosearch view '") + name() + "'"
     );
   }
-}
-
-arangodb::Result IResearchView::updateProperties(
-  std::shared_ptr<AsyncMeta> const& meta
-) {
-  if (!meta) {
-    return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
-  }
-
-  std::atomic_store(&_meta, meta);
-
-  if (_asyncFeature) {
-    _asyncFeature->asyncNotify();
-  }
-
-  return arangodb::Result();
-}
-
-void IResearchView::registerFlushCallback() {
-  auto* flush = getFlushFeature();
-
-  if (!flush) {
-    // feature not registered
-    return;
-  }
-
-  auto viewSelf = _asyncSelf;
-
-  flush->registerCallback(this, [viewSelf]() {
-    static struct NoopFlushTransaction: arangodb::FlushTransaction {
-      NoopFlushTransaction(): FlushTransaction("ArangoSearchNoop") {}
-      virtual arangodb::Result commit() override {
-        return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-      }
-    } noopFlushTransaction;
-    SCOPED_LOCK_NAMED(viewSelf->mutex(), lock);
-
-    if (!*viewSelf) {
-      return arangodb::FlushFeature::FlushTransactionPtr(
-        &noopFlushTransaction, [](arangodb::FlushTransaction*)->void {}
-      );
-    }
-
-    auto trx = arangodb::FlushFeature::FlushTransactionPtr(
-      viewSelf->get(),
-      [](arangodb::FlushTransaction* trx)->void {
-        ADOPT_SCOPED_LOCK_NAMED(static_cast<IResearchView*>(trx)->_asyncSelf->mutex(), lock);
-      }
-    );
-
-    lock.release(); // unlocked in distructor above
-
-    return trx;
-  });
-
-  // noexcept
-  _flushCallback.reset(this); // mark for future unregistration
 }
 
 bool IResearchView::visitCollections(
