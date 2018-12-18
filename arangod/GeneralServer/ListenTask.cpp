@@ -67,7 +67,7 @@ bool ListenTask::start() {
 
   auto self(shared_from_this());
 
-  _handler = [this, self](asio_ns::error_code const& ec) {
+  auto handler = [this, self](asio_ns::error_code const& ec) {
 
     if (!_bound) {
       _handler = nullptr;
@@ -112,11 +112,11 @@ bool ListenTask::start() {
 
     handleConnected(std::move(peer), std::move(info));
 
-    _acceptor->asyncAccept(_handler);
+    _acceptor->asyncAccept(handler);
   };
 
   _bound = true;
-  _acceptor->asyncAccept(_handler);
+  _acceptor->asyncAccept(handler);
   return true;
 }
 

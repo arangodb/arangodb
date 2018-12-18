@@ -208,7 +208,6 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   }
 
   // we need at least one io thread and context
-
   if (_numIoThreads == 0) {
     LOG_TOPIC(WARN, Logger::FIXME)
       << "Need at least one io-context thread.";
