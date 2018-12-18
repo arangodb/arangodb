@@ -69,7 +69,7 @@ void TRI_InitThread(TRI_thread_t* thread) { *thread = 0; }
 /// @brief starts a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_StartThread(TRI_thread_t* thread, TRI_tid_t* threadId,
+bool TRI_StartThread(TRI_thread_t* thread, 
                      char const* name, void (*starter)(void*), void* data) {
   std::unique_ptr<thread_data_t> d;
 
@@ -86,7 +86,7 @@ bool TRI_StartThread(TRI_thread_t* thread, TRI_tid_t* threadId,
                          ThreadStarter,  // thread function name
                          d.release(),    // argument to thread function
                          0,              // use default creation flags
-                         threadId);      // returns the thread identifier
+                         nullptr);      // returns the thread identifier
 
   if (*thread == 0) {
     LOG_TOPIC(ERR, arangodb::Logger::THREADS) << "could not start thread: " << strerror(errno) << " ";
@@ -162,9 +162,3 @@ bool TRI_IsSelfThread(TRI_thread_t* thread) {
   TRI_ASSERT(thread != nullptr);
   return (GetCurrentThreadId() == GetThreadId(*thread));
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the process affinity
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_SetProcessorAffinity(TRI_thread_t* thread, size_t core) {}

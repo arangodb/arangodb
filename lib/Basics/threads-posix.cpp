@@ -90,8 +90,9 @@ void TRI_InitThread(TRI_thread_t* thread) {
 /// @brief starts a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_StartThread(TRI_thread_t* thread, TRI_tid_t* threadId,
-                     char const* name, void (*starter)(void*), void* data) {
+bool TRI_StartThread(TRI_thread_t* thread,
+                     char const* name, 
+                     void (*starter)(void*), void* data) {
   std::unique_ptr<thread_data_t> d;
 
   try {
@@ -138,10 +139,6 @@ bool TRI_StartThread(TRI_thread_t* thread, TRI_tid_t* threadId,
     return false;
   }
 
-  if (threadId != nullptr) {
-    *threadId = (TRI_tid_t)*thread;
-  }
-
   // object must linger around until later
   d.release();
 
@@ -181,42 +178,6 @@ int TRI_DetachThread(TRI_thread_t* thread) {
 
 bool TRI_IsSelfThread(TRI_thread_t* thread) {
   return pthread_self() == *thread;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the process affinity
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_SetProcessorAffinity(TRI_thread_t* thread, size_t core) {
-#ifdef ARANGODB_HAVE_THREAD_AFFINITY
-
-  cpu_set_t cpuset;
-
-  CPU_ZERO(&cpuset);
-  CPU_SET(core, &cpuset);
-
-  int s = pthread_setaffinity_np(*thread, sizeof(cpu_set_t), &cpuset);
-
-  if (s != 0) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot set affinity to core " << core << ": "
-             << strerror(errno);
-  }
-
-#endif
-
-#ifdef ARANGODB_HAVE_THREAD_POLICY
-
-  thread_affinity_policy_data_t policy = {(int)core};
-  auto mach_thread = pthread_mach_thread_np(*thread);
-  auto res = thread_policy_set(mach_thread, THREAD_AFFINITY_POLICY,
-                               (thread_policy_t)&policy, 1);
-
-  if (res != KERN_SUCCESS) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot set affinity to core " << core << ": "
-             << strerror(errno);
-  }
-
-#endif
 }
 
 #endif
