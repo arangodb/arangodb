@@ -65,16 +65,19 @@ bool ListenTask::start() {
     return false;
   }
 
+
+  _bound = true;
+  this->accept();
+  return true;
+}
+
+void ListenTask::accept() {
+
   auto self(shared_from_this());
 
   auto handler = [this, self](asio_ns::error_code const& ec) {
 
-    if (!_bound) {
-      _handler = nullptr;
-      return;
-    }
 
-    TRI_ASSERT(_handler != nullptr);
     TRI_ASSERT(_acceptor != nullptr);
 
     if (ec) {
@@ -112,12 +115,10 @@ bool ListenTask::start() {
 
     handleConnected(std::move(peer), std::move(info));
 
-    _acceptor->asyncAccept(handler);
+    this->accept();
   };
 
-  _bound = true;
   _acceptor->asyncAccept(handler);
-  return true;
 }
 
 void ListenTask::stop() {
@@ -127,8 +128,6 @@ void ListenTask::stop() {
   }
 
   _bound = false;
-  _handler = nullptr;
-
   _acceptor->close();
   _acceptor.reset();
 }

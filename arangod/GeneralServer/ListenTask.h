@@ -61,6 +61,7 @@ class ListenTask : virtual public rest::IoTask {
   void stop();
 
  private:
+  void accept();
   Endpoint* _endpoint;
   size_t _acceptFailures = 0;
 
