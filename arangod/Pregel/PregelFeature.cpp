@@ -287,7 +287,7 @@ void PregelFeature::cleanupWorker(uint64_t executionNumber) {
   // unmapping etc might need a few seconds
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  scheduler->queue(RequestPriority::LOW, [this, executionNumber] {
+  scheduler->queue(RequestLane::INTERNAL_LOW, [this, executionNumber] {
     MUTEX_LOCKER(guard, _mutex);
 
     auto wit = _workers.find(executionNumber);

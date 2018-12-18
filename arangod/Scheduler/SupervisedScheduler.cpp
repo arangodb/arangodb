@@ -104,14 +104,9 @@ SupervisedScheduler::SupervisedScheduler(uint64_t minThreads,
 
 SupervisedScheduler::~SupervisedScheduler() {}
 
-void SupervisedScheduler::post(std::function<void()> const& callback)
+bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> const&handler)
 {
-  queue(RequestPriority::HIGH, callback);
-}
-
-bool SupervisedScheduler::queue(RequestPriority prio, std::function<void()> const&handler)
-{
-  size_t queueNo = (size_t) prio;
+  size_t queueNo = (size_t) PriorityRequestLane(lane);
 
   TRI_ASSERT(/*0 <= queueNo &&*/ queueNo <= 2);
 

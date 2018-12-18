@@ -98,8 +98,8 @@ bool Scheduler::start() {
 }
 
 void Scheduler::beginShutdown() {
-  std::unique_lock<std::mutex> guard2(_priorityQueueMutex);
-  _conditionCron.notify_one();
+  std::unique_lock<std::mutex> guard2(_cronQueueMutex);
+  _croncv.notify_one();
 }
 
 void Scheduler::shutdown () {
@@ -107,55 +107,55 @@ void Scheduler::shutdown () {
   _cronThread.reset();
 }
 
-void Scheduler::runCron() {
-
-  std::unique_lock<std::mutex> guard(_priorityQueueMutex);
-
-  uint64_t tick = 0;
+void Scheduler::runCron()
+{
+  std::unique_lock<std::mutex> guard(_cronQueueMutex);
 
   while (!isStopping()) {
 
-    tick++;
     auto now = clock::now();
     clock::duration sleepTime = std::chrono::milliseconds(50);
 
-    while (_priorityQueue.size() > 0) {
-      auto &top = _priorityQueue.top();
+    while (_cronQueue.size() > 0) {
+      // top is a reference to a tuple containing the timepoint and a shared_ptr to the work item
+      auto const& top = _cronQueue.top();
 
-      if (top->_cancelled || top->_due < now) {
-        post([top]() { top->_handler(top->_cancelled); });
-        _priorityQueue.pop();
+      if (top.first < now) {
+        // It is time to scheduler this task, try to get the lock and obtain a shared_ptr
+        // If this fails a default WorkItem is constructed which has disabled == true
+        top.second.lock()->run();
+        _cronQueue.pop();
       } else {
-        auto then = (top->_due - now);
+        auto then = (top.first - now);
 
         sleepTime = (sleepTime > then ? then : sleepTime);
         break ;
       }
     }
 
-    _conditionCron.wait_for(guard, sleepTime);
+    _croncv.wait_for(guard, sleepTime);
 
   }
-
 }
 
-Scheduler::WorkHandle Scheduler::postDelay(clock::duration delay,
-  std::function<void(bool cancelled)> const& callback) {
-
+Scheduler::WorkHandle Scheduler::queueDelay(
+    RequestLane lane,
+    clock::duration delay,
+    std::function<void(bool cancelled)> const& handler
+) {
   if (delay < std::chrono::milliseconds(1)) {
-    post([callback]() {callback(false);});
-    return WorkHandle{};
+    // execute directly
+    queue(lane, [handler](){ handler(false); });
   }
 
-  std::unique_lock<std::mutex> guard(_priorityQueueMutex);
-  auto handle = std::make_shared<Scheduler::DelayedWorkItem>(callback, delay);
-
-  _priorityQueue.push(handle);
+  auto item = std::make_shared<WorkItem>(handler, lane, this);
+  std::unique_lock<std::mutex> guard(_cronQueueMutex);
+  _cronQueue.emplace(clock::now() + delay, item);
 
   if (delay < std::chrono::milliseconds(50)) {
     // wakeup thread
-    _conditionCron.notify_one();
+    _croncv.notify_one();
   }
 
-  return handle;
+  return item;
 }

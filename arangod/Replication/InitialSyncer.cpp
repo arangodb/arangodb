@@ -34,7 +34,7 @@ InitialSyncer::InitialSyncer(
       _progress{setter} {}
 
 InitialSyncer::~InitialSyncer() {
-  _batchPingTimer.cancel();
+  _batchPingTimer.reset();
   try {
     if (!_state.isChildSyncer) {
       _batch.finish(_state.connection, _progress);
@@ -53,7 +53,7 @@ void InitialSyncer::startRecurringBatchExtension() {
   if (secs < 30) {
     secs = 30;
   }
-  _batchPingTimer = SchedulerFeature::SCHEDULER->postDelay(std::chrono::seconds(secs),
+  _batchPingTimer = SchedulerFeature::SCHEDULER->queueDelay(RequestLane::SERVER_REPLICATION, std::chrono::seconds(secs),
     [this](bool cancelled) {
     if (!cancelled && _batch.id != 0 && !isAborted()) {
       _batch.extend(_state.connection, _progress);

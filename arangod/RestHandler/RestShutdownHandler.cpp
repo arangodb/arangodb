@@ -51,7 +51,7 @@ RestStatus RestShutdownHandler::execute() {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
     return RestStatus::DONE;
   }
-  
+
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (af->isActive() && !_request->user().empty()) {
     auth::Level lvl = auth::Level::NONE;
@@ -66,7 +66,7 @@ RestStatus RestShutdownHandler::execute() {
       return RestStatus::DONE;
     }
   }
-  
+
   bool removeFromCluster;
   std::string const& remove =
       _request->value("remove_from_cluster", removeFromCluster);
@@ -92,7 +92,7 @@ RestStatus RestShutdownHandler::execute() {
         ApplicationServer::getFeature<ClusterFeature>("Cluster");
     clusterFeature->setUnregisterOnShutdown(true);
   }
- 
+
   try {
     VPackBuilder result;
     result.add(VPackValue("OK"));
@@ -103,12 +103,12 @@ RestStatus RestShutdownHandler::execute() {
   rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   // don't block the response for workers waiting on this callback
   // this should allow workers to go into the IDLE state
-  scheduler->queue(RequestPriority::HIGH, [this] {
+  scheduler->queue(RequestLane::CLUSTER_INTERNAL, [this] {
     // Give the server 2 seconds to send the reply:
     std::this_thread::sleep_for(std::chrono::seconds(2));
     // Go down:
     ApplicationServer::server->beginShutdown();
     });
-    
+
   return RestStatus::DONE;
 }

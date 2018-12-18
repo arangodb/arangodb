@@ -628,7 +628,7 @@ Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
       if (res.ok() || !res.is(TRI_ERROR_ARANGO_CONFLICT)) {
         break;
       }
-      
+
       if (++tries == 10) {
         LOG_TOPIC(WARN, Logger::FIXME) << "Enumerating users failed with " << res.errorMessage() << ". giving up!";
         break;
@@ -662,7 +662,7 @@ Result Collections::warmup(TRI_vocbase_t& vocbase,
 
   auto idxs = coll.getIndexes();
   auto poster = [](std::function<void()> fn) -> void {
-    SchedulerFeature::SCHEDULER->queue(RequestPriority::LOW, fn);
+    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, fn);
   };
   auto queue = std::make_shared<basics::LocalTaskQueue>(poster);
 

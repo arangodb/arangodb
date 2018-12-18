@@ -35,6 +35,7 @@
 #include "Pregel/Statistics.h"
 #include "Pregel/WorkerConfig.h"
 #include "Pregel/WorkerContext.h"
+#include "Scheduler/Scheduler.h"
 
 struct TRI_vocbase_t;
 
@@ -136,7 +137,7 @@ class Worker : public IWorker {
   std::atomic<uint64_t> _nextGSSSendMessageCount;
   /// if the worker has started sendng messages to the next GSS
   std::atomic<bool> _requestedNextGSS;
-  std::unique_ptr<asio::steady_timer> _steady_timer;
+  rest::Scheduler::WorkHandle _workHandle;
 
   void _initializeMessageCaches();
   void _initializeVertexContext(VertexContext<V, E, M>* ctx);

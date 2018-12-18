@@ -1730,7 +1730,7 @@ int MMFilesCollection::fillIndexes(
       " }, indexes: " + std::to_string(n - 1));
 
   auto poster = [](std::function<void()> fn) -> void {
-    SchedulerFeature::SCHEDULER->queue(RequestPriority::LOW, fn);
+    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, fn);
   };
   auto queue = std::make_shared<arangodb::basics::LocalTaskQueue>(poster);
 
@@ -2276,7 +2276,7 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(
     created = false;
     return idx;
   }
-  
+
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
   // We are sure that we do not have an index of this type.
@@ -2290,16 +2290,16 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(
     LOG_TOPIC(ERR, Logger::ENGINES) << "index creation failed while restoring";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
   }
-  
+
   if (!restore) {
     TRI_UpdateTickServer(idx->id());
   }
-  
+
   auto other = PhysicalCollection::lookupIndex(idx->id());
   if (other) {
     return other;
   }
-  
+
   TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
 
   int res = saveIndex(trx, idx);
@@ -2911,7 +2911,7 @@ Result MMFilesCollection::insert(
     TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_tick_t& revisionId,
     KeyLockInfo* keyLockInfo,
     std::function<Result(void)> callbackDuringLock) {
-  
+
   LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options);
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
   transaction::BuilderLeaser builder(trx);
@@ -2952,7 +2952,7 @@ Result MMFilesCollection::insert(
       revisionId = TRI_StringToRid(p, l, false);
     }
   }
-  
+
   // create marker
   MMFilesCrudMarker insertMarker(
       TRI_DF_MARKER_VPACK_DOCUMENT,
@@ -3004,7 +3004,7 @@ Result MMFilesCollection::insert(
   } catch (...) {
     return Result(TRI_ERROR_INTERNAL);
   }
-      
+
   TRI_ASSERT(keyLockInfo != nullptr);
   if (keyLockInfo->shouldLock) {
     TRI_ASSERT(lock);
@@ -3181,7 +3181,7 @@ void MMFilesCollection::removeLocalDocumentId(LocalDocumentId const& documentId,
 bool MMFilesCollection::hasAllPersistentLocalIds() const {
   return _hasAllPersistentLocalIds.load();
 }
-  
+
 Result MMFilesCollection::persistLocalDocumentIdsForDatafile(
     MMFilesCollection& collection, MMFilesDatafile& file) {
   Result res;
@@ -3840,8 +3840,8 @@ Result MMFilesCollection::remove(
   }
 
   TRI_ASSERT(!key.isNone());
-  
-  TRI_ASSERT(keyLockInfo != nullptr); 
+
+  TRI_ASSERT(keyLockInfo != nullptr);
   if (keyLockInfo->shouldLock) {
     lockKey(*keyLockInfo, key);
   }
@@ -3879,7 +3879,7 @@ Result MMFilesCollection::remove(
       return res;
     }
   }
-  
+
   // we found a document to remove
   try {
     operation.setDocumentIds(MMFilesDocumentDescriptor(oldDocumentId, oldDoc.begin()),
@@ -4232,7 +4232,7 @@ void MMFilesCollection::lockKey(KeyLockInfo& keyLockInfo, VPackSlice const& key)
   TRI_ASSERT(key.isString());
   std::string k = key.copyString();
 
-  MMFilesCollection::KeyLockShard& shard = getShardForKey(k); 
+  MMFilesCollection::KeyLockShard& shard = getShardForKey(k);
 
   // register key unlock function
   keyLockInfo.unlocker = [this](KeyLockInfo& keyLock) {
@@ -4266,7 +4266,7 @@ void MMFilesCollection::lockKey(KeyLockInfo& keyLockInfo, VPackSlice const& key)
 void MMFilesCollection::unlockKey(KeyLockInfo& keyLockInfo) noexcept {
   TRI_ASSERT(keyLockInfo.shouldLock);
   if (!keyLockInfo.key.empty()) {
-    MMFilesCollection::KeyLockShard& shard = getShardForKey(keyLockInfo.key); 
+    MMFilesCollection::KeyLockShard& shard = getShardForKey(keyLockInfo.key);
     MUTEX_LOCKER(locker, shard._mutex);
     shard._keys.erase(keyLockInfo.key);
   }

@@ -312,7 +312,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   // don't block the response for workers waiting on this callback
   // this should allow workers to go into the IDLE state
-  scheduler->queue(RequestPriority::LOW, [this] {
+  scheduler->queue(RequestLane::CLUSTER_INTERNAL, [this] {
     MUTEX_LOCKER(guard, _callbackMutex);
 
     if (_state == ExecutionState::RUNNING) {
@@ -421,7 +421,7 @@ void Conductor::startRecovery() {
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
 
   // let's wait for a final state in the cluster
-  SchedulerFeature::SCHEDULER->postDelay(std::chrono::seconds(2),
+  _workHandle = SchedulerFeature::SCHEDULER->queueDelay(RequestLane::CLUSTER_INTERNAL, std::chrono::seconds(2),
     [this](bool cancelled) {
 
     if (cancelled || _state != ExecutionState::RECOVERING) {
@@ -469,7 +469,7 @@ void Conductor::startRecovery() {
       cancelNoLock();
       LOG_TOPIC(ERR, Logger::PREGEL) << "Compensation failed";
     }
-  }).detach();
+  });
 }
 
 // resolves into an ordered list of shards for each collection on each server
@@ -770,7 +770,7 @@ int Conductor::_sendToAllDBServers(std::string const& path,
     } else {
       TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
       rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-      scheduler->queue(RequestPriority::LOW, [this, path, message] {
+      scheduler->queue(RequestLane::CLUSTER_INTERNAL, [this, path, message] {
         VPackBuilder response;
 
         PregelFeature::handleWorkerRequest(

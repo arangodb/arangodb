@@ -132,7 +132,7 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
     startRecurringBatchExtension();
   }
   TRI_DEFER(if (!_state.isChildSyncer) {
-    _batchPingTimer.cancel();
+    _batchPingTimer.reset();
     _batch.finish(_state.connection, _progress);
   });
   LOG_TOPIC(DEBUG, Logger::REPLICATION) << "sending start batch done";

@@ -77,7 +77,10 @@ enum class RequestLane {
 
   // For periodic or one-off V8-based tasks executed by the
   // Scheduler.
-  TASK_V8
+  TASK_V8,
+
+  // Internal tasks with low priority
+  INTERNAL_LOW,
 
   // Not yet used:
   // For requests which go from the agency back to coordinators or
@@ -111,6 +114,8 @@ inline RequestPriority PriorityRequestLane(RequestLane lane) {
     case RequestLane::SERVER_REPLICATION:
       return RequestPriority::LOW;
     case RequestLane::TASK_V8:
+      return RequestPriority::LOW;
+    case RequestLane::INTERNAL_LOW:
       return RequestPriority::LOW;
   }
   return RequestPriority::LOW;

@@ -1052,7 +1052,7 @@ private:
   CoordTransactionID _coordTransactionID;
   ClusterComm::AsyncCallback _callback;
 
-  rest::Scheduler::WorkHandle _timer;
+  rest::Scheduler::WorkHandle _handle;
   std::unordered_map<OperationID, size_t> opIDtoIndex;
   std::vector<ClusterCommTimeout> dueTime;
   size_t nrDone = 0;
@@ -1111,7 +1111,8 @@ public:
     auto self = shared_from_this();
     auto duration = std::chrono::duration<double>(actionNeeded);
 
-    _timer = SchedulerFeature::SCHEDULER->postDelay(std::chrono::duration_cast<std::chrono::nanoseconds>(duration),
+    _handle = SchedulerFeature::SCHEDULER->queueDelay(RequestLane::CLUSTER_INTERNAL,
+      std::chrono::duration_cast<std::chrono::nanoseconds>(duration),
       [self, this] (bool cancelled) {
       if (!cancelled) {
         this->performTasks(true);
@@ -1127,7 +1128,7 @@ private:
       // requests are marked by done!
       ClusterComm::instance()->drop(_coordTransactionID, 0, "");
     }
-    _timer.cancel();
+    _handle.reset();
     TRI_ASSERT(_callback);
     _callback(_requests, nrDone, nrGood);
   }
@@ -1308,7 +1309,7 @@ void ClusterComm::disable() {
 }
 
 void ClusterComm::scheduleMe(std::function<void()> task) {
-  arangodb::SchedulerFeature::SCHEDULER->queue(RequestPriority::HIGH, task);
+  arangodb::SchedulerFeature::SCHEDULER->queue(RequestLane::CLUSTER_INTERNAL, task);
 }
 
 ClusterCommThread::ClusterCommThread() : Thread("ClusterComm"), _cc(nullptr) {

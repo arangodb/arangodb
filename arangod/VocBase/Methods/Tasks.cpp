@@ -282,7 +282,7 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
 
     // now do the work:
     SchedulerFeature::SCHEDULER->queue(
-      RequestPriority::LOW, [self, this, execContext] {
+      RequestLane::INTERNAL_LOW, [self, this, execContext] {
           ExecContextScope scope(_user.empty() ? ExecContext::superuser()
                                                : execContext.get());
 
@@ -314,13 +314,13 @@ void Task::start() {
 }
 
 void Task::queue(std::chrono::microseconds offset) {
-  _taskHandle = SchedulerFeature::SCHEDULER->postDelay(offset, callbackFunction());
+  _taskHandle = SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW, offset, callbackFunction());
 }
 
 void Task::cancel() {
   // this will prevent the task from dispatching itself again
   _periodic.store(false);
-  _taskHandle.cancel();
+  _taskHandle.reset();
 }
 
 std::shared_ptr<VPackBuilder> Task::toVelocyPack() const {
