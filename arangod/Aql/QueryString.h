@@ -65,7 +65,7 @@ class QueryString {
   std::string extractRegion(int line, int column) const;
 
  private:
-  std::string const _queryString;
+  std::string _queryString;
   mutable uint64_t _hash;
   mutable bool _hashed;
 };

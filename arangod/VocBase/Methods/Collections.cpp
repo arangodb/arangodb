@@ -140,20 +140,22 @@ Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
 
   if (ServerState::instance()->isCoordinator()) {
     try {
-      auto coll = ClusterInfo::instance()->getCollection(vocbase->name(), name);
-
-      // check authentication after ensuring the collection exists
-      if (exec != nullptr &&
-          !exec->canUseCollection(vocbase->name(), coll->name(),
-                                  auth::Level::RO)) {
-        return Result(TRI_ERROR_FORBIDDEN,
-                      "No access to collection '" + name + "'");
-      }
+      auto coll = ClusterInfo::instance()->getCollectionNT(vocbase->name(), name);
 
       if (coll) {
+        // check authentication after ensuring the collection exists
+        if (exec != nullptr &&
+            !exec->canUseCollection(vocbase->name(), coll->name(),
+                                  auth::Level::RO)) {
+          return Result(TRI_ERROR_FORBIDDEN,
+                        "No access to collection '" + name + "'");
+        }
+
         func(coll);
 
         return Result();
+      } else {
+        return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
       }
     } catch (basics::Exception const& ex) {
       return Result(ex.code(), ex.what());
@@ -264,10 +266,25 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
       if (name[0] != '_' && um != nullptr && exe != nullptr &&
           !exe->isSuperuser()) {
         // this should not fail, we can not get here without database RW access
-        um->updateUser(ExecContext::CURRENT->user(), [&](auth::User& entry) {
-          entry.grantCollection(vocbase->name(), name, auth::Level::RW);
-          return TRI_ERROR_NO_ERROR;
-        });
+        // however, there may be races for updating the users account, so we try a
+        // few times in case of a conflict
+        int tries = 0;
+        while (true) {
+          Result r = um->updateUser(ExecContext::CURRENT->user(), [&](auth::User& entry) {
+            entry.grantCollection(vocbase->name(), name, auth::Level::RW);
+            return TRI_ERROR_NO_ERROR;
+          });
+          if (r.ok() || r.is(TRI_ERROR_USER_NOT_FOUND) || r.is(TRI_ERROR_USER_EXTERNAL)) {
+            // it seems to be allowed to created collections with an unknown user
+            break;
+          }
+          if (!r.is(TRI_ERROR_ARANGO_CONFLICT) || ++tries == 10) {
+            LOG_TOPIC(WARN, Logger::FIXME) << "Updating user failed with error: " << r.errorMessage() << ". giving up!";
+            return r;
+          }
+          // try again in case of conflict
+          LOG_TOPIC(TRACE, Logger::FIXME) << "Updating user failed with error: " << r.errorMessage() << ". trying again";
+        }
       }
 
       // reload otherwise collection might not be in yet
@@ -283,10 +300,25 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
       if (name[0] != '_' && um != nullptr && exe != nullptr &&
           !exe->isSuperuser()) {
         // this should not fail, we can not get here without database RW access
-        um->updateUser(ExecContext::CURRENT->user(), [&](auth::User& u) {
-          u.grantCollection(vocbase->name(), name, auth::Level::RW);
-          return TRI_ERROR_NO_ERROR;
-        });
+        // however, there may be races for updating the users account, so we try a
+        // few times in case of a conflict
+        int tries = 0;
+        while (true) {
+          Result r = um->updateUser(ExecContext::CURRENT->user(), [&](auth::User& entry) {
+            entry.grantCollection(vocbase->name(), name, auth::Level::RW);
+            return TRI_ERROR_NO_ERROR;
+          });
+          if (r.ok() || r.is(TRI_ERROR_USER_NOT_FOUND) || r.is(TRI_ERROR_USER_EXTERNAL)) {
+            // it seems to be allowed to created collections with an unknown user
+            break;
+          }
+          if (!r.is(TRI_ERROR_ARANGO_CONFLICT) || ++tries == 10) {
+            LOG_TOPIC(WARN, Logger::FIXME) << "Updating user failed with error: " << r.errorMessage() << ". giving up!";
+            return r;
+          }
+          // try again in case of conflict
+          LOG_TOPIC(TRACE, Logger::FIXME) << "Updating user failed with error: " << r.errorMessage() << ". trying again";
+        }
       }
 
       func(col);
@@ -564,7 +596,7 @@ Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
   }
 
   TRI_ASSERT(coll);
-  auto& dbname = coll->vocbase().name();
+  auto const& dbname = coll->vocbase().name();
   std::string const collName = coll->name();
 
   Result res;
@@ -587,9 +619,23 @@ Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
 
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (res.ok() && um != nullptr) {
-    um->enumerateUsers([&](auth::User& entry) -> bool {
-      return entry.removeCollection(dbname, collName);
-    });
+    int tries = 0;
+    while (true) {
+      res = um->enumerateUsers([&](auth::User& entry) -> bool {
+        return entry.removeCollection(dbname, collName);
+      });
+
+      if (res.ok() || !res.is(TRI_ERROR_ARANGO_CONFLICT)) {
+        break;
+      }
+      
+      if (++tries == 10) {
+        LOG_TOPIC(WARN, Logger::FIXME) << "Enumerating users failed with " << res.errorMessage() << ". giving up!";
+        break;
+      }
+      // try again in case of conflict
+      LOG_TOPIC(TRACE, Logger::FIXME) << "Enumerating users failed with error: " << res.errorMessage() << ". trying again";
+    }
   }
   return res;
 }
@@ -597,7 +643,7 @@ Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
 Result Collections::warmup(TRI_vocbase_t& vocbase,
                            LogicalCollection const& coll) {
   ExecContext const* exec = ExecContext::CURRENT;  // disallow expensive ops
-  if (!exec->canUseCollection(coll.name(), auth::Level::RO)) {
+  if (exec != nullptr && !exec->canUseCollection(coll.name(), auth::Level::RO)) {
     return Result(TRI_ERROR_FORBIDDEN);
   }
 

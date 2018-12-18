@@ -1013,10 +1013,10 @@ void TRI_vocbase_t::inventory(
       //  collection->toVelocyPackIgnore !?
       result.add(VPackValue("indexes"));
       collection->getIndexesVPack(result, Index::makeFlags(), [](arangodb::Index const* idx) {
-        // we have to exclude the primary and the edge index here, because otherwise
-        // at least the MMFiles engine will try to create it
+        // we have to exclude the primary, edge index and links for dump / restore
         return (idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
-                idx->type() != arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX);
+                idx->type() != arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX &&
+                idx->type() != arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK);
       });
       result.add("parameters", VPackValue(VPackValueType::Object));
       collection->toVelocyPackIgnore(result, { "objectId", "path", "statusString", "indexes" }, true, false);
@@ -1353,7 +1353,7 @@ arangodb::Result TRI_vocbase_t::dropCollection(
 /// @brief renames a view
 arangodb::Result TRI_vocbase_t::renameView(
     TRI_voc_cid_t cid,
-    std::string const& newName
+    std::string const& oldName
 ) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   auto const view = lookupView(cid);
@@ -1362,8 +1362,28 @@ arangodb::Result TRI_vocbase_t::renameView(
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
+  auto* databaseFeature = application_features::ApplicationServer::lookupFeature<
+    DatabaseFeature
+  >("Database");
+
+  if (!databaseFeature) {
+    return Result(
+      TRI_ERROR_INTERNAL,
+      std::string("failed to find feature 'Database' while renaming view '") + view->name() + "' in database '" + name() + "'"
+    );
+  }
+
+  auto* engine = EngineSelectorFeature::ENGINE;
+
+  if (!engine) {
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      std::string("failed to find StorageEngine while renaming view '") + view->name() + "' in database '" + name() + "'"
+    );
+  }
+
   // lock collection because we are going to copy its current name
-  std::string oldName = view->name();
+  auto newName = view->name();
 
   // old name should be different
 
@@ -1397,6 +1417,15 @@ arangodb::Result TRI_vocbase_t::renameView(
   }
 
   TRI_ASSERT(std::dynamic_pointer_cast<arangodb::LogicalView>(itr1->second));
+
+  auto doSync = databaseFeature->forceSyncProperties();
+  auto res = engine->inRecovery()
+    ? arangodb::Result() // skip persistence while in recovery since definition already from engine
+    : engine->changeView(*this, *view, doSync);
+
+  if (!res.ok()) {
+    return res;
+  }
 
   // stores the parameters on disk
   auto itr2 = _dataSourceByName.emplace(newName, itr1->second);
@@ -1717,14 +1746,15 @@ arangodb::Result TRI_vocbase_t::dropView(
   TRI_ASSERT(writeLocker.isLocked());
   TRI_ASSERT(locker.isLocked());
 
-  arangodb::aql::PlanCache::instance()->invalidate(this);
-  arangodb::aql::QueryCache::instance()->invalidate(this);
-
   auto res = engine->dropView(*this, *view);
 
   if (!res.ok()) {
     return res;
   }
+
+  // invalidate all entries in the plan and query cache now
+  arangodb::aql::PlanCache::instance()->invalidate(this);
+  arangodb::aql::QueryCache::instance()->invalidate(this);
 
   unregisterView(*view);
 

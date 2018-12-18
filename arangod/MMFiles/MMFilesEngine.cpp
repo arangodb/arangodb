@@ -385,7 +385,7 @@ Result MMFilesEngine::persistLocalDocumentIds(TRI_vocbase_t& vocbase) {
       LOG_TOPIC(DEBUG, Logger::ENGINES)
           << "processing collection '" << c->name() << "'";
       collection->open(false);
-      auto guard = scopeGuard([this, &collection]() -> void {
+      auto guard = scopeGuard([&collection]() -> void {
         collection->close();
       });
 
@@ -1400,8 +1400,7 @@ Result MMFilesEngine::createView(
           "Database")
           ->forceSyncProperties();
 
-  saveViewInfo(&vocbase, &view, doSync);
-
+  saveViewInfo(vocbase, view, doSync);
 
   if (inRecovery()) {
     // Nothing more do. In recovery we do not write markers.
@@ -1452,13 +1451,13 @@ void MMFilesEngine::getViewProperties(
 }
 
 arangodb::Result MMFilesEngine::dropView(
-    TRI_vocbase_t& vocbase,
-    LogicalView& view
+    TRI_vocbase_t const& vocbase,
+    LogicalView const& view
 ) {
   auto* db = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
 
   TRI_ASSERT(db);
-  saveViewInfo(&vocbase, &view, db->forceSyncProperties());
+  saveViewInfo(vocbase, view, db->forceSyncProperties());
 
   if (inRecovery()) {
     // nothing to do here
@@ -1498,8 +1497,8 @@ arangodb::Result MMFilesEngine::dropView(
 }
 
 void MMFilesEngine::destroyView(
-    TRI_vocbase_t& vocbase,
-    LogicalView& view
+    TRI_vocbase_t const& vocbase,
+    LogicalView const& view
 ) noexcept {
   try {
     auto directory = viewDirectory(vocbase.id(), view.id());
@@ -1514,14 +1513,16 @@ void MMFilesEngine::destroyView(
   }
 }
 
-void MMFilesEngine::saveViewInfo(TRI_vocbase_t* vocbase,
-                                 arangodb::LogicalView const* view,
-                                 bool forceSync) const {
-  std::string const filename = viewParametersFilename(vocbase->id(), view->id());
+void MMFilesEngine::saveViewInfo(
+    TRI_vocbase_t const& vocbase,
+    LogicalView const& view,
+    bool forceSync
+) const {
+  auto filename = viewParametersFilename(vocbase.id(), view.id());
   VPackBuilder builder;
 
   builder.openObject();
-    view->properties(builder, true, true);
+    view.properties(builder, true, true);
   builder.close();
 
   LOG_TOPIC(TRACE, Logger::VIEWS)
@@ -1572,7 +1573,8 @@ Result MMFilesEngine::changeView(
     }
   }
 
-  saveViewInfo(&vocbase, &view, doSync);
+  saveViewInfo(vocbase, view, doSync);
+
   return {};
 }
 

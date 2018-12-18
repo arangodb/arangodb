@@ -33,7 +33,6 @@
 #include <iostream>
 #include <unicode/locid.h>
 
-#include "3rdParty/valgrind/valgrind.h"
 #include "unicode/normalizer2.h"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
@@ -579,6 +578,9 @@ static std::string GetEndpointFromUrl(std::string const& url) {
 ///
 /// If @FA{outfile} is not specified, the result body will be returned in the
 /// @LIT{body} attribute of the result object.
+///
+/// `process-utils.js` depends on simple http client error messages.
+///   this needs to be adjusted if this is ever changed!
 ////////////////////////////////////////////////////////////////////////////////
 
 void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -2648,10 +2650,20 @@ static void JS_Append(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("append(<filename>, <content>)");
   }
 
-  TRI_Utf8ValueNFC name(args[0]);
+#if _WIN32 // the wintendo needs utf16 filenames
+  v8::String::Value str(args[0]);
+  std::wstring name {
+    reinterpret_cast<wchar_t *>(*str),
+      static_cast<size_t>(str.length())};
+#else
+  TRI_Utf8ValueNFC str(args[0]);
+  std::string name(*str, str.length());
+#endif
+    
+  std::ofstream file;
 
-  if (*name == nullptr) {
-    TRI_V8_THROW_TYPE_ERROR("<filename> must be a string");
+  if (name.empty()) {
+    TRI_V8_THROW_TYPE_ERROR("<filename> must be a non-empty string");
   }
 
   if (args[1]->IsObject() && V8Buffer::hasInstance(isolate, args[1])) {
@@ -2664,9 +2676,7 @@ static void JS_Append(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                      "invalid <content> buffer value");
     }
 
-    std::ofstream file;
-
-    file.open(*name, std::ios::out | std::ios::binary | std::ios::app);
+    file.open(name, std::ios::out | std::ios::binary | std::ios::app);
 
     if (file.is_open()) {
       file.write(data, size);
@@ -2680,9 +2690,7 @@ static void JS_Append(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_TYPE_ERROR("<content> must be a string");
     }
 
-    std::ofstream file;
-
-    file.open(*name, std::ios::out | std::ios::binary | std::ios::app);
+    file.open(name, std::ios::out | std::ios::binary | std::ios::app);
 
     if (file.is_open()) {
       file.write(*content, content.length());
@@ -3514,10 +3522,10 @@ static void JS_HMAC(v8::FunctionCallbackInfo<v8::Value> const& args) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Convert programm stati to V8
 ////////////////////////////////////////////////////////////////////////////////
-static char const* convertProcessStatusToString(ExternalProcessStatus external) {
+static char const* convertProcessStatusToString(TRI_external_status_e processStatus) {
    char const* status = "UNKNOWN";
 
-  switch (external._status) {
+  switch (processStatus) {
     case TRI_EXT_NOT_STARTED:
       status = "NOT-STARTED";
       break;
@@ -3548,7 +3556,7 @@ static char const* convertProcessStatusToString(ExternalProcessStatus external) 
 
 static void convertPipeStatus(v8::FunctionCallbackInfo<v8::Value> const& args,
                               v8::Handle<v8::Object> &result,
-                              ExternalId &external) {
+                              ExternalId const& external) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
 
   result->Set(TRI_V8_ASCII_STRING(isolate, "pid"),
@@ -3585,14 +3593,14 @@ static void convertPipeStatus(v8::FunctionCallbackInfo<v8::Value> const& args,
 
 static void convertStatusToV8(v8::FunctionCallbackInfo<v8::Value> const& args,
                                v8::Handle<v8::Object> &result,
-                               ExternalProcessStatus &external_status,
-                               ExternalId &external) {
+                               ExternalProcessStatus const& external_status,
+                               ExternalId const& external) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
 
   convertPipeStatus(args, result, external);
 
   result->Set(TRI_V8_ASCII_STRING(isolate, "status"),
-              TRI_V8_ASCII_STRING(isolate, convertProcessStatusToString(external_status)));
+              TRI_V8_ASCII_STRING(isolate, convertProcessStatusToString(external_status._status)));
 
   if (external_status._status == TRI_EXT_TERMINATED) {
     result->Set(TRI_V8_ASCII_STRING(isolate, "exit"),
@@ -3608,6 +3616,65 @@ static void convertStatusToV8(v8::FunctionCallbackInfo<v8::Value> const& args,
                 TRI_V8_STD_STRING(isolate, external_status._errorMessage));
   }
   TRI_V8_TRY_CATCH_END;
+}
+
+static void convertProcessInfoToV8(v8::FunctionCallbackInfo<v8::Value> const& args,
+                                   v8::Handle<v8::Object> &result,
+                                   ExternalProcess const& external_process) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+
+  convertPipeStatus(args, result, external_process);
+
+  result->Set(TRI_V8_ASCII_STRING(isolate, "status"),
+              TRI_V8_ASCII_STRING(isolate, convertProcessStatusToString(external_process._status)));
+
+  if (external_process._status == TRI_EXT_TERMINATED) {
+    result->Set(TRI_V8_ASCII_STRING(isolate, "exit"),
+                v8::Integer::New(isolate, static_cast<int32_t>(
+                                              external_process._exitStatus)));
+  } else if (external_process._status == TRI_EXT_ABORTED) {
+    result->Set(TRI_V8_ASCII_STRING(isolate, "signal"),
+                v8::Integer::New(isolate, static_cast<int32_t>(
+                                              external_process._exitStatus)));
+  }
+  result->Set(TRI_V8_ASCII_STRING(isolate, "executable"),
+              TRI_V8_STD_STRING(isolate, external_process._executable));
+
+  v8::Handle<v8::Array> arguments =
+      v8::Array::New(isolate, static_cast<int>(external_process._numberArguments));
+  for (size_t i = 0; i < external_process._numberArguments; i++) {
+    arguments->Set(i, TRI_V8_ASCII_STRING(isolate, external_process._arguments[i]));
+  }
+  result->Set(TRI_V8_ASCII_STRING(isolate, "arguments"), arguments);
+  TRI_V8_TRY_CATCH_END;
+}
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lists all running external processes
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_GetExternalSpawned(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  // extract the arguments
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("getExternalSpawned()");
+  }
+
+  v8::Handle<v8::Array> spawnedProcesses =
+      v8::Array::New(isolate, static_cast<int>(ExternalProcesses.size()));
+
+  uint32_t i = 0;
+  for (auto const& process : ExternalProcesses) {
+    v8::Handle<v8::Object> oneProcess = v8::Object::New(isolate);
+    convertProcessInfoToV8(args, oneProcess, *process);
+    spawnedProcesses->Set(i, oneProcess);
+    i++;
+  }
+
+  TRI_V8_RETURN(spawnedProcesses);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3710,7 +3777,7 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
   result->Set(TRI_V8_ASCII_STRING(isolate, "status"),
-              TRI_V8_STRING(isolate, convertProcessStatusToString(external)));
+              TRI_V8_STRING(isolate, convertProcessStatusToString(external._status)));
 
   if (external._status == TRI_EXT_TERMINATED) {
     result->Set(
@@ -4787,6 +4854,11 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_SPLIT_WORDS_ICU"),
                                JS_SplitWordlist);
+
+
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYS_GET_EXTERNAL_SPAWNED"),
+                               JS_GetExternalSpawned);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_KILL_EXTERNAL"),
                                JS_KillExternal);

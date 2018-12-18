@@ -155,7 +155,7 @@ utf8_path::utf8_path(const char* utf8_path)
 utf8_path::utf8_path(const std::string& utf8_path) {
   if (!append_path(path_, string_ref(utf8_path))) {
     // emulate boost::filesystem behaviour by throwing an exception
-    throw detailed_io_error("path conversion failure");
+    throw io_error("path conversion failure");
   }
 }
 
@@ -173,7 +173,7 @@ utf8_path::utf8_path(const irs::string_ref& utf8_path) {
 
   if (!append_path(path_, utf8_path)) {
     // emulate boost::filesystem behaviour by throwing an exception
-    throw detailed_io_error("path conversion failure");
+    throw io_error("path conversion failure");
   }
 }
 
@@ -195,14 +195,14 @@ utf8_path::utf8_path(const irs::basic_string_ref<wchar_t>& ucs2_path) {
 
   if (!append_path(path_, ucs2_path)) {
     // emulate boost::filesystem behaviour by throwing an exception
-    throw detailed_io_error("path conversion failure");
+    throw io_error("path conversion failure");
   }
 }
 
 utf8_path::utf8_path(const std::wstring& ucs2_path) {
   if (!append_path(path_, wstring_ref(ucs2_path))) {
     // emulate boost::filesystem behaviour by throwing an exception
-    throw detailed_io_error("path conversion failure");
+    throw io_error("path conversion failure");
   }
 }
 
@@ -213,7 +213,7 @@ utf8_path& utf8_path::operator+=(const char* utf8_name) {
 utf8_path& utf8_path::operator+=(const std::string &utf8_name) {
   if (!append_path(path_, string_ref(utf8_name))) {
     // emulate boost::filesystem behaviour by throwing an exception
-    throw detailed_io_error("path conversion failure");
+    throw io_error("path conversion failure");
   }
 
   return *this;
@@ -222,7 +222,7 @@ utf8_path& utf8_path::operator+=(const std::string &utf8_name) {
 utf8_path& utf8_path::operator+=(const string_ref& utf8_name) {
   if (!append_path(path_, utf8_name)) {
     // emulate boost::filesystem behaviour by throwing an exception
-    throw detailed_io_error("path conversion failure");
+    throw io_error("path conversion failure");
   }
 
   return *this;
@@ -235,7 +235,7 @@ utf8_path& utf8_path::operator+=(const wchar_t* ucs2_name) {
 utf8_path& utf8_path::operator+=(const irs::basic_string_ref<wchar_t>& ucs2_name) {
   if (!append_path(path_, ucs2_name)) {
     // emulate boost::filesystem behaviour by throwing an exception
-    throw detailed_io_error("path conversion failure");
+    throw io_error("path conversion failure");
   }
 
   return *this;
@@ -244,7 +244,7 @@ utf8_path& utf8_path::operator+=(const irs::basic_string_ref<wchar_t>& ucs2_name
 utf8_path& utf8_path::operator+=(const std::wstring &ucs2_name) {
   if (!append_path(path_, wstring_ref(ucs2_name))) {
     // emulate boost::filesystem behaviour by throwing an exception
-    throw detailed_io_error("path conversion failure");
+    throw io_error("path conversion failure");
   }
 
   return *this;
@@ -261,7 +261,7 @@ utf8_path& utf8_path::operator/=(const std::string &utf8_name) {
 
   if (!append_path(path_, string_ref(utf8_name))) {
     // emulate boost::filesystem behaviour by throwing an exception
-    throw detailed_io_error("path conversion failure");
+    throw io_error("path conversion failure");
   }
 
   return *this;
@@ -274,7 +274,7 @@ utf8_path& utf8_path::operator/=(const string_ref& utf8_name) {
 
   if (!append_path(path_, utf8_name)) {
     // emulate boost::filesystem behaviour by throwing an exception
-    throw detailed_io_error("path conversion failure");
+    throw io_error("path conversion failure");
   }
 
   return *this;
@@ -291,7 +291,7 @@ utf8_path& utf8_path::operator/=(const iresearch::basic_string_ref<wchar_t>& ucs
 
   if (!append_path(path_, ucs2_name)) {
     // emulate boost::filesystem behaviour by throwing an exception
-    throw detailed_io_error("path conversion failure");
+    throw io_error("path conversion failure");
   }
 
   return *this;
@@ -304,7 +304,7 @@ utf8_path& utf8_path::operator/=(const std::wstring &ucs2_name) {
 
   if (!append_path(path_, wstring_ref(ucs2_name))) {
     // emulate boost::filesystem behaviour by throwing an exception
-    throw detailed_io_error("path conversion failure");
+    throw io_error("path conversion failure");
   }
 
 return *this;
@@ -381,7 +381,7 @@ std::string utf8_path::utf8() const {
 
     if (!append_path(buf, path_)) {
       // emulate boost::filesystem behaviour by throwing an exception
-      throw detailed_io_error("Path conversion failure");
+      throw io_error("Path conversion failure");
     }
 
     return buf;

@@ -29,6 +29,8 @@
 #include "Basics/StringUtils.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 
+#include "Transaction/Helpers.h"
+
 using namespace arangodb;
 using namespace arangodb::rocksutils;
 
@@ -128,16 +130,8 @@ VPackSlice RocksDBValue::data(std::string const& s) {
   return data(s.data(), s.size());
 }
 
-uint64_t RocksDBValue::keyValue(RocksDBValue const& value) {
-  return keyValue(value._buffer.data(), value._buffer.size());
-}
-
 uint64_t RocksDBValue::keyValue(rocksdb::Slice const& slice) {
   return keyValue(slice.data(), slice.size());
-}
-
-uint64_t RocksDBValue::keyValue(std::string const& s) {
-  return keyValue(s.data(), s.size());
 }
 
 S2Point RocksDBValue::centroid(rocksdb::Slice const& s) {
@@ -235,8 +229,7 @@ VPackSlice RocksDBValue::data(char const* data, size_t size) {
 uint64_t RocksDBValue::keyValue(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
   TRI_ASSERT(size >= sizeof(char));
-  VPackSlice slice(data);
-  VPackSlice key = slice.get(StaticStrings::KeyString);
+  VPackSlice key = transaction::helpers::extractKeyFromDocument(VPackSlice(data));
   if (key.isString()) {
     VPackValueLength l;
     char const* p = key.getString(l);

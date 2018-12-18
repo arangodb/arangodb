@@ -8,6 +8,7 @@ endforeach()
 
 if (USE_IRESEARCH)
   set(IRESEARCH_TESTS_SOURCES
+    Cluster/ClusterInfo-test.cpp
     IResearch/common.cpp
     IResearch/AgencyMock.cpp
     IResearch/AgencyCommManagerMock.cpp

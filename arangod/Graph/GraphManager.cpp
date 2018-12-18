@@ -256,14 +256,11 @@ std::shared_ptr<LogicalCollection> GraphManager::getCollectionByName(
     const TRI_vocbase_t& vocbase, std::string const& name) {
   if (!name.empty()) {
     // try looking up the collection by name then
-    try {
-      if (arangodb::ServerState::instance()->isRunningInCluster()) {
+    if (arangodb::ServerState::instance()->isRunningInCluster()) {
         ClusterInfo* ci = ClusterInfo::instance();
-        return ci->getCollection(vocbase.name(), name);
-      } else {
-        return vocbase.lookupCollection(name);
-      }
-    } catch (...) {
+        return ci->getCollectionNT(vocbase.name(), name);
+    } else {
+      return vocbase.lookupCollection(name);
     }
   }
 
@@ -332,7 +329,8 @@ ResultT<std::unique_ptr<Graph>> GraphManager::lookupGraphByName(
 
   if (result.fail()) {
     if (result.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
-      return {TRI_ERROR_GRAPH_NOT_FOUND};
+      std::string msg = basics::Exception::FillExceptionString(TRI_ERROR_GRAPH_NOT_FOUND, name.c_str());
+      return Result{TRI_ERROR_GRAPH_NOT_FOUND, std::move(msg)};
     } else {
       return Result{result.errorNumber(),
                     "while looking up graph '" + name + "'"};
@@ -461,7 +459,7 @@ Result GraphManager::applyOnAllGraphs(
     std::unique_ptr<Graph> graph;
     try {
       graph = Graph::fromPersistence(it.resolveExternals(), _vocbase);
-    } catch (basics::Exception& e) {
+    } catch (basics::Exception const& e) {
       return {e.code(), e.message()};
     }
     TRI_ASSERT(graph != nullptr);

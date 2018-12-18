@@ -87,7 +87,8 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
       << "beginning " << AccessMode::typeString(_type) << " transaction";
 
 
-  TRI_ASSERT(!hasHint(transaction::Hints::Hint::NO_USAGE_LOCK) || !AccessMode::isWriteOrExclusive(_type));
+  TRI_ASSERT(!hasHint(transaction::Hints::Hint::NO_USAGE_LOCK) ||
+             !AccessMode::isWriteOrExclusive(_type));
 
   if (_nestingLevel == 0) {
     // set hints
@@ -148,7 +149,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
 
       // with exlusive locking there is no chance of conflict
       // with other transactions -> we can use untracked< Put/Delete methods
-      if (isExclusiveTransactionOnSingleCollection()) {
+      if (isOnlyExclusiveTransaction()) {
         _rocksMethods.reset(new RocksDBTrxUntrackedMethods(this));
       } else {
         _rocksMethods.reset(new RocksDBTrxMethods(this));
@@ -292,19 +293,17 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     // prepare for commit on each collection, e.g. place blockers for estimators
     rocksdb::SequenceNumber preCommitSeq =
         rocksutils::globalRocksDB()->GetLatestSequenceNumber();
-    for (auto& trxCollection : _collections) {
-      RocksDBTransactionCollection* collection =
-          static_cast<RocksDBTransactionCollection*>(trxCollection);
-      collection->prepareCommit(id(), preCommitSeq);
+    for (auto& trxColl : _collections) {
+      auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
+      coll->prepareCommit(id(), preCommitSeq);
     }
     bool committed = false;
     auto cleanupCollectionTransactions = scopeGuard([this, &committed]() {
       // if we didn't commit, make sure we remove blockers, etc.
       if (!committed) {
-        for (auto& trxCollection : _collections) {
-          RocksDBTransactionCollection* collection =
-              static_cast<RocksDBTransactionCollection*>(trxCollection);
-          collection->abortCommit(id());
+        for (auto& trxColl : _collections) {
+          auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
+          coll->abortCommit(id());
         }
       }
     });
@@ -327,16 +326,15 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     result = rocksutils::convertStatus(_rocksTransaction->Commit());
     
     if (result.ok()) {
-      TRI_ASSERT(numOps > 0); // simon: should hold unless we're beeing stupid
+      TRI_ASSERT(numOps > 0); // simon: should hold unless we're being stupid
       rocksdb::SequenceNumber postCommitSeq = _rocksTransaction->GetCommitedSeqNumber();
       if (ADB_LIKELY(numOps > 0)) {
         postCommitSeq += numOps - 1; // add to get to the next batch
       }
       TRI_ASSERT(postCommitSeq <= rocksutils::globalRocksDB()->GetLatestSequenceNumber());
       
-      for (auto& trxCollection : _collections) {
-        RocksDBTransactionCollection* collection =
-            static_cast<RocksDBTransactionCollection*>(trxCollection);
+      for (auto& trxColl : _collections) {
+        auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
         // we need this in case of an intermediate commit. The number of
         // initial documents is adjusted and numInserts / removes is set to 0
         // index estimator updates are buffered
@@ -344,7 +342,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
           committed = true;
           continue;
         }
-        collection->commitCounts(id(), postCommitSeq);
+        coll->commitCounts(id(), postCommitSeq);
         committed = true;
       }
 
@@ -369,16 +367,24 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     TRI_ASSERT(_rocksTransaction->GetNumKeys() == 0 &&
                _rocksTransaction->GetNumPuts() == 0 &&
                _rocksTransaction->GetNumDeletes() == 0);
+    
+    rocksdb::SequenceNumber seq = 0;
+    if (_rocksTransaction) {
+      seq = _rocksTransaction->GetSnapshot()->GetSequenceNumber();
+    } else {
+      TRI_ASSERT(_readSnapshot);
+      seq = _readSnapshot->GetSequenceNumber();
+    }
 
-    for (auto& trxCollection : _collections) {
+    for (auto& trxColl : _collections) {
       TRI_IF_FAILURE("RocksDBCommitCounts") {
         continue;
       }
-      RocksDBTransactionCollection* collection =
-          static_cast<RocksDBTransactionCollection*>(trxCollection);
+      auto* rcoll = static_cast<RocksDBTransactionCollection*>(trxColl);
+      rcoll->prepareCommit(id(), seq);
       // We get here if we have filled indexes. So let us commit counts and
       // any buffered index estimator updates
-      collection->commitCounts(id(), 0);
+      rcoll->commitCounts(id(), seq+1);
     }
     // don't write anything if the transaction is empty
     result = rocksutils::convertStatus(_rocksTransaction->Rollback());

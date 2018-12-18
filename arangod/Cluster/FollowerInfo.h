@@ -39,11 +39,12 @@ class FollowerInfo {
   arangodb::LogicalCollection*                 _docColl;
   std::string                                  _theLeader;
      // if the latter is empty, then we are leading
+  bool                                         _theLeaderTouched;
 
  public:
 
   explicit FollowerInfo(arangodb::LogicalCollection* d)
-    : _followers(new std::vector<ServerID>()), _docColl(d) { }
+    : _followers(new std::vector<ServerID>()), _docColl(d), _theLeaderTouched(false) {}
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get information about current followers of a shard.
@@ -83,6 +84,7 @@ class FollowerInfo {
   void setTheLeader(std::string const& who) {
     MUTEX_LOCKER(locker, _mutex);
     _theLeader = who;
+    _theLeaderTouched = true;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -92,6 +94,15 @@ class FollowerInfo {
   std::string getLeader() const {
     MUTEX_LOCKER(locker, _mutex);
     return _theLeader;
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief see if leader was explicitly set
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool getLeaderTouched() const {
+    MUTEX_LOCKER(locker, _mutex);
+    return _theLeaderTouched;
   }
 
 };

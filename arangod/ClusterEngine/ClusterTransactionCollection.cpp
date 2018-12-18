@@ -41,75 +41,6 @@ ClusterTransactionCollection::ClusterTransactionCollection(
 
 ClusterTransactionCollection::~ClusterTransactionCollection() {}
 
-/// @brief request a main-level lock for a collection
-/// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
-/// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
-/// returns any other error code otherwise
-int ClusterTransactionCollection::lockRecursive() { return lockRecursive(_accessType, 0); }
-
-/// @brief request a lock for a collection
-/// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
-/// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
-/// returns any other error code otherwise
-int ClusterTransactionCollection::lockRecursive(AccessMode::Type accessType,
-                                                int nestingLevel) {
-  if (AccessMode::isWriteOrExclusive(accessType) &&
-      !AccessMode::isWriteOrExclusive(_accessType)) {
-    // wrong lock type
-    return TRI_ERROR_INTERNAL;
-  }
-
-  if (isLocked()) {
-    // already locked
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  return doLock(accessType, nestingLevel);
-}
-
-/// @brief request an unlock for a collection
-int ClusterTransactionCollection::unlockRecursive(AccessMode::Type accessType,
-                                                  int nestingLevel) {
-  if (AccessMode::isWriteOrExclusive(accessType) &&
-      !AccessMode::isWriteOrExclusive(_accessType)) {
-    // wrong lock type: write-unlock requested but collection is read-only
-    return TRI_ERROR_INTERNAL;
-  }
-
-  if (!isLocked()) {
-    // already unlocked
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  return doUnlock(accessType, nestingLevel);
-}
-
-/// @brief check if a collection is locked in a specific mode in a transaction
-bool ClusterTransactionCollection::isLocked(AccessMode::Type accessType,
-                                            int nestingLevel) const {
-  if (AccessMode::isWriteOrExclusive(accessType) &&
-      !AccessMode::isWriteOrExclusive(_accessType)) {
-    // wrong lock type
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-        << "logic error. checking wrong lock type";
-    return false;
-  }
-
-  return isLocked();
-}
-
-/// @brief check whether a collection is locked at all
-bool ClusterTransactionCollection::isLocked() const {
-  if (_collection == nullptr) {
-    return false;
-  }
-  std::string collName(_collection->name());
-  if (_transaction->isLockedShard(collName)) {
-    return true;
-  }
-  return (_lockType != AccessMode::Type::NONE);
-}
-
 /// @brief whether or not any write operations for the collection happened
 bool ClusterTransactionCollection::hasOperations() const {
   return false;//(_numInserts > 0 || _numRemoves > 0 || _numUpdates > 0);
@@ -167,28 +98,18 @@ int ClusterTransactionCollection::use(int nestingLevel) {
       return TRI_ERROR_SHUTTING_DOWN;
     }
     
-    try {
-      _collection = ci->getCollection(_transaction->vocbase().name(), std::to_string(_cid));
-      if (_collection) {
-        if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) &&
-            !_transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
-          // use and usage-lock
-          LOG_TRX(_transaction, nestingLevel) << "using collection " << _cid;
-          _usageLocked = true;
-        }
-      }
-    } catch(...) {}
-    
+    _collection = ci->getCollectionNT(_transaction->vocbase().name(), std::to_string(_cid));
     if (_collection == nullptr) {
-      int res = TRI_errno();
-      if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED) {
-        return res;
-      }
       return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
     }
-  }
 
-  TRI_ASSERT(_collection != nullptr);
+    if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) &&
+        !_transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
+      // use and usage-lock
+      LOG_TRX(_transaction, nestingLevel) << "using collection " << _cid;
+      _usageLocked = true;
+    }
+  }
 
   if (AccessMode::isWriteOrExclusive(_accessType) && !isLocked()) {
     // r/w lock the collection

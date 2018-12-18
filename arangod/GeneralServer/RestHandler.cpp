@@ -325,6 +325,7 @@ RequestPriority RestHandler::priority(RequestLane l) const {
     case RequestLane::AGENCY_INTERNAL:
     case RequestLane::CLIENT_FAST:
     case RequestLane::CLUSTER_INTERNAL:
+    case RequestLane::SERVER_REPLICATION:
       p = RequestPriority::HIGH;
       break;
 
@@ -332,7 +333,6 @@ RequestPriority RestHandler::priority(RequestLane l) const {
     case RequestLane::CLIENT_SLOW:
     case RequestLane::AGENCY_CLUSTER:
     case RequestLane::CLUSTER_ADMIN:
-    case RequestLane::SERVER_REPLICATION:
     case RequestLane::CLIENT_V8:
     case RequestLane::CLUSTER_V8:
     case RequestLane::TASK_V8:

@@ -76,6 +76,7 @@ class RestoreFeature final : public application_features::ApplicationFeature {
   /// @brief Holds configuration data to pass between methods
   struct Options {
     std::vector<std::string> collections{};
+    std::vector<std::string> views{};
     std::string inputPath{};
     uint64_t chunkSize{1024 * 1024 * 8};
     uint64_t defaultNumberOfShards{1};

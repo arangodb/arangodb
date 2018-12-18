@@ -1434,7 +1434,7 @@ constexpr int TRI_ERROR_GRAPH_CREATE_MISSING_NAME                               
 constexpr int TRI_ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION                  = 1923;
 
 /// 1924: ERROR_GRAPH_NOT_FOUND
-/// "graph not found"
+/// "graph '%s' not found"
 /// a graph with this name could not be found.
 constexpr int TRI_ERROR_GRAPH_NOT_FOUND                                         = 1924;
 

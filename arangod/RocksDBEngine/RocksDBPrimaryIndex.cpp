@@ -29,7 +29,6 @@
 #include "Cache/CachedValue.h"
 #include "Cache/TransactionalCache.h"
 #include "Cluster/ServerState.h"
-#include "Indexes/IndexResult.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCollection.h"
@@ -73,7 +72,62 @@ static std::vector<std::vector<arangodb::basics::AttributeName>> const
     IndexAttributes{{arangodb::basics::AttributeName("_id", false)},
                     {arangodb::basics::AttributeName("_key", false)}};
 
-RocksDBPrimaryIndexIterator::RocksDBPrimaryIndexIterator(
+RocksDBPrimaryIndexEqIterator::RocksDBPrimaryIndexEqIterator(
+    LogicalCollection* collection, transaction::Methods* trx,
+    RocksDBPrimaryIndex* index,
+    std::unique_ptr<VPackBuilder> key,
+    bool allowCoveringIndexOptimization)
+    : IndexIterator(collection, trx),
+      _index(index),
+      _key(std::move(key)),
+      _done(false),
+      _allowCoveringIndexOptimization(allowCoveringIndexOptimization) {
+  TRI_ASSERT(_key->slice().isString());
+}
+
+RocksDBPrimaryIndexEqIterator::~RocksDBPrimaryIndexEqIterator() {
+  if (_key != nullptr) {
+    // return the VPackBuilder to the transaction context
+    _trx->transactionContextPtr()->returnBuilder(_key.release());
+  }
+}
+
+bool RocksDBPrimaryIndexEqIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
+  if (limit == 0 || _done) {
+    // No limit no data, or we are actually done. The last call should have
+    // returned false
+    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+    return false;
+  }
+  
+  _done = true;
+  LocalDocumentId documentId = _index->lookupKey(_trx, StringRef(_key->slice()));
+  if (documentId.isSet()) {
+    cb(documentId);
+  }
+  return false;
+}
+
+bool RocksDBPrimaryIndexEqIterator::nextCovering(DocumentCallback const& cb, size_t limit) {
+  TRI_ASSERT(_allowCoveringIndexOptimization);
+  if (limit == 0 || _done) {
+    // No limit no data, or we are actually done. The last call should have
+    // returned false
+    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+    return false;
+  }
+  
+  _done = true;
+  LocalDocumentId documentId = _index->lookupKey(_trx, StringRef(_key->slice()));
+  if (documentId.isSet()) {
+    cb(documentId, _key->slice());
+  }
+  return false;
+}
+
+void RocksDBPrimaryIndexEqIterator::reset() { _done = false; }
+
+RocksDBPrimaryIndexInIterator::RocksDBPrimaryIndexInIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     RocksDBPrimaryIndex* index,
     std::unique_ptr<VPackBuilder> keys,
@@ -86,14 +140,14 @@ RocksDBPrimaryIndexIterator::RocksDBPrimaryIndexIterator(
   TRI_ASSERT(_keys->slice().isArray());
 }
 
-RocksDBPrimaryIndexIterator::~RocksDBPrimaryIndexIterator() {
+RocksDBPrimaryIndexInIterator::~RocksDBPrimaryIndexInIterator() {
   if (_keys != nullptr) {
     // return the VPackBuilder to the transaction context
     _trx->transactionContextPtr()->returnBuilder(_keys.release());
   }
 }
 
-bool RocksDBPrimaryIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
+bool RocksDBPrimaryIndexInIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   if (limit == 0 || !_iterator.valid()) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
@@ -102,7 +156,6 @@ bool RocksDBPrimaryIndexIterator::next(LocalDocumentIdCallback const& cb, size_t
   }
   
   while (limit > 0) {
-    // TODO: prevent copying of the value into result, as we don't need it here!
     LocalDocumentId documentId = _index->lookupKey(_trx, StringRef(*_iterator));
     if (documentId.isSet()) {
       cb(documentId);
@@ -117,7 +170,8 @@ bool RocksDBPrimaryIndexIterator::next(LocalDocumentIdCallback const& cb, size_t
   return true;
 }
 
-bool RocksDBPrimaryIndexIterator::nextCovering(DocumentCallback const& cb, size_t limit) {
+bool RocksDBPrimaryIndexInIterator::nextCovering(DocumentCallback const& cb, size_t limit) {
+  TRI_ASSERT(_allowCoveringIndexOptimization);
   if (limit == 0 || !_iterator.valid()) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
@@ -141,7 +195,7 @@ bool RocksDBPrimaryIndexIterator::nextCovering(DocumentCallback const& cb, size_
   return true;
 }
 
-void RocksDBPrimaryIndexIterator::reset() { _iterator.reset(); }
+void RocksDBPrimaryIndexInIterator::reset() { _iterator.reset(); }
 
 // ================ PrimaryIndex ================
 
@@ -198,7 +252,6 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
                                                arangodb::StringRef keyRef) const {
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(_objectId, keyRef);
-  RocksDBValue value = RocksDBValue::Empty(RocksDBEntryType::PrimaryIndexValue);
 
   bool lockTimeout = false;
   if (useCache()) {
@@ -217,10 +270,10 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
     }
   }
 
-  // acquire rocksdb transaction
   RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
-  arangodb::Result r = mthds->Get(_cf, key.ref(), value.buffer());
-  if (!r.ok()) {
+  rocksdb::PinnableSlice val;
+  rocksdb::Status s = mthds->Get(_cf, key->string(), &val);
+  if (!s.ok()) {
     return LocalDocumentId();
   }
 
@@ -230,7 +283,7 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
     // write entry back to cache
     auto entry = cache::CachedValue::construct(
         key->string().data(), static_cast<uint32_t>(key->string().size()),
-        value.buffer()->data(), static_cast<uint64_t>(value.buffer()->size()));
+        val.data(), static_cast<uint64_t>(val.size()));
     if (entry) {
       Result status = _cache->insert(entry);
       if (status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
@@ -244,7 +297,7 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
     }
   }
 
-  return RocksDBValue::documentId(value);
+  return RocksDBValue::documentId(val);
 }
 
 /// @brief reads a revision id from the primary index 
@@ -264,90 +317,122 @@ bool RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx,
 
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(_objectId, keyRef);
-  RocksDBValue value = RocksDBValue::Empty(RocksDBEntryType::PrimaryIndexValue);
 
   // acquire rocksdb transaction
   RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
-  arangodb::Result r = mthds->Get(_cf, key.ref(), value.buffer());
-  if (!r.ok()) {
+  rocksdb::PinnableSlice val;
+  rocksdb::Status s = mthds->Get(_cf, key->string(), &val);
+  if (!s.ok()) {
     return false;
   }
   
-  documentId = RocksDBValue::documentId(value);
+  documentId = RocksDBValue::documentId(val);
 
   // this call will populate revisionId if the revision id value is
   // stored in the primary index
-  revisionId = RocksDBValue::revisionId(value);
+  revisionId = RocksDBValue::revisionId(val);
   return true;
 }
 
-Result RocksDBPrimaryIndex::insertInternal(transaction::Methods* trx,
-                                           RocksDBMethods* mthd,
-                                           LocalDocumentId const& documentId,
-                                           VPackSlice const& slice,
-                                           OperationMode mode) {
+Result RocksDBPrimaryIndex::insertInternal(
+    transaction::Methods& trx,
+    RocksDBMethods* mthd,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& slice,
+    Index::OperationMode mode
+) {
+  Result res;
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
-  RocksDBKeyLeaser key(trx);
+  TRI_ASSERT(keySlice.isString());
+  RocksDBKeyLeaser key(&trx);
+
   key->constructPrimaryIndexValue(_objectId, StringRef(keySlice));
 
-  if (mthd->Exists(_cf, key.ref())) {
-    std::string existingId(slice.get(StaticStrings::KeyString).copyString());
+  rocksdb::PinnableSlice val;
+  rocksdb::Status s = mthd->Get(_cf, key->string(), &val);
+
+  if (s.ok()) { // detected conflicting primary key
+    std::string existingId = keySlice.copyString();
 
     if (mode == OperationMode::internal) {
-      return IndexResult(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED,
-                         std::move(existingId));
+      return res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, std::move(existingId));
     }
-    return IndexResult(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, this,
-                       existingId);
+
+    res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+
+    return addErrorMsg(res, existingId);
   }
+  val.Reset(); // clear used memory
 
   blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
   
   TRI_voc_rid_t revision = transaction::helpers::extractRevFromDocument(slice);
   auto value = RocksDBValue::PrimaryIndexValue(documentId, revision);
 
-  Result status = mthd->Put(_cf, key.ref(), value.string(), rocksutils::index);
-  return IndexResult(status.errorNumber(), this);
+  s = mthd->Put(_cf, key.ref(), value.string());
+  if (!s.ok()) {
+    res.reset(rocksutils::convertStatus(s, rocksutils::index));
+    addErrorMsg(res);
+  }
+  return res;
 }
 
-Result RocksDBPrimaryIndex::updateInternal(transaction::Methods* trx,
-                                           RocksDBMethods* mthd,
-                                           LocalDocumentId const& oldDocumentId,
-                                           arangodb::velocypack::Slice const& oldDoc,
-                                           LocalDocumentId const& newDocumentId,
-                                           velocypack::Slice const& newDoc,
-                                           OperationMode mode) {
+Result RocksDBPrimaryIndex::updateInternal(
+    transaction::Methods& trx,
+    RocksDBMethods* mthd,
+    LocalDocumentId const& oldDocumentId,
+    velocypack::Slice const& oldDoc,
+    LocalDocumentId const& newDocumentId,
+    velocypack::Slice const& newDoc,
+    Index::OperationMode mode
+) {
+  Result res;
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(oldDoc);
   TRI_ASSERT(keySlice == oldDoc.get(StaticStrings::KeyString));
-  RocksDBKeyLeaser key(trx);
+  RocksDBKeyLeaser key(&trx);
+
   key->constructPrimaryIndexValue(_objectId, StringRef(keySlice));
 
   TRI_voc_rid_t revision = transaction::helpers::extractRevFromDocument(newDoc);
   auto value = RocksDBValue::PrimaryIndexValue(newDocumentId, revision);
 
-  TRI_ASSERT(mthd->Exists(_cf, key.ref()));
   blackListKey(key->string().data(),
               static_cast<uint32_t>(key->string().size()));
-  Result status = mthd->Put(_cf, key.ref(), value.string(), rocksutils::index);
-  return IndexResult(status.errorNumber(), this);
+
+  rocksdb::Status s = mthd->Put(_cf, key.ref(), value.string());
+  if (!s.ok()) {
+    res.reset(rocksutils::convertStatus(s, rocksutils::index));
+    addErrorMsg(res);
+  }
+  return res;
 }
 
-Result RocksDBPrimaryIndex::removeInternal(transaction::Methods* trx,
-                                           RocksDBMethods* mthd,
-                                           LocalDocumentId const& documentId,
-                                           VPackSlice const& slice,
-                                           OperationMode mode) {
+Result RocksDBPrimaryIndex::removeInternal(
+    transaction::Methods& trx,
+    RocksDBMethods* mthd,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& slice,
+    Index::OperationMode mode
+) {
+  Result res;
+
   // TODO: deal with matching revisions?
-  RocksDBKeyLeaser key(trx);
+  VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
+  TRI_ASSERT(keySlice.isString());
+  RocksDBKeyLeaser key(&trx);
   key->constructPrimaryIndexValue(
-      _objectId, StringRef(slice.get(StaticStrings::KeyString)));
+      _objectId, StringRef(keySlice));
 
   blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
 
   // acquire rocksdb transaction
-  RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
-  Result r = mthds->Delete(_cf, key.ref());
-  return IndexResult(r.errorNumber(), this);
+  auto* mthds = RocksDBTransactionState::toMethods(&trx);
+  rocksdb::Status s = mthds->Delete(_cf, key.ref());
+  if (!s.ok()) {
+    res.reset(rocksutils::convertStatus(s, rocksutils::index));
+    addErrorMsg(res);
+  }
+  return res;
 }
 
 /// @brief checks whether the index supports the condition
@@ -386,17 +471,17 @@ IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
   if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
     // a.b == value
     return createEqIterator(trx, attrNode, valNode);
-  } else if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+  } 
+  
+  if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
     // a.b IN values
-    if (!valNode->isArray()) {
-      // a.b IN non-array
-      return new EmptyIndexIterator(&_collection, trx);
+    if (valNode->isArray()) {
+      // a.b IN array
+      return createInIterator(trx, attrNode, valNode);
     }
-
-    return createInIterator(trx, attrNode, valNode);
   }
 
-  // operator type unsupported
+  // operator type unsupported or IN used on non-array
   return new EmptyIndexIterator(&_collection, trx);
 }
 
@@ -439,7 +524,7 @@ IndexIterator* RocksDBPrimaryIndex::createInIterator(
 
   keys->close();
 
-  return new RocksDBPrimaryIndexIterator(
+  return new RocksDBPrimaryIndexInIterator(
     &_collection, trx, this, std::move(keys), !isId
   );
 }
@@ -454,21 +539,22 @@ IndexIterator* RocksDBPrimaryIndex::createEqIterator(
 
   // lease builder, but immediately pass it to the unique_ptr so we don't leak
   transaction::BuilderLeaser builder(trx);
-  std::unique_ptr<VPackBuilder> keys(builder.steal());
-  keys->openArray();
+  std::unique_ptr<VPackBuilder> key(builder.steal());
 
   // handle the sole element
-  handleValNode(trx, keys.get(), valNode, isId);
+  handleValNode(trx, key.get(), valNode, isId);
 
   TRI_IF_FAILURE("PrimaryIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-
-  keys->close();
-
-  return new RocksDBPrimaryIndexIterator(
-    &_collection, trx, this, std::move(keys), !isId
-  );
+  
+  if (!key->isEmpty()) {
+    return new RocksDBPrimaryIndexEqIterator(
+      &_collection, trx, this, std::move(key), !isId
+    );
+  }
+      
+  return new EmptyIndexIterator(&_collection, trx);
 }
 
 /// @brief add a single value node to the iterator's keys

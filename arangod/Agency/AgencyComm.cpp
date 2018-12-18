@@ -157,6 +157,14 @@ AgencyOperation::AgencyOperation(std::string const& key,
   _opType.value = opType;
 }
 
+AgencyOperation::AgencyOperation(
+  std::string const& key, AgencyValueOperationType opType, VPackSlice newValue,
+  VPackSlice oldValue) : _key(AgencyCommManager::path(key)), _opType(),
+                         _value(newValue), _value2(oldValue) {
+  _opType.type = AgencyOperationType::Type::VALUE;
+  _opType.value = opType;
+}
+
 AgencyOperationType AgencyOperation::type() const {
   return _opType;
 }
@@ -172,6 +180,9 @@ void AgencyOperation::toVelocyPack(VPackBuilder& builder) const {
         builder.add("url", _value);
       } else if (_opType.value == AgencyValueOperationType::ERASE) {
         builder.add("val", _value);
+      } else if (_opType.value == AgencyValueOperationType::REPLACE) {
+        builder.add("new", _value);
+        builder.add("val", _value2);
       } else {
         builder.add("new", _value);
       }

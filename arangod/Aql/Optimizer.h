@@ -53,11 +53,16 @@ class Optimizer {
   };
 
  public:
+  struct Rule {
+    OptimizerRule& rule;
+    bool enabled;
+  };
+  using RuleMap = std::map<int, Rule>;
 
   /// @brief the following struct keeps a list (deque) of ExecutionPlan*
   /// and has some automatic convenience functions.
   struct PlanList {
-    using Entry = std::pair<std::unique_ptr<ExecutionPlan>, int>;
+    using Entry = std::pair<std::unique_ptr<ExecutionPlan>, RuleMap::iterator>;
 
     RollingVector<Entry> list;
 
@@ -66,7 +71,7 @@ class Optimizer {
     }
 
     /// @brief constructor with a plan
-    PlanList(std::unique_ptr<ExecutionPlan> p, int level) { push_back(std::move(p), level); }
+    PlanList(std::unique_ptr<ExecutionPlan> p, RuleMap::iterator rule) { push_back(std::move(p), rule); }
 
     /// @brief destructor, deleting contents
     ~PlanList() = default;
@@ -85,8 +90,8 @@ class Optimizer {
     }
 
     /// @brief push_back
-    void push_back(std::unique_ptr<ExecutionPlan> p, int level) {
-      list.push_back({std::move(p), level});
+    void push_back(std::unique_ptr<ExecutionPlan> p, RuleMap::iterator rule) {
+      list.push_back({std::move(p), rule});
     }
 
     /// @brief swaps the two lists
@@ -165,13 +170,12 @@ class Optimizer {
   /// @brief current list of plans (while applying optimizer rules)
   PlanList _newPlans;
   
-  struct Rule {
-    OptimizerRule& rule;
-    bool enabled;
-  };
+  /// @brief the rule that is currently getting applied
+  /// (while applying optimizer rules in createPlans)
+  RuleMap::iterator _currentRule;
   
   /// @brief list of optimizer rules to be applied
-  std::map<int, Rule> _rules;
+  RuleMap _rules;
 
   /// @brief maximal number of plans to produce
   size_t const _maxNumberOfPlans;

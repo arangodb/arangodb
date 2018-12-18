@@ -80,9 +80,10 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new DiscreteValuesParameter<UInt64Parameter>(
                          &_sslProtocol, sslProtocols));
 
-  options->addHiddenOption("--ssl.options",
-                           "ssl connection options, see OpenSSL documentation",
-                           new UInt64Parameter(&_sslOptions));
+  options->addOption("--ssl.options",
+                     "ssl connection options, see OpenSSL documentation",
+                     new UInt64Parameter(&_sslOptions),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--ssl.ecdh-curve",

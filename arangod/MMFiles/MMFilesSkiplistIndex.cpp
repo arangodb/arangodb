@@ -29,8 +29,7 @@
 #include "Basics/FixedSizeAllocator.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Indexes/IndexLookupContext.h"
-#include "Indexes/IndexResult.h"
+#include "MMFiles/MMFilesIndexLookupContext.h"
 #include "Indexes/SkiplistIndexAttributeMatcher.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -67,7 +66,7 @@ using namespace arangodb;
 static int CompareKeyElement(void* userData, VPackSlice const* left,
                              MMFilesSkiplistIndexElement const* right,
                              size_t rightPosition) {
-  IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
+  MMFilesIndexLookupContext* context = static_cast<MMFilesIndexLookupContext*>(userData);
   TRI_ASSERT(nullptr != left);
   TRI_ASSERT(nullptr != right);
   return arangodb::basics::VelocyPackHelper::compare(
@@ -80,7 +79,7 @@ static int CompareElementElement(void* userData,
                                  size_t leftPosition,
                                  MMFilesSkiplistIndexElement const* right,
                                  size_t rightPosition) {
-  IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
+  MMFilesIndexLookupContext* context = static_cast<MMFilesIndexLookupContext*>(userData);
   TRI_ASSERT(nullptr != left);
   TRI_ASSERT(nullptr != right);
 
@@ -753,32 +752,37 @@ void MMFilesSkiplistIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 }
 
 /// @brief inserts a document into a skiplist index
-Result MMFilesSkiplistIndex::insert(transaction::Methods* trx,
-                                    LocalDocumentId const& documentId,
-                                    VPackSlice const& doc, OperationMode mode) {
+Result MMFilesSkiplistIndex::insert(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
+  Result res;
 
-  int res;
+  int r;
+
   try {
-    res = fillElement<MMFilesSkiplistIndexElement>(elements, documentId, doc);
+    r = fillElement<MMFilesSkiplistIndexElement>(elements, documentId, doc);
   } catch (basics::Exception const& ex) {
-    res = ex.code();
+    r = ex.code();
   } catch (std::bad_alloc const&) {
-    res = TRI_ERROR_OUT_OF_MEMORY;
+    r = TRI_ERROR_OUT_OF_MEMORY;
   } catch (...) {
-    res = TRI_ERROR_INTERNAL;
+    r = TRI_ERROR_INTERNAL;
   }
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (r != TRI_ERROR_NO_ERROR) {
     for (auto& element : elements) {
       // free all elements to prevent leak
       _allocator->deallocate(element);
     }
-    return IndexResult(res, this);
+    return addErrorMsg(res, r);
   }
 
   ManagedDocumentResult result;
-  IndexLookupContext context(trx, &_collection, &result, numPaths());
+  MMFilesIndexLookupContext context(&trx, &_collection, &result, numPaths());
 
   // insert into the index. the memory for the element will be owned or freed
   // by the index
@@ -786,9 +790,9 @@ Result MMFilesSkiplistIndex::insert(transaction::Methods* trx,
 
   size_t badIndex = 0;
   for (size_t i = 0; i < count; ++i) {
-    res = _skiplistIndex->insert(&context, elements[i]);
+    r = _skiplistIndex->insert(&context, elements[i]);
 
-    if (res != TRI_ERROR_NO_ERROR) {
+    if (r != TRI_ERROR_NO_ERROR) {
       badIndex = i;
 
       // Note: this element is freed already
@@ -800,16 +804,16 @@ Result MMFilesSkiplistIndex::insert(transaction::Methods* trx,
         // No need to free elements[j] skiplist has taken over already
       }
 
-      if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && !_unique) {
+      if (r == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && !_unique) {
         // We ignore unique_constraint violated if we are not unique
-        res = TRI_ERROR_NO_ERROR;
+        r = TRI_ERROR_NO_ERROR;
       }
 
       break;
     }
   }
 
-  if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+  if (r == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
     elements.clear();
 
     // need to rebuild elements, find conflicting key to return error,
@@ -833,7 +837,7 @@ Result MMFilesSkiplistIndex::insert(transaction::Methods* trx,
     });
 
     if (innerRes != TRI_ERROR_NO_ERROR) {
-      return IndexResult(innerRes, this);
+      return addErrorMsg(res, innerRes);
     }
 
     auto found = _skiplistIndex->rightLookup(&context, elements[badIndex]);
@@ -841,47 +845,54 @@ Result MMFilesSkiplistIndex::insert(transaction::Methods* trx,
     LocalDocumentId rev(found->document()->localDocumentId());
     std::string existingId;
 
-    _collection.getPhysical()->readDocumentWithCallback(trx, rev, [&existingId](LocalDocumentId const&, VPackSlice doc) {
+    _collection.getPhysical()->readDocumentWithCallback(
+      &trx,
+      rev,
+      [&existingId](LocalDocumentId const&, velocypack::Slice doc)->void {
       existingId = doc.get(StaticStrings::KeyString).copyString();
     });
 
     if (mode == OperationMode::internal) {
-      return IndexResult(res, std::move(existingId));
+      return res.reset(r, std::move(existingId));
     }
 
-    return IndexResult(res, this, existingId);
+    return addErrorMsg(res, r, existingId);
   }
 
-  return IndexResult(res, this);
+  return addErrorMsg(res, r);
 }
 
 /// @brief removes a document from a skiplist index
-Result MMFilesSkiplistIndex::remove(transaction::Methods* trx,
-                                    LocalDocumentId const& documentId,
-                                    VPackSlice const& doc, OperationMode mode) {
+Result MMFilesSkiplistIndex::remove(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
+  Result res;
+  int r;
 
-  int res;
   try {
-    res = fillElement<MMFilesSkiplistIndexElement>(elements, documentId, doc);
+    r = fillElement<MMFilesSkiplistIndexElement>(elements, documentId, doc);
   } catch (basics::Exception const& ex) {
-    res = ex.code();
+    r = ex.code();
   } catch (std::bad_alloc const&) {
-    res = TRI_ERROR_OUT_OF_MEMORY;
+    r = TRI_ERROR_OUT_OF_MEMORY;
   } catch (...) {
-    res = TRI_ERROR_INTERNAL;
+    r = TRI_ERROR_INTERNAL;
   }
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (r != TRI_ERROR_NO_ERROR) {
     for (auto& element : elements) {
       // free all elements to prevent leak
       _allocator->deallocate(element);
     }
-    return IndexResult(res, this);
+    return addErrorMsg(res, r);
   }
 
   ManagedDocumentResult result;
-  IndexLookupContext context(trx, &_collection, &result, numPaths());
+  MMFilesIndexLookupContext context(&trx, &_collection, &result, numPaths());
 
   // attempt the removal for skiplist indexes
   // ownership for the index element is transferred to the index
@@ -893,13 +904,13 @@ Result MMFilesSkiplistIndex::remove(transaction::Methods* trx,
     // we may be looping through this multiple times, and if an error
     // occurs, we want to keep it
     if (result != TRI_ERROR_NO_ERROR) {
-      res = result;
+      r = result;
     }
 
     _allocator->deallocate(elements[i]);
   }
 
-  return IndexResult(res, this);
+  return addErrorMsg(res, r);
 }
 
 void MMFilesSkiplistIndex::unload() {

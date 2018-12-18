@@ -34,7 +34,7 @@ NS_ROOT
 #if __cplusplus >= 201103L || _MSC_VER >= 1900 || IRESEARCH_COMPILER_HAS_FEATURE(cxx_constexpr) // C++ 11 implementation
   NS_BEGIN(detail)
   template <typename T, std::size_t N>
-  CONSTEXPR std::size_t countof(T const (&)[N]) noexcept { return N; }
+  CONSTEXPR std::size_t countof(T const (&)[N]) NOEXCEPT { return N; }
   NS_END // detail
   #define IRESEARCH_COUNTOF(x) ::iresearch::detail::countof(x)
 #elif _MSC_VER // Visual C++ fallback

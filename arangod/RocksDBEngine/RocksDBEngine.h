@@ -293,13 +293,13 @@ class RocksDBEngine final : public StorageEngine {
   }
 
   arangodb::Result dropView(
-    TRI_vocbase_t& vocbase,
-    LogicalView& view
+    TRI_vocbase_t const& vocbase,
+    LogicalView const& view
   ) override;
 
   void destroyView(
-    TRI_vocbase_t& vocbase,
-    LogicalView& view
+    TRI_vocbase_t const& vocbase,
+    LogicalView const& view
   ) noexcept override;
 
   void signalCleanup(TRI_vocbase_t& vocbase) override;
@@ -327,6 +327,7 @@ class RocksDBEngine final : public StorageEngine {
                                   RocksDBLogValue&& logValue);
 
   void addCollectionMapping(uint64_t, TRI_voc_tick_t, TRI_voc_cid_t);
+  std::vector<std::pair<TRI_voc_tick_t, TRI_voc_cid_t>> collectionMappings() const;
   void addIndexMapping(uint64_t objectId, TRI_voc_tick_t,
                        TRI_voc_cid_t, TRI_idx_iid_t);
   void removeIndexMapping(uint64_t);

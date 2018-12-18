@@ -71,6 +71,29 @@ std::string removeTrailingSeparator(std::string const& name) {
 
 void normalizePath(std::string& name) {
   std::replace(name.begin(), name.end(), '/', TRI_DIR_SEPARATOR_CHAR);
+
+#ifdef _WIN32
+  // for Windows the situation is a bit more complicated,
+  // as a mere replacement of all forward slashes to backslashes
+  // may leave us with a double backslash for sequences like "bla/\foo".
+  // in this case we collapse duplicate dir separators to a single one.
+  // we intentionally ignore the first 2 characters, because they may
+  // contain a network share filename such as "\\foo\bar"
+  
+  size_t const n = name.size();
+  size_t out = 0;
+
+  for (size_t i = 0; i < n; ++i) {
+    if (name[i] == TRI_DIR_SEPARATOR_CHAR && out > 1 && name[out - 1] == TRI_DIR_SEPARATOR_CHAR) {
+      continue;
+    }
+    name[out++] = name[i];
+  }
+
+  if (out != n) {
+    name.resize(out);
+  }
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

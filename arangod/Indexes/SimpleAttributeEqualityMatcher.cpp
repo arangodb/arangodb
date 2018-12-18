@@ -183,7 +183,7 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne(
   size_t const n = node->numMembers();
 
   for (size_t i = 0; i < n; ++i) {
-    auto op = node->getMember(i);
+    auto op = node->getMemberUnchecked(i);
 
     if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
       TRI_ASSERT(op->numMembers() == 2);
@@ -213,7 +213,7 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne(
       }
     }
   }
-
+  
   TRI_ASSERT(false);
   return node;
 }

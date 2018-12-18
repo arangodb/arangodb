@@ -66,7 +66,7 @@ uint64_t TRI_PhysicalMemory;
 /// @brief all external processes
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::vector<ExternalProcess*> ExternalProcesses;
+std::vector<ExternalProcess*> ExternalProcesses;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lock for protected access to vector ExternalProcesses
@@ -98,15 +98,8 @@ ExternalId::ExternalId():
 ExternalProcess::ExternalProcess():
   _numberArguments(0),
   _arguments(nullptr),
-#ifndef _WIN32
-  _pid(0),
-  _readPipe(-1),
-  _writePipe(-1),
-#else
-  _pid(0),
+#ifdef _WIN32
   _process(nullptr),
-  _readPipe(INVALID_HANDLE_VALUE),
-  _writePipe(INVALID_HANDLE_VALUE),
 #endif
   _status(TRI_EXT_NOT_STARTED),
   _exitStatus(0) {}
@@ -1087,7 +1080,7 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid,
             wantGetExitCode = true;
             break;
           case WAIT_TIMEOUT:
-            // success - everything went well.
+            // success - process is up and running.
             external->_exitStatus = 0;
             break;
           case WAIT_FAILED:
@@ -1117,6 +1110,8 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid,
               std::string("exit status could not be determined for pid ") +
               arangodb::basics::StringUtils::itoa(
                   static_cast<int64_t>(external->_pid));
+          external->_exitStatus = -1;
+          external->_status = TRI_EXT_NOT_STARTED;
         } else {
           if (exitCode == STILL_ACTIVE) {
             external->_exitStatus = 0;

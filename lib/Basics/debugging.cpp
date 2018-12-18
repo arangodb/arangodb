@@ -45,11 +45,11 @@ using namespace arangodb;
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 
 namespace {
-/// @brief a global set containing the currently registered failure points
-std::unordered_set<std::string> failurePoints;
-
 /// @brief a read-write lock for thread-safe access to the failure points set
 arangodb::basics::ReadWriteLock failurePointsLock;
+
+/// @brief a global set containing the currently registered failure points
+std::set<std::string> failurePoints;
 }
 
 /// @brief cause a segmentation violation
@@ -227,7 +227,7 @@ void TRI_PrintBacktrace() {
 #endif
 #if TRI_HAVE_PSTACK
   char buf[64];
-  snprintf(buf, 64, "/usr/bin/pstack %i", getpid());
+  snprintf(buf, sizeof(buf), "/usr/bin/pstack %i", getpid());
   system(buf);
 #endif
 #endif

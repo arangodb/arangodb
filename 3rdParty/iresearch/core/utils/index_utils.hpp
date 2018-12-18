@@ -132,7 +132,7 @@ void read_document_mask(document_mask& docs_mask, const directory& dir, const se
 ///        updates index_meta::index_segment_t::filename to the segment filename
 ///        updates segment_meta::size to the size of files written
 ////////////////////////////////////////////////////////////////////////////////
-void write_index_segment(directory& dir, index_meta::index_segment_t& segment);
+void flush_index_segment(directory& dir, index_meta::index_segment_t& segment);
 
 NS_END
 NS_END

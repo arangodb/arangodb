@@ -389,13 +389,15 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   serverArray->ForceSet(AddressKey, TRI_V8_STD_STRING(isolate, info.serverAddress));
   TRI_GET_GLOBAL_STRING(PortKey);
   serverArray->ForceSet(PortKey, v8::Number::New(isolate, info.serverPort));
+  TRI_GET_GLOBAL_STRING(EndpointKey);
+  serverArray->ForceSet(EndpointKey, TRI_V8_STD_STRING(isolate, Endpoint::uriForm(info.endpoint)));
   TRI_GET_GLOBAL_STRING(ServerKey);
   req->ForceSet(ServerKey, serverArray);
 
   TRI_GET_GLOBAL_STRING(PortTypeKey);
   req->ForceSet(
       PortTypeKey, TRI_V8_STD_STRING(isolate, info.portType()),
-      static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum));
+      static_cast<v8::PropertyAttribute>(v8::ReadOnly));
 
   v8::Handle<v8::Object> clientArray = v8::Object::New(isolate);
   clientArray->ForceSet(AddressKey, TRI_V8_STD_STRING(isolate, info.clientAddress));

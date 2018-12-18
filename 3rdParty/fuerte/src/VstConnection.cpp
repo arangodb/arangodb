@@ -523,6 +523,13 @@ void VstConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec,
       default:
         throw std::logic_error("Unknown VST version");
     }
+    
+    if (available < chunk.chunkLength()) { // prevent reading beyond buffer
+      FUERTE_LOG_ERROR << "invalid chunk header";
+      shutdownConnection(ErrorCondition::ProtocolError);
+      return;
+    }
+    
     // move cursors
     cursor += chunk.chunkLength();
     available -= chunk.chunkLength();

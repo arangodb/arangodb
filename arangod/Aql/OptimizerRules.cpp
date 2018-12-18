@@ -55,6 +55,8 @@
 #include "GeoIndex/Index.h"
 #include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
 #include "VocBase/Methods/Collections.h"
 
@@ -571,6 +573,10 @@ std::vector<arangodb::aql::ExecutionNode::NodeType> const
 std::vector<arangodb::aql::ExecutionNode::NodeType> const
     patchUpdateStatementsNodeTypes{arangodb::aql::ExecutionNode::UPDATE,
                                    arangodb::aql::ExecutionNode::REPLACE};
+std::vector<arangodb::aql::ExecutionNode::NodeType> const
+    patchUpdateRemoveStatementsNodeTypes{arangodb::aql::ExecutionNode::UPDATE,
+                                         arangodb::aql::ExecutionNode::REPLACE,
+                                         arangodb::aql::ExecutionNode::REMOVE};
 
 int indexOf(std::vector<std::string> const& haystack,
             std::string const& needle) {
@@ -981,7 +987,7 @@ void arangodb::aql::removeRedundantSortsRule(
   }
 
   std::unordered_set<ExecutionNode*> toUnlink;
-  arangodb::basics::StringBuffer buffer(false);
+  arangodb::basics::StringBuffer buffer;
 
   for (auto const& n : nodes) {
     if (toUnlink.find(n) != toUnlink.end()) {
@@ -2228,7 +2234,14 @@ class arangodb::aql::RedundantCalculationsReplacer final
         }
         break;
       }
-
+     
+#if 0 
+      // TODO: figure out if this does any harm
+      case EN::REMOTESINGLE: {
+        replaceInVariable<SingleRemoteOperationNode>(en);
+        break;
+      }
+#endif
       default: {
         // ignore all other types of nodes
       }
@@ -2523,7 +2536,7 @@ void arangodb::aql::removeRedundantCalculationsRule(
     return;
   }
 
-  arangodb::basics::StringBuffer buffer(false);
+  arangodb::basics::StringBuffer buffer; 
   std::unordered_map<VariableId, Variable const*> replacements;
 
   for (auto const& n : nodes) {
@@ -3122,6 +3135,9 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
 #ifdef USE_IRESEARCH
       case EN::ENUMERATE_IRESEARCH_VIEW:
 #endif
+        // found some other FOR loop
+        return true;
+
       case EN::SUBQUERY:
       case EN::FILTER:
         return false;  // skip. we don't care.
@@ -3813,7 +3829,9 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
     // found a node we need to replace in the plan
 
     auto const& parents = node->getParents();
-    auto const& deps = node->getDependencies();
+    // intentional copy of the dependencies, as we will be modifying 
+    // dependencies later on
+    auto const deps = node->getDependencies();
     TRI_ASSERT(deps.size() == 1);
 
     // don't do this if we are already distributing!
@@ -4066,7 +4084,9 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
       // In the INSERT and REPLACE cases we use a DistributeNode...
 
       TRI_ASSERT(node->hasDependency());
-      auto const& deps = node->getDependencies();
+      // intentional copy of the dependencies, as we will be modifying 
+      // dependencies later on
+      auto const deps = node->getDependencies();
 
       bool haveAdjusted = false;
       if (originalParent != nullptr) {
@@ -4213,9 +4233,7 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
     auto used = node->getVariablesUsedHere();
 
     // found a node we need to replace in the plan
-
-    auto const& deps = node->getDependencies();
-    TRI_ASSERT(deps.size() == 1);
+    TRI_ASSERT(node->getDependencies().size() == 1);
 
     auto collectNode = ExecutionNode::castTo<CollectNode*>(node);
     // look for next remote node
@@ -4550,6 +4568,8 @@ void arangodb::aql::distributeFilternCalcToClusterRule(
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::GATHER, true);
+    
+  std::unordered_set<Variable const*> varsSetHere;
 
   for (auto& n : nodes) {
     auto const& remoteNodeList = n->getDependencies();
@@ -4562,7 +4582,7 @@ void arangodb::aql::distributeFilternCalcToClusterRule(
 
     bool allowOnlyFilterAndCalculation = false;
 
-    std::unordered_set<Variable const*> varsSetHere;
+    varsSetHere.clear();
     auto parents = n->getParents();
     TRI_ASSERT(!parents.empty());
         
@@ -4703,14 +4723,15 @@ void arangodb::aql::distributeSortToClusterRule(
   bool modified = false;
 
   for (auto& n : nodes) {
-    auto const& remoteNodeList = n->getDependencies();
-    auto gatherNode = ExecutionNode::castTo<GatherNode*>(n);
+    auto const remoteNodeList = n->getDependencies();
     TRI_ASSERT(remoteNodeList.size() > 0);
     auto rn = remoteNodeList[0];
 
     if (!n->hasParent()) {
       continue;
     }
+    
+    auto gatherNode = ExecutionNode::castTo<GatherNode*>(n);
 
     auto parents = n->getParents();
 
@@ -4924,7 +4945,7 @@ void arangodb::aql::restrictToSingleShardRule(
           modNode->restrictToShard(shardId);
           modificationRestrictions[collection].emplace(shardId);
 
-          auto deps = current->getDependencies();
+          auto const& deps = current->getDependencies();
           if (deps.size() && deps[0]->getType() == ExecutionNode::REMOTE) {
             // if we can apply the single-shard optimization, but still have a
             // REMOTE node in front of us, we can probably move the remote parts
@@ -5843,17 +5864,51 @@ void arangodb::aql::removeDataModificationOutVariablesRule(
 
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
-  plan->findNodesOfType(nodes, ::removeDataModificationOutVariablesNodeTypes,
-                        true);
+  plan->findNodesOfType(nodes, ::removeDataModificationOutVariablesNodeTypes, true);
 
   for (auto const& n : nodes) {
     auto node = ExecutionNode::castTo<ModificationNode*>(n);
     TRI_ASSERT(node != nullptr);
 
-    if (!n->isVarUsedLater(node->getOutVariableOld())) {
+    Variable const* old = node->getOutVariableOld();
+    if (!n->isVarUsedLater(old)) {
       // "$OLD" is not used later
       node->clearOutVariableOld();
       modified = true;
+    } else {
+      switch (n->getType()) {
+        case EN::UPDATE:
+        case EN::REPLACE: {
+          Variable const* inVariable = ExecutionNode::castTo<UpdateReplaceNode const*>(n)->inKeyVariable();
+          if (inVariable != nullptr) {
+            auto setter = plan->getVarSetBy(inVariable->id);
+            if (setter != nullptr && (setter->getType() == EN::ENUMERATE_COLLECTION || setter->getType() == EN::INDEX)) {
+              std::unordered_map<VariableId, Variable const*> replacements;
+              replacements.emplace(old->id, inVariable);
+              RedundantCalculationsReplacer finder(plan->getAst(), replacements);
+              plan->root()->walk(finder);
+              modified = true;
+            }
+          }
+          break;
+        }
+        case EN::REMOVE: {
+          Variable const* inVariable = ExecutionNode::castTo<RemoveNode const*>(n)->inVariable();
+          TRI_ASSERT(inVariable != nullptr);
+          auto setter = plan->getVarSetBy(inVariable->id);
+          if (setter != nullptr && (setter->getType() == EN::ENUMERATE_COLLECTION || setter->getType() == EN::INDEX)) {
+            std::unordered_map<VariableId, Variable const*> replacements;
+            replacements.emplace(old->id, inVariable);
+            RedundantCalculationsReplacer finder(plan->getAst(), replacements);
+            plan->root()->walk(finder);
+            modified = true;
+          }
+          break;
+        }
+        default: {
+          // do nothing
+        }
+      }
     }
 
     if (!n->isVarUsedLater(node->getOutVariableNew())) {
@@ -5879,7 +5934,18 @@ void arangodb::aql::patchUpdateStatementsRule(
   // no need to dive into subqueries here
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
-  plan->findNodesOfType(nodes, ::patchUpdateStatementsNodeTypes, false);
+
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  if (engine->typeName() == "mmfiles") {
+    // MMFiles: we can update UPDATE/REPLACE but not REMOVE
+    // this is because in MMFiles the iteration over a collection may
+    // use the primary index, but a REMOVE may at the same time remove
+    // the documents from this index. this would not be safe
+    plan->findNodesOfType(nodes, ::patchUpdateStatementsNodeTypes, false);
+  } else {
+    // other engines: we can update UPDATE/REPLACE as well as REMOVE
+    plan->findNodesOfType(nodes, ::patchUpdateRemoveStatementsNodeTypes, false);
+  }
 
   bool modified = false;
 

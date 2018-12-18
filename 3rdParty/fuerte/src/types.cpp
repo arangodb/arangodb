@@ -233,7 +233,7 @@ std::string to_string(ErrorCondition error) {
     case ErrorCondition::ConnectionClosed:
       return "Connection reset by peer";
     case ErrorCondition::Timeout:
-      return "Timeout";
+      return "Request timeout";
     case ErrorCondition::QueueCapacityExceeded:
       return "Request queue capacity exceeded";
     case ErrorCondition::ReadError:

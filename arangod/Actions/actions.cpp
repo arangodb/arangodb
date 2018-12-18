@@ -46,6 +46,7 @@ std::shared_ptr<TRI_action_t> TRI_DefineActionVocBase(std::string const& name,
                                                       std::shared_ptr<TRI_action_t> action) {
   std::string url = name;
 
+  // strip leading slash
   while (!url.empty() && url[0] == '/') {
     url = url.substr(1);
   }
@@ -95,19 +96,29 @@ std::shared_ptr<TRI_action_t> TRI_LookupActionVocBase(arangodb::GeneralRequest* 
     auto it = PrefixActions.find(name);
 
     if (it != PrefixActions.end()) {
+      // found a prefix match
       return (*it).second;
     }
 
-    readLocker.unlock();
-
+    // no match. no strip last suffix and try again
+    
     if (suffixes.empty()) {
+      // no further suffix left to strip
+      readLocker.unlock();
       break;
     }
 
-    suffixes.pop_back();
-    name = StringUtils::join(suffixes, '/');
 
-    readLocker.lock();
+    auto const& suffix = suffixes.back();
+    size_t suffixLength = suffix.size();
+    suffixes.pop_back();
+
+    TRI_ASSERT(name.size() >= suffixLength);
+    name.resize(name.size() - suffixLength);
+    // skip over '/' char at the end
+    if (!name.empty() && name.back() == '/') {
+      name.resize(name.size() - 1);
+    }
   }
 
   return nullptr;

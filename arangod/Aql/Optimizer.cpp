@@ -55,11 +55,14 @@ bool Optimizer::runOnlyRequiredRules(size_t extraPlans) const {
 void Optimizer::addPlan(std::unique_ptr<ExecutionPlan> plan, OptimizerRule const* rule, bool wasModified,
                         int newLevel) {
   TRI_ASSERT(plan != nullptr);
+  TRI_ASSERT(&_currentRule->second.rule == rule);
+
+  auto it = _currentRule;
 
   if (newLevel <= 0) {
-    // use rule's level
-    newLevel = rule->level;
-    // else use user-specified new level
+    ++it; // move it to the next rule to be processed in the next iteration
+  } else {
+    it = _rules.upper_bound(newLevel);
   }
 
   if (wasModified) {
@@ -74,7 +77,7 @@ void Optimizer::addPlan(std::unique_ptr<ExecutionPlan> plan, OptimizerRule const
   }
   
   // hand over ownership
-  _newPlans.push_back(std::move(plan), newLevel);
+  _newPlans.push_back(std::move(plan), it);
   
   // stop adding new plans in case we already have enough
   if (_newPlans.size() + _plans.size() >= _maxNumberOfPlans) {
@@ -91,7 +94,7 @@ int Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
 
   // _plans contains the previous optimization result
   _plans.clear();
-  _plans.push_back(std::move(plan), 0);
+  _plans.push_back(std::move(plan), _rules.begin());
     
   if (!queryOptions.inspectSimplePlans &&
       !arangodb::ServerState::instance()->isCoordinator() &&
@@ -109,10 +112,7 @@ int Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
     return TRI_ERROR_NO_ERROR;
   }
 
-  int leastDoneLevel = 0;
-
   TRI_ASSERT(!_rules.empty());
-  int maxRuleLevel = _rules.rbegin()->first;
 
   // which optimizer rules are disabled?
   for (auto rule : OptimizerRulesFeature::getDisabledRuleIds(queryOptions.optimizerRules)) {
@@ -120,8 +120,8 @@ int Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
   }
 
   _newPlans.clear();
-        
-  while (leastDoneLevel < maxRuleLevel) {
+
+  while (true) {
     // std::cout << "Have " << _plans.size() << " plans:" << std::endl;
     // for (auto const& p : _plans.list) {
     //   p->show();
@@ -132,18 +132,16 @@ int Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
 
     // For all current plans:
     while (!_plans.empty()) {
-      int level;
       std::unique_ptr<ExecutionPlan> p;
-      std::tie(p, level) = _plans.pop_front();
+      std::tie(p, _currentRule) = _plans.pop_front();
 
-      if (level >= maxRuleLevel) {
-        _newPlans.push_back(std::move(p), level);  // nothing to do, just keep it
+      if (_currentRule == _rules.end()) {
+        _newPlans.push_back(std::move(p), _currentRule);  // nothing to do, just keep it
       } else {                                // find next rule
-        auto it = _rules.upper_bound(level);
+        auto it = _currentRule;
         TRI_ASSERT(it != _rules.end());
 
-        level = (*it).first;
-        auto& rule = (*it).second.rule;
+        auto& rule = it->second.rule;
 
         // skip over rules if we should
         // however, we don't want to skip those rules that will not create
@@ -151,7 +149,8 @@ int Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
         if (!it->second.enabled || (_runOnlyRequiredRules && rule.canCreateAdditionalPlans && rule.canBeDisabled)) {
           // we picked a disabled rule or we have reached the max number of
           // plans and just skip this rule
-          _newPlans.push_back(std::move(p), level);  // nothing to do, just keep it
+          ++it; // move it to the next rule to be processed in the next iteration
+          _newPlans.push_back(std::move(p), it);  // nothing to do, just keep it
 
           if (!rule.isHidden) {
             ++_stats.rulesSkipped;
@@ -190,11 +189,9 @@ int Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
     // reuse them in the next iteration
     _plans.swap(_newPlans);
 
-    leastDoneLevel = maxRuleLevel;
-    for (auto const& l : _plans.list) {
-      if (l.second < leastDoneLevel) {
-        leastDoneLevel = l.second;
-      }
+    auto fully_optimized = [this](auto const& v){ return v.second == _rules.end(); };
+    if (std::all_of(_plans.list.begin(), _plans.list.end(), fully_optimized)) {
+      break;
     }
   }
 

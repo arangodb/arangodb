@@ -166,9 +166,10 @@ if (USE_IRESEARCH)
   set(UNWIND_ROOT "invalid")
   set(BFD_ROOT "invalid")
 
-  if(MSVC)
-    set(USE_IQL OFF CACHE BOOL "Use IQL" FORCE) # skip IQL on MSVC until IResearch upstream is updated
-  endif()
+  set(IRESEARCH_PREGENERATED_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/iresearch.build/")
+  set(GENERATED_PARSER_SOURCES "${IRESEARCH_PREGENERATED_ROOT}/core/iql/parser.cc" CACHE PATH "use pregenerated source")
+  include_directories("${IRESEARCH_PREGENERATED_ROOT}/core/")
+  include_directories("${IRESEARCH_PREGENERATED_ROOT}/external/snowball/libstemmer/")
 
   set(IRESEARCH_EXCLUDE_STATIC_THIRD_PARTY_LIBS TRUE) # disable linking in of 3rd party libraries automatically
   find_package(IResearch REQUIRED) # set IRESEARCH_BUILD_DIR
@@ -180,23 +181,12 @@ if (USE_IRESEARCH)
     "${IRESEARCH_ROOT}/cmake" # to find iResearch dependencies
   )
 
-  # cmake will seemingly randomly delete files from ${IRESEARCH_BUILD_DIR} during configuration
-  # so must copy required files only after the cmake configuration phase is complete, not via file(COPY ...)
-  # this command must _always_ be executed because the subsequent cmake configuration runs will once again delete files
-  if(MSVC)
-    add_custom_command(OUTPUT "${IRESEARCH_BUILD_DIR}/copy_iresearch.build" # non-existent file
-      COMMAND ${CMAKE_COMMAND} -E copy_directory "${IRESEARCH_ROOT}.build/" "${IRESEARCH_BUILD_DIR}/"
-    )
-  else()
-    # 'cmake -E copy_directory' does not preserve timestamps, use 'cp' directly where avalable
-    add_custom_command(OUTPUT "${IRESEARCH_BUILD_DIR}/copy_iresearch.build" # non-existent file
-      COMMAND cp -rp "${IRESEARCH_ROOT}.build/*" "${IRESEARCH_BUILD_DIR}/" # MacOS requires '/*' suffix
-    )
-  endif()
-
-  add_custom_target("copy_iresearch.build" ALL
-    DEPENDS "${IRESEARCH_BUILD_DIR}/copy_iresearch.build"
-  )
+  # copy pre-built files over to the build directory
+  # this is required to avoid triggering file generation via bison and perl during the build procedure
+  file(GLOB_RECURSE IRESEARCH_PREBUILT RELATIVE "${IRESEARCH_ROOT}.build" FOLLOW_SYMLINKS "${IRESEARCH_ROOT}.build/*")
+  foreach(ELEMENT ${IRESEARCH_PREBUILT})
+    configure_file("${IRESEARCH_ROOT}.build/${ELEMENT}" "${IRESEARCH_BUILD_DIR}/${ELEMENT}" COPYONLY)
+  endforeach()
 
   add_subdirectory("${IRESEARCH_ROOT}" "${IRESEARCH_BUILD_DIR}" EXCLUDE_FROM_ALL) # do not build unused targets
   set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH_ORIGINAL}) # restore CMAKE_MODULE_PATH
@@ -207,13 +197,6 @@ if (USE_IRESEARCH)
   if(APPLE)
     # cmake does not build ICU without this (cmake does not inherit dependencies)
     add_dependencies(v8_build icu-build icudata-static icui18n-static icuuc-static)
-  endif()
-
-  # ensure the 'copy_iresearch.build' target is executed before start of build of the 'iresearch' target
-  if(MSVC)
-    add_dependencies(iresearch-static-scrt "copy_iresearch.build") # use static + staticCRT to match ArangoDB
-  else()
-    add_dependencies(iresearch-static "copy_iresearch.build") # use static to match ArangoDB
   endif()
 endif()
 
@@ -261,7 +244,7 @@ if (USE_JEMALLOC)
   add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/jemalloc)
   include_directories(SYSTEM "${JEMALLOC_HOME}/include")
   link_directories("${JEMALLOC_HOME}/lib")
-  set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_LIB})
+  set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_LIB} PARENT_SCOPE)
 endif ()
 
 ################################################################################

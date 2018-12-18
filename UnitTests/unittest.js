@@ -10,6 +10,7 @@ const internalMembers = UnitTest.internalMembers;
 const fs = require('fs');
 const internal = require('internal'); // js/common/bootstrap/modules/internal.js
 const inspect = internal.inspect;
+const abortSignal = 6;
 
 let testOutputDirectory;
 
@@ -267,6 +268,20 @@ function main (argv) {
     crashed: true
   });
 
+  let running = require("internal").getExternalSpawned();
+  let i = 0;
+  for (i = 0; i < running.length; i++) {
+    let status = require("internal").statusExternal(running[i].pid, false);
+    if (status.status === "TERMINATED") {
+      print("process exited without us joining it (marking crashy): " + JSON.stringify(running[i]) + JSON.stringify(status));
+    }
+    else {
+      print("Killing remaining process & marking crashy: " + JSON.stringify(running[i]));
+      print(require("internal").killExternal(running[i].pid, abortSignal));
+    }
+    res.crashed = true;
+  };
+
   // whether or not there was an error
   try {
     fs.write(testOutputDirectory + '/UNITTEST_RESULT_EXECUTIVE_SUMMARY.json', String(res.status), true);
@@ -312,7 +327,7 @@ function main (argv) {
   // creates yaml like dump at the end
   UnitTest.unitTestPrettyPrintResults(res, testOutputDirectory, options);
 
-  return res.status;
+  return res.status && running.length === 0;
 }
 
 let result = main(ARGUMENTS);

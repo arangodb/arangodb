@@ -534,9 +534,7 @@ class format_test_case_base : public index_test_base {
       irs::flush_state state;
       state.dir = &dir();
       state.doc_count = 100;
-      state.fields_count = 1;
       state.name = "segment_name";
-      state.ver = IRESEARCH_VERSION;
       state.features = &field.features;
 
       // should use sorted terms on write
@@ -778,10 +776,12 @@ class format_test_case_base : public index_test_base {
       meta.files.emplace("file3");
       meta.files.emplace("stored_file4");
 
+      std::string filename;
+
       // write segment meta
       {
         auto writer = codec()->get_segment_meta_writer();
-        writer->write(dir(), meta);
+        writer->write(dir(), filename, meta);
       }
 
       // read segment meta
@@ -817,10 +817,12 @@ class format_test_case_base : public index_test_base {
       meta.files.emplace("file3");
       meta.files.emplace("stored_file4");
 
+      std::string filename;
+
       // write segment meta
       {
         auto writer = codec()->get_segment_meta_writer();
-        writer->write(dir(), meta);
+        writer->write(dir(), filename, meta);
       }
 
       // read segment meta
@@ -888,7 +890,7 @@ class format_test_case_base : public index_test_base {
         stream.write_bytes(payload.c_str(), payload.size());
       }
 
-      ASSERT_TRUE(writer->flush());
+      ASSERT_TRUE(writer->commit());
     }
 
     // read documents
@@ -938,7 +940,7 @@ class format_test_case_base : public index_test_base {
         column_handler(id);
       }
 
-      ASSERT_TRUE(writer->flush());
+      ASSERT_TRUE(writer->commit());
     }
 
     // read documents
@@ -1022,7 +1024,7 @@ class format_test_case_base : public index_test_base {
         ++seg.docs_count;
       }
 
-      ASSERT_TRUE(writer->flush());
+      ASSERT_TRUE(writer->commit());
 
       gen.reset();
     }
@@ -1117,7 +1119,7 @@ class format_test_case_base : public index_test_base {
         ++seg_1.docs_count;
       }
 
-      ASSERT_TRUE(writer->flush());
+      ASSERT_TRUE(writer->commit());
 
       gen.reset();
 
@@ -1146,7 +1148,7 @@ class format_test_case_base : public index_test_base {
         ++seg_2.docs_count;
       }
 
-      ASSERT_TRUE(writer->flush());
+      ASSERT_TRUE(writer->commit());
 
       // write 3rd segment
       id = 0;
@@ -1173,7 +1175,7 @@ class format_test_case_base : public index_test_base {
         ++seg_3.docs_count;
       }
 
-      ASSERT_TRUE(writer->flush());
+      ASSERT_TRUE(writer->commit());
     }
 
     // read documents
@@ -1352,12 +1354,12 @@ class format_test_case_base : public index_test_base {
     // add columns
     {
       auto writer = codec()->get_columnstore_writer();
-      ASSERT_TRUE(writer->prepare(dir(), meta0));
+      writer->prepare(dir(), meta0);
       column0_id = writer->push_column().first;
       ASSERT_EQ(0, column0_id);
       column1_id = writer->push_column().first;
       ASSERT_EQ(1, column1_id);
-      ASSERT_FALSE(writer->flush()); // flush empty columns
+      ASSERT_FALSE(writer->commit()); // flush empty columns
     }
 
     files.clear();
@@ -1366,9 +1368,7 @@ class format_test_case_base : public index_test_base {
 
     {
       auto reader = codec()->get_columnstore_reader();
-      bool seen;
-      ASSERT_TRUE(reader->prepare(dir(), meta0, &seen));
-      ASSERT_FALSE(seen); // no columns found
+      ASSERT_FALSE(reader->prepare(dir(), meta0)); // no columns found
 
       irs::bytes_ref actual_value;
 
@@ -1406,7 +1406,7 @@ class format_test_case_base : public index_test_base {
     {
       // write columns values
       auto writer = codec()->get_columnstore_writer();
-      ASSERT_TRUE(writer->prepare(dir(), meta0));
+      writer->prepare(dir(), meta0);
 
       dense_fixed_offset_column = writer->push_column();
       sparse_fixed_offset_column = writer->push_column();
@@ -1440,7 +1440,7 @@ class format_test_case_base : public index_test_base {
         }
       }
 
-      ASSERT_TRUE(writer->flush());
+      ASSERT_TRUE(writer->commit());
     }
 
     // dense fixed offset column
@@ -1596,9 +1596,7 @@ class format_test_case_base : public index_test_base {
     // read attributes from empty directory
     {
       auto reader = codec()->get_columnstore_reader();
-      bool seen;
-      ASSERT_TRUE(reader->prepare(dir(), meta1, &seen));
-      ASSERT_FALSE(seen); // no attributes found
+      ASSERT_FALSE(reader->prepare(dir(), meta1)); // no attributes found
 
       // try to get invalild column
       ASSERT_EQ(nullptr, reader->column(iresearch::type_limits<iresearch::type_t::field_id_t>::invalid()));
@@ -1609,7 +1607,7 @@ class format_test_case_base : public index_test_base {
 
     // write _1 segment
     {
-      ASSERT_TRUE(writer->prepare(dir(), meta0));
+      writer->prepare(dir(), meta0);
 
       auto field0 = writer->push_column();
       segment0_field0_id = field0.first;
@@ -1703,12 +1701,12 @@ class format_test_case_base : public index_test_base {
         }
       }
 
-      ASSERT_TRUE(writer->flush());
+      ASSERT_TRUE(writer->commit());
     }
 
     // write _2 segment, reuse writer
     {
-      ASSERT_TRUE(writer->prepare(dir(), meta1));
+      writer->prepare(dir(), meta1);
 
       auto field0 = writer->push_column();
       segment1_field0_id = field0.first;
@@ -1762,7 +1760,7 @@ class format_test_case_base : public index_test_base {
         stream.reset(); // rollback
       }
 
-      ASSERT_TRUE(writer->flush());
+      ASSERT_TRUE(writer->commit());
     }
 
     // read columns values from segment _1
@@ -2383,7 +2381,7 @@ class format_test_case_base : public index_test_base {
       handle(9); ++segment.docs_count;
       // we don't support irs::type_limits<<irs::type_t::doc_id_t>::eof() key value
 
-      ASSERT_TRUE(writer->flush());
+      ASSERT_TRUE(writer->commit());
     }
 
     // check previously written mask
@@ -2628,7 +2626,7 @@ class format_test_case_base : public index_test_base {
         ++segment.docs_count;
       }
 
-      ASSERT_TRUE(writer->flush());
+      ASSERT_TRUE(writer->commit());
     }
 
     // read big document
@@ -2839,7 +2837,7 @@ class format_test_case_base : public index_test_base {
         ++meta.docs_count;
       }
 
-      ASSERT_TRUE(writer->flush());
+      ASSERT_TRUE(writer->commit());
     }
 
     // read stored documents

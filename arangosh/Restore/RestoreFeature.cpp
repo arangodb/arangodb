@@ -361,9 +361,13 @@ arangodb::Result recreateCollection(
   result = ::sendRestoreCollection(httpClient, jobData.options,
                                    jobData.collection, cname);
 
-  if (result.fail() && jobData.options.force) {
-    LOG_TOPIC(ERR, Logger::RESTORE) << result.errorMessage();
-    result.reset();
+  if (result.fail()) {
+    if (jobData.options.force) {
+      LOG_TOPIC(WARN, Logger::RESTORE) << "Error while creating " << collectionType << " collection '" << cname << "': " << result.errorMessage();
+      result.reset();
+    } else {
+      LOG_TOPIC(ERR, Logger::RESTORE) << "Error while creating " << collectionType << " collection '" << cname << "': " << result.errorMessage();
+    }
   }
   return result;
 }
@@ -382,20 +386,25 @@ arangodb::Result restoreIndexes(
     // we actually have indexes
     if (jobData.options.progress) {
       std::string const cname =
-          arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name",
-                                                             "");
+          arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name", "");
       LOG_TOPIC(INFO, Logger::RESTORE)
           << "# Creating indexes for collection '" << cname << "'...";
     }
 
     result =
         ::sendRestoreIndexes(httpClient, jobData.options, jobData.collection);
+  
+    if (result.fail()) {
+      std::string const cname = arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name", "");
+      if (jobData.options.force) {
+        LOG_TOPIC(WARN, Logger::RESTORE) << "Error while creating indexes for collection '" << cname << "': " << result.errorMessage();
+        result.reset();
+      } else {
+        LOG_TOPIC(ERR, Logger::RESTORE) << "Error while creating indexes for collection '" << cname << "': " << result.errorMessage();
+      }
+    }
   }
 
-  if (result.fail() && jobData.options.force) {
-    LOG_TOPIC(ERR, Logger::RESTORE) << result.errorMessage();
-    result.reset();
-  }
   return result;
 }
 
@@ -476,6 +485,7 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
         length = found - buffer.begin();  // found a \n somewhere; break at line
       }
 
+
       jobData.stats.totalBatches++;
       result = ::sendRestoreData(httpClient, jobData.options, cname,
                                  buffer.begin(), length);
@@ -483,9 +493,11 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
 
       if (result.fail()) {
         if (jobData.options.force) {
-          LOG_TOPIC(ERR, Logger::RESTORE) << result.errorMessage();
+          LOG_TOPIC(WARN, Logger::RESTORE) << "Error while restoring data into collection '" << cname << "': " << result.errorMessage();
           result.reset();
           continue;
+        } else {
+          LOG_TOPIC(ERR, Logger::RESTORE) << "Error while restoring data into collection '" << cname << "': " << result.errorMessage();
         }
         return result;
       }
@@ -528,6 +540,19 @@ arangodb::Result restoreView(arangodb::httpclient::SimpleHttpClient& httpClient,
   return ::checkHttpResponse(httpClient, response, "restoring view", body);
 }
 
+arangodb::Result triggerFoxxHeal(
+    arangodb::httpclient::SimpleHttpClient& httpClient) {
+  using arangodb::Logger;
+  using arangodb::httpclient::SimpleHttpResult;
+  const std::string FoxxHealUrl = "/_api/foxx/_local/heal";
+
+  std::string body = "";
+
+  std::unique_ptr<SimpleHttpResult> response(httpClient.request(
+      arangodb::rest::RequestType::POST, FoxxHealUrl, body.c_str(), body.length()));
+  return ::checkHttpResponse(httpClient, response, "trigger self heal", body);
+}
+
 arangodb::Result processInputDirectory(
     arangodb::httpclient::SimpleHttpClient& httpClient,
     arangodb::ClientTaskQueue<arangodb::RestoreFeature::JobData>& jobQueue,
@@ -537,14 +562,15 @@ arangodb::Result processInputDirectory(
     arangodb::RestoreFeature::Stats& stats) {
   using arangodb::Logger;
   using arangodb::Result;
+  using arangodb::StaticStrings;
   using arangodb::basics::FileUtils::listFiles;
+  using arangodb::basics::VelocyPackHelper;
 
   // create a lookup table for collections
-  std::map<std::string, bool> restrictList;
-  for (size_t i = 0; i < options.collections.size(); ++i) {
-    restrictList.insert(
-        std::pair<std::string, bool>(options.collections[i], true));
-  }
+  std::set<std::string> restrictColls, restrictViews;
+  restrictColls.insert(options.collections.begin(), options.collections.end());
+  restrictViews.insert(options.views.begin(), options.views.end());
+
   try {
     std::vector<std::string> const files = listFiles(options.inputPath);
     std::string const collectionSuffix = std::string(".structure.json");
@@ -560,13 +586,27 @@ arangodb::Result processInputDirectory(
 
         if (nameLength > viewsSuffix.size() &&
             file.substr(file.size() - viewsSuffix.size()) == viewsSuffix) {
-          VPackBuilder fileContentBuilder = directory.vpackFromJsonFile(file);
-          VPackSlice const fileContent = fileContentBuilder.slice();
+          
+          if (!restrictColls.empty() && restrictViews.empty()) {
+            continue; // skip view if not specifically included
+          }
+          
+          VPackBuilder contentBuilder = directory.vpackFromJsonFile(file);
+          VPackSlice const fileContent = contentBuilder.slice();
           if (!fileContent.isObject()) {
             return {TRI_ERROR_INTERNAL,
               "could not read view file '" + directory.pathToFile(file) + "'"};
           }
-          views.emplace_back(std::move(fileContentBuilder));
+          
+          if (!restrictViews.empty()) {
+            std::string const name = VelocyPackHelper::getStringValue(fileContent,
+                                                                      StaticStrings::DataSourceName, "");
+            if (restrictViews.find(name) == restrictViews.end()) {
+              continue;
+            }
+          }
+          
+          views.emplace_back(std::move(contentBuilder));
           continue;
         }
 
@@ -597,9 +637,8 @@ arangodb::Result processInputDirectory(
                   "could not read collection structure file '" +
                       directory.pathToFile(file) + "'"};
         }
-        std::string const cname =
-            arangodb::basics::VelocyPackHelper::getStringValue(parameters,
-                                                               "name", "");
+        std::string const cname = VelocyPackHelper::getStringValue(parameters,
+                                                                   StaticStrings::DataSourceName, "");
         bool overwriteName = false;
         if (cname != name &&
             name !=
@@ -623,10 +662,9 @@ arangodb::Result processInputDirectory(
           }
         }
 
-        if (!restrictList.empty() &&
-            restrictList.find(cname) == restrictList.end()) {
-          // collection name not in list
-          continue;
+        if (!restrictColls.empty() &&
+            restrictColls.find(cname) == restrictColls.end()) {
+          continue; // collection name not in list
         }
 
         if (overwriteName) {
@@ -641,9 +679,19 @@ arangodb::Result processInputDirectory(
 
     std::vector<std::unique_ptr<arangodb::RestoreFeature::JobData>> jobs(collections.size());
 
+    bool didModifyFoxxCollection = false;
     // Step 2: create collections
     for (VPackBuilder const& b : collections) {
       VPackSlice const collection = b.slice();
+      VPackSlice params = collection.get("parameters");
+      if (params.isObject()) {
+        params = params.get("name");
+        // Only these two are relevant for FOXX.
+        if (params.isString() && (params.isEqualString("_apps") || params.isEqualString("_appbundles"))) {
+          didModifyFoxxCollection = true;
+        }
+      };
+
 
       auto jobData = std::make_unique<arangodb::RestoreFeature::JobData>(
           directory, feature, options, stats, collection);
@@ -660,6 +708,7 @@ arangodb::Result processInputDirectory(
       jobs.push_back(std::move(jobData));
     }
 
+    // Step 3: create views
     if (options.importStructure && !views.empty()) {
       LOG_TOPIC(INFO, Logger::RESTORE) << "# Creating views...";
       // Step 3: recreate all views
@@ -716,6 +765,14 @@ arangodb::Result processInputDirectory(
     Result firstError = feature.getFirstError();
     if (firstError.fail()) {
       return firstError;
+    }
+    
+    if (didModifyFoxxCollection) {
+      // if we get here we need to trigger foxx heal
+      Result res = ::triggerFoxxHeal(httpClient);
+      if (res.fail()) {
+        LOG_TOPIC(WARN, Logger::RESTORE) << "Reloading of Foxx services failed. In the cluster Foxx services will be available eventually, On single servers send a POST to '/_api/foxx/_local/heal' on the current database, with an empty body.";
+      }
     }
 
   } catch (std::exception const& ex) {
@@ -817,6 +874,11 @@ void RestoreFeature::collectOptions(
       "--collection",
       "restrict to collection name (can be specified multiple times)",
       new VectorParameter<StringParameter>(&_options.collections));
+  
+  options->addOption(
+      "--view",
+      "restrict to view name (can be specified multiple times)",
+     new VectorParameter<StringParameter>(&_options.views));
 
   options->addObsoleteOption(
       "--recycle-ids", "collection ids are now handled automatically", false);
@@ -997,7 +1059,7 @@ void RestoreFeature::start() {
   std::tie(result, _options.clusterMode) =
       _clientManager.getArangoIsCluster(*httpClient);
   if (result.fail()) {
-    LOG_TOPIC(ERR, arangodb::Logger::RESTORE) << result.errorMessage();
+    LOG_TOPIC(FATAL, arangodb::Logger::RESTORE) << "Error: could not detect ArangoDB instance type: " << result.errorMessage();
     _exitCode = EXIT_FAILURE;
     return;
   }
@@ -1005,7 +1067,7 @@ void RestoreFeature::start() {
   std::tie(result, _options.indexesFirst) =
       _clientManager.getArangoIsUsingEngine(*httpClient, "rocksdb");
   if (result.fail()) {
-    LOG_TOPIC(ERR, arangodb::Logger::RESTORE) << result.errorMessage();
+    LOG_TOPIC(FATAL, arangodb::Logger::RESTORE) << "Error while trying to determine server storage engine: " << result.errorMessage();
     _exitCode = EXIT_FAILURE;
     return;
   }
@@ -1025,9 +1087,12 @@ void RestoreFeature::start() {
   try {
     result = ::processInputDirectory(*httpClient, _clientTaskQueue, *this,
                                      _options, *_directory, _stats);
+  } catch (basics::Exception const& ex) {
+    LOG_TOPIC(ERR, arangodb::Logger::RESTORE) << "caught exception: " << ex.what();
+    result = {ex.code(), ex.what()};
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::RESTORE) << "caught exception: " << ex.what();
-    result = {TRI_ERROR_INTERNAL};
+    result = {TRI_ERROR_INTERNAL, ex.what()};
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::RESTORE)
         << "caught unknown exception";

@@ -28,7 +28,6 @@
 #include "Basics/StringRef.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Indexes/IndexResult.h"
 #include "Logger/Logger.h"
 #include "MMFiles/mmfiles-fulltext-index.h"
 #include "MMFiles/mmfiles-fulltext-query.h"
@@ -215,30 +214,41 @@ bool MMFilesFulltextIndex::matchesDefinition(VPackSlice const& info) const {
   return true;
 }
 
-Result MMFilesFulltextIndex::insert(transaction::Methods*,
-                                    LocalDocumentId const& documentId,
-                                    VPackSlice const& doc, OperationMode mode) {
-  int res = TRI_ERROR_NO_ERROR;
+Result MMFilesFulltextIndex::insert(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+) {
+  Result res;
+  int r = TRI_ERROR_NO_ERROR;
   std::set<std::string> words = wordlist(doc);
-
   if (!words.empty()) {
-    res =
-        TRI_InsertWordsMMFilesFulltextIndex(_fulltextIndex, documentId, words);
+    r = TRI_InsertWordsMMFilesFulltextIndex(_fulltextIndex, documentId, words);
   }
-  return IndexResult(res, this);
+  if (r != TRI_ERROR_NO_ERROR) {
+    addErrorMsg(res, r);
+  }
+  return res;
 }
 
-Result MMFilesFulltextIndex::remove(transaction::Methods*,
-                                    LocalDocumentId const& documentId,
-                                    VPackSlice const& doc, OperationMode mode) {
-  int res = TRI_ERROR_NO_ERROR;
+Result MMFilesFulltextIndex::remove(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+) {
+  Result res;
+  int r = TRI_ERROR_NO_ERROR;
   std::set<std::string> words = wordlist(doc);
 
   if (!words.empty()) {
-    res =
-        TRI_RemoveWordsMMFilesFulltextIndex(_fulltextIndex, documentId, words);
+    r = TRI_RemoveWordsMMFilesFulltextIndex(_fulltextIndex, documentId, words);
   }
-  return IndexResult(res, this);
+  if (r != TRI_ERROR_NO_ERROR) {
+    addErrorMsg(res, r);
+  }
+  return res;
 }
 
 void MMFilesFulltextIndex::unload() {

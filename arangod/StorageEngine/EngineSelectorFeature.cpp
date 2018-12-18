@@ -180,4 +180,12 @@ std::string const& EngineSelectorFeature::defaultEngine() {
   return RocksDBEngine::EngineName;
 }
 
+bool EngineSelectorFeature::isMMFiles() {
+  return engineName() == MMFilesEngine::EngineName;
+}
+
+bool EngineSelectorFeature::isRocksDB() {
+  return engineName() == RocksDBEngine::EngineName;
+}
+
 } // arangodb

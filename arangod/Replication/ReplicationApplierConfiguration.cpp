@@ -59,7 +59,7 @@ ReplicationApplierConfiguration::ReplicationApplierConfiguration()
       _adaptivePolling(true),
       _autoResync(false),
       _includeSystem(true),
-      _requireFromPresent(false),
+      _requireFromPresent(true),
       _incremental(false),
       _verbose(false),
       _restrictType(RestrictType::None),
@@ -90,7 +90,7 @@ void ReplicationApplierConfiguration::reset() {
   _adaptivePolling = true;
   _autoResync = false;
   _includeSystem = true;
-  _requireFromPresent = false;
+  _requireFromPresent = true;
   _incremental = false;
   _verbose = false;
   _restrictType = RestrictType::None;

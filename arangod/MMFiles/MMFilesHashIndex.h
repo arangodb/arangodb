@@ -27,10 +27,11 @@
 #include "Basics/AssocMulti.h"
 #include "Basics/AssocUnique.h"
 #include "Basics/Common.h"
+#include "Basics/SmallVector.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
 #include "Indexes/IndexIterator.h"
-#include "Indexes/IndexLookupContext.h"
+#include "MMFiles/MMFilesIndexLookupContext.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesPathBasedIndex.h"
 #include "Transaction/Helpers.h"
@@ -74,7 +75,7 @@ struct MMFilesHashIndexHelper {
                                 MMFilesHashIndexElement const* right) const {
     TRI_ASSERT(left->isArray());
     TRI_ASSERT(right->isSet());
-    IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
+    MMFilesIndexLookupContext* context = static_cast<MMFilesIndexLookupContext*>(userData);
     TRI_ASSERT(context != nullptr);
 
     // TODO: is it a performance improvement to compare the hash values first?
@@ -103,7 +104,7 @@ struct MMFilesHashIndexHelper {
       return true;
     }
 
-    IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
+    MMFilesIndexLookupContext* context = static_cast<MMFilesIndexLookupContext*>(userData);
 
     for (size_t i = 0; i < _numFields; ++i) {
       VPackSlice leftData = left->slice(context, i);
@@ -153,7 +154,7 @@ struct MMFilesMultiHashIndexHelper : public MMFilesHashIndexHelper {
       return false;
     }
 
-    IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
+    MMFilesIndexLookupContext* context = static_cast<MMFilesIndexLookupContext*>(userData);
     TRI_ASSERT(context != nullptr);
 
     for (size_t i = 0; i < context->numFields(); ++i) {
@@ -179,8 +180,10 @@ class MMFilesHashIndexLookupBuilder {
   bool _usesIn;
   bool _isEmpty;
   size_t _coveredFields;
-  std::unordered_map<size_t, arangodb::aql::AstNode const*>
-      _mappingFieldCondition;
+  
+  SmallVector<arangodb::aql::AstNode const*> _mappingFieldCondition;
+  SmallVector<arangodb::aql::AstNode const*>::allocator_type::arena_type _mappingFieldConditionArena;
+  
   std::unordered_map<
       size_t, std::pair<size_t, std::vector<arangodb::velocypack::Slice>>>
       _inPosition;
@@ -261,22 +264,29 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
 
   bool matchesDefinition(VPackSlice const& info) const override;
 
-  Result insert(transaction::Methods*, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const&,
-                OperationMode mode) override;
-
-  Result remove(transaction::Methods*, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const&,
-                OperationMode mode) override;
-
   void batchInsert(
-      transaction::Methods*,
-      std::vector<std::pair<LocalDocumentId, arangodb::velocypack::Slice>> const&,
-      std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) override;
+    transaction::Methods& trx,
+    std::vector<std::pair<LocalDocumentId, velocypack::Slice>> const& docs,
+    std::shared_ptr<basics::LocalTaskQueue> queue
+  ) override;
+
+  Result insert(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+  ) override;
+
+  Result remove(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+  ) override;
 
   void unload() override;
 
-  int sizeHint(transaction::Methods*, size_t) override;
+  Result sizeHint(transaction::Methods& trx, size_t size) override;
 
   bool hasBatchInsert() const override { return true; }
 
@@ -307,8 +317,8 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
       std::vector<std::pair<LocalDocumentId, arangodb::velocypack::Slice>> const&,
       std::shared_ptr<arangodb::basics::LocalTaskQueue> queue);
 
-  int insertMulti(transaction::Methods*, LocalDocumentId const& documentId,
-                  arangodb::velocypack::Slice const&, OperationMode mode);
+  Result insertMulti(transaction::Methods*, LocalDocumentId const& documentId,
+                     arangodb::velocypack::Slice const&, OperationMode mode);
 
   void batchInsertMulti(
       transaction::Methods*,

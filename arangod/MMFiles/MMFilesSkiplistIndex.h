@@ -27,7 +27,7 @@
 #include "Aql/AstNode.h"
 #include "Basics/Common.h"
 #include "Indexes/IndexIterator.h"
-#include "Indexes/IndexLookupContext.h"
+#include "MMFiles/MMFilesIndexLookupContext.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesPathBasedIndex.h"
 #include "MMFiles/MMFilesSkiplist.h"
@@ -174,7 +174,7 @@ class MMFilesSkiplistIterator final : public IndexIterator {
 
  private:
   TRI_Skiplist const* _skiplistIndex;
-  IndexLookupContext _context;
+  MMFilesIndexLookupContext _context;
   size_t _numPaths;
   bool _reverse;
   Node* _cursor;
@@ -289,13 +289,19 @@ class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
 
   void toVelocyPackFigures(VPackBuilder&) const override;
 
-  Result insert(transaction::Methods*, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const&,
-                OperationMode mode) override;
+  Result insert(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+  ) override;
 
-  Result remove(transaction::Methods*, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const&,
-                OperationMode mode) override;
+  Result remove(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+  ) override;
 
   void unload() override;
 

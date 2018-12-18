@@ -408,7 +408,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   builder.close();  // </state>
   builder.add("tick", VPackValue(std::to_string(tick)));
   builder.close();  // Toplevel
-
+  
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
 

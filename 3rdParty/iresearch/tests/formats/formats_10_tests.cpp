@@ -60,10 +60,8 @@ class format_10_test_case : public tests::format_test_case_base {
       irs::flush_state state;
       state.dir = &dir();
       state.doc_count = 100;
-      state.fields_count = 1;
       state.name = "segment_name";
       state.features = &field.features;
-      state.ver = IRESEARCH_VERSION;
 
       auto out = dir().create("attributes");
       ASSERT_FALSE(!out);
@@ -136,7 +134,7 @@ class format_10_test_case : public tests::format_test_case_base {
       // prepare reader
       auto reader = codec->get_postings_reader();
       ASSERT_NE(nullptr, reader);
-      ASSERT_TRUE(reader->prepare(*in, state, field.features));
+      reader->prepare(*in, state, field.features);
 
       // read term0 attributes & postings
       {
@@ -212,9 +210,7 @@ class format_10_test_case : public tests::format_test_case_base {
       irs::flush_state state;
       state.dir = &dir();
       state.doc_count = 150;
-      state.fields_count = 1;
       state.name = "segment_name";
-      state.ver = IRESEARCH_VERSION;
       state.features = &field.features;
 
       auto out = dir().create("attributes");
@@ -351,10 +347,8 @@ class format_10_test_case : public tests::format_test_case_base {
       irs::flush_state state;
       state.dir = &dir();
       state.doc_count = 10000;
-      state.fields_count = 1;
       state.name = "0";
       state.features = &field.features; // all possible features in segment
-      state.ver = IRESEARCH_VERSION;
 
       auto out = dir().create(std::string("postings") + state.name.c_str());
       ASSERT_FALSE(!out);
@@ -376,10 +370,8 @@ class format_10_test_case : public tests::format_test_case_base {
       irs::flush_state state;
       state.dir = &dir();
       state.doc_count = 10000;
-      state.fields_count = 1;
       state.name = "1";
       state.features = &field.features; // all possible features in segment
-      state.ver = IRESEARCH_VERSION;
 
       auto out = dir().create(std::string("postings") + state.name.c_str());
       ASSERT_FALSE(!out);
@@ -401,10 +393,8 @@ class format_10_test_case : public tests::format_test_case_base {
       irs::flush_state state;
       state.dir = &dir();
       state.doc_count = 10000;
-      state.fields_count = 1;
       state.name = "2";
       state.features = &field.features; // all possible features in segment
-      state.ver = IRESEARCH_VERSION;
 
       auto out = dir().create(std::string("postings") + state.name.c_str());
       ASSERT_FALSE(!out);
@@ -426,10 +416,8 @@ class format_10_test_case : public tests::format_test_case_base {
       irs::flush_state state;
       state.dir = &dir();
       state.doc_count = 10000;
-      state.fields_count = 1;
       state.name = "3";
       state.features = &field.features; // all possible features in segment
-      state.ver = IRESEARCH_VERSION;
 
       auto out = dir().create(std::string("postings") + state.name.c_str());
       ASSERT_FALSE(!out);
@@ -451,10 +439,8 @@ class format_10_test_case : public tests::format_test_case_base {
       irs::flush_state state;
       state.dir = &dir();
       state.doc_count = 10000;
-      state.fields_count = 1;
       state.name = "4";
       state.features = &field.features; // all possible features in segment
-      state.ver = IRESEARCH_VERSION;
 
       auto out = dir().create(std::string("postings") + state.name.c_str());
       ASSERT_FALSE(!out);
@@ -477,10 +463,8 @@ class format_10_test_case : public tests::format_test_case_base {
       irs::flush_state state;
       state.dir = &dir();
       state.doc_count = 10000;
-      state.fields_count = 1;
       state.name = "5";
       state.features = &field_no_features.features; // all possible features in segment
-      state.ver = IRESEARCH_VERSION;
 
       auto out = dir().create(std::string("postings") + state.name.c_str());
       ASSERT_FALSE(!out);
@@ -544,9 +528,7 @@ class format_10_test_case : public tests::format_test_case_base {
       irs::flush_state state;
       state.dir = &dir();
       state.doc_count = docs.back()+1;
-      state.fields_count = 1;
       state.name = "segment_name";
-      state.ver = IRESEARCH_VERSION;
       state.features = &field.features;
 
       auto out = dir().create("attributes");
@@ -772,10 +754,8 @@ class format_10_test_case : public tests::format_test_case_base {
       iresearch::flush_state flush_state;
       flush_state.dir = dir.get();
       flush_state.doc_count = 10000;
-      flush_state.fields_count = 1;
       flush_state.features = &irs::flags::empty_instance();
       flush_state.name = segment_name;
-      flush_state.ver = 0;
 
       irs::field_meta field_meta;
       field_meta.name = field;

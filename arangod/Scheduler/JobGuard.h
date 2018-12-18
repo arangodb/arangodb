@@ -43,7 +43,7 @@ class JobGuard : public SameThreadAsserter {
   ~JobGuard() { release(); }
 
  public:
-  void work() {
+  void work() noexcept {
     TRI_ASSERT(!_isWorkingFlag);
 
     if (0 == _isWorking++) {
@@ -54,7 +54,7 @@ class JobGuard : public SameThreadAsserter {
   }
 
  private:
-  void release() {
+  void release() noexcept {
     if (_isWorkingFlag) {
       _isWorkingFlag = false;
 

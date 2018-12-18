@@ -48,11 +48,6 @@ struct index_output;
 struct data_input;
 struct index_input;
 typedef std::unordered_set<doc_id_t> document_mask;
-
-/* -------------------------------------------------------------------
- * postings_writer
- * ------------------------------------------------------------------*/
-
 struct postings_writer;
 
 //////////////////////////////////////////////////////////////////////////////
@@ -74,6 +69,9 @@ struct IRESEARCH_API term_meta : attribute {
   uint32_t freq = 0; // FIXME check whether we can move freq to another place
 }; // term_meta
 
+////////////////////////////////////////////////////////////////////////////////
+/// @struct postings_writer
+////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API postings_writer : util::const_attribute_view_provider {
   DECLARE_UNIQUE_PTR(postings_writer);
   DEFINE_FACTORY_INLINE(postings_writer);
@@ -113,17 +111,16 @@ struct IRESEARCH_API postings_writer : util::const_attribute_view_provider {
   }
 
   virtual void release(term_meta* meta) NOEXCEPT = 0;
-};
+}; // postings_writer
 
 void postings_writer::releaser::operator()(term_meta* meta) const NOEXCEPT {
   assert(owner_ && meta);
   owner_->release(meta);
 }
 
-/* -------------------------------------------------------------------
- * field_writer
- * ------------------------------------------------------------------*/
-
+////////////////////////////////////////////////////////////////////////////////
+/// @struct field_writer
+////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API field_writer {
   DECLARE_UNIQUE_PTR(field_writer);
   DEFINE_FACTORY_INLINE(field_writer);
@@ -132,12 +129,11 @@ struct IRESEARCH_API field_writer {
   virtual void prepare(const flush_state& state) = 0;
   virtual void write(const std::string& name, field_id norm, const flags& features, term_iterator& data) = 0;
   virtual void end() = 0;
-};
+}; // field_writer
 
-/* -------------------------------------------------------------------
- * postings_reader
- * ------------------------------------------------------------------*/
-
+////////////////////////////////////////////////////////////////////////////////
+/// @struct postings_reader
+////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API postings_reader {
   DECLARE_UNIQUE_PTR(postings_reader);
   DEFINE_FACTORY_INLINE(postings_reader);
@@ -146,7 +142,7 @@ struct IRESEARCH_API postings_reader {
   
   // in - corresponding stream
   // features - the set of features available for segment
-  virtual bool prepare(
+  virtual void prepare(
     index_input& in, 
     const reader_state& state,
     const flags& features
@@ -166,12 +162,11 @@ struct IRESEARCH_API postings_reader {
     const attribute_view& attrs,
     const flags& features
   ) = 0;
-};
+}; // postings_reader
 
-/* -------------------------------------------------------------------
- * term_reader
- * ------------------------------------------------------------------*/
-
+////////////////////////////////////////////////////////////////////////////////
+/// @struct basic_term_reader
+////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API basic_term_reader: public util::const_attribute_view_provider {
   virtual ~basic_term_reader();
 
@@ -187,6 +182,9 @@ struct IRESEARCH_API basic_term_reader: public util::const_attribute_view_provid
   virtual const bytes_ref& (max)() const = 0;
 }; // basic_term_reader
 
+////////////////////////////////////////////////////////////////////////////////
+/// @struct term_reader
+////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API term_reader: public util::const_attribute_view_provider {
   DECLARE_UNIQUE_PTR( term_reader);
   DEFINE_FACTORY_INLINE(term_reader);
@@ -211,17 +209,16 @@ struct IRESEARCH_API term_reader: public util::const_attribute_view_provider {
   virtual const bytes_ref& (max)() const = 0;
 };
 
-/* -------------------------------------------------------------------
- * field_reader
- * ------------------------------------------------------------------*/
-
+////////////////////////////////////////////////////////////////////////////////
+/// @struct field_reader
+////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API field_reader {
   DECLARE_UNIQUE_PTR(field_reader);
   DEFINE_FACTORY_INLINE(field_reader);
 
   virtual ~field_reader();
 
-  virtual bool prepare(
+  virtual void prepare(
     const directory& dir,
     const segment_meta& meta,
     const document_mask& mask
@@ -230,12 +227,11 @@ struct IRESEARCH_API field_reader {
   virtual const term_reader* field(const string_ref& field) const = 0;
   virtual field_iterator::ptr iterator() const = 0;
   virtual size_t size() const = 0;
-};
+}; // field_reader
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    columns_writer 
-// -----------------------------------------------------------------------------
-
+////////////////////////////////////////////////////////////////////////////////
+/// @struct columnstore_writer
+////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API columnstore_writer {
   DECLARE_SHARED_PTR(columnstore_writer);
 
@@ -250,9 +246,10 @@ struct IRESEARCH_API columnstore_writer {
 
   virtual ~columnstore_writer();
 
-  virtual bool prepare(directory& dir, const segment_meta& meta) = 0;
+  virtual void prepare(directory& dir, const segment_meta& meta) = 0;
   virtual column_t push_column() = 0;
-  virtual bool flush() = 0; // @return was anything actually flushed
+  virtual void rollback() NOEXCEPT = 0;
+  virtual bool commit() = 0; // @return was anything actually flushed
 }; // columnstore_writer
 
 NS_END
@@ -262,39 +259,39 @@ MSVC_ONLY(template class IRESEARCH_API std::function<iresearch::columnstore_writ
 
 NS_ROOT
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                column_meta_writer 
-// -----------------------------------------------------------------------------
-
+////////////////////////////////////////////////////////////////////////////////
+/// @struct column_meta_writer
+////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API column_meta_writer {
   DECLARE_SHARED_PTR(column_meta_writer);
   virtual ~column_meta_writer();
-  virtual bool prepare(directory& dir, const segment_meta& meta) = 0;
+  virtual void prepare(directory& dir, const segment_meta& meta) = 0;
   virtual void write(const std::string& name, field_id id) = 0;
   virtual void flush() = 0;
 }; // column_meta_writer 
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                column_meta_reader
-// -----------------------------------------------------------------------------
-
+////////////////////////////////////////////////////////////////////////////////
+/// @struct column_meta_reader
+////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API column_meta_reader {
   DECLARE_SHARED_PTR(column_meta_reader);
   virtual ~column_meta_reader();
+  /// @returns true if column_meta is present in a segment.
+  ///          false - otherwise
   virtual bool prepare(
     const directory& dir, 
     const segment_meta& meta,
     size_t& count, // out parameter
     field_id& max_id // out parameter
   ) = 0;
+
   // returns false if there is no more data to read
   virtual bool read(column_meta& column) = 0;
 }; // column_meta_reader 
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    columns_reader
-// -----------------------------------------------------------------------------
-
+////////////////////////////////////////////////////////////////////////////////
+/// @struct columnstore_reader
+////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API columnstore_reader {
   DECLARE_UNIQUE_PTR(columnstore_reader);
 
@@ -321,14 +318,13 @@ struct IRESEARCH_API columnstore_reader {
 
   virtual ~columnstore_reader();
 
-  // @param seen if found and seen != nullptr -> set seen = true
-  //             if not found and seen != nullptr -> set seen = false, return true
-  //             if not found and seen == nullptr -> log warning, return false
-  // @return success
+  /// @returns true if conlumnstore is present in a segment,
+  ///          false - otherwise
+  /// @throws io_error
+  /// @throws index_error
   virtual bool prepare(
     const directory& dir,
-    const segment_meta& meta,
-    bool* seen = nullptr
+    const segment_meta& meta
   ) = 0;
 
   virtual const column_reader* column(field_id field) const = 0;
@@ -370,34 +366,35 @@ struct IRESEARCH_API document_mask_reader {
 
   virtual ~document_mask_reader();
 
-  // @param seen if found and seen != nullptr -> set seen = true
-  //             if not found and seen != nullptr -> set seen = false, return true
-  //             if not found and seen == nullptr -> log warning, return false
-  // @return success
+  /// @returns true if there are any deletes in a segment,
+  ///          false - otherwise
+  /// @throws io_error
+  /// @throws index_error
   virtual bool read(
     const directory& dir,
     const segment_meta& meta,
-    document_mask& docs_mask,
-    bool* seen = nullptr
+    document_mask& docs_mask
   ) = 0;
 };
 
-/* -------------------------------------------------------------------
- * segment_meta_writer
- * ------------------------------------------------------------------*/
-
+////////////////////////////////////////////////////////////////////////////////
+/// @struct segment_meta_writer
+////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API segment_meta_writer {
   DECLARE_MANAGED_PTR(segment_meta_writer);
 
   virtual ~segment_meta_writer();
-  virtual std::string filename(const segment_meta& meta) const = 0;
-  virtual void write(directory& dir, const segment_meta& meta) = 0;
-};
 
-/* -------------------------------------------------------------------
- * segment_meta_reader
- * ------------------------------------------------------------------*/
+  virtual void write(
+    directory& dir,
+    std::string& filename,
+    const segment_meta& meta
+  ) = 0;
+}; // segment_meta_writer
 
+////////////////////////////////////////////////////////////////////////////////
+/// @struct segment_meta_reader
+////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API segment_meta_reader {
   DECLARE_MANAGED_PTR(segment_meta_reader);
 
@@ -408,12 +405,11 @@ struct IRESEARCH_API segment_meta_reader {
     segment_meta& meta,
     const string_ref& filename = string_ref::NIL // null == use meta
   ) = 0;
-};
+}; // segment_meta_reader
 
-/* -------------------------------------------------------------------
- * index_meta_writer
- * ------------------------------------------------------------------*/
-
+////////////////////////////////////////////////////////////////////////////////
+/// @struct index_meta_writer
+////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API index_meta_writer {
   DECLARE_UNIQUE_PTR(index_meta_writer);
   DEFINE_FACTORY_INLINE(index_meta_writer);
@@ -421,17 +417,16 @@ struct IRESEARCH_API index_meta_writer {
   virtual ~index_meta_writer();
   virtual std::string filename(const index_meta& meta) const = 0;
   virtual bool prepare(directory& dir, index_meta& meta) = 0;
-  virtual void commit() = 0;
+  virtual bool commit() = 0;
   virtual void rollback() NOEXCEPT = 0;
  protected:
-   static void complete(index_meta& meta) NOEXCEPT;
-   static void prepare(index_meta& meta);
-};
+  static void complete(index_meta& meta) NOEXCEPT;
+  static void prepare(index_meta& meta) NOEXCEPT;
+}; // index_meta_writer
 
-/* -------------------------------------------------------------------
- * index_meta_reader
- * ------------------------------------------------------------------*/
-
+////////////////////////////////////////////////////////////////////////////////
+/// @struct index_meta_reader
+////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API index_meta_reader {
   DECLARE_MANAGED_PTR(index_meta_reader);
 
@@ -454,12 +449,11 @@ struct IRESEARCH_API index_meta_reader {
     uint64_t counter,
     index_meta::index_segments_t&& segments
   );
-};
+}; // index_meta_reader
 
-/* -------------------------------------------------------------------
- * format
- * ------------------------------------------------------------------*/
-
+////////////////////////////////////////////////////////////////////////////////
+/// @struct format
+////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API format {
  public:
   typedef std::shared_ptr<const format> ptr;
@@ -502,7 +496,7 @@ class IRESEARCH_API format {
 
  private:
   const type_id* type_;
-};
+}; // format
 
 NS_END
 
@@ -514,9 +508,7 @@ struct IRESEARCH_API flush_state {
   directory* dir;
   string_ref name; // segment name
   const flags* features; // segment features
-  size_t fields_count;
   size_t doc_count;
-  int ver;
 };
 
 struct IRESEARCH_API reader_state {

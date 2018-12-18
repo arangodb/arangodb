@@ -197,6 +197,7 @@ class Methods {
 
   /// @brief add a transaction hint
   void addHint(transaction::Hints::Hint hint) { _localHints.set(hint); }
+  bool hasHint(transaction::Hints::Hint hint) const { return _localHints.has(hint); }
 
   /// @brief whether or not the transaction consists of a single operation only
   bool isSingleOperationTransaction() const;
@@ -437,7 +438,7 @@ class Methods {
   virtual bool isInaccessibleCollectionId(TRI_voc_cid_t /*cid*/) { return false; }
   virtual bool isInaccessibleCollection(std::string const& /*cid*/) { return false; }
 #endif
-  
+
  private:
   /// @brief build a VPack object with _id, _key and _rev and possibly
   /// oldRef (if given), the result is added to the builder in the
@@ -625,6 +626,12 @@ class Methods {
     std::string name;
   }
   _collectionCache;
+
+  Result replicateOperations(
+      LogicalCollection const& collection,
+      std::shared_ptr<const std::vector<std::string>> const& followers,
+      OperationOptions const& options, VPackSlice value,
+      TRI_voc_document_operation_e operation, VPackBuilder& resultBuilder);
 };
 
 }

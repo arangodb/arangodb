@@ -28,8 +28,7 @@
 #include "Basics/FixedSizeAllocator.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Indexes/IndexLookupContext.h"
-#include "Indexes/IndexResult.h"
+#include "MMFiles/MMFilesIndexLookupContext.h"
 #include "Indexes/PersistentIndexAttributeMatcher.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesIndexElement.h"
@@ -82,7 +81,7 @@ MMFilesPersistentIndexIterator::MMFilesPersistentIndexIterator(
       _probe(false) {
   TRI_idx_iid_t const id = index->id();
   std::string const prefix = MMFilesPersistentIndex::buildPrefix(
-    trx->vocbase().id(), _primaryIndex->collection()->id(), id
+    trx->vocbase().id(), _primaryIndex->collection().id(), id
   );
 
   TRI_ASSERT(prefix.size() == MMFilesPersistentIndex::keyPrefixSize());
@@ -311,21 +310,24 @@ size_t MMFilesPersistentIndex::memory() const {
 }
 
 /// @brief inserts a document into the index
-Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
-                                      LocalDocumentId const& documentId,
-                                      VPackSlice const& doc,
-                                      OperationMode mode) {
+Result MMFilesPersistentIndex::insert(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
+  Result res;
+  int r;
 
-  int res;
   try {
-    res = fillElement(elements, documentId, doc);
+    r = fillElement(elements, documentId, doc);
   } catch (basics::Exception const& ex) {
-    res = ex.code();
+    r = ex.code();
   } catch (std::bad_alloc const&) {
-    res = TRI_ERROR_OUT_OF_MEMORY;
+    r = TRI_ERROR_OUT_OF_MEMORY;
   } catch (...) {
-    res = TRI_ERROR_INTERNAL;
+    r = TRI_ERROR_INTERNAL;
   }
 
   // make sure we clean up before we leave this method
@@ -337,14 +339,14 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
 
   TRI_DEFER(cleanup());
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    return IndexResult(res, this);
+  if (r != TRI_ERROR_NO_ERROR) {
+    return addErrorMsg(res, r);
   }
 
   ManagedDocumentResult result;
-  IndexLookupContext context(trx, &_collection, &result, numPaths());
+  MMFilesIndexLookupContext context(&trx, &_collection, &result, numPaths());
   VPackSlice const key = transaction::helpers::extractKeyFromDocument(doc);
-  auto prefix = buildPrefix(trx->vocbase().id(), _collection.id(), _iid);
+  auto prefix = buildPrefix(trx.vocbase().id(), _collection.id(), _iid);
   VPackBuilder builder;
   std::vector<std::string> values;
 
@@ -412,7 +414,7 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
   }
 
   auto rocksTransaction =
-      static_cast<MMFilesTransactionState*>(trx->state())->rocksTransaction();
+    static_cast<MMFilesTransactionState*>(trx.state())->rocksTransaction();
   TRI_ASSERT(rocksTransaction != nullptr);
 
   auto comparator = MMFilesPersistentIndexFeature::instance()->comparator();
@@ -430,11 +432,11 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
         iterator->Seek(rocksdb::Slice(bound.first.c_str(), bound.first.size()));
 
         if (iterator->Valid()) {
-          int res = comparator->Compare(
+          int cmp = comparator->Compare(
               iterator->key(),
               rocksdb::Slice(bound.second.c_str(), bound.second.size()));
 
-          if (res <= 0) {
+          if (cmp <= 0) {
             uniqueConstraintViolated = true;
             VPackSlice slice(comparator->extractKeySlice(iterator->key()));
             uint64_t length = slice.length();
@@ -448,65 +450,68 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
 
       if (uniqueConstraintViolated) {
         // duplicate key
-        res = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
+        r = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
         auto physical =
             static_cast<MMFilesCollection*>(_collection.getPhysical());
         TRI_ASSERT(physical != nullptr);
 
         if (!physical->useSecondaryIndexes()) {
           // suppress the error during recovery
-          res = TRI_ERROR_NO_ERROR;
+          r = TRI_ERROR_NO_ERROR;
         }
       }
     }
 
-    if (res == TRI_ERROR_NO_ERROR) {
+    if (r == TRI_ERROR_NO_ERROR) {
       auto status = rocksTransaction->Put(values[i], std::string());
 
       if (!status.ok()) {
-        res = TRI_ERROR_INTERNAL;
+        r = TRI_ERROR_INTERNAL;
       }
     }
 
-    if (res != TRI_ERROR_NO_ERROR) {
+    if (r != TRI_ERROR_NO_ERROR) {
       for (size_t j = 0; j < i; ++j) {
         rocksTransaction->Delete(values[i]);
       }
 
-      if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && !_unique) {
+      if (r == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && !_unique) {
         // We ignore unique_constraint violated if we are not unique
-        res = TRI_ERROR_NO_ERROR;
+        r = TRI_ERROR_NO_ERROR;
       }
       break;
     }
   }
 
-  if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+  if (r == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
     if (mode == OperationMode::internal) {
-      return IndexResult(res, existingId);
+      return res.reset(r, existingId);
     }
-    return IndexResult(res, this, existingId);
+    return addErrorMsg(res, r, existingId);
   }
 
-  return IndexResult(res, this);
+  return res;
 }
 
 /// @brief removes a document from the index
-Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
-                                      LocalDocumentId const& documentId,
-                                      VPackSlice const& doc,
-                                      OperationMode mode) {
+Result MMFilesPersistentIndex::remove(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
+  Result res;
+  int r;
 
-  int res;
   try {
-    res = fillElement(elements, documentId, doc);
+    r = fillElement(elements, documentId, doc);
   } catch (basics::Exception const& ex) {
-    res = ex.code();
+    r = ex.code();
   } catch (std::bad_alloc const&) {
-    res = TRI_ERROR_OUT_OF_MEMORY;
+    r = TRI_ERROR_OUT_OF_MEMORY;
   } catch (...) {
-    res = TRI_ERROR_INTERNAL;
+    r = TRI_ERROR_INTERNAL;
   }
 
   // make sure we clean up before we leave this method
@@ -518,12 +523,12 @@ Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
 
   TRI_DEFER(cleanup());
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    return IndexResult(res, this);
+  if (r != TRI_ERROR_NO_ERROR) {
+    return addErrorMsg(res, r);
   }
 
   ManagedDocumentResult result;
-  IndexLookupContext context(trx, &_collection, &result, numPaths());
+  MMFilesIndexLookupContext context(&trx, &_collection, &result, numPaths());
   VPackSlice const key = transaction::helpers::extractKeyFromDocument(doc);
   VPackBuilder builder;
   std::vector<std::string> values;
@@ -543,13 +548,13 @@ Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
     std::string value;
 
     value.reserve(keyPrefixSize() + s.byteSize());
-    value.append(buildPrefix(trx->vocbase().id(), _collection.id(), _iid));
+    value.append(buildPrefix(trx.vocbase().id(), _collection.id(), _iid));
     value.append(s.startAs<char const>(), s.byteSize());
     values.emplace_back(std::move(value));
   }
 
   auto rocksTransaction =
-      static_cast<MMFilesTransactionState*>(trx->state())->rocksTransaction();
+    static_cast<MMFilesTransactionState*>(trx.state())->rocksTransaction();
   TRI_ASSERT(rocksTransaction != nullptr);
 
   size_t const count = elements.size();
@@ -562,15 +567,15 @@ Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
     // we may be looping through this multiple times, and if an error
     // occurs, we want to keep it
     if (!status.ok()) {
-      res = TRI_ERROR_INTERNAL;
+      addErrorMsg(res, TRI_ERROR_INTERNAL);
     }
   }
 
-  return IndexResult(res, this);
+  return res;
 }
 
 /// @brief called when the index is dropped
-int MMFilesPersistentIndex::drop() {
+Result MMFilesPersistentIndex::drop() {
   return MMFilesPersistentIndexFeature::instance()->dropIndex(
     _collection.vocbase().id(), _collection.id(), _iid
   );

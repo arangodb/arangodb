@@ -277,6 +277,32 @@ RETURN GEO_POLYGON([
 @END_EXAMPLE_AQL
 @endDocuBlock aqlGeoPolygon_2
 
+### GEO_MULTIPOLYGON()
+
+`GEO_MULTIPOLYGON(polygons) → geoJson`
+
+Construct a GeoJSON MultiPolygon. Needs at least two polygons in an array (You
+can find the rules for the Polygon construction above).
+
+- **polygons** (array): array of polygons
+- returns **geoJson** (object|null): a valid GeoJSON Polygon
+
+MultiPolygon:
+
+@startDocuBlockInline aqlGeoMultiPolygon_1
+@EXAMPLE_AQL{aqlGeoMultiPolygon_1}
+RETURN GEO_MULTIPOLYGON([
+  [
+     [[40, 40], [20, 45], [45, 30], [40, 40]]
+  ],  
+  [
+      [[20, 35], [10, 30], [10, 10], [30, 5], [45, 20], [20, 35]],
+      [[30, 20], [20, 15], [20, 25], [30, 20]]
+  ]
+])
+@END_EXAMPLE_AQL
+@endDocuBlock aqlGeoMultiPolygon_1
+
 Geo Index Functions
 -------------------
 

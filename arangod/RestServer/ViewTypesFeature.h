@@ -61,12 +61,12 @@ class ViewTypesFeature final: public application_features::ApplicationFeature {
   explicit ViewTypesFeature(application_features::ApplicationServer& server);
 
   /// @return 'factory' for 'type' was added successfully
-  arangodb::Result emplace(
+  Result emplace(
     LogicalDataSource::Type const& type,
     ViewFactory const& factory
   );
 
-  /// @return factory for the specified type or false if no such type
+  /// @return factory for the specified type or a failing placeholder if no such type
   ViewFactory const& factory(
     LogicalDataSource::Type const& type
   ) const noexcept;

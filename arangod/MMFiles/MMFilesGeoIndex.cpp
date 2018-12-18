@@ -32,7 +32,6 @@
 #include "Geo/GeoUtils.h"
 #include "GeoIndex/Near.h"
 #include "Indexes/IndexIterator.h"
-#include "Indexes/IndexResult.h"
 #include "Logger/Logger.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -329,9 +328,12 @@ bool MMFilesGeoIndex::matchesDefinition(VPackSlice const& info) const {
   return true;
 }
 
-Result MMFilesGeoIndex::insert(transaction::Methods*,
-                               LocalDocumentId const& documentId,
-                               VPackSlice const& doc, OperationMode mode) {
+Result MMFilesGeoIndex::insert(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    arangodb::Index::OperationMode mode
+) {
   // covering and centroid of coordinate / polygon / ...
   size_t reserve = _variant == Variant::GEOJSON ? 8 : 1;
   std::vector<S2CellId> cells;
@@ -340,8 +342,10 @@ Result MMFilesGeoIndex::insert(transaction::Methods*,
   Result res = geo_index::Index::indexCells(doc, cells, centroid);
 
   if (res.fail()) {
-    // Invalid, no insert. Index is sparse
-    return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
+    if (res.is(TRI_ERROR_BAD_PARAMETER)) {
+      res.reset(); // Invalid, no insert. Index is sparse
+    }
+    return res;
   }
   // LOG_TOPIC(ERR, Logger::ENGINES) << "Inserting #cells " << cells.size() << "
   // doc: " << doc.toJson() << " center: " << centroid.toString();
@@ -353,12 +357,15 @@ Result MMFilesGeoIndex::insert(transaction::Methods*,
     _tree.insert(std::make_pair(cell, value));
   }
 
-  return IndexResult();
+  return res;
 }
 
-Result MMFilesGeoIndex::remove(transaction::Methods*,
-                               LocalDocumentId const& documentId,
-                               VPackSlice const& doc, OperationMode mode) {
+Result MMFilesGeoIndex::remove(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    arangodb::Index::OperationMode mode
+) {
   // covering and centroid of coordinate / polygon / ...
   size_t reserve = _variant == Variant::GEOJSON ? 8 : 1;
   std::vector<S2CellId> cells(reserve);
@@ -366,8 +373,10 @@ Result MMFilesGeoIndex::remove(transaction::Methods*,
   Result res = geo_index::Index::indexCells(doc, cells, centroid);
 
   if (res.fail()) {  // might occur if insert is rolled back
-    // Invalid, no insert. Index is sparse
-    return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
+    if (res.is(TRI_ERROR_BAD_PARAMETER)) {
+      res.reset(); // Invalid, no remove. Index is sparse
+    }
+    return res;
   }
   // LOG_TOPIC(ERR, Logger::ENGINES) << "Removing #cells " << cells.size() << "
   // doc: " << doc.toJson();
@@ -383,7 +392,7 @@ Result MMFilesGeoIndex::remove(transaction::Methods*,
       }
     }
   }
-  return IndexResult();
+  return res;
 }
 
 /// @brief creates an IndexIterator for the given Condition

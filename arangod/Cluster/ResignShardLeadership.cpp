@@ -32,6 +32,7 @@
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/Methods.h"
 #include "Utils/DatabaseGuard.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
@@ -106,23 +107,23 @@ bool ResignShardLeadership::first() {
       return false;
     }
 
-    col->followers()->setTheLeader("LEADER_NOT_YET_KNOWN");  // resign
-    // Note that it is likely that we will be a follower for this shard
-    // with another leader in due course. However, we do not know the
-    // name of the new leader yet. This setting will make us a follower
-    // for now but we will not accept any replication operation from any
-    // leader, until we have negotiated a deal with it. Then the actual
-    // name of the leader will be set.
-
     // Get write transaction on collection
     auto ctx = std::make_shared<transaction::StandaloneContext>(*vocbase);
-    transaction::Methods trx(ctx, {}, {collection}, {}, transaction::Options());
+    SingleCollectionTransaction trx{ctx, collection, AccessMode::Type::EXCLUSIVE};
 
     Result res = trx.begin();
 
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
     }
+
+    // Note that it is likely that we will be a follower for this shard
+    // with another leader in due course. However, we do not know the
+    // name of the new leader yet. This setting will make us a follower
+    // for now but we will not accept any replication operation from any
+    // leader, until we have negotiated a deal with it. Then the actual
+    // name of the leader will be set.
+    col->followers()->setTheLeader("LEADER_NOT_YET_KNOWN");  // resign
 
   } catch (std::exception const& e) {
     std::stringstream error;

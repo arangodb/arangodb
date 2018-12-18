@@ -44,6 +44,9 @@ namespace methods {
 /// Common code for collection REST handler and v8-collections
 struct Collections {
   struct Context {
+    Context(Context const&) = delete;
+    Context& operator=(Context const&) = delete;
+
     Context(TRI_vocbase_t& vocbase, LogicalCollection& coll);
     Context(
       TRI_vocbase_t& vocbase,

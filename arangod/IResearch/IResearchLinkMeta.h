@@ -74,6 +74,8 @@ struct IResearchLinkMeta {
   };
 
   typedef std::vector<IResearchAnalyzerFeature::AnalyzerPool::ptr> Analyzers;
+
+  // can't use IResearchLinkMeta as value type since it's incomplete type so far
   typedef UnorderedRefKeyMap<char, UniqueHeapInstance<IResearchLinkMeta>> Fields;
 
   Analyzers _analyzers; // analyzers to apply to every field
@@ -148,7 +150,7 @@ struct IResearchLinkMeta {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief amount of memory in bytes occupied by this iResearch Link meta
   ////////////////////////////////////////////////////////////////////////////////
-  size_t memory() const;
+  size_t memory() const noexcept;
 }; // IResearchLinkMeta
 
 NS_END // iresearch

@@ -29,7 +29,6 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/tri-strings.h"
-#include "Indexes/IndexResult.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -186,59 +185,73 @@ bool RocksDBFulltextIndex::matchesDefinition(VPackSlice const& info) const {
   return true;
 }
 
-Result RocksDBFulltextIndex::insertInternal(transaction::Methods* trx,
-                                            RocksDBMethods* mthd,
-                                            LocalDocumentId const& documentId,
-                                            VPackSlice const& doc,
-                                            OperationMode mode) {
+Result RocksDBFulltextIndex::insertInternal(
+    transaction::Methods& trx,
+    RocksDBMethods* mthd,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+) {
+  Result res;
   std::set<std::string> words = wordlist(doc);
+
   if (words.empty()) {
-    return TRI_ERROR_NO_ERROR;
+    return res;
   }
 
   // now we are going to construct the value to insert into rocksdb
   // unique indexes have a different key structure
   RocksDBValue value = RocksDBValue::VPackIndexValue();
 
-  int res = TRI_ERROR_NO_ERROR;
   // size_t const count = words.size();
   for (std::string const& word : words) {
-    RocksDBKeyLeaser key(trx);
+    RocksDBKeyLeaser key(&trx);
+
     key->constructFulltextIndexValue(_objectId, StringRef(word), documentId);
 
-    Result r = mthd->Put(_cf, key.ref(), value.string(), rocksutils::index);
-    if (!r.ok()) {
-      res = r.errorNumber();
+    rocksdb::Status s = mthd->Put(_cf, key.ref(), value.string());
+
+    if (!s.ok()) {
+      res.reset(rocksutils::convertStatus(s, rocksutils::index));
+      addErrorMsg(res);
       break;
     }
   }
-  return IndexResult(res, this);
+
+  return res;
 }
 
-Result RocksDBFulltextIndex::removeInternal(transaction::Methods* trx,
-                                            RocksDBMethods* mthd,
-                                            LocalDocumentId const& documentId,
-                                            VPackSlice const& doc,
-                                            OperationMode mode) {
+Result RocksDBFulltextIndex::removeInternal(
+    transaction::Methods& trx,
+    RocksDBMethods* mthd,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+) {
+  Result res;
   std::set<std::string> words = wordlist(doc);
+
   if (words.empty()) {
-    return IndexResult();
+    return res;
   }
 
   // now we are going to construct the value to insert into rocksdb
   // unique indexes have a different key structure
-  int res = TRI_ERROR_NO_ERROR;
   for (std::string const& word : words) {
-    RocksDBKeyLeaser key(trx);
+    RocksDBKeyLeaser key(&trx);
+
     key->constructFulltextIndexValue(_objectId, StringRef(word), documentId);
 
-    Result r = mthd->Delete(_cf, key.ref());
-    if (!r.ok()) {
-      res = r.errorNumber();
+    rocksdb::Status s = mthd->Delete(_cf, key.ref());
+
+    if (!s.ok()) {
+      res.reset(rocksutils::convertStatus(s, rocksutils::index));
+      addErrorMsg(res);
       break;
     }
   }
-  return IndexResult(res, this);
+
+  return res;
 }
 
 /// @brief walk over the attribute. Also Extract sub-attributes and elements in

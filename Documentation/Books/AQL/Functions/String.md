@@ -239,23 +239,22 @@ LENGTH("foobar") // 6
 LENGTH("电脑坏了") // 4
 ```
 
+*LENGTH()* can also determine the [number of elements](Array.md#length) in an array,
+the [number of attribute keys](Document.md#length) of an object / document and
+the [amount of documents](Miscellaneous.md#length) in a collection.
+
 LEVENSHTEIN_DISTANCE()
-------
+----------------------
 
 `LEVENSHTEIN_DISTANCE(value1, value2) → levenshteinDistance`
 
-Return the calculated Levenshtein distance between the input strings *value1* and *value2*.
+Calculate the [Levenshtein distance](https://en.wikipedia.org/wiki/Levenshtein_distance)
+between two strings.
 
 - **value1** (string): a string
 - **value2** (string): a string
-
-`LEVENSHTEIN_DISTANCE(value1, value2) → levenshteinDistance`
-
-Return the calculated Levenshtein distance between the input strings *value1* and *value2*.
-
-- **value1** (string): a string
-- **value2** (string): a string
-- returns **levenshteinDistance** (number): calculated Levenshtein distance between the input strings *value1* and *value2*
+- returns **levenshteinDistance** (number): calculated Levenshtein distance
+  between the input strings *value1* and *value2*
 
 ```js
 LEVENSHTEIN_DISTANCE("foobar", "bar") // 3
@@ -263,10 +262,6 @@ LEVENSHTEIN_DISTANCE(" ", "") // 1
 LEVENSHTEIN_DISTANCE("The quick brown fox jumps over the lazy dog", "The quick black dog jumps over the brown fox") // 13
 LEVENSHTEIN_DISTANCE("der mötör trötet", "der trötet") // 6
 ```
-
-*LENGTH()* can also determine the [number of elements](Array.md#length) in an array,
-the [number of attribute keys](Document.md#length) of an object / document and
-the [amount of documents](Miscellaneous.md#length) in a collection.
 
 LIKE()
 ------

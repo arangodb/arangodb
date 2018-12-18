@@ -27,6 +27,8 @@
 #include <memory>
 #include <unordered_map>
 
+#include "Basics/Common.h"
+
 #include "utils/async_utils.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/map_utils.hpp"
@@ -65,6 +67,16 @@ class ResourceMutex {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief a read-mutex for a resource of a specific type
+////////////////////////////////////////////////////////////////////////////////
+template<typename T>
+class TypedResourceMutex: public ResourceMutex {
+ public:
+  explicit TypedResourceMutex(T* value): ResourceMutex(value) {}
+  T* get() const { return static_cast<T*>(ResourceMutex::get()); }
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief a wrapper around a type, placing the value on the heap to allow
 ///        declaration of map member variables whos' values are of the type
 ///        being declared
@@ -81,7 +93,7 @@ class UniqueHeapInstance {
       >::value
     >::type // prevent matching of copy/move constructor
   >
-  UniqueHeapInstance(Args&&... args)
+  explicit UniqueHeapInstance(Args&&... args)
     : _instance(irs::memory::make_unique<T>(std::forward<Args>(args)...)) {
   }
 
@@ -241,13 +253,28 @@ class UnorderedRefKeyMap:
     explicit Iterator(typename MapType::iterator const& itr): _itr(itr) {}
   };
 
-  UnorderedRefKeyMap() {}
+  UnorderedRefKeyMap() = default;
+  ~UnorderedRefKeyMap() {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // ensure every key points to valid data
+    for (auto& entry : _map) {
+      TRI_ASSERT(entry.first.c_str() == entry.second.first.c_str());
+    }
+#endif
+  }
   UnorderedRefKeyMap(UnorderedRefKeyMap const& other) { *this = other; }
-  UnorderedRefKeyMap(UnorderedRefKeyMap&& other) { *this = std::move(other); }
+  UnorderedRefKeyMap(UnorderedRefKeyMap&& other) noexcept
+    : _map(std::move(other._map)) {
+  }
 
   UnorderedRefKeyMap& operator=(UnorderedRefKeyMap const& other) {
     if (this != &other) {
-      _map = other._map;
+      _map.clear();
+      _map.reserve(other._map.size());
+
+      for (auto& entry: other._map) {
+        emplace(entry.first, entry.second.second); // ensure that the key is regenerated
+      }
     }
 
     return *this;
@@ -274,10 +301,10 @@ class UnorderedRefKeyMap:
     return (*this)[irs::make_hashed_ref(key, keyHasher())];
   }
 
-  Iterator begin() { return Iterator(_map.begin()); }
-  ConstIterator begin() const { return ConstIterator(_map.begin()); }
+  Iterator begin() noexcept { return Iterator(_map.begin()); }
+  ConstIterator begin() const noexcept { return ConstIterator(_map.begin()); }
 
-  void clear() { _map.clear(); }
+  void clear() noexcept { _map.clear(); }
 
   template<typename... Args>
   std::pair<Iterator, bool> emplace(KeyType const& key, Args&&... args) {
@@ -301,10 +328,10 @@ class UnorderedRefKeyMap:
     );
   }
 
-  bool empty() const { return _map.empty(); }
+  bool empty() const noexcept { return _map.empty(); }
 
-  Iterator end() { return Iterator(_map.end()); }
-  ConstIterator end() const { return ConstIterator(_map.end()); }
+  Iterator end() noexcept { return Iterator(_map.end()); }
+  ConstIterator end() const noexcept { return ConstIterator(_map.end()); }
 
   Iterator find(KeyType const& key) noexcept {
     return Iterator(_map.find(key));
@@ -358,4 +385,5 @@ class UnorderedRefKeyMap:
 
 NS_END // iresearch
 NS_END // arangodb
+
 #endif

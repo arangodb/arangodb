@@ -187,6 +187,7 @@ CalculationBlock::getSome(size_t atMost) {
   traceGetSomeBegin(atMost);
 
   if (_done) {
+    traceGetSomeEnd(nullptr, ExecutionState::DONE);
     return {ExecutionState::DONE, nullptr};
   }
 

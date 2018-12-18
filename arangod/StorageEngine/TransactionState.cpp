@@ -141,7 +141,7 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
   if (trxCollection != nullptr) {
     static_assert(AccessMode::Type::NONE < AccessMode::Type::READ &&
                   AccessMode::Type::READ < AccessMode::Type::WRITE &&
-                  AccessMode::Type::READ < AccessMode::Type::EXCLUSIVE,
+                  AccessMode::Type::WRITE < AccessMode::Type::EXCLUSIVE,
                   "AccessMode::Type total order fail");
     // we may need to recheck permissions here
     if (trxCollection->accessType() < accessType) {
@@ -330,8 +330,16 @@ void TransactionState::setLockedShards(std::unordered_set<std::string> const& lo
   _lockedShards = lockedShards;
 }
    
-bool TransactionState::isExclusiveTransactionOnSingleCollection() const {
-  return ((numCollections() == 1) && (_collections[0]->accessType() == AccessMode::Type::EXCLUSIVE));
+bool TransactionState::isOnlyExclusiveTransaction() const {
+  if (!AccessMode::isWriteOrExclusive(_type)) {
+    return false;
+  }
+  for (TransactionCollection* coll : _collections) {
+    if (AccessMode::isWrite(coll->accessType())) {
+      return false;
+    }
+  }
+  return true;
 }
 
 int TransactionState::checkCollectionPermission(TRI_voc_cid_t cid,

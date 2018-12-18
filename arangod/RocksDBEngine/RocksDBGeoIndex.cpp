@@ -29,7 +29,6 @@
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "GeoIndex/Near.h"
-#include "Indexes/IndexResult.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMethods.h"
@@ -400,62 +399,91 @@ IndexIterator* RocksDBGeoIndex::iteratorForCondition(
 }
 
 /// internal insert function, set batch or trx before calling
-Result RocksDBGeoIndex::insertInternal(transaction::Methods* trx,
-                                         RocksDBMethods* mthd,
-                                         LocalDocumentId const& documentId,
-                                         velocypack::Slice const& doc,
-                                         OperationMode mode) {
+Result RocksDBGeoIndex::insertInternal(
+    transaction::Methods& trx,
+    RocksDBMethods* mthd,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    arangodb::Index::OperationMode mode
+) {
+  Result res;
+
   // covering and centroid of coordinate / polygon / ...
   size_t reserve = _variant == Variant::GEOJSON ? 8 : 1;
   std::vector<S2CellId> cells;
+
   cells.reserve(reserve);
+
   S2Point centroid;
-  Result res = geo_index::Index::indexCells(doc, cells, centroid);
+
+  res = geo_index::Index::indexCells(doc, cells, centroid);
+
   if (res.fail()) {
-    // Invalid, no insert. Index is sparse
-    return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
+    if (res.is(TRI_ERROR_BAD_PARAMETER)) {
+      res.reset(); // Invalid, no insert. Index is sparse
+    }
+
+    return res;
   }
+
   TRI_ASSERT(!cells.empty());
   TRI_ASSERT(S2::IsUnitLength(centroid));
 
   RocksDBValue val = RocksDBValue::S2Value(centroid);
-  RocksDBKeyLeaser key(trx);
+  RocksDBKeyLeaser key(&trx);
+
   for (S2CellId cell : cells) {
     key->constructGeoIndexValue(_objectId, cell.id(), documentId);
-    Result r = mthd->Put(RocksDBColumnFamily::geo(), key.ref(), val.string());
-    if (r.fail()) {
-      return r;
+    rocksdb::Status s = mthd->Put(RocksDBColumnFamily::geo(), key.ref(), val.string());
+
+    if (!s.ok()) {
+      res.reset(rocksutils::convertStatus(s, rocksutils::index));
+      addErrorMsg(res);
+      break;
     }
   }
 
-  return IndexResult();
+  return res;
 }
 
 /// internal remove function, set batch or trx before calling
-Result RocksDBGeoIndex::removeInternal(transaction::Methods* trx,
-                                         RocksDBMethods* mthd,
-                                         LocalDocumentId const& documentId,
-                                         VPackSlice const& doc,
-                                         OperationMode mode) {
+Result RocksDBGeoIndex::removeInternal(
+    transaction::Methods& trx,
+    RocksDBMethods* mthd,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    arangodb::Index::OperationMode mode
+) {
+  Result res;
+
   // covering and centroid of coordinate / polygon / ...
   std::vector<S2CellId> cells;
   S2Point centroid;
-  Result res = geo_index::Index::indexCells(doc, cells, centroid);
+
+  res = geo_index::Index::indexCells(doc, cells, centroid);
+
   if (res.fail()) {  // might occur if insert is rolled back
-    // Invalid, no insert. Index is sparse
-    return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
+    if (res.is(TRI_ERROR_BAD_PARAMETER)) {
+      res.reset(); // Invalid, no insert. Index is sparse
+    }
+
+    return res;
   }
+
   TRI_ASSERT(!cells.empty());
 
-  RocksDBKeyLeaser key(trx);
+  RocksDBKeyLeaser key(&trx);
+
   // FIXME: can we rely on the region coverer to return
   // the same cells everytime for the same parameters ?
   for (S2CellId cell : cells) {
     key->constructGeoIndexValue(_objectId, cell.id(), documentId);
-    Result r = mthd->Delete(RocksDBColumnFamily::geo(), key.ref());
-    if (r.fail()) {
-      return r;
+    rocksdb::Status s = mthd->Delete(RocksDBColumnFamily::geo(), key.ref());
+    if (!s.ok()) {
+      res.reset(rocksutils::convertStatus(s, rocksutils::index));
+      addErrorMsg(res);
+      break;
     }
   }
-  return IndexResult();
+  return res;
 }

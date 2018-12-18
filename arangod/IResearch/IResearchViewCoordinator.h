@@ -44,16 +44,9 @@ namespace iresearch {
 /// @brief an abstraction over the distributed IResearch index implementing the
 ///        LogicalView interface
 ///////////////////////////////////////////////////////////////////////////////
-class IResearchViewCoordinator final : public arangodb::LogicalViewClusterInfo {
+class IResearchViewCoordinator final: public arangodb::LogicalView {
  public:
-
-  using LogicalView::drop;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief remove all documents matching collection 'cid' from this IResearch
-  ///        View
-  //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result drop(TRI_voc_cid_t) noexcept { return arangodb::Result(); } // NOOP since no internal store
+  virtual ~IResearchViewCoordinator();
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief acquire locks on the specified 'cid' during read-transactions
@@ -86,16 +79,26 @@ class IResearchViewCoordinator final : public arangodb::LogicalViewClusterInfo {
     bool partialUpdate
   ) override;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief unlink remove 'cid' from the persisted list of tracked collection
+  ///        IDs
+  /// @return success == view does not track collection
+  //////////////////////////////////////////////////////////////////////////////
+  arangodb::Result unlink(TRI_voc_cid_t cid) noexcept;
+
   bool visitCollections(CollectionVisitor const& visitor) const override;
 
 
  protected:
-  virtual Result appendVelocyPackDetailed(
-      arangodb::velocypack::Builder& builder,
-      bool forPersistence
+  virtual Result appendVelocyPackImpl(
+    arangodb::velocypack::Builder& builder,
+    bool detailed,
+    bool forPersistence
   ) const override;
 
   virtual arangodb::Result dropImpl() override;
+
+  arangodb::Result renameImpl(std::string const& oldName) override;
 
  private:
   struct ViewFactory; // forward declaration

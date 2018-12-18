@@ -98,6 +98,7 @@ const compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFi
   applierConfiguration.username = 'root';
   applierConfiguration.password = '';
   applierConfiguration.force32mode = false;
+  applierConfiguration.requireFromPresent = false;
 
   if (!applierConfiguration.hasOwnProperty('chunkSize')) {
     applierConfiguration.chunkSize = 16384;
@@ -151,6 +152,7 @@ const compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFi
     internal.wait(0.5, false);
   }
 
+  internal.wait(1.0, false);
   db._flushCache();
   slaveFuncFinal(state);
 };
@@ -459,8 +461,13 @@ function BaseTestConfig () {
         },
 
         function (state) {
-          assertEqual(db._collection(cn).count(), 0);
-          assertEqual(db._collection(cn).all().toArray().length, 0);
+          const c = db._collection(cn);
+          let x = 10;
+          while (c.count() > 0 && x-- > 0) {
+            internal.sleep(1);
+          }
+          assertEqual(c.count(), 0);
+          assertEqual(c.all().toArray().length, 0);
         }
       );
     },
@@ -938,7 +945,13 @@ function BaseTestConfig () {
           }
 
           let view = db._view('UnitTestsSyncView');
-          assertTrue(view === null);
+          let x = 10;
+          while (view && x-- > 0) {
+            internal.sleep(1);
+            db._flushCache();
+            view = db._view('UnitTestsSyncView');
+          }
+          assertNull(view);
         },
         {}
       );

@@ -37,13 +37,15 @@ var internal = require("internal");
 ////////////////////////////////////////////////////////////////////////////////
 
 function optimizerCollectExpressionTestSuite () {
-  var assertFailingQuery = function (query) {
+  var assertFailingQuery = function (query, code) {
+    if (code === undefined) {
+      code = internal.errors.ERROR_QUERY_PARSE.code;
+    }
     try {
       AQL_EXECUTE(query);
       fail();
-    }
-    catch (err) {
-      assertEqual(internal.errors.ERROR_QUERY_PARSE.code, err.errorNum);
+    } catch (err) {
+      assertEqual(code, err.errorNum);
     }
   };
 
@@ -220,8 +222,8 @@ function optimizerCollectExpressionTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIntoWithOutVariableUsedInAssignment : function () {
-      assertFailingQuery("FOR doc IN [{ age: 1, value: 1 }, { age: 1, value: 2 }, { age: 2, value: 1 }, { age: 2, value: 2 }] COLLECT v1 = doc.age, v2 = doc.value INTO g = v1 RETURN [v1,v2,g]");
-      assertFailingQuery("FOR doc IN [{ age: 1, value: 1 }, { age: 1, value: 2 }, { age: 2, value: 1 }, { age: 2, value: 2 }] COLLECT v1 = doc.age AGGREGATE v2 = MAX(doc.value) INTO g = v2 RETURN [v1,v2,g]");
+      assertFailingQuery("FOR doc IN [{ age: 1, value: 1 }, { age: 1, value: 2 }, { age: 2, value: 1 }, { age: 2, value: 2 }] COLLECT v1 = doc.age, v2 = doc.value INTO g = v1 RETURN [v1,v2,g]", internal.errors.ERROR_QUERY_VARIABLE_NAME_UNKNOWN.code);
+      assertFailingQuery("FOR doc IN [{ age: 1, value: 1 }, { age: 1, value: 2 }, { age: 2, value: 1 }, { age: 2, value: 2 }] COLLECT v1 = doc.age AGGREGATE v2 = MAX(doc.value) INTO g = v2 RETURN [v1,v2,g]", internal.errors.ERROR_QUERY_VARIABLE_NAME_UNKNOWN.code);
     },
 
     testMultiCollectWithConstExpression : function () {

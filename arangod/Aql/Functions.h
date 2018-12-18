@@ -44,9 +44,8 @@ class ExpressionContext;
 
 typedef SmallVector<AqlValue> VPackFunctionParameters;
 
-typedef std::function<AqlValue(arangodb::aql::ExpressionContext*, transaction::Methods*,
-                                VPackFunctionParameters const&)>
-    FunctionImplementation;
+typedef AqlValue(*FunctionImplementation)(arangodb::aql::ExpressionContext*, transaction::Methods*,
+                                          VPackFunctionParameters const&);
 
 struct Functions {
 
@@ -319,6 +318,8 @@ struct Functions {
     static AqlValue GeoMultiPoint(arangodb::aql::ExpressionContext*, transaction::Methods*,
                                   VPackFunctionParameters const&);
     static AqlValue GeoPolygon(arangodb::aql::ExpressionContext*, transaction::Methods*,
+                               VPackFunctionParameters const&);
+    static AqlValue GeoMultiPolygon(arangodb::aql::ExpressionContext*, transaction::Methods*,
                                VPackFunctionParameters const&);
     static AqlValue GeoLinestring(arangodb::aql::ExpressionContext*, transaction::Methods*,
                                   VPackFunctionParameters const&);

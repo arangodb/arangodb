@@ -36,10 +36,8 @@ using namespace arangodb::rest;
 RestActionHandler::RestActionHandler(GeneralRequest* request,
                                      GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response),
-      _dataLock(),
-      _data(nullptr) {
-  _action = TRI_LookupActionVocBase(request);
-}
+      _action(TRI_LookupActionVocBase(request)),
+      _data(nullptr) {}
 
 RestStatus RestActionHandler::execute() {
   // check the request path

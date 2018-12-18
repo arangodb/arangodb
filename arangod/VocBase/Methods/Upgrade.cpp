@@ -133,7 +133,7 @@ UpgradeResult Upgrade::startup(
       break;  // just run tasks that weren't run yet
     case VersionResult::UPGRADE_NEEDED: {
       if (!isUpgrade) {
-        // we do not perform upgrades without beeing told so during startup
+        // we do not perform upgrades without being told so during startup
         LOG_TOPIC(ERR, Logger::STARTUP)
             << "Database directory version (" << vinfo.databaseVersion
             << ") is lower than current version (" << vinfo.serverVersion

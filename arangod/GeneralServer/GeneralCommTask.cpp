@@ -213,7 +213,10 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& r
       // prevent guessing database names (issue #5030)
       auth::Level lvl = auth::Level::NONE;
       if (req.authenticated()) {
-        if (_auth->userManager() != nullptr) {
+        // If we are authenticated and the user name is empty, then we must
+        // have been authenticated with a superuser JWT token. In this case,
+        // we must not check the databaseAuthLevel here.
+        if (_auth->userManager() != nullptr && !req.user().empty()) {
           lvl = _auth->userManager()->databaseAuthLevel(req.user(), req.databaseName());
         } else {
           lvl = auth::Level::RW;
@@ -444,9 +447,8 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
                           std::move(handler));
   });
 
-  uint64_t messageId = handler->messageId();
-
   if (!ok) {
+    uint64_t messageId = handler->messageId();
     addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
                      handler->request()->contentTypeResponse(), messageId,
                      TRI_ERROR_QUEUE_FULL);
@@ -511,7 +513,9 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest& req) const {
 
   std::string const& path = req.requestPath();
   std::string const& username = req.user();
-  rest::ResponseCode result = req.authenticated()
+  bool userAuthenticated = req.authenticated();
+
+  rest::ResponseCode result = userAuthenticated
                                 ? rest::ResponseCode::OK
                                 : rest::ResponseCode::UNAUTHORIZED;
 
@@ -523,7 +527,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest& req) const {
     result = rest::ResponseCode::UNAUTHORIZED;
     LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "Access forbidden to " << path;
 
-    if (req.authenticated()) {
+    if (userAuthenticated) {
       req.setAuthenticated(false);
     }
   }
@@ -570,6 +574,10 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest& req) const {
         // req.user when it could be validated
         result = rest::ResponseCode::OK;
         vc->forceSuperuser();
+      } else if (userAuthenticated && path == "/_api/cluster/endpoints") {
+        // allow authenticated users to access cluster/endpoints
+        result = rest::ResponseCode::OK;
+        //vc->forceReadOnly();
       } else if (req.requestType() == RequestType::POST &&
                  !username.empty() &&
                  StringUtils::isPrefix(path, ApiUser + username + '/')) {

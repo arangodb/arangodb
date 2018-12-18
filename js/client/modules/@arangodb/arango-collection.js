@@ -229,8 +229,8 @@ ArangoCollection.prototype._edgesQuery = function (vertex, direction) {
   return requestResult.edges;
 };
 
-ArangoCollection.prototype.shards = function () {
-  var requestResult = this._database._connection.GET(this._baseurl('shards'));
+ArangoCollection.prototype.shards = function (details) {
+  var requestResult = this._database._connection.GET(this._baseurl('shards') + '?details=' + (details ? 'true' : 'false'));
 
   arangosh.checkRequestResult(requestResult);
 
@@ -1276,7 +1276,7 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
 
   if (rev === null || ignoreRevs) {
     requestResult = this._database._connection.PATCH(url, data);
-  }else {
+  } else {
     requestResult = this._database._connection.PATCH(url, data,
       {'if-match': JSON.stringify(rev) });
   }

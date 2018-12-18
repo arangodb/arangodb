@@ -241,11 +241,18 @@ namespace basics {
 
 /// @brief string buffer with formatting routines
 class StringBuffer {
-  StringBuffer() = delete;
   StringBuffer(StringBuffer const&) = delete;
   StringBuffer& operator=(StringBuffer const&) = delete;
 
  public:
+  /// @brief creates an uninitialized string buffer
+  StringBuffer() {
+    _buffer._buffer = nullptr;
+    _buffer._current = nullptr;
+    _buffer._len = 0;
+    _buffer._initializeMemory = false;
+  }
+
   /// @brief initializes the string buffer
   explicit StringBuffer(bool initializeMemory) {
     TRI_InitStringBuffer(&_buffer, initializeMemory);

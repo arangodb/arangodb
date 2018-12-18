@@ -329,7 +329,7 @@ void ClusterComm::cleanup() {
 
 void ClusterComm::startBackgroundThreads() {
 
-  for(unsigned loop=0; loop<(TRI_numberProcessors()/8+1); ++loop) {
+  for (unsigned loop = 0; loop<(TRI_numberProcessors() / 8 + 1); ++loop) {
     ClusterCommThread * thread = new ClusterCommThread();
 
     if (thread->start()) {
@@ -343,8 +343,14 @@ void ClusterComm::startBackgroundThreads() {
 }
 
 void ClusterComm::stopBackgroundThreads() {
+  // pass 1:  tell all background threads to stop
   for (ClusterCommThread * thread: _backgroundThreads) {
     thread->beginShutdown();
+  } // for
+
+  // pass 2:  verify each thread is stopped, wait if necessary
+  //          (happens in destructor)
+  for (ClusterCommThread * thread: _backgroundThreads) {
     delete thread;
   }
 
@@ -801,29 +807,6 @@ void ClusterComm::cleanupAllQueues() {
     receivedByOpID.clear();
     received.clear();
   }
-}
-
-ClusterCommThread::ClusterCommThread() : Thread("ClusterComm"), _cc(nullptr) {
-  _cc = ClusterComm::instance().get();
-  _communicator = std::make_shared<communicator::Communicator>();
-}
-
-ClusterCommThread::~ClusterCommThread() { shutdown(); }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief begin shutdown sequence
-////////////////////////////////////////////////////////////////////////////////
-
-void ClusterCommThread::beginShutdown() {
-  // Note that this is called from the destructor of the ClusterComm singleton
-  // object. This means that our pointer _cc is still valid and the condition
-  // variable in it is still OK. However, this method is called from a
-  // different thread than the ClusterCommThread. Therefore we can still
-  // use the condition variable to wake up the ClusterCommThread.
-  Thread::beginShutdown();
-
-  CONDITION_LOCKER(guard, _cc->somethingToSend);
-  guard.signal();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1331,6 +1314,29 @@ void ClusterComm::disable() {
 
 void ClusterComm::scheduleMe(std::function<void()> task) {
   arangodb::SchedulerFeature::SCHEDULER->queue(RequestPriority::HIGH, task);
+}
+
+ClusterCommThread::ClusterCommThread() : Thread("ClusterComm"), _cc(nullptr) {
+  _cc = ClusterComm::instance().get();
+  _communicator = std::make_shared<communicator::Communicator>();
+}
+
+ClusterCommThread::~ClusterCommThread() { shutdown(); }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief begin shutdown sequence
+////////////////////////////////////////////////////////////////////////////////
+
+void ClusterCommThread::beginShutdown() {
+  // Note that this is called from the destructor of the ClusterComm singleton
+  // object. This means that our pointer _cc is still valid and the condition
+  // variable in it is still OK. However, this method is called from a
+  // different thread than the ClusterCommThread. Therefore we can still
+  // use the condition variable to wake up the ClusterCommThread.
+  Thread::beginShutdown();
+
+  CONDITION_LOCKER(guard, _cc->somethingToSend);
+  guard.signal();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

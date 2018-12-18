@@ -27,8 +27,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/hashes.h"
 #include "Basics/tri-strings.h"
-#include "Indexes/IndexLookupContext.h"
-#include "Indexes/IndexResult.h"
+#include "MMFiles/MMFilesIndexLookupContext.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesIndexElement.h"
@@ -57,7 +56,60 @@ static std::vector<std::vector<arangodb::basics::AttributeName>> const
     IndexAttributes{{arangodb::basics::AttributeName("_id", false)},
                     {arangodb::basics::AttributeName("_key", false)}};
 
-MMFilesPrimaryIndexIterator::MMFilesPrimaryIndexIterator(
+MMFilesPrimaryIndexEqIterator::MMFilesPrimaryIndexEqIterator(
+    LogicalCollection* collection, transaction::Methods* trx,
+    MMFilesPrimaryIndex const* index,
+    std::unique_ptr<VPackBuilder> key)
+    : IndexIterator(collection, trx),
+      _index(index),
+      _key(std::move(key)),
+      _done(false) {
+  TRI_ASSERT(_key->slice().isString());
+}
+
+MMFilesPrimaryIndexEqIterator::~MMFilesPrimaryIndexEqIterator() {
+  if (_key != nullptr) {
+    // return the VPackBuilder to the transaction context
+    _trx->transactionContextPtr()->returnBuilder(_key.release());
+  }
+}
+
+bool MMFilesPrimaryIndexEqIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
+  TRI_ASSERT(limit > 0);
+  if (_done || limit == 0) {
+    return false;
+  }
+  
+  _done = true;
+  TRI_ASSERT(_key->slice().isString());
+  MMFilesSimpleIndexElement result =
+      _index->lookupKey(_trx, _key->slice());
+  if (result) {
+    cb(LocalDocumentId{result.localDocumentId()});
+  }
+  return false;
+}
+
+bool MMFilesPrimaryIndexEqIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
+  TRI_ASSERT(limit > 0);
+  if (_done || limit == 0) {
+    return false;
+  }
+  
+  _done = true;
+  ManagedDocumentResult mdr;
+  TRI_ASSERT(_key->slice().isString());
+  MMFilesSimpleIndexElement result =
+      _index->lookupKey(_trx, _key->slice(), mdr);
+  if (result) {
+    cb(result.localDocumentId(), VPackSlice(mdr.vpack())); 
+  }
+  return false;
+}
+
+void MMFilesPrimaryIndexEqIterator::reset() { _done = false; }
+
+MMFilesPrimaryIndexInIterator::MMFilesPrimaryIndexInIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     MMFilesPrimaryIndex const* index,
     std::unique_ptr<VPackBuilder> keys)
@@ -68,14 +120,14 @@ MMFilesPrimaryIndexIterator::MMFilesPrimaryIndexIterator(
   TRI_ASSERT(_keys->slice().isArray());
 }
 
-MMFilesPrimaryIndexIterator::~MMFilesPrimaryIndexIterator() {
+MMFilesPrimaryIndexInIterator::~MMFilesPrimaryIndexInIterator() {
   if (_keys != nullptr) {
     // return the VPackBuilder to the transaction context
     _trx->transactionContextPtr()->returnBuilder(_keys.release());
   }
 }
 
-bool MMFilesPrimaryIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
+bool MMFilesPrimaryIndexInIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   TRI_ASSERT(limit > 0);
   if (!_iterator.valid() || limit == 0) {
     return false;
@@ -93,7 +145,7 @@ bool MMFilesPrimaryIndexIterator::next(LocalDocumentIdCallback const& cb, size_t
   return _iterator.valid();
 }
 
-void MMFilesPrimaryIndexIterator::reset() { _iterator.reset(); }
+void MMFilesPrimaryIndexInIterator::reset() { _iterator.reset(); }
 
 MMFilesAllIndexIterator::MMFilesAllIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
@@ -243,9 +295,12 @@ void MMFilesPrimaryIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   _primaryIndex->appendToVelocyPack(builder);
 }
 
-Result MMFilesPrimaryIndex::insert(transaction::Methods*,
-                                   LocalDocumentId const&,
-                                   VPackSlice const&, OperationMode) {
+Result MMFilesPrimaryIndex::insert(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const&,
+    Index::OperationMode mode
+) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
       << "insert() called for primary index";
@@ -254,9 +309,12 @@ Result MMFilesPrimaryIndex::insert(transaction::Methods*,
                                  "insert() called for primary index");
 }
 
-Result MMFilesPrimaryIndex::remove(transaction::Methods*,
-                                   LocalDocumentId const&,
-                                   VPackSlice const&, OperationMode) {
+Result MMFilesPrimaryIndex::remove(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const&,
+    Index::OperationMode mode
+) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
       << "remove() called for primary index";
@@ -275,17 +333,14 @@ void MMFilesPrimaryIndex::unload() {
 MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupKey(
     transaction::Methods* trx, VPackSlice const& key) const {
   ManagedDocumentResult mdr;
-  IndexLookupContext context(trx, &_collection, &mdr, 1);
-  TRI_ASSERT(key.isString());
-
-  return _primaryIndex->findByKey(&context, key.begin());
+  return lookupKey(trx, key, mdr);
 }
 
 /// @brief looks up an element given a key
 MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupKey(
     transaction::Methods* trx, VPackSlice const& key,
     ManagedDocumentResult& mdr) const {
-  IndexLookupContext context(trx, &_collection, &mdr, 1);
+  MMFilesIndexLookupContext context(trx, &_collection, &mdr, 1);
   TRI_ASSERT(key.isString());
 
   return _primaryIndex->findByKey(&context, key.begin());
@@ -295,7 +350,7 @@ MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupKey(
 MMFilesSimpleIndexElement* MMFilesPrimaryIndex::lookupKeyRef(
     transaction::Methods* trx, VPackSlice const& key) const {
   ManagedDocumentResult result;
-  IndexLookupContext context(trx, &_collection, &result, 1);
+  MMFilesIndexLookupContext context(trx, &_collection, &result, 1);
   TRI_ASSERT(key.isString());
   MMFilesSimpleIndexElement* element =
       _primaryIndex->findByKeyRef(&context, key.begin());
@@ -312,7 +367,7 @@ MMFilesSimpleIndexElement* MMFilesPrimaryIndex::lookupKeyRef(
 MMFilesSimpleIndexElement* MMFilesPrimaryIndex::lookupKeyRef(
     transaction::Methods* trx, VPackSlice const& key,
     ManagedDocumentResult& mdr) const {
-  IndexLookupContext context(trx, &_collection, &mdr, 1);
+  MMFilesIndexLookupContext context(trx, &_collection, &mdr, 1);
   TRI_ASSERT(key.isString());
   MMFilesSimpleIndexElement* element =
       _primaryIndex->findByKeyRef(&context, key.begin());
@@ -334,7 +389,7 @@ MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupSequential(
     transaction::Methods* trx, arangodb::basics::BucketPosition& position,
     uint64_t& total) {
   ManagedDocumentResult result;
-  IndexLookupContext context(trx, &_collection, &result, 1);
+  MMFilesIndexLookupContext context(trx, &_collection, &result, 1);
 
   return _primaryIndex->findSequential(&context, position, total);
 }
@@ -364,7 +419,7 @@ IndexIterator* MMFilesPrimaryIndex::anyIterator(transaction::Methods* trx) const
 MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupSequentialReverse(
     transaction::Methods* trx, arangodb::basics::BucketPosition& position) {
   ManagedDocumentResult result;
-  IndexLookupContext context(trx, &_collection, &result, 1);
+  MMFilesIndexLookupContext context(trx, &_collection, &result, 1);
 
   return _primaryIndex->findSequentialReverse(&context, position);
 }
@@ -383,24 +438,25 @@ Result MMFilesPrimaryIndex::insertKey(transaction::Methods* trx,
                                       VPackSlice const& doc,
                                       ManagedDocumentResult& mdr,
                                       OperationMode mode) {
-  IndexLookupContext context(trx, &_collection, &mdr, 1);
+  MMFilesIndexLookupContext context(trx, &_collection, &mdr, 1);
   MMFilesSimpleIndexElement element(buildKeyElement(documentId, doc));
+  Result res;
 
-// TODO: we can pass in a special IndexLookupContext which has some more on the information
+// TODO: we can pass in a special MMFilesIndexLookupContext which has some more on the information
 // about the to-be-inserted document. this way we can spare one lookup in
 // IsEqualElementElementByKey
-  int res = _primaryIndex->insert(&context, element);
+  int r = _primaryIndex->insert(&context, element);
 
-  if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+  if (r == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
     std::string existingId(doc.get(StaticStrings::KeyString).copyString());
     if (mode == OperationMode::internal) {
-      return IndexResult(res, std::move(existingId));
+      return res.reset(r, std::move(existingId));
     }
 
-    return IndexResult(res, this, existingId);
+    return addErrorMsg(res, r, existingId);
   }
 
-  return IndexResult(res, this);
+  return addErrorMsg(res, r);
 }
 
 /// @brief removes a key/element from the index
@@ -417,22 +473,23 @@ Result MMFilesPrimaryIndex::removeKey(transaction::Methods* trx,
                                       VPackSlice const& doc,
                                       ManagedDocumentResult& mdr,
                                       OperationMode mode) {
-  IndexLookupContext context(trx, &_collection, &mdr, 1);
+  MMFilesIndexLookupContext context(trx, &_collection, &mdr, 1);
   VPackSlice keySlice(transaction::helpers::extractKeyFromDocument(doc));
   MMFilesSimpleIndexElement found =
       _primaryIndex->removeByKey(&context, keySlice.begin());
 
+  Result res;
   if (!found) {
-    return IndexResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, this);
+    return addErrorMsg(res, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
 
-  return Result();
+  return res;
 }
 
 /// @brief resizes the index
 int MMFilesPrimaryIndex::resize(transaction::Methods* trx, size_t targetSize) {
   ManagedDocumentResult result;
-  IndexLookupContext context(trx, &_collection, &result, 1);
+  MMFilesIndexLookupContext context(trx, &_collection, &result, 1);
   return _primaryIndex->resize(&context, targetSize);
 }
 
@@ -467,11 +524,12 @@ IndexIterator* MMFilesPrimaryIndex::iteratorForCondition(
     arangodb::aql::Variable const* reference,
     IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
-  TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
 
-  TRI_ASSERT(node->numMembers() == 1);
-
-  auto comp = node->getMember(0);
+  auto comp = node;
+  if (node->type == aql::NODE_TYPE_OPERATOR_NARY_AND) {
+    TRI_ASSERT(node->numMembers() == 1);
+    comp = node->getMember(0);
+  }
 
   // assume a.b == value
   auto attrNode = comp->getMember(0);
@@ -488,17 +546,17 @@ IndexIterator* MMFilesPrimaryIndex::iteratorForCondition(
   if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
     // a.b == value
     return createEqIterator(trx, attrNode, valNode);
-  } else if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+  }
+   
+  if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
     // a.b IN values
-    if (!valNode->isArray()) {
-      // a.b IN non-array
-      return new EmptyIndexIterator(&_collection, trx);
+    if (valNode->isArray()) {
+      // a.b IN array
+      return createInIterator(trx, attrNode, valNode);
     }
-
-    return createInIterator(trx, attrNode, valNode);
   }
 
-  // operator type unsupported
+  // operator type unsupported or IN used on non-array
   return new EmptyIndexIterator(&_collection, trx);
 }
 
@@ -541,7 +599,7 @@ IndexIterator* MMFilesPrimaryIndex::createInIterator(
 
   keys->close();
 
-  return new MMFilesPrimaryIndexIterator(
+  return new MMFilesPrimaryIndexInIterator(
     &_collection, trx, this, std::move(keys)
   );
 }
@@ -556,21 +614,22 @@ IndexIterator* MMFilesPrimaryIndex::createEqIterator(
 
   // lease builder, but immediately pass it to the unique_ptr so we don't leak
   transaction::BuilderLeaser builder(trx);
-  std::unique_ptr<VPackBuilder> keys(builder.steal());
-  keys->openArray();
+  std::unique_ptr<VPackBuilder> key(builder.steal());
 
   // handle the sole element
-  handleValNode(trx, keys.get(), valNode, isId);
+  handleValNode(trx, key.get(), valNode, isId);
 
   TRI_IF_FAILURE("PrimaryIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-
-  keys->close();
-
-  return new MMFilesPrimaryIndexIterator(
-    &_collection, trx, this, std::move(keys)
-  );
+  
+  if (!key->isEmpty()) {
+    return new MMFilesPrimaryIndexEqIterator(
+      &_collection, trx, this, std::move(key)
+    );
+  }
+  
+  return new EmptyIndexIterator(&_collection, trx);
 }
 
 /// @brief add a single value node to the iterator's keys

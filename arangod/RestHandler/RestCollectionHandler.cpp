@@ -233,14 +233,36 @@ void RestCollectionHandler::handleCommandGet() {
             /*showCount*/ false,
             /*detailedCount*/ true
           );
-
+  
           auto shards = ClusterInfo::instance()->getShardList(
             std::to_string(coll->planId())
           );
-          VPackArrayBuilder arr(&builder, "shards", true);
 
-          for (ShardID const& shard : *shards) {
-            arr->add(VPackValue(shard));
+          if (_request->parsedValue("details", false)) {
+            // with details
+            VPackObjectBuilder arr(&builder, "shards", true);
+            for (ShardID const& shard : *shards) {
+              std::vector<ServerID> servers;
+              ClusterInfo::instance()->getShardServers(shard, servers);
+
+
+              if (servers.empty()) {
+                continue;
+              }
+                
+              VPackArrayBuilder arr(&builder, shard);
+
+              for (auto const& server : servers) {
+                arr->add(VPackValue(server));
+              }
+            }
+          } else {
+            // no details
+            VPackArrayBuilder arr(&builder, "shards", true);
+
+            for (ShardID const& shard : *shards) {
+              arr->add(VPackValue(shard));
+            }
           }
 
         } else {

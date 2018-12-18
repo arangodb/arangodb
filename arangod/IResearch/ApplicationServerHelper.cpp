@@ -35,7 +35,7 @@ bool addFunction(
 ) {
   // check that a function by the given name is not registred to avoid
   // triggering an assert inside AqlFunctionFeature::add(...)
-  if (getFunction(functions, function.name)) {
+  if (functions.exists(function.name)) {
     return false;
   }
 
