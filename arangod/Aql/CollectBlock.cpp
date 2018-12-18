@@ -150,8 +150,6 @@ void SortedCollectBlock::CollectGroup::addValues(AqlItemBlock const* src,
 SortedCollectBlock::SortedCollectBlock(ExecutionEngine* engine,
                                        CollectNode const* en)
     : ExecutionBlock(engine, en),
-      _groupRegisters(),
-      _aggregateRegisters(),
       _currentGroup(en->_count),
       _lastBlock(nullptr),
       _expressionRegister(ExecutionNode::MaxRegisterId),
@@ -441,9 +439,24 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
 
         // _lastBlock can be null (iff there wasn't a single input row).
         // we still need to emit a group (of nulls)
-        emitGroup(_lastBlock, _result.get(), _skipped, skipping);
-        ++_skipped;
-        _result->shrink(_skipped);
+        if (_currentGroup.hasRows || !_aggregateRegisters.empty()) {
+          // we must produce a result
+          emitGroup(_lastBlock, _result.get(), _skipped, skipping);
+          ++_skipped;
+          _result->shrink(_skipped);
+        } else {
+          // we don't have anything to return
+          // don't increase _skipped here
+          if (_skipped == 0) {
+            // 0 results
+            if (_result != nullptr) {
+              // if the result set is entirely empty, we must free the result,
+              // as shrinking 
+              auto r = _result.release();
+              returnBlock(r);
+            }
+          }
+        }
       } else {
         ++_skipped;
       }
@@ -469,7 +482,7 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
   } else {
     return {ExecutionState::HASMORE, TRI_ERROR_NO_ERROR};
   }
-};
+}
 
 /// @brief writes the current group data into the result
 void SortedCollectBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
@@ -520,7 +533,7 @@ void SortedCollectBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
     // set the group values
     if (_collectRegister != ExecutionNode::MaxRegisterId) {
       _currentGroup.addValues(cur, _collectRegister);
-
+  
       if (ExecutionNode::castTo<CollectNode const*>(_exeNode)->_count) {
         // only set group count in result register
         res->emplaceValue(
