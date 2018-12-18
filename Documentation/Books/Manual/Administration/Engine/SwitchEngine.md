@@ -5,7 +5,7 @@ In order to use a different storage engine with an existing data directory,
 it is required to first create a logical backup of the data using the 
 tool [_arangodump_](../../Programs/Arangodump/README.md).
 
-After that, the _arangod_ server should be restarted with the desired storage
+After that, the _arangod_ server process should be restarted with the desired storage
 engine selected (this can be done by setting the option *--server.storage-engine*) 
 and using a non-existing data directory.
 
