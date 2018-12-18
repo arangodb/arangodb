@@ -821,9 +821,6 @@ arangodb::Result IResearchView::commit() {
     }
   }
 
-  // invalidate query cache if there were some data changes
-  arangodb::aql::QueryCache::instance()->invalidate(&vocbase(), name());
-
   return arangodb::Result();
 }
 

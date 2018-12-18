@@ -28,6 +28,7 @@
 #include "IResearchPrimaryKeyFilter.h"
 #include "IResearchView.h"
 #include "IResearchViewCoordinator.h"
+#include "Aql/QueryCache.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterInfo.h"
@@ -429,9 +430,20 @@ arangodb::Result IResearchLink::commit() {
       return arangodb::Result();
     }
 
-    if (_dataStore._reader != reader) {
-       _dataStore._reader = reader; // update reader
+    if (_dataStore._reader == reader) {
+      return arangodb::Result(); // reader not modified
     }
+
+    _dataStore._reader = reader; // update reader
+
+    auto viewImpl = view();
+
+    // invalidate query cache if there were some data changes
+    if (viewImpl) {
+      arangodb::aql::QueryCache::instance()->invalidate(
+        &(_collection.vocbase()), viewImpl->name()
+      );
+     }
   } catch (arangodb::basics::Exception const& e) {
     return arangodb::Result(
       e.code(),
