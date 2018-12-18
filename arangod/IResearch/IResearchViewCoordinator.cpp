@@ -23,7 +23,6 @@
 
 #include "IResearchViewCoordinator.h"
 #include "IResearchCommon.h"
-#include "IResearchLinkCoordinator.h"
 #include "IResearchLinkHelper.h"
 
 #include "Basics/StaticStrings.h"

@@ -37,8 +37,7 @@ NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief IResearchLinkCoordinator-specific implementation of an
-///        IndexTypeFactory
+/// @brief IResearchMMFilesLink-specific implementation of an IndexTypeFactory
 ////////////////////////////////////////////////////////////////////////////////
 struct IResearchMMFilesLink::IndexFactory: public arangodb::IndexTypeFactory {
   virtual bool equal(
@@ -126,10 +125,6 @@ IResearchMMFilesLink::IResearchMMFilesLink(
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   _unique = false; // cannot be unique since multiple fields are indexed
   _sparse = true;  // always sparse
-}
-
-IResearchMMFilesLink::~IResearchMMFilesLink() {
-  // NOOP
 }
 
 /*static*/ arangodb::IndexTypeFactory const& IResearchMMFilesLink::factory() {

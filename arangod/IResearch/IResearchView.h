@@ -29,13 +29,6 @@
 #include "VocBase/LogicalView.h"
 #include "Utils/FlushTransaction.h"
 
-namespace {
-
-typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
-typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
-
-}
-
 namespace arangodb {
 
 struct ViewFactory; // forward declaration
@@ -60,26 +53,6 @@ namespace iresearch {
 class IResearchFeature; // forward declaration
 class IResearchLink; // forward declaration
 template<typename T> class TypedResourceMutex; // forward declaration
-
-///////////////////////////////////////////////////////////////////////////////
-/// --SECTION--                                              utility constructs
-///////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief IResearchViewMeta with an associated read-write mutex that can be
-///        referenced by an std::unique_lock via read()/write()
-////////////////////////////////////////////////////////////////////////////////
-class AsyncMeta: public IResearchViewMeta {
- public:
-  AsyncMeta(): _readMutex(_mutex), _writeMutex(_mutex) {}
-  ReadMutex& read() const { return _readMutex; } // prevent modification
-  WriteMutex& write() { return _writeMutex; } // exclusive modification
-
- private:
-  irs::async_utils::read_write_mutex _mutex;
-  mutable ReadMutex _readMutex; // object that can be referenced by std::unique_lock
-  WriteMutex _writeMutex; // object that can be referenced by std::unique_lock
-};
 
 ///////////////////////////////////////////////////////////////////////////////
 /// --SECTION--                                                   IResearchView
@@ -157,11 +130,6 @@ class IResearchView final
   /// @brief amount of memory in bytes occupied by this iResearch Link
   ////////////////////////////////////////////////////////////////////////////////
   size_t memory() const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @return the current meta used by the view instance
-  //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<const AsyncMeta> meta() const; // FIXME TODO remove once _writebuffer* members are moved to IResearchLinkMeta
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief opens an existing view when the server is restarted
@@ -247,11 +215,6 @@ class IResearchView final
     uint64_t planVersion
   );
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief registers a callback for flush feature
-  ////////////////////////////////////////////////////////////////////////////////
-  void registerFlushCallback();
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Called in post-recovery to remove any dangling documents old links
   //////////////////////////////////////////////////////////////////////////////
@@ -260,19 +223,13 @@ class IResearchView final
   IResearchFeature* _asyncFeature; // the feature where async jobs were registered (nullptr == no jobs registered)
   AsyncViewPtr _asyncSelf; // 'this' for the lifetime of the view (for use with asynchronous calls)
   std::unordered_map<TRI_voc_cid_t, AsyncLinkPtr> _links; // registered links (value may be nullptr on single-server if link did not come up yet) FIXME TODO maybe this should be asyncSelf?
-  std::shared_ptr<AsyncMeta> _meta; // the shared view configuration (never null!!!)
-  mutable irs::async_utils::read_write_mutex _mutex; // for use with member maps/sets
+  IResearchViewMeta _meta; // the view configuration
+  mutable irs::async_utils::read_write_mutex _mutex; // for use with member '_meta', '_links'
   std::mutex _updateLinksLock; // prevents simultaneous 'updateLinks'
   FlushCallback _flushCallback; // responsible for flush callback unregistration
   std::function<void(arangodb::transaction::Methods& trx, arangodb::transaction::Status status)> _trxCallback; // for snapshot(...)
   std::atomic<bool> _asyncTerminate; // trigger termination of long-running async jobs
   std::atomic<bool> _inRecovery;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief updates properties of an existing view
-  //////////////////////////////////////////////////////////////////////////////
-  // FIXME TODO does this need to be public?
-  arangodb::Result updateProperties(std::shared_ptr<AsyncMeta> const& meta); // nullptr == TRI_ERROR_BAD_PARAMETER
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief called when a view's properties are updated (i.e. delta-modified)
