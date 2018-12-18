@@ -41,9 +41,6 @@ if (NOT CMAKE_OSX_DEPLOYMENT_TARGET)
   set(CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE STRING "deployment target for MacOSX; adjust to your sysem")
 endif ()
 
-# required for clang completion in editors
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
 # where to find CMAKE modules
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
@@ -262,6 +259,9 @@ if (WIN32)
 else ()
   project(arangodb3 LANGUAGES CXX C ASM VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
 endif ()
+
+# required for clang completion in editors - must be set after creating project
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Static executables:
 option(STATIC_EXECUTABLES "produce static executables" OFF)
@@ -1271,21 +1271,6 @@ if (NOT USE_PRECOMPILED_V8)
     add_dependencies(arangodbtests v8_build)
   endif()
 endif ()
-
-# This copies the compile commands to the source dir.
-# There they can be used to repeat parts of compile
-# steps generating an AST. This AST can in turn be used
-# for meaningful auto-completion in editors without
-# heuristics, dice rolling and other guessing.
-
-if( EXISTS "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" )
-  message(STATUS "copy compile_commands.json")
-
-  execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
-      ${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json
-      ${CMAKE_CURRENT_SOURCE_DIR}/compile_commands.json
-  )
-endif()
 
 add_custom_target(packages
   DEPENDS ${PACKAGES_LIST}
