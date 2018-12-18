@@ -374,19 +374,23 @@ class MMFilesEngine final : public StorageEngine {
   ) override;
 
   arangodb::Result dropView(
-    TRI_vocbase_t& vocbase,
-    LogicalView& view
+    TRI_vocbase_t const& vocbase,
+    LogicalView const& view
   ) override;
 
   void destroyView(
-    TRI_vocbase_t& vocbase,
-    LogicalView& view
+    TRI_vocbase_t const& vocbase,
+    LogicalView const& view
   ) noexcept override;
 
   std::string createViewDirectoryName(std::string const& basePath,
                                       TRI_voc_cid_t id);
 
-  void saveViewInfo(TRI_vocbase_t* vocbase, arangodb::LogicalView const*, bool sync) const;
+  void saveViewInfo(
+    TRI_vocbase_t const& vocbase,
+    LogicalView const& view,
+    bool sync
+  ) const;
 
   void signalCleanup(TRI_vocbase_t& vocbase) override;
 

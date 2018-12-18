@@ -101,7 +101,7 @@ class AsyncMeta: public IResearchViewMeta {
 ///       the IResearchLink or IResearchViewBlock
 ///////////////////////////////////////////////////////////////////////////////
 class IResearchView final
-  : public arangodb::LogicalViewStorageEngine,
+  : public arangodb::LogicalView,
     public arangodb::FlushTransaction {
   typedef std::shared_ptr<TypedResourceMutex<IResearchLink>> AsyncLinkPtr;
  public:
@@ -168,7 +168,20 @@ class IResearchView final
   ///////////////////////////////////////////////////////////////////////////////
   void open() override;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief updates properties of an existing view
+  //////////////////////////////////////////////////////////////////////////////
+  using LogicalDataSource::properties;
+  virtual arangodb::Result properties(
+    arangodb::velocypack::Slice const& properties,
+    bool partialUpdate
+  ) override final;
+
   ////////////////////////////////////////////////////////////////////////////////
+  /// @param shards the list of shard to restrict the snaphost to
+  ///        nullptr == use all registered links
+  ///        !nullptr && shard not registred then return nullptr
+  ///        if mode == Find && list found doesn't match then return nullptr
   /// @return pointer to an index reader containing the datastore record snapshot
   ///         associated with 'state'
   ///         (nullptr == no view snapshot associated with the specified state)
@@ -176,7 +189,8 @@ class IResearchView final
   ////////////////////////////////////////////////////////////////////////////////
   irs::index_reader const* snapshot(
     transaction::Methods& trx,
-    Snapshot mode = Snapshot::Find
+    Snapshot mode = Snapshot::Find,
+    std::unordered_set<TRI_voc_cid_t> const* shards = nullptr
   ) const;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -185,11 +199,6 @@ class IResearchView final
   /// @return success == view does not track collection
   //////////////////////////////////////////////////////////////////////////////
   arangodb::Result unlink(TRI_voc_cid_t cid) noexcept;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief updates properties of an existing view
-  //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result updateProperties(std::shared_ptr<AsyncMeta> const& meta); // nullptr == TRI_ERROR_BAD_PARAMETER
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief visit all collection IDs that were added to the view
@@ -203,8 +212,9 @@ class IResearchView final
   /// @brief fill and return a JSON description of a IResearchView object
   ///        only fields describing the view itself, not 'link' descriptions
   //////////////////////////////////////////////////////////////////////////////
-  virtual arangodb::Result appendVelocyPackDetailed(
+  virtual arangodb::Result appendVelocyPackImpl(
     arangodb::velocypack::Builder& builder,
+    bool detailed,
     bool forPersistence
   ) const override;
 
@@ -214,12 +224,10 @@ class IResearchView final
   arangodb::Result dropImpl() override;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief called when a view's properties are updated (i.e. delta-modified)
+  /// @brief renames implementation-specific parts of an existing view
+  ///        including persistance of properties
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result updateProperties(
-    arangodb::velocypack::Slice const& slice,
-    bool partialUpdate
-  ) override;
+  arangodb::Result renameImpl(std::string const& oldName) override;
 
  private:
   struct ViewFactory; // forward declaration
@@ -259,6 +267,20 @@ class IResearchView final
   std::function<void(arangodb::transaction::Methods& trx, arangodb::transaction::Status status)> _trxCallback; // for snapshot(...)
   std::atomic<bool> _asyncTerminate; // trigger termination of long-running async jobs
   std::atomic<bool> _inRecovery;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief updates properties of an existing view
+  //////////////////////////////////////////////////////////////////////////////
+  // FIXME TODO does this need to be public?
+  arangodb::Result updateProperties(std::shared_ptr<AsyncMeta> const& meta); // nullptr == TRI_ERROR_BAD_PARAMETER
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief called when a view's properties are updated (i.e. delta-modified)
+  //////////////////////////////////////////////////////////////////////////////
+  arangodb::Result updateProperties(
+    arangodb::velocypack::Slice const& slice,
+    bool partialUpdate
+  );
 };
 
 } // iresearch
