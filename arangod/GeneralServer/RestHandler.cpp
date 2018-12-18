@@ -433,9 +433,14 @@ int RestHandler::executeEngine() {
               << DIAGNOSTIC_INFORMATION(ex);
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
-    Exception err(TRI_ERROR_INTERNAL, std::string("VPack error: ") + ex.what(),
-                  __FILE__, __LINE__);
-    handleError(err);
+    if (ex.errorCode() == arangodb::velocypack::Exception::ExceptionType::ParseError ||
+        ex.errorCode() == arangodb::velocypack::Exception::ExceptionType::UnexpectedControlCharacter) { 
+      Exception err(TRI_ERROR_HTTP_CORRUPTED_JSON, std::string("JSON parse error: ") + ex.what(), __FILE__, __LINE__);
+      handleError(err);
+    } else {
+      Exception err(TRI_ERROR_INTERNAL, std::string("VPack error: ") + ex.what(), __FILE__, __LINE__);
+      handleError(err);
+    }
   } catch (std::bad_alloc const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "caught memory exception in " << name() << ": "

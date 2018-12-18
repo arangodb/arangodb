@@ -273,6 +273,7 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
 
   switch (code) {
     case TRI_ERROR_BAD_PARAMETER:
+    case TRI_ERROR_HTTP_CORRUPTED_JSON:
     case TRI_ERROR_ARANGO_DATABASE_NAME_INVALID:
     case TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD:
     case TRI_ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED:
