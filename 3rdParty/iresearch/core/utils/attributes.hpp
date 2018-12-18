@@ -505,14 +505,13 @@ class IRESEARCH_API attribute_store
   }
 
   template<typename T, typename... Args>
-  typename ref<T>::type& emplace(Args&&... args) {
+  typename ref<T>::type& try_emplace(bool& inserted, Args&&... args) {
     REGISTER_TIMER_DETAILED();
 
     typedef typename std::enable_if<
       std::is_base_of<stored_attribute, T>::value, T
     >::type type;
 
-    bool inserted;
     auto& attr = attribute_map::emplace(inserted, type::type());
 
     if (inserted) {
@@ -520,6 +519,12 @@ class IRESEARCH_API attribute_store
     }
 
     return reinterpret_cast<typename ref<T>::type&>(attr);
+  }
+
+  template<typename T, typename... Args>
+  typename ref<T>::type& emplace(Args&&... args) {
+    bool inserted;
+    return try_emplace<T>(inserted, std::forward<Args>(args)...);
   }
 }; // attribute_store
 
