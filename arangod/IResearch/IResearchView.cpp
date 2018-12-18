@@ -272,11 +272,11 @@ struct IResearchView::ViewFactory: public arangodb::ViewFactory {
 
       impl->_links.emplace(cid, link ? link->self() : nullptr); // add placeholders to links, when the link comes up it'll call link(...)
     }
+    }
 
     view = impl;
 
     return arangodb::Result();
-    }
   }
 };
 
