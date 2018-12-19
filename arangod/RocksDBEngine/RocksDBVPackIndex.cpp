@@ -29,6 +29,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/PersistentIndexAttributeMatcher.h"
+#include "Indexes/SkiplistIndexAttributeMatcher.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
