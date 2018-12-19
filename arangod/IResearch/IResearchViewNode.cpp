@@ -663,7 +663,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   }
 
   auto& view = *this->view();
-  irs::index_reader const* reader;
+  IResearchView::Snapshot const* reader;
 
   LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
     << "Start getting snapshot for view '" << view.name() << "'";
@@ -671,9 +671,9 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   if (ServerState::instance()->isDBServer()) {
     // there are no cluster-wide transactions,
     // no place to store snapshot
-    static IResearchView::Snapshot const SNAPSHOT[] {
-      IResearchView::Snapshot::FindOrCreate,
-      IResearchView::Snapshot::SyncAndReplace
+    static IResearchView::SnapshotMode const SNAPSHOT[] {
+      IResearchView::SnapshotMode::FindOrCreate,
+      IResearchView::SnapshotMode::SyncAndReplace
     };
     std::unordered_set<TRI_voc_cid_t> collections;
     auto& resolver = engine.getQuery()->resolver();
@@ -695,9 +695,9 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       *trx, SNAPSHOT[size_t(_options.forceSync)], &collections
     );
   } else {
-    static IResearchView::Snapshot const SNAPSHOT[] {
-      IResearchView::Snapshot::Find,
-      IResearchView::Snapshot::SyncAndReplace
+    static IResearchView::SnapshotMode const SNAPSHOT[] {
+      IResearchView::SnapshotMode::Find,
+      IResearchView::SnapshotMode::SyncAndReplace
     };
 
     reader = LogicalView::cast<IResearchView>(view).snapshot(

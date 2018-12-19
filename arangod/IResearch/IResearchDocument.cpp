@@ -40,7 +40,6 @@
 #include "search/term_filter.hpp"
 
 #include "utils/log.hpp"
-#include "utils/numeric_utils.hpp"
 
 NS_LOCAL
 
@@ -301,59 +300,21 @@ NS_BEGIN(iresearch)
 // --SECTION--                                             Field implementation
 // ----------------------------------------------------------------------------
 
-/*static*/ void Field::setCidValue(
-    Field& field,
-    TRI_voc_cid_t const& cid
-) {
-  TRI_ASSERT(field._analyzer);
-
-  irs::bytes_ref const cidRef(
-    reinterpret_cast<irs::byte_type const*>(&cid),
-    sizeof(TRI_voc_cid_t)
-  );
-
-  field._name = CID_FIELD;
-  field._features = &irs::flags::empty_instance();
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto& sstream = dynamic_cast<irs::string_token_stream&>(*field._analyzer);
-#else
-  auto& sstream = static_cast<irs::string_token_stream&>(*field._analyzer);
-#endif
-  sstream.reset(cidRef);
-}
-
-/*static*/ void Field::setCidValue(
-    Field& field,
-    TRI_voc_cid_t const& cid,
-    Field::init_stream_t
-) {
-  field._analyzer = StringStreamPool.emplace().release(); // FIXME don't use shared_ptr
-  setCidValue(field, cid);
-}
-
 /*static*/ void Field::setPkValue(
     Field& field,
-    DocumentPrimaryKey const& pk
+    LocalDocumentId::BaseType const& pk
 ) {
   field._name = PK_COLUMN;
   field._features = &irs::flags::empty_instance();
   field._storeValues = ValueStorage::FULL;
   field._value = irs::bytes_ref(reinterpret_cast<irs::byte_type const*>(&pk), sizeof(pk));
+  field._analyzer = StringStreamPool.emplace().release(); // FIXME don't use shared_ptr
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto& sstream = dynamic_cast<irs::string_token_stream&>(*field._analyzer);
 #else
   auto& sstream = static_cast<irs::string_token_stream&>(*field._analyzer);
 #endif
   sstream.reset(field._value);
-}
-
-/*static*/ void Field::setPkValue(
-    Field& field,
-    DocumentPrimaryKey const& pk,
-    Field::init_stream_t
-) {
-  field._analyzer = StringStreamPool.emplace().release(); // FIXME don't use shared_ptr
-  setPkValue(field, pk);
 }
 
 Field::Field(Field&& rhs)
@@ -689,58 +650,28 @@ void FieldIterator::next() {
   return PK_COLUMN;
 }
 
-/* static */ irs::string_ref const& DocumentPrimaryKey::CID() noexcept {
-  return CID_FIELD;
-}
-
-/*static*/ irs::filter::ptr DocumentPrimaryKey::filter(TRI_voc_cid_t cid) {
-  cid = PrimaryKeyEndianness<Endianness>::hostToPk(cid);
-
-  irs::bytes_ref const term(
-    reinterpret_cast<irs::byte_type const*>(&cid),
-    sizeof(cid)
-  );
-
-  auto filter = irs::by_term::make();
-
-  // filter matching on cid
-  static_cast<irs::by_term&>(*filter)
-    .field(CID_FIELD) // set field
-    .term(term); // set value
-
-  return filter;
-}
-
-/*static*/ irs::filter::ptr DocumentPrimaryKey::filter(
-    TRI_voc_cid_t cid,
-    TRI_voc_rid_t rid
-) {
-  return std::make_unique<PrimaryKeyFilter>(cid, rid);
+/*static*/ LocalDocumentId::BaseType DocumentPrimaryKey::encode(LocalDocumentId value) noexcept {
+  return PrimaryKeyEndianness<Endianness>::hostToPk(value.id());
 }
 
 // PLEASE NOTE that 'in.c_str()' MUST HAVE alignment >= alignof(uint64_t)
-/*static*/ bool DocumentPrimaryKey::read(type& value, irs::bytes_ref const& in) noexcept {
-  if (sizeof(type) != in.size()) {
+// NOTE implementation must match implementation of operator irs::bytes_ref()
+/*static*/ bool DocumentPrimaryKey::read(
+    arangodb::LocalDocumentId& value,
+    irs::bytes_ref const& in
+) noexcept {
+  if (sizeof(arangodb::LocalDocumentId::BaseType) != in.size()) {
     return false;
   }
 
-  static_assert(
-    sizeof(TRI_voc_cid_t) == sizeof(TRI_voc_rid_t),
-    "sizeof(TRI_voc_cid_t) != sizeof(TRI_voc_rid_t)"
+  // PLEASE NOTE that 'in.c_str()' MUST HAVE alignment >= alignof(uint64_t)
+  value = arangodb::LocalDocumentId(
+    PrimaryKeyEndianness<Endianness>::pkToHost(
+      *reinterpret_cast<arangodb::LocalDocumentId::BaseType const*>(in.c_str())
+    )
   );
 
-  // PLEASE NOTE that 'in.c_str()' MUST HAVE alignment >= alignof(uint64_t)
-  auto* begin = reinterpret_cast<TRI_voc_cid_t const*>(in.c_str());
-
-  value.first = PrimaryKeyEndianness<Endianness>::pkToHost(begin[0]);
-  value.second = PrimaryKeyEndianness<Endianness>::pkToHost(begin[1]);
-
   return true;
-}
-
-DocumentPrimaryKey::DocumentPrimaryKey(TRI_voc_cid_t cid, TRI_voc_rid_t rid) noexcept
-  : type(PrimaryKeyEndianness<Endianness>::hostToPk(cid),
-         PrimaryKeyEndianness<Endianness>::hostToPk(rid)) {
 }
 
 NS_END // iresearch

@@ -31,6 +31,7 @@
 
 #include "search/filter.hpp"
 #include "store/data_output.hpp"
+#include "VocBase/LocalDocumentId.h"
 
 NS_BEGIN(iresearch)
 
@@ -79,18 +80,12 @@ constexpr char const NESTING_LIST_OFFSET_PREFIX = '[';
 constexpr char const NESTING_LIST_OFFSET_SUFFIX = ']';
 
 struct IResearchViewMeta; // forward declaration
-struct DocumentPrimaryKey; // forward declaration
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief indexed/stored document field adapter for IResearch
 ////////////////////////////////////////////////////////////////////////////////
 struct Field {
-  struct init_stream_t{}; // initialize stream
-
-  static void setCidValue(Field& field, TRI_voc_cid_t const& cid);
-  static void setCidValue(Field& field, TRI_voc_cid_t const& cid, init_stream_t);
-  static void setPkValue(Field& field, DocumentPrimaryKey const& pk);
-  static void setPkValue(Field& field, DocumentPrimaryKey const& pk, init_stream_t);
+  static void setPkValue(Field& field, LocalDocumentId::BaseType const& pk);
 
   Field() = default;
   Field(Field&& rhs);
@@ -255,43 +250,23 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief represents stored primary key of the ArangoDB document
 ////////////////////////////////////////////////////////////////////////////////
-struct DocumentPrimaryKey : std::pair<TRI_voc_cid_t, TRI_voc_rid_t> {
-  typedef std::pair<TRI_voc_cid_t, TRI_voc_rid_t> type; // underlying PK type
-
+struct DocumentPrimaryKey {
   static irs::string_ref const& PK() noexcept; // stored primary key column
-  static irs::string_ref const& CID() noexcept; // stored collection id column
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief creates a filter matching 'cid'
+  /// @brief encodes a specified PK value
+  /// @returns encoded value
   ////////////////////////////////////////////////////////////////////////////////
-  static irs::filter::ptr filter(TRI_voc_cid_t cid);
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief creates a filter matching 'cid' + 'rid' pair
-  ////////////////////////////////////////////////////////////////////////////////
-  static irs::filter::ptr filter(TRI_voc_cid_t cid, TRI_voc_rid_t rid);
+  static LocalDocumentId::BaseType encode(LocalDocumentId value) noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief reads and decodes PK from a specified buffer
   /// @returns 'true' on success, 'false' otherwise
   /// @note PLEASE NOTE that 'in.c_str()' MUST HAVE alignment >= alignof(uint64_t)
   ////////////////////////////////////////////////////////////////////////////////
-  static bool read(type& value, irs::bytes_ref const& in) noexcept;
+  static bool read(LocalDocumentId& value, irs::bytes_ref const& in) noexcept;
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief creates PK with properly encoded cid & rid
-  ////////////////////////////////////////////////////////////////////////////////
-  DocumentPrimaryKey(TRI_voc_cid_t cid, TRI_voc_rid_t rid) noexcept;
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief coverts a PK to corresponding irs::bytes_ref
-  ////////////////////////////////////////////////////////////////////////////////
-  explicit operator irs::bytes_ref() const noexcept {
-    return irs::bytes_ref(
-      reinterpret_cast<irs::byte_type const*>(this),
-      sizeof(*this)
-    );
-  }
+  DocumentPrimaryKey() = delete;
 }; // DocumentPrimaryKey
 
 NS_END // iresearch
