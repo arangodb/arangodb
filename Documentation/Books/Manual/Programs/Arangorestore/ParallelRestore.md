@@ -169,12 +169,12 @@ provided. The example below is a template for a cluster with 3 coordinators:
 This time the option `--create-collection false` is used since we already
 created the document structure before. The above command will create 3 scripts,
 whereas 3 corresponds to the amount of listed coordinators. The resulting
-scripts are named _coordinator_number-of-coordinator.sh (e.g.
+scripts are named `coordinator_<number-of-coordinator>.sh` (e.g.
 coordinator_0.sh, coordinator_1.sh, coordinator_2.sh).
 
 ### Execute parallel restore scripts
 
-The _coordinator_number-of-coordinator.sh scripts, that were created in the
+The `coordinator_<number-of-coordinator>.sh` scripts, that were created in the
 previous script, now have to be executed on each machine where a coordinator
 is running. This will start a parallel restore of the `dump`.
 
