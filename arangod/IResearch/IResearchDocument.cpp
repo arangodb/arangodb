@@ -31,6 +31,8 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/LogMacros.h"
+#include "Transaction/Methods.h"
+#include "Transaction/Helpers.h"
 
 #include "analysis/token_streams.hpp"
 #include "analysis/token_attributes.hpp"
@@ -38,7 +40,6 @@
 #include "search/term_filter.hpp"
 
 #include "utils/log.hpp"
-#include "utils/numeric_utils.hpp"
 
 NS_LOCAL
 
@@ -135,7 +136,8 @@ inline bool keyFromSlice(
           key = arangodb::StaticStrings::RevString;
           break;
         case AT_ID:
-          return false; // not supported
+          key = arangodb::StaticStrings::IdString;
+          break;
         case AT_FROM:
           key = arangodb::StaticStrings::FromString;
           break;
@@ -155,6 +157,7 @@ inline bool keyFromSlice(
 }
 
 inline bool canHandleValue(
+    std::string const& key,
     VPackSlice const& value,
     arangodb::iresearch::IResearchLinkMeta const& context
 ) noexcept {
@@ -177,11 +180,11 @@ inline bool canHandleValue(
     case VPackValueType::UInt:
     case VPackValueType::SmallInt:
       return true;
+    case VPackValueType::Custom:
+      TRI_ASSERT(key == arangodb::StaticStrings::IdString);
+      // intentionally falls through
     case VPackValueType::String:
       return !context._analyzers.empty();
-    case VPackValueType::Binary:
-    case VPackValueType::BCD:
-    case VPackValueType::Custom:
     default:
       return false;
   }
@@ -218,7 +221,7 @@ inline bool inObjectFiltered(
   buffer.append(key.c_str(), key.size());
   context = meta;
 
-  return canHandleValue(value.value, *context);
+  return canHandleValue(buffer, value.value, *context);
 }
 
 inline bool inObject(
@@ -235,7 +238,7 @@ inline bool inObject(
   buffer.append(key.c_str(), key.size());
   context = findMeta(key, context);
 
-  return canHandleValue(value.value, *context);
+  return canHandleValue(buffer, value.value, *context);
 }
 
 inline bool inArrayOrdered(
@@ -247,15 +250,15 @@ inline bool inArrayOrdered(
   append(buffer, value.pos);
   buffer += arangodb::iresearch::NESTING_LIST_OFFSET_SUFFIX;
 
-  return canHandleValue(value.value, *context);
+  return canHandleValue(buffer, value.value, *context);
 }
 
 inline bool inArray(
-    std::string& /*buffer*/,
+    std::string& buffer,
     arangodb::iresearch::IResearchLinkMeta const*& context,
     arangodb::iresearch::IteratorValue const& value
 ) noexcept {
-  return canHandleValue(value.value, *context);
+  return canHandleValue(buffer, value.value, *context);
 }
 
 typedef bool(*Filter)(
@@ -288,105 +291,6 @@ inline Filter getFilter(
    ];
 }
 
-void setNullValue(
-    VPackSlice const& value,
-    std::string& name,
-    arangodb::iresearch::Field& field
-) {
-  TRI_ASSERT(value.isNull());
-
-  // mangle name
-  arangodb::iresearch::kludge::mangleNull(name);
-
-  // init stream
-  auto stream = NullStreamPool.emplace();
-  stream->reset();
-
-  // set field properties
-  field._name = name;
-  field._analyzer = stream.release(); // FIXME don't use shared_ptr
-  field._features = &irs::flags::empty_instance();
-}
-
-void setBoolValue(
-    VPackSlice const& value,
-    std::string& name,
-    arangodb::iresearch::Field& field
-) {
-  TRI_ASSERT(value.isBool());
-
-  // mangle name
-  arangodb::iresearch::kludge::mangleBool(name);
-
-  // init stream
-  auto stream = BoolStreamPool.emplace();
-  stream->reset(value.getBool());
-
-  // set field properties
-  field._name = name;
-  field._analyzer = stream.release(); // FIXME don't use shared_ptr
-  field._features = &irs::flags::empty_instance();
-}
-
-void setNumericValue(
-    VPackSlice const& value,
-    std::string& name,
-    arangodb::iresearch::Field& field
-) {
-  TRI_ASSERT(value.isNumber());
-
-  // mangle name
-  arangodb::iresearch::kludge::mangleNumeric(name);
-
-  // init stream
-  auto stream = NumericStreamPool.emplace();
-  stream->reset(value.getNumber<double>());
-
-  // set field properties
-  field._name = name;
-  field._analyzer = stream.release(); // FIXME don't use shared_ptr
-  field._features = &NumericStreamFeatures;
-}
-
-bool setStringValue(
-    VPackSlice const& value,
-    std::string& name,
-    arangodb::iresearch::Field& field,
-    arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& pool
-) {
-  TRI_ASSERT(value.isString());
-
-  if (!pool) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "got nullptr analyzer factory";
-
-    return false;
-  }
-
-  // it's important to unconditionally mangle name
-  // since we unconditionally unmangle it in 'next'
-  arangodb::iresearch::kludge::mangleStringField(name, *pool);
-
-  // init stream
-  auto analyzer = pool->get();
-
-  if (!analyzer) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "got nullptr from analyzer factory, name '" << pool->name() <<  "'";
-    return false;
-  }
-
-  // init stream
-  analyzer->reset(arangodb::iresearch::getStringRef(value));
-
-  // set field properties
-  field._name = name;
-  field._analyzer =  analyzer;
-  field._features = &(pool->features());
-
-  return true;
-}
-
 NS_END
 
 NS_BEGIN(arangodb)
@@ -396,59 +300,21 @@ NS_BEGIN(iresearch)
 // --SECTION--                                             Field implementation
 // ----------------------------------------------------------------------------
 
-/*static*/ void Field::setCidValue(
-    Field& field,
-    TRI_voc_cid_t const& cid
-) {
-  TRI_ASSERT(field._analyzer);
-
-  irs::bytes_ref const cidRef(
-    reinterpret_cast<irs::byte_type const*>(&cid),
-    sizeof(TRI_voc_cid_t)
-  );
-
-  field._name = CID_FIELD;
-  field._features = &irs::flags::empty_instance();
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto& sstream = dynamic_cast<irs::string_token_stream&>(*field._analyzer);
-#else
-  auto& sstream = static_cast<irs::string_token_stream&>(*field._analyzer);
-#endif
-  sstream.reset(cidRef);
-}
-
-/*static*/ void Field::setCidValue(
-    Field& field,
-    TRI_voc_cid_t const& cid,
-    Field::init_stream_t
-) {
-  field._analyzer = StringStreamPool.emplace().release(); // FIXME don't use shared_ptr
-  setCidValue(field, cid);
-}
-
 /*static*/ void Field::setPkValue(
     Field& field,
-    DocumentPrimaryKey const& pk
+    LocalDocumentId::BaseType const& pk
 ) {
   field._name = PK_COLUMN;
   field._features = &irs::flags::empty_instance();
   field._storeValues = ValueStorage::FULL;
   field._value = irs::bytes_ref(reinterpret_cast<irs::byte_type const*>(&pk), sizeof(pk));
+  field._analyzer = StringStreamPool.emplace().release(); // FIXME don't use shared_ptr
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto& sstream = dynamic_cast<irs::string_token_stream&>(*field._analyzer);
 #else
   auto& sstream = static_cast<irs::string_token_stream&>(*field._analyzer);
 #endif
   sstream.reset(field._value);
-}
-
-/*static*/ void Field::setPkValue(
-    Field& field,
-    DocumentPrimaryKey const& pk,
-    Field::init_stream_t
-) {
-  field._analyzer = StringStreamPool.emplace().release(); // FIXME don't use shared_ptr
-  setPkValue(field, pk);
 }
 
 Field::Field(Field&& rhs)
@@ -475,18 +341,26 @@ Field& Field::operator=(Field&& rhs) {
 // --SECTION--                                     FieldIterator implementation
 // ----------------------------------------------------------------------------
 
-/*static*/ FieldIterator const FieldIterator::END;
-
-FieldIterator::FieldIterator()
-  : _name(BufferPool.emplace().release()) { // FIXME don't use shared_ptr
+FieldIterator::FieldIterator(arangodb::transaction::Methods& trx)
+  : _nameBuffer(BufferPool.emplace().release()), // FIXME don't use shared_ptr
+    _trx(&trx) {
   // initialize iterator's value
 }
 
 FieldIterator::FieldIterator(
+    arangodb::transaction::Methods& trx,
     VPackSlice const& doc,
     IResearchLinkMeta const& linkMeta
-): FieldIterator() {
+): FieldIterator(trx) {
   reset(doc, linkMeta);
+}
+
+std::string& FieldIterator::valueBuffer() {
+  if (!_valueBuffer) {
+    _valueBuffer = BufferPool.emplace().release(); // FIXME don't use shared_ptr
+  }
+
+  return *_valueBuffer;
 }
 
 void FieldIterator::reset(
@@ -499,7 +373,7 @@ void FieldIterator::reset(
   // clear stack
   _stack.clear();
   // clear field name
-  _name->clear();
+  _nameBuffer->clear();
 
   if (!isArrayOrObject(doc)) {
     // can't handle plain objects
@@ -512,6 +386,124 @@ void FieldIterator::reset(
   if (!pushAndSetValue(doc, context)) {
     next();
   }
+}
+
+void FieldIterator::setBoolValue(VPackSlice const value) {
+  TRI_ASSERT(value.isBool());
+
+  auto& name = nameBuffer();
+
+  // mangle name
+  arangodb::iresearch::kludge::mangleBool(name);
+
+  // init stream
+  auto stream = BoolStreamPool.emplace();
+  stream->reset(value.getBool());
+
+  // set field properties
+  _value._name = name;
+  _value._analyzer = stream.release(); // FIXME don't use shared_ptr
+  _value._features = &irs::flags::empty_instance();
+}
+
+void FieldIterator::setNumericValue(VPackSlice const value) {
+  TRI_ASSERT(value.isNumber());
+
+  auto& name = nameBuffer();
+
+  // mangle name
+  arangodb::iresearch::kludge::mangleNumeric(name);
+
+  // init stream
+  auto stream = NumericStreamPool.emplace();
+  stream->reset(value.getNumber<double>());
+
+  // set field properties
+  _value._name = name;
+  _value._analyzer = stream.release(); // FIXME don't use shared_ptr
+  _value._features = &NumericStreamFeatures;
+}
+
+void FieldIterator::setNullValue(VPackSlice const value) {
+  TRI_ASSERT(value.isNull());
+
+  auto& name = nameBuffer();
+
+  // mangle name
+  arangodb::iresearch::kludge::mangleNull(name);
+
+  // init stream
+  auto stream = NullStreamPool.emplace();
+  stream->reset();
+
+  // set field properties
+  _value._name = name;
+  _value._analyzer = stream.release(); // FIXME don't use shared_ptr
+  _value._features = &irs::flags::empty_instance();
+}
+
+bool FieldIterator::setStringValue(
+    VPackSlice const value,
+    IResearchAnalyzerFeature::AnalyzerPool::ptr const pool
+) {
+  TRI_ASSERT(
+    (value.isCustom() && nameBuffer() == arangodb::StaticStrings::IdString)
+    || value.isString()
+  );
+
+  irs::string_ref valueRef;
+
+  if (value.isCustom()) {
+    if (_stack.empty()) {
+      // base object isn't set
+      return false;
+    }
+
+    auto const baseSlice = _stack.front().it.slice();
+    auto& buffer = valueBuffer();
+
+    buffer = transaction::helpers::extractIdString(
+      _trx->resolver(),
+      value,
+      baseSlice
+    );
+
+    valueRef = buffer;
+  } else {
+    valueRef = iresearch::getStringRef(value);
+  }
+
+  if (!pool) {
+    LOG_TOPIC(WARN, iresearch::TOPIC)
+      << "got nullptr analyzer factory";
+
+    return false;
+  }
+
+  auto& name = nameBuffer();
+
+  // it's important to unconditionally mangle name
+  // since we unconditionally unmangle it in 'next'
+  iresearch::kludge::mangleStringField(name, *pool);
+
+  // init stream
+  auto analyzer = pool->get();
+
+  if (!analyzer) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "got nullptr from analyzer factory, name '" << pool->name() <<  "'";
+    return false;
+  }
+
+  // init stream
+  analyzer->reset(valueRef);
+
+  // set field properties
+  _value._name = name;
+  _value._analyzer =  analyzer;
+  _value._features = &(pool->features());
+
+  return true;
 }
 
 bool FieldIterator::pushAndSetValue(VPackSlice slice, IResearchLinkMeta const*& context) {
@@ -550,10 +542,10 @@ bool FieldIterator::pushAndSetValue(VPackSlice slice, IResearchLinkMeta const*& 
   _begin = nullptr;
   _end = 1 + _begin;                // set surrogate analyzers
 
-  return setRegularAttribute(*context);
+  return setAttributeValue(*context);
 }
 
-bool FieldIterator::setRegularAttribute(IResearchLinkMeta const& context) {
+bool FieldIterator::setAttributeValue(IResearchLinkMeta const& context) {
   auto const value = topValue().value;
 
   _value._storeValues = context._storeValues;
@@ -564,16 +556,16 @@ bool FieldIterator::setRegularAttribute(IResearchLinkMeta const& context) {
     case VPackValueType::Illegal:
       return false;
     case VPackValueType::Null:
-      setNullValue(value, nameBuffer(), _value);
+      setNullValue(value);
       return true;
     case VPackValueType::Bool:
-      setBoolValue(value, nameBuffer(), _value);
+      setBoolValue(value);
       return true;
     case VPackValueType::Array:
     case VPackValueType::Object:
       return true;
     case VPackValueType::Double:
-      setNumericValue(value, nameBuffer(), _value);
+      setNumericValue(value);
       return true;
     case VPackValueType::UTCDate:
     case VPackValueType::External:
@@ -583,14 +575,14 @@ bool FieldIterator::setRegularAttribute(IResearchLinkMeta const& context) {
     case VPackValueType::Int:
     case VPackValueType::UInt:
     case VPackValueType::SmallInt:
-      setNumericValue(value, nameBuffer(), _value);
+      setNumericValue(value);
       return true;
+    case VPackValueType::Custom:
+      TRI_ASSERT(nameBuffer() == arangodb::StaticStrings::IdString);
+      // intentionally falls through
     case VPackValueType::String:
       resetAnalyzers(context); // reset string analyzers
-      return setStringValue(value, nameBuffer(), _value, *_begin);
-    case VPackValueType::Binary:
-    case VPackValueType::BCD:
-    case VPackValueType::Custom:
+      return setStringValue(value, *_begin);
     default:
       return false;
   }
@@ -606,7 +598,7 @@ void FieldIterator::next() {
     arangodb::iresearch::kludge::demangleStringField(name, **prev);
 
     // can have multiple analyzers for string values only
-    if (setStringValue(topValue().value, name, _value, *_begin)) {
+    if (setStringValue(topValue().value, *_begin)) {
       return;
     }
   }
@@ -658,58 +650,28 @@ void FieldIterator::next() {
   return PK_COLUMN;
 }
 
-/* static */ irs::string_ref const& DocumentPrimaryKey::CID() noexcept {
-  return CID_FIELD;
-}
-
-/*static*/ irs::filter::ptr DocumentPrimaryKey::filter(TRI_voc_cid_t cid) {
-  cid = PrimaryKeyEndianness<Endianness>::hostToPk(cid);
-
-  irs::bytes_ref const term(
-    reinterpret_cast<irs::byte_type const*>(&cid),
-    sizeof(cid)
-  );
-
-  auto filter = irs::by_term::make();
-
-  // filter matching on cid
-  static_cast<irs::by_term&>(*filter)
-    .field(CID_FIELD) // set field
-    .term(term); // set value
-
-  return filter;
-}
-
-/*static*/ irs::filter::ptr DocumentPrimaryKey::filter(
-    TRI_voc_cid_t cid,
-    TRI_voc_rid_t rid
-) {
-  return std::make_unique<PrimaryKeyFilter>(cid, rid);
+/*static*/ LocalDocumentId::BaseType DocumentPrimaryKey::encode(LocalDocumentId value) noexcept {
+  return PrimaryKeyEndianness<Endianness>::hostToPk(value.id());
 }
 
 // PLEASE NOTE that 'in.c_str()' MUST HAVE alignment >= alignof(uint64_t)
-/*static*/ bool DocumentPrimaryKey::read(type& value, irs::bytes_ref const& in) noexcept {
-  if (sizeof(type) != in.size()) {
+// NOTE implementation must match implementation of operator irs::bytes_ref()
+/*static*/ bool DocumentPrimaryKey::read(
+    arangodb::LocalDocumentId& value,
+    irs::bytes_ref const& in
+) noexcept {
+  if (sizeof(arangodb::LocalDocumentId::BaseType) != in.size()) {
     return false;
   }
 
-  static_assert(
-    sizeof(TRI_voc_cid_t) == sizeof(TRI_voc_rid_t),
-    "sizeof(TRI_voc_cid_t) != sizeof(TRI_voc_rid_t)"
+  // PLEASE NOTE that 'in.c_str()' MUST HAVE alignment >= alignof(uint64_t)
+  value = arangodb::LocalDocumentId(
+    PrimaryKeyEndianness<Endianness>::pkToHost(
+      *reinterpret_cast<arangodb::LocalDocumentId::BaseType const*>(in.c_str())
+    )
   );
 
-  // PLEASE NOTE that 'in.c_str()' MUST HAVE alignment >= alignof(uint64_t)
-  auto* begin = reinterpret_cast<TRI_voc_cid_t const*>(in.c_str());
-
-  value.first = PrimaryKeyEndianness<Endianness>::pkToHost(begin[0]);
-  value.second = PrimaryKeyEndianness<Endianness>::pkToHost(begin[1]);
-
   return true;
-}
-
-DocumentPrimaryKey::DocumentPrimaryKey(TRI_voc_cid_t cid, TRI_voc_rid_t rid) noexcept
-  : type(PrimaryKeyEndianness<Endianness>::hostToPk(cid),
-         PrimaryKeyEndianness<Endianness>::hostToPk(rid)) {
 }
 
 NS_END // iresearch

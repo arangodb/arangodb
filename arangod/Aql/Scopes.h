@@ -146,7 +146,7 @@ class Scopes {
 
  private:
   /// @brief currently active scopes
-  std::vector<Scope*> _activeScopes;
+  std::vector<std::unique_ptr<Scope>> _activeScopes;
 
   /// @brief a stack with aliases for the $CURRENT variable
   std::vector<Variable const*> _currentVariables;

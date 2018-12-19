@@ -187,8 +187,8 @@ bool RestQueryHandler::deleteQuery(std::string const& name) {
 
     generateResult(rest::ResponseCode::OK, result.slice());
   } else {
-    generateError(rest::ResponseCode::BAD, res,
-                  "cannot kill query '" + name + "'");
+    generateError(rest::ResponseCode::NOT_FOUND, res,
+                  "cannot kill query '" + name + "': " + TRI_errno_string(res));
   }
 
   return true;
