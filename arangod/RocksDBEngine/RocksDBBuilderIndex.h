@@ -125,7 +125,7 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
     aql::AstNode const* condNode,
     aql::Variable const* var,
     IndexIteratorOptions const& opts
-  ) { 
+  ) override { 
     TRI_ASSERT(false);
     return nullptr;
   }

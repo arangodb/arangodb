@@ -88,6 +88,7 @@ Result RocksDBBuilderIndex::removeInternal(transaction::Methods& trx, RocksDBMet
                                            LocalDocumentId const& documentId,
                                            arangodb::velocypack::Slice const& slice,
                                            OperationMode mode) {
+  TRI_ASSERT(false); // not enabled
   {
     std::lock_guard<std::mutex> guard(_removedDocsMutex);
     _removedDocs.insert(documentId.id());
@@ -331,24 +332,31 @@ static arangodb::Result fillIndexFast(transaction::Methods& trx,
 /// non-transactional: fill index with existing documents
 /// from this collection
 arangodb::Result RocksDBBuilderIndex::fillIndexFast() {
+  Result res;
   
   RocksDBCollection* coll = static_cast<RocksDBCollection*>(_collection.getPhysical());
   SingleCollectionTransaction trx(transaction::StandaloneContext::Create(_collection.vocbase()),
                                   _collection, AccessMode::Type::EXCLUSIVE);
-  Result res = trx.begin();
+  res = trx.begin();
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
   
+  RocksDBIndex* internal = _wrapped.get();
+  TRI_ASSERT(internal != nullptr);
   if (this->unique()) {
     // unique index. we need to keep track of all our changes because we need to avoid
     // duplicate index keys. must therefore use a WriteBatchWithIndex
     rocksdb::WriteBatchWithIndex batch(_cf->GetComparator(), 32 * 1024 * 1024);
-    return ::fillIndexFast<rocksdb::WriteBatchWithIndex, RocksDBBatchedWithIndexMethods>(trx, this, coll, batch);
+    res = ::fillIndexFast<rocksdb::WriteBatchWithIndex, RocksDBBatchedWithIndexMethods>(trx, internal, coll, batch);
   } else {
     // non-unique index. all index keys will be unique anyway because they contain the document id
     // we can therefore get away with a cheap WriteBatch
     rocksdb::WriteBatch batch(32 * 1024 * 1024);
-    return ::fillIndexFast<rocksdb::WriteBatch, RocksDBBatchedMethods>(trx, this, coll, batch);
+    res = ::fillIndexFast<rocksdb::WriteBatch, RocksDBBatchedMethods>(trx, internal, coll, batch);
   }
+  if (res.ok()) {
+    res = trx.commit(); // required to commit selectivity estimates
+  }
+  return res;
 }

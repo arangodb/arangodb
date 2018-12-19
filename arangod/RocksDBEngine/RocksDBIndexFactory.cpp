@@ -796,7 +796,7 @@ RocksDBIndexFactory::RocksDBIndexFactory() {
   static const Geo2IndexFactory geo2IndexFactory;
   static const SecondaryIndexFactory<arangodb::RocksDBHashIndex,
     arangodb::Index::TRI_IDX_TYPE_HASH_INDEX> hashIndexFactory;
-  static const SecondaryIndexFactory<arangodb::RocksDBHashIndex,
+  static const SecondaryIndexFactory<arangodb::RocksDBPersistentIndex,
     arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX> persistentIndexFactory;
   static const SecondaryIndexFactory<arangodb::RocksDBSkiplistIndex,
     arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX> skiplistIndexFactory;

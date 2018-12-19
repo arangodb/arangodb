@@ -327,7 +327,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
   auto releaseGuard = scopeGuard([&] {
     vocbase.releaseCollection(&_logicalCollection);
   });
-  res = lockWrite(); // MOVE ?!!!
+  res = lockWrite();
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -413,6 +413,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
         unlockGuard.fire();
       });
     } else {
+      _indexes.push_back(idx);
       unlockGuard.fire();
       res = buildIdx->fillIndexFast(); // will lock again internally
     }
@@ -429,8 +430,6 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
             break;
           }
         }
-      } else {
-        _indexes.push_back(idx);
       }
     }
 
