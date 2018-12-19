@@ -9,7 +9,8 @@ For _production_ deployments, please also carefully check the
 [ArangoDB Production Checklist](ProductionChecklist.md).
 
 Also check the description of
-[Single Instance vs. Cluster](../Architecture/DifferenceSingleCluster.md).
+[Single Instance vs. Cluster](../Architecture/DifferenceSingleCluster.md) and
+[Migrating from a Single Instance to a Cluster](MigratingSingleInstanceCluster.md).
 
 By ArangoDB _Deployment Mode_:
 
