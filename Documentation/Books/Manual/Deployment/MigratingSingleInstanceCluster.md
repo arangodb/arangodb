@@ -5,7 +5,13 @@ Migrating from a _Single Instance_ to a _Cluster_
 Before migrating from a _Single Instance_ to a Cluster,
 please make sure to read the 
 [Single Instance vs. Cluster](../Architecture/DifferenceSingleCluster.md)
-page
+page.
+{% endhint %}
+
+{% hint 'warning' %}
+If you have developed your application using a _Single Instance_
+and you would like to use a _Cluster_ now, before upgrading your production
+system please test your application with the _Cluster_ first.
 {% endhint %}
 
 To migrate from a _Single Instance_ to a _Cluster_ you will need
