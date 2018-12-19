@@ -1,7 +1,8 @@
 Architecture
 ============
 
-- [Deployment Modes](DeploymentModes/README.md)
+- [ArangoDB Deployment Modes](DeploymentModes/README.md)
+- [Single Instance vs. Cluster](DifferenceSingleCluster.md)
 - [Storage Engines](StorageEngines.md)
 - [Replication](Replication/README.md)
 - [Write-ahead log](WriteAheadLog.md)
