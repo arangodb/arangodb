@@ -37,8 +37,8 @@ function backgroundIndexSuite() {
   const cn = "UnitTestsCollectionIdx";
   const tasks = require("@arangodb/tasks");
   const tasksCompleted = () => {
-    return 0 == tasks.get().filter((task) => {
-      return (task.id.match(/^UnitTest/) || task.name.match(/^UnitTest/))
+    return 0 === tasks.get().filter((task) => {
+      return (task.id.match(/^UnitTest/) || task.name.match(/^UnitTest/));
     }).length;
   };
   const waitForTasks = () => {
@@ -46,7 +46,7 @@ function backgroundIndexSuite() {
     const start = time();
     while (!tasksCompleted()) {
       if (time() - start > 300) { // wait for 5 minutes maximum
-        fail("Timeout creating documents after 5 minutes: " + c.count());
+        fail("Timeout after 5 minutes");
       }
       require("internal").wait(0.5, false);
     }
