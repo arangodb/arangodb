@@ -23,6 +23,7 @@
 
 #include "GeneralClientConnection.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/CommunicationPhase.h"
 #include "SimpleHttpClient/ClientConnection.h"
 #include "SimpleHttpClient/SslClientConnection.h"
 #include "Basics/socket-utils.h"
@@ -67,6 +68,10 @@ GeneralClientConnection::GeneralClientConnection(Endpoint* endpoint,
       _connectRetries(connectRetries),
       _numConnectRetries(0),
       _isConnected(false),
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      _read(0),
+      _written(0),
+#endif
       _isInterrupted(false) {
   TRI_invalidatesocket(&_socket);
 }
@@ -81,6 +86,10 @@ GeneralClientConnection::GeneralClientConnection(
       _connectRetries(connectRetries),
       _numConnectRetries(0),
       _isConnected(false),
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      _read(0),
+      _written(0),
+#endif
       _isInterrupted(false) {
   TRI_invalidatesocket(&_socket);
 }
@@ -157,6 +166,13 @@ bool GeneralClientConnection::connect() {
 
 void GeneralClientConnection::disconnect() {
   if (isConnected()) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // we mustn't close sockets that we just opened.
+    // if, don't open them in first place.
+    TRI_ASSERT((_written + _read) != 0);
+    _written = 0;
+    _read = 0;
+#endif
     disconnectSocket();
     _numConnectRetries = 0;
     _isConnected = false;
@@ -187,6 +203,9 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool 
     towait = static_cast<int>(timeout * 1000.0);
   }
 
+  auto comm = application_features::ApplicationServer::getFeature<
+    arangodb::application_features::CommunicationFeaturePhase>("CommunicationPhase");
+
   struct pollfd poller;
   memset(&poller, 0, sizeof(struct pollfd));  // for our old friend Valgrind
   poller.fd = fd;
@@ -212,7 +231,7 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool 
     }
 
     if (res == 0) {
-      if (isInterrupted() || application_features::ApplicationServer::isStopping()) {
+      if (isInterrupted() || !comm->getCommAllowed()) {
         _errorDetails = std::string("command locally aborted");
         TRI_set_errno(TRI_ERROR_REQUEST_CANCELED);
         return false;
@@ -294,7 +313,7 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool 
       timeout = timeout - (end - start);
       start = end;
     } else if (res == 0) {
-      if (isInterrupted() || application_features::ApplicationServer::isStopping()) {
+      if (isInterrupted() || !comm->getCommAllowed()) {
         _errorDetails = std::string("command locally aborted");
         TRI_set_errno(TRI_ERROR_REQUEST_CANCELED);
         return false;
@@ -311,7 +330,7 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool 
 #endif
 
   if (res > 0) {
-    if (isInterrupted() || application_features::ApplicationServer::isStopping()) {
+    if (isInterrupted() || !comm->getCommAllowed()) {
       _errorDetails = std::string("command locally aborted");
       TRI_set_errno(TRI_ERROR_REQUEST_CANCELED);
       return false;

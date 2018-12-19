@@ -427,7 +427,9 @@ bool SslClientConnection::writeClientConnection(void const* buffer,
   switch (err) {
     case SSL_ERROR_NONE:
       *bytesWritten = written;
-
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      _written += written;
+#endif
       return true;
 
     case SSL_ERROR_ZERO_RETURN:
@@ -502,6 +504,9 @@ bool SslClientConnection::readClientConnection(StringBuffer& stringBuffer,
     switch (SSL_get_error(_ssl, lenRead)) {
       case SSL_ERROR_NONE:
         stringBuffer.increaseLength(lenRead);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+	_read += lenRead;
+#endif
         break;
 
       case SSL_ERROR_ZERO_RETURN:
