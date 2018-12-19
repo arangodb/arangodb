@@ -78,10 +78,18 @@ class IResearchView final
     public arangodb::FlushTransaction {
   typedef std::shared_ptr<TypedResourceMutex<IResearchLink>> AsyncLinkPtr;
  public:
-  typedef std::shared_ptr<TypedResourceMutex<IResearchView>> AsyncViewPtr; // FIXME TODO move to private
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief a snapshot representation of the view with ability to query for cid
+  //////////////////////////////////////////////////////////////////////////////
+  class Snapshot: public irs::index_reader {
+   public:
+    // @return cid of the sub-reader at operator['offset'] or 0 if undefined
+    virtual TRI_voc_cid_t cid(size_t offset) const noexcept = 0;
+  };
 
   /// @enum snapshot getting mode
-  enum class Snapshot {
+  enum class SnapshotMode {
     /// @brief lookup existing snapshot from a transaction
     Find,
 
@@ -155,9 +163,9 @@ class IResearchView final
   ///         (nullptr == no view snapshot associated with the specified state)
   ///         if force == true && no snapshot -> associate current snapshot
   ////////////////////////////////////////////////////////////////////////////////
-  irs::index_reader const* snapshot(
+  Snapshot const* snapshot(
     transaction::Methods& trx,
-    Snapshot mode = Snapshot::Find,
+    SnapshotMode mode = SnapshotMode::Find,
     std::unordered_set<TRI_voc_cid_t> const* shards = nullptr
   ) const;
 
@@ -198,6 +206,7 @@ class IResearchView final
   arangodb::Result renameImpl(std::string const& oldName) override;
 
  private:
+  typedef std::shared_ptr<TypedResourceMutex<IResearchView>> AsyncViewPtr;
   struct ViewFactory; // forward declaration
 
   struct FlushCallbackUnregisterer {

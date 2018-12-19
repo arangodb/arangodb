@@ -52,7 +52,7 @@
 
 namespace {
 
-typedef std::vector<arangodb::iresearch::DocumentPrimaryKey::type> pks_t;
+typedef std::vector<arangodb::LocalDocumentId> pks_t;
 
 pks_t::iterator readPKs(
     irs::doc_iterator& it,
@@ -128,7 +128,7 @@ using namespace arangodb::aql;
 }
 
 IResearchViewBlockBase::IResearchViewBlockBase(
-    irs::index_reader const& reader,
+    IResearchView::Snapshot const& reader,
     ExecutionEngine& engine,
     IResearchViewNode const& en)
   : ExecutionBlock(&engine, &en),
@@ -217,21 +217,22 @@ void IResearchViewBlockBase::reset() {
 }
 
 bool IResearchViewBlockBase::readDocument(
-    DocumentPrimaryKey::type const& docPk,
+    TRI_voc_cid_t cid,
+    arangodb::LocalDocumentId const& docPk,
     IndexIterator::DocumentCallback const& callback
 ) {
   TRI_ASSERT(_trx->state());
 
   // this is necessary for MMFiles
-  _trx->pinData(docPk.first);
+  _trx->pinData(cid);
 
   // `Methods::documentCollection(TRI_voc_cid_t)` may throw exception
-  auto* collection = _trx->state()->collection(docPk.first, arangodb::AccessMode::Type::READ);
+  auto* collection =
+    _trx->state()->collection(cid, arangodb::AccessMode::Type::READ);
 
   if (!collection) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed to find collection while reading document from arangosearch view, cid '" << docPk.first
-      << "', rid '" << docPk.second << "'";
+      << "failed to find collection while reading document from arangosearch view, cid '" << cid << "', rid '" << docPk.id() << "'";
 
     return false; // not a valid collection reference
   }
@@ -239,18 +240,19 @@ bool IResearchViewBlockBase::readDocument(
   TRI_ASSERT(collection->collection());
 
   return collection->collection()->readDocumentWithCallback(
-    _trx, arangodb::LocalDocumentId(docPk.second), callback
+    _trx, docPk, callback
   );
 }
 
 bool IResearchViewBlockBase::readDocument(
+    TRI_voc_cid_t cid,
     irs::doc_id_t const docId,
     irs::columnstore_reader::values_reader_f const& pkValues,
     IndexIterator::DocumentCallback const& callback
 ) {
   TRI_ASSERT(pkValues);
 
-  arangodb::iresearch::DocumentPrimaryKey::type docPk;
+  arangodb::LocalDocumentId docPk;
   irs::bytes_ref tmpRef;
 
   if (!pkValues(docId, tmpRef) || !arangodb::iresearch::DocumentPrimaryKey::read(docPk, tmpRef)) {
@@ -263,15 +265,15 @@ bool IResearchViewBlockBase::readDocument(
   TRI_ASSERT(_trx->state());
 
   // this is necessary for MMFiles
-  _trx->pinData(docPk.first);
+  _trx->pinData(cid);
 
   // `Methods::documentCollection(TRI_voc_cid_t)` may throw exception
-  auto* collection = _trx->state()->collection(docPk.first, arangodb::AccessMode::Type::READ);
+  auto* collection =
+    _trx->state()->collection(cid, arangodb::AccessMode::Type::READ);
 
   if (!collection) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed to find collection while reading document from arangosearch view, cid '" << docPk.first
-      << "', rid '" << docPk.second << "'";
+      << "failed to find collection while reading document from arangosearch view, cid '" << cid << "', rid '" << docPk.id() << "'";
 
     return false; // not a valid collection reference
   }
@@ -279,7 +281,7 @@ bool IResearchViewBlockBase::readDocument(
   TRI_ASSERT(collection->collection());
 
   return collection->collection()->readDocumentWithCallback(
-    _trx, arangodb::LocalDocumentId(docPk.second), callback
+    _trx, docPk, callback
   );
 }
 
@@ -439,7 +441,7 @@ std::pair<ExecutionState, size_t> IResearchViewBlockBase::skipSome(size_t atMost
 // -----------------------------------------------------------------------------
 
 IResearchViewBlock::IResearchViewBlock(
-    irs::index_reader const& reader,
+    IResearchView::Snapshot const& reader,
     aql::ExecutionEngine& engine,
     IResearchViewNode const& node
 ): IResearchViewUnorderedBlock(reader, engine, node),
@@ -484,10 +486,12 @@ bool IResearchViewBlock::next(
       continue;
     }
 
+    auto cid = _reader.cid(_readerOffset); // CID is constant until resetIterator()
+
     TRI_ASSERT(_pkReader);
 
     while (limit && _itr->next()) {
-      if (!readDocument(_itr->value(), _pkReader, ctx.callback)) {
+      if (!readDocument(cid, _itr->value(), _pkReader, ctx.callback)) {
         continue;
       }
 
@@ -561,7 +565,7 @@ size_t IResearchViewBlock::skip(size_t limit) {
 // -----------------------------------------------------------------------------
 
 IResearchViewUnorderedBlock::IResearchViewUnorderedBlock(
-    irs::index_reader const& reader,
+    IResearchView::Snapshot const& reader,
     aql::ExecutionEngine& engine,
     IResearchViewNode const& node
 ): IResearchViewBlockBase(reader, engine, node), _readerOffset(0) {
@@ -599,6 +603,8 @@ bool IResearchViewUnorderedBlock::next(
       continue;
     }
 
+    auto cid = _reader.cid(_readerOffset); // CID is constant until resetIterator()
+
     TRI_ASSERT(_pkReader);
 
     // read document PKs from iresearch
@@ -606,7 +612,7 @@ bool IResearchViewUnorderedBlock::next(
 
     // read documents from underlying storage engine
     for (auto begin = _keys.begin(); begin != end; ++begin) {
-      if (!readDocument(*begin, ctx.callback)) {
+      if (!readDocument(cid, *begin, ctx.callback)) {
         continue;
       }
 

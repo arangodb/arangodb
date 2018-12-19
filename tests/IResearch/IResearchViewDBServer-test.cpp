@@ -560,7 +560,7 @@ SECTION("test_query") {
     );
     CHECK((trx.begin().ok()));
     std::unordered_set<TRI_voc_cid_t> collections = { logicalCollection->id() };
-    auto* snapshot = wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate, &collections);
+    auto* snapshot = wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate, &collections);
     CHECK(0 == snapshot->docs_count());
     CHECK((trx.commit().ok()));
   }
@@ -617,7 +617,7 @@ SECTION("test_query") {
     );
     CHECK((trx.begin().ok()));
     std::unordered_set<TRI_voc_cid_t> collections = { logicalCollection->id() };
-    auto* snapshot = wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate, &collections);
+    auto* snapshot = wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate, &collections);
     CHECK(12 == snapshot->docs_count());
     CHECK((trx.commit().ok()));
   }
@@ -677,9 +677,9 @@ SECTION("test_query") {
     );
     CHECK((trx0.begin().ok()));
     std::unordered_set<TRI_voc_cid_t> collectionIds = { logicalCollection->id() };
-    CHECK((nullptr == wiewImpl->snapshot(trx0, arangodb::iresearch::IResearchView::Snapshot::Find, &collectionIds)));
-    auto* snapshot0 = wiewImpl->snapshot(trx0, arangodb::iresearch::IResearchView::Snapshot::SyncAndReplace, &collectionIds);
-    CHECK((snapshot0 == wiewImpl->snapshot(trx0, arangodb::iresearch::IResearchView::Snapshot::Find, &collectionIds)));
+    CHECK((nullptr == wiewImpl->snapshot(trx0, arangodb::iresearch::IResearchView::SnapshotMode::Find, &collectionIds)));
+    auto* snapshot0 = wiewImpl->snapshot(trx0, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace, &collectionIds);
+    CHECK((snapshot0 == wiewImpl->snapshot(trx0, arangodb::iresearch::IResearchView::SnapshotMode::Find, &collectionIds)));
     CHECK(12 == snapshot0->docs_count());
     CHECK((trx0.commit().ok()));
 
@@ -717,7 +717,7 @@ SECTION("test_query") {
       trxOptions
     );
     CHECK((trx1.begin().ok()));
-    auto* snapshot1 = wiewImpl->snapshot(trx1, arangodb::iresearch::IResearchView::Snapshot::SyncAndReplace, &collectionIds);
+    auto* snapshot1 = wiewImpl->snapshot(trx1, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace, &collectionIds);
     CHECK(24 == snapshot1->docs_count());
     CHECK((trx1.commit().ok()));
   }
@@ -790,7 +790,7 @@ SECTION("test_query") {
         );
         CHECK((trx.begin().ok()));
         std::unordered_set<TRI_voc_cid_t> collections = { logicalCollection->id() };
-        auto* snapshot = wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::SyncAndReplace, &collections);
+        auto* snapshot = wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace, &collections);
         CHECK(i == snapshot->docs_count());
         CHECK((trx.commit().ok()));
       }
@@ -1037,7 +1037,7 @@ SECTION("test_transaction_snapshot") {
     );
     CHECK((trx.begin().ok()));
     std::unordered_set<TRI_voc_cid_t> collections = { logicalCollection->id() };
-    auto* snapshot = wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::Find, &collections);
+    auto* snapshot = wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::Find, &collections);
     CHECK((nullptr == snapshot));
     CHECK((trx.commit().ok()));
   }
@@ -1053,9 +1053,9 @@ SECTION("test_transaction_snapshot") {
     );
     CHECK((trx.begin().ok()));
     std::unordered_set<TRI_voc_cid_t> collections = { logicalCollection->id() };
-    CHECK((nullptr == wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::Find, &collections)));
-    auto* snapshot = wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate, &collections);
-    CHECK((snapshot == wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate, &collections)));
+    CHECK((nullptr == wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::Find, &collections)));
+    auto* snapshot = wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate, &collections);
+    CHECK((snapshot == wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate, &collections)));
     CHECK((0 == snapshot->live_docs_count()));
     CHECK((trx.commit().ok()));
   }
@@ -1073,7 +1073,7 @@ SECTION("test_transaction_snapshot") {
     );
     CHECK((trx.begin().ok()));
     std::unordered_set<TRI_voc_cid_t> collections = { logicalCollection->id() };
-    auto* snapshot = wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::Find, &collections);
+    auto* snapshot = wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::Find, &collections);
     CHECK((nullptr == snapshot));
     CHECK((trx.commit().ok()));
   }
@@ -1090,10 +1090,10 @@ SECTION("test_transaction_snapshot") {
     );
     CHECK((trx.begin().ok()));
     std::unordered_set<TRI_voc_cid_t> collections = { logicalCollection->id() };
-    CHECK((nullptr == wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::Find, &collections)));
-    auto* snapshot = wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::SyncAndReplace, &collections);
-    CHECK((snapshot == wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::Find, &collections)));
-    CHECK((snapshot == wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate, &collections)));
+    CHECK((nullptr == wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::Find, &collections)));
+    auto* snapshot = wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace, &collections);
+    CHECK((snapshot == wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::Find, &collections)));
+    CHECK((snapshot == wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate, &collections)));
     CHECK((nullptr != snapshot));
     CHECK((1 == snapshot->live_docs_count()));
     CHECK((trx.commit().ok()));

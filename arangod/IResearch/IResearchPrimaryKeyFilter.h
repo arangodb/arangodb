@@ -43,9 +43,8 @@ class PrimaryKeyFilter final
  public:
   DECLARE_FILTER_TYPE();
 
-  PrimaryKeyFilter(TRI_voc_cid_t cid, TRI_voc_rid_t id) noexcept
-    : irs::filter(PrimaryKeyFilter::type()),
-      _pk(cid, id) { // ensure proper endianness
+  PrimaryKeyFilter(arangodb::LocalDocumentId const& value) noexcept
+    : irs::filter(PrimaryKeyFilter::type()), _pk(value), _pkSeen(false) {
   }
 
 // ----------------------------------------------------------------------------
@@ -110,8 +109,9 @@ class PrimaryKeyFilter final
     mutable irs::doc_id_t _next{ irs::type_limits<irs::type_t::doc_id_t>::eof() };
   }; // PrimaryKeyIterator
 
-  mutable DocumentPrimaryKey _pk; // !_pk.first -> do not perform further execution (first-match optimization)
+  mutable DocumentPrimaryKey _pk;
   mutable PrimaryKeyIterator _pkIterator;
+  mutable bool _pkSeen; // true == do not perform further execution (first-match optimization)
 }; // PrimaryKeyFilter
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -126,8 +126,8 @@ class PrimaryKeyFilterContainer final : public irs::empty {
   PrimaryKeyFilterContainer(PrimaryKeyFilterContainer&&) = default;
   PrimaryKeyFilterContainer& operator=(PrimaryKeyFilterContainer&&) = default;
 
-  PrimaryKeyFilter& emplace(TRI_voc_cid_t cid, TRI_voc_rid_t rid) {
-    _filters.emplace_back(cid, rid);
+  PrimaryKeyFilter& emplace(arangodb::LocalDocumentId const& value) {
+    _filters.emplace_back(value);
 
     return _filters.back();
   }

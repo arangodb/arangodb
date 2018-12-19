@@ -47,7 +47,7 @@ irs::doc_iterator::ptr PrimaryKeyFilter::execute(
     irs::order::prepared const& /*order*/,
     irs::attribute_view const& /*ctx*/
 ) const {
-  TRI_ASSERT(_pk.first); // re-execution of a fiter is not expected to ever occur without a call to prepare(...)
+  TRI_ASSERT(!_pkSeen); // re-execution of a fiter is not expected to ever occur without a call to prepare(...)
   auto* pkField = segment.field(arangodb::iresearch::DocumentPrimaryKey::PK());
 
   if (!pkField) {
@@ -75,7 +75,7 @@ irs::doc_iterator::ptr PrimaryKeyFilter::execute(
   // * recovery should have at most 2 identical live primary keys in the entire datastore
   if (irs::filter::type() == typeDefault) { // explicitly check type of instance
     TRI_ASSERT(!docs->next()); // primary key duplicates should NOT happen in the same segment in regular runtime
-    _pk.first = 0; // already matched 1 primary key (should be at most 1 at runtime)
+    _pkSeen = true; // already matched 1 primary key (should be at most 1 at runtime)
   }
 
   // aliasing constructor
@@ -87,9 +87,10 @@ irs::doc_iterator::ptr PrimaryKeyFilter::execute(
 
 size_t PrimaryKeyFilter::hash() const noexcept {
   size_t seed = 0;
+
   irs::hash_combine(seed, filter::hash());
-  irs::hash_combine(seed, _pk.first);
-  irs::hash_combine(seed, _pk.second);
+  irs::hash_combine(seed, arangodb::LocalDocumentId(_pk).id());
+
   return seed;
 }
 
@@ -102,7 +103,7 @@ irs::filter::prepared::ptr PrimaryKeyFilter::prepare(
   // optimization, since during:
   // * regular runtime should have at most 1 identical primary key in the entire datastore
   // * recovery should have at most 2 identical primary keys in the entire datastore
-  if (!_pk.first) {
+  if (_pkSeen) {
     return irs::filter::prepared::empty(); // already processed
   }
 
@@ -111,11 +112,8 @@ irs::filter::prepared::ptr PrimaryKeyFilter::prepare(
 }
 
 bool PrimaryKeyFilter::equals(filter const& rhs) const noexcept {
-  auto const& trhs = static_cast<PrimaryKeyFilter const&>(rhs);
-
-  return filter::equals(rhs)
-    && _pk.first == trhs._pk.first
-    && _pk.second == trhs._pk.second;
+  return
+    filter::equals(rhs) && _pk == static_cast<PrimaryKeyFilter const&>(rhs)._pk;
 }
 
 /*static*/ ::iresearch::type_id const& PrimaryKeyFilter::type() {

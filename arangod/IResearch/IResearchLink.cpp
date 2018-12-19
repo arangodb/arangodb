@@ -92,8 +92,8 @@ struct LinkTrxState final: public arangodb::TransactionState::Cookie {
     return _ctx;
   }
 
-  void remove(TRI_voc_cid_t cid, TRI_voc_rid_t rid) {
-    _ctx.remove(_removals.emplace(cid, rid));
+  void remove(arangodb::LocalDocumentId const& value) {
+    _ctx.remove(_removals.emplace(value));
   }
 
   void reset() noexcept {
@@ -170,7 +170,7 @@ inline void insertDocument(
     irs::segment_writer::document& doc,
     arangodb::iresearch::FieldIterator& body,
     TRI_voc_cid_t cid,
-    TRI_voc_rid_t rid) {
+    arangodb::LocalDocumentId const& docPk) {
   using namespace arangodb::iresearch;
 
   // reuse the 'Field' instance stored
@@ -189,14 +189,14 @@ inline void insertDocument(
   }
 
   // System fields
-  DocumentPrimaryKey const primaryKey(cid, rid);
+  DocumentPrimaryKey const primaryKey(docPk);
 
   // Indexed and Stored: CID + RID
   Field::setPkValue(field, primaryKey, Field::init_stream_t());
   doc.insert(irs::action::index_store, field);
 
   // Indexed: CID
-  Field::setCidValue(field, primaryKey.first);
+  Field::setCidValue(field, cid);
   doc.insert(irs::action::index, field);
 }
 
@@ -351,7 +351,7 @@ void IResearchLink::batchInsert(
 
   if (_inRecovery) {
     for (auto const& doc: batch) {
-      ctx->remove(_collection.id(), doc.first.id());
+      ctx->remove(doc.first);
     }
   }
 
@@ -368,7 +368,7 @@ void IResearchLink::batchInsert(
 
       auto doc = ctx->_ctx.insert();
 
-      insertDocument(doc, body, _collection.id(), begin->first.id());
+      insertDocument(doc, body, _collection.id(), begin->first);
 
       if (!doc) {
         LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
@@ -443,7 +443,7 @@ arangodb::Result IResearchLink::commit() {
       arangodb::aql::QueryCache::instance()->invalidate(
         &(_collection.vocbase()), viewImpl->name()
       );
-     }
+    }
   } catch (arangodb::basics::Exception const& e) {
     return arangodb::Result(
       e.code(),
@@ -637,16 +637,16 @@ arangodb::Result IResearchLink::init(
   auto& vocbase = _collection.vocbase();
 
   if (arangodb::ServerState::instance()->isCoordinator()) { // coordinator link
-    auto* engine = arangodb::ClusterInfo::instance();
+    auto* ci = arangodb::ClusterInfo::instance();
 
-    if (!engine) {
+    if (!ci) {
       return arangodb::Result(
         TRI_ERROR_INTERNAL,
         std::string("failure to get storage engine while initializing arangosearch link '") + std::to_string(_id) + "'"
       );
     }
 
-    auto logicalView = engine->getView(vocbase.name(), viewId);
+    auto logicalView = ci->getView(vocbase.name(), viewId);
 
     // if there is no logicalView present yet then skip this step
     if (logicalView) {
@@ -687,7 +687,7 @@ arangodb::Result IResearchLink::init(
       );
     }
 
-    auto clusterWideLink = _collection.id() == _collection.planId() && _collection.isAStub(); // cluster cluster-wide link
+    auto clusterWideLink = _collection.id() == _collection.planId() && _collection.isAStub(); // cluster-wide link
 
     if (!clusterWideLink) {
       auto res = initDataStore(); // prepare data-store which can then update options via the IResearchView::link(...) call
@@ -697,7 +697,7 @@ arangodb::Result IResearchLink::init(
       }
     }
 
-    auto logicalView = engine->getView(vocbase.name(), viewId); // valid to call ClusterInfo (initialized in ClusterFFeature::prepare()) even from Databasefeature::start()
+    auto logicalView = engine->getView(vocbase.name(), viewId); // valid to call ClusterInfo (initialized in ClusterFeature::prepare()) even from Databasefeature::start()
 
     // if there is no logicalView present yet then skip this step
     if (logicalView) {
@@ -980,7 +980,7 @@ arangodb::Result IResearchLink::insert(
   }
 
   if (_inRecovery) {
-    ctx->remove(_collection.id(), documentId.id());
+    ctx->remove(documentId);
   }
 
   try {
@@ -992,7 +992,7 @@ arangodb::Result IResearchLink::insert(
 
     auto doc = ctx->_ctx.insert();
 
-    insertDocument(doc, body, _collection.id(), documentId.id());
+    insertDocument(doc, body, _collection.id(), documentId);
 
     if (!doc) {
       return arangodb::Result(
@@ -1161,7 +1161,7 @@ arangodb::Result IResearchLink::remove(
   // all of its fid stores, no impact to iResearch View data integrity
   // ...........................................................................
   try {
-    ctx->remove(_collection.id(), documentId.id());
+    ctx->remove(documentId);
 
     return TRI_ERROR_NO_ERROR;
   } catch (arangodb::basics::Exception const& e) {

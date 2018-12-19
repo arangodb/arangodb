@@ -229,7 +229,7 @@ SECTION("Field_setCid") {
   {
     TRI_voc_cid_t cid = 10;
     arangodb::iresearch::Field::setCidValue(field, cid, arangodb::iresearch::Field::init_stream_t());
-    CHECK(arangodb::iresearch::DocumentPrimaryKey::CID() == field._name);
+    CHECK(irs::string_ref("@_CID") == field._name);
     CHECK(&irs::flags::empty_instance() == field._features);
 
     auto* stream = dynamic_cast<irs::string_token_stream*>(field._analyzer.get());
@@ -238,7 +238,7 @@ SECTION("Field_setCid") {
     CHECK(!stream->next());
 
     arangodb::iresearch::Field::setCidValue(field, cid);
-    CHECK(arangodb::iresearch::DocumentPrimaryKey::CID() == field._name);
+    CHECK(irs::string_ref("@_CID") == field._name);
     CHECK(&irs::flags::empty_instance() == field._features);
     CHECK(stream == field._analyzer.get());
     CHECK(stream->next());
@@ -1493,14 +1493,13 @@ SECTION("test_cid_rid_encoding") {
     cid = cidSlice.getNumber<TRI_voc_cid_t>();
     rid = ridSlice.getNumber<uint64_t>();
 
-    arangodb::iresearch::DocumentPrimaryKey const pk(cid, rid);
-
+    auto pk = arangodb::iresearch::DocumentPrimaryKey(arangodb::LocalDocumentId(rid));
     auto& writer = store0.writer;
 
     // insert document
     {
       auto doc = writer->documents().insert();
-      arangodb::iresearch::Field::setCidValue(field, pk.first, arangodb::iresearch::Field::init_stream_t());
+      arangodb::iresearch::Field::setCidValue(field, cid, arangodb::iresearch::Field::init_stream_t());
       CHECK((doc.insert(irs::action::index, field)));
       arangodb::iresearch::Field::setPkValue(field, pk);
       CHECK(doc.insert(irs::action::index_store, field));
@@ -1534,7 +1533,7 @@ SECTION("test_cid_rid_encoding") {
     rid = ridSlice.getNumber<uint64_t>();
 
     auto& segment = (*reader)[0];
-    auto* cidField = segment.field(arangodb::iresearch::DocumentPrimaryKey::CID());
+    auto* cidField = segment.field(irs::string_ref("@_CID"));
     CHECK(cidField);
     CHECK(size == cidField->docs_count());
 
@@ -1544,7 +1543,7 @@ SECTION("test_cid_rid_encoding") {
 
     arangodb::iresearch::PrimaryKeyFilterContainer filters;
     CHECK(filters.empty());
-    auto& filter = filters.emplace(cid, rid);
+    auto& filter = filters.emplace(arangodb::LocalDocumentId(rid));
     REQUIRE(filter.type() == arangodb::iresearch::PrimaryKeyFilter::type());
     CHECK(!filters.empty());
 
@@ -1578,10 +1577,9 @@ SECTION("test_cid_rid_encoding") {
         irs::bytes_ref pkValue;
         CHECK(values(id, pkValue));
 
-        arangodb::iresearch::DocumentPrimaryKey::type pk;
+        arangodb::LocalDocumentId pk;
         CHECK(arangodb::iresearch::DocumentPrimaryKey::read(pk, pkValue));
-        CHECK(cid == pk.first);
-        CHECK(rid == pk.second);
+        CHECK(rid == pk.id());
       }
     }
 
@@ -1676,13 +1674,13 @@ SECTION("test_cid_rid_filter") {
     auto cid = cidSlice.getNumber<TRI_voc_cid_t>();
     auto rid = ridSlice.getNumber<uint64_t>();
     arangodb::iresearch::Field field;
-    arangodb::iresearch::DocumentPrimaryKey const pk(cid, rid);
+    auto pk = arangodb::iresearch::DocumentPrimaryKey(arangodb::LocalDocumentId(rid));
 
     // insert document
     {
       auto ctx = store.writer->documents();
       auto doc = ctx.insert();
-      arangodb::iresearch::Field::setCidValue(field, pk.first, arangodb::iresearch::Field::init_stream_t());
+      arangodb::iresearch::Field::setCidValue(field, cid, arangodb::iresearch::Field::init_stream_t());
       CHECK((doc.insert(irs::action::index, field)));
       arangodb::iresearch::Field::setPkValue(field, pk);
       CHECK((doc.insert(irs::action::index_store, field)));
@@ -1695,10 +1693,10 @@ SECTION("test_cid_rid_filter") {
   // add extra doc to hold segment after others are removed
   {
     arangodb::iresearch::Field field;
-    arangodb::iresearch::DocumentPrimaryKey const pk(42, 12345);
+    arangodb::iresearch::DocumentPrimaryKey pk(arangodb::LocalDocumentId(12345));
     auto ctx = store.writer->documents();
     auto doc = ctx.insert();
-    arangodb::iresearch::Field::setCidValue(field, pk.first, arangodb::iresearch::Field::init_stream_t());
+    arangodb::iresearch::Field::setCidValue(field, 42, arangodb::iresearch::Field::init_stream_t());
     CHECK((doc.insert(irs::action::index, field)));
     arangodb::iresearch::Field::setPkValue(field, pk);
     CHECK((doc.insert(irs::action::index_store, field)));
@@ -1721,11 +1719,10 @@ SECTION("test_cid_rid_filter") {
       auto const ridSlice = docSlice.get("rid");
       CHECK(ridSlice.isNumber<uint64_t>());
 
-      auto cid = cidSlice.getNumber<TRI_voc_cid_t>();
       auto rid = ridSlice.getNumber<uint64_t>();
       arangodb::iresearch::PrimaryKeyFilterContainer filters;
       CHECK((filters.empty()));
-      auto& filter = filters.emplace(cid, rid);
+      auto& filter = filters.emplace(arangodb::LocalDocumentId(rid));
       REQUIRE((filter.type() == arangodb::iresearch::PrimaryKeyFilter::type()));
       CHECK((!filters.empty()));
 
@@ -1757,10 +1754,9 @@ SECTION("test_cid_rid_filter") {
         irs::bytes_ref pkValue;
         CHECK((values(id, pkValue)));
 
-        arangodb::iresearch::DocumentPrimaryKey::type pk;
+        arangodb::LocalDocumentId pk;
         CHECK((arangodb::iresearch::DocumentPrimaryKey::read(pk, pkValue)));
-        CHECK((cid == pk.first));
-        CHECK((rid == pk.second));
+        CHECK((rid == pk.id()));
       }
     }
 
@@ -1777,14 +1773,14 @@ SECTION("test_cid_rid_filter") {
     auto cid = cidSlice.getNumber<TRI_voc_cid_t>();
     auto rid = ridSlice.getNumber<uint64_t>();
     arangodb::iresearch::Field field;
-    arangodb::iresearch::DocumentPrimaryKey const pk(cid, rid);
+    auto pk = arangodb::iresearch::DocumentPrimaryKey(arangodb::LocalDocumentId(rid));
 
     // remove + insert document
     {
       auto ctx = store.writer->documents();
-      ctx.remove(std::make_shared<arangodb::iresearch::PrimaryKeyFilter>(cid, rid));
+      ctx.remove(std::make_shared<arangodb::iresearch::PrimaryKeyFilter>(arangodb::LocalDocumentId(rid)));
       auto doc = ctx.insert();
-      arangodb::iresearch::Field::setCidValue(field, pk.first, arangodb::iresearch::Field::init_stream_t());
+      arangodb::iresearch::Field::setCidValue(field, cid, arangodb::iresearch::Field::init_stream_t());
       CHECK((doc.insert(irs::action::index, field)));
       arangodb::iresearch::Field::setPkValue(field, pk);
       CHECK((doc.insert(irs::action::index_store, field)));
@@ -1796,10 +1792,10 @@ SECTION("test_cid_rid_filter") {
   // add extra doc to hold segment after others are removed
   {
     arangodb::iresearch::Field field;
-    arangodb::iresearch::DocumentPrimaryKey const pk(43, 123456);
+    arangodb::iresearch::DocumentPrimaryKey pk(arangodb::LocalDocumentId(123456));
     auto ctx = store.writer->documents();
     auto doc = ctx.insert();
-    arangodb::iresearch::Field::setCidValue(field, pk.first, arangodb::iresearch::Field::init_stream_t());
+    arangodb::iresearch::Field::setCidValue(field, 43, arangodb::iresearch::Field::init_stream_t());
     CHECK((doc.insert(irs::action::index, field)));
     arangodb::iresearch::Field::setPkValue(field, pk);
     CHECK((doc.insert(irs::action::index_store, field)));
@@ -1826,11 +1822,10 @@ SECTION("test_cid_rid_filter") {
       auto const ridSlice = docSlice.get("rid");
       CHECK(ridSlice.isNumber<uint64_t>());
 
-      auto cid = cidSlice.getNumber<TRI_voc_cid_t>();
       auto rid = ridSlice.getNumber<uint64_t>();
       arangodb::iresearch::PrimaryKeyFilterContainer filters;
       CHECK((filters.empty()));
-      auto& filter = filters.emplace(cid, rid);
+      auto& filter = filters.emplace(arangodb::LocalDocumentId(rid));
       REQUIRE((filter.type() == arangodb::iresearch::PrimaryKeyFilter::type()));
       CHECK((!filters.empty()));
 
@@ -1862,10 +1857,9 @@ SECTION("test_cid_rid_filter") {
           irs::bytes_ref pkValue;
           CHECK((values(id, pkValue)));
 
-          arangodb::iresearch::DocumentPrimaryKey::type pk;
+          arangodb::LocalDocumentId pk;
           CHECK((arangodb::iresearch::DocumentPrimaryKey::read(pk, pkValue)));
-          CHECK((cid == pk.first));
-          CHECK((rid == pk.second));
+          CHECK((rid == pk.id()));
         }
       }
     }
@@ -1883,14 +1877,14 @@ SECTION("test_cid_rid_filter") {
     auto cid = cidSlice.getNumber<TRI_voc_cid_t>();
     auto rid = ridSlice.getNumber<uint64_t>();
     arangodb::iresearch::Field field;
-    arangodb::iresearch::DocumentPrimaryKey const pk(cid, rid);
+    auto pk = arangodb::iresearch::DocumentPrimaryKey(arangodb::LocalDocumentId(rid));
 
     // remove + insert document
     {
       auto ctx = store.writer->documents();
-      ctx.remove(std::make_shared<arangodb::iresearch::PrimaryKeyFilter>(cid, rid));
+      ctx.remove(std::make_shared<arangodb::iresearch::PrimaryKeyFilter>(arangodb::LocalDocumentId(rid)));
       auto doc = ctx.insert();
-      arangodb::iresearch::Field::setCidValue(field, pk.first, arangodb::iresearch::Field::init_stream_t());
+      arangodb::iresearch::Field::setCidValue(field, cid, arangodb::iresearch::Field::init_stream_t());
       CHECK((doc.insert(irs::action::index, field)));
       arangodb::iresearch::Field::setPkValue(field, pk);
       CHECK((doc.insert(irs::action::index_store, field)));
@@ -1902,10 +1896,10 @@ SECTION("test_cid_rid_filter") {
   // add extra doc to hold segment after others are removed
   {
     arangodb::iresearch::Field field;
-    arangodb::iresearch::DocumentPrimaryKey const pk(44, 1234567);
+    arangodb::iresearch::DocumentPrimaryKey pk(arangodb::LocalDocumentId(1234567));
     auto ctx = store.writer->documents();
     auto doc = ctx.insert();
-    arangodb::iresearch::Field::setCidValue(field, pk.first, arangodb::iresearch::Field::init_stream_t());
+    arangodb::iresearch::Field::setCidValue(field, 44, arangodb::iresearch::Field::init_stream_t());
     CHECK((doc.insert(irs::action::index, field)));
     arangodb::iresearch::Field::setPkValue(field, pk);
     CHECK((doc.insert(irs::action::index_store, field)));
@@ -1932,11 +1926,10 @@ SECTION("test_cid_rid_filter") {
       auto const ridSlice = docSlice.get("rid");
       CHECK(ridSlice.isNumber<uint64_t>());
 
-      auto cid = cidSlice.getNumber<TRI_voc_cid_t>();
       auto rid = ridSlice.getNumber<uint64_t>();
       arangodb::iresearch::PrimaryKeyFilterContainer filters;
       CHECK((filters.empty()));
-      auto& filter = filters.emplace(cid, rid);
+      auto& filter = filters.emplace(arangodb::LocalDocumentId(rid));
       REQUIRE((filter.type() == arangodb::iresearch::PrimaryKeyFilter::type()));
       CHECK((!filters.empty()));
 
@@ -1968,10 +1961,9 @@ SECTION("test_cid_rid_filter") {
           irs::bytes_ref pkValue;
           CHECK((values(id, pkValue)));
 
-          arangodb::iresearch::DocumentPrimaryKey::type pk;
+          arangodb::LocalDocumentId pk;
           CHECK((arangodb::iresearch::DocumentPrimaryKey::read(pk, pkValue)));
-          CHECK((cid == pk.first));
-          CHECK((rid == pk.second));
+          CHECK((rid == pk.id()));
         }
       }
     }
