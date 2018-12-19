@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/CommunicationPhase.h"
 #include "SimpleHttpClient/ClientConnection.h"
 #include "SimpleHttpClient/SslClientConnection.h"
+#include "Logger/Logger.h"
 #include "Basics/socket-utils.h"
 
 #ifdef TRI_HAVE_POLL_H
@@ -167,9 +168,12 @@ bool GeneralClientConnection::connect() {
 void GeneralClientConnection::disconnect() {
   if (isConnected()) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    // we mustn't close sockets that we just opened.
-    // if, don't open them in first place.
-    TRI_ASSERT((_written + _read) != 0);
+    if ((_written + _read) == 0) {
+      std::string bt;
+      TRI_GetBacktrace(bt);
+      LOG_TOPIC(WARN, Logger::COMMUNICATION) <<
+        "Closing HTTP-connection right after opening it without sending data!" + bt;
+    }
     _written = 0;
     _read = 0;
 #endif
