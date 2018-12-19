@@ -489,7 +489,7 @@ std::pair<bool, bool> Condition::findIndexes(
 /// @brief get the attributes for a sub-condition that are const
 /// (i.e. compared with equality)
 std::vector<std::vector<arangodb::basics::AttributeName>>
-Condition::getConstAttributes(Variable const* reference, bool includeNull) {
+Condition::getConstAttributes(Variable const* reference, bool includeNull) const {
   std::vector<std::vector<arangodb::basics::AttributeName>> result;
 
   if (_root == nullptr) {
@@ -575,7 +575,6 @@ void Condition::normalize() {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (_root != nullptr) {
-    // _root->dump(0);
     validateAst(_root, 0);
   }
 #endif
@@ -583,11 +582,13 @@ void Condition::normalize() {
 
 void Condition::collectOverlappingMembers(ExecutionPlan const* plan,
                                           Variable const* variable,
-                                          AstNode* andNode,
-                                          AstNode* otherAndNode,
+                                          AstNode const* andNode,
+                                          AstNode const* otherAndNode,
                                           std::unordered_set<size_t>& toRemove,
-                                          bool isSparse,
+                                          Index const* index, /* may be nullptr */
                                           bool isFromTraverser) {
+  bool const isSparse = (index != nullptr && index->sparse());
+
   std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
       result;
 
@@ -606,13 +607,16 @@ void Condition::collectOverlappingMembers(ExecutionPlan const* plan,
         
       clearAttributeAccess(result);
 
-      if (lhs->isAttributeAccessForVariable(result, isFromTraverser) &&
-          result.first == variable) {
-        if (rhs->isNullValue()) {
-          toRemove.emplace(i);
-          // removed, no need to go on below...
-          continue;
-        }
+      // only remove the condition if the index is exactly on the same attribute as
+      // the condition
+      if (rhs->isNullValue() &&
+          lhs->isAttributeAccessForVariable(result, isFromTraverser) &&
+          result.first == variable &&
+          index->fields().size() == 1 &&
+          arangodb::basics::AttributeName::isIdentical(result.second, index->fields()[0], false)) {
+        toRemove.emplace(i);
+        // removed, no need to go on below...
+        continue;
       }
     }
 
@@ -636,7 +640,7 @@ void Condition::collectOverlappingMembers(ExecutionPlan const* plan,
           ConditionPart current(variable, result.second, operand,
                                 ATTRIBUTE_LEFT, nullptr);
 
-          if (CanRemove(plan, current, otherAndNode, isFromTraverser)) {
+          if (canRemove(plan, current, otherAndNode, isFromTraverser)) {
             toRemove.emplace(i);
           }
         }
@@ -651,7 +655,7 @@ void Condition::collectOverlappingMembers(ExecutionPlan const* plan,
           ConditionPart current(variable, result.second, operand,
                                 ATTRIBUTE_RIGHT, nullptr);
 
-          if (CanRemove(plan, current, otherAndNode, isFromTraverser)) {
+          if (canRemove(plan, current, otherAndNode, isFromTraverser)) {
             toRemove.emplace(i);
           }
         }
@@ -663,30 +667,33 @@ void Condition::collectOverlappingMembers(ExecutionPlan const* plan,
 /// @brief removes condition parts from another
 AstNode* Condition::removeIndexCondition(ExecutionPlan const* plan,
                                          Variable const* variable,
-                                         AstNode const* other,
-                                         bool isSparse) {
-  if (_root == nullptr || other == nullptr) {
+                                         AstNode const* condition,
+                                         Index const* index) {
+  TRI_ASSERT(index != nullptr);
+
+  if (_root == nullptr || condition == nullptr) {
     return _root;
   }
 
   TRI_ASSERT(_root != nullptr);
   TRI_ASSERT(_root->type == NODE_TYPE_OPERATOR_NARY_OR);
 
-  TRI_ASSERT(other != nullptr);
-  TRI_ASSERT(other->type == NODE_TYPE_OPERATOR_NARY_OR);
+  TRI_ASSERT(condition != nullptr);
+  TRI_ASSERT(condition->type == NODE_TYPE_OPERATOR_NARY_OR);
 
-  if (other->numMembers() != 1 && _root->numMembers() != 1) {
+  if (condition->numMembers() != 1 && _root->numMembers() != 1) {
     return _root;
   }
 
   auto andNode = _root->getMemberUnchecked(0);
   TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
-  auto otherAndNode = other->getMemberUnchecked(0);
-  TRI_ASSERT(otherAndNode->type == NODE_TYPE_OPERATOR_NARY_AND);
   size_t const n = andNode->numMembers();
 
+  auto conditionAndNode = condition->getMemberUnchecked(0);
+  TRI_ASSERT(conditionAndNode->type == NODE_TYPE_OPERATOR_NARY_AND);
+
   std::unordered_set<size_t> toRemove;
-  collectOverlappingMembers(plan, variable, andNode, otherAndNode, toRemove, isSparse, false);
+  collectOverlappingMembers(plan, variable, andNode, conditionAndNode, toRemove, index, false);
 
   if (toRemove.empty()) {
     return _root;
@@ -736,7 +743,7 @@ AstNode* Condition::removeTraversalCondition(ExecutionPlan const* plan,
   size_t const n = andNode->numMembers();
 
   std::unordered_set<size_t> toRemove;
-  collectOverlappingMembers(plan, variable, andNode, otherAndNode, toRemove, false, true);
+  collectOverlappingMembers(plan, variable, andNode, otherAndNode, toRemove, nullptr, true);
 
   if (toRemove.empty()) {
     return _root;
@@ -1181,7 +1188,7 @@ void Condition::validateAst(AstNode const* node, int level) {
 #endif
 
 /// @brief checks if the current condition is covered by the other
-bool Condition::CanRemove(ExecutionPlan const* plan, ConditionPart const& me,
+bool Condition::canRemove(ExecutionPlan const* plan, ConditionPart const& me,
                           arangodb::aql::AstNode const* andNode,
                           bool isFromTraverser) {
   TRI_ASSERT(andNode != nullptr);
