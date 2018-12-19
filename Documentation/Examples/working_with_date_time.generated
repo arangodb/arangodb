@@ -7,21 +7,21 @@ arangosh&gt; db._query(<span class="hljs-string">"FOR d IN exampleTime FILTER d.
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"132693"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"exampleTime/132693"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_X1nZt5C--B"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_X6ar7r2--_"</span>, 
     <span class="hljs-string">"value"</span> : <span class="hljs-number">3</span>, 
     <span class="hljs-string">"ts"</span> : <span class="hljs-string">"2014-05-08T11:19:09.522"</span> 
   }, 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"132687"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"exampleTime/132687"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_X1nZt5---B"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_X6ar7ry--B"</span>, 
     <span class="hljs-string">"value"</span> : <span class="hljs-number">1</span>, 
     <span class="hljs-string">"ts"</span> : <span class="hljs-string">"2014-05-07T21:19:09.522"</span> 
   }, 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"132690"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"exampleTime/132690"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_X1nZt5C--_"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_X6ar7ry--D"</span>, 
     <span class="hljs-string">"value"</span> : <span class="hljs-number">2</span>, 
     <span class="hljs-string">"ts"</span> : <span class="hljs-string">"2014-05-08T04:19:09.522"</span> 
   } 
