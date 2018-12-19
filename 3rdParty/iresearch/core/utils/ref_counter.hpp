@@ -41,14 +41,14 @@ class ref_counter : public util::noncopyable { // noncopyable because shared_ptr
   typedef std::shared_ptr<const Key> ref_t;
 
   struct equal_to : Equal {
-    bool operator()(const ref_t& lhs, const ref_t& rhs) const {
+    bool operator()(const ref_t& lhs, const ref_t& rhs) const NOEXCEPT {
       assert(lhs && rhs);
       return Equal::operator()(*lhs, *rhs);
     }
   }; // equal_to
 
   struct hash : Hash {
-    size_t operator()(const ref_t& value) const {
+    size_t operator()(const ref_t& value) const NOEXCEPT {
       assert(value);
       return Hash::operator()(*value);
     }

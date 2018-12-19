@@ -3,6 +3,8 @@ v3.4.1 (XXXX-XX-XX)
 
 * fixed issue #7757: Using multiple filters on nested objects produces wrong results
 
+* fixed issue #7763: Collect after update does not execute updates
+
 * fixed issue #7586: a running query within the user interface was not shown
   if the active view was `Running Queries` or `Slow Query History`.
 
