@@ -189,9 +189,9 @@ inline void insertDocument(
   }
 
   // System fields
-  DocumentPrimaryKey const primaryKey(docPk);
 
   // Indexed and Stored: LocalDocumentId
+  auto const primaryKey = DocumentPrimaryKey::encode(docPk);
   Field::setPkValue(field, primaryKey);
   doc.insert(irs::action::index_store, field);
 }

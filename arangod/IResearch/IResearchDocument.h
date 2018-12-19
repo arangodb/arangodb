@@ -80,13 +80,12 @@ constexpr char const NESTING_LIST_OFFSET_PREFIX = '[';
 constexpr char const NESTING_LIST_OFFSET_SUFFIX = ']';
 
 struct IResearchViewMeta; // forward declaration
-struct DocumentPrimaryKey; // forward declaration
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief indexed/stored document field adapter for IResearch
 ////////////////////////////////////////////////////////////////////////////////
 struct Field {
-  static void setPkValue(Field& field, DocumentPrimaryKey const& pk);
+  static void setPkValue(Field& field, LocalDocumentId::BaseType const& pk);
 
   Field() = default;
   Field(Field&& rhs);
@@ -236,38 +235,23 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief represents stored primary key of the ArangoDB document
 ////////////////////////////////////////////////////////////////////////////////
-class DocumentPrimaryKey {
- public:
+struct DocumentPrimaryKey {
   static irs::string_ref const& PK() noexcept; // stored primary key column
 
-  explicit DocumentPrimaryKey(arangodb::LocalDocumentId const& value) noexcept;
-
-  bool operator==(DocumentPrimaryKey const& other) const noexcept {
-    return _pk == other._pk;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief coverts a PK to a corresponding irs::bytes_ref
-  //////////////////////////////////////////////////////////////////////////////
-  explicit operator irs::bytes_ref() const noexcept;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief coverts a PK to a corresponding LocalDocumentId
-  //////////////////////////////////////////////////////////////////////////////
-  operator arangodb::LocalDocumentId() const noexcept;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief encodes a specified PK value
+  /// @returns encoded value
+  ////////////////////////////////////////////////////////////////////////////////
+  static LocalDocumentId::BaseType encode(LocalDocumentId value) noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief reads and decodes PK from a specified buffer
   /// @returns 'true' on success, 'false' otherwise
   /// @note PLEASE NOTE that 'in.c_str()' MUST HAVE alignment >= alignof(uint64_t)
   ////////////////////////////////////////////////////////////////////////////////
-  static bool read(
-    arangodb::LocalDocumentId& value,
-    irs::bytes_ref const& in
-  ) noexcept;
+  static bool read(LocalDocumentId& value, irs::bytes_ref const& in) noexcept;
 
- private:
-  arangodb::LocalDocumentId::BaseType _pk; // store in network byte order
+  DocumentPrimaryKey() = delete;
 }; // DocumentPrimaryKey
 
 NS_END // iresearch

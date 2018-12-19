@@ -1458,7 +1458,7 @@ SECTION("test_rid_encoding") {
 
     rid = ridSlice.getNumber<uint64_t>();
 
-    auto pk = arangodb::iresearch::DocumentPrimaryKey(arangodb::LocalDocumentId(rid));
+    auto pk = arangodb::iresearch::DocumentPrimaryKey::encode(arangodb::LocalDocumentId(rid));
     auto& writer = store0.writer;
 
     // insert document
@@ -1628,7 +1628,7 @@ SECTION("test_rid_filter") {
 
     auto rid = ridSlice.getNumber<uint64_t>();
     arangodb::iresearch::Field field;
-    auto pk = arangodb::iresearch::DocumentPrimaryKey(arangodb::LocalDocumentId(rid));
+    auto pk = arangodb::iresearch::DocumentPrimaryKey::encode(arangodb::LocalDocumentId(rid));
 
     // insert document
     {
@@ -1645,7 +1645,7 @@ SECTION("test_rid_filter") {
   // add extra doc to hold segment after others are removed
   {
     arangodb::iresearch::Field field;
-    arangodb::iresearch::DocumentPrimaryKey pk(arangodb::LocalDocumentId(12345));
+    auto pk = arangodb::iresearch::DocumentPrimaryKey::encode(arangodb::LocalDocumentId(12345));
     auto ctx = store.writer->documents();
     auto doc = ctx.insert();
     arangodb::iresearch::Field::setPkValue(field, pk);
@@ -1718,7 +1718,7 @@ SECTION("test_rid_filter") {
 
     auto rid = ridSlice.getNumber<uint64_t>();
     arangodb::iresearch::Field field;
-    auto pk = arangodb::iresearch::DocumentPrimaryKey(arangodb::LocalDocumentId(rid));
+    auto pk = arangodb::iresearch::DocumentPrimaryKey::encode(arangodb::LocalDocumentId(rid));
 
     // remove + insert document
     {
@@ -1735,7 +1735,7 @@ SECTION("test_rid_filter") {
   // add extra doc to hold segment after others are removed
   {
     arangodb::iresearch::Field field;
-    arangodb::iresearch::DocumentPrimaryKey pk(arangodb::LocalDocumentId(123456));
+    auto pk = arangodb::iresearch::DocumentPrimaryKey::encode(arangodb::LocalDocumentId(123456));
     auto ctx = store.writer->documents();
     auto doc = ctx.insert();
     arangodb::iresearch::Field::setPkValue(field, pk);
@@ -1813,7 +1813,7 @@ SECTION("test_rid_filter") {
 
     auto rid = ridSlice.getNumber<uint64_t>();
     arangodb::iresearch::Field field;
-    auto pk = arangodb::iresearch::DocumentPrimaryKey(arangodb::LocalDocumentId(rid));
+    auto pk = arangodb::iresearch::DocumentPrimaryKey::encode(arangodb::LocalDocumentId(rid));
 
     // remove + insert document
     {
@@ -1830,7 +1830,7 @@ SECTION("test_rid_filter") {
   // add extra doc to hold segment after others are removed
   {
     arangodb::iresearch::Field field;
-    arangodb::iresearch::DocumentPrimaryKey pk(arangodb::LocalDocumentId(1234567));
+    auto pk = arangodb::iresearch::DocumentPrimaryKey::encode(arangodb::LocalDocumentId(1234567));
     auto ctx = store.writer->documents();
     auto doc = ctx.insert();
     arangodb::iresearch::Field::setPkValue(field, pk);

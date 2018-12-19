@@ -27,6 +27,7 @@
 
 #include "index/index_reader.hpp"
 #include "utils/hash_utils.hpp"
+#include "utils/numeric_utils.hpp"
 
 namespace {
 
@@ -57,7 +58,9 @@ irs::doc_iterator::ptr PrimaryKeyFilter::execute(
 
   auto term = pkField->iterator();
 
-  if (!term->seek(static_cast<irs::bytes_ref>(_pk))) {
+  auto const pkRef = irs::numeric_utils::numeric_traits<LocalDocumentId::BaseType>::raw_ref(_pk);
+
+  if (!term->seek(pkRef)) {
     // no such term
     return irs::doc_iterator::empty();
   }
@@ -89,7 +92,7 @@ size_t PrimaryKeyFilter::hash() const noexcept {
   size_t seed = 0;
 
   irs::hash_combine(seed, filter::hash());
-  irs::hash_combine(seed, arangodb::LocalDocumentId(_pk).id());
+  irs::hash_combine(seed, _pk);
 
   return seed;
 }

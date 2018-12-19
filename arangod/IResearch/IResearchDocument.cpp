@@ -38,7 +38,6 @@
 #include "search/term_filter.hpp"
 
 #include "utils/log.hpp"
-#include "utils/numeric_utils.hpp"
 
 NS_LOCAL
 
@@ -398,7 +397,7 @@ NS_BEGIN(iresearch)
 
 /*static*/ void Field::setPkValue(
     Field& field,
-    DocumentPrimaryKey const& pk
+    LocalDocumentId::BaseType const& pk
 ) {
   field._name = PK_COLUMN;
   field._features = &irs::flags::empty_instance();
@@ -620,21 +619,8 @@ void FieldIterator::next() {
   return PK_COLUMN;
 }
 
-DocumentPrimaryKey::DocumentPrimaryKey(
-    arangodb::LocalDocumentId const& value
-) noexcept
-  : _pk(irs::numeric_utils::numeric_traits<uint64_t>::hton(value.id())) {
-}
-
-// NOTE implementation must match implementation of read(...)
-DocumentPrimaryKey::operator irs::bytes_ref() const noexcept {
-  return irs::numeric_utils::numeric_traits<uint64_t>::raw_ref(_pk);
-}
-
-DocumentPrimaryKey::operator arangodb::LocalDocumentId() const noexcept {
-  return arangodb::LocalDocumentId(
-    irs::numeric_utils::numeric_traits<uint64_t>::ntoh(_pk)
-  );
+/*static*/ LocalDocumentId::BaseType DocumentPrimaryKey::encode(LocalDocumentId value) noexcept {
+  return PrimaryKeyEndianness<Endianness>::hostToPk(value.id());
 }
 
 // PLEASE NOTE that 'in.c_str()' MUST HAVE alignment >= alignof(uint64_t)
@@ -649,7 +635,7 @@ DocumentPrimaryKey::operator arangodb::LocalDocumentId() const noexcept {
 
   // PLEASE NOTE that 'in.c_str()' MUST HAVE alignment >= alignof(uint64_t)
   value = arangodb::LocalDocumentId(
-    irs::numeric_utils::numeric_traits<uint64_t>::ntoh(
+    PrimaryKeyEndianness<Endianness>::pkToHost(
       *reinterpret_cast<arangodb::LocalDocumentId::BaseType const*>(in.c_str())
     )
   );
