@@ -648,7 +648,7 @@ Result RocksDBEdgeIndex::removeInternal(
     res.reset(rocksutils::convertStatus(s));
     addErrorMsg(res);
   }
-  
+
   return res;
 }
 
@@ -873,7 +873,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
   size_t n = 0;
   cache::Cache* cc = _cache.get();
   for (it->Seek(lower); it->Valid(); it->Next()) {
-    if (scheduler->isStopping()) {
+    if (application_features::ApplicationServer::isStopping()) {
       return;
     }
     n++;
@@ -1077,10 +1077,10 @@ void RocksDBEdgeIndex::setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<
 void RocksDBEdgeIndex::recalculateEstimates() {
   TRI_ASSERT(_estimator != nullptr);
   _estimator->clear();
-  
+
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   rocksdb::SequenceNumber seq = db->GetLatestSequenceNumber();
-  
+
   auto bounds = RocksDBKeyBounds::EdgeIndex(_objectId);
   rocksdb::Slice const end = bounds.end();
   rocksdb::ReadOptions options;

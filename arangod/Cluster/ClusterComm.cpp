@@ -1052,7 +1052,7 @@ private:
   CoordTransactionID _coordTransactionID;
   ClusterComm::AsyncCallback _callback;
 
-  rest::Scheduler::WorkHandle _handle;
+  Scheduler::WorkHandle _handle;
   std::unordered_map<OperationID, size_t> opIDtoIndex;
   std::vector<ClusterCommTimeout> dueTime;
   size_t nrDone = 0;

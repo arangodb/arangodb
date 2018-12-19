@@ -99,7 +99,7 @@ class InitialSyncer : public Syncer {
   replutils::BatchInfo _batch;
   replutils::ProgressInfo _progress;
   /// recurring task to keep the batch alive
-  rest::Scheduler::WorkHandle _batchPingTimer;
+  Scheduler::WorkHandle _batchPingTimer;
 };
 }  // namespace arangodb
 

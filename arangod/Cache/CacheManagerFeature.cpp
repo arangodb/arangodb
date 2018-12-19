@@ -44,7 +44,6 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::cache;
 using namespace arangodb::options;
-using namespace arangodb::rest;
 
 namespace arangodb {
 

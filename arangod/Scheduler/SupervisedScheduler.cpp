@@ -40,7 +40,6 @@
 
 using namespace arangodb;
 using namespace arangodb::basics;
-using namespace arangodb::rest;
 
 namespace {
 static uint64_t getTickCount_ns () {
@@ -52,7 +51,6 @@ static uint64_t getTickCount_ns () {
 }
 
 namespace arangodb {
-namespace rest {
 
 class SupervisedSchedulerThread : virtual public Thread {
 public:
@@ -77,7 +75,6 @@ public:
   void run() { _scheduler.runWorker(); };
 };
 
-}
 }
 
 SupervisedScheduler::SupervisedScheduler(uint64_t minThreads,
@@ -104,11 +101,17 @@ SupervisedScheduler::SupervisedScheduler(uint64_t minThreads,
 
 SupervisedScheduler::~SupervisedScheduler() {}
 
+bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> const& handler) {
+  std::function<void()> copy = handler;
+  return queue(lane, std::move(copy));
+}
+
 bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> &&handler)
 {
   size_t queueNo = (size_t) PriorityRequestLane(lane);
 
-  TRI_ASSERT(/*0 <= queueNo &&*/ queueNo <= 2);
+  TRI_ASSERT(queueNo <= 2);
+  TRI_ASSERT(isStopping() == false);
 
   static thread_local uint64_t lastSubmitTime_ns;
   bool doNotify = false;
@@ -188,14 +191,15 @@ bool SupervisedScheduler::start() {
   return Scheduler::start();
 }
 
-void SupervisedScheduler::beginShutdown() {
-  std::unique_lock<std::mutex> guard(_mutex);
-  _stopping = true;
-  _conditionWork.notify_all();
-  Scheduler::beginShutdown();
-}
-
 void SupervisedScheduler::shutdown () {
+  {
+    std::unique_lock<std::mutex> guard(_mutex);
+    _stopping = true;
+    _conditionWork.notify_all();
+  }
+
+  Scheduler::shutdown();
+
   // call the destructor of all threads
   _manager.reset();
 
@@ -203,7 +207,6 @@ void SupervisedScheduler::shutdown () {
     stopOneThread();
   }
 
-  Scheduler::shutdown();
 }
 
 void SupervisedScheduler::runWorker()
@@ -272,7 +275,7 @@ void SupervisedScheduler::runSupervisor()
     queueLength = jobsSubmitted - jobsDequeued;
 
     bool doStartOneThread =
-      ((/*(_numWorker < numCpuCores) &&*/ (queueLength >= 3 * _numWorker) && ((lastQueueLength + _numWorker) < queueLength))
+      (((queueLength >= 3 * _numWorker) && ((lastQueueLength + _numWorker) < queueLength))
       || (lastJobsSubmitted > jobsDone)) && (queueLength != 0);
 
 
@@ -314,13 +317,14 @@ void SupervisedScheduler::runSupervisor()
 
 void SupervisedScheduler::cleanupAbandonedThreads() {
 
-  for (auto i = _abandonedWorkerStates.begin();
-       i != _abandonedWorkerStates.end(); i++) {
+  auto i = _abandonedWorkerStates.begin();
 
+  while (i != _abandonedWorkerStates.end()) {
     auto &state = *i;
-
     if (!state->_thread->isRunning()) {
-      _abandonedWorkerStates.erase(i);
+      i = _abandonedWorkerStates.erase(i);
+    } else {
+      i++;
     }
   }
 }
@@ -331,12 +335,14 @@ void SupervisedScheduler::sortoutLongRunningThreads() {
   // if we can start a new thread.
 
   auto now = clock::now();
+  auto i = _workerStates.begin();
 
-  for (auto i = _workerStates.begin(); i != _workerStates.end(); i++) {
+  while ( i != _workerStates.end()) {
 
     auto &state = *i;
 
     if (!state->_working) {
+      i++;
       continue ;
     }
 
@@ -350,11 +356,13 @@ void SupervisedScheduler::sortoutLongRunningThreads() {
 
       // Move that thread to the abandoned thread
       _abandonedWorkerStates.push_back(std::move(state));
-      _workerStates.erase(i);
+      i = _workerStates.erase(i);
       _numWorker--;
 
       // and now start another thread!
       startOneThread();
+    } else {
+      i++;
     }
   }
 }

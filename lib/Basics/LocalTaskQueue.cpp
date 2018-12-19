@@ -186,7 +186,7 @@ void LocalTaskQueue::dispatchAndWait() {
 
       if (_missing > 0 &&
           _started == 0 &&
-          SchedulerFeature::SCHEDULER->isStopping()) {
+          application_features::ApplicationServer::isStopping()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
       }
 
@@ -216,7 +216,7 @@ void LocalTaskQueue::dispatchAndWait() {
 
       if (_missing > 0 &&
           _started == 0 &&
-          SchedulerFeature::SCHEDULER->isStopping()) {
+          application_features::ApplicationServer::isStopping()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
       }
 

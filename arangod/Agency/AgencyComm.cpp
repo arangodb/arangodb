@@ -712,28 +712,28 @@ void AgencyCommManager::updateEndpoints(std::vector<std::string> const& newEndpo
   for (std::string const& endp : newEndpoints) {
     updatedSet.emplace(Endpoint::unifiedForm(endp));
   }
-  
+
   MUTEX_LOCKER(locker, _lock);
-  
+
   std::set<std::string> currentSet;
   currentSet.insert(_endpoints.begin(), _endpoints.end());
-  
+
   std::set<std::string> toRemove;
   std::set_difference(currentSet.begin(), currentSet.end(),
                       updatedSet.begin(), updatedSet.end(),
                       std::inserter(toRemove, toRemove.begin()));
-  
+
   std::set<std::string> toAdd;
   std::set_difference(updatedSet.begin(), updatedSet.end(),
                       currentSet.begin(), currentSet.end(),
                       std::inserter(toAdd, toAdd.begin()));
-  
+
   for (std::string const& rem : toRemove) {
     LOG_TOPIC(INFO, Logger::AGENCYCOMM) << "Removing endpoint " << rem << " from agent pool";
     _endpoints.erase(std::remove(_endpoints.begin(), _endpoints.end(), rem),
                      _endpoints.end());
   }
-  
+
   for (std::string const& add : toAdd) {
     LOG_TOPIC(INFO, Logger::AGENCYCOMM) << "Adding endpoint " << add << " to agent pool";
     _endpoints.emplace_back(add);

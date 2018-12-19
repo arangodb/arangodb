@@ -25,158 +25,127 @@
 #ifndef ARANGOD_SCHEDULER_SCHEDULER_H
 #define ARANGOD_SCHEDULER_SCHEDULER_H 1
 
-#include "Basics/Common.h"
-
-#include <boost/lockfree/queue.hpp>
-
 #include <mutex>
 #include <condition_variable>
 #include <queue>
 
-#include "Basics/Mutex.h"
-#include "Basics/asio_ns.h"
-#include "Basics/socket-utils.h"
-#include "Endpoint/Endpoint.h"
 #include "GeneralServer/RequestLane.h"
-#include "Scheduler/SchedulerFeature.h"
 
 namespace arangodb {
-class ListenTask;
-class SchedulerThread;
 
 namespace velocypack {
 class Builder;
 }
 
-namespace rest {
-class GeneralCommTask;
-class SocketTask;
-
+class Scheduler;
+class SchedulerThread;
 class SchedulerCronThread;
 
 class Scheduler {
-  Scheduler(Scheduler const&) = delete;
-  Scheduler& operator=(Scheduler const&) = delete;
 
- public:
-  Scheduler();
+public:
+  explicit Scheduler();
   virtual ~Scheduler();
 
-  struct QueueStatistics {
-    uint64_t _running;
-    uint64_t _working;
-    uint64_t _queued;
-    uint64_t _fifo1;
-    uint64_t _fifo2;
-    uint64_t _fifo3;
-  };
-
-
+// ---------------------------------------------------------------------------
+// Scheduling and Task Queuing - the relevant stuff
+// ---------------------------------------------------------------------------
 public:
-  virtual void addQueueStatistics(velocypack::Builder&) const = 0;
-  virtual QueueStatistics queueStatistics() const = 0;
-  virtual std::string infoStatus() const = 0;
-
-private:
-  std::atomic<size_t> _numWorker;
-  std::atomic<bool> _stopping;
-
-public:
-  virtual bool isRunning() const = 0;
-  virtual bool isStopping() const noexcept = 0;
-
-  virtual bool start();
-  virtual void beginShutdown();
-  virtual void shutdown();
-
-
-private:
   class WorkItem;
-public:
   typedef std::chrono::steady_clock clock;
   typedef std::shared_ptr<WorkItem> WorkHandle;
 
-  // Enqueues a task at given priority
-  bool queue(RequestLane lane, std::function<void()> const& handler) {
-    std::function<void()> copy = handler;  // This is an intended copy operation
-    return queue(lane, std::move(handler));
-  }
-
+  // Enqueues a task - this is implemented on the specific scheduler
+  virtual bool queue(RequestLane lane, std::function<void()> const& handler) = 0;
   virtual bool queue(RequestLane lane, std::function<void()> &&) = 0;
 
-  WorkHandle queueDelay(
+  // Enqueues a task after delay - this uses the queue functions above.
+  // WorkHandle is a shared_ptr to a WorkItem. If all references the WorkItem
+  // are dropped, the task is canceled.
+  virtual WorkHandle queueDelay(
     RequestLane lane,
     clock::duration delay,
-    std::function<void(bool cancelled)> const& handler
-  ) {
-    std::function<void(bool cancelled)> copy = handler; // This is an intended copy operation
-    return queueDelay(lane, delay, std::move(copy));
-  }
-
-  WorkHandle queueDelay(
-    RequestLane lane,
-    clock::duration delay,
-    std::function<void(bool cancelled)> && handler
+    std::function<void(bool canceled)> const& handler
   );
 
-private:
-  class WorkItem {
-    std::function<void(bool)> _handler;
-    RequestLane _lane;
-    std::atomic<bool> _disable;
-    Scheduler *_scheduler;
+  virtual WorkHandle queueDelay(
+    RequestLane lane,
+    clock::duration delay,
+    std::function<void(bool canceled)> && handler
+  );
 
+
+  class WorkItem {
   public:
-    // This is not copyable or moveable
+    virtual ~WorkItem() { cancel(); };
+
+    // Cancels the WorkItem
+    void cancel() { executeWithCancel(true); }
+
+    // Runs the WorkItem immediately
+    void run() { executeWithCancel(false); }
+
+    WorkItem(
+      std::function<void(bool canceled)> && handler,
+      RequestLane lane,
+      Scheduler *scheduler
+    ) : _handler(std::move(handler)), _lane(lane), _disable(false),
+      _scheduler(scheduler) {};
+
+  private:
+    // This is not copyable or movable
     WorkItem(WorkItem const&) = delete;
     WorkItem(WorkItem &&) = delete;
     void operator=(WorkItem const&) const = delete;
 
-    explicit WorkItem(std::function<void(bool cancelled)> const& handler, RequestLane lane, Scheduler *scheduler) :
-      _handler(handler),
-      _lane(lane),
-      _disable(false),
-      _scheduler(scheduler)
-    {}
+    inline void executeWithCancel(bool arg) {
+      bool disabled = _disable.exchange(true);
 
-    explicit WorkItem(std::function<void(bool cancelled)> && handler, RequestLane lane, Scheduler *scheduler) :
-      _handler(std::move(handler)),
-      _lane(lane),
-      _disable(false),
-      _scheduler(scheduler)
-    {}
-
-    ~WorkItem() { cancel(); }
-
-  private:
-    void doWith(bool argCancelled) {
-      bool disabled = false;
-      if (_disable.compare_exchange_strong(disabled, true)) {
-        if (!disabled) {
-          _scheduler->queue(_lane, [handler = std::move(_handler), argCancelled]() {
-            handler(argCancelled);
-          });
-        }
+      // If compare_exchange_strong returns true, the previous value had to be false
+      // Hence we are the first dealing with this WorkItem
+      if (disabled == false) {
+        // The following code moves the _handler into the Scheduler.
+        // Thus any reference to class to self in the _handler will be released
+        // as soon as the scheduler executed the _handler lambda.
+        _scheduler->queue(_lane, [handler = std::move(_handler), arg]() {
+          handler(arg);
+        });
       }
     }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    bool isDisabled() {
+      return _disable.load();
+    }
+    friend class Scheduler;
+#endif
 
-    void cancel() { doWith(true); }
-    void run() { doWith(false); }
-    friend Scheduler;
+  private:
+    std::function<void(bool)> _handler;
+    RequestLane _lane;
+    std::atomic<bool> _disable;
+    Scheduler *_scheduler;
   };
 
 
- private:
-  friend class SchedulerCronThread;
+// ---------------------------------------------------------------------------
+// CronThread and delayed tasks
+// ---------------------------------------------------------------------------
+private:
 
-  // The priority queue is managed by a Cron Thread. It wakes up on a regular basis (10ms currently)
+  // The priority queue is managed by a CronThread. It wakes up on a regular basis (10ms currently)
   // and looks at queue.top(). It the _expire time is smaller than now() and the task is not canceled
   // it is posted on the scheduler. The next sleep time is computed depending on queue top.
   //
   // Note that tasks that have a delay of less than 1ms are posted directly.
-  // For tasks above 50ms the Cron Thread is woken up to potentially update its sleep time, which
+  // For tasks above 50ms the CronThread is woken up to potentially update its sleep time, which
   // could now be shorter than before.
-  void runCron();
+
+  // Entry point for the CronThread
+  void runCronThread();
+  friend class SchedulerCronThread;
+
+  // Removed all tasks from the priority queue and cancels them
+  void cancelAllCronTasks();
 
   typedef std::pair<
     clock::time_point,
@@ -199,10 +168,46 @@ private:
 
   std::mutex _cronQueueMutex;
   std::condition_variable _croncv;
-
   std::unique_ptr<SchedulerCronThread> _cronThread;
+
+
+
+// ---------------------------------------------------------------------------
+// Statistics stuff
+// ---------------------------------------------------------------------------
+public:
+  struct QueueStatistics {
+    uint64_t _running;
+    uint64_t _working;
+    uint64_t _queued;
+    uint64_t _fifo1;
+    uint64_t _fifo2;
+    uint64_t _fifo3;
+  };
+
+  virtual void addQueueStatistics(velocypack::Builder&) const = 0;
+  virtual QueueStatistics queueStatistics() const = 0;
+  virtual std::string infoStatus() const = 0;
+
+// ---------------------------------------------------------------------------
+// Start/Stop/IsRunning stuff
+// ---------------------------------------------------------------------------
+public:
+  virtual bool start();
+  virtual void shutdown();
+
+protected:
+  // You wondering why Scheduler::isStopping() no longer works for you?
+  // Go away and use `application_features::ApplicationServer::isStopping()`
+  // It is made for people that want to know if the should stop doing things.
+  virtual bool isStopping() = 0;
+
+private:
+  Scheduler(Scheduler const&) = delete;
+  Scheduler(Scheduler &&) = delete;
+  void operator=(Scheduler const&) = delete;
 };
-}  // namespace rest
-}  // namespace arangodb
+
+}
 
 #endif

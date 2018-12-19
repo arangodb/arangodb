@@ -43,31 +43,35 @@
 
 using namespace arangodb;
 using namespace arangodb::basics;
-using namespace arangodb::rest;
 
 namespace arangodb {
-namespace rest {
-class SchedulerThread : virtual public Thread {
-public:
-  SchedulerThread(Scheduler &scheduler) : Thread("Scheduler"), _scheduler(scheduler) {}
-  ~SchedulerThread() { shutdown(); }
-protected:
-  Scheduler &_scheduler;
-};
 
-class SchedulerCronThread : public SchedulerThread {
-public:
-  SchedulerCronThread(Scheduler &scheduler) : Thread("SchedCron"), SchedulerThread(scheduler) {}
-  void run() { _scheduler.runCron(); };
-};
+  class SchedulerThread : virtual public Thread {
+  public:
+    SchedulerThread(Scheduler &scheduler) : Thread("Scheduler"), _scheduler(scheduler) {}
+    ~SchedulerThread() { shutdown(); }
+  protected:
+    Scheduler &_scheduler;
+  };
+
+
+  class SchedulerCronThread : public SchedulerThread {
+  public:
+    SchedulerCronThread(Scheduler &scheduler) :
+      Thread("SchedCron"), SchedulerThread(scheduler) {}
+
+    void run() {
+      _scheduler.runCronThread();
+    }
+  };
 
 }
-}
 
 
-Scheduler::Scheduler()
+Scheduler::Scheduler() /*: _stopping(false)*/
 {
-#ifdef _WIN32
+  // Move this into the Feature and then move it else where
+/*#ifdef _WIN32
 // Windows does not support POSIX signal handling
 #else
   struct sigaction action;
@@ -83,31 +87,48 @@ Scheduler::Scheduler()
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "cannot initialize signal handlers for pipe";
   }
-#endif
+#endif*/
 }
 
 Scheduler::~Scheduler() {}
 
 
 bool Scheduler::start() {
-
   _cronThread.reset(new SchedulerCronThread(*this));
-  _cronThread->start();
-
-  return true;
+  return _cronThread->start();
 }
 
-void Scheduler::beginShutdown() {
+/*void Scheduler::beginShutdown() {
   std::unique_lock<std::mutex> guard2(_cronQueueMutex);
+  _stopping.store(true);
+  cancelAllTasks();
   _croncv.notify_one();
-}
+}*/
 
 void Scheduler::shutdown () {
-  // call the destructor of all threads
+  TRI_ASSERT(isStopping());
+  {
+    std::unique_lock<std::mutex> guard(_cronQueueMutex);
+    _croncv.notify_one();
+  }
   _cronThread.reset();
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // At this point the cron thread has been stopped
+  // And there will be no other people posting on the queue
+  // Lets make sure that all items on the queue are disabled
+  while (_cronQueue.size() > 0) {
+    auto const& top = _cronQueue.top();
+    auto item = top.second.lock();
+    if (item) {
+      TRI_ASSERT(item->isDisabled());
+    }
+    _cronQueue.pop();
+  }
+#endif
 }
 
-void Scheduler::runCron()
+void Scheduler::runCronThread()
 {
   std::unique_lock<std::mutex> guard(_cronQueueMutex);
 
@@ -144,8 +165,20 @@ void Scheduler::runCron()
 Scheduler::WorkHandle Scheduler::queueDelay(
     RequestLane lane,
     clock::duration delay,
+    std::function<void(bool cancelled)> const& handler
+) {
+  std::function<void(bool cancelled)> copy = handler;
+  return queueDelay(lane, delay, std::move(copy));
+}
+
+Scheduler::WorkHandle Scheduler::queueDelay(
+    RequestLane lane,
+    clock::duration delay,
     std::function<void(bool cancelled)> && handler
 ) {
+
+  TRI_ASSERT(!isStopping());
+
   if (delay < std::chrono::milliseconds(1)) {
     // execute directly
     queue(lane, [handler](){ handler(false); });
@@ -162,3 +195,17 @@ Scheduler::WorkHandle Scheduler::queueDelay(
 
   return item;
 }
+/*
+void Scheduler::cancelAllTasks() {
+  //std::unique_lock<std::mutex> guard(_cronQueueMutex);
+  LOG_TOPIC(ERR, Logger::FIXME) << "cancelAllTasks";
+  while (_cronQueue.size() > 0) {
+    auto const& top = _cronQueue.top();
+    auto item = top.second.lock();
+    if (item) {
+      item->cancel();
+    }
+    _cronQueue.pop();
+  }
+}
+*/

@@ -34,9 +34,6 @@
 #include "GeneralServer/GeneralServer.h"
 
 namespace arangodb {
-namespace rest {
-class Scheduler;
-}
 
 typedef std::function<void(const asio_ns::error_code& ec,
                            std::size_t transferred)>

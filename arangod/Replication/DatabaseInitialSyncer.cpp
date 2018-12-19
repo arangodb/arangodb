@@ -193,7 +193,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
       if (r.fail()) {
         return r;
       }
-      
+
       // enable patching of collection count for ShardSynchronization Job
       std::string patchCount = StaticStrings::Empty;
       std::string const& engineName = EngineSelectorFeature::ENGINE->typeName();
@@ -207,7 +207,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
       if (r.fail()) {
         return r;
       }
-      
+
       startRecurringBatchExtension();
     }
 
@@ -235,7 +235,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
     // strip eventual objectIDs and then dump the collections
     auto pair = rocksutils::stripObjectIds(collections);
     r = handleCollectionsAndViews(pair.first, views, incremental);
-    
+
     // all done here, do not try to finish batch if master is unresponsive
     if (r.isNot(TRI_ERROR_REPLICATION_NO_RESPONSE) && !_config.isChild()) {
       _config.batch.finish(_config.connection, _config.progress);
@@ -548,7 +548,7 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
       response.reset(client->retryRequest(rest::RequestType::GET, url,
                                           nullptr, 0, headers));
     });
-    
+
 
     if (replutils::hasFailed(response.get())) {
       stats.waitedForDump += TRI_microtime() - t;
@@ -858,7 +858,7 @@ Result DatabaseInitialSyncer::fetchCollectionSync(
   // so we're sending the x-arango-async header here
   auto headers = replutils::createHeaders();
   headers[StaticStrings::Async] = "store";
-  
+
   std::unique_ptr<httpclient::SimpleHttpResult> response;
   _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
     response.reset(client->retryRequest(rest::RequestType::POST, url,
@@ -1359,7 +1359,7 @@ arangodb::Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
   _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
     response.reset(client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
   });
-  
+
   if (replutils::hasFailed(response.get())) {
     if (!_config.isChild()) {
       _config.batch.finish(_config.connection, _config.progress);
@@ -1469,11 +1469,11 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(VPackSlice const& collSl
       return r;
     }
   }
-  
+
   // STEP 3: now that the collections exist create the views
   // this should be faster than re-indexing afterwards
   // ----------------------------------------------------------------------------------
-  
+
   if (!_config.applier._skipCreateDrop &&
       _config.applier._restrictCollections.empty() &&
       viewSlices.isArray()) {
@@ -1487,10 +1487,10 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(VPackSlice const& collSl
   } else {
     _config.progress.set("view creation skipped because of configuration");
   }
-  
+
   // STEP 4: sync collection data from master and create initial indexes
   // ----------------------------------------------------------------------------------
-  
+
   // now load the data into the collections
   return iterateCollections(collections, incremental, PHASE_DUMP);
 }

@@ -92,7 +92,7 @@ class Conductor {
   double _startTimeSecs = 0;
   double _computationStartTimeSecs = 0;
   double _endTimeSecs = 0;
-  rest::Scheduler::WorkHandle _workHandle;
+  Scheduler::WorkHandle _workHandle;
 
   bool _startGlobalStep();
   int _initializeWorkers(std::string const& path, VPackSlice additional);

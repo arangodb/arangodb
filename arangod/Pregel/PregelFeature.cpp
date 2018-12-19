@@ -286,7 +286,7 @@ void PregelFeature::cleanupConductor(uint64_t executionNumber) {
 void PregelFeature::cleanupWorker(uint64_t executionNumber) {
   // unmapping etc might need a few seconds
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   scheduler->queue(RequestLane::INTERNAL_LOW, [this, executionNumber] {
     MUTEX_LOCKER(guard, _mutex);
 
@@ -311,7 +311,7 @@ void PregelFeature::cleanupAll() {
 void PregelFeature::handleConductorRequest(std::string const& path,
                                            VPackSlice const& body,
                                            VPackBuilder& outBuilder) {
-  if (SchedulerFeature::SCHEDULER->isStopping()) {
+  if (application_features::ApplicationServer::isStopping()) {
     return;  // shutdown ongoing
   }
 
@@ -339,7 +339,7 @@ void PregelFeature::handleConductorRequest(std::string const& path,
                                                    std::string const& path,
                                                    VPackSlice const& body,
                                                    VPackBuilder& outBuilder) {
-  if (SchedulerFeature::SCHEDULER->isStopping()) {
+  if (application_features::ApplicationServer::isStopping()) {
     return;  // shutdown ongoing
   }
 

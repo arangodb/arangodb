@@ -146,7 +146,7 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
         "&lastScanned=" + StringUtils::itoa(lastScannedTick) +
         "&serverId=" + _state.localServerIdString +
         "&collection=" + StringUtils::urlEncode(collectionName);
-    
+
     // send request
     std::unique_ptr<httpclient::SimpleHttpResult> response;
     _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
@@ -197,7 +197,7 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
     if (found) {
       fromIncluded = StringUtils::boolean(header);
     }
-    if (!fromIncluded && fromTick > 0) {  
+    if (!fromIncluded && fromTick > 0) {
       until = fromTick;
       return Result(
           TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT,

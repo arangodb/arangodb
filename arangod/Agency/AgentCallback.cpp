@@ -48,7 +48,7 @@ bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
         success = body->slice().get("success").isTrue();
         otherTerm = body->slice().get("term").getNumber<term_t>();
       } catch (std::exception const& e) {
-        LOG_TOPIC(WARN, Logger::AGENCY) 
+        LOG_TOPIC(WARN, Logger::AGENCY)
           << "Bad callback message received: " << e.what();
         _agent->reportFailed(_slaveID, _toLog);
       }
@@ -76,7 +76,7 @@ bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
                  " answer.";
           }
         }
-          
+
         LOG_TOPIC(DEBUG, Logger::AGENCY) << "AgentCallback: "
           << body->slice().toJson();
         _agent->reportIn(_slaveID, _last, _toLog);
@@ -92,7 +92,7 @@ bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
     if (!application_features::ApplicationServer::isStopping() &&
         (_agent == nullptr || !_agent->isStopping())) {
       // Do not warn if we are already shutting down:
-      LOG_TOPIC(WARN, Logger::AGENCY) 
+      LOG_TOPIC(WARN, Logger::AGENCY)
         << "Got bad callback from AppendEntriesRPC: "
         << "comm_status(" << res->status
         << "), last(" << _last << "), follower("

@@ -341,7 +341,7 @@ void V8DealerFeature::start() {
     // this is because the number of cores may be too few for the cluster
     // startup to properly run through with all its parallel requests
     // and the potential need for multiple V8 contexts
-    _nrMaxContexts = (std::max)(uint64_t(scheduler->concurrency()), uint64_t(16));
+    _nrMaxContexts = (std::max)(uint64_t(0/*scheduler->concurrency()*/), uint64_t(16));
   }
 
   if (_nrMinContexts > _nrMaxContexts) {

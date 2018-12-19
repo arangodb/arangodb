@@ -187,7 +187,7 @@ void MMFilesLogfileManager::collectOptions(std::shared_ptr<ProgramOptions> optio
       "continue recovery even if re-applying operations fails",
       new BooleanParameter(&_ignoreRecoveryErrors));
 
-  options->addOption("--wal.flush-timeout", 
+  options->addOption("--wal.flush-timeout",
                      "flush timeout (in milliseconds)",
                      new UInt64Parameter(&_flushTimeout),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
@@ -203,7 +203,7 @@ void MMFilesLogfileManager::collectOptions(std::shared_ptr<ProgramOptions> optio
                      "maximum number of reserve logfiles to maintain",
                      new UInt32Parameter(&_reserveLogfiles));
 
-  options->addOption("--wal.slots",  
+  options->addOption("--wal.slots",
                      "number of logfile slots to use",
                      new UInt32Parameter(&_numberOfSlots),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));

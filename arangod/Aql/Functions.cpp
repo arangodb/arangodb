@@ -127,7 +127,7 @@ using namespace date;
  */
 
 namespace {
-    
+
 /// @brief an empty AQL value
 static AqlValue const emptyAqlValue;
 
@@ -6027,11 +6027,11 @@ AqlValue Functions::Matches(ExpressionContext* expressionContext,
     TRI_ASSERT(docSlice.isObject());
     for (auto const& it : VPackObjectIterator(example, true)) {
       VPackSlice keySlice = docSlice.get(it.key.stringRef());
-      
+
       if (it.value.isNull() && keySlice.isNone()) {
         continue;
       }
-      
+
       if (keySlice.isNone() ||
           // compare inner content
           basics::VelocyPackHelper::compare(keySlice, it.value, false,

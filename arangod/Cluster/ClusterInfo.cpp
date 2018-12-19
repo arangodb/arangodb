@@ -1133,7 +1133,7 @@ ClusterInfo::getCollections(DatabaseID const& databaseID) {
       // skip collections indexed by id
       result.push_back((*it2).second);
 
-      
+
     }
 
     ++it2;
@@ -1718,7 +1718,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
 
   // We run a loop here to send the agency transaction, since there might
   // be a precondition failed, in which case we want to retry for some time:
-  while (true) { 
+  while (true) {
     if (TRI_microtime() > endTime) {
       LOG_TOPIC(ERR, Logger::CLUSTER)
           << "Timeout in _create collection"
@@ -2457,7 +2457,7 @@ int ClusterInfo::ensureIndexCoordinator(
       // Note that this function sets the errorMsg unless it is precondition
       // failed, in which case we retry, if this times out, we need to set
       // it ourselves, otherwise all is done!
-      
+
       if (errorCode == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
         auto diff = std::chrono::steady_clock::now() - start;
         if (diff < std::chrono::seconds(120)) {
@@ -2465,7 +2465,7 @@ int ClusterInfo::ensureIndexCoordinator(
           std::this_thread::sleep_for(std::chrono::steady_clock::duration(wt));
           continue;
         }
-        errorCode 
+        errorCode
           = setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN,
                         errorMsg);
       }
@@ -2479,7 +2479,7 @@ int ClusterInfo::ensureIndexCoordinator(
     errorCode = TRI_ERROR_INTERNAL;
     setErrormsg(errorCode, errorMsg);
   }
-  
+
   // We get here in any case eventually, regardless of whether we have
   //   - succeeded with lookup or index creation
   //   - failed because of a timeout and rollback
@@ -2537,7 +2537,7 @@ int ClusterInfo::ensureIndexCoordinatorInner(
   if (!collection.isObject()) {
     return setErrormsg(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
   }
-  
+
   const size_t numberOfShards =
     basics::VelocyPackHelper::readNumericValue<size_t>(
       collection, StaticStrings::NumberOfShards, 1);
@@ -2547,7 +2547,7 @@ int ClusterInfo::ensureIndexCoordinatorInner(
     if (!type.isString()) {
       return setErrormsg(TRI_ERROR_INTERNAL, errorMsg);
     }
-    
+
     for (auto const& other : VPackArrayIterator(indexes)) {
       TRI_ASSERT(other.isObject());
       if (true == arangodb::Index::Compare(slice, other)) {
@@ -2562,10 +2562,10 @@ int ClusterInfo::ensureIndexCoordinatorInner(
     }
   }
 
-  // no existing index found.	
-  if (!create) {	
-    TRI_ASSERT(resultBuilder.isEmpty());	
-    return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);	
+  // no existing index found.
+  if (!create) {
+    TRI_ASSERT(resultBuilder.isEmpty());
+    return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
   }
 
   // will contain the error number and message
@@ -2593,7 +2593,7 @@ int ClusterInfo::ensureIndexCoordinatorInner(
           if (!k.isString() || idString != k.copyString()) {
             continue; // this is not our index
           }
-          
+
           // check for errors
           if (hasError(v)) {
             // Note that this closure runs with the mutex in the condition
@@ -2618,11 +2618,11 @@ int ClusterInfo::ensureIndexCoordinatorInner(
     if (found == (size_t)numberOfShards) {
       dbServerResult->store(setErrormsg(TRI_ERROR_NO_ERROR, *errMsg), std::memory_order_release);
     }
-    
+
     return true;
   };
 
-  VPackBuilder newIndexBuilder; 
+  VPackBuilder newIndexBuilder;
   {
     VPackObjectBuilder ob(&newIndexBuilder);
     // Add the new index ignoring "id"
@@ -2808,7 +2808,7 @@ int ClusterInfo::ensureIndexCoordinatorInner(
         // We only get here if the collection was dropped just in the moment
         // when we wanted to roll back the index creation.
       }
-      
+
       auto c = getCollection(databaseName, collectionID);
       if (!c) {
         errorMsg = "collection was dropped during ensureIndex";
@@ -2864,7 +2864,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   TRI_ASSERT(VPackObjectIterator(collection).size() > 0);
   size_t const numberOfShards = basics::VelocyPackHelper::readNumericValue<size_t>(
                                       collection, StaticStrings::NumberOfShards, 1);
-  
+
   VPackSlice indexes = collection.get("indexes");
   if (!indexes.isArray()) {
     LOG_TOPIC(DEBUG, Logger::CLUSTER)
@@ -2872,7 +2872,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
     << "/" << iid;
     return setErrormsg(TRI_ERROR_ARANGO_INDEX_NOT_FOUND, errorMsg);
   }
-  
+
   VPackSlice indexToRemove;
   for (VPackSlice indexSlice : VPackArrayIterator(indexes)) {
     auto idSlice = indexSlice.get(arangodb::StaticStrings::IndexId);
@@ -2889,7 +2889,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
       break;
     }
   }
-  
+
   if (!indexToRemove.isObject()) {
     LOG_TOPIC(DEBUG, Logger::CLUSTER)
     << "Failed to find index " << databaseName << "/" << collectionID
@@ -2979,7 +2979,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
     loadCurrent();
     return TRI_ERROR_NO_ERROR;
   }
-  
+
   {
     CONDITION_LOCKER(locker, agencyCallback->_cv);
 

@@ -348,11 +348,11 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
     _logicalCollection,
     AccessMode::Type::EXCLUSIVE);
   Result res = trx.begin();
-  
+
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
-    
+
   std::shared_ptr<Index> idx = lookupIndex(info);
   if (idx) {
     created = false; // We already have this index.
@@ -374,12 +374,12 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
   // we cannot persist primary or edge indexes
   TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
   TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX);
-  
+
   std::shared_ptr<Index> other = PhysicalCollection::lookupIndex(idx->id());
   if (other) { // index already exists
     return other;
   }
-  
+
   res = fillIndexes(trx, idx);
 
   if (!res.ok()) {
@@ -411,7 +411,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
     WRITE_LOCKER(guard, _indexesLock);
     addIndex(idx);
   }
-  
+
   if (!engine->inRecovery()) {
     auto builder = _logicalCollection.toVelocyPackIgnore(
         {"path", "statusString"}, true, /*forPersistence*/ true);
@@ -444,12 +444,12 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
     idx->drop();
     THROW_ARANGO_EXCEPTION(res);
   }
-  
+
   res = trx.commit();
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  
+
   created = true;
 
   return idx;
@@ -1307,7 +1307,7 @@ static arangodb::Result fillIndex(
         break;
       }
     }
-    
+
     batch.Clear();
   }
 
@@ -1322,7 +1322,7 @@ static arangodb::Result fillIndex(
       << "index creation: " << res2.errorMessage();
     }
   }
-  
+
   return res;
 }
 
@@ -1613,7 +1613,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
     }
   }
 
-  rocksdb::PinnableSlice ps;  
+  rocksdb::PinnableSlice ps;
   RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
   rocksdb::Status s = mthd->Get(RocksDBColumnFamily::documents(), key->string(), &ps);
 

@@ -26,31 +26,24 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Scheduler/Scheduler.h"
-#include "GeneralServer/Socket.h"
+#include "GeneralServer/Socket.h" // This is required for asio_ns::signal_set
 
 namespace arangodb {
 
-namespace rest {
-
-class Scheduler;
-
-}
-
 class SchedulerFeature final : public application_features::ApplicationFeature {
  public:
-  static rest::Scheduler* SCHEDULER;
+  static Scheduler* SCHEDULER;
 
   explicit SchedulerFeature(application_features::ApplicationServer& server);
   ~SchedulerFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
   void start() override final;
-  void beginShutdown() override final;
   void stop() override final;
   void unprepare() override final;
 
-  uint64_t queueSize() const { return _queueSize; }
 
  private:
   uint64_t _nrMinimalThreads = 2;
@@ -60,16 +53,16 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   uint64_t _fifo2Size = 4096;
 
  public:
-  size_t concurrency() const { return static_cast<size_t>(_nrMaximalThreads); }
+  /*size_t concurrency() const { return static_cast<size_t>(_nrMaximalThreads); }*/
   void buildControlCHandler();
   void buildHangupHandler();
 
  private:
   /// @brief return the default number of threads to use (upper bound)
-  size_t defaultNumberOfThreads() const;
-  void buildScheduler();
+  //size_t defaultNumberOfThreads() const;
+  //void buildScheduler();
 
-  std::shared_ptr<rest::Scheduler> _scheduler;
+  std::unique_ptr<Scheduler> _scheduler;
 
   std::function<void(const asio_ns::error_code&, int)> _signalHandler;
   std::function<void(const asio_ns::error_code&, int)> _exitHandler;

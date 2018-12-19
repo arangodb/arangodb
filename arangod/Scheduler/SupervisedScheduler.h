@@ -25,12 +25,16 @@
 #ifndef ARANGOD_SUPERIVSED_SCHEDULER_SCHEDULER_H
 #define ARANGOD_SUPERIVSED_SCHEDULER_SCHEDULER_H 1
 
+
+#include <boost/lockfree/queue.hpp>
 #include <list>
+#include <mutex>
+#include <condition_variable>
+#include <queue>
+
 #include "Scheduler/Scheduler.h"
 
 namespace arangodb {
-
-namespace rest {
 
 class SupervisedSchedulerWorkerThread;
 class SupervisedSchedulerManagerThread;
@@ -43,17 +47,18 @@ class SupervisedScheduler : public Scheduler {
   virtual ~SupervisedScheduler();
 
   bool queue(RequestLane lane, std::function<void()> &&) override;
+  bool queue(RequestLane lane, std::function<void()> const&) override;
 
 private:
   std::atomic<size_t> _numWorker;
   std::atomic<bool> _stopping;
 
+protected:
+  bool isStopping() override { return _stopping; }
+
 public:
-  bool isRunning() const override { return _numWorker > 0; };
-  bool isStopping() const noexcept override { return _stopping; };
 
   bool start() override;
-  void beginShutdown() override;
   void shutdown() override;
 
   void addQueueStatistics(velocypack::Builder&) const;
@@ -150,7 +155,6 @@ public:
   void sortoutLongRunningThreads();
 
 };
-}
 }
 
 #endif

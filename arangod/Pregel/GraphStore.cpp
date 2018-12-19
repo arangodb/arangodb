@@ -197,7 +197,7 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
   << " threads to load data";
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   scheduler->queue(RequestLane::INTERNAL_LOW, [this, scheduler, callback] {
 
     // hold the current position where the ith vertex shard can

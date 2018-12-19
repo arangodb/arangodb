@@ -137,7 +137,7 @@ class Worker : public IWorker {
   std::atomic<uint64_t> _nextGSSSendMessageCount;
   /// if the worker has started sendng messages to the next GSS
   std::atomic<bool> _requestedNextGSS;
-  rest::Scheduler::WorkHandle _workHandle;
+  Scheduler::WorkHandle _workHandle;
 
   void _initializeMessageCaches();
   void _initializeVertexContext(VertexContext<V, E, M>* ctx);

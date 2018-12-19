@@ -49,25 +49,42 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
+namespace {
+  /// @brief return the default number of threads to use (upper bound)
+  size_t defaultNumberOfThreads() {
+    // use two times the number of hardware threads as the default
+    size_t result = TRI_numberProcessors() * 2;
+    // but only if higher than 64. otherwise use a default minimum value of 64
+    if (result < 64) {
+      result = 64;
+    }
+    return result;
+  }
+
+}
+
 namespace arangodb {
 
 Scheduler* SchedulerFeature::SCHEDULER = nullptr;
 
 SchedulerFeature::SchedulerFeature(
     application_features::ApplicationServer& server
-)
-    : ApplicationFeature(server, "Scheduler"), _scheduler(nullptr) {
-  setOptional(true);
+) : ApplicationFeature(server, "Scheduler"), _scheduler(nullptr) {
+  setOptional(false);
   startsAfter("GreetingsPhase");
-
   startsAfter("FileDescriptors");
 }
 
 SchedulerFeature::~SchedulerFeature() {}
 
 void SchedulerFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  options->addSection("server", "Server features");
+    std::shared_ptr<options::ProgramOptions> options
+) {
+
+  // Different implementations of the Scheduler may require different
+  // options to be set. This requires a solution here.
+
+  /*options->addSection("server", "Server features");
 
   // max / min number of threads
   options->addOption("--server.maximal-threads", std::string("maximum number of request handling threads to run (0 = use system-specific default of ") + std::to_string(defaultNumberOfThreads()) + ")",
@@ -96,11 +113,12 @@ void SchedulerFeature::collectOptions(
   options->addObsoleteOption("--server.threads", "number of threads", true);
 
   // renamed options
-  options->addOldOption("scheduler.threads", "server.maximal-threads");
+  options->addOldOption("scheduler.threads", "server.maximal-threads");*/
 }
 
 void SchedulerFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions>) {
+  std::shared_ptr<options::ProgramOptions>
+) {
   if (_nrMaximalThreads == 0) {
     _nrMaximalThreads = defaultNumberOfThreads();
   }
@@ -121,8 +139,14 @@ void SchedulerFeature::validateOptions(
   }
 }
 
+void SchedulerFeature::prepare() {
+  _scheduler = std::make_unique<SupervisedScheduler>(_nrMinimalThreads, _nrMaximalThreads,
+                                           _queueSize, _fifo1Size, _fifo2Size);
+  SCHEDULER = _scheduler.get();
+}
+
 void SchedulerFeature::start() {
-  auto const N = TRI_numberProcessors();
+  /*auto const N = TRI_numberProcessors();
 
   LOG_TOPIC(DEBUG, arangodb::Logger::THREADS)
       << "Detected number of processors: " << N;
@@ -166,6 +190,15 @@ void SchedulerFeature::start() {
 
   LOG_TOPIC(DEBUG, Logger::STARTUP) << "scheduler has started";
 
+*/
+  bool ok = _scheduler->start();
+  if (!ok) {
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "the scheduler cannot be started";
+    FATAL_ERROR_EXIT();
+  }
+
+  // THIS CODE IS TOTALLY UNRELATED TO THE SCHEDULER!?!
   try {
     auto* dealer = ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
     if (dealer->isEnabled()) {
@@ -178,13 +211,8 @@ void SchedulerFeature::start() {
   } catch(...) {}
 }
 
-void SchedulerFeature::beginShutdown() {
-  // shut-down scheduler
-  // maybe we could stop the supervisor here?
-}
-
 void SchedulerFeature::stop() {
-  static size_t const MAX_TRIES = 100;
+  /*static size_t const MAX_TRIES = 100;
 
   // shutdown user jobs (needs the scheduler)
   TRI_ShutdownV8Dispatcher();
@@ -215,32 +243,29 @@ void SchedulerFeature::stop() {
   // shutdown user jobs again, in case new ones appear
   TRI_ShutdownV8Dispatcher();
 
+  */
   _scheduler->shutdown();
 }
 
-void SchedulerFeature::unprepare() { SCHEDULER = nullptr; }
-
-/// @brief return the default number of threads to use (upper bound)
-size_t SchedulerFeature::defaultNumberOfThreads() const {
-  // use two times the number of hardware threads as the default
-  size_t result = TRI_numberProcessors() * 2;
-  // but only if higher than 64. otherwise use a default minimum value of 64
-  if (result < 64) {
-    result = 64;
-  }
-  return result;
+void SchedulerFeature::unprepare() {
+  SCHEDULER = nullptr;
+  _scheduler.reset();
 }
 
+
+/*
 
 void SchedulerFeature::buildScheduler() {
-  _scheduler = std::make_unique<SupervisedScheduler>(_nrMinimalThreads, _nrMaximalThreads,
-                                           _queueSize, _fifo1Size, _fifo2Size);
 
-  SCHEDULER = _scheduler.get();
 }
 
 
 
+*/
+
+// ---------------------------------------------------------------------------
+// Signal Handler stuff - no body knows what this has to do with scheduling
+// ---------------------------------------------------------------------------
 
 #ifdef _WIN32
 bool CtrlHandler(DWORD eventType) {

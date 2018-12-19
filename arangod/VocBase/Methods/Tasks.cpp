@@ -166,6 +166,7 @@ std::shared_ptr<VPackBuilder> Task::registeredTasks() {
 
 void Task::shutdownTasks() {
   MUTEX_LOCKER(guard, _tasksLock);
+  LOG_TOPIC(ERR, Logger::FIXME) << "Task::shutdownTasks";
 
   for (auto& it : _tasks) {
     it.second.second->cancel();
@@ -247,7 +248,14 @@ void Task::setUser(std::string const& user) { _user = user; }
 std::function<void(bool cancelled)> Task::callbackFunction() {
   auto self = shared_from_this();
 
+  LOG_TOPIC(ERR, Logger::FIXME) << "Task::callbackFunction() id=" << _id
+    << "self.count = " << self.use_count();
+
   return [self, this](bool cancelled) {
+    LOG_TOPIC(ERR, Logger::FIXME) << "Task::callbackFunction::<lambda1>() id=" << _id
+      << " self.count = " << self.use_count()
+      << " cancelled = " << cancelled;
+
     if (cancelled) {
       MUTEX_LOCKER(guard, _tasksLock);
 
@@ -275,7 +283,7 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
     }
 
     // permissions might have changed since starting this task
-    if (SchedulerFeature::SCHEDULER->isStopping() || !allowContinue) {
+    if (application_features::ApplicationServer::isStopping() || !allowContinue) {
       Task::unregisterTask(_id, false);
       return;
     }
@@ -286,9 +294,12 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
           ExecContextScope scope(_user.empty() ? ExecContext::superuser()
                                                : execContext.get());
 
+          LOG_TOPIC(ERR, Logger::FIXME) << "Task::callbackFunction::<lambda2>() id=" << _id
+            << "self.count = " << self.use_count();
+
           work(execContext.get());
 
-          if (_periodic.load() && !SchedulerFeature::SCHEDULER->isStopping()) {
+          if (_periodic.load() && !application_features::ApplicationServer::isStopping()) {
             // requeue the task
             queue(_interval);
           } else {
@@ -320,6 +331,7 @@ void Task::start() {
 
 void Task::queue(std::chrono::microseconds offset) {
   MUTEX_LOCKER(lock, _taskHandleMutex);
+  LOG_TOPIC(ERR, Logger::FIXME) << "Task::queue() id=" << _id;
   _taskHandle = SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW, offset, callbackFunction());
 }
 
@@ -327,6 +339,7 @@ void Task::cancel() {
   // this will prevent the task from dispatching itself again
   _periodic.store(false);
   MUTEX_LOCKER(lock, _taskHandleMutex);
+  LOG_TOPIC(ERR, Logger::FIXME) << "Task::cancel() id=" << _id;
   _taskHandle.reset();
 }
 

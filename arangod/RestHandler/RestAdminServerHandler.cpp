@@ -97,7 +97,7 @@ void RestAdminServerHandler::handleRole() {
   if (ReplicationFeature::INSTANCE != nullptr &&
       ReplicationFeature::INSTANCE->isActiveFailoverEnabled()) {
     hasFailover = true;
-  } 
+  }
   VPackBuilder builder;
   {
     VPackObjectBuilder b(&builder);
@@ -123,20 +123,20 @@ void RestAdminServerHandler::handleAvailability() {
       TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return;
   }
-  
+
   bool available = false;
   switch (ServerState::mode()) {
     case ServerState::Mode::DEFAULT:
       available = !application_features::ApplicationServer::isStopping();
       break;
-    case ServerState::Mode::MAINTENANCE: 
+    case ServerState::Mode::MAINTENANCE:
     case ServerState::Mode::REDIRECT:
-    case ServerState::Mode::TRYAGAIN: 
+    case ServerState::Mode::TRYAGAIN:
     case ServerState::Mode::INVALID:
       TRI_ASSERT(!available);
       break;
   }
- 
+
   if (!available) {
     // this will produce an HTTP 503 result
     generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_HTTP_SERVICE_UNAVAILABLE);
@@ -151,7 +151,7 @@ void RestAdminServerHandler::handleMode() {
   if (requestType == rest::RequestType::GET) {
     writeModeResult(ServerState::readOnly());
   } else if (requestType == rest::RequestType::PUT) {
-    
+
     AuthenticationFeature* af = AuthenticationFeature::instance();
     if (af->isActive() && !_request->user().empty()) {
       auth::Level lvl = auth::Level::NONE;
@@ -166,7 +166,7 @@ void RestAdminServerHandler::handleMode() {
         return;
       }
     }
-    
+
     bool parseSuccess = false;
     VPackSlice slice = this->parseVPackBody(parseSuccess);
     if (!parseSuccess) {
@@ -174,21 +174,21 @@ void RestAdminServerHandler::handleMode() {
                     TRI_ERROR_HTTP_BAD_PARAMETER, "invalid JSON");
       return;
     }
-    
+
     if (!slice.isObject()) {
       generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER, "body must be an object");
       return;
     }
-    
+
     auto modeSlice = slice.get("mode");
     if (!modeSlice.isString()) {
       generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER, "mode must be a string");
       return;
     }
-    
-    
+
+
     Result res;
     if (modeSlice.compareString("readonly") == 0) {
       res = ServerState::instance()->propagateClusterReadOnly(true);
@@ -199,7 +199,7 @@ void RestAdminServerHandler::handleMode() {
                     TRI_ERROR_HTTP_BAD_PARAMETER, "mode invalid");
       return;
     }
-    
+
     if (res.fail()) {
       generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_HTTP_SERVER_ERROR, "couldn't set requested mode");
@@ -207,7 +207,7 @@ void RestAdminServerHandler::handleMode() {
       return;
     }
     writeModeResult(ServerState::readOnly());
-    
+
   } else {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);

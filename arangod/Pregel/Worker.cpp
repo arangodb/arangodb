@@ -172,7 +172,7 @@ void Worker<V, E, M>::setupWorker() {
     // initialization of the graphstore might take an undefined amount
     // of time. Therefore this is performed asynchronous
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-    rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+    Scheduler* scheduler = SchedulerFeature::SCHEDULER;
     scheduler->queue(RequestLane::INTERNAL_LOW,
                      [this, callback] { _graphStore->loadShards(&_config, callback); });
   }
@@ -321,7 +321,7 @@ void Worker<V, E, M>::_startProcessing() {
   _state = WorkerState::COMPUTING;
   _activeCount = 0;  // active count is only valid after the run
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
 
   size_t total = _graphStore->localVertexCount();
   size_t delta = total / _config.parallelism();
@@ -682,7 +682,7 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
   _conductorAggregators->setAggregatedValues(data);
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   scheduler->queue(RequestLane::INTERNAL_LOW, [this] {
     if (_state != WorkerState::RECOVERING) {
       LOG_TOPIC(WARN, Logger::PREGEL) << "Compensation aborted prematurely.";
@@ -742,7 +742,7 @@ void Worker<V, E, M>::_callConductor(std::string const& path,
                                      VPackBuilder const& message) {
   if (ServerState::instance()->isRunningInCluster() == false) {
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-    rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+    Scheduler* scheduler = SchedulerFeature::SCHEDULER;
     scheduler->queue(RequestLane::INTERNAL_LOW, [path, message] {
       VPackBuilder response;
       PregelFeature::handleConductorRequest(path, message.slice(), response);

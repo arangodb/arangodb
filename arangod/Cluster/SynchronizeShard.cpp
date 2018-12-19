@@ -490,7 +490,7 @@ arangodb::Result SynchronizeShard::startReadLockOnLeader(
   if (!result.ok()) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << result.errorMessage();
     return result;
-  } 
+  }
   LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "Got read lock id: " << rlid;
 
   result = getReadLock(endpoint, database, collection, clientId, rlid, soft, timeout);
@@ -881,7 +881,7 @@ bool SynchronizeShard::first() {
         return false;
 
       }
-      
+
       auto lastTick = arangodb::basics::VelocyPackHelper::readNumericValue<TRI_voc_tick_t>(sy, LAST_LOG_TICK, 0);
       VPackBuilder builder;
 
@@ -948,13 +948,13 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
   double timeout = 300.0;
   TRI_voc_tick_t tickReached = 0;
   while (didTimeout && tries++ < 18) { // This will try to sync for at most 1 hour. (200 * 18 == 3600)
-    
+
     if (isStopping()) {
-      std::string errorMessage = 
+      std::string errorMessage =
         "synchronizeOneShard: startReadLockOnLeader (soft): shutting down";
       return ResultT<TRI_voc_tick_t>::error(TRI_ERROR_SHUTTING_DOWN, errorMessage);
     }
-    
+
     didTimeout = false;
     // Now ask for a "soft stop" on the leader, in case of mmfiles, this
     // will be a hard stop, but for rocksdb, this is a no-op:
@@ -965,7 +965,7 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
     Result res = startReadLockOnLeader(
       ep, database, collection.name(), clientId, lockJobId, true, timeout);
     if (!res.ok()) {
-      std::string errorMessage = 
+      std::string errorMessage =
         "synchronizeOneShard: error in startReadLockOnLeader (soft):"
         + res.errorMessage();
       return ResultT<TRI_voc_tick_t>::error(TRI_ERROR_INTERNAL, errorMessage);

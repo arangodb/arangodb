@@ -1612,7 +1612,7 @@ Result RestReplicationHandler::processRestoreIndexes(VPackSlice const& collectio
     // we don't care about deleted collections
     return {};
   }
-  
+
   std::shared_ptr<LogicalCollection> coll = _vocbase.lookupCollection(name);
   if (!coll) {
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -1628,7 +1628,7 @@ Result RestReplicationHandler::processRestoreIndexes(VPackSlice const& collectio
 
     auto physical = coll->getPhysical();
     TRI_ASSERT(physical != nullptr);
-    
+
     for (VPackSlice const& idxDef : VPackArrayIterator(indexes)) {
       // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
       arangodb::velocypack::Slice value = idxDef.get(StaticStrings::IndexType);
@@ -1649,7 +1649,7 @@ Result RestReplicationHandler::processRestoreIndexes(VPackSlice const& collectio
       } catch (basics::Exception const& e) {
         if (e.code() == TRI_ERROR_NOT_IMPLEMENTED) {
           continue;
-        } 
+        }
 
         std::string errorMsg = "could not create index: " + e.message();
         fres.reset(e.code(), errorMsg);
@@ -2715,7 +2715,7 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
   auto trx = query->trx();
   TRI_ASSERT(trx != nullptr);
   trx->addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
- 
+
   TRI_ASSERT(isLockHeld(id).is(TRI_ERROR_HTTP_NOT_FOUND));
 
   try {
@@ -2819,7 +2819,7 @@ static std::string IdToTombstoneKey (TRI_vocbase_t& vocbase, aql::QueryId id) {
 
 void RestReplicationHandler::timeoutTombstones() const {
   std::unordered_set<std::string> toDelete;
-  { 
+  {
     READ_LOCKER(readLocker, RestReplicationHandler::_tombLock);
     if (RestReplicationHandler::_tombstones.empty()) {
       // Fast path
@@ -2874,7 +2874,7 @@ void RestReplicationHandler::registerTombstone(aql::QueryId id) const {
   std::string key = IdToTombstoneKey(_vocbase, id);
   {
     WRITE_LOCKER(writeLocker, RestReplicationHandler::_tombLock);
-    RestReplicationHandler::_tombstones.emplace(key, std::chrono::steady_clock::now() + RestReplicationHandler::_tombstoneTimeout); 
+    RestReplicationHandler::_tombstones.emplace(key, std::chrono::steady_clock::now() + RestReplicationHandler::_tombstoneTimeout);
   }
   timeoutTombstones();
 }

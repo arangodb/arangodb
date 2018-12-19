@@ -101,7 +101,7 @@ static void CreateAgencyException(
 static void JS_CasAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   ONLY_IN_CLUSTER;
 
   if (args.Length() < 3) {
@@ -164,7 +164,7 @@ static void JS_CreateDirectoryAgency(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   ONLY_IN_CLUSTER;
 
   if (args.Length() != 1) {
@@ -213,7 +213,7 @@ static void JS_IncreaseVersionAgency(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
-  
+
   ONLY_IN_CLUSTER;
 
   if (args.Length() != 1) {
@@ -239,7 +239,7 @@ static void JS_IncreaseVersionAgency(
 static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
-  
+
   ONLY_IN_CLUSTER;
 
   if (args.Length() < 1) {
@@ -281,7 +281,7 @@ static void JS_APIAgency(std::string const& envelope,
                          v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
-  
+
   ONLY_IN_CLUSTER;
 
   if (args.Length() < 1) {
@@ -318,7 +318,7 @@ static void JS_APIAgency(std::string const& envelope,
       << "Error transforming result: out of memory";
     result.clear();
   }
-  
+
   auto l = TRI_VPackToV8(isolate, result.slice());
 
   TRI_V8_RETURN(l);
@@ -350,7 +350,7 @@ static void JS_TransientAgency(v8::FunctionCallbackInfo<v8::Value> const& args) 
 static void JS_RemoveAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   ONLY_IN_CLUSTER;
 
   if (args.Length() < 1) {
@@ -382,7 +382,7 @@ static void JS_RemoveAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_SetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   ONLY_IN_CLUSTER;
 
   if (args.Length() < 2) {
@@ -421,7 +421,7 @@ static void JS_SetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_Agency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
-  
+
   ONLY_IN_CLUSTER;
 
   if (args.Length() > 0) {
@@ -453,7 +453,7 @@ static void JS_Agency(v8::FunctionCallbackInfo<v8::Value> const& args) {
       << "Error transforming result: out of memory";
     result.clear();
   }
-  
+
   auto l = TRI_VPackToV8(isolate, result.slice());
 
   TRI_V8_RETURN(l);
@@ -468,7 +468,7 @@ static void JS_EndpointsAgency(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   ONLY_IN_CLUSTER;
 
   if (args.Length() != 0) {
@@ -480,7 +480,7 @@ static void JS_EndpointsAgency(
   std::sort(endpoints.begin(), endpoints.end());
   endpoints.assign(endpoints.begin(),
                    std::unique(endpoints.begin(), endpoints.end()));
-  
+
   v8::Handle<v8::Array> l = v8::Array::New(isolate);
 
   for (size_t i = 0; i < endpoints.size(); ++i) {
@@ -500,7 +500,7 @@ static void JS_EndpointsAgency(
 static void JS_PrefixAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   std::string const prefix = AgencyCommManager::path();
 
   TRI_V8_RETURN_STD_STRING(prefix);
@@ -514,7 +514,7 @@ static void JS_PrefixAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_UniqidAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   ONLY_IN_CLUSTER;
 
   if (args.Length() > 2) {
@@ -551,7 +551,7 @@ static void JS_UniqidAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_VersionAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   ONLY_IN_CLUSTER;
 
   if (args.Length() != 0) {
@@ -934,7 +934,7 @@ static void JS_GetDBServers(v8::FunctionCallbackInfo<v8::Value> const& args) {
     result->Set(TRI_V8_ASCII_STRING(isolate, "serverId"), TRI_V8_STD_STRING(isolate, id));
 
     auto itr = serverAliases.find(id);
-    
+
     if (itr != serverAliases.end()) {
       result->Set(TRI_V8_ASCII_STRING(isolate, "serverName"),
                   TRI_V8_STD_STRING(isolate, itr->second));
@@ -942,7 +942,7 @@ static void JS_GetDBServers(v8::FunctionCallbackInfo<v8::Value> const& args) {
       result->Set(TRI_V8_ASCII_STRING(isolate, "serverName"),
                   TRI_V8_STD_STRING(isolate, id));
     }
-      
+
     l->Set((uint32_t)i, result);
   }
 
@@ -1077,7 +1077,7 @@ static void JS_isFoxxmaster(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("isFoxxmaster()");
   }
-  
+
   if (ServerState::instance()->isFoxxmaster()) {
     TRI_V8_RETURN_TRUE();
   } else {
@@ -1094,7 +1094,7 @@ static void JS_getFoxxmasterQueueupdate(
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("getFoxxmasterQueueupdate()");
   }
-  
+
   if (ServerState::instance()->getFoxxmasterQueueupdate()) {
     TRI_V8_RETURN_TRUE();
   } else {
@@ -1106,11 +1106,11 @@ static void JS_getFoxxmasterQueueupdate(
 static void JS_setFoxxmasterQueueupdate(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("setFoxxmasterQueueupdate(bool)");
   }
-  
+
   bool queueUpdate = TRI_ObjectToBoolean(args[0]);
   ServerState::instance()->setFoxxmasterQueueupdate(queueUpdate);
 
@@ -1122,14 +1122,14 @@ static void JS_setFoxxmasterQueueupdate(v8::FunctionCallbackInfo<v8::Value> cons
     if (result.successful()) {
       result = comm.increment("Current/Version");
     }
-    if (!result.successful() && 
-        result.errorCode() != TRI_ERROR_SHUTTING_DOWN && 
+    if (!result.successful() &&
+        result.errorCode() != TRI_ERROR_SHUTTING_DOWN &&
         !application_features::ApplicationServer::isStopping()) {
       // gracefully ignore any shutdown errors here
       THROW_AGENCY_EXCEPTION(result);
     }
   }
-  
+
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1146,7 +1146,7 @@ static void JS_IdOfPrimaryServerState(
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("idOfPrimary()");
   }
-    
+
   TRI_V8_RETURN_STRING("");// no more secondaries
   TRI_V8_TRY_CATCH_END
 }
@@ -1273,7 +1273,7 @@ static void JS_RedetermineRoleServerState(
   if (changed) {
     TRI_V8_RETURN_TRUE();
   } else {
-    
+
   }*/
   TRI_V8_RETURN_FALSE();
   TRI_V8_TRY_CATCH_END
@@ -1837,7 +1837,7 @@ static void JS_GetId(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
 static void JS_ClusterDownload(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  
+
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (af != nullptr && af->isActive()) {
     // mop: really quick and dirty
@@ -1852,11 +1852,11 @@ static void JS_ClusterDownload(v8::FunctionCallbackInfo<v8::Value> const& args) 
       }
     }
     options->Set(TRI_V8_ASCII_STRING(isolate, "headers"), headers);
-    
+
     std::string authorization = "bearer " + af->tokenCache().jwtToken();
     v8::Handle<v8::String> v8Authorization = TRI_V8_STD_STRING(isolate, authorization);
     headers->Set(TRI_V8_ASCII_STRING(isolate, "Authorization"), v8Authorization);
-    
+
     args[2] = options;
   }
   TRI_V8_TRY_CATCH_END
@@ -1931,7 +1931,7 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   rt->SetInternalFieldCount(2);
 
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "agency"), JS_Agency);
-  
+
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "read"), JS_ReadAgency);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "write"), JS_WriteAgency);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "transact"), JS_TransactAgency);
@@ -1967,7 +1967,7 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   // register the global object
   v8::Handle<v8::Object> aa = rt->NewInstance();
   if (!aa.IsEmpty()) {
-    TRI_AddGlobalVariableVocbase(isolate, 
+    TRI_AddGlobalVariableVocbase(isolate,
                                  TRI_V8_ASCII_STRING(isolate, "ArangoAgency"), aa);
   }
 

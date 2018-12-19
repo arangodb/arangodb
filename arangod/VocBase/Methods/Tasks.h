@@ -94,7 +94,7 @@ class Task : public std::enable_shared_from_this<Task> {
   double const _created;
   std::string _user;
 
-  rest::Scheduler::WorkHandle _taskHandle;
+  Scheduler::WorkHandle _taskHandle;
   Mutex _taskHandleMutex;
 
   // guard to make sure the database is not dropped while used by us
