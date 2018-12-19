@@ -254,8 +254,8 @@ bool ClusterIndex::supportsFilterCondition(
         return matcher.matchAll(this, node, reference, itemsInIndex, estimatedItems,
                                 estimatedCost);
       } else if (_engineType == ClusterEngineType::RocksDBEngine) {
-        return PersistentIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex,
-                                                                        estimatedItems, estimatedCost);
+        return SkiplistIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex,
+                                                                      estimatedItems, estimatedCost);
       } 
       break;
     }
@@ -271,15 +271,15 @@ bool ClusterIndex::supportsFilterCondition(
         return SkiplistIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex,
                                                                       estimatedItems, estimatedCost);
       } else if (_engineType == ClusterEngineType::RocksDBEngine) {
-        return PersistentIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex,
-                                                                        estimatedItems, estimatedCost);
+        return SkiplistIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex,
+                                                                      estimatedItems, estimatedCost);
       }
       break;
     }
     case TRI_IDX_TYPE_PERSISTENT_INDEX: {
       // same for both engines
-      return PersistentIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex,
-                                                                      estimatedItems, estimatedCost);
+      return SkiplistIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex,
+                                                                    estimatedItems, estimatedCost);
     }
 
     case TRI_IDX_TYPE_UNKNOWN:
@@ -377,7 +377,7 @@ aql::AstNode* ClusterIndex::specializeCondition(
         SimpleAttributeEqualityMatcher matcher(this->_fields);
         return matcher.specializeAll(this, node, reference);
       } else if (_engineType == ClusterEngineType::RocksDBEngine) {
-        return PersistentIndexAttributeMatcher::specializeCondition(this, node, reference);
+        return SkiplistIndexAttributeMatcher::specializeCondition(this, node, reference);
       }
       break;
     
@@ -391,12 +391,12 @@ aql::AstNode* ClusterIndex::specializeCondition(
       if (_engineType == ClusterEngineType::MMFilesEngine) {
         return SkiplistIndexAttributeMatcher::specializeCondition(this, node, reference);
       } else if (_engineType == ClusterEngineType::RocksDBEngine) {
-        return PersistentIndexAttributeMatcher::specializeCondition(this, node, reference);
+        return SkiplistIndexAttributeMatcher::specializeCondition(this, node, reference);
       }
       break;
     }
     case TRI_IDX_TYPE_PERSISTENT_INDEX: {
-      return PersistentIndexAttributeMatcher::specializeCondition(this, node, reference);
+      return SkiplistIndexAttributeMatcher::specializeCondition(this, node, reference);
     }
 
     case TRI_IDX_TYPE_UNKNOWN:
