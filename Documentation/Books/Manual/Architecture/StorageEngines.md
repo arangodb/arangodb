@@ -24,14 +24,25 @@ ArangoDB. Since version 3.4, the default storage engine is RocksDB.
 
 *Blog article: [Comparing new RocksDB and MMFiles storage engines](https://www.arangodb.com/why-arangodb/comparing-rocksdb-mmfiles-storage-engines/)*
 
+The engine must be selected for the whole server / cluster. It is not
+possible to mix engines. The transaction handling and write-ahead-log
+format in the individual engines is very different and therefore cannot 
+be mixed.
+
+## MMFiles
+
+The MMFiles (Memory-Mapped Files) engine is optimized for the use-case where
+the data fits into the main memory. It allows for very fast concurrent
+reads. However, writes block reads and locking is on collection
+level.
+
+Indexes are always in memory and are rebuilt on startup. This
+gives better performance but imposes a longer startup time.
+
+## RocksDB
+
 RocksDB is an embeddable persistent key-value store. It is a log
 structure database and is optimized for fast storage.
-
-The MMFiles engine is optimized for the use-case where the data fits
-into the main memory. It allows for very fast concurrent
-reads. However, writes block reads and locking is on collection
-level. Indexes are always in memory and are rebuilt on startup. This
-gives better performance but imposes a longer startup time.
 
 The RocksDB engine is optimized for large data-sets and allows for a
 steady insert performance even if the data-set is much larger than the
@@ -39,18 +50,11 @@ main memory. Indexes are always stored on disk but caches are used to
 speed up performance. RocksDB uses document-level locks allowing for
 concurrent writes. Writes do not block reads. Reads do not block writes.
 
-The engine must be selected for the whole server / cluster. It is not
-possible to mix engines. The transaction handling and write-ahead-log
-format in the individual engines is very different and therefore cannot 
-be mixed.
-
-## RocksDB
-
 ### Advantages
 
 RocksDB is a very flexible engine that can be configured for various use cases.
 
-The main advantages of RocksDB are
+The main advantages of RocksDB are:
 
 - document-level locks
 - support for large data-sets
@@ -76,17 +80,17 @@ The entire user transaction will not necessarily have ACID properties in this ca
 The threshold values for transaction sizes can be configured globally using the
 startup options
 
-* [`--rocksdb.intermediate-commit-size`](../Programs/Arangod/Rocksdb.md#non-pass-through-options)
+- [`--rocksdb.intermediate-commit-size`](../Programs/Arangod/Rocksdb.md#non-pass-through-options)
 
-* [`--rocksdb.intermediate-commit-count`](../Programs/Arangod/Rocksdb.md#non-pass-through-options)
+- [`--rocksdb.intermediate-commit-count`](../Programs/Arangod/Rocksdb.md#non-pass-through-options)
 
-* [`--rocksdb.max-transaction-size`](../Programs/Arangod/Rocksdb.md#non-pass-through-options)
+- [`--rocksdb.max-transaction-size`](../Programs/Arangod/Rocksdb.md#non-pass-through-options)
 
 It is also possible to override these thresholds per transaction.
 
 ### Performance
 
-RocksDB is a based on log-structured merge tree. A good introduction can be
+RocksDB is based on a log-structured merge tree. A good introduction can be
 found in:
 
 - http://www.benstopford.com/2015/02/14/log-structured-merge-trees/
@@ -161,7 +165,7 @@ calculated as
 
     max-bytes-for-level-base * (max-bytes-for-level-multiplier ^ (L-1))
 
-## Future
+### Future
 
 RocksDB imposes a limit on the transaction size. It is optimized to
 handle small transactions very efficiently, but is effectively limiting 
