@@ -4,7 +4,7 @@ Migrating from a _Single Instance_ to a _Cluster_
 {% hint 'warning' %}
 Before migrating from a _Single Instance_ to a Cluster,
 please make sure to read the 
-[Single Instance vs. Cluster](../Architecture/DifferenceSingleCluster.md)
+[Single Instance vs. Cluster](../Architecture/SingleInstanceVsCluster.md)
 page.
 {% endhint %}
 

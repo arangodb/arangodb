@@ -9,5 +9,5 @@ ArangoDB Deployment Modes
 
 See also:
 
-- [Single Instance vs. Cluster](../DifferenceSingleCluster.md)
+- [Single Instance vs. Cluster](../SingleInstanceVsCluster.md)
 

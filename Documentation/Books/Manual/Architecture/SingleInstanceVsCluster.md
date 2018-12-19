@@ -3,10 +3,11 @@ Single Instance vs. Cluster
 
 In general, a single server configuration and a cluster configuration
 of ArangoDB behave very similarly. However, there are difference due to
-the different nature of these setups.
+the different nature of these setups. This can lead to different behavior
+between these two configurations. A summary of potential differences follows.
 
-This can lead to different behavior between these two
-configurations. A summary of potential differences follows.
+See [Migrating from a Single Instance to a Cluster](../Deployment/MigratingSingleInstanceCluster.md)
+for practical information.
 
 Locking and dead-lock prevention
 --------------------------------
@@ -154,9 +155,3 @@ multiple collections. This is in line with most other current NoSQL
 database systems. We are working on a consistent snapshot and
 incremental backup capability for 3.5. In a single server, `arangodump`
 produces a consistent snapshot.
-
-Migrating from a Single Instance to a Cluster
----------------------------------------------
-
-For practical information on the migration, please see
-[Migrating from a Single Instance to a Cluster](../Deployment/MigratingSingleInstanceCluster.md).
