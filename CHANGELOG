@@ -1,4 +1,4 @@
-v3.4.1 (XXXX-XX-XX)
+v3.4.1 (2018-12-19)
 -------------------
 
 * fixed issue #7757: Using multiple filters on nested objects produces wrong results
