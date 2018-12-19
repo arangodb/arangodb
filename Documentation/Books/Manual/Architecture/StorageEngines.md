@@ -5,13 +5,18 @@ engine. The storage engine is responsible for persisting the documents
 on disk, holding copies in memory, providing indexes and caches to
 speed up queries.
 
-Up to version 3.1 ArangoDB only supported memory mapped files (MMFiles)
+Up to version 3.1 ArangoDB only supported memory-mapped files (**MMFiles**)
 as sole storage engine. Beginning with 3.2 ArangoDB has support for
-pluggable storage engines. The second supported engine is RocksDB from
+pluggable storage engines. The second supported engine is **RocksDB** from
 Facebook.
 
 Up to including versions 3.3, MMFiles was the default storage engine in
 ArangoDB. Since version 3.4, the default storage engine is RocksDB.
+
+The engine must be selected for the whole server / cluster. It is not
+possible to mix engines. The transaction handling and write-ahead-log
+format in the individual engines is very different and therefore cannot 
+be mixed.
 
 | MMFiles | RocksDB |
 |---|---|
@@ -23,11 +28,6 @@ ArangoDB. Since version 3.4, the default storage engine is RocksDB.
 | collection level locking (writes block reads) | concurrent reads and writes |
 
 *Blog article: [Comparing new RocksDB and MMFiles storage engines](https://www.arangodb.com/why-arangodb/comparing-rocksdb-mmfiles-storage-engines/)*
-
-The engine must be selected for the whole server / cluster. It is not
-possible to mix engines. The transaction handling and write-ahead-log
-format in the individual engines is very different and therefore cannot 
-be mixed.
 
 ## MMFiles
 
