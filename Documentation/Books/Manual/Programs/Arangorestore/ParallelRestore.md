@@ -4,8 +4,8 @@ Parallel Restore Procedure
 The following parallel restore procedure is recommended to speed up the
 performance of [_arangorestore_](../Arangorestore/README.md) in a
 cluster environment.
-It is assumed that a cluster environment is running and a `dump` with
-[_arangodump_](../Arangodump/README.md) has been already been created.
+It is assumed that a cluster environment is running and a logical backup
+with [_arangodump_](../Arangodump/README.md) has already been created.
 
 ### Allocate dump Directory
 
@@ -58,7 +58,7 @@ c.properties().replicationFactor); c.properties({ replicationFactor: 1 }); });'
 Now that the cluster is prepared, the parallel restore scripts have to be
 created. Therefore we will use a script that is provided in the following.
 
-parallelRestore.js:
+_parallelRestore.js_:
 
 ```
 #!/bin/sh
@@ -176,15 +176,15 @@ coordinator_0.sh, coordinator_1.sh, coordinator_2.sh).
 
 The `coordinator_<number-of-coordinator>.sh` scripts, that were created in the
 previous script, now have to be executed on each machine where a coordinator
-is running. This will start a parallel restore of the `dump`.
+is running. This will start a parallel restore of the dump.
 
-### Reverse to the initial Replication Factor
+### Revert to the initial Replication Factor
 
 Once the _arangorestore_ process on every coordinator is completed, the
 replication factor has to be set to its initial value.
 
 Run the following command from exactly one coordinator (any coordinator can be
-used) - Please adjust the `replicationFactor` value accordingly.:
+used) - please adjust the `replicationFactor` value accordingly.:
 
 ```
 echo 'db._collections().filter(function(c) { return c.name()[0] !== "_"; })
