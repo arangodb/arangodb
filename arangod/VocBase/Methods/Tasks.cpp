@@ -81,6 +81,7 @@ std::shared_ptr<Task> Task::createTask(std::string const& id,
                                        TRI_vocbase_t* vocbase,
                                        std::string const& command,
                                        bool allowUseDatabase, int& ec) {
+  LOG_TOPIC(ERR, Logger::FIXME) << "Task::createTask(" << id << ")";
   if (id.empty()) {
     ec = TRI_ERROR_TASK_INVALID_ID;
 
@@ -110,6 +111,8 @@ std::shared_ptr<Task> Task::createTask(std::string const& id,
 }
 
 int Task::unregisterTask(std::string const& id, bool cancel) {
+  LOG_TOPIC(ERR, Logger::FIXME) << "Task::unregisterTask(" << id << ")";
+
   if (id.empty()) {
     return TRI_ERROR_TASK_INVALID_ID;
   }
@@ -132,6 +135,8 @@ int Task::unregisterTask(std::string const& id, bool cancel) {
 }
 
 std::shared_ptr<VPackBuilder> Task::registeredTask(std::string const& id) {
+
+  LOG_TOPIC(ERR, Logger::FIXME) << "Task::registeredTask(" << id << ")";
   MUTEX_LOCKER(guard, _tasksLock);
 
   auto itr = _tasks.find(id);
@@ -176,6 +181,8 @@ void Task::shutdownTasks() {
 }
 
 void Task::removeTasksForDatabase(std::string const& name) {
+
+  LOG_TOPIC(ERR, Logger::FIXME) << "Task::removeTasksForDatabase(" << name << ")";
   MUTEX_LOCKER(guard, _tasksLock);
 
   for (auto it = _tasks.begin(); it != _tasks.end(); /* no hoisting */) {
@@ -264,8 +271,10 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
       if (itr != _tasks.end()) {
         // remove task from list of tasks if it is still active
         if (this == (*itr).second.second.get()) {
+
+          LOG_TOPIC(ERR, Logger::FIXME) << "Task::callbackFunction - cancel";
           // still the same task. must remove from map
-          _tasks.erase(itr);
+          //_tasks.erase(itr); --- this invalidates the iterator in Task::shutdownTasks
         }
       }
       return;
@@ -305,7 +314,7 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
           } else {
             // in case of one-off tasks or in case of a shutdown, simply
             // remove the task from the list
-            Task::unregisterTask(_id, false);
+            //Task::unregisterTask(_id, false);
           }
         });
   };

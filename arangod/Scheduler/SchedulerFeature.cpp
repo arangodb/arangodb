@@ -146,7 +146,7 @@ void SchedulerFeature::prepare() {
 }
 
 void SchedulerFeature::start() {
-  /*auto const N = TRI_numberProcessors();
+  auto const N = TRI_numberProcessors();
 
   LOG_TOPIC(DEBUG, arangodb::Logger::THREADS)
       << "Detected number of processors: " << N;
@@ -175,30 +175,39 @@ void SchedulerFeature::start() {
   TRI_ASSERT(2 <= _nrMinimalThreads);
   TRI_ASSERT(_nrMinimalThreads < _nrMaximalThreads);
 
-  ArangoGlobalContext::CONTEXT->maskAllSignals();
-  buildScheduler();
+
+  signalStuffInit();
 
   bool ok = _scheduler->start();
-
   if (!ok) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "the scheduler cannot be started";
     FATAL_ERROR_EXIT();
   }
-
-  buildHangupHandler();
-
   LOG_TOPIC(DEBUG, Logger::STARTUP) << "scheduler has started";
 
-*/
-  bool ok = _scheduler->start();
-  if (!ok) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-        << "the scheduler cannot be started";
-    FATAL_ERROR_EXIT();
-  }
+  initV8Stuff();
+}
 
-  // THIS CODE IS TOTALLY UNRELATED TO THE SCHEDULER!?!
+void SchedulerFeature::stop() {
+
+  signalStuffDeinit();
+  deinitV8Stuff();
+
+  _scheduler->shutdown();
+}
+
+void SchedulerFeature::unprepare() {
+  SCHEDULER = nullptr;
+  _scheduler.reset();
+}
+
+// ---------------------------------------------------------------------------
+// Unrelated V8 Stuff - no body knows what this has to do with scheduling
+// ---------------------------------------------------------------------------
+
+void SchedulerFeature::initV8Stuff() {
+    // THIS CODE IS TOTALLY UNRELATED TO THE SCHEDULER!?!
   try {
     auto* dealer = ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
     if (dealer->isEnabled()) {
@@ -211,61 +220,58 @@ void SchedulerFeature::start() {
   } catch(...) {}
 }
 
-void SchedulerFeature::stop() {
-  /*static size_t const MAX_TRIES = 100;
-
-  // shutdown user jobs (needs the scheduler)
-  TRI_ShutdownV8Dispatcher();
-
-  // cancel signals
-  if (_exitSignals != nullptr) {
-    auto exitSignals = _exitSignals;
-    _exitSignals.reset();
-    exitSignals->cancel();
-  }
-
-#ifndef _WIN32
-  if (_hangupSignals != nullptr) {
-    _hangupSignals->cancel();
-    _hangupSignals.reset();
-  }
-#endif
-
-  // shut-down scheduler
-  _scheduler->beginShutdown();
-
-  for (size_t count = 0; count < MAX_TRIES && _scheduler->isRunning();
-       ++count) {
-    LOG_TOPIC(TRACE, Logger::STARTUP) << "waiting for scheduler to stop";
-    std::this_thread::sleep_for(std::chrono::microseconds(100000));
-  }
-
+void SchedulerFeature::deinitV8Stuff() {
+  // This was once called twice on shutdown
   // shutdown user jobs again, in case new ones appear
   TRI_ShutdownV8Dispatcher();
-
-  */
-  _scheduler->shutdown();
 }
-
-void SchedulerFeature::unprepare() {
-  SCHEDULER = nullptr;
-  _scheduler.reset();
-}
-
-
-/*
-
-void SchedulerFeature::buildScheduler() {
-
-}
-
-
-
-*/
 
 // ---------------------------------------------------------------------------
 // Signal Handler stuff - no body knows what this has to do with scheduling
 // ---------------------------------------------------------------------------
+
+void SchedulerFeature::signalStuffInit() {
+  ArangoGlobalContext::CONTEXT->maskAllSignals();
+
+#ifdef _WIN32
+// Windows does not support POSIX signal handling
+#else
+  struct sigaction action;
+  memset(&action, 0, sizeof(action));
+  sigfillset(&action.sa_mask);
+
+  // ignore broken pipes
+  action.sa_handler = SIG_IGN;
+
+  int res = sigaction(SIGPIPE, &action, nullptr);
+
+  if (res < 0) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "cannot initialize signal handlers for pipe";
+  }
+#endif
+
+  buildHangupHandler();
+}
+
+void SchedulerFeature::signalStuffDeinit() {
+  // MORE COMPLETELY UNRELATED SCHEDULER CODE!?!?!?
+  {
+    // cancel signals
+    if (_exitSignals != nullptr) {
+      auto exitSignals = _exitSignals;
+      _exitSignals.reset();
+      exitSignals->cancel();
+    }
+
+  #ifndef _WIN32
+    if (_hangupSignals != nullptr) {
+      _hangupSignals->cancel();
+      _hangupSignals.reset();
+    }
+  #endif
+  }
+}
 
 #ifdef _WIN32
 bool CtrlHandler(DWORD eventType) {

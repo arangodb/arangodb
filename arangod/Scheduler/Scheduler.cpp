@@ -71,23 +71,7 @@ namespace arangodb {
 Scheduler::Scheduler() /*: _stopping(false)*/
 {
   // Move this into the Feature and then move it else where
-/*#ifdef _WIN32
-// Windows does not support POSIX signal handling
-#else
-  struct sigaction action;
-  memset(&action, 0, sizeof(action));
-  sigfillset(&action.sa_mask);
 
-  // ignore broken pipes
-  action.sa_handler = SIG_IGN;
-
-  int res = sigaction(SIGPIPE, &action, nullptr);
-
-  if (res < 0) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "cannot initialize signal handlers for pipe";
-  }
-#endif*/
 }
 
 Scheduler::~Scheduler() {}
@@ -98,15 +82,9 @@ bool Scheduler::start() {
   return _cronThread->start();
 }
 
-/*void Scheduler::beginShutdown() {
-  std::unique_lock<std::mutex> guard2(_cronQueueMutex);
-  _stopping.store(true);
-  cancelAllTasks();
-  _croncv.notify_one();
-}*/
-
 void Scheduler::shutdown () {
   TRI_ASSERT(isStopping());
+
   {
     std::unique_lock<std::mutex> guard(_cronQueueMutex);
     _croncv.notify_one();

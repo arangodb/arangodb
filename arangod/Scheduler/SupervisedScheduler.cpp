@@ -148,37 +148,6 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> &&handle
 }
 
 
-std::string  SupervisedScheduler::infoStatus() const {
-  // TODO: compare with old output format
-  // Does some code rely on that string or is it for humans?
-  uint64_t numWorker = _numWorker.load(std::memory_order_relaxed);
-  uint64_t queueLength = _jobsSubmitted.load(std::memory_order_relaxed)
-    - _jobsDone.load(std::memory_order_relaxed);
-
-  return "scheduler threads " + std::to_string(numWorker) + " (" +
-         std::to_string(_numIdleWorker) + "<" + std::to_string(_maxNumWorker) +
-         ") queued " + std::to_string(queueLength);
-}
-
-Scheduler::QueueStatistics SupervisedScheduler::queueStatistics() const
-{
-  uint64_t numWorker = _numWorker.load(std::memory_order_relaxed);
-  uint64_t queueLength = _jobsSubmitted.load(std::memory_order_relaxed)
-    - _jobsDone.load(std::memory_order_relaxed);
-
-  return QueueStatistics{numWorker, numWorker, queueLength, 0, 0, 0};
-}
-
-void SupervisedScheduler::addQueueStatistics(velocypack::Builder& b) const {
-  uint64_t numWorker = _numWorker.load(std::memory_order_relaxed);
-  uint64_t queueLength = _jobsSubmitted.load(std::memory_order_relaxed)
-    - _jobsDone.load(std::memory_order_relaxed);
-
-  // TODO: previous scheduler filled out a lot more fields, relevant?
-  b.add("scheduler-threads",
-        VPackValue(static_cast<int32_t>(numWorker)));
-  b.add("queued", VPackValue(static_cast<int32_t>(queueLength)));
-}
 
 bool SupervisedScheduler::start() {
 
@@ -192,6 +161,9 @@ bool SupervisedScheduler::start() {
 }
 
 void SupervisedScheduler::shutdown () {
+  // THIS IS WHAT WE SHOULD AIM FOR, BUT NOBODY CARES
+  //TRI_ASSERT(_jobsSubmitted <= _jobsDone);
+
   {
     std::unique_lock<std::mutex> guard(_mutex);
     _stopping = true;
@@ -199,6 +171,20 @@ void SupervisedScheduler::shutdown () {
   }
 
   Scheduler::shutdown();
+
+  while (true) {
+
+    auto jobsSubmitted = _jobsSubmitted.load();
+    auto jobsDone = _jobsDone.load();
+
+    if (jobsSubmitted <= jobsDone) {
+      break ;
+    }
+
+    LOG_TOPIC(ERR, Logger::THREADS) << "Schduler received shutdown, but there are still tasks on the queue: "
+      << "jobsSubmitted=" << jobsSubmitted << " jobsDone=" << jobsDone;
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+  }
 
   // call the destructor of all threads
   _manager.reset();
@@ -371,7 +357,7 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork (std
 {
   WorkItem *work;
 
-  while (!_stopping && !state->_stop) {
+  while (!state->_stop) {
 
     uint64_t triesCount = 0;
     while (triesCount < state->_queueRetryCount) {
@@ -387,7 +373,7 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork (std
 
     std::unique_lock<std::mutex> guard(_mutex);
 
-    if (_stopping || state->_stop) {
+    if (state->_stop) {
       break ;
     }
 
@@ -469,4 +455,41 @@ SupervisedScheduler::WorkerState::WorkerState(SupervisedScheduler &scheduler) :
 
 bool SupervisedScheduler::WorkerState::start() {
   return _thread->start();
+}
+
+
+
+// ---------------------------------------------------------------------------
+// Statistics Stuff
+// ---------------------------------------------------------------------------
+std::string  SupervisedScheduler::infoStatus() const {
+  // TODO: compare with old output format
+  // Does some code rely on that string or is it for humans?
+  uint64_t numWorker = _numWorker.load(std::memory_order_relaxed);
+  uint64_t queueLength = _jobsSubmitted.load(std::memory_order_relaxed)
+    - _jobsDone.load(std::memory_order_relaxed);
+
+  return "scheduler threads " + std::to_string(numWorker) + " (" +
+         std::to_string(_numIdleWorker) + "<" + std::to_string(_maxNumWorker) +
+         ") queued " + std::to_string(queueLength);
+}
+
+Scheduler::QueueStatistics SupervisedScheduler::queueStatistics() const
+{
+  uint64_t numWorker = _numWorker.load(std::memory_order_relaxed);
+  uint64_t queueLength = _jobsSubmitted.load(std::memory_order_relaxed)
+    - _jobsDone.load(std::memory_order_relaxed);
+
+  return QueueStatistics{numWorker, numWorker, queueLength, 0, 0, 0};
+}
+
+void SupervisedScheduler::addQueueStatistics(velocypack::Builder& b) const {
+  uint64_t numWorker = _numWorker.load(std::memory_order_relaxed);
+  uint64_t queueLength = _jobsSubmitted.load(std::memory_order_relaxed)
+    - _jobsDone.load(std::memory_order_relaxed);
+
+  // TODO: previous scheduler filled out a lot more fields, relevant?
+  b.add("scheduler-threads",
+        VPackValue(static_cast<int32_t>(numWorker)));
+  b.add("queued", VPackValue(static_cast<int32_t>(queueLength)));
 }
