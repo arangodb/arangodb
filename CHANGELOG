@@ -33,6 +33,8 @@ devel
 
 * fixed issue #7749: AQL query result changed for COLLECT used on empty data/array
 
+* fixed issue #7757: Using multiple filters on nested objects produces wrong results
+
 * fixed a rare thread local dead lock situation in replication:
   If a follower tries to get in sync in the last steps it requires
   a lock on the leader. If the follower cancels the lock before the leader
