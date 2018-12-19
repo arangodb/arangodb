@@ -96,8 +96,8 @@ This is maintained via https://github.com/arangodb-helper/v8
 
 Upstream is: https://chromium.googlesource.com/v8/v8.git
 
-- On upgrade the ICU data files need to be replaced with ICU upstream, 
-  since the V8 copy doesn't contain all locales.
+- On upgrade the ICU data file(s) need to be replaced with ICU upstream, 
+  since the V8 copy doesn't contain all locales (known as full-icu, ~25 MB icudt*.dat).
 
 ## velocypack
 
