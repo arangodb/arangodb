@@ -276,7 +276,6 @@ void RocksDBCollection::prepareIndexes(
     );
   }
 
-  bool droppedIndex = false;
   for (std::shared_ptr<Index>& idx : indexes) {
     addIndex(std::move(idx));
   }
@@ -285,27 +284,16 @@ void RocksDBCollection::prepareIndexes(
       (TRI_COL_TYPE_EDGE == _logicalCollection.type() &&
        (_indexes[1]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX ||
         _indexes[2]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX))) {
-         std::string msg = "got invalid indexes for collection '"
-           + _logicalCollection.name() + "'";
-         LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << msg;
-
+         
+     std::string msg = "got invalid indexes for collection '"
+       + _logicalCollection.name() + "'";
+     LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << msg;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      for (auto it : _indexes) {
-        LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << "- " << it.get();
-      }
-#endif
-
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
+    for (auto it : _indexes) {
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << "- " << it.get();
     }
-  
-  if (droppedIndex) {
-    auto builder = _logicalCollection.toVelocyPackIgnore({"path", "statusString"}, true, true);
-    // log this event in the WAL and in the collection meta-data
-    auto engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-    engine->writeCreateCollectionMarker(_logicalCollection.vocbase().id(),
-                                        _logicalCollection.id(),
-                                        builder.slice(),
-                                        RocksDBLogValue::Empty());
+#endif
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
   }
 
   TRI_ASSERT(!_indexes.empty());

@@ -74,9 +74,6 @@ class RocksDBMethods {
 
   /// @brief current sequence number
   rocksdb::SequenceNumber sequenceNumber();
-  
-  /// @brief read options for use with iterators
-  rocksdb::ReadOptions readOptions();
 
   /// @brief read options for use with iterators
   rocksdb::ReadOptions iteratorReadOptions();

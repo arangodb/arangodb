@@ -100,10 +100,11 @@ RestStatus RestShutdownHandler::execute() {
   } catch (...) {
     // Ignore the error
   }
+  auto self = shared_from_this();
   rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   // don't block the response for workers waiting on this callback
   // this should allow workers to go into the IDLE state
-  scheduler->queue(RequestPriority::HIGH, []{
+  scheduler->queue(RequestPriority::HIGH, [self] {
     // Give the server 2 seconds to send the reply:
     std::this_thread::sleep_for(std::chrono::seconds(2));
     // Go down:

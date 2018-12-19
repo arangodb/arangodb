@@ -70,6 +70,7 @@ Result RocksDBBuilderIndex::insertInternal(transaction::Methods& trx, RocksDBMet
                                            LocalDocumentId const& documentId,
                                            arangodb::velocypack::Slice const& slice,
                                            OperationMode mode) {
+  TRI_ASSERT(false); // not enabled
   Result r = _wrapped->insertInternal(trx, mthd, documentId, slice, mode);
   if (r.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
     // these are expected errors; store in builder and suppress
@@ -255,6 +256,7 @@ static arangodb::Result fillIndexFast(transaction::Methods& trx,
                                       RocksDBCollection* coll,
                                       WriteBatchType& batch) {
   auto state = RocksDBTransactionState::toState(&trx);
+  auto methds = RocksDBTransactionState::toMethods(&trx);
   arangodb::Result res;
   
   // fillindex can be non transactional, we just need to clean up
@@ -273,19 +275,25 @@ static arangodb::Result fillIndexFast(transaction::Methods& trx,
   rocksdb::WriteOptions wo;
   wo.disableWAL = false; // TODO set to true eventually
   
-  // we iterator without a snapshot
+  const rocksdb::Snapshot* snap = rootDB->GetSnapshot();
+  auto snapGuard = scopeGuard([&] {
+    rootDB->ReleaseSnapshot(snap);
+  });
+  
   rocksdb::ReadOptions ro;
+  ro.snapshot = snap;
   ro.prefix_same_as_start = true;
   ro.iterate_upper_bound = &upper;
   ro.verify_checksums = false;
   ro.fill_cache = false;
   
-  rocksdb::ColumnFamilyHandle* docCF = bounds.columnFamily();
-  std::unique_ptr<rocksdb::Iterator> it(rootDB->NewIterator(ro, docCF));
+  rocksdb::ColumnFamilyHandle* docCF = RocksDBColumnFamily::documents();
+  std::unique_ptr<rocksdb::Iterator> it = methds->NewIterator(ro, docCF);
   
   it->Seek(bounds.start());
-  while (it->Valid() && it->key().compare(upper) < 0) {
-  
+  while (it->Valid()) {
+    TRI_ASSERT(it->key().compare(upper) < 0);
+    
     res = ridx->insertInternal(trx, &batched, RocksDBKey::documentId(it->key()),
                                VPackSlice(it->value().data()),
                                Index::OperationMode::normal);
@@ -345,9 +353,10 @@ arangodb::Result RocksDBBuilderIndex::fillIndexFast() {
   RocksDBIndex* internal = _wrapped.get();
   TRI_ASSERT(internal != nullptr);
   if (this->unique()) {
+    const rocksdb::Comparator* cmp = internal->columnFamily()->GetComparator();
     // unique index. we need to keep track of all our changes because we need to avoid
     // duplicate index keys. must therefore use a WriteBatchWithIndex
-    rocksdb::WriteBatchWithIndex batch(_cf->GetComparator(), 32 * 1024 * 1024);
+    rocksdb::WriteBatchWithIndex batch(cmp, 32 * 1024 * 1024);
     res = ::fillIndexFast<rocksdb::WriteBatchWithIndex, RocksDBBatchedWithIndexMethods>(trx, internal, coll, batch);
   } else {
     // non-unique index. all index keys will be unique anyway because they contain the document id

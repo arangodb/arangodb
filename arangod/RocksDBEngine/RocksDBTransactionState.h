@@ -74,7 +74,6 @@ class RocksDBTransactionState final : public TransactionState {
   friend class RocksDBTrxUntrackedMethods;
   friend class RocksDBBatchedMethods;
   friend class RocksDBBatchedWithIndexMethods;
-  friend class RocksDBSubTrxMethods;
 
  public:
   RocksDBTransactionState(
