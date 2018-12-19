@@ -191,13 +191,9 @@ inline void insertDocument(
   // System fields
   DocumentPrimaryKey const primaryKey(docPk);
 
-  // Indexed and Stored: CID + RID
-  Field::setPkValue(field, primaryKey, Field::init_stream_t());
+  // Indexed and Stored: LocalDocumentId
+  Field::setPkValue(field, primaryKey);
   doc.insert(irs::action::index_store, field);
-
-  // Indexed: CID
-  Field::setCidValue(field, cid);
-  doc.insert(irs::action::index, field);
 }
 
 NS_END

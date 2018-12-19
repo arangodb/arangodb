@@ -112,15 +112,14 @@ irs::filter::prepared::ptr PrimaryKeyFilter::prepare(
 }
 
 bool PrimaryKeyFilter::equals(filter const& rhs) const noexcept {
-  return
-    filter::equals(rhs) && _pk == static_cast<PrimaryKeyFilter const&>(rhs)._pk;
+  return filter::equals(rhs)
+    && _pk == static_cast<PrimaryKeyFilter const&>(rhs)._pk;
 }
 
 /*static*/ ::iresearch::type_id const& PrimaryKeyFilter::type() {
   return arangodb::EngineSelectorFeature::ENGINE
          && arangodb::EngineSelectorFeature::ENGINE->inRecovery()
-    ? typeRecovery : typeDefault
-    ;
+    ? typeRecovery : typeDefault;
 }
 
 } // iresearch

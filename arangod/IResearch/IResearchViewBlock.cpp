@@ -87,6 +87,28 @@ inline irs::columnstore_reader::values_reader_f pkColumn(
     : irs::columnstore_reader::values_reader_f{};
 }
 
+inline arangodb::LogicalCollection* lookupCollection(
+    arangodb::transaction::Methods& trx,
+    TRI_voc_cid_t cid
+) {
+  TRI_ASSERT(trx.state());
+
+  // this is necessary for MMFiles
+  trx.pinData(cid);
+
+  // `Methods::documentCollection(TRI_voc_cid_t)` may throw exception
+  auto* collection = trx.state()->collection(cid, arangodb::AccessMode::Type::READ);
+
+  if (!collection) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "failed to find collection while reading document from arangosearch view, cid '" << cid << "'";
+
+    return nullptr; // not a valid collection reference
+  }
+
+  return collection->collection();
+}
+
 }
 
 namespace arangodb {
@@ -217,35 +239,7 @@ void IResearchViewBlockBase::reset() {
 }
 
 bool IResearchViewBlockBase::readDocument(
-    TRI_voc_cid_t cid,
-    arangodb::LocalDocumentId const& docPk,
-    IndexIterator::DocumentCallback const& callback
-) {
-  TRI_ASSERT(_trx->state());
-
-  // this is necessary for MMFiles
-  _trx->pinData(cid);
-
-  // `Methods::documentCollection(TRI_voc_cid_t)` may throw exception
-  auto* collection =
-    _trx->state()->collection(cid, arangodb::AccessMode::Type::READ);
-
-  if (!collection) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed to find collection while reading document from arangosearch view, cid '" << cid << "', rid '" << docPk.id() << "'";
-
-    return false; // not a valid collection reference
-  }
-
-  TRI_ASSERT(collection->collection());
-
-  return collection->collection()->readDocumentWithCallback(
-    _trx, docPk, callback
-  );
-}
-
-bool IResearchViewBlockBase::readDocument(
-    TRI_voc_cid_t cid,
+    LogicalCollection const& collection,
     irs::doc_id_t const docId,
     irs::columnstore_reader::values_reader_f const& pkValues,
     IndexIterator::DocumentCallback const& callback
@@ -262,27 +256,7 @@ bool IResearchViewBlockBase::readDocument(
     return false; // not a valid document reference
   }
 
-  TRI_ASSERT(_trx->state());
-
-  // this is necessary for MMFiles
-  _trx->pinData(cid);
-
-  // `Methods::documentCollection(TRI_voc_cid_t)` may throw exception
-  auto* collection =
-    _trx->state()->collection(cid, arangodb::AccessMode::Type::READ);
-
-  if (!collection) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed to find collection while reading document from arangosearch view, cid '" << cid << "', rid '" << docPk.id() << "'";
-
-    return false; // not a valid collection reference
-  }
-
-  TRI_ASSERT(collection->collection());
-
-  return collection->collection()->readDocumentWithCallback(
-    _trx, docPk, callback
-  );
+  return collection.readDocumentWithCallback(_trx, docPk, callback);
 }
 
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
@@ -486,12 +460,20 @@ bool IResearchViewBlock::next(
       continue;
     }
 
-    auto cid = _reader.cid(_readerOffset); // CID is constant until resetIterator()
+    auto const cid = _reader.cid(_readerOffset); // CID is constant until resetIterator()
+
+    auto* collection = lookupCollection(*_trx, cid);
+
+    if (!collection) {
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "failed to find collection while reading document from arangosearch view, cid '" << cid << "'";
+      continue;
+    }
 
     TRI_ASSERT(_pkReader);
 
     while (limit && _itr->next()) {
-      if (!readDocument(cid, _itr->value(), _pkReader, ctx.callback)) {
+      if (!readDocument(*collection, _itr->value(), _pkReader, ctx.callback)) {
         continue;
       }
 
@@ -603,7 +585,15 @@ bool IResearchViewUnorderedBlock::next(
       continue;
     }
 
-    auto cid = _reader.cid(_readerOffset); // CID is constant until resetIterator()
+    auto const cid = _reader.cid(_readerOffset); // CID is constant until resetIterator()
+
+    auto* collection = lookupCollection(*_trx, cid);
+
+    if (!collection) {
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "failed to find collection while reading document from arangosearch view, cid '" << cid << "'";
+      continue;
+    }
 
     TRI_ASSERT(_pkReader);
 
@@ -612,7 +602,7 @@ bool IResearchViewUnorderedBlock::next(
 
     // read documents from underlying storage engine
     for (auto begin = _keys.begin(); begin != end; ++begin) {
-      if (!readDocument(cid, *begin, ctx.callback)) {
+      if (!collection->readDocumentWithCallback(_trx, *begin, ctx.callback)) {
         continue;
       }
 

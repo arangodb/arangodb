@@ -396,36 +396,6 @@ NS_BEGIN(iresearch)
 // --SECTION--                                             Field implementation
 // ----------------------------------------------------------------------------
 
-/*static*/ void Field::setCidValue(
-    Field& field,
-    TRI_voc_cid_t const& cid
-) {
-  TRI_ASSERT(field._analyzer);
-
-  irs::bytes_ref const cidRef(
-    reinterpret_cast<irs::byte_type const*>(&cid),
-    sizeof(TRI_voc_cid_t)
-  );
-
-  field._name = CID_FIELD;
-  field._features = &irs::flags::empty_instance();
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto& sstream = dynamic_cast<irs::string_token_stream&>(*field._analyzer);
-#else
-  auto& sstream = static_cast<irs::string_token_stream&>(*field._analyzer);
-#endif
-  sstream.reset(cidRef);
-}
-
-/*static*/ void Field::setCidValue(
-    Field& field,
-    TRI_voc_cid_t const& cid,
-    Field::init_stream_t
-) {
-  field._analyzer = StringStreamPool.emplace().release(); // FIXME don't use shared_ptr
-  setCidValue(field, cid);
-}
-
 /*static*/ void Field::setPkValue(
     Field& field,
     DocumentPrimaryKey const& pk
@@ -434,21 +404,13 @@ NS_BEGIN(iresearch)
   field._features = &irs::flags::empty_instance();
   field._storeValues = ValueStorage::FULL;
   field._value = irs::bytes_ref(reinterpret_cast<irs::byte_type const*>(&pk), sizeof(pk));
+  field._analyzer = StringStreamPool.emplace().release(); // FIXME don't use shared_ptr
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto& sstream = dynamic_cast<irs::string_token_stream&>(*field._analyzer);
 #else
   auto& sstream = static_cast<irs::string_token_stream&>(*field._analyzer);
 #endif
   sstream.reset(field._value);
-}
-
-/*static*/ void Field::setPkValue(
-    Field& field,
-    DocumentPrimaryKey const& pk,
-    Field::init_stream_t
-) {
-  field._analyzer = StringStreamPool.emplace().release(); // FIXME don't use shared_ptr
-  setPkValue(field, pk);
 }
 
 Field::Field(Field&& rhs)
@@ -654,6 +616,10 @@ void FieldIterator::next() {
 // --SECTION--                                DocumentPrimaryKey implementation
 // ----------------------------------------------------------------------------
 
+/* static */ irs::string_ref const& DocumentPrimaryKey::PK() noexcept {
+  return PK_COLUMN;
+}
+
 DocumentPrimaryKey::DocumentPrimaryKey(
     arangodb::LocalDocumentId const& value
 ) noexcept
@@ -669,16 +635,6 @@ DocumentPrimaryKey::operator arangodb::LocalDocumentId() const noexcept {
   return arangodb::LocalDocumentId(
     irs::numeric_utils::numeric_traits<uint64_t>::ntoh(_pk)
   );
-}
-
-/* static */ irs::string_ref const& DocumentPrimaryKey::PK() noexcept {
-  return PK_COLUMN;
-}
-
-/*static*/ irs::filter::ptr DocumentPrimaryKey::filter(
-    arangodb::LocalDocumentId const& value
-) {
-  return std::make_unique<PrimaryKeyFilter>(value);
 }
 
 // PLEASE NOTE that 'in.c_str()' MUST HAVE alignment >= alignof(uint64_t)

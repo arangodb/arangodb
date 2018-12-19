@@ -83,15 +83,9 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
   }; // ReadContext
 
   bool readDocument(
-    TRI_voc_cid_t cid,
+    LogicalCollection const& collection,
     irs::doc_id_t docId,
     irs::columnstore_reader::values_reader_f const& pkValues,
-    IndexIterator::DocumentCallback const& callback
-  );
-
-  bool readDocument(
-    TRI_voc_cid_t cid,
-    arangodb::LocalDocumentId const& docPk,
     IndexIterator::DocumentCallback const& callback
   );
 

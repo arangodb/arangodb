@@ -86,12 +86,7 @@ struct DocumentPrimaryKey; // forward declaration
 /// @brief indexed/stored document field adapter for IResearch
 ////////////////////////////////////////////////////////////////////////////////
 struct Field {
-  struct init_stream_t{}; // initialize stream
-
-  static void setCidValue(Field& field, TRI_voc_cid_t const& cid);
-  static void setCidValue(Field& field, TRI_voc_cid_t const& cid, init_stream_t);
   static void setPkValue(Field& field, DocumentPrimaryKey const& pk);
-  static void setPkValue(Field& field, DocumentPrimaryKey const& pk, init_stream_t);
 
   Field() = default;
   Field(Field&& rhs);
@@ -243,7 +238,9 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
 ////////////////////////////////////////////////////////////////////////////////
 class DocumentPrimaryKey {
  public:
-  DocumentPrimaryKey(arangodb::LocalDocumentId const& value) noexcept;
+  static irs::string_ref const& PK() noexcept; // stored primary key column
+
+  explicit DocumentPrimaryKey(arangodb::LocalDocumentId const& value) noexcept;
 
   bool operator==(DocumentPrimaryKey const& other) const noexcept {
     return _pk == other._pk;
@@ -258,13 +255,6 @@ class DocumentPrimaryKey {
   /// @brief coverts a PK to a corresponding LocalDocumentId
   //////////////////////////////////////////////////////////////////////////////
   operator arangodb::LocalDocumentId() const noexcept;
-
-  static irs::string_ref const& PK() noexcept; // stored primary key column
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief creates a filter matching 'cid' + 'rid' pair
-  ////////////////////////////////////////////////////////////////////////////////
-  static irs::filter::ptr filter(arangodb::LocalDocumentId const& value);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief reads and decodes PK from a specified buffer
