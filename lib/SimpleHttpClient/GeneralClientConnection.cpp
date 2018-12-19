@@ -192,6 +192,9 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool 
   double start = TRI_microtime();
   int res;
 
+  auto comm = application_features::ApplicationServer::getFeature<
+    arangodb::application_features::CommunicationFeaturePhase>("CommunicationPhase");
+
 #ifdef TRI_HAVE_POLL_H
   // Here we have poll, on all other platforms we use select
   double sinceLastSocketCheck = start;
@@ -202,9 +205,6 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool 
   } else {
     towait = static_cast<int>(timeout * 1000.0);
   }
-
-  auto comm = application_features::ApplicationServer::getFeature<
-    arangodb::application_features::CommunicationFeaturePhase>("CommunicationPhase");
 
   struct pollfd poller;
   memset(&poller, 0, sizeof(struct pollfd));  // for our old friend Valgrind
