@@ -124,7 +124,7 @@ the port used.
 Installing using the archive
 ----------------------------
 
-Starting from v.3.4.0 a _tar.gz_ package is also available for MacOS.
+Starting from v3.4.0 a _tar.gz_ package is also available for MacOS.
 
 Visit the official [Download](https://www.arangodb.com/download) page of the ArangoDB
 website and download the _tar.gz_ archive for MacOS.
