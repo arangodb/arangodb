@@ -10,9 +10,8 @@ page
 
 To migrate from a _Single Instance_ to a _Cluster_ you will need
 to take a backup from the _Single Instance_ and restore it into
-the _Cluster_. The tools [_arangodump_](../Programs/Arangodump/README.md)
-and [_arangorestore_](../Programs/Arangorestore/README.md) can be used
-for such scope.
+the _Cluster_ with the tools [_arangodump_](../Programs/Arangodump/README.md)
+and [_arangorestore_](../Programs/Arangorestore/README.md).
 
 {% hint 'warning' %}
 If both your _Single Instance_ and _Cluster_ are running on the same
