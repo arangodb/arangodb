@@ -28,5 +28,8 @@
 # Additional
 - Fix the login view properly. Image loading of community or enterprise is not included nicely. Needs cleanup!
 
+# HTML
+- <body style="margin-top: -10px"> <-- REMOVE ME, the origin is react root element. 
+
 # CSS
 - Pure.css has isssues,  e.g. Nodes View: The header of the tabular view is misaligned. Currently don't know why.
