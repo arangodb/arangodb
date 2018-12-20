@@ -79,7 +79,7 @@ inline uint32_t UnalignedLoad32(const void *p) {
   return __sanitizer_unaligned_load32(p);
 }
 
-inline uint64 UnalignedLoad64(const void *p) {
+inline uint64_t UnalignedLoad64(const void *p) {
   return __sanitizer_unaligned_load64(p);
 }
 
@@ -91,7 +91,7 @@ inline void UnalignedStore32(void *p, uint32_t v) {
   __sanitizer_unaligned_store32(p, v);
 }
 
-inline void UnalignedStore64(void *p, uint64 v) {
+inline void UnalignedStore64(void *p, uint64_t v) {
   __sanitizer_unaligned_store64(p, v);
 }
 
@@ -121,14 +121,14 @@ inline void UnalignedStore64(void *p, uint64 v) {
 #define ABSL_INTERNAL_UNALIGNED_LOAD32(_p) \
   (*reinterpret_cast<const uint32_t *>(_p))
 #define ABSL_INTERNAL_UNALIGNED_LOAD64(_p) \
-  (*reinterpret_cast<const uint64 *>(_p))
+  (*reinterpret_cast<const uint64_t *>(_p))
 
 #define ABSL_INTERNAL_UNALIGNED_STORE16(_p, _val) \
   (*reinterpret_cast<uint16_t *>(_p) = (_val))
 #define ABSL_INTERNAL_UNALIGNED_STORE32(_p, _val) \
   (*reinterpret_cast<uint32_t *>(_p) = (_val))
 #define ABSL_INTERNAL_UNALIGNED_STORE64(_p, _val) \
-  (*reinterpret_cast<uint64 *>(_p) = (_val))
+  (*reinterpret_cast<uint64_t *>(_p) = (_val))
 
 #elif defined(__arm__) && \
       !defined(__ARM_ARCH_5__) && \
@@ -192,13 +192,13 @@ struct Unaligned32Struct {
 
 namespace absl {
 
-inline uint64 UnalignedLoad64(const void *p) {
-  uint64 t;
+inline uint64_t UnalignedLoad64(const void *p) {
+  uint64_t t;
   memcpy(&t, p, sizeof t);
   return t;
 }
 
-inline void UnalignedStore64(void *p, uint64 v) { memcpy(p, &v, sizeof v); }
+inline void UnalignedStore64(void *p, uint64_t v) { memcpy(p, &v, sizeof v); }
 
 }  // namespace absl
 
@@ -229,8 +229,8 @@ inline uint32_t UnalignedLoad32(const void *p) {
   return t;
 }
 
-inline uint64 UnalignedLoad64(const void *p) {
-  uint64 t;
+inline uint64_t UnalignedLoad64(const void *p) {
+  uint64_t t;
   memcpy(&t, p, sizeof t);
   return t;
 }
@@ -239,7 +239,7 @@ inline void UnalignedStore16(void *p, uint16_t v) { memcpy(p, &v, sizeof v); }
 
 inline void UnalignedStore32(void *p, uint32_t v) { memcpy(p, &v, sizeof v); }
 
-inline void UnalignedStore64(void *p, uint64 v) { memcpy(p, &v, sizeof v); }
+inline void UnalignedStore64(void *p, uint64_t v) { memcpy(p, &v, sizeof v); }
 
 }  // namespace absl
 

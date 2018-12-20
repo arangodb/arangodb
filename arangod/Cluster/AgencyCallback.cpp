@@ -23,6 +23,8 @@
 
 #include "AgencyCallback.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
+
 #include <chrono>
 #include <thread>
 
@@ -62,9 +64,13 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) 
   AgencyCommResult result = _agency.getValues(key);
 
   if (!result.successful()) {
-    LOG_TOPIC(ERR, arangodb::Logger::AGENCY)
+    if (!ApplicationServer::isStopping()) {
+      // only log errors if we are not already shutting down...
+      // in case of shutdown this error is somewhat expected
+      LOG_TOPIC(ERR, arangodb::Logger::CLUSTER) 
         << "Callback getValues to agency was not successful: "
         << result.errorCode() << " " << result.errorMessage();
+    }
     return;
   }
 

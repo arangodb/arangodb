@@ -47,7 +47,8 @@ ModificationBlock::ModificationBlock(ExecutionEngine* engine,
       _outRegOld(ExecutionNode::MaxRegisterId),
       _outRegNew(ExecutionNode::MaxRegisterId),
       _collection(ep->_collection),
-      _countStats(ep->countStats()) {
+      _countStats(ep->countStats()),
+      _readCompleteInput(ep->_options.readCompleteInput) {
 
   _trx->pinData(_collection->id());
 
@@ -119,10 +120,14 @@ size_t ModificationBlock::countBlocksRows() const {
 }
 
 ExecutionState ModificationBlock::getHasMoreState() {
-  // In these blocks everything from upstream
-  // is entirely processed in one go.
-  // So if upstream is done, we are done.
-  return _upstreamState;
+  if (_readCompleteInput) {
+    // In these blocks everything from upstream
+    // is entirely processed in one go.
+    // So if upstream is done, we are done.
+    return _upstreamState;
+  }
+
+  return ExecutionBlock::getHasMoreState();
 }
 
 /// @brief get some - this accumulates all input and calls the work() method
@@ -140,9 +145,8 @@ ModificationBlock::getSome(size_t atMost) {
 
   std::unique_ptr<AqlItemBlock> replyBlocks;
 
-  // loop over input until it is exhausted
-  if (ExecutionNode::castTo<ModificationNode const*>(_exeNode)
-          ->_options.readCompleteInput) {
+  if (_readCompleteInput) {
+    // loop over input until it is exhausted
     // read all input into a buffer first
     while (_upstreamState == ExecutionState::HASMORE) {
       auto upstreamRes = ExecutionBlock::getSomeWithoutRegisterClearout(atMost);
@@ -194,6 +198,32 @@ ModificationBlock::getSome(size_t atMost) {
   traceGetSomeEnd(replyBlocks.get(), getHasMoreState());
   
   return {getHasMoreState(), std::move(replyBlocks)};
+}
+
+std::pair<ExecutionState, size_t> ModificationBlock::skipSome(size_t atMost) {
+  traceSkipSomeBegin(atMost);
+  size_t skipped = 0;
+    
+  // we need to tell getSome that we don't have to read the entire input, 
+  // no matter what
+  bool saved = _readCompleteInput;
+  _readCompleteInput = false;
+  auto guard = scopeGuard([this, saved]() { _readCompleteInput = saved; });
+
+  auto res = getSome(atMost);
+
+  if (res.first == ExecutionState::WAITING) {
+    TRI_ASSERT(skipped == 0);
+    traceSkipSomeEnd(skipped, ExecutionState::WAITING);
+    return {ExecutionState::WAITING, skipped};
+  }
+
+  if (res.second) {
+    skipped += res.second->size();
+  }
+
+  traceSkipSomeEnd(skipped, res.first);
+  return {res.first, skipped};
 }
 
 std::pair<ExecutionState, arangodb::Result> ModificationBlock::initializeCursor(

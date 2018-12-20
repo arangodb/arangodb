@@ -36,7 +36,7 @@
 
 namespace arangodb {
 
-class KeyLockInfo;
+struct KeyLockInfo;
 class TransactionManager;
 class WalAccess;
 

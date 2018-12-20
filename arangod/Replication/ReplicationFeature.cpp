@@ -55,19 +55,21 @@ ReplicationFeature::ReplicationFeature(ApplicationServer& server)
 
 void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("replication", "Configure the replication");
-  options->addHiddenOption("--replication.auto-start",
-                           "switch to enable or disable the automatic start "
-                           "of replication appliers",
-                           new BooleanParameter(&_replicationApplierAutoStart));
+  options->addOption("--replication.auto-start",
+                     "switch to enable or disable the automatic start "
+                     "of replication appliers",
+                     new BooleanParameter(&_replicationApplierAutoStart),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
   options->addSection("database", "Configure the database");
   options->addOldOption("server.disable-replication-applier",
                         "replication.auto-start");
   options->addOldOption("database.replication-applier",
                         "replication.auto-start");
-  options->addHiddenOption("--replication.automatic-failover",
-                           "Please use `--replication.active-failover` instead",
-                           new BooleanParameter(&_enableActiveFailover));
+  options->addOption("--replication.automatic-failover",
+                     "Please use `--replication.active-failover` instead",
+                     new BooleanParameter(&_enableActiveFailover),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
   options->addOption("--replication.active-failover",
                       "Enable active-failover during asynchronous replication",
                       new BooleanParameter(&_enableActiveFailover));

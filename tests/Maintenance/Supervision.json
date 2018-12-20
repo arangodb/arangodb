@@ -1,56 +1,71 @@
 R"=(
 {
   "Health": {
-    "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da": {
-      "AdvertisedEndpoint": "",
-      "Timestamp": "2018-10-01T10:17:22Z",
-      "SyncStatus": "SERVING",
-      "Host": "ac8ddefc7d1f4364ba655b4debcd076f",
-      "Status": "GOOD",
-      "ShortName": "DBServer0002",
-      "Endpoint": "tcp://[::1]:11198"
-    },
-    "PRMR-62eeb203-c38c-4879-b343-ca34633705cf": {
-      "AdvertisedEndpoint": "",
-      "Timestamp": "2018-10-01T10:17:23Z",
-      "SyncStatus": "SERVING",
-      "Host": "ac8ddefc7d1f4364ba655b4debcd076f",
-      "Status": "GOOD",
-      "ShortName": "DBServer0003",
-      "Endpoint": "tcp://[::1]:11196"
-    },
-    "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d": {
-      "AdvertisedEndpoint": "",
-      "Timestamp": "2018-10-01T10:17:22Z",
-      "SyncStatus": "SERVING",
-      "Host": "ac8ddefc7d1f4364ba655b4debcd076f",
-      "Status": "GOOD",
-      "ShortName": "DBServer0001",
-      "Endpoint": "tcp://[::1]:11197"
-    },
-    "CRDN-8d79ded3-9062-4521-8fa6-7ef3aaf144ad": {
-      "AdvertisedEndpoint": "",
-      "SyncStatus": "SERVING",
-      "Timestamp": "2018-10-01T10:17:24Z",
-      "Host": "ac8ddefc7d1f4364ba655b4debcd076f",
-      "ShortName": "Coordinator0002",
-      "Status": "GOOD",
-      "Endpoint": "tcp://[::1]:11098"
-    },
-    "CRDN-383e3a90-2b26-49fe-9974-f9fce7b5eabf": {
-      "AdvertisedEndpoint": "",
-      "SyncStatus": "SERVING",
-      "Timestamp": "2018-10-01T10:17:24Z",
-      "Host": "ac8ddefc7d1f4364ba655b4debcd076f",
+    "CRDN-122291f4-3bfe-4037-b51d-b6b1066604b0": {
+      "Endpoint": "tcp://[::1]:11098",
       "ShortName": "Coordinator0001",
       "Status": "GOOD",
-      "Endpoint": "tcp://[::1]:11097"
+      "Version": "3.4.0-rc.5",
+      "SyncTime": "2018-12-03T09:58:57Z",
+      "Timestamp": "2018-12-03T09:58:58Z",
+      "Host": "7e56da52e94b4c5190f0e8d559243c42",
+      "SyncStatus": "SERVING",
+      "LastAckedTime": "2018-12-03T09:58:58Z",
+      "Engine": "rocksdb"
+    },
+    "PRMR-5dcd6f32-1207-47b2-bdc4-4ab7d23bbc23": {
+      "Endpoint": "tcp://[::1]:11198",
+      "ShortName": "DBServer0001",
+      "Status": "GOOD",
+      "Version": "3.4.0-rc.5",
+      "SyncTime": "2018-12-03T09:58:56Z",
+      "Timestamp": "2018-12-03T09:58:57Z",
+      "Host": "7e56da52e94b4c5190f0e8d559243c42",
+      "SyncStatus": "SERVING",
+      "LastAckedTime": "2018-12-03T09:58:57Z",
+      "Engine": "rocksdb"
+    },
+    "CRDN-33a81ec1-e22a-43fe-997c-6cc766208cb0": {
+      "Endpoint": "tcp://[::1]:11097",
+      "ShortName": "Coordinator0002",
+      "Status": "GOOD",
+      "Version": "3.4.0-rc.5",
+      "SyncTime": "2018-12-03T09:58:57Z",
+      "Timestamp": "2018-12-03T09:58:58Z",
+      "Host": "7e56da52e94b4c5190f0e8d559243c42",
+      "SyncStatus": "SERVING",
+      "LastAckedTime": "2018-12-03T09:58:58Z",
+      "Engine": "rocksdb"
+    },
+    "PRMR-16df9cb4-e499-4193-92fb-db98e891949f": {
+      "Endpoint": "tcp://[::1]:11197",
+      "ShortName": "DBServer0002",
+      "Status": "GOOD",
+      "Version": "3.4.0-rc.5",
+      "SyncTime": "2018-12-03T09:58:57Z",
+      "Timestamp": "2018-12-03T09:58:58Z",
+      "Host": "7e56da52e94b4c5190f0e8d559243c42",
+      "SyncStatus": "SERVING",
+      "LastAckedTime": "2018-12-03T09:58:58Z",
+      "Engine": "rocksdb"
+    },
+    "PRMR-1296936a-96c5-4304-9ecd-fb623dd98f86": {
+      "Endpoint": "tcp://[::1]:11196",
+      "ShortName": "DBServer0003",
+      "Status": "GOOD",
+      "Version": "3.4.0-rc.5",
+      "SyncTime": "2018-12-03T09:58:58Z",
+      "Timestamp": "2018-12-03T09:58:59Z",
+      "Host": "7e56da52e94b4c5190f0e8d559243c42",
+      "SyncStatus": "SERVING",
+      "LastAckedTime": "2018-12-03T09:58:59Z",
+      "Engine": "rocksdb"
     }
   },
   "DBServers": {},
   "State": {
     "Mode": "Normal",
-    "Timestamp": "2018-10-01T10:17:22Z"
+    "Timestamp": "2018-12-03T09:58:56Z"
   },
   "Shards": {}
 }

@@ -64,17 +64,20 @@ void InitDatabaseFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addSection("database", "Configure the database");
 
-  options->addHiddenOption("--database.init-database",
-                           "initializes an empty database",
-                           new BooleanParameter(&_initDatabase));
+  options->addOption("--database.init-database",
+                     "initializes an empty database",
+                     new BooleanParameter(&_initDatabase),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Command));
 
-  options->addHiddenOption("--database.restore-admin",
-                           "resets the admin users and sets a new password",
-                           new BooleanParameter(&_restoreAdmin));
+  options->addOption("--database.restore-admin",
+                     "resets the admin users and sets a new password",
+                     new BooleanParameter(&_restoreAdmin),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Command));
 
-  options->addHiddenOption("--database.password",
-                           "initial password of root user",
-                           new StringParameter(&_password));
+  options->addOption("--database.password",
+                     "initial password of root user",
+                     new StringParameter(&_password),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
 void InitDatabaseFeature::validateOptions(
@@ -142,7 +145,7 @@ std::string InitDatabaseFeature::readPassword(std::string const& message) {
   std::wstring wpassword;
   _setmode(_fileno(stdin), _O_U16TEXT);
   std::getline(std::wcin, wpassword);
-  UnicodeString pw(wpassword.c_str(), wpassword.length());
+  UnicodeString pw(wpassword.c_str(), static_cast<int32_t>(wpassword.length()));
   pw.toUTF8String<std::string>(password);
 #else
 #ifdef TRI_HAVE_TERMIOS_H
