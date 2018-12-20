@@ -758,11 +758,9 @@ bool IResearchView::link(AsyncLinkPtr const& link) {
   SCOPED_LOCK(mutex);
   auto itr = _links.find(cid);
 
-  irs::index_writer::options options;
-  options.segment_count_max = _meta._writebufferActive;
-  options.segment_memory_max = _meta._writebufferSizeMax;
-  options.segment_pool_size = _meta._writebufferIdle;
-  irs::index_writer::segment_limits properties(options);
+  irs::index_writer::segment_options properties;
+  properties.segment_count_max = _meta._writebufferActive;
+  properties.segment_memory_max = _meta._writebufferSizeMax;
 
   if (itr == _links.end()) {
     _links.emplace(cid, link);

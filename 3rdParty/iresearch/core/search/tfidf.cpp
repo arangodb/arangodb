@@ -158,17 +158,17 @@ const frequency EMPTY_FREQ;
 struct idf final : basic_stored_attribute<float_t> {
   DECLARE_ATTRIBUTE_TYPE();
   DECLARE_FACTORY();
-  idf() : basic_stored_attribute(1.f) { }
+  idf() : basic_stored_attribute(0.f) { }
 
-  void clear() { value = 1.f; }
+  void clear() { value = 0.f; }
 };
 
-DEFINE_ATTRIBUTE_TYPE(iresearch::tfidf::idf);
+DEFINE_ATTRIBUTE_TYPE(irs::tfidf::idf);
 DEFINE_FACTORY_DEFAULT(idf);
 
 typedef tfidf_sort::score_t score_t;
 
-class collector final : public iresearch::sort::collector {
+class collector final : public irs::sort::collector {
  public:
   explicit collector(bool normalize) NOEXCEPT
     : normalize_(normalize) {
@@ -179,7 +179,7 @@ class collector final : public iresearch::sort::collector {
       const term_reader& field,
       const attribute_view& term_attrs
   ) override {
-    auto& meta = term_attrs.get<iresearch::term_meta>();
+    auto& meta = term_attrs.get<irs::term_meta>();
 
     docs_with_field += field.docs_count();
 
@@ -190,10 +190,10 @@ class collector final : public iresearch::sort::collector {
 
   virtual void finish(
       attribute_store& filter_attrs,
-      const iresearch::index_reader& /*index*/
+      const irs::index_reader& /*index*/
   ) override {
     auto& idf = filter_attrs.emplace<tfidf::idf>();
-    idf->value = float_t(std::log((docs_with_field + 1) / double_t(docs_with_term + 1)) + 1.0);
+    idf->value += float_t(std::log((docs_with_field + 1) / double_t(docs_with_term + 1)) + 1.0);
     assert(idf->value >= 0);
 
     // add norm attribute if requested
@@ -208,12 +208,12 @@ class collector final : public iresearch::sort::collector {
   bool normalize_;
 }; // collector
 
-class scorer : public iresearch::sort::scorer_base<tfidf::score_t> {
+class scorer : public irs::sort::scorer_base<tfidf::score_t> {
  public:
   DEFINE_FACTORY_INLINE(scorer);
 
   scorer(
-      iresearch::boost::boost_t boost,
+      irs::boost::boost_t boost,
       const tfidf::idf* idf,
       const frequency* freq) NOEXCEPT
     : idf_(boost * (idf ? idf->value : 1.f)), 
@@ -240,8 +240,8 @@ class norm_scorer final : public scorer {
   DEFINE_FACTORY_INLINE(norm_scorer);
 
   norm_scorer(
-      const iresearch::norm* norm,
-      iresearch::boost::boost_t boost,
+      const irs::norm* norm,
+      irs::boost::boost_t boost,
       const tfidf::idf* idf,
       const frequency* freq) NOEXCEPT
     : scorer(boost, idf, freq),
@@ -254,10 +254,10 @@ class norm_scorer final : public scorer {
   }
 
  private:
-  const iresearch::norm* norm_;
+  const irs::norm* norm_;
 }; // norm_scorer
 
-class sort final: iresearch::sort::prepared_basic<tfidf::score_t> {
+class sort final: irs::sort::prepared_basic<tfidf::score_t> {
  public:
   DEFINE_FACTORY_INLINE(prepared);
 
@@ -275,7 +275,7 @@ class sort final: iresearch::sort::prepared_basic<tfidf::score_t> {
   }
 
   virtual collector::ptr prepare_collector() const override {
-    return iresearch::sort::collector::make<tfidf::collector>(normalize_);
+    return irs::sort::collector::make<tfidf::collector>(normalize_);
   }
 
   virtual scorer::ptr prepare_scorer(
@@ -313,10 +313,10 @@ class sort final: iresearch::sort::prepared_basic<tfidf::score_t> {
 
 NS_END // tfidf 
 
-DEFINE_SORT_TYPE_NAMED(iresearch::tfidf_sort, "tfidf");
+DEFINE_SORT_TYPE_NAMED(irs::tfidf_sort, "tfidf");
 DEFINE_FACTORY_DEFAULT(irs::tfidf_sort);
 
-tfidf_sort::tfidf_sort(bool normalize) 
+tfidf_sort::tfidf_sort(bool normalize) NOEXCEPT
   : sort(tfidf_sort::type()),
     normalize_(normalize) {
 }
