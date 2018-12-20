@@ -1,0 +1,3 @@
+- Concat and compile SASS / CSS with webpack
+- Concat and compile HTML and EJS Templates webpack
+- Fix loading of images (e.g. included ones in css) in react dev mode (because we have defined paths in aardvark which we are not available here).
