@@ -25,7 +25,7 @@
           css: [
             "frontend/css/swagger/hightlight.default.css",
             "frontend/css/bootstrap.css",
-            "frontend/css/jquery-ui-1.9.2.custom.css",
+            // "frontend/css/jquery-ui-1.9.2.custom.css",
             "frontend/css/jquery.contextmenu.css",
             "frontend/css/select2.css",
             "frontend/css/jquery.dataTables.css",
