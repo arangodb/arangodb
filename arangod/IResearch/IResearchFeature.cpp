@@ -41,7 +41,6 @@
 #include "IResearchRocksDBRecoveryHelper.h"
 #include "IResearchView.h"
 #include "IResearchViewCoordinator.h"
-#include "IResearchViewDBServer.h"
 #include "Aql/AqlValue.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Function.h"
@@ -72,6 +71,9 @@ NS_END // aql
 NS_END // arangodb
 
 NS_LOCAL
+
+typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
+typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
 
 class IResearchLogTopic final : public arangodb::LogTopic {
  public:
@@ -289,7 +291,7 @@ void registerViewFactory() {
   if (arangodb::ServerState::instance()->isCoordinator()) {
     res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchViewCoordinator::factory());
   } else if (arangodb::ServerState::instance()->isDBServer()) {
-    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchViewDBServer::factory());
+    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchView::factory());
   } else if (arangodb::ServerState::instance()->isSingleServer()) {
     res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchView::factory());
   } else {

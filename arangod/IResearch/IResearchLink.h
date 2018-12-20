@@ -55,7 +55,7 @@ class IResearchLink {
   //////////////////////////////////////////////////////////////////////////////
   class Snapshot {
    public:
-    Snapshot() noexcept {} // on-default implementation required for MacOS
+    Snapshot() noexcept {} // non-default implementation required for MacOS
     Snapshot(
       std::unique_lock<irs::async_utils::read_write_mutex::read_mutex>&& lock,
       irs::directory_reader&& reader
@@ -172,6 +172,12 @@ class IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   size_t memory() const; // arangodb::Index override
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief update runtine data processing properties (not persisted)
+  /// @return success
+  //////////////////////////////////////////////////////////////////////////////
+  bool properties(irs::index_writer::segment_limits const& properties);
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove an ArangoDB document from an iResearch View
   ////////////////////////////////////////////////////////////////////////////////
@@ -250,7 +256,10 @@ class IResearchLink {
   std::function<void(arangodb::transaction::Methods& trx, arangodb::transaction::Status status)> _trxCallback; // for insert(...)/remove(...)
   std::string const _viewGuid; // the identifier of the desired view (read-only, set via init())
 
-  arangodb::Result initDataStore(IResearchView const& view);
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief initialize the data store with a new or from an existing directory
+  //////////////////////////////////////////////////////////////////////////////
+  arangodb::Result initDataStore();
 }; // IResearchLink
 
 NS_END // iresearch

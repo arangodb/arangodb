@@ -1638,8 +1638,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     ));
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    //REQUIRE(TRI_ERROR_NOT_IMPLEMENTED == queryResult.code);
-    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code); // FIXME TODO check, has this case been implmemented?
+    REQUIRE(TRI_ERROR_NOT_IMPLEMENTED == queryResult.code);
   }
 
   // multiple sorts (not supported now)

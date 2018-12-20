@@ -1439,8 +1439,8 @@ Result RocksDBEngine::createView(
 }
 
 arangodb::Result RocksDBEngine::dropView(
-    TRI_vocbase_t& vocbase,
-    LogicalView& view
+    TRI_vocbase_t const& vocbase,
+    LogicalView const& view
 ) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   LOG_TOPIC(DEBUG, Logger::ENGINES) << "RocksDBEngine::dropView";
@@ -1469,8 +1469,8 @@ arangodb::Result RocksDBEngine::dropView(
 }
 
 void RocksDBEngine::destroyView(
-    TRI_vocbase_t& /*vocbase*/,
-    LogicalView& /*view*/
+    TRI_vocbase_t const& /*vocbase*/,
+    LogicalView const& /*view*/
 ) noexcept {
   // nothing to do here
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

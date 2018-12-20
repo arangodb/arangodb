@@ -39,8 +39,7 @@ NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief IResearchLinkCoordinator-specific implementation of an
-///        IndexTypeFactory
+/// @brief IResearchRocksDBLink-specific implementation of an IndexTypeFactory
 ////////////////////////////////////////////////////////////////////////////////
 struct IResearchRocksDBLink::IndexFactory: public arangodb::IndexTypeFactory {
   virtual bool equal(
@@ -119,14 +118,37 @@ IResearchRocksDBLink::IResearchRocksDBLink(
   _sparse = true;   // always sparse
 }
 
-IResearchRocksDBLink::~IResearchRocksDBLink() {
-  // NOOP
-}
-
 /*static*/ arangodb::IndexTypeFactory const& IResearchRocksDBLink::factory() {
   static const IndexFactory factory;
 
   return factory;
+}
+
+arangodb::Result IResearchRocksDBLink::drop() {
+  auto* engine = arangodb::EngineSelectorFeature::ENGINE;
+
+  if (!engine || !engine->inRecovery()) {
+    auto view = IResearchLink::view();
+    auto logValue = RocksDBLogValue::IResearchLinkDrop(
+      arangodb::Index::_collection.vocbase().id(),
+      arangodb::Index::_collection.id(),
+      view ? view->id() : 0, // 0 == invalid TRI_voc_cid_t according to transaction::Methods
+      arangodb::Index::_iid
+    );
+    rocksdb::WriteBatch batch;
+    rocksdb::WriteOptions wo; // TODO: check which options would make sense
+    auto db = rocksutils::globalRocksDB();
+
+    batch.PutLogData(logValue.slice());
+
+    auto res = arangodb::rocksutils::convertStatus(db->Write(wo, &batch));
+
+    if (!res.ok()) {
+      return res;
+    }
+  }
+
+  return IResearchLink::drop();
 }
 
 void IResearchRocksDBLink::toVelocyPack(
@@ -149,6 +171,11 @@ void IResearchRocksDBLink::toVelocyPack(
     ));
   }
 
+  if (arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::ObjectId)) {
+    TRI_ASSERT(_objectId != 0); // If we store it, it cannot be 0
+    builder.add("objectId", VPackValue(std::to_string(_objectId)));
+  }
+
   if (arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Figures)) {
     VPackBuilder figuresBuilder;
 
@@ -159,32 +186,6 @@ void IResearchRocksDBLink::toVelocyPack(
   }
 
   builder.close();
-}
-
-void IResearchRocksDBLink::writeRocksWalMarker() {
-  auto* engine = arangodb::EngineSelectorFeature::ENGINE;
-
-  if (engine && engine->inRecovery()) {
-    return; // do not write WAL markers during WAL replay
-  }
-
-  RocksDBLogValue logValue = RocksDBLogValue::IResearchLinkDrop(
-    Index::_collection.vocbase().id(),
-    Index::_collection.id(),
-    view() ? view()->id() : 0, // 0 == invalid TRI_voc_cid_t according to transaction::Methods
-    Index::_iid
-  );
-  rocksdb::WriteBatch batch;
-  rocksdb::WriteOptions wo;  // TODO: check which options would make sense
-  auto db = rocksutils::globalRocksDB();
-
-  batch.PutLogData(logValue.slice());
-
-  auto status = rocksutils::convertStatus(db->Write(wo, &batch));
-
-  if (!status.ok()) {
-    THROW_ARANGO_EXCEPTION(status.errorNumber());
-  }
 }
 
 NS_END      // iresearch

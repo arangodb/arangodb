@@ -685,7 +685,7 @@ arangodb::Result PhysicalCollectionMock::insert(
   result.setUnmanaged(documents.back().first.data(), docId);
 
   for (auto& index : _indexes) {
-    if (!index->insert(*trx, docId, newSlice, arangodb::Index::OperationMode::normal).ok()) {
+    if (!index->insert(*trx, docId, arangodb::velocypack::Slice(result.vpack()), arangodb::Index::OperationMode::normal).ok()) {
       return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
     }
   }
@@ -1194,8 +1194,8 @@ void StorageEngineMock::destroyCollection(
 }
 
 void StorageEngineMock::destroyView(
-    TRI_vocbase_t& vocbase,
-    arangodb::LogicalView& view
+    TRI_vocbase_t const& vocbase,
+    arangodb::LogicalView const& view
 ) noexcept {
   before();
   // NOOP, assume physical view destroyed OK
@@ -1214,8 +1214,8 @@ arangodb::Result StorageEngineMock::dropDatabase(TRI_vocbase_t& vocbase) {
 }
 
 arangodb::Result StorageEngineMock::dropView(
-    TRI_vocbase_t& vocbase,
-    arangodb::LogicalView& view
+    TRI_vocbase_t const& vocbase,
+    arangodb::LogicalView const& view
 ) {
   before();
   TRI_ASSERT(views.find(std::make_pair(vocbase.id(), view.id())) != views.end());

@@ -109,6 +109,15 @@ class LogicalView : public LogicalDataSource {
   }
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief queries properties of an existing view
+  //////////////////////////////////////////////////////////////////////////////
+  virtual Result appendVelocyPack(
+    velocypack::Builder& builder,
+    bool detailed,
+    bool forPersistence
+  ) const override final;
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief the category representing a logical view
   //////////////////////////////////////////////////////////////////////////////
   static Category const& category() noexcept;
@@ -126,6 +135,11 @@ class LogicalView : public LogicalDataSource {
     TRI_vocbase_t& vocbase,
     velocypack::Slice definition
   );
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief drop an existing view
+  //////////////////////////////////////////////////////////////////////////////
+  virtual Result drop() override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief calls the callback on every view found for the specified vocbase
@@ -151,28 +165,14 @@ class LogicalView : public LogicalDataSource {
   );
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief updates properties of an existing view
-  //////////////////////////////////////////////////////////////////////////////
-  using LogicalDataSource::properties;
-  virtual arangodb::Result properties(
-    velocypack::Slice const& properties,
-    bool partialUpdate
-  ) override = 0;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief opens an existing view when the server is restarted
   //////////////////////////////////////////////////////////////////////////////
   virtual void open() = 0;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief drop an existing view
-  //////////////////////////////////////////////////////////////////////////////
-  virtual arangodb::Result drop() override = 0;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief renames an existing view
   //////////////////////////////////////////////////////////////////////////////
-  virtual Result rename(std::string&& newName) override = 0;
+  virtual Result rename(std::string&& newName) override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invoke visitor on all collections that a view will return
@@ -187,6 +187,27 @@ class LogicalView : public LogicalDataSource {
     uint64_t planVersion
   );
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief queries properties of an existing view
+  //////////////////////////////////////////////////////////////////////////////
+  virtual Result appendVelocyPackImpl(
+    velocypack::Builder& builder,
+    bool detailed,
+    bool forPersistence
+  ) const = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief drop implementation-specific parts of an existing view
+  ///        including persisted properties
+  //////////////////////////////////////////////////////////////////////////////
+  virtual Result dropImpl() = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief renames implementation-specific parts of an existing view
+  ///        including persistance of properties
+  //////////////////////////////////////////////////////////////////////////////
+  virtual Result renameImpl(std::string const& oldName) = 0;
+
  private:
   // FIXME seems to be ugly
   friend struct ::TRI_vocbase_t;
@@ -196,91 +217,57 @@ class LogicalView : public LogicalDataSource {
 }; // LogicalView
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief a LogicalView base class for ClusterInfo view implementations
+/// @brief a helper for ClusterInfo View operations
 ////////////////////////////////////////////////////////////////////////////////
-class LogicalViewClusterInfo: public LogicalView {
- public:
-  virtual Result drop() override final;
-  virtual Result rename(std::string&& newName) override final;
-
- protected:
-  LogicalViewClusterInfo(
+struct LogicalViewHelperClusterInfo {
+  static Result construct(
+    LogicalView::ptr& view,
     TRI_vocbase_t& vocbase,
-    velocypack::Slice const& definition,
-    uint64_t planVersion
-  );
+    velocypack::Slice const& definition
+  ) noexcept;
 
-  virtual Result appendVelocyPack(
-    arangodb::velocypack::Builder& builder,
-    bool detailed,
-    bool forPersistence
-  ) const override final;
+  static Result destruct(LogicalView const& view) noexcept;
+  static Result drop(LogicalView const& view) noexcept;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief fill and return a jSON description of a View object implementation
-  //////////////////////////////////////////////////////////////////////////////
-  virtual arangodb::Result appendVelocyPackDetailed(
+  static Result properties(
     velocypack::Builder& builder,
-    bool forPersistence
-  ) const = 0;
+    LogicalView const& view
+  ) noexcept;
 
- protected:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief drop implementation-specific parts of an existing view
-  //////////////////////////////////////////////////////////////////////////////
-  virtual arangodb::Result dropImpl() = 0;
+  static Result properties(
+    LogicalView const& view
+  ) noexcept;
+
+  static Result rename(
+    LogicalView const& view,
+    std::string const& oldName
+  ) noexcept;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief a LogicalView base class for StorageEngine view implementations
+/// @brief a helper for StorageEngine View operations
 ////////////////////////////////////////////////////////////////////////////////
-class LogicalViewStorageEngine: public LogicalView {
- public:
-  ~LogicalViewStorageEngine() override;
-
-  virtual Result drop() override final;
-
-  using LogicalDataSource::properties;
-  virtual arangodb::Result properties(
-    velocypack::Slice const& properties,
-    bool partialUpdate
-  ) override final;
-
-  virtual Result rename(std::string&& newName) override final;
-
- protected:
-  LogicalViewStorageEngine(
+struct LogicalViewHelperStorageEngine {
+  static Result construct(
+    LogicalView::ptr& view,
     TRI_vocbase_t& vocbase,
-    velocypack::Slice const& definition,
-    uint64_t planVersion
-  );
+    velocypack::Slice const& definition
+  ) noexcept;
 
-  virtual Result appendVelocyPack(
-    arangodb::velocypack::Builder& builder,
-    bool detailed,
-    bool forPersistence
-  ) const override final;
+  static Result destruct(LogicalView const& view) noexcept;
+  static Result drop(LogicalView const& view) noexcept;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief fill and return a jSON description of a View object implementation
-  //////////////////////////////////////////////////////////////////////////////
-  virtual arangodb::Result appendVelocyPackDetailed(
+  static Result properties(
     velocypack::Builder& builder,
-    bool forPersistence
-  ) const = 0;
+    LogicalView const& view
+  ) noexcept;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief drop implementation-specific parts of an existing view
-  //////////////////////////////////////////////////////////////////////////////
-  virtual arangodb::Result dropImpl() = 0;
+  static Result properties(LogicalView const& view) noexcept;
 
-  ///////////////////////////////////////////////////////////////////////////////
-  /// @brief called when a view's properties are updated (i.e. delta-modified)
-  ///////////////////////////////////////////////////////////////////////////////
-  virtual arangodb::Result updateProperties(
-    velocypack::Slice const& slice,
-    bool partialUpdate
-  ) = 0;
+  static Result rename(
+    LogicalView const& view,
+    std::string const& oldName
+  ) noexcept;
 };
 
 }  // namespace arangodb
