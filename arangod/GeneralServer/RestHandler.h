@@ -90,6 +90,17 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // what lane to use for this request
   virtual RequestLane lane() const = 0;
 
+  RequestLane getRequestLane() {
+    bool found;
+    _request->header(StaticStrings::XArangoFrontend, found);
+
+    if (found) {
+      return RequestLane::CLIENT_UI;
+    }
+
+    return lane();
+  }
+
   virtual void prepareExecute(bool isContinue) {}
   virtual RestStatus execute() = 0;
   virtual RestStatus continueExecute() { return RestStatus::DONE; }

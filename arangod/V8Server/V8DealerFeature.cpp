@@ -334,8 +334,6 @@ void V8DealerFeature::start() {
 
   // try to guess a suitable number of contexts
   if (0 == _nrMaxContexts) {
-    SchedulerFeature* scheduler =
-        ApplicationServer::getFeature<SchedulerFeature>("Scheduler");
 
     // automatic maximum number of contexts should not be below 16
     // this is because the number of cores may be too few for the cluster

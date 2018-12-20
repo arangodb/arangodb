@@ -49,6 +49,9 @@ enum class RequestLane {
   // which are not CLIENT_AQL or CLIENT_V8.
   CLIENT_SLOW,
 
+  // Used for all requests send by the web ui
+  CLIENT_UI,
+
   // For requests between agents. These are basically the
   // requests used to implement RAFT.
   AGENCY_INTERNAL,
@@ -117,6 +120,8 @@ inline RequestPriority PriorityRequestLane(RequestLane lane) {
       return RequestPriority::LOW;
     case RequestLane::INTERNAL_LOW:
       return RequestPriority::LOW;
+    case RequestLane::CLIENT_UI:
+      return RequestPriority::HIGH;
   }
   return RequestPriority::LOW;
 }

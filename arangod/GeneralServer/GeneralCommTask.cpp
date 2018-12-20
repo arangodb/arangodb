@@ -438,7 +438,7 @@ void GeneralCommTask::addErrorResponse(rest::ResponseCode code,
 // thread. Depending on the number of running threads requests may be queued
 // and scheduled later when the number of used threads decreases
 bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
-  auto const lane = handler->lane();
+  auto const lane = handler->getRequestLane();
   auto self = shared_from_this();
 
   bool ok = SchedulerFeature::SCHEDULER->queue(lane, [self, this, handler]() {
@@ -485,7 +485,7 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
 
     // callback will persist the response with the AsyncJobManager
     return SchedulerFeature::SCHEDULER->queue(
-          handler->lane(), [self, handler] {
+          handler->getRequestLane(), [self, handler] {
           handler->runHandler([](RestHandler* h) {
             GeneralServerFeature::JOB_MANAGER->finishAsyncJob(h);
           });
@@ -493,7 +493,7 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
   } else {
     // here the response will just be ignored
     return SchedulerFeature::SCHEDULER->queue(
-        handler->lane(),
+        handler->getRequestLane(),
         [self, handler] { handler->runHandler([](RestHandler*) {}); });
   }
 }
