@@ -300,6 +300,12 @@
           ],
           dest: 'frontend/build/index.html'
         },
+        onleEjs: {
+          src: [
+            "frontend/js/templates/*.ejs",
+          ],
+          dest: 'frontend/build/templates.html'
+        },
         coverage: {
           files: {
             'frontend/build/lib.test.js': [
@@ -451,6 +457,7 @@
       'concat_in_order:libs',
       'concat_in_order:default',
       'concat_in_order:htmlStandalone',
+      'concat_in_order:onleEjs',
       'cssmin',
       'concurrent:uglifyAll',
       'htmlmin',
