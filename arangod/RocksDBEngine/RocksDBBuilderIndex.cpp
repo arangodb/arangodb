@@ -26,6 +26,7 @@
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
@@ -46,7 +47,7 @@ using namespace arangodb::rocksutils;
 RocksDBBuilderIndex::RocksDBBuilderIndex(std::shared_ptr<arangodb::RocksDBIndex> const& wp)
   : RocksDBIndex(wp->id(), wp->collection(),
                  wp->fields(), wp->unique(),
-                 wp->sparse(), wp->columnFamily(), 0, false),
+                 wp->sparse(), wp->columnFamily(), wp->objectId(), /*useCache*/false),
                  _wrapped(wp), _hasError(false) {
                    TRI_ASSERT(_wrapped);
 }
@@ -114,6 +115,28 @@ Result RocksDBBuilderIndex::removeInternal(transaction::Methods& trx, RocksDBMet
   return r;
 }
 
+namespace {
+  struct BuilderTrx : public arangodb::transaction::Methods {
+  BuilderTrx(std::shared_ptr<transaction::Context> const& transactionContext,
+             LogicalDataSource const& collection,
+             AccessMode::Type type) :
+    transaction::Methods(transactionContext),
+    _cid(collection.id()) {
+    // add the (sole) data-source
+    addCollection(collection.id(), collection.name(), type);
+    addHint(transaction::Hints::Hint::NO_DLD);
+  }
+    
+  /// @brief get the underlying transaction collection
+  RocksDBTransactionCollection* resolveTrxCollection() {
+    return static_cast<RocksDBTransactionCollection*>(trxCollection(_cid));
+  }
+
+  private:
+  TRI_voc_cid_t _cid;
+};
+}
+
 // Background index filler task
 // FIXME simon: not used right now because rollbacks are not correctly handled yet
 arangodb::Result RocksDBBuilderIndex::fillIndexBackground(std::function<void()> const& unlock) {
@@ -139,6 +162,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(std::function<void()> 
   uint64_t numDocsWritten = 0;
   
   auto bounds = RocksDBKeyBounds::CollectionDocuments(rcoll->objectId());
+  
   rocksdb::Slice upper(bounds.end()); // exclusive upper bound
   rocksdb::Status s;
   rocksdb::WriteOptions wo;
@@ -162,6 +186,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(std::function<void()> 
   std::unique_ptr<rocksdb::Iterator> it(rootDB->NewIterator(ro, docCF));
   
   unlock(); // release indexes write lock
+  // FIXME use buildertrx
   SingleCollectionTransaction trx(transaction::StandaloneContext::Create(_collection.vocbase()),
                                   _collection, AccessMode::Type::WRITE);
   res = trx.begin();
@@ -184,6 +209,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(std::function<void()> 
   RocksDBIndex* internal = _wrapped.get();
   TRI_ASSERT(internal != nullptr);
   
+  // FIXE make selectivity estimates batch wise
   it->Seek(bounds.start());
   while (it->Valid() && it->key().compare(upper) < 0) {
     
@@ -249,15 +275,23 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(std::function<void()> 
   return res;
 }
 
-// fast mode assuming exclusive access
+// fast mode assuming exclusive access locked from outside
 template<typename WriteBatchType, typename MethodsType>
-static arangodb::Result fillIndexFast(transaction::Methods& trx,
-                                      RocksDBIndex* ridx,
-                                      RocksDBCollection* coll,
+static arangodb::Result fillIndexFast(RocksDBIndex& ridx,
+                                      LogicalCollection& coll,
                                       WriteBatchType& batch) {
+  Result res;
+  ::BuilderTrx trx(transaction::StandaloneContext::Create(coll.vocbase()),
+                   coll, AccessMode::Type::READ);
+  res = trx.begin();
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+  
+  RocksDBCollection* rcoll = static_cast<RocksDBCollection*>(coll.getPhysical());
   auto state = RocksDBTransactionState::toState(&trx);
   auto methds = RocksDBTransactionState::toMethods(&trx);
-  arangodb::Result res;
+  RocksDBTransactionCollection* trxColl = trx.resolveTrxCollection();
   
   // fillindex can be non transactional, we just need to clean up
   RocksDBEngine* engine = rocksutils::globalRocksEngine();
@@ -268,7 +302,7 @@ static arangodb::Result fillIndexFast(transaction::Methods& trx,
   // write batch will be reset every x documents
   MethodsType batched(state, &batch);
   
-  auto bounds = RocksDBKeyBounds::CollectionDocuments(coll->objectId());
+  auto bounds = RocksDBKeyBounds::CollectionDocuments(rcoll->objectId());
   rocksdb::Slice upper(bounds.end());
   
   rocksdb::Status s;
@@ -290,42 +324,55 @@ static arangodb::Result fillIndexFast(transaction::Methods& trx,
   rocksdb::ColumnFamilyHandle* docCF = RocksDBColumnFamily::documents();
   std::unique_ptr<rocksdb::Iterator> it = methds->NewIterator(ro, docCF);
   
+  auto commitLambda = [&] {
+    if (batch.GetWriteBatch()->Count() > 0) {
+      s = rootDB->Write(wo, batch.GetWriteBatch());
+      if (!s.ok()) {
+        res = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
+      }
+    }
+    batch.Clear();
+    
+    auto ops = trxColl->stealTrackedOperations();
+    if (!ops.empty()) {
+      TRI_ASSERT(ridx.hasSelectivityEstimate() && ops.size() == 1);
+      auto it = ops.begin();
+      ridx.estimator()->bufferUpdates(it->first, std::move(it->second.inserts),
+                                      std::move(it->second.removals));
+    }
+  };
+  
   it->Seek(bounds.start());
   while (it->Valid()) {
     TRI_ASSERT(it->key().compare(upper) < 0);
     
-    res = ridx->insertInternal(trx, &batched, RocksDBKey::documentId(it->key()),
-                               VPackSlice(it->value().data()),
-                               Index::OperationMode::normal);
+    res = ridx.insertInternal(trx, &batched, RocksDBKey::documentId(it->key()),
+                              VPackSlice(it->value().data()),
+                              Index::OperationMode::normal);
     if (res.fail()) {
       break;
     }
     numDocsWritten++;
     
     if (numDocsWritten % 200 == 0) { // commit buffered writes
-      s = rootDB->Write(wo, batch.GetWriteBatch());
-      if (!s.ok()) {
-        res = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
+      commitLambda();
+      if (res.fail()) {
         break;
       }
-      batch.Clear();
     }
     
     it->Next();
   }
   
-  if (res.ok() && batch.GetWriteBatch()->Count() > 0) { //
-    s = rootDB->Write(wo, batch.GetWriteBatch());
-    if (!s.ok()) {
-      res = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
-    }
+  if (res.ok()) {
+    commitLambda();
   }
   batch.Clear();
   
   // we will need to remove index elements created before an error
   // occurred, this needs to happen since we are non transactional
   if (res.fail()) {
-    RocksDBKeyBounds bounds = ridx->getBounds();
+    RocksDBKeyBounds bounds = ridx.getBounds();
     arangodb::Result res2 = rocksutils::removeLargeRange(rocksutils::globalRocksDB(), bounds,
                                                          true, /*useRangeDel*/numDocsWritten > 25000);
     if (res2.fail()) {
@@ -340,16 +387,6 @@ static arangodb::Result fillIndexFast(transaction::Methods& trx,
 /// non-transactional: fill index with existing documents
 /// from this collection
 arangodb::Result RocksDBBuilderIndex::fillIndexFast() {
-  Result res;
-  
-  RocksDBCollection* coll = static_cast<RocksDBCollection*>(_collection.getPhysical());
-  SingleCollectionTransaction trx(transaction::StandaloneContext::Create(_collection.vocbase()),
-                                  _collection, AccessMode::Type::EXCLUSIVE);
-  res = trx.begin();
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-  
   RocksDBIndex* internal = _wrapped.get();
   TRI_ASSERT(internal != nullptr);
   if (this->unique()) {
@@ -357,15 +394,11 @@ arangodb::Result RocksDBBuilderIndex::fillIndexFast() {
     // unique index. we need to keep track of all our changes because we need to avoid
     // duplicate index keys. must therefore use a WriteBatchWithIndex
     rocksdb::WriteBatchWithIndex batch(cmp, 32 * 1024 * 1024);
-    res = ::fillIndexFast<rocksdb::WriteBatchWithIndex, RocksDBBatchedWithIndexMethods>(trx, internal, coll, batch);
+    return ::fillIndexFast<rocksdb::WriteBatchWithIndex, RocksDBBatchedWithIndexMethods>(*internal, _collection, batch);
   } else {
     // non-unique index. all index keys will be unique anyway because they contain the document id
     // we can therefore get away with a cheap WriteBatch
     rocksdb::WriteBatch batch(32 * 1024 * 1024);
-    res = ::fillIndexFast<rocksdb::WriteBatch, RocksDBBatchedMethods>(trx, internal, coll, batch);
+    return ::fillIndexFast<rocksdb::WriteBatch, RocksDBBatchedMethods>(*internal, _collection, batch);
   }
-  if (res.ok()) {
-    res = trx.commit(); // required to commit selectivity estimates
-  }
-  return res;
 }

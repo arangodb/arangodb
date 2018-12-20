@@ -321,7 +321,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
   }
   WRITE_LOCKER(indexGuard, _indexesLock);
   auto unlockGuard = scopeGuard([&] {
-    indexGuard.unlock();
+    indexGuard.unlock(); // unlock in reverse order
     this->unlockWrite();
   });
   
@@ -398,11 +398,10 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
     if (inBackground) { // allow concurrent inserts into index
       _indexes.emplace_back(buildIdx);
       res = buildIdx->fillIndexBackground([&] {
-        unlockGuard.fire();
+        unlockGuard.fire(); // will be called at appropriate time
       });
     } else {
-      _indexes.push_back(idx);
-      unlockGuard.fire();
+      indexGuard.unlock(); // do not block maintenance reporting in cluster
       res = buildIdx->fillIndexFast(); // will lock again internally
     }
   }
@@ -418,9 +417,11 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
             break;
           }
         }
+      } else {
+        _indexes.push_back(idx);
       }
     }
-
+    
     // we should sync the selectivity estimates TODO fix
     res = engine->settingsManager()->sync(false);
     if (res.fail()) { // not critical
@@ -457,6 +458,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
     }
   }
 
+  unlockGuard.fire(); // may have already been fired
   if (res.fail()) {
     // We could not create the index. Better abort
     // Remove the Index in the local list again.
