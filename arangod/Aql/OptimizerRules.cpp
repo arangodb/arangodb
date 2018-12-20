@@ -3282,7 +3282,7 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
             // single index. this is something that we can handle
             auto newNode = condition.removeIndexCondition(
                 plan.get(), indexNode->outVariable(), indexCondition->root(),
-                indexesUsed[0].getIndex()->sparse());
+                indexesUsed[0].getIndex().get());
 
             if (newNode == nullptr) {
               // no condition left...

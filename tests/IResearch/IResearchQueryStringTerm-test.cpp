@@ -38,6 +38,7 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "Transaction/StandaloneContext.h"
+#include "Transaction/Helpers.h"
 #include "Utils/OperationOptions.h"
 #include "Transaction/Methods.h"
 #include "Aql/AqlFunctionFeature.h"
@@ -314,6 +315,143 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
     CHECK((trx.commit().ok()));
     CHECK(view->commit().ok());
+  }
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 system attributes
+  // -----------------------------------------------------------------------------
+
+  // _rev attribute
+  {
+    auto rev = arangodb::transaction::helpers::extractRevSliceFromDocument(
+      VPackSlice(insertedDocs.front().vpack())
+    );
+    auto const revRef = arangodb::iresearch::getStringRef(rev);
+
+    std::string const query = "FOR d IN testView SEARCH d._rev == '" + static_cast<std::string>(revRef) + "' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs {
+      { "A", &insertedDocs[0] }
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(
+      vocbase,
+      query
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      auto const keySlice = resolved.get("name");
+      auto const key = arangodb::iresearch::getStringRef(keySlice);
+
+      auto expectedDoc = expectedDocs.find(key);
+      REQUIRE(expectedDoc != expectedDocs.end());
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
+      expectedDocs.erase(expectedDoc);
+    }
+    CHECK(expectedDocs.empty());
+  }
+
+  // _key attribute
+  {
+    auto key = arangodb::transaction::helpers::extractKeyPart(
+      VPackSlice(insertedDocs.front().vpack()).get(arangodb::StaticStrings::KeyString)
+    );
+
+    std::string const query = "FOR d IN testView SEARCH d._key == '" + key.toString() + "' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs {
+      { "A", &insertedDocs[0] }
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(
+      vocbase,
+      query
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      auto const keySlice = resolved.get("name");
+      auto const key = arangodb::iresearch::getStringRef(keySlice);
+
+      auto expectedDoc = expectedDocs.find(key);
+      REQUIRE(expectedDoc != expectedDocs.end());
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
+      expectedDocs.erase(expectedDoc);
+    }
+    CHECK(expectedDocs.empty());
+  }
+
+  // _id attribute
+  {
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY, EMPTY, EMPTY,
+      arangodb::transaction::Options()
+    );
+
+    auto const id = trx.extractIdString(VPackSlice(insertedDocs.front().vpack()));
+    std::string const query = "FOR d IN testView SEARCH d._id == '" + id + "' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs {
+      { "A", &insertedDocs[0] }
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(
+      vocbase,
+      query
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      auto const keySlice = resolved.get("name");
+      auto const key = arangodb::iresearch::getStringRef(keySlice);
+
+      auto expectedDoc = expectedDocs.find(key);
+      REQUIRE(expectedDoc != expectedDocs.end());
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
+      expectedDocs.erase(expectedDoc);
+    }
+    CHECK(expectedDocs.empty());
   }
 
   // -----------------------------------------------------------------------------

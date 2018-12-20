@@ -62,19 +62,24 @@ typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
 ///       lock is not required to be held by the DBServer CompoundReader
 ////////////////////////////////////////////////////////////////////////////////
 class ViewTrxState final
-  : public arangodb::TransactionState::Cookie, public irs::index_reader {
+  : public arangodb::TransactionState::Cookie,
+    public arangodb::iresearch::IResearchView::Snapshot {
  public:
   irs::sub_reader const& operator[](
       size_t subReaderId
   ) const noexcept override {
     TRI_ASSERT(subReaderId < _subReaders.size());
-    return *(_subReaders[subReaderId]);
+    return *(_subReaders[subReaderId].second);
   }
 
   void add(
     TRI_voc_cid_t cid,
     arangodb::iresearch::IResearchLink::Snapshot&& snapshot
   );
+
+  TRI_voc_cid_t cid(size_t offset) const noexcept override {
+    return offset < _subReaders.size() ? _subReaders[offset].first : 0;
+  }
 
   void clear() noexcept {
     _collections.clear();
@@ -103,7 +108,7 @@ class ViewTrxState final
  private:
   std::unordered_set<TRI_voc_cid_t> _collections;
   std::vector<arangodb::iresearch::IResearchLink::Snapshot> _snapshots; // prevent data-store deallocation (lock @ AsyncSelf)
-  std::vector<irs::sub_reader const*> _subReaders;
+  std::vector<std::pair<TRI_voc_cid_t, irs::sub_reader const*>> _subReaders;
 };
 
 void ViewTrxState::add(
@@ -111,7 +116,11 @@ void ViewTrxState::add(
     arangodb::iresearch::IResearchLink::Snapshot&& snapshot
 ) {
   for(auto& entry: static_cast<irs::index_reader const&>(snapshot)) {
-    _subReaders.emplace_back(&entry);
+    _subReaders.emplace_back(
+      std::piecewise_construct,
+      std::forward_as_tuple(cid),
+      std::forward_as_tuple(&entry)
+    );
   }
 
   _collections.emplace(cid);
@@ -122,7 +131,8 @@ uint64_t ViewTrxState::docs_count() const {
   uint64_t count = 0;
 
   for (auto& entry: _subReaders) {
-    count += entry->docs_count();
+    TRI_ASSERT(entry.second); // non-nullptr ensured by add(...)
+    count += entry.second->docs_count();
   }
 
   return count;
@@ -132,7 +142,8 @@ uint64_t ViewTrxState::live_docs_count() const {
   uint64_t count = 0;
 
   for (auto& entry: _subReaders) {
-    count += entry->live_docs_count();
+    TRI_ASSERT(entry.second); // non-nullptr ensured by add(...)
+    count += entry.second->live_docs_count();
   }
 
   return count;
@@ -253,7 +264,8 @@ struct IResearchView::ViewFactory: public arangodb::ViewFactory {
     if (!impl->_meta.init(definition, error)
         || impl->_meta._version == 0 // version 0 must be upgraded to split data-store on a per-link basis
         || impl->_meta._version > LATEST_VERSION
-        || !metaState.init(definition, error)) {
+        || (ServerState::instance()->isSingleServer() // init metaState for SingleServer
+            && !metaState.init(definition, error))) {
       return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
         error.empty()
@@ -264,14 +276,12 @@ struct IResearchView::ViewFactory: public arangodb::ViewFactory {
 
     // NOTE: for single-server must have full list of collections to lock
     //       for cluster the shards to lock come from coordinator and are not in the definition
-    if (ServerState::instance()->isSingleServer()) {
     for (auto cid: metaState._collections) {
       auto collection = vocbase.lookupCollection(cid); // always look up in vocbase (single server or cluster per-shard collection)
       auto link =
         collection ? IResearchLinkHelper::find(*collection, *impl) : nullptr; // add placeholders to links, when the collection comes up it'll bring up the link
 
       impl->_links.emplace(cid, link ? link->self() : nullptr); // add placeholders to links, when the link comes up it'll call link(...)
-    }
     }
 
     view = impl;
@@ -413,7 +423,7 @@ IResearchView::IResearchView(
 
     // populate snapshot when view is registred with a transaction on single-server
     if (view && arangodb::ServerState::instance()->isSingleServer()) {
-      view->snapshot(trx, IResearchView::Snapshot::FindOrCreate);
+      view->snapshot(trx, IResearchView::SnapshotMode::FindOrCreate);
     }
   };
 }
@@ -933,9 +943,9 @@ arangodb::Result IResearchView::renameImpl(std::string const& oldName) {
     ;
 }
 
-irs::index_reader const* IResearchView::snapshot(
+IResearchView::Snapshot const* IResearchView::snapshot(
     transaction::Methods& trx,
-    IResearchView::Snapshot mode /*= IResearchView::Snapshot::Find*/,
+    IResearchView::SnapshotMode mode /*= IResearchView::SnapshotMode::Find*/,
     std::unordered_set<TRI_voc_cid_t> const* shards /*= nullptr*/
 ) const {
   if (!trx.state()) {
@@ -966,15 +976,15 @@ irs::index_reader const* IResearchView::snapshot(
   #endif
 
   switch (mode) {
-   case Snapshot::Find:
+   case SnapshotMode::Find:
     return ctx && ctx->equalCollections(collections.begin(), collections.end())
       ? ctx : nullptr; // ensure same collections
-   case Snapshot::FindOrCreate:
+   case SnapshotMode::FindOrCreate:
     if (ctx && ctx->equalCollections(collections.begin(), collections.end())) {
       return ctx; // ensure same collections
     }
     break;
-   case Snapshot::SyncAndReplace: {
+   case SnapshotMode::SyncAndReplace: {
     if (ctx) {
       ctx->clear(); // ignore existing cookie, recreate snapshot
     }

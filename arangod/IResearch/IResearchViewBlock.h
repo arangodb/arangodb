@@ -52,7 +52,7 @@ class IResearchViewNode;
 class IResearchViewBlockBase : public aql::ExecutionBlock {
  public:
   IResearchViewBlockBase(
-    irs::index_reader const& reader,
+    IResearchView::Snapshot const& reader,
     aql::ExecutionEngine&,
     IResearchViewNode const&
   );
@@ -83,13 +83,9 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
   }; // ReadContext
 
   bool readDocument(
+    LogicalCollection const& collection,
     irs::doc_id_t docId,
     irs::columnstore_reader::values_reader_f const& pkValues,
-    IndexIterator::DocumentCallback const& callback
-  );
-
-  bool readDocument(
-    DocumentPrimaryKey::type const& key,
     IndexIterator::DocumentCallback const& callback
   );
 
@@ -102,10 +98,10 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
 
   virtual size_t skip(size_t count) = 0;
 
-  std::vector<DocumentPrimaryKey::type> _keys; // buffer for primary keys
+  std::vector<arangodb::LocalDocumentId> _keys; // buffer for primary keys
   irs::attribute_view _filterCtx; // filter context
   ViewExpressionContext _ctx;
-  irs::index_reader const& _reader;
+  IResearchView::Snapshot const& _reader;
   irs::filter::prepared::ptr _filter;
   irs::order::prepared _order;
   iresearch::ExpressionExecutionContext _execCtx; // expression execution context
@@ -121,7 +117,7 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
 class IResearchViewUnorderedBlock : public IResearchViewBlockBase {
  public:
   IResearchViewUnorderedBlock(
-    irs::index_reader const& reader,
+    IResearchView::Snapshot const& reader,
     aql::ExecutionEngine& engine,
     IResearchViewNode const& node
   );
@@ -156,7 +152,7 @@ class IResearchViewUnorderedBlock : public IResearchViewBlockBase {
 class IResearchViewBlock final : public IResearchViewUnorderedBlock {
  public:
   IResearchViewBlock(
-    irs::index_reader const& reader,
+    IResearchView::Snapshot const& reader,
     aql::ExecutionEngine& engine,
     IResearchViewNode const& node
   );

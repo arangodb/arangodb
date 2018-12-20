@@ -150,12 +150,12 @@ void IResearchLinkCoordinator::toVelocyPack(
   }
 
   if (arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Figures)) {
-    VPackBuilder figuresBuilder;
-
-    figuresBuilder.openObject();
-    toVelocyPackFigures(figuresBuilder);
-    figuresBuilder.close();
-    builder.add("figures", figuresBuilder.slice());
+    builder.add(
+      "figures",
+      arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
+    );
+      toVelocyPackFigures(builder);
+    builder.close();
   }
 
   builder.close();

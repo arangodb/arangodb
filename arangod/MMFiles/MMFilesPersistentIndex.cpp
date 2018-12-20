@@ -30,6 +30,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "MMFiles/MMFilesIndexLookupContext.h"
 #include "Indexes/PersistentIndexAttributeMatcher.h"
+#include "Indexes/SkiplistIndexAttributeMatcher.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
@@ -693,8 +694,8 @@ bool MMFilesPersistentIndex::supportsFilterCondition(
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
-  return PersistentIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference,
-                                                                  itemsInIndex, estimatedItems, estimatedCost);
+  return SkiplistIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference,
+                                                                itemsInIndex, estimatedItems, estimatedCost);
 }
 
 bool MMFilesPersistentIndex::supportsSortCondition(
@@ -708,7 +709,7 @@ bool MMFilesPersistentIndex::supportsSortCondition(
 /// @brief specializes the condition for use with the index
 arangodb::aql::AstNode* MMFilesPersistentIndex::specializeCondition(arangodb::aql::AstNode* node,
                                                                     arangodb::aql::Variable const* reference) const {
-  return PersistentIndexAttributeMatcher::specializeCondition(this, node, reference);
+  return SkiplistIndexAttributeMatcher::specializeCondition(this, node, reference);
 }
 
 IndexIterator* MMFilesPersistentIndex::iteratorForCondition(
@@ -735,8 +736,8 @@ IndexIterator* MMFilesPersistentIndex::iteratorForCondition(
         found;
     std::unordered_set<std::string> nonNullAttributes;
     size_t unused = 0;
-    PersistentIndexAttributeMatcher::matchAttributes(this, node, reference, found, unused,
-                                                     nonNullAttributes, true);
+    SkiplistIndexAttributeMatcher::matchAttributes(this, node, reference, found, unused,
+                                                   nonNullAttributes, true);
 
     // found contains all attributes that are relevant for this node.
     // It might be less than fields().

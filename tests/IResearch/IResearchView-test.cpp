@@ -682,7 +682,7 @@ SECTION("test_drop_cid") {
         EMPTY,
         arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK(1 == snapshot->live_docs_count());
     }
 
@@ -707,7 +707,7 @@ SECTION("test_drop_cid") {
         EMPTY,
         arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK(0 == snapshot->live_docs_count());
     }
   }
@@ -757,7 +757,7 @@ SECTION("test_drop_cid") {
         EMPTY,
         arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK(1 == snapshot->live_docs_count());
     }
 
@@ -782,7 +782,7 @@ SECTION("test_drop_cid") {
         EMPTY,
         arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK(0 == snapshot->live_docs_count());
     }
   }
@@ -832,7 +832,7 @@ SECTION("test_drop_cid") {
         EMPTY,
         arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK(1 == snapshot->live_docs_count());
     }
 
@@ -860,7 +860,7 @@ SECTION("test_drop_cid") {
         EMPTY,
         arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK(0 == snapshot->live_docs_count());
     }
 
@@ -924,7 +924,7 @@ SECTION("test_drop_cid") {
         EMPTY,
         arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK(1 == snapshot->live_docs_count());
     }
 
@@ -947,7 +947,7 @@ SECTION("test_drop_cid") {
         EMPTY,
         arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK(1 == snapshot->live_docs_count());
     }
 
@@ -1011,7 +1011,7 @@ SECTION("test_drop_cid") {
         EMPTY,
         arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK(1 == snapshot->live_docs_count());
     }
 
@@ -1039,7 +1039,7 @@ SECTION("test_drop_cid") {
         EMPTY,
         arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK(0 == snapshot->live_docs_count());
     }
 
@@ -1172,7 +1172,7 @@ SECTION("test_truncate_cid") {
        EMPTY,
        arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK(1 == snapshot->live_docs_count());
     }
 
@@ -1197,7 +1197,7 @@ SECTION("test_truncate_cid") {
        EMPTY,
        arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK(0 == snapshot->live_docs_count());
     }
   }
@@ -1247,7 +1247,7 @@ SECTION("test_truncate_cid") {
        EMPTY,
        arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK(1 == snapshot->live_docs_count());
     }
 
@@ -1272,7 +1272,7 @@ SECTION("test_truncate_cid") {
         EMPTY,
         arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK(0 == snapshot->live_docs_count());
     }
   }
@@ -1634,7 +1634,7 @@ SECTION("test_insert") {
       EMPTY,
       arangodb::transaction::Options()
     );
-    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
     CHECK(2 == snapshot->live_docs_count());
   }
 
@@ -1689,7 +1689,7 @@ SECTION("test_insert") {
         EMPTY,
         arangodb::transaction::Options()
       );
-    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
     CHECK((2 == snapshot->live_docs_count()));
   }
 
@@ -1737,7 +1737,7 @@ SECTION("test_insert") {
       EMPTY,
       arangodb::transaction::Options()
     );
-    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
     CHECK((4 == snapshot->docs_count()));
   }
 
@@ -1786,7 +1786,7 @@ SECTION("test_insert") {
       EMPTY,
       arangodb::transaction::Options()
     );
-    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::SyncAndReplace);
+    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace);
     CHECK((4 == snapshot->docs_count()));
   }
 
@@ -1833,7 +1833,7 @@ SECTION("test_insert") {
       EMPTY,
       arangodb::transaction::Options()
     );
-    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::SyncAndReplace);
+    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace);
     CHECK((1 == snapshot->docs_count()));
   }
 
@@ -1886,7 +1886,7 @@ SECTION("test_insert") {
       EMPTY,
       arangodb::transaction::Options()
     );
-    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
     CHECK((4 == snapshot->docs_count()));
   }
 
@@ -1939,7 +1939,7 @@ SECTION("test_insert") {
       EMPTY,
       arangodb::transaction::Options()
     );
-    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::SyncAndReplace);
+    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace);
     CHECK((4 == snapshot->docs_count()));
   }
 }
@@ -1987,7 +1987,7 @@ SECTION("test_query") {
       EMPTY,
       arangodb::transaction::Options()
     );
-    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
     CHECK(0 == snapshot->docs_count());
   }
 
@@ -2037,7 +2037,7 @@ SECTION("test_query") {
       EMPTY,
       arangodb::transaction::Options()
     );
-    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
     CHECK(12 == snapshot->docs_count());
   }
 
@@ -2089,7 +2089,7 @@ SECTION("test_query") {
       EMPTY,
       arangodb::transaction::Options()
     );
-    auto* snapshot0 = view->snapshot(trx0, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+    auto* snapshot0 = view->snapshot(trx0, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
     CHECK(12 == snapshot0->docs_count());
 
     // add more data
@@ -2125,7 +2125,7 @@ SECTION("test_query") {
       EMPTY,
       arangodb::transaction::Options()
     );
-    auto* snapshot1 = view->snapshot(trx1, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+    auto* snapshot1 = view->snapshot(trx1, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
     CHECK(24 == snapshot1->docs_count());
   }
 
@@ -2191,7 +2191,7 @@ SECTION("test_query") {
           EMPTY,
           options
         );
-        auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::SyncAndReplace);
+        auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace);
         CHECK(i == snapshot->docs_count());
       }
     }
@@ -2305,7 +2305,7 @@ SECTION("test_register_link") {
         EMPTY,
         arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK((0 == snapshot->docs_count()));
     }
 
@@ -2329,7 +2329,7 @@ SECTION("test_register_link") {
       EMPTY,
       arangodb::transaction::Options()
     );
-    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
     CHECK((0 == snapshot->docs_count())); // link addition does trigger collection load
 
     // link addition does modify view meta
@@ -2367,7 +2367,7 @@ SECTION("test_register_link") {
         EMPTY,
         arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK((nullptr == snapshot));
     }
 
@@ -2399,7 +2399,7 @@ SECTION("test_register_link") {
         EMPTY,
         arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK((0 == snapshot->docs_count())); // link addition does trigger collection load
     }
 
@@ -2431,7 +2431,7 @@ SECTION("test_register_link") {
       EMPTY,
       arangodb::transaction::Options()
     );
-    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
     CHECK((0 == snapshot->docs_count())); // link addition does trigger collection load
 
     {
@@ -2513,7 +2513,7 @@ SECTION("test_unregister_link") {
         EMPTY,
         arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK((1 == snapshot->docs_count()));
     }
 
@@ -2549,7 +2549,7 @@ SECTION("test_unregister_link") {
         EMPTY,
         arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK((0 == snapshot->docs_count()));
     }
 
@@ -2618,7 +2618,7 @@ SECTION("test_unregister_link") {
         EMPTY,
         arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK((1 == snapshot->docs_count()));
     }
 
@@ -2650,7 +2650,7 @@ SECTION("test_unregister_link") {
         EMPTY,
         arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK((0 == snapshot->docs_count()));
     }
 
@@ -2735,14 +2735,6 @@ SECTION("test_unregister_link") {
         REQUIRE((!link->self()->get())); // check that link is unregistred from view
       }
     }
-  }
-}
-
-SECTION("test_self_token") {
-  // test empty token
-  {
-    arangodb::iresearch::IResearchView::AsyncViewPtr::element_type empty(nullptr);
-    CHECK((nullptr == empty.get()));
   }
 }
 
@@ -3297,10 +3289,10 @@ SECTION("test_transaction_snapshot") {
       EMPTY,
       arangodb::transaction::Options()
     );
-    CHECK(nullptr == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::Find));
-    auto* snapshot = viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
-    CHECK(snapshot == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::Find));
-    CHECK(snapshot == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate));
+    CHECK(nullptr == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::Find));
+    auto* snapshot = viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+    CHECK(snapshot == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::Find));
+    CHECK(snapshot == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate));
     CHECK(nullptr != snapshot);
     CHECK((0 == snapshot->live_docs_count()));
   }
@@ -3330,10 +3322,10 @@ SECTION("test_transaction_snapshot") {
       EMPTY,
       opts
     );
-    CHECK(nullptr == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::Find));
-    auto* snapshot = viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::SyncAndReplace);
-    CHECK(snapshot == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::Find));
-    CHECK(snapshot == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate));
+    CHECK(nullptr == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::Find));
+    auto* snapshot = viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace);
+    CHECK(snapshot == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::Find));
+    CHECK(snapshot == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate));
     CHECK((nullptr != snapshot));
     CHECK((1 == snapshot->live_docs_count()));
   }
@@ -3383,9 +3375,9 @@ SECTION("test_transaction_snapshot") {
     );
     CHECK((true == viewImpl->apply(trx)));
     CHECK((true == trx.begin().ok()));
-    auto* snapshot = viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
-    CHECK(snapshot == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::Find));
-    CHECK(snapshot == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate));
+    auto* snapshot = viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+    CHECK(snapshot == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::Find));
+    CHECK(snapshot == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate));
     CHECK((nullptr != snapshot));
     CHECK((1 == snapshot->live_docs_count()));
     CHECK(true == trx.abort().ok()); // prevent assertion in destructor
@@ -3405,8 +3397,8 @@ SECTION("test_transaction_snapshot") {
     CHECK((true == viewImpl->apply(trx)));
     CHECK((true == trx.begin().ok()));
     state->waitForSync(true);
-    auto* snapshot = viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
-    CHECK(snapshot == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::Find));
+    auto* snapshot = viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+    CHECK(snapshot == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::Find));
     CHECK((nullptr != snapshot));
     CHECK((1 == snapshot->live_docs_count()));
     CHECK(true == trx.abort().ok()); // prevent assertion in destructor
@@ -3426,8 +3418,8 @@ SECTION("test_transaction_snapshot") {
     REQUIRE(state);
     CHECK((true == viewImpl->apply(trx)));
     CHECK((true == trx.begin().ok()));
-    auto* snapshot = viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::SyncAndReplace);
-    CHECK(snapshot == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::Find));
+    auto* snapshot = viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace);
+    CHECK(snapshot == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::Find));
     CHECK((nullptr != snapshot));
     CHECK((2 == snapshot->live_docs_count()));
     CHECK(true == trx.abort().ok()); // prevent assertion in destructor
