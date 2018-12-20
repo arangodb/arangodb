@@ -91,6 +91,7 @@ test.cpp.txt
 js/apps/*
 !js/apps/system
 !js/apps/system/*
+js/apps/system/_admin/aardvark/APP/package-lock.json
 !js/apps/system/_admin/aardvark/APP/build
 !js/apps/system/_admin/aardvark/APP/build/*
 !js/apps/system/_admin/aardvark/APP/frontend/build
@@ -106,6 +107,11 @@ js/apps/system/_admin/aardvark/APP/frontend/build/libs.js
 js/apps/system/_admin/aardvark/APP/frontend/build/libs.js.gz
 js/apps/system/_admin/aardvark/APP/frontend/build/style.css
 js/apps/system/_admin/aardvark/APP/frontend/build/scripts.html.part
+
+js/apps/system/_admin/aardvark/APP/react/node_modules/
+js/apps/system/_admin/aardvark/APP/react/node_modules/*
+js/apps/system/_admin/aardvark/APP/react/yarn.lock
+
 
 .gdb-history
 npm-debug.log
