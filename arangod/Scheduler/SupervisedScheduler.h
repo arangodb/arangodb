@@ -46,8 +46,7 @@ class SupervisedScheduler : public Scheduler {
             uint64_t fifo1Size, uint64_t fifo2Size);
   virtual ~SupervisedScheduler();
 
-  bool queue(RequestLane lane, std::function<void()> &&) override;
-  bool queue(RequestLane lane, std::function<void()> const&) override;
+  bool queue(RequestLane lane, std::function<void()>) override;
 
 private:
   std::atomic<size_t> _numWorker;

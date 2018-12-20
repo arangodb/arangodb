@@ -56,8 +56,7 @@ public:
   typedef std::shared_ptr<WorkItem> WorkHandle;
 
   // Enqueues a task - this is implemented on the specific scheduler
-  virtual bool queue(RequestLane lane, std::function<void()> const& handler) = 0;
-  virtual bool queue(RequestLane lane, std::function<void()> &&) = 0;
+  virtual bool queue(RequestLane lane, std::function<void()>) = 0;
 
   // Enqueues a task after delay - this uses the queue functions above.
   // WorkHandle is a shared_ptr to a WorkItem. If all references the WorkItem
@@ -65,13 +64,7 @@ public:
   virtual WorkHandle queueDelay(
     RequestLane lane,
     clock::duration delay,
-    std::function<void(bool canceled)> const& handler
-  );
-
-  virtual WorkHandle queueDelay(
-    RequestLane lane,
-    clock::duration delay,
-    std::function<void(bool canceled)> && handler
+    std::function<void(bool canceled)> handler
   );
 
 

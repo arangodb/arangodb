@@ -101,12 +101,7 @@ SupervisedScheduler::SupervisedScheduler(uint64_t minThreads,
 
 SupervisedScheduler::~SupervisedScheduler() {}
 
-bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> const& handler) {
-  std::function<void()> copy = handler;
-  return queue(lane, std::move(copy));
-}
-
-bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> &&handler)
+bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler)
 {
   size_t queueNo = (size_t) PriorityRequestLane(lane);
 

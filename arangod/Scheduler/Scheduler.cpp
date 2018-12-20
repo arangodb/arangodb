@@ -82,7 +82,7 @@ bool Scheduler::start() {
   return _cronThread->start();
 }
 
-void Scheduler::shutdown () {
+void Scheduler::shutdown() {
   TRI_ASSERT(isStopping());
 
   {
@@ -143,16 +143,7 @@ void Scheduler::runCronThread()
 Scheduler::WorkHandle Scheduler::queueDelay(
     RequestLane lane,
     clock::duration delay,
-    std::function<void(bool cancelled)> const& handler
-) {
-  std::function<void(bool cancelled)> copy = handler;
-  return queueDelay(lane, delay, std::move(copy));
-}
-
-Scheduler::WorkHandle Scheduler::queueDelay(
-    RequestLane lane,
-    clock::duration delay,
-    std::function<void(bool cancelled)> && handler
+    std::function<void(bool cancelled)> handler
 ) {
 
   TRI_ASSERT(!isStopping());

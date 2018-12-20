@@ -81,7 +81,6 @@ std::shared_ptr<Task> Task::createTask(std::string const& id,
                                        TRI_vocbase_t* vocbase,
                                        std::string const& command,
                                        bool allowUseDatabase, int& ec) {
-  LOG_TOPIC(ERR, Logger::FIXME) << "Task::createTask(" << id << ")";
   if (id.empty()) {
     ec = TRI_ERROR_TASK_INVALID_ID;
 
@@ -111,7 +110,6 @@ std::shared_ptr<Task> Task::createTask(std::string const& id,
 }
 
 int Task::unregisterTask(std::string const& id, bool cancel) {
-  LOG_TOPIC(ERR, Logger::FIXME) << "Task::unregisterTask(" << id << ")";
 
   if (id.empty()) {
     return TRI_ERROR_TASK_INVALID_ID;
@@ -135,8 +133,6 @@ int Task::unregisterTask(std::string const& id, bool cancel) {
 }
 
 std::shared_ptr<VPackBuilder> Task::registeredTask(std::string const& id) {
-
-  LOG_TOPIC(ERR, Logger::FIXME) << "Task::registeredTask(" << id << ")";
   MUTEX_LOCKER(guard, _tasksLock);
 
   auto itr = _tasks.find(id);
@@ -171,8 +167,6 @@ std::shared_ptr<VPackBuilder> Task::registeredTasks() {
 
 void Task::shutdownTasks() {
   MUTEX_LOCKER(guard, _tasksLock);
-  LOG_TOPIC(ERR, Logger::FIXME) << "Task::shutdownTasks";
-
   for (auto& it : _tasks) {
     it.second.second->cancel();
   }
@@ -181,8 +175,6 @@ void Task::shutdownTasks() {
 }
 
 void Task::removeTasksForDatabase(std::string const& name) {
-
-  LOG_TOPIC(ERR, Logger::FIXME) << "Task::removeTasksForDatabase(" << name << ")";
   MUTEX_LOCKER(guard, _tasksLock);
 
   for (auto it = _tasks.begin(); it != _tasks.end(); /* no hoisting */) {
@@ -255,13 +247,7 @@ void Task::setUser(std::string const& user) { _user = user; }
 std::function<void(bool cancelled)> Task::callbackFunction() {
   auto self = shared_from_this();
 
-  LOG_TOPIC(ERR, Logger::FIXME) << "Task::callbackFunction() id=" << _id
-    << "self.count = " << self.use_count();
-
   return [self, this](bool cancelled) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "Task::callbackFunction::<lambda1>() id=" << _id
-      << " self.count = " << self.use_count()
-      << " cancelled = " << cancelled;
 
     if (cancelled) {
       MUTEX_LOCKER(guard, _tasksLock);
@@ -271,8 +257,6 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
       if (itr != _tasks.end()) {
         // remove task from list of tasks if it is still active
         if (this == (*itr).second.second.get()) {
-
-          LOG_TOPIC(ERR, Logger::FIXME) << "Task::callbackFunction - cancel";
           // still the same task. must remove from map
           //_tasks.erase(itr); --- this invalidates the iterator in Task::shutdownTasks
         }
@@ -302,10 +286,6 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
       RequestLane::INTERNAL_LOW, [self, this, execContext] {
           ExecContextScope scope(_user.empty() ? ExecContext::superuser()
                                                : execContext.get());
-
-          LOG_TOPIC(ERR, Logger::FIXME) << "Task::callbackFunction::<lambda2>() id=" << _id
-            << "self.count = " << self.use_count();
-
           work(execContext.get());
 
           if (_periodic.load() && !application_features::ApplicationServer::isStopping()) {
@@ -340,7 +320,6 @@ void Task::start() {
 
 void Task::queue(std::chrono::microseconds offset) {
   MUTEX_LOCKER(lock, _taskHandleMutex);
-  LOG_TOPIC(ERR, Logger::FIXME) << "Task::queue() id=" << _id;
   _taskHandle = SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW, offset, callbackFunction());
 }
 
@@ -348,7 +327,6 @@ void Task::cancel() {
   // this will prevent the task from dispatching itself again
   _periodic.store(false);
   MUTEX_LOCKER(lock, _taskHandleMutex);
-  LOG_TOPIC(ERR, Logger::FIXME) << "Task::cancel() id=" << _id;
   _taskHandle.reset();
 }
 
