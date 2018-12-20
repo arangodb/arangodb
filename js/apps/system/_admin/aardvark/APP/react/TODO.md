@@ -2,6 +2,7 @@
 
 ## Build structure
 - Define a new and clean build directory infrastructure
+- Define a new and clean img directory as well (../frontend/img/ArangoDB-community-edition-Web-UI.svg) compressed vs non compresses svg's etc. REFACTOR!!!
 
 ## Sass
 - Concat and compile SASS / CSS with webpack
