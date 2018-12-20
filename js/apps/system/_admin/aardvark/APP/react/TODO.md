@@ -34,3 +34,8 @@
 
 # CSS
 - Pure.css has isssues,  e.g. Nodes View: The header of the tabular view is misaligned. Currently don't know why.
+
+# Notes
+- Aardvark: What is defaultDocument. Is this still "working" and "needed"? This change does not change anything. See: 
+  -  "defaultDocument": "index.html",
+  -  "defaultDocument": "react/build/index.htmlx",
