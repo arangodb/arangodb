@@ -68,8 +68,8 @@
           $('#offlinePlaceholder').show();
 
           // remove error messages
-          $.noty.clearQueue();
-          $.noty.closeAll();
+          // $.noty.clearQueue();
+          // $.noty.closeAll();
 
           this.reconnectAnimation(0);
         }

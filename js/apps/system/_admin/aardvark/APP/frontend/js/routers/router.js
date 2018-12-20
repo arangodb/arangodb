@@ -618,7 +618,7 @@
             collection: this.userCollection
           });
         }
-        if (error || user === null) {
+        if (error || user === null || user === undefined) {
           this.loginView.render();
         } else {
           this.loginView.render(true);

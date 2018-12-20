@@ -667,8 +667,8 @@
 
               outputEditor.setValue(data.msg, 1);
               self.deselect(outputEditor);
-              $.noty.clearQueue();
-              $.noty.closeAll();
+              // $.noty.clearQueue();
+              // $.noty.closeAll();
               self.handleResult(counter);
 
               // SCROLL TO RESULT BOX
@@ -1808,8 +1808,8 @@
             if (xhr.getResponseHeader('x-arango-async-id')) {
               self.queryCallbackFunction(xhr.getResponseHeader('x-arango-async-id'), counter);
             }
-            $.noty.clearQueue();
-            $.noty.closeAll();
+           // $.noty.clearQueue();
+           // $.noty.closeAll();
             self.handleResult(counter);
           },
           error: function (data) {

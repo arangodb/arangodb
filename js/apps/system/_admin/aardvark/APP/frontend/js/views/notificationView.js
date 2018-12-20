@@ -39,8 +39,8 @@
     },
 
     removeAllNotifications: function () {
-      $.noty.clearQueue();
-      $.noty.closeAll();
+ //     $.noty.clearQueue();
+   //   $.noty.closeAll();
       this.collection.reset();
       $('#notification_menu').hide();
     },
@@ -51,6 +51,7 @@
     },
 
     renderNotifications: function (a, b, event) {
+      /*
       if (event) {
         if (event.add) {
           var latestModel = this.collection.at(this.collection.length - 1);
@@ -141,7 +142,7 @@
           my: 'left top',
           at: 'right+55 top-1'
         }
-      });
+      });*/
     },
 
     render: function () {

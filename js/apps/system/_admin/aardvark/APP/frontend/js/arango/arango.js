@@ -7,8 +7,12 @@
 
   window.isCoordinator = function (callback) {
     if (isCoordinator === null) {
+      var url = 'cluster/amICoordinator';
+      if (frontendConfig.react) {
+        url = arangoHelper.databaseUrl('/_admin/aardvark/cluster/amICoordinator');
+      }
       $.ajax(
-        'cluster/amICoordinator',
+        url,
         {
           async: true,
           success: function (d) {
@@ -620,8 +624,9 @@
     },
 
     hideArangoNotifications: function () {
-      $.noty.clearQueue();
-      $.noty.closeAll();
+     // TODO SEARCH FOR A NOTY ALTERNATIVE
+    //   $.noty.clearQueue();
+    //   $.noty.closeAll();
     },
 
     openDocEditor: function (id, type, callback) {
@@ -939,6 +944,12 @@
           databaseName = frontendConfig.db;
         }
       }
+
+      // react dev testing
+      if (!databaseName) {
+        databaseName = '_system';
+      }
+
       return this.backendUrl('/_db/' + encodeURIComponent(databaseName) + url);
     },
 
