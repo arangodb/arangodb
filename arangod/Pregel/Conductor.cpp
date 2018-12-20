@@ -312,7 +312,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   // don't block the response for workers waiting on this callback
   // this should allow workers to go into the IDLE state
-  scheduler->queue(RequestLane::CLUSTER_INTERNAL, [this] {
+  scheduler->queue(RequestLane::INTERNAL_LOW, [this] {
     MUTEX_LOCKER(guard, _callbackMutex);
 
     if (_state == ExecutionState::RUNNING) {

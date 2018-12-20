@@ -166,12 +166,28 @@ std::shared_ptr<VPackBuilder> Task::registeredTasks() {
 }
 
 void Task::shutdownTasks() {
-  MUTEX_LOCKER(guard, _tasksLock);
-  for (auto& it : _tasks) {
-    it.second.second->cancel();
+  {
+    MUTEX_LOCKER(guard, _tasksLock);
+    for (auto& it : _tasks) {
+      it.second.second->cancel();
+    }
   }
 
-  _tasks.clear();
+  // wait for the tasks to be cleaned up
+  while (true) {
+    size_t size;
+    {
+      MUTEX_LOCKER(guard, _tasksLock);
+      size = _tasks.size();
+    }
+
+    if (size > 0) {
+      LOG_TOPIC(INFO, Logger::FIXME) << "Waiting for " << size << " Tasks to complete.";
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+    } else {
+      break ;
+    }
+  }
 }
 
 void Task::removeTasksForDatabase(std::string const& name) {
@@ -258,7 +274,7 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
         // remove task from list of tasks if it is still active
         if (this == (*itr).second.second.get()) {
           // still the same task. must remove from map
-          //_tasks.erase(itr); --- this invalidates the iterator in Task::shutdownTasks
+          _tasks.erase(itr);
         }
       }
       return;
@@ -294,7 +310,7 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
           } else {
             // in case of one-off tasks or in case of a shutdown, simply
             // remove the task from the list
-            //Task::unregisterTask(_id, false);
+            Task::unregisterTask(_id, false);
           }
         });
   };

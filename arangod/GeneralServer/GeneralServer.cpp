@@ -133,8 +133,7 @@ void GeneralServer::IoContext::stop() {
   _asioIoContext.stop();
 }
 
-GeneralServer::IoContext &GeneralServer::selectIoContext()
-{
+GeneralServer::IoContext &GeneralServer::selectIoContext() {
   uint32_t low = _contexts[0]._clients.load();
   size_t lowpos = 0;
 

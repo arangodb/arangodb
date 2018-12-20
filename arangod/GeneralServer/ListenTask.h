@@ -35,12 +35,6 @@
 #include "GeneralServer/Acceptor.h"
 #include "GeneralServer/Socket.h"
 
-
-
-
-
-
-
 namespace arangodb {
 
 class ListenTask : virtual public rest::IoTask {
