@@ -84,7 +84,7 @@ void SchedulerFeature::collectOptions(
   // Different implementations of the Scheduler may require different
   // options to be set. This requires a solution here.
 
-  /*options->addSection("server", "Server features");
+  options->addSection("server", "Server features");
 
   // max / min number of threads
   options->addOption("--server.maximal-threads", std::string("maximum number of request handling threads to run (0 = use system-specific default of ") + std::to_string(defaultNumberOfThreads()) + ")",
@@ -113,7 +113,7 @@ void SchedulerFeature::collectOptions(
   options->addObsoleteOption("--server.threads", "number of threads", true);
 
   // renamed options
-  options->addOldOption("scheduler.threads", "server.maximal-threads");*/
+  options->addOldOption("scheduler.threads", "server.maximal-threads");
 }
 
 void SchedulerFeature::validateOptions(
