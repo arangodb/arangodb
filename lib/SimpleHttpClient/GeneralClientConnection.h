@@ -247,6 +247,11 @@ class GeneralClientConnection {
 
   bool _isConnected;
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  uint64_t _read;
+  uint64_t _written;
+#endif
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the current operation should be interrupted
   //////////////////////////////////////////////////////////////////////////////

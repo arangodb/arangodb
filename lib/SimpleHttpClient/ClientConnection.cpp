@@ -132,6 +132,9 @@ bool ClientConnection::writeClientConnection(void const* buffer, size_t length,
     return false;
   }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  _written += (uint64_t)status;
+#endif
   *bytesWritten = (size_t)status;
 
   return true;
@@ -174,7 +177,9 @@ bool ClientConnection::readClientConnection(StringBuffer& stringBuffer,
       disconnect();
       return true;
     }
-
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    _read += (uint64_t)lenRead;
+#endif
     stringBuffer.increaseLength(lenRead);
   } while (readable());
 
