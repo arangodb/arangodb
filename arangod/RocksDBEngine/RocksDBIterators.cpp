@@ -162,28 +162,8 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
   _iterator = mthds->NewIterator(options, RocksDBColumnFamily::documents());
   TRI_ASSERT(_iterator);
 
-//  _total =
-//  _forward = RandomGenerator::interval(uint16_t(1)) ? true : false;
    reset(); //initial seek
 }
-
-//bool RocksDBAnyIndexIterator::checkIter() {
-//  if ( /* not  valid */            !_iterator->Valid() ||
-//       /* out of range forward */  ( _forward && _cmp->Compare(_iterator->key(), _bounds.end())   > 0) ||
-//       /* out of range backward */ (!_forward && _cmp->Compare(_iterator->key(), _bounds.start()) < 0)  ) {
-//
-//    if (_forward) {
-//      _iterator->Seek(_bounds.start());
-//    } else {
-//      _iterator->SeekForPrev(_bounds.end());
-//    }
-//
-//    if(!_iterator->Valid()) {
-//      return false;
-//    }
-//  }
-//  return true;
-//}
 
 bool RocksDBAnyIndexIterator::cursorNext() {
   TRI_ASSERT(_totalPrime > 0 && _step != 0);
@@ -229,19 +209,6 @@ bool RocksDBAnyIndexIterator::next(LocalDocumentIdCallback const& cb, size_t lim
     }
   }
 
-//  while (limit > 0) {
-//    cb(RocksDBKey::documentId(_iterator->key()));
-//    --limit;
-//    _returned++;
-//    _iterator->Next();
-//    if (!_iterator->Valid() || outOfRange()) {
-//      if (_returned < _total) {
-//        _iterator->Seek(_bounds.start());
-//        continue;
-//      }
-//      return false;
-//    }
-//  }
   return true;
 }
 
@@ -263,51 +230,16 @@ bool RocksDBAnyIndexIterator::nextDocument(
     if (!cursorNext()) {
       return false;
     }
-//    _returned++;
-//    _iterator->Next();
-//    if (!_iterator->Valid() || outOfRange()) {
-//      if (_returned < _total) {
-//        _iterator->Seek(_bounds.start());
-//        continue;
-//      }
-//      return false;
-//    }
   }
   return true;
 }
 
 void RocksDBAnyIndexIterator::reset() {
-
-//  uint64_t _position;
-//  uint64_t _step;
-//  uint64_t _total;
-//  uint64_t _totalPrime;
-  
   // the assumption is that we don't reset this iterator unless
   // it is out of range or invalid
   if (_total == 0) {
     return;
   }
-//  uint64_t steps = RandomGenerator::interval(_total - 1) % 500;
-//  auto initialKey = RocksDBKey();
-//
-//  initialKey.constructDocument(_objectId,
-//                               LocalDocumentId(RandomGenerator::interval(UINT64_MAX)));
-//  _iterator->Seek(initialKey.string());
-//
-//  if (checkIter()) {
-//    if (_forward) {
-//      while (steps-- > 0) {
-//        _iterator->Next();
-//        if(!checkIter()) { break; }
-//      }
-//    } else {
-//      while (steps-- > 0) {
-//        _iterator->Prev();
-//        if(!checkIter()) { break; }
-//      }
-//    }
-//  }
   // find a co-prime for total. We use totalPrime to get a cyclic
   // multiplicative group of integers modulo n
   // https://en.wikipedia.org/wiki/Lehmer_random_number_generator
@@ -348,11 +280,11 @@ bool RocksDBAnyIndexIterator::outOfRange() const {
 RocksDBGenericIterator::RocksDBGenericIterator(rocksdb::ReadOptions& options,
                                                RocksDBKeyBounds const& bounds,
                                                bool reverse)
-    : _reverse(reverse)
-    , _bounds(bounds)
-    , _options(options)
-    , _iterator(arangodb::rocksutils::globalRocksDB()->NewIterator(_options, _bounds.columnFamily()))
-    , _cmp(_bounds.columnFamily()->GetComparator()) {
+    : _reverse(reverse), 
+      _bounds(bounds),
+      _options(options),
+      _iterator(arangodb::rocksutils::globalRocksDB()->NewIterator(_options, _bounds.columnFamily())),
+      _cmp(_bounds.columnFamily()->GetComparator()) {
   reset();
 }
 

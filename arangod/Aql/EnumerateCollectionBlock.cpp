@@ -99,7 +99,7 @@ std::pair<ExecutionState, arangodb::Result> EnumerateCollectionBlock::initialize
     return res;
   }
 
-  if (_justCreated) {
+  if (!_justCreated) {
     _cursor->reset();
   }
   _justCreated = false;
