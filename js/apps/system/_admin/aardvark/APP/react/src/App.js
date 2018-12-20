@@ -19,6 +19,10 @@ import Backbone from 'backbone';
 import _ from 'underscore';
 import Noty from 'noty';
 
+// old css files
+import '../../frontend/build/extra-minified.css';
+import '../../frontend/build/style-minified.css';
+
 // window._ = _;
 
 function requireAll(context) {
@@ -33,8 +37,11 @@ function requireAll(context) {
 window.jquery = window.$ = window.jQuery = require(
   '../../frontend/js/lib/jquery-2.1.0.min.js'
 );
-window.$.noty = Noty;
+//window.$.noty = Noty;
+//window.noty = Noty;
 //require('../../frontend/js/lib/jquery.noty.packaged.min.js');
+window.Joi = require('../../frontend/js/lib/joi-browser.min.js');
+require('../../frontend/js/lib/select2.min.js');
 
 window._ = require('../../frontend/js/lib/underscore-min.js');
 window._ = _;
@@ -90,11 +97,12 @@ window.d3 = d3;
 window.prettyBytes = require('../../frontend/js/lib/pretty-bytes.js');
 
 class App extends Component {
+  // <Overview />
   render() {
     return (
       <div className="App">
         <h2>Test </h2>
-        <Overview />
+        
       </div>
     );
   }
