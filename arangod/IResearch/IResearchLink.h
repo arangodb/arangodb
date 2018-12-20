@@ -55,7 +55,7 @@ class IResearchLink {
   //////////////////////////////////////////////////////////////////////////////
   class Snapshot {
    public:
-    Snapshot() noexcept {} // on-default implementation required for MacOS
+    Snapshot() noexcept {} // non-default implementation required for MacOS
     Snapshot(
       std::unique_lock<irs::async_utils::read_write_mutex::read_mutex>&& lock,
       irs::directory_reader&& reader
@@ -94,8 +94,8 @@ class IResearchLink {
   ///        '_meta' params
   ////////////////////////////////////////////////////////////////////////////////
   virtual void batchInsert(
-    transaction::Methods* trx,
-    std::vector<std::pair<LocalDocumentId, arangodb::velocypack::Slice>> const& batch,
+    arangodb::transaction::Methods& trx,
+    std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& batch,
     std::shared_ptr<arangodb::basics::LocalTaskQueue> queue
   ); // arangodb::Index override
 
@@ -133,10 +133,10 @@ class IResearchLink {
   /// @brief insert an ArangoDB document into an iResearch View using '_meta' params
   ////////////////////////////////////////////////////////////////////////////////
   arangodb::Result insert(
-    transaction::Methods* trx,
-    LocalDocumentId const& documentId,
-    VPackSlice const& doc,
-    Index::OperationMode mode
+    arangodb::transaction::Methods& trx,
+    arangodb::LocalDocumentId const& documentId,
+    arangodb::velocypack::Slice const& doc,
+    arangodb::Index::OperationMode mode
   ); // arangodb::Index override
 
   bool isPersistent() const; // arangodb::Index override
@@ -172,14 +172,20 @@ class IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   size_t memory() const; // arangodb::Index override
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief update runtine data processing properties (not persisted)
+  /// @return success
+  //////////////////////////////////////////////////////////////////////////////
+  bool properties(irs::index_writer::segment_limits const& properties);
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove an ArangoDB document from an iResearch View
   ////////////////////////////////////////////////////////////////////////////////
   arangodb::Result remove(
-    transaction::Methods* trx,
+    arangodb::transaction::Methods& trx,
     arangodb::LocalDocumentId const& documentId,
-    VPackSlice const& doc,
-    Index::OperationMode mode
+    arangodb::velocypack::Slice const& doc,
+    arangodb::Index::OperationMode mode
   ); // arangodb::Index override
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -250,7 +256,10 @@ class IResearchLink {
   std::function<void(arangodb::transaction::Methods& trx, arangodb::transaction::Status status)> _trxCallback; // for insert(...)/remove(...)
   std::string const _viewGuid; // the identifier of the desired view (read-only, set via init())
 
-  arangodb::Result initDataStore(IResearchView const& view);
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief initialize the data store with a new or from an existing directory
+  //////////////////////////////////////////////////////////////////////////////
+  arangodb::Result initDataStore();
 }; // IResearchLink
 
 NS_END // iresearch

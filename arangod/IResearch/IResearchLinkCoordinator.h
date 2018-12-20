@@ -46,55 +46,35 @@ class IResearchViewCoordinator;
 class IResearchLinkCoordinator final
   : public arangodb::ClusterIndex, public IResearchLink {
  public:
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief destructor
-  ////////////////////////////////////////////////////////////////////////////////
-  virtual ~IResearchLinkCoordinator() = default;
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief does this IResearch Link reference the supplied view
-  ////////////////////////////////////////////////////////////////////////////////
-  bool operator==(LogicalView const& view) const noexcept;
-  bool operator!=(LogicalView const& view) const noexcept {
-    return !(*this == view);
-  }
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief does this iResearch Link match the meta definition
-  ////////////////////////////////////////////////////////////////////////////////
-  bool operator==(IResearchLinkMeta const& meta) const noexcept {
-    return _meta == meta;
-  }
-
-  bool operator!=(IResearchLinkMeta const& meta) const noexcept {
-    return !(*this == meta);
-  }
-
   virtual void batchInsert(
-    transaction::Methods* trx,
+    transaction::Methods& trx,
     std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& documents,
     std::shared_ptr<arangodb::basics::LocalTaskQueue> queue
   ) override {
     TRI_ASSERT(false); // should not be called
   }
 
-  virtual bool canBeDropped() const override { return true; }
+  virtual bool canBeDropped() const override {
+    return IResearchLink::canBeDropped();
+  }
 
-  virtual int drop() override { return TRI_ERROR_NO_ERROR; }
+  virtual arangodb::Result drop() override { return IResearchLink::drop(); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the factory for this type of index
   //////////////////////////////////////////////////////////////////////////////
   static arangodb::IndexTypeFactory const& factory();
 
-  virtual bool hasBatchInsert() const override { return true; }
+  virtual bool hasBatchInsert() const override {
+    return IResearchLink::hasBatchInsert();
+  }
 
-  // selectivity can only be determined per query since multiple fields are indexed
-  virtual bool hasSelectivityEstimate() const override { return false; }
+  virtual bool hasSelectivityEstimate() const override {
+    return IResearchLink::hasSelectivityEstimate();
+  }
 
   virtual arangodb::Result insert(
-    transaction::Methods* trx,
+    transaction::Methods& trx,
     LocalDocumentId const& documentId,
     VPackSlice const& doc,
     OperationMode mode
@@ -103,21 +83,42 @@ class IResearchLinkCoordinator final
     return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
-  virtual bool isPersistent() const override { return true; }
+  virtual bool isPersistent() const override {
+    return IResearchLink::isPersistent();
+  }
 
   // IResearch does not provide a fixed default sort order
-  virtual bool isSorted() const override { return false; }
+  virtual bool isSorted() const override {
+    return IResearchLink::isSorted();
+  }
 
-  virtual void load() override { /* NOOP */ }
+  virtual arangodb::IndexIterator* iteratorForCondition(
+    arangodb::transaction::Methods* trx,
+    arangodb::ManagedDocumentResult* result,
+    arangodb::aql::AstNode const* condNode,
+    arangodb::aql::Variable const* var,
+    arangodb::IndexIteratorOptions const& opts
+  ) override {
+    TRI_ASSERT(false); // should not be called
+    return nullptr;
+  }
+
+  virtual void load() override {
+    IResearchLink::load();
+  }
 
   virtual bool matchesDefinition(
     arangodb::velocypack::Slice const& slice
-  ) const override;
+  ) const override {
+    return IResearchLink::matchesDefinition(slice);
+  }
 
-  virtual size_t memory() const override { return _meta.memory(); }
+  virtual size_t memory() const override {
+    return IResearchLink::memory();
+  }
 
   arangodb::Result remove(
-    transaction::Methods* trx,
+    transaction::Methods& trx,
     LocalDocumentId const& documentId,
     VPackSlice const& doc,
     OperationMode mode
@@ -137,12 +138,20 @@ class IResearchLinkCoordinator final
   ) const override;
 
   virtual IndexType type() const override {
-    return Index::TRI_IDX_TYPE_IRESEARCH_LINK;
+    return IResearchLink::type();
   }
 
-  virtual char const* typeName() const override;
+  virtual char const* typeName() const override {
+    return IResearchLink::typeName();
+  }
 
-  virtual void unload() override { /* NOOP */ }
+  virtual void unload() override {
+    auto res = IResearchLink::unload();
+
+    if (!res.ok()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+  }
 
  private:
   struct IndexFactory; // forward declaration
@@ -154,15 +163,6 @@ class IResearchLinkCoordinator final
     TRI_idx_iid_t id,
     arangodb::LogicalCollection& collection
   );
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief initialize from the specified definition
-  /// @return success
-  ////////////////////////////////////////////////////////////////////////////////
-  arangodb::Result init(arangodb::velocypack::Slice const& definition);
-
-  IResearchLinkMeta _meta; // how this collection should be indexed
-  std::shared_ptr<IResearchViewCoordinator> _view; // effectively the IResearch view itself (nullptr == not associated)
 }; // IResearchLinkCoordinator
 
 } // iresearch

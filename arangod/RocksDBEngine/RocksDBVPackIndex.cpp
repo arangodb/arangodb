@@ -28,8 +28,8 @@
 #include "Aql/SortCondition.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Indexes/PersistentIndexAttributeMatcher.h"
+#include "Indexes/SkiplistIndexAttributeMatcher.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -633,29 +633,34 @@ void RocksDBVPackIndex::fillPaths(std::vector<std::vector<std::string>>& paths,
 }
 
 /// @brief inserts a document into the index
-Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx,
-                                         RocksDBMethods* mthds,
-                                         LocalDocumentId const& documentId,
-                                         VPackSlice const& doc,
-                                         OperationMode mode) {
+Result RocksDBVPackIndex::insertInternal(
+    transaction::Methods& trx,
+    RocksDBMethods* mthds,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+) {
   Result res;
   rocksdb::Status s;
-  
   SmallVector<RocksDBKey>::allocator_type::arena_type elementsArena;
   SmallVector<RocksDBKey> elements{elementsArena};
   SmallVector<uint64_t>::allocator_type::arena_type hashesArena;
   SmallVector<uint64_t> hashes{hashesArena};
+
   {
     // rethrow all types of exceptions from here...
-    transaction::BuilderLeaser leased(trx);
+    transaction::BuilderLeaser leased(&trx);
     int r = fillElement(*(leased.get()), documentId, doc, elements, hashes);
+
     if (r != TRI_ERROR_NO_ERROR) {
       return addErrorMsg(res, r);
     }
   }
-  
-  IndexingDisabler guard(mthds, !_unique && trx->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
-  
+
+  IndexingDisabler guard(
+    mthds, !_unique && trx.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL)
+  );
+
   // now we are going to construct the value to insert into rocksdb
   // unique indexes have a different key structure
   RocksDBValue value = _unique ? RocksDBValue::UniqueVPackIndexValue(documentId)
@@ -681,7 +686,8 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx,
   }
 
   if (res.ok() && !_unique) {
-    auto state = RocksDBTransactionState::toState(trx);
+    auto state = RocksDBTransactionState::toState(&trx);
+
     for (auto& it : hashes) {
       // The estimator is only useful if we are in a non-unique indexes
       TRI_ASSERT(!_unique);
@@ -691,7 +697,9 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx,
     // find conflicting document
     LocalDocumentId docId = RocksDBValue::documentId(existing);
     std::string existingKey;
-    bool success = _collection.getPhysical()->readDocumentWithCallback(trx, docId,
+    auto success = _collection.getPhysical()->readDocumentWithCallback(
+      &trx,
+      docId,
     [&](LocalDocumentId const&, VPackSlice doc) {
       existingKey = transaction::helpers::extractKeyFromDocument(doc).copyString();
     });
@@ -710,11 +718,14 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx,
 }
 
 Result RocksDBVPackIndex::updateInternal(
-    transaction::Methods* trx, RocksDBMethods* mthds,
+    transaction::Methods& trx,
+    RocksDBMethods* mthds,
     LocalDocumentId const& oldDocumentId,
-    arangodb::velocypack::Slice const& oldDoc,
-    LocalDocumentId const& newDocumentId, velocypack::Slice const& newDoc,
-    OperationMode mode) {
+    velocypack::Slice const& oldDoc,
+    LocalDocumentId const& newDocumentId,
+    velocypack::Slice const& newDoc,
+    Index::OperationMode mode
+) {
   if (!_unique || _useExpansion) {
     // only unique index supports in-place updates
     // lets also not handle the complex case of expanded arrays
@@ -723,12 +734,13 @@ Result RocksDBVPackIndex::updateInternal(
   } else {
     Result res;
     rocksdb::Status s;
-    
     bool equal = true;
+
     for (size_t i = 0; i < _paths.size(); ++i) {
       TRI_ASSERT(!_paths[i].empty());
       VPackSlice oldSlice = oldDoc.get(_paths[i]);
       VPackSlice newSlice = newDoc.get(_paths[i]);
+
       if ((oldSlice.isNone() || oldSlice.isNull()) &&
           (newSlice.isNone() || newSlice.isNull())) {
         // attribute not found
@@ -755,8 +767,9 @@ Result RocksDBVPackIndex::updateInternal(
     SmallVector<uint64_t> hashes{hashesArena};
     {
       // rethrow all types of exceptions from here...
-      transaction::BuilderLeaser leased(trx);
+      transaction::BuilderLeaser leased(&trx);
       int r = fillElement(*(leased.get()), newDocumentId, newDoc, elements, hashes);
+
       if (r != TRI_ERROR_NO_ERROR) {
         return addErrorMsg(res, r);
       }
@@ -778,14 +791,15 @@ Result RocksDBVPackIndex::updateInternal(
 }
 
 /// @brief removes a document from the index
-Result RocksDBVPackIndex::removeInternal(transaction::Methods* trx,
-                                         RocksDBMethods* mthds,
-                                         LocalDocumentId const& documentId,
-                                         VPackSlice const& doc,
-                                         OperationMode mode) {
+Result RocksDBVPackIndex::removeInternal(
+    transaction::Methods& trx,
+    RocksDBMethods* mthds,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+) {
   Result res;
   rocksdb::Status s;
-  
   SmallVector<RocksDBKey>::allocator_type::arena_type elementsArena;
   SmallVector<RocksDBKey> elements{elementsArena};
   SmallVector<uint64_t>::allocator_type::arena_type hashesArena;
@@ -793,19 +807,24 @@ Result RocksDBVPackIndex::removeInternal(transaction::Methods* trx,
 
   {
     // rethrow all types of exceptions from here...
-    transaction::BuilderLeaser leased(trx);
+    transaction::BuilderLeaser leased(&trx);
     int r = fillElement(*(leased.get()), documentId, doc, elements, hashes);
+
     if (r != TRI_ERROR_NO_ERROR) {
       return addErrorMsg(res, r);
     }
   }
-  
-  IndexingDisabler guard(mthds, !_unique && trx->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
+
+  IndexingDisabler guard(
+    mthds, !_unique && trx.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL)
+  );
 
   size_t const count = elements.size();
+
   if (_unique) {
     for (size_t i = 0; i < count; ++i) {
       s = mthds->Delete(_cf, elements[i]);
+
       if (!s.ok()) {
         res.reset(rocksutils::convertStatus(s, rocksutils::index));
       }
@@ -822,7 +841,8 @@ Result RocksDBVPackIndex::removeInternal(transaction::Methods* trx,
   }
 
   if (res.ok() && !_unique) {
-    auto state = RocksDBTransactionState::toState(trx);
+    auto state = RocksDBTransactionState::toState(&trx);
+
     for (auto& it : hashes) {
       // The estimator is only useful if we are in a non-unique indexes
       TRI_ASSERT(!_unique);
@@ -956,7 +976,7 @@ bool RocksDBVPackIndex::supportsFilterCondition(
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
-  return PersistentIndexAttributeMatcher::supportsFilterCondition(
+  return SkiplistIndexAttributeMatcher::supportsFilterCondition(
     allIndexes, this, node, reference, itemsInIndex,
     estimatedItems, estimatedCost);
 }
@@ -972,7 +992,7 @@ bool RocksDBVPackIndex::supportsSortCondition(
 /// @brief specializes the condition for use with the index
 arangodb::aql::AstNode* RocksDBVPackIndex::specializeCondition(arangodb::aql::AstNode* node,
                                                                arangodb::aql::Variable const* reference) const {
-  return PersistentIndexAttributeMatcher::specializeCondition(this, node, reference);
+  return SkiplistIndexAttributeMatcher::specializeCondition(this, node, reference);
 }
 
 IndexIterator* RocksDBVPackIndex::iteratorForCondition(
@@ -1008,8 +1028,8 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
     std::unordered_set<std::string> nonNullAttributes;
     size_t unused = 0;
 
-    PersistentIndexAttributeMatcher::matchAttributes(this, node, reference, found, unused,
-                                                     nonNullAttributes, true);
+    SkiplistIndexAttributeMatcher::matchAttributes(this, node, reference, found, unused,
+                                                   nonNullAttributes, true);
 
     // found contains all attributes that are relevant for this node.
     // It might be less than fields().

@@ -100,16 +100,25 @@ function ahuacatlVariablesTestSuite () {
 
     testRedeclare : function () {
       assertQueryError(errors.ERROR_QUERY_VARIABLE_REDECLARED.code, "LET a = 1 FOR a IN [ 1 ] RETURN 0"); 
-    }
+    },
+
+    testInvalidationAfterCollect1 : function () {
+      assertQueryError(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, "FOR x1 IN 1..2 COLLECT key1 = x1 RETURN x1");
+    },
+    
+    testInvalidationAfterCollect2 : function () {
+      assertQueryError(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, "FOR x1 IN 1..2 COLLECT key1 = x1 FOR x2 IN 1..2 COLLECT key2 = x2 RETURN [key2, key1]");
+    },
+    
+    testValidCollect : function () {
+      let result = getQueryResults("FOR x1 IN 1..2 COLLECT key1 = x1 RETURN key1");
+
+      assertEqual([ 1, 2 ], result);
+    },
 
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
-
 jsunity.run(ahuacatlVariablesTestSuite);
 
 return jsunity.done();
-

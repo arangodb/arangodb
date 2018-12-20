@@ -185,13 +185,16 @@ bool RocksDBFulltextIndex::matchesDefinition(VPackSlice const& info) const {
   return true;
 }
 
-Result RocksDBFulltextIndex::insertInternal(transaction::Methods* trx,
-                                            RocksDBMethods* mthd,
-                                            LocalDocumentId const& documentId,
-                                            VPackSlice const& doc,
-                                            OperationMode mode) {
+Result RocksDBFulltextIndex::insertInternal(
+    transaction::Methods& trx,
+    RocksDBMethods* mthd,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+) {
   Result res;
   std::set<std::string> words = wordlist(doc);
+
   if (words.empty()) {
     return res;
   }
@@ -202,27 +205,32 @@ Result RocksDBFulltextIndex::insertInternal(transaction::Methods* trx,
 
   // size_t const count = words.size();
   for (std::string const& word : words) {
-    RocksDBKeyLeaser key(trx);
+    RocksDBKeyLeaser key(&trx);
+
     key->constructFulltextIndexValue(_objectId, StringRef(word), documentId);
 
     rocksdb::Status s = mthd->Put(_cf, key.ref(), value.string());
+
     if (!s.ok()) {
       res.reset(rocksutils::convertStatus(s, rocksutils::index));
       addErrorMsg(res);
       break;
     }
   }
+
   return res;
 }
 
-Result RocksDBFulltextIndex::removeInternal(transaction::Methods* trx,
-                                            RocksDBMethods* mthd,
-                                            LocalDocumentId const& documentId,
-                                            VPackSlice const& doc,
-                                            OperationMode mode) {
+Result RocksDBFulltextIndex::removeInternal(
+    transaction::Methods& trx,
+    RocksDBMethods* mthd,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+) {
   Result res;
-  
   std::set<std::string> words = wordlist(doc);
+
   if (words.empty()) {
     return res;
   }
@@ -230,16 +238,19 @@ Result RocksDBFulltextIndex::removeInternal(transaction::Methods* trx,
   // now we are going to construct the value to insert into rocksdb
   // unique indexes have a different key structure
   for (std::string const& word : words) {
-    RocksDBKeyLeaser key(trx);
+    RocksDBKeyLeaser key(&trx);
+
     key->constructFulltextIndexValue(_objectId, StringRef(word), documentId);
 
     rocksdb::Status s = mthd->Delete(_cf, key.ref());
+
     if (!s.ok()) {
       res.reset(rocksutils::convertStatus(s, rocksutils::index));
       addErrorMsg(res);
       break;
     }
   }
+
   return res;
 }
 

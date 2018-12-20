@@ -40,14 +40,12 @@ NS_BEGIN(iresearch)
 class IResearchMMFilesLink final
   : public arangodb::Index, public IResearchLink {
  public:
-  virtual ~IResearchMMFilesLink();
-
   void afterTruncate(TRI_voc_tick_t /*tick*/) override {
     IResearchLink::afterTruncate();
   };
 
   virtual void batchInsert(
-    transaction::Methods* trx,
+    arangodb::transaction::Methods& trx,
     std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& documents,
     std::shared_ptr<arangodb::basics::LocalTaskQueue> queue
   ) override {
@@ -58,9 +56,7 @@ class IResearchMMFilesLink final
     return IResearchLink::canBeDropped();
   }
 
-  virtual int drop() override {
-    return IResearchLink::drop().errorNumber();
-  }
+  virtual arangodb::Result drop() override { return IResearchLink::drop(); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the factory for this type of index
@@ -76,10 +72,10 @@ class IResearchMMFilesLink final
   }
 
   virtual arangodb::Result insert(
-    transaction::Methods* trx,
-    LocalDocumentId const& documentId,
-    VPackSlice const& doc,
-    OperationMode mode
+    arangodb::transaction::Methods& trx,
+    arangodb::LocalDocumentId const& documentId,
+    arangodb::velocypack::Slice const& doc,
+    arangodb::Index::OperationMode mode
   ) override {
     return IResearchLink::insert(trx, documentId, doc, mode);
   }
@@ -90,6 +86,17 @@ class IResearchMMFilesLink final
 
   virtual bool isSorted() const override {
     return IResearchLink::isSorted();
+  }
+
+  virtual arangodb::IndexIterator* iteratorForCondition(
+    arangodb::transaction::Methods* trx,
+    arangodb::ManagedDocumentResult* result,
+    arangodb::aql::AstNode const* condNode,
+    arangodb::aql::Variable const* var,
+    arangodb::IndexIteratorOptions const& opts
+  ) override {
+    TRI_ASSERT(false); // should not be called
+    return nullptr;
   }
 
   virtual void load() override {
@@ -107,8 +114,8 @@ class IResearchMMFilesLink final
   }
 
   arangodb::Result remove(
-    transaction::Methods* trx,
-    LocalDocumentId const& documentId,
+    transaction::Methods& trx,
+    arangodb::LocalDocumentId const& documentId,
     VPackSlice const& doc,
     OperationMode mode
   ) override {

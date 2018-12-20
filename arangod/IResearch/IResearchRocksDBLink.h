@@ -40,14 +40,12 @@ NS_BEGIN(iresearch)
 class IResearchRocksDBLink final
   : public arangodb::RocksDBIndex, public IResearchLink {
  public:
-  virtual ~IResearchRocksDBLink();
-
   virtual void afterTruncate(TRI_voc_tick_t/*tick*/) override {
     IResearchLink::afterTruncate();
   };
 
   virtual void batchInsert(
-    transaction::Methods* trx,
+    transaction::Methods& trx,
     std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& documents,
     std::shared_ptr<arangodb::basics::LocalTaskQueue> queue
   ) override {
@@ -58,11 +56,7 @@ class IResearchRocksDBLink final
     return IResearchLink::canBeDropped();
   }
 
-  virtual int drop() override {
-    writeRocksWalMarker();
-
-    return IResearchLink::drop().errorNumber();
-  }
+  virtual Result drop() override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the factory for this type of index
@@ -78,17 +72,28 @@ class IResearchRocksDBLink final
   }
 
   virtual arangodb::Result insertInternal(
-      transaction::Methods* trx,
-      arangodb::RocksDBMethods*,
-      LocalDocumentId const& documentId,
-      const arangodb::velocypack::Slice& doc,
-      OperationMode mode
+      arangodb::transaction::Methods& trx,
+      arangodb::RocksDBMethods* methods,
+      arangodb::LocalDocumentId const& documentId,
+      arangodb::velocypack::Slice const& doc,
+      arangodb::Index::OperationMode mode
   ) override {
     return IResearchLink::insert(trx, documentId, doc, mode);
   }
 
   virtual bool isSorted() const override {
     return IResearchLink::isSorted();
+  }
+
+  virtual arangodb::IndexIterator* iteratorForCondition(
+    arangodb::transaction::Methods* trx,
+    arangodb::ManagedDocumentResult* result,
+    arangodb::aql::AstNode const* condNode,
+    arangodb::aql::Variable const* var,
+    arangodb::IndexIteratorOptions const& opts
+  ) override {
+    TRI_ASSERT(false); // should not be called
+    return nullptr;
   }
 
   virtual void load() override {
@@ -106,11 +111,11 @@ class IResearchRocksDBLink final
   }
 
   virtual arangodb::Result removeInternal(
-      transaction::Methods* trx,
+      arangodb::transaction::Methods& trx,
       arangodb::RocksDBMethods*,
-      LocalDocumentId const& documentId,
-      const arangodb::velocypack::Slice& doc,
-      OperationMode mode
+      arangodb::LocalDocumentId const& documentId,
+      arangodb::velocypack::Slice const& doc,
+      arangodb::Index::OperationMode mode
   ) override {
     return IResearchLink::remove(trx, documentId, doc, mode);
   }
@@ -148,8 +153,6 @@ class IResearchRocksDBLink final
     TRI_idx_iid_t iid,
     arangodb::LogicalCollection& collection
   );
-
-  void writeRocksWalMarker();
 };
 
 NS_END // iresearch

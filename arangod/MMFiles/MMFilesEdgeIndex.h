@@ -167,20 +167,30 @@ class MMFilesEdgeIndex final : public MMFilesIndex {
 
   void toVelocyPackFigures(VPackBuilder&) const override;
 
-  Result insert(transaction::Methods*, LocalDocumentId const& documentId,
-             arangodb::velocypack::Slice const&, OperationMode mode) override;
+  void batchInsert(
+    transaction::Methods & trx,
+    std::vector<std::pair<LocalDocumentId, velocypack::Slice>> const& docs,
+    std::shared_ptr<arangodb::basics::LocalTaskQueue> queue
+  ) override;
 
-  Result remove(transaction::Methods*, LocalDocumentId const& documentId,
-             arangodb::velocypack::Slice const&, OperationMode mode) override;
+  Result insert(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+  ) override;
 
-  void batchInsert(transaction::Methods*,
-                   std::vector<std::pair<LocalDocumentId, VPackSlice>> const&,
-                   std::shared_ptr<arangodb::basics::LocalTaskQueue>) override;
+  Result remove(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+  ) override;
 
   void load() override {}
   void unload() override;
 
-  int sizeHint(transaction::Methods*, size_t) override;
+  Result sizeHint(transaction::Methods& trx, size_t size) override;
 
   bool hasBatchInsert() const override { return true; }
 

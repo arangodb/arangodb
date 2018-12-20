@@ -30,6 +30,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "MMFiles/MMFilesIndexLookupContext.h"
 #include "Indexes/PersistentIndexAttributeMatcher.h"
+#include "Indexes/SkiplistIndexAttributeMatcher.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
@@ -310,14 +311,16 @@ size_t MMFilesPersistentIndex::memory() const {
 }
 
 /// @brief inserts a document into the index
-Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
-                                      LocalDocumentId const& documentId,
-                                      VPackSlice const& doc,
-                                      OperationMode mode) {
+Result MMFilesPersistentIndex::insert(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
   Result res;
-  
   int r;
+
   try {
     r = fillElement(elements, documentId, doc);
   } catch (basics::Exception const& ex) {
@@ -342,9 +345,9 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
   }
 
   ManagedDocumentResult result;
-  MMFilesIndexLookupContext context(trx, &_collection, &result, numPaths());
+  MMFilesIndexLookupContext context(&trx, &_collection, &result, numPaths());
   VPackSlice const key = transaction::helpers::extractKeyFromDocument(doc);
-  auto prefix = buildPrefix(trx->vocbase().id(), _collection.id(), _iid);
+  auto prefix = buildPrefix(trx.vocbase().id(), _collection.id(), _iid);
   VPackBuilder builder;
   std::vector<std::string> values;
 
@@ -412,7 +415,7 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
   }
 
   auto rocksTransaction =
-      static_cast<MMFilesTransactionState*>(trx->state())->rocksTransaction();
+    static_cast<MMFilesTransactionState*>(trx.state())->rocksTransaction();
   TRI_ASSERT(rocksTransaction != nullptr);
 
   auto comparator = MMFilesPersistentIndexFeature::instance()->comparator();
@@ -492,14 +495,16 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
 }
 
 /// @brief removes a document from the index
-Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
-                                      LocalDocumentId const& documentId,
-                                      VPackSlice const& doc,
-                                      OperationMode mode) {
+Result MMFilesPersistentIndex::remove(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const& doc,
+    Index::OperationMode mode
+) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
   Result res;
-
   int r;
+
   try {
     r = fillElement(elements, documentId, doc);
   } catch (basics::Exception const& ex) {
@@ -524,7 +529,7 @@ Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
   }
 
   ManagedDocumentResult result;
-  MMFilesIndexLookupContext context(trx, &_collection, &result, numPaths());
+  MMFilesIndexLookupContext context(&trx, &_collection, &result, numPaths());
   VPackSlice const key = transaction::helpers::extractKeyFromDocument(doc);
   VPackBuilder builder;
   std::vector<std::string> values;
@@ -544,13 +549,13 @@ Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
     std::string value;
 
     value.reserve(keyPrefixSize() + s.byteSize());
-    value.append(buildPrefix(trx->vocbase().id(), _collection.id(), _iid));
+    value.append(buildPrefix(trx.vocbase().id(), _collection.id(), _iid));
     value.append(s.startAs<char const>(), s.byteSize());
     values.emplace_back(std::move(value));
   }
 
   auto rocksTransaction =
-      static_cast<MMFilesTransactionState*>(trx->state())->rocksTransaction();
+    static_cast<MMFilesTransactionState*>(trx.state())->rocksTransaction();
   TRI_ASSERT(rocksTransaction != nullptr);
 
   size_t const count = elements.size();
@@ -571,7 +576,7 @@ Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
 }
 
 /// @brief called when the index is dropped
-int MMFilesPersistentIndex::drop() {
+Result MMFilesPersistentIndex::drop() {
   return MMFilesPersistentIndexFeature::instance()->dropIndex(
     _collection.vocbase().id(), _collection.id(), _iid
   );
@@ -689,8 +694,8 @@ bool MMFilesPersistentIndex::supportsFilterCondition(
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
-  return PersistentIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference,
-                                                                  itemsInIndex, estimatedItems, estimatedCost);
+  return SkiplistIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference,
+                                                                itemsInIndex, estimatedItems, estimatedCost);
 }
 
 bool MMFilesPersistentIndex::supportsSortCondition(
@@ -704,7 +709,7 @@ bool MMFilesPersistentIndex::supportsSortCondition(
 /// @brief specializes the condition for use with the index
 arangodb::aql::AstNode* MMFilesPersistentIndex::specializeCondition(arangodb::aql::AstNode* node,
                                                                     arangodb::aql::Variable const* reference) const {
-  return PersistentIndexAttributeMatcher::specializeCondition(this, node, reference);
+  return SkiplistIndexAttributeMatcher::specializeCondition(this, node, reference);
 }
 
 IndexIterator* MMFilesPersistentIndex::iteratorForCondition(
@@ -731,8 +736,8 @@ IndexIterator* MMFilesPersistentIndex::iteratorForCondition(
         found;
     std::unordered_set<std::string> nonNullAttributes;
     size_t unused = 0;
-    PersistentIndexAttributeMatcher::matchAttributes(this, node, reference, found, unused,
-                                                     nonNullAttributes, true);
+    SkiplistIndexAttributeMatcher::matchAttributes(this, node, reference, found, unused,
+                                                   nonNullAttributes, true);
 
     // found contains all attributes that are relevant for this node.
     // It might be less than fields().

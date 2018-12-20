@@ -550,7 +550,7 @@ bool Index::implicitlyUnique() const {
 }
 
 void Index::batchInsert(
-    transaction::Methods* trx,
+    transaction::Methods& trx,
     std::vector<std::pair<LocalDocumentId, arangodb::velocypack::Slice>> const& documents,
     std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) {
   for (auto const& it : documents) {
@@ -563,15 +563,13 @@ void Index::batchInsert(
 }
 
 /// @brief default implementation for drop
-int Index::drop() {
-  // do nothing
-  return TRI_ERROR_NO_ERROR;
+Result Index::drop() {
+  return Result(); // do nothing
 }
 
 /// @brief default implementation for sizeHint
-int Index::sizeHint(transaction::Methods*, size_t) {
-  // do nothing
-  return TRI_ERROR_NO_ERROR;
+Result Index::sizeHint(transaction::Methods& trx, size_t size) {
+  return Result(); // do nothing
 }
 
 /// @brief default implementation for hasBatchInsert

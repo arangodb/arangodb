@@ -179,6 +179,13 @@ bool SkiplistIndexAttributeMatcher::supportsFilterCondition(
     arangodb::Index const* idx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) {
+  
+  // mmfiles failure point compat
+  if (idx->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
+    TRI_IF_FAILURE("SimpleAttributeMatcher::accessFitsIndex") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+  }
  
   std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
   std::unordered_set<std::string> nonNullAttributes;
@@ -379,6 +386,17 @@ bool SkiplistIndexAttributeMatcher::supportsSortCondition(
 arangodb::aql::AstNode* SkiplistIndexAttributeMatcher::specializeCondition(
     arangodb::Index const* idx, arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) {
+  
+  // mmfiles failure compat
+  if (idx->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
+    TRI_IF_FAILURE("SimpleAttributeMatcher::specializeAllChildrenEQ") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    TRI_IF_FAILURE("SimpleAttributeMatcher::specializeAllChildrenIN") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+  }
+
   std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
   std::unordered_set<std::string> nonNullAttributes;
   size_t values = 0;

@@ -206,39 +206,8 @@ void dropCollectionFromAllViews(
     TRI_voc_tick_t dbId,
     TRI_voc_cid_t collectionId
 ) {
-  auto* vocbase = db.useDatabase(dbId);
-
-  if (!vocbase) {
-    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-      << "failed to drop arangosearch links from collection '" << collectionId << "', vocbase not found";
-
-    return;
-  }
-
-  TRI_DEFER(vocbase->release());
-
-  auto collection = vocbase->lookupCollection(collectionId);
-
-  if (!collection) {
-    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-      << "failed to drop arangosearch links from collection '" << collectionId << "', collection not found";
-
-    return;
-  }
-
-  arangodb::iresearch::IResearchLinkHelper::visit(
-    *collection,
-    [](arangodb::iresearch::IResearchLink& link)->bool {
-      auto res = link.drop();
-
-      if (!res.ok()) {
-        LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-          << "failed to drop arangosearch link '" << link.id() << "' from collection '" << link.collection().name() << "': " << res.errorNumber() << " " << res.errorMessage();
-      }
-
-      return true; // continue with the next link
-    }
-  );
+  // NOOP since either the IResearchView has been dropped as well
+  //      or the IResearchView will validate and remove any stale links on start
 }
 
 void dropCollectionFromView(
@@ -333,12 +302,7 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
         continue; // index was already populated when it was created
       }
 
-      link->insert(
-        &trx,
-        docId,
-        doc,
-        Index::OperationMode::internal
-      );
+      link->insert(trx, docId, doc, arangodb::Index::OperationMode::internal);
     }
 
     trx.commit();
@@ -377,10 +341,10 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(uint32_t column_family_id,
 
   for (auto link : links) {
     link->remove(
-      &trx,
+      trx,
       docId,
       arangodb::velocypack::Slice::emptyObjectSlice(),
-      Index::OperationMode::internal
+      arangodb::Index::OperationMode::internal
     );
   }
 

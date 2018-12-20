@@ -129,117 +129,36 @@ IResearchLinkCoordinator::IResearchLinkCoordinator(
   _sparse = true;  // always sparse
 }
 
-bool IResearchLinkCoordinator::operator==(LogicalView const& view) const noexcept {
-  return _view && _view->id() == view.id();
-}
-
-arangodb::Result IResearchLinkCoordinator::init(
-    arangodb::velocypack::Slice const& definition
-) {
-  std::string error;
-
-  if (!_meta.init(definition, error)) {
-    return arangodb::Result(
-      TRI_ERROR_BAD_PARAMETER,
-      std::string("error parsing view link parameters from json: ") + error
-    );
-  }
-
-  if (!definition.isObject()
-      || !definition.get(StaticStrings::ViewIdField).isString()) {
-    return arangodb::Result(
-      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-      std::string("error finding view for link '") + std::to_string(Index::id()) + "'"
-    );
-  }
-
-  auto idSlice = definition.get(StaticStrings::ViewIdField);
-  auto viewId = idSlice.copyString();
-  auto& vocbase = Index::collection().vocbase();
-
-  TRI_ASSERT(ClusterInfo::instance());
-  auto logicalView  = ClusterInfo::instance()->getView(vocbase.name(), viewId);
-
-  if (!logicalView
-      || arangodb::iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
-    return arangodb::Result(
-      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-      std::string("error looking up view '") + viewId + "': no such view"
-    );
-  }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto view = std::dynamic_pointer_cast<IResearchViewCoordinator>(logicalView);
-#else
-  auto view = std::static_pointer_cast<IResearchViewCoordinator>(logicalView);
-#endif
-
-  if (!view) {
-    return arangodb::Result(
-      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-      std::string("error finding view '") + viewId + "' for link '" + std::to_string(Index::id()) + "'"
-    );
-  }
-
-  if (!view->emplace(Index::collection().id(), Index::collection().name(), definition)) {
-    return arangodb::Result(
-      TRI_ERROR_INTERNAL,
-      std::string("error emplacing link to collection '") + Index::collection().name() + "' into arangosearch view '" + viewId + "' link '" + std::to_string(Index::id()) + "'"
-    );
-  }
-
-  _view = view;
-
-  IResearchLink::init(definition);
-
-  return arangodb::Result();
-}
-
-bool IResearchLinkCoordinator::matchesDefinition(VPackSlice const& slice) const {
-  IResearchLinkMeta rhs;
-  std::string errorField;
-
-  return rhs.init(slice, errorField) && _meta == rhs;
-}
-
 void IResearchLinkCoordinator::toVelocyPack(
     arangodb::velocypack::Builder& builder,
     std::underlying_type<arangodb::Index::Serialize>::type flags
 ) const {
-  TRI_ASSERT(_view);
-  TRI_ASSERT(!builder.isOpenObject());
+  if (builder.isOpenObject()) {
+    THROW_ARANGO_EXCEPTION(arangodb::Result(
+      TRI_ERROR_BAD_PARAMETER,
+      std::string("failed to generate link definition for arangosearch view Cluster link '") + std::to_string(arangodb::Index::id()) + "'"
+    ));
+  }
+
   builder.openObject();
 
-  bool success = _meta.json(builder);
-
-  TRI_ASSERT(success);
-  builder.add(
-    arangodb::StaticStrings::IndexId,
-    arangodb::velocypack::Value(std::to_string(Index::id()))
-  );
-  builder.add(
-    arangodb::StaticStrings::IndexType,
-    arangodb::velocypack::Value(IResearchLinkHelper::type())
-  );
-  builder.add(
-    StaticStrings::ViewIdField,
-    arangodb::velocypack::Value(_view->guid())
-  );
+  if (!json(builder)) {
+    THROW_ARANGO_EXCEPTION(arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      std::string("failed to generate link definition for arangosearch view Cluster link '") + std::to_string(arangodb::Index::id()) + "'"
+    ));
+  }
 
   if (arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Figures)) {
     builder.add(
       "figures",
       arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
     );
-    toVelocyPackFigures(builder);
+      toVelocyPackFigures(builder);
     builder.close();
   }
 
   builder.close();
-}
-
-char const* IResearchLinkCoordinator::typeName() const {
-  return IResearchLinkHelper::type().c_str();
 }
 
 } // iresearch

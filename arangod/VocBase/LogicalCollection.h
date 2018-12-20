@@ -75,6 +75,14 @@ class ChecksumResult : public Result {
   velocypack::Builder _builder;
 };
 
+/// please note that coordinator-based logical collections are frequently
+/// created and discarded, so ctor & dtor need to be as efficient as possible.
+/// additionally, do not put any volatile state into this object in the coordinator, 
+/// as the ClusterInfo may create many different temporary physical LogicalCollection 
+/// objects (one after the other) even for the same "logical" LogicalCollection.
+/// this which will also discard the collection's volatile state each time!
+/// all state of a LogicalCollection in the coordinator case needs to be derived
+/// from the JSON info in the agency's plan entry for the collection...
 class LogicalCollection : public LogicalDataSource {
   friend struct ::TRI_vocbase_t;
 
@@ -276,7 +284,7 @@ class LogicalCollection : public LogicalDataSource {
               ManagedDocumentResult& result, bool);
 
   /// @brief processes a truncate operation
-  Result truncate(transaction::Methods* trx, OperationOptions&);
+  Result truncate(transaction::Methods& trx, OperationOptions& options);
 
   // convenience function for downwards-compatibility
   Result insert(transaction::Methods* trx, velocypack::Slice const slice,
@@ -311,11 +319,17 @@ class LogicalCollection : public LogicalDataSource {
                  ManagedDocumentResult& previous,
                  std::function<Result(void)> callbackDuringLock);
 
-  Result remove(transaction::Methods*, velocypack::Slice,
-                OperationOptions&, TRI_voc_tick_t&, bool lock,
-                TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                KeyLockInfo* keyLockInfo,
-                std::function<Result(void)> callbackDuringLock);
+  Result remove(
+    transaction::Methods& trx,
+    velocypack::Slice slice,
+    OperationOptions& options,
+    TRI_voc_tick_t& resultMarkerTick,
+    bool lock,
+    TRI_voc_rid_t& prevRev,
+    ManagedDocumentResult& previous,
+    KeyLockInfo* keyLockInfo,
+    std::function<Result(void)> callbackDuringLock
+  );
 
   bool readDocument(transaction::Methods* trx,
                     LocalDocumentId const& token,

@@ -54,26 +54,13 @@ struct TestView: public arangodb::LogicalView {
   TestView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition, uint64_t planVersion)
     : arangodb::LogicalView(vocbase, definition, planVersion), _definition(definition) {
   }
-  virtual arangodb::Result appendVelocyPack(arangodb::velocypack::Builder& builder, bool , bool) const override {
+  virtual arangodb::Result appendVelocyPackImpl(arangodb::velocypack::Builder& builder, bool , bool) const override {
     return arangodb::iresearch::mergeSlice(builder, _definition.slice()) ? TRI_ERROR_NO_ERROR : TRI_ERROR_INTERNAL;
   }
-  virtual arangodb::Result drop() override {
-    auto* ci = arangodb::ClusterInfo::instance();
-
-    if (!ci) {
-      return TRI_ERROR_INTERNAL;
-    }
-
-    deleted(true);
-
-    std::string error;
-    auto res = ci->dropViewCoordinator(vocbase().name(), std::to_string(id()), error);
-
-    return arangodb::Result(res, error);
-  }
+  virtual arangodb::Result dropImpl() override { return arangodb::LogicalViewHelperClusterInfo::drop(*this); }
   virtual void open() override {}
   virtual arangodb::Result properties(arangodb::velocypack::Slice const&, bool) override { return arangodb::Result(); }
-  virtual arangodb::Result rename(std::string&& newName) override { name(std::move(newName)); return arangodb::Result(); }
+  virtual arangodb::Result renameImpl(std::string const& oldName) override { return arangodb::LogicalViewHelperStorageEngine::rename(*this, oldName); }
   virtual bool visitCollections(CollectionVisitor const& visitor) const override { return true; }
 };
 

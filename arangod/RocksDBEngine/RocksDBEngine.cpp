@@ -1289,6 +1289,7 @@ arangodb::Result RocksDBEngine::dropCollection(
   // delete indexes, RocksDBIndex::drop() has its own check
   std::vector<std::shared_ptr<Index>> vecShardIndex = coll->getIndexes();
   TRI_ASSERT(!vecShardIndex.empty());
+
   for (auto& index : vecShardIndex) {
     RocksDBIndex* ridx = static_cast<RocksDBIndex*>(index.get());
     res = RocksDBCollectionMeta::deleteIndexEstimate(db, ridx->objectId());
@@ -1296,8 +1297,9 @@ arangodb::Result RocksDBEngine::dropCollection(
       LOG_TOPIC(WARN, Logger::ENGINES) << "could not delete index estimate: "
       << res.errorMessage();
     }
-    
-    int dropRes = index->drop();
+
+    auto dropRes = index->drop().errorNumber();
+
     if (dropRes != TRI_ERROR_NO_ERROR) {
       // We try to remove all indexed values.
       // If it does not work they cannot be accessed any more and leaked.
@@ -1437,8 +1439,8 @@ Result RocksDBEngine::createView(
 }
 
 arangodb::Result RocksDBEngine::dropView(
-    TRI_vocbase_t& vocbase,
-    LogicalView& view
+    TRI_vocbase_t const& vocbase,
+    LogicalView const& view
 ) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   LOG_TOPIC(DEBUG, Logger::ENGINES) << "RocksDBEngine::dropView";
@@ -1467,8 +1469,8 @@ arangodb::Result RocksDBEngine::dropView(
 }
 
 void RocksDBEngine::destroyView(
-    TRI_vocbase_t& /*vocbase*/,
-    LogicalView& /*view*/
+    TRI_vocbase_t const& /*vocbase*/,
+    LogicalView const& /*view*/
 ) noexcept {
   // nothing to do here
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
