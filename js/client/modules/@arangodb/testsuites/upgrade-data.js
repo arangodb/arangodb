@@ -99,7 +99,7 @@ const unpackOldData = (engine, version, options, serverOptions) => {
     `--file=${dataFile}`,
     `--directory=${serverOptions['database.directory']}`
   ];
-  let unpack = pu.executeAndWait('tar', tarOptions, {}, '');
+  let unpack = pu.executeAndWait('tar', tarOptions, { disableMonitor: true }}, '');
 
   if (unpack.status === false) {
     unpack.failed = 1;
