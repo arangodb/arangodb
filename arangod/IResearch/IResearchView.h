@@ -221,7 +221,8 @@ class IResearchView final
   IResearchView(
     TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& info,
-    uint64_t planVersion
+    uint64_t planVersion,
+    IResearchViewMeta&& meta
   );
 
   //////////////////////////////////////////////////////////////////////////////

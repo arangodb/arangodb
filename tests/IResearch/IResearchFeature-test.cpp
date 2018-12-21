@@ -132,6 +132,71 @@ SECTION("test_start") {
   };
 }
 
+SECTION("test_upgrade0_1") {
+  // test single-server (no directory)
+  {
+    // FIXME TODO implement
+    // instantiate view with links
+    // create view directory
+    // run upgrade
+    // ensure view drop called
+    // ensure link drop called
+    // ensure link present after upgrade
+    // ensure view directory removed after upgrade
+    // ensure link directory created after upgrade
+    // ensure 'version == 1 after upgrade
+  }
+
+  // test single-server (with directory)
+  {
+    // FIXME TODO implement
+    // instantiate view with links
+    // ensure no view directory
+    // run upgrade
+    // ensure view drop called
+    // ensure link drop called
+    // ensure link present after upgrade
+    // ensure no view directory after upgrade
+    // ensure link directory created after upgrade
+    // ensure 'version == 1 after upgrade
+  }
+
+  // test coordinator
+  {
+    // FIXME TODO implement
+    // instantiate view with links
+    // run upgrade
+    // ensure view drop called
+    // ensure link drop called
+    // ensure link present after upgrade
+    // ensure 'version == 1 after upgrade
+  }
+
+  // test db-server (no directory)
+  {
+    // FIXME TODO implement
+    // instantiate view with link
+    // create view directory
+    // run upgrade
+    // ensure view drop called
+    // ensure link drop called
+    // ensure view directory removed after upgrade
+    // ensure no view after upgrade
+  }
+
+  // test db-server (with directory)
+  {
+    // FIXME TODO implement
+    // instantiate view with links
+    // ensure no view directory
+    // run upgrade
+    // ensure view drop called
+    // ensure link drop called
+    // ensure no view directory after upgrade
+    // ensure no view after upgrade
+  }
+}
+
 SECTION("IResearch_version") {
   CHECK(IResearch_version == arangodb::rest::Version::getIResearchVersion());
   CHECK(IResearch_version == arangodb::rest::Version::Values["iresearch-version"]);
