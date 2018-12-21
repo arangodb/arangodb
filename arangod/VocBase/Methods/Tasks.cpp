@@ -264,7 +264,6 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
   auto self = shared_from_this();
 
   return [self, this](bool cancelled) {
-
     if (cancelled) {
       MUTEX_LOCKER(guard, _tasksLock);
 
@@ -293,7 +292,7 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
 
     // permissions might have changed since starting this task
     if (application_features::ApplicationServer::isStopping() || !allowContinue) {
-      Task::unregisterTask(_id, false);
+      Task::unregisterTask(_id, true);
       return;
     }
 
@@ -310,7 +309,7 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
           } else {
             // in case of one-off tasks or in case of a shutdown, simply
             // remove the task from the list
-            Task::unregisterTask(_id, false);
+            Task::unregisterTask(_id, true);
           }
         });
   };

@@ -148,7 +148,7 @@ bool SupervisedScheduler::start() {
 
   _manager.reset(new SupervisedSchedulerManagerThread(*this));
   if (!_manager->start()) {
-    LOG_TOPIC(ERR, Logger::SUPERVISION) << "could not start supervisor thread";
+    LOG_TOPIC(ERR, Logger::THREADS) << "could not start supervisor thread";
     return false;
   }
 
@@ -194,15 +194,17 @@ void SupervisedScheduler::runWorker()
 {
   uint64_t id;
 
+  std::shared_ptr<WorkerState> state;
+
   {
-    // inform the supervisor that this thread is alive
     std::lock_guard<std::mutex> guard(_mutexSupervisor);
     id = _numWorker++;  // increase the number of workers here, to obtains the id
+    // copy shared_ptr with worker state
+    state = _workerStates.back();
+    // inform the supervisor that this thread is alive
     _conditionSupervisor.notify_one();
   }
 
-  // copy shared_ptr
-  auto state = _workerStates.back();
 
   state->_sleepTimeout_ms = 20 * (id + 1);
   state->_queueRetryCount = (512 >> id) + 3;
@@ -396,7 +398,7 @@ void SupervisedScheduler::startOneThread()
   if (!_workerStates.back()->start()) {
     // failed to start a worker
     _workerStates.pop_back();   // pop_back deletes shared_ptr, which deletes thread
-    LOG_TOPIC(ERR, Logger::SUPERVISION) << "could not start additional worker thread";
+    LOG_TOPIC(ERR, Logger::THREADS) << "could not start additional worker thread";
 
   } else {
     LOG_TOPIC(TRACE, Logger::THREADS) << "Started new thread";

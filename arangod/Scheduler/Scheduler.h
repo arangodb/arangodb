@@ -30,6 +30,7 @@
 #include <queue>
 
 #include "GeneralServer/RequestLane.h"
+#include "Logger/Logger.h"
 
 namespace arangodb {
 
@@ -93,8 +94,7 @@ public:
 
     inline void executeWithCancel(bool arg) {
       bool disabled = _disable.exchange(true);
-
-      // If compare_exchange_strong returns true, the previous value had to be false
+      // If exchange returns false, the item was not yet scheduled.
       // Hence we are the first dealing with this WorkItem
       if (disabled == false) {
         // The following code moves the _handler into the Scheduler.

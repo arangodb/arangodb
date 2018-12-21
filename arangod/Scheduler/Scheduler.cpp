@@ -151,6 +151,7 @@ Scheduler::WorkHandle Scheduler::queueDelay(
   if (delay < std::chrono::milliseconds(1)) {
     // execute directly
     queue(lane, [handler](){ handler(false); });
+    return nullptr;
   }
 
   auto item = std::make_shared<WorkItem>(std::move(handler), lane, this);
