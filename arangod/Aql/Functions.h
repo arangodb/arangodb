@@ -416,6 +416,9 @@ struct Functions {
     static AqlValue CollectionCount(arangodb::aql::ExpressionContext*,
                                     transaction::Methods*,
                                     VPackFunctionParameters const&);
+    static AqlValue CheckDocument(arangodb::aql::ExpressionContext*,
+                                  transaction::Methods*,
+                                  VPackFunctionParameters const&);
     static AqlValue VarianceSample(arangodb::aql::ExpressionContext*, transaction::Methods*,
                                    VPackFunctionParameters const&);
     static AqlValue PregelResult(arangodb::aql::ExpressionContext*, transaction::Methods*,

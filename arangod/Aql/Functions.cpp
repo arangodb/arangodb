@@ -207,6 +207,32 @@ std::string executeDateFormatRegex(std::string const& search, tp_sys_clock_ms co
   return s;
 }
 
+bool isValidDocument(VPackSlice slice) {
+  std::unordered_set<std::string> keys;
+ 
+  TRI_ASSERT(slice.isObject()); 
+  auto it = VPackObjectIterator(slice, true);
+  
+  if (it.size() > 1) {
+    while (it.valid()) {
+      if (!keys.emplace(it.key().copyString()).second) {
+        // duplicate key
+        return false;
+      }
+
+      VPackSlice value = it.value().resolveExternals();
+      if (value.isObject()) {
+        if (!isValidDocument(value)) {
+          // recurse into sub-objects
+          return false;
+        }
+      }
+      it.next();
+    }
+  }
+  return true;
+}
+
 std::string tail(std::string const& source, size_t const length) {
   if (length >= source.size()) {
     return source;
@@ -6722,6 +6748,26 @@ AqlValue Functions::CollectionCount(ExpressionContext*,
   }
 
   return AqlValue(res.slice());
+}
+
+/// @brief function CHECK_DOCUMENT
+AqlValue Functions::CheckDocument(ExpressionContext*,
+                                  transaction::Methods* trx,
+                                  VPackFunctionParameters const& parameters) {
+  static char const* AFN = "CHECK_DOCUMENT";
+
+  AqlValue const& value = extractFunctionParameterValue(parameters, 1);
+  if (!value.isObject()) {
+    // no document at all
+    return AqlValue(AqlValueHintBool(false));
+  }
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value, true);
+  
+  TRI_ASSERT(slice.isObject());
+
+  return AqlValue(AqlValueHintBool(::isValidDocument(slice)));
 }
 
 /// @brief function VARIANCE_SAMPLE
