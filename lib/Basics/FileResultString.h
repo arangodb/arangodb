@@ -28,9 +28,9 @@
 namespace arangodb {
 class FileResultString : public FileResult {
  public:
-  FileResultString(std::string result) : FileResult(), _result(result) {}
+  FileResultString(std::string const& result) : FileResult(), _result(result) {}
 
-  FileResultString(int sysErrorNumber, std::string result)
+  FileResultString(int sysErrorNumber, std::string const& result)
       : FileResult(sysErrorNumber), _result(result) {}
 
   FileResultString(int sysErrorNumber)

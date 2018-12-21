@@ -846,7 +846,7 @@ arangodb::Result IResearchLink::initDataStore() {
     );
   }
 
-  irs::index_writer::options options;
+  irs::index_writer::init_options options;
 
   options.lock_repository = false; // do not lock index, ArangoDB has it's own lock
 
@@ -1088,7 +1088,7 @@ size_t IResearchLink::memory() const {
 }
 
 bool IResearchLink::properties(
-    irs::index_writer::segment_limits const& properties
+    irs::index_writer::segment_options const& properties
 ) {
   // FIXME TODO update the data-store options
   return true;

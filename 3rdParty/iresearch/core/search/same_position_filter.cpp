@@ -336,7 +336,7 @@ filter::prepared::ptr by_same_position::prepare(
   // apply boost
   irs::boost::apply(q->attributes(), this->boost() * boost);
 
-  return IMPLICIT_MOVE_WORKAROUND(q);
+  return q;
 }
 
 NS_END // ROOT

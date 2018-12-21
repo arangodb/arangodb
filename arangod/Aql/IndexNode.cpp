@@ -125,7 +125,7 @@ void IndexNode::initIndexCoversProjections() {
   // note that we made sure that if we have multiple index instances, they
   // are actually all of the same index
 
-  auto const& fields = idx->fields();
+  auto const& fields = idx->coveredFields();
 
   if (!idx->hasCoveringIterator()) {
     // index does not have a covering index iterator

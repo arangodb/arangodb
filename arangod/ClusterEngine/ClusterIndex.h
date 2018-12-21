@@ -138,11 +138,16 @@ class ClusterIndex : public Index {
 
   void updateProperties(velocypack::Slice const&);
 
+  std::vector<std::vector<arangodb::basics::AttributeName>> const& coveredFields() const override;
+
  protected:
   ClusterEngineType _engineType;
   Index::IndexType _indexType;
   velocypack::Builder _info;
   double _clusterSelectivity;
+  
+  // Only used in RocksDB edge index.
+  std::vector<std::vector<arangodb::basics::AttributeName>> _coveredFields;
 };
 }  // namespace arangodb
 

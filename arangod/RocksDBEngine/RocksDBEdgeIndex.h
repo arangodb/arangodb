@@ -61,7 +61,9 @@ class RocksDBEdgeIndexIterator final : public IndexIterator {
   bool nextCovering(DocumentCallback const& cb, size_t limit) override;
   bool nextExtra(ExtraCallback const& cb, size_t limit) override;
   void reset() override;
-  
+
+
+
   /// @brief we provide a method to provide the index attribute values
   /// while scanning the index
   bool hasCovering() const override { return true; }
@@ -137,6 +139,8 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   bool isSorted() const override { return false; }
 
   bool hasSelectivityEstimate() const override { return true; }
+
+  std::vector<std::vector<arangodb::basics::AttributeName>> const& coveredFields() const override;
 
   double selectivityEstimate(arangodb::StringRef const& = arangodb::StringRef()) const override;
 
@@ -217,6 +221,10 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   /// On insertion of a document we have to insert it into the estimator,
   /// On removal we have to remove it in the estimator as well.
   std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> _estimator;
+
+  /// @brief The list of attributes covered by this index.
+  ///        First is the actual index attribute (e.g. _from), second is the opposite (e.g. _to)
+  std::vector<std::vector<arangodb::basics::AttributeName>> const _coveredFields;
 };
 }  // namespace arangodb
 

@@ -2005,7 +2005,7 @@ int MMFilesCollection::iterateMarkersOnLoad(transaction::Methods* trx) {
   _hasAllPersistentLocalIds.store(openState._hasAllPersistentLocalIds);
   auto engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
   LOG_TOPIC_IF(WARN, arangodb::Logger::ENGINES,
-               !openState._hasAllPersistentLocalIds && !engine->upgrading())
+               !openState._hasAllPersistentLocalIds && !engine->upgrading() && !engine->inRecovery())
      << "collection '" << _logicalCollection.name() << "' does not have all "
      << "persistent LocalDocumentIds; cannot be linked to an arangosearch view";
 
