@@ -513,15 +513,8 @@ double Index::selectivityEstimate(StringRef const* extra) const {
     estimate = _clusterSelectivity;
   }
 
-  if (estimate < 0.0) {
-    estimate = 0.0;
-  } else if (estimate > 1.0) {
-    estimate = 1.0;
-  }
-
-  TRI_ASSERT(estimate >= 0.0 &&
-             estimate <= 1.00001);  // floating-point tolerance
-  return estimate;
+  // make sure the estimate is always within bounds
+  return std::max(0, std::min(1, estimate));
 }
 
 double Index::selectivityEstimateLocal(StringRef const* extra) const {
