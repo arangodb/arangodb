@@ -77,6 +77,9 @@ class Expression {
     }
   }
 
+  /// @brief get the underlying AST
+  Ast* ast() const noexcept { return _ast; }
+
   /// @brief get the underlying AST node
   inline AstNode const* node() const { return _node; }
 

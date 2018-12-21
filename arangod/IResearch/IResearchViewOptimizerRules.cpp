@@ -62,53 +62,6 @@ size_t numberOfShards(
   return numberOfShards;
 }
 
-std::vector<arangodb::iresearch::IResearchSort> buildSort(
-    ExecutionPlan const& plan,
-    arangodb::aql::Variable const& ref,
-    std::vector<std::pair<Variable const*, bool>> const& sorts,
-    std::map<VariableId, AstNode const*> const& vars,
-    bool scorersOnly
-) {
-  std::vector<IResearchSort> entries;
-
-  QueryContext const ctx { nullptr, nullptr, nullptr, nullptr, &ref };
-
-  for (auto& sort : sorts) {
-    auto const* var = sort.first;
-    auto varId = var->id;
-
-    AstNode const* rootNode = nullptr;
-    auto it = vars.find(varId);
-
-    if (it != vars.end()) {
-      auto const* node = rootNode = it->second;
-
-      while (node && NODE_TYPE_ATTRIBUTE_ACCESS == node->type) {
-        node = node->getMember(0);
-      }
-
-      if (node && NODE_TYPE_REFERENCE == node->type) {
-        var = reinterpret_cast<Variable const*>(node->getData());
-      }
-    } else {
-      auto const* setter = plan.getVarSetBy(varId);
-      if (setter && EN::CALCULATION == setter->getType()) {
-        auto const* expr = ExecutionNode::castTo<CalculationNode const*>(setter)->expression();
-
-        if (expr) {
-          rootNode = expr->node();
-        }
-      }
-    }
-
-    if (var && rootNode && (!scorersOnly || OrderFactory::scorer(nullptr, *rootNode, ctx))) {
-      entries.emplace_back(var, rootNode, sort.second);
-    }
-  }
-
-  return entries;
-}
-
 bool addView(
     arangodb::LogicalView const& view,
     arangodb::aql::Query& query
@@ -157,18 +110,14 @@ class IResearchViewConditionHandler final
   );
 
   ExecutionPlan* _plan;
-  std::vector<std::pair<Variable const*, bool>> _sorts;
-  // map and set are 25-30% faster than corresponding
-  // unordered_set for small number of elements
-  std::map<VariableId, AstNode const*> _variableDefinitions;
   std::set<arangodb::iresearch::IResearchViewNode const*>* _processedViewNodes;
+  OrderFactory::DedupScorers _dedup;
+  OrderFactory::VarToScorers _scorers;
 }; // IResearchViewConditionFinder
 
 bool IResearchViewConditionHandler::before(ExecutionNode* en) {
   switch (en->getType()) {
     case EN::LIMIT:
-      // LIMIT invalidates the sort expression we already found
-      _sorts.clear();
       break;
 
     case EN::SINGLETON:
@@ -177,28 +126,14 @@ bool IResearchViewConditionHandler::before(ExecutionNode* en) {
       return true;
 
     case EN::SORT: {
-      // register which variables are used in a SORT
-      if (_sorts.empty()) {
-        for (auto& it : EN::castTo<SortNode const*>(en)->elements()) {
-          _sorts.emplace_back(it.var, it.ascending);
-          TRI_IF_FAILURE("IResearchViewConditionFinder::sortNode") {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-          }
-        }
-      }
       break;
     }
 
     case EN::CALCULATION: {
-      auto outvars = en->getVariablesSetHere();
-      TRI_ASSERT(outvars.size() == 1);
+      auto* calcNode = EN::castTo<CalculationNode const*>(en);
+      TRI_ASSERT(calcNode->expression());
 
-      _variableDefinitions.emplace(
-          outvars[0]->id,
-          EN::castTo<CalculationNode const*>(en)->expression()->node());
-      TRI_IF_FAILURE("IResearchViewConditionFinder::variableDefinition") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
+      OrderFactory::replaceScorers(_scorers, _dedup, *calcNode->expression());
       break;
     }
 
@@ -220,6 +155,7 @@ bool IResearchViewConditionHandler::before(ExecutionNode* en) {
         break;
       }
 
+      // build filter condition
       Condition filterCondition(_plan->getAst());
 
       if (!node->filterConditionIsEmpty()) {
@@ -230,19 +166,7 @@ bool IResearchViewConditionHandler::before(ExecutionNode* en) {
         }
       }
 
-      auto sortCondition = buildSort(
-        *_plan,
-        node->outVariable(),
-        _sorts,
-        _variableDefinitions,
-        true  // node->isInInnerLoop() // build scorers only in case if we're inside a loop
-      );
-
-      if (filterCondition.isEmpty() && sortCondition.empty()) {
-        // no conditions left
-        break;
-      }
-
+      // check filter condition
       auto const canUseView = !filterCondition.root() || FilterFactory::filter(
         nullptr,
         { nullptr, nullptr, nullptr, nullptr, &node->outVariable() },
@@ -256,11 +180,16 @@ bool IResearchViewConditionHandler::before(ExecutionNode* en) {
         );
       }
 
-      node->filterCondition(filterCondition.root());
-      node->sortCondition(std::move(sortCondition));
+      if (!filterCondition.isEmpty()) {
+        node->filterCondition(filterCondition.root());
+      }
 
-      TRI_IF_FAILURE("IResearchViewConditionFinder::insertViewNode") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      // find scorers that have to be evaluated by a view
+      auto it = _scorers.find(&node->outVariable());
+
+      if (it != _scorers.end()) {
+        node->scorers(std::move(it->second));
+        _scorers.erase(it); // remove processed variable
       }
 
       _processedViewNodes->insert(node);
@@ -341,7 +270,7 @@ void handleViewsRule(
     for (auto* viewNode : processedViewNodes) {
       TRI_ASSERT(viewNode);
 
-      for (auto const& sort : viewNode->sortCondition()) {
+      for (auto const& sort : viewNode->scorers()) {
         auto const* var = sort.var;
 
         if (!var) {

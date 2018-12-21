@@ -29,13 +29,15 @@
 
 #include "search/scorers.hpp"
 
-#include "AqlHelper.h"
 #include "IResearchFeature.h"
 #include "IResearchOrderFactory.h"
 #include "VelocyPackHelper.h"
+#include "Aql/Ast.h"
 #include "Aql/AstNode.h"
+#include "Aql/Expression.h"
 #include "Aql/Function.h"
 #include "Aql/SortCondition.h"
+#include "Basics/fasthash.h"
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                        OrderFactory dependencies
@@ -45,27 +47,26 @@ NS_LOCAL
 
 arangodb::aql::AstNode const EMPTY_ARGS(arangodb::aql::NODE_TYPE_ARRAY);
 
-bool validateFuncArgs(
-    arangodb::aql::AstNode const* args,
-    arangodb::aql::Variable const& ref
-) {
+// checks a specified args to be deterministic
+// and retuns reference to a loop variable
+arangodb::aql::Variable const* getScorerRef(
+    arangodb::aql::AstNode const* args
+) noexcept {
   if (!args || arangodb::aql::NODE_TYPE_ARRAY != args->type) {
-    return false;
+    return nullptr;
   }
 
   size_t const size = args->numMembers();
 
   if (size < 1) {
-    return false; // invalid args
+    return nullptr; // invalid args
   }
 
   // 1st argument has to be reference to `ref`
   auto const* arg0 = args->getMemberUnchecked(0);
 
-  if (!arg0
-      || arangodb::aql::NODE_TYPE_REFERENCE != arg0->type
-      || reinterpret_cast<void const*>(&ref) != arg0->getData()) {
-    return false;
+  if (!arg0 || arangodb::aql::NODE_TYPE_REFERENCE != arg0->type) {
+    return nullptr;
   }
 
   for (size_t i = 1, size = args->numMembers(); i < size; ++i) {
@@ -73,11 +74,11 @@ bool validateFuncArgs(
 
     if (!arg || !arg->isDeterministic()) {
       // we don't support non-deterministic arguments for scorers
-      return false;
+      return nullptr;
     }
   }
 
-  return true;
+  return reinterpret_cast<arangodb::aql::Variable const*>(arg0->getData());
 }
 
 bool makeScorer(
@@ -139,7 +140,9 @@ bool fromFCall(
     arangodb::aql::AstNode const* args,
     arangodb::iresearch::QueryContext const& ctx
 ) {
-  if (!validateFuncArgs(args, *ctx.ref)) {
+  auto const* ref = getScorerRef(args);
+
+  if (ref != ctx.ref) {
     // invalid arguments
     return false;
   }
@@ -253,6 +256,74 @@ NS_BEGIN(iresearch)
       // IResearch does not support any
       // expressions except function calls
       return false;
+  }
+}
+
+/*static*/ void OrderFactory::replaceScorers(
+    OrderFactory::VarToScorers& vars,
+    OrderFactory::DedupScorers& scorers,
+    aql::Expression& expr
+) {
+  auto* ast = expr.ast();
+
+  if (!expr.ast()) {
+    // ast is not set
+    return;
+  }
+
+  auto* node = expr.nodeForModification();
+
+  if (!node) {
+    // node is not set
+    return;
+  }
+
+  auto replaceScorers = [&scorers, ast](aql::AstNode* node) {
+    if (aql::NODE_TYPE_FCALL == node->type || aql::NODE_TYPE_FCALL_USER == node->type) {
+      auto* ref = getScorerRef(node->getMember(0));
+
+      if (!ref) {
+        // invalid arguments or reference
+        return node;
+      }
+
+      QueryContext const ctx{ nullptr,  nullptr,  nullptr,  nullptr, ref };
+
+      if (!OrderFactory::scorer(nullptr, *node, ctx)) {
+        // not a scorer function
+        return node;
+      }
+
+      Scorer const key(ref, node);
+
+      auto it = scorers.find(key);
+
+      if (it == scorers.end()) {
+        // create variable
+        auto* var = ast->variables()->createTemporaryVariable();
+
+        it = scorers.emplace(key, var).first;
+      }
+
+      return ast->createNodeReference(it->second);
+    }
+
+    return node;
+  };
+
+  // Try to modify root node of the expression
+  auto newNode = replaceScorers(node);
+
+  if (node != newNode) {
+    // simple expression, e.g LET x = BM25(d)
+    expr.replaceNode(newNode);
+  } else {
+    aql::Ast::traverseAndModify(node, replaceScorers);
+  }
+
+  for (auto& scorer : scorers) {
+    auto& nodes = vars[scorer.first.var];
+    nodes.emplace_back(scorer.second, scorer.first.node);
   }
 }
 

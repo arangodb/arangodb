@@ -27,8 +27,10 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/Function.h"
 #include "Aql/Variable.h"
 #include "Logger/LogMacros.h"
+#include "Basics/fasthash.h"
 
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
@@ -48,6 +50,251 @@ arangodb::aql::AstNodeType const CmpMap[] {
 
 namespace arangodb {
 namespace iresearch {
+
+bool equalTo(aql::AstNode const* lhs, aql::AstNode const* rhs) {
+  if (lhs == rhs) {
+    return true;
+  }
+
+  if ((!lhs && rhs) || (lhs && !rhs)) {
+    return false;
+  }
+
+  if (lhs->type != rhs->type) {
+    return false;
+  }
+
+  size_t const n = lhs->numMembers();
+
+  if (n != rhs->numMembers()) {
+    return false;
+  }
+
+  switch (lhs->type) {
+    case aql::NODE_TYPE_VARIABLE: {
+      return lhs->getData() == rhs->getData();
+    }
+
+    case aql::NODE_TYPE_ATTRIBUTE_ACCESS: {
+      return attributeAccessEqual(lhs, rhs, nullptr);
+    }
+
+    case aql::NODE_TYPE_VALUE:
+    case aql::NODE_TYPE_OBJECT: {
+      return 0 == aql::CompareAstNodes(lhs, rhs, true);
+    }
+
+    case aql::NODE_TYPE_ARRAY: {
+      for (size_t i = 0; i < n; ++i) {
+        if (!equalTo(lhs->getMemberUnchecked(i), rhs->getMemberUnchecked(i))) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    case aql::NODE_TYPE_REFERENCE: {
+      return lhs->getData() == rhs->getData();
+    }
+
+    case aql::NODE_TYPE_FCALL: {
+      if (lhs->getData() != rhs->getData()) {
+        // different function
+        return false;
+      }
+
+      for (size_t i = 0; i < n; ++i) {
+        if (!equalTo(lhs->getMemberUnchecked(i), rhs->getMemberUnchecked(i))) {
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    case aql::NODE_TYPE_FCALL_USER: {
+      irs::string_ref lhsName, rhsName;
+      iresearch::parseValue(lhsName, *lhs);
+      iresearch::parseValue(rhsName, *rhs);
+
+      if (lhsName != rhsName) {
+        return false;
+      }
+
+
+      for (size_t i = 0; i < n; ++i) {
+        if (!equalTo(lhs->getMemberUnchecked(i), rhs->getMemberUnchecked(i))) {
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    case aql::NODE_TYPE_RANGE: {
+      for (size_t i = 0; i < n; ++i) {
+        if (!equalTo(lhs->getMemberUnchecked(i), rhs->getMemberUnchecked(i))) {
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    default: {
+      return lhs == rhs;
+    }
+  }
+}
+
+size_t hash(aql::AstNode const* node, size_t hash /*= 0*/) noexcept {
+  if (!node) {
+    return hash;
+  }
+
+  switch (node->type) {
+    case aql::NODE_TYPE_VARIABLE: {
+      hash = fasthash64(static_cast<const void*>("variable"), 8, hash);
+      return fasthash64(node->getData(), sizeof(void*), hash);
+    }
+
+    case aql::NODE_TYPE_ATTRIBUTE_ACCESS: {
+      hash = fasthash64(static_cast<const void*>("access"), 6, hash);
+
+      struct Visitor {
+        explicit Visitor(size_t& hash) noexcept
+          : hash(hash) {
+        }
+
+        bool attributeAccess(arangodb::aql::AstNode const& node) noexcept {
+          hash = fasthash64(static_cast<const void*>("attribute"), 9, hash);
+          hash = iresearch::hash(&node, hash);
+          return true;
+        }
+
+        bool expansion(arangodb::aql::AstNode const&) noexcept {
+          hash = fasthash64(static_cast<const void*>("*"), 1, hash);
+          return true;
+        }
+
+        bool indexAccess(arangodb::aql::AstNode const& node) noexcept {
+          hash = fasthash64(static_cast<const void*>("index"), 5, hash);
+          hash = iresearch::hash(&node, hash);
+          return true;
+        }
+
+        size_t& hash;
+      } hasher(hash);
+
+      aql::AstNode const* head = nullptr;
+      visitAttributeAccess(head, node, hasher);
+
+      return hash;
+    }
+
+    case aql::NODE_TYPE_VALUE: {
+      hash = fasthash64(static_cast<const void*>("value"), 5, hash);
+      switch (node->value.type) {
+        case aql::VALUE_TYPE_NULL:
+          return fasthash64(static_cast<const void*>("null"), 4, hash);
+        case aql::VALUE_TYPE_BOOL:
+          if (node->value.value._bool) {
+            return fasthash64(static_cast<const void*>("true"), 4, hash);
+          }
+          return fasthash64(static_cast<const void*>("false"), 5, hash);
+        case aql::VALUE_TYPE_INT:
+          return fasthash64(static_cast<const void*>(&node->value.value._int),
+                            sizeof(node->value.value._int), hash);
+        case aql::VALUE_TYPE_DOUBLE:
+          return fasthash64(static_cast<const void*>(&node->value.value._double),
+                            sizeof(node->value.value._double), hash);
+        case aql::VALUE_TYPE_STRING:
+          return fasthash64(static_cast<const void*>(node->getStringValue()),
+                            node->getStringLength(), hash);
+      }
+    }
+
+    case aql::NODE_TYPE_ARRAY: {
+      hash = fasthash64(static_cast<const void*>("array"), 5, hash);
+      for (size_t i = 0, n = node->numMembers(); i < n; ++i) {
+        auto sub = node->getMemberUnchecked(i);
+
+        if (sub) {
+          hash = iresearch::hash(sub, hash);
+        }
+      }
+      return hash;
+    }
+
+    case aql::NODE_TYPE_OBJECT: {
+      hash = fasthash64(static_cast<const void*>("object"), 6, hash);
+      for (size_t i = 0, n = node->numMembers(); i < n; ++i) {
+        auto sub = node->getMemberUnchecked(i);
+
+        if (sub) {
+          hash = fasthash64(
+            static_cast<const void*>(sub->getStringValue()),
+            sub->getStringLength(), 
+            hash
+          );
+          TRI_ASSERT(sub->numMembers() > 0);
+          hash = iresearch::hash(sub->getMemberUnchecked(0), hash);
+        }
+      }
+      return hash;
+    }
+
+    case aql::NODE_TYPE_REFERENCE: {
+      hash = fasthash64(static_cast<const void*>("reference"), 9, hash);
+      return fasthash64(node->getData(), sizeof(void*), hash);
+    }
+
+    case aql::NODE_TYPE_FCALL: {
+      // convert name to lower case
+      auto* fn = static_cast<aql::Function*>(node->getData());
+
+      hash = fasthash64(static_cast<const void*>("fcall"), 5, hash);
+      hash = fasthash64(node->getData(), sizeof(void*), hash);
+      hash = fasthash64(fn->name.c_str(), fn->name.size(), hash);
+      for (size_t i = 0, n = node->numMembers(); i < n; ++i) {
+        auto sub = node->getMemberUnchecked(i);
+        TRI_ASSERT(sub);
+        hash = iresearch::hash(sub, hash);
+      }
+      return hash;
+    }
+
+    case aql::NODE_TYPE_FCALL_USER: {
+      hash = fasthash64(static_cast<const void*>("fcalluser"), 9, hash);
+      hash = fasthash64(static_cast<const void*>(node->getStringValue()),
+                        node->getStringLength(), hash);
+      for (size_t i = 0, n = node->numMembers(); i < n; ++i) {
+        auto sub = node->getMemberUnchecked(i);
+
+        if (sub) {
+          hash = iresearch::hash(sub, hash);
+        }
+      }
+      return hash;
+    }
+
+    case aql::NODE_TYPE_RANGE: {
+      hash = fasthash64(static_cast<const void*>("range"), 5, hash);
+      for (size_t i = 0, n = node->numMembers(); i < n; ++i) {
+        auto sub = node->getMemberUnchecked(i);
+
+        if (sub) {
+          hash = iresearch::hash(sub, hash);
+        }
+      }
+      return hash;
+    }
+
+    default: {
+      return fasthash64(static_cast<void const*>(&node), sizeof(&node), hash);
+    }
+  }
+}
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                    AqlValueTraits implementation
