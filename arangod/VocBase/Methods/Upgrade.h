@@ -96,12 +96,6 @@ struct Upgrade {
   );
 
  private:
-  static std::vector<Task> _tasks;
-  static void addTask(std::string&& name, std::string&& desc,
-                      uint32_t systemFlag, uint32_t clusterFlag,
-                      uint32_t dbFlag, TaskFunction&& action) {
-    _tasks.push_back(Task{name, desc, systemFlag, clusterFlag, dbFlag, action});
-  }
 
   /// @brief register tasks, only run once on startup
   static void registerTasks();

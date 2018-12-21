@@ -48,6 +48,7 @@
 #include "Basics/SmallVector.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
+#include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -269,6 +270,39 @@ void registerRecoveryHelper() {
   auto res = arangodb::RocksDBEngine::registerRecoveryHelper(helper);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), "failed to register RocksDB recovery helper");
+  }
+}
+
+void registerUpgradeTasks() {
+  auto* upgrade = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::UpgradeFeature
+  >("Upgrade");
+
+  if (!upgrade) {
+    return; // nothing to register with (OK if no tasks actually need to be applied)
+  }
+
+  // move IResearch data-store from IResearchView to IResearchLink
+  {
+    arangodb::methods::Upgrade::Task task;
+
+    task.name = "ArangoSearch version 0->1";
+    task.description =
+      "move IResearch data-store from IResearchView to IResearchLink";
+    task.systemFlag = arangodb::methods::Upgrade::Flags::DATABASE_ALL;
+    task.clusterFlags =
+      arangodb::methods::Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL // any single coolrdinator
+      | arangodb::methods::Upgrade::Flags::CLUSTER_NONE // local server
+      ;
+    task.databaseFlags = arangodb::methods::Upgrade::Flags::DATABASE_UPGRADE;
+    task.action = [](
+      TRI_vocbase_t& vocbase,
+      arangodb::velocypack::Slice const& upgradeParams
+    )->bool {
+      return true; // FIXME TODO implement
+    };
+
+    upgrade->addTask(std::move(task));
   }
 }
 
@@ -766,8 +800,9 @@ void IResearchFeature::start() {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
         << "failure to find feature 'AQLFunctions' while registering arangosearch filters";
     }
-
   }
+
+  registerUpgradeTasks(); // register tasks after UpgradeFeature::prepare() has finished
 
   _running.store(true);
 }

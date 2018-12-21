@@ -347,14 +347,6 @@ FieldIterator::FieldIterator(arangodb::transaction::Methods& trx)
   // initialize iterator's value
 }
 
-FieldIterator::FieldIterator(
-    arangodb::transaction::Methods& trx,
-    VPackSlice const& doc,
-    IResearchLinkMeta const& linkMeta
-): FieldIterator(trx) {
-  reset(doc, linkMeta);
-}
-
 std::string& FieldIterator::valueBuffer() {
   if (!_valueBuffer) {
     _valueBuffer = BufferPool.emplace().release(); // FIXME don't use shared_ptr

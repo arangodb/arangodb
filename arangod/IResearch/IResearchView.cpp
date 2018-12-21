@@ -255,14 +255,18 @@ struct IResearchView::ViewFactory: public arangodb::ViewFactory {
       arangodb::velocypack::Slice const& definition,
       uint64_t planVersion
   ) const override {
+    auto* databaseFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::DatabaseFeature
+    >("Database");
     std::string error;
     auto impl = std::shared_ptr<IResearchView>(
       new IResearchView(vocbase, definition, planVersion)
     );
     IResearchViewMetaState metaState;
+    bool inUpgrade = databaseFeature ? databaseFeature->upgrade() : false; // check if DB is currently being upgraded (skip validation checks)
 
     if (!impl->_meta.init(definition, error)
-        || impl->_meta._version == 0 // version 0 must be upgraded to split data-store on a per-link basis
+        || (impl->_meta._version == 0 && !inUpgrade) // version 0 must be upgraded to split data-store on a per-link basis
         || impl->_meta._version > LATEST_VERSION
         || (ServerState::instance()->isSingleServer() // init metaState for SingleServer
             && !metaState.init(definition, error))) {
