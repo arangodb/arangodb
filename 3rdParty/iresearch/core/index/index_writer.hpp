@@ -132,7 +132,7 @@ class IRESEARCH_API index_writer:
 
    private:
     friend struct flush_context; // for flush_context::emplace(...)
-    segment_context_ptr ctx_{};
+    segment_context_ptr ctx_{nullptr};
     flush_context* flush_ctx_{nullptr}; // nullptr will not match any flush_context
     size_t pending_segment_context_offset_; // segment offset in flush_ctx_->pending_segment_contexts_
     std::atomic<size_t>* segments_active_; // reference to index_writer::segments_active_
@@ -375,21 +375,9 @@ class IRESEARCH_API index_writer:
   };
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief options the the writer should use after creation
+  /// @brief options the the writer should use for segments
   //////////////////////////////////////////////////////////////////////////////
-  struct options {
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief aquire an exclusive lock on the repository to guard against index
-    ///        corruption from multiple index_writers
-    ////////////////////////////////////////////////////////////////////////////
-    bool lock_repository{true};
-
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief number of memory blocks to cache by the internal memory pool
-    ///        0 == use default from memory_allocator::global()
-    ////////////////////////////////////////////////////////////////////////////
-    size_t memory_pool_size{0};
-
+  struct segment_options {
     ////////////////////////////////////////////////////////////////////////////
     /// @brief segment aquisition requests will block and wait for free segments
     ///        after this many segments have been aquired e.g. via documents()
@@ -412,6 +400,23 @@ class IRESEARCH_API index_writer:
     ///        0 == unlimited
     ////////////////////////////////////////////////////////////////////////////
     size_t segment_memory_max{0};
+  };
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief options the the writer should use after creation
+  //////////////////////////////////////////////////////////////////////////////
+  struct init_options: public segment_options {
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief aquire an exclusive lock on the repository to guard against index
+    ///        corruption from multiple index_writers
+    ////////////////////////////////////////////////////////////////////////////
+    bool lock_repository{true};
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief number of memory blocks to cache by the internal memory pool
+    ///        0 == use default from memory_allocator::global()
+    ////////////////////////////////////////////////////////////////////////////
+    size_t memory_pool_size{0};
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief number of free segments cached in the segment pool for reuse
@@ -419,7 +424,7 @@ class IRESEARCH_API index_writer:
     ////////////////////////////////////////////////////////////////////////////
     size_t segment_pool_size{128}; // arbitrary size
 
-    options() {}; // GCC5 requires non-default definition
+    init_options() {}; // GCC5 requires non-default definition
   };
 
   struct segment_hash {
@@ -438,21 +443,6 @@ class IRESEARCH_API index_writer:
       return lhs->name == rhs->name;
     }
   }; // segment_equal
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief limits the the writer should use for segments
-  //////////////////////////////////////////////////////////////////////////////
-  // FIXME TODO inherit options from segment_limits
-  struct segment_limits {
-    size_t segment_count_max; // @see options::max_segment_count
-    size_t segment_docs_max; // @see options::max_segment_docs
-    size_t segment_memory_max; // @see options::max_segment_memory
-    segment_limits(const options& opts) NOEXCEPT
-      : segment_count_max(opts.segment_count_max),
-        segment_docs_max(opts.segment_docs_max),
-        segment_memory_max(opts.segment_memory_max) {
-    }
-  };
 
   // works faster than std::unordered_set<string_ref>
   typedef std::unordered_set<
@@ -556,8 +546,14 @@ class IRESEARCH_API index_writer:
     directory& dir,
     format::ptr codec,
     OpenMode mode,
-    const options& opts = options()
+    const init_options& opts = init_options()
   );
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// @brief modify the runtime segment options as per the specified values
+  ///        options will apply no later than after the next commit()
+  ////////////////////////////////////////////////////////////////////////////
+  void options(const segment_options& opts);
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief begins the two-phase transaction
@@ -795,6 +791,23 @@ class IRESEARCH_API index_writer:
     void reset() NOEXCEPT;
   };
 
+  struct segment_limits {
+    std::atomic<size_t> segment_count_max; // @see segment_options::max_segment_count
+    std::atomic<size_t> segment_docs_max; // @see segment_options::max_segment_docs
+    std::atomic<size_t> segment_memory_max; // @see segment_options::max_segment_memory
+    segment_limits(const segment_options& opts) NOEXCEPT
+      : segment_count_max(opts.segment_count_max),
+        segment_docs_max(opts.segment_docs_max),
+        segment_memory_max(opts.segment_memory_max) {
+    }
+    segment_limits& operator=(const segment_options& opts) NOEXCEPT {
+      segment_count_max.store(opts.segment_count_max);
+      segment_docs_max.store(opts.segment_docs_max);
+      segment_memory_max.store(opts.segment_memory_max);
+      return *this;
+    }
+  };
+
   typedef std::shared_ptr<
     std::pair<std::shared_ptr<index_meta>,
     file_refs_t
@@ -953,7 +966,7 @@ class IRESEARCH_API index_writer:
     directory& dir, 
     format::ptr codec,
     size_t segment_pool_size,
-    const segment_limits& segment_limits,
+    const segment_options& segment_limits,
     index_meta&& meta, 
     committed_state_t&& committed_state
   ) NOEXCEPT;
