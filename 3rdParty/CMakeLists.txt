@@ -125,29 +125,7 @@ if (USE_IRESEARCH)
     set(ICU_LIBS icu-static CACHE INTERNAL "ICU: Libraries" FORCE) # use complete ICU build
     set(ICU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/V8/v5.7.492.77/third_party/icu")
   elseif(MSVC)
-    set(Boost_STATIC_staticRT_LOCALE_LIBRARY_DEBUG "${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/boost_locale.lib")
-    set(Boost_STATIC_staticRT_LOCALE_LIBRARY_RELEASE "${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/boost_locale.lib")
-    set(Boost_STATIC_staticRT_SYSTEM_LIBRARY_DEBUG "${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/boost_system.lib")
-    set(Boost_STATIC_staticRT_SYSTEM_LIBRARY_RELEASE "${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/boost_system.lib")
     add_library(icu-shared STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch shared dependencies
-    add_library(icudata-static STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch static dependencies
-    set_property(TARGET icudata-static PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}")
-    set_property(TARGET icudata-static PROPERTY IMPORTED_LOCATION_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/build/Debug/lib/icui18n.lib")
-    set_property(TARGET icudata-static PROPERTY IMPORTED_LOCATION_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/build/Release/lib/icui18n.lib")
-    set_property(TARGET icudata-static PROPERTY IMPORTED_LOCATION_RELWITHDEBINFO "${CMAKE_CURRENT_BINARY_DIR}/build/Release/lib/icui18n.lib")
-    set_property(TARGET icudata-static PROPERTY IMPORTED_LOCATION_MINSIZEREL "${CMAKE_CURRENT_BINARY_DIR}/build/Release/lib/icui18n.lib")
-    add_library(icui18n-static STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch static dependencies
-    set_property(TARGET icui18n-static PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}")
-    set_property(TARGET icui18n-static PROPERTY IMPORTED_LOCATION_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/build/Debug/lib/icui18n.lib")
-    set_property(TARGET icui18n-static PROPERTY IMPORTED_LOCATION_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/build/Release/lib/icui18n.lib")
-    set_property(TARGET icui18n-static PROPERTY IMPORTED_LOCATION_RELWITHDEBINFO "${CMAKE_CURRENT_BINARY_DIR}/build/Release/lib/icui18n.lib")
-    set_property(TARGET icui18n-static PROPERTY IMPORTED_LOCATION_MINSIZEREL "${CMAKE_CURRENT_BINARY_DIR}/build/Release/lib/icui18n.lib")
-    add_library(icuuc-static STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch static dependencies
-    set_property(TARGET icuuc-static PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}")
-    set_property(TARGET icuuc-static PROPERTY IMPORTED_LOCATION_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/build/Debug/lib/icuuc.lib")
-    set_property(TARGET icuuc-static PROPERTY IMPORTED_LOCATION_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/build/Release/lib/icuuc.lib")
-    set_property(TARGET icuuc-static PROPERTY IMPORTED_LOCATION_RELWITHDEBINFO "${CMAKE_CURRENT_BINARY_DIR}/build/Release/lib/icuuc.lib")
-    set_property(TARGET icuuc-static PROPERTY IMPORTED_LOCATION_MINSIZEREL "${CMAKE_CURRENT_BINARY_DIR}/build/Release/lib/icuuc.lib")
     add_library(icu-static STATIC IMPORTED GLOBAL)
     set_property(TARGET icu-static PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}")
     set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/build/Debug/lib/icui18n.lib")
@@ -161,15 +139,6 @@ if (USE_IRESEARCH)
     set(ICU_FOUND TRUE) # ICU built from source in 3rdParty directory
   else()
     add_library(icu-shared STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch shared dependencies
-    add_library(icudata-static STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch static dependencies
-    set_property(TARGET icudata-static PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}")
-    set_property(TARGET icudata-static PROPERTY IMPORTED_LOCATION "${ICU_LIBRARY_DIR}/libicui18n.a")
-    add_library(icui18n-static STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch static dependencies
-    set_property(TARGET icui18n-static PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}")
-    set_property(TARGET icui18n-static PROPERTY IMPORTED_LOCATION "${ICU_LIBRARY_DIR}/libicui18n.a")
-    add_library(icuuc-static STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch static dependencies
-    set_property(TARGET icuuc-static PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}")
-    set_property(TARGET icuuc-static PROPERTY IMPORTED_LOCATION "${ICU_LIBRARY_DIR}/libicuuc.a")
     add_library(icu-static STATIC IMPORTED GLOBAL)
     set_property(TARGET icu-static PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}")
     set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION "${ICU_LIBRARY_DIR}/libicui18n.a")

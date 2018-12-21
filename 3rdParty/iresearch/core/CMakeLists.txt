@@ -576,14 +576,19 @@ if (MSVC)
 
   set(IResearch_STATIC_LIBRARIES_OUT "${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/libiresearch-sa${CMAKE_STATIC_LIBRARY_SUFFIX}")
   set(IResearch_STATIC_LIBRARIES_CMD "lib.exe \"/OUT:${IResearch_STATIC_LIBRARIES_OUT}\" \"$<TARGET_FILE:${IResearch_TARGET_NAME}-static>\" ${IResearch_STATIC_LIBRARIES}")
-  string(REPLACE " " ";" IResearch_STATIC_LIBRARIES_CMD "${IResearch_STATIC_LIBRARIES_CMD}") # COMMAND requires ';' instead of ' ' (this is required for MSVC)
   add_custom_command(
-    TARGET ${IResearch_TARGET_NAME}-static POST_BUILD
+    OUTPUT "${IResearch_STATIC_LIBRARIES_OUT}"
+    DEPENDS ${IResearch_TARGET_NAME}-static
     COMMAND ${IResearch_STATIC_LIBRARIES_CMD}
+    VERBATIM
   )
 
   add_library(${IResearch_TARGET_NAME}-static-allinone
     STATIC IMPORTED GLOBAL
+  )
+
+  add_custom_target(${IResearch_TARGET_NAME}-static-allinone-build
+    DEPENDS "${IResearch_STATIC_LIBRARIES_OUT}"
   )
 
   set_target_properties(${IResearch_TARGET_NAME}-static-allinone
@@ -601,7 +606,7 @@ if (MSVC)
   )
 
   add_dependencies(${IResearch_TARGET_NAME}-static-allinone
-    ${IResearch_TARGET_NAME}-static
+    ${IResearch_TARGET_NAME}-static-allinone-build
   )
 
   unset(IResearch_STATIC_SCRT_LIBRARIES)
@@ -627,14 +632,19 @@ if (MSVC)
 
   set(IResearch_STATIC_SCRT_LIBRARIES_OUT "${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/libiresearch-srct-sa${CMAKE_STATIC_LIBRARY_SUFFIX}")
   set(IResearch_STATIC_SCRT_LIBRARIES_CMD "lib.exe \"/OUT:${IResearch_STATIC_SCRT_LIBRARIES_OUT}\" \"$<TARGET_FILE:${IResearch_TARGET_NAME}-static-scrt>\" ${IResearch_STATIC_SCRT_LIBRARIES}")
-  string(REPLACE " " ";" IResearch_STATIC_SCRT_LIBRARIES_CMD "${IResearch_STATIC_SCRT_LIBRARIES_CMD}") # COMMAND requires ';' instead of ' ' (this is required for MSVC)
   add_custom_command(
-    TARGET ${IResearch_TARGET_NAME}-static-scrt POST_BUILD
+    OUTPUT "${IResearch_STATIC_SCRT_LIBRARIES_OUT}"
+    DEPENDS ${IResearch_TARGET_NAME}-static-scrt
     COMMAND ${IResearch_STATIC_SCRT_LIBRARIES_CMD}
+    VERBATIM
   )
 
   add_library(${IResearch_TARGET_NAME}-static-scrt-allinone
     STATIC IMPORTED GLOBAL
+  )
+
+  add_custom_target(${IResearch_TARGET_NAME}-static-scrt-allinone-build
+    DEPENDS "${IResearch_STATIC_SCRT_LIBRARIES_OUT}"
   )
 
   set_target_properties(${IResearch_TARGET_NAME}-static-scrt-allinone
@@ -652,7 +662,7 @@ if (MSVC)
   )
 
   add_dependencies(${IResearch_TARGET_NAME}-static-scrt-allinone
-    ${IResearch_TARGET_NAME}-static-scrt
+    ${IResearch_TARGET_NAME}-static-scrt-allinone-build
   )
 elseif (APPLE)
   unset(IResearch_STATIC_LIBRARIES)
@@ -680,13 +690,18 @@ elseif (APPLE)
   set(IResearch_STATIC_LIBRARIES_OUT "${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/libiresearch-sa${CMAKE_STATIC_LIBRARY_SUFFIX}")
   set(IResearch_STATIC_LIBRARIES_CMD "libtool -static -o '${IResearch_STATIC_LIBRARIES_OUT}' -a '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>' ${IResearch_STATIC_LIBRARIES}")
   add_custom_command(
-    TARGET ${IResearch_TARGET_NAME}-static POST_BUILD
+    OUTPUT "${IResearch_STATIC_LIBRARIES_OUT}"
+    DEPENDS ${IResearch_TARGET_NAME}-static
     COMMAND sh -c ${IResearch_STATIC_LIBRARIES_CMD}
     VERBATIM
   )
 
   add_library(${IResearch_TARGET_NAME}-static-allinone
     STATIC IMPORTED GLOBAL
+  )
+
+  add_custom_target(${IResearch_TARGET_NAME}-static-allinone-build
+    DEPENDS "${IResearch_STATIC_LIBRARIES_OUT}"
   )
 
   set_target_properties(${IResearch_TARGET_NAME}-static-allinone
@@ -704,7 +719,7 @@ elseif (APPLE)
   )
 
   add_dependencies(${IResearch_TARGET_NAME}-static-allinone
-    ${IResearch_TARGET_NAME}-static
+    ${IResearch_TARGET_NAME}-static-allinone-build
   )
 else()
   unset(IResearch_STATIC_LIBRARIES)
@@ -732,13 +747,18 @@ else()
   set(IResearch_STATIC_LIBRARIES_OUT "${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/libresearch-sa${CMAKE_STATIC_LIBRARY_SUFFIX}")
   set(IResearch_STATIC_LIBRARIES_CMD "`which echo` -e \"create '${IResearch_STATIC_LIBRARIES_OUT}'\\n addlib '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>'\\n ${IResearch_STATIC_LIBRARIES} save\\n end\" | ar -M")
   add_custom_command(
-    TARGET ${IResearch_TARGET_NAME}-static POST_BUILD
+    OUTPUT "${IResearch_STATIC_LIBRARIES_OUT}"
+    DEPENDS ${IResearch_TARGET_NAME}-static
     COMMAND sh -c ${IResearch_STATIC_LIBRARIES_CMD}
     VERBATIM
   )
 
   add_library(${IResearch_TARGET_NAME}-static-allinone
     STATIC IMPORTED GLOBAL
+  )
+
+  add_custom_target(${IResearch_TARGET_NAME}-static-allinone-build
+    DEPENDS "${IResearch_STATIC_LIBRARIES_OUT}"
   )
 
   set_target_properties(${IResearch_TARGET_NAME}-static-allinone
@@ -756,7 +776,7 @@ else()
   )
 
   add_dependencies(${IResearch_TARGET_NAME}-static-allinone
-    ${IResearch_TARGET_NAME}-static
+    ${IResearch_TARGET_NAME}-static-allinone-build
   )
 endif()
 
