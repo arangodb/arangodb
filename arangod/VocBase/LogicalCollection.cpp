@@ -642,13 +642,14 @@ arangodb::Result LogicalCollection::appendVelocyPack(
   // Indexes
   result.add(VPackValue("indexes"));
   auto flags = Index::makeFlags();
-  auto filter = [&](arangodb::Index const* idx) { // hide hidden indexes
+  // FIXME simon: hide links here, but increase chance of ASAN errors
+ /* auto filter = [&](arangodb::Index const* idx) { // hide hidden indexes
     return (forPersistence || !idx->isHidden());
-  };
+  };*/
   if (forPersistence) {
     flags = Index::makeFlags(Index::Serialize::Internals);
   }
-  getIndexesVPack(result, flags, filter);
+  getIndexesVPack(result, flags/*, filter*/);
 
   // Cluster Specific
   result.add(StaticStrings::IsSmart, VPackValue(_isSmart));
