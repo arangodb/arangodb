@@ -173,6 +173,8 @@ function BaseTestConfig () {
 
       compare(
         function (state) {
+          db._drop(cn);
+          db._drop(cn + '2');
         },
 
         function (state) {
@@ -210,6 +212,8 @@ function BaseTestConfig () {
 
       compare(
         function (state) {
+          db._drop(cn);
+          db._drop(cn + '2');
         },
 
         function (state) {

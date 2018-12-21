@@ -318,6 +318,10 @@ class Iterator {
   bool next() noexcept;
   void reset();
 
+  VPackSlice slice() const noexcept {
+    return _slice;
+  }
+
   IteratorValue const& value() const noexcept {
     return operator*();
   }

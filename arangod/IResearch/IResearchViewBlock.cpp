@@ -52,7 +52,7 @@
 
 namespace {
 
-typedef std::vector<arangodb::iresearch::DocumentPrimaryKey::type> pks_t;
+typedef std::vector<arangodb::LocalDocumentId> pks_t;
 
 pks_t::iterator readPKs(
     irs::doc_iterator& it,
@@ -85,6 +85,28 @@ inline irs::columnstore_reader::values_reader_f pkColumn(
   return reader
     ? reader->values()
     : irs::columnstore_reader::values_reader_f{};
+}
+
+inline arangodb::LogicalCollection* lookupCollection(
+    arangodb::transaction::Methods& trx,
+    TRI_voc_cid_t cid
+) {
+  TRI_ASSERT(trx.state());
+
+  // this is necessary for MMFiles
+  trx.pinData(cid);
+
+  // `Methods::documentCollection(TRI_voc_cid_t)` may throw exception
+  auto* collection = trx.state()->collection(cid, arangodb::AccessMode::Type::READ);
+
+  if (!collection) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "failed to find collection while reading document from arangosearch view, cid '" << cid << "'";
+
+    return nullptr; // not a valid collection reference
+  }
+
+  return collection->collection();
 }
 
 }
@@ -128,7 +150,7 @@ using namespace arangodb::aql;
 }
 
 IResearchViewBlockBase::IResearchViewBlockBase(
-    irs::index_reader const& reader,
+    IResearchView::Snapshot const& reader,
     ExecutionEngine& engine,
     IResearchViewNode const& en)
   : ExecutionBlock(&engine, &en),
@@ -217,40 +239,14 @@ void IResearchViewBlockBase::reset() {
 }
 
 bool IResearchViewBlockBase::readDocument(
-    DocumentPrimaryKey::type const& docPk,
-    IndexIterator::DocumentCallback const& callback
-) {
-  TRI_ASSERT(_trx->state());
-
-  // this is necessary for MMFiles
-  _trx->pinData(docPk.first);
-
-  // `Methods::documentCollection(TRI_voc_cid_t)` may throw exception
-  auto* collection = _trx->state()->collection(docPk.first, arangodb::AccessMode::Type::READ);
-
-  if (!collection) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed to find collection while reading document from arangosearch view, cid '" << docPk.first
-      << "', rid '" << docPk.second << "'";
-
-    return false; // not a valid collection reference
-  }
-
-  TRI_ASSERT(collection->collection());
-
-  return collection->collection()->readDocumentWithCallback(
-    _trx, arangodb::LocalDocumentId(docPk.second), callback
-  );
-}
-
-bool IResearchViewBlockBase::readDocument(
+    LogicalCollection const& collection,
     irs::doc_id_t const docId,
     irs::columnstore_reader::values_reader_f const& pkValues,
     IndexIterator::DocumentCallback const& callback
 ) {
   TRI_ASSERT(pkValues);
 
-  arangodb::iresearch::DocumentPrimaryKey::type docPk;
+  arangodb::LocalDocumentId docPk;
   irs::bytes_ref tmpRef;
 
   if (!pkValues(docId, tmpRef) || !arangodb::iresearch::DocumentPrimaryKey::read(docPk, tmpRef)) {
@@ -260,27 +256,7 @@ bool IResearchViewBlockBase::readDocument(
     return false; // not a valid document reference
   }
 
-  TRI_ASSERT(_trx->state());
-
-  // this is necessary for MMFiles
-  _trx->pinData(docPk.first);
-
-  // `Methods::documentCollection(TRI_voc_cid_t)` may throw exception
-  auto* collection = _trx->state()->collection(docPk.first, arangodb::AccessMode::Type::READ);
-
-  if (!collection) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed to find collection while reading document from arangosearch view, cid '" << docPk.first
-      << "', rid '" << docPk.second << "'";
-
-    return false; // not a valid collection reference
-  }
-
-  TRI_ASSERT(collection->collection());
-
-  return collection->collection()->readDocumentWithCallback(
-    _trx, arangodb::LocalDocumentId(docPk.second), callback
-  );
+  return collection.readDocumentWithCallback(_trx, docPk, callback);
 }
 
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
@@ -439,7 +415,7 @@ std::pair<ExecutionState, size_t> IResearchViewBlockBase::skipSome(size_t atMost
 // -----------------------------------------------------------------------------
 
 IResearchViewBlock::IResearchViewBlock(
-    irs::index_reader const& reader,
+    IResearchView::Snapshot const& reader,
     aql::ExecutionEngine& engine,
     IResearchViewNode const& node
 ): IResearchViewUnorderedBlock(reader, engine, node),
@@ -457,6 +433,17 @@ bool IResearchViewBlock::resetIterator() {
 
   if (_scr) {
     _scrVal = _scr->value();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto const numScores = static_cast<size_t>(
+      std::distance(_scrVal.begin(), _scrVal.end())
+    )/sizeof(float_t);
+
+    auto const& viewNode = *ExecutionNode::castTo<IResearchViewNode const*>(
+      getPlanNode()
+    );
+
+    TRI_ASSERT(numScores == viewNode.sortCondition().size());
+#endif
   } else {
     _scr = &irs::score::no_score();
     _scrVal = irs::bytes_ref::NIL;
@@ -468,41 +455,41 @@ bool IResearchViewBlock::resetIterator() {
 bool IResearchViewBlock::next(
     ReadContext& ctx,
     size_t limit) {
-  TRI_ASSERT(_filter);
-  auto const& viewNode = *ExecutionNode::castTo<IResearchViewNode const*>(getPlanNode());
-  auto const numSorts = viewNode.sortCondition().size();
-
   for (size_t count = _reader.size(); _readerOffset < count; ) {
     if (!_itr && !resetIterator()) {
+      continue;
+    }
+
+    auto const cid = _reader.cid(_readerOffset); // CID is constant until resetIterator()
+
+    auto* collection = lookupCollection(*_trx, cid);
+
+    if (!collection) {
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "failed to find collection while reading document from arangosearch view, cid '" << cid << "'";
       continue;
     }
 
     TRI_ASSERT(_pkReader);
 
     while (limit && _itr->next()) {
-      if (!readDocument(_itr->value(), _pkReader, ctx.callback)) {
+      if (!readDocument(*collection, _itr->value(), _pkReader, ctx.callback)) {
         continue;
       }
 
       // evaluate scores
-      TRI_ASSERT(!viewNode.sortCondition().empty());
       _scr->evaluate();
 
+      // in arangodb we assume all scorers return float_t
+      auto begin = reinterpret_cast<const float_t*>(_scrVal.begin());
+      auto end = reinterpret_cast<const float_t*>(_scrVal.end());
+
       // copy scores, registerId's are sequential
-      auto scoreRegs = ctx.curRegs;
-
-      for (size_t i = 0; i < numSorts; ++i) {
-        // in 3.4 we assume all scorers return float_t
-        auto const score = _order.get<float_t>(_scrVal.c_str(), i);
-
+      for (auto scoreRegs = ctx.curRegs; begin != end; ++begin) {
         ctx.res->setValue(
           ctx.pos,
           ++scoreRegs,
-#if 0
-          _order.to_string<AqlValue, std::char_traits<char>>(_scrVal.c_str(), i)
-#else
-          AqlValue(AqlValueHintDouble(double_t(score)))
-#endif
+          AqlValue(AqlValueHintDouble(double_t(*begin)))
         );
       }
 
@@ -560,7 +547,7 @@ size_t IResearchViewBlock::skip(size_t limit) {
 // -----------------------------------------------------------------------------
 
 IResearchViewUnorderedBlock::IResearchViewUnorderedBlock(
-    irs::index_reader const& reader,
+    IResearchView::Snapshot const& reader,
     aql::ExecutionEngine& engine,
     IResearchViewNode const& node
 ): IResearchViewBlockBase(reader, engine, node), _readerOffset(0) {
@@ -568,6 +555,7 @@ IResearchViewUnorderedBlock::IResearchViewUnorderedBlock(
 }
 
 bool IResearchViewUnorderedBlock::resetIterator() {
+  TRI_ASSERT(_filter);
   TRI_ASSERT(!_itr);
 
   auto& segmentReader = _reader[_readerOffset];
@@ -597,6 +585,16 @@ bool IResearchViewUnorderedBlock::next(
       continue;
     }
 
+    auto const cid = _reader.cid(_readerOffset); // CID is constant until resetIterator()
+
+    auto* collection = lookupCollection(*_trx, cid);
+
+    if (!collection) {
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "failed to find collection while reading document from arangosearch view, cid '" << cid << "'";
+      continue;
+    }
+
     TRI_ASSERT(_pkReader);
 
     // read document PKs from iresearch
@@ -604,7 +602,7 @@ bool IResearchViewUnorderedBlock::next(
 
     // read documents from underlying storage engine
     for (auto begin = _keys.begin(); begin != end; ++begin) {
-      if (!readDocument(*begin, ctx.callback)) {
+      if (!collection->readDocumentWithCallback(_trx, *begin, ctx.callback)) {
         continue;
       }
 

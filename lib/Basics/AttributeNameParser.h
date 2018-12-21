@@ -78,8 +78,9 @@ struct AttributeName {
   /// @brief compare two attribute name vectors
   //////////////////////////////////////////////////////////////////////////////
 
-  static bool isIdentical(std::vector<std::vector<AttributeName>> const&,
-                          std::vector<std::vector<AttributeName>> const&, bool);
+  static bool isIdentical(std::vector<std::vector<AttributeName>> const& lhs,
+                          std::vector<std::vector<AttributeName>> const& rhs, 
+                          bool ignoreExpansionInLast);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief compare two attribute name vectors and return true if their names

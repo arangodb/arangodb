@@ -117,54 +117,35 @@ Scopes::Scopes() : _activeScopes(), _currentVariables() {
 }
 
 /// @brief destroy the scopes
-Scopes::~Scopes() {
-  for (auto& it : _activeScopes) {
-    delete it;
-  }
-}
+Scopes::~Scopes() {}
 
 /// @brief start a new scope
 void Scopes::start(ScopeType type) {
   auto scope = std::make_unique<Scope>(type);
 
-  _activeScopes.emplace_back(scope.get());
-  scope.release();
+  _activeScopes.emplace_back(std::move(scope));
 }
 
 /// @brief end the current scope
 void Scopes::endCurrent() {
   TRI_ASSERT(!_activeScopes.empty());
-
-  Scope* scope = _activeScopes.back();
-  TRI_ASSERT(scope != nullptr);
-
   _activeScopes.pop_back();
-
-  delete scope;
 }
 
 /// @brief end the current scope plus any FOR scopes it is nested in
 void Scopes::endNested() {
   TRI_ASSERT(!_activeScopes.empty());
-  int iterations = 0;
 
   while (!_activeScopes.empty()) {
-    ++iterations;
-
-    auto scope = _activeScopes.back();
-    TRI_ASSERT(scope != nullptr);
+    auto const& scope = _activeScopes.back();
     ScopeType type = scope->type();
 
     if (type == AQL_SCOPE_MAIN || type == AQL_SCOPE_SUBQUERY) {
-      // main and subquery scopes cannot be closed here
+      // the main scope and subquery scopes cannot be closed here
       break;
     }
 
-    if (type != AQL_SCOPE_FOR && iterations >= 2) {
-      // if nested, do not close anything but for scopes
-      break;
-    }
-
+    TRI_ASSERT(type == AQL_SCOPE_FOR || type == AQL_SCOPE_COLLECT);
     endCurrent();
   }
 }
@@ -175,7 +156,7 @@ void Scopes::addVariable(Variable* variable) {
   TRI_ASSERT(variable != nullptr);
 
   for (auto it = _activeScopes.rbegin(); it != _activeScopes.rend(); ++it) {
-    auto scope = (*it);
+    auto const& scope = (*it);
 
     if (scope->existsVariable(variable->name)) {
       // duplicate variable name
@@ -194,7 +175,7 @@ void Scopes::replaceVariable(Variable* variable) {
   TRI_ASSERT(variable != nullptr);
 
   for (auto it = _activeScopes.rbegin(); it != _activeScopes.rend(); ++it) {
-    auto scope = (*it);
+    auto& scope = (*it);
 
     if (scope->existsVariable(variable->name)) {
       // replace existing variable

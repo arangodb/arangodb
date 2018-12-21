@@ -334,18 +334,18 @@ bool SslClientConnection::connectSocket() {
         (errorDetail == SSL_ERROR_WANT_WRITE)) {
       return true;
     }
-      
+
     /* Gets the earliest error code from the
        thread's error queue and removes the entry. */
     unsigned long lastError = ERR_get_error();
-     
+
     if (errorDetail == SSL_ERROR_SYSCALL && lastError == 0) {
       if (ret == 0) {
         _errorDetails += "an EOF was observed that violates the protocol. this may happen when the other side has closed the connection";
       } else if (ret == -1) {
         _errorDetails += "I/O reported by BIO";
       }
-    } 
+    }
 
     switch (errorDetail) {
       case 0x1407E086:
@@ -376,16 +376,16 @@ bool SslClientConnection::connectSocket() {
         _errorDetails += std::string(" - details: ") + errorBuffer;
         break;
     }
-    
+
     disconnectSocket();
     _isConnected = false;
     return false;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "SSL connection opened: " 
-             << SSL_get_cipher(_ssl) << ", " 
-             << SSL_get_cipher_version(_ssl) 
-             << " (" << SSL_get_cipher_bits(_ssl, nullptr) << " bits)"; 
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "SSL connection opened: "
+             << SSL_get_cipher(_ssl) << ", "
+             << SSL_get_cipher_version(_ssl)
+             << " (" << SSL_get_cipher_bits(_ssl, nullptr) << " bits)";
 
   return true;
 }
@@ -427,7 +427,9 @@ bool SslClientConnection::writeClientConnection(void const* buffer,
   switch (err) {
     case SSL_ERROR_NONE:
       *bytesWritten = written;
-
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      _written += written;
+#endif
       return true;
 
     case SSL_ERROR_ZERO_RETURN:
@@ -456,7 +458,7 @@ bool SslClientConnection::writeClientConnection(void const* buffer,
       _errorDetails = std::string("SSL: while writing: ") + errorBuffer;
       break;
     }
-      
+
     default:
       /* a true error */
       _errorDetails =
@@ -502,6 +504,9 @@ bool SslClientConnection::readClientConnection(StringBuffer& stringBuffer,
     switch (SSL_get_error(_ssl, lenRead)) {
       case SSL_ERROR_NONE:
         stringBuffer.increaseLength(lenRead);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        _read += lenRead;
+#endif
         break;
 
       case SSL_ERROR_ZERO_RETURN:

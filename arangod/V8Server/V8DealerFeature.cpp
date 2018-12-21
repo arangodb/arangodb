@@ -409,7 +409,7 @@ void V8DealerFeature::copyInstallationFiles() {
 
   // get base path from DatabasePathFeature
   auto dbPathFeature = application_features::ApplicationServer::getFeature<DatabasePathFeature>();
-  const std::string copyJSPath = FileUtils::buildFilename(dbPathFeature->directory(), "js");
+  std::string const copyJSPath = FileUtils::buildFilename(dbPathFeature->directory(), "js");
   if (copyJSPath == _startupDirectory) {
     LOG_TOPIC(FATAL, arangodb::Logger::V8)
     << "'javascript.startup-directory' cannot be inside 'database.directory'";
@@ -488,6 +488,17 @@ void V8DealerFeature::copyInstallationFiles() {
       LOG_TOPIC(FATAL, Logger::V8) << "Error copying JS installation files to '" << copyJSPath
         << "': " << error;
       FATAL_ERROR_EXIT();
+    }
+
+    // attempt to copy enterprise JS files too. 
+    // only required for developer installations, not packages
+    std::string const enterpriseJs = basics::FileUtils::buildFilename(_startupDirectory, "..", "enterprise", "js");
+
+    if (FileUtils::isDirectory(enterpriseJs)) {
+      std::function<bool(std::string const&)> const passAllFilter = [](std::string const&) { return false; };
+      if (!FileUtils::copyRecursive(enterpriseJs, copyJSPath, passAllFilter, error)) {
+        LOG_TOPIC(WARN, Logger::V8) << "Error copying enterprise JS installation files to '" << copyJSPath << "': " << error;
+      }
     }
   }
   _startupDirectory = copyJSPath;

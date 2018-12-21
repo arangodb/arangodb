@@ -735,7 +735,14 @@ bool mkdir(const file_path_t path) NOEXCEPT {
 
     // '\\?\' cannot be used with relative paths
     if (!abs) {
-      return 0 != CreateDirectoryW(path, nullptr);
+      if (0 == ::CreateDirectoryW(path, nullptr)) {
+        auto utf8path = boost::locale::conv::utf_to_utf<char>(path);
+        IR_FRMT_ERROR("Failed to create path: '%s', error %d", utf8path.c_str(), GetLastError());
+
+        return false;
+      }
+
+      return true;
     }
 
     // workaround for path MAX_PATH
@@ -746,10 +753,21 @@ bool mkdir(const file_path_t path) NOEXCEPT {
       &dirname[0], &dirname[0] + dirname.size(), L'/', file_path_delimiter
     );
 
-    return 0 != ::CreateDirectoryW(dirname.c_str(), nullptr);
+    if (0 == ::CreateDirectoryW(dirname.c_str(), nullptr)) {
+      auto utf8path = boost::locale::conv::utf_to_utf<char>(path);
+      IR_FRMT_ERROR("Failed to create path: '%s', error %d", utf8path.c_str(), GetLastError());
+
+      return false;
+    }
   #else
-    return 0 == ::mkdir(path, S_IRWXU|S_IRWXG|S_IRWXO);
+    if (0 != ::mkdir(path, S_IRWXU|S_IRWXG|S_IRWXO)) {
+      IR_FRMT_ERROR("Failed to create path: '%s', error %d", path, errno);
+
+      return false;
+    }
   #endif
+
+  return true;
 }
 
 bool move(const file_path_t src_path, const file_path_t dst_path) NOEXCEPT {

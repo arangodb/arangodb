@@ -23,7 +23,7 @@ endif()
 option(USE_TESTS "Build tests" OFF)
 option(USE_PYRESEARCH "Build iresearch python bridge" OFF)
 option(USE_VALGRIND "Use workarounds to avoid false positives in valgrind" OFF)
-option(USE_OPTIMIZE_FOR_ARCHITECTURE "Use architecture specific low-level optimizations" OFF)
+option(USE_SIMDCOMP "Use architecture specific low-level optimizations" OFF)
 
 if (USE_VALGRIND)
   add_definitions(-DIRESEARCH_VALGRIND)
