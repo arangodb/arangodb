@@ -139,8 +139,9 @@ class IResearchLink {
     arangodb::Index::OperationMode mode
   ); // arangodb::Index override
 
-  bool isPersistent() const; // arangodb::Index override
   bool isSorted() const; // arangodb::Index override
+  
+  bool isHidden() const; // arangodb::Index override
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the identifier for this link

@@ -133,6 +133,10 @@ void markAsNonNull(arangodb::aql::AstNode const* op, arangodb::aql::AstNode cons
   }
 }
 
+bool typeMatch(char const* type, size_t len, char const* expected) {
+  return (len == ::strlen(expected)) && (::memcmp(type, expected, len) == 0);
+}
+
 } // namespace
 
 // If the Index is on a coordinator instance the index may not access the
@@ -197,12 +201,11 @@ size_t Index::sortWeight(arangodb::aql::AstNode const* node) {
 
 /// @brief validate fields from slice
 void Index::validateFields(VPackSlice const& slice) {
-  auto allowExpansion = Index::allowExpansion(
-    Index::type(slice.get(arangodb::StaticStrings::IndexType).copyString())
-  );
+  VPackValueLength len;
+  const char *idxStr = slice.get(arangodb::StaticStrings::IndexType).getString(len);
+  auto allowExpansion = Index::allowExpansion(Index::type(idxStr, len));
 
   auto fields = slice.get(arangodb::StaticStrings::IndexFields);
-
   if (!fields.isArray()) {
     return;
   }
@@ -220,40 +223,42 @@ void Index::validateFields(VPackSlice const& slice) {
 }
 
 /// @brief return the index type based on a type name
-Index::IndexType Index::type(char const* type) {
-  if (::strcmp(type, "primary") == 0) {
+Index::IndexType Index::type(char const* type, size_t len) {
+  if (::typeMatch(type, len, "primary")) {
     return TRI_IDX_TYPE_PRIMARY_INDEX;
   }
-  if (::strcmp(type, "edge") == 0) {
+  if (::typeMatch(type, len, "edge")) {
     return TRI_IDX_TYPE_EDGE_INDEX;
   }
-  if (::strcmp(type, "hash") == 0) {
+  if (::typeMatch(type, len, "hash")) {
     return TRI_IDX_TYPE_HASH_INDEX;
   }
-  if (::strcmp(type, "skiplist") == 0) {
+  if (::typeMatch(type, len, "skiplist")) {
     return TRI_IDX_TYPE_SKIPLIST_INDEX;
   }
-  if (::strcmp(type, "persistent") == 0 || ::strcmp(type, "rocksdb") == 0) {
+  if (::typeMatch(type, len, "persistent") ||
+      ::typeMatch(type, len, "rocksdb")) {
     return TRI_IDX_TYPE_PERSISTENT_INDEX;
   }
-  if (::strcmp(type, "fulltext") == 0) {
+  if (::typeMatch(type, len, "fulltext")) {
     return TRI_IDX_TYPE_FULLTEXT_INDEX;
   }
-  if (::strcmp(type, "geo1") == 0) {
-    return TRI_IDX_TYPE_GEO1_INDEX;
-  }
-  if (::strcmp(type, "geo2") == 0) {
-    return TRI_IDX_TYPE_GEO2_INDEX;
-  }
-  if (::strcmp(type, "geo") == 0) {
+  if (::typeMatch(type, len, "geo")) {
     return TRI_IDX_TYPE_GEO_INDEX;
   }
+  if (::typeMatch(type, len, "geo1")) {
+    return TRI_IDX_TYPE_GEO1_INDEX;
+  }
+  if (::typeMatch(type, len, "geo2")) {
+    return TRI_IDX_TYPE_GEO2_INDEX;
+  }
 #ifdef USE_IRESEARCH
-  if (arangodb::iresearch::DATA_SOURCE_TYPE.name() == type) {
+  std::string const& tmp = arangodb::iresearch::DATA_SOURCE_TYPE.name();
+  if (::typeMatch(type, len, tmp.c_str())) {
     return TRI_IDX_TYPE_IRESEARCH_LINK;
   }
 #endif
-  if (::strcmp(type, "noaccess") == 0) {
+  if (::typeMatch(type, len, "noaccess")) {
     return TRI_IDX_TYPE_NO_ACCESS_INDEX;
   }
 
@@ -261,7 +266,7 @@ Index::IndexType Index::type(char const* type) {
 }
 
 Index::IndexType Index::type(std::string const& type) {
-  return Index::type(type.c_str());
+  return Index::type(type.c_str(), type.size());
 }
 
 /// @brief return the name of an index type

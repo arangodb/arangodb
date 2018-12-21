@@ -83,8 +83,9 @@ class IResearchLinkCoordinator final
     return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
-  virtual bool isPersistent() const override {
-    return IResearchLink::isPersistent();
+
+  bool isHidden() const override {
+    return true; // always hide links
   }
 
   // IResearch does not provide a fixed default sort order

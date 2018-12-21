@@ -85,6 +85,9 @@ class RocksDBLogValue {
   static RocksDBLogValue SinglePut(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid);
   static RocksDBLogValue SingleRemoveV2(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid,
                                         TRI_voc_rid_t rid);
+  
+  // empty log value
+  static RocksDBLogValue Empty();
 
  public:
 
@@ -126,6 +129,7 @@ class RocksDBLogValue {
   rocksdb::Slice slice() const { return rocksdb::Slice(_buffer); }
 
  private:
+  explicit RocksDBLogValue() {}
   RocksDBLogValue(RocksDBLogType, uint64_t);
   RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t);
   RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t, uint64_t);

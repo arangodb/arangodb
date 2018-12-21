@@ -1066,7 +1066,7 @@ void Supervision::readyOrphanedIndexCreations() {
           indexes = collection("indexes").getArray();
           if (indexes.length() > 0) {
             for (auto const& planIndex : VPackArrayIterator(indexes)) {
-              if (planIndex.hasKey("isBuilding") && collection.has("shards")) {
+              if (planIndex.hasKey(StaticStrings::IndexIsBuilding) && collection.has("shards")) {
                 auto const& planId = planIndex.get("id");
                 auto const& shards = collection("shards");
                 if (collection.has("numberOfShards") &&
@@ -1121,7 +1121,7 @@ void Supervision::readyOrphanedIndexCreations() {
                     { VPackObjectBuilder props(envelope.get());
                       for (auto const& prop : VPackObjectIterator(planIndex)) {
                         auto const& key = prop.key.copyString();
-                        if (key != "isBuilding") {
+                        if (key != StaticStrings::IndexIsBuilding) {
                           envelope->add(key, prop.value);
                         }
                       }}

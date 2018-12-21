@@ -100,9 +100,11 @@ class PhysicalCollection {
   
   bool hasIndexOfType(arangodb::Index::IndexType type) const;
 
+  /// @brief find index by definition
+  static std::shared_ptr<Index> findIndex(velocypack::Slice const&,
+                                          std::vector<std::shared_ptr<Index>> const&);
   /// @brief Find index by definition
-  virtual std::shared_ptr<Index> lookupIndex(
-      velocypack::Slice const&) const = 0;
+  std::shared_ptr<Index> lookupIndex(velocypack::Slice const&) const;
 
   /// @brief Find index by iid
   std::shared_ptr<Index> lookupIndex(TRI_idx_iid_t) const;
@@ -117,8 +119,7 @@ class PhysicalCollection {
   /// @brief create or restore an index
   /// @param restore utilize specified ID, assume index has to be created
   virtual std::shared_ptr<Index> createIndex(
-      arangodb::velocypack::Slice const& info, bool restore,
-      bool& created) = 0;
+      arangodb::velocypack::Slice const& info, bool restore, bool& created) = 0;
 
   virtual bool dropIndex(TRI_idx_iid_t iid) = 0;
 

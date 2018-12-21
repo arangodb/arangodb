@@ -26,7 +26,7 @@
 
 #include "IResearchLink.h"
 
-#include "Indexes/Index.h"
+#include "MMFiles/MMFilesIndex.h"
 
 namespace arangodb {
 
@@ -38,7 +38,7 @@ NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
 class IResearchMMFilesLink final
-  : public arangodb::Index, public IResearchLink {
+  : public arangodb::MMFilesIndex, public IResearchLink {
  public:
   void afterTruncate(TRI_voc_tick_t /*tick*/) override {
     IResearchLink::afterTruncate();
@@ -80,12 +80,14 @@ class IResearchMMFilesLink final
     return IResearchLink::insert(trx, documentId, doc, mode);
   }
 
-  virtual bool isPersistent() const override {
-    return IResearchLink::isPersistent();
-  }
+  bool isPersistent() const override;
 
   virtual bool isSorted() const override {
     return IResearchLink::isSorted();
+  }
+    
+  bool isHidden() const override {
+    return IResearchLink::isHidden();
   }
 
   virtual arangodb::IndexIterator* iteratorForCondition(

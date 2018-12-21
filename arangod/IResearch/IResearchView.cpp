@@ -557,7 +557,7 @@ arangodb::Result IResearchView::appendVelocyPackImpl(
     arangodb::velocypack::ObjectBuilder linksBuilderWrapper(&linksBuilder);
 
     for (auto& collectionName: state->collectionNames()) {
-      for (auto& index: trx.indexesForCollection(collectionName)) {
+      for (auto& index: trx.indexesForCollection(collectionName, /*withHidden*/true)) {
         if (index && arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()) {
           // TODO FIXME find a better way to retrieve an IResearch Link
           // cannot use static_cast/reinterpret_cast since Index is not related to IResearchLink
@@ -929,7 +929,9 @@ arangodb::Result IResearchView::properties(
     return res;
   }
 
+#if USE_PLAN_CACHE
   arangodb::aql::PlanCache::instance()->invalidate(&vocbase());
+#endif
   arangodb::aql::QueryCache::instance()->invalidate(&vocbase());
 
   return arangodb::ServerState::instance()->isSingleServer()

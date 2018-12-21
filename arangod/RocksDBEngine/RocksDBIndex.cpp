@@ -38,6 +38,10 @@
 #include "VocBase/ticks.h"
 
 #include <rocksdb/comparator.h>
+#include <rocksdb/utilities/transaction.h>
+#include <rocksdb/utilities/transaction_db.h>
+#include <rocksdb/utilities/write_batch_with_index.h>
+
 
 using namespace arangodb;
 using namespace arangodb::rocksutils;
@@ -48,6 +52,12 @@ using namespace arangodb::rocksutils;
 // memory == ESTIMATOR_SIZE * 6 bytes
 
 uint64_t const arangodb::RocksDBIndex::ESTIMATOR_SIZE = 4096;
+
+namespace {
+  inline uint64_t ensureObjectId(uint64_t oid) {
+    return (oid != 0) ? oid : TRI_NewTickServer();
+  }
+}
 
 RocksDBIndex::RocksDBIndex(
     TRI_idx_iid_t id,
@@ -60,11 +70,11 @@ RocksDBIndex::RocksDBIndex(
     bool useCache
 )
     : Index(id, collection, attributes, unique, sparse),
-      _objectId((objectId != 0) ? objectId : TRI_NewTickServer()),
+      _objectId(::ensureObjectId(objectId)),
       _cf(cf),
       _cache(nullptr),
       _cachePresent(false),
-      _cacheEnabled(useCache && !collection.system() && CacheManagerFeature::MANAGER != nullptr) {
+      _cacheEnabled(useCache && !collection.system() && CacheManagerFeature::MANAGER != nullptr){
   TRI_ASSERT(cf != nullptr && cf != RocksDBColumnFamily::definitions());
 
   if (_cacheEnabled) {
@@ -86,29 +96,27 @@ RocksDBIndex::RocksDBIndex(
     bool useCache
 )
     : Index(id, collection, info),
-      _objectId(basics::VelocyPackHelper::stringUInt64(info.get("objectId"))),
+      _objectId(::ensureObjectId(basics::VelocyPackHelper::stringUInt64(info.get("objectId")))),
       _cf(cf),
       _cache(nullptr),
       _cachePresent(false),
       _cacheEnabled(useCache && !collection.system() && CacheManagerFeature::MANAGER != nullptr) {
   TRI_ASSERT(cf != nullptr && cf != RocksDBColumnFamily::definitions());
 
-  if (_objectId == 0) {
-    _objectId = TRI_NewTickServer();
-  }
-
   if (_cacheEnabled) {
     createCache();
   }
 
   RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-
   engine->addIndexMapping(
     _objectId, collection.vocbase().id(), collection.id(), _iid
   );
 }
 
 RocksDBIndex::~RocksDBIndex() {
+  auto engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+  engine->removeIndexMapping(_objectId);
+  
   if (useCache()) {
     try {
       TRI_ASSERT(_cache != nullptr);
@@ -161,7 +169,7 @@ void RocksDBIndex::unload() {
 void RocksDBIndex::toVelocyPack(VPackBuilder& builder,
                                 std::underlying_type<Serialize>::type flags) const {
   Index::toVelocyPack(builder, flags);
-  if (Index::hasFlag(flags, Index::Serialize::ObjectId)) {
+  if (Index::hasFlag(flags, Index::Serialize::Internals)) {
     // If we store it, it cannot be 0
     TRI_ASSERT(_objectId != 0);
     builder.add("objectId", VPackValue(std::to_string(_objectId)));
@@ -282,7 +290,7 @@ size_t RocksDBIndex::memory() const {
 }
 
 /// compact the index, should reduce read amplification
-void RocksDBIndex::cleanup() {
+void RocksDBIndex::compact() {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   rocksdb::CompactRangeOptions opts;
   if (_cf != RocksDBColumnFamily::invalid()) {
@@ -339,12 +347,4 @@ RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type,
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
-}
-
-RocksDBCuckooIndexEstimator<uint64_t>* RocksDBIndex::estimator() {
-  return nullptr;
-}
-
-void RocksDBIndex::setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>) {
-  // Nothing to do.
 }

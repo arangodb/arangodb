@@ -120,7 +120,10 @@ class RocksDBTransactionState final : public TransactionState {
       bool& hasPerformedIntermediateCommit);
   
   /// @brief return wrapper around rocksdb transaction
-  RocksDBMethods* rocksdbMethods();
+  RocksDBMethods* rocksdbMethods() {
+    TRI_ASSERT(_rocksMethods);
+    return _rocksMethods.get();
+  }
 
   /// @brief Rocksdb sequence number of snapshot. Works while trx
   ///        has either a snapshot or a transaction
@@ -182,8 +185,6 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief used for read-only trx and intermediate commits
   /// For intermediate commits this MUST ONLY be used for iteratos
   rocksdb::Snapshot const* _readSnapshot;
-  /// @brief shared write options used
-  rocksdb::WriteOptions _rocksWriteOptions;
   /// @brief shared read options which can be used by operations
   /// For intermediate commits iterators MUST use the _readSnapshot
   rocksdb::ReadOptions _rocksReadOptions;

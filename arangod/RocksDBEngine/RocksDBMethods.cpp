@@ -383,3 +383,47 @@ std::unique_ptr<rocksdb::Iterator> RocksDBBatchedWithIndexMethods::NewIterator(
   return std::unique_ptr<rocksdb::Iterator>(
       _wb->NewIteratorWithBase(_db->NewIterator(ro, cf)));
 }
+
+// =================== RocksDBSideTrxMethods ====================
+
+/// transaction wrapper, uses the provided rocksdb transaction
+RocksDBSideTrxMethods::RocksDBSideTrxMethods(RocksDBTransactionState* state,
+                                           rocksdb::Transaction* trx)
+  : RocksDBMethods(state), _trx(trx) {
+    _ro.prefix_same_as_start = true;
+    _ro.fill_cache = false;
+  }
+
+rocksdb::Status RocksDBSideTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf, rocksdb::Slice const& key,
+                                          std::string* val) {
+  TRI_ASSERT(cf != nullptr);
+  return _trx->Get(_ro, cf, key, val);
+}
+
+rocksdb::Status RocksDBSideTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf, rocksdb::Slice const& key,
+                                          rocksdb::PinnableSlice* val) {
+  TRI_ASSERT(cf != nullptr);
+  return _trx->Get(_ro, cf, key, val);
+}
+  
+rocksdb::Status RocksDBSideTrxMethods::Put(rocksdb::ColumnFamilyHandle* cf,
+                                          RocksDBKey const& key, rocksdb::Slice const& val) {
+  TRI_ASSERT(cf != nullptr);
+  return _trx->Put(cf, key.string(), val);
+}
+rocksdb::Status RocksDBSideTrxMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
+                                             RocksDBKey const& key) {
+  TRI_ASSERT(cf != nullptr);
+  return _trx->Delete(cf, key.string());
+}
+
+rocksdb::Status RocksDBSideTrxMethods::SingleDelete(rocksdb::ColumnFamilyHandle* cf,
+                                                   RocksDBKey const& key) {
+  TRI_ASSERT(cf != nullptr);
+  return _trx->SingleDelete(cf, key.string());
+}
+
+bool RocksDBSideTrxMethods::DisableIndexing() {
+  _trx->DisableIndexing();
+  return true;
+}

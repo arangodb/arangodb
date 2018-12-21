@@ -49,14 +49,17 @@ class ClusterIndex : public Index {
   /// @brief return a VelocyPack representation of the index
   void toVelocyPack(velocypack::Builder& builder,
                     std::underlying_type<Index::Serialize>::type) const override;
+  
+  /// @brief if true this index should not be shown externally
+  bool isHidden() const override {
+    return false; // do not generally hide indexes
+  }
 
   IndexType type() const override { return _indexType; }
 
   char const* typeName() const override {
     return Index::oldtypeName(_indexType);
   }
-
-  bool isPersistent() const override;
 
   bool canBeDropped() const override {
     return _indexType != Index::TRI_IDX_TYPE_PRIMARY_INDEX &&

@@ -725,7 +725,6 @@ int MMFilesCollection::close() {
 
       engine->changeCollection(
         _logicalCollection.vocbase(),
-        _logicalCollection.id(),
         _logicalCollection,
         doSync
       );
@@ -1669,7 +1668,8 @@ void MMFilesCollection::fillIndex(
     return;
   }
 
-  if (idx->isPersistent() && skipPersistent) {
+  MMFilesIndex* midx = static_cast<MMFilesIndex*>(idx);
+  if (midx->isPersistent() && skipPersistent) {
     return;
   }
 
@@ -1714,7 +1714,8 @@ int MMFilesCollection::fillIndexes(
       if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
         continue;
       }
-      if (idx->isPersistent()) {
+      MMFilesIndex* midx = static_cast<MMFilesIndex*>(idx);
+      if (midx->isPersistent()) {
         continue;
       }
       idx->unload();  // TODO: check is this safe? truncate not necessarily
@@ -2209,35 +2210,6 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
   TRI_ASSERT(!_indexes.empty());
 }
 
-std::shared_ptr<Index> MMFilesCollection::lookupIndex(
-    VPackSlice const& info) const {
-  TRI_ASSERT(info.isObject());
-
-  // extract type
-  auto value = info.get(arangodb::StaticStrings::IndexType);
-
-  if (!value.isString()) {
-    // Compatibility with old v8-vocindex.
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid index definition");
-  }
-
-  std::string tmp = value.copyString();
-  arangodb::Index::IndexType const type = arangodb::Index::type(tmp.c_str());
-
-  {READ_LOCKER(guard, _indexesLock);
-    for (auto const& idx : _indexes) {
-      if (idx->type() == type) {
-        // Only check relevant indices
-        if (idx->matchesDefinition(info)) {
-          // We found an index for this definition.
-          return idx;
-        }
-      }
-    }
-  }
-  return nullptr;
-}
-
 std::shared_ptr<Index> MMFilesCollection::createIndex(arangodb::velocypack::Slice const& info,
                                                       bool restore, bool& created) {
   SingleCollectionTransaction trx(
@@ -2347,7 +2319,7 @@ int MMFilesCollection::saveIndex(
 
   std::shared_ptr<VPackBuilder> builder;
   try {
-    builder = idx->toVelocyPack(Index::makeFlags(Index::Serialize::ObjectId));
+    builder = idx->toVelocyPack(Index::makeFlags(Index::Serialize::Internals));
   } catch (arangodb::basics::Exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
         << "cannot save index definition: " << ex.what();
@@ -2429,7 +2401,8 @@ void MMFilesCollection::addIndexLocal(std::shared_ptr<arangodb::Index> idx) {
   }
 
   // update statistics
-  if (idx->isPersistent()) {
+  MMFilesIndex* midx = static_cast<MMFilesIndex*>(idx.get());
+  if (midx->isPersistent()) {
     ++_persistentIndexes;
   }
 }
@@ -2504,7 +2477,8 @@ bool MMFilesCollection::removeIndex(TRI_idx_iid_t iid) {
       _indexes.erase(_indexes.begin() + i);
 
       // update statistics
-      if (idx->isPersistent()) {
+      MMFilesIndex* midx = static_cast<MMFilesIndex*>(idx.get());
+      if (midx->isPersistent()) {
         --_persistentIndexes;
       }
 
@@ -3276,7 +3250,7 @@ void MMFilesCollection::setCurrentVersion() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
   engine->changeCollection(_logicalCollection.vocbase(),
-                           _logicalCollection.id(), _logicalCollection, doSync);
+                           _logicalCollection, doSync);
 }
 
 /// @brief creates a new entry in the primary index
@@ -3326,7 +3300,8 @@ Result MMFilesCollection::insertSecondaryIndexes(
     auto idx = indexes[i];
     TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
 
-    if (!useSecondary && !idx->isPersistent()) {
+    MMFilesIndex* midx = static_cast<MMFilesIndex*>(idx.get());
+    if (!useSecondary && !midx->isPersistent()) {
       continue;
     }
 
@@ -3375,7 +3350,8 @@ Result MMFilesCollection::deleteSecondaryIndexes(
     auto idx = indexes[i];
     TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
 
-    if (!useSecondary && !idx->isPersistent()) {
+    MMFilesIndex* midx = static_cast<MMFilesIndex*>(idx.get());
+    if (!useSecondary && !midx->isPersistent()) {
       continue;
     }
 

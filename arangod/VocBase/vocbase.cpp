@@ -778,9 +778,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
         collection->deleted(true);
 
         try {
-          engine->changeCollection(
-            *this, collection->id(), *collection, doSync
-          );
+          engine->changeCollection(*this, *collection, doSync);
         } catch (arangodb::basics::Exception const& ex) {
           collection->deleted(false);
           events::DropCollection(colName, ex.code());
@@ -1015,8 +1013,7 @@ void TRI_vocbase_t::inventory(
       collection->getIndexesVPack(result, Index::makeFlags(), [](arangodb::Index const* idx) {
         // we have to exclude the primary, edge index and links for dump / restore
         return (idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
-                idx->type() != arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX &&
-                idx->type() != arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK);
+                idx->type() != arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX && !idx->isHidden());
       });
       result.add("parameters", VPackValue(VPackValueType::Object));
       collection->toVelocyPackIgnore(result, { "objectId", "path", "statusString", "indexes" }, true, false);
@@ -1753,7 +1750,9 @@ arangodb::Result TRI_vocbase_t::dropView(
   }
 
   // invalidate all entries in the plan and query cache now
+#if USE_PLAN_CACHE
   arangodb::aql::PlanCache::instance()->invalidate(this);
+#endif
   arangodb::aql::QueryCache::instance()->invalidate(this);
 
   unregisterView(*view);

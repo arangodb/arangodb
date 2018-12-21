@@ -129,6 +129,10 @@ RocksDBLogValue RocksDBLogValue::SingleRemoveV2(TRI_voc_tick_t vocbaseId,
   return RocksDBLogValue(RocksDBLogType::SingleRemoveV2, vocbaseId, cid, rid);
 }
 
+/*static*/ RocksDBLogValue RocksDBLogValue::Empty() {
+  return RocksDBLogValue();
+}
+
 RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, uint64_t val)
     : _buffer() {
   switch (type) {
