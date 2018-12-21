@@ -77,7 +77,7 @@ static bool ignoreHiddenEnterpriseCollection(std::string const& name, bool force
     if (strncmp(name.c_str(), "_local_", 7) == 0 ||
         strncmp(name.c_str(), "_from_", 6) == 0 ||
         strncmp(name.c_str(), "_to_", 4) == 0) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Restore ignoring collection " << name << ". Will be created via SmartGraphs of a full dump. If you want to restore ONLY this collection use 'arangorestore --force'. However this is not recommended and you should instead restore the EdgeCollection of the SmartGraph instead.";
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Restore ignoring collection '" << name << "'. Will be created via SmartGraphs of a full dump. If you want to restore ONLY this collection use 'arangorestore --force'. However this is not recommended and you should instead restore the EdgeCollection of the SmartGraph instead.";
       return true;
     }
   }
@@ -93,18 +93,18 @@ static Result restoreDataParser(char const* ptr, char const* pos,
   builder.clear();
 
   try {
-    VPackParser parser(builder);
+    VPackParser parser(builder, builder.options);
     parser.parse(ptr, static_cast<size_t>(pos - ptr));
-  } catch (VPackException const&) {
+  } catch (VPackException const& ex) {
     // Could not parse the given string
     return Result{
         TRI_ERROR_HTTP_CORRUPTED_JSON,
-        "received invalid JSON data for collection " + collectionName};
-  } catch (std::exception const&) {
+        "received invalid JSON data for collection '" + collectionName + "': " + ex.what()};
+  } catch (std::exception const& ex) {
     // Could not even build the string
     return Result{
         TRI_ERROR_HTTP_CORRUPTED_JSON,
-        "received invalid JSON data for collection " + collectionName};
+        "received invalid JSON data for collection '" + collectionName + "': " + ex.what()};
   } catch (...) {
     return Result{TRI_ERROR_INTERNAL};
   }
@@ -114,7 +114,7 @@ static Result restoreDataParser(char const* ptr, char const* pos,
   if (!slice.isObject()) {
     return Result{
         TRI_ERROR_HTTP_CORRUPTED_JSON,
-        "received invalid JSON data for collection " + collectionName};
+        "received invalid JSON data for collection '" + collectionName + "': data is no object"};
   }
 
   type = REPLICATION_INVALID;
@@ -123,7 +123,7 @@ static Result restoreDataParser(char const* ptr, char const* pos,
     if (!pair.key.isString()) {
       return Result{
           TRI_ERROR_HTTP_CORRUPTED_JSON,
-          "received invalid JSON data for collection " + collectionName};
+          "received invalid JSON data for collection '" + collectionName + "': got a non-string key"};
     }
 
     std::string const attributeName = pair.key.copyString();
@@ -165,7 +165,7 @@ static Result restoreDataParser(char const* ptr, char const* pos,
   if (key.empty()) {
     return Result{
         TRI_ERROR_HTTP_BAD_PARAMETER,
-        "received invalid JSON data for collection " + collectionName};
+        "received invalid JSON data for collection '" + collectionName + "': empty key"};
   }
 
   return Result{TRI_ERROR_NO_ERROR};
@@ -1208,7 +1208,9 @@ Result RestReplicationHandler::parseBatch(
     std::string const& collectionName,
     std::unordered_map<std::string, VPackValueLength>& latest,
     VPackBuilder& allMarkers) {
-  VPackBuilder builder;
+  VPackOptions options = VPackOptions::Defaults;
+  options.checkAttributeUniqueness = true;
+  VPackBuilder builder(&options);
   allMarkers.clear();
 
   HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request.get());
@@ -1358,7 +1360,10 @@ Result RestReplicationHandler::processRestoreDataBatch(
   std::unordered_map<std::string, VPackValueLength> latest;
   VPackBuilder allMarkers;
 
-  parseBatch(collectionName, latest, allMarkers);
+  Result res = parseBatch(collectionName, latest, allMarkers);
+  if (res.fail()) {
+    return res;
+  }
 
   // First remove all keys of which the last marker we saw was a deletion
   // marker:

@@ -42,10 +42,10 @@ class StringRef {
   constexpr StringRef() noexcept : _data(""), _length(0) {}
 
   /// @brief create a StringRef from an std::string
-  explicit StringRef(std::string const& str) : StringRef(str.c_str(), str.size()) {}
+  explicit StringRef(std::string const& str) noexcept : StringRef(str.c_str(), str.size()) {}
   
   /// @brief create a StringRef from a null-terminated C string
-  explicit StringRef(char const* data) : StringRef(data, strlen(data)) {}
+  explicit StringRef(char const* data) noexcept : StringRef(data, strlen(data)) {}
   
   /// @brief create a StringRef from a VPack slice (must be of type String)
   explicit StringRef(arangodb::velocypack::Slice const& slice) : StringRef() {
@@ -56,42 +56,42 @@ class StringRef {
   }
   
   /// @brief create a StringRef from a C string plus length
-  StringRef(char const* data, size_t length) : _data(data), _length(length) {}
+  StringRef(char const* data, size_t length) noexcept : _data(data), _length(length) {}
   
   /// @brief create a StringRef from another StringRef
   StringRef(StringRef const& other) noexcept
       : _data(other._data), _length(other._length) {}
   
   /// @brief create a StringRef from another StringRef
-  StringRef& operator=(StringRef const& other) {
+  StringRef& operator=(StringRef const& other) noexcept {
     _data = other._data;
     _length = other._length;
     return *this;
   }
   
   /// @brief create a StringRef from an std::string
-  StringRef& operator=(std::string const& other) {
+  StringRef& operator=(std::string const& other) noexcept {
     _data = other.c_str();
     _length = other.size();
     return *this;
   }
   
   /// @brief create a StringRef from a null-terminated C string
-  StringRef& operator=(char const* other) {
+  StringRef& operator=(char const* other) noexcept {
     _data = other;
     _length = strlen(other);
     return *this;
   }
   
   /// @brief create a StringRef from a VPack slice of type String
-  StringRef& operator=(arangodb::velocypack::Slice const& slice) {
+  StringRef& operator=(arangodb::velocypack::Slice const& slice) noexcept {
     arangodb::velocypack::ValueLength l;
     _data = slice.getString(l);
     _length = l;
     return *this;
   }
 
-  int compare(std::string const& other) const {
+  int compare(std::string const& other) const noexcept {
     int res = memcmp(_data, other.c_str(), (std::min)(_length, other.size()));
     if (res != 0) {
       return res;
@@ -99,7 +99,7 @@ class StringRef {
     return static_cast<int>(_length) - static_cast<int>(other.size());
   }
   
-  int compare(StringRef const& other) const {
+  int compare(StringRef const& other) const noexcept {
     int res = memcmp(_data, other._data, (std::min)(_length, other._length));
     if (res != 0) {
       return res;
@@ -111,15 +111,15 @@ class StringRef {
     return std::string(_data, _length);
   }
 
-  inline bool empty() const {
+  inline bool empty() const noexcept {
     return (_length == 0);
   }
   
-  inline char const* begin() const {
+  inline char const* begin() const noexcept {
     return _data;
   }
   
-  inline char const* end() const {
+  inline char const* end() const noexcept {
     return _data + _length;
   }
 
