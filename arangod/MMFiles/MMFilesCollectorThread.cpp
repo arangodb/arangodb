@@ -604,7 +604,7 @@ void MMFilesCollectorThread::clearQueuedOperations() {
         }
 
         // finally remove all the nullptrs from the vector
-        operations.erase(std::remove_if(operations.begin(), operations.end(), [](MMFilesCollectorCache* cache) { 
+        operations.erase(std::remove_if(operations.begin(), operations.end(), [](MMFilesCollectorCache* cache) {
           return cache == nullptr;
         }), operations.end());
       }
@@ -996,7 +996,7 @@ int MMFilesCollectorThread::transferMarkers(MMFilesWalLogfile* logfile,
              << collection->name() << ", number of bytes transferred: " << numBytesTransferred;
 
     if (res == TRI_ERROR_NO_ERROR && !cache->operations->empty()) {
-      queueOperations(logfile, cache);
+      res=queueOperations(logfile, cache);
     }
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
@@ -1016,6 +1016,7 @@ int MMFilesCollectorThread::transferMarkers(MMFilesWalLogfile* logfile,
 int MMFilesCollectorThread::queueOperations(arangodb::MMFilesWalLogfile* logfile,
                                      std::unique_ptr<MMFilesCollectorCache>& cache) {
   TRI_ASSERT(cache != nullptr);
+  int res = TRI_ERROR_NO_ERROR;
 
   TRI_voc_cid_t cid = cache->collectionId;
   uint64_t numOperations = cache->operations->size();
@@ -1023,7 +1024,7 @@ int MMFilesCollectorThread::queueOperations(arangodb::MMFilesWalLogfile* logfile
 
   TRI_ASSERT(!cache->operations->empty());
 
-  while (true) {
+  while (!isStopping()) {
     {
       MUTEX_LOCKER(mutexLocker, _operationsQueueLock);
 
@@ -1045,8 +1046,10 @@ int MMFilesCollectorThread::queueOperations(arangodb::MMFilesWalLogfile* logfile
       }
     }
 
-    // wait outside the mutex for the flag to be cleared
-    std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    if (!isStopping()) {
+      // wait outside the mutex for the flag to be cleared
+      std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    } // if
   }
 
   if (maxNumPendingOperations > 0 &&
@@ -1062,9 +1065,13 @@ int MMFilesCollectorThread::queueOperations(arangodb::MMFilesWalLogfile* logfile
         << ". now activating write-throttling";
   }
 
-  _numPendingOperations += numOperations;
+  if (!isStopping()) {
+    _numPendingOperations += numOperations;
+  } else {
+    res=TRI_ERROR_SHUTTING_DOWN;
+  }
 
-  return TRI_ERROR_NO_ERROR;
+  return res;
 }
 
 /// @brief update a collection's datafile information
