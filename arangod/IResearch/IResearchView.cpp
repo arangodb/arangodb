@@ -261,17 +261,21 @@ struct IResearchView::ViewFactory: public arangodb::ViewFactory {
     );
     IResearchViewMetaState metaState;
 
-    if (!impl->_meta.init(definition, error)
-        || impl->_meta._version == 0 // version 0 must be upgraded to split data-store on a per-link basis
-        || impl->_meta._version > LATEST_VERSION
-        || (ServerState::instance()->isSingleServer() // init metaState for SingleServer
-            && !metaState.init(definition, error))) {
-      return arangodb::Result(
-        TRI_ERROR_BAD_PARAMETER,
-        error.empty()
-        ? (std::string("failed to initialize arangosearch View '") + impl->name() + "' from definition: " + definition.toString())
-        : (std::string("failed to initialize arangosearch View '") + impl->name() + "' from definition, error in attribute '" + error + "': " + definition.toString())
-      );
+    {
+      WriteMutex mutex(impl->_mutex);
+      SCOPED_LOCK(mutex);
+      if (!impl->_meta.init(definition, error)
+          || impl->_meta._version == 0 // version 0 must be upgraded to split data-store on a per-link basis
+          || impl->_meta._version > LATEST_VERSION
+          || (ServerState::instance()->isSingleServer() // init metaState for SingleServer
+              && !metaState.init(definition, error))) {
+        return arangodb::Result(
+          TRI_ERROR_BAD_PARAMETER,
+          error.empty()
+          ? (std::string("failed to initialize arangosearch View '") + impl->name() + "' from definition: " + definition.toString())
+          : (std::string("failed to initialize arangosearch View '") + impl->name() + "' from definition, error in attribute '" + error + "': " + definition.toString())
+        );
+      }
     }
 
     // NOTE: for single-server must have full list of collections to lock
