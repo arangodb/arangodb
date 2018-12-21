@@ -262,20 +262,20 @@ void RocksDBCollection::open(bool /*ignoreErrors*/) {
 
 void RocksDBCollection::prepareIndexes(
     arangodb::velocypack::Slice indexesSlice) {
-  WRITE_LOCKER(guard, _indexesLock);
   TRI_ASSERT(indexesSlice.isArray());
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   std::vector<std::shared_ptr<Index>> indexes;
-
-  if (indexesSlice.length() == 0 && _indexes.empty()) {
-    engine->indexFactory().fillSystemIndexes(_logicalCollection, indexes);
-  } else {
-    engine->indexFactory().prepareIndexes(
-      _logicalCollection, indexesSlice, indexes
-    );
+  {
+    READ_LOCKER(guard, _indexesLock); // link creation needs read-lock too
+    if (indexesSlice.length() == 0 && _indexes.empty()) {
+      engine->indexFactory().fillSystemIndexes(_logicalCollection, indexes);
+    } else {
+      engine->indexFactory().prepareIndexes(_logicalCollection, indexesSlice, indexes);
+    }
   }
-
+  
+  WRITE_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index>& idx : indexes) {
     addIndex(std::move(idx));
   }
@@ -319,17 +319,19 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  WRITE_LOCKER(indexGuard, _indexesLock);
+//  WRITE_LOCKER(indexGuard, _indexesLock);
   auto unlockGuard = scopeGuard([&] {
-    indexGuard.unlock(); // unlock in reverse order
+//    indexGuard.unlock(); // unlock in reverse order
     this->unlockWrite();
   });
-  
-  // Step 1. Check for matching index
-  std::shared_ptr<Index> idx = findIndex(info, _indexes);
-  if (idx) {
-    created = false; // We already have this index.
-    return idx;
+
+  std::shared_ptr<Index> idx;
+  { // Step 1. Check for matching index
+    WRITE_LOCKER(guard, _indexesLock);
+    if ((idx = findIndex(info, _indexes)) != nullptr) {
+      created = false; // We already have this index.
+      return idx;
+    }
   }
 
   RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
@@ -348,14 +350,16 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
   TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
   TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX);
   
-  for (auto const& other : _indexes) { // conflicting index exists
-    if (other->id() == idx->id()) {
-      return other; // index already exists
+  {
+    READ_LOCKER(guard, _indexesLock);
+    for (auto const& other : _indexes) { // conflicting index exists
+      if (other->id() == idx->id()) {
+        return other; // index already exists
+      }
     }
   }
   
   auto buildIdx = std::make_shared<RocksDBBuilderIndex>(std::static_pointer_cast<RocksDBIndex>(idx));
-  
   // Step 3. add index to collection entry (for removal after a crash)
   if (!engine->inRecovery()) { // manually modify collection entry, other methods need lock
     RocksDBKey key; // read collection info from database
@@ -401,7 +405,6 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
         unlockGuard.fire(); // will be called at appropriate time
       });
     } else {
-      indexGuard.unlock(); // do not block maintenance reporting in cluster
       res = buildIdx->fillIndexFast(); // will lock again internally
     }
   }
@@ -409,7 +412,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
   // Step 5. cleanup
   if (res.ok()) {
     {
-      WRITE_LOCKER(indexGuard, _indexesLock);
+      WRITE_LOCKER(guard, _indexesLock);
       if (inBackground) { // swap in actual index
         for (size_t i = 0; i < _indexes.size(); i++) {
           if (_indexes[i]->id() == buildIdx->id()) {
@@ -422,19 +425,19 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
       }
     }
     
-    // we should sync the selectivity estimates TODO fix
-    res = engine->settingsManager()->sync(false);
-    if (res.fail()) { // not critical
-      LOG_TOPIC(WARN, Logger::ENGINES) << "could not sync settings: "
-      << res.errorMessage();
-      res.reset();
-    }
-    
-    rocksdb::Status s = engine->db()->GetRootDB()->FlushWAL(true);
-    if (!s.ok()) { // not critical
-      LOG_TOPIC(WARN, Logger::ENGINES) << "could not flush wal: "
-      << s.ToString();
-    }
+//    // we should sync the selectivity estimates TODO fix
+//    res = engine->settingsManager()->sync(false);
+//    if (res.fail()) { // not critical
+//      LOG_TOPIC(WARN, Logger::ENGINES) << "could not sync settings: "
+//      << res.errorMessage();
+//      res.reset();
+//    }
+//
+//    rocksdb::Status s = engine->db()->GetRootDB()->FlushWAL(true);
+//    if (!s.ok()) { // not critical
+//      LOG_TOPIC(WARN, Logger::ENGINES) << "could not flush wal: "
+//      << s.ToString();
+//    }
     
 #if USE_PLAN_CACHE
     arangodb::aql::PlanCache::instance()->invalidate(_logicalCollection->vocbase());
@@ -460,19 +463,18 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
 
   unlockGuard.fire(); // may have already been fired
   if (res.fail()) {
-    // We could not create the index. Better abort
-    // Remove the Index in the local list again.
-    size_t i = 0;
-    WRITE_LOCKER(guard, _indexesLock);
-    for (auto index : _indexes) {
-      if (index == idx) {
-        _indexes.erase(_indexes.begin() + i);
-        break;
+    { // We could not create the index. Better abort
+      WRITE_LOCKER(guard, _indexesLock);
+      auto it = _indexes.begin();
+      while (it != _indexes.end()) {
+        if ((*it)->id() == idx->id()) {
+          _indexes.erase(it);
+          break;
+        }
+        it++;
       }
-      ++i;
     }
     idx->drop();
-    
     THROW_ARANGO_EXCEPTION(res);
   }
   

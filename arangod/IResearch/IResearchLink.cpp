@@ -674,9 +674,9 @@ arangodb::Result IResearchLink::init(
       }
     }
   } else if (arangodb::ServerState::instance()->isDBServer()) { // db-server link
-    auto* engine = arangodb::ClusterInfo::instance();
+    auto* ci = arangodb::ClusterInfo::instance();
 
-    if (!engine) {
+    if (!ci) {
       return arangodb::Result(
         TRI_ERROR_INTERNAL,
         std::string("failure to get storage engine while initializing arangosearch link '") + std::to_string(_id) + "'"
@@ -693,7 +693,7 @@ arangodb::Result IResearchLink::init(
       }
     }
 
-    auto logicalView = engine->getView(vocbase.name(), viewId); // valid to call ClusterInfo (initialized in ClusterFeature::prepare()) even from Databasefeature::start()
+    auto logicalView = ci->getView(vocbase.name(), viewId); // valid to call ClusterInfo (initialized in ClusterFeature::prepare()) even from Databasefeature::start()
 
     // if there is no logicalView present yet then skip this step
     if (logicalView) {
