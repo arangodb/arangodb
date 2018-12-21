@@ -1750,7 +1750,9 @@ arangodb::Result TRI_vocbase_t::dropView(
   }
 
   // invalidate all entries in the plan and query cache now
+#if USE_PLAN_CACHE
   arangodb::aql::PlanCache::instance()->invalidate(this);
+#endif
   arangodb::aql::QueryCache::instance()->invalidate(this);
 
   unregisterView(*view);

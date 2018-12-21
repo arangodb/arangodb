@@ -105,7 +105,7 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   /// @brief steal the tracked operations from the map
   OperationsMap stealTrackedOperations() {
     OperationsMap empty;
-    empty.swap(empty);
+    _trackedIndexOperations.swap(empty);
     return empty;
   }
 

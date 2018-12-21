@@ -282,7 +282,8 @@ static arangodb::Result fillIndexFast(RocksDBIndex& ridx,
                                       WriteBatchType& batch) {
   Result res;
   ::BuilderTrx trx(transaction::StandaloneContext::Create(coll.vocbase()),
-                   coll, AccessMode::Type::READ);
+                   coll, AccessMode::Type::EXCLUSIVE);
+  trx.addHint(transaction::Hints::Hint::LOCK_NEVER); // already locked
   res = trx.begin();
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
@@ -368,6 +369,10 @@ static arangodb::Result fillIndexFast(RocksDBIndex& ridx,
     commitLambda();
   }
   batch.Clear();
+  
+  if (res.ok()) { // required so iresearch commits
+    res = trx.commit();
+  }
   
   // we will need to remove index elements created before an error
   // occurred, this needs to happen since we are non transactional

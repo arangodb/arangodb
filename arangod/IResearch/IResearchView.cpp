@@ -927,7 +927,9 @@ arangodb::Result IResearchView::properties(
     return res;
   }
 
+#if USE_PLAN_CACHE
   arangodb::aql::PlanCache::instance()->invalidate(&vocbase());
+#endif
   arangodb::aql::QueryCache::instance()->invalidate(&vocbase());
 
   return arangodb::ServerState::instance()->isSingleServer()
