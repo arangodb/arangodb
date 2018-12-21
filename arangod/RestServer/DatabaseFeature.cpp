@@ -185,7 +185,7 @@ void DatabaseManagerThread::run() {
         if (queryRegistry != nullptr) {
           queryRegistry->expireQueries();
         }
-        
+
         auto engineRegistry = TraverserEngineRegistryFeature::registry();
         if (engineRegistry != nullptr) {
           engineRegistry->expireEngines();
@@ -240,7 +240,7 @@ DatabaseFeature::DatabaseFeature(
   startsAfter("EngineSelector");
   startsAfter("InitDatabase");
   startsAfter("StorageEngine");
-  
+
   DATABASE = nullptr;
 }
 
@@ -248,7 +248,7 @@ DatabaseFeature::~DatabaseFeature() {
   // clean up
   auto p = _databasesLists.load();
   delete p;
-  
+
   DATABASE = nullptr;
 }
 
@@ -290,7 +290,7 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addObsoleteOption(
       "--database.index-threads",
       "threads to start for parallel background index creation", true);
-  
+
   // the following hidden option was removed in 3.4
   options->addObsoleteOption(
       "--database.check-30-revisions",
@@ -382,6 +382,7 @@ void DatabaseFeature::beginShutdown() {
 
 void DatabaseFeature::stop() {
   stopAppliers();
+  MUTEX_LOCKER(mutexLocker, _databasesMutex);
 
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
@@ -394,10 +395,10 @@ void DatabaseFeature::stop() {
       continue;
     }
 
-    vocbase->processCollections([](LogicalCollection* collection) { 
+    vocbase->processCollections([](LogicalCollection* collection) {
       // no one else must modify the collection's status while we are in here
       collection->executeWhileStatusWriteLocked([collection]() {
-        collection->close(); 
+        collection->close();
       });
     }, true);
   }
@@ -473,7 +474,7 @@ void DatabaseFeature::recoveryDone() {
     if (vocbase->replicationApplier()) {
       ReplicationFeature* replicationFeature =
       static_cast<ReplicationFeature*>(ApplicationServer::lookupFeature("Replication"));
-      
+
       if (replicationFeature != nullptr) {
         replicationFeature->startApplier(vocbase);
       }
@@ -510,10 +511,10 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
     TRI_ASSERT(!ServerState::instance()->isCoordinator());
     id = TRI_NewTickServer();
   }
-  
+
   std::unique_ptr<TRI_vocbase_t> vocbase;
   VPackBuilder builder;
-  
+
   // create database in storage engine
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
@@ -534,13 +535,13 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
         return TRI_ERROR_ARANGO_DUPLICATE_NAME;
       }
     }
-    
+
     builder.openObject();
     builder.add("database", VPackValue(id));
     builder.add("id", VPackValue(std::to_string(id)));
     builder.add("name", VPackValue(name));
     builder.close();
-    
+
     // createDatabase must return a valid database or throw
     int status = TRI_ERROR_NO_ERROR;
     vocbase = engine->createDatabase(id, builder.slice(), status);
@@ -559,19 +560,19 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
         << vocbase->name() << "' failed: " << ex.what();
         return TRI_ERROR_INTERNAL;
       }
-      
+
       // enable deadlock detection
       vocbase->_deadlockDetector.enabled(!ServerState::instance()->isRunningInCluster());
-      
+
       // FIXME why do we not n this
       // create application directories
       V8DealerFeature* dealer =
       ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
       auto appPath = dealer->appPath();
-      
+
       // create app directory for database if it does not exist
       int res = createApplicationDirectory(name, appPath);
-      
+
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(res);
       }
@@ -622,7 +623,7 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
 
   result = vocbase.release();
   events::CreateDatabase(name, res);
-    
+
   if (DatabaseFeature::DATABASE != nullptr &&
       DatabaseFeature::DATABASE->versionTracker() != nullptr) {
     DatabaseFeature::DATABASE->versionTracker()->track("create database");
@@ -728,7 +729,7 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
   }
 
   events::DropDatabase(name, res);
-  
+
   if (DatabaseFeature::DATABASE != nullptr &&
       DatabaseFeature::DATABASE->versionTracker() != nullptr) {
     DatabaseFeature::DATABASE->versionTracker()->track("drop database");
@@ -756,7 +757,7 @@ int DatabaseFeature::dropDatabase(TRI_voc_tick_t id, bool waitForDeletion,
       }
     }
   }
-  
+
   if (name.empty()) {
     return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
   }
@@ -849,7 +850,7 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
 
 /// @brief return the list of all database names
 void DatabaseFeature::inventory(VPackBuilder& result,
-                                TRI_voc_tick_t maxTick, 
+                                TRI_voc_tick_t maxTick,
                                 std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter) {
   result.openObject();
   {
@@ -1141,7 +1142,7 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
 
   auto oldLists = _databasesLists.load();
   auto newLists = new DatabasesLists(*oldLists);
-  
+
   ServerState::RoleEnum role = arangodb::ServerState::instance()->getRole();
 
   try {
@@ -1155,9 +1156,9 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
         // ignore deleted databases here
         continue;
       }
-      
+
       std::string const databaseName = it.get("name").copyString();
-      
+
       // create app directory for database if it does not exist
       res = createApplicationDirectory(databaseName, appPath);
 
