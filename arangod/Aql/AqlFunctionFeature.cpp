@@ -485,6 +485,8 @@ void AqlFunctionFeature::addMiscFunctions() {
        false, true, &Functions::CurrentDatabase});
   add({"COLLECTION_COUNT", ".h", false, true,
        false, true, &Functions::CollectionCount});
+  add({"CHECK_DOCUMENT", ".", false, false,
+       true, true, &Functions::CheckDocument});
 }
 
 void AqlFunctionFeature::addStorageEngineFunctions() {

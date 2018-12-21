@@ -3808,6 +3808,52 @@ AqlValue Functions::IsSameCollection(
   return AqlValue(AqlValueHintNull());
 }
 
+static bool isValidDocument(VPackSlice slice) {
+  std::unordered_set<std::string> keys;
+ 
+  TRI_ASSERT(slice.isObject()); 
+  auto it = VPackObjectIterator(slice, true);
+  
+  if (it.size() > 1) {
+    while (it.valid()) {
+      if (!keys.emplace(it.key().copyString()).second) {
+        // duplicate key
+        return false;
+      }
+
+      VPackSlice value = it.value().resolveExternals();
+      if (value.isObject()) {
+        if (!isValidDocument(value)) {
+          // recurse into sub-objects
+          return false;
+        }
+      }
+      it.next();
+    }
+  }
+  return true;
+}
+
+/// @brief function CHECK_DOCUMENT
+AqlValue Functions::CheckDocument(arangodb::aql::Query* query,
+                                  transaction::Methods* trx,
+                                  VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "CHECK_DOCUMENT", 1, 1);
+
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  if (!value.isObject()) {
+    // no document at all
+    return AqlValue(AqlValueHintBool(false));
+  }
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value, true);
+  
+  TRI_ASSERT(slice.isObject());
+
+  return AqlValue(AqlValueHintBool(isValidDocument(slice)));
+}
+
 AqlValue Functions::PregelResult(arangodb::aql::Query* query, transaction::Methods* trx,
                                         VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "PREGEL_RESULT", 1, 1);

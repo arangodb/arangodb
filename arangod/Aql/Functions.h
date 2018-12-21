@@ -328,6 +328,9 @@ struct Functions {
    static AqlValue IsSameCollection(arangodb::aql::Query*,
                                     transaction::Methods*,
                                     VPackFunctionParameters const&);
+   static AqlValue CheckDocument(arangodb::aql::Query*,
+                                 transaction::Methods*,
+                                 VPackFunctionParameters const&);
 };
   
 }
