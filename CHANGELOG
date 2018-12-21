@@ -1,6 +1,52 @@
 devel
 -----
 
+* An AQL query that uses the edge index only and returns the opposite side of
+  the edge can now be executed in a more optimized way, e.g.
+
+    FOR edge IN edgeCollection FILTER edge._from == "v/1" RETURN edge._to
+    
+  is fully covered by RocksDB edge index. For MMFiles this rule does not apply.
+
+* reverted accidental change to error handling in geo index
+
+  In previous versions, if non-valid geo coordinates were contained in the
+  indexed field of a document, the document was simply ignored an not indexed.
+  In 3.4.0, this was accidentally changed to generate an error, which caused
+  the upgrade procedure to break in some cases.
+
+* fixed TypeError being thrown instead of validation errors when Foxx manifest
+  validation fails
+
+* fix internal issue #2786: improved confirmation dialog when clicking the
+  Truncate button in the Web UI
+
+* make `--help-all` now also show all hidden program options
+
+  Previously hidden program options were only returned when invoking arangod or
+  a client tool with the cryptic `--help-.` option. Now `--help-all` simply 
+  retuns them as well.
+
+  The program options JSON description returned by `--dump-options` was also 
+  improved as follows:
+
+  - the new boolean attribute "dynamic" indicates whether the option has a dynamic
+    default value, i.e. a value that depends on the target host capabilities or
+    configuration
+
+  - the new boolean attribute "requiresValue" indicates whether a boolean option
+    requires a value of "true" or "false" when specified. If "requiresValue" is
+    false, then the option can be specified without a boolean value following it,
+    and the option will still be set to true, e.g. `--server.authentication` is
+    identical to `--server.authentication true`.
+
+  - the new "category" attribute will contain a value of "command" for command-like
+    options, such as `--version`, `--dump-options`, `--dump-dependencies` etc.,
+    and "option" for all others.
+
+* fixed issue #7586: a running query within the user interface was not shown
+  if the active view was `Running Queries` or `Slow Query History`.
+
 * fixed issue #7743: Query processing discrepancy between Rocks and MMFiles databases
 
   this change enforces the invalidation of variables in AQL queries after usage of
