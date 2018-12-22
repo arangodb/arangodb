@@ -155,6 +155,9 @@ class NearUtils {
   /// Call after scanning all intervals
   void didScanIntervals();
 
+  /// @brief Reference to parameters used
+  geo::QueryParams const& params() const { return _params; }
+
   size_t _found = 0;
   size_t _rejection = 0;
 
