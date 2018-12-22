@@ -173,18 +173,8 @@ void Scopes::addVariable(Variable* variable) {
 void Scopes::replaceVariable(Variable* variable) {
   TRI_ASSERT(!_activeScopes.empty());
   TRI_ASSERT(variable != nullptr);
-
-  for (auto it = _activeScopes.rbegin(); it != _activeScopes.rend(); ++it) {
-    auto& scope = (*it);
-
-    if (scope->existsVariable(variable->name)) {
-      // replace existing variable
-      scope->addVariable(variable);
-      return;
-    }
-  }
-
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find AQL variable in scopes");
+      
+  _activeScopes.back()->addVariable(variable);
 }
 
 /// @brief checks whether a variable exists in any scope
