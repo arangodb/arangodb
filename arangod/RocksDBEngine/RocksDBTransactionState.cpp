@@ -208,6 +208,12 @@ void RocksDBTransactionState::createTransaction() {
   trxOpts.set_snapshot = true;
   // unclear performance implications do not use for now
   // trxOpts.deadlock_detect = !hasHint(transaction::Hints::Hint::NO_DLD);
+      
+  if (isOnlyExclusiveTransaction()) {
+    // we are exclusively modifying collection data here, so we can turn off
+    // all concurrency controls to save time
+    trxOpts.skip_concurrency_control = true;
+  }
 
   TRI_ASSERT(_rocksTransaction == nullptr ||
              _rocksTransaction->GetState() == rocksdb::Transaction::COMMITED ||
