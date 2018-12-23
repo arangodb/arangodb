@@ -190,7 +190,7 @@ Once the _arangorestore_ process on every coordinator is completed, the
 replication factor has to be set to its initial value.
 
 Run the following command from exactly one coordinator (any coordinator can be
-used) - please adjust the `replicationFactor` value accordingly.:
+used) - please adjust the `replicationFactor` value accordingly:
 
 ```
 echo 'db._collections().filter(function(c) { return c.name()[0] !== "_"; })
