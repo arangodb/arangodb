@@ -7,7 +7,8 @@ cluster environment.
 It is assumed that a cluster environment is running and a logical backup
 with [_arangodump_](../Arangodump/README.md) has already been created.
 
-### Allocate dump Directory
+Allocate dump Directory
+-----------------------
 
 The first step is to copy the `dump` directory to all machines where
 coordinators are running. 
@@ -18,7 +19,8 @@ network. However, if the restore is executed locally the restore speed is
 significantly improved.
 {% endhint %}
 	
-### Restore Collection Structure
+Restore Collection Structure
+----------------------------
 
 The collection structure has to be restored from exactly one coordinator (any
 coordinator can be used) with the following command:
@@ -36,7 +38,8 @@ arangorestore
 The option `--import-data false`  tells _arangorestore_ to restore only the
 collection structure and no data.
 
-### Set Replication Factor to 1
+Set Replication Factor to 1
+---------------------------
 
 It is necessary to set the the replication factor to 1 before importing any
 data. Run the following command from exactly one coordinator (any coordinator
@@ -53,7 +56,8 @@ c.properties().replicationFactor); c.properties({ replicationFactor: 1 }); });'
   --server.password <password> 
 ```
 
-### Create parallel restore scripts
+Create parallel restore scripts
+-------------------------------
 
 Now that the cluster is prepared, the parallel restore scripts have to be
 created. Therefore we will use a script that is provided in the following.
@@ -172,13 +176,15 @@ whereas 3 corresponds to the amount of listed coordinators. The resulting
 scripts are named `coordinator_<number-of-coordinator>.sh` (e.g.
 coordinator_0.sh, coordinator_1.sh, coordinator_2.sh).
 
-### Execute parallel restore scripts
+Execute parallel restore scripts
+--------------------------------
 
 The `coordinator_<number-of-coordinator>.sh` scripts, that were created in the
 previous script, now have to be executed on each machine where a coordinator
 is running. This will start a parallel restore of the dump.
 
-### Revert to the initial Replication Factor
+Revert to the initial Replication Factor
+----------------------------------------
 
 Once the _arangorestore_ process on every coordinator is completed, the
 replication factor has to be set to its initial value.
