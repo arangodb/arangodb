@@ -57,7 +57,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
     aql::Variable const& outVariable,
     aql::AstNode* filterCondition,
     aql::AstNode* options,
-    std::vector<OrderFactory::Scorer>&& scorers
+    std::vector<Scorer>&& scorers
   );
 
   IResearchViewNode(
@@ -143,12 +143,12 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   }
 
   /// @brief return the condition to pass to the view
-  std::vector<OrderFactory::Scorer> const& scorers() const noexcept {
+  std::vector<Scorer> const& scorers() const noexcept {
     return _scorers;
   }
 
   /// @brief set the sort condition to pass to the view
-  void scorers(std::vector<OrderFactory::Scorer>&& scorers) noexcept {
+  void scorers(std::vector<Scorer>&& scorers) noexcept {
     _scorers = std::move(scorers);
   }
 
@@ -202,7 +202,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   aql::AstNode const* _filterCondition;
   
   /// @brief scorers related to the view
-  std::vector<OrderFactory::Scorer> _scorers;
+  std::vector<Scorer> _scorers;
 
   /// @brief list of shards involved, need this for the cluster
   std::vector<std::string> _shards;

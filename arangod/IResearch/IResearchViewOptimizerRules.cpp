@@ -109,10 +109,10 @@ class IResearchViewConditionHandler final
     Condition& condition
   );
 
+  ScorerReplacer _scorerReplacer;
+  std::vector<Scorer> _scorers;
   ExecutionPlan* _plan;
   std::set<arangodb::iresearch::IResearchViewNode const*>* _processedViewNodes;
-  OrderFactory::DedupScorers _dedup;
-  OrderFactory::VarToScorers _scorers;
 }; // IResearchViewConditionFinder
 
 bool IResearchViewConditionHandler::before(ExecutionNode* en) {
@@ -130,10 +130,10 @@ bool IResearchViewConditionHandler::before(ExecutionNode* en) {
     }
 
     case EN::CALCULATION: {
-      auto* calcNode = EN::castTo<CalculationNode const*>(en);
-      TRI_ASSERT(calcNode->expression());
+      auto* calcNode = EN::castTo<CalculationNode*>(en);
+      TRI_ASSERT(calcNode);
 
-      OrderFactory::replaceScorers(_scorers, _dedup, *calcNode->expression());
+      _scorerReplacer.replace(*calcNode);
       break;
     }
 
@@ -185,12 +185,8 @@ bool IResearchViewConditionHandler::before(ExecutionNode* en) {
       }
 
       // find scorers that have to be evaluated by a view
-      auto it = _scorers.find(&node->outVariable());
-
-      if (it != _scorers.end()) {
-        node->scorers(std::move(it->second));
-        _scorers.erase(it); // remove processed variable
-      }
+      _scorerReplacer.extract(node->outVariable(), _scorers);
+      node->scorers(std::move(_scorers));
 
       _processedViewNodes->insert(node);
 

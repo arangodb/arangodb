@@ -34,7 +34,7 @@
 #include "VelocyPackHelper.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
-#include "Aql/Expression.h"
+#include "Aql/ExecutionNode.h"
 #include "Aql/Function.h"
 #include "Aql/SortCondition.h"
 #include "Basics/fasthash.h"
@@ -239,31 +239,15 @@ NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                      OrderFactory implementation
+// --SECTION--                                    ScorerReplacer implementation
 // ----------------------------------------------------------------------------
 
-/*static*/ bool OrderFactory::scorer(
-    irs::sort::ptr* scorer,
-    arangodb::aql::AstNode const& node,
-    arangodb::iresearch::QueryContext const& ctx
-) {
-  switch (node.type) {
-    case arangodb::aql::NODE_TYPE_FCALL: // function call
-      return fromFCall(scorer, node, ctx);
-    case arangodb::aql::NODE_TYPE_FCALL_USER: // user function call
-      return fromFCallUser(scorer, node, ctx);
-    default:
-      // IResearch does not support any
-      // expressions except function calls
-      return false;
+void ScorerReplacer::replace(aql::CalculationNode& node) {
+  if (!node.expression()) {
+    return;
   }
-}
 
-/*static*/ void OrderFactory::replaceScorers(
-    OrderFactory::VarToScorers& vars,
-    OrderFactory::DedupScorers& scorers,
-    aql::Expression& expr
-) {
+  auto& expr = *node.expression();
   auto* ast = expr.ast();
 
   if (!expr.ast()) {
@@ -271,14 +255,14 @@ NS_BEGIN(iresearch)
     return;
   }
 
-  auto* node = expr.nodeForModification();
+  auto* exprNode = expr.nodeForModification();
 
-  if (!node) {
+  if (!exprNode) {
     // node is not set
     return;
   }
 
-  auto replaceScorers = [&scorers, ast](aql::AstNode* node) {
+  auto replaceScorers = [this, ast](aql::AstNode* node) {
     if (aql::NODE_TYPE_FCALL == node->type || aql::NODE_TYPE_FCALL_USER == node->type) {
       auto* ref = getScorerRef(node->getMember(0));
 
@@ -296,13 +280,13 @@ NS_BEGIN(iresearch)
 
       Scorer const key(ref, node);
 
-      auto it = scorers.find(key);
+      auto it = _dedup.find(key);
 
-      if (it == scorers.end()) {
+      if (it == _dedup.end()) {
         // create variable
         auto* var = ast->variables()->createTemporaryVariable();
 
-        it = scorers.emplace(key, var).first;
+        it = _dedup.emplace(key, var).first;
       }
 
       return ast->createNodeReference(it->second);
@@ -312,18 +296,48 @@ NS_BEGIN(iresearch)
   };
 
   // Try to modify root node of the expression
-  auto newNode = replaceScorers(node);
+  auto newNode = replaceScorers(exprNode);
 
-  if (node != newNode) {
+  if (exprNode != newNode) {
     // simple expression, e.g LET x = BM25(d)
     expr.replaceNode(newNode);
   } else {
-    aql::Ast::traverseAndModify(node, replaceScorers);
+    aql::Ast::traverseAndModify(exprNode, replaceScorers);
   }
+}
 
-  for (auto& scorer : scorers) {
-    auto& nodes = vars[scorer.first.var];
-    nodes.emplace_back(scorer.second, scorer.first.node);
+void ScorerReplacer::extract(
+    aql::Variable const& var,
+    std::vector<Scorer>& scorers
+) {
+  for (auto it = _dedup.begin(), end = _dedup.end(); it != end; ) {
+    if (it->first.var == &var) {
+      scorers.emplace_back(it->second, it->first.node);
+      it = _dedup.erase(it);
+    } else {
+      ++it;
+    }
+  }
+}
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                      OrderFactory implementation
+// ----------------------------------------------------------------------------
+
+/*static*/ bool OrderFactory::scorer(
+    irs::sort::ptr* scorer,
+    arangodb::aql::AstNode const& node,
+    arangodb::iresearch::QueryContext const& ctx
+) {
+  switch (node.type) {
+    case arangodb::aql::NODE_TYPE_FCALL: // function call
+      return fromFCall(scorer, node, ctx);
+    case arangodb::aql::NODE_TYPE_FCALL_USER: // user function call
+      return fromFCallUser(scorer, node, ctx);
+    default:
+      // IResearch does not support any
+      // expressions except function calls
+      return false;
   }
 }
 

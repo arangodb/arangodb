@@ -59,7 +59,7 @@ inline bool filterConditionIsEmpty(aql::AstNode const* filterCondition) {
 
 void toVelocyPack(
     velocypack::Builder& builder,
-    std::vector<arangodb::iresearch::OrderFactory::Scorer> const& scorers,
+    std::vector<arangodb::iresearch::Scorer> const& scorers,
     bool verbose
 ) {
   VPackArrayBuilder arrayScope(&builder);
@@ -71,7 +71,7 @@ void toVelocyPack(
   }
 }
 
-std::vector<arangodb::iresearch::OrderFactory::Scorer> fromVelocyPack(
+std::vector<arangodb::iresearch::Scorer> fromVelocyPack(
     arangodb::aql::ExecutionPlan& plan,
     arangodb::velocypack::Slice const& slice
 ) {
@@ -86,7 +86,7 @@ std::vector<arangodb::iresearch::OrderFactory::Scorer> fromVelocyPack(
   auto const* vars = plan.getAst()->variables();
   TRI_ASSERT(vars);
 
-  std::vector<arangodb::iresearch::OrderFactory::Scorer> scorers;
+  std::vector<arangodb::iresearch::Scorer> scorers;
 
   size_t i = 0;
   for (auto const sortSlice : velocypack::ArrayIterator(slice)) {
@@ -328,12 +328,12 @@ IResearchViewNode::IResearchViewNode(
     aql::ExecutionPlan& plan,
     size_t id,
     TRI_vocbase_t& vocbase,
-    std::shared_ptr<const arangodb::LogicalView> const& view,
-    arangodb::aql::Variable const& outVariable,
-    arangodb::aql::AstNode* filterCondition,
-    arangodb::aql::AstNode* options,
-    std::vector<arangodb::iresearch::OrderFactory::Scorer>&& scorers)
-  : arangodb::aql::ExecutionNode(&plan, id),
+    std::shared_ptr<const LogicalView> const& view,
+    aql::Variable const& outVariable,
+    aql::AstNode* filterCondition,
+    aql::AstNode* options,
+    std::vector<Scorer>&& scorers)
+  : aql::ExecutionNode(&plan, id),
     _vocbase(vocbase),
     _view(view),
     _outVariable(&outVariable),
