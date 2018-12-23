@@ -10,8 +10,8 @@ with [_arangodump_](../Arangodump/README.md) has already been created.
 Allocate dump Directory
 -----------------------
 
-The first step is to copy the `dump` directory to all machines where
-coordinators are running. 
+The first step is to copy the directory that contains the dump to all machines
+where _Coordinators_ are running. 
 
 {% hint 'info' %}
 This step is not strictly required as the backup can be restored over the
