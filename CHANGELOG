@@ -1,6 +1,8 @@
 devel
 -----
 
+* updated bundled curl library to version 7.63
+
 * An AQL query that uses the edge index only and returns the opposite side of
   the edge can now be executed in a more optimized way, e.g.
 
