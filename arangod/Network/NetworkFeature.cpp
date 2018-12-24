@@ -81,9 +81,18 @@ void NetworkFeature::prepare() {
   _poolPtr.store(_pool.get(), std::memory_order_release);
 }
   
-void NetworkFeature::unprepare() {
+void NetworkFeature::beginShutdown() {
   _poolPtr.store(nullptr, std::memory_order_release);
+  if (_pool) {
+    _pool->shutdown();
+  }
 }
   
+void NetworkFeature::stop() {
+//  _pool->shutdown();
+}
+  
+void NetworkFeature::unprepare() {
+}
   
 } // arangodb

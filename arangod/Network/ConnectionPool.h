@@ -50,7 +50,8 @@ public:
   
   struct Ref {
     Ref(ConnectionPool::Connection* c) : _conn(c) {}
-    Ref(Ref&& r) : _conn(std::move(r._conn)) {}
+    Ref(Ref&& r);
+    Ref& operator=(Ref&&);
     Ref(Ref const& other);
     Ref& operator=(Ref&);
     ~Ref();
@@ -70,7 +71,8 @@ public:
   /// is always the same, we do not do any post-processing
   Ref leaseConnection(EndpointSpec);
   
-//  void returnConnection(ConnStats*);
+  /// @brief shutdown all connections
+  void shutdown();
   
 private:
   
@@ -101,7 +103,6 @@ private:
     //    uint64_t numRequests;
     std::vector<Connection> connections;
   };
-  
   
   void pruneConnections();
   

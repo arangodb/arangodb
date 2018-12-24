@@ -63,6 +63,17 @@ ConnectionPool::ConnectionPool(NetworkFeature* net)
   return selectConnection(*(it->second), builder);
 }
   
+/// @brief shutdown all connections
+void ConnectionPool::shutdown() {
+  WRITE_LOCKER(guard, _lock);
+  for (auto& pair : _connections) {
+    ConnectionList& list = *(pair.second);
+    std::lock_guard<std::mutex> guard(list.mutex);
+    for (auto it : list.connections) {
+      it.fuerte->cancel();
+    }
+  }
+}
   
 void ConnectionPool::pruneConnections() {
   READ_LOCKER(guard, _lock);
@@ -134,6 +145,19 @@ ConnectionPool::Ref ConnectionPool::selectConnection(ConnectionList& list,
   
 // stupid reference counter
   
+ConnectionPool::Ref::Ref(Ref&& r) : _conn(std::move(r._conn)) {
+  r._conn = nullptr;
+}
+  
+ConnectionPool::Ref& ConnectionPool::Ref::operator=(Ref&& other) {
+  if (_conn) {
+    _conn->numLeased.fetch_sub(1);
+  }
+  _conn = other._conn;
+  other._conn = nullptr;
+  return *this;
+}
+  
 ConnectionPool::Ref::Ref(Ref const& other) : _conn(other._conn) {
   _conn->numLeased.fetch_add(1);
 };
@@ -148,7 +172,9 @@ ConnectionPool::Ref& ConnectionPool::Ref::operator=(Ref& other) {
 }
  
 ConnectionPool::Ref::~Ref() {
-  _conn->numLeased.fetch_sub(1);
+  if (_conn) {
+    _conn->numLeased.fetch_sub(1);
+  }
 }
 
 std::shared_ptr<fuerte::Connection> const& ConnectionPool::Ref::connection() const {
