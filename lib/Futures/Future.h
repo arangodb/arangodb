@@ -45,14 +45,12 @@ class Promise;
 template<typename T>
 struct isFuture {
   static constexpr bool value = false;
-  //typedef T inner;
   typedef typename lift_unit<T>::type inner;
 };
 
 template<typename T>
 struct isFuture<Future<T>> {
   static constexpr bool value = true;
-  //typedef T inner;
   typedef typename lift_unit<T>::type inner;
 };
   
@@ -143,6 +141,8 @@ class Future {
   friend Future<Unit> makeFuture();
   
 public:
+  
+  typedef T value_type;
   
   /// @brief Constructs a Future with no shared state.
   static Future<T> makeEmpty() {

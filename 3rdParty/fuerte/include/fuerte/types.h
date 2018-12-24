@@ -49,6 +49,9 @@ StatusCode constexpr StatusForbidden = 403;
 StatusCode constexpr StatusNotFound = 404;
 StatusCode constexpr StatusMethodNotAllowed = 405;
 StatusCode constexpr StatusConflict = 409;
+StatusCode constexpr StatusPreconditionFailed = 412;
+StatusCode constexpr StatusInternalError = 500;
+StatusCode constexpr StatusUnavailable = 505;
 
 // RequestCallback is called for finished connection requests.
 // If the given Error is zero, the request succeeded, otherwise an error

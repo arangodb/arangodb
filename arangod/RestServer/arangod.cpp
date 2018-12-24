@@ -66,6 +66,7 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LoggerBufferFeature.h"
 #include "Logger/LoggerFeature.h"
+#include "Network/NetworkFeature.h"
 #include "Pregel/PregelFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
@@ -195,6 +196,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new LoggerFeature(server, true));
     server.addFeature(new MaintenanceFeature(server));
     server.addFeature(new MaxMapCountFeature(server));
+    server.addFeature(new NetworkFeature(server));
     server.addFeature(new NonceFeature(server));
     server.addFeature(new PageSizeFeature(server));
     server.addFeature(new PrivilegeFeature(server));

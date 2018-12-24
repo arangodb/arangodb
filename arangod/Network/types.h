@@ -20,30 +20,21 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cstdint>
-#include "Basics/Result.h"
-#include "Utils/OperationResult.h"
+#ifndef ARANGOD_NETWORK_TYPES_H
+#define ARANGOD_NETWORK_TYPES_H 1
 
-#include "Futures/Future.h"
+#include <chrono>
+#include <fuerte/types.h>
 
 namespace arangodb {
-namespace futures {
-  // Instantiate the most common Future types to save compile time
-  template class Future<Unit>;
-  template class Future<bool>;
-  template class Future<int32_t>;
-  template class Future<uint32_t>;
-  template class Future<int64_t>;
-  template class Future<uint64_t>;
-  template class Future<std::string>;
-  template class Future<double>;
+namespace network {
   
-  // arangodb types
-  template class Future<arangodb::Result>;
-  template class Future<arangodb::OperationResult>;
+  struct Response;
+  typedef std::string DestinationId;
   
-  /// Make a complete void future
-  Future<Unit> makeFuture() {
-    return Future<Unit>(unit);
-  }
+  using Headers = std::map<std::string, std::string>;
+  using Timeout = std::chrono::duration<double>;
+  
 }}
+
+#endif

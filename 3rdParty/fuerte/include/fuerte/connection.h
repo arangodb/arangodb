@@ -118,6 +118,9 @@ class ConnectionBuilder {
   /// @brief takes url in the form (http|vst)[s]://(ip|hostname):port
   /// also supports the syntax "http+tcp://", "http+unix://" etc
   ConnectionBuilder& endpoint(std::string const&);
+  
+  /// @brief get the normalized endpoint
+  std::string normalizedEndpoint() const;
 
   // Create an connection and start opening it.
   std::shared_ptr<Connection> connect(EventLoopService& eventLoopService);
@@ -162,6 +165,11 @@ class ConnectionBuilder {
     _conf._maxChunkSize = c;
     return *this;
   }*/
+  
+  /// @brief tcp, ssl or unix
+  inline SocketType socketType() const { return _conf._socketType; }
+  /// @brief protocol typr
+  inline ProtocolType protocolType() const { return _conf._protocolType; }
   
   // Set the VST version to use (VST only)
   inline vst::VSTVersion vstVersion() const { return _conf._vstVersion; }

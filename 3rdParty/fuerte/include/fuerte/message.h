@@ -56,6 +56,8 @@ public:
   
   // Header metadata helpers
   void addMeta(std::string const& key, std::string const& value);
+  void addMeta(StringMap const&);
+  
   // Get value for header metadata key, returns empty string if not found.
   std::string const& metaByKey(std::string const& key) const;
   
@@ -116,19 +118,6 @@ struct ResponseHeader final : public MessageHeader {
 private:
   MessageType _responseType = MessageType::Response;
 };
-
-/*
-struct AuthHeader : public MessageHeader {
-  /// Authentication: encryption field
-  AuthenticationType authType = AuthenticationType::None;
-  /// Authentication: username
-  std::string user;
-  /// Authentication: password
-  std::string password;
-  /// Authentication: JWT token
-  std::string token;
-
-};*/
 
 // Message is base class for message being send to (Request) or
 // from (Response) a server.
@@ -279,7 +268,8 @@ class Response final : public Message {
   std::vector<velocypack::Slice> const& slices() override;
   asio_ns::const_buffer payload() const override;
   size_t payloadSize() const override;
-
+  std::shared_ptr<velocypack::Buffer<uint8_t>> copyPayload() const;
+  
   void setPayload(velocypack::Buffer<uint8_t>&& buffer, size_t payloadOffset);
 
  private:

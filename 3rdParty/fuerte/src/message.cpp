@@ -36,6 +36,12 @@ namespace arangodb { namespace fuerte { inline namespace v1 {
 void MessageHeader::addMeta(std::string const& key, std::string const& value) {
   meta.emplace(key, value);
 }
+  
+void MessageHeader::addMeta(StringMap const& map) {
+  for(auto& pair : map) {
+    meta.insert(pair);
+  }
+}
 
 // Get value for header metadata key, returns empty string if not found.
 std::string const& MessageHeader::metaByKey(std::string const& key) const {
@@ -190,9 +196,8 @@ void Request::addVPack(VPackBuffer<uint8_t> const& buffer) {
   if (_sealed || (_isVpack && !_isVpack.get())) {
     throw std::logic_error("Message is sealed or of wrong type (vst/binary)");
   };
-  _isVpack = true;
   header.contentType(ContentType::VPack);
-  _modified = true;
+  _isVpack = true;
   _modified = true;
   auto length = buffer.byteSize();
   auto cursor = buffer.data();
@@ -334,6 +339,13 @@ asio_ns::const_buffer Response::payload() const {
 
 size_t Response::payloadSize() const {
   return _payload.byteSize() - _payloadOffset;
+}
+  
+std::shared_ptr<velocypack::Buffer<uint8_t>> Response::copyPayload() const {
+  auto buffer = std::make_shared<velocypack::Buffer<uint8_t>>();
+  buffer->append(_payload.data() + _payloadOffset,
+                 _payload.byteSize() - _payloadOffset);
+  return buffer;
 }
 
 void Response::setPayload(VPackBuffer<uint8_t>&& buffer, size_t payloadOffset) {

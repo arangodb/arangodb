@@ -72,8 +72,8 @@ std::shared_ptr<Connection> ConnectionBuilder::connect(EventLoopService& loop) {
   return result;
 }
   
-void parseSchema( std::string const& schema,
-                  detail::ConnectionConfiguration& conf) {
+void parseSchema(std::string const& schema,
+                 detail::ConnectionConfiguration& conf) {
   // non exthausive list of supported url schemas
   // "http+tcp://", "http+ssl://", "tcp://", "ssl://", "unix://", "http+unix://"
   // "vsts://", "vst://", "http://", "https://", "vst+unix://", "vst+tcp://"
@@ -89,7 +89,7 @@ void parseSchema( std::string const& schema,
       conf._socketType = SocketType::Ssl;
     } else if (socket == "unix") {
       conf._socketType = SocketType::Unix;
-    } else {
+    } else if (conf._socketType == SocketType::Undefined) {
       throw std::runtime_error(std::string("invalid socket type: ") + proto);
     }
     
@@ -97,7 +97,7 @@ void parseSchema( std::string const& schema,
       conf._protocolType = ProtocolType::Vst;
     } else if (proto == "http") {
       conf._protocolType = ProtocolType::Http;
-    } else {
+    } else if (conf._protocolType == ProtocolType::Undefined) {
       throw std::runtime_error(std::string("invalid protocol: ") + proto);
     }
     
@@ -117,8 +117,9 @@ void parseSchema( std::string const& schema,
     } else if (proto == "unix") {
       conf._socketType = SocketType::Unix;
       conf._protocolType = ProtocolType::Http;
-    } else {
-      throw std::runtime_error(std::string("invalid protocol: ") + proto);
+    } else if (conf._socketType == SocketType::Undefined ||
+               conf._protocolType == ProtocolType::Undefined) {
+      throw std::runtime_error(std::string("invalid schema: ") + proto);
     }
   }
 }
@@ -162,4 +163,29 @@ ConnectionBuilder& ConnectionBuilder::endpoint(std::string const& host) {
 
   return *this;
 }
+  
+/// @brief get the normalized endpoint
+std::string ConnectionBuilder::normalizedEndpoint() const {
+  std::string endpoint;
+  if (ProtocolType::Http == _conf._protocolType) {
+    endpoint.append("http+");
+  } else if (ProtocolType::Vst == _conf._protocolType) {
+    endpoint.append("vst+");
+  }
+  
+  if (SocketType::Tcp == _conf._socketType) {
+    endpoint.append("tcp://");
+  } else if (SocketType::Ssl == _conf._socketType) {
+    endpoint.append("ssl://");
+  } else if (SocketType::Unix == _conf._socketType) {
+    endpoint.append("unix://");
+  }
+  
+  endpoint.append(_conf._host);
+  endpoint.push_back(':');
+  endpoint.append(_conf._port);
+  
+  return endpoint;
+}
+  
 }}}  // namespace arangodb::fuerte::v1

@@ -925,7 +925,7 @@ Result LogicalCollection::truncate(
 Result LogicalCollection::insert(
     transaction::Methods* trx, VPackSlice const slice,
     ManagedDocumentResult& result, OperationOptions& options,
-    TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_tick_t& revisionId,
+    TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& revisionId,
     KeyLockInfo* keyLockInfo,
     std::function<Result(void)> callbackDuringLock) {
   TRI_IF_FAILURE("LogicalCollection::insert") {
