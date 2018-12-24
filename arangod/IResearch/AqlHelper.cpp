@@ -296,6 +296,25 @@ size_t hash(aql::AstNode const* node, size_t hash /*= 0*/) noexcept {
   }
 }
 
+irs::string_ref getFuncName(aql::AstNode const& node) {
+  irs::string_ref fname;
+
+  switch (node.type) {
+    case aql::NODE_TYPE_FCALL:
+      fname = reinterpret_cast<aql::Function const*>(node.getData())->name;
+      break;
+
+    case aql::NODE_TYPE_FCALL_USER:
+      parseValue(fname, node);
+      break;
+
+    default:
+      TRI_ASSERT(false);
+  }
+
+  return fname;
+}
+
 // ----------------------------------------------------------------------------
 // --SECTION--                                    AqlValueTraits implementation
 // ----------------------------------------------------------------------------

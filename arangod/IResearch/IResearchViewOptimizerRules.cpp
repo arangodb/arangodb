@@ -30,6 +30,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/Condition.h"
+#include "Aql/Function.h"
 #include "Aql/Query.h"
 #include "Aql/SortNode.h"
 #include "Aql/Optimizer.h"
@@ -37,6 +38,8 @@
 #include "Cluster/ServerState.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
+
+#include "utils/misc.hpp"
 
 using namespace arangodb::iresearch;
 using namespace arangodb::aql;
@@ -84,151 +87,65 @@ bool addView(
   return view.visitCollections(visitor);
 }
 
-///////////////////////////////////////////////////////////////////////////////
-/// @class IResearchViewConditionFinder
-///////////////////////////////////////////////////////////////////////////////
-class IResearchViewConditionHandler final
-    : public arangodb::aql::WalkerWorker<ExecutionNode> {
- public:
-  IResearchViewConditionHandler(
-      ExecutionPlan& plan,
-      std::set<arangodb::iresearch::IResearchViewNode const *>& processedViewNodes) noexcept
-   : _plan(&plan),
-     _processedViewNodes(&processedViewNodes) {
+bool optimizeSearchCondition(
+    IResearchViewNode& viewNode,
+    Query& query,
+    ExecutionPlan& plan
+) {
+  auto view = viewNode.view();
+
+  // add view and linked collections to the query
+  if (!addView(*view, query)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_QUERY_PARSE,
+      "failed to process all collections linked with the view '" + view->name() + "'"
+    );
   }
 
-  virtual bool before(ExecutionNode*) override;
+  // build search condition
+  Condition searchCondition(plan.getAst());
 
-  virtual bool enterSubquery(ExecutionNode*, ExecutionNode*) override {
-    return false;
+  if (!viewNode.filterConditionIsEmpty()) {
+    searchCondition.andCombine(&viewNode.filterCondition());
+    searchCondition.normalize(&plan); // normalize the condition
+
+    if (searchCondition.isEmpty()) {
+      // condition is always false
+      for (auto const& x : viewNode.getParents()) {
+        plan.insertDependency(
+          x,
+          plan.registerNode(std::make_unique<NoResultsNode>(&plan, plan.nextId()))
+        );
+      }
+      return false;
+    }
+
+    auto const& varsValid = viewNode.getVarsValid();
+
+    // remove all invalid variables from the condition
+    if (searchCondition.removeInvalidVariables(varsValid)) {
+      // removing left a previously non-empty OR block empty...
+      // this means we can't use the index to restrict the results
+      return false;
+    }
   }
 
- private:
-  bool handleFilterCondition(
-    ExecutionNode* en,
-    Condition& condition
+  // check filter condition
+  auto const conditionValid = !searchCondition.root() || FilterFactory::filter(
+    nullptr,
+    { nullptr, nullptr, nullptr, nullptr, &viewNode.outVariable() },
+    *searchCondition.root()
   );
 
-  ScorerReplacer _scorerReplacer;
-  std::vector<Scorer> _scorers;
-  ExecutionPlan* _plan;
-  std::set<arangodb::iresearch::IResearchViewNode const*>* _processedViewNodes;
-}; // IResearchViewConditionFinder
-
-bool IResearchViewConditionHandler::before(ExecutionNode* en) {
-  TRI_ASSERT(_plan && _plan->getAst() && _plan->getAst()->query());
-  auto& query = *_plan->getAst()->query();
-
-  if (_processedViewNodes->size() >= query.views().size()) {
-    // all views were processed
-    return false;
+  if (!conditionValid) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_QUERY_PARSE,
+      "unsupported SEARCH condition"
+    );
   }
 
-  switch (en->getType()) {
-    case EN::SINGLETON:
-    case EN::NORESULTS:
-      // in all these cases we better abort
-      return true;
-
-    case EN::CALCULATION: {
-      auto* calcNode = EN::castTo<CalculationNode*>(en);
-      TRI_ASSERT(calcNode);
-
-      _scorerReplacer.replace(*calcNode);
-      break;
-    }
-
-    case EN::ENUMERATE_IRESEARCH_VIEW: {
-      auto node = EN::castTo<IResearchViewNode*>(en);
-      auto& view = *node->view();
-
-      // add view and linked collections to the query
-      if (!addView(view, query)) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_QUERY_PARSE,
-          "failed to process all collections linked with the view '" + view.name() + "'"
-        );
-      }
-
-      if (_processedViewNodes->find(node) != _processedViewNodes->end()) {
-        // already optimized this node
-        break;
-      }
-
-      // build filter condition
-      Condition filterCondition(_plan->getAst());
-
-      if (!node->filterConditionIsEmpty()) {
-        filterCondition.andCombine(&node->filterCondition());
-
-        if (!handleFilterCondition(en, filterCondition)) {
-          break;
-        }
-      }
-
-      // check filter condition
-      auto const canUseView = !filterCondition.root() || FilterFactory::filter(
-        nullptr,
-        { nullptr, nullptr, nullptr, nullptr, &node->outVariable() },
-        *filterCondition.root()
-      );
-
-      if (!canUseView) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_QUERY_PARSE,
-          "unsupported SEARCH condition"
-        );
-      }
-
-      if (!filterCondition.isEmpty()) {
-        node->filterCondition(filterCondition.root());
-      }
-
-      // find scorers that have to be evaluated by a view
-      _scorerReplacer.extract(node->outVariable(), _scorers);
-      node->scorers(std::move(_scorers));
-
-      _processedViewNodes->insert(node);
-
-      break;
-    }
-
-    default:
-      // in these cases we simply ignore the intermediate nodes, note
-      // that we have taken care of nodes that could throw exceptions
-      // above.
-      break;
-  }
-
-  return false;
-}
-
-bool IResearchViewConditionHandler::handleFilterCondition(
-    ExecutionNode* en,
-    Condition& condition) {
-  // normalize the condition
-  condition.normalize(_plan);
-  TRI_IF_FAILURE("ConditionFinder::normalizePlan") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  if (condition.isEmpty()) {
-    // condition is always false
-    for (auto const& x : en->getParents()) {
-      auto noRes = new NoResultsNode(_plan, _plan->nextId());
-      _plan->registerNode(noRes);
-      _plan->insertDependency(x, noRes);
-    }
-    return false;
-  }
-
-  auto const& varsValid = en->getVarsValid();
-
-  // remove all invalid variables from the condition
-  if (condition.removeInvalidVariables(varsValid)) {
-    // removing left a previously non-empty OR block empty...
-    // this means we can't use the index to restrict the results
-    return false;
+  if (!searchCondition.isEmpty()) {
+    viewNode.filterCondition(searchCondition.root());
   }
 
   return true;
@@ -236,8 +153,8 @@ bool IResearchViewConditionHandler::handleFilterCondition(
 
 }
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
 /// @brief move filters and sort conditions into views
 void handleViewsRule(
@@ -246,55 +163,65 @@ void handleViewsRule(
     arangodb::aql::OptimizerRule const* rule
 ) {
   TRI_ASSERT(plan && plan->getAst() && plan->getAst()->query());
+  auto& query = *plan->getAst()->query();
 
-  if (plan->getAst()->query()->views().empty()) {
+  // ensure 'Optimizer::addPlan' will be called
+  bool modified = false;
+  auto addPlan = irs::make_finally([opt, &plan, rule, modified](){
+    opt->addPlan(std::move(plan), rule, modified);
+  });
+
+  if (query.views().empty()) {
     // nothing to do in absence of views
-    opt->addPlan(std::move(plan), rule, false);
     return;
   }
 
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
 
-  // try to find `EnumerateViewNode`s and process corresponding filters and sorts
-  plan->findEndNodes(nodes, true);
+  // replace scorers in all calculation nodes with references
+  plan->findNodesOfType(nodes, EN::CALCULATION, true);
 
-  // set of processed view nodes
-  std::set<IResearchViewNode const*> processedViewNodes;
+  ScorerReplacer scorerReplacer;
 
-  IResearchViewConditionHandler handler(*plan, processedViewNodes);
-  for (auto const& n : nodes) {
-    n->walk(handler);
+  for (auto* node : nodes) {
+    TRI_ASSERT(node && EN::CALCULATION == node->getType());
+
+    scorerReplacer.replace(*EN::castTo<CalculationNode*>(node));
   }
 
-  if (!processedViewNodes.empty()) {
-    std::unordered_set<ExecutionNode*> toUnlink;
+  modified = !scorerReplacer.empty();
 
-    // remove sort setters covered by a view internally
-    for (auto* viewNode : processedViewNodes) {
-      TRI_ASSERT(viewNode);
+  // register replaced scorers to be evaluated by corresponding view nodes
+  nodes.clear();
+  plan->findNodesOfType(nodes, EN::ENUMERATE_IRESEARCH_VIEW, true);
 
-      for (auto const& sort : viewNode->scorers()) {
-        auto const* var = sort.var;
+  std::vector<Scorer> scorers;
 
-        if (!var) {
-          continue;
-        }
+  for (auto* node : nodes) {
+    TRI_ASSERT(node && EN::ENUMERATE_IRESEARCH_VIEW == node->getType());
+    auto& viewNode = *EN::castTo<IResearchViewNode*>(node);
 
-        auto* setter = plan->getVarSetBy(var->id);
-
-        if (!setter || EN::CALCULATION != setter->getType()) {
-          continue;
-        }
-
-        toUnlink.emplace(setter);
-      }
+    if (!optimizeSearchCondition(viewNode, query, *plan)) {
+      continue;
     }
 
-    plan->unlinkNodes(toUnlink);
+    // find scorers that have to be evaluated by a view
+    scorerReplacer.extract(viewNode.outVariable(), scorers);
+    viewNode.scorers(std::move(scorers));
   }
 
-  opt->addPlan(std::move(plan), rule, !processedViewNodes.empty());
+  scorerReplacer.visit([](Scorer const& scorer) -> bool {
+    TRI_ASSERT(scorer.node);
+    auto const funcName = iresearch::getFuncName(*scorer.node);
+
+    THROW_ARANGO_EXCEPTION_FORMAT(
+      TRI_ERROR_QUERY_PARSE,
+      "Non ArangoSearch view variable '%s' is used in scorer function '%s'",
+      scorer.var->name.c_str(),
+      funcName.c_str()
+    );
+  });
 }
 
 void scatterViewInClusterRule(
@@ -434,8 +361,8 @@ void scatterViewInClusterRule(
   opt->addPlan(std::move(plan), rule, wasModified);
 }
 
-NS_END // iresearch
-NS_END // arangodb
+} // iresearch
+} // arangodb
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

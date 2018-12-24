@@ -80,6 +80,12 @@ inline irs::string_ref getStringRef(aql::AstNode const& node) {
   return irs::string_ref(node.getStringValue(), node.getStringLength());
 }
 
+//////////////////////////////////////////////////////////////////////////////
+/// @returns name of function denoted by a specified AstNode
+/// @note applicable for nodes of type NODE_TYPE_FCALL, NODE_TYPE_FCALL_USER
+//////////////////////////////////////////////////////////////////////////////
+irs::string_ref getFuncName(aql::AstNode const& node);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tries to extract 'size_t' value from the specified AstNode 'node'
 /// @returns true on success, false otherwise
