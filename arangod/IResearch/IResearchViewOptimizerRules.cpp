@@ -116,18 +116,19 @@ class IResearchViewConditionHandler final
 }; // IResearchViewConditionFinder
 
 bool IResearchViewConditionHandler::before(ExecutionNode* en) {
-  switch (en->getType()) {
-    case EN::LIMIT:
-      break;
+  TRI_ASSERT(_plan && _plan->getAst() && _plan->getAst()->query());
+  auto& query = *_plan->getAst()->query();
 
+  if (_processedViewNodes->size() >= query.views().size()) {
+    // all views were processed
+    return false;
+  }
+
+  switch (en->getType()) {
     case EN::SINGLETON:
     case EN::NORESULTS:
       // in all these cases we better abort
       return true;
-
-    case EN::SORT: {
-      break;
-    }
 
     case EN::CALCULATION: {
       auto* calcNode = EN::castTo<CalculationNode*>(en);
@@ -142,8 +143,7 @@ bool IResearchViewConditionHandler::before(ExecutionNode* en) {
       auto& view = *node->view();
 
       // add view and linked collections to the query
-      TRI_ASSERT(_plan && _plan->getAst() && _plan->getAst()->query());
-      if (!addView(view, *_plan->getAst()->query())) {
+      if (!addView(view, query)) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_PARSE,
           "failed to process all collections linked with the view '" + view.name() + "'"
@@ -245,6 +245,14 @@ void handleViewsRule(
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
     arangodb::aql::OptimizerRule const* rule
 ) {
+  TRI_ASSERT(plan && plan->getAst() && plan->getAst()->query());
+
+  if (plan->getAst()->query()->views().empty()) {
+    // nothing to do in absence of views
+    opt->addPlan(std::move(plan), rule, false);
+    return;
+  }
+
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
 
