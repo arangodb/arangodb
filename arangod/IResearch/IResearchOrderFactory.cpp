@@ -278,7 +278,7 @@ void ScorerReplacer::replace(aql::CalculationNode& node) {
         return node;
       }
 
-      Scorer const key(ref, node);
+      HashedScorer const key(ref, node);
 
       auto it = _dedup.find(key);
 

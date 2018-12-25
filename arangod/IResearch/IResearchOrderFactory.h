@@ -148,20 +148,31 @@ class ScorerReplacer {
   }
 
  private:
+  struct HashedScorer : Scorer {
+    HashedScorer(
+      aql::Variable const* var,
+      aql::AstNode const* node
+    ) : Scorer(var, node),
+        hash(iresearch::hash(node)) {
+    }
+
+    size_t hash;
+  }; // HashedScorer
+
   struct ScorerHash {
-    size_t operator()(Scorer const& key) const noexcept {
-      return iresearch::hash(key.node);
+    size_t operator()(HashedScorer const& key) const noexcept {
+      return key.hash;
     }
   }; // ScorerHash
 
   struct ScorerEqualTo {
-    bool operator()(Scorer const& lhs, Scorer const& rhs) const {
+    bool operator()(HashedScorer const& lhs, HashedScorer const& rhs) const {
       return iresearch::equalTo(lhs.node, rhs.node);
     }
   }; // ScorerEqualTo
 
   typedef std::unordered_map<
-    Scorer, aql::Variable const*, ScorerHash, ScorerEqualTo
+    HashedScorer, aql::Variable const*, ScorerHash, ScorerEqualTo
   > DedupScorers;
 
   DedupScorers _dedup;

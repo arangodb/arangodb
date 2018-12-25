@@ -161,14 +161,19 @@ size_t hash(aql::AstNode const* node, size_t hash /*= 0*/) noexcept {
     case aql::NODE_TYPE_ATTRIBUTE_ACCESS: {
       hash = fasthash64(static_cast<const void*>("access"), 6, hash);
 
+      // FIXME
+
       struct Visitor {
         explicit Visitor(size_t& hash) noexcept
           : hash(hash) {
         }
 
         bool attributeAccess(arangodb::aql::AstNode const& node) noexcept {
+          irs::string_ref value;
+          parseValue(value, node);
+
           hash = fasthash64(static_cast<const void*>("attribute"), 9, hash);
-          hash = iresearch::hash(&node, hash);
+          hash = fasthash64(value.c_str(), value.size(), hash);
           return true;
         }
 
@@ -188,6 +193,10 @@ size_t hash(aql::AstNode const* node, size_t hash /*= 0*/) noexcept {
 
       aql::AstNode const* head = nullptr;
       visitAttributeAccess(head, node, hasher);
+
+      if (head) {
+        hash = fasthash64(head, sizeof(head), hash);
+      }
 
       return hash;
     }

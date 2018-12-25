@@ -217,7 +217,7 @@ void handleViewsRule(
     auto const funcName = iresearch::getFuncName(*scorer.node);
 
     THROW_ARANGO_EXCEPTION_FORMAT(
-      TRI_ERROR_QUERY_PARSE,
+      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
       "Non ArangoSearch view variable '%s' is used in scorer function '%s'",
       scorer.var->name.c_str(),
       funcName.c_str()
