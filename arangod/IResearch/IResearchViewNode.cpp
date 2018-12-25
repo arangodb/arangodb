@@ -65,7 +65,8 @@ void toVelocyPack(
   VPackArrayBuilder arrayScope(&builder);
   for (auto const& scorer: scorers) {
     VPackObjectBuilder objectScope(&builder);
-    builder.add("varId", VPackValue(scorer.var->id));
+    builder.add("id", VPackValue(scorer.var->id));
+    builder.add("name", VPackValue(scorer.var->name)); // for explainer.js
     builder.add(VPackValue("node"));
     scorer.node->toVelocyPack(builder, verbose);
   }
@@ -90,7 +91,7 @@ std::vector<arangodb::iresearch::Scorer> fromVelocyPack(
 
   size_t i = 0;
   for (auto const sortSlice : velocypack::ArrayIterator(slice)) {
-    auto const varIdSlice = sortSlice.get("varId");
+    auto const varIdSlice = sortSlice.get("id");
 
     if (!varIdSlice.isNumber()) {
       LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)

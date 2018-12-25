@@ -167,7 +167,7 @@ void handleViewsRule(
 
   // ensure 'Optimizer::addPlan' will be called
   bool modified = false;
-  auto addPlan = irs::make_finally([opt, &plan, rule, modified](){
+  auto addPlan = irs::make_finally([opt, &plan, rule, &modified](){
     opt->addPlan(std::move(plan), rule, modified);
   });
 
@@ -190,8 +190,6 @@ void handleViewsRule(
     scorerReplacer.replace(*EN::castTo<CalculationNode*>(node));
   }
 
-  modified = !scorerReplacer.empty();
-
   // register replaced scorers to be evaluated by corresponding view nodes
   nodes.clear();
   plan->findNodesOfType(nodes, EN::ENUMERATE_IRESEARCH_VIEW, true);
@@ -209,8 +207,11 @@ void handleViewsRule(
     // find scorers that have to be evaluated by a view
     scorerReplacer.extract(viewNode.outVariable(), scorers);
     viewNode.scorers(std::move(scorers));
+
+    modified = true;
   }
 
+  // ensure all replaced scorers are covered by corresponding view nodes
   scorerReplacer.visit([](Scorer const& scorer) -> bool {
     TRI_ASSERT(scorer.node);
     auto const funcName = iresearch::getFuncName(*scorer.node);

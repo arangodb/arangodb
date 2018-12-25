@@ -1017,7 +1017,22 @@ function processQuery (query, explain) {
         if (node.condition && node.condition.hasOwnProperty('type')) {
           condition = ' ' + keyword('SEARCH') + ' ' + buildExpression(node.condition);
         }
-        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + view(node.view) + condition + '   ' + annotation('/* view query */');
+
+        var scorers = '';
+        if (node.scorers && node.scorers.length > 0) {
+            scorers = keyword(' LET ');
+            for (var i = 0;;) {
+              var scorer = node.scorers[i];
+              scorers += variableName(scorer) + ' = ' + buildExpression(scorer.node);
+
+              if (++i >= node.scorers.length) {
+                break;
+              }
+
+              scorers += ', ';
+            }
+        }
+        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + view(node.view) + condition + scorers + '   ' + annotation('/* view query */');
       case 'IndexNode':
         collectionVariables[node.outVariable.id] = node.collection;
         node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, false); });
