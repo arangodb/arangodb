@@ -46,7 +46,7 @@ static bool isContained(std::vector<std::vector<arangodb::basics::AttributeName>
   return false;
 }
 
-}
+}  // namespace
 
 /// @brief create an empty condition
 SortCondition::SortCondition()
@@ -59,8 +59,7 @@ SortCondition::SortCondition()
 
 /// @brief create the sort condition
 SortCondition::SortCondition(
-    ExecutionPlan* plan,
-    std::vector<std::pair<Variable const*, bool>> const& sorts,
+    ExecutionPlan* plan, std::vector<std::pair<Variable const*, bool>> const& sorts,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& constAttributes,
     std::unordered_map<VariableId, AstNode const*> const& variableDefinitions)
     : _plan(plan),
@@ -69,7 +68,6 @@ SortCondition::SortCondition(
       _unidirectional(true),
       _onlyAttributeAccess(true),
       _ascending(true) {
-
   // note: _plan may be a nullptr during testing!
 
   bool foundDirection = false;
@@ -78,7 +76,7 @@ SortCondition::SortCondition(
   size_t const n = sorts.size();
 
   for (size_t i = 0; i < n; ++i) {
-    bool isConst = false; // const attribute?
+    bool isConst = false;  // const attribute?
     bool handled = false;
     Variable const* variable = sorts[i].first;
     TRI_ASSERT(variable != nullptr);
@@ -95,8 +93,7 @@ SortCondition::SortCondition(
         fieldNames.clear();
 
         while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-          fieldNames.emplace_back(
-              arangodb::basics::AttributeName(node->getString(), false));
+          fieldNames.emplace_back(arangodb::basics::AttributeName(node->getString(), false));
           node = node->getMember(0);
         }
 
@@ -107,12 +104,8 @@ SortCondition::SortCondition(
             std::reverse(fieldNames.begin(), fieldNames.end());
           }
 
-          _fields.emplace_back(SortField{
-            static_cast<Variable const*>(node->getData()),
-            fieldNames,
-            rootNode,
-            sorts[i].second
-          });
+          _fields.emplace_back(SortField{static_cast<Variable const*>(node->getData()),
+                                         fieldNames, rootNode, sorts[i].second});
 
           for (auto const& it2 : constAttributes) {
             if (it2 == fieldNames) {
@@ -126,7 +119,8 @@ SortCondition::SortCondition(
     } else if (_plan != nullptr) {
       ExecutionNode const* n = _plan->getVarSetBy(variableId);
       if (n != nullptr && n->getType() == ExecutionNode::CALCULATION) {
-        Expression const* exp = ExecutionNode::castTo<CalculationNode const*>(n)->expression();
+        Expression const* exp =
+            ExecutionNode::castTo<CalculationNode const*>(n)->expression();
         if (exp != nullptr) {
           rootNode = exp->node();
         }
@@ -139,19 +133,14 @@ SortCondition::SortCondition(
         // first attribute that we found
         foundDirection = true;
         _ascending = sorts[i].second;
-      }
-      else if (_unidirectional && sorts[i].second != _ascending) {
+      } else if (_unidirectional && sorts[i].second != _ascending) {
         _unidirectional = false;
       }
     }
 
     if (!handled) {
-      _fields.emplace_back(SortField{
-        variable,
-        std::vector<arangodb::basics::AttributeName>(),
-        rootNode,
-        sorts[i].second
-      });
+      _fields.emplace_back(SortField{variable, std::vector<arangodb::basics::AttributeName>(),
+                                     rootNode, sorts[i].second});
       _onlyAttributeAccess = false;
     }
   }
@@ -168,8 +157,7 @@ SortCondition::~SortCondition() {}
 /// by the specified index fields
 size_t SortCondition::coveredAttributes(
     Variable const* reference,
-    std::vector<std::vector<arangodb::basics::AttributeName>> const&
-        indexAttributes) const {
+    std::vector<std::vector<arangodb::basics::AttributeName>> const& indexAttributes) const {
   size_t numCovered = 0;
   size_t fieldsPosition = 0;
 
@@ -186,11 +174,12 @@ size_t SortCondition::coveredAttributes(
 
     // ...and check if the field is present in the index definition too
     if (reference == field.variable &&
-        arangodb::basics::AttributeName::isIdentical(field.attributes, indexAttributes[i], false)) {
+        arangodb::basics::AttributeName::isIdentical(field.attributes,
+                                                     indexAttributes[i], false)) {
       // field match
       ++fieldsPosition;
       ++numCovered;
-      ++i; // next index field
+      ++i;  // next index field
       continue;
     }
 
@@ -205,13 +194,11 @@ size_t SortCondition::coveredAttributes(
       ++numCovered;
     }
 
-    if (!isConstant &&
-        isContained(_constAttributes, indexAttributes[i])) {
+    if (!isConstant && isContained(_constAttributes, indexAttributes[i])) {
       // no field match, but a constant attribute
       isConstant = true;
-      ++i; // next index field
+      ++i;  // next index field
     }
-
 
     if (!isConstant) {
       break;
@@ -222,11 +209,10 @@ size_t SortCondition::coveredAttributes(
   return numCovered;
 }
 
-std::tuple<Variable const*, AstNode const*, bool> SortCondition::field(
-    size_t position) const {
-
+std::tuple<Variable const*, AstNode const*, bool> SortCondition::field(size_t position) const {
   if (isEmpty() || position > numAttributes()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "out of range access to SortCondition");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "out of range access to SortCondition");
   }
 
   TRI_ASSERT(position < _fields.size());
@@ -236,14 +222,13 @@ std::tuple<Variable const*, AstNode const*, bool> SortCondition::field(
 }
 
 /// @brief toVelocyPack
-void SortCondition::toVelocyPackHelper(VPackBuilder& nodes, 
-                                       bool verbose) const {
+void SortCondition::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   // TODO FIXME implement
 }
 
-std::shared_ptr<SortCondition> SortCondition::fromVelocyPack(
-    ExecutionPlan const* plan, arangodb::velocypack::Slice const& base,
-    std::string const& name) {
+std::shared_ptr<SortCondition> SortCondition::fromVelocyPack(ExecutionPlan const* plan,
+                                                             arangodb::velocypack::Slice const& base,
+                                                             std::string const& name) {
   // TODO FIXME implement
   return nullptr;
 }

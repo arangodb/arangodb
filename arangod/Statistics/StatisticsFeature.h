@@ -48,16 +48,15 @@ extern StatisticsDistribution TRI_IoTimeDistributionStatistics;
 extern StatisticsDistribution TRI_QueueTimeDistributionStatistics;
 extern StatisticsDistribution TRI_RequestTimeDistributionStatistics;
 extern StatisticsDistribution TRI_TotalTimeDistributionStatistics;
-}
-namespace stats{
-  class Descriptions;
+}  // namespace basics
+namespace stats {
+class Descriptions;
 }
 
 class StatisticsThread;
 class StatisticsWorker;
 
-class StatisticsFeature final
-    : public application_features::ApplicationFeature {
+class StatisticsFeature final : public application_features::ApplicationFeature {
  public:
   static bool enabled() {
     return STATISTICS != nullptr && STATISTICS->_statistics;
@@ -92,6 +91,6 @@ class StatisticsFeature final
   std::unique_ptr<StatisticsWorker> _statisticsWorker;
 };
 
-}
+}  // namespace arangodb
 
 #endif

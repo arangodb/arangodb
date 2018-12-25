@@ -100,7 +100,7 @@ std::string arangodb::options::EnvironmentTranslator(std::string const& value,
                   vv.pop_back();
                 }
               }
-            } 
+            }
 #endif
           }
 

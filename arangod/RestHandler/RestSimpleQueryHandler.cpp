@@ -27,9 +27,9 @@
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Utils/CollectionGuard.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
-#include "Utils/CollectionGuard.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Builder.h>
@@ -39,9 +39,9 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestSimpleQueryHandler::RestSimpleQueryHandler(
-    GeneralRequest* request, GeneralResponse* response,
-    arangodb::aql::QueryRegistry* queryRegistry)
+RestSimpleQueryHandler::RestSimpleQueryHandler(GeneralRequest* request,
+                                               GeneralResponse* response,
+                                               arangodb::aql::QueryRegistry* queryRegistry)
     : RestCursorHandler(request, response, queryRegistry) {}
 
 RestStatus RestSimpleQueryHandler::execute() {
@@ -62,8 +62,7 @@ RestStatus RestSimpleQueryHandler::execute() {
     }
   }
 
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
 
@@ -78,7 +77,7 @@ RestStatus RestSimpleQueryHandler::allDocuments() {
     // error message generated in parseVelocyPackBody
     return RestStatus::DONE;
   }
-  
+
   std::string collectionName;
   if (body.isObject() && body.hasKey("collection")) {
     VPackSlice const value = body.get("collection");
@@ -88,7 +87,7 @@ RestStatus RestSimpleQueryHandler::allDocuments() {
   } else {
     collectionName = _request->value("collection");
   }
-  
+
   if (collectionName.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                   "expecting string for <collection>");
@@ -140,12 +139,12 @@ RestStatus RestSimpleQueryHandler::allDocuments() {
   if (!ttl.isNone()) {
     data.add("ttl", ttl);
   }
-  
+
   VPackSlice batchSize = body.get("batchSize");
   if (!batchSize.isNone()) {
     data.add("batchSize", batchSize);
   }
-  
+
   VPackSlice stream = body.get("stream");
   if (stream.isBool()) {
     VPackObjectBuilder obj(&data, "options");
@@ -195,7 +194,8 @@ RestStatus RestSimpleQueryHandler::allDocumentKeys() {
 
   std::string returnType;
   if (body.isObject() && body.hasKey("type")) {
-    returnType = arangodb::basics::VelocyPackHelper::getStringValue(body, "type", "");
+    returnType =
+        arangodb::basics::VelocyPackHelper::getStringValue(body, "type", "");
   } else {
     returnType = _request->value("type");
   }
@@ -207,7 +207,7 @@ RestStatus RestSimpleQueryHandler::allDocumentKeys() {
     aql.append("doc._id");
   } else {
     aql.append(std::string("CONCAT('/_db/") + _vocbase.name() +
-                "/_api/document/', doc._id)");
+               "/_api/document/', doc._id)");
   }
 
   VPackBuilder data;
@@ -223,32 +223,34 @@ RestStatus RestSimpleQueryHandler::allDocumentKeys() {
   return registerQueryOrCursor(data.slice());
 }
 
-static void buildExampleQuery(VPackBuilder& result,
-                              std::string const& cname,
-                              VPackSlice const& doc,
-                              size_t skip, size_t limit) {
+static void buildExampleQuery(VPackBuilder& result, std::string const& cname,
+                              VPackSlice const& doc, size_t skip, size_t limit) {
   TRI_ASSERT(doc.isObject());
   std::string query = "FOR doc IN @@collection";
-  
+
   result.add("bindVars", VPackValue(VPackValueType::Object));
   result.add("@collection", VPackValue(cname));
   size_t i = 0;
   for (auto pair : VPackObjectIterator(doc, true)) {
-    std::string key = basics::StringUtils::replace(pair.key.copyString(), "`", "");
-    key = basics::StringUtils::join(basics::StringUtils::split(key, "."), "`.`");
+    std::string key =
+        basics::StringUtils::replace(pair.key.copyString(), "`", "");
+    key =
+        basics::StringUtils::join(basics::StringUtils::split(key, "."), "`.`");
     std::string istr = std::to_string(i++);
     query.append(" FILTER doc.`").append(key).append("` == @value").append(istr);
     result.add(std::string("value") + istr, pair.value);
   }
   result.close();
-  
+
   if (limit > 0 || skip > 0) {
-    query.append(" LIMIT ").append(std::to_string(skip))
-         .append(", ").append(limit > 0 ? std::to_string(limit) : "null")
-         .append(" ");
+    query.append(" LIMIT ")
+        .append(std::to_string(skip))
+        .append(", ")
+        .append(limit > 0 ? std::to_string(limit) : "null")
+        .append(" ");
   }
   query.append(" RETURN doc");
-  
+
   result.add("query", VPackValue(query));
 }
 
@@ -264,8 +266,7 @@ RestStatus RestSimpleQueryHandler::byExample() {
     return RestStatus::DONE;
   }
 
-  if (!body.isObject() || !body.hasKey("example") ||
-      !body.get("example").isObject()) {
+  if (!body.isObject() || !body.hasKey("example") || !body.get("example").isObject()) {
     generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
     return RestStatus::DONE;
   }

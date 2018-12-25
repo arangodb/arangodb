@@ -34,15 +34,13 @@ NS_BEGIN(iresearch)
 ///        ArangoDB documents
 ///        expects attributes: TransactionAttribute, AttributePathAttribute
 ////////////////////////////////////////////////////////////////////////////////
-class AttributeScorer: public irs::sort {
+class AttributeScorer : public irs::sort {
  public:
   DECLARE_SORT_TYPE();
 
   // for use with irs::order::add<T>(...) and default args (static build)
-  DECLARE_FACTORY_DEFAULT(
-    std::vector<irs::stored_attribute::ptr>& storedAttrBuf,
-    bool arangodbTypeOrder = false
-  );
+  DECLARE_FACTORY_DEFAULT(std::vector<irs::stored_attribute::ptr>& storedAttrBuf,
+                          bool arangodbTypeOrder = false);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief for use with irs::order::add(...) (dynamic build)
@@ -59,7 +57,16 @@ class AttributeScorer: public irs::sort {
   ////////////////////////////////////////////////////////////////////////////////
   DECLARE_FACTORY_DEFAULT(const irs::string_ref& args);
 
-  enum ValueType { ARRAY, BOOLEAN, NIL, NUMBER, OBJECT, STRING, UNKNOWN, eLast };
+  enum ValueType {
+    ARRAY,
+    BOOLEAN,
+    NIL,
+    NUMBER,
+    OBJECT,
+    STRING,
+    UNKNOWN,
+    eLast
+  };
 
   explicit AttributeScorer();
 
@@ -70,17 +77,17 @@ class AttributeScorer: public irs::sort {
 
  private:
   struct AttributeItem {
-    size_t _offset; // offset into _buf or jSON array
-    size_t _size; // (std::numeric_limits<size_t>::max() -> offset into jSON array)
+    size_t _offset;  // offset into _buf or jSON array
+    size_t _size;  // (std::numeric_limits<size_t>::max() -> offset into jSON array)
   };
-  std::vector<AttributeItem> _attribute; // full attribute path to match
+  std::vector<AttributeItem> _attribute;  // full attribute path to match
   std::string _buf;
   size_t _nextOrder;
-  size_t _order[ValueType::eLast]; // type precedence order
-  std::vector<irs::stored_attribute::ptr>* _storedAttrBuf; // buffer for runtime-created attributes
+  size_t _order[ValueType::eLast];  // type precedence order
+  std::vector<irs::stored_attribute::ptr>* _storedAttrBuf;  // buffer for runtime-created attributes
 };
 
-NS_END // iresearch
-NS_END // arangodb
+NS_END      // iresearch
+    NS_END  // arangodb
 
 #endif

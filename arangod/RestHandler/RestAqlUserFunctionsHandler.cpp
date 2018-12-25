@@ -35,8 +35,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAqlUserFunctionsHandler::RestAqlUserFunctionsHandler(GeneralRequest* request, GeneralResponse* response)
-  : RestVocbaseBaseHandler(request, response) {}
+RestAqlUserFunctionsHandler::RestAqlUserFunctionsHandler(GeneralRequest* request,
+                                                         GeneralResponse* response)
+    : RestVocbaseBaseHandler(request, response) {}
 
 RestStatus RestAqlUserFunctionsHandler::execute() {
   auto const type = _request->requestType();
@@ -81,9 +82,10 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
     // JSF_delete_api_aqlfunction.md
     // DELETE /_api/aqlfunction/{name}
     std::vector<std::string> const& suffixes = _request->decodedSuffixes();
-    if ((suffixes.size() != 1) || suffixes[0].empty() ) {
+    if ((suffixes.size() != 1) || suffixes[0].empty()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
-                    "superfluous suffix, expecting _api/aqlfunction/<functionname or prefix>");
+                    "superfluous suffix, expecting "
+                    "_api/aqlfunction/<functionname or prefix>");
       return RestStatus::DONE;
     }
 
@@ -93,7 +95,7 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
 
     if (deleteGroup) {
       res = unregisterUserFunctionsGroup(_vocbase, suffixes[0], deletedCount);
-    } else { // delete single
+    } else {  // delete single
       res = unregisterUserFunction(_vocbase, suffixes[0]);
       ++deletedCount;
     }
@@ -117,12 +119,14 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
     std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
     if (!suffixes.empty()) {
-      if ((suffixes.size() != 1) || suffixes[0].empty() ) {
+      if ((suffixes.size() != 1) || suffixes[0].empty()) {
         extractStringParameter(StaticStrings::Prefix, functionNamespace);
         if (functionNamespace.empty()) {
           generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
-                        "superfluous suffix, expecting _api/aqlfunction/[<functionname or prefix>|?" +
-                        StaticStrings::Prefix + "=<functionname or prefix>]");
+                        "superfluous suffix, expecting "
+                        "_api/aqlfunction/[<functionname or prefix>|?" +
+                            StaticStrings::Prefix +
+                            "=<functionname or prefix>]");
           return RestStatus::DONE;
         }
       } else {
@@ -138,8 +142,7 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
 
     // internal get
     VPackBuilder arrayOfFunctions;
-    auto res =
-      toArrayUserFunctions(_vocbase, functionNamespace, arrayOfFunctions);
+    auto res = toArrayUserFunctions(_vocbase, functionNamespace, arrayOfFunctions);
 
     // error handling
     if (res.ok()) {
@@ -148,9 +151,8 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
       generateError(res);
     }
     return RestStatus::DONE;
-  } // GET
+  }  // GET
 
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }

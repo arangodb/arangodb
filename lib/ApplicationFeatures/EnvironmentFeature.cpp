@@ -22,9 +22,9 @@
 
 #include "EnvironmentFeature.h"
 #include "ApplicationFeatures/MaxMapCountFeature.h"
-#include "Basics/process-utils.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
+#include "Basics/process-utils.h"
 #include "Logger/Logger.h"
 
 #ifdef __linux__
@@ -35,9 +35,7 @@ using namespace arangodb::basics;
 
 namespace arangodb {
 
-EnvironmentFeature::EnvironmentFeature(
-    application_features::ApplicationServer& server
-)
+EnvironmentFeature::EnvironmentFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Environment") {
   setOptional(true);
   startsAfter("GreetingsPhase");
@@ -48,7 +46,8 @@ void EnvironmentFeature::prepare() {
 #ifdef __linux__
   try {
     if (basics::FileUtils::exists("/proc/version")) {
-      std::string value = basics::StringUtils::trim(basics::FileUtils::slurp("/proc/version"));
+      std::string value =
+          basics::StringUtils::trim(basics::FileUtils::slurp("/proc/version"));
       LOG_TOPIC(INFO, Logger::FIXME) << "detected operating system: " << value;
     }
   } catch (...) {
@@ -67,7 +66,7 @@ void EnvironmentFeature::prepare() {
 #ifdef __linux__
   {
     char const* v = getenv("MALLOC_CONF");
-    
+
     if (v != nullptr) {
       // report value of MALLOC_CONF environment variable
       LOG_TOPIC(WARN, arangodb::Logger::MEMORY)
@@ -104,21 +103,19 @@ void EnvironmentFeature::prepare() {
       if (res == 0) {
         double swapSpace = static_cast<double>(info.totalswap);
         double ram = static_cast<double>(TRI_PhysicalMemory);
-        double rr = (ram >= swapSpace)
-            ? 100.0 * ((ram - swapSpace) / ram)
-            : 0.0;
+        double rr = (ram >= swapSpace) ? 100.0 * ((ram - swapSpace) / ram) : 0.0;
         if (static_cast<double>(r) < 0.99 * rr) {
           LOG_TOPIC(WARN, Logger::MEMORY)
-            << "/proc/sys/vm/overcommit_ratio is set to '" << r
-            << "'. It is recommended to set it to at least '" << std::llround(rr)
-            << "' (100 * (max(0, (RAM - Swap Space)) / RAM)) to utilize all "
-            << "available RAM. Setting it to this value will minimize swap "
-            << "usage, but may result in more out-of-memory errors, while "
-            << "setting it to 100 will allow the system to use both all "
-            << "available RAM and swap space.";
-          LOG_TOPIC(WARN, Logger::MEMORY) << "execute 'sudo bash -c \"echo "
-                                          << std::llround(rr) << " > "
-                                          << "/proc/sys/vm/overcommit_ratio\"'";
+              << "/proc/sys/vm/overcommit_ratio is set to '" << r
+              << "'. It is recommended to set it to at least '" << std::llround(rr)
+              << "' (100 * (max(0, (RAM - Swap Space)) / RAM)) to utilize all "
+              << "available RAM. Setting it to this value will minimize swap "
+              << "usage, but may result in more out-of-memory errors, while "
+              << "setting it to 100 will allow the system to use both all "
+              << "available RAM and swap space.";
+          LOG_TOPIC(WARN, Logger::MEMORY)
+              << "execute 'sudo bash -c \"echo " << std::llround(rr) << " > "
+              << "/proc/sys/vm/overcommit_ratio\"'";
         }
       }
     }
@@ -129,7 +126,8 @@ void EnvironmentFeature::prepare() {
   // test local ipv6 support
   try {
     if (!basics::FileUtils::exists("/proc/net/if_inet6")) {
-      LOG_TOPIC(INFO, arangodb::Logger::COMMUNICATION) << "IPv6 support seems to be disabled";
+      LOG_TOPIC(INFO, arangodb::Logger::COMMUNICATION)
+          << "IPv6 support seems to be disabled";
     }
   } catch (...) {
     // file not found
@@ -147,10 +145,12 @@ void EnvironmentFeature::prepare() {
 
       if (lower > upper || (upper - lower) < 16384) {
         LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION)
-            << "local port range for ipv4/ipv6 ports is " << lower << " - " << upper
-            << ", which does not look right. it is recommended to make at least 16K ports available";
-        LOG_TOPIC(WARN, Logger::MEMORY) << "execute 'sudo bash -c \"echo -e \\\"32768\\t60999\\\" > "
-                                           "/proc/sys/net/ipv4/ip_local_port_range\"' or use an even bigger port range";
+            << "local port range for ipv4/ipv6 ports is " << lower << " - "
+            << upper << ", which does not look right. it is recommended to make at least 16K ports available";
+        LOG_TOPIC(WARN, Logger::MEMORY)
+            << "execute 'sudo bash -c \"echo -e \\\"32768\\t60999\\\" > "
+               "/proc/sys/net/ipv4/ip_local_port_range\"' or use an even "
+               "bigger port range";
       }
     }
   } catch (...) {
@@ -169,8 +169,9 @@ void EnvironmentFeature::prepare() {
           << "/proc/sys/net/ipv4/tcp_tw_recycle is enabled (" << v << ")"
           << "'. This can lead to all sorts of \"random\" network problems. "
           << "It is advised to leave it disabled (should be kernel default)";
-      LOG_TOPIC(WARN, Logger::COMMUNICATION) << "execute 'sudo bash -c \"echo 0 > "
-                                         "/proc/sys/net/ipv4/tcp_tw_recycle\"'";
+      LOG_TOPIC(WARN, Logger::COMMUNICATION)
+          << "execute 'sudo bash -c \"echo 0 > "
+             "/proc/sys/net/ipv4/tcp_tw_recycle\"'";
     }
   } catch (...) {
     // file not found or value not convertible into integer
@@ -185,13 +186,14 @@ void EnvironmentFeature::prepare() {
       // environment variable not set
       LOG_TOPIC(WARN, arangodb::Logger::MEMORY)
           << "environment variable GLIBCXX_FORCE_NEW' is not set. "
-          << "it is recommended to set it to some value to avoid unnecessary memory pooling in glibc++";
+          << "it is recommended to set it to some value to avoid unnecessary "
+             "memory pooling in glibc++";
       LOG_TOPIC(WARN, arangodb::Logger::MEMORY)
           << "execute 'export GLIBCXX_FORCE_NEW=1'";
     }
   }
 #endif
-  
+
   // test max_map_count
   if (MaxMapCountFeature::needsChecking()) {
     uint64_t actual = MaxMapCountFeature::actualMaxMappings();
@@ -201,7 +203,8 @@ void EnvironmentFeature::prepare() {
       LOG_TOPIC(WARN, arangodb::Logger::MEMORY)
           << "maximum number of memory mappings per process is " << actual
           << ", which seems too low. it is recommended to set it to at least " << expected;
-      LOG_TOPIC(WARN, Logger::MEMORY) << "execute 'sudo sysctl -w \"vm.max_map_count=" << expected << "\"'";
+      LOG_TOPIC(WARN, Logger::MEMORY)
+          << "execute 'sudo sysctl -w \"vm.max_map_count=" << expected << "\"'";
     }
   }
 
@@ -287,7 +290,7 @@ void EnvironmentFeature::prepare() {
       // file not found
     }
   }
-  
+
   // check kernel ASLR settings
   try {
     std::string value =
@@ -300,14 +303,15 @@ void EnvironmentFeature::prepare() {
     // 2 – Full randomization. In addition to elements listed in the previous point, memory managed through brk() is also randomized.
     char const* s = nullptr;
     switch (v) {
-      case 0: 
-        s = "nothing"; 
+      case 0:
+        s = "nothing";
         break;
-      case 1: 
-        s = "shared libraries, stack, mmap, VDSO and heap"; 
+      case 1:
+        s = "shared libraries, stack, mmap, VDSO and heap";
         break;
-      case 2: 
-        s = "shared libraries, stack, mmap, VDSO, heap and memory managed through brk()"; 
+      case 2:
+        s = "shared libraries, stack, mmap, VDSO, heap and memory managed "
+            "through brk()";
         break;
     }
     if (s != nullptr) {
@@ -320,4 +324,4 @@ void EnvironmentFeature::prepare() {
 #endif
 }
 
-} // arangodb
+}  // namespace arangodb

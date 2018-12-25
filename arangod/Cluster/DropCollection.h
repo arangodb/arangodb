@@ -34,17 +34,15 @@ namespace arangodb {
 namespace maintenance {
 
 class DropCollection : public ActionBase {
-
-public:
-
+ public:
   DropCollection(MaintenanceFeature&, ActionDescription const&);
 
   virtual ~DropCollection();
 
   virtual bool first() override final;
-
 };
 
-}}
+}  // namespace maintenance
+}  // namespace arangodb
 
 #endif

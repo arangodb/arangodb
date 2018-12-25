@@ -35,5 +35,5 @@ V8ShellFeaturePhase::V8ShellFeaturePhase(ApplicationServer& server)
   startsAfter("Console");
 }
 
-} // application_features
-} // arangodb
+}  // namespace application_features
+}  // namespace arangodb

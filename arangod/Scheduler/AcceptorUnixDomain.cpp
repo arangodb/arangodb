@@ -29,7 +29,7 @@
 using namespace arangodb;
 
 void AcceptorUnixDomain::open() {
-  std::string path(((EndpointUnixDomain*) _endpoint)->path());
+  std::string path(((EndpointUnixDomain*)_endpoint)->path());
   if (basics::FileUtils::exists(path)) {
     // socket file already exists
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "socket file '" << path << "' already exists.";
@@ -37,10 +37,11 @@ void AcceptorUnixDomain::open() {
     int error = 0;
     // delete previously existing socket file
     if (basics::FileUtils::remove(path, &error)) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "deleted previously existing socket file '" << path << "'";
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+          << "deleted previously existing socket file '" << path << "'";
     } else {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unable to delete previously existing socket file '" << path
-               << "'";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "unable to delete previously existing socket file '" << path << "'";
     }
   }
 
@@ -55,7 +56,8 @@ void AcceptorUnixDomain::asyncAccept(AcceptHandler const& handler) {
   _peer.reset(new SocketUnixDomain(_scheduler));
   auto peer = dynamic_cast<SocketUnixDomain*>(_peer.get());
   if (peer == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected socket type");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "unexpected socket type");
   }
   _acceptor->async_accept(*peer->_socket, peer->_peerEndpoint, handler);
 }
@@ -63,8 +65,9 @@ void AcceptorUnixDomain::asyncAccept(AcceptHandler const& handler) {
 void AcceptorUnixDomain::close() {
   _acceptor->close();
   int error = 0;
-  std::string path = ((EndpointUnixDomain*) _endpoint)->path();
+  std::string path = ((EndpointUnixDomain*)_endpoint)->path();
   if (!basics::FileUtils::remove(path, &error)) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "unable to remove socket file '" << path << "'";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+        << "unable to remove socket file '" << path << "'";
   }
 }

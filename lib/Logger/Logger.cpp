@@ -38,7 +38,7 @@
 
 using namespace arangodb;
 using namespace arangodb::basics;
-  
+
 namespace {
 static std::string const DEFAULT = "DEFAULT";
 static std::string const FATAL = "FATAL";
@@ -48,7 +48,7 @@ static std::string const INFO = "INFO";
 static std::string const DEBUG = "DEBUG";
 static std::string const TRACE = "TRACE";
 static std::string const UNKNOWN = "UNKNOWN";
-}
+}  // namespace
 
 Mutex Logger::_initializeMutex;
 
@@ -88,8 +88,8 @@ void Logger::setLogLevel(std::string const& levelName) {
 
   if (v.empty() || v.size() > 2) {
     Logger::setLogLevel(LogLevel::INFO);
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "strange log level '" << levelName
-             << "', using log level 'info'";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "strange log level '" << levelName << "', using log level 'info'";
     return;
   }
 
@@ -121,8 +121,8 @@ void Logger::setLogLevel(std::string const& levelName) {
   } else {
     if (isGeneral) {
       Logger::setLogLevel(LogLevel::INFO);
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "strange log level '" << levelName
-               << "', using log level 'info'";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "strange log level '" << levelName << "', using log level 'info'";
     } else {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "strange log level '" << levelName << "'";
     }
@@ -146,15 +146,13 @@ void Logger::setLogLevel(std::vector<std::string> const& levels) {
   }
 }
 
-void Logger::setRole(char role) {
-  _role = role;
-}
+void Logger::setRole(char role) { _role = role; }
 
 // NOTE: this function should not be called if the logging is active.
 void Logger::setOutputPrefix(std::string const& prefix) {
   if (_active) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "cannot change output prefix if logging is active");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "cannot change output prefix if logging is active");
   }
 
   _outputPrefix = prefix;
@@ -163,8 +161,9 @@ void Logger::setOutputPrefix(std::string const& prefix) {
 // NOTE: this function should not be called if the logging is active.
 void Logger::setShowLineNumber(bool show) {
   if (_active) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "cannot change show line number if logging is active");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "cannot change show line number if logging is active");
   }
 
   _showLineNumber = show;
@@ -173,8 +172,9 @@ void Logger::setShowLineNumber(bool show) {
 // NOTE: this function should not be called if the logging is active.
 void Logger::setShortenFilenames(bool shorten) {
   if (_active) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "cannot change shorten filenames if logging is active");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "cannot change shorten filenames if logging is active");
   }
 
   _shortenFilenames = shorten;
@@ -183,8 +183,9 @@ void Logger::setShortenFilenames(bool shorten) {
 // NOTE: this function should not be called if the logging is active.
 void Logger::setShowThreadIdentifier(bool show) {
   if (_active) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "cannot change show thread identifier if logging is active");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "cannot change show thread identifier if logging is active");
   }
 
   _showThreadIdentifier = show;
@@ -193,8 +194,9 @@ void Logger::setShowThreadIdentifier(bool show) {
 // NOTE: this function should not be called if the logging is active.
 void Logger::setShowThreadName(bool show) {
   if (_active) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "cannot change show thread name if logging is active");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "cannot change show thread name if logging is active");
   }
 
   _showThreadName = show;
@@ -213,8 +215,8 @@ void Logger::setUseColor(bool value) {
 // NOTE: this function should not be called if the logging is active.
 void Logger::setUseEscaped(bool value) {
   if (_active) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "cannot change escaping if logging is active");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "cannot change escaping if logging is active");
   }
 
   _useEscaped = value;
@@ -223,8 +225,9 @@ void Logger::setUseEscaped(bool value) {
 // NOTE: this function should not be called if the logging is active.
 void Logger::setUseLocalTime(bool show) {
   if (_active) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "cannot change use local time if logging is active");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "cannot change use local time if logging is active");
   }
 
   _useLocalTime = show;
@@ -233,8 +236,8 @@ void Logger::setUseLocalTime(bool show) {
 // NOTE: this function should not be called if the logging is active.
 void Logger::setShowRole(bool show) {
   if (_active) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "cannot change show role if logging is active");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "cannot change show role if logging is active");
   }
 
   _showRole = show;
@@ -243,8 +246,8 @@ void Logger::setShowRole(bool show) {
 // NOTE: this function should not be called if the logging is active.
 void Logger::setUseMicrotime(bool show) {
   if (_active) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "cannot change use microtime if logging is active");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "cannot change use microtime if logging is active");
   }
 
   _useMicrotime = show;
@@ -253,8 +256,9 @@ void Logger::setUseMicrotime(bool show) {
 // NOTE: this function should not be called if the logging is active.
 void Logger::setKeepLogrotate(bool keep) {
   if (_active) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "cannot change keep log rotate if logging is active");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "cannot change keep log rotate if logging is active");
   }
 
   _keepLogRotate = keep;
@@ -263,8 +267,9 @@ void Logger::setKeepLogrotate(bool keep) {
 // NOTE: this function should not be called if the logging is active.
 void Logger::setLogRequestParameters(bool log) {
   if (_active) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "cannot change logging of request parameters if logging is active");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "cannot change logging of request parameters if logging is active");
   }
 
   _logRequestParameters = log;
@@ -292,11 +297,11 @@ std::string const& Logger::translateLogLevel(LogLevel level) {
 }
 
 void Logger::log(char const* function, char const* file, int line,
-                 LogLevel level, size_t topicId,
-                 std::string const& message) {
+                 LogLevel level, size_t topicId, std::string const& message) {
 #ifdef _WIN32
   if (level == LogLevel::FATAL || level == LogLevel::ERR) {
-    if (ArangoGlobalContext::CONTEXT != nullptr && ArangoGlobalContext::CONTEXT->useEventLog()) {
+    if (ArangoGlobalContext::CONTEXT != nullptr &&
+        ArangoGlobalContext::CONTEXT->useEventLog()) {
       TRI_LogWindowsEventlog(function, file, line, message);
     }
 
@@ -308,7 +313,8 @@ void Logger::log(char const* function, char const* file, int line,
 #endif
 
   if (!_active.load(std::memory_order_relaxed)) {
-    LogAppenderStdStream::writeLogMessage(STDERR_FILENO, (isatty(STDERR_FILENO) == 1), level, message.data(), message.size(), true);
+    LogAppenderStdStream::writeLogMessage(STDERR_FILENO, (isatty(STDERR_FILENO) == 1),
+                                          level, message.data(), message.size(), true);
     return;
   }
 
@@ -348,16 +354,16 @@ void Logger::log(char const* function, char const* file, int line,
 
   // log thread name
   if (_showThreadName) {
-    char const* threadName =  Thread::currentThreadName();
+    char const* threadName = Thread::currentThreadName();
     if (threadName == nullptr) {
       threadName = "main";
     }
-   
+
     out << '-' << threadName;
   }
 
   out << "] ";
-  
+
   if (_showRole && _role != '\0') {
     out << _role << ' ';
   }
@@ -389,7 +395,8 @@ void Logger::log(char const* function, char const* file, int line,
   if (_threaded) {
     try {
       _loggingThread->log(msg);
-      bool const isDirectLogLevel = (level == LogLevel::FATAL || level == LogLevel::ERR || level == LogLevel::WARN);
+      bool const isDirectLogLevel =
+          (level == LogLevel::FATAL || level == LogLevel::ERR || level == LogLevel::WARN);
       if (isDirectLogLevel) {
         _loggingThread->flush();
       }
@@ -398,7 +405,7 @@ void Logger::log(char const* function, char const* file, int line,
       // fall-through to non-threaded logging
     }
   }
-   
+
   LogAppender::log(msg.get());
 }
 

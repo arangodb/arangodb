@@ -67,16 +67,13 @@ struct Figure {
 };
 
 class Descriptions final {
-  
-public:
+ public:
   Descriptions();
 
   std::vector<stats::Group> const& groups() const { return _groups; }
 
-  std::vector<stats::Figure> const& figures() const {
-    return _figures;
-  }
-  
+  std::vector<stats::Figure> const& figures() const { return _figures; }
+
   void serverStatistics(velocypack::Builder&) const;
   void clientStatistics(velocypack::Builder&) const;
   void httpStatistics(velocypack::Builder&) const;
@@ -91,7 +88,7 @@ public:
   std::vector<stats::Group> _groups;
   std::vector<stats::Figure> _figures;
 };
-}
-}
+}  // namespace stats
+}  // namespace arangodb
 
 #endif

@@ -50,7 +50,7 @@ struct LRMasterContext : MasterContext {
     float const* diff = getAggregatedValue<float>(kDiff);
     TRI_ASSERT(!_stopNext || *diff == 0);
     if (_stopNext) {
-      //return false;
+      // return false;
       LOG_TOPIC(INFO, Logger::PREGEL) << "should stop " << globalSuperstep();
     } else if (globalSuperstep() > 0 && *diff < EPS) {
       aggregate<bool>(kLastIteration, true);
@@ -92,22 +92,20 @@ struct LRComputation : public VertexComputation<float, float, float> {
           newScore = 0;
         } else {
           newScore /= getEdgeCount();
-          newScore = ctx->startAtNodeProb * RESTART_PROB +
-                     newScore * (1.0f - RESTART_PROB);
+          newScore = ctx->startAtNodeProb * RESTART_PROB + newScore * (1.0f - RESTART_PROB);
         }
 
         float diff = fabsf(newScore - *vertexValue);
         *vertexValue = newScore;
         sendMessageToAllNeighbours(*vertexValue);
-        
+
         aggregate<float>(kDiff, diff);
       }
     }
   }
 };
 
-VertexComputation<float, float, float>* LineRank::createComputation(
-    WorkerConfig const* config) const {
+VertexComputation<float, float, float>* LineRank::createComputation(WorkerConfig const* config) const {
   return new LRComputation();
 }
 
@@ -121,7 +119,7 @@ MasterContext* LineRank::masterContext(VPackSlice params) const {
 
 IAggregator* LineRank::aggregator(std::string const& name) const {
   if (name == kLastIteration) {
-    return new BoolOrAggregator(/* permanent: */true);
+    return new BoolOrAggregator(/* permanent: */ true);
   } else if (name == kDiff) {
     return new MaxAggregator<float>(false);  // non perm
   }

@@ -44,8 +44,7 @@ class ClusterTransactionCollection final : public TransactionCollection {
   /// @brief whether or not any write operations for the collection happened
   bool hasOperations() const override;
 
-  void freeOperations(transaction::Methods* activeTrx,
-                      bool mustRollback) override;
+  void freeOperations(transaction::Methods* activeTrx, bool mustRollback) override;
 
   bool canAccess(AccessMode::Type accessType) const override;
   int updateUsage(AccessMode::Type accessType, int nestingLevel) override;
@@ -56,8 +55,8 @@ class ClusterTransactionCollection final : public TransactionCollection {
  private:
   /// @brief request a lock for a collection
   /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
-  /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
-  /// returns any other error code otherwise
+  /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired
+  /// and no other error occurred returns any other error code otherwise
   int doLock(AccessMode::Type, int nestingLevel) override;
 
   /// @brief request an unlock for a collection
@@ -68,6 +67,6 @@ class ClusterTransactionCollection final : public TransactionCollection {
   int _nestingLevel;  // the transaction level that added this collection
   bool _usageLocked;  // is this already locked
 };
-}
+}  // namespace arangodb
 
 #endif

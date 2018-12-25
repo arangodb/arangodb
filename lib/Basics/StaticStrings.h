@@ -80,20 +80,20 @@ class StaticStrings {
   static std::string const SystemDatabase;
 
   // LogicalDataSource definition fields
-  static std::string const DataSourceDeleted; // data-source deletion marker
-  static std::string const DataSourceGuid; // data-source globaly-unique id
-  static std::string const DataSourceId; // data-source id
-  static std::string const DataSourceName; // data-source name
-  static std::string const DataSourcePlanId; // data-source plan id
-  static std::string const DataSourceSystem; // data-source system marker
-  static std::string const DataSourceType; // data-source type
+  static std::string const DataSourceDeleted;  // data-source deletion marker
+  static std::string const DataSourceGuid;     // data-source globaly-unique id
+  static std::string const DataSourceId;       // data-source id
+  static std::string const DataSourceName;     // data-source name
+  static std::string const DataSourcePlanId;   // data-source plan id
+  static std::string const DataSourceSystem;   // data-source system marker
+  static std::string const DataSourceType;     // data-source type
 
   // Index definition fields
-  static std::string const IndexFields; // index fields
-  static std::string const IndexId; // index id
-  static std::string const IndexSparse; // index sparsness marker
-  static std::string const IndexType; // index type
-  static std::string const IndexUnique; // index uniqueness marker
+  static std::string const IndexFields;  // index fields
+  static std::string const IndexId;      // index id
+  static std::string const IndexSparse;  // index sparsness marker
+  static std::string const IndexType;    // index type
+  static std::string const IndexUnique;  // index uniqueness marker
 
   // HTTP headers
   static std::string const Accept;
@@ -149,7 +149,7 @@ class StaticStrings {
   static std::string const MimeTypeText;
   static std::string const MimeTypeVPack;
   static std::string const MultiPartContentType;
-  
+
   // collection attributes
   static std::string const NumberOfShards;
   static std::string const IsSmart;
@@ -181,6 +181,6 @@ class StaticStrings {
   static std::string const LastValue;
   static std::string const checksumFileJs;
 };
-}
+}  // namespace arangodb
 
 #endif

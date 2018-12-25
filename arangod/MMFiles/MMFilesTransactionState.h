@@ -28,18 +28,17 @@
 #include "Basics/Result.h"
 #include "Basics/SmallVector.h"
 #include "StorageEngine/TransactionState.h"
-#include "Transaction/Methods.h"
 #include "Transaction/Hints.h"
+#include "Transaction/Methods.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
-                                
+
 struct TRI_vocbase_t;
 
 namespace rocksdb {
 
 class Transaction;
-
 }
 
 namespace arangodb {
@@ -53,18 +52,15 @@ namespace transaction {
 class Methods;
 struct Options;
 
-}
+}  // namespace transaction
 
 class TransactionCollection;
 
 /// @brief transaction type
 class MMFilesTransactionState final : public TransactionState {
  public:
-  MMFilesTransactionState(
-    TRI_vocbase_t& vocbase,
-    TRI_voc_tid_t tid,
-    transaction::Options const& options
-  );
+  MMFilesTransactionState(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+                          transaction::Options const& options);
   ~MMFilesTransactionState();
 
   /// @brief begin a transaction
@@ -102,8 +98,8 @@ class MMFilesTransactionState final : public TransactionState {
       return (!isReadOnlyTransaction() && !isSingleOperation());
     }
 
-    return (_nestingLevel == 0 && _beginWritten &&
-            !isReadOnlyTransaction() && !isSingleOperation());
+    return (_nestingLevel == 0 && _beginWritten && !isReadOnlyTransaction() &&
+            !isSingleOperation());
   }
 
   /// @brief write WAL begin marker
@@ -123,6 +119,6 @@ class MMFilesTransactionState final : public TransactionState {
   bool _hasOperations;
 };
 
-}
+}  // namespace arangodb
 
 #endif

@@ -28,9 +28,9 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/SortNode.h"
 
-#if 0 // #ifdef USE_IRESEARCH
-#include "IResearch/IResearchViewNode.h"
+#if 0  // #ifdef USE_IRESEARCH
 #include "IResearch/IResearchOrderFactory.h"
+#include "IResearch/IResearchViewNode.h"
 
 namespace {
 
@@ -74,15 +74,10 @@ namespace aql {
 // -- SECTION --                                                    SortRegister
 // -----------------------------------------------------------------------------
 
-SortRegister::SortRegister(
-    RegisterId reg,
-    SortElement const& element) noexcept
-  : attributePath(element.attributePath),
-    reg(reg),
-    asc(element.ascending) {
-}
+SortRegister::SortRegister(RegisterId reg, SortElement const& element) noexcept
+    : attributePath(element.attributePath), reg(reg), asc(element.ascending) {}
 
-#if 0 // #ifdef USE_IRESEARCH
+#if 0  // #ifdef USE_IRESEARCH
 
 void SortRegister::fill(
     ExecutionPlan const& execPlan,
@@ -123,12 +118,10 @@ void SortRegister::fill(
 
 #else
 
-void SortRegister::fill(
-    ExecutionPlan const& /*execPlan*/,
-    ExecutionNode::RegisterPlan const& regPlan,
-    std::vector<SortElement> const& elements,
-    std::vector<SortRegister>& sortRegisters
-) {
+void SortRegister::fill(ExecutionPlan const& /*execPlan*/,
+                        ExecutionNode::RegisterPlan const& regPlan,
+                        std::vector<SortElement> const& elements,
+                        std::vector<SortRegister>& sortRegisters) {
   sortRegisters.reserve(elements.size());
   auto const& vars = regPlan.varInfo;
 
@@ -141,7 +134,7 @@ void SortRegister::fill(
   }
 }
 
-#endif // USE_IRESEARCH
+#endif  // USE_IRESEARCH
 
-} // aql
-} // arangodb
+}  // namespace aql
+}  // namespace arangodb

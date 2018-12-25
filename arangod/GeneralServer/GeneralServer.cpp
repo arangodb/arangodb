@@ -46,14 +46,13 @@ void GeneralServer::setEndpointList(EndpointList const* list) {
 
 void GeneralServer::startListening() {
   for (auto& it : _endpointList->allEndpoints()) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "trying to bind to endpoint '"
-                                              << it.first << "' for requests";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+        << "trying to bind to endpoint '" << it.first << "' for requests";
 
     bool ok = openEndpoint(it.second);
 
     if (ok) {
-      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "bound to endpoint '"
-                                                << it.first << "'";
+      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "bound to endpoint '" << it.first << "'";
     } else {
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
           << "failed to bind to endpoint '" << it.first
@@ -85,8 +84,7 @@ bool GeneralServer::openEndpoint(Endpoint* endpoint) {
   }
 
   std::unique_ptr<ListenTask> task;
-  task.reset(new GeneralListenTask(SchedulerFeature::SCHEDULER, this, endpoint,
-                                   protocolType));
+  task.reset(new GeneralListenTask(SchedulerFeature::SCHEDULER, this, endpoint, protocolType));
   if (!task->start()) {
     return false;
   }

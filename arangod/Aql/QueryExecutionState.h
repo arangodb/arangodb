@@ -52,9 +52,9 @@ size_t toNumber(QueryExecutionState::ValueType value);
 std::string toString(QueryExecutionState::ValueType state);
 std::string toStringWithPrefix(QueryExecutionState::ValueType state);
 
-}
-}
-}
+}  // namespace QueryExecutionState
+}  // namespace aql
+}  // namespace arangodb
 
 std::ostream& operator<<(std::ostream&, arangodb::aql::QueryExecutionState::ValueType);
 

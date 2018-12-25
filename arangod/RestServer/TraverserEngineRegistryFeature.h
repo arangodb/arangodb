@@ -30,20 +30,15 @@ namespace arangodb {
 namespace traverser {
 
 class TraverserEngineRegistry;
-
 }
 
-class TraverserEngineRegistryFeature final
-    : public application_features::ApplicationFeature {
+class TraverserEngineRegistryFeature final : public application_features::ApplicationFeature {
  public:
-      
   static traverser::TraverserEngineRegistry* registry() {
     return TRAVERSER_ENGINE_REGISTRY.load(std::memory_order_acquire);
   }
 
-  explicit TraverserEngineRegistryFeature(
-    application_features::ApplicationServer& server
-  );
+  explicit TraverserEngineRegistryFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;

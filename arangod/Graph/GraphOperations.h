@@ -54,8 +54,7 @@ class GraphOperations {
 
  public:
   GraphOperations() = delete;
-  GraphOperations(Graph& graph_,
-                  TRI_vocbase_t& vocbase)
+  GraphOperations(Graph& graph_, TRI_vocbase_t& vocbase)
       : _graph(graph_), _vocbase(vocbase) {}
 
   // TODO I added the complex result type for the get* methods to exactly
@@ -70,25 +69,21 @@ class GraphOperations {
   /// returned as a pair.
   /// This is because in case of a precondition error during trx.document(),
   /// the OperationResult may still be needed.
-  OperationResult getVertex(std::string const& collectionName,
-                            std::string const& key,
+  OperationResult getVertex(std::string const& collectionName, std::string const& key,
                             boost::optional<TRI_voc_rid_t> rev);
 
   /// @brief Get a single edge document from definitionName.
   /// Similar to getVertex().
-  OperationResult getEdge(const std::string& definitionName,
-                          const std::string& key,
+  OperationResult getEdge(const std::string& definitionName, const std::string& key,
                           boost::optional<TRI_voc_rid_t> rev);
 
   /// @brief Remove a single edge document from definitionName.
-  OperationResult removeEdge(const std::string& definitionName,
-                             const std::string& key,
+  OperationResult removeEdge(const std::string& definitionName, const std::string& key,
                              boost::optional<TRI_voc_rid_t> rev,
                              bool waitForSync, bool returnOld);
 
   /// @brief Remove a vertex and all incident edges in the graph
-  OperationResult removeVertex(const std::string& collectionName,
-                               const std::string& key,
+  OperationResult removeVertex(const std::string& collectionName, const std::string& key,
                                boost::optional<TRI_voc_rid_t> rev,
                                bool waitForSync, bool returnOld);
 
@@ -100,35 +95,29 @@ class GraphOperations {
 
   OperationResult updateEdge(const std::string& definitionName,
                              const std::string& key, VPackSlice document,
-                             boost::optional<TRI_voc_rid_t> rev,
-                             bool waitForSync, bool returnOld, bool returnNew,
-                             bool keepNull);
+                             boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
+                             bool returnOld, bool returnNew, bool keepNull);
 
   OperationResult replaceEdge(const std::string& definitionName,
                               const std::string& key, VPackSlice document,
-                              boost::optional<TRI_voc_rid_t> rev,
-                              bool waitForSync, bool returnOld, bool returnNew,
-                              bool keepNull);
+                              boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
+                              bool returnOld, bool returnNew, bool keepNull);
 
-  OperationResult createEdge(const std::string& definitionName,
-                             VPackSlice document, bool waitForSync,
-                             bool returnNew);
+  OperationResult createEdge(const std::string& definitionName, VPackSlice document,
+                             bool waitForSync, bool returnNew);
 
   OperationResult updateVertex(const std::string& collectionName,
                                const std::string& key, VPackSlice document,
-                               boost::optional<TRI_voc_rid_t> rev,
-                               bool waitForSync, bool returnOld, bool returnNew,
-                               bool keepNull);
+                               boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
+                               bool returnOld, bool returnNew, bool keepNull);
 
   OperationResult replaceVertex(const std::string& collectionName,
                                 const std::string& key, VPackSlice document,
-                                boost::optional<TRI_voc_rid_t> rev,
-                                bool waitForSync, bool returnOld,
-                                bool returnNew, bool keepNull);
+                                boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
+                                bool returnOld, bool returnNew, bool keepNull);
 
-  OperationResult createVertex(const std::string& collectionName,
-                               VPackSlice document, bool waitForSync,
-                               bool returnNew);
+  OperationResult createVertex(const std::string& collectionName, VPackSlice document,
+                               bool waitForSync, bool returnNew);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief add an orphan to collection to an existing graph
@@ -139,28 +128,24 @@ class GraphOperations {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove an orphan collection from an existing graph
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult eraseOrphanCollection(bool waitForSync,
-                                        std::string collectionName,
+  OperationResult eraseOrphanCollection(bool waitForSync, std::string collectionName,
                                         bool dropCollection);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create a new edge definition in an existing graph
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult addEdgeDefinition(VPackSlice edgeDefinition,
-                                    bool waitForSync);
+  OperationResult addEdgeDefinition(VPackSlice edgeDefinition, bool waitForSync);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove an edge definition from an existing graph
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult eraseEdgeDefinition(bool waitForSync,
-                                      std::string edgeDefinitionName,
+  OperationResult eraseEdgeDefinition(bool waitForSync, std::string edgeDefinitionName,
                                       bool dropCollection);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create edge definition in an existing graph
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult editEdgeDefinition(VPackSlice edgeDefinitionSlice,
-                                     bool waitForSync,
+  OperationResult editEdgeDefinition(VPackSlice edgeDefinitionSlice, bool waitForSync,
                                      const std::string& edgeDefinitionName);
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -168,19 +153,17 @@ class GraphOperations {
   /// if the graph doesn't already contain a definition for the same edge
   /// collection, this does nothing and returns success.
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult changeEdgeDefinitionForGraph(
-      Graph& graph, EdgeDefinition const& edgeDefinition,
-      bool waitForSync, transaction::Methods& trx);
+  OperationResult changeEdgeDefinitionForGraph(Graph& graph, EdgeDefinition const& edgeDefinition,
+                                               bool waitForSync,
+                                               transaction::Methods& trx);
 
-  void checkForUsedEdgeCollections(
-      const Graph& graph, const std::string& collectionName,
-      std::unordered_set<std::string>& possibleEdgeCollections);
+  void checkForUsedEdgeCollections(const Graph& graph, const std::string& collectionName,
+                                   std::unordered_set<std::string>& possibleEdgeCollections);
 
  private:
   using VPackBufferPtr = std::shared_ptr<velocypack::Buffer<uint8_t>>;
 
-  OperationResult getDocument(std::string const& collectionName,
-                              const std::string& key,
+  OperationResult getDocument(std::string const& collectionName, const std::string& key,
                               boost::optional<TRI_voc_rid_t> rev);
 
   /// @brief creates a vpack { _key: key } or { _key: key, _rev: rev }
@@ -189,29 +172,21 @@ class GraphOperations {
                                  boost::optional<TRI_voc_rid_t>& rev) const;
 
   OperationResult modifyDocument(const std::string& collectionName,
-                                 const std::string& key, VPackSlice document,
-                                 bool isPatch,
-                                 boost::optional<TRI_voc_rid_t> rev,
-                                 bool waitForSync, bool returnOld,
-                                 bool returnNew, bool keepNull);
+                                 const std::string& key, VPackSlice document, bool isPatch,
+                                 boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
+                                 bool returnOld, bool returnNew, bool keepNull);
 
-  OperationResult createDocument(transaction::Methods* trx,
-                                 const std::string& collectionName,
-                                 VPackSlice document, bool waitForSync,
-                                 bool returnNew);
+  OperationResult createDocument(transaction::Methods* trx, const std::string& collectionName,
+                                 VPackSlice document, bool waitForSync, bool returnNew);
 
-  OperationResult checkEdgeCollectionAvailability(
-      std::string edgeCollectionName);
-  OperationResult checkVertexCollectionAvailability(
-      std::string vertexCollectionName);
+  OperationResult checkEdgeCollectionAvailability(std::string edgeCollectionName);
+  OperationResult checkVertexCollectionAvailability(std::string vertexCollectionName);
 
   bool hasROPermissionsFor(std::string const& collection) const;
   bool hasRWPermissionsFor(std::string const& collection) const;
-  bool hasPermissionsFor(std::string const& collection,
-                         auth::Level level) const;
+  bool hasPermissionsFor(std::string const& collection, auth::Level level) const;
 
-  Result checkEdgeDefinitionPermissions(
-      EdgeDefinition const& edgeDefinition) const;
+  Result checkEdgeDefinitionPermissions(EdgeDefinition const& edgeDefinition) const;
 
   bool collectionExists(std::string const& collection) const;
 };

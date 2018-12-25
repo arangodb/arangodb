@@ -32,10 +32,10 @@
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesDitch.h"
 #include "MMFiles/MMFilesEngine.h"
+#include "MMFiles/MMFilesLogfileManager.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/CursorRepository.h"
 #include "VocBase/LogicalCollection.h"
-#include "MMFiles/MMFilesLogfileManager.h"
 
 using namespace arangodb;
 
@@ -63,7 +63,6 @@ void MMFilesCleanupThread::run() {
     ++iterations;
 
     try {
-
       if (state == TRI_vocbase_t::State::SHUTDOWN_COMPACTOR ||
           state == TRI_vocbase_t::State::SHUTDOWN_CLEANUP) {
         // cursors must be cleaned before collections are handled
@@ -81,30 +80,33 @@ void MMFilesCleanupThread::run() {
 
       // check if we can get the compactor lock exclusively
       // check if compaction is currently disallowed
-      engine->tryPreventCompaction(_vocbase, [this, &collections](TRI_vocbase_t* vocbase) {
-        try {
-          // copy all collections
-          collections = vocbase->collections(true);
-        } catch (...) {
-          collections.clear();
-        }
+      engine->tryPreventCompaction(_vocbase,
+                                   [this, &collections](TRI_vocbase_t* vocbase) {
+                                     try {
+                                       // copy all collections
+                                       collections = vocbase->collections(true);
+                                     } catch (...) {
+                                       collections.clear();
+                                     }
 
-        for (auto& collection : collections) {
-          TRI_ASSERT(collection != nullptr);
+                                     for (auto& collection : collections) {
+                                       TRI_ASSERT(collection != nullptr);
 
-          TRI_vocbase_col_status_e status = collection->getStatusLocked();
+                                       TRI_vocbase_col_status_e status =
+                                           collection->getStatusLocked();
 
-          if (status != TRI_VOC_COL_STATUS_LOADED &&
-              status != TRI_VOC_COL_STATUS_UNLOADING &&
-              status != TRI_VOC_COL_STATUS_DELETED) {
-            continue;
-          }
+                                       if (status != TRI_VOC_COL_STATUS_LOADED &&
+                                           status != TRI_VOC_COL_STATUS_UNLOADING &&
+                                           status != TRI_VOC_COL_STATUS_DELETED) {
+                                         continue;
+                                       }
 
-          // we're the only ones that can unload the collection, so using
-          // the collection pointer outside the lock is ok
-          cleanupCollection(collection.get());
-        }
-      }, false);
+                                       // we're the only ones that can unload the collection, so using
+                                       // the collection pointer outside the lock is ok
+                                       cleanupCollection(collection.get());
+                                     }
+                                   },
+                                   false);
 
       // server is still running, clean up unused cursors
       if (iterations % cleanupCursorIterations() == 0) {
@@ -199,8 +201,7 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
         popped = false;
         auto unloader =
             ditches->process(popped, [](arangodb::MMFilesDitch const* ditch) -> bool {
-              return (ditch->type() ==
-                      arangodb::MMFilesDitch::TRI_DITCH_COLLECTION_UNLOAD);
+              return (ditch->type() == arangodb::MMFilesDitch::TRI_DITCH_COLLECTION_UNLOAD);
             });
         if (popped) {
           // we've changed the list. try with current state in next turn
@@ -210,7 +211,8 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
         }
       }
 
-      MMFilesCollection* mmColl = MMFilesCollection::toMMFilesCollection(collection->getPhysical());
+      MMFilesCollection* mmColl =
+          MMFilesCollection::toMMFilesCollection(collection->getPhysical());
       if (!mmColl->isFullyCollected()) {
         bool isDeleted = false;
 
@@ -258,8 +260,8 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
       // next iteration
     } else if (type == arangodb::MMFilesDitch::TRI_DITCH_COLLECTION_UNLOAD) {
       // collection will be unloaded
-      bool hasUnloaded = static_cast<arangodb::MMFilesUnloadCollectionDitch*>(ditch)
-                             ->executeCallback();
+      bool hasUnloaded =
+          static_cast<arangodb::MMFilesUnloadCollectionDitch*>(ditch)->executeCallback();
       delete ditch;
 
       if (hasUnloaded) {
@@ -268,8 +270,8 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
       }
     } else if (type == arangodb::MMFilesDitch::TRI_DITCH_COLLECTION_DROP) {
       // collection will be dropped
-      bool hasDropped = static_cast<arangodb::MMFilesDropCollectionDitch*>(ditch)
-                            ->executeCallback();
+      bool hasDropped =
+          static_cast<arangodb::MMFilesDropCollectionDitch*>(ditch)->executeCallback();
       delete ditch;
 
       if (hasDropped) {
@@ -278,8 +280,7 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
       }
     } else {
       // unknown type
-      LOG_TOPIC(FATAL, arangodb::Logger::ENGINES)
-          << "unknown ditch type '" << type << "'";
+      LOG_TOPIC(FATAL, arangodb::Logger::ENGINES) << "unknown ditch type '" << type << "'";
       FATAL_ERROR_EXIT();
     }
 

@@ -41,9 +41,7 @@ namespace arangodb {
 namespace graph {
 
 class GraphManager {
-
  private:
-
   TRI_vocbase_t& _vocbase;
 
   bool _isInTransaction;
@@ -54,20 +52,20 @@ class GraphManager {
   /// @brief find or create vertex collection by name
   ////////////////////////////////////////////////////////////////////////////////
   OperationResult findOrCreateVertexCollectionByName(const std::string& name,
-                                          bool waitForSync, VPackSlice options);
+                                                     bool waitForSync, VPackSlice options);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find or create collection by name and type
   ////////////////////////////////////////////////////////////////////////////////
   OperationResult createCollection(std::string const& name, TRI_col_type_e colType,
-                          bool waitForSync, VPackSlice options);
+                                   bool waitForSync, VPackSlice options);
 
  public:
-  explicit GraphManager(TRI_vocbase_t& vocbase) : GraphManager(vocbase, false) {};
+  explicit GraphManager(TRI_vocbase_t& vocbase)
+      : GraphManager(vocbase, false){};
 
   GraphManager(TRI_vocbase_t& vocbase, bool isInTransaction)
-      : _vocbase(vocbase), _isInTransaction(isInTransaction) {
-      }
+      : _vocbase(vocbase), _isInTransaction(isInTransaction) {}
 
   OperationResult readGraphs(velocypack::Builder& builder,
                              arangodb::aql::QueryPart queryPart) const;
@@ -82,8 +80,8 @@ class GraphManager {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find and return a collections if available
   ////////////////////////////////////////////////////////////////////////////////
-  static std::shared_ptr<LogicalCollection> getCollectionByName(
-      const TRI_vocbase_t& vocbase, std::string const& name);
+  static std::shared_ptr<LogicalCollection> getCollectionByName(const TRI_vocbase_t& vocbase,
+                                                                std::string const& name);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief checks wheter a graph exists or not
@@ -107,9 +105,9 @@ class GraphManager {
       std::map<std::string, EdgeDefinition> const& edgeDefinitions,
       bool waitForSync, VPackSlice options);
 
-  OperationResult findOrCreateCollectionsByEdgeDefinition(
-      EdgeDefinition const& edgeDefinition, bool waitForSync,
-      VPackSlice options);
+  OperationResult findOrCreateCollectionsByEdgeDefinition(EdgeDefinition const& edgeDefinition,
+                                                          bool waitForSync,
+                                                          VPackSlice options);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create a vertex collection
@@ -128,27 +126,22 @@ class GraphManager {
 
   /// @brief check if the edge definitions conflicts with one in an existing
   /// graph
-  Result checkForEdgeDefinitionConflicts(
-      std::map<std::string, arangodb::graph::EdgeDefinition> const&
-          edgeDefinitions,
-      std::string const& graphName) const;
+  Result checkForEdgeDefinitionConflicts(std::map<std::string, arangodb::graph::EdgeDefinition> const& edgeDefinitions,
+                                         std::string const& graphName) const;
 
   /// @brief check if the edge definition conflicts with one in an existing
   /// graph
-  Result checkForEdgeDefinitionConflicts(
-      arangodb::graph::EdgeDefinition const& edgeDefinition,
-      std::string const& graphName) const;
+  Result checkForEdgeDefinitionConflicts(arangodb::graph::EdgeDefinition const& edgeDefinition,
+                                         std::string const& graphName) const;
 
   /// @brief Remove a graph and optional all connected collections
-  OperationResult removeGraph(Graph const& graph, bool waitForSync,
-                              bool dropCollections);
+  OperationResult removeGraph(Graph const& graph, bool waitForSync, bool dropCollections);
 
-  OperationResult pushCollectionIfMayBeDropped(
-      const std::string& colName, const std::string& graphName,
-      std::unordered_set<std::string>& toBeRemoved);
+  OperationResult pushCollectionIfMayBeDropped(const std::string& colName,
+                                               const std::string& graphName,
+                                               std::unordered_set<std::string>& toBeRemoved);
 
   bool collectionExists(std::string const& collection) const;
-
 
   /**
    * @brief Helper function to make sure all collections required
@@ -162,7 +155,6 @@ class GraphManager {
    */
   Result ensureCollections(Graph const* graph, bool waitForSync) const;
 
-
   /**
    * @brief Store the given graph
    *
@@ -173,7 +165,6 @@ class GraphManager {
    * @return The result of the insrt transaction or Error.
    */
   OperationResult storeGraph(Graph const& graph, bool waitForSync, bool isUpdate) const;
-
 
   /**
    * @brief Apply callback on all graphs. The callback
@@ -189,9 +180,9 @@ class GraphManager {
   Result applyOnAllGraphs(std::function<Result(std::unique_ptr<Graph>)> const& callback) const;
 
  private:
-
 #ifdef USE_ENTERPRISE
-  Result ensureSmartCollectionSharding(Graph const* graph, bool waitForSync, std::unordered_set<std::string>& documentCollections) const;
+  Result ensureSmartCollectionSharding(Graph const* graph, bool waitForSync,
+                                       std::unordered_set<std::string>& documentCollections) const;
 #endif
 
   /**
@@ -203,16 +194,16 @@ class GraphManager {
    *
    * @param input The slice containing the graph data.
    *
-   * @return A temporary Graph object 
+   * @return A temporary Graph object
    */
-  ResultT<std::unique_ptr<Graph>> buildGraphFromInput(std::string const& graphName, arangodb::velocypack::Slice input) const;
+  ResultT<std::unique_ptr<Graph>> buildGraphFromInput(std::string const& graphName,
+                                                      arangodb::velocypack::Slice input) const;
 
   Result checkCreateGraphPermissions(Graph const* graph) const;
 
-  Result checkDropGraphPermissions(
-      Graph const& graph,
-      std::unordered_set<std::string> const& followersToBeRemoved,
-      std::unordered_set<std::string> const& leadersToBeRemoved);
+  Result checkDropGraphPermissions(Graph const& graph,
+                                   std::unordered_set<std::string> const& followersToBeRemoved,
+                                   std::unordered_set<std::string> const& leadersToBeRemoved);
 };
 }  // namespace graph
 }  // namespace arangodb

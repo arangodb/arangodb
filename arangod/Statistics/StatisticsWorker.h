@@ -49,8 +49,7 @@ class StatisticsWorker final : public Thread {
 
   // calculate per second statistics
   void historian();
-  void computePerSeconds(velocypack::Builder& result,
-                         velocypack::Slice const& current,
+  void computePerSeconds(velocypack::Builder& result, velocypack::Slice const& current,
                          velocypack::Slice const& prev);
   void generateRawStatistics(velocypack::Builder& result, double const& now);
 
@@ -62,16 +61,13 @@ class StatisticsWorker final : public Thread {
   void createCollections() const;
   void createCollection(std::string const&) const;
 
-  std::shared_ptr<arangodb::velocypack::Builder> lastEntry(
-      std::string const& collection, double start) const;
+  std::shared_ptr<arangodb::velocypack::Builder> lastEntry(std::string const& collection,
+                                                           double start) const;
 
-  void avgPercentDistributon(velocypack::Builder& result,
-                             velocypack::Slice const&,
-                             velocypack::Slice const&,
-                             velocypack::Builder const&) const;
+  void avgPercentDistributon(velocypack::Builder& result, velocypack::Slice const&,
+                             velocypack::Slice const&, velocypack::Builder const&) const;
 
-  velocypack::Builder fillDistribution(
-      basics::StatisticsDistribution const& dist) const;
+  velocypack::Builder fillDistribution(basics::StatisticsDistribution const& dist) const;
 
   // save one statistics object
   void saveSlice(velocypack::Slice const&, std::string const&) const;
@@ -81,19 +77,15 @@ class StatisticsWorker final : public Thread {
   static constexpr uint64_t HISTORY_INTERVAL = 15 * 60;  // 15 mins
   static constexpr double INTERVAL = 10.0;               // 10 secs
 
-  enum GarbageCollectionTask {
-    GC_STATS,
-    GC_STATS_RAW,
-    GC_STATS_15
-  };
+  enum GarbageCollectionTask { GC_STATS, GC_STATS_RAW, GC_STATS_15 };
 
-  GarbageCollectionTask _gcTask; // type of garbage collection task to run 
+  GarbageCollectionTask _gcTask;  // type of garbage collection task to run
   arangodb::basics::ConditionVariable _cv;
   velocypack::Builder _bytesSentDistribution;
   velocypack::Builder _bytesReceivedDistribution;
   velocypack::Builder _requestTimeDistribution;
 
-  // builder object used to create bind variables. this is reused for each query 
+  // builder object used to create bind variables. this is reused for each query
   std::shared_ptr<velocypack::Builder> _bindVars;
 
   // a reusable builder to save a few memory allocations per statistics invocation
@@ -101,9 +93,9 @@ class StatisticsWorker final : public Thread {
   velocypack::Builder _tempBuilder;
 
   std::string _clusterId;
-  TRI_vocbase_t& _vocbase; // vocbase for querying/persisting statistics collections
+  TRI_vocbase_t& _vocbase;  // vocbase for querying/persisting statistics collections
 };
 
-}
+}  // namespace arangodb
 
 #endif

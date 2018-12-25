@@ -29,44 +29,48 @@
 #include <type_traits>
 
 #ifdef __APPLE__
-  #include <machine/endian.h>
-  #include <libkern/OSByteOrder.h>
+#include <libkern/OSByteOrder.h>
+#include <machine/endian.h>
 #elif _WIN32
-  #include <stdlib.h>
-  static_assert(sizeof(uint16_t) == sizeof(unsigned short), "wrong size for ushort");
-  static_assert(sizeof(uint32_t) == sizeof(unsigned long), "wrong size for ulong");
+#include <stdlib.h>
+static_assert(sizeof(uint16_t) == sizeof(unsigned short),
+              "wrong size for ushort");
+static_assert(sizeof(uint32_t) == sizeof(unsigned long),
+              "wrong size for ulong");
 #elif __linux__
-  #include <endian.h>
+#include <endian.h>
 #else
-  #pragma messsage("unsupported os or compiler")
+#pragma messsage("unsupported os or compiler")
 #endif
 
 namespace arangodb {
 namespace basics {
-  
-#ifdef __APPLE__
-  #if BYTE_ORDER == LITTLE_ENDIAN
-static constexpr bool isLittleEndian() {return true;}
-  #elif BYTE_ORDER == BIG_ENDIAN
-static constexpr bool isLittleEndian() {return false;}
-  #endif
-#elif _WIN32
-static constexpr bool isLittleEndian() {return true;}
-#elif __linux__
-  #if __BYTE_ORDER == __LITTLE_ENDIAN
-static constexpr bool isLittleEndian() {return true;}
-  #elif __BYTE_ORDER == __BIG_ENDIAN
-static constexpr bool isLittleEndian() {return false;}
-  #endif
-#else
-  #pragma messsage("unsupported os or compiler")
-#endif
- 
-template<typename T, size_t size> struct EndianTraits;
 
-template<typename T> struct EndianTraits<T, 2> {
+#ifdef __APPLE__
+#if BYTE_ORDER == LITTLE_ENDIAN
+static constexpr bool isLittleEndian() { return true; }
+#elif BYTE_ORDER == BIG_ENDIAN
+static constexpr bool isLittleEndian() { return false; }
+#endif
+#elif _WIN32
+static constexpr bool isLittleEndian() { return true; }
+#elif __linux__
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+static constexpr bool isLittleEndian() { return true; }
+#elif __BYTE_ORDER == __BIG_ENDIAN
+static constexpr bool isLittleEndian() { return false; }
+#endif
+#else
+#pragma messsage("unsupported os or compiler")
+#endif
+
+template <typename T, size_t size>
+struct EndianTraits;
+
+template <typename T>
+struct EndianTraits<T, 2> {
   typedef typename std::make_unsigned<T>::type type;
-  
+
   inline static type htole(type in) {
 #ifdef __APPLE__
     return OSSwapHostToLittleInt16(in);
@@ -127,7 +131,8 @@ template<typename T> struct EndianTraits<T, 2> {
   }
 };
 
-template<typename T> struct EndianTraits<T, 4> {
+template <typename T>
+struct EndianTraits<T, 4> {
   typedef typename std::make_unsigned<T>::type type;
 
   inline static type htole(type in) {
@@ -191,7 +196,8 @@ template<typename T> struct EndianTraits<T, 4> {
   }
 };
 
-template<typename T> struct EndianTraits<T, 8> {
+template <typename T>
+struct EndianTraits<T, 8> {
   typedef typename std::make_unsigned<T>::type type;
 
   inline static type htole(type in) {
@@ -255,50 +261,65 @@ template<typename T> struct EndianTraits<T, 8> {
   }
 };
 
-template<bool> struct cp {
-  template<typename T> inline static T mu(T t) { return t; }
-  template<typename T> inline static T ms(T t) { return t; }  
+template <bool>
+struct cp {
+  template <typename T>
+  inline static T mu(T t) {
+    return t;
+  }
+  template <typename T>
+  inline static T ms(T t) {
+    return t;
+  }
 };
-  
-template<> struct cp<true> {
+
+template <>
+struct cp<true> {
   // make unsigned
-  template<typename T> inline static T mu(T t) {
+  template <typename T>
+  inline static T mu(T t) {
     typename std::make_unsigned<T>::type tmp;
-    std::memcpy(&tmp,&t,sizeof(T));
+    std::memcpy(&tmp, &t, sizeof(T));
     return tmp;
   }
   // revert back to signed
-  template<typename T> inline static T ms(T t) {
+  template <typename T>
+  inline static T ms(T t) {
     typename std::make_signed<T>::type tmp;
-    std::memcpy(&tmp,&t,sizeof(T));
+    std::memcpy(&tmp, &t, sizeof(T));
     return tmp;
   }
 };
 
 // hostToLittle
-template<typename T> inline T hostToLittle(T in) {
+template <typename T>
+inline T hostToLittle(T in) {
   return cp<std::is_signed<T>::value>::ms(
-    EndianTraits<T,sizeof(T)>::htole(cp<std::is_signed<T>::value>::mu(in)));
+      EndianTraits<T, sizeof(T)>::htole(cp<std::is_signed<T>::value>::mu(in)));
 }
 
 // littleToHost
-template<typename T> inline T littleToHost(T in) {
+template <typename T>
+inline T littleToHost(T in) {
   return cp<std::is_signed<T>::value>::ms(
-    EndianTraits<T,sizeof(T)>::letoh(cp<std::is_signed<T>::value>::mu(in)));
+      EndianTraits<T, sizeof(T)>::letoh(cp<std::is_signed<T>::value>::mu(in)));
 }
 
 // hostToBig
-template<typename T> inline T hostToBig(T in) {
+template <typename T>
+inline T hostToBig(T in) {
   return cp<std::is_signed<T>::value>::ms(
-    EndianTraits<T,sizeof(T)>::htobe(cp<std::is_signed<T>::value>::mu(in)));
+      EndianTraits<T, sizeof(T)>::htobe(cp<std::is_signed<T>::value>::mu(in)));
 }
 
 // bigToHost
-template<typename T> inline T bigToHost(T in) {
+template <typename T>
+inline T bigToHost(T in) {
   return cp<std::is_signed<T>::value>::ms(
-    EndianTraits<T,sizeof(T)>::betoh(cp<std::is_signed<T>::value>::mu(in)));
+      EndianTraits<T, sizeof(T)>::betoh(cp<std::is_signed<T>::value>::mu(in)));
 }
 
-}}
+}  // namespace basics
+}  // namespace arangodb
 
 #endif

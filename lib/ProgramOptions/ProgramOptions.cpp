@@ -38,10 +38,9 @@
 #define ARANGODB_PROGRAM_OPTIONS_PROGNAME "#progname#"
 
 using namespace arangodb::options;
-  
+
 ProgramOptions::ProgramOptions(char const* progname, std::string const& usage,
-                 std::string const& more,
-                 char const* binaryPath)
+                               std::string const& more, char const* binaryPath)
     : _progname(progname),
       _usage(usage),
       _more(more),
@@ -49,14 +48,14 @@ ProgramOptions::ProgramOptions(char const* progname, std::string const& usage,
       _processingResult(),
       _sealed(false),
       _overrideOptions(false),
-      _binaryPath(binaryPath){
+      _binaryPath(binaryPath) {
   // find progname wildcard in string
   size_t const pos = _usage.find(ARANGODB_PROGRAM_OPTIONS_PROGNAME);
 
   if (pos != std::string::npos) {
     // and replace it with actual program name
     _usage = usage.substr(0, pos) + _progname +
-              _usage.substr(pos + strlen(ARANGODB_PROGRAM_OPTIONS_PROGNAME));
+             _usage.substr(pos + strlen(ARANGODB_PROGRAM_OPTIONS_PROGNAME));
   }
 
   _translator = EnvironmentTranslator;
@@ -69,7 +68,9 @@ void ProgramOptions::setTranslator(
 }
 
 // prints usage information
-void ProgramOptions::printUsage() const { std::cout << _usage << std::endl << std::endl; }
+void ProgramOptions::printUsage() const {
+  std::cout << _usage << std::endl << std::endl;
+}
 
 // prints a help for all options, or the options of a section
 // the special search string "*" will show help for all sections
@@ -110,8 +111,7 @@ void ProgramOptions::printSectionsHelp() const {
   std::cout << _more;
   for (auto const& it : _sections) {
     if (!it.second.name.empty() && it.second.hasOptions()) {
-      std::cout << "  " << colorStart << "--help-" << it.second.name
-                << colorEnd;
+      std::cout << "  " << colorStart << "--help-" << it.second.name << colorEnd;
     }
   }
   std::cout << std::endl;
@@ -119,7 +119,7 @@ void ProgramOptions::printSectionsHelp() const {
 
 // returns a VPack representation of the option values
 VPackBuilder ProgramOptions::toVPack(bool onlyTouched, bool detailed,
-                      std::unordered_set<std::string> const& exclude) const {
+                                     std::unordered_set<std::string> const& exclude) const {
   VPackBuilder builder;
   builder.openObject();
 
@@ -139,11 +139,16 @@ VPackBuilder ProgramOptions::toVPack(bool onlyTouched, bool detailed,
           builder.openObject();
           builder.add("section", VPackValue(option.section));
           builder.add("description", VPackValue(option.description));
-          builder.add("category", VPackValue(option.hasFlag(arangodb::options::Flags::Command) ? "command" : "option"));
+          builder.add("category", VPackValue(option.hasFlag(arangodb::options::Flags::Command)
+                                                 ? "command"
+                                                 : "option"));
           builder.add("hidden", VPackValue(option.hasFlag(arangodb::options::Flags::Hidden)));
           builder.add("type", VPackValue(option.parameter->name()));
-          builder.add("obsolete", VPackValue(option.hasFlag(arangodb::options::Flags::Obsolete)));
-          builder.add("enterpriseOnly", VPackValue(section.enterpriseOnly || option.hasFlag(arangodb::options::Flags::Enterprise)));
+          builder.add("obsolete",
+                      VPackValue(option.hasFlag(arangodb::options::Flags::Obsolete)));
+          builder.add("enterpriseOnly",
+                      VPackValue(section.enterpriseOnly ||
+                                 option.hasFlag(arangodb::options::Flags::Enterprise)));
           builder.add("requiresValue", VPackValue(option.parameter->requiresValue()));
           std::string values = option.parameter->description();
           if (!values.empty()) {
@@ -151,7 +156,8 @@ VPackBuilder ProgramOptions::toVPack(bool onlyTouched, bool detailed,
           }
           builder.add(VPackValue("default"));
           option.toVPack(builder);
-          builder.add("dynamic", VPackValue(option.hasFlag(arangodb::options::Flags::Dynamic)));
+          builder.add("dynamic",
+                      VPackValue(option.hasFlag(arangodb::options::Flags::Dynamic)));
           builder.close();
         } else {
           option.toVPack(builder);
@@ -174,7 +180,7 @@ std::string ProgramOptions::translateShorthand(std::string const& name) const {
 }
 
 void ProgramOptions::walk(std::function<void(Section const&, Option const&)> const& callback,
-          bool onlyTouched, bool includeObsolete) const {
+                          bool onlyTouched, bool includeObsolete) const {
   for (auto const& it : _sections) {
     if (!includeObsolete && it.second.obsolete) {
       // obsolete section. ignore it
@@ -316,7 +322,7 @@ bool ProgramOptions::unknownOption(std::string const& name) {
   }
 
   fail(std::string("unknown option '") + colorStart + "--" + name + colorEnd +
-        "'");
+       "'");
 
   auto similarOptions = similar(name, 8, 4);
   if (!similarOptions.empty()) {
@@ -343,20 +349,17 @@ bool ProgramOptions::unknownOption(std::string const& name) {
     // a now removed or renamed option was specified...
     auto& now = (*it).second;
     if (now.empty()) {
-      std::cerr << "Please note that the specified option '" << colorStart
-                << "--" << name << colorEnd
-                << "' has been removed in this ArangoDB version";
+      std::cerr << "Please note that the specified option '" << colorStart << "--"
+                << name << colorEnd << "' has been removed in this ArangoDB version";
     } else {
       std::cerr << "Please note that the specified option '" << colorStart
                 << "--" << name << colorEnd << "' has been renamed to '--"
-                << colorStart << now << colorEnd
-                << "' in this ArangoDB version";
+                << colorStart << now << colorEnd << "' in this ArangoDB version";
     }
 
     std::cerr
         << std::endl
-        << "Please be sure to read the manual section about changed options"
-        << std::endl
+        << "Please be sure to read the manual section about changed options" << std::endl
         << std::endl;
   }
 
@@ -371,7 +374,8 @@ bool ProgramOptions::unknownOption(std::string const& name) {
 // report an error (callback from parser)
 bool ProgramOptions::fail(std::string const& message) {
   _processingResult.failed(true);
-  std::cerr << "Error while processing " << _context << " for " << TRI_Basename(_progname.c_str()) << ":" << std::endl;
+  std::cerr << "Error while processing " << _context << " for "
+            << TRI_Basename(_progname.c_str()) << ":" << std::endl;
   failNotice(message);
   std::cerr << std::endl;
 #ifdef _WIN32
@@ -413,8 +417,7 @@ void ProgramOptions::addOption(Option const& option) {
   if (!option.shorthand.empty()) {
     if (!_shorthands.emplace(option.shorthand, option.fullName()).second) {
       throw std::logic_error(
-          std::string("shorthand option already defined for option ") +
-          option.displayName());
+          std::string("shorthand option already defined for option ") + option.displayName());
     }
   }
 
@@ -438,8 +441,8 @@ void ProgramOptions::checkIfSealed() const {
 }
 
 // get a list of similar options
-std::vector<std::string> ProgramOptions::similar(std::string const& value, int cutOff,
-                                                 size_t maxResults) {
+std::vector<std::string> ProgramOptions::similar(std::string const& value,
+                                                 int cutOff, size_t maxResults) {
   std::vector<std::string> result;
 
   if (_similarity != nullptr) {
@@ -449,8 +452,7 @@ std::vector<std::string> ProgramOptions::similar(std::string const& value, int c
     walk(
         [this, &value, &distances](Section const&, Option const& option) {
           if (option.fullName() != value) {
-            distances.emplace(_similarity(value, option.fullName()),
-                              option.displayName());
+            distances.emplace(_similarity(value, option.fullName()), option.displayName());
           }
         },
         false);
@@ -484,11 +486,10 @@ std::vector<std::string> ProgramOptions::similar(std::string const& value, int c
         },
         false);
   }
-    
+
   // produce a unique result
   std::sort(result.begin(), result.end());
   result.erase(std::unique(result.begin(), result.end()), result.end());
 
   return result;
 }
-

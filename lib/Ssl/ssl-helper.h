@@ -39,9 +39,9 @@ enum SslProtocol {
   // include it by default.
   // from https://www.openssl.org/news/cl110.txt:
   //   Changes between 1.0.2f and 1.0.2g [1 Mar 2016]
-  //   * Disable SSLv2 default build, default negotiation and weak ciphers.  SSLv2
+  //   * Disable SSLv2 default build, default negotiation and weak ciphers. SSLv2
   //     is by default disabled at build-time.  Builds that are not configured with
-  //     "enable-ssl2" will not support SSLv2.  
+  //     "enable-ssl2" will not support SSLv2.
   // SSL_V2 = 1,
   SSL_V23 = 2,
   SSL_V3 = 3,
@@ -57,12 +57,11 @@ enum SslProtocol {
 #define SSL_CONST const
 #endif
 
-asio::ssl::context sslContext(
-    SslProtocol, std::string const& keyfile);
+asio::ssl::context sslContext(SslProtocol, std::string const& keyfile);
 
 std::string protocolName(SslProtocol protocol);
 
 std::string lastSSLError();
-}
+}  // namespace arangodb
 
 #endif

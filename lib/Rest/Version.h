@@ -37,14 +37,18 @@
 
 #ifndef NDEBUG
 // no -DNEBUG... so this will be very slow
-#define ARANGODB_VERSION_FULL ARANGODB_VERSION " " ARANGODB_ENTERPRISE_VERSION " [" TRI_PLATFORM "-NO-NDEBUG]"
+#define ARANGODB_VERSION_FULL                                        \
+  ARANGODB_VERSION " " ARANGODB_ENTERPRISE_VERSION " [" TRI_PLATFORM \
+                   "-NO-NDEBUG]"
 
 #else
 
 #ifdef _DEBUG
-#define ARANGODB_VERSION_FULL ARANGODB_VERSION " " ARANGODB_ENTERPRISE_VERSION " [" TRI_PLATFORM "-DEBUG]"
+#define ARANGODB_VERSION_FULL \
+  ARANGODB_VERSION " " ARANGODB_ENTERPRISE_VERSION " [" TRI_PLATFORM "-DEBUG]"
 #else
-#define ARANGODB_VERSION_FULL ARANGODB_VERSION " " ARANGODB_ENTERPRISE_VERSION " [" TRI_PLATFORM "]"
+#define ARANGODB_VERSION_FULL \
+  ARANGODB_VERSION " " ARANGODB_ENTERPRISE_VERSION " [" TRI_PLATFORM "]"
 #endif
 
 #endif
@@ -96,10 +100,10 @@ class Version {
 
   /// @brief get boost reactor type
   static std::string getBoostReactorType();
-  
+
   /// @brief get RocksDB version
   static std::string getRocksDBVersion();
-  
+
   /// @brief get V8 version
   static std::string getV8Version();
 
@@ -119,16 +123,16 @@ class Version {
   /// @brief get IResearch version
   static std::string getIResearchVersion();
 #endif
-  
+
   /// @brief get compiler
   static std::string getCompiler();
-  
+
   /// @brief get endianness
   static std::string getEndianness();
 
   /// @brief get build date
   static std::string getBuildDate();
-  
+
   /// @brief get build repository
   static std::string getBuildRepository();
 
@@ -144,7 +148,7 @@ class Version {
  public:
   static std::map<std::string, std::string> Values;
 };
-}
-}
+}  // namespace rest
+}  // namespace arangodb
 
 #endif
