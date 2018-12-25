@@ -36,11 +36,11 @@ class Methods;
 
 struct MMFilesDocumentDescriptor {
   MMFilesDocumentDescriptor() : _localDocumentId(), _vpack(nullptr) {}
-  MMFilesDocumentDescriptor(LocalDocumentId const& documentId, uint8_t const* vpack) 
+  MMFilesDocumentDescriptor(LocalDocumentId const& documentId, uint8_t const* vpack)
       : _localDocumentId(documentId), _vpack(vpack) {}
 
   bool empty() const { return _vpack == nullptr; }
-  
+
   void reset(MMFilesDocumentDescriptor const& other) {
     _localDocumentId = other._localDocumentId;
     _vpack = other._vpack;
@@ -63,9 +63,8 @@ struct MMFilesDocumentOperation {
     SWAPPED,
     REVERTED
   };
-  
-  MMFilesDocumentOperation(LogicalCollection* collection,
-                           TRI_voc_document_operation_e type);
+
+  MMFilesDocumentOperation(LogicalCollection* collection, TRI_voc_document_operation_e type);
 
   ~MMFilesDocumentOperation();
 
@@ -74,16 +73,16 @@ struct MMFilesDocumentOperation {
 
   void setDocumentIds(MMFilesDocumentDescriptor const& oldRevision,
                       MMFilesDocumentDescriptor const& newRevision);
-  
+
   void setVPack(uint8_t const* vpack);
 
   void setTick(TRI_voc_tick_t tick) { _tick = tick; }
   TRI_voc_tick_t tick() const { return _tick; }
-                    
+
   TRI_voc_document_operation_e type() const { return _type; }
 
   LogicalCollection* collection() const { return _collection; }
- 
+
   void indexed() noexcept {
     TRI_ASSERT(_status == StatusType::CREATED);
     _status = StatusType::INDEXED;
@@ -95,7 +94,7 @@ struct MMFilesDocumentOperation {
 
     _status = StatusType::HANDLED;
   }
-  
+
   void revert(transaction::Methods*);
 
  private:
@@ -107,6 +106,6 @@ struct MMFilesDocumentOperation {
   StatusType _status;
 };
 
-}
+}  // namespace arangodb
 
 #endif

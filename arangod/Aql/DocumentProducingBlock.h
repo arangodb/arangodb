@@ -39,7 +39,7 @@ namespace aql {
 class AqlItemBlock;
 class DocumentProducingNode;
 struct Variable;
-  
+
 class DocumentProducingBlock {
  public:
   typedef std::function<void(AqlItemBlock*, arangodb::velocypack::Slice, size_t, size_t&, size_t)> DocumentProducingFunction;
@@ -53,24 +53,25 @@ class DocumentProducingBlock {
 
  private:
   transaction::Methods* _trxPtr;
-  
+
   DocumentProducingNode const* _node;
-  
+
   /// @brief hether or not we want to build a result
   bool const _produceResult;
 
-  /// @brief whether or not we are allowed to pass documents via raw pointers only
-  /// (true for MMFiles, false for RocksDB)
+  /// @brief whether or not we are allowed to pass documents via raw pointers
+  /// only (true for MMFiles, false for RocksDB)
   bool const _useRawDocumentPointers;
 
- protected:  
+ protected:
   DocumentProducingFunction _documentProducer;
-  
-  /// @brief whether or not we are allowed to use the covering index optimization in a callback
+
+  /// @brief whether or not we are allowed to use the covering index
+  /// optimization in a callback
   bool _allowCoveringIndexOptimization;
 };
 
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

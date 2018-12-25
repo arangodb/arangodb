@@ -104,7 +104,6 @@ class ShortestPathResult {
   std::deque<arangodb::graph::EdgeDocumentToken> _edges;
 };
 
-
-} //namespace graph
-} //namespace arangodb
+}  // namespace graph
+}  // namespace arangodb
 #endif

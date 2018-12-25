@@ -25,9 +25,9 @@
 #define ARANGOD_CLUSTER_CLUSTER_TRAVERSER_H 1
 
 #include "Cluster/TraverserEngineRegistry.h"
-#include "VocBase/LogicalCollection.h"
 #include "Graph/Traverser.h"
 #include "Graph/TraverserOptions.h"
+#include "VocBase/LogicalCollection.h"
 
 namespace arangodb {
 class CollectionNameResolver;
@@ -45,11 +45,9 @@ class ClusterTraverser final : public Traverser {
   friend class ClusterEdgeCursor;
 
  public:
-  ClusterTraverser(
-      TraverserOptions* opts,
-      ManagedDocumentResult* mmdr,
-      std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
-      std::string const& dbname, transaction::Methods* trx);
+  ClusterTraverser(TraverserOptions* opts, ManagedDocumentResult* mmdr,
+                   std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
+                   std::string const& dbname, transaction::Methods* trx);
 
   ~ClusterTraverser() {}
 
@@ -64,10 +62,8 @@ class ClusterTraverser final : public Traverser {
 
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
-  bool getSingleVertex(arangodb::velocypack::Slice edge,
-                       StringRef const sourceVertexId,
-                       uint64_t depth,
-                       StringRef& targetVertexId) override;
+  bool getSingleVertex(arangodb::velocypack::Slice edge, StringRef const sourceVertexId,
+                       uint64_t depth, StringRef& targetVertexId) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to fetch the real data of a vertex into an AQLValue
@@ -79,25 +75,21 @@ class ClusterTraverser final : public Traverser {
   /// @brief Function to add the real data of a vertex into a velocypack builder
   //////////////////////////////////////////////////////////////////////////////
 
-  void addVertexToVelocyPack(StringRef,
-                             arangodb::velocypack::Builder&) override;
+  void addVertexToVelocyPack(StringRef, arangodb::velocypack::Builder&) override;
 
  private:
-
   void fetchVertices();
 
-  std::unordered_map<StringRef, std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
-      _vertices;
+  std::unordered_map<StringRef, std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>> _vertices;
 
   std::string _dbname;
 
   std::unordered_map<ServerID, traverser::TraverserEngineID> const* _engines;
 
   std::unordered_set<StringRef> _verticesToFetch;
-
 };
 
-}  // traverser
-}  // arangodb
+}  // namespace traverser
+}  // namespace arangodb
 
 #endif

@@ -69,6 +69,6 @@ class WorkerContext {
 
   inline uint64_t edgeCount() const { return _edgeCount; }
 };
-}
-}
+}  // namespace pregel
+}  // namespace arangodb
 #endif

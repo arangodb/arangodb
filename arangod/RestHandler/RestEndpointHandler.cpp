@@ -32,8 +32,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestEndpointHandler::RestEndpointHandler(GeneralRequest* request,
-                                         GeneralResponse* response)
+RestEndpointHandler::RestEndpointHandler(GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
 RestStatus RestEndpointHandler::execute() {
@@ -46,8 +45,7 @@ RestStatus RestEndpointHandler::execute() {
       retrieveEndpoints();
       break;
     default: {
-      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                    TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     }
   }
 
@@ -56,13 +54,11 @@ RestStatus RestEndpointHandler::execute() {
 }
 
 void RestEndpointHandler::retrieveEndpoints() {
-  auto server =
-      application_features::ApplicationServer::getFeature<HttpEndpointProvider>(
-          "Endpoint");
+  auto server = application_features::ApplicationServer::getFeature<HttpEndpointProvider>(
+      "Endpoint");
 
   if (!_vocbase.isSystem()) {
-    generateError(rest::ResponseCode::FORBIDDEN,
-      TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
     return;
   }
 

@@ -24,14 +24,14 @@
 #ifndef ARANGOD_AQL_VARIABLE_H
 #define ARANGOD_AQL_VARIABLE_H 1
 
-#include "Basics/Common.h"
 #include "Aql/types.h"
+#include "Basics/Common.h"
 
 namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 namespace aql {
 class Ast;
@@ -71,8 +71,8 @@ struct Variable {
   void toVelocyPack(arangodb::velocypack::Builder&) const;
 
   /// @brief replace a variable by another
-  static Variable const* replace(
-      Variable const*, std::unordered_map<VariableId, Variable const*> const&);
+  static Variable const* replace(Variable const*,
+                                 std::unordered_map<VariableId, Variable const*> const&);
 
   /// @brief factory for (optional) variables from VPack
   static Variable* varFromVPack(Ast* ast, arangodb::velocypack::Slice const& base,
@@ -96,7 +96,7 @@ struct Variable {
   /// @brief name of $CURRENT variable
   static char const* const NAME_CURRENT;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

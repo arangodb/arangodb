@@ -33,7 +33,9 @@ class ClusterRestWalHandler : public RestBaseHandler {
   ClusterRestWalHandler(GeneralRequest*, GeneralResponse*);
 
  public:
-  RequestLane lane() const override final { return RequestLane::SERVER_REPLICATION; }
+  RequestLane lane() const override final {
+    return RequestLane::SERVER_REPLICATION;
+  }
   RestStatus execute() override final;
   char const* name() const override final { return "ClusterRestWalHandler"; }
 
@@ -42,6 +44,6 @@ class ClusterRestWalHandler : public RestBaseHandler {
   void transactions();
   void properties();
 };
-}
+}  // namespace arangodb
 
 #endif

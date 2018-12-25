@@ -26,20 +26,19 @@
 
 namespace arangodb {
 
-GreetingsFeature::GreetingsFeature(
-    application_features::ApplicationServer& server
-)
+GreetingsFeature::GreetingsFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Greetings") {
   setOptional(false);
   startsAfter("Logger");
 }
 
 void GreetingsFeature::prepare() {
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "" << rest::Version::getVerboseVersionString();
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+      << "" << rest::Version::getVerboseVersionString();
 }
 
 void GreetingsFeature::unprepare() {
   LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "ArangoDB has been shut down";
 }
 
-} // arangodb
+}  // namespace arangodb

@@ -32,14 +32,14 @@ namespace meta {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adjusts constness of 'Out' according to 'In'
 ////////////////////////////////////////////////////////////////////////////////
-template<typename In, typename Out>
+template <typename In, typename Out>
 struct adjustConst {
   typedef Out value_type;
   typedef Out& reference;
   typedef Out* pointer;
 };
 
-template<typename In, typename Out>
+template <typename In, typename Out>
 struct adjustConst<const In, Out> {
   typedef const Out value_type;
   typedef const Out& reference;
@@ -53,6 +53,6 @@ T exchange(T& obj, U&& new_value) {
   return old_value;
 }
 
-}
-}
+}  // namespace meta
+}  // namespace arangodb
 #endif

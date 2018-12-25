@@ -34,7 +34,6 @@ namespace arangodb {
 namespace options {
 
 class ProgramOptions;
-
 }
 
 namespace application_features {
@@ -141,16 +140,14 @@ class ApplicationServer {
   //  can cause scope confusion.  It also causes confusion as to when
   //  the application versus an individual feature or thread has begun
   //  stopping.  This function is intended to be used within communication
-  //  retry loops where infinite retries have previously blocked clean "stopping".
-  static bool isRetryOK() {
-    return !isStopping();
-  }
+  //  retry loops where infinite retries have previously blocked clean
+  //  "stopping".
+  static bool isRetryOK() { return !isStopping(); }
 
   static bool isPrepared() {
     if (server != nullptr) {
       ServerState tmp = server->_state.load(std::memory_order_relaxed);
-      return tmp == ServerState::IN_START ||
-             tmp == ServerState::IN_WAIT ||
+      return tmp == ServerState::IN_START || tmp == ServerState::IN_WAIT ||
              tmp == ServerState::IN_STOP;
     }
     return false;
@@ -160,15 +157,15 @@ class ApplicationServer {
   // throws otherwise
   template <typename T>
   static T* getFeature(std::string const& name) {
-    T* feature = dynamic_cast<T*>(
-        application_features::ApplicationServer::lookupFeature(name));
+    T* feature =
+        dynamic_cast<T*>(application_features::ApplicationServer::lookupFeature(name));
     if (feature == nullptr) {
       throwFeatureNotFoundException(name);
     }
     return feature;
   }
 
-  template<typename T>
+  template <typename T>
   static T* getFeature() {
     return getFeature<T>(T::name());
   }
@@ -188,8 +185,7 @@ class ApplicationServer {
   static void forceDisableFeatures(std::vector<std::string> const&);
 
  public:
-  ApplicationServer(std::shared_ptr<options::ProgramOptions>,
-                    char const* binaryPath);
+  ApplicationServer(std::shared_ptr<options::ProgramOptions>, char const* binaryPath);
 
   ~ApplicationServer();
 
@@ -245,18 +241,18 @@ class ApplicationServer {
   // look up a feature and return a pointer to it. may be nullptr
   static ApplicationFeature* lookupFeature(std::string const&);
 
-  template<typename T>
+  template <typename T>
   static T* lookupFeature(std::string const& name) {
     typedef typename std::enable_if<std::is_base_of<ApplicationFeature, T>::value, T>::type type;
     return dynamic_cast<type*>(lookupFeature(name));
   }
 
-  template<typename T>
+  template <typename T>
   static T* lookupFeature() {
     return lookupFeature<T>(T::name());
   }
 
-  char const* getBinaryPath() { return _binaryPath;}
+  char const* getBinaryPath() { return _binaryPath; }
 
   void registerStartupCallback(std::function<void()> const& callback) {
     _startupCallbacks.emplace_back(callback);
@@ -269,14 +265,16 @@ class ApplicationServer {
   // setup and validate all feature dependencies, determine feature order
   void setupDependencies(bool failOnMissing);
 
-  std::vector<ApplicationFeature*> const& getOrderedFeatures() { return _orderedFeatures; }
- 
+  std::vector<ApplicationFeature*> const& getOrderedFeatures() {
+    return _orderedFeatures;
+  }
+
  private:
   // throws an exception that a requested feature was not found
-  [[ noreturn ]] static void throwFeatureNotFoundException(std::string const& name);
+  [[noreturn]] static void throwFeatureNotFoundException(std::string const& name);
 
   // throws an exception that a requested feature is not enabled
-  [[ noreturn ]] static void throwFeatureNotEnabledException(std::string const& name);
+  [[noreturn]] static void throwFeatureNotEnabledException(std::string const& name);
 
   static void disableFeatures(std::vector<std::string> const& names, bool force);
 
@@ -367,7 +365,7 @@ class ApplicationServer {
   std::function<void(std::string const&)> fail;
 };
 
-}
-}
+}  // namespace application_features
+}  // namespace arangodb
 
 #endif

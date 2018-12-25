@@ -45,14 +45,10 @@ using namespace arangodb::basics;
 bool HttpResponse::HIDE_PRODUCT_HEADER = false;
 
 HttpResponse::HttpResponse(ResponseCode code)
-  : HttpResponse(code, new StringBuffer(false)) {}
+    : HttpResponse(code, new StringBuffer(false)) {}
 
-HttpResponse::HttpResponse(ResponseCode code,
-                           basics::StringBuffer* buffer)
-    : GeneralResponse(code),
-      _isHeadResponse(false),
-      _body(buffer),
-      _bodySize(0) {
+HttpResponse::HttpResponse(ResponseCode code, basics::StringBuffer* buffer)
+    : GeneralResponse(code), _isHeadResponse(false), _body(buffer), _bodySize(0) {
   TRI_ASSERT(buffer);
   _generateBody = false;
   _contentType = ContentType::TEXT;
@@ -65,9 +61,7 @@ HttpResponse::HttpResponse(ResponseCode code,
   }
 }
 
-HttpResponse::~HttpResponse() {
-  delete _body;
-}
+HttpResponse::~HttpResponse() { delete _body; }
 
 void HttpResponse::reset(ResponseCode code) {
   _responseCode = code;
@@ -82,8 +76,7 @@ void HttpResponse::reset(ResponseCode code) {
 
 void HttpResponse::setCookie(std::string const& name, std::string const& value,
                              int lifeTimeSeconds, std::string const& path,
-                             std::string const& domain, bool secure,
-                             bool httpOnly) {
+                             std::string const& domain, bool secure, bool httpOnly) {
   StringBuffer buffer(false);
 
   std::string tmp = StringUtils::trim(name);
@@ -178,8 +171,7 @@ void HttpResponse::writeHeader(StringBuffer* output) {
       continue;
     }
 
-    if (keyLength == 6 && key[0] == 's' &&
-        memcmp(key.c_str(), "server", keyLength) == 0) {
+    if (keyLength == 6 && key[0] == 's' && memcmp(key.c_str(), "server", keyLength) == 0) {
       // this ensures we don't print two "Server" headers
       seenServerHeader = true;
       // go on and use the user-defined "Server" header value
@@ -191,8 +183,7 @@ void HttpResponse::writeHeader(StringBuffer* output) {
     }
 
     // reserve enough space for header name + ": " + value + "\r\n"
-    if (output->reserve(keyLength + 2 + it.second.size() + 2) !=
-        TRI_ERROR_NO_ERROR) {
+    if (output->reserve(keyLength + 2 + it.second.size() + 2) != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
 
@@ -314,24 +305,20 @@ void HttpResponse::writeHeader(StringBuffer* output) {
   // end of header, body to follow
 }
 
-void HttpResponse::addPayload(VPackSlice const& slice,
-                              velocypack::Options const* options,
+void HttpResponse::addPayload(VPackSlice const& slice, velocypack::Options const* options,
                               bool resolveExternals) {
-  
   if (_contentType == rest::ContentType::JSON &&
       _contentTypeRequested == rest::ContentType::VPACK) {
     // content type was set by a handler to Json but the client wants VPACK
     // as we have a slice at had we are able to reply with VPACK
     _contentType = rest::ContentType::VPACK;
   }
-  
+
   addPayloadInternal(slice, slice.byteSize(), options, resolveExternals);
 }
 
 void HttpResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
-                              velocypack::Options const* options,
-                              bool resolveExternals) {
-
+                              velocypack::Options const* options, bool resolveExternals) {
   if (_contentType == rest::ContentType::JSON &&
       _contentTypeRequested == rest::ContentType::VPACK) {
     // content type was set by a handler to Json but the client wants VPACK
@@ -340,34 +327,31 @@ void HttpResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
   }
 
   if (buffer.size() > 0) {
-    addPayloadInternal(VPackSlice(buffer.data()), buffer.length(),
-                       options, resolveExternals);
+    addPayloadInternal(VPackSlice(buffer.data()), buffer.length(), options, resolveExternals);
   }
 }
 
 void HttpResponse::addPayloadInternal(VPackSlice output, size_t inputLength,
-                                      VPackOptions const* options,
-                                      bool resolveExternals) {
+                                      VPackOptions const* options, bool resolveExternals) {
   if (!options) {
     options = &velocypack::Options::Defaults;
   }
-  
+
   switch (_contentType) {
     case rest::ContentType::VPACK: {
-      
       // will contain sanitized data
       VPackBuffer<uint8_t> tmpBuffer;
       if (resolveExternals) {
         bool resolveExt = VelocyPackHelper::hasNonClientTypes(output, true, true);
-        if (resolveExt) {  // resolve
-          tmpBuffer.reserve(inputLength); // reserve space already
+        if (resolveExt) {                  // resolve
+          tmpBuffer.reserve(inputLength);  // reserve space already
           VPackBuilder builder(tmpBuffer, options);
           VelocyPackHelper::sanitizeNonClientTypes(output, VPackSlice::noneSlice(),
                                                    builder, options, true, true);
           output = VPackSlice(tmpBuffer.data());
         }
       }
-      
+
       VPackValueLength length = output.byteSize();
       if (_generateBody) {
         _body->appendText(output.startAs<const char>(), length);
@@ -385,17 +369,16 @@ void HttpResponse::addPayloadInternal(VPackSlice output, size_t inputLength,
         // TODO can we optimize this?
         // Just dump some where else to find real length
         StringBuffer tmp(false);
-        
+
         // convert object to string
         VPackStringBufferAdapter buffer(tmp.stringBuffer());
-        
+
         // usual dumping -  but not to the response body
         VPackDumper dumper(&buffer, options);
         dumper.dump(output);
-        
+
         headResponse(tmp.length());
       }
     }
   }
 }
-

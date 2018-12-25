@@ -25,7 +25,7 @@
 
 namespace arangodb {
 namespace futures {
-  
+
 template <class T>
 Future<T> Promise<T>::getFuture() {
   if (_retrieved) {
@@ -34,7 +34,8 @@ Future<T> Promise<T>::getFuture() {
   _retrieved = true;
   return arangodb::futures::Future<T>(_state);
 }
-  
-}}
 
-#endif // ARANGOD_FUTURES_PROMISE_INL_H
+}  // namespace futures
+}  // namespace arangodb
+
+#endif  // ARANGOD_FUTURES_PROMISE_INL_H

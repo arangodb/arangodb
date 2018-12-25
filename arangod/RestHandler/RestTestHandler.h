@@ -26,8 +26,8 @@
 
 #include <chrono>
 
-#include "RestHandler/RestVocbaseBaseHandler.h"
 #include "Cluster/ResultT.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
 
@@ -41,11 +41,10 @@ class RestTestHandler : public RestVocbaseBaseHandler {
   char const* name() const override final { return "RestTestHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
 
-private:
+ private:
   typedef std::chrono::steady_clock clock;
-  ResultT<RequestLane> requestLaneFromString(
-    const std::string &str);
+  ResultT<RequestLane> requestLaneFromString(const std::string& str);
 };
-}
+}  // namespace arangodb
 
 #endif

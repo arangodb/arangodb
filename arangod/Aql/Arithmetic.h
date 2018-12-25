@@ -76,7 +76,7 @@ bool isUnsafeDivision(T l, T r) {
   return (l == (std::numeric_limits<T>::min)() && r == -1);
 }
 
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

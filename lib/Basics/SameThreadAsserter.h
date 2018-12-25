@@ -33,12 +33,9 @@ class SameThreadAsserter {
  public:
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
-  SameThreadAsserter() 
-      : _startingThreadId(currentThreadId()) {}
+  SameThreadAsserter() : _startingThreadId(currentThreadId()) {}
 
-  ~SameThreadAsserter() {
-    TRI_ASSERT(_startingThreadId == currentThreadId());
-  }
+  ~SameThreadAsserter() { TRI_ASSERT(_startingThreadId == currentThreadId()); }
 
  private:
   TRI_tid_t currentThreadId() const { return Thread::currentThreadId(); }
@@ -48,12 +45,12 @@ class SameThreadAsserter {
 
 #else
 
-  SameThreadAsserter() {} 
-  ~SameThreadAsserter() {} 
+  SameThreadAsserter() {}
+  ~SameThreadAsserter() {}
 
 #endif
 };
 
-}
+}  // namespace arangodb
 
 #endif

@@ -37,8 +37,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestIndexHandler::RestIndexHandler(GeneralRequest* request,
-                                   GeneralResponse* response)
+RestIndexHandler::RestIndexHandler(GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
 RestStatus RestIndexHandler::execute() {
@@ -51,8 +50,7 @@ RestStatus RestIndexHandler::execute() {
   } else if (type == rest::RequestType::DELETE_REQ) {
     return dropIndex();
   } else {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
 }
@@ -84,8 +82,7 @@ RestStatus RestIndexHandler::getIndexes() {
     std::string cName = _request->value("collection", found);
     auto coll = collection(cName);
     if (coll == nullptr) {
-      generateError(rest::ResponseCode::NOT_FOUND,
-                    TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
       return RestStatus::DONE;
     }
 
@@ -94,12 +91,11 @@ RestStatus RestIndexHandler::getIndexes() {
       flags = Index::makeFlags(Index::Serialize::Estimates, Index::Serialize::Figures);
     }
     bool withHidden = _request->parsedValue("withHidden", false);
-    
+
     VPackBuilder indexes;
     Result res = methods::Indexes::getAll(coll.get(), flags, withHidden, indexes);
     if (!res.ok()) {
-      generateError(rest::ResponseCode::BAD, res.errorNumber(),
-                    res.errorMessage());
+      generateError(rest::ResponseCode::BAD, res.errorNumber(), res.errorMessage());
       return RestStatus::DONE;
     }
 
@@ -127,8 +123,7 @@ RestStatus RestIndexHandler::getIndexes() {
     std::string const& cName = suffixes[0];
     auto coll = collection(cName);
     if (coll == nullptr) {
-      generateError(rest::ResponseCode::NOT_FOUND,
-                    TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
       return RestStatus::DONE;
     }
 
@@ -160,7 +155,7 @@ RestStatus RestIndexHandler::getIndexes() {
 // //////////////////////////////////////////////////////////////////////////////
 RestStatus RestIndexHandler::createIndex() {
   std::vector<std::string> const& suffixes = _request->suffixes();
-   bool parseSuccess = false;
+  bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!suffixes.empty() || !parseSuccess) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -172,15 +167,13 @@ RestStatus RestIndexHandler::createIndex() {
   bool found = false;
   std::string cName = _request->value("collection", found);
   if (!found) {
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return RestStatus::DONE;
   }
 
   auto coll = collection(cName);
   if (coll == nullptr) {
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return RestStatus::DONE;
   }
 
@@ -213,8 +206,7 @@ RestStatus RestIndexHandler::createIndex() {
         res.errorNumber() == TRI_ERROR_ARANGO_INDEX_NOT_FOUND) {
       generateError(res);
     } else {  // http_server compatibility
-      generateError(rest::ResponseCode::BAD, res.errorNumber(),
-                    res.errorMessage());
+      generateError(rest::ResponseCode::BAD, res.errorNumber(), res.errorMessage());
     }
   }
   return RestStatus::DONE;
@@ -234,8 +226,7 @@ RestStatus RestIndexHandler::dropIndex() {
   std::string const& cName = suffixes[0];
   auto coll = collection(cName);
   if (coll == nullptr) {
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return RestStatus::DONE;
   }
 

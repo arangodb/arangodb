@@ -147,7 +147,7 @@ class TraversalBlock final : public ExecutionBlock {
 
   std::unordered_map<ServerID, traverser::TraverserEngineID> const* _engines;
 };
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

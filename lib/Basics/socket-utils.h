@@ -27,8 +27,8 @@
 #include "Basics/Common.h"
 
 #ifdef TRI_HAVE_WINSOCK2_H
-#include <WinSock2.h>
 #include <WS2tcpip.h>
+#include <WinSock2.h>
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -41,7 +41,9 @@ typedef struct TRI_socket_s {
   SOCKET fileHandle;
 } TRI_socket_t;
 #else
-typedef struct TRI_socket_s { int fileDescriptor; } TRI_socket_t;
+typedef struct TRI_socket_s {
+  int fileDescriptor;
+} TRI_socket_t;
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -91,8 +93,7 @@ static inline TRI_socket_t TRI_accept(TRI_socket_t s, struct sockaddr* address,
 /// @brief bind abstraction for different OSes
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline int TRI_bind(TRI_socket_t s, const struct sockaddr* address,
-                           size_t addr_len) {
+static inline int TRI_bind(TRI_socket_t s, const struct sockaddr* address, size_t addr_len) {
 #ifdef _WIN32
   return bind(s.fileHandle, address, static_cast<int>(addr_len));
 #else
@@ -104,8 +105,7 @@ static inline int TRI_bind(TRI_socket_t s, const struct sockaddr* address,
 /// @brief connect abstraction for different OSes
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline int TRI_connect(TRI_socket_t s, const struct sockaddr* address,
-                              size_t addr_len) {
+static inline int TRI_connect(TRI_socket_t s, const struct sockaddr* address, size_t addr_len) {
 #ifdef _WIN32
   return connect(s.fileHandle, address, (int)addr_len);
 #else
@@ -117,8 +117,7 @@ static inline int TRI_connect(TRI_socket_t s, const struct sockaddr* address,
 /// @brief send abstraction for different OSes
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline long TRI_send(TRI_socket_t s, const void* buffer, size_t length,
-                           int flags) {
+static inline long TRI_send(TRI_socket_t s, const void* buffer, size_t length, int flags) {
 #ifdef _WIN32
   return send(s.fileHandle, (char*)buffer, (int)length, flags);
 #else
@@ -131,13 +130,11 @@ static inline long TRI_send(TRI_socket_t s, const void* buffer, size_t length,
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
-static inline int TRI_getsockname(TRI_socket_t s, struct sockaddr* addr,
-                                  int* len) {
+static inline int TRI_getsockname(TRI_socket_t s, struct sockaddr* addr, int* len) {
   return getsockname(s.fileHandle, addr, len);
 }
 #else
-static inline int TRI_getsockname(TRI_socket_t s, struct sockaddr* addr,
-                                  socklen_t* len) {
+static inline int TRI_getsockname(TRI_socket_t s, struct sockaddr* addr, socklen_t* len) {
   return getsockname(s.fileDescriptor, addr, len);
 }
 #endif
@@ -182,13 +179,11 @@ static inline int TRI_setsockopt(TRI_socket_t s, int level, int optname,
 static inline bool TRI_setsockopttimeout(TRI_socket_t s, double timeout) {
   DWORD to = (DWORD)timeout * 1000;
 
-  if (TRI_setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (char const*)&to,
-                     sizeof(to)) != 0) {
+  if (TRI_setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (char const*)&to, sizeof(to)) != 0) {
     return false;
   }
 
-  if (TRI_setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, (char const*)&to,
-                     sizeof(to)) != 0) {
+  if (TRI_setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, (char const*)&to, sizeof(to)) != 0) {
     return false;
   }
   return true;
@@ -261,11 +256,9 @@ static inline int TRI_get_fd_or_handle_of_socket(TRI_socket_t s) {
 
 int TRI_closesocket(TRI_socket_t);
 
-int TRI_readsocket(TRI_socket_t, void* buffer, size_t numBytesToRead,
-                   int flags);
+int TRI_readsocket(TRI_socket_t, void* buffer, size_t numBytesToRead, int flags);
 
-int TRI_writesocket(TRI_socket_t, const void* buffer, size_t numBytesToWrite,
-                    int flags);
+int TRI_writesocket(TRI_socket_t, const void* buffer, size_t numBytesToWrite, int flags);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets non-blocking mode for a socket

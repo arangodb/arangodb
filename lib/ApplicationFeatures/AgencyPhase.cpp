@@ -33,5 +33,5 @@ AgencyFeaturePhase::AgencyFeaturePhase(ApplicationServer& server)
   startsAfter("Agency");
 }
 
-} // application_features
-} // arangodb
+}  // namespace application_features
+}  // namespace arangodb
