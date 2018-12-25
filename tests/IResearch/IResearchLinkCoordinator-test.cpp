@@ -347,7 +347,6 @@ SECTION("test_create_drop") {
     CHECK((false == index->hasExpansion()));
     CHECK((false == index->hasSelectivityEstimate()));
     CHECK((false == index->implicitlyUnique()));
-    CHECK((true == index->isPersistent()));
     CHECK((false == index->isSorted()));
     CHECK((0 < index->memory()));
     CHECK((true == index->sparse()));
@@ -456,7 +455,6 @@ SECTION("test_create_drop") {
     CHECK((false == index->hasExpansion()));
     CHECK((false == index->hasSelectivityEstimate()));
     CHECK((false == index->implicitlyUnique()));
-    CHECK((true == index->isPersistent()));
     CHECK((false == index->isSorted()));
     CHECK((0 < index->memory()));
     CHECK((true == index->sparse()));

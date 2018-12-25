@@ -179,14 +179,13 @@ static void JS_GetIndexesVocbaseCol(
     flags = Index::makeFlags(Index::Serialize::Estimates, Index::Serialize::Figures);
   }
 
-  bool withLinks = false;
-
+  bool withHidden = false;
   if (args.Length() > 1) {
-    withLinks = TRI_ObjectToBoolean(args[1]);
+    withHidden = TRI_ObjectToBoolean(args[1]);
   }
 
   VPackBuilder output;
-  auto res = methods::Indexes::getAll(collection, flags, withLinks, output);
+  auto res = methods::Indexes::getAll(collection, flags, withHidden, output);
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);

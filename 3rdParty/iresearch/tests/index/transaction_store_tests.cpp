@@ -5682,7 +5682,6 @@ TEST_F(transaction_store_tests, read_reopen) {
     ASSERT_EQ(1, reader0.size());
     ASSERT_NE(reader0.begin(), reader0.end());
     ASSERT_EQ(&*(reader.begin()), &*(reader0.begin()));
-    ASSERT_EQ(&*(reader.end()), &*(reader0.end()));
   }
 
   // write 2nd generation

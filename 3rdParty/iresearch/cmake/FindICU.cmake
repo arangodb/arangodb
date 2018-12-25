@@ -131,10 +131,10 @@ if (ICU_INCLUDE_DIR AND ICU_SRC_DIR_UCONV AND ICU_SRC_DIR_CONFIGURE)
   )
 
   add_library(icudata-static STATIC IMPORTED GLOBAL)
-  add_dependencies(icudata-shared icu-build)
-  set_target_properties(icudata-shared PROPERTIES
+  add_dependencies(icudata-static icu-build)
+  set_target_properties(icudata-static PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_PATH}"
-    IMPORTED_LOCATION "${ICU_LIBRARY_PATH}/${ICU_STATIC_LIBRARY_PREFIX}icudata${ICU_SHARED_LIBRARY_SUFFIX}"
+    IMPORTED_LOCATION "${ICU_LIBRARY_PATH}/${ICU_STATIC_LIBRARY_PREFIX}icudata${ICU_STATIC_LIBRARY_SUFFIX}"
   )
 
   add_library(icui18n-shared SHARED IMPORTED GLOBAL)
@@ -145,10 +145,10 @@ if (ICU_INCLUDE_DIR AND ICU_SRC_DIR_UCONV AND ICU_SRC_DIR_CONFIGURE)
   )
 
   add_library(icui18n-static STATIC IMPORTED GLOBAL)
-  add_dependencies(icui18n-shared icu-build)
-  set_target_properties(icui18n-shared PROPERTIES
+  add_dependencies(icui18n-static icu-build)
+  set_target_properties(icui18n-static PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_PATH}"
-    IMPORTED_LOCATION "${ICU_LIBRARY_PATH}/${ICU_STATIC_LIBRARY_PREFIX}icui18n${ICU_SHARED_LIBRARY_SUFFIX}"
+    IMPORTED_LOCATION "${ICU_LIBRARY_PATH}/${ICU_STATIC_LIBRARY_PREFIX}icui18n${ICU_STATIC_LIBRARY_SUFFIX}"
   )
 
   add_library(icuuc-shared SHARED IMPORTED GLOBAL)
@@ -159,10 +159,10 @@ if (ICU_INCLUDE_DIR AND ICU_SRC_DIR_UCONV AND ICU_SRC_DIR_CONFIGURE)
   )
 
   add_library(icuuc-static STATIC IMPORTED GLOBAL)
-  add_dependencies(icuuc-shared icu-build)
-  set_target_properties(icuuc-shared PROPERTIES
+  add_dependencies(icuuc-static icu-build)
+  set_target_properties(icuuc-static PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_PATH}"
-    IMPORTED_LOCATION "${ICU_LIBRARY_PATH}/${ICU_STATIC_LIBRARY_PREFIX}icuuc${ICU_SHARED_LIBRARY_SUFFIX}"
+    IMPORTED_LOCATION "${ICU_LIBRARY_PATH}/${ICU_STATIC_LIBRARY_PREFIX}icuuc${ICU_STATIC_LIBRARY_SUFFIX}"
   )
 
   add_library(icu-shared SHARED IMPORTED GLOBAL)
@@ -295,7 +295,44 @@ if (ICU_INCLUDE_DIR
     list(APPEND ICU_STATIC_LIBS ${ICU_STATIC_LIBRARY_DT} ${ICU_STATIC_LIBRARY_IN} ${ICU_STATIC_LIBRARY_UC})
   endif()
 
+  add_library(icudata-shared SHARED IMPORTED GLOBAL)
+  set_target_properties(icudata-shared PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}"
+    IMPORTED_LOCATION "${ICU_SHARED_LIBRARY_DT}"
+  )
+
+  add_library(icudata-static STATIC IMPORTED GLOBAL)
+  set_target_properties(icudata-static PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}"
+    IMPORTED_LOCATION "${ICU_STATIC_LIBRARY_DT}"
+  )
+
+  add_library(icui18n-shared SHARED IMPORTED GLOBAL)
+  set_target_properties(icui18n-shared PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}"
+    IMPORTED_LOCATION "${ICU_SHARED_LIBRARY_IN}"
+  )
+
+  add_library(icui18n-static STATIC IMPORTED GLOBAL)
+  set_target_properties(icui18n-static PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}"
+    IMPORTED_LOCATION "${ICU_STATIC_LIBRARY_IN}"
+  )
+
+  add_library(icuuc-shared SHARED IMPORTED GLOBAL)
+  set_target_properties(icuuc-shared PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}"
+    IMPORTED_LOCATION "${ICU_SHARED_LIBRARY_UC}"
+  )
+
+  add_library(icuuc-static STATIC IMPORTED GLOBAL)
+  set_target_properties(icuuc-static PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}"
+    IMPORTED_LOCATION "${ICU_STATIC_LIBRARY_UC}"
+  )
+
   add_library(icu-shared SHARED IMPORTED GLOBAL)
+  add_dependencies(icu-shared icudata-shared icui18n-shared icuuc-shared)
   set_property(TARGET icu-shared PROPERTY INTERFACE_INCLUDE_DIRECTORIES # $<TARGET_PROPERTY:tgt,INCLUDE_DIRECTORIES> does not get expanded
     "${ICU_INCLUDE_DIR}"
   )
@@ -308,6 +345,7 @@ if (ICU_INCLUDE_DIR
   )
 
   add_library(icu-static STATIC IMPORTED GLOBAL)
+  add_dependencies(icu-static icudata-static icui18n-static icuuc-static)
   set_property(TARGET icu-static PROPERTY INTERFACE_INCLUDE_DIRECTORIES # $<TARGET_PROPERTY:tgt,INCLUDE_DIRECTORIES> does not get expanded
     "${ICU_INCLUDE_DIR}"
   )

@@ -94,9 +94,6 @@ class RocksDBCollection final : public PhysicalCollection {
 
   void prepareIndexes(arangodb::velocypack::Slice indexesSlice) override;
 
-  /// @brief Find index by definition
-  std::shared_ptr<Index> lookupIndex(velocypack::Slice const&) const override;
-
   std::shared_ptr<Index> createIndex(arangodb::velocypack::Slice const& info,
                                      bool restore, bool& created) override;
 
@@ -193,9 +190,9 @@ class RocksDBCollection final : public PhysicalCollection {
   uint64_t objectId() const { return _objectId; }
 
   int lockWrite(double timeout = 0.0);
-  int unlockWrite();
+  void unlockWrite();
   int lockRead(double timeout = 0.0);
-  int unlockRead();
+  void unlockRead();
 
   /// recalculte counts for collection in case of failure
   uint64_t recalculateCounts();
@@ -215,11 +212,6 @@ class RocksDBCollection final : public PhysicalCollection {
   /// @brief return engine-specific figures
   void figuresSpecific(std::shared_ptr<velocypack::Builder>&) override;
   void addIndex(std::shared_ptr<arangodb::Index> idx);
-
-  arangodb::Result fillIndexes(
-    transaction::Methods& trx,
-    std::shared_ptr<arangodb::Index> indexes
-  );
 
   // @brief return the primary index
   // WARNING: Make sure that this instance

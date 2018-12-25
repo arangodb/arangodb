@@ -93,7 +93,7 @@ class IRESEARCH_API filter {
     static prepared::ptr empty();
 
     prepared() = default;
-    explicit prepared(attribute_store&& attrs);
+    explicit prepared(attribute_store&& attrs) NOEXCEPT;
     virtual ~prepared();
 
     using util::attribute_store_provider::attributes;

@@ -499,7 +499,7 @@ Result LogicalCollection::rename(std::string&& newName) {
     TRI_ASSERT(engine != nullptr);
 
     name(std::move(newName));
-    engine->changeCollection(vocbase(), id(), *this, doSync);
+    engine->changeCollection(vocbase(), *this, doSync);
   } catch (basics::Exception const& ex) {
     // Engine Rename somehow failed. Reset to old name
     name(std::move(oldName));
@@ -590,10 +590,10 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
   getIndexesVPack(result, Index::makeFlags(), [](arangodb::Index const* idx) {
     // we have to exclude the primary and the edge index here, because otherwise
     // at least the MMFiles engine will try to create it
-    // AND exclude arangosearch indexes
+    // AND exclude hidden indexes
     return (idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
             idx->type() != arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX &&
-            idx->type() != arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK);
+            !idx->isHidden());
   });
   result.add("planVersion", VPackValue(planVersion()));
   result.add("isReady", VPackValue(isReady));
@@ -642,10 +642,14 @@ arangodb::Result LogicalCollection::appendVelocyPack(
   // Indexes
   result.add(VPackValue("indexes"));
   auto flags = Index::makeFlags();
+  // FIXME simon: hide links here, but increase chance of ASAN errors
+ /* auto filter = [&](arangodb::Index const* idx) { // hide hidden indexes
+    return (forPersistence || !idx->isHidden());
+  };*/
   if (forPersistence) {
-    flags = Index::makeFlags(Index::Serialize::ObjectId);
+    flags = Index::makeFlags(Index::Serialize::Internals);
   }
-  getIndexesVPack(result, flags);
+  getIndexesVPack(result, flags/*, filter*/);
 
   // Cluster Specific
   result.add(StaticStrings::IsSmart, VPackValue(_isSmart));
@@ -681,6 +685,9 @@ VPackBuilder LogicalCollection::toVelocyPackIgnore(
   full.openObject();
     properties(full, translateCids, forPersistence);
   full.close();
+  if (ignoreKeys.empty()) {
+    return full;
+  }
   return VPackCollection::remove(full.slice(), ignoreKeys);
 }
 
@@ -795,7 +802,7 @@ arangodb::Result LogicalCollection::properties(
     );
   }
 
-  engine->changeCollection(vocbase(), id(), *this, doSync);
+  engine->changeCollection(vocbase(), *this, doSync);
 
   if (DatabaseFeature::DATABASE != nullptr &&
       DatabaseFeature::DATABASE->versionTracker() != nullptr) {
@@ -871,7 +878,7 @@ void LogicalCollection::persistPhysicalCollection() {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  auto path = engine->createCollection(vocbase(), id(), *this);
+  auto path = engine->createCollection(vocbase(), *this);
 
   getPhysical()->setPath(path);
 }

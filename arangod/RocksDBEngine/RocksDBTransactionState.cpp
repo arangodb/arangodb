@@ -213,8 +213,8 @@ void RocksDBTransactionState::createTransaction() {
              _rocksTransaction->GetState() == rocksdb::Transaction::COMMITED ||
              (_rocksTransaction->GetState() == rocksdb::Transaction::STARTED &&
              _rocksTransaction->GetNumKeys() == 0));
-  _rocksTransaction =
-      db->BeginTransaction(_rocksWriteOptions, trxOpts, _rocksTransaction);
+  rocksdb::WriteOptions wo;
+  _rocksTransaction = db->BeginTransaction(wo, trxOpts, _rocksTransaction);
 
   // add transaction begin marker
   if (!hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
@@ -258,7 +258,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
   }
 
   Result result;
-  if (hasOperations()) {
+  if (hasOperations()) { // might not have ops for fillIndex
     // we are actually going to attempt a commit
     if (!hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
       // add custom commit marker to increase WAL tailing reliability
@@ -313,8 +313,9 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     // we do this only for Windows here, because all other platforms use the
     // RocksDB SyncThread to do the syncing
     if (waitForSync()) {
-      _rocksWriteOptions.sync = true;
-      _rocksTransaction->SetWriteOptions(_rocksWriteOptions);
+      rocksdb::WriteOptions wo;
+      wo.sync = true;
+      _rocksTransaction->SetWriteOptions(wo);
     }
 #endif
 
@@ -327,7 +328,8 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     
     if (result.ok()) {
       TRI_ASSERT(numOps > 0); // simon: should hold unless we're being stupid
-      rocksdb::SequenceNumber postCommitSeq = _rocksTransaction->GetCommitedSeqNumber();
+      rocksdb::SequenceNumber postCommitSeq = _rocksTransaction->GetId();
+      TRI_ASSERT(postCommitSeq != 0);
       if (ADB_LIKELY(numOps > 0)) {
         postCommitSeq += numOps - 1; // add to get to the next batch
       }
@@ -367,15 +369,8 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     TRI_ASSERT(_rocksTransaction->GetNumKeys() == 0 &&
                _rocksTransaction->GetNumPuts() == 0 &&
                _rocksTransaction->GetNumDeletes() == 0);
-    
-    rocksdb::SequenceNumber seq = 0;
-    if (_rocksTransaction) {
-      seq = _rocksTransaction->GetSnapshot()->GetSequenceNumber();
-    } else {
-      TRI_ASSERT(_readSnapshot);
-      seq = _readSnapshot->GetSequenceNumber();
-    }
-
+    // this is most likely the fill index case
+    rocksdb::SequenceNumber seq = _rocksTransaction->GetSnapshot()->GetSequenceNumber();
     for (auto& trxColl : _collections) {
       TRI_IF_FAILURE("RocksDBCommitCounts") {
         continue;
@@ -408,7 +403,6 @@ Result RocksDBTransactionState::commitTransaction(transaction::Methods* activeTr
     if (_rocksTransaction != nullptr) {
       res = internalCommit();
     }
-
     if (res.ok()) {
       updateStatus(transaction::Status::COMMITTED);
       cleanupTransaction();  // deletes trx
@@ -573,11 +567,6 @@ Result RocksDBTransactionState::addOperation(
 
   // perform an intermediate commit if necessary
   return checkIntermediateCommit(currentSize, hasPerformedIntermediateCommit);
-}
-
-RocksDBMethods* RocksDBTransactionState::rocksdbMethods() {
-  TRI_ASSERT(_rocksMethods);
-  return _rocksMethods.get();
 }
 
 uint64_t RocksDBTransactionState::sequenceNumber() const {

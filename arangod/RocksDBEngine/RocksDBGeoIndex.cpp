@@ -154,7 +154,12 @@ class RDBNearIterator final : public IndexIterator {
         limit);
   }
 
-  void reset() override { _near.reset(); }
+  void reset() override {
+    _near.reset();
+    if (!_near.params().fullRange) {
+      estimateDensity();
+    }
+  }
 
  private:
   // we need to get intervals representing areas in a ring (annulus)
@@ -236,7 +241,6 @@ class RDBNearIterator final : public IndexIterator {
   geo_index::NearUtils<CMP> _near;
   std::unique_ptr<rocksdb::Iterator> _iter;
 };
-typedef RDBNearIterator<geo_index::DocumentsAscending> LegacyIterator;
 
 RocksDBGeoIndex::RocksDBGeoIndex(
     TRI_idx_iid_t iid,

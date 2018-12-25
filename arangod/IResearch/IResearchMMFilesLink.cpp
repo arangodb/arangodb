@@ -29,6 +29,8 @@
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "MMFiles/MMFilesCollection.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "VocBase/LogicalCollection.h"
 
 #include "IResearchMMFilesLink.h"
@@ -120,7 +122,7 @@ struct IResearchMMFilesLink::IndexFactory: public arangodb::IndexTypeFactory {
 IResearchMMFilesLink::IResearchMMFilesLink(
     TRI_idx_iid_t iid,
     arangodb::LogicalCollection& collection
-): Index(iid, collection, IResearchLinkHelper::emptyIndexSlice()),
+): MMFilesIndex(iid, collection, IResearchLinkHelper::emptyIndexSlice()),
    IResearchLink(iid, collection) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   _unique = false; // cannot be unique since multiple fields are indexed
@@ -164,6 +166,20 @@ void IResearchMMFilesLink::toVelocyPack(
 
   builder.close();
 }
+
+bool IResearchMMFilesLink::isPersistent() const {
+  auto* engine = arangodb::EngineSelectorFeature::ENGINE;
+  
+  // FIXME TODO remove once MMFilesEngine will fillIndex(...) during recovery
+  // currently the index is created but fill is deffered untill the end of recovery
+  // at the end of recovery only non-persistent indexes are filled
+  if (engine && engine->inRecovery()) {
+    return false;
+  }
+  
+  return true; // records persisted into the iResearch view
+}
+
 
 NS_END // iresearch
 NS_END // arangodb

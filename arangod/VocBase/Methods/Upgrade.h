@@ -58,7 +58,7 @@ struct Upgrade {
     DATABASE_EXISTING = (1u << 5),
     // =============
     CLUSTER_NONE = (1u << 6),
-    CLUSTER_LOCAL = (1u << 7),
+    CLUSTER_LOCAL = (1u << 7), // agency
     CLUSTER_COORDINATOR_GLOBAL = (1u << 8),
     CLUSTER_DB_SERVER_LOCAL = (1u << 9)
   };

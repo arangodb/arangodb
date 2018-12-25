@@ -261,17 +261,21 @@ struct IResearchView::ViewFactory: public arangodb::ViewFactory {
     );
     IResearchViewMetaState metaState;
 
-    if (!impl->_meta.init(definition, error)
-        || impl->_meta._version == 0 // version 0 must be upgraded to split data-store on a per-link basis
-        || impl->_meta._version > LATEST_VERSION
-        || (ServerState::instance()->isSingleServer() // init metaState for SingleServer
-            && !metaState.init(definition, error))) {
-      return arangodb::Result(
-        TRI_ERROR_BAD_PARAMETER,
-        error.empty()
-        ? (std::string("failed to initialize arangosearch View '") + impl->name() + "' from definition: " + definition.toString())
-        : (std::string("failed to initialize arangosearch View '") + impl->name() + "' from definition, error in attribute '" + error + "': " + definition.toString())
-      );
+    {
+      WriteMutex mutex(impl->_mutex);
+      SCOPED_LOCK(mutex);
+      if (!impl->_meta.init(definition, error)
+          || impl->_meta._version == 0 // version 0 must be upgraded to split data-store on a per-link basis
+          || impl->_meta._version > LATEST_VERSION
+          || (ServerState::instance()->isSingleServer() // init metaState for SingleServer
+              && !metaState.init(definition, error))) {
+        return arangodb::Result(
+          TRI_ERROR_BAD_PARAMETER,
+          error.empty()
+          ? (std::string("failed to initialize arangosearch View '") + impl->name() + "' from definition: " + definition.toString())
+          : (std::string("failed to initialize arangosearch View '") + impl->name() + "' from definition, error in attribute '" + error + "': " + definition.toString())
+        );
+      }
     }
 
     // NOTE: for single-server must have full list of collections to lock
@@ -553,7 +557,7 @@ arangodb::Result IResearchView::appendVelocyPackImpl(
     arangodb::velocypack::ObjectBuilder linksBuilderWrapper(&linksBuilder);
 
     for (auto& collectionName: state->collectionNames()) {
-      for (auto& index: trx.indexesForCollection(collectionName)) {
+      for (auto& index: trx.indexesForCollection(collectionName, /*withHidden*/true)) {
         if (index && arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()) {
           // TODO FIXME find a better way to retrieve an IResearch Link
           // cannot use static_cast/reinterpret_cast since Index is not related to IResearchLink
@@ -758,11 +762,9 @@ bool IResearchView::link(AsyncLinkPtr const& link) {
   SCOPED_LOCK(mutex);
   auto itr = _links.find(cid);
 
-  irs::index_writer::options options;
-  options.segment_count_max = _meta._writebufferActive;
-  options.segment_memory_max = _meta._writebufferSizeMax;
-  options.segment_pool_size = _meta._writebufferIdle;
-  irs::index_writer::segment_limits properties(options);
+  irs::index_writer::segment_options properties;
+  properties.segment_count_max = _meta._writebufferActive;
+  properties.segment_memory_max = _meta._writebufferSizeMax;
 
   if (itr == _links.end()) {
     _links.emplace(cid, link);
@@ -927,7 +929,9 @@ arangodb::Result IResearchView::properties(
     return res;
   }
 
+#if USE_PLAN_CACHE
   arangodb::aql::PlanCache::instance()->invalidate(&vocbase());
+#endif
   arangodb::aql::QueryCache::instance()->invalidate(&vocbase());
 
   return arangodb::ServerState::instance()->isSingleServer()

@@ -164,6 +164,14 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   auto plan = clusterInfo->getPlan();
   auto serverId = arangodb::ServerState::instance()->getId();
 
+  if (plan == nullptr) {
+    // TODO increase log level, except during shutdown?
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+        << "DBServerAgencySync::execute no plan";
+    result.errorMessage = "DBServerAgencySync::execute no plan";
+    return result;
+  }
+
   VPackBuilder local;
   Result glc = getLocalCollections(local);
   if (!glc.ok()) {
@@ -200,6 +208,13 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     }
 
     auto current = clusterInfo->getCurrent();
+    if (current == nullptr) {
+      // TODO increase log level, except during shutdown?
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+          << "DBServerAgencySync::execute no current";
+      result.errorMessage = "DBServerAgencySync::execute no current";
+      return result;
+    }
     LOG_TOPIC(TRACE, Logger::MAINTENANCE) << "DBServerAgencySync::phaseTwo - current state: " << current->toJson();
 
     tmp = arangodb::maintenance::phaseTwo(

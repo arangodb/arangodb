@@ -49,14 +49,17 @@ class ClusterIndex : public Index {
   /// @brief return a VelocyPack representation of the index
   void toVelocyPack(velocypack::Builder& builder,
                     std::underlying_type<Index::Serialize>::type) const override;
+  
+  /// @brief if true this index should not be shown externally
+  bool isHidden() const override {
+    return false; // do not generally hide indexes
+  }
 
   IndexType type() const override { return _indexType; }
 
   char const* typeName() const override {
     return Index::oldtypeName(_indexType);
   }
-
-  bool isPersistent() const override;
 
   bool canBeDropped() const override {
     return _indexType != Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
@@ -135,11 +138,16 @@ class ClusterIndex : public Index {
 
   void updateProperties(velocypack::Slice const&);
 
+  std::vector<std::vector<arangodb::basics::AttributeName>> const& coveredFields() const override;
+
  protected:
   ClusterEngineType _engineType;
   Index::IndexType _indexType;
   velocypack::Builder _info;
   double _clusterSelectivity;
+  
+  // Only used in RocksDB edge index.
+  std::vector<std::vector<arangodb::basics::AttributeName>> _coveredFields;
 };
 }  // namespace arangodb
 

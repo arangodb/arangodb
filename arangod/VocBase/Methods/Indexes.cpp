@@ -83,7 +83,7 @@ Result Indexes::getIndex(LogicalCollection const* collection,
 
 
   VPackBuilder tmp;
-  Result res = Indexes::getAll(collection, Index::makeFlags(), false, tmp);
+  Result res = Indexes::getAll(collection, Index::makeFlags(), /*withHidden*/true, tmp);
   if (res.ok()) {
     for (VPackSlice const& index : VPackArrayIterator(tmp.slice())) {
       if (index.get("id").compareString(name) == 0) {
@@ -98,7 +98,7 @@ Result Indexes::getIndex(LogicalCollection const* collection,
 /// @brief get all indexes, skips view links
 arangodb::Result Indexes::getAll(LogicalCollection const* collection,
                                  std::underlying_type<Index::Serialize>::type flags,
-                                 bool withLinks,
+                                 bool withHidden,
                                  VPackBuilder& result) {
   VPackBuilder tmp;
   if (ServerState::instance()->isCoordinator()) {
@@ -119,13 +119,9 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
 
     VPackBuilder tmpInner;
     auto c = ClusterInfo::instance()->getCollection(databaseName, cid);
-#ifdef USE_IRESEARCH
-    c->getIndexesVPack(tmpInner, flags, [withLinks](arangodb::Index const* idx) {
-      return withLinks || idx->type() != Index::TRI_IDX_TYPE_IRESEARCH_LINK;
+    c->getIndexesVPack(tmpInner, flags, [&](arangodb::Index const* idx) {
+      return withHidden || !idx->isHidden();
     });
-#else
-    c->getIndexesVPack(tmpInner, flags);
-#endif
 
     tmp.openArray();
     for (VPackSlice const& s : VPackArrayIterator(tmpInner.slice())) {
@@ -169,11 +165,9 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
 
     tmp.openArray(true);
     for (std::shared_ptr<arangodb::Index> const& idx : indexes) {
-#ifdef USE_IRESEARCH
-      if (!withLinks && idx->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
+      if (!withHidden && idx->isHidden()) {
         continue;
       }
-#endif
       idx->toVelocyPack(tmp, flags);
     }
     tmp.close();
@@ -197,7 +191,7 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
     );
 
     if (type.isString() && type.compareString("edge") == 0) {
-      VPackSlice fields = index.get("fields");
+      VPackSlice fields = index.get(StaticStrings::IndexFields);
       TRI_ASSERT(fields.isArray() && fields.length() <= 2);
 
       if (fields.length() == 1) {  // merge indexes
@@ -240,7 +234,7 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
         if (fields[0].compareString(StaticStrings::FromString) == 0) {
           continue;
         } else if (fields[0].compareString(StaticStrings::ToString) == 0) {
-          merge.add("fields", VPackValue(VPackValueType::Array));
+          merge.add(StaticStrings::IndexFields, VPackValue(VPackValueType::Array));
           merge.add(VPackValue(StaticStrings::FromString));
           merge.add(VPackValue(StaticStrings::ToString));
           merge.close();

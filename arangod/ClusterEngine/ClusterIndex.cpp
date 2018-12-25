@@ -64,6 +64,24 @@ ClusterIndex::ClusterIndex(
       _clusterSelectivity(/* default */0.1) {
   TRI_ASSERT(_info.slice().isObject());
   TRI_ASSERT(_info.isClosed());
+
+  // The Edge Index on RocksDB can serve _from and _to when beeing asked.
+  if (_engineType == ClusterEngineType::RocksDBEngine && _indexType == TRI_IDX_TYPE_EDGE_INDEX) {
+    std::string attr = "";
+    TRI_AttributeNamesToString(_fields[0], attr);
+    if (attr == StaticStrings::FromString) {
+      _coveredFields = {
+        {arangodb::basics::AttributeName{StaticStrings::FromString, false}},
+        {arangodb::basics::AttributeName{StaticStrings::ToString, false}}
+      };
+    } else {
+      TRI_ASSERT(attr == StaticStrings::ToString);
+      _coveredFields = {
+        {arangodb::basics::AttributeName{StaticStrings::ToString, false}},
+        {arangodb::basics::AttributeName{StaticStrings::FromString, false}}
+      };
+    }
+  }
 }
 
 ClusterIndex::~ClusterIndex() {}
@@ -133,19 +151,6 @@ double ClusterIndex::selectivityEstimate(StringRef const&) const {
 
 void ClusterIndex::updateClusterSelectivityEstimate(double estimate) {
   _clusterSelectivity = estimate;
-}
-
-bool ClusterIndex::isPersistent() const {
-  if (_engineType == ClusterEngineType::MMFilesEngine) {
-    return _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX;
-  } else if (_engineType == ClusterEngineType::RocksDBEngine) {
-    return true;
-  } else if (_engineType == ClusterEngineType::MockEngine) {
-    return false;
-  }
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                 "unsupported cluster storage engine");
 }
 
 bool ClusterIndex::isSorted() const {
@@ -390,4 +395,13 @@ aql::AstNode* ClusterIndex::specializeCondition(
   }
   TRI_ASSERT(false);
   return node;
+}
+
+
+std::vector<std::vector<arangodb::basics::AttributeName>> const& ClusterIndex::coveredFields() const {
+  if (_engineType == ClusterEngineType::RocksDBEngine && _indexType == TRI_IDX_TYPE_EDGE_INDEX) {
+    TRI_ASSERT(_coveredFields.size() == 2);
+    return _coveredFields;
+  }
+  return _fields;
 }

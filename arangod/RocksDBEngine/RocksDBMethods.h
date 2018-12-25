@@ -245,6 +245,40 @@ class RocksDBBatchedWithIndexMethods final : public RocksDBMethods {
   rocksdb::TransactionDB* _db;
   rocksdb::WriteBatchWithIndex* _wb;
 };
+  
+/// transaction wrapper, uses the provided rocksdb transaction
+class RocksDBSideTrxMethods final : public RocksDBMethods {
+public:
+  explicit RocksDBSideTrxMethods(RocksDBTransactionState* state,
+                                rocksdb::Transaction* trx);
+  
+  rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
+                      std::string* val) override;
+  rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
+                      rocksdb::PinnableSlice* val) override;
+  rocksdb::Status Put(
+                      rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
+                      rocksdb::Slice const& val) override;
+  rocksdb::Status Delete(rocksdb::ColumnFamilyHandle*,
+                         RocksDBKey const& key) override;
+  rocksdb::Status SingleDelete(rocksdb::ColumnFamilyHandle*,
+                               RocksDBKey const&) override;
+  
+  std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ReadOptions const&,
+                                                 rocksdb::ColumnFamilyHandle*) override {
+    return nullptr;
+  }
+  
+  void SetSavePoint() override {}
+  rocksdb::Status RollbackToSavePoint() override { return rocksdb::Status::OK(); }
+  void PopSavePoint() override {}
+  
+  bool DisableIndexing() override;
+  
+private:
+  rocksdb::Transaction* _trx;
+  rocksdb::ReadOptions _ro;
+};
 
 // INDEXING MAY ONLY BE DISABLED IN TOPLEVEL AQL TRANSACTIONS
 // THIS IS BECAUSE THESE TRANSACTIONS WILL EITHER READ FROM

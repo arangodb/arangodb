@@ -139,8 +139,9 @@ class IResearchLink {
     arangodb::Index::OperationMode mode
   ); // arangodb::Index override
 
-  bool isPersistent() const; // arangodb::Index override
   bool isSorted() const; // arangodb::Index override
+  
+  bool isHidden() const; // arangodb::Index override
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the identifier for this link
@@ -176,7 +177,7 @@ class IResearchLink {
   /// @brief update runtine data processing properties (not persisted)
   /// @return success
   //////////////////////////////////////////////////////////////////////////////
-  bool properties(irs::index_writer::segment_limits const& properties);
+  bool properties(irs::index_writer::segment_options const& properties);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove an ArangoDB document from an iResearch View

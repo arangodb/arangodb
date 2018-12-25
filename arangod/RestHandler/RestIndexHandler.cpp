@@ -93,10 +93,10 @@ RestStatus RestIndexHandler::getIndexes() {
     if (_request->parsedValue("withStats", false)) {
       flags = Index::makeFlags(Index::Serialize::Estimates, Index::Serialize::Figures);
     }
-    bool withLinks = _request->parsedValue("withLinks", false);
+    bool withHidden = _request->parsedValue("withHidden", false);
     
     VPackBuilder indexes;
-    Result res = methods::Indexes::getAll(coll.get(), flags, withLinks, indexes);
+    Result res = methods::Indexes::getAll(coll.get(), flags, withHidden, indexes);
     if (!res.ok()) {
       generateError(rest::ResponseCode::BAD, res.errorNumber(),
                     res.errorMessage());

@@ -105,6 +105,41 @@ bool PhysicalCollection::hasIndexOfType(arangodb::Index::IndexType type) const {
   return false;
 }
 
+/// @brief Find index by definition
+/*static*/ std::shared_ptr<Index> PhysicalCollection::findIndex(
+                                      VPackSlice const& info,
+                                      std::vector<std::shared_ptr<Index>> const& indexes) {
+  TRI_ASSERT(info.isObject());
+
+  auto value = info.get(arangodb::StaticStrings::IndexType); // extract type
+
+  if (!value.isString()) {
+    // Compatibility with old v8-vocindex.
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "invalid index type definition");
+  }
+
+  VPackValueLength len;
+  const char* str = value.getStringUnchecked(len);
+  arangodb::Index::IndexType const type = arangodb::Index::type(str, len);
+  for (auto const& idx : indexes) {
+    if (idx->type() == type) {
+      // Only check relevant indexes
+      if (idx->matchesDefinition(info)) {
+        // We found an index for this definition.
+        return idx;
+      }
+    }
+  }
+  return nullptr;
+}
+  
+/// @brief Find index by definition
+std::shared_ptr<Index> PhysicalCollection::lookupIndex(VPackSlice const& info) const {
+  READ_LOCKER(guard, _indexesLock);
+  return findIndex(info, _indexes);
+}
+
 std::shared_ptr<Index> PhysicalCollection::lookupIndex(
     TRI_idx_iid_t idxId) const {
   READ_LOCKER(guard, _indexesLock);
