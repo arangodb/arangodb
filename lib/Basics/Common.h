@@ -32,8 +32,10 @@
 
 // debug malloc for Windows (only used when DEBUG is set)
 #define _CRTDBG_MAP_ALLOC
+// clang-format off
 #include <stdlib.h>
 #include <crtdbg.h>
+// clang-format on
 
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -42,8 +44,10 @@
 #endif
 
 #define TRI_WITHIN_COMMON 1
+// clang-format off
 #include "Basics/operating-system.h"
 #include "Basics/application-exit.h"
+// clang-format on
 #undef TRI_WITHIN_COMMON
 
 #include <assert.h>
@@ -168,6 +172,7 @@ typedef long suseconds_t;
 #include <vector>
 
 #define TRI_WITHIN_COMMON 1
+// clang-format off
 #include "Basics/voc-errors.h"
 #include "Basics/error.h"
 #include "Basics/debugging.h"
@@ -176,6 +181,7 @@ typedef long suseconds_t;
 #include "Basics/system-compiler.h"
 #include "Basics/system-functions.h"
 #include "Basics/ScopeGuard.h"
+// clang-format on
 #undef TRI_WITHIN_COMMON
 
 #ifdef _WIN32
