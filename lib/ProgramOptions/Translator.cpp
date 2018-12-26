@@ -103,9 +103,9 @@ std::string arangodb::options::EnvironmentTranslator(std::string const& value,
                   vv.pop_back();
                 }
               }
-            } else 
+            } else
 #endif
-            if (TRI_EqualString(k.c_str(), "PID")) {
+                if (TRI_EqualString(k.c_str(), "PID")) {
               vv = std::to_string(Thread::currentProcessId());
             }
           } else {

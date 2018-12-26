@@ -37,14 +37,14 @@ SimpleAttributeEqualityMatcher::SimpleAttributeEqualityMatcher(
 
 /// @brief match a single of the attributes
 /// this is used for the primary index and the edge index
-bool SimpleAttributeEqualityMatcher::matchOne(
-    arangodb::Index const* index, arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, size_t itemsInIndex,
-    size_t& estimatedItems, double& estimatedCost) {
-    
+bool SimpleAttributeEqualityMatcher::matchOne(arangodb::Index const* index,
+                                              arangodb::aql::AstNode const* node,
+                                              arangodb::aql::Variable const* reference,
+                                              size_t itemsInIndex, size_t& estimatedItems,
+                                              double& estimatedCost) {
   std::unordered_set<std::string> nonNullAttributes;
   _found.clear();
-  
+
   size_t const n = node->numMembers();
 
   for (size_t i = 0; i < n; ++i) {
@@ -60,10 +60,11 @@ bool SimpleAttributeEqualityMatcher::matchOne(
       } else if (accessFitsIndex(index, op->getMember(1), op->getMember(0), op,
                                  reference, nonNullAttributes, false)) {
         which = 1;
-      } 
+      }
       if (which >= 0) {
         // we can use the index
-        calculateIndexCosts(index, op->getMember(which), itemsInIndex, estimatedItems, estimatedCost);
+        calculateIndexCosts(index, op->getMember(which), itemsInIndex,
+                            estimatedItems, estimatedCost);
         return true;
       }
     } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
@@ -77,8 +78,8 @@ bool SimpleAttributeEqualityMatcher::matchOne(
         if (!index->unique() && !index->implicitlyUnique()) {
           auto m = op->getMember(1);
           if (m->isArray() && m->numMembers() > 1) {
-            // attr IN [ a, b, c ]  =>  this will produce multiple items, so count
-            // them!
+            // attr IN [ a, b, c ]  =>  this will produce multiple items, so
+            // count them!
             values = m->numMembers();
           }
         }
@@ -97,13 +98,14 @@ bool SimpleAttributeEqualityMatcher::matchOne(
 
 /// @brief match all of the attributes, in any order
 /// this is used for the hash index
-bool SimpleAttributeEqualityMatcher::matchAll(
-    arangodb::Index const* index, arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, size_t itemsInIndex,
-    size_t& estimatedItems, double& estimatedCost) {
+bool SimpleAttributeEqualityMatcher::matchAll(arangodb::Index const* index,
+                                              arangodb::aql::AstNode const* node,
+                                              arangodb::aql::Variable const* reference,
+                                              size_t itemsInIndex, size_t& estimatedItems,
+                                              double& estimatedCost) {
   std::unordered_set<std::string> nonNullAttributes;
   size_t values = 1;
-  
+
   _found.clear();
 
   size_t const n = node->numMembers();
@@ -128,8 +130,8 @@ bool SimpleAttributeEqualityMatcher::matchAll(
           auto m = op->getMember(1);
 
           if (m->isArray() && m->numMembers() > 1) {
-            // attr IN [ a, b, c ]  =>  this will produce multiple items, so count
-            // them!
+            // attr IN [ a, b, c ]  =>  this will produce multiple items, so
+            // count them!
             values *= m->numMembers();
           }
         }
@@ -167,7 +169,6 @@ bool SimpleAttributeEqualityMatcher::matchAll(
 arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne(
     arangodb::Index const* index, arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) {
-  
   std::unordered_set<std::string> nonNullAttributes;
   _found.clear();
 
@@ -219,7 +220,6 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne(
 arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeAll(
     arangodb::Index const* index, arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) {
-  
   std::unordered_set<std::string> nonNullAttributes;
   _found.clear();
 
@@ -286,8 +286,7 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeAll(
 /// comparable, and lower values mean lower costs
 void SimpleAttributeEqualityMatcher::calculateIndexCosts(
     arangodb::Index const* index, arangodb::aql::AstNode const* attribute,
-    size_t itemsInIndex, size_t& estimatedItems,
-    double& estimatedCost) const {
+    size_t itemsInIndex, size_t& estimatedItems, double& estimatedCost) const {
   // note: attribute will be set to the index attribute for single-attribute
   // indexes such as the primary and edge indexes, and is a nullptr for the
   // other indexes
@@ -326,8 +325,7 @@ void SimpleAttributeEqualityMatcher::calculateIndexCosts(
     estimatedItems = (std::max)(estimatedItems, static_cast<size_t>(1));
     // the more attributes are covered by an index, the more accurate it
     // is considered to be
-    estimatedCost =
-        static_cast<double>(estimatedItems) - index->fields().size() * 0.01;
+    estimatedCost = static_cast<double>(estimatedItems) - index->fields().size() * 0.01;
   } else {
     // no such index should exist
     TRI_ASSERT(false);
@@ -338,25 +336,21 @@ void SimpleAttributeEqualityMatcher::calculateIndexCosts(
 bool SimpleAttributeEqualityMatcher::accessFitsIndex(
     arangodb::Index const* index, arangodb::aql::AstNode const* access,
     arangodb::aql::AstNode const* other, arangodb::aql::AstNode const* op,
-    arangodb::aql::Variable const* reference, 
-    std::unordered_set<std::string>& nonNullAttributes,
-    bool isExecution) {
+    arangodb::aql::Variable const* reference,
+    std::unordered_set<std::string>& nonNullAttributes, bool isExecution) {
   if (!index->canUseConditionPart(access, other, op, reference, nonNullAttributes, isExecution)) {
     return false;
   }
 
   arangodb::aql::AstNode const* what = access;
-  std::pair<arangodb::aql::Variable const*,
-            std::vector<arangodb::basics::AttributeName>> attributeData;
+  std::pair<arangodb::aql::Variable const*, std::vector<arangodb::basics::AttributeName>> attributeData;
 
   if (op->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
-    if (!what->isAttributeAccessForVariable(attributeData) ||
-        attributeData.first != reference) {
+    if (!what->isAttributeAccessForVariable(attributeData) || attributeData.first != reference) {
       // this access is not referencing this collection
       return false;
     }
-    if (arangodb::basics::TRI_AttributeNamesHaveExpansion(
-            attributeData.second)) {
+    if (arangodb::basics::TRI_AttributeNamesHaveExpansion(attributeData.second)) {
       // doc.value[*] == 'value'
       return false;
     }
@@ -370,18 +364,15 @@ bool SimpleAttributeEqualityMatcher::accessFitsIndex(
     TRI_ASSERT(op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN);
     bool canUse = false;
 
-    if (what->isAttributeAccessForVariable(attributeData) &&
-        attributeData.first == reference &&
-        !arangodb::basics::TRI_AttributeNamesHaveExpansion(
-            attributeData.second)) {
+    if (what->isAttributeAccessForVariable(attributeData) && attributeData.first == reference &&
+        !arangodb::basics::TRI_AttributeNamesHaveExpansion(attributeData.second)) {
       // doc.value IN 'value'
       // can use this index
       canUse = true;
     } else {
       // check for  'value' IN doc.value  AND  'value' IN doc.value[*]
       what = other;
-      if (what->isAttributeAccessForVariable(attributeData) &&
-          attributeData.first == reference &&
+      if (what->isAttributeAccessForVariable(attributeData) && attributeData.first == reference &&
           index->isAttributeExpanded(attributeData.second) &&
           index->attributeMatches(attributeData.second)) {
         canUse = true;
@@ -393,16 +384,14 @@ bool SimpleAttributeEqualityMatcher::accessFitsIndex(
     }
   }
 
-  std::vector<arangodb::basics::AttributeName> const& fieldNames =
-      attributeData.second;
+  std::vector<arangodb::basics::AttributeName> const& fieldNames = attributeData.second;
 
   for (size_t i = 0; i < _attributes.size(); ++i) {
     if (_attributes[i].size() != fieldNames.size()) {
       // attribute path length differs
       continue;
     }
-    if (index->isAttributeExpanded(i) &&
-        op->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+    if (index->isAttributeExpanded(i) && op->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
       // If this attribute is correct or not, it could only serve for IN
       continue;
     }

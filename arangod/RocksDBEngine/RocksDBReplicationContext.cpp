@@ -30,8 +30,8 @@
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBIterators.h"
-#include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/RocksDBTransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/UserTransaction.h"
@@ -47,7 +47,8 @@ using namespace arangodb;
 using namespace arangodb::rocksutils;
 using namespace arangodb::velocypack;
 
-RocksDBReplicationContext::RocksDBReplicationContext(TRI_vocbase_t* vocbase, double ttl, TRI_server_id_t serverId)
+RocksDBReplicationContext::RocksDBReplicationContext(TRI_vocbase_t* vocbase, double ttl,
+                                                     TRI_server_id_t serverId)
     : _vocbase(vocbase),
       _serverId(serverId),
       _id(TRI_NewTickServer()),
@@ -91,19 +92,17 @@ void RocksDBReplicationContext::bind(TRI_vocbase_t* vocbase) {
   }
 }
 
-int RocksDBReplicationContext::bindCollection(
-    std::string const& collectionName) {
-  if ((_collection == nullptr) ||
-      ((_collection->name() != collectionName) &&
-       std::to_string(_collection->cid()) != collectionName)) {
+int RocksDBReplicationContext::bindCollection(std::string const& collectionName) {
+  if ((_collection == nullptr) || ((_collection->name() != collectionName) &&
+                                   std::to_string(_collection->cid()) != collectionName)) {
     _collection = _trx->vocbase()->lookupCollection(collectionName);
     if (_collection == nullptr) {
       return TRI_ERROR_BAD_PARAMETER;
     }
-    
+
     // we are getting into trouble during the dumping of "_users"
     // this workaround avoids the auth check in addCollectionAtRuntime
-    ExecContext *old = ExecContext::CURRENT;
+    ExecContext* old = ExecContext::CURRENT;
     if (old != nullptr && old->systemAuthLevel() == AuthLevel::RW) {
       ExecContext::CURRENT = nullptr;
     }
@@ -120,29 +119,27 @@ int RocksDBReplicationContext::bindCollection(
 }
 
 // returns inventory
-std::pair<RocksDBReplicationResult, std::shared_ptr<VPackBuilder>>
-RocksDBReplicationContext::getInventory(TRI_vocbase_t* vocbase,
-                                        bool includeSystem) {
+std::pair<RocksDBReplicationResult, std::shared_ptr<VPackBuilder>> RocksDBReplicationContext::getInventory(
+    TRI_vocbase_t* vocbase, bool includeSystem) {
   TRI_ASSERT(vocbase != nullptr);
   if (_trx.get() == nullptr) {
-    return std::make_pair(
-        RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick),
-        std::shared_ptr<VPackBuilder>(nullptr));
+    return std::make_pair(RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick),
+                          std::shared_ptr<VPackBuilder>(nullptr));
   }
 
   auto tick = TRI_CurrentTickServer();
-  std::shared_ptr<VPackBuilder> inventory = vocbase->inventory(
-      tick, filterCollection, &includeSystem, true, sortCollections);
+  std::shared_ptr<VPackBuilder> inventory =
+      vocbase->inventory(tick, filterCollection, &includeSystem, true, sortCollections);
 
-  return std::make_pair(RocksDBReplicationResult(TRI_ERROR_NO_ERROR, _lastTick),
-                        inventory);
+  return std::make_pair(RocksDBReplicationResult(TRI_ERROR_NO_ERROR, _lastTick), inventory);
 }
 
 // iterates over at most 'limit' documents in the collection specified,
 // creating a new iterator if one does not exist for this collection
-RocksDBReplicationResult RocksDBReplicationContext::dump(
-    TRI_vocbase_t* vocbase, std::string const& collectionName,
-    basics::StringBuffer& buff, uint64_t chunkSize, bool compat28) {
+RocksDBReplicationResult RocksDBReplicationContext::dump(TRI_vocbase_t* vocbase,
+                                                         std::string const& collectionName,
+                                                         basics::StringBuffer& buff,
+                                                         uint64_t chunkSize, bool compat28) {
   TRI_ASSERT(vocbase != nullptr);
   if (_trx.get() == nullptr || !_trx->state()->isRunning()) {
     return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick);
@@ -152,7 +149,9 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
     return RocksDBReplicationResult(res, _lastTick);
   }
   if (!_iter) {
-    return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, "the replication context iterator has not been initialized", _lastTick);
+    return RocksDBReplicationResult(
+        TRI_ERROR_BAD_PARAMETER,
+        "the replication context iterator has not been initialized", _lastTick);
   }
 
   // set type
@@ -190,9 +189,8 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
     }
     builder.close();
 
-    VPackDumper dumper(
-        &adapter,
-        &_vpackOptions);  // note: we need the CustomTypeHandler here
+    VPackDumper dumper(&adapter,
+                       &_vpackOptions);  // note: we need the CustomTypeHandler here
     VPackSlice slice = builder.slice();
     dumper.dump(slice);
     buff.appendChar('\n');
@@ -217,13 +215,14 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
   return RocksDBReplicationResult(TRI_ERROR_NO_ERROR, _currentTick);
 }
 
-arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
-                                                          uint64_t chunkSize) {
+arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b, uint64_t chunkSize) {
   Result rv;
 
   TRI_ASSERT(_trx);
-  if(!_iter){
-    return rv.reset(TRI_ERROR_BAD_PARAMETER, "the replication context iterator has not been initialized");
+  if (!_iter) {
+    return rv.reset(
+        TRI_ERROR_BAD_PARAMETER,
+        "the replication context iterator has not been initialized");
   }
 
   std::string lowKey;
@@ -263,8 +262,8 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
       b.add("high", VPackValue(highKey.copyString()));
       b.add("hash", VPackValue(std::to_string(hash)));
       b.close();
-      lowKey.clear();  // reset string
-      hash = 0x012345678;   // the next block ought to start with a clean sheet
+      lowKey.clear();      // reset string
+      hash = 0x012345678;  // the next block ought to start with a clean sheet
     } catch (std::exception const&) {
       return rv.reset(TRI_ERROR_INTERNAL);
     }
@@ -279,15 +278,17 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
 }
 
 /// dump all keys from collection
-arangodb::Result RocksDBReplicationContext::dumpKeys(
-    VPackBuilder& b, size_t chunk, size_t chunkSize,
-    std::string const& lowKey) {
+arangodb::Result RocksDBReplicationContext::dumpKeys(VPackBuilder& b, size_t chunk,
+                                                     size_t chunkSize,
+                                                     std::string const& lowKey) {
   TRI_ASSERT(_trx);
 
   Result rv;
 
-  if(!_iter){
-    return rv.reset(TRI_ERROR_BAD_PARAMETER, "the replication context iterator has not been initialized");
+  if (!_iter) {
+    return rv.reset(
+        TRI_ERROR_BAD_PARAMETER,
+        "the replication context iterator has not been initialized");
   }
 
   RocksDBSortedAllIterator* primary =
@@ -295,7 +296,9 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
 
   // Position the iterator correctly
   if (chunk != 0 && ((std::numeric_limits<std::size_t>::max() / chunk) < chunkSize)) {
-    return rv.reset(TRI_ERROR_BAD_PARAMETER, "It seems that your chunk / chunkSize combination is not valid - overflow");
+    return rv.reset(TRI_ERROR_BAD_PARAMETER,
+                    "It seems that your chunk / chunkSize combination is not "
+                    "valid - overflow");
   }
 
   size_t from = chunk * chunkSize;
@@ -318,9 +321,11 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
         _lastIteratorOffset += to;
       }
 
-      //TRI_ASSERT(_lastIteratorOffset == from);
-      if(_lastIteratorOffset != from){
-        return rv.reset(TRI_ERROR_BAD_PARAMETER, "The parameters you provided lead to an invalid iterator offset.");
+      // TRI_ASSERT(_lastIteratorOffset == from);
+      if (_lastIteratorOffset != from) {
+        return rv.reset(
+            TRI_ERROR_BAD_PARAMETER,
+            "The parameters you provided lead to an invalid iterator offset.");
       }
     }
   }
@@ -348,15 +353,18 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
 }
 
 /// dump keys and document
-arangodb::Result RocksDBReplicationContext::dumpDocuments(
-    VPackBuilder& b, size_t chunk, size_t chunkSize, std::string const& lowKey,
-    VPackSlice const& ids) {
+arangodb::Result RocksDBReplicationContext::dumpDocuments(VPackBuilder& b, size_t chunk,
+                                                          size_t chunkSize,
+                                                          std::string const& lowKey,
+                                                          VPackSlice const& ids) {
   Result rv;
 
   TRI_ASSERT(_trx);
 
-  if(!_iter){
-    return rv.reset(TRI_ERROR_BAD_PARAMETER, "the replication context iterator has not been initialized");
+  if (!_iter) {
+    return rv.reset(
+        TRI_ERROR_BAD_PARAMETER,
+        "the replication context iterator has not been initialized");
   }
 
   TRI_ASSERT(_iter);
@@ -366,7 +374,9 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
   // Position the iterator must be reset to the beginning
   // after calls to dumpKeys moved it forwards
   if (chunk != 0 && ((std::numeric_limits<std::size_t>::max() / chunk) < chunkSize)) {
-    return rv.reset(TRI_ERROR_BAD_PARAMETER, "It seems that your chunk / chunkSize combination is not valid - overflow");
+    return rv.reset(TRI_ERROR_BAD_PARAMETER,
+                    "It seems that your chunk / chunkSize combination is not "
+                    "valid - overflow");
   }
   size_t from = chunk * chunkSize;
 
@@ -388,8 +398,10 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
         TRI_ASSERT(to == diff);
       }
 
-      if(_lastIteratorOffset != from){
-        return rv.reset(TRI_ERROR_BAD_PARAMETER, "The parameters you provided lead to an invalid iterator offset.");
+      if (_lastIteratorOffset != from) {
+        return rv.reset(
+            TRI_ERROR_BAD_PARAMETER,
+            "The parameters you provided lead to an invalid iterator offset.");
       }
     }
   }
@@ -488,8 +500,7 @@ void RocksDBReplicationContext::releaseDumpingResources() {
   _guard.reset();
 }
 
-std::unique_ptr<transaction::Methods>
-RocksDBReplicationContext::createTransaction(TRI_vocbase_t* vocbase) {
+std::unique_ptr<transaction::Methods> RocksDBReplicationContext::createTransaction(TRI_vocbase_t* vocbase) {
   _guard.reset(new DatabaseGuard(vocbase));
 
   transaction::Options transactionOptions;
@@ -512,8 +523,8 @@ RocksDBReplicationContext::createTransaction(TRI_vocbase_t* vocbase) {
 }
 
 /// @brief filter a collection based on collection attributes
-bool RocksDBReplicationContext::filterCollection(
-    arangodb::LogicalCollection* collection, void* data) {
+bool RocksDBReplicationContext::filterCollection(arangodb::LogicalCollection* collection,
+                                                 void* data) {
   bool includeSystem = *((bool*)data);
 
   std::string const collectionName(collection->name());
@@ -532,9 +543,8 @@ bool RocksDBReplicationContext::filterCollection(
   return true;
 }
 
-bool RocksDBReplicationContext::sortCollections(
-    arangodb::LogicalCollection const* l,
-    arangodb::LogicalCollection const* r) {
+bool RocksDBReplicationContext::sortCollections(arangodb::LogicalCollection const* l,
+                                                arangodb::LogicalCollection const* r) {
   if (l->type() != r->type()) {
     return l->type() < r->type();
   }

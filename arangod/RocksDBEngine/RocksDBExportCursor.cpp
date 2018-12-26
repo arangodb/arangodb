@@ -45,10 +45,10 @@
 
 using namespace arangodb;
 
-RocksDBExportCursor::RocksDBExportCursor(
-    TRI_vocbase_t* vocbase, std::string const& name,
-    CollectionExport::Restrictions const& restrictions, CursorId id,
-    size_t limit, size_t batchSize, double ttl, bool hasCount)
+RocksDBExportCursor::RocksDBExportCursor(TRI_vocbase_t* vocbase, std::string const& name,
+                                         CollectionExport::Restrictions const& restrictions,
+                                         CursorId id, size_t limit,
+                                         size_t batchSize, double ttl, bool hasCount)
     : Cursor(id, batchSize, nullptr, ttl, hasCount),
       _vocbaseGuard(vocbase),
       _resolver(vocbase),
@@ -57,14 +57,13 @@ RocksDBExportCursor::RocksDBExportCursor(
       _mdr() {
   // prevent the collection from being unloaded while the export is ongoing
   // this may throw
-  _collectionGuard.reset(
-      new arangodb::CollectionGuard(vocbase, _name.c_str(), false));
+  _collectionGuard.reset(new arangodb::CollectionGuard(vocbase, _name.c_str(), false));
 
   _collection = _collectionGuard->collection();
 
-  _trx.reset(new SingleCollectionTransaction(
-      transaction::StandaloneContext::Create(_collection->vocbase()), _name,
-      AccessMode::Type::READ));
+  _trx.reset(new SingleCollectionTransaction(transaction::StandaloneContext::Create(
+                                                 _collection->vocbase()),
+                                             _name, AccessMode::Type::READ));
 
   // already locked by guard above
   _trx->addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
@@ -74,8 +73,7 @@ RocksDBExportCursor::RocksDBExportCursor(
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  auto rocksCollection =
-      static_cast<RocksDBCollection*>(_collection->getPhysical());
+  auto rocksCollection = static_cast<RocksDBCollection*>(_collection->getPhysical());
   _iter = rocksCollection->getAllIterator(_trx.get(), &_mdr, false);
 
   _size = _collection->numberDocuments(_trx.get());
@@ -138,16 +136,14 @@ void RocksDBExportCursor::dump(VPackBuilder& builder) {
       for (auto const& entry : VPackObjectIterator(slice)) {
         std::string key(entry.key.copyString());
 
-        if (!CollectionExport::IncludeAttribute(restrictionType,
-                                                _restrictions.fields, key)) {
+        if (!CollectionExport::IncludeAttribute(restrictionType, _restrictions.fields, key)) {
           // Ignore everything that should be excluded or not included
           continue;
         }
         // If we get here we need this entry in the final result
         if (entry.value.isCustom()) {
-          builder.add(key,
-                      VPackValue(builder.options->customTypeHandler->toString(
-                          entry.value, builder.options, slice)));
+          builder.add(key, VPackValue(builder.options->customTypeHandler->toString(
+                               entry.value, builder.options, slice)));
         } else {
           builder.add(key, entry.value);
         }

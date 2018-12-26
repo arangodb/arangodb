@@ -51,9 +51,8 @@ using namespace arangodb;
 /// @brief process the fields list and add them to the json
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ProcessIndexFields(VPackSlice const definition,
-                              VPackBuilder& builder, int numFields,
-                              bool create) {
+static int ProcessIndexFields(VPackSlice const definition, VPackBuilder& builder,
+                              int numFields, bool create) {
   TRI_ASSERT(builder.isOpenObject());
   std::unordered_set<StringRef> fields;
 
@@ -102,10 +101,8 @@ static int ProcessIndexFields(VPackSlice const definition,
 /// @brief process the unique flag and add it to the json
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ProcessIndexUniqueFlag(VPackSlice const definition,
-                                   VPackBuilder& builder) {
-  bool unique =
-      basics::VelocyPackHelper::getBooleanValue(definition, "unique", false);
+static void ProcessIndexUniqueFlag(VPackSlice const definition, VPackBuilder& builder) {
+  bool unique = basics::VelocyPackHelper::getBooleanValue(definition, "unique", false);
   builder.add("unique", VPackValue(unique));
 }
 
@@ -129,8 +126,7 @@ static void ProcessIndexSparseFlag(VPackSlice const definition,
 /// @brief process the deduplicate flag and add it to the json
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ProcessIndexDeduplicateFlag(VPackSlice const definition,
-                                        VPackBuilder& builder) {
+static void ProcessIndexDeduplicateFlag(VPackSlice const definition, VPackBuilder& builder) {
   bool dup = true;
   if (definition.hasKey("deduplicate")) {
     dup = basics::VelocyPackHelper::getBooleanValue(definition, "deduplicate", true);
@@ -173,7 +169,7 @@ static int EnhanceJsonIndexSkiplist(VPackSlice const definition,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int EnhanceJsonIndexPersistent(VPackSlice const definition,
-                                   VPackBuilder& builder, bool create) {
+                                      VPackBuilder& builder, bool create) {
   int res = ProcessIndexFields(definition, builder, 0, create);
   if (res == TRI_ERROR_NO_ERROR) {
     ProcessIndexSparseFlag(definition, builder, create);
@@ -187,11 +183,10 @@ static int EnhanceJsonIndexPersistent(VPackSlice const definition,
 /// @brief process the geojson flag and add it to the json
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ProcessIndexGeoJsonFlag(VPackSlice const definition,
-                                    VPackBuilder& builder) {
+static void ProcessIndexGeoJsonFlag(VPackSlice const definition, VPackBuilder& builder) {
   VPackSlice fieldsSlice = definition.get("fields");
   if (fieldsSlice.isArray() && fieldsSlice.length() == 1) {
-    // only add geoJson for indexes with a single field (with needs to be an array) 
+    // only add geoJson for indexes with a single field (with needs to be an array)
     bool geoJson =
         basics::VelocyPackHelper::getBooleanValue(definition, "geoJson", false);
     builder.add("geoJson", VPackValue(geoJson));
@@ -266,8 +261,8 @@ static int EnhanceJsonIndexFulltext(VPackSlice const definition,
 ////////////////////////////////////////////////////////////////////////////////
 
 int MMFilesIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
-    VPackBuilder& enhanced, bool create, bool isCoordinator) const {
-
+                                                VPackBuilder& enhanced, bool create,
+                                                bool isCoordinator) const {
   // extract index type
   Index::IndexType type = Index::TRI_IDX_TYPE_UNKNOWN;
   VPackSlice current = definition.get("type");
@@ -291,8 +286,7 @@ int MMFilesIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
   }
 
   if (create) {
-    if (type == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
-        type == Index::TRI_IDX_TYPE_EDGE_INDEX) {
+    if (type == Index::TRI_IDX_TYPE_PRIMARY_INDEX || type == Index::TRI_IDX_TYPE_EDGE_INDEX) {
       // creating these indexes yourself is forbidden
       return TRI_ERROR_FORBIDDEN;
     }
@@ -304,7 +298,7 @@ int MMFilesIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
   try {
     VPackObjectBuilder b(&enhanced);
     current = definition.get("id");
-    uint64_t id = 0; 
+    uint64_t id = 0;
     if (current.isNumber()) {
       id = current.getNumericValue<uint64_t>();
     } else if (current.isString()) {
@@ -314,7 +308,6 @@ int MMFilesIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
       enhanced.add("id", VPackValue(std::to_string(id)));
     }
 
-    
     enhanced.add("type", VPackValue(Index::oldtypeName(type)));
 
     switch (type) {
@@ -338,7 +331,7 @@ int MMFilesIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
       case Index::TRI_IDX_TYPE_SKIPLIST_INDEX:
         res = EnhanceJsonIndexSkiplist(definition, enhanced, create);
         break;
-      
+
       case Index::TRI_IDX_TYPE_PERSISTENT_INDEX:
         res = EnhanceJsonIndexPersistent(definition, enhanced, create);
         break;
@@ -346,13 +339,12 @@ int MMFilesIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
       case Index::TRI_IDX_TYPE_FULLTEXT_INDEX:
         res = EnhanceJsonIndexFulltext(definition, enhanced, create);
         break;
-      
-      case Index::TRI_IDX_TYPE_UNKNOWN: 
+
+      case Index::TRI_IDX_TYPE_UNKNOWN:
       default: {
         res = TRI_ERROR_BAD_PARAMETER;
         break;
       }
-
     }
   } catch (basics::Exception const& ex) {
     return ex.code();
@@ -370,8 +362,7 @@ int MMFilesIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
 // the index.
 // Is also save to use in cluster case.
 std::shared_ptr<Index> MMFilesIndexFactory::prepareIndexFromSlice(
-    VPackSlice info, bool generateKey, LogicalCollection* col,
-    bool isClusterConstructor) const {
+    VPackSlice info, bool generateKey, LogicalCollection* col, bool isClusterConstructor) const {
   if (!info.isObject()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
@@ -399,8 +390,7 @@ std::shared_ptr<Index> MMFilesIndexFactory::prepareIndexFromSlice(
   if (value.isString()) {
     iid = basics::StringUtils::uint64(value.copyString());
   } else if (value.isNumber()) {
-    iid =
-        basics::VelocyPackHelper::getNumericValue<TRI_idx_iid_t>(info, "id", 0);
+    iid = basics::VelocyPackHelper::getNumericValue<TRI_idx_iid_t>(info, "id", 0);
   } else if (!generateKey) {
     // In the restore case it is forbidden to NOT have id
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -453,8 +443,8 @@ std::shared_ptr<Index> MMFilesIndexFactory::prepareIndexFromSlice(
       newIdx.reset(new arangodb::MMFilesFulltextIndex(iid, col, info));
       break;
     }
-    
-    case arangodb::Index::TRI_IDX_TYPE_UNKNOWN: 
+
+    case arangodb::Index::TRI_IDX_TYPE_UNKNOWN:
     default: {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid index type");
     }
@@ -464,20 +454,18 @@ std::shared_ptr<Index> MMFilesIndexFactory::prepareIndexFromSlice(
   return newIdx;
 }
 
-void MMFilesIndexFactory::fillSystemIndexes(
-    arangodb::LogicalCollection* col,
-    std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const {
+void MMFilesIndexFactory::fillSystemIndexes(arangodb::LogicalCollection* col,
+                                            std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const {
   // create primary index
-  systemIndexes.emplace_back(
-      std::make_shared<arangodb::MMFilesPrimaryIndex>(col));
+  systemIndexes.emplace_back(std::make_shared<arangodb::MMFilesPrimaryIndex>(col));
 
   // create edges index
   if (col->type() == TRI_COL_TYPE_EDGE) {
-    systemIndexes.emplace_back(
-        std::make_shared<arangodb::MMFilesEdgeIndex>(1, col));
+    systemIndexes.emplace_back(std::make_shared<arangodb::MMFilesEdgeIndex>(1, col));
   }
 }
-  
+
 std::vector<std::string> MMFilesIndexFactory::supportedIndexes() const {
-  return std::vector<std::string>{ "primary", "edge", "hash", "skiplist", "persistent", "geo", "fulltext" };
+  return std::vector<std::string>{"primary",    "edge", "hash",    "skiplist",
+                                  "persistent", "geo",  "fulltext"};
 }

@@ -40,8 +40,7 @@ class MMFilesFulltextIndex final : public Index {
  public:
   MMFilesFulltextIndex() = delete;
 
-  MMFilesFulltextIndex(TRI_idx_iid_t, LogicalCollection*,
-                       arangodb::velocypack::Slice const&);
+  MMFilesFulltextIndex(TRI_idx_iid_t, LogicalCollection*, arangodb::velocypack::Slice const&);
 
   ~MMFilesFulltextIndex();
 
@@ -82,14 +81,13 @@ class MMFilesFulltextIndex final : public Index {
 
   TRI_fts_index_t* internals() { return _fulltextIndex; }
 
-  static TRI_voc_rid_t fromDocumentIdentifierToken(
-      DocumentIdentifierToken const& token);
-  static DocumentIdentifierToken toDocumentIdentifierToken(
-      TRI_voc_rid_t revisionId);
+  static TRI_voc_rid_t fromDocumentIdentifierToken(DocumentIdentifierToken const& token);
+  static DocumentIdentifierToken toDocumentIdentifierToken(TRI_voc_rid_t revisionId);
 
  private:
   std::set<std::string> wordlist(arangodb::velocypack::Slice const&);
-  void extractWords(std::set<std::string>& words, arangodb::velocypack::Slice value, int level) const;
+  void extractWords(std::set<std::string>& words,
+                    arangodb::velocypack::Slice value, int level) const;
 
  private:
   /// @brief the indexed attribute (path)
@@ -101,6 +99,6 @@ class MMFilesFulltextIndex final : public Index {
   /// @brief minimum word length
   int _minWordLength;
 };
-}
+}  // namespace arangodb
 
 #endif

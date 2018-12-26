@@ -37,6 +37,6 @@ class PageSizeFeature final : public application_features::ApplicationFeature {
  private:
   static size_t PageSize;
 };
-}
+}  // namespace arangodb
 
 #endif

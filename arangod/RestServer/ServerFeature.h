@@ -31,7 +31,7 @@ namespace arangodb {
 namespace rest {
 class RestHandlerFactory;
 class AsyncJobManager;
-}
+}  // namespace rest
 
 class FeatureCacheFeature;
 
@@ -59,11 +59,11 @@ class ServerFeature final : public application_features::ApplicationFeature {
   std::vector<std::string> const& scripts() const { return _scripts; }
   std::vector<std::string> const& unitTests() const { return _unitTests; }
   uint32_t const& vstMaxSize() const { return _vstMaxSize; }
-  
+
   bool isConsoleMode() const {
     return (_operationMode == OperationMode::MODE_CONSOLE);
   }
- 
+
  private:
   void waitForHeartbeat();
 
@@ -77,6 +77,6 @@ class ServerFeature final : public application_features::ApplicationFeature {
   OperationMode _operationMode;
   bool _isStopping = false;
 };
-}
+}  // namespace arangodb
 
 #endif

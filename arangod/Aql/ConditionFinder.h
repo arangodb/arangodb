@@ -35,8 +35,7 @@ namespace aql {
 class ConditionFinder : public WalkerWorker<ExecutionNode> {
  public:
   ConditionFinder(ExecutionPlan* plan,
-                  std::unordered_map<size_t, ExecutionNode*>* changes,
-                  bool* hasEmptyResult)
+                  std::unordered_map<size_t, ExecutionNode*>* changes, bool* hasEmptyResult)
       : _plan(plan),
         _variableDefinitions(),
         _filters(),
@@ -59,7 +58,7 @@ class ConditionFinder : public WalkerWorker<ExecutionNode> {
   std::unordered_map<size_t, ExecutionNode*>* _changes;
   bool* _hasEmptyResult;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

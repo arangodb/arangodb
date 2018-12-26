@@ -32,16 +32,18 @@ namespace arangodb {
 
 struct DocumentIdentifierToken {
  public:
-   // TODO Replace by Engine::InvalidToken
+  // TODO Replace by Engine::InvalidToken
   constexpr DocumentIdentifierToken() : _data(0) {}
-  
-  DocumentIdentifierToken(DocumentIdentifierToken const& other) noexcept : _data(other._data) {}
+
+  DocumentIdentifierToken(DocumentIdentifierToken const& other) noexcept
+      : _data(other._data) {}
   DocumentIdentifierToken& operator=(DocumentIdentifierToken const& other) noexcept {
     _data = other._data;
     return *this;
   }
-  
-  DocumentIdentifierToken(DocumentIdentifierToken&& other) noexcept : _data(other._data) {
+
+  DocumentIdentifierToken(DocumentIdentifierToken&& other) noexcept
+      : _data(other._data) {
     other._data = 0;
   }
 
@@ -52,13 +54,19 @@ struct DocumentIdentifierToken {
   }
 
   ~DocumentIdentifierToken() {}
-  
-  inline bool operator==(DocumentIdentifierToken const& other) const { return _data == other._data; }
+
+  inline bool operator==(DocumentIdentifierToken const& other) const {
+    return _data == other._data;
+  }
 
   inline bool operator==(uint64_t const& other) const { return _data == other; }
 
-  inline bool operator!=(DocumentIdentifierToken const& other) const { return !(operator==(other)); }
-  inline bool operator!=(uint64_t const& other) const { return !(operator==(other)); }
+  inline bool operator!=(DocumentIdentifierToken const& other) const {
+    return !(operator==(other));
+  }
+  inline bool operator!=(uint64_t const& other) const {
+    return !(operator==(other));
+  }
 
  protected:
   explicit DocumentIdentifierToken(uint64_t data) : _data(data) {}
@@ -66,7 +74,7 @@ struct DocumentIdentifierToken {
  public:
   uint64_t _data;
 };
-} // namespace arangodb
+}  // namespace arangodb
 
 namespace std {
 template <>
@@ -84,6 +92,6 @@ struct equal_to<arangodb::DocumentIdentifierToken> {
   }
 };
 
-}
+}  // namespace std
 
 #endif

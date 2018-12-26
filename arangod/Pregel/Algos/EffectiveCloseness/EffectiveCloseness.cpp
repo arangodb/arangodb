@@ -82,8 +82,8 @@ struct ECComputation : public VertexComputation<ECValue, int8_t, HLLCounter> {
   }
 };
 
-VertexComputation<ECValue, int8_t, HLLCounter>*
-EffectiveCloseness::createComputation(WorkerConfig const*) const {
+VertexComputation<ECValue, int8_t, HLLCounter>* EffectiveCloseness::createComputation(
+    WorkerConfig const*) const {
   return new ECComputation();
 }
 
@@ -94,8 +94,7 @@ struct ECGraphFormat : public GraphFormat<ECValue, int8_t> {
 
   size_t estimatedEdgeSize() const override { return 0; };
 
-  size_t copyVertexData(std::string const& documentId,
-                        arangodb::velocypack::Slice document,
+  size_t copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
                         ECValue* targetPtr, size_t maxSize) override {
     return sizeof(ECValue);
   }
@@ -110,8 +109,7 @@ struct ECGraphFormat : public GraphFormat<ECValue, int8_t> {
     size_t numVerticesReachable = 0;
     size_t sumLengths = 0;
     for (size_t i = 1; i < ptr->shortestPaths.size(); i++) {
-      uint32_t newlyReachable =
-          ptr->shortestPaths[i] - ptr->shortestPaths[i - 1];
+      uint32_t newlyReachable = ptr->shortestPaths[i] - ptr->shortestPaths[i - 1];
       sumLengths += i * newlyReachable;
       if (ptr->shortestPaths[i] > numVerticesReachable) {
         numVerticesReachable = ptr->shortestPaths[i];

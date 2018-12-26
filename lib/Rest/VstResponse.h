@@ -34,7 +34,7 @@ class RestBatchHandler;
 namespace rest {
 class VstCommTask;
 class GeneralCommTask;
-}
+}  // namespace rest
 
 using rest::VPackMessageNoOwnBuffer;
 
@@ -60,10 +60,9 @@ class VstResponse : public GeneralResponse {
  private:
   //_responseCode   - from Base
   //_headers        - from Base
-  std::shared_ptr<VPackBuffer<uint8_t>>
-      _header;  // generated form _headers when prepared for network
+  std::shared_ptr<VPackBuffer<uint8_t>> _header;  // generated form _headers when prepared for network
   uint64_t _messageId;
 };
-}
+}  // namespace arangodb
 
 #endif

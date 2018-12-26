@@ -28,7 +28,7 @@
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::aql;
-  
+
 void SingletonBlock::deleteInputVariables() {
   delete _inputRegisterValues;
   _inputRegisterValues = nullptr;
@@ -54,7 +54,7 @@ void SingletonBlock::buildWhitelist() {
 /// @brief initializeCursor, store a copy of the register values coming from
 /// above
 int SingletonBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
-  DEBUG_BEGIN_BLOCK();  
+  DEBUG_BEGIN_BLOCK();
   // Create a deep copy of the register values given to us:
   deleteInputVariables();
 
@@ -70,7 +70,7 @@ int SingletonBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   return TRI_ERROR_NO_ERROR;
 
   // cppcheck-suppress style
-  DEBUG_END_BLOCK();  
+  DEBUG_END_BLOCK();
 }
 
 /// @brief shutdown the singleton block
@@ -85,7 +85,7 @@ int SingletonBlock::shutdown(int errorCode) {
 int SingletonBlock::getOrSkipSome(size_t,  // atLeast,
                                   size_t atMost, bool skipping,
                                   AqlItemBlock*& result, size_t& skipped) {
-  DEBUG_BEGIN_BLOCK();  
+  DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(result == nullptr && skipped == 0);
 
   if (_done) {
@@ -93,16 +93,16 @@ int SingletonBlock::getOrSkipSome(size_t,  // atLeast,
   }
 
   if (!skipping) {
-    result = requestBlock(1, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]);
+    result =
+        requestBlock(1, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]);
 
     try {
       if (_inputRegisterValues != nullptr) {
         buildWhitelist();
-        TRI_ASSERT(_whitelistBuilt); 
+        TRI_ASSERT(_whitelistBuilt);
 
         skipped++;
-        for (RegisterId reg = 0; reg < _inputRegisterValues->getNrRegs();
-             ++reg) {
+        for (RegisterId reg = 0; reg < _inputRegisterValues->getNrRegs(); ++reg) {
           if (_whitelist.find(reg) == _whitelist.end()) {
             continue;
           }
@@ -144,14 +144,13 @@ int SingletonBlock::getOrSkipSome(size_t,  // atLeast,
   return TRI_ERROR_NO_ERROR;
 
   // cppcheck-suppress style
-  DEBUG_END_BLOCK();  
+  DEBUG_END_BLOCK();
 }
 
 FilterBlock::FilterBlock(ExecutionEngine* engine, FilterNode const* en)
-    : ExecutionBlock(engine, en), 
+    : ExecutionBlock(engine, en),
       _inReg(ExecutionNode::MaxRegisterId),
       _collector(&engine->_itemBlockManager) {
-
   auto it = en->getRegisterPlan()->varInfo.find(en->_inVariable->id);
   TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
   _inReg = it->second.registerId;
@@ -159,7 +158,7 @@ FilterBlock::FilterBlock(ExecutionEngine* engine, FilterNode const* en)
 }
 
 FilterBlock::~FilterBlock() {}
-  
+
 /// @brief internal function to actually decide if the document should be used
 bool FilterBlock::takeItem(AqlItemBlock* items, size_t index) const {
   return items->getValueReference(index, _inReg).toBoolean();
@@ -167,7 +166,7 @@ bool FilterBlock::takeItem(AqlItemBlock* items, size_t index) const {
 
 /// @brief internal function to get another block
 bool FilterBlock::getBlock(size_t atLeast, size_t atMost) {
-  DEBUG_BEGIN_BLOCK();  
+  DEBUG_BEGIN_BLOCK();
   while (true) {  // will be left by break or return
     if (!ExecutionBlock::getBlock(atLeast, atMost)) {
       return false;
@@ -200,19 +199,19 @@ bool FilterBlock::getBlock(size_t atLeast, size_t atMost) {
 
     _buffer.pop_front();  // Block was useless, just try again
     returnBlock(cur);     // free this block
-  
+
     throwIfKilled();  // check if we were aborted
   }
 
   return true;
 
   // cppcheck-suppress style
-  DEBUG_END_BLOCK();  
+  DEBUG_END_BLOCK();
 }
 
 int FilterBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
                                AqlItemBlock*& result, size_t& skipped) {
-  DEBUG_BEGIN_BLOCK();  
+  DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(result == nullptr && skipped == 0);
 
   if (_done) {
@@ -252,8 +251,7 @@ int FilterBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
       // The current block fits into our result, but it is already
       // half-eaten or needs to be copied anyway:
       if (!skipping) {
-        std::unique_ptr<AqlItemBlock> more(
-            cur->steal(_chosen, _pos, _chosen.size()));
+        std::unique_ptr<AqlItemBlock> more(cur->steal(_chosen, _pos, _chosen.size()));
 
         TRI_IF_FAILURE("FilterBlock::getOrSkipSome2") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -292,11 +290,11 @@ int FilterBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
   return TRI_ERROR_NO_ERROR;
 
   // cppcheck-suppress style
-  DEBUG_END_BLOCK();  
+  DEBUG_END_BLOCK();
 }
 
 bool FilterBlock::hasMore() {
-  DEBUG_BEGIN_BLOCK();  
+  DEBUG_BEGIN_BLOCK();
   if (_done) {
     return false;
   }
@@ -321,11 +319,11 @@ bool FilterBlock::hasMore() {
   return true;
 
   // cppcheck-suppress style
-  DEBUG_END_BLOCK();  
+  DEBUG_END_BLOCK();
 }
 
 int LimitBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
-  DEBUG_BEGIN_BLOCK();  
+  DEBUG_BEGIN_BLOCK();
   int res = ExecutionBlock::initializeCursor(items, pos);
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -335,7 +333,7 @@ int LimitBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   return TRI_ERROR_NO_ERROR;
 
   // cppcheck-suppress style
-  DEBUG_END_BLOCK();  
+  DEBUG_END_BLOCK();
 }
 
 int LimitBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
@@ -405,8 +403,7 @@ int LimitBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
       while (true) {
         skipped = 0;
         AqlItemBlock* ignore = nullptr;
-        ExecutionBlock::getOrSkipSome(atLeast, atMost, skipping, ignore,
-                                      skipped);
+        ExecutionBlock::getOrSkipSome(atLeast, atMost, skipping, ignore, skipped);
 
         if (ignore != nullptr) {
           _engine->_stats.fullCount += static_cast<int64_t>(ignore->size());
@@ -507,12 +504,12 @@ RegisterId ReturnBlock::returnInheritedResults() {
 
 /// @brief initializeCursor, only call base
 int NoResultsBlock::initializeCursor(AqlItemBlock*, size_t) {
-  DEBUG_BEGIN_BLOCK();  
+  DEBUG_BEGIN_BLOCK();
   _done = true;
   return TRI_ERROR_NO_ERROR;
 
   // cppcheck-suppress style
-  DEBUG_END_BLOCK();  
+  DEBUG_END_BLOCK();
 }
 
 int NoResultsBlock::getOrSkipSome(size_t,  // atLeast

@@ -34,8 +34,7 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::rest;
 
-RestShutdownHandler::RestShutdownHandler(GeneralRequest* request,
-                                         GeneralResponse* response)
+RestShutdownHandler::RestShutdownHandler(GeneralRequest* request, GeneralResponse* response)
     : RestBaseHandler(request, response) {}
 
 bool RestShutdownHandler::isDirect() const { return true; }
@@ -56,8 +55,7 @@ RestStatus RestShutdownHandler::execute() {
     return RestStatus::DONE;
   }
   bool removeFromCluster;
-  std::string const& remove =
-      _request->value("remove_from_cluster", removeFromCluster);
+  std::string const& remove = _request->value("remove_from_cluster", removeFromCluster);
   removeFromCluster = removeFromCluster && remove == "1";
 
   bool shutdownClusterFound;

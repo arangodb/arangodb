@@ -60,7 +60,7 @@ class RocksDBRestReplicationHandler : public RestReplicationHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void handleCommandLoggerState() override;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the available logfile range
   /// @route GET logger-tick-ranges
@@ -70,16 +70,16 @@ class RocksDBRestReplicationHandler : public RestReplicationHandler {
   ///           * status
   ///           * tickMin - tickMax
   //////////////////////////////////////////////////////////////////////////////
-  
+
   void handleCommandLoggerTickRanges();
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the first tick available in a logfile
   /// @route GET logger-first-tick
   /// @caller js/client/modules/@arangodb/replication.js
   /// @response VPackObject with minTick of LogfileManager->ranges()
   //////////////////////////////////////////////////////////////////////////////
-  
+
   void handleCommandLoggerFirstTick();
 
   //////////////////////////////////////////////////////////////////////////////
@@ -231,16 +231,14 @@ class RocksDBRestReplicationHandler : public RestReplicationHandler {
   /// @brief restores the structure of a collection TODO MOVE
   //////////////////////////////////////////////////////////////////////////////
 
-  int processRestoreCollection(VPackSlice const&, bool, bool, bool,
-                               std::string&);
+  int processRestoreCollection(VPackSlice const&, bool, bool, bool, std::string&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the structure of a collection, coordinator case
   //////////////////////////////////////////////////////////////////////////////
 
   int processRestoreCollectionCoordinator(VPackSlice const&, bool, bool, bool,
-                                          uint64_t, std::string&, uint64_t,
-                                          bool);
+                                          uint64_t, std::string&, uint64_t, bool);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a collection, based on the VelocyPack provided TODO: MOVE
@@ -297,8 +295,8 @@ class RocksDBRestReplicationHandler : public RestReplicationHandler {
   /// id mapping to false here indicates that a request to get the
   /// read lock has been started, the mapped value holds the
   /// actual transaction. if the read lock is not yet acquired, the
-  /// shared_ptr will contain a nullptr still. 
-  /// To cancel the read lock, remove the entry here (under the protection 
+  /// shared_ptr will contain a nullptr still.
+  /// To cancel the read lock, remove the entry here (under the protection
   /// of the mutex of condVar) and send a broadcast to the condition variable,
   /// the job with that id is terminated. If it timeouts, then
   /// the read lock is released automatically and the entry here
@@ -309,6 +307,6 @@ class RocksDBRestReplicationHandler : public RestReplicationHandler {
 
   RocksDBReplicationManager* _manager;
 };
-}
+}  // namespace arangodb
 
 #endif

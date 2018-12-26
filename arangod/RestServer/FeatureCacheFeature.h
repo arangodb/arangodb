@@ -43,7 +43,7 @@ class FeatureCacheFeature final : public application_features::ApplicationFeatur
     return Instance;
   }
 
-  inline AuthenticationFeature* authenticationFeature() const { 
+  inline AuthenticationFeature* authenticationFeature() const {
     TRI_ASSERT(_authenticationFeature != nullptr);
     return _authenticationFeature;
   }
@@ -59,6 +59,6 @@ class FeatureCacheFeature final : public application_features::ApplicationFeatur
   AuthenticationFeature* _authenticationFeature;
   DatabaseFeature* _databaseFeature;
 };
-}
+}  // namespace arangodb
 
 #endif

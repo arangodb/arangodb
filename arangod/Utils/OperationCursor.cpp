@@ -54,7 +54,7 @@ void OperationCursor::reset() {
   }
 }
 
-/// @brief Calls cb for the next batchSize many elements 
+/// @brief Calls cb for the next batchSize many elements
 ///        NOTE: This will throw on OUT_OF_MEMORY
 bool OperationCursor::next(IndexIterator::TokenCallback const& callback, uint64_t batchSize) {
   if (!hasMore()) {
@@ -99,13 +99,13 @@ bool OperationCursor::nextDocument(IndexIterator::DocumentCallback const& callba
   if (!hasMore()) {
     return false;
   }
-  
+
   if (batchSize == UINT64_MAX) {
     batchSize = _batchSize;
   }
-  
+
   size_t atMost = static_cast<size_t>(batchSize > _limit ? _limit : batchSize);
-  
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // We add wrapper around Callback that validates that
   // the callback has been called at least once.
@@ -124,7 +124,7 @@ bool OperationCursor::nextDocument(IndexIterator::DocumentCallback const& callba
 #else
   _hasMore = _indexIterator->nextDocument(callback, atMost);
 #endif
-  
+
   if (_hasMore) {
     // We got atMost many callbacks
     TRI_ASSERT(_limit >= atMost);
@@ -140,7 +140,8 @@ bool OperationCursor::nextDocument(IndexIterator::DocumentCallback const& callba
 ///        NOTE: This will throw on OUT_OF_MEMORY
 //////////////////////////////////////////////////////////////////////////////
 
-bool OperationCursor::nextWithExtra(IndexIterator::ExtraCallback const& callback, uint64_t batchSize) {
+bool OperationCursor::nextWithExtra(IndexIterator::ExtraCallback const& callback,
+                                    uint64_t batchSize) {
   TRI_ASSERT(hasExtra());
 
   if (!hasMore()) {

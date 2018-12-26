@@ -62,8 +62,7 @@ void* TRI_Allocate(uint64_t);
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#define TRI_Reallocate(a, b) \
-  TRI_ReallocateZ((a), (b), __FILE__, __LINE__)
+#define TRI_Reallocate(a, b) TRI_ReallocateZ((a), (b), __FILE__, __LINE__)
 void* TRI_ReallocateZ(void*, uint64_t, char const*, int);
 #else
 void* TRI_Reallocate(void*, uint64_t);

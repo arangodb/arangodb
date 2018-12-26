@@ -266,17 +266,16 @@ struct ClusterCommResult {
     // :snake: OPST_CIRCUS
     answer_code = dynamic_cast<HttpResponse*>(response.get())->responseCode();
     HttpRequest* request = HttpRequest::createHttpRequest(
-        ContentType::JSON,
-        dynamic_cast<HttpResponse*>(response.get())->body().c_str(),
-        dynamic_cast<HttpResponse*>(response.get())->body().length(), std::unordered_map<std::string,std::string>());
+        ContentType::JSON, dynamic_cast<HttpResponse*>(response.get())->body().c_str(),
+        dynamic_cast<HttpResponse*>(response.get())->body().length(),
+        std::unordered_map<std::string, std::string>());
 
     auto headers = response->headers();
     auto errorCodes = headers.find(StaticStrings::ErrorCodes);
     if (errorCodes != headers.end()) {
       request->setHeader(StaticStrings::ErrorCodes, errorCodes->second);
     }
-    request->setHeader("x-arango-response-code",
-                       GeneralResponse::responseString(answer_code));
+    request->setHeader("x-arango-response-code", GeneralResponse::responseString(answer_code));
     answer.reset(request);
     TRI_ASSERT(response != nullptr);
     result = std::make_shared<httpclient::SimpleHttpCommunicatorResult>(
@@ -356,16 +355,10 @@ struct ClusterCommRequest {
   ClusterCommRequest() : done(false) {}
 
   ClusterCommRequest(std::string const& dest, rest::RequestType type,
-                     std::string const& path,
-                     std::shared_ptr<std::string const> body)
-      : destination(dest),
-        requestType(type),
-        path(path),
-        body(body),
-        done(false) {}
+                     std::string const& path, std::shared_ptr<std::string const> body)
+      : destination(dest), requestType(type), path(path), body(body), done(false) {}
 
-  void setHeaders(
-      std::unique_ptr<std::unordered_map<std::string, std::string>>& headers) {
+  void setHeaders(std::unique_ptr<std::unordered_map<std::string, std::string>>& headers) {
     headerFields = std::move(headers);
   }
 };
@@ -393,7 +386,6 @@ class ClusterComm {
   //////////////////////////////////////////////////////////////////////////////
 
  public:
-
   virtual ~ClusterComm();
 
   //////////////////////////////////////////////////////////////////////////////
@@ -444,12 +436,10 @@ class ClusterComm {
   //////////////////////////////////////////////////////////////////////////////
 
   virtual OperationID asyncRequest(
-      ClientTransactionID const& clientTransactionID,
-      CoordTransactionID const coordTransactionID,
+      ClientTransactionID const& clientTransactionID, CoordTransactionID const coordTransactionID,
       std::string const& destination, rest::RequestType reqtype,
       std::string const& path, std::shared_ptr<std::string const> body,
-      std::unique_ptr<std::unordered_map<std::string, std::string>>&
-          headerFields,
+      std::unique_ptr<std::unordered_map<std::string, std::string>>& headerFields,
       std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
       bool singleRequest = false, ClusterCommTimeout initTimeout = -1.0);
 
@@ -459,9 +449,8 @@ class ClusterComm {
 
   std::unique_ptr<ClusterCommResult> syncRequest(
       ClientTransactionID const& clientTransactionID,
-      CoordTransactionID const coordTransactionID,
-      std::string const& destination, rest::RequestType reqtype,
-      std::string const& path, std::string const& body,
+      CoordTransactionID const coordTransactionID, std::string const& destination,
+      rest::RequestType reqtype, std::string const& path, std::string const& body,
       std::unordered_map<std::string, std::string> const& headerFields,
       ClusterCommTimeout timeout);
 
@@ -477,8 +466,7 @@ class ClusterComm {
 
   virtual ClusterCommResult const wait(ClientTransactionID const& clientTransactionID,
                                        CoordTransactionID const coordTransactionID,
-                                       OperationID const operationID,
-                                       ShardID const& shardID,
+                                       OperationID const operationID, ShardID const& shardID,
                                        ClusterCommTimeout timeout = 0.0);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -493,8 +481,7 @@ class ClusterComm {
   /// @brief send an answer HTTP request to a coordinator
   //////////////////////////////////////////////////////////////////////////////
 
-  void asyncAnswer(std::string& coordinatorHeader,
-                   GeneralResponse* responseToSend);
+  void asyncAnswer(std::string& coordinatorHeader, GeneralResponse* responseToSend);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief this method performs the given requests described by the vector
@@ -521,8 +508,7 @@ class ClusterComm {
 
   size_t performRequests(std::vector<ClusterCommRequest>& requests,
                          ClusterCommTimeout timeout, size_t& nrDone,
-                         arangodb::LogTopic const& logTopic,
-                         bool retryOnCollNotFound);
+                         arangodb::LogTopic const& logTopic, bool retryOnCollNotFound);
 
   std::shared_ptr<communicator::Communicator> communicator() {
     return _communicator;
@@ -539,7 +525,6 @@ class ClusterComm {
   void disable();
 
  protected:  // protected members are for unit test purposes
-
   /// @brief Constructor for test cases.
   ClusterComm(bool);
 
@@ -550,8 +535,8 @@ class ClusterComm {
                               ClusterCommTimeout timeout, size_t& nrDone,
                               arangodb::LogTopic const& logTopic);
 
-  communicator::Destination createCommunicatorDestination(
-      std::string const& destination, std::string const& path);
+  communicator::Destination createCommunicatorDestination(std::string const& destination,
+                                                          std::string const& path);
   std::pair<ClusterCommResult*, HttpRequest*> prepareRequest(
       std::string const& destination, arangodb::rest::RequestType reqtype,
       std::string const* body,
@@ -570,7 +555,7 @@ class ClusterComm {
   /// a nullptr, which means no new ClusterComm operations can be started.
   //////////////////////////////////////////////////////////////////////////////
 
-  static std::atomic<int>             _theInstanceInit;
+  static std::atomic<int> _theInstanceInit;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief produces an operation ID which is unique in this process
@@ -583,8 +568,7 @@ class ClusterComm {
   //////////////////////////////////////////////////////////////////////////////
 
   std::list<ClusterCommOperation*> toSend;
-  std::map<OperationID, std::list<ClusterCommOperation*>::iterator>
-      toSendByOpID;
+  std::map<OperationID, std::list<ClusterCommOperation*>::iterator> toSendByOpID;
   arangodb::basics::ConditionVariable somethingToSend;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -601,8 +585,7 @@ class ClusterComm {
 
   // Receiving answers:
   std::list<ClusterCommOperation*> received;
-  std::map<OperationID, std::list<ClusterCommOperation*>::iterator>
-      receivedByOpID;
+  std::map<OperationID, std::list<ClusterCommOperation*>::iterator> receivedByOpID;
   arangodb::basics::ConditionVariable somethingReceived;
 
   // Note: If you really have to lock both `somethingToSend`
@@ -642,7 +625,6 @@ class ClusterComm {
 
   void cleanupAllQueues();
 
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief activeServerTickets for a list of servers
   //////////////////////////////////////////////////////////////////////////////
@@ -665,7 +647,6 @@ class ClusterComm {
   bool _authenticationEnabled;
   std::string _jwt;
   std::string _jwtAuthorization;
-
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -694,6 +675,6 @@ class ClusterCommThread : public Thread {
  private:
   ClusterComm* _cc;
 };
-}
+}  // namespace arangodb
 
 #endif

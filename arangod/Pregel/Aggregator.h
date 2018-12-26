@@ -52,8 +52,7 @@ class IAggregator {
   /// @brief Value from superstep S-1 supplied by the conductor
   virtual void setAggregatedValue(VPackSlice const& slice) = 0;
 
-  virtual void serialize(std::string const& key,
-                         VPackBuilder& builder) const = 0;
+  virtual void serialize(std::string const& key, VPackBuilder& builder) const = 0;
 
   virtual void reset() = 0;
   virtual bool isConverging() const = 0;
@@ -64,10 +63,7 @@ struct NumberAggregator : public IAggregator {
   static_assert(std::is_arithmetic<T>::value, "Type must be numeric");
 
   NumberAggregator(T neutral, bool perm = false, bool conv = false)
-      : _value(neutral),
-        _neutral(neutral),
-        _permanent(perm),
-        _converging(conv) {}
+      : _value(neutral), _neutral(neutral), _permanent(perm), _converging(conv) {}
 
   void parseAggregate(VPackSlice const& slice) override {
     T f = slice.getNumber<T>();
@@ -181,6 +177,6 @@ struct BoolOrAggregator : public IAggregator {
  protected:
   bool _value = false, _permanent;
 };
-}
-}
+}  // namespace pregel
+}  // namespace arangodb
 #endif

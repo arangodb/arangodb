@@ -25,8 +25,8 @@
 
 #ifdef TRI_HAVE_POSIX_MMAP
 
-#include "Logger/Logger.h"
 #include "Basics/tri-strings.h"
+#include "Logger/Logger.h"
 
 #include <sys/mman.h>
 
@@ -58,7 +58,7 @@ static std::string flagify(int flags) {
 
   return result;
 }
-}
+}  // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
 // @brief flush memory mapped file to disk
@@ -84,7 +84,9 @@ int TRI_FlushMMFile(int fileDescriptor, void* startingAddress,
 
   if (res == TRI_ERROR_NO_ERROR) {
     // msync was successful
-    LOG_TOPIC(TRACE, Logger::MMAP) << "msync succeeded for range " << Logger::RANGE(startingAddress, numOfBytesToFlush) << ", file-descriptor " << fileDescriptor;
+    LOG_TOPIC(TRACE, Logger::MMAP) << "msync succeeded for range "
+                                   << Logger::RANGE(startingAddress, numOfBytesToFlush)
+                                   << ", file-descriptor " << fileDescriptor;
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -92,7 +94,9 @@ int TRI_FlushMMFile(int fileDescriptor, void* startingAddress,
     // we have synced a region that was not mapped
 
     // set a special error. ENOMEM (out of memory) is not appropriate
-    LOG_TOPIC(ERR, Logger::MMAP) << "msync failed for range " << Logger::RANGE(startingAddress, numOfBytesToFlush) << ", file-descriptor " << fileDescriptor;
+    LOG_TOPIC(ERR, Logger::MMAP) << "msync failed for range "
+                                 << Logger::RANGE(startingAddress, numOfBytesToFlush)
+                                 << ", file-descriptor " << fileDescriptor;
 
     return TRI_ERROR_ARANGO_MSYNC_FAILED;
   }
@@ -119,7 +123,9 @@ int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
   if (*result != MAP_FAILED) {
     TRI_ASSERT(*result != nullptr);
 
-    LOG_TOPIC(DEBUG, Logger::MMAP) << "memory-mapped range " << Logger::RANGE(*result, numOfBytesToInitialize) << ", file-descriptor " << fileDescriptor << ", flags: " << flagify(flags);
+    LOG_TOPIC(DEBUG, Logger::MMAP)
+        << "memory-mapped range " << Logger::RANGE(*result, numOfBytesToInitialize)
+        << ", file-descriptor " << fileDescriptor << ", flags: " << flagify(flags);
 
     return TRI_ERROR_NO_ERROR;
   }
@@ -128,11 +134,14 @@ int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
     LOG_TOPIC(DEBUG, Logger::MMAP) << "out of memory in mmap";
 
     return TRI_ERROR_OUT_OF_MEMORY_MMAP;
-  } 
-   
+  }
+
   // preserve errno value while we're logging
-  int tmp = errno; 
-  LOG_TOPIC(WARN, Logger::MMAP) << "memory-mapping failed for range " << Logger::RANGE(*result, numOfBytesToInitialize) << ", file-descriptor " << fileDescriptor << ", flags: " << flagify(flags);
+  int tmp = errno;
+  LOG_TOPIC(WARN, Logger::MMAP)
+      << "memory-mapping failed for range "
+      << Logger::RANGE(*result, numOfBytesToInitialize) << ", file-descriptor "
+      << fileDescriptor << ", flags: " << flagify(flags);
   errno = tmp;
   return TRI_ERROR_SYS_ERROR;
 }
@@ -148,7 +157,9 @@ int TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap,
   int res = munmap(memoryAddress, numOfBytesToUnMap);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(DEBUG, Logger::MMAP) << "memory-unmapped range " << Logger::RANGE(memoryAddress, numOfBytesToUnMap) << ", file-descriptor " << fileDescriptor;
+    LOG_TOPIC(DEBUG, Logger::MMAP) << "memory-unmapped range "
+                                   << Logger::RANGE(memoryAddress, numOfBytesToUnMap)
+                                   << ", file-descriptor " << fileDescriptor;
 
     return TRI_ERROR_NO_ERROR;
   }
@@ -174,13 +185,18 @@ int TRI_ProtectMMFile(void* memoryAddress, size_t numOfBytesToProtect,
   int res = mprotect(memoryAddress, numOfBytesToProtect, flags);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(TRACE, Logger::MMAP) << "memory-protecting range " << Logger::RANGE(memoryAddress, numOfBytesToProtect) << ", file-descriptor " << fileDescriptor << ", flags " << flagify(flags);
+    LOG_TOPIC(TRACE, Logger::MMAP)
+        << "memory-protecting range " << Logger::RANGE(memoryAddress, numOfBytesToProtect)
+        << ", file-descriptor " << fileDescriptor << ", flags " << flagify(flags);
 
     return TRI_ERROR_NO_ERROR;
   }
-    
+
   TRI_set_errno(TRI_ERROR_SYS_ERROR);
-  LOG_TOPIC(WARN, Logger::MMAP) << "memory-protecting failed for range " << Logger::RANGE(memoryAddress, numOfBytesToProtect) << ", file-descriptor " << fileDescriptor << ", flags " << flagify(flags) << ": " << TRI_last_error();
+  LOG_TOPIC(WARN, Logger::MMAP)
+      << "memory-protecting failed for range "
+      << Logger::RANGE(memoryAddress, numOfBytesToProtect) << ", file-descriptor "
+      << fileDescriptor << ", flags " << flagify(flags) << ": " << TRI_last_error();
 
   return TRI_ERROR_SYS_ERROR;
 }
@@ -191,7 +207,8 @@ int TRI_ProtectMMFile(void* memoryAddress, size_t numOfBytesToProtect,
 
 int TRI_MMFileAdvise(void* memoryAddress, size_t numOfBytes, int advice) {
 #ifdef __linux__
-  LOG_TOPIC(TRACE, Logger::MMAP) << "madvise " << advice << " for range " << Logger::RANGE(memoryAddress, numOfBytes);
+  LOG_TOPIC(TRACE, Logger::MMAP) << "madvise " << advice << " for range "
+                                 << Logger::RANGE(memoryAddress, numOfBytes);
 
   int res = madvise(memoryAddress, numOfBytes, advice);
 
@@ -200,7 +217,9 @@ int TRI_MMFileAdvise(void* memoryAddress, size_t numOfBytes, int advice) {
   }
 
   res = errno;
-  LOG_TOPIC(ERR, Logger::MMAP) << "madvise " << advice << " for range " << Logger::RANGE(memoryAddress, numOfBytes) << " failed with: " << strerror(res);
+  LOG_TOPIC(ERR, Logger::MMAP) << "madvise " << advice << " for range "
+                               << Logger::RANGE(memoryAddress, numOfBytes)
+                               << " failed with: " << strerror(res);
   return TRI_ERROR_INTERNAL;
 #else
   return TRI_ERROR_NO_ERROR;
@@ -213,13 +232,15 @@ int TRI_MMFileAdvise(void* memoryAddress, size_t numOfBytes, int advice) {
 
 int TRI_MMFileLock(void* memoryAddress, size_t numOfBytes) {
   int res = mlock(memoryAddress, numOfBytes);
-  
+
   if (res == TRI_ERROR_NO_ERROR) {
     return res;
   }
 
   res = errno;
-  LOG_TOPIC(WARN, Logger::MMAP) << "mlock for range " << Logger::RANGE(memoryAddress, numOfBytes) << " failed with: " << strerror(res);
+  LOG_TOPIC(WARN, Logger::MMAP)
+      << "mlock for range " << Logger::RANGE(memoryAddress, numOfBytes)
+      << " failed with: " << strerror(res);
   return TRI_ERROR_SYS_ERROR;
 }
 
@@ -229,13 +250,15 @@ int TRI_MMFileLock(void* memoryAddress, size_t numOfBytes) {
 
 int TRI_MMFileUnlock(void* memoryAddress, size_t numOfBytes) {
   int res = munlock(memoryAddress, numOfBytes);
-  
+
   if (res == TRI_ERROR_NO_ERROR) {
     return res;
   }
 
   res = errno;
-  LOG_TOPIC(WARN, Logger::MMAP) << "munlock for range " << Logger::RANGE(memoryAddress, numOfBytes) << " failed with: " << strerror(res);
+  LOG_TOPIC(WARN, Logger::MMAP)
+      << "munlock for range " << Logger::RANGE(memoryAddress, numOfBytes)
+      << " failed with: " << strerror(res);
   return TRI_ERROR_SYS_ERROR;
 }
 

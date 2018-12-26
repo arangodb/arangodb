@@ -63,20 +63,20 @@ class VstCommTask final : public GeneralCommTask {
   // if message is complete execute a request
   bool processRead(double startTime) override;
 
-  std::unique_ptr<GeneralResponse> createResponse(
-      rest::ResponseCode, uint64_t messageId) override final;
+  std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode,
+                                                  uint64_t messageId) override final;
 
   void handleAuthHeader(VPackSlice const& header, uint64_t messageId);
 
-  void handleSimpleError(rest::ResponseCode code, GeneralRequest const& req, uint64_t id) override {
+  void handleSimpleError(rest::ResponseCode code, GeneralRequest const& req,
+                         uint64_t id) override {
     VstResponse response(code, id);
     response.setContentType(req.contentTypeResponse());
     addResponse(&response, nullptr);
   }
 
   void handleSimpleError(rest::ResponseCode, GeneralRequest const&, int code,
-                         std::string const& errorMessage,
-                         uint64_t messageId) override;
+                         std::string const& errorMessage, uint64_t messageId) override;
 
   bool allowDirectHandling() const override final { return false; }
 
@@ -110,9 +110,8 @@ class VstCommTask final : public GeneralCommTask {
         : _currentChunkLength(0),
           _readBufferOffset(0),
           _cleanupLength(_bufferLength - _chunkMaxBytes - 1) {}
-    uint32_t
-        _currentChunkLength;     // size of chunk processed or 0 when expecting
-                                 // new chunk
+    uint32_t _currentChunkLength;  // size of chunk processed or 0 when
+                                   // expecting new chunk
     size_t _readBufferOffset;    // data up to this position has been processed
     std::size_t _cleanupLength;  // length of data after that the read buffer
                                  // will be cleaned
@@ -133,15 +132,15 @@ class VstCommTask final : public GeneralCommTask {
 
   // Returns true if and only if there was no error, if false is returned,
   // the connection is closed
-  bool getMessageFromSingleChunk(
-      ChunkHeader const& chunkHeader, VstInputMessage& message, bool& doExecute,
-      char const* vpackBegin, char const* chunkEnd);
+  bool getMessageFromSingleChunk(ChunkHeader const& chunkHeader,
+                                 VstInputMessage& message, bool& doExecute,
+                                 char const* vpackBegin, char const* chunkEnd);
 
   // Returns true if and only if there was no error, if false is returned,
   // the connection is closed
-  bool getMessageFromMultiChunks(
-      ChunkHeader const& chunkHeader, VstInputMessage& message, bool& doExecute,
-      char const* vpackBegin, char const* chunkEnd);
+  bool getMessageFromMultiChunks(ChunkHeader const& chunkHeader,
+                                 VstInputMessage& message, bool& doExecute,
+                                 char const* vpackBegin, char const* chunkEnd);
 
   /// Is the current user authorized
   bool _authorized;
@@ -149,7 +148,7 @@ class VstCommTask final : public GeneralCommTask {
   ProtocolVersion _protocolVersion;
   uint32_t _maxChunkSize;
 };
-}
-}
+}  // namespace rest
+}  // namespace arangodb
 
 #endif

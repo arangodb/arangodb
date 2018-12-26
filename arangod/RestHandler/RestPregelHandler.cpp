@@ -37,31 +37,29 @@ using namespace arangodb::rest;
 using namespace arangodb::pregel;
 
 RestPregelHandler::RestPregelHandler(GeneralRequest* request, GeneralResponse* response)
-: RestVocbaseBaseHandler(request, response) {}
+    : RestVocbaseBaseHandler(request, response) {}
 
 RestStatus RestPregelHandler::execute() {
-  try {    
+  try {
     bool parseSuccess = true;
-    std::shared_ptr<VPackBuilder> parsedBody =
-    parseVelocyPackBody(parseSuccess);
-    VPackSlice body(parsedBody->start());// never nullptr
-    
+    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+    VPackSlice body(parsedBody->start());  // never nullptr
+
     if (!parseSuccess || !body.isObject()) {
       LOG_TOPIC(ERR, Logger::PREGEL) << "Bad request body\n";
-      generateError(rest::ResponseCode::BAD,
-                    TRI_ERROR_NOT_IMPLEMENTED, "illegal request for /_api/pregel");
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
+                    "illegal request for /_api/pregel");
       return RestStatus::DONE;
     }
     if (_request->requestType() != rest::RequestType::POST) {
-      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                    TRI_ERROR_NOT_IMPLEMENTED, "illegal method for /_api/pregel");
+      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_NOT_IMPLEMENTED,
+                    "illegal method for /_api/pregel");
       return RestStatus::DONE;
-
     }
     std::vector<std::string> const& suffix = _request->suffixes();
     if (suffix.size() != 2) {
-      generateError(rest::ResponseCode::BAD,
-                    TRI_ERROR_NOT_IMPLEMENTED, "you are missing a prefix");
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
+                    "you are missing a prefix");
     } else if (suffix[0] == Utils::conductorPrefix) {
       VPackBuilder response;
       PregelFeature::handleConductorRequest(suffix[1], body, response);
@@ -79,14 +77,14 @@ RestStatus RestPregelHandler::execute() {
         generateResult(rest::ResponseCode::OK, response.slice());
       }
     } else {
-      generateError(rest::ResponseCode::BAD,
-                    TRI_ERROR_NOT_IMPLEMENTED, "the prefix is incorrect");
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
+                    "the prefix is incorrect");
     }
-  } catch (std::exception const &e) {
+  } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::PREGEL) << e.what();
-  } catch(...) {
+  } catch (...) {
     LOG_TOPIC(ERR, Logger::PREGEL) << "Exception in pregel REST handler";
   }
-    
+
   return RestStatus::DONE;
 }

@@ -33,20 +33,18 @@ namespace rest {
 class AsyncJobManager;
 class RestHandlerFactory;
 class GeneralServer;
-}
+}  // namespace rest
 
 class RestServerThread;
 
-class GeneralServerFeature final
-    : public application_features::ApplicationFeature {
+class GeneralServerFeature final : public application_features::ApplicationFeature {
  public:
   static rest::RestHandlerFactory* HANDLER_FACTORY;
   static rest::AsyncJobManager* JOB_MANAGER;
 
  public:
   static double keepAliveTimeout() {
-    return GENERAL_SERVER != nullptr ? GENERAL_SERVER->_keepAliveTimeout
-                                     : 300.0;
+    return GENERAL_SERVER != nullptr ? GENERAL_SERVER->_keepAliveTimeout : 300.0;
   };
 
   static bool hasProxyCheck() {
@@ -114,6 +112,6 @@ class GeneralServerFeature final
   std::unique_ptr<rest::AsyncJobManager> _jobManager;
   std::vector<rest::GeneralServer*> _servers;
 };
-}
+}  // namespace arangodb
 
 #endif

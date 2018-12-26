@@ -32,12 +32,11 @@ namespace arangodb {
 namespace traverser {
 class Traverser;
 struct TraverserOptions;
-}
+}  // namespace traverser
 
 namespace graph {
 
-class BreadthFirstEnumerator final
-    : public arangodb::traverser::PathEnumerator {
+class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator {
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief One entry in the schreier vector
@@ -159,7 +158,7 @@ class BreadthFirstEnumerator final
 
   void computeEnumeratedPath(size_t index);
 };
-}
-}
+}  // namespace graph
+}  // namespace arangodb
 
 #endif

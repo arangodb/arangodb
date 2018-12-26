@@ -54,19 +54,17 @@ bool EqualCollection(arangodb::CollectionNameResolver const* resolver,
 /// will be called when the V8 object is garbage collected.
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Object> WrapCollection(
-    v8::Isolate* isolate, arangodb::LogicalCollection const* collection);
+v8::Handle<v8::Object> WrapCollection(v8::Isolate* isolate,
+                                      arangodb::LogicalCollection const* collection);
 
-void TRI_InitV8Collections(v8::Handle<v8::Context> context,
-                           TRI_vocbase_t* vocbase, 
+void TRI_InitV8Collections(v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase,
                            TRI_v8_global_t* v8g, v8::Isolate* isolate,
                            v8::Handle<v8::ObjectTemplate> ArangoDBNS);
 
 #ifdef USE_ENTERPRISE
-void DropVocbaseColCoordinatorEnterprise(
-  v8::FunctionCallbackInfo<v8::Value> const& args,
-  arangodb::LogicalCollection* collection,
-  bool allowDropSystem);
+void DropVocbaseColCoordinatorEnterprise(v8::FunctionCallbackInfo<v8::Value> const& args,
+                                         arangodb::LogicalCollection* collection,
+                                         bool allowDropSystem);
 
 int ULVocbaseColCoordinatorEnterprise(std::string const& databaseName,
                                       std::string const& collectionCID,

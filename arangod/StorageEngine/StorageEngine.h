@@ -25,9 +25,9 @@
 #ifndef ARANGOD_STORAGE_ENGINE_STORAGE_ENGINE_H
 #define ARANGOD_STORAGE_ENGINE_STORAGE_ENGINE_H 1
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
 #include "Basics/Result.h"
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Indexes/IndexFactory.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
@@ -56,20 +56,16 @@ namespace transaction {
 class Context;
 class ContextData;
 struct Options;
-}
+}  // namespace transaction
 
 class StorageEngine : public application_features::ApplicationFeature {
-
  public:
-
   // create the storage engine
-  StorageEngine(application_features::ApplicationServer* server,
-                std::string const& engineName, std::string const& featureName,
-                IndexFactory* indexFactory)
+  StorageEngine(application_features::ApplicationServer* server, std::string const& engineName,
+                std::string const& featureName, IndexFactory* indexFactory)
       : application_features::ApplicationFeature(server, featureName),
         _indexFactory(indexFactory),
         _typeName(engineName) {
-
     // each specific storage engine feature is optional. the storage engine selection feature
     // will make sure that exactly one engine is selected at startup
     setOptional(true);
@@ -82,26 +78,30 @@ class StorageEngine : public application_features::ApplicationFeature {
     startsAfter("Temp");
     startsAfter("TransactionManager");
 
-    startsBefore("StorageEngine"); // this is the StorageEngineFeature
+    startsBefore("StorageEngine");  // this is the StorageEngineFeature
   }
 
   virtual bool supportsDfdb() const = 0;
 
   virtual TransactionManager* createTransactionManager() = 0;
   virtual transaction::ContextData* createTransactionContextData() = 0;
-  virtual TransactionState* createTransactionState(TRI_vocbase_t*, transaction::Options const&) = 0;
-  virtual TransactionCollection* createTransactionCollection(TransactionState*, TRI_voc_cid_t, AccessMode::Type, int nestingLevel) = 0;
+  virtual TransactionState* createTransactionState(TRI_vocbase_t*,
+                                                   transaction::Options const&) = 0;
+  virtual TransactionCollection* createTransactionCollection(TransactionState*, TRI_voc_cid_t,
+                                                             AccessMode::Type,
+                                                             int nestingLevel) = 0;
 
-  // when a new collection is created, this method is called to augment the collection
-  // creation data with engine-specific information
+  // when a new collection is created, this method is called to augment the
+  // collection creation data with engine-specific information
   virtual void addParametersForNewCollection(VPackBuilder& builder, VPackSlice info) {}
-  
+
   // when a new index is created, this method is called to augment the index
   // creation data with engine-specific information
   virtual void addParametersForNewIndex(VPackBuilder& builder, VPackSlice info) {}
 
   // create storage-engine specific collection
-  virtual PhysicalCollection* createPhysicalCollection(LogicalCollection*, VPackSlice const&) = 0;
+  virtual PhysicalCollection* createPhysicalCollection(LogicalCollection*,
+                                                       VPackSlice const&) = 0;
 
   // create storage-engine specific view
   virtual PhysicalView* createPhysicalView(LogicalView*, VPackSlice const&) = 0;
@@ -128,14 +128,15 @@ class StorageEngine : public application_features::ApplicationFeature {
                                  arangodb::velocypack::Builder& result,
                                  bool includeIndexes, TRI_voc_tick_t maxTick) = 0;
 
-  // fill the Builder object with an array of collections (and their corresponding
-  // indexes) that were detected by the storage engine. called at server start separately
-  // for each database
-  virtual int getCollectionsAndIndexes(TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& result,
+  // fill the Builder object with an array of collections (and their
+  // corresponding indexes) that were detected by the storage engine. called at
+  // server start separately for each database
+  virtual int getCollectionsAndIndexes(TRI_vocbase_t* vocbase,
+                                       arangodb::velocypack::Builder& result,
                                        bool wasCleanShutdown, bool isUpgrade) = 0;
-  
+
   virtual int getViews(TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& result) = 0;
-  
+
   // return the absolute path for the VERSION file of a database
   virtual std::string versionFilename(TRI_voc_tick_t id) const = 0;
 
@@ -143,8 +144,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual std::string databasePath(TRI_vocbase_t const* vocbase) const = 0;
 
   // return the path for a collection
-  virtual std::string collectionPath(TRI_vocbase_t const* vocbase, TRI_voc_cid_t id) const = 0;
-
+  virtual std::string collectionPath(TRI_vocbase_t const* vocbase,
+                                     TRI_voc_cid_t id) const = 0;
 
   // database, collection and index management
   // -----------------------------------------
@@ -155,14 +156,15 @@ class StorageEngine : public application_features::ApplicationFeature {
   // TODO add pre / post conditions for functions
 
   using CollectionView = LogicalCollection;
-    
+
   virtual void waitForSync(TRI_voc_tick_t tick) = 0;
 
   //// operations on databasea
 
   /// @brief opens a database
-  virtual TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& args, bool isUpgrade, int& status) = 0;
-  TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& args, bool isUpgrade){
+  virtual TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& args,
+                                      bool isUpgrade, int& status) = 0;
+  TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& args, bool isUpgrade) {
     int status;
     TRI_vocbase_t* rv = openDatabase(args, isUpgrade, status);
     TRI_ASSERT(status == TRI_ERROR_NO_ERROR);
@@ -171,16 +173,17 @@ class StorageEngine : public application_features::ApplicationFeature {
   }
 
   // asks the storage engine to create a database as specified in the VPack
-  // Slice object and persist the creation info. It is guaranteed by the server that
-  // no other active database with the same name and id exists when this function
-  // is called. If this operation fails somewhere in the middle, the storage
-  // engine is required to fully clean up the creation and throw only then,
-  // so that subsequent database creation requests will not fail.
-  // the WAL entry for the database creation will be written *after* the call
-  // to "createDatabase" returns
-  // no way to acquire id within this function?!
-  virtual TRI_vocbase_t* createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& args, int& status) = 0;
-  TRI_vocbase_t* createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& args ){
+  // Slice object and persist the creation info. It is guaranteed by the server
+  // that no other active database with the same name and id exists when this
+  // function is called. If this operation fails somewhere in the middle, the
+  // storage engine is required to fully clean up the creation and throw only
+  // then, so that subsequent database creation requests will not fail. the WAL
+  // entry for the database creation will be written *after* the call to
+  // "createDatabase" returns no way to acquire id within this function?!
+  virtual TRI_vocbase_t* createDatabase(TRI_voc_tick_t id,
+                                        arangodb::velocypack::Slice const& args,
+                                        int& status) = 0;
+  TRI_vocbase_t* createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& args) {
     int status;
     TRI_vocbase_t* rv = createDatabase(id, args, status);
     TRI_ASSERT(status == TRI_ERROR_NO_ERROR);
@@ -193,15 +196,16 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   // asks the storage engine to drop the specified database and persist the
   // deletion info. Note that physical deletion of the database data must not
-  // be carried out by this call, as there may still be readers of the database's data.
-  // It is recommended that this operation only sets a deletion flag for the database
-  // but let's an async task perform the actual deletion.
+  // be carried out by this call, as there may still be readers of the
+  // database's data. It is recommended that this operation only sets a deletion
+  // flag for the database but let's an async task perform the actual deletion.
   // the WAL entry for database deletion will be written *after* the call
   // to "prepareDropDatabase" returns
   //
   // is done under a lock in database feature
-  virtual void prepareDropDatabase(TRI_vocbase_t* vocbase, bool useWriteMarker, int& status) = 0;
-  void prepareDropDatabase(TRI_vocbase_t* db, bool useWriteMarker){
+  virtual void prepareDropDatabase(TRI_vocbase_t* vocbase, bool useWriteMarker,
+                                   int& status) = 0;
+  void prepareDropDatabase(TRI_vocbase_t* db, bool useWriteMarker) {
     int status = 0;
     prepareDropDatabase(db, useWriteMarker, status);
     TRI_ASSERT(status == TRI_ERROR_NO_ERROR);
@@ -222,35 +226,35 @@ class StorageEngine : public application_features::ApplicationFeature {
   //// Operations on Collections
   // asks the storage engine to create a collection as specified in the VPack
   // Slice object and persist the creation info. It is guaranteed by the server
-  // that no other active collection with the same name and id exists in the same
-  // database when this function is called. If this operation fails somewhere in
-  // the middle, the storage engine is required to fully clean up the creation
-  // and throw only then, so that subsequent collection creation requests will not fail.
-  // the WAL entry for the collection creation will be written *after* the call
-  // to "createCollection" returns
+  // that no other active collection with the same name and id exists in the
+  // same database when this function is called. If this operation fails
+  // somewhere in the middle, the storage engine is required to fully clean up
+  // the creation and throw only then, so that subsequent collection creation
+  // requests will not fail. the WAL entry for the collection creation will be
+  // written *after* the call to "createCollection" returns
   virtual std::string createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                                        arangodb::LogicalCollection const*) = 0;
 
   // asks the storage engine to persist the collection.
   // After this call the collection is persisted over recovery.
-  virtual arangodb::Result persistCollection(
-      TRI_vocbase_t* vocbase,
-      arangodb::LogicalCollection const* collection) = 0;
+  virtual arangodb::Result persistCollection(TRI_vocbase_t* vocbase,
+                                             arangodb::LogicalCollection const* collection) = 0;
 
   // asks the storage engine to drop the specified collection and persist the
   // deletion info. Note that physical deletion of the collection data must not
   // be carried out by this call, as there may
-  // still be readers of the collection's data. It is recommended that this operation
-  // only sets a deletion flag for the collection but lets an async task perform
-  // the actual deletion.
-  // the WAL entry for collection deletion will be written *after* the call
-  // to "dropCollection" returns
-  virtual arangodb::Result dropCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) = 0;
+  // still be readers of the collection's data. It is recommended that this
+  // operation only sets a deletion flag for the collection but lets an async
+  // task perform the actual deletion. the WAL entry for collection deletion
+  // will be written *after* the call to "dropCollection" returns
+  virtual arangodb::Result dropCollection(TRI_vocbase_t* vocbase,
+                                          arangodb::LogicalCollection* collection) = 0;
 
   // perform a physical deletion of the collection
   // After this call data of this collection is corrupted, only perform if
   // assured that no one is using the collection anymore
-  virtual void destroyCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) = 0;
+  virtual void destroyCollection(TRI_vocbase_t* vocbase,
+                                 arangodb::LogicalCollection* collection) = 0;
 
   // asks the storage engine to change properties of the collection as specified in
   // the VPack Slice object and persist them. If this operation fails
@@ -263,9 +267,9 @@ class StorageEngine : public application_features::ApplicationFeature {
                                 bool doSync) = 0;
 
   // asks the storage engine to persist renaming of a collection
-  virtual arangodb::Result renameCollection(
-      TRI_vocbase_t* vocbase, arangodb::LogicalCollection const* collection,
-      std::string const& oldName) = 0;
+  virtual arangodb::Result renameCollection(TRI_vocbase_t* vocbase,
+                                            arangodb::LogicalCollection const* collection,
+                                            std::string const& oldName) = 0;
 
   //// Operations on Views
   // asks the storage engine to create a view as specified in the VPack
@@ -273,16 +277,16 @@ class StorageEngine : public application_features::ApplicationFeature {
   // that no other active view with the same name and id exists in the same
   // database when this function is called. If this operation fails somewhere in
   // the middle, the storage engine is required to fully clean up the creation
-  // and throw only then, so that subsequent view creation requests will not fail.
-  // the WAL entry for the view creation will be written *after* the call
+  // and throw only then, so that subsequent view creation requests will not
+  // fail. the WAL entry for the view creation will be written *after* the call
   // to "createCview" returns
   virtual void createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                           arangodb::LogicalView const*) = 0;
 
   // asks the storage engine to persist the view.
   // After this call the view is persisted over recovery.
-  virtual arangodb::Result persistView(
-      TRI_vocbase_t* vocbase, arangodb::LogicalView const*) = 0;
+  virtual arangodb::Result persistView(TRI_vocbase_t* vocbase,
+                                       arangodb::LogicalView const*) = 0;
 
   // asks the storage engine to drop the specified view and persist the
   // deletion info. Note that physical deletion of the view data must not
@@ -298,13 +302,13 @@ class StorageEngine : public application_features::ApplicationFeature {
   // After this call data of this view is corrupted, only perform if
   // assured that no one is using the view anymore
   virtual void destroyView(TRI_vocbase_t* vocbase, arangodb::LogicalView*) = 0;
-  
+
   // asks the storage engine to change properties of the view as specified in
   // the VPack Slice object and persist them. If this operation fails
   // somewhere in the middle, the storage engine is required to fully revert the
-  // property changes and throw only then, so that subsequent operations will not fail.
-  // the WAL entry for the propery change will be written *after* the call
-  // to "changeView" returns
+  // property changes and throw only then, so that subsequent operations will
+  // not fail. the WAL entry for the propery change will be written *after* the
+  // call to "changeView" returns
   virtual void changeView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                           arangodb::LogicalView const*, bool doSync) = 0;
 
@@ -312,11 +316,10 @@ class StorageEngine : public application_features::ApplicationFeature {
   // Slice object and persist the creation info. The database id, collection id
   // and index data are passed in the Slice object. Note that this function
   // is not responsible for inserting the individual documents into the index.
-  // If this operation fails somewhere in the middle, the storage engine is required
-  // to fully clean up the creation and throw only then, so that subsequent index
-  // creation requests will not fail.
-  // the WAL entry for the index creation will be written *after* the call
-  // to "createIndex" returns
+  // If this operation fails somewhere in the middle, the storage engine is
+  // required to fully clean up the creation and throw only then, so that
+  // subsequent index creation requests will not fail. the WAL entry for the
+  // index creation will be written *after* the call to "createIndex" returns
   virtual void createIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
                            TRI_idx_iid_t id, arangodb::velocypack::Slice const& data) = 0;
 
@@ -330,7 +333,8 @@ class StorageEngine : public application_features::ApplicationFeature {
     return _indexFactory.get();
   }
 
-  virtual void unloadCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) = 0;
+  virtual void unloadCollection(TRI_vocbase_t* vocbase,
+                                arangodb::LogicalCollection* collection) = 0;
 
   virtual void signalCleanup(TRI_vocbase_t* vocbase) = 0;
 
@@ -341,32 +345,33 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   /// @brief Add engine-specific AQL functions.
   virtual void addAqlFunctions() {}
-  
+
   /// @brief Add engine-specific optimizer rules
   virtual void addOptimizerRules() {}
-  
+
   /// @brief Add engine-specific V8 functions
   virtual void addV8Functions() {}
-  
+
   /// @brief Add engine-specific REST handlers
   virtual void addRestHandlers(rest::RestHandlerFactory*) {}
 
   // replication
-  virtual std::shared_ptr<arangodb::velocypack::Builder> getReplicationApplierConfiguration(TRI_vocbase_t*, int& status) = 0;
+  virtual std::shared_ptr<arangodb::velocypack::Builder> getReplicationApplierConfiguration(
+      TRI_vocbase_t*, int& status) = 0;
   virtual int removeReplicationApplierConfiguration(TRI_vocbase_t* vocbase) = 0;
-  virtual int saveReplicationApplierConfiguration(TRI_vocbase_t* vocbase, arangodb::velocypack::Slice slice, bool doSync) = 0; 
+  virtual int saveReplicationApplierConfiguration(TRI_vocbase_t* vocbase,
+                                                  arangodb::velocypack::Slice slice,
+                                                  bool doSync) = 0;
 
   virtual int handleSyncKeys(arangodb::InitialSyncer& syncer,
-                          arangodb::LogicalCollection* col,
-                          std::string const& keysId,
-                          std::string& errorMsg) = 0;
+                             arangodb::LogicalCollection* col,
+                             std::string const& keysId, std::string& errorMsg) = 0;
   virtual Result createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& builder) = 0;
   virtual Result createTickRanges(VPackBuilder& builder) = 0;
   virtual Result firstTick(uint64_t& tick) = 0;
-  virtual Result lastLogger(TRI_vocbase_t* vocbase
-                           ,std::shared_ptr<transaction::Context>
-                           ,uint64_t tickStart, uint64_t tickEnd
-                           ,std::shared_ptr<VPackBuilder>& builderSPtr) = 0;
+  virtual Result lastLogger(TRI_vocbase_t* vocbase, std::shared_ptr<transaction::Context>,
+                            uint64_t tickStart, uint64_t tickEnd,
+                            std::shared_ptr<VPackBuilder>& builderSPtr) = 0;
 
   virtual bool useRawDocumentPointers() = 0;
 
@@ -381,35 +386,31 @@ class StorageEngine : public application_features::ApplicationFeature {
       builder.add(VPackValue(it));
     }
 
-    builder.close(); // indexes
-    builder.close(); // supports
-    builder.close(); // object
+    builder.close();  // indexes
+    builder.close();  // supports
+    builder.close();  // object
   }
-  
+
   virtual void getStatistics(VPackBuilder& builder) const {
     builder.openObject();
     builder.close();
   }
 
  protected:
-  void registerCollection(TRI_vocbase_t* vocbase,
-                          arangodb::LogicalCollection* collection) {
+  void registerCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) {
     vocbase->registerCollection(true, collection);
   }
-  
-  void registerView(TRI_vocbase_t* vocbase,
-                    std::shared_ptr<arangodb::LogicalView> view) {
+
+  void registerView(TRI_vocbase_t* vocbase, std::shared_ptr<arangodb::LogicalView> view) {
     vocbase->registerView(true, view);
   }
 
  private:
-
   std::unique_ptr<IndexFactory> const _indexFactory;
 
   std::string const _typeName;
-
 };
 
-}
+}  // namespace arangodb
 
 #endif

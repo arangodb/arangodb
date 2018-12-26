@@ -110,14 +110,16 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
       ISOLATE;
 
       if (o->Has(TRI_V8_ASCII_STRING(isolate, "offset"))) {
-        v8::Handle<v8::Value> offset = o->Get(TRI_V8_ASCII_STRING(isolate, "offset"));
+        v8::Handle<v8::Value> offset =
+            o->Get(TRI_V8_ASCII_STRING(isolate, "offset"));
         if (offset->IsNumber()) {
           offsetValue = offset->Int32Value();
         }
       }
 
       if (o->Has(TRI_V8_ASCII_STRING(isolate, "parent"))) {
-        v8::Handle<v8::Value> parent = o->Get(TRI_V8_ASCII_STRING(isolate, "parent"));
+        v8::Handle<v8::Value> parent =
+            o->Get(TRI_V8_ASCII_STRING(isolate, "parent"));
         if (!parent->IsObject()) {
           return nullptr;
         }
@@ -133,7 +135,7 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
 
     size_t length = buffer->_length;
     if (static_cast<size_t>(offsetValue) >= length) {
-      return nullptr; //OOB
+      return nullptr;  // OOB
     }
 
     return buffer->_data + offsetValue;
@@ -162,14 +164,16 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
       ISOLATE;
 
       if (o->Has(TRI_V8_ASCII_STRING(isolate, "length"))) {
-        v8::Handle<v8::Value> length = o->Get(TRI_V8_ASCII_STRING(isolate, "length"));
+        v8::Handle<v8::Value> length =
+            o->Get(TRI_V8_ASCII_STRING(isolate, "length"));
         if (length->IsNumber()) {
           lengthValue = length->Int32Value();
         }
       }
 
       if (o->Has(TRI_V8_ASCII_STRING(isolate, "parent"))) {
-        v8::Handle<v8::Value> parent = o->Get(TRI_V8_ASCII_STRING(isolate, "parent"));
+        v8::Handle<v8::Value> parent =
+            o->Get(TRI_V8_ASCII_STRING(isolate, "parent"));
         if (!parent->IsObject()) {
           return 0;
         }
@@ -217,8 +221,7 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
   /// @brief C++ API for constructing fast buffer
   //////////////////////////////////////////////////////////////////////////////
 
-  static v8::Handle<v8::Object> New(v8::Isolate* isolate,
-                                    v8::Handle<v8::String> string);
+  static v8::Handle<v8::Object> New(v8::Isolate* isolate, v8::Handle<v8::String> string);
 
   static V8Buffer* New(v8::Isolate* isolate, size_t length);
 

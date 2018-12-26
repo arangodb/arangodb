@@ -37,8 +37,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestIndexHandler::RestIndexHandler(GeneralRequest* request,
-                                   GeneralResponse* response)
+RestIndexHandler::RestIndexHandler(GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
 RestStatus RestIndexHandler::execute() {
@@ -51,14 +50,13 @@ RestStatus RestIndexHandler::execute() {
   } else if (type == rest::RequestType::DELETE_REQ) {
     return dropIndex();
   } else {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
 }
 
-LogicalCollection* RestIndexHandler::collection(
-    std::string const& cName, std::shared_ptr<LogicalCollection>& coll) {
+LogicalCollection* RestIndexHandler::collection(std::string const& cName,
+                                                std::shared_ptr<LogicalCollection>& coll) {
   if (!cName.empty()) {
     if (ServerState::instance()->isCoordinator()) {
       try {
@@ -88,8 +86,7 @@ RestStatus RestIndexHandler::getIndexes() {
     std::string cName = _request->value("collection", found);
     LogicalCollection* coll = collection(cName, tmpColl);
     if (coll == nullptr) {
-      generateError(rest::ResponseCode::NOT_FOUND,
-                    TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
       return RestStatus::DONE;
     }
 
@@ -102,8 +99,7 @@ RestStatus RestIndexHandler::getIndexes() {
     VPackBuilder indexes;
     Result res = methods::Indexes::getAll(coll, withFigures, indexes);
     if (!res.ok()) {
-      generateError(rest::ResponseCode::BAD, res.errorNumber(),
-                    res.errorMessage());
+      generateError(rest::ResponseCode::BAD, res.errorNumber(), res.errorMessage());
       return RestStatus::DONE;
     }
 
@@ -131,8 +127,7 @@ RestStatus RestIndexHandler::getIndexes() {
     std::string const& cName = suffixes[0];
     LogicalCollection* coll = collection(cName, tmpColl);
     if (coll == nullptr) {
-      generateError(rest::ResponseCode::NOT_FOUND,
-                    TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
       return RestStatus::DONE;
     }
 
@@ -176,16 +171,14 @@ RestStatus RestIndexHandler::createIndex() {
   bool found = false;
   std::string cName = _request->value("collection", found);
   if (!found) {
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     return RestStatus::DONE;
   }
 
   std::shared_ptr<LogicalCollection> tmpColl;
   LogicalCollection* coll = collection(cName, tmpColl);
   if (coll == nullptr) {
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     return RestStatus::DONE;
   }
 
@@ -219,8 +212,7 @@ RestStatus RestIndexHandler::createIndex() {
         res.errorNumber() == TRI_ERROR_ARANGO_INDEX_NOT_FOUND) {
       generateError(res);
     } else {  // http_server compatibility
-      generateError(rest::ResponseCode::BAD, res.errorNumber(),
-                    res.errorMessage());
+      generateError(rest::ResponseCode::BAD, res.errorNumber(), res.errorMessage());
     }
   }
   return RestStatus::DONE;
@@ -241,8 +233,7 @@ RestStatus RestIndexHandler::dropIndex() {
   std::shared_ptr<LogicalCollection> tmpColl;
   LogicalCollection* coll = collection(cName, tmpColl);
   if (coll == nullptr) {
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     return RestStatus::DONE;
   }
 

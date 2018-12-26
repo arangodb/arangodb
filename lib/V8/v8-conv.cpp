@@ -24,8 +24,8 @@
 #include "v8-conv.h"
 
 #include "Basics/Exceptions.h"
-#include "Logger/Logger.h"
 #include "Basics/StringUtils.h"
+#include "Logger/Logger.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-utils.h"
 
@@ -68,8 +68,7 @@ int64_t TRI_ObjectToInt64(v8::Handle<v8::Value> const value) {
 }
 
 /// @brief converts an V8 object to a uint64_t
-uint64_t TRI_ObjectToUInt64(v8::Handle<v8::Value> const value,
-                            bool allowStringConversion) {
+uint64_t TRI_ObjectToUInt64(v8::Handle<v8::Value> const value, bool allowStringConversion) {
   if (value->IsNumber()) {
     return static_cast<uint64_t>(value->ToNumber()->Value());
   }
@@ -120,7 +119,7 @@ double TRI_ObjectToDouble(v8::Handle<v8::Value> const value, bool& error) {
 bool TRI_ObjectToBoolean(v8::Handle<v8::Value> const value) {
   if (value->IsBoolean()) {
     return value->ToBoolean()->Value();
-  } 
+  }
 
   if (value->IsBooleanObject()) {
     return v8::Handle<v8::BooleanObject>::Cast(value)->BooleanValue();
@@ -128,4 +127,3 @@ bool TRI_ObjectToBoolean(v8::Handle<v8::Value> const value) {
 
   return false;
 }
-

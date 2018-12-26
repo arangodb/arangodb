@@ -57,7 +57,7 @@ static inline char const* statusString(Status status) {
   return "unknown";
 }
 
-}
-}
+}  // namespace transaction
+}  // namespace arangodb
 
 #endif

@@ -72,7 +72,7 @@ typename _Unique_if<T>::_Unknown_bound make_unique(size_t n) {
 
 template <class T, class... Args>
 typename _Unique_if<T>::_Known_bound make_unique(Args&&...) = delete;
-}
+}  // namespace std
 
 #endif
 

@@ -80,15 +80,15 @@ std::string GeneralRequest::translateMethod(RequestType method) {
       return "STATUS";
 
     case RequestType::ILLEGAL:
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "illegal http request method encountered in switch";
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+          << "illegal http request method encountered in switch";
       return "UNKNOWN";
   }
 
   return "UNKNOWN";  // in order please MSVC
 }
 
-rest::RequestType GeneralRequest::translateMethod(
-    std::string const& method) {
+rest::RequestType GeneralRequest::translateMethod(std::string const& method) {
   std::string const methodString = StringUtils::toupper(method);
 
   if (methodString == "DELETE") {
@@ -122,8 +122,7 @@ void GeneralRequest::appendMethod(RequestType method, StringBuffer* buffer) {
   buffer->appendChar(' ');
 }
 
-rest::RequestType GeneralRequest::findRequestType(
-    char const* ptr, size_t const length) {
+rest::RequestType GeneralRequest::findRequestType(char const* ptr, size_t const length) {
   switch (length) {
     case 3:
       if (ptr[0] == 'g' && ptr[1] == 'e' && ptr[2] == 't') {
@@ -147,8 +146,7 @@ rest::RequestType GeneralRequest::findRequestType(
       break;
 
     case 5:
-      if (ptr[0] == 'p' && ptr[1] == 'a' && ptr[2] == 't' && ptr[3] == 'c' &&
-          ptr[4] == 'h') {
+      if (ptr[0] == 'p' && ptr[1] == 'a' && ptr[2] == 't' && ptr[3] == 'c' && ptr[4] == 'h') {
         return RequestType::PATCH;
       }
       break;
@@ -192,8 +190,7 @@ GeneralRequest::~GeneralRequest() {
   }
 }
 
-void GeneralRequest::setRequestContext(RequestContext* requestContext,
-                                       bool isRequestContextOwner) {
+void GeneralRequest::setRequestContext(RequestContext* requestContext, bool isRequestContextOwner) {
   TRI_ASSERT(requestContext != nullptr);
 
   if (_requestContext) {

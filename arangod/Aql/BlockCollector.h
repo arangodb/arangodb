@@ -24,9 +24,9 @@
 #ifndef ARANGOD_AQL_BLOCK_COLLECTOR_H
 #define ARANGOD_AQL_BLOCK_COLLECTOR_H 1
 
+#include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Basics/SmallVector.h"
-#include "Aql/types.h"
 
 namespace arangodb {
 namespace aql {
@@ -47,7 +47,7 @@ class BlockCollector {
   RegisterId nrRegs() const;
 
   void clear();
-  
+
   void add(std::unique_ptr<AqlItemBlock> block);
   void add(AqlItemBlock* block);
 
@@ -60,7 +60,7 @@ class BlockCollector {
   size_t _totalSize;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

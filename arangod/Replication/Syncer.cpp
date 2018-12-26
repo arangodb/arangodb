@@ -38,8 +38,8 @@
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -54,8 +54,7 @@ using namespace arangodb::httpclient;
 /// @brief base url of the replication API
 std::string const Syncer::BaseUrl = "/_api/replication";
 
-Syncer::Syncer(TRI_vocbase_t* vocbase,
-               TRI_replication_applier_configuration_t const* configuration)
+Syncer::Syncer(TRI_vocbase_t* vocbase, TRI_replication_applier_configuration_t const* configuration)
     : _vocbase(vocbase),
       _configuration(),
       _masterInfo(),
@@ -85,21 +84,21 @@ Syncer::Syncer(TRI_vocbase_t* vocbase,
   _endpoint = Endpoint::clientFactory(_configuration._endpoint);
 
   if (_endpoint != nullptr) {
-    _connection = GeneralClientConnection::factory(
-        _endpoint, _configuration._requestTimeout,
-        _configuration._connectTimeout,
-        (size_t)_configuration._maxConnectRetries,
-        (uint32_t)_configuration._sslProtocol);
+    _connection =
+        GeneralClientConnection::factory(_endpoint, _configuration._requestTimeout,
+                                         _configuration._connectTimeout,
+                                         (size_t)_configuration._maxConnectRetries,
+                                         (uint32_t)_configuration._sslProtocol);
 
     if (_connection != nullptr) {
       SimpleHttpClientParams params(_configuration._requestTimeout, false);
       params.setMaxRetries(2);
       params.setRetryWaitTime(2 * 1000 * 1000);
-      params.setRetryMessage(std::string("retrying failed HTTP request for endpoint '") +
-                             _configuration._endpoint +
-                             std::string("' for replication applier in database '" +
-                                         _vocbase->name() + "'"));
-      
+      params.setRetryMessage(
+          std::string("retrying failed HTTP request for endpoint '") +
+          _configuration._endpoint +
+          std::string("' for replication applier in database '" + _vocbase->name() + "'"));
+
       std::string username = _configuration._username;
       std::string password = _configuration._password;
       if (!username.empty()) {
@@ -108,7 +107,7 @@ Syncer::Syncer(TRI_vocbase_t* vocbase,
         params.setJwt(_configuration._jwt);
       }
       params.setLocationRewriter(this, &rewriteLocation);
-      
+
       _client = new SimpleHttpClient(_connection, params);
     }
   }
@@ -127,14 +126,13 @@ Syncer::~Syncer() {
 }
 
 /// @brief parse a velocypack response
-int Syncer::parseResponse(std::shared_ptr<VPackBuilder> builder, 
+int Syncer::parseResponse(std::shared_ptr<VPackBuilder> builder,
                           SimpleHttpResult const* response) const {
   try {
     VPackParser parser(builder);
     parser.parse(response->getBody().begin(), response->getBody().length());
     return TRI_ERROR_NO_ERROR;
-  }
-  catch (...) {
+  } catch (...) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 }
@@ -173,8 +171,8 @@ int Syncer::sendCreateBarrier(std::string& errorMsg, TRI_voc_tick_t minTick) {
                            ",\"tick\":\"" + StringUtils::itoa(minTick) + "\"}";
 
   // send request
-  std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
-      rest::RequestType::POST, url, body.c_str(), body.size()));
+  std::unique_ptr<SimpleHttpResult> response(
+      _client->retryRequest(rest::RequestType::POST, url, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg = "could not connect to master at " + _masterInfo._endpoint +
@@ -206,8 +204,7 @@ int Syncer::sendCreateBarrier(std::string& errorMsg, TRI_voc_tick_t minTick) {
       } else {
         _barrierId = StringUtils::uint64(id);
         _barrierUpdateTime = TRI_microtime();
-        LOG_TOPIC(DEBUG, Logger::REPLICATION) << "created WAL logfile barrier "
-                                              << _barrierId;
+        LOG_TOPIC(DEBUG, Logger::REPLICATION) << "created WAL logfile barrier " << _barrierId;
       }
     }
   }
@@ -233,8 +230,8 @@ int Syncer::sendExtendBarrier(TRI_voc_tick_t tick) {
                            ",\"tick\"" + StringUtils::itoa(tick) + "\"}";
 
   // send request
-  std::unique_ptr<SimpleHttpResult> response(_client->request(
-      rest::RequestType::PUT, url, body.c_str(), body.size()));
+  std::unique_ptr<SimpleHttpResult> response(
+      _client->request(rest::RequestType::PUT, url, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
@@ -260,12 +257,11 @@ int Syncer::sendRemoveBarrier() {
   }
 
   try {
-    std::string const url =
-        BaseUrl + "/barrier/" + StringUtils::itoa(_barrierId);
+    std::string const url = BaseUrl + "/barrier/" + StringUtils::itoa(_barrierId);
 
     // send request
-    std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
-        rest::RequestType::DELETE_REQ, url, nullptr, 0));
+    std::unique_ptr<SimpleHttpResult> response(
+        _client->retryRequest(rest::RequestType::DELETE_REQ, url, nullptr, 0));
 
     if (response == nullptr || !response->isComplete()) {
       return TRI_ERROR_REPLICATION_NO_RESPONSE;
@@ -298,7 +294,8 @@ std::string Syncer::getCName(VPackSlice const& slice) const {
 }
 
 /// @brief extract the collection by either id or name, may return nullptr!
-arangodb::LogicalCollection* Syncer::getCollectionByIdOrName(TRI_voc_cid_t cid, std::string const& name) { 
+arangodb::LogicalCollection* Syncer::getCollectionByIdOrName(TRI_voc_cid_t cid,
+                                                             std::string const& name) {
   arangodb::LogicalCollection* idCol = nullptr;
   arangodb::LogicalCollection* nameCol = nullptr;
 
@@ -315,7 +312,7 @@ arangodb::LogicalCollection* Syncer::getCollectionByIdOrName(TRI_voc_cid_t cid, 
     if (idCol->cid() == nameCol->cid()) {
       // found collection by id and name, and both are identical!
       return idCol;
-    } 
+    }
     // found different collections by id and name
     TRI_ASSERT(!name.empty());
     if (name[0] == '_') {
@@ -331,16 +328,15 @@ arangodb::LogicalCollection* Syncer::getCollectionByIdOrName(TRI_voc_cid_t cid, 
     TRI_ASSERT(idCol == nullptr);
     return nameCol;
   }
- 
+
   // may be nullptr
   return idCol;
 }
 
-int Syncer::applyCollectionDumpMarker(
-    transaction::Methods& trx, LogicalCollection* coll,
-    TRI_replication_operation_e type, VPackSlice const& old, 
-    VPackSlice const& slice, std::string& errorMsg) {
-
+int Syncer::applyCollectionDumpMarker(transaction::Methods& trx, LogicalCollection* coll,
+                                      TRI_replication_operation_e type,
+                                      VPackSlice const& old, VPackSlice const& slice,
+                                      std::string& errorMsg) {
   if (_configuration._lockTimeoutRetries > 0) {
     decltype(_configuration._lockTimeoutRetries) tries = 0;
 
@@ -357,8 +353,8 @@ int Syncer::applyCollectionDumpMarker(
         // timed out
         return res;
       }
-     
-      usleep(50000); 
+
+      usleep(50000);
       // retry
     }
   } else {
@@ -367,11 +363,11 @@ int Syncer::applyCollectionDumpMarker(
 }
 
 /// @brief apply the data from a collection dump or the continuous log
-int Syncer::applyCollectionDumpMarkerInternal(
-    transaction::Methods& trx, LogicalCollection* coll,
-    TRI_replication_operation_e type, VPackSlice const& old, 
-    VPackSlice const& slice, std::string& errorMsg) {
-
+int Syncer::applyCollectionDumpMarkerInternal(transaction::Methods& trx,
+                                              LogicalCollection* coll,
+                                              TRI_replication_operation_e type,
+                                              VPackSlice const& old, VPackSlice const& slice,
+                                              std::string& errorMsg) {
   int res = TRI_ERROR_INTERNAL;
 
   if (type == REPLICATION_MARKER_DOCUMENT) {
@@ -391,9 +387,9 @@ int Syncer::applyCollectionDumpMarkerInternal(
 
       if (opRes.code == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
         // perform an update
-        opRes = trx.replace(coll->name(), slice, options); 
+        opRes = trx.replace(coll->name(), slice, options);
       }
-    
+
       res = opRes.code;
     } catch (arangodb::basics::Exception const& ex) {
       res = ex.code();
@@ -401,8 +397,7 @@ int Syncer::applyCollectionDumpMarkerInternal(
                  std::string(TRI_errno_string(res));
     } catch (std::exception const& ex) {
       res = TRI_ERROR_INTERNAL;
-      errorMsg = "document insert/replace operation failed: " +
-                 std::string(ex.what());
+      errorMsg = "document insert/replace operation failed: " + std::string(ex.what());
     } catch (...) {
       res = TRI_ERROR_INTERNAL;
       errorMsg = "document insert/replace operation failed: unknown exception";
@@ -413,7 +408,7 @@ int Syncer::applyCollectionDumpMarkerInternal(
 
   else if (type == REPLICATION_MARKER_REMOVE) {
     // {"type":2402,"key":"592063"}
-    
+
     try {
       OperationOptions options;
       options.silent = true;
@@ -423,8 +418,7 @@ int Syncer::applyCollectionDumpMarkerInternal(
       }
       OperationResult opRes = trx.remove(coll->name(), old, options);
 
-      if (opRes.successful() ||
-          opRes.code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+      if (opRes.successful() || opRes.code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         // ignore document not found errors
         return TRI_ERROR_NO_ERROR;
       }
@@ -432,20 +426,18 @@ int Syncer::applyCollectionDumpMarkerInternal(
       res = opRes.code;
     } catch (arangodb::basics::Exception const& ex) {
       res = ex.code();
-      errorMsg = "document remove operation failed: " +
-                 std::string(TRI_errno_string(res));
+      errorMsg = "document remove operation failed: " + std::string(TRI_errno_string(res));
     } catch (std::exception const& ex) {
       res = TRI_ERROR_INTERNAL;
-      errorMsg = "document remove operation failed: " +
-                 std::string(ex.what());
+      errorMsg = "document remove operation failed: " + std::string(ex.what());
     } catch (...) {
       res = TRI_ERROR_INTERNAL;
       errorMsg = "document remove operation failed: unknown exception";
     }
-    
+
     return res;
   }
-    
+
   res = TRI_ERROR_REPLICATION_UNEXPECTED_MARKER;
   errorMsg = "unexpected marker type " + StringUtils::itoa(type);
 
@@ -474,22 +466,19 @@ int Syncer::createCollection(VPackSlice const& slice, arangodb::LogicalCollectio
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  TRI_col_type_e const type = static_cast<TRI_col_type_e>(VelocyPackHelper::getNumericValue<int>(
-      slice, "type", TRI_COL_TYPE_DOCUMENT));
+  TRI_col_type_e const type = static_cast<TRI_col_type_e>(
+      VelocyPackHelper::getNumericValue<int>(slice, "type", TRI_COL_TYPE_DOCUMENT));
 
   arangodb::LogicalCollection* col = getCollectionByIdOrName(cid, name);
 
-  if (col != nullptr && 
-      col->type() == type && 
-      col->name() == name && 
+  if (col != nullptr && col->type() == type && col->name() == name &&
       (col->isSystem() || col->cid() == cid)) {
     // collection already exists with same name.
     if (!col->isSystem()) {
-      // collection exists. however, after creation, the collection is supposed to be empty, 
-      // so we will truncate it
-      SingleCollectionTransaction trx(
-          transaction::StandaloneContext::Create(_vocbase), col->cid(),
-          AccessMode::Type::EXCLUSIVE);
+      // collection exists. however, after creation, the collection is supposed
+      // to be empty, so we will truncate it
+      SingleCollectionTransaction trx(transaction::StandaloneContext::Create(_vocbase),
+                                      col->cid(), AccessMode::Type::EXCLUSIVE);
       Result res = trx.begin();
 
       if (!res.ok()) {
@@ -549,7 +538,8 @@ int Syncer::createCollection(VPackSlice const& slice, arangodb::LogicalCollectio
 
 /// @brief drops a collection, based on the VelocyPack provided
 int Syncer::dropCollection(VPackSlice const& slice, bool reportError) {
-  arangodb::LogicalCollection* col = getCollectionByIdOrName(getCid(slice), getCName(slice));
+  arangodb::LogicalCollection* col =
+      getCollectionByIdOrName(getCid(slice), getCName(slice));
 
   if (col == nullptr) {
     if (reportError) {
@@ -585,7 +575,8 @@ int Syncer::createIndex(VPackSlice const& slice) {
 
     LogicalCollection* collection = guard.collection();
 
-    SingleCollectionTransaction trx(transaction::StandaloneContext::Create(_vocbase), guard.collection()->cid(), AccessMode::Type::WRITE);
+    SingleCollectionTransaction trx(transaction::StandaloneContext::Create(_vocbase),
+                                    guard.collection()->cid(), AccessMode::Type::WRITE);
 
     Result res = trx.begin();
 
@@ -601,13 +592,16 @@ int Syncer::createIndex(VPackSlice const& slice) {
 
     return res.errorNumber();
   } catch (arangodb::basics::Exception const& ex) {
-    LOG_TOPIC(ERR, Logger::REPLICATION) << "caught exception while restoring indexes: " << ex.what();
+    LOG_TOPIC(ERR, Logger::REPLICATION)
+        << "caught exception while restoring indexes: " << ex.what();
     return ex.code();
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, Logger::REPLICATION) << "caught exception while restoring indexes: " << ex.what();
+    LOG_TOPIC(ERR, Logger::REPLICATION)
+        << "caught exception while restoring indexes: " << ex.what();
     return TRI_ERROR_INTERNAL;
   } catch (...) {
-    LOG_TOPIC(ERR, Logger::REPLICATION) << "caught unknown exception while restoring indexes";
+    LOG_TOPIC(ERR, Logger::REPLICATION)
+        << "caught unknown exception while restoring indexes";
     return TRI_ERROR_INTERNAL;
   }
 }
@@ -660,8 +654,7 @@ int Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
 
 /// @brief get master state
 int Syncer::getMasterState(std::string& errorMsg) {
-  std::string const url =
-      BaseUrl + "/logger-state?serverId=" + _localServerIdString;
+  std::string const url = BaseUrl + "/logger-state?serverId=" + _localServerIdString;
 
   // store old settings
   size_t maxRetries = _client->params().getMaxRetries();
@@ -699,18 +692,19 @@ int Syncer::getMasterState(std::string& errorMsg) {
     VPackSlice const slice = builder->slice();
 
     if (!slice.isObject()) {
-      LOG_TOPIC(DEBUG, Logger::REPLICATION) << "syncer::getMasterState - state is not an object";
+      LOG_TOPIC(DEBUG, Logger::REPLICATION)
+          << "syncer::getMasterState - state is not an object";
       res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
       errorMsg = "got invalid response from master at " +
                  _masterInfo._endpoint + ": invalid JSON";
-    }
-    else {
+    } else {
       res = handleStateResponse(slice, errorMsg);
     }
   }
 
-  if (res != TRI_ERROR_NO_ERROR){
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "syncer::getMasterState - handleStateResponse failed";
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_TOPIC(DEBUG, Logger::REPLICATION)
+        << "syncer::getMasterState - handleStateResponse failed";
   }
   return res;
 }
@@ -822,9 +816,8 @@ int Syncer::handleStateResponse(VPackSlice const& slice, std::string& errorMsg) 
 
   LOG_TOPIC(INFO, Logger::REPLICATION)
       << "connected to master at " << _masterInfo._endpoint << ", id "
-      << _masterInfo._serverId << ", version " << _masterInfo._majorVersion
-      << "." << _masterInfo._minorVersion << ", last log tick "
-      << _masterInfo._lastLogTick;
+      << _masterInfo._serverId << ", version " << _masterInfo._majorVersion << "."
+      << _masterInfo._minorVersion << ", last log tick " << _masterInfo._lastLogTick;
 
   return TRI_ERROR_NO_ERROR;
 }

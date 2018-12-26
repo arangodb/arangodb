@@ -24,8 +24,8 @@
 // LoggerStream is just a helper, the LoggerStream.h cannot be included standalone
 #include "Logger.h"
 
-#include <iostream>
 #include <iomanip>
+#include <iostream>
 
 using namespace arangodb;
 
@@ -45,18 +45,17 @@ LoggerStream::~LoggerStream() {
 LoggerStream& LoggerStream::operator<<(Logger::BINARY binary) {
   try {
     std::ostringstream tmp;
-  
+
     uint8_t const* ptr = static_cast<uint8_t const*>(binary.baseAddress);
     uint8_t const* end = ptr + binary.size;
-    
+
     while (ptr < end) {
       uint8_t n = *ptr;
-      
+
       uint8_t n1 = n >> 4;
       uint8_t n2 = n & 0x0F;
-      
-      tmp << "\\x" 
-          << static_cast<char>((n1 < 10) ? ('0' + n1) : ('A' + n1 - 10)) 
+
+      tmp << "\\x" << static_cast<char>((n1 < 10) ? ('0' + n1) : ('A' + n1 - 10))
           << static_cast<char>((n2 < 10) ? ('0' + n2) : ('A' + n2 - 10));
       ++ptr;
     }
@@ -86,8 +85,7 @@ LoggerStream& LoggerStream::operator<<(Logger::RANGE range) {
 LoggerStream& LoggerStream::operator<<(Logger::FIXED value) {
   try {
     std::ostringstream tmp;
-    tmp << std::setprecision(value._precision) << std::fixed
-        << value._value;
+    tmp << std::setprecision(value._precision) << std::fixed << value._value;
     _out << tmp.str();
   } catch (...) {
     // ignore any errors here. logging should not have side effects

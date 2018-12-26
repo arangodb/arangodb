@@ -24,8 +24,8 @@
 #ifndef ARANGOD_MMFILES_MMFILES_AQL_FUNCTIONS_H
 #define ARANGOD_MMFILES_MMFILES_AQL_FUNCTIONS_H 1
 
-#include "Basics/Common.h"
 #include "Aql/Functions.h"
+#include "Basics/Common.h"
 
 namespace arangodb {
 namespace aql {
@@ -45,6 +45,6 @@ struct MMFilesAqlFunctions : public aql::Functions {
   static void registerResources();
 };
 
-} // namespace arangodb
+}  // namespace arangodb
 
 #endif

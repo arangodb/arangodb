@@ -33,8 +33,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestExplainHandler::RestExplainHandler(GeneralRequest* request,
-                                       GeneralResponse* response)
+RestExplainHandler::RestExplainHandler(GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
 RestStatus RestExplainHandler::execute() {
@@ -65,8 +64,7 @@ void RestExplainHandler::explainQuery() {
   }
 
   if (_vocbase == nullptr) {
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     return;
   }
 
@@ -115,8 +113,7 @@ void RestExplainHandler::explainQuery() {
   optionsBuilder->add(optionsSlice);
 
   arangodb::aql::Query query(false, _vocbase, aql::QueryString(queryString),
-                             bindBuilder, optionsBuilder,
-                             arangodb::aql::PART_MAIN);
+                             bindBuilder, optionsBuilder, arangodb::aql::PART_MAIN);
 
   auto queryResult = query.explain();
 

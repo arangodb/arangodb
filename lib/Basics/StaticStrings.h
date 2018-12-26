@@ -62,8 +62,8 @@ class StaticStrings {
   static std::string const SilentString;
   static std::string const WaitForSyncString;
   static std::string const IsSynchronousReplicationString;
- 
-  // database and collection names 
+
+  // database and collection names
   static std::string const SystemDatabase;
 
   // HTTP headers
@@ -116,6 +116,6 @@ class StaticStrings {
   static std::string const MimeTypeText;
   static std::string const MimeTypeVPack;
 };
-}
+}  // namespace arangodb
 
 #endif

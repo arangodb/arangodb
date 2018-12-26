@@ -77,12 +77,8 @@ struct LogMessage {
   LogMessage(LogMessage const&) = delete;
   LogMessage& operator=(LogMessage const&) = delete;
 
-  LogMessage(LogLevel level, size_t topicId, std::string&& message,
-             size_t offset)
-      : _level(level),
-        _topicId(topicId),
-        _message(std::move(message)),
-        _offset(offset) {}
+  LogMessage(LogLevel level, size_t topicId, std::string&& message, size_t offset)
+      : _level(level), _topicId(topicId), _message(std::move(message)), _offset(offset) {}
 
   LogLevel _level;
   size_t _topicId;
@@ -169,31 +165,32 @@ class Logger {
 
   struct BINARY {
     BINARY(void const* baseAddress, size_t size)
-        : baseAddress(baseAddress), size(size){}
-    explicit BINARY(std::string const& data) : BINARY(data.c_str(), data.size()) {}
+        : baseAddress(baseAddress), size(size) {}
+    explicit BINARY(std::string const& data)
+        : BINARY(data.c_str(), data.size()) {}
     void const* baseAddress;
     size_t size;
   };
 
   struct RANGE {
     RANGE(void const* baseAddress, size_t size)
-        : baseAddress(baseAddress), size(size){}
+        : baseAddress(baseAddress), size(size) {}
     void const* baseAddress;
     size_t size;
   };
 
   struct LINE {
-    explicit LINE(int line) : _line(line){}
+    explicit LINE(int line) : _line(line) {}
     int _line;
   };
 
   struct FILE {
-    explicit FILE(char const* file) : _file(file){}
+    explicit FILE(char const* file) : _file(file) {}
     char const* _file;
   };
 
   struct FUNCTION {
-    explicit FUNCTION(char const* function) : _function(function){}
+    explicit FUNCTION(char const* function) : _function(function) {}
     char const* _function;
   };
 
@@ -208,13 +205,13 @@ class Logger {
   static void setOutputPrefix(std::string const&);
   static void setShowLineNumber(bool);
   static void setShowRole(bool);
-  static bool getShowRole() {return _showRole;};
+  static bool getShowRole() { return _showRole; };
   static void setShortenFilenames(bool);
   static void setShowThreadIdentifier(bool);
   static void setUseLocalTime(bool);
-  static bool getUseLocalTime() {return _useLocalTime;};
+  static bool getUseLocalTime() { return _useLocalTime; };
   static void setUseMicrotime(bool);
-  static bool getUseMicrotime() {return _useMicrotime;};
+  static bool getUseMicrotime() { return _useMicrotime; };
   static void setKeepLogrotate(bool);
 
   static std::string const& translateLogLevel(LogLevel);
@@ -253,12 +250,12 @@ class Logger {
   static bool _useLocalTime;
   static bool _keepLogRotate;
   static bool _useMicrotime;
-  static char _role; // current server role to log
+  static char _role;  // current server role to log
   static std::string _outputPrefix;
 
   static std::unique_ptr<LogThread> _loggingThread;
 };
-}
+}  // namespace arangodb
 
 #include "Logger/LoggerStream.h"
 

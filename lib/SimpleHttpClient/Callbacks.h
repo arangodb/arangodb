@@ -32,23 +32,19 @@ class GeneralResponse;
 namespace communicator {
 class Callbacks {
  public:
-	typedef std::function<void(int, std::unique_ptr<GeneralResponse>)>
-		OnErrorCallback;
+  typedef std::function<void(int, std::unique_ptr<GeneralResponse>)> OnErrorCallback;
 
-	typedef std::function<void(std::unique_ptr<GeneralResponse>)>
-		OnSuccessCallback;
+  typedef std::function<void(std::unique_ptr<GeneralResponse>)> OnSuccessCallback;
 
-	Callbacks() {}
-	Callbacks(OnSuccessCallback onSuccess, OnErrorCallback onError) :
-	_onSuccess(onSuccess), _onError(onError)  {
-	}
+  Callbacks() {}
+  Callbacks(OnSuccessCallback onSuccess, OnErrorCallback onError)
+      : _onSuccess(onSuccess), _onError(onError) {}
 
  public:
-	OnSuccessCallback _onSuccess;
-	OnErrorCallback _onError;
-
+  OnSuccessCallback _onSuccess;
+  OnErrorCallback _onError;
 };
-}
-}
+}  // namespace communicator
+}  // namespace arangodb
 
 #endif

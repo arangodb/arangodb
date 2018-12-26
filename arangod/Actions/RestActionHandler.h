@@ -53,6 +53,6 @@ class RestActionHandler : public RestVocbaseBaseHandler {
   // data for cancelation
   void* _data;
 };
-}
+}  // namespace arangodb
 
 #endif

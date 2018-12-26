@@ -45,14 +45,11 @@ std::atomic<uint64_t> NEXT_DESC_ID(static_cast<uint64_t>(0));
 
 std::atomic<bool> WorkMonitor::_stopped(true);
 
-boost::lockfree::queue<WorkDescription*> WorkMonitor::_emptyWorkDescription(
-    128);
+boost::lockfree::queue<WorkDescription*> WorkMonitor::_emptyWorkDescription(128);
 
-boost::lockfree::queue<WorkDescription*> WorkMonitor::_freeableWorkDescription(
-    128);
+boost::lockfree::queue<WorkDescription*> WorkMonitor::_freeableWorkDescription(128);
 
-boost::lockfree::queue<
-    std::pair<std::shared_ptr<rest::RestHandler>, std::function<void()>>*>
+boost::lockfree::queue<std::pair<std::shared_ptr<rest::RestHandler>, std::function<void()>>*>
     WorkMonitor::_workOverview(128);
 
 Mutex WorkMonitor::_cancelLock;
@@ -89,8 +86,7 @@ bool WorkMonitor::pushThread(Thread* thread) {
   try {
     WorkDescription* desc = createWorkDescription(WorkType::THREAD);
 
-    new (&desc->_data._thread)
-        WorkDescription::Data::ThreadMember(thread, false);
+    new (&desc->_data._thread) WorkDescription::Data::ThreadMember(thread, false);
 
     activateWorkDescription(desc);
 
@@ -165,8 +161,7 @@ void WorkMonitor::popAql() {
   WorkDescription* desc = deactivateWorkDescription();
 
   TRI_ASSERT(desc != nullptr);
-  TRI_ASSERT(desc->_type == WorkType::AQL_STRING ||
-             desc->_type == WorkType::AQL_ID);
+  TRI_ASSERT(desc->_type == WorkType::AQL_STRING || desc->_type == WorkType::AQL_ID);
 
   try {
     freeWorkDescription(desc);
@@ -176,16 +171,14 @@ void WorkMonitor::popAql() {
   }
 }
 
-void WorkMonitor::pushCustom(char const* type, char const* text,
-                             size_t length) {
+void WorkMonitor::pushCustom(char const* type, char const* text, size_t length) {
   TRI_ASSERT(type != nullptr);
   TRI_ASSERT(text != nullptr);
 
   WorkDescription* desc = createWorkDescription(WorkType::CUSTOM);
   TRI_ASSERT(desc != nullptr);
 
-  TRI_CopyString(desc->_data._custom._type, type,
-                 sizeof(desc->_data._custom._type) - 1);
+  TRI_CopyString(desc->_data._custom._type, type, sizeof(desc->_data._custom._type) - 1);
 
   if (sizeof(desc->_data._custom._text) - 1 < length) {
     length = sizeof(desc->_data._custom._text) - 1;
@@ -202,8 +195,7 @@ void WorkMonitor::pushCustom(char const* type, uint64_t id) {
   WorkDescription* desc = createWorkDescription(WorkType::CUSTOM);
   TRI_ASSERT(desc != nullptr);
 
-  TRI_CopyString(desc->_data._custom._type, type,
-                 sizeof(desc->_data._custom._type) - 1);
+  TRI_CopyString(desc->_data._custom._type, type, sizeof(desc->_data._custom._type) - 1);
 
   std::string idString = std::to_string(id);
   TRI_CopyString(desc->_data._custom._text, idString.c_str(), idString.size());
@@ -225,11 +217,10 @@ void WorkMonitor::popCustom() {
   }
 }
 
-void WorkMonitor::requestWorkOverview(
-    std::shared_ptr<rest::RestHandler> handler, std::function<void()> next) {
+void WorkMonitor::requestWorkOverview(std::shared_ptr<rest::RestHandler> handler,
+                                      std::function<void()> next) {
   _workOverview.push(
-      new std::pair<std::shared_ptr<rest::RestHandler>, std::function<void()>>(
-          handler, next));
+      new std::pair<std::shared_ptr<rest::RestHandler>, std::function<void()>>(handler, next));
 }
 
 void WorkMonitor::cancelWork(uint64_t id) {
@@ -251,7 +242,7 @@ void WorkMonitor::clearHandlers() {
   if (_stopped.load()) {
     return;
   }
-  
+
   WORK_MONITOR.clearAllHandlers();
 }
 

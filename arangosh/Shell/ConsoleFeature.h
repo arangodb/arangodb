@@ -107,6 +107,6 @@ class ConsoleFeature final : public application_features::ApplicationFeature {
   FILE* _toPager;
   FILE* _toAuditFile;
 };
-}
+}  // namespace arangodb
 
 #endif

@@ -30,14 +30,11 @@ using namespace arangodb;
 // --SECTION--                                                    static members
 // -----------------------------------------------------------------------------
 
-RestStatus const RestStatus::DONE(
-    new RestStatusElement(RestStatusElement::State::DONE));
+RestStatus const RestStatus::DONE(new RestStatusElement(RestStatusElement::State::DONE));
 
-RestStatus const RestStatus::FAIL(
-    new RestStatusElement(RestStatusElement::State::FAIL));
+RestStatus const RestStatus::FAIL(new RestStatusElement(RestStatusElement::State::FAIL));
 
-RestStatus const RestStatus::QUEUE(
-    new RestStatusElement(RestStatusElement::State::QUEUED));
+RestStatus const RestStatus::QUEUE(new RestStatusElement(RestStatusElement::State::QUEUED));
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods

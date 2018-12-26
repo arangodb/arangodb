@@ -44,8 +44,7 @@ using namespace arangodb::application_features;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
-ServerFeature::ServerFeature(application_features::ApplicationServer* server,
-                             int* res)
+ServerFeature::ServerFeature(application_features::ApplicationServer* server, int* res)
     : ApplicationFeature(server, "Server"),
       _vstMaxSize(1024 * 30),
       _result(res),
@@ -111,20 +110,22 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   }
 
   if (1 < count) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot combine '--console', '--javascript.unit-tests' and "
-               << "'--javascript.script'";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "cannot combine '--console', '--javascript.unit-tests' and "
+        << "'--javascript.script'";
     FATAL_ERROR_EXIT();
   }
 
   if (_operationMode == OperationMode::MODE_SERVER && !_restServer) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "need at least '--console', '--javascript.unit-tests' or"
-               << "'--javascript.script if rest-server is disabled";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "need at least '--console', '--javascript.unit-tests' or"
+        << "'--javascript.script if rest-server is disabled";
     FATAL_ERROR_EXIT();
   }
 
   if (!_restServer) {
-    ApplicationServer::disableFeatures({"Daemon", "Endpoint", "GeneralServer",
-                                        "SslServer", "Supervisor"});
+    ApplicationServer::disableFeatures(
+        {"Daemon", "Endpoint", "GeneralServer", "SslServer", "Supervisor"});
 
     DatabaseFeature* database =
         ApplicationServer::getFeature<DatabaseFeature>("Database");
@@ -171,19 +172,18 @@ void ServerFeature::start() {
       LOG_TOPIC(TRACE, Logger::STARTUP) << "server operation mode: SERVER";
       break;
   }
-  
+
   // flush all log output before we go on... this is sensible because any
   // of the following options may print or prompt, and pending log entries
   // might overwrite that
   Logger::flush();
- 
+
   if (!isConsoleMode()) {
     // install CTRL-C handlers
     server()->registerStartupCallback([]() {
       ApplicationServer::getFeature<SchedulerFeature>("Scheduler")->buildControlCHandler();
     });
   }
-
 }
 
 void ServerFeature::beginShutdown() {

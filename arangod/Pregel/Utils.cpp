@@ -78,8 +78,7 @@ std::string const Utils::enterNextGSSKey = "nextGSS";
 std::string const Utils::compensate = "compensate";
 std::string const Utils::rollback = "rollback";
 
-std::string Utils::baseUrl(std::string const& dbName,
-                           std::string const& prefix) {
+std::string Utils::baseUrl(std::string const& dbName, std::string const& prefix) {
   return "/_db/" + basics::StringUtils::urlEncode(dbName) + Utils::apiPrefix +
          prefix + "/";
 }
@@ -87,8 +86,7 @@ std::string Utils::baseUrl(std::string const& dbName,
 void Utils::printResponses(std::vector<ClusterCommRequest> const& requests) {
   for (auto const& req : requests) {
     auto& res = req.result;
-    if (res.status == CL_COMM_RECEIVED &&
-        res.answer_code != rest::ResponseCode::OK) {
+    if (res.status == CL_COMM_RECEIVED && res.answer_code != rest::ResponseCode::OK) {
       LOG_TOPIC(ERR, Logger::PREGEL)
           << "Error sending request to " << req.destination
           << ". Payload: " << res.answer->payload().toJson();
@@ -96,10 +94,8 @@ void Utils::printResponses(std::vector<ClusterCommRequest> const& requests) {
   }
 }
 
-int Utils::resolveShard(WorkerConfig const* config,
-                        std::string const& collectionName,
-                        std::string const& shardKey,
-                        std::string const& vertexKey,
+int Utils::resolveShard(WorkerConfig const* config, std::string const& collectionName,
+                        std::string const& shardKey, std::string const& vertexKey,
                         std::string& responsibleShard) {
   if (ServerState::instance()->isRunningInCluster() == false) {
     responsibleShard = collectionName;
@@ -124,9 +120,8 @@ int Utils::resolveShard(WorkerConfig const* config,
   partial.add(shardKey, VPackValue(vertexKey));
   partial.close();
   //  LOG_TOPIC(INFO, Logger::PREGEL) << "Partial doc: " << partial.toJson();
-  int res =
-      ci->getResponsibleShard(info.get(), partial.slice(), false,
-                              responsibleShard, usesDefaultShardingAttributes);
+  int res = ci->getResponsibleShard(info.get(), partial.slice(), false,
+                                    responsibleShard, usesDefaultShardingAttributes);
   // TRI_ASSERT(usesDefaultShardingAttributes);  // should be true anyway
 
   return res;

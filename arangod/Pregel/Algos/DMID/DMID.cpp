@@ -90,8 +90,7 @@ static const float PROFTIABILITY_DELTA = 0.1f;
 
 static const bool LOG_AGGS = false;
 
-struct DMIDComputation
-    : public VertexComputation<DMIDValue, float, DMIDMessage> {
+struct DMIDComputation : public VertexComputation<DMIDValue, float, DMIDMessage> {
   DMIDComputation() {}
 
   void compute(MessageIterator<DMIDMessage> const& messages) override {
@@ -107,8 +106,7 @@ struct DMIDComputation
       superstep2(messages);
     }
 
-    if ((globalSuperstep() >= 3 &&
-         globalSuperstep() <= RW_ITERATIONBOUND + 3)) {
+    if ((globalSuperstep() >= 3 && globalSuperstep() <= RW_ITERATIONBOUND + 3)) {
       /**
        * TODO: Integrate a precision factor for the random walk phase. The
        * phase ends when the infinity norm of the difference between the
@@ -138,8 +136,7 @@ struct DMIDComputation
       superstep7(messages);
     }
 
-    int64_t const* iterationCounter =
-        getAggregatedValue<int64_t>(ITERATION_AGG);
+    int64_t const* iterationCounter = getAggregatedValue<int64_t>(ITERATION_AGG);
     int64_t it = *iterationCounter;
 
     if (globalSuperstep() >= rwFinished + 4 && (it % 3 == 1)) {
@@ -262,7 +259,7 @@ struct DMIDComputation
     double newEntryDA = 0.0;
     curDA->forEach([&](PregelID const& _id, double entry) {
       auto const& it = vertexState->disCol.find(_id);
-      if (it != vertexState->disCol.end()) { // sparse vector in the original
+      if (it != vertexState->disCol.end()) {  // sparse vector in the original
         newEntryDA += entry * it->second;
       }
     });
@@ -281,8 +278,7 @@ struct DMIDComputation
     // DoubleDenseVector finalDA = getAggregatedValue(DA_AGG);
     // vertex.getValue().getWeightedInDegree();
     double weightedInDegree = vertexState->weightedInDegree;
-    double lsAggValue =
-        finalDA->getAggregatedValue(shard(), key()) * weightedInDegree;
+    double lsAggValue = finalDA->getAggregatedValue(shard(), key()) * weightedInDegree;
 
     VertexSumAggregator* tmpLS = (VertexSumAggregator*)getWriteAggregator(LS_AGG);
     tmpLS->aggregate(this->shard(), this->key(), lsAggValue);
@@ -312,8 +308,7 @@ struct DMIDComputation
 
       float senderWeight = message->weight;
 
-      float myInfluence =
-          (float)vecLS->getAggregatedValue(this->shard(), this->key());
+      float myInfluence = (float)vecLS->getAggregatedValue(this->shard(), this->key());
       myInfluence *= senderWeight;
 
       /**
@@ -321,8 +316,7 @@ struct DMIDComputation
        */
       bool hasEdgeToSender = false;
       for (Edge<float>* edge : getEdges()) {
-        if (edge->targetShard() == senderID.shard &&
-            edge->toKey() == senderID.key) {
+        if (edge->targetShard() == senderID.shard && edge->toKey() == senderID.key) {
           hasEdgeToSender = true;
           /**
            * Has this vertex more influence on the sender than the
@@ -397,8 +391,7 @@ struct DMIDComputation
 
     /** Is this vertex a global leader? Global Leader do not change behavior */
     if (it == vertexState->membershipDegree.end() || *profitability < 0) {
-      bool const* notAllAssigned =
-          getAggregatedValue<bool>(NOT_ALL_ASSIGNED_AGG);
+      bool const* notAllAssigned = getAggregatedValue<bool>(NOT_ALL_ASSIGNED_AGG);
       bool const* newMember = getAggregatedValue<bool>(NEW_MEMBER_AGG);
       if (*notAllAssigned) {
         /** There are vertices that are not part of any community */
@@ -420,9 +413,9 @@ struct DMIDComputation
          **/
 
         auto const& it2 = vertexState->membershipDegree.find(this->pregelId());
-        /** In case of first init test again if vertex is leader, 
+        /** In case of first init test again if vertex is leader,
          or if we do not have connections */
-        if (it2 == vertexState->membershipDegree.end() && getEdgeCount() > 0) {// no
+        if (it2 == vertexState->membershipDegree.end() && getEdgeCount() > 0) {  // no
           for (auto const& pair : vertexState->membershipDegree) {
             /**
              * message of the form (ownID, community ID of interest)
@@ -486,7 +479,7 @@ struct DMIDComputation
     auto const& it = vertexState->membershipDegree.find(this->pregelId());
 
     /** Is this vertex a global leader? */
-    if (it == vertexState->membershipDegree.end()) {// no
+    if (it == vertexState->membershipDegree.end()) {  // no
       //! vertex.getValue().getMembershipDegree().containsKey(vertexID)
       /** counts per communities the number of successors which are member */
       std::map<PregelID, float> membershipCounter;
@@ -511,13 +504,12 @@ struct DMIDComputation
       /** profitability threshold */
       float const* threshold = getAggregatedValue<float>(PROFITABILITY_AGG);
 
-      int64_t const* iterationCounter =
-          getAggregatedValue<int64_t>(ITERATION_AGG);
+      int64_t const* iterationCounter = getAggregatedValue<int64_t>(ITERATION_AGG);
 
       size_t m = std::min(getEdgeCount(), messages.size());
       for (std::pair<PregelID, float> const& pair : membershipCounter) {
         // FIXME
-        //float const ttt = pair.second / getEdges().size();
+        // float const ttt = pair.second / getEdges().size();
         float const ttt = pair.second / m;
         if (ttt > *threshold) {
           /** its profitable to become a member, set value */
@@ -577,8 +569,7 @@ struct DMIDComputation
   }
 };
 
-VertexComputation<DMIDValue, float, DMIDMessage>* DMID::createComputation(
-    WorkerConfig const* config) const {
+VertexComputation<DMIDValue, float, DMIDMessage>* DMID::createComputation(WorkerConfig const* config) const {
   return new DMIDComputation();
 }
 
@@ -588,7 +579,7 @@ struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
   unsigned _maxCommunities;
 
   explicit DMIDGraphFormat(std::string const& result, unsigned mc)
-  : _resultField(result), _maxCommunities(mc) {}
+      : _resultField(result), _maxCommunities(mc) {}
 
   void willLoadVertices(uint64_t count) override {
     // if we aren't running in a cluster it doesn't matter
@@ -600,9 +591,8 @@ struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
     }
   }
 
-  size_t copyVertexData(std::string const& documentId,
-                        arangodb::velocypack::Slice document, DMIDValue* value,
-                        size_t maxSize) override {
+  size_t copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
+                        DMIDValue* value, size_t maxSize) override {
     // SCCValue* senders = (SCCValue*)targetPtr;
     // senders->vertexID = vertexIdRange++;
     return sizeof(SCCValue);
@@ -623,7 +613,8 @@ struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
       }
       std::sort(communities.begin(), communities.end(),
                 [ptr](std::pair<PregelID, float> a, std::pair<PregelID, float> b) {
-                  return ptr->membershipDegree.at(a.first) > ptr->membershipDegree.at(b.first);
+                  return ptr->membershipDegree.at(a.first) >
+                         ptr->membershipDegree.at(b.first);
                 });
       if (communities.empty()) {
         b.add(_resultField, VPackSlice::nullSlice());
@@ -676,9 +667,9 @@ struct DMIDMasterContext : public MasterContext {
     int64_t const* iterCount = getAggregatedValue<int64_t>(ITERATION_AGG);
     int64_t newIterCount = *iterCount + 1;
     bool hasCascadingStarted = false;
-    if (*iterCount != 0) {// will happen after GSS > RW_ITERATIONBOUND + 8
+    if (*iterCount != 0) {  // will happen after GSS > RW_ITERATIONBOUND + 8
       /** Cascading behavior started increment the iteration count */
-      aggregate<int64_t>(ITERATION_AGG, newIterCount);// max aggregator
+      aggregate<int64_t>(ITERATION_AGG, newIterCount);  // max aggregator
       hasCascadingStarted = true;
     }
 
@@ -687,16 +678,14 @@ struct DMIDMasterContext : public MasterContext {
       setAggregatedValue<bool>(NOT_ALL_ASSIGNED_AGG, true);
       setAggregatedValue<int64_t>(ITERATION_AGG, 1);
       hasCascadingStarted = true;
-      initializeGL();// initialize global leaders
+      initializeGL();  // initialize global leaders
     }
     if (hasCascadingStarted && (newIterCount % 3 == 1)) {
       /** first step of one iteration */
-      int64_t const* restartCountWritable =
-          getAggregatedValue<int64_t>(RESTART_COUNTER_AGG);
+      int64_t const* restartCountWritable = getAggregatedValue<int64_t>(RESTART_COUNTER_AGG);
       int64_t restartCount = *restartCountWritable;
       bool const* newMember = getAggregatedValue<bool>(NEW_MEMBER_AGG);
-      bool const* notAllAssigned =
-          getAggregatedValue<bool>(NOT_ALL_ASSIGNED_AGG);
+      bool const* notAllAssigned = getAggregatedValue<bool>(NOT_ALL_ASSIGNED_AGG);
 
       if ((*notAllAssigned == true) && (*newMember == false)) {
         /**
@@ -708,8 +697,7 @@ struct DMIDMasterContext : public MasterContext {
         setAggregatedValue<int64_t>(RESTART_COUNTER_AGG, restartCount + 1);
         setAggregatedValue<float>(PROFITABILITY_AGG, newThreshold);
         setAggregatedValue<int64_t>(ITERATION_AGG, 1);
-        LOG_TOPIC(INFO, Logger::PREGEL) << "Restarting with threshold "
-                                        << newThreshold;
+        LOG_TOPIC(INFO, Logger::PREGEL) << "Restarting with threshold " << newThreshold;
       }
     }
 
@@ -726,11 +714,9 @@ struct DMIDMasterContext : public MasterContext {
 
     if (LOG_AGGS) {
       if (globalSuperstep() <= RW_ITERATIONBOUND + 4) {
-        VertexSumAggregator* convergedDA =
-            (VertexSumAggregator*)getAggregator(DA_AGG);
+        VertexSumAggregator* convergedDA = (VertexSumAggregator*)getAggregator(DA_AGG);
 
-        LOG_TOPIC(INFO, Logger::PREGEL) << "Aggregator DA at step: "
-                                        << globalSuperstep();
+        LOG_TOPIC(INFO, Logger::PREGEL) << "Aggregator DA at step: " << globalSuperstep();
         convergedDA->forEach([&](PregelID const& _id, double entry) {
           LOG_TOPIC(INFO, Logger::PREGEL) << _id.key;
         });

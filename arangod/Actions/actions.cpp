@@ -54,8 +54,7 @@ static ReadWriteLock ActionsLock;
 /// @brief defines an action
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_action_t* TRI_DefineActionVocBase(std::string const& name,
-                                      TRI_action_t* action) {
+TRI_action_t* TRI_DefineActionVocBase(std::string const& name, TRI_action_t* action) {
   std::string url = name;
 
   while (!url.empty() && url[0] == '/') {
@@ -64,7 +63,7 @@ TRI_action_t* TRI_DefineActionVocBase(std::string const& name,
 
   action->_url = url;
   action->_urlParts = StringUtils::split(url, "/").size();
-  
+
   std::unordered_map<std::string, TRI_action_t*>* which;
 
   WRITE_LOCKER(writeLocker, ActionsLock);
@@ -88,7 +87,9 @@ TRI_action_t* TRI_DefineActionVocBase(std::string const& name,
   }
 
   // some debug output
-  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "created JavaScript " << (action->_isPrefix ? "prefix " : "") << " action '" << url << "'";
+  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+      << "created JavaScript " << (action->_isPrefix ? "prefix " : "")
+      << " action '" << url << "'";
 
   // return old or new action description
   return action;
@@ -155,11 +156,11 @@ void TRI_CleanupActions() {
 
 void TRI_VisitActions(std::function<void(TRI_action_t*)> const& visitor) {
   READ_LOCKER(writeLocker, ActionsLock);
-  
+
   for (auto& it : Actions) {
     visitor(it.second);
   }
-  
+
   for (auto& it : PrefixActions) {
     visitor(it.second);
   }

@@ -85,7 +85,7 @@ void TRI_sleep(unsigned long);
 
 // .............................................................................
 // there is no usleep (micro sleep) in windows, so we create one here
-// This is only a Windows workaround, use usleep, which is mapped to 
+// This is only a Windows workaround, use usleep, which is mapped to
 // TRI_usleep on Windows!
 // .............................................................................
 
@@ -115,8 +115,7 @@ void TRI_SetWindowsServiceAbortFunction(TRI_serviceAbort_t);
 /// the arango internal logging will handle that usually.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
-                            std::string const&);
+void TRI_LogWindowsEventlog(char const* func, char const* file, int line, std::string const&);
 
 void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
                             char const* fmt, va_list ap);
@@ -130,11 +129,10 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
 void TRI_WindowsEmergencyLog(char const* func, char const* file, int line,
                              char const* fmt, ...);
 
-#define LOG_FATAL_WINDOWS(...)                                          \
+#define LOG_FATAL_WINDOWS(...)                                              \
   do {                                                                      \
     TRI_WindowsEmergencyLog(__FUNCTION__, __FILE__, __LINE__, __VA_ARGS__); \
   } while (0)
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief detects whether an FD is connected to a (cygwin-)tty.
@@ -150,6 +148,5 @@ int _is_cyg_tty(int fd);
 // returns true if the terminal window knows how to handle ANSI color codes.
 ////////////////////////////////////////////////////////////////////////////////
 bool terminalKnowsANSIColors();
-
 
 #endif

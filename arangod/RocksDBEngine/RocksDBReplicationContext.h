@@ -41,14 +41,13 @@ class DatabaseGuard;
 
 class RocksDBReplicationContext {
  private:
-  typedef std::function<void(DocumentIdentifierToken const& token)>
-      TokenCallback;
+  typedef std::function<void(DocumentIdentifierToken const& token)> TokenCallback;
 
  public:
   RocksDBReplicationContext(TRI_vocbase_t* vocbase, double ttl, TRI_server_id_t server_id);
   ~RocksDBReplicationContext();
 
-  TRI_voc_tick_t id() const; //batchId
+  TRI_voc_tick_t id() const;  // batchId
   uint64_t lastTick() const;
   uint64_t count() const;
 
@@ -64,21 +63,18 @@ class RocksDBReplicationContext {
   int bindCollection(std::string const& collectionName);
 
   // returns inventory
-  std::pair<RocksDBReplicationResult, std::shared_ptr<velocypack::Builder>>
-  getInventory(TRI_vocbase_t* vocbase, bool includeSystem);
+  std::pair<RocksDBReplicationResult, std::shared_ptr<velocypack::Builder>> getInventory(
+      TRI_vocbase_t* vocbase, bool includeSystem);
 
   // iterates over at most 'limit' documents in the collection specified,
   // creating a new iterator if one does not exist for this collection
-  RocksDBReplicationResult dump(TRI_vocbase_t* vocbase,
-                                std::string const& collectionName,
-                                basics::StringBuffer&, uint64_t chunkSize,
-                                bool compat28);
+  RocksDBReplicationResult dump(TRI_vocbase_t* vocbase, std::string const& collectionName,
+                                basics::StringBuffer&, uint64_t chunkSize, bool compat28);
 
   // iterates over all documents in a collection, previously bound with
   // bindCollection. Generates array of objects with minKey, maxKey and hash
   // per chunk. Distance between min and maxKey should be chunkSize
-  arangodb::Result dumpKeyChunks(velocypack::Builder& outBuilder,
-                                 uint64_t chunkSize);
+  arangodb::Result dumpKeyChunks(velocypack::Builder& outBuilder, uint64_t chunkSize);
 
   /// dump all keys from collection
   arangodb::Result dumpKeys(velocypack::Builder& outBuilder, size_t chunk,
@@ -100,11 +96,9 @@ class RocksDBReplicationContext {
  private:
   void releaseDumpingResources();
 
-  std::unique_ptr<transaction::Methods> createTransaction(
-      TRI_vocbase_t* vocbase);
+  std::unique_ptr<transaction::Methods> createTransaction(TRI_vocbase_t* vocbase);
 
-  static bool filterCollection(arangodb::LogicalCollection* collection,
-                               void* data);
+  static bool filterCollection(arangodb::LogicalCollection* collection, void* data);
 
   static bool sortCollections(arangodb::LogicalCollection const* l,
                               arangodb::LogicalCollection const* r);
@@ -112,9 +106,9 @@ class RocksDBReplicationContext {
  private:
   TRI_vocbase_t* _vocbase;
   TRI_server_id_t const _serverId;
-  TRI_voc_tick_t _id; // batch id
-  uint64_t _lastTick; // the time at which the snapshot was taken
-  uint64_t _currentTick; // shows how often dump was called
+  TRI_voc_tick_t _id;     // batch id
+  uint64_t _lastTick;     // the time at which the snapshot was taken
+  uint64_t _currentTick;  // shows how often dump was called
   std::unique_ptr<transaction::Methods> _trx;
   LogicalCollection* _collection;
   std::unique_ptr<IndexIterator> _iter;
@@ -129,7 +123,7 @@ class RocksDBReplicationContext {
   double _expires;
   bool _isDeleted;
   bool _isUsed;
-  bool _hasMore; //used during dump to check if there are more documents
+  bool _hasMore;  // used during dump to check if there are more documents
 };
 
 }  // namespace arangodb

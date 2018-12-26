@@ -42,6 +42,6 @@ class RocksDBRestWalHandler : public RestVocbaseBaseHandler {
   void transactions();
   void properties();
 };
-}
+}  // namespace arangodb
 
 #endif

@@ -33,11 +33,9 @@ using namespace arangodb;
 using namespace arangodb::graph;
 using namespace arangodb::traverser;
 
-NeighborsEnumerator::NeighborsEnumerator(Traverser* traverser,
-                                         VPackSlice const& startVertex,
+NeighborsEnumerator::NeighborsEnumerator(Traverser* traverser, VPackSlice const& startVertex,
                                          TraverserOptions* opts)
-    : PathEnumerator(traverser, startVertex.copyString(), opts),
-      _searchDepth(0) {
+    : PathEnumerator(traverser, startVertex.copyString(), opts), _searchDepth(0) {
   StringRef vId = _traverser->traverserCache()->persistString(StringRef(startVertex));
   _allFound.insert(vId);
   _currentDepth.insert(vId);
@@ -63,8 +61,7 @@ bool NeighborsEnumerator::next() {
       _lastDepth.swap(_currentDepth);
       _currentDepth.clear();
       for (auto const& nextVertex : _lastDepth) {
-        auto callback = [&](EdgeDocumentToken&&,
-                            VPackSlice other, size_t cursorId) {
+        auto callback = [&](EdgeDocumentToken&&, VPackSlice other, size_t cursorId) {
           // Counting should be done in readAll
           StringRef v;
           if (other.isString()) {

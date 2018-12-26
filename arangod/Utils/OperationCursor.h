@@ -53,11 +53,7 @@ struct OperationCursor {
 
  public:
   explicit OperationCursor(int code)
-      : code(code),
-        _hasMore(false),
-        _limit(0),
-        _originalLimit(0),
-        _batchSize(1000) {}
+      : code(code), _hasMore(false), _limit(0), _originalLimit(0), _batchSize(1000) {}
 
   OperationCursor(IndexIterator* iterator, uint64_t limit, uint64_t batchSize)
       : code(TRI_ERROR_NO_ERROR),
@@ -72,62 +68,55 @@ struct OperationCursor {
   }
 
   ~OperationCursor() {}
-  
-  IndexIterator* indexIterator() const {
-    return _indexIterator.get();
-  }
-  
+
+  IndexIterator* indexIterator() const { return _indexIterator.get(); }
+
   LogicalCollection* collection() const;
 
   bool hasMore();
 
-  bool successful() const {
-    return code == TRI_ERROR_NO_ERROR;
-  }
-  
-  bool failed() const {
-    return !successful();
-  }
+  bool successful() const { return code == TRI_ERROR_NO_ERROR; }
+
+  bool failed() const { return !successful(); }
 
   bool hasExtra() const;
 
-/// @brief Reset the cursor
+  /// @brief Reset the cursor
   void reset();
 
-/// @brief Calls cb for the next batchSize many elements 
-  bool next(IndexIterator::TokenCallback const& callback,
-      uint64_t batchSize);
-  
-/// @brief Calls cb for the next batchSize many elements 
-  bool nextWithExtra(IndexIterator::ExtraCallback const& callback,
-      uint64_t batchSize);
+  /// @brief Calls cb for the next batchSize many elements
+  bool next(IndexIterator::TokenCallback const& callback, uint64_t batchSize);
 
-  bool nextDocument(IndexIterator::DocumentCallback const& callback,
-                    uint64_t batchSize);
-  
-/// @brief convenience function to retrieve all results
+  /// @brief Calls cb for the next batchSize many elements
+  bool nextWithExtra(IndexIterator::ExtraCallback const& callback, uint64_t batchSize);
+
+  bool nextDocument(IndexIterator::DocumentCallback const& callback, uint64_t batchSize);
+
+  /// @brief convenience function to retrieve all results
   void all(IndexIterator::TokenCallback const& callback) {
-    while (next(callback, 1000)) {}
+    while (next(callback, 1000)) {
+    }
   }
 
-/// @brief convenience function to retrieve all results with extra
+  /// @brief convenience function to retrieve all results with extra
   void allWithExtra(IndexIterator::ExtraCallback const& callback) {
-    while (nextWithExtra(callback, 1000)) {}
+    while (nextWithExtra(callback, 1000)) {
+    }
   }
-  
+
   /// @brief convenience function to retrieve all results
   void allDocuments(IndexIterator::DocumentCallback const& callback) {
-    while (nextDocument(callback, 1000)) {}
+    while (nextDocument(callback, 1000)) {
+    }
   }
 
-/// @brief Skip the next toSkip many elements.
-///        skipped will be increased by the amount of skipped elements afterwards
-///        Check hasMore()==true before using this
-///        NOTE: This will throw on OUT_OF_MEMORY
+  /// @brief Skip the next toSkip many elements.
+  ///        skipped will be increased by the amount of skipped elements afterwards
+  ///        Check hasMore()==true before using this
+  ///        NOTE: This will throw on OUT_OF_MEMORY
   int skip(uint64_t, uint64_t&);
-
 };
 
-}
+}  // namespace arangodb
 
 #endif

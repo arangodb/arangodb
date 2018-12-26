@@ -48,13 +48,13 @@ class ExecContext {
   AuthLevel systemAuthLevel() const { return _systemAuthLevel; };
   AuthLevel databaseAuthLevel() const { return _databaseAuthLevel; };
   ExecContext* copy() const;
-  
+
  private:
   std::string const _user;
   std::string _database;
   AuthLevel const _systemAuthLevel;
   AuthLevel const _databaseAuthLevel;
 };
-}
+}  // namespace arangodb
 
 #endif

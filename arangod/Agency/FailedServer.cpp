@@ -26,16 +26,16 @@
 #include "JobContext.h"
 
 #include "Agency/AgentInterface.h"
-#include "Agency/FailedLeader.h"
 #include "Agency/FailedFollower.h"
+#include "Agency/FailedLeader.h"
 #include "Agency/Job.h"
 
 using namespace arangodb::consensus;
 
-FailedServer::FailedServer(
-  Node const& snapshot, AgentInterface* agent, std::string const& jobId,
-  std::string const& creator, std::string const& server)
-  : Job(NOTFOUND, snapshot, agent, jobId, creator), _server(server) {}
+FailedServer::FailedServer(Node const& snapshot, AgentInterface* agent,
+                           std::string const& jobId, std::string const& creator,
+                           std::string const& server)
+    : Job(NOTFOUND, snapshot, agent, jobId, creator), _server(server) {}
 
 FailedServer::FailedServer(Node const& snapshot, AgentInterface* agent,
                            JOB_STATUS status, std::string const& jobId)
@@ -56,93 +56,98 @@ FailedServer::FailedServer(Node const& snapshot, AgentInterface* agent,
 
 FailedServer::~FailedServer() {}
 
-void FailedServer::run() {
-  runHelper(_server, "");
-}
+void FailedServer::run() { runHelper(_server, ""); }
 
 bool FailedServer::start() {
-  
   using namespace std::chrono;
 
   // Fail job, if Health back to not FAILED
   if (_snapshot(healthPrefix + _server + "/Status").getString() != "FAILED") {
     std::stringstream reason;
-    reason
-      << "Server " << _server
-      << " is no longer failed. Not starting FailedServer job";
+    reason << "Server " << _server << " is no longer failed. Not starting FailedServer job";
     LOG_TOPIC(INFO, Logger::SUPERVISION) << reason.str();
     finish(_server, "", false, reason.str());
     return false;
   }
-  
+
   // Abort job blocking server if abortable
   try {
-     std::string jobId = _snapshot(blockedServersPrefix + _server).getString();
+    std::string jobId = _snapshot(blockedServersPrefix + _server).getString();
     if (!abortable(_snapshot, jobId)) {
       return false;
     } else {
       JobContext(PENDING, jobId, _snapshot, _agent).abort();
     }
-  } catch (...) {}
-    
+  } catch (...) {
+  }
+
   // Todo entry
   Builder todo;
-  { VPackArrayBuilder t(&todo);
+  {
+    VPackArrayBuilder t(&todo);
     if (_jb == nullptr) {
       try {
         _snapshot(toDoPrefix + _jobId).toBuilder(todo);
       } catch (std::exception const&) {
-        LOG_TOPIC(INFO, Logger::SUPERVISION)
-          << "Failed to get key " + toDoPrefix + _jobId + " from agency snapshot";
+        LOG_TOPIC(INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
+                                                    " from agency snapshot";
         return false;
       }
     } else {
       todo.add(_jb->slice()[0].get(toDoPrefix + _jobId));
-    }} // Todo entry
-  
+    }
+  }  // Todo entry
+
   // Pending entry
   Builder pending;
-  { VPackArrayBuilder a(&pending);
-    
+  {
+    VPackArrayBuilder a(&pending);
+
     // Operations -------------->
-    { VPackObjectBuilder oper(&pending); 
+    {
+      VPackObjectBuilder oper(&pending);
       // Add pending
       pending.add(VPackValue(pendingPrefix + _jobId));
-      { VPackObjectBuilder ts(&pending);
-        pending.add("timeStarted",
-                    VPackValue(timepointToString(system_clock::now())));
+      {
+        VPackObjectBuilder ts(&pending);
+        pending.add("timeStarted", VPackValue(timepointToString(system_clock::now())));
         for (auto const& obj : VPackObjectIterator(todo.slice()[0])) {
           pending.add(obj.key.copyString(), obj.value);
         }
       }
       // Delete todo
       pending.add(VPackValue(toDoPrefix + _jobId));
-      { VPackObjectBuilder del(&pending);
-        pending.add("op", VPackValue("delete")); }
+      {
+        VPackObjectBuilder del(&pending);
+        pending.add("op", VPackValue("delete"));
+      }
 
       addBlockServer(pending, _server, _jobId);
-    } // <------------ Operations
-    
+    }  // <------------ Operations
+
     // Preconditions ----------->
-    { VPackObjectBuilder prec(&pending);
+    {
+      VPackObjectBuilder prec(&pending);
       // Check that toServer not blocked
       pending.add(VPackValue(blockedServersPrefix + _server));
-      { VPackObjectBuilder block(&pending);
-        pending.add("oldEmpty", VPackValue(true)); }
+      {
+        VPackObjectBuilder block(&pending);
+        pending.add("oldEmpty", VPackValue(true));
+      }
       // Status should still be FAILED
       pending.add(VPackValue(healthPrefix + _server + "/Status"));
-      { VPackObjectBuilder old(&pending);
-        pending.add("old", VPackValue("FAILED")); }
-    } // <--------- Preconditions
+      {
+        VPackObjectBuilder old(&pending);
+        pending.add("old", VPackValue("FAILED"));
+      }
+    }  // <--------- Preconditions
   }
 
-  
   // Transact to agency
   write_ret_t res = singleWriteTransaction(_agent, pending);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
-      << "Pending job for failed DB Server " << _server;
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "Pending job for failed DB Server " << _server;
 
     auto const& databases = _snapshot("/Plan/Collections").children();
     auto const& current = _snapshot("/Current/Collections").children();
@@ -167,24 +172,20 @@ bool FailedServer::start() {
         }
 
         for (auto const& shard : collection("shards").children()) {
-
           size_t pos = 0;
 
           for (auto const& it : VPackArrayIterator(shard.second->slice())) {
-
             auto dbs = it.copyString();
 
             if (dbs == _server) {
               if (pos == 0) {
-                FailedLeader(
-                  _snapshot, _agent, _jobId + "-" + std::to_string(sub++),
-                  _jobId, database.first, collptr.first,
-                  shard.first, _server).run();
+                FailedLeader(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
+                             _jobId, database.first, collptr.first, shard.first, _server)
+                    .run();
               } else {
-                FailedFollower(
-                  _snapshot, _agent, _jobId + "-" + std::to_string(sub++),
-                  _jobId, database.first, collptr.first,
-                  shard.first, _server).run();
+                FailedFollower(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
+                               _jobId, database.first, collptr.first, shard.first, _server)
+                    .run();
               }
             }
             pos++;
@@ -203,12 +204,11 @@ bool FailedServer::start() {
 }
 
 bool FailedServer::create(std::shared_ptr<VPackBuilder> envelope) {
-
   LOG_TOPIC(DEBUG, Logger::SUPERVISION)
-    << "Todo: Handle failover for db server " + _server;
+      << "Todo: Handle failover for db server " + _server;
 
   using namespace std::chrono;
-  bool selfCreate = (envelope == nullptr); // Do we create ourselves?
+  bool selfCreate = (envelope == nullptr);  // Do we create ourselves?
 
   if (selfCreate) {
     _jb = std::make_shared<Builder>();
@@ -216,39 +216,49 @@ bool FailedServer::create(std::shared_ptr<VPackBuilder> envelope) {
     _jb = envelope;
   }
 
-
-  { VPackArrayBuilder a(_jb.get());
+  {
+    VPackArrayBuilder a(_jb.get());
 
     // Operations
-    { VPackObjectBuilder operations (_jb.get());
+    {
+      VPackObjectBuilder operations(_jb.get());
       // ToDo entry
       _jb->add(VPackValue(toDoPrefix + _jobId));
-      { VPackObjectBuilder todo(_jb.get());
+      {
+        VPackObjectBuilder todo(_jb.get());
         _jb->add("type", VPackValue("failedServer"));
         _jb->add("server", VPackValue(_server));
         _jb->add("jobId", VPackValue(_jobId));
         _jb->add("creator", VPackValue(_creator));
-        _jb->add("timeCreated",
-                 VPackValue(timepointToString(system_clock::now()))); }
+        _jb->add("timeCreated", VPackValue(timepointToString(system_clock::now())));
+      }
       // FailedServers entry []
       _jb->add(VPackValue(failedServersPrefix + "/" + _server));
-      { VPackArrayBuilder failedServers(_jb.get()); }} // Operations
+      { VPackArrayBuilder failedServers(_jb.get()); }
+    }  // Operations
 
-    //Preconditions
-    { VPackObjectBuilder health(_jb.get());
+    // Preconditions
+    {
+      VPackObjectBuilder health(_jb.get());
       // Status should still be BAD
       _jb->add(VPackValue(healthPrefix + _server + "/Status"));
-      { VPackObjectBuilder old(_jb.get());
-        _jb->add("old", VPackValue("BAD")); }
+      {
+        VPackObjectBuilder old(_jb.get());
+        _jb->add("old", VPackValue("BAD"));
+      }
       // Target/FailedServers does not already include _server
       _jb->add(VPackValue(failedServersPrefix + "/" + _server));
-      { VPackObjectBuilder old(_jb.get());
-        _jb->add("oldEmpty", VPackValue(true)); }
+      {
+        VPackObjectBuilder old(_jb.get());
+        _jb->add("oldEmpty", VPackValue(true));
+      }
       // Target/FailedServers is still as in the snapshot
       _jb->add(VPackValue(failedServersPrefix));
-      { VPackObjectBuilder old(_jb.get());
-        _jb->add("old", _snapshot(failedServersPrefix).toBuilder().slice());}
-    } // Preconditions
+      {
+        VPackObjectBuilder old(_jb.get());
+        _jb->add("old", _snapshot(failedServersPrefix).toBuilder().slice());
+      }
+    }  // Preconditions
   }
 
   if (selfCreate) {
@@ -260,7 +270,6 @@ bool FailedServer::create(std::shared_ptr<VPackBuilder> envelope) {
   }
 
   return true;
-
 }
 
 JOB_STATUS FailedServer::status() {
@@ -268,8 +277,7 @@ JOB_STATUS FailedServer::status() {
     return _status;
   }
 
-  auto const& serverHealth =
-    _snapshot(healthPrefix + _server + "/Status").getString();
+  auto const& serverHealth = _snapshot(healthPrefix + _server + "/Status").getString();
 
   // mop: ohhh...server is healthy again!
   bool serverHealthy = serverHealth == Supervision::HEALTH_STATUS_GOOD;
@@ -288,8 +296,7 @@ JOB_STATUS FailedServer::status() {
           deleteTodos->openArray();
           deleteTodos->openObject();
         }
-        deleteTodos->add( toDoPrefix + subJob.first,
-          VPackValue(VPackValueType::Object));
+        deleteTodos->add(toDoPrefix + subJob.first, VPackValue(VPackValueType::Object));
         deleteTodos->add("op", VPackValue("delete"));
         deleteTodos->close();
       } else {
@@ -309,8 +316,9 @@ JOB_STATUS FailedServer::status() {
 
   if (deleteTodos) {
     LOG_TOPIC(INFO, Logger::SUPERVISION)
-      << "Server " << _server << " is healthy again. Will try to delete"
-      " any jobs which have not yet started!";
+        << "Server " << _server
+        << " is healthy again. Will try to delete"
+           " any jobs which have not yet started!";
     deleteTodos->close();
     deleteTodos->close();
     // Transact to agency
@@ -318,7 +326,7 @@ JOB_STATUS FailedServer::status() {
 
     if (!res.accepted || res.indices.size() != 1 || !res.indices[0]) {
       LOG_TOPIC(WARN, Logger::SUPERVISION)
-        << "Server was healthy. Tried deleting subjobs but failed :(";
+          << "Server was healthy. Tried deleting subjobs but failed :(";
       return _status;
     }
   }
@@ -338,4 +346,3 @@ arangodb::Result FailedServer::abort() {
   return result;
   // FIXME: No abort procedure, simply throw error or so
 }
-

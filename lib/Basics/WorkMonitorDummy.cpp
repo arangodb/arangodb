@@ -35,8 +35,7 @@ bool WorkMonitor::cancelAql(WorkDescription* desc) {
 
 void WorkMonitor::deleteHandler(WorkDescription*) { TRI_ASSERT(false); }
 
-void WorkMonitor::vpackHandler(arangodb::velocypack::Builder*,
-                               WorkDescription*) {
+void WorkMonitor::vpackHandler(arangodb::velocypack::Builder*, WorkDescription*) {
   TRI_ASSERT(false);
 }
 
@@ -45,9 +44,7 @@ void WorkMonitor::addWorkOverview(std::shared_ptr<rest::RestHandler>,
   TRI_ASSERT(false);
 }
 
-void WorkMonitor::clearAllHandlers() {
-  TRI_ASSERT(false);
-}
+void WorkMonitor::clearAllHandlers() { TRI_ASSERT(false); }
 
 bool WorkMonitor::clearWorkDescriptions() {
   TRI_ASSERT(false);

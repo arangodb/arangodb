@@ -21,7 +21,6 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-
 // Execution plans like the one below are made of Nodes that inherit the
 // ExecutionNode class as a base class.
 //
@@ -36,7 +35,7 @@
 //
 // Even though the Singleton Node has a label saying it is the "ROOT" node it
 // is not in our definiton. Root Nodes are leaf nodes (at the bottom of the list).
-// 
+//
 // To get down (direction to root) from 4 to 5 you need to clla getFirst Parent
 // on the SortNode(4) to receive a pointer to the LimitNode(5). If you want to
 // go up from 5 to 4 (away form root) you need to call getFirstDependency at
@@ -54,12 +53,12 @@
 #ifndef ARANGOD_AQL_EXECUTION_NODE_H
 #define ARANGOD_AQL_EXECUTION_NODE_H 1
 
-#include "Basics/Common.h"
-#include "Aql/types.h"
 #include "Aql/DocumentProducingNode.h"
 #include "Aql/Expression.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
+#include "Aql/types.h"
+#include "Basics/Common.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -67,7 +66,7 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 namespace aql {
 class Ast;
@@ -86,13 +85,10 @@ struct SortElement {
   bool ascending;
   std::vector<std::string> attributePath;
 
-  SortElement(Variable const* v, bool asc)
-    : var(v), ascending(asc) {
-  }
+  SortElement(Variable const* v, bool asc) : var(v), ascending(asc) {}
 
   SortElement(Variable const* v, bool asc, std::vector<std::string> const& path)
-    : var(v), ascending(asc), attributePath(path) {
-  }
+      : var(v), ascending(asc), attributePath(path) {}
 };
 
 typedef std::vector<SortElement> SortElementVector;
@@ -244,7 +240,7 @@ class ExecutionNode {
       if (includeSelf || current != this) {
         result.emplace_back(current);
       }
-      if (! current->hasDependency()) {
+      if (!current->hasDependency()) {
         break;
       }
       current = current->getFirstDependency();
@@ -300,8 +296,7 @@ class ExecutionNode {
           return false;
         }
         try {
-          for (auto it2 = oldNode->_parents.begin();
-               it2 != oldNode->_parents.end(); ++it2) {
+          for (auto it2 = oldNode->_parents.begin(); it2 != oldNode->_parents.end(); ++it2) {
             if (*it2 == this) {
               oldNode->_parents.erase(it2);
               break;
@@ -380,8 +375,7 @@ class ExecutionNode {
                    bool withDependencies, bool withProperties) const;
 
   /// @brief helper for cloning, use virtual clone methods for dependencies
-  void cloneDependencies(ExecutionPlan* plan, ExecutionNode* theClone,
-                         bool withProperties) const;
+  void cloneDependencies(ExecutionPlan* plan, ExecutionNode* theClone, bool withProperties) const;
 
   /// @brief convert to a string, basically for debugging purposes
   virtual void appendAsString(std::string& st, int indent = 0);
@@ -413,8 +407,7 @@ class ExecutionNode {
   void toVelocyPack(arangodb::velocypack::Builder&, bool, bool = false) const;
 
   /// @brief toVelocyPack
-  virtual void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                                  bool) const = 0;
+  virtual void toVelocyPackHelper(arangodb::velocypack::Builder&, bool) const = 0;
 
   /// @brief getVariablesUsedHere, returning a vector
   virtual std::vector<Variable const*> getVariablesUsedHere() const {
@@ -422,8 +415,7 @@ class ExecutionNode {
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  virtual void getVariablesUsedHere(
-      std::unordered_set<Variable const*>&) const {
+  virtual void getVariablesUsedHere(std::unordered_set<Variable const*>&) const {
     // do nothing!
   }
 
@@ -490,9 +482,7 @@ class ExecutionNode {
     return false;
   }
 
-  ExecutionPlan const* plan() const {
-    return _plan;
-  }
+  ExecutionPlan const* plan() const { return _plan; }
 
   /// @brief static analysis, walker class and information collector
   struct VarInfo {
@@ -587,8 +577,7 @@ class ExecutionNode {
  protected:
   /// @brief factory for sort elements
   static void getSortElements(SortElementVector& elements, ExecutionPlan* plan,
-                              arangodb::velocypack::Slice const& slice,
-                              char const* which);
+                              arangodb::velocypack::Slice const& slice, char const* which);
 
   /// @brief toVelocyPackHelper, for a generic node
   void toVelocyPackHelperGeneric(arangodb::velocypack::Builder&, bool) const;
@@ -670,8 +659,7 @@ class SingletonNode : public ExecutionNode {
   NodeType getType() const override final { return SINGLETON; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, bool) const override final;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -695,9 +683,8 @@ class EnumerateCollectionNode : public ExecutionNode, public DocumentProducingNo
 
   /// @brief constructor with a vocbase and a collection name
  public:
-  EnumerateCollectionNode(ExecutionPlan* plan, size_t id,
-                          TRI_vocbase_t* vocbase, Collection* collection,
-                          Variable const* outVariable, bool random)
+  EnumerateCollectionNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+                          Collection* collection, Variable const* outVariable, bool random)
       : ExecutionNode(plan, id),
         DocumentProducingNode(outVariable),
         _vocbase(vocbase),
@@ -707,15 +694,13 @@ class EnumerateCollectionNode : public ExecutionNode, public DocumentProducingNo
     TRI_ASSERT(_collection != nullptr);
   }
 
-  EnumerateCollectionNode(ExecutionPlan* plan,
-                          arangodb::velocypack::Slice const& base);
-  
+  EnumerateCollectionNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
+
   /// @brief return the type of the node
   NodeType getType() const override final { return ENUMERATE_COLLECTION; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, bool) const override final;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -764,9 +749,7 @@ class EnumerateListNode : public ExecutionNode {
  public:
   EnumerateListNode(ExecutionPlan* plan, size_t id, Variable const* inVariable,
                     Variable const* outVariable)
-      : ExecutionNode(plan, id),
-        _inVariable(inVariable),
-        _outVariable(outVariable) {
+      : ExecutionNode(plan, id), _inVariable(inVariable), _outVariable(outVariable) {
     TRI_ASSERT(_inVariable != nullptr);
     TRI_ASSERT(_outVariable != nullptr);
   }
@@ -777,8 +760,7 @@ class EnumerateListNode : public ExecutionNode {
   NodeType getType() const override final { return ENUMERATE_LIST; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, bool) const override final;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -793,8 +775,7 @@ class EnumerateListNode : public ExecutionNode {
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(
-      std::unordered_set<Variable const*>& vars) const override final {
+  void getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const override final {
     vars.emplace(_inVariable);
   }
 
@@ -825,10 +806,7 @@ class LimitNode : public ExecutionNode {
   /// @brief constructors for various arguments, always with offset and limit
  public:
   LimitNode(ExecutionPlan* plan, size_t id, size_t offset, size_t limit)
-      : ExecutionNode(plan, id),
-        _offset(offset),
-        _limit(limit),
-        _fullCount(false) {}
+      : ExecutionNode(plan, id), _offset(offset), _limit(limit), _fullCount(false) {}
 
   LimitNode(ExecutionPlan* plan, size_t id, size_t limit)
       : ExecutionNode(plan, id), _offset(0), _limit(limit), _fullCount(false) {}
@@ -839,8 +817,7 @@ class LimitNode : public ExecutionNode {
   NodeType getType() const override final { return LIMIT; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, bool) const override final;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -888,8 +865,7 @@ class CalculationNode : public ExecutionNode {
 
  public:
   CalculationNode(ExecutionPlan* plan, size_t id, Expression* expr,
-                  Variable const* conditionVariable,
-                  Variable const* outVariable)
+                  Variable const* conditionVariable, Variable const* outVariable)
       : ExecutionNode(plan, id),
         _conditionVariable(conditionVariable),
         _outVariable(outVariable),
@@ -899,8 +875,7 @@ class CalculationNode : public ExecutionNode {
     TRI_ASSERT(_outVariable != nullptr);
   }
 
-  CalculationNode(ExecutionPlan* plan, size_t id, Expression* expr,
-                  Variable const* outVariable)
+  CalculationNode(ExecutionPlan* plan, size_t id, Expression* expr, Variable const* outVariable)
       : CalculationNode(plan, id, expr, nullptr, outVariable) {}
 
   CalculationNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
@@ -911,8 +886,7 @@ class CalculationNode : public ExecutionNode {
   NodeType getType() const override final { return CALCULATION; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, bool) const override final;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -957,8 +931,7 @@ class CalculationNode : public ExecutionNode {
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(
-      std::unordered_set<Variable const*>& vars) const override final {
+  void getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const override final {
     _expression->variables(vars);
 
     if (_conditionVariable != nullptr) {
@@ -967,15 +940,16 @@ class CalculationNode : public ExecutionNode {
   }
 
   /// @brief getVariablesSetHere
-  virtual std::vector<Variable const*> getVariablesSetHere()
-      const override final {
+  virtual std::vector<Variable const*> getVariablesSetHere() const override final {
     return std::vector<Variable const*>{_outVariable};
   }
 
   /// @brief can the node throw?
   bool canThrow() override final { return _expression->canThrow(); }
 
-  bool isDeterministic() override final { return _expression->isDeterministic(); }
+  bool isDeterministic() override final {
+    return _expression->isDeterministic();
+  }
 
  private:
   /// @brief an optional condition variable for the calculation
@@ -1002,11 +976,8 @@ class SubqueryNode : public ExecutionNode {
  public:
   SubqueryNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
-  SubqueryNode(ExecutionPlan* plan, size_t id, ExecutionNode* subquery,
-               Variable const* outVariable)
-      : ExecutionNode(plan, id),
-        _subquery(subquery),
-        _outVariable(outVariable) {
+  SubqueryNode(ExecutionPlan* plan, size_t id, ExecutionNode* subquery, Variable const* outVariable)
+      : ExecutionNode(plan, id), _subquery(subquery), _outVariable(outVariable) {
     TRI_ASSERT(_subquery != nullptr);
     TRI_ASSERT(_outVariable != nullptr);
   }
@@ -1018,8 +989,7 @@ class SubqueryNode : public ExecutionNode {
   Variable const* outVariable() const { return _outVariable; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, bool) const override final;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -1046,8 +1016,7 @@ class SubqueryNode : public ExecutionNode {
   std::vector<Variable const*> getVariablesUsedHere() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(
-      std::unordered_set<Variable const*>& vars) const override final;
+  void getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const override final;
 
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final {
@@ -1093,8 +1062,7 @@ class FilterNode : public ExecutionNode {
   NodeType getType() const override final { return FILTER; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, bool) const override final;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -1109,8 +1077,7 @@ class FilterNode : public ExecutionNode {
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(
-      std::unordered_set<Variable const*>& vars) const override final {
+  void getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const override final {
     vars.emplace(_inVariable);
   }
 
@@ -1192,8 +1159,7 @@ class ReturnNode : public ExecutionNode {
   NodeType getType() const override final { return RETURN; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, bool) const override final;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -1208,8 +1174,7 @@ class ReturnNode : public ExecutionNode {
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(
-      std::unordered_set<Variable const*>& vars) const override final {
+  void getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const override final {
     vars.emplace(_inVariable);
   }
 
@@ -1236,9 +1201,7 @@ class NoResultsNode : public ExecutionNode {
   NodeType getType() const override final { return NORESULTS; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          bool) const override final;
-
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, bool) const override final;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -1254,7 +1217,7 @@ class NoResultsNode : public ExecutionNode {
   double estimateCost(size_t&) const override final;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

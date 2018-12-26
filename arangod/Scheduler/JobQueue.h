@@ -99,6 +99,6 @@ class JobQueue {
 
   std::shared_ptr<JobQueueThread> _queueThread;
 };
-}
+}  // namespace arangodb
 
 #endif

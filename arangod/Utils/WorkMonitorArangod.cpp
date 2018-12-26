@@ -42,7 +42,7 @@ using namespace arangodb::rest;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       WorkMonitor
 // -----------------------------------------------------------------------------
-      
+
 bool WorkMonitor::clearWorkDescriptions() {
   bool found = false;
   WorkDescription* desc;
@@ -218,8 +218,7 @@ bool WorkMonitor::cancelAql(WorkDescription* desc) {
 void WorkMonitor::deleteHandler(WorkDescription* desc) {
   TRI_ASSERT(desc->_type == WorkType::HANDLER);
 
-  desc->_data._handler._handler
-      .std::shared_ptr<rest::RestHandler>::~shared_ptr();
+  desc->_data._handler._handler.std::shared_ptr<rest::RestHandler>::~shared_ptr();
 
   desc->_data._handler._canceled.std::atomic<bool>::~atomic();
 }
@@ -230,8 +229,7 @@ void WorkMonitor::vpackHandler(VPackBuilder* b, WorkDescription* desc) {
 
   b->add("type", VPackValue("http-handler"));
   b->add("protocol", VPackValue(request->protocol()));
-  b->add("method",
-         VPackValue(HttpRequest::translateMethod(request->requestType())));
+  b->add("method", VPackValue(HttpRequest::translateMethod(request->requestType())));
   b->add("url", VPackValue(request->fullUrl()));
   b->add("httpVersion", VPackValue((int)request->protocolVersion()));
   b->add("database", VPackValue(request->databaseName()));
@@ -264,9 +262,8 @@ void WorkMonitor::vpackHandler(VPackBuilder* b, WorkDescription* desc) {
   b->close();
 }
 
-void WorkMonitor::addWorkOverview(
-    std::shared_ptr<RestHandler> handler,
-    std::shared_ptr<velocypack::Buffer<uint8_t>> buffer) {
+void WorkMonitor::addWorkOverview(std::shared_ptr<RestHandler> handler,
+                                  std::shared_ptr<velocypack::Buffer<uint8_t>> buffer) {
   auto response = handler->response();
 
   velocypack::Slice slice(buffer->data());

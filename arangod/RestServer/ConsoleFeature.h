@@ -42,6 +42,6 @@ class ConsoleFeature final : public application_features::ApplicationFeature {
   OperationMode _operationMode;
   std::unique_ptr<ConsoleThread> _consoleThread;
 };
-}
+}  // namespace arangodb
 
 #endif

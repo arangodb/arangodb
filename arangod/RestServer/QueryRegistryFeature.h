@@ -64,6 +64,6 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
  private:
   std::unique_ptr<aql::QueryRegistry> _queryRegistry;
 };
-}
+}  // namespace arangodb
 
 #endif

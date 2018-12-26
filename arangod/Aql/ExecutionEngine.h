@@ -24,12 +24,12 @@
 #ifndef ARANGOD_AQL_EXECUTION_ENGINE_H
 #define ARANGOD_AQL_EXECUTION_ENGINE_H 1
 
-#include "Basics/Common.h"
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExecutionStats.h"
 #include "Aql/QueryRegistry.h"
+#include "Basics/Common.h"
 
 namespace arangodb {
 namespace aql {
@@ -45,8 +45,7 @@ class ExecutionEngine {
 
  public:
   // @brief create an execution engine from a plan
-  static ExecutionEngine* instantiateFromPlan(QueryRegistry*, Query*,
-                                              ExecutionPlan*, bool);
+  static ExecutionEngine* instantiateFromPlan(QueryRegistry*, Query*, ExecutionPlan*, bool);
 
   /// @brief get the root block
   ExecutionBlock* root() const {
@@ -67,11 +66,9 @@ class ExecutionEngine {
   int initializeCursor(AqlItemBlock* items, size_t pos) {
     return _root->initializeCursor(items, pos);
   }
-  
+
   /// @brief initialize
-  int initialize() {
-    return _root->initialize();
-  }
+  int initialize() { return _root->initialize(); }
 
   /// @brief shutdown, will be called exactly once for the whole query
   int shutdown(int errorCode);
@@ -90,8 +87,8 @@ class ExecutionEngine {
   AqlItemBlock* getOne() { return _root->getSome(1, 1); }
 
   /// @brief skip
-  bool skip(size_t number, size_t& actuallySkipped) { 
-    return _root->skip(number, actuallySkipped); 
+  bool skip(size_t number, size_t& actuallySkipped) {
+    return _root->skip(number, actuallySkipped);
   }
 
   /// @brief hasMore
@@ -155,7 +152,7 @@ class ExecutionEngine {
   /// @brief _lockedShards, these are the shards we have locked for our query
   std::unordered_set<std::string>* _lockedShards;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

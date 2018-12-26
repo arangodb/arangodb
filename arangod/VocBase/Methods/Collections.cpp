@@ -25,12 +25,10 @@
 
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
-#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterComm.h"
-#include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -58,8 +56,7 @@ using namespace arangodb::basics;
 using namespace arangodb::methods;
 
 void methods::Collections::enumerateCollections(
-    TRI_vocbase_t* vocbase,
-    std::function<void(LogicalCollection*)> const& func) {
+    TRI_vocbase_t* vocbase, std::function<void(LogicalCollection*)> const& func) {
   if (ServerState::instance()->isCoordinator()) {
     std::vector<std::shared_ptr<LogicalCollection>> colls =
         ClusterInfo::instance()->getCollections(vocbase->name());
@@ -70,8 +67,7 @@ void methods::Collections::enumerateCollections(
     }
 
   } else {
-    std::vector<arangodb::LogicalCollection*> colls =
-        vocbase->collections(false);
+    std::vector<arangodb::LogicalCollection*> colls = vocbase->collections(false);
     for (LogicalCollection* c : colls) {
       if (!c->deleted()) {
         func(c);
@@ -80,9 +76,9 @@ void methods::Collections::enumerateCollections(
   }
 }
 
-bool methods::Collections::lookupCollection(
-    TRI_vocbase_t* vocbase, std::string const& collection,
-    std::function<void(LogicalCollection*)> const& func) {
+bool methods::Collections::lookupCollection(TRI_vocbase_t* vocbase,
+                                            std::string const& collection,
+                                            std::function<void(LogicalCollection*)> const& func) {
   if (!collection.empty()) {
     if (ServerState::instance()->isCoordinator()) {
       try {

@@ -35,4 +35,3 @@ int TRI_ChangeOperationModeServer(TRI_vocbase_operationmode_e mode) {
 
 /// @brief returns the current operation server of the server
 TRI_vocbase_operationmode_e TRI_GetOperationModeServer() { return Mode; }
-

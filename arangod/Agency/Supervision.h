@@ -114,9 +114,7 @@ class Supervision : public arangodb::Thread {
   static constexpr char const* HEALTH_STATUS_BAD = "BAD";
   static constexpr char const* HEALTH_STATUS_FAILED = "FAILED";
 
-  static std::string agencyPrefix() {
-    return _agencyPrefix;
-  }
+  static std::string agencyPrefix() { return _agencyPrefix; }
 
   static void setAgencyPrefix(std::string prefix) {
     LOG_TOPIC(WARN, Logger::SUPERVISION) << "WTF? " << _agencyPrefix;
@@ -125,14 +123,13 @@ class Supervision : public arangodb::Thread {
   }
 
  private:
-
   /// @brief Upgrade agency with FailedServers an object from array
   void upgradeZero(VPackBuilder&);
 
-  /// @brief Upgrade agency to supervision overhaul jobs 
+  /// @brief Upgrade agency to supervision overhaul jobs
   void upgradeOne(VPackBuilder&);
 
-  /// @brief Upgrade agency to supervision overhaul jobs 
+  /// @brief Upgrade agency to supervision overhaul jobs
   void upgradeHealthRecords(VPackBuilder&);
 
   /// @brief Check for inconsistencies in replication factor vs dbs entries
@@ -177,10 +174,10 @@ class Supervision : public arangodb::Thread {
   bool handleJobs();
   void handleShutdown();
 
-  /// @brief Migrate chains of distributeShardsLike to depth 1 
+  /// @brief Migrate chains of distributeShardsLike to depth 1
   void fixPrototypeChain(VPackBuilder&);
-  
-  Mutex _lock; // guards snapshot, _jobId, jobIdMax, _selfShutdown
+
+  Mutex _lock;   // guards snapshot, _jobId, jobIdMax, _selfShutdown
   Agent* _agent; /**< @brief My agent */
   Node _snapshot;
   Node _transient;
@@ -205,11 +202,10 @@ class Supervision : public arangodb::Thread {
   bool _selfShutdown;
 
   std::atomic<bool> _upgraded;
-  
+
   std::string serverHealth(std::string const&);
 
   static std::string _agencyPrefix;  // initialized in AgencyFeature
-
 };
 
 /**
@@ -244,11 +240,13 @@ inline Supervision::TimePoint stringToTimepoint(std::string const& s) {
       tt.tm_isdst = 0;
       auto time_c = TRI_timegm(&tt);
       return std::chrono::system_clock::from_time_t(time_c);
-    } catch (...) {}
+    } catch (...) {
+    }
   }
   return std::chrono::time_point<std::chrono::system_clock>();
 }
 
-}}  // Name spaces
+}  // namespace consensus
+}  // namespace arangodb
 
 #endif

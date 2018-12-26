@@ -35,7 +35,7 @@ namespace MMFilesDatafileHelper {
 /// @brief bit mask for datafile ids (fids) that indicates whether a file is
 /// a WAL file (bit set) or a datafile (bit not set)
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 constexpr inline uint64_t WalFileBitmask() { return 0x8000000000000000ULL; }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,7 +45,7 @@ constexpr inline uint64_t WalFileBitmask() { return 0x8000000000000000ULL; }
 constexpr inline TRI_voc_size_t MaximalMarkerSize() {
   static_assert(sizeof(TRI_voc_size_t) >= 4, "TRI_voc_size_t is too small");
 
-  return 2UL * 1024UL * 1024UL * 1024UL; // 2 GB
+  return 2UL * 1024UL * 1024UL * 1024UL;  // 2 GB
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -73,25 +73,19 @@ static inline T AlignedMarkerSize(MMFilesMarker const* marker) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline size_t VPackOffset(MMFilesMarkerType type) noexcept {
-  if (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
-      type == TRI_DF_MARKER_VPACK_REMOVE) {
+  if (type == TRI_DF_MARKER_VPACK_DOCUMENT || type == TRI_DF_MARKER_VPACK_REMOVE) {
     // VPack is located after transaction id
-    return sizeof(MMFilesMarker) + sizeof(TRI_voc_tid_t); 
+    return sizeof(MMFilesMarker) + sizeof(TRI_voc_tid_t);
   }
   if (type == TRI_DF_MARKER_VPACK_CREATE_COLLECTION ||
-      type == TRI_DF_MARKER_VPACK_DROP_COLLECTION ||
-      type == TRI_DF_MARKER_VPACK_RENAME_COLLECTION ||
-      type == TRI_DF_MARKER_VPACK_CHANGE_COLLECTION ||
-      type == TRI_DF_MARKER_VPACK_CREATE_INDEX ||
-      type == TRI_DF_MARKER_VPACK_DROP_INDEX ||
-      type == TRI_DF_MARKER_VPACK_CREATE_VIEW ||
-      type == TRI_DF_MARKER_VPACK_DROP_VIEW ||
-      type == TRI_DF_MARKER_VPACK_CHANGE_VIEW) {
+      type == TRI_DF_MARKER_VPACK_DROP_COLLECTION || type == TRI_DF_MARKER_VPACK_RENAME_COLLECTION ||
+      type == TRI_DF_MARKER_VPACK_CHANGE_COLLECTION || type == TRI_DF_MARKER_VPACK_CREATE_INDEX ||
+      type == TRI_DF_MARKER_VPACK_DROP_INDEX || type == TRI_DF_MARKER_VPACK_CREATE_VIEW ||
+      type == TRI_DF_MARKER_VPACK_DROP_VIEW || type == TRI_DF_MARKER_VPACK_CHANGE_VIEW) {
     // VPack is located after database id and collection id
     return sizeof(MMFilesMarker) + sizeof(TRI_voc_tick_t) + sizeof(TRI_voc_cid_t);
   }
-  if (type == TRI_DF_MARKER_VPACK_CREATE_DATABASE ||
-      type == TRI_DF_MARKER_VPACK_DROP_DATABASE) {
+  if (type == TRI_DF_MARKER_VPACK_CREATE_DATABASE || type == TRI_DF_MARKER_VPACK_DROP_DATABASE) {
     // VPack is located after database id
     return sizeof(MMFilesMarker) + sizeof(TRI_voc_tick_t);
   }
@@ -113,19 +107,13 @@ static inline size_t VPackOffset(MMFilesMarkerType type) noexcept {
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline size_t DatabaseIdOffset(MMFilesMarkerType type) noexcept {
-  if (type == TRI_DF_MARKER_PROLOGUE ||
-      type == TRI_DF_MARKER_VPACK_CREATE_COLLECTION ||
-      type == TRI_DF_MARKER_VPACK_DROP_COLLECTION ||
-      type == TRI_DF_MARKER_VPACK_RENAME_COLLECTION ||
+  if (type == TRI_DF_MARKER_PROLOGUE || type == TRI_DF_MARKER_VPACK_CREATE_COLLECTION ||
+      type == TRI_DF_MARKER_VPACK_DROP_COLLECTION || type == TRI_DF_MARKER_VPACK_RENAME_COLLECTION ||
       type == TRI_DF_MARKER_VPACK_CHANGE_COLLECTION ||
-      type == TRI_DF_MARKER_VPACK_CREATE_INDEX ||
-      type == TRI_DF_MARKER_VPACK_DROP_INDEX ||
-      type == TRI_DF_MARKER_VPACK_CREATE_VIEW ||
-      type == TRI_DF_MARKER_VPACK_DROP_VIEW ||
-      type == TRI_DF_MARKER_VPACK_CHANGE_VIEW ||
-      type == TRI_DF_MARKER_VPACK_CREATE_DATABASE ||
-      type == TRI_DF_MARKER_VPACK_DROP_DATABASE ||
-      type == TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION ||
+      type == TRI_DF_MARKER_VPACK_CREATE_INDEX || type == TRI_DF_MARKER_VPACK_DROP_INDEX ||
+      type == TRI_DF_MARKER_VPACK_CREATE_VIEW || type == TRI_DF_MARKER_VPACK_DROP_VIEW ||
+      type == TRI_DF_MARKER_VPACK_CHANGE_VIEW || type == TRI_DF_MARKER_VPACK_CREATE_DATABASE ||
+      type == TRI_DF_MARKER_VPACK_DROP_DATABASE || type == TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION ||
       type == TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION ||
       type == TRI_DF_MARKER_VPACK_ABORT_TRANSACTION) {
     return sizeof(MMFilesMarker);
@@ -139,22 +127,18 @@ static inline size_t DatabaseIdOffset(MMFilesMarkerType type) noexcept {
 
 static inline TRI_voc_tick_t DatabaseId(MMFilesMarker const* marker) noexcept {
   MMFilesMarkerType type = marker->getType();
-  if (type == TRI_DF_MARKER_PROLOGUE ||
-      type == TRI_DF_MARKER_VPACK_CREATE_COLLECTION ||
-      type == TRI_DF_MARKER_VPACK_DROP_COLLECTION ||
-      type == TRI_DF_MARKER_VPACK_RENAME_COLLECTION ||
+  if (type == TRI_DF_MARKER_PROLOGUE || type == TRI_DF_MARKER_VPACK_CREATE_COLLECTION ||
+      type == TRI_DF_MARKER_VPACK_DROP_COLLECTION || type == TRI_DF_MARKER_VPACK_RENAME_COLLECTION ||
       type == TRI_DF_MARKER_VPACK_CHANGE_COLLECTION ||
-      type == TRI_DF_MARKER_VPACK_CREATE_INDEX ||
-      type == TRI_DF_MARKER_VPACK_DROP_INDEX ||
-      type == TRI_DF_MARKER_VPACK_CREATE_VIEW ||
-      type == TRI_DF_MARKER_VPACK_DROP_VIEW ||
-      type == TRI_DF_MARKER_VPACK_CHANGE_VIEW ||
-      type == TRI_DF_MARKER_VPACK_CREATE_DATABASE ||
-      type == TRI_DF_MARKER_VPACK_DROP_DATABASE ||
-      type == TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION ||
+      type == TRI_DF_MARKER_VPACK_CREATE_INDEX || type == TRI_DF_MARKER_VPACK_DROP_INDEX ||
+      type == TRI_DF_MARKER_VPACK_CREATE_VIEW || type == TRI_DF_MARKER_VPACK_DROP_VIEW ||
+      type == TRI_DF_MARKER_VPACK_CHANGE_VIEW || type == TRI_DF_MARKER_VPACK_CREATE_DATABASE ||
+      type == TRI_DF_MARKER_VPACK_DROP_DATABASE || type == TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION ||
       type == TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION ||
       type == TRI_DF_MARKER_VPACK_ABORT_TRANSACTION) {
-    return encoding::readNumber<TRI_voc_tick_t>(reinterpret_cast<uint8_t const*>(marker) + DatabaseIdOffset(type), sizeof(TRI_voc_tick_t));
+    return encoding::readNumber<TRI_voc_tick_t>(reinterpret_cast<uint8_t const*>(marker) +
+                                                    DatabaseIdOffset(type),
+                                                sizeof(TRI_voc_tick_t));
   }
   return 0;
 }
@@ -164,13 +148,10 @@ static inline TRI_voc_tick_t DatabaseId(MMFilesMarker const* marker) noexcept {
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline size_t CollectionIdOffset(MMFilesMarkerType type) noexcept {
-  if (type == TRI_DF_MARKER_PROLOGUE ||
-      type == TRI_DF_MARKER_VPACK_CREATE_COLLECTION ||
-      type == TRI_DF_MARKER_VPACK_DROP_COLLECTION ||
-      type == TRI_DF_MARKER_VPACK_RENAME_COLLECTION ||
+  if (type == TRI_DF_MARKER_PROLOGUE || type == TRI_DF_MARKER_VPACK_CREATE_COLLECTION ||
+      type == TRI_DF_MARKER_VPACK_DROP_COLLECTION || type == TRI_DF_MARKER_VPACK_RENAME_COLLECTION ||
       type == TRI_DF_MARKER_VPACK_CHANGE_COLLECTION ||
-      type == TRI_DF_MARKER_VPACK_CREATE_INDEX ||
-      type == TRI_DF_MARKER_VPACK_DROP_INDEX) {
+      type == TRI_DF_MARKER_VPACK_CREATE_INDEX || type == TRI_DF_MARKER_VPACK_DROP_INDEX) {
     return sizeof(MMFilesMarker) + sizeof(TRI_voc_tick_t);
   }
   return 0;
@@ -182,14 +163,13 @@ static inline size_t CollectionIdOffset(MMFilesMarkerType type) noexcept {
 
 static inline TRI_voc_tick_t CollectionId(MMFilesMarker const* marker) noexcept {
   MMFilesMarkerType type = marker->getType();
-  if (type == TRI_DF_MARKER_PROLOGUE ||
-      type == TRI_DF_MARKER_VPACK_CREATE_COLLECTION ||
-      type == TRI_DF_MARKER_VPACK_DROP_COLLECTION ||
-      type == TRI_DF_MARKER_VPACK_RENAME_COLLECTION ||
+  if (type == TRI_DF_MARKER_PROLOGUE || type == TRI_DF_MARKER_VPACK_CREATE_COLLECTION ||
+      type == TRI_DF_MARKER_VPACK_DROP_COLLECTION || type == TRI_DF_MARKER_VPACK_RENAME_COLLECTION ||
       type == TRI_DF_MARKER_VPACK_CHANGE_COLLECTION ||
-      type == TRI_DF_MARKER_VPACK_CREATE_INDEX ||
-      type == TRI_DF_MARKER_VPACK_DROP_INDEX) {
-    return encoding::readNumber<TRI_voc_cid_t>(reinterpret_cast<uint8_t const*>(marker) + CollectionIdOffset(type), sizeof(TRI_voc_cid_t));
+      type == TRI_DF_MARKER_VPACK_CREATE_INDEX || type == TRI_DF_MARKER_VPACK_DROP_INDEX) {
+    return encoding::readNumber<TRI_voc_cid_t>(reinterpret_cast<uint8_t const*>(marker) +
+                                                   CollectionIdOffset(type),
+                                               sizeof(TRI_voc_cid_t));
   }
   return 0;
 }
@@ -199,8 +179,7 @@ static inline TRI_voc_tick_t CollectionId(MMFilesMarker const* marker) noexcept 
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline size_t ViewIdOffset(MMFilesMarkerType type) noexcept {
-  if (type == TRI_DF_MARKER_VPACK_CREATE_VIEW ||
-      type == TRI_DF_MARKER_VPACK_DROP_VIEW ||
+  if (type == TRI_DF_MARKER_VPACK_CREATE_VIEW || type == TRI_DF_MARKER_VPACK_DROP_VIEW ||
       type == TRI_DF_MARKER_VPACK_CHANGE_VIEW) {
     return sizeof(MMFilesMarker) + sizeof(TRI_voc_tick_t);
   }
@@ -213,10 +192,11 @@ static inline size_t ViewIdOffset(MMFilesMarkerType type) noexcept {
 
 static inline TRI_voc_tick_t ViewId(MMFilesMarker const* marker) noexcept {
   MMFilesMarkerType type = marker->getType();
-  if (type == TRI_DF_MARKER_VPACK_CREATE_VIEW ||
-      type == TRI_DF_MARKER_VPACK_DROP_VIEW ||
+  if (type == TRI_DF_MARKER_VPACK_CREATE_VIEW || type == TRI_DF_MARKER_VPACK_DROP_VIEW ||
       type == TRI_DF_MARKER_VPACK_CHANGE_VIEW) {
-    return encoding::readNumber<TRI_voc_cid_t>(reinterpret_cast<uint8_t const*>(marker) + ViewIdOffset(type), sizeof(TRI_voc_cid_t));
+    return encoding::readNumber<TRI_voc_cid_t>(reinterpret_cast<uint8_t const*>(marker) +
+                                                   ViewIdOffset(type),
+                                               sizeof(TRI_voc_cid_t));
   }
   return 0;
 }
@@ -226,8 +206,7 @@ static inline TRI_voc_tick_t ViewId(MMFilesMarker const* marker) noexcept {
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline TRI_voc_tick_t TransactionIdOffset(MMFilesMarkerType type) noexcept {
-  if (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
-      type == TRI_DF_MARKER_VPACK_REMOVE) {
+  if (type == TRI_DF_MARKER_VPACK_DOCUMENT || type == TRI_DF_MARKER_VPACK_REMOVE) {
     return sizeof(MMFilesMarker);
   }
   if (type == TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION ||
@@ -244,12 +223,13 @@ static inline TRI_voc_tick_t TransactionIdOffset(MMFilesMarkerType type) noexcep
 
 static inline TRI_voc_tick_t TransactionId(MMFilesMarker const* marker) noexcept {
   MMFilesMarkerType type = marker->getType();
-  if (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
-      type == TRI_DF_MARKER_VPACK_REMOVE ||
+  if (type == TRI_DF_MARKER_VPACK_DOCUMENT || type == TRI_DF_MARKER_VPACK_REMOVE ||
       type == TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION ||
       type == TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION ||
       type == TRI_DF_MARKER_VPACK_ABORT_TRANSACTION) {
-    return encoding::readNumber<TRI_voc_tid_t>(reinterpret_cast<uint8_t const*>(marker) + TransactionIdOffset(type), sizeof(TRI_voc_tid_t));
+    return encoding::readNumber<TRI_voc_tid_t>(reinterpret_cast<uint8_t const*>(marker) +
+                                                   TransactionIdOffset(type),
+                                               sizeof(TRI_voc_tid_t));
   }
   return 0;
 }
@@ -258,8 +238,8 @@ static inline TRI_voc_tick_t TransactionId(MMFilesMarker const* marker) noexcept
 /// @brief initializes a marker, using user-defined tick
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void InitMarker(MMFilesMarker* marker, 
-                   MMFilesMarkerType type, uint32_t size, TRI_voc_tick_t tick) {
+static inline void InitMarker(MMFilesMarker* marker, MMFilesMarkerType type,
+                              uint32_t size, TRI_voc_tick_t tick) {
   TRI_ASSERT(marker != nullptr);
   TRI_ASSERT(type > TRI_DF_MARKER_MIN && type < TRI_DF_MARKER_MAX);
   TRI_ASSERT(size > 0);
@@ -273,23 +253,25 @@ static inline void InitMarker(MMFilesMarker* marker,
 /// @brief initializes a marker, using tick 0
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void InitMarker(MMFilesMarker* marker, 
-                              MMFilesMarkerType type, uint32_t size) {
-  InitMarker(marker, type, size, 0); // always use tick 0
+static inline void InitMarker(MMFilesMarker* marker, MMFilesMarkerType type, uint32_t size) {
+  InitMarker(marker, type, size, 0);  // always use tick 0
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a header marker
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline MMFilesDatafileHeaderMarker CreateHeaderMarker(TRI_voc_size_t maximalSize, TRI_voc_tick_t fid) {
-  static_assert(sizeof(TRI_voc_tick_t) == sizeof(TRI_voc_fid_t), "invalid tick/fid sizes");
+static inline MMFilesDatafileHeaderMarker CreateHeaderMarker(TRI_voc_size_t maximalSize,
+                                                             TRI_voc_tick_t fid) {
+  static_assert(sizeof(TRI_voc_tick_t) == sizeof(TRI_voc_fid_t),
+                "invalid tick/fid sizes");
 
   MMFilesDatafileHeaderMarker header;
-  InitMarker(reinterpret_cast<MMFilesMarker*>(&header), TRI_DF_MARKER_HEADER, sizeof(MMFilesDatafileHeaderMarker), fid);
+  InitMarker(reinterpret_cast<MMFilesMarker*>(&header), TRI_DF_MARKER_HEADER,
+             sizeof(MMFilesDatafileHeaderMarker), fid);
 
   header._version = TRI_DF_VERSION;
-  header._maximalSize = maximalSize; 
+  header._maximalSize = maximalSize;
   header._fid = fid;
 
   return header;
@@ -299,12 +281,19 @@ static inline MMFilesDatafileHeaderMarker CreateHeaderMarker(TRI_voc_size_t maxi
 /// @brief create a prologue marker
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline MMFilesPrologueMarker CreatePrologueMarker(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) {
+static inline MMFilesPrologueMarker CreatePrologueMarker(TRI_voc_tick_t databaseId,
+                                                         TRI_voc_cid_t collectionId) {
   MMFilesPrologueMarker header;
-  InitMarker(reinterpret_cast<MMFilesMarker*>(&header), TRI_DF_MARKER_PROLOGUE, sizeof(MMFilesPrologueMarker));
+  InitMarker(reinterpret_cast<MMFilesMarker*>(&header), TRI_DF_MARKER_PROLOGUE,
+             sizeof(MMFilesPrologueMarker));
 
-  encoding::storeNumber<decltype(databaseId)>(reinterpret_cast<uint8_t*>(&header) + DatabaseIdOffset(TRI_DF_MARKER_PROLOGUE), databaseId, sizeof(decltype(databaseId))); 
-  encoding::storeNumber<decltype(collectionId)>(reinterpret_cast<uint8_t*>(&header) + CollectionIdOffset(TRI_DF_MARKER_PROLOGUE), collectionId, sizeof(decltype(collectionId))); 
+  encoding::storeNumber<decltype(databaseId)>(reinterpret_cast<uint8_t*>(&header) +
+                                                  DatabaseIdOffset(TRI_DF_MARKER_PROLOGUE),
+                                              databaseId, sizeof(decltype(databaseId)));
+  encoding::storeNumber<decltype(collectionId)>(reinterpret_cast<uint8_t*>(&header) +
+                                                    CollectionIdOffset(TRI_DF_MARKER_PROLOGUE),
+                                                collectionId,
+                                                sizeof(decltype(collectionId)));
 
   return header;
 }
@@ -315,7 +304,8 @@ static inline MMFilesPrologueMarker CreatePrologueMarker(TRI_voc_tick_t database
 
 static inline MMFilesDatafileFooterMarker CreateFooterMarker(TRI_voc_tick_t tick) {
   MMFilesDatafileFooterMarker footer;
-  InitMarker(reinterpret_cast<MMFilesMarker*>(&footer), TRI_DF_MARKER_FOOTER, sizeof(MMFilesDatafileFooterMarker), tick);
+  InitMarker(reinterpret_cast<MMFilesMarker*>(&footer), TRI_DF_MARKER_FOOTER,
+             sizeof(MMFilesDatafileFooterMarker), tick);
 
   return footer;
 }
@@ -325,10 +315,10 @@ static inline MMFilesDatafileFooterMarker CreateFooterMarker(TRI_voc_tick_t tick
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline MMFilesDatafileFooterMarker CreateFooterMarker() {
-  return CreateFooterMarker(0); // always use tick 0
+  return CreateFooterMarker(0);  // always use tick 0
 }
 
-}
-} // namespace
+}  // namespace MMFilesDatafileHelper
+}  // namespace arangodb
 
 #endif

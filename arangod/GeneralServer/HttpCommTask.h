@@ -25,8 +25,7 @@ class HttpCommTask final : public GeneralCommTask {
   }
 
   // convert from GeneralResponse to httpResponse
-  void addResponse(GeneralResponse* response,
-                   RequestStatistics* stat) override {
+  void addResponse(GeneralResponse* response, RequestStatistics* stat) override {
     HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(response);
 
     if (httpResponse == nullptr) {
@@ -40,8 +39,8 @@ class HttpCommTask final : public GeneralCommTask {
   bool processRead(double startTime) override;
   void compactify() override;
 
-  std::unique_ptr<GeneralResponse> createResponse(
-      rest::ResponseCode, uint64_t messageId) override final;
+  std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode,
+                                                  uint64_t messageId) override final;
 
   void handleSimpleError(rest::ResponseCode code, GeneralRequest const&,
                          uint64_t messageId = 1) override final;
@@ -66,7 +65,7 @@ class HttpCommTask final : public GeneralCommTask {
   std::string authenticationRealm() const;
   ResponseCode authenticateRequest(HttpRequest*);
   ResponseCode handleAuthHeader(HttpRequest* request) const;
-  
+
  private:
   size_t _readPosition;       // current read position
   size_t _startPosition;      // start position of current request
@@ -81,8 +80,7 @@ class HttpCommTask final : public GeneralCommTask {
   std::string _fullUrl;            // value of requested URL
   std::string _origin;  // value of the HTTP origin header the client sent (if
                         // any, CORS only)
-  size_t
-      _sinceCompactification;  // number of requests since last compactification
+  size_t _sinceCompactification;  // number of requests since last compactification
   size_t _originalBodyLength;
 
   std::string const _authenticationRealm;
@@ -92,7 +90,7 @@ class HttpCommTask final : public GeneralCommTask {
 
   std::unique_ptr<HttpRequest> _incompleteRequest;
 };
-}
-}
+}  // namespace rest
+}  // namespace arangodb
 
 #endif

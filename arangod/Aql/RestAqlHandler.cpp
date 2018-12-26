@@ -39,8 +39,8 @@
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/JobQueue.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Transaction/Methods.h"
 #include "Transaction/Context.h"
+#include "Transaction/Methods.h"
 #include "VocBase/ticks.h"
 
 #include <velocypack/Dumper.h>
@@ -52,8 +52,7 @@ using namespace arangodb::aql;
 
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
-RestAqlHandler::RestAqlHandler(GeneralRequest* request,
-                               GeneralResponse* response,
+RestAqlHandler::RestAqlHandler(GeneralRequest* request, GeneralResponse* response,
                                QueryRegistry* queryRegistry)
     : RestVocbaseBaseHandler(request, response),
       _context(static_cast<VocbaseContext*>(request->requestContext())),
@@ -75,7 +74,8 @@ bool RestAqlHandler::isDirect() const { return false; }
 void RestAqlHandler::createQueryFromVelocyPack() {
   std::shared_ptr<VPackBuilder> queryBuilder = parseVelocyPackBody();
   if (queryBuilder == nullptr) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "invalid VelocyPack plan in query";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "invalid VelocyPack plan in query";
     return;
   }
   VPackSlice querySlice = queryBuilder->slice();
@@ -84,7 +84,8 @@ void RestAqlHandler::createQueryFromVelocyPack() {
 
   VPackSlice plan = querySlice.get("plan");
   if (plan.isNone()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Invalid VelocyPack: \"plan\" attribute missing.";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "Invalid VelocyPack: \"plan\" attribute missing.";
     generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "body must be an object with attribute \"plan\"");
     return;
@@ -98,16 +99,18 @@ void RestAqlHandler::createQueryFromVelocyPack() {
 
   auto planBuilder = std::make_shared<VPackBuilder>(VPackBuilder::clone(plan));
   auto query = std::make_unique<Query>(false, _vocbase, planBuilder, options,
-                                      (part == "main" ? PART_MAIN : PART_DEPENDENT));
-  
+                                       (part == "main" ? PART_MAIN : PART_DEPENDENT));
+
   try {
     query->prepare(_queryRegistry, 0);
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to instantiate the query: " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "failed to instantiate the query: " << ex.what();
     generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN, ex.what());
     return;
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to instantiate the query";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "failed to instantiate the query";
     generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN);
     return;
   }
@@ -128,7 +131,8 @@ void RestAqlHandler::createQueryFromVelocyPack() {
     _queryRegistry->insert(_qId, query.get(), ttl);
     query.release();
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "could not keep query in registry";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "could not keep query in registry";
     generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "could not keep query in registry");
     return;
@@ -137,11 +141,11 @@ void RestAqlHandler::createQueryFromVelocyPack() {
   VPackBuilder answerBody;
   try {
     VPackObjectBuilder guard(&answerBody);
-    answerBody.add("queryId",
-                   VPackValue(arangodb::basics::StringUtils::itoa(_qId)));
+    answerBody.add("queryId", VPackValue(arangodb::basics::StringUtils::itoa(_qId)));
     answerBody.add("ttl", VPackValue(ttl));
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "could not keep query in registry";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "could not keep query in registry";
     generateError(rest::ResponseCode::BAD, TRI_ERROR_OUT_OF_MEMORY);
     return;
   }
@@ -157,7 +161,8 @@ void RestAqlHandler::createQueryFromVelocyPack() {
 void RestAqlHandler::parseQuery() {
   std::shared_ptr<VPackBuilder> bodyBuilder = parseVelocyPackBody();
   if (bodyBuilder == nullptr) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "invalid VelocyPack plan in query";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "invalid VelocyPack plan in query";
     return;
   }
   VPackSlice querySlice = bodyBuilder->slice();
@@ -165,17 +170,19 @@ void RestAqlHandler::parseQuery() {
   std::string const queryString =
       VelocyPackHelper::getStringValue(querySlice, "query", "");
   if (queryString.empty()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "body must be an object with attribute \"query\"";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "body must be an object with attribute \"query\"";
     generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "body must be an object with attribute \"query\"");
     return;
   }
 
   auto query = std::make_unique<Query>(false, _vocbase, QueryString(queryString),
-                std::shared_ptr<VPackBuilder>(), nullptr, PART_MAIN);
+                                       std::shared_ptr<VPackBuilder>(), nullptr, PART_MAIN);
   QueryResult res = query->parse();
   if (res.code != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to instantiate the Query: " << res.details;
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "failed to instantiate the Query: " << res.details;
     generateError(rest::ResponseCode::BAD, res.code, res.details);
     return;
   }
@@ -229,7 +236,8 @@ void RestAqlHandler::explainQuery() {
   std::string queryString =
       VelocyPackHelper::getStringValue(querySlice, "query", "");
   if (queryString.empty()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "body must be an object with attribute \"query\"";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "body must be an object with attribute \"query\"";
     generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "body must be an object with attribute \"query\"");
     return;
@@ -241,12 +249,12 @@ void RestAqlHandler::explainQuery() {
   auto options = std::make_shared<VPackBuilder>(
       VPackBuilder::clone(querySlice.get("options")));
 
-  auto query =
-      std::make_unique<Query>(false, _vocbase, QueryString(queryString),
-                              bindVars, options, PART_MAIN);
+  auto query = std::make_unique<Query>(false, _vocbase, QueryString(queryString),
+                                       bindVars, options, PART_MAIN);
   QueryResult res = query->explain();
   if (res.code != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to instantiate the Query: " << res.details;
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "failed to instantiate the Query: " << res.details;
     generateError(rest::ResponseCode::BAD, res.code, res.details);
     return;
   }
@@ -290,7 +298,8 @@ void RestAqlHandler::createQueryFromString() {
   std::string const queryString =
       VelocyPackHelper::getStringValue(querySlice, "query", "");
   if (queryString.empty()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "body must be an object with attribute \"query\"";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "body must be an object with attribute \"query\"";
     generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "body must be an object with attribute \"query\"");
     return;
@@ -299,7 +308,8 @@ void RestAqlHandler::createQueryFromString() {
   std::string const part =
       VelocyPackHelper::getStringValue(querySlice, "part", "");
   if (part.empty()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "body must be an object with attribute \"part\"";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "body must be an object with attribute \"part\"";
     generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "body must be an object with attribute \"part\"");
     return;
@@ -310,18 +320,20 @@ void RestAqlHandler::createQueryFromString() {
   auto options = std::make_shared<VPackBuilder>(
       VPackBuilder::clone(querySlice.get("options")));
 
-  auto query = std::make_unique<Query>(false, _vocbase, QueryString(queryString),
-                         bindVars, options,
-                         (part == "main" ? PART_MAIN : PART_DEPENDENT));
-  
+  auto query =
+      std::make_unique<Query>(false, _vocbase, QueryString(queryString), bindVars,
+                              options, (part == "main" ? PART_MAIN : PART_DEPENDENT));
+
   try {
     query->prepare(_queryRegistry, 0);
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to instantiate the query: " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "failed to instantiate the query: " << ex.what();
     generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN, ex.what());
     return;
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to instantiate the query";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "failed to instantiate the query";
     generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN);
     return;
   }
@@ -342,7 +354,8 @@ void RestAqlHandler::createQueryFromString() {
     _queryRegistry->insert(_qId, query.get(), ttl);
     query.release();
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "could not keep query in registry";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "could not keep query in registry";
     generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "could not keep query in registry");
     return;
@@ -351,11 +364,11 @@ void RestAqlHandler::createQueryFromString() {
   VPackBuilder answerBody;
   try {
     VPackObjectBuilder guard(&answerBody);
-    answerBody.add("queryId",
-                   VPackValue(arangodb::basics::StringUtils::itoa(_qId)));
+    answerBody.add("queryId", VPackValue(arangodb::basics::StringUtils::itoa(_qId)));
     answerBody.add("ttl", VPackValue(ttl));
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "could not keep query in registry";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "could not keep query in registry";
     generateError(rest::ResponseCode::BAD, TRI_ERROR_OUT_OF_MEMORY);
     return;
   }
@@ -411,8 +424,7 @@ void RestAqlHandler::createQueryFromString() {
 // set, then the root block of the stored query must be a ScatterBlock
 // and the shard ID is given as an additional argument to the ScatterBlock's
 // special API.
-void RestAqlHandler::useQuery(std::string const& operation,
-                              std::string const& idString) {
+void RestAqlHandler::useQuery(std::string const& operation, std::string const& idString) {
   // the PUT verb
   Query* query = nullptr;
   if (findQuery(idString, query)) {
@@ -440,21 +452,22 @@ void RestAqlHandler::useQuery(std::string const& operation,
     }
   } catch (arangodb::basics::Exception const& ex) {
     _queryRegistry->close(_vocbase, _qId);
-    generateError(rest::ResponseCode::SERVER_ERROR, ex.code(),
-                  ex.message());
+    generateError(rest::ResponseCode::SERVER_ERROR, ex.code(), ex.message());
   } catch (std::exception const& ex) {
     _queryRegistry->close(_vocbase, _qId);
 
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed during use of Query: " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "failed during use of Query: " << ex.what();
 
-    generateError(rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_HTTP_SERVER_ERROR, ex.what());
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                  ex.what());
   } catch (...) {
     _queryRegistry->close(_vocbase, _qId);
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed during use of Query: Unknown exception occurred";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "failed during use of Query: Unknown exception occurred";
 
-    generateError(rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_HTTP_SERVER_ERROR, "an unknown exception occurred");
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                  "an unknown exception occurred");
   }
 }
 
@@ -472,8 +485,7 @@ void RestAqlHandler::useQuery(std::string const& operation,
 // Note that both "count" and "remaining" may return "unknown" if the
 // internal cursor API returned -1.
 
-void RestAqlHandler::getInfoQuery(std::string const& operation,
-                                  std::string const& idString) {
+void RestAqlHandler::getInfoQuery(std::string const& operation, std::string const& idString) {
   bool found;
   std::string shardId;
   std::string const& shardIdCharP = _request->header("shard-id", found);
@@ -509,7 +521,8 @@ void RestAqlHandler::getInfoQuery(std::string const& operation,
         auto block = static_cast<BlockWithClients*>(query->engine()->root());
         if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
             block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected node type");
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         "unexpected node type");
         }
         number = block->remainingForShard(shardId);
       }
@@ -526,7 +539,8 @@ void RestAqlHandler::getInfoQuery(std::string const& operation,
         auto block = static_cast<BlockWithClients*>(query->engine()->root());
         if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
             block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected node type");
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         "unexpected node type");
         }
         hasMore = block->hasMoreForShard(shardId);
       }
@@ -535,31 +549,32 @@ void RestAqlHandler::getInfoQuery(std::string const& operation,
     } else {
       _queryRegistry->close(_vocbase, _qId);
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "referenced query not found";
-      generateError(rest::ResponseCode::NOT_FOUND,
-                    TRI_ERROR_HTTP_NOT_FOUND);
+      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       return;
     }
 
     answerBody.add("error", VPackValue(false));
   } catch (arangodb::basics::Exception const& ex) {
     _queryRegistry->close(_vocbase, _qId);
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed during use of query: " << ex.message();
-    generateError(rest::ResponseCode::SERVER_ERROR, ex.code(),
-                  ex.message());
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "failed during use of query: " << ex.message();
+    generateError(rest::ResponseCode::SERVER_ERROR, ex.code(), ex.message());
   } catch (std::exception const& ex) {
     _queryRegistry->close(_vocbase, _qId);
 
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed during use of query: " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "failed during use of query: " << ex.what();
 
-    generateError(rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_HTTP_SERVER_ERROR, ex.what());
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                  ex.what());
   } catch (...) {
     _queryRegistry->close(_vocbase, _qId);
 
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed during use of query: Unknown exception occurred";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "failed during use of query: Unknown exception occurred";
 
-    generateError(rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_HTTP_SERVER_ERROR, "an unknown exception occurred");
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                  "an unknown exception occurred");
   }
 
   _queryRegistry->close(_vocbase, _qId);
@@ -583,8 +598,7 @@ RestStatus RestAqlHandler::execute() {
   switch (type) {
     case rest::RequestType::POST: {
       if (suffixes.size() != 1) {
-        generateError(rest::ResponseCode::NOT_FOUND,
-                      TRI_ERROR_HTTP_NOT_FOUND);
+        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       } else if (suffixes[0] == "instantiate") {
         createQueryFromVelocyPack();
       } else if (suffixes[0] == "parse") {
@@ -595,16 +609,14 @@ RestStatus RestAqlHandler::execute() {
         createQueryFromString();
       } else {
         LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Unknown API";
-        generateError(rest::ResponseCode::NOT_FOUND,
-                      TRI_ERROR_HTTP_NOT_FOUND);
+        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       }
       break;
     }
     case rest::RequestType::PUT: {
       if (suffixes.size() != 2) {
         LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unknown PUT API";
-        generateError(rest::ResponseCode::NOT_FOUND,
-                      TRI_ERROR_HTTP_NOT_FOUND);
+        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       } else {
         useQuery(suffixes[0], suffixes[1]);
       }
@@ -613,8 +625,7 @@ RestStatus RestAqlHandler::execute() {
     case rest::RequestType::GET: {
       if (suffixes.size() != 2) {
         LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Unknown GET API";
-        generateError(rest::ResponseCode::NOT_FOUND,
-                      TRI_ERROR_HTTP_NOT_FOUND);
+        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       } else {
         getInfoQuery(suffixes[0], suffixes[1]);
       }
@@ -670,8 +681,7 @@ bool RestAqlHandler::findQuery(std::string const& idString, Query*& query) {
 
   if (query == nullptr) {
     _qId = 0;
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_QUERY_NOT_FOUND);
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND);
     return true;
   }
 
@@ -707,8 +717,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
           try {
             res = query->trx()->lockCollections();
           } catch (...) {
-            generateError(rest::ResponseCode::SERVER_ERROR,
-                          TRI_ERROR_HTTP_SERVER_ERROR,
+            generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                           "lock lead to an exception");
             return;
           }
@@ -719,8 +728,9 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
       } else if (operation == "getSome") {
         auto atLeast =
             VelocyPackHelper::getNumericValue<size_t>(querySlice, "atLeast", 1);
-        auto atMost = VelocyPackHelper::getNumericValue<size_t>(
-            querySlice, "atMost", ExecutionBlock::DefaultBatchSize());
+        auto atMost =
+            VelocyPackHelper::getNumericValue<size_t>(querySlice, "atMost",
+                                                      ExecutionBlock::DefaultBatchSize());
         std::unique_ptr<AqlItemBlock> items;
         if (shardId.empty()) {
           items.reset(query->engine()->getSome(atLeast, atMost));
@@ -728,7 +738,8 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
           auto block = static_cast<BlockWithClients*>(query->engine()->root());
           if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
               block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected node type");
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                           "unexpected node type");
           }
           items.reset(block->getSomeForShard(atLeast, atMost, shardId));
         }
@@ -739,8 +750,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
           try {
             items->toVelocyPack(query->trx(), answerBuilder);
           } catch (...) {
-            generateError(rest::ResponseCode::SERVER_ERROR,
-                          TRI_ERROR_HTTP_SERVER_ERROR,
+            generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                           "cannot transform AqlItemBlock to VelocyPack");
             return;
           }
@@ -748,24 +758,24 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
       } else if (operation == "skipSome") {
         auto atLeast =
             VelocyPackHelper::getNumericValue<size_t>(querySlice, "atLeast", 1);
-        auto atMost = VelocyPackHelper::getNumericValue<size_t>(
-            querySlice, "atMost", ExecutionBlock::DefaultBatchSize());
+        auto atMost =
+            VelocyPackHelper::getNumericValue<size_t>(querySlice, "atMost",
+                                                      ExecutionBlock::DefaultBatchSize());
         size_t skipped;
         try {
           if (shardId.empty()) {
             skipped = query->engine()->skipSome(atLeast, atMost);
           } else {
-            auto block =
-                static_cast<BlockWithClients*>(query->engine()->root());
+            auto block = static_cast<BlockWithClients*>(query->engine()->root());
             if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
                 block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
-              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected node type");
+              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                             "unexpected node type");
             }
             skipped = block->skipSomeForShard(atLeast, atMost, shardId);
           }
         } catch (...) {
-          generateError(rest::ResponseCode::SERVER_ERROR,
-                        TRI_ERROR_HTTP_SERVER_ERROR,
+          generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                         "skipSome lead to an exception");
           return;
         }
@@ -780,19 +790,18 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
             size_t numActuallySkipped = 0;
             exhausted = query->engine()->skip(number, numActuallySkipped);
           } else {
-            auto block =
-                static_cast<BlockWithClients*>(query->engine()->root());
+            auto block = static_cast<BlockWithClients*>(query->engine()->root());
             if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
                 block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
-              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected node type");
+              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                             "unexpected node type");
             }
             exhausted = block->skipForShard(number, shardId);
           }
           answerBuilder.add("exhausted", VPackValue(exhausted));
           answerBuilder.add("error", VPackValue(false));
         } catch (...) {
-          generateError(rest::ResponseCode::SERVER_ERROR,
-                        TRI_ERROR_HTTP_SERVER_ERROR,
+          generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                         "skip lead to an exception");
           return;
         }
@@ -801,19 +810,18 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
         try {
           res = query->engine()->initialize();
         } catch (arangodb::basics::Exception const& ex) {
-          generateError(rest::ResponseCode::SERVER_ERROR, ex.code(), "initialize lead to an exception: " + ex.message());
+          generateError(rest::ResponseCode::SERVER_ERROR, ex.code(),
+                        "initialize lead to an exception: " + ex.message());
           return;
         } catch (...) {
-          generateError(rest::ResponseCode::SERVER_ERROR,
-                        TRI_ERROR_HTTP_SERVER_ERROR,
+          generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                         "initialize lead to an exception");
           return;
         }
         answerBuilder.add("error", VPackValue(res != TRI_ERROR_NO_ERROR));
         answerBuilder.add("code", VPackValue(static_cast<double>(res)));
       } else if (operation == "initializeCursor") {
-        auto pos =
-            VelocyPackHelper::getNumericValue<size_t>(querySlice, "pos", 0);
+        auto pos = VelocyPackHelper::getNumericValue<size_t>(querySlice, "pos", 0);
         std::unique_ptr<AqlItemBlock> items;
         int res = TRI_ERROR_NO_ERROR;
         try {
@@ -822,21 +830,19 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
           }
 
           if (res == TRI_ERROR_NO_ERROR) {
-            if (VelocyPackHelper::getBooleanValue(querySlice, "exhausted",
-                                                  true)) {
+            if (VelocyPackHelper::getBooleanValue(querySlice, "exhausted", true)) {
               res = query->engine()->initializeCursor(nullptr, 0);
             } else {
-              items.reset(new AqlItemBlock(query->resourceMonitor(),
-                                          querySlice.get("items")));
+              items.reset(new AqlItemBlock(query->resourceMonitor(), querySlice.get("items")));
               res = query->engine()->initializeCursor(items.get(), pos);
             }
           }
         } catch (arangodb::basics::Exception const& ex) {
-          generateError(rest::ResponseCode::SERVER_ERROR, ex.code(), "initializeCursor lead to an exception: " + ex.message());
+          generateError(rest::ResponseCode::SERVER_ERROR, ex.code(),
+                        "initializeCursor lead to an exception: " + ex.message());
           return;
         } catch (...) {
-          generateError(rest::ResponseCode::SERVER_ERROR,
-                        TRI_ERROR_HTTP_SERVER_ERROR,
+          generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                         "initializeCursor lead to an exception");
           return;
         }
@@ -844,11 +850,10 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
         answerBuilder.add("code", VPackValue(static_cast<double>(res)));
       } else if (operation == "shutdown") {
         int res = TRI_ERROR_INTERNAL;
-        int errorCode = VelocyPackHelper::getNumericValue<int>(
-            querySlice, "code", TRI_ERROR_INTERNAL);
+        int errorCode =
+            VelocyPackHelper::getNumericValue<int>(querySlice, "code", TRI_ERROR_INTERNAL);
         try {
-          res = query->engine()->shutdown(
-              errorCode);  // pass errorCode to shutdown
+          res = query->engine()->shutdown(errorCode);  // pass errorCode to shutdown
 
           // return statistics
           answerBuilder.add(VPackValue("stats"));
@@ -864,19 +869,18 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
           _queryRegistry->destroy(_vocbase, _qId, errorCode);
           _qId = 0;
         } catch (arangodb::basics::Exception const& ex) {
-          generateError(rest::ResponseCode::SERVER_ERROR, ex.code(), "shutdown lead to an exception: " + ex.message());
+          generateError(rest::ResponseCode::SERVER_ERROR, ex.code(),
+                        "shutdown lead to an exception: " + ex.message());
           return;
         } catch (...) {
-          generateError(rest::ResponseCode::SERVER_ERROR,
-                        TRI_ERROR_HTTP_SERVER_ERROR,
+          generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                         "shutdown lead to an exception");
           return;
         }
         answerBuilder.add("error", VPackValue(res != TRI_ERROR_NO_ERROR));
         answerBuilder.add("code", VPackValue(res));
       } else {
-        generateError(rest::ResponseCode::NOT_FOUND,
-                      TRI_ERROR_HTTP_NOT_FOUND);
+        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
         return;
       }
     }
@@ -894,36 +898,34 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
 // extract the VelocyPack from the request
 std::shared_ptr<VPackBuilder> RestAqlHandler::parseVelocyPackBody() {
   try {
-    std::shared_ptr<VPackBuilder> body =
-        _request->toVelocyPackBuilderPtr();
+    std::shared_ptr<VPackBuilder> body = _request->toVelocyPackBuilderPtr();
     if (body == nullptr) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot parse json object";
-      generateError(rest::ResponseCode::BAD,
-                    TRI_ERROR_HTTP_CORRUPTED_JSON, "cannot parse json object");
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON,
+                    "cannot parse json object");
       return nullptr;
     }
     VPackSlice tmp = body->slice();
     if (!tmp.isObject()) {
       // Validate the input has correct format.
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "body of request must be a VelocyPack object";
-      generateError(rest::ResponseCode::BAD,
-                    TRI_ERROR_HTTP_BAD_PARAMETER,
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "body of request must be a VelocyPack object";
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "body of request must be a VelcoyPack object");
       return nullptr;
     }
     return body;
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot parse json object";
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_CORRUPTED_JSON, "cannot parse json object");
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON,
+                  "cannot parse json object");
   }
   return nullptr;
 }
 
 // Send slice as result with the given response type.
-void RestAqlHandler::sendResponse(
-    rest::ResponseCode code, VPackSlice const slice,
-    transaction::Context* transactionContext) {
+void RestAqlHandler::sendResponse(rest::ResponseCode code, VPackSlice const slice,
+                                  transaction::Context* transactionContext) {
   resetResponse(code);
   writeResult(slice, *(transactionContext->getVPackOptionsForDump()));
 }

@@ -52,8 +52,7 @@ enum RestrictType : uint32_t {
 
 class ContinuousSyncer : public Syncer {
  public:
-  ContinuousSyncer(TRI_vocbase_t*,
-                   TRI_replication_applier_configuration_t const*,
+  ContinuousSyncer(TRI_vocbase_t*, TRI_replication_applier_configuration_t const*,
                    TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId);
 
   ~ContinuousSyncer();
@@ -61,11 +60,10 @@ class ContinuousSyncer : public Syncer {
  public:
   /// @brief run method, performs continuous synchronization
   int run();
-  
+
   /// @brief finalize the synchronization of a collection by tailing the WAL
   /// and filtering on the collection name until no more data is available
-  int syncCollectionFinalize(std::string& errorMsg,
-                             std::string const& collectionName,
+  int syncCollectionFinalize(std::string& errorMsg, std::string const& collectionName,
                              TRI_voc_tick_t fetchTick);
 
   /// @brief return the syncer's replication applier
@@ -101,8 +99,8 @@ class ContinuousSyncer : public Syncer {
   int commitTransaction(arangodb::velocypack::Slice const&);
 
   /// @brief process a document operation, based on the VelocyPack provided
-  int processDocument(TRI_replication_operation_e, arangodb::velocypack::Slice const&,
-                      std::string&);
+  int processDocument(TRI_replication_operation_e,
+                      arangodb::velocypack::Slice const&, std::string&);
 
   /// @brief renames a collection, based on the VelocyPack provided
   int renameCollection(arangodb::velocypack::Slice const&);
@@ -122,13 +120,12 @@ class ContinuousSyncer : public Syncer {
   int runContinuousSync(std::string&);
 
   /// @brief fetch the initial master state
-  int fetchMasterState(std::string&, TRI_voc_tick_t, TRI_voc_tick_t,
-                       TRI_voc_tick_t&);
+  int fetchMasterState(std::string&, TRI_voc_tick_t, TRI_voc_tick_t, TRI_voc_tick_t&);
 
   /// @brief run the continuous synchronization
   int followMasterLog(std::string&, TRI_voc_tick_t&, TRI_voc_tick_t, uint64_t&,
                       bool&, bool&);
-  
+
  private:
   /// @brief pointer to the applier state
   TRI_replication_applier_t* _applier;
@@ -177,17 +174,16 @@ class ContinuousSyncer : public Syncer {
 
   /// @brief ignore rename, create and drop operations for collections
   bool _ignoreRenameCreateDrop;
-  
+
   /// @brief whether or not to store the applier state
   bool _transientApplierState;
 
   /// @brief which transactions were open and need to be treated specially
-  std::unordered_map<TRI_voc_tid_t, ReplicationTransaction*>
-      _ongoingTransactions;
-  
+  std::unordered_map<TRI_voc_tid_t, ReplicationTransaction*> _ongoingTransactions;
+
   /// @brief recycled builder for repeated document creation
   arangodb::velocypack::Builder _documentBuilder;
 };
-}
+}  // namespace arangodb
 
 #endif

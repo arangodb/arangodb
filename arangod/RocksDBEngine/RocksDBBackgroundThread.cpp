@@ -31,8 +31,7 @@
 
 using namespace arangodb;
 
-RocksDBBackgroundThread::RocksDBBackgroundThread(RocksDBEngine* eng,
-                                                 double interval)
+RocksDBBackgroundThread::RocksDBBackgroundThread(RocksDBEngine* eng, double interval)
     : Thread("RocksDBThread"), _engine(eng), _interval(interval) {}
 
 RocksDBBackgroundThread::~RocksDBBackgroundThread() { shutdown(); }
@@ -69,20 +68,19 @@ void RocksDBBackgroundThread::run() {
       }
 
       if (DatabaseFeature::DATABASE != nullptr) {
-        DatabaseFeature::DATABASE->enumerateDatabases(
-            [force, &minTick](TRI_vocbase_t* vocbase) {
-              vocbase->cursorRepository()->garbageCollect(force);
-              // FIXME: configurable interval tied to follower timeout
-              vocbase->garbageCollectReplicationClients(TRI_microtime());
-              auto clients = vocbase->getReplicationClients();
-              for (auto c : clients) {
-                if (std::get<2>(c) < minTick) {
-                  minTick = std::get<2>(c);
-                }
-              }
-            });
+        DatabaseFeature::DATABASE->enumerateDatabases([force, &minTick](TRI_vocbase_t* vocbase) {
+          vocbase->cursorRepository()->garbageCollect(force);
+          // FIXME: configurable interval tied to follower timeout
+          vocbase->garbageCollectReplicationClients(TRI_microtime());
+          auto clients = vocbase->getReplicationClients();
+          for (auto c : clients) {
+            if (std::get<2>(c) < minTick) {
+              minTick = std::get<2>(c);
+            }
+          }
+        });
       }
-      
+
       // only start pruning of obsolete WAL files a few minutes after
       // server start. if we start pruning too early, replication slaves
       // will not have a chance to reconnect to a restarted master in

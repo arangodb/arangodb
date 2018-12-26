@@ -59,8 +59,7 @@ class ConditionLocker {
 /// the condition variable
 #ifdef TRI_SHOW_LOCK_TIME
 
-  ConditionLocker(ConditionVariable* conditionVariable, char const* file,
-                  int line);
+  ConditionLocker(ConditionVariable* conditionVariable, char const* file, int line);
 
 #else
 
@@ -72,7 +71,6 @@ class ConditionLocker {
   ~ConditionLocker();
 
  public:
-  
   /// @brief whether or not the condition is locked
   bool isLocked() const { return _isLocked; }
 
@@ -80,7 +78,7 @@ class ConditionLocker {
   void wait();
 
   /// @brief waits for an event to occur, using a timeout in micro seconds
-  /// returns true when the condition was signaled, false on timeout 
+  /// returns true when the condition was signaled, false on timeout
   bool wait(uint64_t);
 
   /// @brief broadcasts an event
@@ -115,7 +113,7 @@ class ConditionLocker {
 
 #endif
 };
-}
-}
+}  // namespace basics
+}  // namespace arangodb
 
 #endif

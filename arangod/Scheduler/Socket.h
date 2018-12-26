@@ -35,9 +35,7 @@
 
 namespace arangodb {
 
-typedef std::function<void(const boost::system::error_code& ec,
-                           std::size_t transferred)>
-    AsyncHandler;
+typedef std::function<void(const boost::system::error_code& ec, std::size_t transferred)> AsyncHandler;
 
 namespace socketcommon {
 template <typename T>
@@ -48,10 +46,8 @@ bool doSslHandshake(T& socket) {
   double start = 0.0;
 
   while (true) {
-    ec.assign(boost::system::errc::success,
-	boost::system::generic_category());
-    socket.handshake(
-	boost::asio::ssl::stream_base::handshake_type::server, ec);
+    ec.assign(boost::system::errc::success, boost::system::generic_category());
+    socket.handshake(boost::asio::ssl::stream_base::handshake_type::server, ec);
 
     if (ec.value() != boost::asio::error::would_block) {
       break;
@@ -63,10 +59,10 @@ bool doSslHandshake(T& socket) {
     // following is a helpless fix for connections hanging in the handshake
     // phase forever. we've seen this happening when the underlying peer
     // connection was closed during the handshake.
-    // with the helpless fix, handshakes will be aborted it they take longer 
+    // with the helpless fix, handshakes will be aborted it they take longer
     // than x seconds. a proper fix is to make the handshake run asynchronously
     // and somehow signal it that the connection got closed. apart from that
-    // running it asynchronously will not block the scheduler thread as it 
+    // running it asynchronously will not block the scheduler thread as it
     // does now. anyway, even the helpless fix allows self-healing of busy
     // scheduler threads after a network failure
     if (tries == 1) {
@@ -77,12 +73,12 @@ bool doSslHandshake(T& socket) {
       TRI_ASSERT(start != 0.0);
 
       if (TRI_microtime() - start >= 3) {
-	ec.assign(boost::asio::error::connection_reset,
-	    boost::system::generic_category());
-	LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "forcefully shutting down connection after wait time";
-	break;
+        ec.assign(boost::asio::error::connection_reset, boost::system::generic_category());
+        LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+            << "forcefully shutting down connection after wait time";
+        break;
       } else {
-	usleep(10000);
+        usleep(10000);
       }
     }
 
@@ -91,18 +87,15 @@ bool doSslHandshake(T& socket) {
 
   if (ec) {
     LOG_TOPIC(ERR, Logger::COMMUNICATION)
-        << "unable to perform ssl handshake: " << ec.message() << " : "
-        << ec.value();
+        << "unable to perform ssl handshake: " << ec.message() << " : " << ec.value();
     return false;
   }
   return true;
 }
 
 template <typename T>
-size_t doWrite(T& socket, basics::StringBuffer* buffer,
-               boost::system::error_code& ec) {
-  return socket.write_some(
-      boost::asio::buffer(buffer->begin(), buffer->length()), ec);
+size_t doWrite(T& socket, basics::StringBuffer* buffer, boost::system::error_code& ec) {
+  return socket.write_some(boost::asio::buffer(buffer->begin(), buffer->length()), ec);
 }
 template <typename T>
 void doAsyncWrite(T& socket, boost::asio::mutable_buffers_1 const& buffer,
@@ -119,15 +112,12 @@ void doAsyncRead(T& socket, boost::asio::mutable_buffers_1 const& buffer,
                  AsyncHandler const& handler) {
   return socket.async_read_some(buffer, handler);
 }
-}
+}  // namespace socketcommon
 
 class Socket {
  public:
-  Socket(boost::asio::io_service& ioService,
-         boost::asio::ssl::context&& context, bool encrypted)
-      : _ioService(ioService),
-        _context(std::move(context)),
-        _encrypted(encrypted) {}
+  Socket(boost::asio::io_service& ioService, boost::asio::ssl::context&& context, bool encrypted)
+      : _ioService(ioService), _context(std::move(context)), _encrypted(encrypted) {}
   Socket(Socket const& that) = delete;
   Socket(Socket&& that) = delete;
   virtual ~Socket() {}
@@ -138,8 +128,7 @@ class Socket {
 
   bool isEncrypted() const { return _encrypted; }
   bool handshake();
-  virtual size_t write(basics::StringBuffer* buffer,
-                       boost::system::error_code& ec) = 0;
+  virtual size_t write(basics::StringBuffer* buffer, boost::system::error_code& ec) = 0;
   virtual void asyncWrite(boost::asio::mutable_buffers_1 const& buffer,
                           AsyncHandler const& handler) = 0;
   virtual size_t read(boost::asio::mutable_buffers_1 const& buffer,
@@ -147,7 +136,7 @@ class Socket {
   virtual std::size_t available(boost::system::error_code& ec) = 0;
   virtual void asyncRead(boost::asio::mutable_buffers_1 const& buffer,
                          AsyncHandler const& handler) = 0;
-  
+
   virtual void close(boost::system::error_code& ec) = 0;
   virtual void shutdown(boost::system::error_code& ec, bool closeSend, bool closeReceive) {
     if (closeSend) {
@@ -157,7 +146,7 @@ class Socket {
             << "shutdown send stream failed with: " << ec.message();
       }
     }
-    
+
     if (closeReceive) {
       this->shutdownReceive(ec);
       if (ec && ec != boost::asio::error::not_connected) {
@@ -179,6 +168,6 @@ class Socket {
   bool _encrypted;
   bool _handshakeDone = false;
 };
-}
+}  // namespace arangodb
 
 #endif

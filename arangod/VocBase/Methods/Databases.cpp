@@ -98,8 +98,7 @@ std::vector<std::string> Databases::list(std::string const& user) {
 arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
   if (ServerState::instance()->isCoordinator()) {
     AgencyComm agency;
-    AgencyCommResult commRes =
-        agency.getValues("Plan/Databases/" + vocbase->name());
+    AgencyCommResult commRes = agency.getValues("Plan/Databases/" + vocbase->name());
     if (!commRes.successful()) {
       // Error in communication, note that value not found is not an error
       LOG_TOPIC(TRACE, Logger::REQUESTS)
@@ -137,8 +136,7 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
   return Result();
 }
 
-arangodb::Result Databases::create(std::string const& dbName,
-                                   VPackSlice const& inUsers,
+arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& inUsers,
                                    VPackSlice const& inOptions) {
   if (TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE) {
     return Result(TRI_ERROR_ARANGO_READ_ONLY);
@@ -237,8 +235,7 @@ arangodb::Result Databases::create(std::string const& dbName,
     ClusterInfo* ci = ClusterInfo::instance();
     std::string errorMsg;
 
-    int res =
-        ci->createDatabaseCoordinator(dbName, builder.slice(), errorMsg, 120.0);
+    int res = ci->createDatabaseCoordinator(dbName, builder.slice(), errorMsg, 120.0);
     if (res != TRI_ERROR_NO_ERROR) {
       return Result(res);
     }
@@ -266,11 +263,10 @@ arangodb::Result Databases::create(std::string const& dbName,
     // we need to add the permissions before running the upgrade script
     if (auth->isActive() && ExecContext::CURRENT != nullptr) {
       // ignore errors here Result r =
-      auth->authInfo()->updateUser(
-          ExecContext::CURRENT->user(), [&](AuthUserEntry& entry) {
-            entry.grantDatabase(dbName, AuthLevel::RW);
-            entry.grantCollection(dbName, "*", AuthLevel::RW);
-          });
+      auth->authInfo()->updateUser(ExecContext::CURRENT->user(), [&](AuthUserEntry& entry) {
+        entry.grantDatabase(dbName, AuthLevel::RW);
+        entry.grantCollection(dbName, "*", AuthLevel::RW);
+      });
     }
 
     V8Context* ctx = V8DealerFeature::DEALER->enterContext(vocbase, true);
@@ -318,11 +314,10 @@ arangodb::Result Databases::create(std::string const& dbName,
     // we need to add the permissions before running the upgrade script
     if (auth->isActive() && ExecContext::CURRENT != nullptr) {
       // ignore errors here Result r =
-      auth->authInfo()->updateUser(ExecContext::CURRENT->user(),
-                                   [&](AuthUserEntry& entry) {
-                                     entry.grantDatabase(dbName, AuthLevel::RW);
-                                     entry.grantCollection(dbName, "*", AuthLevel::RW);
-                                   });
+      auth->authInfo()->updateUser(ExecContext::CURRENT->user(), [&](AuthUserEntry& entry) {
+        entry.grantDatabase(dbName, AuthLevel::RW);
+        entry.grantCollection(dbName, "*", AuthLevel::RW);
+      });
     }
 
     TRI_ASSERT(V8DealerFeature::DEALER != nullptr);
@@ -383,8 +378,7 @@ arangodb::Result Databases::create(std::string const& dbName,
   return Result();
 }
 
-arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
-                                 std::string const& dbName) {
+arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const& dbName) {
   TRI_ASSERT(systemVocbase->isSystem());
   if (ExecContext::CURRENT != nullptr) {
     AuthLevel level = ExecContext::CURRENT->systemAuthLevel();
@@ -462,7 +456,8 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
 
     TRI_ExecuteJavaScriptString(
         isolate, isolate->GetCurrentContext(),
-        TRI_V8_ASCII_STRING(isolate, "require('internal').executeGlobalContextFunction('"
+        TRI_V8_ASCII_STRING(isolate,
+                            "require('internal').executeGlobalContextFunction('"
                             "reloadRouting')"),
         TRI_V8_ASCII_STRING(isolate, "reload routing"), false);
   }

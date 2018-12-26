@@ -44,8 +44,7 @@ static void JS_EnabledAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_V8_RETURN(v8::Boolean::New(
-      isolate, ApplicationServer::server->isEnabled("Agency")));
+  TRI_V8_RETURN(v8::Boolean::New(isolate, ApplicationServer::server->isEnabled("Agency")));
 
   TRI_V8_TRY_CATCH_END
 }
@@ -62,8 +61,7 @@ static void JS_LeadingAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   } catch (std::exception const& e) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        std::string("couldn't access agency feature: ") + e.what());
+        TRI_ERROR_INTERNAL, std::string("couldn't access agency feature: ") + e.what());
   }
 
   v8::Handle<v8::Object> r = v8::Object::New(isolate);
@@ -87,8 +85,7 @@ static void JS_ReadAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   } catch (std::exception const& e) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        std::string("couldn't access agency feature: ") + e.what());
+        TRI_ERROR_INTERNAL, std::string("couldn't access agency feature: ") + e.what());
   }
 
   query_t query = std::make_shared<Builder>();
@@ -121,8 +118,7 @@ static void JS_WriteAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   } catch (std::exception const& e) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        std::string("couldn't access agency feature: ") + e.what());
+        TRI_ERROR_INTERNAL, std::string("couldn't access agency feature: ") + e.what());
   }
 
   query_t query = std::make_shared<Builder>();
@@ -186,20 +182,18 @@ void TRI_InitV8Agency(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(2);
 
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "enabled"),
-                       JS_EnabledAgent);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "leading"),
-                       JS_LeadingAgent);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "enabled"), JS_EnabledAgent);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "leading"), JS_LeadingAgent);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "read"), JS_ReadAgent);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "write"),
-                       JS_WriteAgent);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "write"), JS_WriteAgent);
 
   v8g->AgentTempl.Reset(isolate, rt);
   ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoAgentCtor"));
 
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "ArangoAgentCtor"),
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "ArangoAgentCtor"),
                                ft->GetFunction(), true);
-  
+
   // register the global object
   v8::Handle<v8::Object> aa = rt->NewInstance();
   if (!aa.IsEmpty()) {

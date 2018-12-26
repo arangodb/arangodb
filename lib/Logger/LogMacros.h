@@ -71,13 +71,12 @@
                                   << arangodb::Logger::FILE(__FILE__) \
                                   << arangodb::Logger::FUNCTION(__FUNCTION__))
 
-#define LOG_TOPIC_RAW(a, b)                                           \
-  !arangodb::Logger::isEnabled((a), (b))                              \
-      ? (void)0                                                       \
-      : arangodb::LogVoidify() & (arangodb::LoggerStream()            \
-                                  << (a) << (b)                       \
-                                  << arangodb::Logger::LINE(__LINE__) \
-                                  << arangodb::Logger::FILE(__FILE__) \
+#define LOG_TOPIC_RAW(a, b)                                                         \
+  !arangodb::Logger::isEnabled((a), (b))                                            \
+      ? (void)0                                                                     \
+      : arangodb::LogVoidify() & (arangodb::LoggerStream()                          \
+                                  << (a) << (b) << arangodb::Logger::LINE(__LINE__) \
+                                  << arangodb::Logger::FILE(__FILE__)               \
                                   << arangodb::Logger::FUNCTION(__FUNCTION__))
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -116,18 +115,17 @@
 #define LOG_OCCURRENCES LOG_EVERY_N_VARNAME(occurrences_, __LINE__)
 #define LOG_OCCURRENCES_MOD_N LOG_EVERY_N_VARNAME(occurrences_mod_n_, __LINE__)
 
-#define LOG_EVERY_N(a, n)                                             \
-  static int LOG_OCCURRENCES = 0, LOG_OCCURRENCES_MOD_N = 0;          \
-  ++LOG_OCCURRENCES;                                                  \
-  if (++LOG_OCCURRENCES_MOD_N > n) LOG_OCCURRENCES_MOD_N -= n;        \
-  if (LOG_OCCURRENCES_MOD_N == 1)                                     \
-  !(arangodb::Logger::isEnabled((arangodb::LogLevel::a)) &&           \
-    (LOG_OCCURRENCES_MOD_N == 1))                                     \
-      ? (void)0                                                       \
-      : arangodb::LogVoidify() & (arangodb::LoggerStream()            \
-                                  << (arangodb::LogLevel::a)          \
-                                  << arangodb::Logger::LINE(__LINE__) \
-                                  << arangodb::Logger::FILE(__FILE__) \
+#define LOG_EVERY_N(a, n)                                                                 \
+  static int LOG_OCCURRENCES = 0, LOG_OCCURRENCES_MOD_N = 0;                              \
+  ++LOG_OCCURRENCES;                                                                      \
+  if (++LOG_OCCURRENCES_MOD_N > n) LOG_OCCURRENCES_MOD_N -= n;                            \
+  if (LOG_OCCURRENCES_MOD_N == 1)                                                         \
+  !(arangodb::Logger::isEnabled((arangodb::LogLevel::a)) && (LOG_OCCURRENCES_MOD_N == 1)) \
+      ? (void)0                                                                           \
+      : arangodb::LogVoidify() & (arangodb::LoggerStream()                                \
+                                  << (arangodb::LogLevel::a)                              \
+                                  << arangodb::Logger::LINE(__LINE__)                     \
+                                  << arangodb::Logger::FILE(__FILE__)                     \
                                   << arangodb::Logger::FUNCTION(__FUNCTION__))
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,6 +158,6 @@ class LogVoidify {
   LogVoidify() {}
   void operator&(LoggerStream const&) {}
 };
-}
+}  // namespace arangodb
 
 #endif

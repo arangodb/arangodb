@@ -29,10 +29,10 @@
 
 #include "Basics/Common.h"
 
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/RequestContext.h"
-#include "GeneralServer/AuthenticationFeature.h"
 
 #include "Rest/GeneralRequest.h"
 #include "Rest/GeneralResponse.h"
@@ -54,7 +54,7 @@ class VocbaseContext final : public arangodb::RequestContext {
  public:
   TRI_vocbase_t* vocbase() const { return _vocbase; }
 
- private: 
+ private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief checks the authentication header and sets user if successful
   //////////////////////////////////////////////////////////////////////////////
@@ -64,6 +64,6 @@ class VocbaseContext final : public arangodb::RequestContext {
  private:
   TRI_vocbase_t* _vocbase;
 };
-}
+}  // namespace arangodb
 
 #endif

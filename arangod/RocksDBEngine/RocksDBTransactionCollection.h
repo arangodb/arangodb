@@ -45,14 +45,14 @@ class RocksDBTransactionCollection final : public TransactionCollection {
 
   /// @brief request a main-level lock for a collection
   /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
-  /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
-  /// returns any other error code otherwise
+  /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired
+  /// and no other error occurred returns any other error code otherwise
   int lockRecursive() override;
 
   /// @brief request a lock for a collection
   /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
-  /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
-  /// returns any other error code otherwise
+  /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired
+  /// and no other error occurred returns any other error code otherwise
   int lockRecursive(AccessMode::Type, int nestingLevel) override;
 
   /// @brief request an unlock for a collection
@@ -68,8 +68,7 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   /// @brief whether or not any write operations for the collection happened
   bool hasOperations() const override;
 
-  void freeOperations(transaction::Methods* activeTrx,
-                      bool mustRollback) override;
+  void freeOperations(transaction::Methods* activeTrx, bool mustRollback) override;
 
   bool canAccess(AccessMode::Type accessType) const override;
   int updateUsage(AccessMode::Type accessType, int nestingLevel) override;
@@ -98,13 +97,11 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   ///        Used to update the estimate after the trx commited
   void trackIndexRemove(uint64_t idxObjectId, uint64_t hash);
 
-
-
  private:
   /// @brief request a lock for a collection
   /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
-  /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
-  /// returns any other error code otherwise
+  /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired
+  /// and no other error occurred returns any other error code otherwise
   int doLock(AccessMode::Type, int nestingLevel);
 
   /// @brief request an unlock for a collection
@@ -123,11 +120,8 @@ class RocksDBTransactionCollection final : public TransactionCollection {
 
   /// @brief A list where all indexes with estimates can store their operations
   ///        Will be applied to the inserter on commit and not applied on abort
-  std::unordered_map<uint64_t,
-                     std::pair<std::vector<uint64_t>, std::vector<uint64_t>>>
-      _trackedIndexOperations;
-
+  std::unordered_map<uint64_t, std::pair<std::vector<uint64_t>, std::vector<uint64_t>>> _trackedIndexOperations;
 };
-}
+}  // namespace arangodb
 
 #endif

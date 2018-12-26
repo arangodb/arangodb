@@ -55,10 +55,8 @@ void TRI_UpdateTickServer(TRI_voc_tick_t tick) {
   auto expected = CurrentTick.load(std::memory_order_relaxed);
 
   // only update global tick if less than the specified value...
-  while (expected < t &&
-         !CurrentTick.compare_exchange_weak(expected, t,
-                                            std::memory_order_release,
-                                            std::memory_order_relaxed)) {
+  while (expected < t && !CurrentTick.compare_exchange_weak(expected, t, std::memory_order_release,
+                                                            std::memory_order_relaxed)) {
     expected = CurrentTick.load(std::memory_order_relaxed);
   }
 }

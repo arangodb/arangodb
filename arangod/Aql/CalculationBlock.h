@@ -75,7 +75,7 @@ class CalculationBlock final : public ExecutionBlock {
   bool _isReference;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

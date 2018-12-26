@@ -51,8 +51,7 @@ using namespace arangodb::httpclient;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
-RestoreFeature::RestoreFeature(application_features::ApplicationServer* server,
-                               int* result)
+RestoreFeature::RestoreFeature(application_features::ApplicationServer* server, int* result)
     : ApplicationFeature(server, "Restore"),
       _collections(),
       _chunkSize(1024 * 1024 * 8),
@@ -80,8 +79,7 @@ RestoreFeature::RestoreFeature(application_features::ApplicationServer* server,
       FileUtils::buildFilename(FileUtils::currentDirectory().result(), "dump");
 }
 
-void RestoreFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
+void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
   options->addOption(
       "--collection",
       "restrict to collection name (can be specified multiple times)",
@@ -108,8 +106,7 @@ void RestoreFeature::collectOptions(
   options->addOption("--create-collection", "create collection structure",
                      new BooleanParameter(&_importStructure));
 
-  options->addOption("--progress", "show progress",
-                     new BooleanParameter(&_progress));
+  options->addOption("--progress", "show progress", new BooleanParameter(&_progress));
 
   options->addOption("--overwrite", "overwrite collections if they exist",
                      new BooleanParameter(&_overwrite));
@@ -131,12 +128,11 @@ void RestoreFeature::collectOptions(
       new BooleanParameter(&_ignoreDistributeShardsLikeErrors));
 
   options->addOption(
-    "--force", "continue restore even in the face of some server-side errors",
-    new BooleanParameter(&_force));
+      "--force", "continue restore even in the face of some server-side errors",
+      new BooleanParameter(&_force));
 }
 
-void RestoreFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
+void RestoreFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
   auto const& positionals = options->processingResult()._positionals;
   size_t n = positionals.size();
 
@@ -156,8 +152,7 @@ void RestoreFeature::validateOptions(
 }
 
 void RestoreFeature::prepare() {
-  if (!_inputDirectory.empty() &&
-      _inputDirectory.back() == TRI_DIR_SEPARATOR_CHAR) {
+  if (!_inputDirectory.empty() && _inputDirectory.back() == TRI_DIR_SEPARATOR_CHAR) {
     // trim trailing slash from path because it may cause problems on ...
     // Windows
     TRI_ASSERT(_inputDirectory.size() > 0);
@@ -181,8 +176,7 @@ void RestoreFeature::prepare() {
   }
 }
 
-int RestoreFeature::tryCreateDatabase(ClientFeature* client,
-                                      std::string const& name) {
+int RestoreFeature::tryCreateDatabase(ClientFeature* client, std::string const& name) {
   VPackBuilder builder;
   builder.openObject();
   builder.add("name", VPackValue(name));
@@ -196,8 +190,9 @@ int RestoreFeature::tryCreateDatabase(ClientFeature* client,
 
   std::string const body = builder.slice().toJson();
 
-  std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
-      rest::RequestType::POST, "/_api/database", body.c_str(), body.size()));
+  std::unique_ptr<SimpleHttpResult> response(
+      _httpClient->request(rest::RequestType::POST, "/_api/database",
+                           body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
     return TRI_ERROR_INTERNAL;
@@ -213,28 +208,25 @@ int RestoreFeature::tryCreateDatabase(ClientFeature* client,
   if (returnCode == static_cast<int>(rest::ResponseCode::UNAUTHORIZED) ||
       returnCode == static_cast<int>(rest::ResponseCode::FORBIDDEN)) {
     // invalid authorization
-    _httpClient->setErrorMessage(getHttpErrorMessage(response.get(), nullptr),
-                                 false);
+    _httpClient->setErrorMessage(getHttpErrorMessage(response.get(), nullptr), false);
     return TRI_ERROR_FORBIDDEN;
   }
 
   // any other error
-  _httpClient->setErrorMessage(getHttpErrorMessage(response.get(), nullptr),
-                               false);
+  _httpClient->setErrorMessage(getHttpErrorMessage(response.get(), nullptr), false);
   return TRI_ERROR_INTERNAL;
 }
 
 int RestoreFeature::sendRestoreCollection(VPackSlice const& slice,
-                                          std::string const& name,
-                                          std::string& errorMsg) {
+                                          std::string const& name, std::string& errorMsg) {
   std::string url =
-    "/_api/replication/restore-collection"
-    "?overwrite=" +
-    std::string(_overwrite ? "true" : "false") + "&recycleIds=" +
-    std::string(_recycleIds ? "true" : "false") + "&force=" +
-    std::string(_force ? "true" : "false") +
-    "&ignoreDistributeShardsLikeErrors=" +
-    std::string(_ignoreDistributeShardsLikeErrors ? "true":"false");
+      "/_api/replication/restore-collection"
+      "?overwrite=" +
+      std::string(_overwrite ? "true" : "false") +
+      "&recycleIds=" + std::string(_recycleIds ? "true" : "false") +
+      "&force=" + std::string(_force ? "true" : "false") +
+      "&ignoreDistributeShardsLikeErrors=" +
+      std::string(_ignoreDistributeShardsLikeErrors ? "true" : "false");
 
   if (_clusterMode) {
     if (!slice.hasKey(std::vector<std::string>({"parameters", "shards"})) &&
@@ -259,12 +251,11 @@ int RestoreFeature::sendRestoreCollection(VPackSlice const& slice,
 
   std::string const body = slice.toJson();
 
-  std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
-      rest::RequestType::PUT, url, body.c_str(), body.size()));
+  std::unique_ptr<SimpleHttpResult> response(
+      _httpClient->request(rest::RequestType::PUT, url, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
-    errorMsg =
-        "got invalid response from server: " + _httpClient->getErrorMessage();
+    errorMsg = "got invalid response from server: " + _httpClient->getErrorMessage();
 
     return TRI_ERROR_INTERNAL;
   }
@@ -283,18 +274,16 @@ int RestoreFeature::sendRestoreCollection(VPackSlice const& slice,
   return TRI_ERROR_NO_ERROR;
 }
 
-int RestoreFeature::sendRestoreIndexes(VPackSlice const& slice,
-                                       std::string& errorMsg) {
+int RestoreFeature::sendRestoreIndexes(VPackSlice const& slice, std::string& errorMsg) {
   std::string const url = "/_api/replication/restore-indexes?force=" +
                           std::string(_force ? "true" : "false");
   std::string const body = slice.toJson();
 
-  std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
-      rest::RequestType::PUT, url, body.c_str(), body.size()));
+  std::unique_ptr<SimpleHttpResult> response(
+      _httpClient->request(rest::RequestType::PUT, url, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
-    errorMsg =
-        "got invalid response from server: " + _httpClient->getErrorMessage();
+    errorMsg = "got invalid response from server: " + _httpClient->getErrorMessage();
 
     return TRI_ERROR_INTERNAL;
   }
@@ -313,20 +302,18 @@ int RestoreFeature::sendRestoreIndexes(VPackSlice const& slice,
   return TRI_ERROR_NO_ERROR;
 }
 
-int RestoreFeature::sendRestoreData(std::string const& cname,
-                                    char const* buffer, size_t bufferSize,
-                                    std::string& errorMsg) {
-  std::string const url = "/_api/replication/restore-data?collection=" +
-                          StringUtils::urlEncode(cname) + "&recycleIds=" +
-                          (_recycleIds ? "true" : "false") + "&force=" +
-                          (_force ? "true" : "false");
+int RestoreFeature::sendRestoreData(std::string const& cname, char const* buffer,
+                                    size_t bufferSize, std::string& errorMsg) {
+  std::string const url =
+      "/_api/replication/restore-data?collection=" + StringUtils::urlEncode(cname) +
+      "&recycleIds=" + (_recycleIds ? "true" : "false") +
+      "&force=" + (_force ? "true" : "false");
 
   std::unique_ptr<SimpleHttpResult> response(
       _httpClient->request(rest::RequestType::PUT, url, buffer, bufferSize));
 
   if (response == nullptr || !response->isComplete()) {
-    errorMsg =
-        "got invalid response from server: " + _httpClient->getErrorMessage();
+    errorMsg = "got invalid response from server: " + _httpClient->getErrorMessage();
 
     return TRI_ERROR_INTERNAL;
   }
@@ -364,8 +351,8 @@ static bool SortCollections(VPackSlice const& l, VPackSlice const& r) {
 
   int leftType =
       arangodb::basics::VelocyPackHelper::getNumericValue<int>(left, "type", 0);
-  int rightType = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-      right, "type", 0);
+  int rightType =
+      arangodb::basics::VelocyPackHelper::getNumericValue<int>(right, "type", 0);
 
   if (leftType != rightType) {
     return leftType < rightType;
@@ -386,8 +373,7 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
     restrictList.insert(std::pair<std::string, bool>(_collections[i], true));
   }
   try {
-    std::vector<std::string> const files =
-        FileUtils::listFiles(_inputDirectory);
+    std::vector<std::string> const files = FileUtils::listFiles(_inputDirectory);
     std::string const suffix = std::string(".structure.json");
     std::vector<std::shared_ptr<VPackBuilder>> collectionBuilders;
     std::vector<VPackSlice> collections;
@@ -399,8 +385,7 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
       for (std::string const& file : files) {
         size_t const nameLength = file.size();
 
-        if (nameLength <= suffix.size() ||
-            file.substr(file.size() - suffix.size()) != suffix) {
+        if (nameLength <= suffix.size() || file.substr(file.size() - suffix.size()) != suffix) {
           // some other file
           continue;
         }
@@ -437,8 +422,7 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
         bool overwriteName = false;
 
         if (cname != name &&
-            name !=
-                (cname + "_" + arangodb::rest::SslInterface::sslMD5(cname))) {
+            name != (cname + "_" + arangodb::rest::SslInterface::sslMD5(cname))) {
           // file has a different name than found in structure file
           if (_importStructure) {
             // we cannot go on if there is a mismatch
@@ -457,8 +441,7 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
           }
         }
 
-        if (!restrictList.empty() &&
-            restrictList.find(cname) == restrictList.end()) {
+        if (!restrictList.empty() && restrictList.find(cname) == restrictList.end()) {
           // collection name not in list
           continue;
         }
@@ -490,8 +473,9 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
       std::string const cname =
           arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name",
                                                              "");
-      int type = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-          parameters, "type", 2);
+      int type =
+          arangodb::basics::VelocyPackHelper::getNumericValue<int>(parameters,
+                                                                   "type", 2);
 
       std::string const collectionType(type == 2 ? "document" : "edge");
 
@@ -521,9 +505,9 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
 
       if (_importData) {
         // import data. check if we have a datafile
-        std::string datafile =
-            _inputDirectory + TRI_DIR_SEPARATOR_STR + cname + "_" +
-            arangodb::rest::SslInterface::sslMD5(cname) + ".data.json";
+        std::string datafile = _inputDirectory + TRI_DIR_SEPARATOR_STR + cname +
+                               "_" + arangodb::rest::SslInterface::sslMD5(cname) +
+                               ".data.json";
         if (!TRI_ExistsFile(datafile.c_str())) {
           datafile =
               _inputDirectory + TRI_DIR_SEPARATOR_STR + cname + ".data.json";
@@ -579,8 +563,8 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
             // do we have a buffer?
             if (buffer.length() > 0) {
               // look for the last \n in the buffer
-              char* found = (char*)memrchr((const void*)buffer.begin(), '\n',
-                                           buffer.length());
+              char* found =
+                  (char*)memrchr((const void*)buffer.begin(), '\n', buffer.length());
               size_t length;
 
               if (found == nullptr) {
@@ -599,15 +583,13 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
 
               _stats._totalBatches++;
 
-              int res =
-                  sendRestoreData(cname, buffer.begin(), length, errorMsg);
+              int res = sendRestoreData(cname, buffer.begin(), length, errorMsg);
 
               if (res != TRI_ERROR_NO_ERROR) {
                 if (errorMsg.empty()) {
                   errorMsg = std::string(TRI_errno_string(res));
                 } else {
-                  errorMsg =
-                      std::string(TRI_errno_string(res)) + ": " + errorMsg;
+                  errorMsg = std::string(TRI_errno_string(res)) + ": " + errorMsg;
                 }
 
                 if (_force) {
@@ -667,9 +649,8 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
 }
 
 void RestoreFeature::start() {
-  ClientFeature* client =
-      application_features::ApplicationServer::getFeature<ClientFeature>(
-          "Client");
+  ClientFeature* client = application_features::ApplicationServer::getFeature<ClientFeature>(
+      "Client");
 
   int ret = EXIT_SUCCESS;
   *_result = ret;
@@ -684,8 +665,7 @@ void RestoreFeature::start() {
 
   std::string dbName = client->databaseName();
 
-  _httpClient->params().setLocationRewriter(static_cast<void*>(client),
-                                   &rewriteLocation);
+  _httpClient->params().setLocationRewriter(static_cast<void*>(client), &rewriteLocation);
   _httpClient->params().setUserNamePassword("/", client->username(), client->password());
 
   int err = TRI_ERROR_NO_ERROR;
@@ -700,10 +680,9 @@ void RestoreFeature::start() {
     int res = tryCreateDatabase(client, dbName);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Could not create database '"
-                                              << dbName << "'";
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-          << _httpClient->getErrorMessage() << "'";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "Could not create database '" << dbName << "'";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << _httpClient->getErrorMessage() << "'";
       FATAL_ERROR_EXIT();
     }
 
@@ -716,10 +695,8 @@ void RestoreFeature::start() {
 
   if (!_httpClient->isConnected()) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "Could not connect to endpoint "
-        << _httpClient->getEndpointSpecification();
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << _httpClient->getErrorMessage()
-                                              << "'";
+        << "Could not connect to endpoint " << _httpClient->getEndpointSpecification();
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << _httpClient->getErrorMessage() << "'";
     FATAL_ERROR_EXIT();
   }
 
@@ -773,8 +750,7 @@ void RestoreFeature::start() {
 
   if (_progress) {
     if (_importData) {
-      std::cout << "Processed " << _stats._totalCollections
-                << " collection(s), "
+      std::cout << "Processed " << _stats._totalCollections << " collection(s), "
                 << "read " << _stats._totalRead << " byte(s) from datafiles, "
                 << "sent " << _stats._totalBatches << " batch(es)" << std::endl;
     } else if (_importStructure) {

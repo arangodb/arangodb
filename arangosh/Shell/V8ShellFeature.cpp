@@ -73,10 +73,9 @@ void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                            "startup paths containing the Javascript files",
                            new StringParameter(&_startupDirectory));
 
-  options->addHiddenOption(
-      "--javascript.module-directory",
-      "additional paths containing JavaScript modules",
-      new VectorParameter<StringParameter>(&_moduleDirectory));
+  options->addHiddenOption("--javascript.module-directory",
+                           "additional paths containing JavaScript modules",
+                           new VectorParameter<StringParameter>(&_moduleDirectory));
 
   options->addOption("--javascript.current-module-directory",
                      "add current directory to module path",
@@ -88,31 +87,27 @@ void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new UInt64Parameter(&_gcInterval));
 }
 
-void V8ShellFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
+void V8ShellFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
   if (_startupDirectory.empty()) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "no 'javascript.startup-directory' has been supplied, giving up";
     FATAL_ERROR_EXIT();
   }
 
-  LOG_TOPIC(DEBUG, Logger::V8) << "using Javascript startup files at '"
-                               << _startupDirectory << "'";
+  LOG_TOPIC(DEBUG, Logger::V8)
+      << "using Javascript startup files at '" << _startupDirectory << "'";
 
   if (!_moduleDirectory.empty()) {
     LOG_TOPIC(DEBUG, Logger::V8) << "using Javascript modules at '"
-                                 << StringUtils::join(_moduleDirectory, ";")
-                                 << "'";
+                                 << StringUtils::join(_moduleDirectory, ";") << "'";
   }
 }
 
 void V8ShellFeature::start() {
-  _console =
-      application_features::ApplicationServer::getFeature<ConsoleFeature>(
-          "Console");
-  auto platform =
-      application_features::ApplicationServer::getFeature<V8PlatformFeature>(
-          "V8Platform");
+  _console = application_features::ApplicationServer::getFeature<ConsoleFeature>(
+      "Console");
+  auto platform = application_features::ApplicationServer::getFeature<V8PlatformFeature>(
+      "V8Platform");
 
   _isolate = platform->createIsolate();
 
@@ -155,8 +150,7 @@ void V8ShellFeature::unprepare() {
     v8::Isolate::Scope isolate_scope(_isolate);
     v8::HandleScope handle_scope(_isolate);
 
-    v8::Local<v8::Context> context =
-        v8::Local<v8::Context>::New(_isolate, _context);
+    v8::Local<v8::Context> context = v8::Local<v8::Context>::New(_isolate, _context);
 
     v8::Context::Scope context_scope{context};
 
@@ -183,9 +177,9 @@ void V8ShellFeature::unprepare() {
 
     _context.Reset();
   }
-  
+
   _isolate->Dispose();
-  
+
   // turn on memory allocation failures again
   TRI_AllowMemoryFailures();
 }
@@ -237,18 +231,16 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
 
         is << "Connected to ArangoDB '" << v8connection->endpointSpecification()
            << "' version: " << v8connection->version() << " ["
-           << v8connection->mode() << "], database: '"
-           << v8connection->databaseName() << "', username: '"
-           << v8connection->username() << "'";
+           << v8connection->mode() << "], database: '" << v8connection->databaseName()
+           << "', username: '" << v8connection->username() << "'";
 
         _console->printLine(is.str());
       } else {
         std::ostringstream is;
 
-        is << "Could not connect to endpoint '"
-           << v8connection->endpointSpecification() << "', database: '"
-           << v8connection->databaseName() << "', username: '"
-           << v8connection->username() << "'";
+        is << "Could not connect to endpoint '" << v8connection->endpointSpecification()
+           << "', database: '" << v8connection->databaseName()
+           << "', username: '" << v8connection->username() << "'";
 
         _console->printErrorLine(is.str());
 
@@ -271,9 +263,9 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
 }
 
 // the result is wrapped in a Javascript variable SYS_ARANGO
-V8ClientConnection* V8ShellFeature::setup(
-    v8::Local<v8::Context>& context, bool createConnection,
-    std::vector<std::string> const& positionals, bool* promptError) {
+V8ClientConnection* V8ShellFeature::setup(v8::Local<v8::Context>& context, bool createConnection,
+                                          std::vector<std::string> const& positionals,
+                                          bool* promptError) {
   std::unique_ptr<V8ClientConnection> v8connection;
 
   ClientFeature* client = nullptr;
@@ -283,9 +275,10 @@ V8ClientConnection* V8ShellFeature::setup(
 
     if (client != nullptr && client->isEnabled()) {
       auto connection = client->createConnection();
-      v8connection = std::make_unique<V8ClientConnection>(
-          connection, client->databaseName(), client->username(),
-          client->password(), client->requestTimeout());
+      v8connection =
+          std::make_unique<V8ClientConnection>(connection, client->databaseName(),
+                                               client->username(), client->password(),
+                                               client->requestTimeout());
     } else {
       client = nullptr;
     }
@@ -313,8 +306,7 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
 
   v8::HandleScope handle_scope(_isolate);
 
-  v8::Local<v8::Context> context =
-      v8::Local<v8::Context>::New(_isolate, _context);
+  v8::Local<v8::Context> context = v8::Local<v8::Context>::New(_isolate, _context);
 
   v8::Context::Scope context_scope{context};
 
@@ -331,8 +323,7 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
 
   v8LineEditor.open(_console->autoComplete());
 
-  v8::Local<v8::String> name(
-      TRI_V8_ASCII_STRING(_isolate, TRI_V8_SHELL_COMMAND_NAME));
+  v8::Local<v8::String> name(TRI_V8_ASCII_STRING(_isolate, TRI_V8_SHELL_COMMAND_NAME));
 
   uint64_t nrCommands = 0;
 
@@ -350,8 +341,7 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
     auto prompt = _console->buildPrompt(client);
 
     ShellBase::EofType eof = ShellBase::EOF_NONE;
-    std::string input =
-        v8LineEditor.prompt(prompt._colored, prompt._plain, eof);
+    std::string input = v8LineEditor.prompt(prompt._colored, prompt._plain, eof);
 
     if (eof == ShellBase::EOF_FORCE_ABORT || (eof == ShellBase::EOF_ABORT && lastEmpty)) {
       break;
@@ -388,14 +378,14 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
     // execute command and register its result in __LAST__
     v8LineEditor.setExecutingCommand(true);
 
-    v8::Handle<v8::Value> v = TRI_ExecuteJavaScriptString(
-        _isolate, context, TRI_V8_STD_STRING(_isolate, input), name, true);
+    v8::Handle<v8::Value> v =
+        TRI_ExecuteJavaScriptString(_isolate, context,
+                                    TRI_V8_STD_STRING(_isolate, input), name, true);
 
     v8LineEditor.setExecutingCommand(false);
 
     if (v.IsEmpty()) {
-      context->Global()->Set(TRI_V8_ASCII_STRING(_isolate, "_last"),
-                             v8::Undefined(_isolate));
+      context->Global()->Set(TRI_V8_ASCII_STRING(_isolate, "_last"), v8::Undefined(_isolate));
     } else {
       context->Global()->Set(TRI_V8_ASCII_STRING(_isolate, "_last"), v);
     }
@@ -430,8 +420,7 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
     _console->flushLog();
 
     // gc
-    if (++nrCommands >= _gcInterval ||
-        V8PlatformFeature::isOutOfMemory(_isolate)) {
+    if (++nrCommands >= _gcInterval || V8PlatformFeature::isOutOfMemory(_isolate)) {
       nrCommands = 0;
       TRI_RunGarbageCollectionV8(_isolate, 500.0);
 
@@ -439,7 +428,7 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
       V8PlatformFeature::resetOutOfMemory(_isolate);
     }
   }
-     
+
   if (!_console->quiet()) {
     _console->printLine("");
     _console->printByeBye();
@@ -449,15 +438,13 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
 }
 
 bool V8ShellFeature::runScript(std::vector<std::string> const& files,
-                               std::vector<std::string> const& positionals,
-                               bool execute) {
+                               std::vector<std::string> const& positionals, bool execute) {
   v8::Locker locker{_isolate};
 
   v8::Isolate::Scope isolate_scope(_isolate);
   v8::HandleScope handle_scope(_isolate);
 
-  v8::Local<v8::Context> context =
-      v8::Local<v8::Context>::New(_isolate, _context);
+  v8::Local<v8::Context> context = v8::Local<v8::Context>::New(_isolate, _context);
 
   v8::Context::Scope context_scope{context};
 
@@ -468,7 +455,8 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
 
   for (auto const& file : files) {
     if (!FileUtils::exists(file)) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error: Javascript file not found: '" << file << "'";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "error: Javascript file not found: '" << file << "'";
       ok = false;
       continue;
     }
@@ -501,15 +489,13 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
       if (oldFilename.IsEmpty() || oldFilename->IsUndefined()) {
         current->Delete(TRI_V8_ASCII_STRING(_isolate, "__filename"));
       } else {
-        current->ForceSet(TRI_V8_ASCII_STRING(_isolate, "__filename"),
-                          oldFilename);
+        current->ForceSet(TRI_V8_ASCII_STRING(_isolate, "__filename"), oldFilename);
       }
 
       if (oldDirname.IsEmpty() || oldDirname->IsUndefined()) {
         current->Delete(TRI_V8_ASCII_STRING(_isolate, "__dirname"));
       } else {
-        current->ForceSet(TRI_V8_ASCII_STRING(_isolate, "__dirname"),
-                          oldDirname);
+        current->ForceSet(TRI_V8_ASCII_STRING(_isolate, "__dirname"), oldDirname);
       }
 
       if (tryCatch.HasCaught()) {
@@ -534,8 +520,7 @@ bool V8ShellFeature::runString(std::vector<std::string> const& strings,
   v8::Isolate::Scope isolate_scope(_isolate);
   v8::HandleScope handle_scope(_isolate);
 
-  v8::Local<v8::Context> context =
-      v8::Local<v8::Context>::New(_isolate, _context);
+  v8::Local<v8::Context> context = v8::Local<v8::Context>::New(_isolate, _context);
 
   v8::Context::Scope context_scope{context};
 
@@ -578,8 +563,7 @@ bool V8ShellFeature::jslint(std::vector<std::string> const& files) {
   v8::Isolate::Scope isolate_scope(_isolate);
   v8::HandleScope handle_scope(_isolate);
 
-  v8::Local<v8::Context> context =
-      v8::Local<v8::Context>::New(_isolate, _context);
+  v8::Local<v8::Context> context = v8::Local<v8::Context>::New(_isolate, _context);
 
   v8::Context::Scope context_scope{context};
 
@@ -593,7 +577,8 @@ bool V8ShellFeature::jslint(std::vector<std::string> const& files) {
   uint32_t i = 0;
   for (auto& file : files) {
     if (!FileUtils::exists(file)) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error: Javascript file not found: '" << file << "'";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "error: Javascript file not found: '" << file << "'";
       ok = false;
       continue;
     }
@@ -602,16 +587,15 @@ bool V8ShellFeature::jslint(std::vector<std::string> const& files) {
     ++i;
   }
 
-  context->Global()->Set(TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS"),
-                         sysTestFiles);
+  context->Global()->Set(TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS"), sysTestFiles);
 
-  context->Global()->Set(
-      TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS_RESULT"),
-      v8::True(_isolate));
+  context->Global()->Set(TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS_RESULT"),
+                         v8::True(_isolate));
 
   // run tests
-  auto input = TRI_V8_ASCII_STRING(
-      _isolate, "require(\"jslint\").runCommandLineTests({});");
+  auto input =
+      TRI_V8_ASCII_STRING(_isolate,
+                          "require(\"jslint\").runCommandLineTests({});");
 
   auto name = TRI_V8_ASCII_STRING(_isolate, TRI_V8_SHELL_COMMAND_NAME);
 
@@ -619,7 +603,8 @@ bool V8ShellFeature::jslint(std::vector<std::string> const& files) {
   TRI_ExecuteJavaScriptString(_isolate, context, input, name, true);
 
   if (tryCatch.HasCaught()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << TRI_StringifyV8Exception(_isolate, &tryCatch);
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << TRI_StringifyV8Exception(_isolate, &tryCatch);
     ok = false;
   } else {
     bool res = TRI_ObjectToBoolean(context->Global()->Get(
@@ -638,8 +623,7 @@ bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
   v8::Isolate::Scope isolate_scope(_isolate);
   v8::HandleScope handle_scope(_isolate);
 
-  v8::Local<v8::Context> context =
-      v8::Local<v8::Context>::New(_isolate, _context);
+  v8::Local<v8::Context> context = v8::Local<v8::Context>::New(_isolate, _context);
 
   v8::Context::Scope context_scope{context};
 
@@ -655,7 +639,8 @@ bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
 
   for (auto const& file : files) {
     if (!FileUtils::exists(file)) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error: Javascript file not found: '" << file << "'";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "error: Javascript file not found: '" << file << "'";
       ok = false;
       continue;
     }
@@ -665,14 +650,12 @@ bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
   }
 
   TRI_AddGlobalVariableVocbase(_isolate,
-                               TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS"),
-                               sysTestFiles);
+                               TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS"), sysTestFiles);
 
   // do not use TRI_AddGlobalVariableVocBase because it creates read-only
   // variables!!
-  context->Global()->Set(
-      TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS_RESULT"),
-      v8::True(_isolate));
+  context->Global()->Set(TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS_RESULT"),
+                         v8::True(_isolate));
 
   // run tests
   auto input = TRI_V8_ASCII_STRING(
@@ -721,8 +704,7 @@ static void JS_PagerOutput(v8::FunctionCallbackInfo<v8::Value> const& args) {
 /// @brief starts the output pager
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_StartOutputPager(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_StartOutputPager(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -733,8 +715,7 @@ static void JS_StartOutputPager(
     console->print("Using pager already.\n");
   } else {
     console->setPager(true);
-    console->print(std::string(std::string("Using pager ") +
-                               console->pagerCommand() +
+    console->print(std::string(std::string("Using pager ") + console->pagerCommand() +
                                " for output buffering.\n"));
   }
 
@@ -746,8 +727,7 @@ static void JS_StartOutputPager(
 /// @brief stops the output pager
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_StopOutputPager(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_StopOutputPager(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -770,8 +750,7 @@ static void JS_StopOutputPager(
 /// @brief normalizes UTF 16 strings
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_NormalizeString(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_NormalizeString(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -799,8 +778,8 @@ static void JS_CompareString(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::String::Value left(args[0]);
   v8::String::Value right(args[1]);
 
-  int result = Utf8Helper::DefaultUtf8Helper.compareUtf16(
-      *left, left.length(), *right, right.length());
+  int result = Utf8Helper::DefaultUtf8Helper.compareUtf16(*left, left.length(),
+                                                          *right, right.length());
 
   TRI_V8_RETURN(v8::Integer::New(isolate, result));
   TRI_V8_TRY_CATCH_END
@@ -842,9 +821,9 @@ void V8ShellFeature::initGlobals() {
   auto context = _isolate->GetCurrentContext();
 
   // set pretty print default
-  TRI_AddGlobalVariableVocbase(
-      _isolate, TRI_V8_ASCII_STRING(_isolate, "PRETTY_PRINT"),
-      v8::Boolean::New(_isolate, _console->prettyPrint()));
+  TRI_AddGlobalVariableVocbase(_isolate,
+                               TRI_V8_ASCII_STRING(_isolate, "PRETTY_PRINT"),
+                               v8::Boolean::New(_isolate, _console->prettyPrint()));
 
   // add colors for print.js
   TRI_AddGlobalVariableVocbase(_isolate,
@@ -861,19 +840,19 @@ void V8ShellFeature::initGlobals() {
       v8::FunctionTemplate::New(_isolate, JS_CompareString)->GetFunction());
 
   TRI_AddGlobalVariableVocbase(
-      _isolate, 
-      TRI_V8_ASCII_STRING(_isolate, "ARANGODB_CLIENT_VERSION"),
+      _isolate, TRI_V8_ASCII_STRING(_isolate, "ARANGODB_CLIENT_VERSION"),
       v8::FunctionTemplate::New(_isolate, JS_VersionClient)->GetFunction());
 
   // is quite
-  TRI_AddGlobalVariableVocbase(_isolate, 
+  TRI_AddGlobalVariableVocbase(_isolate,
                                TRI_V8_ASCII_STRING(_isolate, "ARANGO_QUIET"),
                                v8::Boolean::New(_isolate, _console->quiet()));
 
   auto ctx = ArangoGlobalContext::CONTEXT;
 
   if (ctx == nullptr) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to get global context.  ";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "failed to get global context.  ";
     FATAL_ERROR_EXIT();
   }
 
@@ -914,18 +893,15 @@ void V8ShellFeature::initGlobals() {
 
   TRI_AddGlobalVariableVocbase(
       _isolate, TRI_V8_ASCII_STRING(_isolate, "SYS_OUTPUT"),
-      v8::FunctionTemplate::New(_isolate, JS_PagerOutput, console)
-          ->GetFunction());
+      v8::FunctionTemplate::New(_isolate, JS_PagerOutput, console)->GetFunction());
 
   TRI_AddGlobalVariableVocbase(
       _isolate, TRI_V8_ASCII_STRING(_isolate, "SYS_START_PAGER"),
-      v8::FunctionTemplate::New(_isolate, JS_StartOutputPager, console)
-          ->GetFunction());
+      v8::FunctionTemplate::New(_isolate, JS_StartOutputPager, console)->GetFunction());
 
   TRI_AddGlobalVariableVocbase(
       _isolate, TRI_V8_ASCII_STRING(_isolate, "SYS_STOP_PAGER"),
-      v8::FunctionTemplate::New(_isolate, JS_StopOutputPager, console)
-          ->GetFunction());
+      v8::FunctionTemplate::New(_isolate, JS_StopOutputPager, console)->GetFunction());
 }
 
 void V8ShellFeature::initMode(ShellFeature::RunMode runMode,
@@ -943,26 +919,23 @@ void V8ShellFeature::initMode(ShellFeature::RunMode runMode,
   // set mode flags
   TRI_AddGlobalVariableVocbase(
       _isolate, TRI_V8_ASCII_STRING(_isolate, "IS_EXECUTE_SCRIPT"),
-      v8::Boolean::New(_isolate,
-                       runMode == ShellFeature::RunMode::EXECUTE_SCRIPT));
+      v8::Boolean::New(_isolate, runMode == ShellFeature::RunMode::EXECUTE_SCRIPT));
 
   TRI_AddGlobalVariableVocbase(
       _isolate, TRI_V8_ASCII_STRING(_isolate, "IS_EXECUTE_STRING"),
-      v8::Boolean::New(_isolate,
-                       runMode == ShellFeature::RunMode::EXECUTE_STRING));
+      v8::Boolean::New(_isolate, runMode == ShellFeature::RunMode::EXECUTE_STRING));
 
   TRI_AddGlobalVariableVocbase(
       _isolate, TRI_V8_ASCII_STRING(_isolate, "IS_CHECK_SCRIPT"),
-      v8::Boolean::New(_isolate,
-                       runMode == ShellFeature::RunMode::CHECK_SYNTAX));
+      v8::Boolean::New(_isolate, runMode == ShellFeature::RunMode::CHECK_SYNTAX));
 
   TRI_AddGlobalVariableVocbase(
       _isolate, TRI_V8_ASCII_STRING(_isolate, "IS_UNIT_TESTS"),
       v8::Boolean::New(_isolate, runMode == ShellFeature::RunMode::UNIT_TESTS));
 
-  TRI_AddGlobalVariableVocbase(
-      _isolate, TRI_V8_ASCII_STRING(_isolate, "IS_JS_LINT"),
-      v8::Boolean::New(_isolate, runMode == ShellFeature::RunMode::JSLINT));
+  TRI_AddGlobalVariableVocbase(_isolate,
+                               TRI_V8_ASCII_STRING(_isolate, "IS_JS_LINT"),
+                               v8::Boolean::New(_isolate, runMode == ShellFeature::RunMode::JSLINT));
 }
 
 void V8ShellFeature::loadModules(ShellFeature::RunMode runMode) {
@@ -982,30 +955,30 @@ void V8ShellFeature::loadModules(ShellFeature::RunMode runMode) {
   files.push_back("common/bootstrap/modules/console.js");   // deps: internal
   files.push_back("common/bootstrap/modules/assert.js");    // deps: -
   files.push_back("common/bootstrap/modules/buffer.js");    // deps: internal
-  files.push_back(
-      "common/bootstrap/modules/fs.js");  // deps: internal, buffer (hidden)
+  files.push_back("common/bootstrap/modules/fs.js");  // deps: internal, buffer (hidden)
   files.push_back("common/bootstrap/modules/path.js");     // deps: internal, fs
   files.push_back("common/bootstrap/modules/events.js");   // deps: -
   files.push_back("common/bootstrap/modules/process.js");  // deps: internal,
                                                            // fs, events,
                                                            // console
-  files.push_back(
-      "common/bootstrap/modules.js");  // must come last before patches
+  files.push_back("common/bootstrap/modules.js");  // must come last before patches
 
   files.push_back("client/client.js");  // needs internal
 
   for (size_t i = 0; i < files.size(); ++i) {
     switch (loader.loadScript(_isolate, context, files[i], nullptr)) {
       case JSLoader::eSuccess:
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "loaded JavaScript file '" << files[i] << "'";
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+            << "loaded JavaScript file '" << files[i] << "'";
         break;
       case JSLoader::eFailLoad:
-        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot load JavaScript file '" << files[i] << "'";
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+            << "cannot load JavaScript file '" << files[i] << "'";
         FATAL_ERROR_EXIT();
         break;
       case JSLoader::eFailExecute:
-        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "error during execution of JavaScript file '" << files[i]
-                   << "'";
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+            << "error during execution of JavaScript file '" << files[i] << "'";
         FATAL_ERROR_EXIT();
         break;
     }

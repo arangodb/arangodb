@@ -44,8 +44,7 @@ static int Reserve(TRI_string_buffer_t* self, size_t size) {
     size_t len = static_cast<size_t>(1.3 * (self->_len + size));
     TRI_ASSERT(len > 0);
 
-    char* ptr = static_cast<char*>(
-        TRI_Reallocate(self->_buffer, len + 1));
+    char* ptr = static_cast<char*>(TRI_Reallocate(self->_buffer, len + 1));
 
     if (ptr == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
@@ -64,8 +63,7 @@ static int Reserve(TRI_string_buffer_t* self, size_t size) {
 }
 
 /// @brief append a string to a string buffer
-static int AppendString(TRI_string_buffer_t* self, char const* str,
-                        size_t const len) {
+static int AppendString(TRI_string_buffer_t* self, char const* str, size_t const len) {
   if (0 < len) {
     int res = Reserve(self, len);
 
@@ -82,8 +80,8 @@ static int AppendString(TRI_string_buffer_t* self, char const* str,
 
 /// @brief create a new string buffer and initialize it
 TRI_string_buffer_t* TRI_CreateStringBuffer() {
-  auto self = static_cast<TRI_string_buffer_t*>(TRI_Allocate(
-      sizeof(TRI_string_buffer_t)));
+  auto self =
+      static_cast<TRI_string_buffer_t*>(TRI_Allocate(sizeof(TRI_string_buffer_t)));
 
   if (self == nullptr) {
     return nullptr;
@@ -95,9 +93,9 @@ TRI_string_buffer_t* TRI_CreateStringBuffer() {
 }
 
 /// @brief create a new string buffer and initialize it with a specific size
-TRI_string_buffer_t* TRI_CreateSizedStringBuffer(                                                 size_t size) {
-  auto self = static_cast<TRI_string_buffer_t*>(TRI_Allocate(
-      sizeof(TRI_string_buffer_t)));
+TRI_string_buffer_t* TRI_CreateSizedStringBuffer(size_t size) {
+  auto self =
+      static_cast<TRI_string_buffer_t*>(TRI_Allocate(sizeof(TRI_string_buffer_t)));
 
   if (self == nullptr) {
     return nullptr;
@@ -111,8 +109,7 @@ TRI_string_buffer_t* TRI_CreateSizedStringBuffer(                               
 /// @brief initializes the string buffer
 ///
 /// @warning You must call initialize before using the string buffer.
-void TRI_InitStringBuffer(TRI_string_buffer_t* self,
-                          bool initializeMemory) {
+void TRI_InitStringBuffer(TRI_string_buffer_t* self, bool initializeMemory) {
   self->_buffer = nullptr;
   self->_current = nullptr;
   self->_len = 0;
@@ -124,15 +121,14 @@ void TRI_InitStringBuffer(TRI_string_buffer_t* self,
 /// @brief initializes the string buffer with a specific size
 ///
 /// @warning You must call initialize before using the string buffer.
-void TRI_InitSizedStringBuffer(TRI_string_buffer_t* self,
-                               size_t const length,
+void TRI_InitSizedStringBuffer(TRI_string_buffer_t* self, size_t const length,
                                bool initializeMemory) {
   self->_buffer = nullptr;
   self->_current = nullptr;
   self->_len = 0;
   self->_initializeMemory = initializeMemory;
 
-  if (length > 0) { 
+  if (length > 0) {
     Reserve(self, length);
   }
 }
@@ -226,8 +222,7 @@ int TRI_DeflateStringBuffer(TRI_string_buffer_t* self, size_t bufferSize) {
       }
 
       if (TRI_AppendString2StringBuffer(&deflated, (char*)buffer,
-                                        bufferSize - strm.avail_out) !=
-          TRI_ERROR_NO_ERROR) {
+                                        bufferSize - strm.avail_out) != TRI_ERROR_NO_ERROR) {
         (void)deflateEnd(&strm);
         TRI_Free(buffer);
         TRI_DestroyStringBuffer(&deflated);
@@ -257,8 +252,7 @@ int TRI_ReserveStringBuffer(TRI_string_buffer_t* self, size_t const length) {
 }
 
 /// @brief swaps content with another string buffer
-void TRI_SwapStringBuffer(TRI_string_buffer_t* self,
-                          TRI_string_buffer_t* other) {
+void TRI_SwapStringBuffer(TRI_string_buffer_t* self, TRI_string_buffer_t* other) {
   char* otherBuffer = other->_buffer;
   char* otherCurrent = other->_current;
   size_t otherLen = other->_len;
@@ -347,10 +341,9 @@ char* TRI_StealStringBuffer(TRI_string_buffer_t* self) {
 }
 
 /// @brief copies the string buffer
-int TRI_CopyStringBuffer(TRI_string_buffer_t* self,
-                         TRI_string_buffer_t const* source) {
-  return TRI_ReplaceStringStringBuffer(
-      self, source->_buffer, (size_t)(source->_current - source->_buffer));
+int TRI_CopyStringBuffer(TRI_string_buffer_t* self, TRI_string_buffer_t const* source) {
+  return TRI_ReplaceStringStringBuffer(self, source->_buffer,
+                                       (size_t)(source->_current - source->_buffer));
 }
 
 /// @brief removes the first characters
@@ -381,8 +374,7 @@ void TRI_MoveFrontStringBuffer(TRI_string_buffer_t* self, size_t len) {
 }
 
 /// @brief replaces characters
-int TRI_ReplaceStringStringBuffer(TRI_string_buffer_t* self, char const* str,
-                                  size_t len) {
+int TRI_ReplaceStringStringBuffer(TRI_string_buffer_t* self, char const* str, size_t len) {
   self->_current = self->_buffer;
 
   return TRI_AppendString2StringBuffer(self, str, len);
@@ -406,13 +398,12 @@ int TRI_AppendStringStringBuffer(TRI_string_buffer_t* self, char const* str) {
 }
 
 /// @brief appends characters
-int TRI_AppendString2StringBuffer(TRI_string_buffer_t* self, char const* str,
-                                  size_t len) {
+int TRI_AppendString2StringBuffer(TRI_string_buffer_t* self, char const* str, size_t len) {
   return AppendString(self, str, len);
 }
 
-int AppendJsonEncoded(TRI_string_buffer_t* self, char const* src, 
-                      size_t length, bool escapeForwardSlashes) {
+int AppendJsonEncoded(TRI_string_buffer_t* self, char const* src, size_t length,
+                      bool escapeForwardSlashes) {
   static char const EscapeTable[256] = {
       // 0    1    2    3    4    5    6    7    8    9    A    B    C    D    E
       // F
@@ -446,14 +437,14 @@ int AppendJsonEncoded(TRI_string_buffer_t* self, char const* src,
       0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
       0,    0,   0,   0};
 
-  // reserve enough room for the whole string at once 
+  // reserve enough room for the whole string at once
   int res = Reserve(self, 6 * length + 2);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
-  
-  AppendChar(self, '"');      
+
+  AppendChar(self, '"');
 
   uint8_t const* p = reinterpret_cast<uint8_t const*>(src);
   uint8_t const* e = p + length;
@@ -516,14 +507,13 @@ int AppendJsonEncoded(TRI_string_buffer_t* self, char const* src,
   }
 
   AppendChar(self, '"');
-  return TRI_ERROR_NO_ERROR;  
+  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief appends characters but json-encode the string
-int TRI_AppendJsonEncodedStringStringBuffer(TRI_string_buffer_t* self,
-                                            char const* src, size_t length,
-                                            bool escapeSlash) {
-  return AppendJsonEncoded(self, src, length, escapeSlash);  
+int TRI_AppendJsonEncodedStringStringBuffer(TRI_string_buffer_t* self, char const* src,
+                                            size_t length, bool escapeSlash) {
+  return AppendJsonEncoded(self, src, length, escapeSlash);
 }
 
 /// @brief appends integer with two digits

@@ -107,14 +107,15 @@ struct hash<std::vector<arangodb::velocypack::Slice>> {
   }
 };
 
-}
+}  // namespace std
 
 struct DocumentDescriptor {
   DocumentDescriptor() : _revisionId(0), _vpack(nullptr) {}
-  DocumentDescriptor(TRI_voc_rid_t revisionId, uint8_t const* vpack) : _revisionId(revisionId), _vpack(vpack) {}
+  DocumentDescriptor(TRI_voc_rid_t revisionId, uint8_t const* vpack)
+      : _revisionId(revisionId), _vpack(vpack) {}
 
   bool empty() const { return _vpack == nullptr; }
-  
+
   void reset(DocumentDescriptor const& other) {
     _revisionId = other._revisionId;
     _vpack = other._vpack;

@@ -60,7 +60,7 @@ void ConditionVariable::wait() { TRI_WaitCondition(&_condition); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief waits for an event with timeout in micro seconds
-/// returns true when the condition was signaled, false on timeout 
+/// returns true when the condition was signaled, false on timeout
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ConditionVariable::wait(uint64_t delay) {

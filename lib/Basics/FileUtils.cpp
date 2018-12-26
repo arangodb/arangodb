@@ -126,14 +126,14 @@ static void throwFileReadError(std::string const& filename) {
   TRI_set_errno(TRI_ERROR_SYS_ERROR);
   int res = TRI_errno();
 
-  std::string message("read failed for file '" + filename + "': " +
-                      strerror(res));
+  std::string message("read failed for file '" + filename + "': " + strerror(res));
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "" << message;
 
   THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
 }
 
-static void fillStringBuffer(int fd, std::string const& filename, StringBuffer& result, size_t chunkSize) {
+static void fillStringBuffer(int fd, std::string const& filename,
+                             StringBuffer& result, size_t chunkSize) {
   while (true) {
     if (result.reserve(chunkSize) != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -147,7 +147,7 @@ static void fillStringBuffer(int fd, std::string const& filename, StringBuffer& 
     if (n < 0) {
       throwFileReadError(filename);
     }
-    
+
     result.increaseLength(n);
   }
 }
@@ -158,7 +158,7 @@ std::string slurp(std::string const& filename) {
   if (fd == -1) {
     throwFileReadError(filename);
   }
-  
+
   TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
 
   constexpr size_t chunkSize = 8192;
@@ -175,7 +175,7 @@ void slurp(std::string const& filename, StringBuffer& result) {
   if (fd == -1) {
     throwFileReadError(filename);
   }
-  
+
   TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
 
   result.reset();
@@ -188,22 +188,20 @@ static void throwFileWriteError(std::string const& filename) {
   TRI_set_errno(TRI_ERROR_SYS_ERROR);
   int res = TRI_errno();
 
-  std::string message("write failed for file '" + filename + "': " +
-                      strerror(res));
+  std::string message("write failed for file '" + filename + "': " + strerror(res));
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "" << message;
 
   THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
 }
 
 void spit(std::string const& filename, char const* ptr, size_t len, bool sync) {
-  int fd = TRI_TRACKED_CREATE_FILE(filename.c_str(),
-                                   O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC,
+  int fd = TRI_TRACKED_CREATE_FILE(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC,
                                    S_IRUSR | S_IWUSR | S_IRGRP);
 
   if (fd == -1) {
     throwFileWriteError(filename);
   }
-  
+
   TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
 
   while (0 < len) {
@@ -245,8 +243,7 @@ bool remove(std::string const& fileName, int* errorNumber) {
   return (result != 0) ? false : true;
 }
 
-bool rename(std::string const& oldName, std::string const& newName,
-            int* errorNumber) {
+bool rename(std::string const& oldName, std::string const& newName, int* errorNumber) {
   if (errorNumber != nullptr) {
     *errorNumber = 0;
   }
@@ -289,8 +286,7 @@ bool createDirectory(std::string const& name, int mask, int* errorNumber) {
   return (result != 0) ? false : true;
 }
 
-bool copyRecursive(std::string const& source, std::string const& target,
-                   std::string& error) {
+bool copyRecursive(std::string const& source, std::string const& target, std::string& error) {
   if (isDirectory(source)) {
     return copyDirectoryRecursive(source, target, error);
   }
@@ -398,7 +394,8 @@ std::vector<std::string> listFiles(std::string const& directory) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     int res = TRI_errno();
 
-    std::string message("failed to enumerate files in directory '" + directory + "': " + strerror(res));
+    std::string message("failed to enumerate files in directory '" + directory +
+                        "': " + strerror(res));
     THROW_ARANGO_EXCEPTION_MESSAGE(res, message);
   }
 
@@ -418,7 +415,8 @@ std::vector<std::string> listFiles(std::string const& directory) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     int res = TRI_errno();
 
-    std::string message("failed to enumerate files in directory '" + directory + "': " + strerror(res));
+    std::string message("failed to enumerate files in directory '" + directory +
+                        "': " + strerror(res));
     THROW_ARANGO_EXCEPTION_MESSAGE(res, message);
   }
 
@@ -494,8 +492,7 @@ off_t size(std::string const& path) {
   return (off_t)result;
 }
 
-std::string stripExtension(std::string const& path,
-                           std::string const& extension) {
+std::string stripExtension(std::string const& path, std::string const& extension) {
   size_t pos = path.rfind(extension);
   if (pos == std::string::npos) {
     return path;
@@ -537,9 +534,7 @@ FileResultString currentDirectory() {
   return FileResultString(result);
 }
 
-std::string homeDirectory() {
-  return TRI_HomeDirectory();
-}
+std::string homeDirectory() { return TRI_HomeDirectory(); }
 
 std::string configDirectory(char const* binaryPath) {
   std::string dir = TRI_LocateConfigDirectory(binaryPath);
@@ -551,9 +546,7 @@ std::string configDirectory(char const* binaryPath) {
   return dir;
 }
 
-std::string dirname(std::string const& name) {
-  return TRI_Dirname(name);
-}
+std::string dirname(std::string const& name) { return TRI_Dirname(name); }
 
 void makePathAbsolute(std::string& path) {
   std::string cwd = FileUtils::currentDirectory().result();
@@ -569,6 +562,6 @@ void makePathAbsolute(std::string& path) {
     }
   }
 }
-}
-}
-}
+}  // namespace FileUtils
+}  // namespace basics
+}  // namespace arangodb

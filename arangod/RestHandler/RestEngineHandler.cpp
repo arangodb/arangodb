@@ -33,8 +33,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestEngineHandler::RestEngineHandler(GeneralRequest* request,
-                                     GeneralResponse* response)
+RestEngineHandler::RestEngineHandler(GeneralRequest* request, GeneralResponse* response)
     : RestBaseHandler(request, response) {}
 
 RestStatus RestEngineHandler::execute() {
@@ -46,8 +45,7 @@ RestStatus RestEngineHandler::execute() {
     return RestStatus::DONE;
   }
 
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
 
@@ -65,7 +63,7 @@ void RestEngineHandler::handleGet() {
   } else {
     getStats();
   }
-  
+
   return;
 }
 

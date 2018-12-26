@@ -45,10 +45,8 @@ class DocumentProducingNode {
   /// @brief return the out variable
   Variable const* outVariable() const { return _outVariable; }
 
-  std::vector<std::string> const& projection() const {
-    return _projection;
-  }
-  
+  std::vector<std::string> const& projection() const { return _projection; }
+
   void setProjection(std::vector<std::string> const& attributeNames) {
     _projection = attributeNames;
   }
@@ -56,7 +54,7 @@ class DocumentProducingNode {
   void setProjection(std::vector<std::string>&& attributeNames) {
     _projection = std::move(attributeNames);
   }
-  
+
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
 
  protected:
@@ -66,7 +64,7 @@ class DocumentProducingNode {
   std::vector<std::string> _projection;
 };
 
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

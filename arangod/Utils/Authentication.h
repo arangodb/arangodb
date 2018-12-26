@@ -43,9 +43,8 @@ class AuthenticationResult : public arangodb::Result {
 
   AuthenticationResult(int errorNumber, AuthSource const& source)
       : Result(errorNumber), _authSource(source) {}
-  AuthenticationResult(
-      std::unordered_map<std::string, std::string> const& permissions,
-      AuthSource const& source)
+  AuthenticationResult(std::unordered_map<std::string, std::string> const& permissions,
+                       AuthSource const& source)
       : Result(0), _authSource(source), _permissions(permissions) {}
 
   AuthSource source() const { return _authSource; }
@@ -72,6 +71,6 @@ class DefaultAuthenticationHandler : public AuthenticationHandler {
                                     std::string const& password) override;
   virtual ~DefaultAuthenticationHandler() {}
 };
-};
+};  // namespace arangodb
 
 #endif

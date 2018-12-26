@@ -38,20 +38,16 @@
 namespace arangodb {
 
 // GeoCoordinate.data must be capable of storing revision ids
-static_assert(sizeof(arangodb::rocksdbengine::GeoCoordinate::data) >=
-                  sizeof(TRI_voc_rid_t),
+static_assert(sizeof(arangodb::rocksdbengine::GeoCoordinate::data) >= sizeof(TRI_voc_rid_t),
               "invalid size of GeoCoordinate.data");
 
 class RocksDBGeoIndex;
 class RocksDBGeoIndexIterator final : public IndexIterator {
  public:
   /// @brief Construct an RocksDBGeoIndexIterator based on Ast Conditions
-  RocksDBGeoIndexIterator(LogicalCollection* collection,
-                          transaction::Methods* trx,
-                          ManagedDocumentResult* mmdr,
-                          RocksDBGeoIndex const* index,
-                          arangodb::aql::AstNode const*,
-                          arangodb::aql::Variable const*);
+  RocksDBGeoIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
+                          ManagedDocumentResult* mmdr, RocksDBGeoIndex const* index,
+                          arangodb::aql::AstNode const*, arangodb::aql::Variable const*);
 
   ~RocksDBGeoIndexIterator() { replaceCursor(nullptr); }
 
@@ -85,8 +81,7 @@ class RocksDBGeoIndex final : public RocksDBIndex {
  public:
   RocksDBGeoIndex() = delete;
 
-  RocksDBGeoIndex(TRI_idx_iid_t, LogicalCollection*,
-                  arangodb::velocypack::Slice const&);
+  RocksDBGeoIndex(TRI_idx_iid_t, LogicalCollection*, arangodb::velocypack::Slice const&);
 
   ~RocksDBGeoIndex();
 
@@ -101,8 +96,7 @@ class RocksDBGeoIndex final : public RocksDBIndex {
 
  public:
   IndexType type() const override {
-    if (_variant == INDEX_GEO_COMBINED_LAT_LON ||
-        _variant == INDEX_GEO_COMBINED_LON_LAT) {
+    if (_variant == INDEX_GEO_COMBINED_LAT_LON || _variant == INDEX_GEO_COMBINED_LON_LAT) {
       return TRI_IDX_TYPE_GEO1_INDEX;
     }
 
@@ -110,18 +104,15 @@ class RocksDBGeoIndex final : public RocksDBIndex {
   }
 
   char const* typeName() const override {
-    if (_variant == INDEX_GEO_COMBINED_LAT_LON ||
-        _variant == INDEX_GEO_COMBINED_LON_LAT) {
+    if (_variant == INDEX_GEO_COMBINED_LAT_LON || _variant == INDEX_GEO_COMBINED_LON_LAT) {
       return "geo1";
     }
     return "geo2";
   }
 
-  IndexIterator* iteratorForCondition(transaction::Methods*,
-                                      ManagedDocumentResult*,
+  IndexIterator* iteratorForCondition(transaction::Methods*, ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
-                                      arangodb::aql::Variable const*,
-                                      bool) override;
+                                      arangodb::aql::Variable const*, bool) override;
 
   bool allowExpansion() const override { return false; }
 
@@ -130,7 +121,7 @@ class RocksDBGeoIndex final : public RocksDBIndex {
   bool isSorted() const override { return true; }
 
   bool hasSelectivityEstimate() const override { return false; }
-  
+
   void toVelocyPack(VPackBuilder&, bool, bool) const override;
   // Uses default toVelocyPackFigures
 
@@ -140,13 +131,11 @@ class RocksDBGeoIndex final : public RocksDBIndex {
 
   /// @brief looks up all points within a given radius
   arangodb::rocksdbengine::GeoCoordinates* withinQuery(transaction::Methods*,
-                                                       double, double,
-                                                       double) const;
+                                                       double, double, double) const;
 
   /// @brief looks up the nearest points
   arangodb::rocksdbengine::GeoCoordinates* nearQuery(transaction::Methods*,
-                                                     double, double,
-                                                     size_t) const;
+                                                     double, double, size_t) const;
 
   bool isSame(std::vector<std::string> const& location, bool geoJson) const {
     return (!_location.empty() && _location == location && _geoJson == geoJson);
@@ -159,8 +148,7 @@ class RocksDBGeoIndex final : public RocksDBIndex {
   }
 
   /// insert index elements into the specified write batch.
-  Result insertInternal(transaction::Methods* trx, RocksDBMethods*,
-                        TRI_voc_rid_t,
+  Result insertInternal(transaction::Methods* trx, RocksDBMethods*, TRI_voc_rid_t,
                         arangodb::velocypack::Slice const&) override;
 
   /// remove index elements and put it in the specified write batch.

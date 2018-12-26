@@ -31,21 +31,18 @@ using namespace arangodb::aql;
 
 // @brief constructor, this will initialize the rules database
 Optimizer::Optimizer(size_t maxNumberOfPlans)
-    : _maxNumberOfPlans(maxNumberOfPlans > 0 ? maxNumberOfPlans
-                                             : defaultMaxNumberOfPlans),
+    : _maxNumberOfPlans(maxNumberOfPlans > 0 ? maxNumberOfPlans : defaultMaxNumberOfPlans),
       _runOnlyRequiredRules(false) {}
-  
+
 size_t Optimizer::hasEnoughPlans(size_t extraPlans) const {
   return (_newPlans.size() + extraPlans >= _maxNumberOfPlans);
 }
-  
-void Optimizer::disableRule(int rule) {
-  _disabledIds.emplace(rule);
-}
+
+void Optimizer::disableRule(int rule) { _disabledIds.emplace(rule); }
 
 // @brief add a plan to the optimizer
-void Optimizer::addPlan(std::unique_ptr<ExecutionPlan> plan, OptimizerRule const* rule, bool wasModified,
-                        int newLevel) {
+void Optimizer::addPlan(std::unique_ptr<ExecutionPlan> plan,
+                        OptimizerRule const* rule, bool wasModified, int newLevel) {
   TRI_ASSERT(plan != nullptr);
 
   if (newLevel <= 0) {
@@ -53,7 +50,6 @@ void Optimizer::addPlan(std::unique_ptr<ExecutionPlan> plan, OptimizerRule const
     newLevel = rule->level;
     // else use user-specified new level
   }
-
 
   if (wasModified) {
     if (!rule->isHidden) {
@@ -66,29 +62,27 @@ void Optimizer::addPlan(std::unique_ptr<ExecutionPlan> plan, OptimizerRule const
     plan->invalidateCost();
     plan->findVarUsage();
   }
-  
+
   // hand over ownership
   _newPlans.push_back(plan.get(), newLevel);
   plan.release();
 }
 
 // @brief the actual optimization
-int Optimizer::createPlans(ExecutionPlan* plan,
-                           std::vector<std::string> const& rulesSpecification,
+int Optimizer::createPlans(ExecutionPlan* plan, std::vector<std::string> const& rulesSpecification,
                            bool inspectSimplePlans) {
   _runOnlyRequiredRules = false;
   // _plans contains the previous optimization result
   _plans.clear();
-    
+
   try {
     _plans.push_back(plan, 0);
   } catch (...) {
     delete plan;
     throw;
   }
-  
-  if (!inspectSimplePlans &&
-      !arangodb::ServerState::instance()->isCoordinator() &&
+
+  if (!inspectSimplePlans && !arangodb::ServerState::instance()->isCoordinator() &&
       plan->isDeadSimple()) {
     // the plan is so simple that any further optimizations would probably cost
     // more than simply executing the plan
@@ -105,7 +99,7 @@ int Optimizer::createPlans(ExecutionPlan* plan,
   _disabledIds = OptimizerRulesFeature::getDisabledRuleIds(rulesSpecification);
 
   _newPlans.clear();
-        
+
   while (leastDoneLevel < maxRuleLevel) {
     // std::cout << "Have " << _plans.size() << " plans:" << std::endl;
     // for (auto const& p : _plans.list) {
@@ -123,7 +117,7 @@ int Optimizer::createPlans(ExecutionPlan* plan,
       if (level >= maxRuleLevel) {
         _newPlans.push_back(p.get(), level);  // nothing to do, just keep it
         p.release();
-      } else {                                // find next rule
+      } else {  // find next rule
         auto it = OptimizerRulesFeature::_rules.upper_bound(level);
         TRI_ASSERT(it != OptimizerRulesFeature::_rules.end());
 
@@ -144,7 +138,7 @@ int Optimizer::createPlans(ExecutionPlan* plan,
           if (!rule.isHidden) {
             ++_stats.rulesSkipped;
           }
-          
+
           // now try next
           continue;
         }
@@ -177,7 +171,7 @@ int Optimizer::createPlans(ExecutionPlan* plan,
       // a good-enough plan is probably every plan with costs below some
       // defined threshold. this requires plan costs to be calculated here
     }
-    
+
     _plans.steal(_newPlans);
     leastDoneLevel = maxRuleLevel;
     for (auto const& l : _plans.levelDone) {
@@ -224,6 +218,7 @@ void Optimizer::estimatePlans() {
 /// @brief sortPlans
 void Optimizer::sortPlans() {
   std::sort(_plans.list.begin(), _plans.list.end(),
-            [](ExecutionPlan* const& a, ExecutionPlan* const& b)
-                -> bool { return a->getCost() < b->getCost(); });
+            [](ExecutionPlan* const& a, ExecutionPlan* const& b) -> bool {
+              return a->getCost() < b->getCost();
+            });
 }

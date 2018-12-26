@@ -38,12 +38,10 @@ using namespace arangodb;
 /// and need to look up a local collection name (or shard name).
 //////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_cid_t CollectionNameResolver::getCollectionIdLocal(
-    std::string const& name) const {
+TRI_voc_cid_t CollectionNameResolver::getCollectionIdLocal(std::string const& name) const {
   if (name[0] >= '0' && name[0] <= '9') {
     // name is a numeric id
-    return static_cast<TRI_voc_cid_t>(
-        arangodb::basics::StringUtils::uint64(name));
+    return static_cast<TRI_voc_cid_t>(arangodb::basics::StringUtils::uint64(name));
   }
 
   arangodb::LogicalCollection const* collection = getCollectionStruct(name);
@@ -61,14 +59,14 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionIdLocal(
 /// cluster wide collection id is returned.
 //////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_cid_t CollectionNameResolver::getCollectionIdCluster(
-    std::string const& name) const {
+TRI_voc_cid_t CollectionNameResolver::getCollectionIdCluster(std::string const& name) const {
   if (!ServerState::isRunningInCluster(_serverRole)) {
     return getCollectionIdLocal(name);
   }
   if (name[0] >= '0' && name[0] <= '9') {
     // name is a numeric id
-    TRI_voc_cid_t cid = static_cast<TRI_voc_cid_t>(arangodb::basics::StringUtils::uint64(name));
+    TRI_voc_cid_t cid =
+        static_cast<TRI_voc_cid_t>(arangodb::basics::StringUtils::uint64(name));
     // Now validate the cid
     TRI_col_type_e type = getCollectionTypeCluster(getCollectionNameCluster(cid));
     if (type == TRI_COL_TYPE_UNKNOWN) {
@@ -95,10 +93,8 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionIdCluster(
 /// coordinator it will use the cluster wide lookup.
 //////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_cid_t CollectionNameResolver::getCollectionId(
-    std::string const& name) const {
-  if (!ServerState::isRunningInCluster(_serverRole) ||
-      ServerState::isDBServer(_serverRole)) {
+TRI_voc_cid_t CollectionNameResolver::getCollectionId(std::string const& name) const {
+  if (!ServerState::isRunningInCluster(_serverRole) || ServerState::isDBServer(_serverRole)) {
     return getCollectionIdLocal(name);
   }
   return getCollectionIdCluster(name);
@@ -108,12 +104,11 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionId(
 /// @brief look up a collection type for a collection name (local case)
 //////////////////////////////////////////////////////////////////////////////
 
-TRI_col_type_e CollectionNameResolver::getCollectionType(
-    std::string const& name) const {
+TRI_col_type_e CollectionNameResolver::getCollectionType(std::string const& name) const {
   if (name[0] >= '0' && name[0] <= '9') {
     // name is a numeric id
-    return getCollectionType(getCollectionName(static_cast<TRI_voc_cid_t>(
-        arangodb::basics::StringUtils::uint64(name))));
+    return getCollectionType(getCollectionName(
+        static_cast<TRI_voc_cid_t>(arangodb::basics::StringUtils::uint64(name))));
   }
 
   arangodb::LogicalCollection const* collection = getCollectionStruct(name);
@@ -128,8 +123,7 @@ TRI_col_type_e CollectionNameResolver::getCollectionType(
 /// @brief look up a collection struct for a collection name
 //////////////////////////////////////////////////////////////////////////////
 
-arangodb::LogicalCollection const* CollectionNameResolver::getCollectionStruct(
-    std::string const& name) const {
+arangodb::LogicalCollection const* CollectionNameResolver::getCollectionStruct(std::string const& name) const {
   auto it = _resolvedNames.find(name);
 
   if (it != _resolvedNames.end()) {
@@ -151,17 +145,15 @@ arangodb::LogicalCollection const* CollectionNameResolver::getCollectionStruct(
 ///        coordinator and for a shard name on the db server
 //////////////////////////////////////////////////////////////////////////////
 
-TRI_col_type_e CollectionNameResolver::getCollectionTypeCluster(
-    std::string const& name) const {
+TRI_col_type_e CollectionNameResolver::getCollectionTypeCluster(std::string const& name) const {
   // This fires in Single server case as well
   if (!ServerState::isCoordinator(_serverRole)) {
     return getCollectionType(name);
   }
   if (name[0] >= '0' && name[0] <= '9') {
     // name is a numeric id
-    return getCollectionTypeCluster(
-        getCollectionName(static_cast<TRI_voc_cid_t>(
-            arangodb::basics::StringUtils::uint64(name))));
+    return getCollectionTypeCluster(getCollectionName(
+        static_cast<TRI_voc_cid_t>(arangodb::basics::StringUtils::uint64(name))));
   }
 
   try {
@@ -170,7 +162,7 @@ TRI_col_type_e CollectionNameResolver::getCollectionTypeCluster(
     auto cinfo = ci->getCollection(_vocbase->name(), name);
     TRI_ASSERT(cinfo != nullptr);
     return cinfo->type();
-  } catch(...) {
+  } catch (...) {
   }
   return TRI_COL_TYPE_UNKNOWN;
 }
@@ -199,8 +191,7 @@ std::string CollectionNameResolver::getCollectionName(TRI_voc_cid_t cid) const {
 /// collection id
 //////////////////////////////////////////////////////////////////////////////
 
-std::string CollectionNameResolver::getCollectionNameCluster(
-    TRI_voc_cid_t cid) const {
+std::string CollectionNameResolver::getCollectionNameCluster(TRI_voc_cid_t cid) const {
   // First check the cache:
   auto it = _resolvedIds.find(cid);
 
@@ -214,7 +205,7 @@ std::string CollectionNameResolver::getCollectionNameCluster(
   }
 
   std::string name;
-  
+
   if (ServerState::isDBServer(_serverRole)) {
     // This might be a local system collection:
     name = localNameLookup(cid);
@@ -227,8 +218,9 @@ std::string CollectionNameResolver::getCollectionNameCluster(
   int tries = 0;
 
   while (tries++ < 2) {
-    auto ci = ClusterInfo::instance()->getCollection(
-        _vocbase->name(), arangodb::basics::StringUtils::itoa(cid));
+    auto ci =
+        ClusterInfo::instance()->getCollection(_vocbase->name(),
+                                               arangodb::basics::StringUtils::itoa(cid));
 
     if (ci == nullptr) {
       ClusterInfo::instance()->flush();
@@ -239,7 +231,8 @@ std::string CollectionNameResolver::getCollectionNameCluster(
     return name;
   }
 
-  LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "CollectionNameResolver: was not able to resolve id " << cid;
+  LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      << "CollectionNameResolver: was not able to resolve id " << cid;
   return "_unknown";
 }
 
@@ -249,10 +242,8 @@ std::string CollectionNameResolver::getCollectionNameCluster(
 /// wide collection name in the DBserver case
 //////////////////////////////////////////////////////////////////////////////
 
-std::string CollectionNameResolver::getCollectionName(
-    std::string const& nameOrId) const {
-  if (!nameOrId.empty() &&
-      (nameOrId[0] < '0' || nameOrId[0] > '9')) {
+std::string CollectionNameResolver::getCollectionName(std::string const& nameOrId) const {
+  if (!nameOrId.empty() && (nameOrId[0] < '0' || nameOrId[0] > '9')) {
     return nameOrId;
   }
   TRI_voc_cid_t tmp = arangodb::basics::StringUtils::uint64(nameOrId);
@@ -276,13 +267,11 @@ std::string CollectionNameResolver::localNameLookup(TRI_voc_cid_t cid) const {
         name = arangodb::basics::StringUtils::itoa((*it).second->planId());
         std::shared_ptr<LogicalCollection> ci;
         try {
-          ci = ClusterInfo::instance()->getCollection(
-              (*it).second->dbName(), name);
-        }
-        catch (...) {
+          ci = ClusterInfo::instance()->getCollection((*it).second->dbName(), name);
+        } catch (...) {
         }
         if (ci == nullptr) {
-          name = ""; // collection unknown
+          name = "";  // collection unknown
         } else {
           name = ci->name();  // can be empty, if collection unknown
         }

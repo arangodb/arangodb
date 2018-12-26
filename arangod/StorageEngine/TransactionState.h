@@ -55,7 +55,7 @@ namespace arangodb {
 namespace transaction {
 class Methods;
 struct Options;
-}
+}  // namespace transaction
 class TransactionCollection;
 
 /// @brief transaction type
@@ -110,8 +110,7 @@ class TransactionState {
   std::vector<std::string> collectionNames() const;
 
   /// @brief return the collection from a transaction
-  TransactionCollection* collection(TRI_voc_cid_t cid,
-                                    AccessMode::Type accessType);
+  TransactionCollection* collection(TRI_voc_cid_t cid, AccessMode::Type accessType);
 
   /// @brief add a collection to a transaction
   int addCollection(TRI_voc_cid_t cid, AccessMode::Type accessType,
@@ -162,8 +161,7 @@ class TransactionState {
 
  protected:
   /// @brief find a collection in the transaction's list of collections
-  TransactionCollection* findCollection(TRI_voc_cid_t cid,
-                                        size_t& position) const;
+  TransactionCollection* findCollection(TRI_voc_cid_t cid, size_t& position) const;
 
   /// @brief whether or not a transaction is read-only
   bool isReadOnlyTransaction() const {
@@ -186,10 +184,8 @@ class TransactionState {
   AccessMode::Type _type;       // access type (read|write)
   transaction::Status _status;  // current status
 
-  SmallVector<TransactionCollection*>::allocator_type::arena_type
-      _arena;  // memory for collections
-  SmallVector<TransactionCollection*>
-      _collections;  // list of participating collections
+  SmallVector<TransactionCollection*>::allocator_type::arena_type _arena;  // memory for collections
+  SmallVector<TransactionCollection*> _collections;  // list of participating collections
 
   ServerState::RoleEnum const _serverRole;  // role of the server
 
@@ -200,6 +196,6 @@ class TransactionState {
 
   transaction::Options _options;
 };
-}
+}  // namespace arangodb
 
 #endif

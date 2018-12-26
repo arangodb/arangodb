@@ -39,8 +39,7 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 namespace {
-std::atomic_uint_fast64_t NEXT_HANDLER_ID(
-    static_cast<uint64_t>(TRI_microtime() * 100000.0));
+std::atomic_uint_fast64_t NEXT_HANDLER_ID(static_cast<uint64_t>(TRI_microtime() * 100000.0));
 }
 
 thread_local RestHandler const* RestHandler::CURRENT_HANDLER = nullptr;
@@ -56,20 +55,18 @@ RestHandler::RestHandler(GeneralRequest* request, GeneralResponse* response)
       _response(response),
       _statistics(nullptr) {
   bool found;
-  std::string const& startThread =
-      _request->header(StaticStrings::StartThread, found);
+  std::string const& startThread = _request->header(StaticStrings::StartThread, found);
 
   if (found) {
     _needsOwnThread = StringUtils::boolean(startThread);
   }
 
-  _context =
-      std::make_shared<WorkContext>(_request->user(), _request->databaseName());
+  _context = std::make_shared<WorkContext>(_request->user(), _request->databaseName());
 }
 
 RestHandler::~RestHandler() {
   RequestStatistics* stat = _statistics.exchange(nullptr);
-  
+
   if (stat != nullptr) {
     stat->release();
   }
@@ -125,19 +122,21 @@ int RestHandler::finalizeEngine() {
   try {
     finalizeExecute();
   } catch (Exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception in " << name() << ": "
-             << DIAGNOSTIC_INFORMATION(ex);
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "caught exception in " << name() << ": " << DIAGNOSTIC_INFORMATION(ex);
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     handleError(ex);
     res = ex.code();
   } catch (std::bad_alloc const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught memory exception in " << name() << ": " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "caught memory exception in " << name() << ": " << ex.what();
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
     handleError(err);
     res = TRI_ERROR_OUT_OF_MEMORY;
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception in " << name() << ": " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "caught exception in " << name() << ": " << ex.what();
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
     handleError(err);
@@ -158,7 +157,7 @@ int RestHandler::finalizeEngine() {
     _engine.setState(RestEngine::State::FAILED);
     _storeResult(this);
   }
-  
+
   return res;
 }
 
@@ -166,7 +165,7 @@ int RestHandler::executeEngine() {
   TRI_ASSERT(ExecContext::CURRENT == nullptr);
   ExecContext::CURRENT = _request->execContext();
   TRI_DEFER(ExecContext::CURRENT = nullptr);
-  
+
   try {
     RestStatus result = execute();
 
@@ -189,15 +188,16 @@ int RestHandler::executeEngine() {
     return TRI_ERROR_NO_ERROR;
   } catch (Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "caught exception in " << name() << ": "
-              << DIAGNOSTIC_INFORMATION(ex);
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "caught exception in " << name() << ": " << DIAGNOSTIC_INFORMATION(ex);
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     handleError(ex);
   } catch (arangodb::velocypack::Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "caught velocypack exception in " << name() << ": "
-              << DIAGNOSTIC_INFORMATION(ex);
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "caught velocypack exception in " << name() << ": "
+        << DIAGNOSTIC_INFORMATION(ex);
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     Exception err(TRI_ERROR_INTERNAL, std::string("VPack error: ") + ex.what(),
@@ -205,16 +205,17 @@ int RestHandler::executeEngine() {
     handleError(err);
   } catch (std::bad_alloc const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "caught memory exception in " << name() << ": "
-              << DIAGNOSTIC_INFORMATION(ex);
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "caught memory exception in " << name() << ": "
+        << DIAGNOSTIC_INFORMATION(ex);
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (std::exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "caught exception in " << name() << ": "
-              << DIAGNOSTIC_INFORMATION(ex);
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "caught exception in " << name() << ": " << DIAGNOSTIC_INFORMATION(ex);
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
@@ -237,7 +238,7 @@ int RestHandler::runEngine(bool synchron) {
   TRI_ASSERT(ExecContext::CURRENT == nullptr);
   ExecContext::CURRENT = _request->execContext();
   TRI_DEFER(ExecContext::CURRENT = nullptr);
-  
+
   try {
     while (_engine.hasSteps()) {
       std::shared_ptr<RestStatusElement> result = _engine.popStep();

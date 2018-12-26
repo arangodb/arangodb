@@ -37,10 +37,9 @@ VPackOptions const* getOptions(VPackOptions const* options) {
   }
   return &VPackOptions::Options::Defaults;
 }
-}
+}  // namespace detail
 
-void GeneralResponse::addPayload(VPackSlice const& slice,
-                                 VPackOptions const* options,
+void GeneralResponse::addPayload(VPackSlice const& slice, VPackOptions const* options,
                                  bool resolveExternals) {
   addPayloadPreconditions();
   _numPayloads++;
@@ -57,8 +56,7 @@ void GeneralResponse::addPayload(VPackSlice const& slice,
     } else {
       // just copy
       _vpackPayloads.emplace_back(slice.byteSize());
-      _vpackPayloads.back().append(slice.startAs<char const>(),
-                                   slice.byteSize());
+      _vpackPayloads.back().append(slice.startAs<char const>(), slice.byteSize());
     }
   }
   // we pass the original slice here the new one can be accessed
@@ -83,8 +81,7 @@ void GeneralResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
       _vpackPayloads.push_back(std::move(buffer));
     }
   }
-  addPayloadPostHook(VPackSlice(buffer.data()), options, resolveExternals,
-                     skipBody);
+  addPayloadPostHook(VPackSlice(buffer.data()), options, resolveExternals, skipBody);
 }
 
 std::string GeneralResponse::responseString(ResponseCode code) {

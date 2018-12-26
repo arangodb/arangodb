@@ -71,8 +71,7 @@ class AuthUserEntry {
   /// The combination of "*"/"*" is automatically used for the root user
   void grantCollection(std::string const& dbname, std::string const& collection,
                        AuthLevel level);
-  void removeCollection(std::string const& dbname,
-                        std::string const& collection);
+  void removeCollection(std::string const& dbname, std::string const& collection);
 
   /// Resolve the access level for this database. Might fall back to
   /// the special '*' entry if the specific database is not found
@@ -84,19 +83,16 @@ class AuthUserEntry {
                                 std::string const& collectionName) const;
 
   bool hasSpecificDatabase(std::string const& dbname) const;
-  bool hasSpecificCollection(std::string const& dbname,
-                             std::string const& collectionName) const;
+  bool hasSpecificCollection(std::string const& dbname, std::string const& collectionName) const;
 
  private:
   AuthUserEntry() {}
 
   struct DBAuthContext {
-    DBAuthContext(AuthLevel dbLvl,
-                  std::unordered_map<std::string, AuthLevel> const& coll)
+    DBAuthContext(AuthLevel dbLvl, std::unordered_map<std::string, AuthLevel> const& coll)
         : _databaseAuthLevel(dbLvl), _collectionAccess(coll) {}
-    
-    DBAuthContext(AuthLevel dbLvl,
-                  std::unordered_map<std::string, AuthLevel>&& coll)
+
+    DBAuthContext(AuthLevel dbLvl, std::unordered_map<std::string, AuthLevel>&& coll)
         : _databaseAuthLevel(dbLvl), _collectionAccess(std::move(coll)) {}
 
     AuthLevel collectionAuthLevel(std::string const& collectionName, bool& notFound) const;
@@ -117,6 +113,6 @@ class AuthUserEntry {
   std::string _passwordHash;
   std::unordered_map<std::string, DBAuthContext> _dbAccess;
 };
-}
+}  // namespace arangodb
 
 #endif

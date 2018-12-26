@@ -64,10 +64,10 @@ void TRI_SetStdinVisibility(bool visible) {
   (void)tcsetattr(STDIN_FILENO, TCSANOW, &tty);
 #else
 #ifdef _WIN32
-  HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE); 
+  HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
   DWORD mode;
   GetConsoleMode(hStdin, &mode);
-              
+
   if (visible) {
     mode |= ENABLE_ECHO_INPUT;
   } else {

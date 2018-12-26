@@ -36,7 +36,7 @@ class SingleCollectionTransaction;
 namespace aql {
 struct AstNode;
 struct Variable;
-}
+}  // namespace aql
 
 class RestEdgesHandler : public RestVocbaseBaseHandler {
  public:
@@ -64,18 +64,16 @@ class RestEdgesHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void readCursor(aql::AstNode* condition, aql::Variable const* var,
-                  std::string const& collectionName,
-                  SingleCollectionTransaction& trx,
+                  std::string const& collectionName, SingleCollectionTransaction& trx,
                   std::function<void(DocumentIdentifierToken const&)> cb);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get all edges for a given vertex. Independent from the request
   //////////////////////////////////////////////////////////////////////////////
 
-  bool getEdgesForVertex(
-      std::string const& id, std::string const& collectionName,
-      TRI_edge_direction_e direction, SingleCollectionTransaction& trx,
-      std::function<void(DocumentIdentifierToken const&)> cb);
+  bool getEdgesForVertex(std::string const& id, std::string const& collectionName,
+                         TRI_edge_direction_e direction, SingleCollectionTransaction& trx,
+                         std::function<void(DocumentIdentifierToken const&)> cb);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Parse the direction parameter
@@ -89,6 +87,6 @@ class RestEdgesHandler : public RestVocbaseBaseHandler {
 
   bool validateCollection(std::string const& name);
 };
-}
+}  // namespace arangodb
 
 #endif

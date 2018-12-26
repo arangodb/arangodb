@@ -42,9 +42,7 @@ struct TRI_vocbase_t;
 namespace arangodb {
 namespace consensus {
 
-class Agent : public arangodb::Thread,
-              public AgentInterface {
-
+class Agent : public arangodb::Thread, public AgentInterface {
  public:
   /// @brief Construct with program options
   explicit Agent(config_t const&);
@@ -134,7 +132,7 @@ class Agent : public arangodb::Thread,
   ///        also used as heartbeat ($5.2).
   priv_rpc_ret_t recvAppendEntriesRPC(term_t term, std::string const& leaderId,
                                       index_t prevIndex, term_t prevTerm,
-                            index_t leaderCommitIndex, query_t const& queries);
+                                      index_t leaderCommitIndex, query_t const& queries);
 
   /// @brief Resign leadership
   void resign(term_t otherTerm = 0);
@@ -269,10 +267,11 @@ class Agent : public arangodb::Thread,
   /// @brief Guarding taking over leadership
   void beginPrepareLeadership() { _preparing = 1; }
   void donePrepareLeadership() { _preparing = 2; }
-  void endPrepareLeadership()  {
+  void endPrepareLeadership() {
     _preparing = 0;
     _leaderSince = std::chrono::duration_cast<std::chrono::duration<int64_t>>(
-        std::chrono::steady_clock::now().time_since_epoch()).count();
+                       std::chrono::steady_clock::now().time_since_epoch())
+                       .count();
   }
   int getPrepareLeadership() { return _preparing; }
 
@@ -303,7 +302,6 @@ class Agent : public arangodb::Thread,
   void activateAgency();
 
  private:
-
   /// @brief Find out, if we've had acknowledged RPCs recent enough
   bool challengeLeadership();
 
@@ -362,14 +360,14 @@ class Agent : public arangodb::Thread,
   /// Agent thread in sendAppendEntriesRPC. Therefore no protection is
   /// necessary for these:
 
-  /// @brief _lastSent stores for each follower the time stamp of the time 
+  /// @brief _lastSent stores for each follower the time stamp of the time
   /// when the main Agent thread has last sent a non-empty
   /// appendEntriesRPC to that follower.
   std::unordered_map<std::string, SteadyTimePoint> _lastSent;
 
   /// The following three members are protected by _tiLock:
 
-  /// @brief stores for each follower the highest index log it has reported as 
+  /// @brief stores for each follower the highest index log it has reported as
   /// locally logged.
   std::unordered_map<std::string, index_t> _confirmed;
 
@@ -449,7 +447,7 @@ class Agent : public arangodb::Thread,
   // lock for _ongoingTrxs
   arangodb::Mutex _trxsLock;
 };
-}
-}
+}  // namespace consensus
+}  // namespace arangodb
 
 #endif

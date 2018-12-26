@@ -125,7 +125,7 @@ class DataProtector {
     }
   }
 
-  ~DataProtector() { 
+  ~DataProtector() {
     for (int i = 0; i < DATA_PROTECTOR_MULTIPLICITY; i++) {
       reinterpret_cast<Entry*>(_list + i)->~Entry();
     }
@@ -153,10 +153,10 @@ class DataProtector {
     reinterpret_cast<Entry*>(_list + id)->_count--;
   }
 
-    int getMyId();
+  int getMyId();
 };
 
-}  // namespace arangodb::basics
+}  // namespace basics
 }  // namespace arangodb
 
 #endif

@@ -26,8 +26,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
-class WorkMonitorFeature final
-    : public application_features::ApplicationFeature {
+class WorkMonitorFeature final : public application_features::ApplicationFeature {
  public:
   explicit WorkMonitorFeature(application_features::ApplicationServer* server);
 
@@ -35,6 +34,6 @@ class WorkMonitorFeature final
   void start() override final;
   void unprepare() override final;
 };
-}
+}  // namespace arangodb
 
 #endif

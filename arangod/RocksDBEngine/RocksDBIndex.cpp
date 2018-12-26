@@ -48,11 +48,10 @@ using namespace arangodb::rocksutils;
 
 uint64_t const arangodb::RocksDBIndex::ESTIMATOR_SIZE = 4096;
 
-RocksDBIndex::RocksDBIndex(
-    TRI_idx_iid_t id, LogicalCollection* collection,
-    std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
-    bool unique, bool sparse, rocksdb::ColumnFamilyHandle* cf,
-    uint64_t objectId, bool useCache)
+RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection,
+                           std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
+                           bool unique, bool sparse, rocksdb::ColumnFamilyHandle* cf,
+                           uint64_t objectId, bool useCache)
     : Index(id, collection, attributes, unique, sparse),
       _objectId((objectId != 0) ? objectId : TRI_NewTickServer()),
       _cf(cf),
@@ -143,20 +142,17 @@ void RocksDBIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
 }
 
 void RocksDBIndex::createCache() {
-  if (!_cacheEnabled || _cachePresent ||
-      _collection->isAStub() ||
+  if (!_cacheEnabled || _cachePresent || _collection->isAStub() ||
       ServerState::instance()->isCoordinator()) {
     // we leave this if we do not need the cache
     // or if cache already created
     return;
   }
 
-  TRI_ASSERT(!_collection->isSystem() &&
-             !ServerState::instance()->isCoordinator());
+  TRI_ASSERT(!_collection->isSystem() && !ServerState::instance()->isCoordinator());
   TRI_ASSERT(_cache.get() == nullptr);
   TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
-  _cache = CacheManagerFeature::MANAGER->createCache(
-      cache::CacheType::Transactional);
+  _cache = CacheManagerFeature::MANAGER->createCache(cache::CacheType::Transactional);
   _cachePresent = (_cache.get() != nullptr);
   TRI_ASSERT(_cacheEnabled);
 }
@@ -196,9 +192,9 @@ int RocksDBIndex::drop() {
   // edge index needs to be dropped with prefix_same_as_start = false
   // otherwise full index scan will not work
   bool prefix_same_as_start = this->type() != Index::TRI_IDX_TYPE_EDGE_INDEX;
-  arangodb::Result r = rocksutils::removeLargeRange(
-    rocksutils::globalRocksDB(), this->getBounds(), prefix_same_as_start);
-  
+  arangodb::Result r = rocksutils::removeLargeRange(rocksutils::globalRocksDB(),
+                                                    this->getBounds(), prefix_same_as_start);
+
   // Try to drop the cache as well.
   if (_cachePresent) {
     try {
@@ -210,19 +206,20 @@ int RocksDBIndex::drop() {
     } catch (...) {
     }
   }
-  
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  //check if documents have been deleted
+  // check if documents have been deleted
   size_t numDocs = rocksutils::countKeyRange(rocksutils::globalRocksDB(),
                                              this->getBounds(), prefix_same_as_start);
   if (numDocs > 0) {
-    
-    std::string errorMsg("deletion check in index drop failed - not all documents in the index have been deleted. remaining: ");
+    std::string errorMsg(
+        "deletion check in index drop failed - not all documents in the index "
+        "have been deleted. remaining: ");
     errorMsg.append(std::to_string(numDocs));
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
   }
 #endif
-  
+
   return r.errorNumber();
 }
 
@@ -236,14 +233,14 @@ int RocksDBIndex::afterTruncate() {
   return TRI_ERROR_NO_ERROR;
 }
 
-Result RocksDBIndex::updateInternal(transaction::Methods* trx, RocksDBMethods* mthd,
-                      TRI_voc_rid_t oldRevision,
-                      arangodb::velocypack::Slice const& oldDoc,
-                      TRI_voc_rid_t newRevision,
+Result RocksDBIndex::updateInternal(transaction::Methods* trx,
+                                    RocksDBMethods* mthd, TRI_voc_rid_t oldRevision,
+                                    arangodb::velocypack::Slice const& oldDoc,
+                                    TRI_voc_rid_t newRevision,
                                     arangodb::velocypack::Slice const& newDoc) {
   Result res = removeInternal(trx, mthd, oldRevision, oldDoc);
   if (!res.ok()) {
-      return res;
+    return res;
   }
   return insertInternal(trx, mthd, newRevision, newDoc);
 }
@@ -256,9 +253,9 @@ size_t RocksDBIndex::memory() const {
   rocksdb::Range r(bounds.start(), bounds.end());
   uint64_t out;
   db->GetApproximateSizes(_cf, &r, 1, &out,
-      static_cast<uint8_t>(
-          rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES |
-          rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
+                          static_cast<uint8_t>(
+                              rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES |
+                              rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
   return static_cast<size_t>(out);
 }
 
@@ -289,8 +286,7 @@ void RocksDBIndex::blackListKey(char const* data, std::size_t len) {
   }
 }
 
-RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type,
-                                         uint64_t objectId, bool unique) {
+RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type, uint64_t objectId, bool unique) {
   switch (type) {
     case RocksDBIndex::TRI_IDX_TYPE_PRIMARY_INDEX:
       return RocksDBKeyBounds::PrimaryIndex(objectId);
@@ -314,9 +310,8 @@ RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type,
   }
 }
 
-void RocksDBIndex::applyCommitedEstimates(
-    std::vector<uint64_t> const& inserts,
-    std::vector<uint64_t> const& removes) {
+void RocksDBIndex::applyCommitedEstimates(std::vector<uint64_t> const& inserts,
+                                          std::vector<uint64_t> const& removes) {
   // This function is required to be overloaded by indexes with Estimates. All other should not call this function.
   // In Production this call will be ignored, it is not critical
   TRI_ASSERT(false);

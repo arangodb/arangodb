@@ -52,8 +52,7 @@ class Scheduler {
   friend class arangodb::JobGuard;
 
  public:
-  Scheduler(uint64_t nrMinimum, uint64_t nrDesired, uint64_t nrMaximum,
-            uint64_t maxQueueSize);
+  Scheduler(uint64_t nrMinimum, uint64_t nrDesired, uint64_t nrMaximum, uint64_t maxQueueSize);
   virtual ~Scheduler();
 
  public:
@@ -93,33 +92,39 @@ class Scheduler {
   bool queue(std::unique_ptr<Job> job);
 
   uint64_t minimum() const { return _nrMinimum; }
-  inline uint64_t numQueued() const noexcept { return  _nrQueued; };
+  inline uint64_t numQueued() const noexcept { return _nrQueued; };
   inline uint64_t getCounters() const noexcept { return _counters; }
-  static inline uint64_t numRunning(uint64_t value) noexcept { return value & 0xFFFFULL; }
-  static inline uint64_t numWorking(uint64_t value) noexcept { return (value >> 16) & 0xFFFFULL; }
-  static inline uint64_t numBlocked(uint64_t value) noexcept { return (value >> 32) & 0xFFFFULL; }
+  static inline uint64_t numRunning(uint64_t value) noexcept {
+    return value & 0xFFFFULL;
+  }
+  static inline uint64_t numWorking(uint64_t value) noexcept {
+    return (value >> 16) & 0xFFFFULL;
+  }
+  static inline uint64_t numBlocked(uint64_t value) noexcept {
+    return (value >> 32) & 0xFFFFULL;
+  }
 
   std::string infoStatus();
 
-  inline void queueJob() noexcept { ++_nrQueued; } 
-  inline void unqueueJob() noexcept { 
+  inline void queueJob() noexcept { ++_nrQueued; }
+  inline void unqueueJob() noexcept {
     if (--_nrQueued == UINT64_MAX) {
       TRI_ASSERT(false);
     }
   }
- 
+
  private:
   void startNewThread();
- 
+
   static void initializeSignalHandlers();
 
  private:
   // we store most of the threads status info in a single atomic uint64_t
   // the encoding of the values inside this variable is (left to right means
   // high to low bytes):
-  // 
+  //
   //   AA BB CC DD
-  // 
+  //
   // we use the lowest 2 bytes (DD) to store the number of running threads
   // the next lowest bytes (CC) are used to store the number of currently working threads
   // the next bytes (BB) are used to store the number of currently blocked threads
@@ -130,13 +135,15 @@ class Scheduler {
   inline void incRunning() noexcept { _counters += 1ULL << 0; }
   inline void decRunning() noexcept { _counters -= 1ULL << 0; }
 
-  inline void workThread() noexcept { _counters += 1ULL << 16; } 
+  inline void workThread() noexcept { _counters += 1ULL << 16; }
   inline void unworkThread() noexcept { _counters -= 1ULL << 16; }
 
   inline void blockThread() noexcept { _counters += 1ULL << 32; }
   inline void unblockThread() noexcept { _counters -= 1ULL << 32; }
 
-  inline bool isStopping(uint64_t value) const noexcept { return (value & (1ULL << 63)) != 0; }
+  inline bool isStopping(uint64_t value) const noexcept {
+    return (value & (1ULL << 63)) != 0;
+  }
 
   void startIoService();
   void startRebalancer();
@@ -153,7 +160,7 @@ class Scheduler {
   // maximal number of outstanding user requests
   uint64_t const _nrMaximum;
 
-  // current counters. refer to the above description of the 
+  // current counters. refer to the above description of the
   // meaning of its individual bits
   std::atomic<uint64_t> _counters;
 
@@ -174,7 +181,7 @@ class Scheduler {
   mutable Mutex _threadCreateLock;
   double _lastAllBusyStamp;
 };
-}
-}
+}  // namespace rest
+}  // namespace arangodb
 
 #endif

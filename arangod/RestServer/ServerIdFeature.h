@@ -43,7 +43,7 @@ class ServerIdFeature final : public application_features::ApplicationFeature {
  private:
   /// @brief generates a new server id
   void generateId();
-  
+
   /// @brief reads server id from file
   int readId();
 
@@ -52,12 +52,12 @@ class ServerIdFeature final : public application_features::ApplicationFeature {
 
   /// @brief read / create the server id on startup
   int determineId(bool checkVersion);
-  
+
  private:
   std::string _idFilename;
 
   static TRI_server_id_t SERVERID;
 };
-}
+}  // namespace arangodb
 
 #endif

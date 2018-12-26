@@ -34,7 +34,7 @@
 namespace rocksdb {
 class Comparator;
 class ColumnFamilyHandle;
-}
+}  // namespace rocksdb
 namespace arangodb {
 namespace cache {
 class Cache;
@@ -53,19 +53,17 @@ class RocksDBIndex : public Index {
 
  protected:
   RocksDBIndex(TRI_idx_iid_t, LogicalCollection*,
-               std::vector<std::vector<arangodb::basics::AttributeName>> const&
-                   attributes,
+               std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
                bool unique, bool sparse, rocksdb::ColumnFamilyHandle* cf,
                uint64_t objectId, bool useCache);
 
-  RocksDBIndex(TRI_idx_iid_t, LogicalCollection*,
-               arangodb::velocypack::Slice const&,
+  RocksDBIndex(TRI_idx_iid_t, LogicalCollection*, arangodb::velocypack::Slice const&,
                rocksdb::ColumnFamilyHandle* cf, bool useCache);
 
  public:
   ~RocksDBIndex();
   void toVelocyPackFigures(VPackBuilder& builder) const override;
-  
+
   /// @brief return a VelocyPack representation of the index
   void toVelocyPack(velocypack::Builder& builder, bool withFigures,
                     bool forPersistence) const override;
@@ -116,31 +114,27 @@ class RocksDBIndex : public Index {
   virtual void recalculateEstimates();
 
   /// insert index elements into the specified write batch.
-  virtual Result insertInternal(transaction::Methods* trx, RocksDBMethods*,
-                                TRI_voc_rid_t,
+  virtual Result insertInternal(transaction::Methods* trx, RocksDBMethods*, TRI_voc_rid_t,
                                 arangodb::velocypack::Slice const&) = 0;
-  
+
   virtual Result updateInternal(transaction::Methods* trx, RocksDBMethods*,
                                 TRI_voc_rid_t oldRevision,
                                 arangodb::velocypack::Slice const& oldDoc,
-                                TRI_voc_rid_t newRevision,
-                                velocypack::Slice const& newDoc);
+                                TRI_voc_rid_t newRevision, velocypack::Slice const& newDoc);
 
   /// remove index elements and put it in the specified write batch.
-  virtual Result removeInternal(transaction::Methods* trx, RocksDBMethods*,
-                                TRI_voc_rid_t,
+  virtual Result removeInternal(transaction::Methods* trx, RocksDBMethods*, TRI_voc_rid_t,
                                 arangodb::velocypack::Slice const&) = 0;
 
   rocksdb::ColumnFamilyHandle* columnFamily() const { return _cf; }
 
   rocksdb::Comparator const* comparator() const;
-  
+
   RocksDBKeyBounds getBounds() const {
     return RocksDBIndex::getBounds(type(), _objectId, _unique);
   };
 
-  static RocksDBKeyBounds getBounds(Index::IndexType type, uint64_t objectId,
-                                    bool unique);
+  static RocksDBKeyBounds getBounds(Index::IndexType type, uint64_t objectId, bool unique);
 
   virtual void applyCommitedEstimates(std::vector<uint64_t> const& inserts,
                                       std::vector<uint64_t> const& removes);

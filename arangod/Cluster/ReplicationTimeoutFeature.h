@@ -37,13 +37,13 @@ class ReplicationTimeoutFeature : public application_features::ApplicationFeatur
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
-  
+
  public:
   static double timeoutFactor;
   static double timeoutPer4k;
   static double lowerLimit;
 };
 
-}
+}  // namespace arangodb
 
 #endif

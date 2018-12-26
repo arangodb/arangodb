@@ -34,7 +34,7 @@ using namespace arangodb::aql;
 using namespace arangodb::basics;
 using EN = arangodb::aql::ExecutionNode;
 
-static AstNodeType BuildSingleComparatorType (AstNode const* condition) {
+static AstNodeType BuildSingleComparatorType(AstNode const* condition) {
   TRI_ASSERT(condition->numMembers() == 3);
   AstNodeType type = NODE_TYPE_ROOT;
 
@@ -64,7 +64,8 @@ static AstNodeType BuildSingleComparatorType (AstNode const* condition) {
       type = NODE_TYPE_OPERATOR_BINARY_NIN;
       break;
     default:
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unsupported operator type");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "unsupported operator type");
   }
   auto quantifier = condition->getMemberUnchecked(2);
   TRI_ASSERT(quantifier->type == NODE_TYPE_QUANTIFIER);
@@ -73,7 +74,8 @@ static AstNodeType BuildSingleComparatorType (AstNode const* condition) {
   if (val == Quantifier::NONE) {
     auto it = Ast::NegatedOperators.find(type);
     if (it == Ast::NegatedOperators.end()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unsupported operator type");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "unsupported operator type");
     }
     type = it->second;
   }
@@ -127,25 +129,21 @@ static bool IsSupportedNode(Variable const* pathVar, AstNode const* node) {
     case NODE_TYPE_OPERATOR_BINARY_IN:
     case NODE_TYPE_OPERATOR_BINARY_NIN: {
       // the following types of expressions are not supported
-      //   p.edges[0]._from  op  whatever attribute access 
+      //   p.edges[0]._from  op  whatever attribute access
       //   whatever attribute access  op  p.edges[0]._from
       AstNode const* lhs = node->getMember(0);
       AstNode const* rhs = node->getMember(1);
 
       if (lhs->isAttributeAccessForVariable(pathVar, true)) {
         // p.xxx  op  whatever
-        if (rhs->type != NODE_TYPE_VALUE && 
-            rhs->type != NODE_TYPE_ARRAY &&
-            rhs->type != NODE_TYPE_OBJECT &&
-            rhs->type != NODE_TYPE_REFERENCE) {
+        if (rhs->type != NODE_TYPE_VALUE && rhs->type != NODE_TYPE_ARRAY &&
+            rhs->type != NODE_TYPE_OBJECT && rhs->type != NODE_TYPE_REFERENCE) {
           return false;
         }
       } else if (rhs->isAttributeAccessForVariable(pathVar, true)) {
         // whatever  op  p.xxx
-        if (lhs->type != NODE_TYPE_VALUE && 
-            lhs->type != NODE_TYPE_ARRAY &&
-            lhs->type != NODE_TYPE_OBJECT &&
-            lhs->type != NODE_TYPE_REFERENCE) {
+        if (lhs->type != NODE_TYPE_VALUE && lhs->type != NODE_TYPE_ARRAY &&
+            lhs->type != NODE_TYPE_OBJECT && lhs->type != NODE_TYPE_REFERENCE) {
           return false;
         }
       }
@@ -212,17 +210,16 @@ static bool IsSupportedNode(Variable const* pathVar, AstNode const* node) {
       return false;
     default:
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Traversal Optimizer encountered node: " << node->getTypeString();
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "Traversal Optimizer encountered node: " << node->getTypeString();
 #endif
       return false;
   }
 }
 
-static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
-                                            size_t testIndex, TraversalNode* tn,
-                                            Variable const* pathVar,
-                                            bool& conditionIsImpossible,
-                                            size_t& swappedIndex,
+static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent, size_t testIndex,
+                                            TraversalNode* tn, Variable const* pathVar,
+                                            bool& conditionIsImpossible, size_t& swappedIndex,
                                             int64_t& indexedAccessDepth) {
   AstNode* node = parent->getMemberUnchecked(testIndex);
   if (!IsSupportedNode(pathVar, node)) {
@@ -290,8 +287,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
         switch (node->type) {
           case NODE_TYPE_VALUE: {
             // we have var.edges[<this-here>]
-            if (node->value.type != VALUE_TYPE_INT ||
-                node->value.value._int < 0) {
+            if (node->value.type != VALUE_TYPE_INT || node->value.value._int < 0) {
               // Only positive indexed access allowed
               notSupported = true;
               return node;
@@ -306,7 +302,8 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
           default:
             // Other types cannot be optimized
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-            LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Failed type: " << node->getTypeString();
+            LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+                << "Failed type: " << node->getTypeString();
             node->dump(0);
 #endif
             notSupported = true;
@@ -315,7 +312,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
         patternStep++;
         break;
       }
-      case 3: 
+      case 3:
         if (depth != UINT64_MAX) {
           // We are in depth pattern.
           // The first Node we encount HAS to be indexed Access
@@ -327,14 +324,14 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
           // Search for the parent having this node.
           patternStep = 6;
           parentOfReplace = node;
-          
+
           // we need to know the depth at which a filter condition will
           // access a path. Otherwise there are too many results
           TRI_ASSERT(node->numMembers() == 2);
           AstNode* indexVal = node->getMemberUnchecked(1);
           if (indexVal->isIntValue()) {
-            indexedAccessDepth = indexVal->getIntValue() + (isEdge?1:0);
-          } else { // should cause the caller to not remove a filter
+            indexedAccessDepth = indexVal->getIntValue() + (isEdge ? 1 : 0);
+          } else {  // should cause the caller to not remove a filter
             indexedAccessDepth = INT64_MAX;
           }
           return node;
@@ -380,7 +377,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
             }
             parentOfReplace = node;
             replaceIdx = idx;
-            // Ok finally done. 
+            // Ok finally done.
             patternStep++;
             break;
           }
@@ -390,8 +387,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
         // Just fall through
         break;
     }
-    if (node->type == NODE_TYPE_REFERENCE ||
-        node->type == NODE_TYPE_VARIABLE) {
+    if (node->type == NODE_TYPE_REFERENCE || node->type == NODE_TYPE_VARIABLE) {
       // we are on the bottom of the tree. Check if it is our pathVar
       auto variable = static_cast<Variable*>(node->getData());
       if (pathVar == variable) {
@@ -459,15 +455,14 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
   TRI_ASSERT(parentOfReplace != nullptr);
   if (depth == UINT64_MAX) {
     // Global Case
-    auto replaceNode = BuildExpansionReplacement(
-        ast, parentOfReplace->getMemberUnchecked(replaceIdx), tempNode);
+    auto replaceNode =
+        BuildExpansionReplacement(ast, parentOfReplace->getMemberUnchecked(replaceIdx), tempNode);
     parentOfReplace->changeMember(replaceIdx, replaceNode);
     // NOTE: We have to reload the NODE here, because we may have replaced
     // it entirely
     tn->registerGlobalCondition(isEdge, parent->getMemberUnchecked(testIndex));
   } else {
-    conditionIsImpossible =
-        !tn->isInRange(depth, isEdge);
+    conditionIsImpossible = !tn->isInRange(depth, isEdge);
     if (conditionIsImpossible) {
       return false;
     }
@@ -480,8 +475,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
   return true;
 }
 
-TraversalConditionFinder::TraversalConditionFinder(ExecutionPlan* plan,
-                                                   bool* planAltered)
+TraversalConditionFinder::TraversalConditionFinder(ExecutionPlan* plan, bool* planAltered)
     : _plan(plan),
       _condition(std::make_unique<Condition>(plan->getAst())),
       _planAltered(planAltered) {}
@@ -587,7 +581,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
       TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
 
       std::unordered_set<Variable const*> varsUsedByCondition;
-      
+
       auto originalFilterConditions = std::make_unique<Condition>(_plan->getAst());
       for (size_t i = andNode->numMembers(); i > 0; --i) {
         // Whenever we do not support a of the condition we have to throw it out
@@ -602,7 +596,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
           // For now we only! optimize filter conditions on the path
           // So we skip all FILTERS not referencing the path
           andNode->removeMemberUnchecked(i - 1);
-          continue; 
+          continue;
         }
 
         // now we validate that there is no illegal variable used.
@@ -628,14 +622,12 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
 
         AstNode* cloned = andNode->getMember(i - 1)->clone(_plan->getAst());
         int64_t indexedAccessDepth = -1;
-        
+
         size_t swappedIndex = 0;
         // If we get here we can optimize this condition
         if (!checkPathVariableAccessFeasible(_plan->getAst(), andNode, i - 1,
-                                             node, pathVar,
-                                             conditionIsImpossible,
-                                             swappedIndex,
-                                             indexedAccessDepth)) {
+                                             node, pathVar, conditionIsImpossible,
+                                             swappedIndex, indexedAccessDepth)) {
           andNode->removeMemberUnchecked(i - 1);
           if (conditionIsImpossible) {
             // If we get here we cannot fulfill the condition
@@ -646,7 +638,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
 
         } else {
           TRI_ASSERT(!conditionIsImpossible);
-          
+
           // remember the original filter conditions if we can remove them later
           if (indexedAccessDepth == -1) {
             originalFilterConditions->andCombine(cloned);
@@ -655,13 +647,14 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
             // is in [0..maxDepth], if the depth is not a concrete value
             // then indexedAccessDepth would be INT64_MAX
             originalFilterConditions->andCombine(cloned);
-            
-            if ((int64_t)options->minDepth < indexedAccessDepth && !isTrueOnNull(cloned, pathVar)) {
+
+            if ((int64_t)options->minDepth < indexedAccessDepth &&
+                !isTrueOnNull(cloned, pathVar)) {
               // do not return paths shorter than the deepest path access
               // Unless the condition evaluates to true on `null`.
               options->minDepth = indexedAccessDepth;
             }
-          } // otherwise do not remove the filter statement
+          }  // otherwise do not remove the filter statement
         }
       }
 
@@ -680,7 +673,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
         // Check if it only contains an empty n-ary-and within the n-ary-or
         auto node = _condition->root();
         TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_NARY_OR);
-        switch(node->numMembers()) {
+        switch (node->numMembers()) {
           case 0:
             isEmpty = true;
             break;
@@ -697,7 +690,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
       }
 
       if (!isEmpty) {
-        //node->setCondition(_condition.release());
+        // node->setCondition(_condition.release());
         originalFilterConditions->normalize();
         node->setCondition(originalFilterConditions.release());
         // We restart here with an empty condition.

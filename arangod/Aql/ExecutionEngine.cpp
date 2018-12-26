@@ -27,20 +27,20 @@
 #include "Aql/CalculationBlock.h"
 #include "Aql/ClusterBlocks.h"
 #include "Aql/CollectBlock.h"
-#include "Aql/Collection.h"
 #include "Aql/CollectNode.h"
 #include "Aql/CollectOptions.h"
+#include "Aql/Collection.h"
 #include "Aql/EnumerateCollectionBlock.h"
 #include "Aql/EnumerateListBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/IndexBlock.h"
 #include "Aql/ModificationBlocks.h"
 #include "Aql/Query.h"
+#include "Aql/ShortestPathBlock.h"
+#include "Aql/ShortestPathNode.h"
 #include "Aql/SortBlock.h"
 #include "Aql/SubqueryBlock.h"
 #include "Aql/TraversalBlock.h"
-#include "Aql/ShortestPathBlock.h"
-#include "Aql/ShortestPathNode.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
@@ -58,7 +58,7 @@ using namespace arangodb::aql;
 
 // @brief Local struct to create the
 // information required to build traverser engines
-// on DB servers. 
+// on DB servers.
 struct TraverserEngineShardLists {
   explicit TraverserEngineShardLists(size_t length) {
     // Make sure they all have a fixed size.
@@ -76,7 +76,7 @@ struct TraverserEngineShardLists {
 
   // Mapping for vertexCollections to shardIds.
   std::unordered_map<std::string, std::vector<ShardID>> vertexCollections;
-  
+
 #ifdef USE_ENTERPRISE
   std::set<ShardID> inaccessibleShards;
 #endif
@@ -86,10 +86,9 @@ struct TraverserEngineShardLists {
 typedef std::unordered_map<ServerID, TraverserEngineShardLists> Serv2ColMap;
 
 /// @brief helper function to create a block
-static ExecutionBlock* CreateBlock(
-    ExecutionEngine* engine, ExecutionNode const* en,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache,
-    std::unordered_set<std::string> const& includedShards) {
+static ExecutionBlock* CreateBlock(ExecutionEngine* engine, ExecutionNode const* en,
+                                   std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache,
+                                   std::unordered_set<std::string> const& includedShards) {
   switch (en->getType()) {
     case ExecutionNode::SINGLETON: {
       return new SingletonBlock(engine, static_cast<SingletonNode const*>(en));
@@ -98,12 +97,11 @@ static ExecutionBlock* CreateBlock(
       return new IndexBlock(engine, static_cast<IndexNode const*>(en));
     }
     case ExecutionNode::ENUMERATE_COLLECTION: {
-      return new EnumerateCollectionBlock(
-          engine, static_cast<EnumerateCollectionNode const*>(en));
+      return new EnumerateCollectionBlock(engine,
+                                          static_cast<EnumerateCollectionNode const*>(en));
     }
     case ExecutionNode::ENUMERATE_LIST: {
-      return new EnumerateListBlock(engine,
-                                    static_cast<EnumerateListNode const*>(en));
+      return new EnumerateListBlock(engine, static_cast<EnumerateListNode const*>(en));
     }
     case ExecutionNode::TRAVERSAL: {
       return new TraversalBlock(engine, static_cast<TraversalNode const*>(en));
@@ -112,8 +110,7 @@ static ExecutionBlock* CreateBlock(
       return new ShortestPathBlock(engine, static_cast<ShortestPathNode const*>(en));
     }
     case ExecutionNode::CALCULATION: {
-      return new CalculationBlock(engine,
-                                  static_cast<CalculationNode const*>(en));
+      return new CalculationBlock(engine, static_cast<CalculationNode const*>(en));
     }
     case ExecutionNode::FILTER: {
       return new FilterBlock(engine, static_cast<FilterNode const*>(en));
@@ -125,17 +122,12 @@ static ExecutionBlock* CreateBlock(
       return new SortBlock(engine, static_cast<SortNode const*>(en));
     }
     case ExecutionNode::COLLECT: {
-      auto aggregationMethod =
-          static_cast<CollectNode const*>(en)->aggregationMethod();
+      auto aggregationMethod = static_cast<CollectNode const*>(en)->aggregationMethod();
 
-      if (aggregationMethod ==
-          CollectOptions::CollectMethod::COLLECT_METHOD_HASH) {
-        return new HashedCollectBlock(engine,
-                                      static_cast<CollectNode const*>(en));
-      } else if (aggregationMethod ==
-                 CollectOptions::CollectMethod::COLLECT_METHOD_SORTED) {
-        return new SortedCollectBlock(engine,
-                                      static_cast<CollectNode const*>(en));
+      if (aggregationMethod == CollectOptions::CollectMethod::COLLECT_METHOD_HASH) {
+        return new HashedCollectBlock(engine, static_cast<CollectNode const*>(en));
+      } else if (aggregationMethod == CollectOptions::CollectMethod::COLLECT_METHOD_SORTED) {
+        return new SortedCollectBlock(engine, static_cast<CollectNode const*>(en));
       }
 
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -148,8 +140,7 @@ static ExecutionBlock* CreateBlock(
 
       TRI_ASSERT(it != cache.end());
 
-      return new SubqueryBlock(engine, static_cast<SubqueryNode const*>(en),
-                               it->second);
+      return new SubqueryBlock(engine, static_cast<SubqueryNode const*>(en), it->second);
     }
     case ExecutionNode::RETURN: {
       return new ReturnBlock(engine, static_cast<ReturnNode const*>(en));
@@ -175,15 +166,13 @@ static ExecutionBlock* CreateBlock(
     case ExecutionNode::SCATTER: {
       auto shardIds =
           static_cast<ScatterNode const*>(en)->collection()->shardIds(includedShards);
-      return new ScatterBlock(engine, static_cast<ScatterNode const*>(en),
-                              *shardIds);
+      return new ScatterBlock(engine, static_cast<ScatterNode const*>(en), *shardIds);
     }
     case ExecutionNode::DISTRIBUTE: {
       auto shardIds =
           static_cast<DistributeNode const*>(en)->collection()->shardIds(includedShards);
-      return new DistributeBlock(
-          engine, static_cast<DistributeNode const*>(en), *shardIds,
-          static_cast<DistributeNode const*>(en)->collection());
+      return new DistributeBlock(engine, static_cast<DistributeNode const*>(en), *shardIds,
+                                 static_cast<DistributeNode const*>(en)->collection());
     }
     case ExecutionNode::GATHER: {
       return new GatherBlock(engine, static_cast<GatherNode const*>(en));
@@ -194,7 +183,7 @@ static ExecutionBlock* CreateBlock(
                              remote->ownName(), remote->queryId());
     }
   }
-        
+
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "illegal node type");
 }
 
@@ -238,25 +227,26 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
   virtual void after(ExecutionNode* en) override final {
     ExecutionBlock* block = nullptr;
     {
-      if (en->getType() == ExecutionNode::TRAVERSAL || en->getType() == ExecutionNode::SHORTEST_PATH) {
+      if (en->getType() == ExecutionNode::TRAVERSAL ||
+          en->getType() == ExecutionNode::SHORTEST_PATH) {
         // We have to prepare the options before we build the block
         static_cast<GraphNode*>(en)->prepareOptions();
       }
 
-      std::unique_ptr<ExecutionBlock> eb(CreateBlock(engine, en, cache, std::unordered_set<std::string>()));
+      std::unique_ptr<ExecutionBlock> eb(
+          CreateBlock(engine, en, cache, std::unordered_set<std::string>()));
 
       // do we need to adjust the root node?
       auto const nodeType = en->getType();
 
       if (nodeType == ExecutionNode::DISTRIBUTE ||
-          nodeType == ExecutionNode::SCATTER ||
-          nodeType == ExecutionNode::GATHER) {
+          nodeType == ExecutionNode::SCATTER || nodeType == ExecutionNode::GATHER) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_INTERNAL, "logic error, got cluster node in local query");
       }
 
       engine->addBlock(eb.get());
-      
+
       if (!en->hasParent()) {
         // yes. found a new root!
         root = eb.get();
@@ -368,8 +358,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   enum EngineLocation { COORDINATOR, DBSERVER };
 
   struct EngineInfo {
-    EngineInfo(EngineLocation location, size_t id, arangodb::aql::QueryPart p,
-               size_t idOfRemoteNode)
+    EngineInfo(EngineLocation location, size_t id, arangodb::aql::QueryPart p, size_t idOfRemoteNode)
         : location(location),
           id(id),
           nodes(),
@@ -396,8 +385,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
               static_cast<EnumerateCollectionNode*>((*en))->collection());
           collectionFn(localCollection);
         } else if ((*en)->getType() == ExecutionNode::INDEX) {
-          localCollection = const_cast<Collection*>(
-              static_cast<IndexNode*>((*en))->collection());
+          localCollection =
+              const_cast<Collection*>(static_cast<IndexNode*>((*en))->collection());
           collectionFn(localCollection);
         } else if ((*en)->getType() == ExecutionNode::INSERT ||
                    (*en)->getType() == ExecutionNode::UPDATE ||
@@ -447,11 +436,10 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     bool populated;
     // in the original plan that needs this engine
   };
-    
+
   void includedShards(std::unordered_set<std::string> const& allowed) {
     _includedShards = allowed;
   }
-
 
   Query* query;
   QueryRegistry* queryRegistry;
@@ -526,8 +514,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
       if (current->getType() == ExecutionNode::REMOTE) {
         // update the remote node with the information about the query
-        static_cast<RemoteNode*>(clone)
-            ->server("server:" + arangodb::ServerState::instance()->getId());
+        static_cast<RemoteNode*>(clone)->server(
+            "server:" + arangodb::ServerState::instance()->getId());
         static_cast<RemoteNode*>(clone)->ownName(shardId);
         static_cast<RemoteNode*>(clone)->queryId(connectedId);
         // only one of the remote blocks is responsible for forwarding the
@@ -550,9 +538,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
   /// @brief distributePlanToShard, send a single plan to one shard
   void distributePlanToShard(arangodb::CoordTransactionID& coordTransactionID,
-                             EngineInfo* info,
-                             QueryId& connectedId, std::string const& shardId,
-                             VPackSlice const& planSlice) {
+                             EngineInfo* info, QueryId& connectedId,
+                             std::string const& shardId, VPackSlice const& planSlice) {
     Collection* collection = info->getCollection();
     TRI_ASSERT(collection != nullptr);
 
@@ -580,14 +567,14 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       }
       // add the collection
       result.openObject();
-      result.add("name", VPackValue(auxiliaryCollection->getName())); // returns the *current* shard 
+      result.add("name", VPackValue(auxiliaryCollection->getName()));  // returns the *current* shard
       result.add("type", VPackValue(AccessMode::typeString(auxiliaryCollection->accessType)));
       result.close();
     }
-    result.close(); // collections
+    result.close();  // collections
 
     result.add(VPackObjectIterator(planSlice));
-    result.close(); // plan
+    result.close();  // plan
 
     if (info->part == arangodb::aql::PART_MAIN) {
       result.add("part", VPackValue("main"));
@@ -612,35 +599,34 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     // the toVelocyPack will open & close the "options" object
     query->queryOptions().toVelocyPack(result, true);
 #endif
-    
+
     result.close();
 
     TRI_ASSERT(result.isClosed());
 
     auto body = std::make_shared<std::string const>(result.slice().toJson());
 
-    //LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "GENERATED A PLAN FOR THE REMOTE SERVERS: " << *(body.get());
+    // LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "GENERATED A PLAN FOR THE REMOTE SERVERS: " << *(body.get());
     // << "\n";
 
     auto cc = arangodb::ClusterComm::instance();
     if (cc != nullptr) {
       // nullptr only happens on controlled shutdown
 
-      std::string const url("/_db/"
-                            + arangodb::basics::StringUtils::urlEncode(collection->vocbase->name()) +
-                            "/_api/aql/instantiate");
+      std::string const url(
+          "/_db/" + arangodb::basics::StringUtils::urlEncode(collection->vocbase->name()) +
+          "/_api/aql/instantiate");
 
       auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
       (*headers)["X-Arango-Nolock"] = shardId;  // Prevent locking
       cc->asyncRequest("", coordTransactionID, "shard:" + shardId,
-                       arangodb::rest::RequestType::POST,
-                       url, body, headers, nullptr, 90.0);
+                       arangodb::rest::RequestType::POST, url, body, headers,
+                       nullptr, 90.0);
     }
   }
 
   /// @brief aggregateQueryIds, get answers for all shards in a Scatter/Gather
-  void aggregateQueryIds(EngineInfo* info,
-                         std::shared_ptr<arangodb::ClusterComm>& cc,
+  void aggregateQueryIds(EngineInfo* info, std::shared_ptr<arangodb::ClusterComm>& cc,
                          arangodb::CoordTransactionID& coordTransactionID,
                          Collection* collection) {
     // pick up the remote query ids
@@ -670,8 +656,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           // res.answer->body() << ", REMOTENODEID: " << info.idOfRemoteNode <<
           // " SHARDID:"  << res.shardID << ", QUERYID: " << queryId << "\n";
           std::string theID =
-              arangodb::basics::StringUtils::itoa(info->idOfRemoteNode) + ":" +
-              res.shardID;
+              arangodb::basics::StringUtils::itoa(info->idOfRemoteNode) + ":" + res.shardID;
 
           if (info->part == arangodb::aql::PART_MAIN) {
             queryId += "*";
@@ -689,13 +674,13 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         }
       }
     }
-     
-    size_t numShards = shardIds->size();   
-    //LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "GOT ALL RESPONSES FROM DB SERVERS: " << nrok << "\n";
+
+    size_t numShards = shardIds->size();
+    // LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "GOT ALL RESPONSES FROM DB SERVERS: " << nrok << "\n";
 
     if (nrok != static_cast<int>(numShards)) {
       if (errorCode == TRI_ERROR_NO_ERROR) {
-        errorCode = TRI_ERROR_INTERNAL; // must have an error
+        errorCode = TRI_ERROR_INTERNAL;  // must have an error
       }
       THROW_ARANGO_EXCEPTION_MESSAGE(errorCode, error);
     }
@@ -703,7 +688,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
   /// @brief distributePlansToShards, for a single Scatter/Gather block
   void distributePlansToShards(EngineInfo* info, QueryId connectedId) {
-    //LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "distributePlansToShards: " << info.id;
+    // LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "distributePlansToShards: " << info.id;
     Collection* collection = info->getCollection();
     TRI_ASSERT(collection != nullptr);
 
@@ -712,7 +697,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     auto cc = arangodb::ClusterComm::instance();
     if (cc != nullptr) {
       // nullptr only happens on controlled shutdown
-      
+
       auto auxiliaryCollections = info->getAuxiliaryCollections();
       // iterate over all shards of the collection
       size_t nr = 0;
@@ -720,7 +705,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       for (auto const& shardId : *shardIds) {
         // inject the current shard id into the collection
         collection->setCurrentShard(shardId);
-      
+
         // inject the current shard id for auxiliary collections
         std::string auxShardId;
         for (auto const& auxiliaryCollection : auxiliaryCollections) {
@@ -738,15 +723,13 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         generatePlanForOneShard(b, nr, info, connectedId, shardId, true);
 
         ++nr;
-        distributePlanToShard(coordTransactionID, info,
-                              connectedId, shardId,
-                              b.slice());
+        distributePlanToShard(coordTransactionID, info, connectedId, shardId, b.slice());
       }
 
       collection->resetCurrentShard();
-      
+
       // reset shard for auxiliary collections too
-      for (auto const& auxiliaryCollection: auxiliaryCollections) {
+      for (auto const& auxiliaryCollection : auxiliaryCollections) {
         auxiliaryCollection->resetCurrentShard();
       }
 
@@ -814,8 +797,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           auto shardIds = collection->shardIds(_includedShards);
           for (auto const& shardId : *shardIds) {
             std::string theId =
-                arangodb::basics::StringUtils::itoa(remoteNode->id()) + ":" +
-                shardId;
+                arangodb::basics::StringUtils::itoa(remoteNode->id()) + ":" + shardId;
 
             auto it = queryIds.find(theId);
             if (it == queryIds.end()) {
@@ -829,20 +811,21 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
             auto serverList = clusterInfo->getResponsibleServer(shardId);
             if (serverList->empty()) {
-              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
-                                            "Could not find responsible server for shard " + shardId);
+              THROW_ARANGO_EXCEPTION_MESSAGE(
+                  TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
+                  "Could not find responsible server for shard " + shardId);
             }
 
-            // use "server:" instead of "shard:" to send query fragments to 
+            // use "server:" instead of "shard:" to send query fragments to
             // the correct servers, even after failover or when a follower drops
-            // the problem with using the previous shard-based approach was that 
+            // the problem with using the previous shard-based approach was that
             // responsibilities for shards may change at runtime.
-            // however, an AQL query must send all requests for the query to the 
+            // however, an AQL query must send all requests for the query to the
             // initially used servers.
-            // if there is a failover while the query is executing, we must still 
-            // send all following requests to the same servers, and not the newly 
+            // if there is a failover while the query is executing, we must still
+            // send all following requests to the same servers, and not the newly
             // responsible servers.
-            // otherwise we potentially would try to get data from a query from 
+            // otherwise we potentially would try to get data from a query from
             // server B while the query was only instanciated on server A.
             TRI_ASSERT(!serverList->empty());
             auto& leader = (*serverList)[0];
@@ -894,7 +877,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     opts->buildEngineInfo(optsBuilder);
     // All info in opts is identical for each traverser engine.
     // Only the shards are different.
-    std::vector<std::unique_ptr<arangodb::aql::Collection>> const& edges = en->edgeColls();
+    std::vector<std::unique_ptr<arangodb::aql::Collection>> const& edges =
+        en->edgeColls();
 
     // Here we create a mapping
     // ServerID => ResponsibleShards
@@ -904,17 +888,18 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     auto clusterInfo = arangodb::ClusterInfo::instance();
     Serv2ColMap mappingServerToCollections;
     size_t length = edges.size();
-    
+
 #ifdef USE_ENTERPRISE
     transaction::Methods* trx = query->trx();
     transaction::Options& trxOps = query->trx()->state()->options();
 #endif
-    
-    auto findServerLists = [&] (ShardID const& shard) -> Serv2ColMap::iterator {
+
+    auto findServerLists = [&](ShardID const& shard) -> Serv2ColMap::iterator {
       auto serverList = clusterInfo->getResponsibleServer(shard);
       if (serverList->empty()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
-                                       "Could not find responsible server for shard " + shard);
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
+            "Could not find responsible server for shard " + shard);
       }
       TRI_ASSERT(!serverList->empty());
       auto& leader = (*serverList)[0];
@@ -933,7 +918,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         pair->second.edgeCollections[i].emplace_back(shard);
       }
     }
-    
+
     std::vector<std::unique_ptr<arangodb::aql::Collection>> const& vertices =
         en->vertexColls();
     if (vertices.empty()) {
@@ -957,14 +942,15 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
               TRI_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());
               TRI_ASSERT(trxOps.skipInaccessibleCollections);
               pair->second.inaccessibleShards.insert(shard);
-              pair->second.inaccessibleShards.insert(collection.second->getCollection()->cid_as_string());
+              pair->second.inaccessibleShards.insert(
+                  collection.second->getCollection()->cid_as_string());
             }
 #endif
           }
         }
       }
-      // We have to make sure that all engines at least know all vertex collections.
-      // Thanks to fanout...
+      // We have to make sure that all engines at least know all vertex
+      // collections. Thanks to fanout...
       for (auto const& collection : (*cs)) {
         for (auto& entry : mappingServerToCollections) {
           auto it = entry.second.vertexCollections.find(collection.second->getName());
@@ -990,14 +976,13 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 #endif
         }
       }
-      // We have to make sure that all engines at least know all vertex collections.
-      // Thanks to fanout...
+      // We have to make sure that all engines at least know all vertex
+      // collections. Thanks to fanout...
       for (auto const& it : vertices) {
         for (auto& entry : mappingServerToCollections) {
           auto vIt = entry.second.vertexCollections.find(it->getName());
           if (vIt == entry.second.vertexCollections.end()) {
-            entry.second.vertexCollections.emplace(it->getName(),
-                                                   std::vector<ShardID>());
+            entry.second.vertexCollections.emplace(it->getName(), std::vector<ShardID>());
           }
         }
       }
@@ -1028,9 +1013,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     //   }
     // }
 
-    std::string const url("/_db/" + arangodb::basics::StringUtils::urlEncode(
-                                        query->vocbase()->name()) +
-                          "/_internal/traverser");
+    std::string const url(
+        "/_db/" + arangodb::basics::StringUtils::urlEncode(query->vocbase()->name()) +
+        "/_internal/traverser");
     auto cc = arangodb::ClusterComm::instance();
     if (cc == nullptr) {
       // nullptr only happens on controlled shutdown
@@ -1072,9 +1057,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           shardSet.emplace(v);
           engineInfo.add(VPackValue(v));
         }
-        engineInfo.close(); // this collection
+        engineInfo.close();  // this collection
       }
-      engineInfo.close(); // vertices
+      engineInfo.close();  // vertices
 
       engineInfo.add(VPackValue("edges"));
       engineInfo.openArray();
@@ -1086,8 +1071,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         }
         engineInfo.close();
       }
-      engineInfo.close(); // edges
-      
+      engineInfo.close();  // edges
+
 #ifdef USE_ENTERPRISE
       if (!list.second.inaccessibleShards.empty()) {
         engineInfo.add(VPackValue("inaccessible"));
@@ -1095,15 +1080,15 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         for (ShardID const& shard : list.second.inaccessibleShards) {
           engineInfo.add(VPackValue(shard));
         }
-        engineInfo.close(); // inaccessible
+        engineInfo.close();  // inaccessible
       }
 #endif
 
-      engineInfo.close(); // shards
+      engineInfo.close();  // shards
 
       en->enhanceEngineInfo(engineInfo);
 
-      engineInfo.close(); // base
+      engineInfo.close();  // base
 
       if (!shardSet.empty()) {
         arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();
@@ -1117,17 +1102,16 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           shardList += shard;
         }
         headers["X-Arango-Nolock"] = shardList;  // Prevent locking
-        auto res = cc->syncRequest("", coordTransactionID, "server:" + list.first,
-                                   RequestType::POST, url, engineInfo.toJson(),
-                                   headers, 90.0);
+        auto res = cc->syncRequest("", coordTransactionID,
+                                   "server:" + list.first, RequestType::POST,
+                                   url, engineInfo.toJson(), headers, 90.0);
         if (res->status != CL_COMM_SENT) {
           // Note If there was an error on server side we do not have CL_COMM_SENT
           std::string message("could not start all traversal engines");
           if (res->errorMessage.length() > 0) {
             message += std::string(" : ") + res->errorMessage;
           }
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE, message);
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE, message);
         } else {
           // Only if the result was successful we will get here
           arangodb::basics::StringBuffer& body = res->result->getBody();
@@ -1137,7 +1121,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           VPackSlice resultSlice = builder->slice();
           if (!resultSlice.isNumber()) {
             THROW_ARANGO_EXCEPTION_MESSAGE(
-                TRI_ERROR_INTERNAL, "got unexpected response from engine build request: '" + resultSlice.toJson() + "'");
+                TRI_ERROR_INTERNAL,
+                "got unexpected response from engine build request: '" +
+                    resultSlice.toJson() + "'");
           }
           auto engineId = resultSlice.getNumericValue<traverser::TraverserEngineID>();
           TRI_ASSERT(engineId != 0);
@@ -1155,7 +1141,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
     for (auto it = engines.rbegin(); it != engines.rend(); ++it) {
       EngineInfo* info = &(*it);
-      //LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Doing engine: " << it->id << " location:"
+      // LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Doing engine: " << it->id << " location:"
       //          << it->location;
       if (info->location == COORDINATOR) {
         // create a coordinator-based engine
@@ -1176,13 +1162,11 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           }
           try {
             std::string queryId = arangodb::basics::StringUtils::itoa(id);
-            std::string theID =
-                arangodb::basics::StringUtils::itoa(it->idOfRemoteNode) + "/" +
-                engine->getQuery()->vocbase()->name();
+            std::string theID = arangodb::basics::StringUtils::itoa(it->idOfRemoteNode) +
+                                "/" + engine->getQuery()->vocbase()->name();
             queryIds.emplace(theID, queryId);
           } catch (...) {
-            queryRegistry->destroy(engine->getQuery()->vocbase(), id,
-                                   TRI_ERROR_INTERNAL);
+            queryRegistry->destroy(engine->getQuery()->vocbase(), id, TRI_ERROR_INTERNAL);
             // This deletes query, engine and entry in QueryRegistry
             throw;
           }
@@ -1212,15 +1196,13 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
       // begin a new engine
       // flip current location
-      currentLocation =
-          (currentLocation == COORDINATOR ? DBSERVER : COORDINATOR);
+      currentLocation = (currentLocation == COORDINATOR ? DBSERVER : COORDINATOR);
       currentEngineId = engines.size();
       QueryPart part = PART_DEPENDENT;
       if (currentLocation == DBSERVER) {
         auto rn = static_cast<RemoteNode*>(en);
         Collection const* coll = rn->collection();
-        if (collNamesSeenOnDBServer.find(coll->name) ==
-            collNamesSeenOnDBServer.end()) {
+        if (collNamesSeenOnDBServer.find(coll->name) == collNamesSeenOnDBServer.end()) {
           part = PART_MAIN;
           collNamesSeenOnDBServer.insert(coll->name);
         }
@@ -1250,7 +1232,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     engines[currentEngineId].nodes.emplace_back(en);
   }
 };
-  
+
 /// @brief shutdown, will be called exactly once for the whole query
 int ExecutionEngine::shutdown(int errorCode) {
   int res = TRI_ERROR_NO_ERROR;
@@ -1267,7 +1249,7 @@ int ExecutionEngine::shutdown(int errorCode) {
     }
 
     res = _root->shutdown(errorCode);
- 
+
     // prevent a duplicate shutdown
     _wasShutdown = true;
   }
@@ -1276,14 +1258,13 @@ int ExecutionEngine::shutdown(int errorCode) {
 }
 
 /// @brief create an execution engine from a plan
-ExecutionEngine* ExecutionEngine::instantiateFromPlan(
-    QueryRegistry* queryRegistry, Query* query, ExecutionPlan* plan,
-    bool planRegisters) {
+ExecutionEngine* ExecutionEngine::instantiateFromPlan(QueryRegistry* queryRegistry,
+                                                      Query* query, ExecutionPlan* plan,
+                                                      bool planRegisters) {
   auto role = arangodb::ServerState::instance()->getRole();
-  bool const isCoordinator =
-      arangodb::ServerState::instance()->isCoordinator(role);
+  bool const isCoordinator = arangodb::ServerState::instance()->isCoordinator(role);
   bool const isDBServer = arangodb::ServerState::instance()->isDBServer(role);
-    
+
   TRI_ASSERT(queryRegistry != nullptr);
 
   ExecutionEngine* engine = nullptr;
@@ -1300,8 +1281,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
 
     if (isCoordinator) {
       // instantiate the engine on the coordinator
-      auto inst =
-          std::make_unique<CoordinatorInstanciator>(query, queryRegistry);
+      auto inst = std::make_unique<CoordinatorInstanciator>(query, queryRegistry);
       // optionally restrict query to certain shards
       inst->includedShards(query->queryOptions().shardIds);
 
@@ -1312,8 +1292,8 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
         root = engine->root();
         // Now find all shards that take part:
         if (CollectionLockState::_noLockHeaders != nullptr) {
-          engine->_lockedShards = new std::unordered_set<std::string>(
-              *CollectionLockState::_noLockHeaders);
+          engine->_lockedShards =
+              new std::unordered_set<std::string>(*CollectionLockState::_noLockHeaders);
           engine->_previouslyLockedShards = CollectionLockState::_noLockHeaders;
         } else {
           engine->_lockedShards = new std::unordered_set<std::string>();
@@ -1346,8 +1326,8 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
           std::string traverserId = arangodb::basics::StringUtils::itoa(te.first);
           for (auto const& shardId : te.second) {
             if (forLocking.find(shardId) == forLocking.end()) {
-              // No other node stated that it is responsible for locking this shard.
-              // So the traverser engine has to step in.
+              // No other node stated that it is responsible for locking this
+              // shard. So the traverser engine has to step in.
               forLocking.emplace(shardId, std::make_pair(traverserId, true));
             }
           }
@@ -1385,7 +1365,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
           auto cc = arangodb::ClusterComm::instance();
           if (cc == nullptr) {
             // nullptr only happens on controlled shutdown
-            THROW_ARANGO_EXCEPTION( TRI_ERROR_SHUTTING_DOWN);
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
           }
 
           TRI_vocbase_t* vocbase = query->vocbase();
@@ -1393,15 +1373,13 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
           std::unordered_map<std::string, std::string> headers;
           if (isTraverserEngine) {
             std::string const url(
-                "/_db/" +
-                arangodb::basics::StringUtils::urlEncode(vocbase->name()) +
+                "/_db/" + arangodb::basics::StringUtils::urlEncode(vocbase->name()) +
                 "/_internal/traverser/lock/" + queryId + "/" + shardId);
             res = cc->syncRequest("", coordTransactionID, "shard:" + shardId,
                                   RequestType::PUT, url, "", headers, 90.0);
           } else {
             std::string const url(
-                "/_db/" +
-                arangodb::basics::StringUtils::urlEncode(vocbase->name()) +
+                "/_db/" + arangodb::basics::StringUtils::urlEncode(vocbase->name()) +
                 "/_api/aql/lock/" + queryId);
             res = cc->syncRequest("", coordTransactionID, "shard:" + shardId,
                                   RequestType::PUT, url, "{}", headers, 90.0);
@@ -1411,8 +1389,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
             if (res->errorMessage.length() > 0) {
               message += std::string(" : ") + res->errorMessage;
             }
-            THROW_ARANGO_EXCEPTION_MESSAGE(
-                TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED, message);
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED, message);
           }
         }
         CollectionLockState::_noLockHeaders = engine->_lockedShards;
@@ -1432,20 +1409,17 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
               // So this is a remote one on a DBserver:
               std::string shardId = theId.substr(pos + 1);
               // Remove query from DBserver:
-              arangodb::CoordTransactionID coordTransactionID =
-                  TRI_NewTickServer();
+              arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();
               if (queryId.back() == '*') {
                 queryId.pop_back();
               }
               std::string const url(
-                  "/_db/" +
-                  arangodb::basics::StringUtils::urlEncode(vocbase->name()) +
+                  "/_db/" + arangodb::basics::StringUtils::urlEncode(vocbase->name()) +
                   "/_api/aql/shutdown/" + queryId);
               std::unordered_map<std::string, std::string> headers;
-              auto res =
-                  cc->syncRequest("", coordTransactionID, "shard:" + shardId,
-                                  arangodb::rest::RequestType::PUT,
-                                  url, "{\"code\": 0}", headers, 120.0);
+              auto res = cc->syncRequest("", coordTransactionID, "shard:" + shardId,
+                                         arangodb::rest::RequestType::PUT, url,
+                                         "{\"code\": 0}", headers, 120.0);
               // Ignore result, we need to try to remove all.
               // However, log the incident if we have an errorMessage.
               if (!res->errorMessage.empty()) {
@@ -1456,9 +1430,8 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
             } else {
               // Remove query from registry:
               try {
-                queryRegistry->destroy(
-                    vocbase, arangodb::basics::StringUtils::uint64(queryId),
-                    TRI_ERROR_INTERNAL);
+                queryRegistry->destroy(vocbase, arangodb::basics::StringUtils::uint64(queryId),
+                                       TRI_ERROR_INTERNAL);
               } catch (...) {
                 // Ignore problems
               }
@@ -1466,21 +1439,19 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
           }
           // Also we need to destroy all traverser engines that have been pushed to DBServers
           {
-
             std::string const url(
-                "/_db/" +
-                arangodb::basics::StringUtils::urlEncode(vocbase->name()) +
+                "/_db/" + arangodb::basics::StringUtils::urlEncode(vocbase->name()) +
                 "/_internal/traverser/");
             for (auto& te : inst.get()->traverserEngines) {
               std::string traverserId = arangodb::basics::StringUtils::itoa(te.first);
-              arangodb::CoordTransactionID coordTransactionID =
-                  TRI_NewTickServer();
+              arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();
               std::unordered_map<std::string, std::string> headers;
               // NOTE: te.second is the list of shards. So we just send delete
               // to the first of those shards
-              auto res = cc->syncRequest(
-                  "", coordTransactionID, "shard:" + *(te.second.begin()),
-                  RequestType::DELETE_REQ, url + traverserId, "", headers, 90.0);
+              auto res = cc->syncRequest("", coordTransactionID,
+                                         "shard:" + *(te.second.begin()),
+                                         RequestType::DELETE_REQ,
+                                         url + traverserId, "", headers, 90.0);
 
               // Ignore result, we need to try to remove all.
               // However, log the incident if we have an errorMessage.
@@ -1506,15 +1477,13 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
     TRI_ASSERT(root != nullptr);
 
     // inspect the root block of the query
-    if (!isDBServer &&
-        root->getPlanNode()->getType() == ExecutionNode::RETURN) {
+    if (!isDBServer && root->getPlanNode()->getType() == ExecutionNode::RETURN) {
       // it's a return node. now tell it to not copy its results from above,
       // but directly return it. we also need to note the RegisterId the
       // caller needs to look into when fetching the results
 
       // in short: this avoids copying the return values
-      engine->resultRegister(
-          static_cast<ReturnBlock*>(root)->returnInheritedResults());
+      engine->resultRegister(static_cast<ReturnBlock*>(root)->returnInheritedResults());
     }
 
     engine->_root = root;

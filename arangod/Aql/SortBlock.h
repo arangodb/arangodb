@@ -24,15 +24,14 @@
 #ifndef ARANGOD_AQL_SORT_BLOCK_H
 #define ARANGOD_AQL_SORT_BLOCK_H 1
 
-#include "Basics/Common.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/SortNode.h"
+#include "Basics/Common.h"
 
 namespace arangodb {
 namespace transaction {
 class Methods;
-}
-;
+};
 
 namespace aql {
 
@@ -48,7 +47,8 @@ class SortBlock final : public ExecutionBlock {
 
   int initializeCursor(AqlItemBlock* items, size_t pos) override final;
 
-  int getOrSkipSome(size_t atLeast, size_t atMost, bool skipping, AqlItemBlock*&, size_t& skipped) override final;
+  int getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
+                    AqlItemBlock*&, size_t& skipped) override final;
 
   /// @brief dosorting
  private:
@@ -57,12 +57,9 @@ class SortBlock final : public ExecutionBlock {
   /// @brief OurLessThan
   class OurLessThan {
    public:
-    OurLessThan(transaction::Methods* trx,
-                std::deque<AqlItemBlock*>& buffer,
+    OurLessThan(transaction::Methods* trx, std::deque<AqlItemBlock*>& buffer,
                 std::vector<std::pair<RegisterId, bool>>& sortRegisters)
-        : _trx(trx),
-          _buffer(buffer),
-          _sortRegisters(sortRegisters) {}
+        : _trx(trx), _buffer(buffer), _sortRegisters(sortRegisters) {}
 
     bool operator()(std::pair<size_t, size_t> const& a,
                     std::pair<size_t, size_t> const& b) const;
@@ -83,7 +80,7 @@ class SortBlock final : public ExecutionBlock {
   bool _mustFetchAll;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

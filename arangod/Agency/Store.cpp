@@ -55,9 +55,7 @@ struct Empty {
 };
 
 /// @brief Split strings by separator
-inline static std::vector<std::string> split(const std::string& str,
-                                             char separator) {
-
+inline static std::vector<std::string> split(const std::string& str, char separator) {
   std::vector<std::string> result;
   if (str.empty()) {
     return result;
@@ -65,9 +63,13 @@ inline static std::vector<std::string> split(const std::string& str,
   std::regex reg("/+");
   std::string key = std::regex_replace(str, reg, "/");
 
-  if (!key.empty() && key.front() == '/') { key.erase(0,1); }
-  if (!key.empty() && key.back()  == '/') { key.pop_back(); }
-  
+  if (!key.empty() && key.front() == '/') {
+    key.erase(0, 1);
+  }
+  if (!key.empty() && key.back() == '/') {
+    key.pop_back();
+  }
+
   std::string::size_type p = 0;
   std::string::size_type q;
   while ((q = key.find(separator, p)) != std::string::npos) {
@@ -82,8 +84,7 @@ inline static std::vector<std::string> split(const std::string& str,
 
 /// Build endpoint from URL
 inline static bool endpointPathFromUrl(std::string const& url,
-                                       std::string& endpoint,
-                                       std::string& path) {
+                                       std::string& endpoint, std::string& path) {
   std::stringstream ep;
   path = "/";
   size_t pos = 7;
@@ -115,12 +116,12 @@ inline static bool endpointPathFromUrl(std::string const& url,
 
 /// Ctor with name
 Store::Store(Agent* agent, std::string const& name)
-  : _agent(agent), _node(name, this) {}
+    : _agent(agent), _node(name, this) {}
 
 /// Copy assignment operator
 Store& Store::operator=(Store const& rhs) {
   if (&rhs != this) {
-    MUTEX_LOCKER(otherLock, rhs._storeLock); 
+    MUTEX_LOCKER(otherLock, rhs._storeLock);
     _agent = rhs._agent;
     _timeTable = rhs._timeTable;
     _observerTable = rhs._observerTable;
@@ -133,7 +134,7 @@ Store& Store::operator=(Store const& rhs) {
 /// Move assignment operator
 Store& Store::operator=(Store&& rhs) {
   if (&rhs != this) {
-    MUTEX_LOCKER(otherLock, rhs._storeLock); 
+    MUTEX_LOCKER(otherLock, rhs._storeLock);
     _agent = std::move(rhs._agent);
     _timeTable = std::move(rhs._timeTable);
     _observerTable = std::move(rhs._observerTable);
@@ -156,24 +157,24 @@ std::vector<bool> Store::applyTransactions(query_t const& query) {
       for (auto const& i : VPackArrayIterator(query->slice())) {
         MUTEX_LOCKER(storeLocker, _storeLock);
         switch (i.length()) {
-        case 1:  // No precondition
-          success.push_back(applies(i[0]));
-          break;
-        case 2: // precondition + uuid
-        case 3:
-          if (check(i[1]).successful()) {
+          case 1:  // No precondition
             success.push_back(applies(i[0]));
-          } else {  // precondition failed
-            LOG_TOPIC(TRACE, Logger::AGENCY) << "Precondition failed!";
+            break;
+          case 2:  // precondition + uuid
+          case 3:
+            if (check(i[1]).successful()) {
+              success.push_back(applies(i[0]));
+            } else {  // precondition failed
+              LOG_TOPIC(TRACE, Logger::AGENCY) << "Precondition failed!";
+              success.push_back(false);
+            }
+            break;
+          default:  // Wrong
+            LOG_TOPIC(ERR, Logger::AGENCY)
+                << "We can only handle log entry with or without precondition! "
+                << " However, We received " << i.toJson();
             success.push_back(false);
-          }
-          break;
-        default:  // Wrong
-          LOG_TOPIC(ERR, Logger::AGENCY)
-            << "We can only handle log entry with or without precondition! "
-            << " However, We received " << i.toJson();
-          success.push_back(false);
-          break;
+            break;
         }
       }
 
@@ -184,8 +185,7 @@ std::vector<bool> Store::applyTransactions(query_t const& query) {
       }
 
     } catch (std::exception const& e) {  // Catch any erorrs
-      LOG_TOPIC(ERR, Logger::AGENCY) << __FILE__ << ":" << __LINE__ << " "
-                                     << e.what();
+      LOG_TOPIC(ERR, Logger::AGENCY) << __FILE__ << ":" << __LINE__ << " " << e.what();
     }
 
   } else {
@@ -195,48 +195,43 @@ std::vector<bool> Store::applyTransactions(query_t const& query) {
   return success;
 }
 
-
 /// Apply single transaction
 check_ret_t Store::applyTransaction(Slice const& query) {
-
   check_ret_t ret(true);
 
   try {
     MUTEX_LOCKER(storeLocker, _storeLock);
     switch (query.length()) {
-    case 1:  // No precondition
-      applies(query[0]);
-      break;
-    case 2:  // precondition
-    case 3:  // precondition + clientId
-      ret = check(query[1], CheckMode::FULL);
-      if (ret.successful()) {
+      case 1:  // No precondition
         applies(query[0]);
-      } else {  // precondition failed
-        LOG_TOPIC(TRACE, Logger::AGENCY) << "Precondition failed!";
-      }
-      break;
-    default:  // Wrong
-      LOG_TOPIC(ERR, Logger::AGENCY)
-        << "We can only handle log entry with or without precondition! "
-        << "However we received " << query.toJson(); 
-      break;
-    }  
+        break;
+      case 2:  // precondition
+      case 3:  // precondition + clientId
+        ret = check(query[1], CheckMode::FULL);
+        if (ret.successful()) {
+          applies(query[0]);
+        } else {  // precondition failed
+          LOG_TOPIC(TRACE, Logger::AGENCY) << "Precondition failed!";
+        }
+        break;
+      default:  // Wrong
+        LOG_TOPIC(ERR, Logger::AGENCY)
+            << "We can only handle log entry with or without precondition! "
+            << "However we received " << query.toJson();
+        break;
+    }
     // Wake up TTL processing
     {
       CONDITION_LOCKER(guard, _cv);
       _cv.signal();
     }
-      
-  } catch (std::exception const& e) {  // Catch any erorrs
-    LOG_TOPIC(ERR, Logger::AGENCY)
-      << __FILE__ << ":" << __LINE__ << " " << e.what();
-  }
-    
-  return ret;
-  
-}
 
+  } catch (std::exception const& e) {  // Catch any erorrs
+    LOG_TOPIC(ERR, Logger::AGENCY) << __FILE__ << ":" << __LINE__ << " " << e.what();
+  }
+
+  return ret;
+}
 
 /// template<class T, class U> std::multimap<std::string, std::string>
 std::ostream& operator<<(std::ostream& os,
@@ -248,7 +243,6 @@ std::ostream& operator<<(std::ostream& os,
   return os;
 }
 
-
 /// Notification type
 struct notify_t {
   std::string key;
@@ -258,11 +252,9 @@ struct notify_t {
       : key(k), modified(m), oper(o) {}
 };
 
-
 /// Apply (from logs)
-std::vector<bool> Store::applyLogEntries(
-  arangodb::velocypack::Builder const& queries, index_t index,
-  term_t term, bool inform) {
+std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& queries,
+                                         index_t index, term_t term, bool inform) {
   std::vector<bool> applied;
 
   // Apply log entries
@@ -290,17 +282,17 @@ std::vector<bool> Store::applyLogEntries(
           std::string oper = j.value.get("op").copyString();
           if (!(oper == "observe" || oper == "unobserve")) {
             std::string uri = j.key.copyString();
-            if (!uri.empty() && uri.at(0)!='/') {
+            if (!uri.empty() && uri.at(0) != '/') {
               uri = std::string("/") + uri;
             }
             while (true) {
               // TODO: Check if not a special lock will help
               {
-                MUTEX_LOCKER(storeLocker, _storeLock) ;
+                MUTEX_LOCKER(storeLocker, _storeLock);
                 auto ret = _observedTable.equal_range(uri);
                 for (auto it = ret.first; it != ret.second; ++it) {
-                  in.emplace(it->second, std::make_shared<notify_t>(
-                               it->first, j.key.copyString(), oper));
+                  in.emplace(it->second,
+                             std::make_shared<notify_t>(it->first, j.key.copyString(), oper));
                 }
               }
               size_t pos = uri.find_last_of('/');
@@ -316,19 +308,19 @@ std::vector<bool> Store::applyLogEntries(
 
       queriesIterator.next();
     }
-    
+
     // Sort by URLS to avoid multiple callbacks
     std::vector<std::string> urls;
-    for (auto it = in.begin(), end = in.end(); it != end;
-         it = in.upper_bound(it->first)) {
+    for (auto it = in.begin(), end = in.end(); it != end; it = in.upper_bound(it->first)) {
       urls.push_back(it->first);
     }
-    
+
     // Callback
 
     for (auto const& url : urls) {
       Builder body;  // host
-      { VPackObjectBuilder b(&body);
+      {
+        VPackObjectBuilder b(&body);
         body.add("term", VPackValue(term));
         body.add("index", VPackValue(index));
         auto ret = in.equal_range(url);
@@ -342,36 +334,37 @@ std::vector<bool> Store::applyLogEntries(
             currentKey = it->second->key;
           }
           body.add(VPackValue(it->second->modified));
-          { VPackObjectBuilder b(&body);
-            body.add("op", VPackValue(it->second->oper)); }
+          {
+            VPackObjectBuilder b(&body);
+            body.add("op", VPackValue(it->second->oper));
+          }
         }
         if (!currentKey.empty()) {
           body.close();
         }
       }
-      
+
       std::string endpoint, path;
       if (endpointPathFromUrl(url, endpoint, path)) {
         auto headerFields =
-          std::make_unique<std::unordered_map<std::string, std::string>>();
-        
+            std::make_unique<std::unordered_map<std::string, std::string>>();
+
         arangodb::ClusterComm::instance()->asyncRequest(
-          "1", 1, endpoint, rest::RequestType::POST, path,
-          std::make_shared<std::string>(body.toString()), headerFields,
-          std::make_shared<StoreCallback>(path, body.toJson()), 1.0, true, 0.01);
-        
+            "1", 1, endpoint, rest::RequestType::POST, path,
+            std::make_shared<std::string>(body.toString()), headerFields,
+            std::make_shared<StoreCallback>(path, body.toJson()), 1.0, true, 0.01);
+
       } else {
         LOG_TOPIC(WARN, Logger::AGENCY) << "Malformed URL " << url;
       }
     }
   }
-  
+
   return applied;
 }
 
 /// Check precodition object
 check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
-
   TRI_ASSERT(slice.isObject());
   check_ret_t ret;
   ret.open();
@@ -382,7 +375,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
 
     std::string key = precond.key.copyString();
     std::vector<std::string> pv = split(key, '/');
-    
+
     Node node("precond");
 
     // Check is guarded in ::apply
@@ -411,7 +404,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
         } else if (oper == "isArray") {  // isArray
           if (!op.value.isBoolean()) {
             LOG_TOPIC(ERR, Logger::AGENCY)
-              << "Non boolean expression for 'isArray' precondition";
+                << "Non boolean expression for 'isArray' precondition";
             ret.push_back(precond.key);
             if (mode == FIRST_FAIL) {
               break;
@@ -455,7 +448,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
                 ret.push_back(precond.key);
               }
             }
-          } 
+          }
           ret.push_back(precond.key);
           if (mode == FIRST_FAIL) {
             break;
@@ -478,13 +471,13 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
                 continue;
               }
             }
-          } 
+          }
           ret.push_back(precond.key);
           if (mode == FIRST_FAIL) {
             break;
           }
         }
-      } 
+      }
     } else {
       if (node != precond.value) {
         ret.push_back(precond.key);
@@ -498,7 +491,6 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
   ret.close();
   return ret;
 }
-
 
 /// Read queries into result
 std::vector<bool> Store::read(query_t const& queries, query_t& result) const {
@@ -545,7 +537,7 @@ bool Store::read(VPackSlice const& query, Builder& ret) const {
 
   // Create response tree
   Node copy("copy");
-  MUTEX_LOCKER(storeLocker, _storeLock); // Freeze KV-Store for read
+  MUTEX_LOCKER(storeLocker, _storeLock);  // Freeze KV-Store for read
   for (auto const path : query_strs) {
     std::vector<std::string> pv = split(path, '/');
     size_t e = _node.exists(pv).size();
@@ -569,19 +561,22 @@ bool Store::read(VPackSlice const& query, Builder& ret) const {
 
 /// TTL clear values from store
 query_t Store::clearExpired() const {
-
   query_t tmp = std::make_shared<Builder>();
-  { VPackArrayBuilder t(tmp.get());
+  {
+    VPackArrayBuilder t(tmp.get());
     MUTEX_LOCKER(storeLocker, _storeLock);
     if (!_timeTable.empty()) {
       for (auto it = _timeTable.cbegin(); it != _timeTable.cend(); ++it) {
         if (it->first < std::chrono::system_clock::now()) {
           VPackArrayBuilder ttt(tmp.get());
-          { VPackObjectBuilder tttt(tmp.get());
+          {
+            VPackObjectBuilder tttt(tmp.get());
             tmp->add(VPackValue(it->second));
-            { VPackObjectBuilder ttttt(tmp.get());
+            {
+              VPackObjectBuilder ttttt(tmp.get());
               tmp->add("op", VPackValue("delete"));
-            }}
+            }
+          }
         } else {
           break;
         }
@@ -598,8 +593,7 @@ void Store::dumpToBuilder(Builder& builder) const {
   {
     VPackObjectBuilder guard(&builder);
     for (auto const& i : _timeTable) {
-      auto ts = std::chrono::duration_cast<std::chrono::seconds>(
-                    i.first.time_since_epoch())
+      auto ts = std::chrono::duration_cast<std::chrono::seconds>(i.first.time_since_epoch())
                     .count();
       builder.add(i.second, VPackValue(ts));
     }
@@ -620,7 +614,7 @@ void Store::dumpToBuilder(Builder& builder) const {
   }
 }
 
-/// Apply transaction to key value store. Guarded by caller 
+/// Apply transaction to key value store. Guarded by caller
 bool Store::applies(arangodb::velocypack::Slice const& transaction) {
   std::vector<std::string> keys;
   std::vector<std::string> abskeys;
@@ -638,7 +632,7 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
 
   sort(idx.begin(), idx.end(),
        [&abskeys](size_t i1, size_t i2) { return abskeys[i1] < abskeys[i2]; });
-  
+
   _storeLock.assertLockedByCurrentThread();
 
   for (const auto& i : idx) {
@@ -655,7 +649,6 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
   return true;
 }
 
-
 // Clear my data
 void Store::clear() {
   MUTEX_LOCKER(storeLocker, _storeLock);
@@ -664,7 +657,6 @@ void Store::clear() {
   _observedTable.clear();
   _node.clear();
 }
-
 
 /// Apply a request to my key value store
 Store& Store::operator=(VPackSlice const& slice) {
@@ -677,22 +669,25 @@ Store& Store::operator=(VPackSlice const& slice) {
   TRI_ASSERT(slice[1].isObject());
   for (auto const& entry : VPackObjectIterator(slice[1])) {
     long long tse = entry.value.getInt();
-    _timeTable.emplace(std::pair<TimePoint, std::string>(
-        TimePoint(std::chrono::duration<int>(tse)), entry.key.copyString()));
+    _timeTable.emplace(
+        std::pair<TimePoint, std::string>(TimePoint(std::chrono::duration<int>(tse)),
+                                          entry.key.copyString()));
   }
 
   TRI_ASSERT(slice[2].isArray());
   for (auto const& entry : VPackArrayIterator(slice[2])) {
     TRI_ASSERT(entry.isObject());
-    _observerTable.emplace(std::pair<std::string, std::string>(
-        entry.keyAt(0).copyString(), entry.valueAt(0).copyString()));
+    _observerTable.emplace(
+        std::pair<std::string, std::string>(entry.keyAt(0).copyString(),
+                                            entry.valueAt(0).copyString()));
   }
 
   TRI_ASSERT(slice[3].isArray());
   for (auto const& entry : VPackArrayIterator(slice[3])) {
     TRI_ASSERT(entry.isObject());
-    _observedTable.emplace(std::pair<std::string, std::string>(
-        entry.keyAt(0).copyString(), entry.valueAt(0).copyString()));
+    _observedTable.emplace(
+        std::pair<std::string, std::string>(entry.keyAt(0).copyString(),
+                                            entry.valueAt(0).copyString()));
   }
 
   return *this;
@@ -701,12 +696,13 @@ Store& Store::operator=(VPackSlice const& slice) {
 /// Put key value store in velocypack, guarded by caller
 void Store::toBuilder(Builder& b, bool showHidden) const {
   _storeLock.assertLockedByCurrentThread();
-  _node.toBuilder(b, showHidden); }
+  _node.toBuilder(b, showHidden);
+}
 
 /// Time table
-std::multimap<TimePoint, std::string>& Store::timeTable() { 
+std::multimap<TimePoint, std::string>& Store::timeTable() {
   _storeLock.assertLockedByCurrentThread();
-  return _timeTable; 
+  return _timeTable;
 }
 
 /// Time table
@@ -765,4 +761,3 @@ void Store::removeTTL(std::string const& uri) {
     }
   }
 }
-

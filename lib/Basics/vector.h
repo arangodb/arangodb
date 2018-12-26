@@ -32,9 +32,9 @@
 
 typedef struct TRI_vector_s {
   char* _buffer;
-  uint32_t _lengthX;                  // private. do not access from outside!
-  uint32_t _capacityX;                // private. do not access from outside!
-  uint32_t _elementSizeX;             // private. do not access from outside!
+  uint32_t _lengthX;       // private. do not access from outside!
+  uint32_t _capacityX;     // private. do not access from outside!
+  uint32_t _elementSizeX;  // private. do not access from outside!
 } TRI_vector_t;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -122,8 +122,7 @@ void* TRI_NextVector(TRI_vector_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline void* TRI_AddressVector(TRI_vector_t const* vector, size_t pos) {
-  return static_cast<void*>(vector->_buffer +
-                            pos * static_cast<size_t>(vector->_elementSizeX));
+  return static_cast<void*>(vector->_buffer + pos * static_cast<size_t>(vector->_elementSizeX));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

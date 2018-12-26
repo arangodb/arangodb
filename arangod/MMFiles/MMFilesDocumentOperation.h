@@ -41,9 +41,8 @@ struct MMFilesDocumentOperation {
     SWAPPED,
     REVERTED
   };
-  
-  MMFilesDocumentOperation(LogicalCollection* collection,
-                    TRI_voc_document_operation_e type);
+
+  MMFilesDocumentOperation(LogicalCollection* collection, TRI_voc_document_operation_e type);
 
   ~MMFilesDocumentOperation();
 
@@ -52,16 +51,16 @@ struct MMFilesDocumentOperation {
 
   void setRevisions(DocumentDescriptor const& oldRevision,
                     DocumentDescriptor const& newRevision);
-  
+
   void setVPack(uint8_t const* vpack);
 
   void setTick(TRI_voc_tick_t tick) { _tick = tick; }
   TRI_voc_tick_t tick() const { return _tick; }
-                    
+
   TRI_voc_document_operation_e type() const { return _type; }
 
   LogicalCollection* collection() const { return _collection; }
- 
+
   void indexed() noexcept {
     TRI_ASSERT(_status == StatusType::CREATED);
     _status = StatusType::INDEXED;
@@ -73,7 +72,7 @@ struct MMFilesDocumentOperation {
 
     _status = StatusType::HANDLED;
   }
-  
+
   void revert(transaction::Methods*);
 
  private:
@@ -85,6 +84,6 @@ struct MMFilesDocumentOperation {
   StatusType _status;
 };
 
-}
+}  // namespace arangodb
 
 #endif

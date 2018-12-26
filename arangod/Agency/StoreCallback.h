@@ -38,12 +38,10 @@ class StoreCallback : public arangodb::ClusterCommCallback {
   void shutdown();
 
  private:
-
   std::string _path;
   std::string _body;
-  
 };
-}
-}  // namespace
+}  // namespace consensus
+}  // namespace arangodb
 
 #endif

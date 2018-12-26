@@ -35,8 +35,7 @@ namespace rocksutils {
 static bool hasObjectIds(VPackSlice const& inputSlice) {
   bool rv = false;
   if (inputSlice.isObject()) {
-    for (auto const& objectPair :
-         arangodb::velocypack::ObjectIterator(inputSlice)) {
+    for (auto const& objectPair : arangodb::velocypack::ObjectIterator(inputSlice)) {
       if (arangodb::StringRef(objectPair.key) == "objectId") {
         return true;
       }
@@ -59,8 +58,7 @@ static bool hasObjectIds(VPackSlice const& inputSlice) {
 static VPackBuilder& stripObjectIdsImpl(VPackBuilder& builder, VPackSlice const& inputSlice) {
   if (inputSlice.isObject()) {
     builder.openObject();
-    for (auto const& objectPair :
-         arangodb::velocypack::ObjectIterator(inputSlice)) {
+    for (auto const& objectPair : arangodb::velocypack::ObjectIterator(inputSlice)) {
       if (arangodb::StringRef(objectPair.key) == "objectId") {
         continue;
       }
@@ -135,7 +133,8 @@ arangodb::Result convertStatus(rocksdb::Status const& status, StatusHint hint) {
       }
       if (status.subcode() == rocksdb::Status::SubCode::kLockLimit) {
         // should actually not occur with our RocksDB configuration
-        return {TRI_ERROR_RESOURCE_LIMIT, "failed to acquire lock due to lock number limit"};
+        return {TRI_ERROR_RESOURCE_LIMIT,
+                "failed to acquire lock due to lock number limit"};
       }
       return {TRI_ERROR_ARANGO_CONFLICT};
     case rocksdb::Status::Code::kExpired:
@@ -161,5 +160,5 @@ std::pair<VPackSlice, std::unique_ptr<VPackBuffer<uint8_t>>> stripObjectIds(
   return {VPackSlice(buffer->data()), std::move(buffer)};
 }
 
-}
-}
+}  // namespace rocksutils
+}  // namespace arangodb

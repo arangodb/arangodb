@@ -23,17 +23,17 @@
 
 #include "MMFilesAqlFunctions.h"
 
-#include "Aql/Function.h"
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/Function.h"
 #include "MMFiles/MMFilesFulltextIndex.h"
 #include "MMFiles/MMFilesGeoIndex.h"
 #include "MMFiles/MMFilesToken.h"
 #include "MMFiles/mmfiles-fulltext-index.h"
 #include "MMFiles/mmfiles-fulltext-query.h"
 #include "StorageEngine/DocumentIdentifierToken.h"
-#include "Utils/CollectionNameResolver.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 
@@ -48,12 +48,9 @@ static ExecutionCondition const NotInCoordinator = [] {
          !arangodb::ServerState::instance()->isCoordinator();
 };
 
-static AqlValue buildGeoResult(transaction::Methods* trx,
-                               LogicalCollection* collection,
-                               arangodb::aql::Query* query,
-                               GeoCoordinates* cors,
-                               TRI_voc_cid_t const& cid,
-                               std::string const& attributeName) {
+static AqlValue buildGeoResult(transaction::Methods* trx, LogicalCollection* collection,
+                               arangodb::aql::Query* query, GeoCoordinates* cors,
+                               TRI_voc_cid_t const& cid, std::string const& attributeName) {
   if (cors == nullptr) {
     return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
   }
@@ -78,10 +75,9 @@ static AqlValue buildGeoResult(transaction::Methods* trx,
     distances.reserve(nCoords);
 
     for (size_t i = 0; i < nCoords; ++i) {
-      distances.emplace_back(geo_coordinate_distance_t(
-          cors->distances[i],
-          arangodb::MMFilesGeoIndex::toDocumentIdentifierToken(
-              cors->coordinates[i].data)));
+      distances.emplace_back(geo_coordinate_distance_t(cors->distances[i],
+                                                       arangodb::MMFilesGeoIndex::toDocumentIdentifierToken(
+                                                           cors->coordinates[i].data)));
     }
   } catch (...) {
     GeoIndex_CoordinatesFree(cors);
@@ -92,8 +88,7 @@ static AqlValue buildGeoResult(transaction::Methods* trx,
 
   // sort result by distance
   std::sort(distances.begin(), distances.end(),
-            [](geo_coordinate_distance_t const& left,
-               geo_coordinate_distance_t const& right) {
+            [](geo_coordinate_distance_t const& left, geo_coordinate_distance_t const& right) {
               return left._distance < right._distance;
             });
 
@@ -131,11 +126,10 @@ static AqlValue buildGeoResult(transaction::Methods* trx,
   }
 }
 
-
 /// @brief Load geoindex for collection name
-static arangodb::MMFilesGeoIndex* getGeoIndex(
-    transaction::Methods* trx, TRI_voc_cid_t const& cid,
-    std::string const& collectionName) {
+static arangodb::MMFilesGeoIndex* getGeoIndex(transaction::Methods* trx,
+                                              TRI_voc_cid_t const& cid,
+                                              std::string const& collectionName) {
   // NOTE:
   // Due to trx lock the shared_index stays valid
   // as long as trx stays valid.
@@ -146,8 +140,8 @@ static arangodb::MMFilesGeoIndex* getGeoIndex(
   auto document = trx->documentCollection(cid);
 
   if (document == nullptr) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                                  "'%s'", collectionName.c_str());
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
+                                  collectionName.c_str());
   }
 
   arangodb::MMFilesGeoIndex* index = nullptr;
@@ -171,16 +165,16 @@ static arangodb::MMFilesGeoIndex* getGeoIndex(
 }
 
 /// @brief function FULLTEXT
-AqlValue MMFilesAqlFunctions::Fulltext(
-    arangodb::aql::Query* query, transaction::Methods* trx,
-    VPackFunctionParameters const& parameters) {
+AqlValue MMFilesAqlFunctions::Fulltext(arangodb::aql::Query* query,
+                                       transaction::Methods* trx,
+                                       VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "FULLTEXT", 3, 4);
 
   AqlValue collectionValue = ExtractFunctionParameterValue(trx, parameters, 0);
 
   if (!collectionValue.isString()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                  "FULLTEXT");
   }
 
   std::string const collectionName(collectionValue.slice().copyString());
@@ -188,8 +182,8 @@ AqlValue MMFilesAqlFunctions::Fulltext(
   AqlValue attribute = ExtractFunctionParameterValue(trx, parameters, 1);
 
   if (!attribute.isString()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                  "FULLTEXT");
   }
 
   std::string attributeName(attribute.slice().copyString());
@@ -197,8 +191,8 @@ AqlValue MMFilesAqlFunctions::Fulltext(
   AqlValue queryValue = ExtractFunctionParameterValue(trx, parameters, 2);
 
   if (!queryValue.isString()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                  "FULLTEXT");
   }
 
   std::string queryString = queryValue.slice().copyString();
@@ -207,9 +201,9 @@ AqlValue MMFilesAqlFunctions::Fulltext(
   if (parameters.size() >= 4) {
     AqlValue limit = ExtractFunctionParameterValue(trx, parameters, 3);
     if (!limit.isNull(true) && !limit.isNumber()) {
-      THROW_ARANGO_EXCEPTION_PARAMS(
-          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
-    } 
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                    "FULLTEXT");
+    }
     if (limit.isNumber()) {
       int64_t value = limit.toInt64(trx);
       if (value > 0) {
@@ -225,8 +219,8 @@ AqlValue MMFilesAqlFunctions::Fulltext(
   LogicalCollection* collection = trx->documentCollection(cid);
 
   if (collection == nullptr) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                                  "", collectionName.c_str());
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "",
+                                  collectionName.c_str());
   }
 
   // NOTE: The shared_ptr is protected by trx lock.
@@ -245,8 +239,7 @@ AqlValue MMFilesAqlFunctions::Fulltext(
   for (auto const& idx : collection->getIndexes()) {
     if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
       // test if index is on the correct field
-      if (arangodb::basics::AttributeName::isIdentical(idx->fields(), search,
-                                                       false)) {
+      if (arangodb::basics::AttributeName::isIdentical(idx->fields(), search, false)) {
         // match!
         fulltextIndex = static_cast<arangodb::MMFilesFulltextIndex*>(idx.get());
         break;
@@ -270,8 +263,7 @@ AqlValue MMFilesAqlFunctions::Fulltext(
   }
 
   bool isSubstringQuery = false;
-  int res =
-      TRI_ParseQueryMMFilesFulltextIndex(ft, queryString.c_str(), &isSubstringQuery);
+  int res = TRI_ParseQueryMMFilesFulltextIndex(ft, queryString.c_str(), &isSubstringQuery);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeQueryMMFilesFulltextIndex(ft);
@@ -279,7 +271,8 @@ AqlValue MMFilesAqlFunctions::Fulltext(
   }
 
   // note: the following call will free "ft"!
-  std::set<TRI_voc_rid_t> queryResult = TRI_QueryMMFilesFulltextIndex(fulltextIndex->internals(), ft);
+  std::set<TRI_voc_rid_t> queryResult =
+      TRI_QueryMMFilesFulltextIndex(fulltextIndex->internals(), ft);
 
   TRI_ASSERT(trx->isPinned(cid));
 
@@ -296,17 +289,15 @@ AqlValue MMFilesAqlFunctions::Fulltext(
   return AqlValue(builder.get());
 }
 
-
 /// @brief function NEAR
-AqlValue MMFilesAqlFunctions::Near(arangodb::aql::Query* query,
-                                   transaction::Methods* trx,
+AqlValue MMFilesAqlFunctions::Near(arangodb::aql::Query* query, transaction::Methods* trx,
                                    VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "NEAR", 3, 5);
 
   AqlValue collectionValue = ExtractFunctionParameterValue(trx, parameters, 0);
   if (!collectionValue.isString()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                  "NEAR");
   }
 
   std::string const collectionName(collectionValue.slice().copyString());
@@ -315,8 +306,8 @@ AqlValue MMFilesAqlFunctions::Near(arangodb::aql::Query* query,
   AqlValue longitude = ExtractFunctionParameterValue(trx, parameters, 2);
 
   if (!latitude.isNumber() || !longitude.isNumber()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                  "NEAR");
   }
 
   // extract limit
@@ -328,8 +319,8 @@ AqlValue MMFilesAqlFunctions::Near(arangodb::aql::Query* query,
     if (limit.isNumber()) {
       limitValue = limit.toInt64(trx);
     } else if (!limit.isNull(true)) {
-      THROW_ARANGO_EXCEPTION_PARAMS(
-          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                    "NEAR");
     }
   }
 
@@ -339,8 +330,8 @@ AqlValue MMFilesAqlFunctions::Near(arangodb::aql::Query* query,
     AqlValue distanceValue = ExtractFunctionParameterValue(trx, parameters, 4);
 
     if (!distanceValue.isNull(true) && !distanceValue.isString()) {
-      THROW_ARANGO_EXCEPTION_PARAMS(
-          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                    "NEAR");
     }
 
     if (distanceValue.isString()) {
@@ -354,23 +345,23 @@ AqlValue MMFilesAqlFunctions::Near(arangodb::aql::Query* query,
   TRI_ASSERT(index != nullptr);
   TRI_ASSERT(trx->isPinned(cid));
 
-  GeoCoordinates* cors = index->nearQuery(
-      trx, latitude.toDouble(trx), longitude.toDouble(trx), static_cast<size_t>(limitValue));
+  GeoCoordinates* cors =
+      index->nearQuery(trx, latitude.toDouble(trx), longitude.toDouble(trx),
+                       static_cast<size_t>(limitValue));
 
   return buildGeoResult(trx, index->collection(), query, cors, cid, attributeName);
 }
 
 /// @brief function WITHIN
-AqlValue MMFilesAqlFunctions::Within(
-    arangodb::aql::Query* query, transaction::Methods* trx,
-    VPackFunctionParameters const& parameters) {
+AqlValue MMFilesAqlFunctions::Within(arangodb::aql::Query* query, transaction::Methods* trx,
+                                     VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "WITHIN", 4, 5);
 
   AqlValue collectionValue = ExtractFunctionParameterValue(trx, parameters, 0);
 
   if (!collectionValue.isString()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "WITHIN");
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                  "WITHIN");
   }
 
   std::string const collectionName(collectionValue.slice().copyString());
@@ -380,8 +371,8 @@ AqlValue MMFilesAqlFunctions::Within(
   AqlValue radiusValue = ExtractFunctionParameterValue(trx, parameters, 3);
 
   if (!latitudeValue.isNumber() || !longitudeValue.isNumber() || !radiusValue.isNumber()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "WITHIN");
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                  "WITHIN");
   }
 
   std::string attributeName;
@@ -390,8 +381,8 @@ AqlValue MMFilesAqlFunctions::Within(
     AqlValue distanceValue = ExtractFunctionParameterValue(trx, parameters, 4);
 
     if (!distanceValue.isNull(true) && !distanceValue.isString()) {
-      THROW_ARANGO_EXCEPTION_PARAMS(
-          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "WITHIN");
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                    "WITHIN");
     }
 
     if (distanceValue.isString()) {
@@ -405,8 +396,9 @@ AqlValue MMFilesAqlFunctions::Within(
   TRI_ASSERT(index != nullptr);
   TRI_ASSERT(trx->isPinned(cid));
 
-  GeoCoordinates* cors = index->withinQuery(
-      trx, latitudeValue.toDouble(trx), longitudeValue.toDouble(trx), radiusValue.toDouble(trx));
+  GeoCoordinates* cors =
+      index->withinQuery(trx, latitudeValue.toDouble(trx),
+                         longitudeValue.toDouble(trx), radiusValue.toDouble(trx));
 
   return buildGeoResult(trx, index->collection(), query, cors, cid, attributeName);
 }
@@ -416,11 +408,10 @@ void MMFilesAqlFunctions::registerResources() {
   TRI_ASSERT(functions != nullptr);
 
   // fulltext functions
-  functions->add({"FULLTEXT", ".h,.,.|.", false, true,
-                 false, true, &MMFilesAqlFunctions::Fulltext,
-                 NotInCoordinator});
-  functions->add({"NEAR", ".h,.,.|.,.", false, true, false,
-                  true, &MMFilesAqlFunctions::Near, NotInCoordinator});
-  functions->add({"WITHIN", ".h,.,.,.|.", false, true,
-                  false, true, &MMFilesAqlFunctions::Within, NotInCoordinator});
+  functions->add({"FULLTEXT", ".h,.,.|.", false, true, false, true,
+                  &MMFilesAqlFunctions::Fulltext, NotInCoordinator});
+  functions->add({"NEAR", ".h,.,.|.,.", false, true, false, true,
+                  &MMFilesAqlFunctions::Near, NotInCoordinator});
+  functions->add({"WITHIN", ".h,.,.,.|.", false, true, false, true,
+                  &MMFilesAqlFunctions::Within, NotInCoordinator});
 }

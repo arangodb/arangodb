@@ -51,10 +51,9 @@ DatabasePathFeature::DatabasePathFeature(ApplicationServer* server)
 
 void DatabasePathFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("database", "Configure the database");
-  
+
   options->addOption("--database.directory", "path to the database directory",
                      new StringParameter(&_directory));
-
 }
 
 void DatabasePathFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -63,22 +62,24 @@ void DatabasePathFeature::validateOptions(std::shared_ptr<ProgramOptions> option
   if (1 == positionals.size()) {
     _directory = positionals[0];
   } else if (1 < positionals.size()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "expected at most one database directory, got '"
-               << StringUtils::join(positionals, ",") << "'";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "expected at most one database directory, got '"
+        << StringUtils::join(positionals, ",") << "'";
     FATAL_ERROR_EXIT();
   }
 
   if (_directory.empty()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "no database path has been supplied, giving up, please use "
-                  "the '--database.directory' option";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "no database path has been supplied, giving up, please use "
+           "the '--database.directory' option";
     FATAL_ERROR_EXIT();
   }
 
   // strip trailing separators
   _directory = basics::StringUtils::rTrim(_directory, TRI_DIR_SEPARATOR_STR);
-  
+
   auto ctx = ArangoGlobalContext::CONTEXT;
-    
+
   if (ctx == nullptr) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to get global context.";
     FATAL_ERROR_EXIT();
@@ -94,18 +95,20 @@ void DatabasePathFeature::validateOptions(std::shared_ptr<ProgramOptions> option
 }
 
 void DatabasePathFeature::start() {
-  // create base directory if it does not exist 
+  // create base directory if it does not exist
   if (!basics::FileUtils::isDirectory(_directory)) {
     std::string systemErrorStr;
     long errorNo;
 
-    int res = TRI_CreateRecursiveDirectory(_directory.c_str(), errorNo,
-                                           systemErrorStr);
+    int res = TRI_CreateRecursiveDirectory(_directory.c_str(), errorNo, systemErrorStr);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "created database directory '" << _directory << "'";
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+          << "created database directory '" << _directory << "'";
     } else {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "unable to create database directory '" << _directory << "': " << systemErrorStr;
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+          << "unable to create database directory '" << _directory
+          << "': " << systemErrorStr;
       FATAL_ERROR_EXIT();
     }
   }
@@ -115,4 +118,3 @@ std::string DatabasePathFeature::subdirectoryName(std::string const& subDirector
   TRI_ASSERT(!_directory.empty());
   return basics::FileUtils::buildFilename(_directory, subDirectory);
 }
-

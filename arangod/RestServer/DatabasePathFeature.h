@@ -27,11 +27,9 @@
 
 namespace arangodb {
 
-class DatabasePathFeature final
-    : public application_features::ApplicationFeature {
+class DatabasePathFeature final : public application_features::ApplicationFeature {
  public:
-  explicit DatabasePathFeature(
-      application_features::ApplicationServer* server);
+  explicit DatabasePathFeature(application_features::ApplicationServer* server);
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -45,6 +43,6 @@ class DatabasePathFeature final
  private:
   std::string _directory;
 };
-}
+}  // namespace arangodb
 
 #endif

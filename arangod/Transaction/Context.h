@@ -40,7 +40,7 @@ class StringBuffer;
 namespace velocypack {
 class Builder;
 struct CustomTypeHandler;
-}
+}  // namespace velocypack
 
 class CollectionNameResolver;
 class LogicalCollection;
@@ -56,54 +56,50 @@ class Context {
   Context& operator=(Context const&) = delete;
 
  protected:
-
   /// @brief create the context
   explicit Context(TRI_vocbase_t* vocbase);
 
  public:
-
   /// @brief destroy the context
   virtual ~Context();
 
   /// @brief factory to create a custom type handler, not managed
   static arangodb::velocypack::CustomTypeHandler* createCustomTypeHandler(
-           TRI_vocbase_t*,
-           arangodb::CollectionNameResolver const*);
+      TRI_vocbase_t*, arangodb::CollectionNameResolver const*);
 
   /// @brief return the vocbase
   TRI_vocbase_t* vocbase() const { return _vocbase; }
-  
+
   /// @brief pin data for the collection
   void pinData(arangodb::LogicalCollection*);
 
   /// @brief whether or not the data for the collection is pinned
   bool isPinned(TRI_voc_cid_t);
-  
+
   /// @brief temporarily lease a StringBuffer object
   basics::StringBuffer* leaseStringBuffer(size_t initialSize);
 
   /// @brief return a temporary StringBuffer object
   void returnStringBuffer(basics::StringBuffer* stringBuffer);
-  
+
   /// @brief temporarily lease a Builder object
   arangodb::velocypack::Builder* leaseBuilder();
-  
+
   /// @brief return a temporary Builder object
   void returnBuilder(arangodb::velocypack::Builder*);
-  
+
   /// @brief get velocypack options with a custom type handler
   arangodb::velocypack::Options* getVPackOptions();
-  
+
   /// @brief get velocypack options for dumping
   arangodb::velocypack::Options* getVPackOptionsForDump();
-  
+
   /// @brief unregister the transaction
   /// this will save the transaction's id and status locally
   void storeTransactionResult(TRI_voc_tid_t id, bool hasFailedOperations) noexcept;
-  
+
   /// @brief get a custom type handler
-  virtual std::shared_ptr<arangodb::velocypack::CustomTypeHandler>
-  orderCustomTypeHandler() = 0;
+  virtual std::shared_ptr<arangodb::velocypack::CustomTypeHandler> orderCustomTypeHandler() = 0;
 
   /// @brief return the resolver
   virtual CollectionNameResolver const* getResolver() = 0;
@@ -116,44 +112,42 @@ class Context {
 
   /// @brief register the transaction in the context
   virtual void registerTransaction(TransactionState*) = 0;
-  
+
   /// @brief unregister the transaction
   virtual void unregisterTransaction() noexcept = 0;
 
  protected:
-  
   /// @brief create a resolver
   CollectionNameResolver const* createResolver();
 
   transaction::ContextData* contextData();
- 
+
  protected:
-  
-  TRI_vocbase_t* _vocbase; 
-  
+  TRI_vocbase_t* _vocbase;
+
   CollectionNameResolver const* _resolver;
-  
+
   std::shared_ptr<velocypack::CustomTypeHandler> _customTypeHandler;
-  
+
   SmallVector<arangodb::velocypack::Builder*, 32>::allocator_type::arena_type _arena;
   SmallVector<arangodb::velocypack::Builder*, 32> _builders;
-  
+
   std::unique_ptr<arangodb::basics::StringBuffer> _stringBuffer;
 
   arangodb::velocypack::Options _options;
   arangodb::velocypack::Options _dumpOptions;
-  
+
   std::unique_ptr<transaction::ContextData> _contextData;
 
   struct {
-    TRI_voc_tid_t id; 
+    TRI_voc_tid_t id;
     bool hasFailedOperations;
   } _transaction;
 
   bool _ownsResolver;
 };
 
-}
-}
+}  // namespace transaction
+}  // namespace arangodb
 
 #endif

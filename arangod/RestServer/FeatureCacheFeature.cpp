@@ -48,11 +48,12 @@ FeatureCacheFeature::~FeatureCacheFeature() {
 }
 
 void FeatureCacheFeature::prepare() {
-  _authenticationFeature = application_features::ApplicationServer::getFeature<AuthenticationFeature>(
+  _authenticationFeature =
+      application_features::ApplicationServer::getFeature<AuthenticationFeature>(
           "Authentication");
   _databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database");
- 
+      "Database");
+
   TRI_ASSERT(Instance == nullptr);
   Instance = this;
 }

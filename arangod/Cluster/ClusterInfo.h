@@ -27,16 +27,16 @@
 
 #include "Basics/Common.h"
 
-#include <velocypack/Slice.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Cluster/AgencyCallbackRegistry.h"
 #include "Agency/AgencyComm.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/AgencyCallbackRegistry.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -113,8 +113,8 @@ class CollectionInfoCurrent {
     auto it = _vpacks.find(shardID);
     if (it != _vpacks.end()) {
       VPackSlice slice = it->second->slice();
-      return arangodb::basics::VelocyPackHelper::getNumericValue<int>(slice,
-                                                                "errorNum", 0);
+      return arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+          slice, "errorNum", 0);
     }
     return 0;
   }
@@ -127,8 +127,9 @@ class CollectionInfoCurrent {
     std::unordered_map<ShardID, int> m;
     TRI_voc_size_t s;
 
-    for (auto const& it: _vpacks) {
-      s = arangodb::basics::VelocyPackHelper::getNumericValue<int>(it.second->slice(), "errorNum", 0);
+    for (auto const& it : _vpacks) {
+      s = arangodb::basics::VelocyPackHelper::getNumericValue<int>(it.second->slice(),
+                                                                   "errorNum", 0);
       m.insert(std::make_pair(it.first, s));
     }
     return m;
@@ -147,7 +148,7 @@ class CollectionInfoCurrent {
 
       VPackSlice servers = slice.get("servers");
       if (servers.isArray()) {
-        for (auto const& server: VPackArrayIterator(servers)) {
+        for (auto const& server : VPackArrayIterator(servers)) {
           if (server.isString()) {
             v.push_back(server.copyString());
           }
@@ -176,9 +177,7 @@ class CollectionInfoCurrent {
   /// @brief get version that underlies this info in Current in the agency
   //////////////////////////////////////////////////////////////////////////////
 
-  uint64_t getCurrentVersion() const {
-    return _currentVersion;
-  }
+  uint64_t getCurrentVersion() const { return _currentVersion; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief local helper to return boolean flags
@@ -188,7 +187,8 @@ class CollectionInfoCurrent {
   bool getFlag(char const* name, ShardID const& shardID) const {
     auto it = _vpacks.find(shardID);
     if (it != _vpacks.end()) {
-      return arangodb::basics::VelocyPackHelper::getBooleanValue(it->second->slice(), name, false);
+      return arangodb::basics::VelocyPackHelper::getBooleanValue(it->second->slice(),
+                                                                 name, false);
     }
     return false;
   }
@@ -199,9 +199,10 @@ class CollectionInfoCurrent {
 
   std::unordered_map<ShardID, bool> getFlag(char const* name) const {
     std::unordered_map<ShardID, bool> m;
-    for (auto const& it: _vpacks) {
+    for (auto const& it : _vpacks) {
       auto vpack = it.second;
-      bool b = arangodb::basics::VelocyPackHelper::getBooleanValue(vpack->slice(), name, false);
+      bool b = arangodb::basics::VelocyPackHelper::getBooleanValue(vpack->slice(),
+                                                                   name, false);
       m.insert(std::make_pair(it.first, b));
     }
     return m;
@@ -210,21 +211,16 @@ class CollectionInfoCurrent {
  private:
   std::unordered_map<ShardID, std::shared_ptr<VPackBuilder>> _vpacks;
 
-  uint64_t _currentVersion;    // Version of Current in the agency that
-                               // underpins the data presented in this object
+  uint64_t _currentVersion;  // Version of Current in the agency that
+                             // underpins the data presented in this object
 };
 
 class ClusterInfo {
  private:
-
-  typedef std::unordered_map<CollectionID, std::shared_ptr<LogicalCollection>>
-      DatabaseCollections;
+  typedef std::unordered_map<CollectionID, std::shared_ptr<LogicalCollection>> DatabaseCollections;
   typedef std::unordered_map<DatabaseID, DatabaseCollections> AllCollections;
-  typedef std::unordered_map<CollectionID,
-                             std::shared_ptr<CollectionInfoCurrent>>
-      DatabaseCollectionsCurrent;
-  typedef std::unordered_map<DatabaseID, DatabaseCollectionsCurrent>
-      AllCollectionsCurrent;
+  typedef std::unordered_map<CollectionID, std::shared_ptr<CollectionInfoCurrent>> DatabaseCollectionsCurrent;
+  typedef std::unordered_map<DatabaseID, DatabaseCollectionsCurrent> AllCollectionsCurrent;
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -256,7 +252,7 @@ class ClusterInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   static ClusterInfo* instance();
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief cleanup method which frees cluster-internal shared ptrs on shutdown
   //////////////////////////////////////////////////////////////////////////////
@@ -310,14 +306,13 @@ class ClusterInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   virtual std::shared_ptr<LogicalCollection> getCollection(DatabaseID const&,
-                                                   CollectionID const&);
+                                                           CollectionID const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about all collections
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual std::vector<std::shared_ptr<LogicalCollection>> const getCollections(
-      DatabaseID const&);
+  virtual std::vector<std::shared_ptr<LogicalCollection>> const getCollections(DatabaseID const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about current collections from the agency
@@ -334,33 +329,29 @@ class ClusterInfo {
   /// If it is not found in the cache, the cache is reloaded once.
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual std::shared_ptr<CollectionInfoCurrent> getCollectionCurrent(
-      DatabaseID const&, CollectionID const&);
+  virtual std::shared_ptr<CollectionInfoCurrent> getCollectionCurrent(DatabaseID const&,
+                                                                      CollectionID const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create database in coordinator
   //////////////////////////////////////////////////////////////////////////////
 
-  int createDatabaseCoordinator(std::string const&,
-                                arangodb::velocypack::Slice const&,
+  int createDatabaseCoordinator(std::string const&, arangodb::velocypack::Slice const&,
                                 std::string&, double);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop database in coordinator
   //////////////////////////////////////////////////////////////////////////////
 
-  int dropDatabaseCoordinator(std::string const& name, std::string& errorMsg,
-                              double timeout);
+  int dropDatabaseCoordinator(std::string const& name, std::string& errorMsg, double timeout);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create collection in coordinator
   //////////////////////////////////////////////////////////////////////////////
 
   int createCollectionCoordinator(std::string const& databaseName,
-                                  std::string const& collectionID,
-                                  uint64_t numberOfShards,
-                                  uint64_t replicationFactor,
-                                  bool waitForReplication,
+                                  std::string const& collectionID, uint64_t numberOfShards,
+                                  uint64_t replicationFactor, bool waitForReplication,
                                   arangodb::velocypack::Slice const& json,
                                   std::string& errorMsg, double timeout);
 
@@ -368,8 +359,7 @@ class ClusterInfo {
   /// @brief drop collection in coordinator
   //////////////////////////////////////////////////////////////////////////////
 
-  int dropCollectionCoordinator(std::string const& databaseName,
-                                std::string const& collectionID,
+  int dropCollectionCoordinator(std::string const& databaseName, std::string const& collectionID,
                                 std::string& errorMsg, double timeout);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -392,20 +382,19 @@ class ClusterInfo {
   /// @brief ensure an index in coordinator.
   //////////////////////////////////////////////////////////////////////////////
 
-  int ensureIndexCoordinator(
-      std::string const& databaseName, std::string const& collectionID,
-      arangodb::velocypack::Slice const& slice, bool create,
-      bool (*compare)(arangodb::velocypack::Slice const&,
-                      arangodb::velocypack::Slice const&),
-      arangodb::velocypack::Builder& resultBuilder, std::string& errorMsg, double timeout);
+  int ensureIndexCoordinator(std::string const& databaseName, std::string const& collectionID,
+                             arangodb::velocypack::Slice const& slice, bool create,
+                             bool (*compare)(arangodb::velocypack::Slice const&,
+                                             arangodb::velocypack::Slice const&),
+                             arangodb::velocypack::Builder& resultBuilder,
+                             std::string& errorMsg, double timeout);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop an index in coordinator.
   //////////////////////////////////////////////////////////////////////////////
 
-  int dropIndexCoordinator(std::string const& databaseName,
-                           std::string const& collectionID, TRI_idx_iid_t iid,
-                           std::string& errorMsg, double timeout);
+  int dropIndexCoordinator(std::string const& databaseName, std::string const& collectionID,
+                           TRI_idx_iid_t iid, std::string& errorMsg, double timeout);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about servers from the agency
@@ -471,11 +460,9 @@ class ClusterInfo {
   /// @brief find the shard that is responsible for a document
   //////////////////////////////////////////////////////////////////////////////
 
-  int getResponsibleShard(LogicalCollection*, arangodb::velocypack::Slice,
-                          bool docComplete, ShardID& shardID,
-                          bool& usesDefaultShardingAttributes,
+  int getResponsibleShard(LogicalCollection*, arangodb::velocypack::Slice, bool docComplete,
+                          ShardID& shardID, bool& usesDefaultShardingAttributes,
                           std::string const& key = "");
-
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the list of coordinator server names
@@ -513,13 +500,18 @@ class ClusterInfo {
 
   std::shared_ptr<VPackBuilder> getCurrent();
 
-  std::vector<std::string> getFailedServers() { MUTEX_LOCKER(guard, _failedServersMutex); return _failedServers; }
-  void setFailedServers(std::vector<std::string> const& failedServers) { MUTEX_LOCKER(guard, _failedServersMutex); _failedServers = failedServers; }
+  std::vector<std::string> getFailedServers() {
+    MUTEX_LOCKER(guard, _failedServersMutex);
+    return _failedServers;
+  }
+  void setFailedServers(std::vector<std::string> const& failedServers) {
+    MUTEX_LOCKER(guard, _failedServersMutex);
+    _failedServers = failedServers;
+  }
 
   virtual std::unordered_map<ServerID, std::string> getServerAliases();
-  
- private:
 
+ private:
   void loadClusterId();
 
   //////////////////////////////////////////////////////////////////////////////
@@ -552,8 +544,7 @@ class ClusterInfo {
   int ensureIndexCoordinatorWithoutRollback(
       std::string const& databaseName, std::string const& collectionID,
       std::string const& idSlice, arangodb::velocypack::Slice const& slice, bool create,
-      bool (*compare)(arangodb::velocypack::Slice const&,
-                      arangodb::velocypack::Slice const&),
+      bool (*compare)(arangodb::velocypack::Slice const&, arangodb::velocypack::Slice const&),
       arangodb::velocypack::Builder& resultBuilder, std::string& errorMsg, double timeout);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -591,10 +582,8 @@ class ClusterInfo {
   };
 
   // The servers, first all, we only need Current here:
-  std::unordered_map<ServerID, std::string>
-      _servers;  // from Current/ServersRegistered
-  std::unordered_map<ServerID, std::string>
-      _serverAliases;  // from Current/ServersRegistered
+  std::unordered_map<ServerID, std::string> _servers;  // from Current/ServersRegistered
+  std::unordered_map<ServerID, std::string> _serverAliases;  // from Current/ServersRegistered
   ProtectionData _serversProt;
 
   // The DBServers, also from Current:
@@ -602,8 +591,7 @@ class ClusterInfo {
   ProtectionData _DBServersProt;
 
   // The Coordinators, also from Current:
-  std::unordered_map<ServerID, ServerID>
-      _coordinators;  // from Current/Coordinators
+  std::unordered_map<ServerID, ServerID> _coordinators;  // from Current/Coordinators
   ProtectionData _coordinatorsProt;
 
   std::shared_ptr<VPackBuilder> _plan;
@@ -615,15 +603,13 @@ class ClusterInfo {
 
   ProtectionData _planProt;
 
-  uint64_t _planVersion;   // This is the version in the Plan which underlies
-                           // the data in _plannedCollections, _shards and
-                           // _shardKeys
+  uint64_t _planVersion;     // This is the version in the Plan which underlies
+                             // the data in _plannedCollections, _shards and
+                             // _shardKeys
   uint64_t _currentVersion;  // This is the version in Current which underlies
                              // the data in _currentDatabases,
                              // _currentCollections and _shardsIds
-  std::unordered_map<DatabaseID,
-                     std::unordered_map<ServerID, VPackSlice>>
-      _currentDatabases;  // from Current/Databases
+  std::unordered_map<DatabaseID, std::unordered_map<ServerID, VPackSlice>> _currentDatabases;  // from Current/Databases
   ProtectionData _currentProt;
 
   // We need information about collections, again we have
@@ -648,8 +634,7 @@ class ClusterInfo {
 
   // The Current state:
   AllCollectionsCurrent _currentCollections;  // from Current/Collections/
-  std::unordered_map<ShardID, std::shared_ptr<std::vector<ServerID>>>
-      _shardIds;  // from Current/Collections/
+  std::unordered_map<ShardID, std::shared_ptr<std::vector<ServerID>>> _shardIds;  // from Current/Collections/
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief uniqid sequence
@@ -689,8 +674,8 @@ class ClusterInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   static double const reloadServerListTimeout;
-  
-  arangodb::Mutex _failedServersMutex;  
+
+  arangodb::Mutex _failedServersMutex;
   std::vector<std::string> _failedServers;
 };
 

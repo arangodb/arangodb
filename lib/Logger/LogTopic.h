@@ -40,7 +40,7 @@ class LogTopic {
   static std::vector<std::pair<std::string, LogLevel>> logLevelTopics();
   static void setLogLevel(std::string const&, LogLevel);
   static LogTopic* lookup(std::string const&);
-  static std::string lookup(size_t topicId); 
+  static std::string lookup(size_t topicId);
 
  public:
   explicit LogTopic(std::string const& name);
@@ -79,6 +79,6 @@ class LogTopic {
   std::string _displayName;
   std::atomic<LogLevel> _level;
 };
-}
+}  // namespace arangodb
 
 #endif

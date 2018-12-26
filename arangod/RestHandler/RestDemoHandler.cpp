@@ -32,15 +32,20 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestDemoHandler::RestDemoHandler(GeneralRequest* request,
-                                 GeneralResponse* response)
+RestDemoHandler::RestDemoHandler(GeneralRequest* request, GeneralResponse* response)
     : RestBaseHandler(request, response) {}
 
 RestStatus RestDemoHandler::execute() {
   return RestStatus::QUEUE
-      .then([]() { LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "demo handler going to sleep"; })
+      .then([]() {
+        LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+            << "demo handler going to sleep";
+      })
       .then([]() { sleep(5); })
-      .then([]() { LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "demo handler done sleeping"; })
+      .then([]() {
+        LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+            << "demo handler done sleeping";
+      })
       .then([this]() { doSomeMoreWork(); })
       .then([this]() { return evenMoreWork(); });
 }
@@ -61,9 +66,14 @@ RestStatus RestDemoHandler::evenMoreWork() {
   generateResult(rest::ResponseCode::OK, result.slice());
 
   return RestStatus::DONE
-      .then([]() { LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "demo handler keeps working"; })
+      .then([]() {
+        LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+            << "demo handler keeps working";
+      })
       .then([]() { sleep(5); })
-      .then(
-          []() { LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "even if the result has already been returned"; })
+      .then([]() {
+        LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+            << "even if the result has already been returned";
+      })
       .then([]() { LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "finally done"; });
 }

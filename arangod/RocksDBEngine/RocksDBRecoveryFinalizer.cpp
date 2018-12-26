@@ -44,6 +44,7 @@ void RocksDBRecoveryFinalizer::start() {
     return;
   }
   // notify everyone that recovery is now done
-  auto databaseFeature = ApplicationServer::getFeature<DatabaseFeature>("Database");
+  auto databaseFeature =
+      ApplicationServer::getFeature<DatabaseFeature>("Database");
   databaseFeature->recoveryDone();
 }

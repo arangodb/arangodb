@@ -24,9 +24,9 @@
 #ifndef ARANGOD_AQL_REST_AQL_HANDLER_H
 #define ARANGOD_AQL_REST_AQL_HANDLER_H 1
 
-#include "Basics/Common.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/types.h"
+#include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "RestServer/VocbaseContext.h"
 
@@ -101,12 +101,11 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
 
  private:
   // Send slice as result with the given response type.
-  void sendResponse(rest::ResponseCode,
-                    arangodb::velocypack::Slice const, transaction::Context*);
+  void sendResponse(rest::ResponseCode, arangodb::velocypack::Slice const,
+                    transaction::Context*);
 
   // handle for useQuery
-  void handleUseQuery(std::string const&, Query*,
-                      arangodb::velocypack::Slice const);
+  void handleUseQuery(std::string const&, Query*, arangodb::velocypack::Slice const);
 
   // parseVelocyPackBody, returns a nullptr and produces an error
   // response if
@@ -132,7 +131,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   // id of current query
   QueryId _qId;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

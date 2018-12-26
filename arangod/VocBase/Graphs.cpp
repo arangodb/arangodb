@@ -23,13 +23,13 @@
 
 #include "Graphs.h"
 
+#include <sstream>
 #include "Aql/Graphs.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterMethods.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Transaction/StandaloneContext.h"
-#include <sstream>
 using namespace arangodb;
 
 #ifndef USE_ENTERPRISE
@@ -47,7 +47,7 @@ arangodb::aql::Graph* arangodb::lookupGraphByName(std::shared_ptr<transaction::C
 
   if (!res.ok()) {
     std::stringstream ss;
-    ss <<  "while looking up graph '" << name << "': " << res.errorMessage();
+    ss << "while looking up graph '" << name << "': " << res.errorMessage();
     res.reset(res.errorNumber(), ss.str());
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -66,12 +66,11 @@ arangodb::aql::Graph* arangodb::lookupGraphByName(std::shared_ptr<transaction::C
   res = trx.finish(result.code);
 
   if (!result.successful()) {
-    THROW_ARANGO_EXCEPTION_FORMAT(result.code, "while looking up graph '%s'",
-                                  name.c_str());
+    THROW_ARANGO_EXCEPTION_FORMAT(result.code, "while looking up graph '%s'", name.c_str());
   }
   if (!res.ok()) {
     std::stringstream ss;
-    ss <<  "while looking up graph '" << name << "': " << res.errorMessage();
+    ss << "while looking up graph '" << name << "': " << res.errorMessage();
     res.reset(res.errorNumber(), ss.str());
     THROW_ARANGO_EXCEPTION(res);
   }

@@ -47,7 +47,7 @@ enum MMFilesMarkerType : uint8_t {
   TRI_DF_MARKER_HEADER = 10,
   TRI_DF_MARKER_FOOTER = 11,
   TRI_DF_MARKER_BLANK = 12,
-  
+
   TRI_DF_MARKER_COL_HEADER = 20,
   TRI_DF_MARKER_PROLOGUE = 25,
 
@@ -82,10 +82,15 @@ enum MMFilesMarkerType : uint8_t {
 ///   4 - size too small
 ///   5 - CRC failed
 struct DatafileScanEntry {
-  DatafileScanEntry() 
-      : position(0), size(0), realSize(0), tick(0), type(TRI_DF_MARKER_MIN), 
-        status(0), typeName(nullptr) {}
-  
+  DatafileScanEntry()
+      : position(0),
+        size(0),
+        realSize(0),
+        tick(0),
+        type(TRI_DF_MARKER_MIN),
+        status(0),
+        typeName(nullptr) {}
+
   ~DatafileScanEntry() = default;
 
   TRI_voc_size_t position;
@@ -103,9 +108,8 @@ struct DatafileScanEntry {
 
 /// @brief scan result
 struct DatafileScan {
-  DatafileScan() 
-      : currentSize(0), maximalSize(0), endPosition(0), numberMarkers(0),
-        status(1), isSealed(false) {
+  DatafileScan()
+      : currentSize(0), maximalSize(0), endPosition(0), numberMarkers(0), status(1), isSealed(false) {
     entries.reserve(2048);
   }
 
@@ -184,7 +188,7 @@ typedef uint32_t MMFilesDatafileVersionType;
 /// @brief datafile
 struct MMFilesDatafile {
   MMFilesDatafile(std::string const& filename, int fd, void* mmHandle, TRI_voc_size_t maximalSize,
-                 TRI_voc_size_t currentsize, TRI_voc_fid_t fid, char* data);
+                  TRI_voc_size_t currentsize, TRI_voc_fid_t fid, char* data);
   ~MMFilesDatafile();
 
   /// @brief return whether the datafile is a physical file (true) or an
@@ -205,24 +209,23 @@ struct MMFilesDatafile {
 
   /// @brief creates either an anonymous or a physical datafile
   static MMFilesDatafile* create(std::string const& filename, TRI_voc_fid_t fid,
-                                TRI_voc_size_t maximalSize,
-                                bool withInitialMarkers);
+                                 TRI_voc_size_t maximalSize, bool withInitialMarkers);
 
   /// @brief close a datafile
   int close();
 
   /// @brief sync the data of a datafile
-  bool sync(char const* begin, char const* end); 
+  bool sync(char const* begin, char const* end);
 
   /// @brief seals a datafile, writes a footer, sets it to read-only
   int seal();
-  
+
   /// @brief scans a datafile
   static DatafileScan scan(std::string const& path);
 
   /// @brief try to repair a datafile
   static bool tryRepair(std::string const& path);
-  
+
   /// @brief opens a datafile
   static MMFilesDatafile* open(std::string const& filename, bool ignoreErrors);
 
@@ -232,11 +235,11 @@ struct MMFilesDatafile {
 
   /// @brief checksums and writes a marker to the datafile
   int writeCrcElement(void* position, MMFilesMarker* marker, bool sync);
-  
+
   /// @brief reserves room for an element, advances the pointer
   int reserveElement(TRI_voc_size_t size, MMFilesMarker** position,
                      TRI_voc_size_t maximalJournalSize);
-  
+
   void sequentialAccess();
   void randomAccess();
   void willNeed();
@@ -244,7 +247,7 @@ struct MMFilesDatafile {
   void dontDump();
   bool readOnly();
   bool readWrite();
-  
+
   int lockInMemory();
   int unlockFromMemory();
 
@@ -257,11 +260,11 @@ struct MMFilesDatafile {
   TRI_voc_size_t maximalSize() const { return _maximalSize; }
   TRI_voc_size_t currentSize() const { return _currentSize; }
   TRI_voc_size_t footerSize() const { return _footerSize; }
-  
+
   void setState(TRI_df_state_e state) { _state = state; }
-  
+
   bool isSealed() const { return _isSealed; }
-  
+
   char* advanceWritePosition(size_t size) {
     char* old = _next;
 
@@ -270,14 +273,14 @@ struct MMFilesDatafile {
 
     return old;
   }
-  
+
  private:
   /// @brief returns information about the datafile
   DatafileScan scanHelper();
-  
+
   int truncateAndSeal(TRI_voc_size_t position);
 
-  /// @brief checks a datafile 
+  /// @brief checks a datafile
   bool check(bool ignoreFailures);
 
   /// @brief fixes a corrupted datafile
@@ -292,25 +295,26 @@ struct MMFilesDatafile {
   /// @brief tries to repair a datafile
   bool tryRepair();
 
-  static void printMarker(MMFilesMarker const* marker, TRI_voc_size_t size, char const* begin, char const* end);
-  
+  static void printMarker(MMFilesMarker const* marker, TRI_voc_size_t size,
+                          char const* begin, char const* end);
+
  private:
-  std::string _filename;  // underlying filename
+  std::string _filename;     // underlying filename
   TRI_voc_fid_t const _fid;  // datafile identifier
-  TRI_df_state_e _state;  // state of the datafile (READ or WRITE)
-  int _fd;                // underlying file descriptor
+  TRI_df_state_e _state;     // state of the datafile (READ or WRITE)
+  int _fd;                   // underlying file descriptor
 
   void* _mmHandle;  // underlying memory map object handle (windows only)
 
-  TRI_voc_size_t mutable _initSize; // initial size of the datafile (constant)
-  TRI_voc_size_t _maximalSize;    // maximal size of the datafile (may be adjusted/reduced at runtime)
-  TRI_voc_size_t _currentSize;    // current size of the datafile
-  TRI_voc_size_t _footerSize;     // size of the final footer
-  
+  TRI_voc_size_t mutable _initSize;  // initial size of the datafile (constant)
+  TRI_voc_size_t _maximalSize;  // maximal size of the datafile (may be adjusted/reduced at runtime)
+  TRI_voc_size_t _currentSize;  // current size of the datafile
+  TRI_voc_size_t _footerSize;   // size of the final footer
+
   bool _full;  // at least one request was rejected because there is not enough
                // room
-  bool _isSealed;  // true, if footer has been written
-  bool _lockedInMemory;  // whether or not the datafile is locked in memory (mlock) 
+  bool _isSealed;        // true, if footer has been written
+  bool _lockedInMemory;  // whether or not the datafile is locked in memory (mlock)
 
  public:
   char* _data;  // start of the data array
@@ -373,8 +377,8 @@ struct MMFilesMarker {
  private:
   TRI_voc_size_t _size;  // 4 bytes
   TRI_voc_crc_t _crc;    // 4 bytes, generated
-  uint64_t _typeAndTick; // 8 bytes, including 1 byte for type and 7 bytes for tick
- 
+  uint64_t _typeAndTick;  // 8 bytes, including 1 byte for type and 7 bytes for tick
+
  public:
   MMFilesMarker() : _size(0), _crc(0), _typeAndTick(0) {}
   ~MMFilesMarker() {}
@@ -390,39 +394,38 @@ struct MMFilesMarker {
   }
   inline TRI_voc_size_t getSize() const noexcept { return _size; }
   inline void setSize(TRI_voc_size_t size) noexcept { _size = size; }
-  
+
   inline TRI_voc_crc_t getCrc() const noexcept { return _crc; }
   inline void setCrc(TRI_voc_crc_t crc) noexcept { _crc = crc; }
-    
+
   static inline TRI_voc_tick_t makeTick(TRI_voc_tick_t tick) noexcept {
     return tick & 0x00ffffffffffffffULL;
   }
 
-  inline TRI_voc_tick_t getTick() const noexcept { 
+  inline TRI_voc_tick_t getTick() const noexcept {
     return makeTick(static_cast<TRI_voc_tick_t>(_typeAndTick));
   }
 
-  inline void setTick(TRI_voc_tick_t tick) noexcept { 
-    _typeAndTick &= 0xff00000000000000ULL; 
+  inline void setTick(TRI_voc_tick_t tick) noexcept {
+    _typeAndTick &= 0xff00000000000000ULL;
     _typeAndTick |= makeTick(tick);
   }
 
-  inline MMFilesMarkerType getType() const noexcept { 
-    return static_cast<MMFilesMarkerType>((_typeAndTick & 0xff00000000000000ULL) >> 56); 
+  inline MMFilesMarkerType getType() const noexcept {
+    return static_cast<MMFilesMarkerType>((_typeAndTick & 0xff00000000000000ULL) >> 56);
   }
 
-  inline void setType(MMFilesMarkerType type) noexcept { 
+  inline void setType(MMFilesMarkerType type) noexcept {
     uint64_t t = static_cast<uint64_t>(type) << 56;
     _typeAndTick = makeTick(_typeAndTick);
     _typeAndTick |= t;
   }
-   
+
   inline void setTypeAndTick(MMFilesMarkerType type, TRI_voc_tick_t tick) noexcept {
     uint64_t t = static_cast<uint64_t>(type) << 56;
     t |= makeTick(tick);
     _typeAndTick = t;
   }
-
 };
 
 static_assert(sizeof(MMFilesMarker) == 16, "invalid size for MMFilesMarker");
@@ -460,17 +463,17 @@ static_assert(sizeof(MMFilesMarker) == 16, "invalid size for MMFilesMarker");
 struct MMFilesDatafileHeaderMarker {
   MMFilesMarker base;  // 16 bytes
 
-  MMFilesDatafileVersionType _version;    //  4 bytes
-  TRI_voc_size_t _maximalSize;  //  4 bytes
-  TRI_voc_tick_t _fid;          //  8 bytes
+  MMFilesDatafileVersionType _version;  //  4 bytes
+  TRI_voc_size_t _maximalSize;          //  4 bytes
+  TRI_voc_tick_t _fid;                  //  8 bytes
 };
 
 /// @brief datafile prologue marker
 struct MMFilesPrologueMarker {
   MMFilesMarker base;  // 16 bytes
 
-  TRI_voc_tick_t _databaseId; // 8 bytes
-  TRI_voc_cid_t _collectionId; // 8 bytes
+  TRI_voc_tick_t _databaseId;   // 8 bytes
+  TRI_voc_cid_t _collectionId;  // 8 bytes
 };
 
 /// @brief datafile footer marker
@@ -513,10 +516,9 @@ void TRI_UpdateTicksDatafile(MMFilesDatafile*, MMFilesMarker const*);
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IterateDatafile(MMFilesDatafile*,
-                         bool (*iterator)(MMFilesMarker const*, void*,
-                                          MMFilesDatafile*),
+                         bool (*iterator)(MMFilesMarker const*, void*, MMFilesDatafile*),
                          void* data);
-                             
+
 bool TRI_IterateDatafile(MMFilesDatafile*,
                          std::function<bool(MMFilesMarker const*, MMFilesDatafile*)> const& cb);
 

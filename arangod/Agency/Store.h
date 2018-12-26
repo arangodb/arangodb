@@ -31,37 +31,36 @@ namespace arangodb {
 namespace consensus {
 
 struct check_ret_t {
-
   bool success;
   query_t failed;
-  
+
   check_ret_t() : success(true), failed(nullptr) {}
-  
+
   explicit check_ret_t(bool s) : success(s) {}
-  
+
   inline bool successful() const { return success; }
-  
+
   inline void successful(bool s) { success = s; }
 
   inline void open() {
     TRI_ASSERT(failed == nullptr);
-    failed = std::make_shared<VPackBuilder>(); failed->openArray();
+    failed = std::make_shared<VPackBuilder>();
+    failed->openArray();
   }
-  
+
   inline void push_back(VPackSlice const& key) {
     TRI_ASSERT(failed != nullptr);
     success = false;
     failed->add(key);
   }
-  
+
   inline void close() {
     TRI_ASSERT(failed != nullptr);
     failed->close();
-  } 
-  
+  }
 };
 
-enum CheckMode {FIRST_FAIL, FULL};
+enum CheckMode { FIRST_FAIL, FULL };
 
 class Agent;
 
@@ -92,22 +91,21 @@ class Store {
   std::vector<bool> applyTransactions(query_t const& query);
 
   /// @brief Apply single transaction in query, here query is an array and the
-  /// first entry is a write transaction (i.e. an array of length 1, 2 or 3), 
+  /// first entry is a write transaction (i.e. an array of length 1, 2 or 3),
   /// if present, the second entry is a precondition, and the third
   /// entry, if present, is a uuid:
   check_ret_t applyTransaction(Slice const& query);
 
   /// @brief Apply log entries in query, also process callbacks
   std::vector<bool> applyLogEntries(arangodb::velocypack::Builder const& query,
-                          index_t index, term_t term, bool inform);
+                                    index_t index, term_t term, bool inform);
 
   /// @brief Read specified query from store
   std::vector<bool> read(query_t const& query, query_t& result) const;
 
   /// @brief Read individual entry specified in slice into builder
-  bool read(arangodb::velocypack::Slice const&,
-            arangodb::velocypack::Builder&) const;
-  
+  bool read(arangodb::velocypack::Slice const&, arangodb::velocypack::Builder&) const;
+
   /// @brief Dump everything to builder
   void dumpToBuilder(Builder&) const;
 
@@ -134,7 +132,7 @@ class Store {
 
   /// @brief Apply single slice
   bool applies(arangodb::velocypack::Slice const&);
- 
+
   /// @brief Remove time to live entries for uri
   void removeTTL(std::string const&);
 
@@ -146,7 +144,6 @@ class Store {
   std::unordered_multimap<std::string, std::string> const& observedTable() const;
 
  private:
-
   /// @brief Check precondition
   check_ret_t check(arangodb::velocypack::Slice const&, CheckMode = FIRST_FAIL) const;
 
@@ -161,7 +158,7 @@ class Store {
   /// @brief Read/Write mutex on database
   /// guard _node, _timeTable, _observerTable, _observedTable
   mutable arangodb::Mutex _storeLock;
- 
+
   /// @brief My own agent
   Agent* _agent;
 
@@ -176,12 +173,11 @@ class Store {
   Node _node;
 };
 
-
 inline std::ostream& operator<<(std::ostream& o, Store const& store) {
   return store.get().print(o);
 }
 
-}
-}
+}  // namespace consensus
+}  // namespace arangodb
 
 #endif

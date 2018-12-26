@@ -33,14 +33,15 @@
 
 using namespace arangodb::aql;
 
-DocumentProducingNode::DocumentProducingNode(Variable const* outVariable)  
+DocumentProducingNode::DocumentProducingNode(Variable const* outVariable)
     : _outVariable(outVariable) {
   TRI_ASSERT(_outVariable != nullptr);
 }
 
-DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan, 
+DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
                                              arangodb::velocypack::Slice slice)
-    : _outVariable(Variable::varFromVPack(plan->getAst(), slice, "outVariable")) {
+    : _outVariable(
+          Variable::varFromVPack(plan->getAst(), slice, "outVariable")) {
   TRI_ASSERT(_outVariable != nullptr);
 
   if (slice.hasKey("projection")) {
@@ -52,11 +53,11 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
     }
   }
 }
-  
+
 void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   builder.add(VPackValue("outVariable"));
   _outVariable->toVelocyPack(builder);
-  
+
   if (!_projection.empty()) {
     builder.add("projection", VPackValue(VPackValueType::Array));
     for (auto const& it : _projection) {

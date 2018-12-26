@@ -41,9 +41,8 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-UpgradeFeature::UpgradeFeature(
-    ApplicationServer* server, int* result,
-    std::vector<std::string> const& nonServerFeatures)
+UpgradeFeature::UpgradeFeature(ApplicationServer* server, int* result,
+                               std::vector<std::string> const& nonServerFeatures)
     : ApplicationFeature(server, "Upgrade"),
       _upgrade(false),
       _upgradeCheck(true),
@@ -67,24 +66,26 @@ void UpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "perform a database upgrade if necessary",
                      new BooleanParameter(&_upgrade));
 
-  options->addHiddenOption("--database.upgrade-check",
-                           "skip a database upgrade",
+  options->addHiddenOption("--database.upgrade-check", "skip a database upgrade",
                            new BooleanParameter(&_upgradeCheck));
 }
 
 void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (_upgrade && !_upgradeCheck) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot specify both '--database.auto-upgrade true' and "
-                  "'--database.upgrade-check false'";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "cannot specify both '--database.auto-upgrade true' and "
+           "'--database.upgrade-check false'";
     FATAL_ERROR_EXIT();
   }
 
   if (!_upgrade) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "executing upgrade check: not disabling server features";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+        << "executing upgrade check: not disabling server features";
     return;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "executing upgrade procedure: disabling server features";
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+      << "executing upgrade procedure: disabling server features";
 
   ApplicationServer::forceDisableFeatures(_nonServerFeatures);
 
@@ -101,7 +102,7 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 void UpgradeFeature::start() {
   auto init =
       ApplicationServer::getFeature<InitDatabaseFeature>("InitDatabase");
-  AuthInfo *ai = AuthenticationFeature::INSTANCE->authInfo();
+  AuthInfo* ai = AuthenticationFeature::INSTANCE->authInfo();
 
   // upgrade the database
   if (_upgradeCheck) {
@@ -116,13 +117,11 @@ void UpgradeFeature::start() {
   }
 
   // change admin user
-  if (init->restoreAdmin() &&
-      ServerState::instance()->isSingleServerOrCoordinator()) {
-    
+  if (init->restoreAdmin() && ServerState::instance()->isSingleServerOrCoordinator()) {
     Result res = ai->removeAllUsers();
     if (res.fail()) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to create clear users: "
-                                               << res.errorMessage();
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+          << "failed to create clear users: " << res.errorMessage();
       *_result = EXIT_FAILURE;
       return;
     }
@@ -133,8 +132,8 @@ void UpgradeFeature::start() {
     }
 
     if (res.fail()) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to create root user: "
-                                               << res.errorMessage();
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+          << "failed to create root user: " << res.errorMessage();
       *_result = EXIT_FAILURE;
       return;
     }
@@ -154,13 +153,14 @@ void UpgradeFeature::start() {
 void UpgradeFeature::upgradeDatabase() {
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "starting database init/upgrade";
 
-  DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+  DatabaseFeature* databaseFeature =
+      application_features::ApplicationServer::getFeature<DatabaseFeature>(
+          "Database");
   auto* systemVocbase = DatabaseFeature::DATABASE->systemDatabase();
 
   // enter context and isolate
   {
-    V8Context* context =
-        V8DealerFeature::DEALER->enterContext(systemVocbase, true, 0);
+    V8Context* context = V8DealerFeature::DEALER->enterContext(systemVocbase, true, 0);
 
     if (context == nullptr) {
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not enter context #0";
@@ -171,15 +171,15 @@ void UpgradeFeature::upgradeDatabase() {
 
     {
       v8::HandleScope scope(context->_isolate);
-      auto localContext =
-          v8::Local<v8::Context>::New(context->_isolate, context->_context);
+      auto localContext = v8::Local<v8::Context>::New(context->_isolate, context->_context);
       localContext->Enter();
 
       {
         v8::Context::Scope contextScope(localContext);
 
         // run upgrade script
-        LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "running database init/upgrade";
+        LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+            << "running database init/upgrade";
 
         for (auto& name : databaseFeature->getDatabaseNames()) {
           TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(name);
@@ -194,38 +194,42 @@ void UpgradeFeature::upgradeDatabase() {
           args->Set(TRI_V8_ASCII_STRING(context->_isolate, "upgrade"),
                     v8::Boolean::New(context->_isolate, _upgrade));
 
-
-          localContext->Global()->Set(
-              TRI_V8_ASCII_STRING(context->_isolate, "UPGRADE_ARGS"), args);
+          localContext->Global()->Set(TRI_V8_ASCII_STRING(context->_isolate,
+                                                          "UPGRADE_ARGS"),
+                                      args);
 
           bool ok = TRI_UpgradeDatabase(vocbase, localContext);
 
           if (!ok) {
-            if (localContext->Global()->Has(TRI_V8_ASCII_STRING(
-                    context->_isolate, "UPGRADE_STARTED"))) {
-            
-              uint64_t upgradeType = TRI_ObjectToUInt64(localContext->Global()->Get(TRI_V8_ASCII_STRING(context->_isolate, "UPGRADE_TYPE")), false);
+            if (localContext->Global()->Has(
+                    TRI_V8_ASCII_STRING(context->_isolate,
+                                        "UPGRADE_STARTED"))) {
+              uint64_t upgradeType =
+                  TRI_ObjectToUInt64(localContext->Global()->Get(
+                                         TRI_V8_ASCII_STRING(context->_isolate,
+                                                             "UPGRADE_TYPE")),
+                                     false);
 
               localContext->Exit();
-  // 0 = undecided
-  // 1 = same version
-  // 2 = downgrade
-  // 3 = upgrade
-  // 4 = requires upgrade
-  // 5 = no version found
+              // 0 = undecided
+              // 1 = same version
+              // 2 = downgrade
+              // 3 = upgrade
+              // 4 = requires upgrade
+              // 5 = no version found
               char const* typeName = "initialization";
 
               switch (upgradeType) {
-                case 0: // undecided
-                case 1: // same version
-                case 2: // downgrade
-                case 5: // no VERSION file found
+                case 0:  // undecided
+                case 1:  // same version
+                case 2:  // downgrade
+                case 5:  // no VERSION file found
                   // initialization
                   break;
-                case 3: // upgrade
+                case 3:  // upgrade
                   typeName = "upgrade";
                   break;
-                case 4: // requires upgrade
+                case 4:  // requires upgrade
                   typeName = "upgrade";
                   if (!_upgrade) {
                     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
@@ -236,18 +240,21 @@ void UpgradeFeature::upgradeDatabase() {
                   break;
               }
 
-              LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Database '" << vocbase->name()
-                         << "' " << typeName << " failed. Please inspect the logs from "
-                            "the " << typeName << " procedure";
+              LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+                  << "Database '" << vocbase->name() << "' " << typeName
+                  << " failed. Please inspect the logs from "
+                     "the "
+                  << typeName << " procedure";
             } else {
-              LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "JavaScript error during server start";
+              LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+                  << "JavaScript error during server start";
             }
-              
+
             FATAL_ERROR_EXIT();
           }
-            
-          LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "database '" << vocbase->name()
-                     << "' init/upgrade done";
+
+          LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+              << "database '" << vocbase->name() << "' init/upgrade done";
         }
       }
 

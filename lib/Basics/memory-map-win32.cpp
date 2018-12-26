@@ -25,9 +25,9 @@
 
 #ifdef TRI_HAVE_WIN32_MMAP
 
-#include "Windows.h"
-#include "Logger/Logger.h"
 #include "Basics/tri-strings.h"
+#include "Logger/Logger.h"
+#include "Windows.h"
 
 using namespace arangodb;
 
@@ -54,8 +54,7 @@ int TRI_FlushMMFile(int fileDescriptor, void* startingAddress,
   // now - this may change.
   // ...........................................................................
 
-  if (fileDescriptor <
-      0) {  // an invalid file descriptor of course means an invalid handle
+  if (fileDescriptor < 0) {  // an invalid file descriptor of course means an invalid handle
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -117,7 +116,9 @@ int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
     // .........................................................................
     fileHandle = INVALID_HANDLE_VALUE;
     if ((flags & MAP_ANONYMOUS) != MAP_ANONYMOUS) {
-      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "File descriptor is invalid however memory map flag is not anonymous";
+      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+          << "File descriptor is invalid however memory map flag is not "
+             "anonymous";
       return TRI_ERROR_SYS_ERROR;
     }
   }
@@ -134,7 +135,8 @@ int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
     // ...........................................................................
 
     if (fileHandle == INVALID_HANDLE_VALUE) {
-      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "File descriptor converted to an invalid handle";
+      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+          << "File descriptor converted to an invalid handle";
       return TRI_ERROR_SYS_ERROR;
     }
   }
@@ -210,7 +212,8 @@ int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
   // ...........................................................................
   if (*mmHandle == nullptr) {
     DWORD errorCode = GetLastError();
-    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "File descriptor converted to an invalid handle: " << errorCode;
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+        << "File descriptor converted to an invalid handle: " << errorCode;
     return TRI_ERROR_SYS_ERROR;
   }
 
@@ -221,8 +224,7 @@ int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
 
   // TODO: fix the viewProtection above *result = MapViewOfFile(*mmHandle,
   // viewProtection, 0, 0, 0);
-  *result = MapViewOfFile(*mmHandle, FILE_MAP_ALL_ACCESS, 0, 0,
-                          numOfBytesToInitialize);
+  *result = MapViewOfFile(*mmHandle, FILE_MAP_ALL_ACCESS, 0, 0, numOfBytesToInitialize);
 
   // ........................................................................
   // The map view of file has failed.
@@ -235,14 +237,18 @@ int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
     // TODO: map the error codes of windows to the TRI_ERROR (see function DWORD
     // WINAPI GetLastError(void) );
     if (errorCode == ERROR_NOT_ENOUGH_MEMORY) {
-      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "MapViewOfFile failed with out of memory error " << errorCode;
+      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+          << "MapViewOfFile failed with out of memory error " << errorCode;
       return TRI_ERROR_OUT_OF_MEMORY;
     }
-    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "MapViewOfFile failed with error code = " << errorCode;
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+        << "MapViewOfFile failed with error code = " << errorCode;
     return TRI_ERROR_SYS_ERROR;
   }
 
-  LOG_TOPIC(DEBUG, Logger::MMAP) << "memory-mapped range " << Logger::RANGE(*result, numOfBytesToInitialize) << ", file-descriptor " << fileDescriptor;
+  LOG_TOPIC(DEBUG, Logger::MMAP)
+      << "memory-mapped range " << Logger::RANGE(*result, numOfBytesToInitialize)
+      << ", file-descriptor " << fileDescriptor;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -262,7 +268,9 @@ int TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap,
     return TRI_ERROR_SYS_ERROR;
   }
 
-  LOG_TOPIC(DEBUG, Logger::MMAP) << "memory-unmapped range " << Logger::RANGE(memoryAddress, numOfBytesToUnMap) << ", file-descriptor " << fileDescriptor;
+  LOG_TOPIC(DEBUG, Logger::MMAP) << "memory-unmapped range "
+                                 << Logger::RANGE(memoryAddress, numOfBytesToUnMap)
+                                 << ", file-descriptor " << fileDescriptor;
 
   return TRI_ERROR_NO_ERROR;
 }

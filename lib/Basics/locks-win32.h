@@ -41,7 +41,9 @@ typedef struct TRI_mutex_s {
 /// @brief read-write-lock type
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_read_write_lock_s { SRWLOCK _lock; } TRI_read_write_lock_t;
+typedef struct TRI_read_write_lock_s {
+  SRWLOCK _lock;
+} TRI_read_write_lock_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief condition variable

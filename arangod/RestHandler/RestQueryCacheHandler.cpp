@@ -30,8 +30,7 @@ using namespace arangodb::aql;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestQueryCacheHandler::RestQueryCacheHandler(GeneralRequest* request,
-                                             GeneralResponse* response)
+RestQueryCacheHandler::RestQueryCacheHandler(GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
 bool RestQueryCacheHandler::isDirect() const { return false; }
@@ -66,7 +65,7 @@ RestStatus RestQueryCacheHandler::execute() {
 bool RestQueryCacheHandler::clearCache() {
   auto queryCache = arangodb::aql::QueryCache::instance();
   queryCache->invalidate();
-    
+
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
   result.add("error", VPackValue(false));
@@ -96,14 +95,12 @@ bool RestQueryCacheHandler::replaceProperties() {
   auto const& suffixes = _request->suffixes();
 
   if (suffixes.size() != 1 || suffixes[0] != "properties") {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/query-cache/properties");
     return true;
   }
   bool validBody = true;
-  std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(validBody);
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(validBody);
 
   if (!validBody) {
     // error message generated in parseJsonBody
@@ -112,8 +109,8 @@ bool RestQueryCacheHandler::replaceProperties() {
   VPackSlice body = parsedBody.get()->slice();
 
   if (!body.isObject()) {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER, "expecting a JSON-Object body");
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expecting a JSON-Object body");
     return true;
   }
 

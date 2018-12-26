@@ -39,9 +39,9 @@ class CollectionNameResolver {
   //////////////////////////////////////////////////////////////////////////////
 
   explicit CollectionNameResolver(TRI_vocbase_t* vocbase)
-      : _vocbase(vocbase), 
+      : _vocbase(vocbase),
         _serverRole(ServerState::instance()->getRole()),
-        _resolvedNames(), 
+        _resolvedNames(),
         _resolvedIds() {}
 
   //////////////////////////////////////////////////////////////////////////////
@@ -121,29 +121,26 @@ class CollectionNameResolver {
   std::string getCollectionName(std::string const& nameOrId) const;
 
  private:
-
   std::string localNameLookup(TRI_voc_cid_t cid) const;
 
  private:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief vocbase base pointer
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_vocbase_t* _vocbase;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief role of server in cluster
   //////////////////////////////////////////////////////////////////////////////
-  
+
   ServerState::RoleEnum _serverRole;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief collection id => collection struct map
   //////////////////////////////////////////////////////////////////////////////
 
-  mutable std::unordered_map<std::string, arangodb::LogicalCollection const*>
-      _resolvedNames;
+  mutable std::unordered_map<std::string, arangodb::LogicalCollection const*> _resolvedNames;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief collection id => collection name map
@@ -151,6 +148,6 @@ class CollectionNameResolver {
 
   mutable std::unordered_map<TRI_voc_cid_t, std::string> _resolvedIds;
 };
-}
+}  // namespace arangodb
 
 #endif

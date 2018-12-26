@@ -44,8 +44,7 @@ class ExecutionEngine;
 
 class EnumerateCollectionBlock final : public ExecutionBlock, public DocumentProducingBlock {
  public:
-  EnumerateCollectionBlock(ExecutionEngine* engine,
-                           EnumerateCollectionNode const* ep);
+  EnumerateCollectionBlock(ExecutionEngine* engine, EnumerateCollectionNode const* ep);
 
   ~EnumerateCollectionBlock() = default;
 
@@ -66,14 +65,14 @@ class EnumerateCollectionBlock final : public ExecutionBlock, public DocumentPro
  private:
   /// @brief collection
   Collection* _collection;
-  
+
   std::unique_ptr<ManagedDocumentResult> _mmdr;
 
   /// @brief cursor
   std::unique_ptr<OperationCursor> _cursor;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

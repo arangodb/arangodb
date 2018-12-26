@@ -43,6 +43,6 @@ struct EventLoop {
   boost::asio::io_service* _ioService;
   rest::Scheduler* _scheduler;
 };
-}
+}  // namespace arangodb
 
 #endif

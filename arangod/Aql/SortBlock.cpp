@@ -31,21 +31,19 @@ using namespace arangodb::aql;
 
 SortBlock::SortBlock(ExecutionEngine* engine, SortNode const* en)
     : ExecutionBlock(engine, en), _sortRegisters(), _stable(en->_stable), _mustFetchAll(true) {
-  
   auto regPlan = en->getRegisterPlan();
   for (auto const& p : en->_elements) {
     auto it = regPlan->varInfo.find(p.var->id);
     TRI_ASSERT(it != regPlan->varInfo.end());
     TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
-    _sortRegisters.emplace_back(
-        std::make_pair(it->second.registerId, p.ascending));
+    _sortRegisters.emplace_back(std::make_pair(it->second.registerId, p.ascending));
   }
 }
 
 SortBlock::~SortBlock() {}
 
 int SortBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
-  DEBUG_BEGIN_BLOCK(); 
+  DEBUG_BEGIN_BLOCK();
   int res = ExecutionBlock::initializeCursor(items, pos);
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -57,15 +55,15 @@ int SortBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   return TRI_ERROR_NO_ERROR;
 
   // cppcheck-suppress style
-  DEBUG_END_BLOCK();  
+  DEBUG_END_BLOCK();
 }
 
 int SortBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
                              AqlItemBlock*& result, size_t& skipped) {
-  DEBUG_BEGIN_BLOCK(); 
-  
+  DEBUG_BEGIN_BLOCK();
+
   TRI_ASSERT(result == nullptr && skipped == 0);
-  
+
   if (_mustFetchAll) {
     // suck all blocks into _buffer
     while (getBlock(DefaultBatchSize(), DefaultBatchSize())) {
@@ -78,13 +76,13 @@ int SortBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
   }
 
   return ExecutionBlock::getOrSkipSome(atLeast, atMost, skipping, result, skipped);
-  
+
   // cppcheck-suppress style
-  DEBUG_END_BLOCK();  
+  DEBUG_END_BLOCK();
 }
 
 void SortBlock::doSorting() {
-  DEBUG_BEGIN_BLOCK();  
+  DEBUG_BEGIN_BLOCK();
 
   size_t sum = 0;
   for (auto const& block : _buffer) {
@@ -94,7 +92,7 @@ void SortBlock::doSorting() {
   TRI_IF_FAILURE("SortBlock::doSorting") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  
+
   // coords[i][j] is the <j>th row of the <i>th block
   std::vector<std::pair<size_t, size_t>> coords;
   coords.reserve(sum);
@@ -149,8 +147,7 @@ void SortBlock::doSorting() {
       // only copy as much as needed!
       for (size_t i = 0; i < sizeNext; i++) {
         for (RegisterId j = 0; j < nrRegs; j++) {
-          auto a =
-              _buffer[coords[count].first]->getValue(coords[count].second, j);
+          auto a = _buffer[coords[count].first]->getValue(coords[count].second, j);
           // If we have already dealt with this value for the next
           // block, then we just put the same value again:
           if (!a.isEmpty()) {
@@ -236,15 +233,15 @@ void SortBlock::doSorting() {
   for (auto& x : newbuffer) {
     delete x;
   }
-  DEBUG_END_BLOCK();  
+  DEBUG_END_BLOCK();
 }
 
 bool SortBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
                                         std::pair<size_t, size_t> const& b) const {
   for (auto const& reg : _sortRegisters) {
-    int cmp = AqlValue::Compare(
-        _trx, _buffer[a.first]->getValueReference(a.second, reg.first),
-        _buffer[b.first]->getValueReference(b.second, reg.first), true);
+    int cmp =
+        AqlValue::Compare(_trx, _buffer[a.first]->getValueReference(a.second, reg.first),
+                          _buffer[b.first]->getValueReference(b.second, reg.first), true);
 
     if (cmp < 0) {
       return reg.second;

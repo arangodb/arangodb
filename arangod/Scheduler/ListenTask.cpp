@@ -54,12 +54,14 @@ bool ListenTask::start() {
   try {
     _acceptor->open();
   } catch (boost::system::system_error const& err) {
-    LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION) << "failed to open endpoint '" << _endpoint->specification()
-              << "' with error: " << err.what();
+    LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION)
+        << "failed to open endpoint '" << _endpoint->specification()
+        << "' with error: " << err.what();
     return false;
   } catch (std::exception const& err) {
-    LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION) << "failed to open endpoint '" << _endpoint->specification()
-              << "' with error: " << err.what();
+    LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION)
+        << "failed to open endpoint '" << _endpoint->specification()
+        << "' with error: " << err.what();
     return false;
   }
 
@@ -85,7 +87,8 @@ bool ListenTask::start() {
         LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "accept failed: " << ec.message();
       } else if (_acceptFailures == MAX_ACCEPT_ERRORS) {
         LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "accept failed: " << ec.message();
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "too many accept failures, stopping to report";
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+            << "too many accept failures, stopping to report";
       }
     }
 

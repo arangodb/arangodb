@@ -79,20 +79,18 @@ class AuthInfo {
 
   /// Trigger eventual reload, user facing API call
   void reloadAllUsers();
-  
+
   /// Create the root user with a default password, will fail if the user
   /// already exists. Only ever call if you can guarantee to be in charge
   void createRootUser();
 
   VPackBuilder allUsers();
   /// Add user from arangodb, do not use for LDAP  users
-  Result storeUser(bool replace, std::string const& user,
-                   std::string const& pass, bool active);
+  Result storeUser(bool replace, std::string const& user, std::string const& pass, bool active);
   Result enumerateUsers(std::function<void(AuthUserEntry&)> const& func);
-  Result updateUser(std::string const& username,
-                    std::function<void(AuthUserEntry&)> const&);
+  Result updateUser(std::string const& username, std::function<void(AuthUserEntry&)> const&);
   Result accessUser(std::string const& username,
-                  std::function<void(AuthUserEntry const&)> const&);
+                    std::function<void(AuthUserEntry const&)> const&);
   velocypack::Builder serializeUser(std::string const& user);
   Result removeUser(std::string const& user);
   Result removeAllUsers();
@@ -102,27 +100,21 @@ class AuthInfo {
   velocypack::Builder getUserData(std::string const& user);
   Result setUserData(std::string const& user, velocypack::Slice const& data);
 
-  AuthResult checkPassword(std::string const& username,
-                           std::string const& password);
+  AuthResult checkPassword(std::string const& username, std::string const& password);
 
   AuthResult checkAuthentication(arangodb::rest::AuthenticationMethod authType,
                                  std::string const& secret);
 
-  AuthLevel canUseDatabase(std::string const& username,
-                           std::string const& dbname);
+  AuthLevel canUseDatabase(std::string const& username, std::string const& dbname);
   AuthLevel canUseCollection(std::string const& username,
-                             std::string const& dbname,
-                             std::string const& coll);
+                             std::string const& dbname, std::string const& coll);
 
   // @brief Variants that do not use locking.
   // Use with CARE and make sure the Lock is held somewhere else.
   // To be used within the callback functions given to this class.
-  AuthLevel canUseDatabaseNoLock(std::string const& username,
-                                 std::string const& dbname);
+  AuthLevel canUseDatabaseNoLock(std::string const& username, std::string const& dbname);
   AuthLevel canUseCollectionNoLock(std::string const& username,
-                                   std::string const& dbname,
-                                   std::string const& coll);
-
+                                   std::string const& dbname, std::string const& coll);
 
   void setJwtSecret(std::string const&);
   std::string jwtSecret();
@@ -134,8 +126,7 @@ class AuthInfo {
   // asserts that collection name is non-empty and already translated
   // from collection id to name
   AuthLevel canUseCollectionInternal(std::string const& username,
-                                     std::string const& dbname,
-                                     std::string const& coll);
+                                     std::string const& dbname, std::string const& coll);
   void loadFromDB();
   bool parseUsers(velocypack::Slice const& slice);
   Result storeUserInternal(AuthUserEntry const& user, bool replace);
@@ -145,8 +136,7 @@ class AuthInfo {
   bool validateJwtHeader(std::string const&);
   AuthJwtResult validateJwtBody(std::string const&);
   bool validateJwtHMAC256Signature(std::string const&, std::string const&);
-  std::shared_ptr<VPackBuilder> parseJson(std::string const&,
-                                          std::string const&);
+  std::shared_ptr<VPackBuilder> parseJson(std::string const&, std::string const&);
 
  private:
   basics::ReadWriteLock _authInfoLock;
@@ -156,12 +146,11 @@ class AuthInfo {
 
   std::unordered_map<std::string, AuthUserEntry> _authInfo;
   std::unordered_map<std::string, arangodb::AuthResult> _authBasicCache;
-  arangodb::basics::LruCache<std::string, arangodb::AuthJwtResult>
-      _authJwtCache;
+  arangodb::basics::LruCache<std::string, arangodb::AuthJwtResult> _authJwtCache;
   std::string _jwtSecret;
   aql::QueryRegistry* _queryRegistry;
   std::unique_ptr<AuthenticationHandler> _authenticationHandler;
 };
-}
+}  // namespace arangodb
 
 #endif

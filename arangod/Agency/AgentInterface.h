@@ -31,8 +31,8 @@ namespace consensus {
 class AgentInterface {
  public:
   /// @brief Possible outcome of write process
-  enum raft_commit_t {OK, UNKNOWN, TIMEOUT};
- 
+  enum raft_commit_t { OK, UNKNOWN, TIMEOUT };
+
   /// @brief Attempt write
   virtual write_ret_t write(query_t const&, bool discardStartup = false) = 0;
 
@@ -49,8 +49,8 @@ class AgentInterface {
   virtual bool isCommitted(index_t last_entry) = 0;
 
   // Suffice warnings
-  virtual ~AgentInterface() {};
+  virtual ~AgentInterface(){};
 };
-}
-}
+}  // namespace consensus
+}  // namespace arangodb
 #endif

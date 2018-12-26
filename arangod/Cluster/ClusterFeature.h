@@ -46,9 +46,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   void beginShutdown() override final;
   void unprepare() override final;
 
-  std::string agencyPrefix() {
-    return _agencyPrefix;
-  }
+  std::string agencyPrefix() { return _agencyPrefix; }
 
  private:
   std::vector<std::string> _agencyEndpoints;
@@ -73,7 +71,9 @@ class ClusterFeature : public application_features::ApplicationFeature {
   };
 
   void setUnregisterOnShutdown(bool);
-  bool createWaitsForSyncReplication() { return _createWaitsForSyncReplication; };
+  bool createWaitsForSyncReplication() {
+    return _createWaitsForSyncReplication;
+  };
 
   void stop() override final;
 
@@ -86,6 +86,6 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::unique_ptr<AgencyCallbackRegistry> _agencyCallbackRegistry;
   ServerState::RoleEnum _requestedRole;
 };
-}
+}  // namespace arangodb
 
 #endif

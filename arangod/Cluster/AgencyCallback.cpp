@@ -60,8 +60,9 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) 
   AgencyCommResult result = _agency.getValues(key);
 
   if (!result.successful()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Callback getValues to agency was not successful: "
-             << result.errorCode() << " " << result.errorMessage();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "Callback getValues to agency was not successful: " << result.errorCode()
+        << " " << result.errorMessage();
     return;
   }
 
@@ -80,20 +81,18 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) 
   }
 }
 
-void AgencyCallback::checkValue(std::shared_ptr<VPackBuilder> newData,
-                                bool forceCheck) {
+void AgencyCallback::checkValue(std::shared_ptr<VPackBuilder> newData, bool forceCheck) {
   // Only called from refetchAndUpdate, we always have the mutex when
   // we get here!
   if (!_lastData || !_lastData->slice().equals(newData->slice()) || forceCheck) {
-    LOG_TOPIC(DEBUG, Logger::CLUSTER) << "AgencyCallback: Got new value "
-                                      << newData->slice().typeName() << " "
-                                      << newData->toJson()
-                                      << " forceCheck=" << forceCheck;
+    LOG_TOPIC(DEBUG, Logger::CLUSTER)
+        << "AgencyCallback: Got new value " << newData->slice().typeName()
+        << " " << newData->toJson() << " forceCheck=" << forceCheck;
     if (execute(newData)) {
       _lastData = newData;
     } else {
-      LOG_TOPIC(DEBUG, Logger::CLUSTER) << "Callback was not successful for "
-                                        << newData->toJson();
+      LOG_TOPIC(DEBUG, Logger::CLUSTER)
+          << "Callback was not successful for " << newData->toJson();
     }
   }
 }

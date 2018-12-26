@@ -58,8 +58,8 @@ void ConsoleFeature::start() {
 
   auto database = ApplicationServer::getFeature<DatabaseFeature>("Database");
 
-  _consoleThread.reset(
-      new ConsoleThread(ApplicationFeature::server(), database->systemDatabase()));
+  _consoleThread.reset(new ConsoleThread(ApplicationFeature::server(),
+                                         database->systemDatabase()));
   _consoleThread->start();
 }
 

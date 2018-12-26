@@ -42,8 +42,7 @@ std::atomic<bool> RestHandlerFactory::_maintenanceMode(false);
 namespace {
 class MaintenanceHandler : public RestHandler {
  public:
-  explicit MaintenanceHandler(GeneralRequest* request,
-                              GeneralResponse* response)
+  explicit MaintenanceHandler(GeneralRequest* request, GeneralResponse* response)
       : RestHandler(request, response){};
 
   char const* name() const override final { return "MaintenanceHandler"; }
@@ -60,14 +59,13 @@ class MaintenanceHandler : public RestHandler {
     resetResponse(rest::ResponseCode::SERVICE_UNAVAILABLE);
   };
 };
-}
+}  // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new handler factory
 ////////////////////////////////////////////////////////////////////////////////
 
-RestHandlerFactory::RestHandlerFactory(context_fptr setContext,
-                                       void* contextData)
+RestHandlerFactory::RestHandlerFactory(context_fptr setContext, void* contextData)
     : _setContext(setContext), _contextData(contextData), _notFound(nullptr) {}
 
 void RestHandlerFactory::setMaintenance(bool value) {
@@ -88,11 +86,10 @@ bool RestHandlerFactory::setRequestContext(GeneralRequest* request) {
 /// @brief creates a new handler
 ////////////////////////////////////////////////////////////////////////////////
 
-RestHandler* RestHandlerFactory::createHandler(
-    std::unique_ptr<GeneralRequest> request,
-    std::unique_ptr<GeneralResponse> response) const {
+RestHandler* RestHandlerFactory::createHandler(std::unique_ptr<GeneralRequest> request,
+                                               std::unique_ptr<GeneralResponse> response) const {
   std::string const& path = request->requestPath();
-  
+
   // In the shutdown phase we simply return 503:
   if (application_features::ApplicationServer::isStopping()) {
     return new MaintenanceHandler(request.release(), response.release());
@@ -105,7 +102,8 @@ RestHandler* RestHandlerFactory::createHandler(
          path.find("/_api/agency/agency-callbacks") == std::string::npos) ||
         (path.find("/_api/agency/agency-callbacks") == std::string::npos &&
          path.find("/_api/aql") == std::string::npos)) {
-      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "Maintenance mode: refused path: " << path;
+      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+          << "Maintenance mode: refused path: " << path;
       return new MaintenanceHandler(request.release(), response.release());
     }
   }
@@ -118,7 +116,8 @@ RestHandler* RestHandlerFactory::createHandler(
 
   // no direct match, check prefix matches
   if (i == ii.end()) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "no direct handler found, trying prefixes";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+        << "no direct handler found, trying prefixes";
 
     // find longest match
     size_t const pathLength = path.size();
@@ -136,11 +135,13 @@ RestHandler* RestHandlerFactory::createHandler(
     }
 
     if (prefix.empty()) {
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "no prefix handler found, trying catch all";
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+          << "no prefix handler found, trying catch all";
 
       i = ii.find(ROOT_PATH);
       if (i != ii.end()) {
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "found catch all handler '/'";
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+            << "found catch all handler '/'";
 
         size_t l = 1;
         size_t n = path.find_first_of('/', l);
@@ -189,21 +190,21 @@ RestHandler* RestHandlerFactory::createHandler(
       return _notFound(request.release(), response.release(), nullptr);
     }
 
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "no not-found handler, giving up";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+        << "no not-found handler, giving up";
     return nullptr;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "found handler for path '" << *modifiedPath << "'";
-  return i->second.first(request.release(), response.release(),
-                         i->second.second);
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+      << "found handler for path '" << *modifiedPath << "'";
+  return i->second.first(request.release(), response.release(), i->second.second);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a path and constructor to the factory
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestHandlerFactory::addHandler(std::string const& path, create_fptr func,
-                                    void* data) {
+void RestHandlerFactory::addHandler(std::string const& path, create_fptr func, void* data) {
   _constructors[path] = std::make_pair(func, data);
 }
 

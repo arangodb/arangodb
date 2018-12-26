@@ -34,6 +34,6 @@ class ClusterHelpers {
   static bool compareServerLists(Slice plan, Slice current);
   static bool compareServerLists(std::vector<std::string>, std::vector<std::string>);
 };
-}
+}  // namespace arangodb
 
 #endif

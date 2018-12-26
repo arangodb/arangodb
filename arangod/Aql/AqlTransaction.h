@@ -39,19 +39,17 @@ class AqlTransaction : public transaction::Methods {
  public:
   /// @brief create the transaction and add all collections
   /// from the query context
-  static AqlTransaction* create(
-      std::shared_ptr<transaction::Context> const& transactionContext,
-      std::map<std::string, aql::Collection*> const* collections,
-      transaction::Options const& options, bool isMainTransaction,
-      std::unordered_set<std::string> inaccessibleCollections =
-          std::unordered_set<std::string>());
+  static AqlTransaction* create(std::shared_ptr<transaction::Context> const& transactionContext,
+                                std::map<std::string, aql::Collection*> const* collections,
+                                transaction::Options const& options, bool isMainTransaction,
+                                std::unordered_set<std::string> inaccessibleCollections =
+                                    std::unordered_set<std::string>());
 
   /// @brief end the transaction
   ~AqlTransaction() {}
 
   /// @brief add a list of collections to the transaction
-  Result addCollections(
-      std::map<std::string, aql::Collection*> const& collections) {
+  Result addCollections(std::map<std::string, aql::Collection*> const& collections) {
     Result res;
     for (auto const& it : collections) {
       res = processCollection(it.second);
@@ -88,18 +86,15 @@ class AqlTransaction : public transaction::Methods {
   int lockCollections() override;
 
  protected:
-  AqlTransaction(
-      std::shared_ptr<transaction::Context> const& transactionContext,
-      transaction::Options const& options)
+  AqlTransaction(std::shared_ptr<transaction::Context> const& transactionContext,
+                 transaction::Options const& options)
       : transaction::Methods(transactionContext, options) {}
 
   /// protected so we can create different subclasses
-  AqlTransaction(
-      std::shared_ptr<transaction::Context> const& transactionContext,
-      std::map<std::string, aql::Collection*> const* collections,
-      transaction::Options const& options, bool isMainTransaction)
-      : transaction::Methods(transactionContext, options),
-        _collections(*collections) {
+  AqlTransaction(std::shared_ptr<transaction::Context> const& transactionContext,
+                 std::map<std::string, aql::Collection*> const* collections,
+                 transaction::Options const& options, bool isMainTransaction)
+      : transaction::Methods(transactionContext, options), _collections(*collections) {
     if (!isMainTransaction) {
       addHint(transaction::Hints::Hint::LOCK_NEVER);
     } else {
@@ -118,7 +113,7 @@ class AqlTransaction : public transaction::Methods {
   /// operation
   std::map<std::string, aql::Collection*> _collections;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

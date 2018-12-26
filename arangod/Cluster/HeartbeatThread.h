@@ -48,11 +48,9 @@ struct AgencyVersions {
 
 class AgencyCallbackRegistry;
 
-class HeartbeatThread : public Thread,
-                        public std::enable_shared_from_this<HeartbeatThread> {
+class HeartbeatThread : public Thread, public std::enable_shared_from_this<HeartbeatThread> {
  public:
-  HeartbeatThread(AgencyCallbackRegistry*, uint64_t interval,
-                  uint64_t maxFailsBeforeWarning);
+  HeartbeatThread(AgencyCallbackRegistry*, uint64_t interval, uint64_t maxFailsBeforeWarning);
   ~HeartbeatThread();
 
  public:
@@ -247,12 +245,12 @@ class HeartbeatThread : public Thread,
   /// to be started when the current one has terminated. This and the
   /// previous one are protected by the statusLock.
   //////////////////////////////////////////////////////////////////////////////
-  
+
   bool _launchAnotherBackgroundJob;
 
   // when was the javascript sync routine last run?
   double _lastSyncTime;
 };
-}
+}  // namespace arangodb
 
 #endif

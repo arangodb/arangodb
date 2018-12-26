@@ -45,8 +45,7 @@ using namespace arangodb::rest;
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-SocketTask::SocketTask(arangodb::EventLoop loop,
-                       std::unique_ptr<arangodb::Socket> socket,
+SocketTask::SocketTask(arangodb::EventLoop loop, std::unique_ptr<arangodb::Socket> socket,
                        arangodb::ConnectionInfo&& connectionInfo,
                        double keepAliveTimeout, bool skipInit = false)
     : Task(loop, "SocketTask"),
@@ -84,7 +83,7 @@ SocketTask::~SocketTask() {
 
   MUTEX_LOCKER(locker, _lock);
   boost::system::error_code err;
-      
+
   if (_keepAliveTimerActive) {
     _keepAliveTimer.cancel(err);
   }
@@ -122,9 +121,8 @@ void SocketTask::start() {
   LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
       << "starting communication between server <-> client on socket";
   LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-      << _connectionInfo.serverAddress << ":" << _connectionInfo.serverPort
-      << " <-> " << _connectionInfo.clientAddress << ":"
-      << _connectionInfo.clientPort;
+      << _connectionInfo.serverAddress << ":" << _connectionInfo.serverPort << " <-> "
+      << _connectionInfo.clientAddress << ":" << _connectionInfo.clientPort;
 
   auto self = shared_from_this();
   _loop._scheduler->post([self, this]() { asyncReadSome(); });
@@ -206,8 +204,8 @@ void SocketTask::writeWriteBuffer() {
 
     // write could have blocked which is the only acceptable error
     if (err && err != ::boost::asio::error::would_block) {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "write on stream failed with: "
-        << err.message();
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+          << "write on stream failed with: " << err.message();
       closeStreamNoLock();
       return;
     }
@@ -216,18 +214,15 @@ void SocketTask::writeWriteBuffer() {
   // so the code could have blocked at this point or not all data
   // was written in one go, begin writing at offset (written)
   auto self = shared_from_this();
-  _peer->asyncWrite(boost::asio::buffer(_writeBuffer._buffer->begin() + written,
-                                        total - written),
-                    [self, this](const boost::system::error_code& ec,
-                                 std::size_t transferred) {
+  _peer->asyncWrite(boost::asio::buffer(_writeBuffer._buffer->begin() + written, total - written),
+                    [self, this](const boost::system::error_code& ec, std::size_t transferred) {
                       MUTEX_LOCKER(locker, _lock);
 
                       if (_abandoned) {
                         return;
                       }
 
-                      RequestStatistics::ADD_SENT_BYTES(
-                          _writeBuffer._statistics, transferred);
+                      RequestStatistics::ADD_SENT_BYTES(_writeBuffer._statistics, transferred);
 
                       if (ec) {
                         LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
@@ -243,7 +238,7 @@ void SocketTask::writeWriteBuffer() {
                       }
                     });
 }
-    
+
 StringBuffer* SocketTask::leaseStringBuffer(size_t length) {
   _lock.assertLockedByCurrentThread();
 
@@ -265,7 +260,7 @@ StringBuffer* SocketTask::leaseStringBuffer(size_t length) {
   }
 
   TRI_ASSERT(buffer != nullptr);
-  
+
   // still check for safety reasons
   if (buffer->capacity() >= length) {
     return buffer;
@@ -274,7 +269,7 @@ StringBuffer* SocketTask::leaseStringBuffer(size_t length) {
   delete buffer;
   THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
 }
-  
+
 void SocketTask::returnStringBuffer(StringBuffer* buffer) {
   TRI_ASSERT(buffer != nullptr);
   _lock.assertLockedByCurrentThread();
@@ -329,9 +324,9 @@ void SocketTask::closeStreamNoLock() {
 
   bool closeSend = !_closedSend;
   bool closeReceive = !_closedReceive;
-  
+
   _peer->shutdown(err, closeSend, closeReceive);
-  
+
   _closedSend = true;
   _closedReceive = true;
   _closeRequested = false;
@@ -367,16 +362,15 @@ void SocketTask::resetKeepAlive() {
     _keepAliveTimerActive = true;
     auto self = shared_from_this();
 
-    _keepAliveTimer.async_wait(
-        [self, this](const boost::system::error_code& error) {
-          LOG_TOPIC(TRACE, Logger::COMMUNICATION)
-              << "keepAliveTimerCallback - called with: " << error.message();
-          if (!error) {
-            LOG_TOPIC(TRACE, Logger::COMMUNICATION)
-                << "keep alive timout - closing stream!";
-            closeStream();
-          }
-        });
+    _keepAliveTimer.async_wait([self, this](const boost::system::error_code& error) {
+      LOG_TOPIC(TRACE, Logger::COMMUNICATION)
+          << "keepAliveTimerCallback - called with: " << error.message();
+      if (!error) {
+        LOG_TOPIC(TRACE, Logger::COMMUNICATION)
+            << "keep alive timout - closing stream!";
+        closeStream();
+      }
+    });
   }
 }
 
@@ -408,7 +402,8 @@ bool SocketTask::reserveMemory() {
   _lock.assertLockedByCurrentThread();
 
   if (_readBuffer.reserve(READ_BLOCK_SIZE + 1) == TRI_ERROR_OUT_OF_MEMORY) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "out of memory while reading from client";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "out of memory while reading from client";
     closeStreamNoLock();
     return false;
   }
@@ -423,7 +418,7 @@ bool SocketTask::trySyncRead() {
   if (_abandoned) {
     return false;
   }
-  
+
   boost::system::error_code err;
 
   if (0 == _peer->available(err)) {
@@ -431,8 +426,7 @@ bool SocketTask::trySyncRead() {
   }
 
   if (err) {
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "read failed with "
-                                            << err.message();
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "read failed with " << err.message();
     return false;
   }
 
@@ -441,7 +435,8 @@ bool SocketTask::trySyncRead() {
     return false;
   }
 
-  size_t bytesRead = _peer->read(boost::asio::buffer(_readBuffer.end(), READ_BLOCK_SIZE), err);
+  size_t bytesRead =
+      _peer->read(boost::asio::buffer(_readBuffer.end(), READ_BLOCK_SIZE), err);
 
   if (0 == bytesRead) {
     return false;  // should not happen
@@ -486,7 +481,7 @@ bool SocketTask::processAll() {
 // will acquire the _lock
 void SocketTask::asyncReadSome() {
   MUTEX_LOCKER(locker, _lock);
-    
+
   if (_abandoned) {
     return;
   }
@@ -510,8 +505,8 @@ void SocketTask::asyncReadSome() {
         compactify();
       }
     } catch (boost::system::system_error const& err) {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "i/o stream failed with: "
-        << err.what();
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+          << "i/o stream failed with: " << err.what();
 
       closeStreamNoLock();
       return;
@@ -536,32 +531,31 @@ void SocketTask::asyncReadSome() {
     // has been called! Otherwise ASIO will get confused and write to
     // the wrong position.
 
-    _peer->asyncRead(
-        boost::asio::buffer(_readBuffer.end(), READ_BLOCK_SIZE),
-        [self, this](const boost::system::error_code& ec,
-                     std::size_t transferred) {
-          JobGuard guard(_loop);
-          guard.work();
+    _peer->asyncRead(boost::asio::buffer(_readBuffer.end(), READ_BLOCK_SIZE),
+                     [self, this](const boost::system::error_code& ec, std::size_t transferred) {
+                       JobGuard guard(_loop);
+                       guard.work();
 
-          MUTEX_LOCKER(locker, _lock);
+                       MUTEX_LOCKER(locker, _lock);
 
-          if (_abandoned) {
-            return;
-          }
+                       if (_abandoned) {
+                         return;
+                       }
 
-          if (ec) {
-            LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-                << "read on stream failed with: " << ec.message();
-            closeStreamNoLock();
-          } else {
-            _readBuffer.increaseLength(transferred);
+                       if (ec) {
+                         LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+                             << "read on stream failed with: " << ec.message();
+                         closeStreamNoLock();
+                       } else {
+                         _readBuffer.increaseLength(transferred);
 
-            if (processAll()) {
-              _loop._scheduler->post([self, this]() { asyncReadSome(); });
-            }
+                         if (processAll()) {
+                           _loop._scheduler->post(
+                               [self, this]() { asyncReadSome(); });
+                         }
 
-            compactify();
-          }
-        });
+                         compactify();
+                       }
+                     });
   }
 }

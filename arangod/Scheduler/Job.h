@@ -29,7 +29,7 @@ namespace arangodb {
 namespace rest {
 class GeneralServer;
 class RestHandler;
-}
+}  // namespace rest
 
 class Job {
  public:
@@ -45,6 +45,6 @@ class Job {
   std::shared_ptr<rest::RestHandler> _handler;
   std::function<void(std::shared_ptr<rest::RestHandler>)> _callback;
 };
-}
+}  // namespace arangodb
 
 #endif

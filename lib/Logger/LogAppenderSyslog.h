@@ -37,8 +37,7 @@ class LogAppenderSyslog : public LogAppender {
   LogAppenderSyslog(std::string const& facility, std::string const& name,
                     std::string const& filter);
 
-  bool logMessage(LogLevel, std::string const& message,
-                  size_t offset) override final;
+  bool logMessage(LogLevel, std::string const& message, size_t offset) override final;
 
   std::string details() override final;
 
@@ -58,6 +57,6 @@ class LogAppenderSyslog : public LogAppender {
 };
 
 #endif
-}
+}  // namespace arangodb
 
 #endif

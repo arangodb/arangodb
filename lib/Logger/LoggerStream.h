@@ -54,7 +54,7 @@ class LoggerStream {
     _out << topic.displayName();
     return *this;
   }
-  
+
   LoggerStream& operator<<(Logger::BINARY binary);
 
   LoggerStream& operator<<(Logger::RANGE range);
@@ -85,7 +85,7 @@ class LoggerStream {
     }
     return *this;
   }
-  
+
  private:
   std::stringstream _out;
   size_t _topicId;
@@ -94,6 +94,6 @@ class LoggerStream {
   char const* _file;
   char const* _function;
 };
-}
+}  // namespace arangodb
 
 #endif

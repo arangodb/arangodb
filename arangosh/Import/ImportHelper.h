@@ -41,8 +41,8 @@ namespace httpclient {
 class SimpleHttpClient;
 class SimpleHttpResult;
 struct SimpleHttpClientParams;
-}
-}
+}  // namespace httpclient
+}  // namespace arangodb
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class for http requests
@@ -85,8 +85,7 @@ class ImportHelper {
   //////////////////////////////////////////////////////////////////////////////
 
   bool importDelimited(std::string const& collectionName,
-                       std::string const& fileName,
-                       DelimitedImportType typeImport);
+                       std::string const& fileName, DelimitedImportType typeImport);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief imports a file with JSON objects
@@ -149,11 +148,10 @@ class ImportHelper {
     _createCollectionType = value;
   }
 
-  void setTranslations(
-      std::unordered_map<std::string, std::string> const& translations) {
+  void setTranslations(std::unordered_map<std::string, std::string> const& translations) {
     _translations = translations;
   }
-  
+
   void setRemoveAttributes(std::vector<std::string> const& attr) {
     for (std::string const& str : attr) {
       _removeAttributes.insert(str);
@@ -243,18 +241,15 @@ class ImportHelper {
 
  private:
   static void ProcessCsvBegin(TRI_csv_parser_t*, size_t);
-  static void ProcessCsvAdd(TRI_csv_parser_t*, char const*, size_t, size_t,
-                            size_t, bool);
-  static void ProcessCsvEnd(TRI_csv_parser_t*, char const*, size_t, size_t,
-                            size_t, bool);
+  static void ProcessCsvAdd(TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool);
+  static void ProcessCsvEnd(TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool);
 
   void reportProgress(int64_t, int64_t, double&);
 
   std::string getCollectionUrlPart() const;
   void beginLine(size_t row);
   void addField(char const*, size_t, size_t row, size_t column, bool escaped);
-  void addLastField(char const*, size_t, size_t row, size_t column,
-                    bool escaped);
+  void addLastField(char const*, size_t, size_t row, size_t column, bool escaped);
 
   bool checkCreateCollection();
   bool truncateCollection();
@@ -305,6 +300,6 @@ class ImportHelper {
 
   static double const ProgressStep;
 };
-}
-}
+}  // namespace import
+}  // namespace arangodb
 #endif

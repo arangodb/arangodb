@@ -39,14 +39,10 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-AttributeWeightShortestPathFinder::Step::Step(
-    arangodb::StringRef const& vert, arangodb::StringRef const& pred,
-    double weig, EdgeDocumentToken&& edge)
-    : _weight(weig),
-      _vertex(vert),
-      _predecessor(pred),
-      _edge(std::move(edge)),
-      _done(false) {}
+AttributeWeightShortestPathFinder::Step::Step(arangodb::StringRef const& vert,
+                                              arangodb::StringRef const& pred,
+                                              double weig, EdgeDocumentToken&& edge)
+    : _weight(weig), _vertex(vert), _predecessor(pred), _edge(std::move(edge)), _done(false) {}
 
 AttributeWeightShortestPathFinder::Searcher::Searcher(
     AttributeWeightShortestPathFinder* pathFinder, ThreadInfo& myInfo,
@@ -57,8 +53,7 @@ AttributeWeightShortestPathFinder::Searcher::Searcher(
       _start(start),
       _isBackward(isBackward) {}
 
-void AttributeWeightShortestPathFinder::Searcher::insertNeighbor(
-    Step* step, double newWeight) {
+void AttributeWeightShortestPathFinder::Searcher::insertNeighbor(Step* step, double newWeight) {
   Step* s = _myInfo._pq.find(step->_vertex);
 
   // Not found, so insert it:
@@ -75,8 +70,8 @@ void AttributeWeightShortestPathFinder::Searcher::insertNeighbor(
   delete step;
 }
 
-void AttributeWeightShortestPathFinder::Searcher::lookupPeer(
-    arangodb::StringRef& vertex, double weight) {
+void AttributeWeightShortestPathFinder::Searcher::lookupPeer(arangodb::StringRef& vertex,
+                                                             double weight) {
   Step* s = _peerInfo._pq.find(vertex);
 
   if (s == nullptr) {
@@ -152,8 +147,7 @@ bool AttributeWeightShortestPathFinder::Searcher::oneStep() {
   return true;
 }
 
-AttributeWeightShortestPathFinder::AttributeWeightShortestPathFinder(
-    ShortestPathOptions* options)
+AttributeWeightShortestPathFinder::AttributeWeightShortestPathFinder(ShortestPathOptions* options)
     : _highscoreSet(false),
       _highscore(0),
       _bingo(false),
@@ -166,9 +160,8 @@ AttributeWeightShortestPathFinder::AttributeWeightShortestPathFinder(
 AttributeWeightShortestPathFinder::~AttributeWeightShortestPathFinder(){};
 
 bool AttributeWeightShortestPathFinder::shortestPath(
-    arangodb::velocypack::Slice const& st,
-    arangodb::velocypack::Slice const& ta, ShortestPathResult& result,
-    std::function<void()> const& callback) {
+    arangodb::velocypack::Slice const& st, arangodb::velocypack::Slice const& ta,
+    ShortestPathResult& result, std::function<void()> const& callback) {
   // For the result:
   result.clear();
   _highscoreSet = false;
@@ -257,8 +250,7 @@ void AttributeWeightShortestPathFinder::inserter(
   auto cand = candidates.find(t);
   if (cand == candidates.end()) {
     // Add weight
-    auto step = std::make_unique<Step>(t, s, currentWeight,
-                                       std::move(edge));
+    auto step = std::make_unique<Step>(t, s, currentWeight, std::move(edge));
     result.emplace_back(step.release());
     candidates.emplace(t, result.size() - 1);
   } else {
@@ -273,9 +265,9 @@ void AttributeWeightShortestPathFinder::inserter(
   }
 }
 
-void AttributeWeightShortestPathFinder::expandVertex(
-    bool isBackward, arangodb::StringRef const& vertex,
-    std::vector<Step*>& result) {
+void AttributeWeightShortestPathFinder::expandVertex(bool isBackward,
+                                                     arangodb::StringRef const& vertex,
+                                                     std::vector<Step*>& result) {
   std::unique_ptr<EdgeCursor> edgeCursor;
   if (isBackward) {
     edgeCursor.reset(_options->nextReverseCursor(_mmdr.get(), vertex));
@@ -284,8 +276,7 @@ void AttributeWeightShortestPathFinder::expandVertex(
   }
 
   std::unordered_map<StringRef, size_t> candidates;
-  auto callback = [&](EdgeDocumentToken&& eid, VPackSlice edge,
-                      size_t cursorIdx) -> void {
+  auto callback = [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorIdx) -> void {
     if (edge.isString()) {
       VPackSlice doc = _options->cache()->lookupToken(eid);
       double currentWeight = _options->weightEdge(doc);

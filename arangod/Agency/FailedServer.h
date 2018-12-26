@@ -35,8 +35,8 @@ struct FailedServer : public Job {
                std::string const& creator = std::string(),
                std::string const& failed = std::string());
 
-  FailedServer(Node const& snapshot, AgentInterface* agent,
-               JOB_STATUS status, std::string const& jobId);
+  FailedServer(Node const& snapshot, AgentInterface* agent, JOB_STATUS status,
+               std::string const& jobId);
 
   virtual ~FailedServer();
 
@@ -48,7 +48,7 @@ struct FailedServer : public Job {
 
   std::string _server;
 };
-}
-}
+}  // namespace consensus
+}  // namespace arangodb
 
 #endif

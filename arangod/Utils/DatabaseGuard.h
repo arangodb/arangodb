@@ -36,9 +36,8 @@ class DatabaseGuard {
  public:
   DatabaseGuard(DatabaseGuard const&) = delete;
   DatabaseGuard& operator=(DatabaseGuard const&) = delete;
-  
-  explicit DatabaseGuard(TRI_vocbase_t* vocbase) 
-      : _vocbase(vocbase) {
+
+  explicit DatabaseGuard(TRI_vocbase_t* vocbase) : _vocbase(vocbase) {
     TRI_ASSERT(vocbase != nullptr);
     if (!_vocbase->use()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
@@ -46,30 +45,26 @@ class DatabaseGuard {
   }
 
   /// @brief create the guard, using a database id
-  explicit DatabaseGuard(TRI_voc_tick_t id)
-      : _vocbase(nullptr) {
-    
+  explicit DatabaseGuard(TRI_voc_tick_t id) : _vocbase(nullptr) {
     auto databaseFeature = FeatureCacheFeature::instance()->databaseFeature();
     _vocbase = databaseFeature->useDatabase(id);
 
     if (_vocbase == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     }
-    
+
     TRI_ASSERT(!_vocbase->isDangling());
   }
 
   /// @brief create the guard, using a database name
-  explicit DatabaseGuard(std::string const& name)
-      : _vocbase(nullptr) {
-      
+  explicit DatabaseGuard(std::string const& name) : _vocbase(nullptr) {
     auto databaseFeature = FeatureCacheFeature::instance()->databaseFeature();
     _vocbase = databaseFeature->useDatabase(name);
 
     if (_vocbase == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     }
-    
+
     TRI_ASSERT(!_vocbase->isDangling());
   }
 
@@ -85,10 +80,9 @@ class DatabaseGuard {
   inline TRI_vocbase_t* database() const { return _vocbase; }
 
  private:
-
   /// @brief pointer to database
   TRI_vocbase_t* _vocbase;
 };
-}
+}  // namespace arangodb
 
 #endif

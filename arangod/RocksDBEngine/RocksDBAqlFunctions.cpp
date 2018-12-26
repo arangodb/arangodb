@@ -47,16 +47,16 @@ static ExecutionCondition const NotInCoordinator = [] {
 };
 
 /// @brief function FULLTEXT
-AqlValue RocksDBAqlFunctions::Fulltext(
-    arangodb::aql::Query* query, transaction::Methods* trx,
-    VPackFunctionParameters const& parameters) {
+AqlValue RocksDBAqlFunctions::Fulltext(arangodb::aql::Query* query,
+                                       transaction::Methods* trx,
+                                       VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "FULLTEXT", 3, 4);
 
   AqlValue collectionValue = ExtractFunctionParameterValue(trx, parameters, 0);
 
   if (!collectionValue.isString()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                  "FULLTEXT");
   }
 
   std::string const collectionName(collectionValue.slice().copyString());
@@ -64,8 +64,8 @@ AqlValue RocksDBAqlFunctions::Fulltext(
   AqlValue attribute = ExtractFunctionParameterValue(trx, parameters, 1);
 
   if (!attribute.isString()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                  "FULLTEXT");
   }
 
   std::string attributeName(attribute.slice().copyString());
@@ -73,8 +73,8 @@ AqlValue RocksDBAqlFunctions::Fulltext(
   AqlValue queryValue = ExtractFunctionParameterValue(trx, parameters, 2);
 
   if (!queryValue.isString()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                  "FULLTEXT");
   }
 
   std::string queryString = queryValue.slice().copyString();
@@ -83,8 +83,8 @@ AqlValue RocksDBAqlFunctions::Fulltext(
   if (parameters.size() >= 4) {
     AqlValue limit = ExtractFunctionParameterValue(trx, parameters, 3);
     if (!limit.isNull(true) && !limit.isNumber()) {
-      THROW_ARANGO_EXCEPTION_PARAMS(
-          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                    "FULLTEXT");
     }
     if (limit.isNumber()) {
       int64_t value = limit.toInt64(trx);
@@ -121,8 +121,7 @@ AqlValue RocksDBAqlFunctions::Fulltext(
   for (auto const& idx : collection->getIndexes()) {
     if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
       // test if index is on the correct field
-      if (arangodb::basics::AttributeName::isIdentical(idx->fields(), search,
-                                                       false)) {
+      if (arangodb::basics::AttributeName::isIdentical(idx->fields(), search, false)) {
         // match!
         fulltextIndex = static_cast<arangodb::RocksDBFulltextIndex*>(idx.get());
         break;
@@ -144,8 +143,7 @@ AqlValue RocksDBAqlFunctions::Fulltext(
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
   }
-  res = fulltextIndex->executeQuery(trx, parsedQuery, maxResults,
-                                    *(builder.get()));
+  res = fulltextIndex->executeQuery(trx, parsedQuery, maxResults, *(builder.get()));
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
   }
@@ -153,9 +151,9 @@ AqlValue RocksDBAqlFunctions::Fulltext(
 }
 
 /// @brief Load geoindex for collection name
-static arangodb::RocksDBGeoIndex* getGeoIndex(
-    transaction::Methods* trx, TRI_voc_cid_t const& cid,
-    std::string const& collectionName) {
+static arangodb::RocksDBGeoIndex* getGeoIndex(transaction::Methods* trx,
+                                              TRI_voc_cid_t const& cid,
+                                              std::string const& collectionName) {
   // NOTE:
   // Due to trx lock the shared_index stays valid
   // as long as trx stays valid.
@@ -191,12 +189,10 @@ static arangodb::RocksDBGeoIndex* getGeoIndex(
   return index;
 }
 
-static AqlValue buildGeoResult(transaction::Methods* trx,
-                               LogicalCollection* collection,
+static AqlValue buildGeoResult(transaction::Methods* trx, LogicalCollection* collection,
                                arangodb::aql::Query* query,
                                rocksdbengine::GeoCoordinates* cors,
-                               TRI_voc_cid_t const& cid,
-                               std::string const& attributeName) {
+                               TRI_voc_cid_t const& cid, std::string const& attributeName) {
   if (cors == nullptr) {
     return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
   }
@@ -220,8 +216,9 @@ static AqlValue buildGeoResult(transaction::Methods* trx,
     distances.reserve(nCoords);
 
     for (size_t i = 0; i < nCoords; ++i) {
-      distances.emplace_back(geo_coordinate_distance_t(
-          cors->distances[i], RocksDBToken(cors->coordinates[i].data)));
+      distances.emplace_back(
+          geo_coordinate_distance_t(cors->distances[i],
+                                    RocksDBToken(cors->coordinates[i].data)));
     }
   } catch (...) {
     GeoIndex_CoordinatesFree(cors);
@@ -232,8 +229,7 @@ static AqlValue buildGeoResult(transaction::Methods* trx,
 
   // sort result by distance
   std::sort(distances.begin(), distances.end(),
-            [](geo_coordinate_distance_t const& left,
-               geo_coordinate_distance_t const& right) {
+            [](geo_coordinate_distance_t const& left, geo_coordinate_distance_t const& right) {
               return left._distance < right._distance;
             });
 
@@ -268,15 +264,14 @@ static AqlValue buildGeoResult(transaction::Methods* trx,
 }
 
 /// @brief function NEAR
-AqlValue RocksDBAqlFunctions::Near(arangodb::aql::Query* query,
-                                   transaction::Methods* trx,
+AqlValue RocksDBAqlFunctions::Near(arangodb::aql::Query* query, transaction::Methods* trx,
                                    VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "NEAR", 3, 5);
 
   AqlValue collectionValue = ExtractFunctionParameterValue(trx, parameters, 0);
   if (!collectionValue.isString()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                  "NEAR");
   }
 
   std::string const collectionName(collectionValue.slice().copyString());
@@ -285,8 +280,8 @@ AqlValue RocksDBAqlFunctions::Near(arangodb::aql::Query* query,
   AqlValue longitude = ExtractFunctionParameterValue(trx, parameters, 2);
 
   if (!latitude.isNumber() || !longitude.isNumber()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                  "NEAR");
   }
 
   // extract limit
@@ -298,8 +293,8 @@ AqlValue RocksDBAqlFunctions::Near(arangodb::aql::Query* query,
     if (limit.isNumber()) {
       limitValue = limit.toInt64(trx);
     } else if (!limit.isNull(true)) {
-      THROW_ARANGO_EXCEPTION_PARAMS(
-          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                    "NEAR");
     }
   }
 
@@ -309,8 +304,8 @@ AqlValue RocksDBAqlFunctions::Near(arangodb::aql::Query* query,
     AqlValue distanceValue = ExtractFunctionParameterValue(trx, parameters, 4);
 
     if (!distanceValue.isNull(true) && !distanceValue.isString()) {
-      THROW_ARANGO_EXCEPTION_PARAMS(
-          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                    "NEAR");
     }
 
     if (distanceValue.isString()) {
@@ -328,21 +323,19 @@ AqlValue RocksDBAqlFunctions::Near(arangodb::aql::Query* query,
       index->nearQuery(trx, latitude.toDouble(trx), longitude.toDouble(trx),
                        static_cast<size_t>(limitValue));
 
-  return buildGeoResult(trx, index->collection(), query, cors, cid,
-                        attributeName);
+  return buildGeoResult(trx, index->collection(), query, cors, cid, attributeName);
 }
 
 /// @brief function WITHIN
-AqlValue RocksDBAqlFunctions::Within(
-    arangodb::aql::Query* query, transaction::Methods* trx,
-    VPackFunctionParameters const& parameters) {
+AqlValue RocksDBAqlFunctions::Within(arangodb::aql::Query* query, transaction::Methods* trx,
+                                     VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "WITHIN", 4, 5);
 
   AqlValue collectionValue = ExtractFunctionParameterValue(trx, parameters, 0);
 
   if (!collectionValue.isString()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "WITHIN");
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                  "WITHIN");
   }
 
   std::string const collectionName(collectionValue.slice().copyString());
@@ -351,10 +344,9 @@ AqlValue RocksDBAqlFunctions::Within(
   AqlValue longitudeValue = ExtractFunctionParameterValue(trx, parameters, 2);
   AqlValue radiusValue = ExtractFunctionParameterValue(trx, parameters, 3);
 
-  if (!latitudeValue.isNumber() || !longitudeValue.isNumber() ||
-      !radiusValue.isNumber()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "WITHIN");
+  if (!latitudeValue.isNumber() || !longitudeValue.isNumber() || !radiusValue.isNumber()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                  "WITHIN");
   }
 
   std::string attributeName;
@@ -363,8 +355,8 @@ AqlValue RocksDBAqlFunctions::Within(
     AqlValue distanceValue = ExtractFunctionParameterValue(trx, parameters, 4);
 
     if (!distanceValue.isNull(true) && !distanceValue.isString()) {
-      THROW_ARANGO_EXCEPTION_PARAMS(
-          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "WITHIN");
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                    "WITHIN");
     }
 
     if (distanceValue.isString()) {
@@ -378,12 +370,11 @@ AqlValue RocksDBAqlFunctions::Within(
   TRI_ASSERT(index != nullptr);
   TRI_ASSERT(trx->isPinned(cid));
 
-  rocksdbengine::GeoCoordinates* cors = index->withinQuery(
-      trx, latitudeValue.toDouble(trx), longitudeValue.toDouble(trx),
-      radiusValue.toDouble(trx));
+  rocksdbengine::GeoCoordinates* cors =
+      index->withinQuery(trx, latitudeValue.toDouble(trx),
+                         longitudeValue.toDouble(trx), radiusValue.toDouble(trx));
 
-  return buildGeoResult(trx, index->collection(), query, cors, cid,
-                        attributeName);
+  return buildGeoResult(trx, index->collection(), query, cors, cid, attributeName);
 }
 
 void RocksDBAqlFunctions::registerResources() {
@@ -391,11 +382,10 @@ void RocksDBAqlFunctions::registerResources() {
   TRI_ASSERT(functions != nullptr);
 
   // fulltext functions
-  functions->add({"FULLTEXT", ".h,.,.|.", false, true,
-                  false, true, &RocksDBAqlFunctions::Fulltext,
-                  NotInCoordinator});
-  functions->add({"NEAR", ".h,.,.|.,.", false, true, false,
-                  true, &RocksDBAqlFunctions::Near, NotInCoordinator});
-  functions->add({"WITHIN", ".h,.,.,.|.", false, true,
-                  false, true, &RocksDBAqlFunctions::Within, NotInCoordinator});
+  functions->add({"FULLTEXT", ".h,.,.|.", false, true, false, true,
+                  &RocksDBAqlFunctions::Fulltext, NotInCoordinator});
+  functions->add({"NEAR", ".h,.,.|.,.", false, true, false, true,
+                  &RocksDBAqlFunctions::Near, NotInCoordinator});
+  functions->add({"WITHIN", ".h,.,.,.|.", false, true, false, true,
+                  &RocksDBAqlFunctions::Within, NotInCoordinator});
 }

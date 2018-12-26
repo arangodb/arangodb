@@ -31,12 +31,8 @@
 using namespace arangodb;
 
 /// @brief create statistics manager for a collection
-MMFilesDatafileStatistics::MMFilesDatafileStatistics() :
-  _lock(),
-  _stats(),
-  _statisticsLock(),
-  _localStats({0, 0, 0, 0}) {
-}
+MMFilesDatafileStatistics::MMFilesDatafileStatistics()
+    : _lock(), _stats(), _statisticsLock(), _localStats({0, 0, 0, 0}) {}
 
 /// @brief destroy statistics manager
 MMFilesDatafileStatistics::~MMFilesDatafileStatistics() {
@@ -47,11 +43,9 @@ MMFilesDatafileStatistics::~MMFilesDatafileStatistics() {
 }
 
 void MMFilesDatafileStatistics::compactionRun(uint64_t noCombined,
-                                              uint64_t read,
-                                              uint64_t written)
-{
+                                              uint64_t read, uint64_t written) {
   WRITE_LOCKER(writeLocker, _statisticsLock);
-  _localStats._compactionCount ++;
+  _localStats._compactionCount++;
   if (noCombined > 1) {
     _localStats._filesCombined += noCombined;
   }
@@ -77,14 +71,15 @@ void MMFilesDatafileStatistics::create(TRI_voc_fid_t fid) {
     return;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "creating statistics for datafile " << fid;
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+      << "creating statistics for datafile " << fid;
   _stats.emplace(fid, stats.get());
   stats.release();
 }
 
 /// @brief create statistics for a datafile, using the stats provided
 void MMFilesDatafileStatistics::create(TRI_voc_fid_t fid,
-                                MMFilesDatafileStatisticsContainer const& src) {
+                                       MMFilesDatafileStatisticsContainer const& src) {
   auto stats = std::make_unique<MMFilesDatafileStatisticsContainer>();
   *stats = src;
 
@@ -97,7 +92,8 @@ void MMFilesDatafileStatistics::create(TRI_voc_fid_t fid,
     return;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "creating statistics for datafile " << fid << " from initial data";
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+      << "creating statistics for datafile " << fid << " from initial data";
 
   _stats.emplace(fid, stats.get());
   stats.release();
@@ -105,7 +101,8 @@ void MMFilesDatafileStatistics::create(TRI_voc_fid_t fid,
 
 /// @brief remove statistics for a file
 void MMFilesDatafileStatistics::remove(TRI_voc_fid_t fid) {
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "removing statistics for datafile " << fid;
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+      << "removing statistics for datafile " << fid;
 
   MMFilesDatafileStatisticsContainer* found = nullptr;
   {
@@ -114,30 +111,33 @@ void MMFilesDatafileStatistics::remove(TRI_voc_fid_t fid) {
     auto it = _stats.find(fid);
 
     if (it != _stats.end()) {
-      found = (*it).second;    
+      found = (*it).second;
       _stats.erase(it);
     }
   }
- 
+
   delete found;
 }
 
 /// @brief merge statistics for a file
 void MMFilesDatafileStatistics::update(TRI_voc_fid_t fid,
-                                MMFilesDatafileStatisticsContainer const& src) {
+                                       MMFilesDatafileStatisticsContainer const& src) {
   WRITE_LOCKER(writeLocker, _lock);
 
   auto it = _stats.find(fid);
 
   if (it == _stats.end()) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "did not find required statistics for datafile " << fid;
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATAFILE_STATISTICS_NOT_FOUND,
-                                   "required datafile statistics not found on update");
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "did not find required statistics for datafile " << fid;
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_ARANGO_DATAFILE_STATISTICS_NOT_FOUND,
+        "required datafile statistics not found on update");
   }
 
   auto& dst = (*it).second;
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "updating statistics for datafile " << fid;
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+      << "updating statistics for datafile " << fid;
   dst->update(src);
 }
 
@@ -148,9 +148,11 @@ void MMFilesDatafileStatistics::update(TRI_voc_fid_t fid, TRI_voc_fid_t src) {
   auto it = _stats.find(fid);
 
   if (it == _stats.end()) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "did not find required statistics for datafile " << fid;
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATAFILE_STATISTICS_NOT_FOUND,
-                                   "required datafile statistics not found for update target");
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "did not find required statistics for datafile " << fid;
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_ARANGO_DATAFILE_STATISTICS_NOT_FOUND,
+        "required datafile statistics not found for update target");
   }
 
   auto& dst = (*it).second;
@@ -158,32 +160,38 @@ void MMFilesDatafileStatistics::update(TRI_voc_fid_t fid, TRI_voc_fid_t src) {
   it = _stats.find(src);
 
   if (it == _stats.end()) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "did not find required statistics for source datafile " << src;
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATAFILE_STATISTICS_NOT_FOUND,
-                                   "required datafile statistics not found for update source");
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "did not find required statistics for source datafile " << src;
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_ARANGO_DATAFILE_STATISTICS_NOT_FOUND,
+        "required datafile statistics not found for update source");
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "updating statistics for datafile " << fid;
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+      << "updating statistics for datafile " << fid;
   dst->update(*(*it).second);
 }
 
 /// @brief replace statistics for a file
 void MMFilesDatafileStatistics::replace(TRI_voc_fid_t fid,
-                                 MMFilesDatafileStatisticsContainer const& src) {
+                                        MMFilesDatafileStatisticsContainer const& src) {
   WRITE_LOCKER(writeLocker, _lock);
 
   auto it = _stats.find(fid);
 
   if (it == _stats.end()) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "did not find required statistics for datafile " << fid;
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATAFILE_STATISTICS_NOT_FOUND,
-                                   "required datafile statistics not found on replace");
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "did not find required statistics for datafile " << fid;
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_ARANGO_DATAFILE_STATISTICS_NOT_FOUND,
+        "required datafile statistics not found on replace");
   }
 
   auto& dst = (*it).second;
   *dst = src;
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "replacing statistics for datafile " << fid;
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+      << "replacing statistics for datafile " << fid;
 }
 
 /// @brief increase dead stats for a datafile, if it exists
@@ -205,8 +213,7 @@ void MMFilesDatafileStatistics::increaseDead(TRI_voc_fid_t fid, int64_t number, 
 }
 
 /// @brief increase number of uncollected entries
-void MMFilesDatafileStatistics::increaseUncollected(TRI_voc_fid_t fid,
-                                             int64_t number) {
+void MMFilesDatafileStatistics::increaseUncollected(TRI_voc_fid_t fid, int64_t number) {
   WRITE_LOCKER(writeLocker, _lock);
 
   auto it = _stats.find(fid);
@@ -219,7 +226,8 @@ void MMFilesDatafileStatistics::increaseUncollected(TRI_voc_fid_t fid,
   auto& dst = (*it).second;
   dst->numberUncollected += number;
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "increasing uncollected count for datafile " << fid;
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+      << "increasing uncollected count for datafile " << fid;
 }
 
 /// @brief return a copy of the datafile statistics for a file
@@ -231,9 +239,11 @@ MMFilesDatafileStatisticsContainer MMFilesDatafileStatistics::get(TRI_voc_fid_t 
     auto it = _stats.find(fid);
 
     if (it == _stats.end()) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "did not find required statistics for datafile " << fid;
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATAFILE_STATISTICS_NOT_FOUND,
-                                     "required datafile statistics not found on get");
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+          << "did not find required statistics for datafile " << fid;
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_ARANGO_DATAFILE_STATISTICS_NOT_FOUND,
+          "required datafile statistics not found on get");
     }
 
     result = *(*it).second;
@@ -255,4 +265,3 @@ MMFilesDatafileStatisticsContainer MMFilesDatafileStatistics::all() {
 
   return result;
 }
-

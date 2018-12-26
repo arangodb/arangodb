@@ -93,9 +93,9 @@ class ServerState {
 
   /// @brief flush the server state (used for testing)
   void flush();
-  
+
   bool isSingleServer() { return isSingleServer(loadRole()); }
-  
+
   static bool isSingleServer(ServerState::RoleEnum role) {
     return (role == ServerState::ROLE_SINGLE);
   }
@@ -115,18 +115,16 @@ class ServerState {
   /// @brief check whether the server is a DB server (primary or secondary)
   /// running in cluster mode.
   static bool isDBServer(ServerState::RoleEnum role) {
-    return (role == ServerState::ROLE_PRIMARY ||
-            role == ServerState::ROLE_SECONDARY);
+    return (role == ServerState::ROLE_PRIMARY || role == ServerState::ROLE_SECONDARY);
   }
-  
+
   /// @brief whether or not the role is a cluster-related role
   static bool isClusterRole(ServerState::RoleEnum role) {
-    return (role == ServerState::ROLE_PRIMARY ||
-            role == ServerState::ROLE_SECONDARY ||
+    return (role == ServerState::ROLE_PRIMARY || role == ServerState::ROLE_SECONDARY ||
             role == ServerState::ROLE_COORDINATOR);
   }
-  
-  /// @brief check whether the server is an agent 
+
+  /// @brief check whether the server is an agent
   bool isAgent() { return isAgent(loadRole()); }
 
   /// @brief check whether the server is an agent
@@ -136,12 +134,12 @@ class ServerState {
 
   /// @brief check whether the server is running in a cluster
   bool isRunningInCluster() { return isClusterRole(loadRole()); }
-  
+
   /// @brief check whether the server is running in a cluster
-  static bool isRunningInCluster(ServerState::RoleEnum role) { 
-    return isClusterRole(role); 
+  static bool isRunningInCluster(ServerState::RoleEnum role) {
+    return isClusterRole(role);
   }
-  
+
   bool isSingleServerOrCoordinator() {
     RoleEnum role = loadRole();
     return isCoordinator(role) || isSingleServer(role);
@@ -149,9 +147,9 @@ class ServerState {
 
   /// @brief get the server role
   RoleEnum getRole();
-  
+
   bool integrateIntoCluster(RoleEnum, std::string const&, std::string const&);
-  
+
   bool unregister();
 
   /// @brief set the server role
@@ -203,7 +201,7 @@ class ServerState {
   /// agency or is not unique, then the system keeps the old role.
   /// Returns true if there is a change and false otherwise.
   bool redetermineRole();
-  
+
   bool isFoxxmaster();
 
   std::string const& getFoxxmaster();
@@ -211,7 +209,7 @@ class ServerState {
   void setFoxxmaster(std::string const&);
 
   void setFoxxmasterQueueupdate(bool);
-  
+
   bool getFoxxmasterQueueupdate();
 
   std::string getPersistedId();
@@ -224,7 +222,7 @@ class ServerState {
   RoleEnum loadRole() {
     return static_cast<RoleEnum>(_role.load(std::memory_order_consume));
   }
-  
+
   /// @brief determine role and save role blocking
   void findAndSetRoleBlocking();
 
@@ -233,7 +231,7 @@ class ServerState {
 
   /// @brief determine the server role
   RoleEnum determineRole(std::string const& info, std::string& id);
-  
+
   /// @brief we are new and need to determine our role from the plan
   RoleEnum takeOnRole(std::string const& id);
 
@@ -254,12 +252,12 @@ class ServerState {
 
   /// @brief validate a state transition for a coordinator server
   bool checkCoordinatorState(StateEnum);
-  
+
   /// @brief register at agency
   bool registerAtAgency(AgencyComm&, const RoleEnum&, std::string const&);
   /// @brief register shortname for an id
   bool registerShortName(std::string const& id, const RoleEnum&);
-  
+
   /// @brief get the key for a role in the agency
   static std::string roleToAgencyKey(RoleEnum);
 
@@ -302,9 +300,9 @@ class ServerState {
   bool _clusterEnabled;
 
   std::string _foxxmaster;
-  
+
   bool _foxxmasterQueueupdate;
 };
-}
+}  // namespace arangodb
 
 #endif

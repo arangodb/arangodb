@@ -61,7 +61,7 @@ class Task : public std::enable_shared_from_this<Task> {
  private:
   std::string const _name;
 };
-}
-}
+}  // namespace rest
+}  // namespace arangodb
 
 #endif

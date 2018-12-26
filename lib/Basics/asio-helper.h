@@ -30,28 +30,21 @@
 namespace {
 class Unused1 {
  protected:
-  const boost::system::error_category& unused1
-    = boost::asio::error::system_category;
-  
-  const boost::system::error_category& unused2
-    = boost::asio::error::netdb_category;
-  
-  const boost::system::error_category& unused3
-    = boost::asio::error::addrinfo_category;
-  
-  const boost::system::error_category& unused4
-    = boost::asio::error::misc_category;
+  const boost::system::error_category& unused1 = boost::asio::error::system_category;
 
-  const boost::system::error_category& unused5
-    = boost::system::posix_category;
+  const boost::system::error_category& unused2 = boost::asio::error::netdb_category;
 
-  const boost::system::error_category& unused6
-    = boost::system::errno_ecat;
+  const boost::system::error_category& unused3 = boost::asio::error::addrinfo_category;
 
-  const boost::system::error_category& unused7
-    = boost::system::native_ecat;
+  const boost::system::error_category& unused4 = boost::asio::error::misc_category;
+
+  const boost::system::error_category& unused5 = boost::system::posix_category;
+
+  const boost::system::error_category& unused6 = boost::system::errno_ecat;
+
+  const boost::system::error_category& unused7 = boost::system::native_ecat;
 };
-}
+}  // namespace
 #endif
 
 #ifdef BOOST_ASIO_SSL_HPP
@@ -60,11 +53,9 @@ class Unused1 {
 namespace {
 class Unused2 {
  protected:
-  const boost::system::error_category& unused1
-    = boost::asio::error::ssl_category;
-  const boost::system::error_category& unused2
-    = boost::asio::ssl::error::stream_category;
+  const boost::system::error_category& unused1 = boost::asio::error::ssl_category;
+  const boost::system::error_category& unused2 = boost::asio::ssl::error::stream_category;
 };
-}
+}  // namespace
 #endif
 #endif

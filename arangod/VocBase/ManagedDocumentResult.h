@@ -38,12 +38,8 @@ struct AqlValue;
 
 class ManagedDocumentResult {
  public:
-  ManagedDocumentResult() :
-    _length(0),
-    _lastRevisionId(0),
-    _vpack(nullptr),
-    _managed(false),
-    _useString(false) {}
+  ManagedDocumentResult()
+      : _length(0), _lastRevisionId(0), _vpack(nullptr), _managed(false), _useString(false) {}
   ~ManagedDocumentResult() { reset(); }
   ManagedDocumentResult(ManagedDocumentResult const& other) = delete;
   ManagedDocumentResult& operator=(ManagedDocumentResult const& other) = delete;
@@ -53,7 +49,7 @@ class ManagedDocumentResult {
       setManaged(std::move(other._string), other._lastRevisionId);
       other._managed = false;
       other.reset();
-    } else if (other._managed){
+    } else if (other._managed) {
       reset();
       _vpack = other._vpack;
       _length = other._length;
@@ -71,7 +67,7 @@ class ManagedDocumentResult {
 
   void clone(ManagedDocumentResult& cloned) const;
 
-  //add unmanaged vpack 
+  // add unmanaged vpack
   void setUnmanaged(uint8_t const* vpack, TRI_voc_rid_t revisionId);
 
   void setManaged(uint8_t const* vpack, TRI_voc_rid_t revisionId);
@@ -79,28 +75,26 @@ class ManagedDocumentResult {
   void setManaged(std::string&& str, TRI_voc_rid_t revisionId);
 
   inline TRI_voc_rid_t lastRevisionId() const { return _lastRevisionId; }
-  
+
   void reset() noexcept;
 
-  std::string* prepareStringUsage() { 
+  std::string* prepareStringUsage() {
     reset();
     _useString = true;
-    return &_string; 
+    return &_string;
   }
-  
+
   void setManagedAfterStringUsage(TRI_voc_rid_t revisionId);
-  
+
   inline uint8_t const* vpack() const {
     TRI_ASSERT(_vpack != nullptr);
     return _vpack;
   }
-  
+
   inline bool empty() const { return _vpack == nullptr; }
 
-  inline bool canUseInExternal() const {
-    return (!_managed && !_useString);
-  }
-  
+  inline bool canUseInExternal() const { return (!_managed && !_useString); }
+
   void addToBuilder(velocypack::Builder& builder, bool allowExternals) const;
 
  private:
@@ -112,6 +106,6 @@ class ManagedDocumentResult {
   bool _useString;
 };
 
-}
+}  // namespace arangodb
 
 #endif

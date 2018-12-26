@@ -32,8 +32,7 @@
 using namespace arangodb::consensus;
 
 CleanOutServer::CleanOutServer(Node const& snapshot, AgentInterface* agent,
-                               std::string const& jobId,
-                               std::string const& creator,
+                               std::string const& jobId, std::string const& creator,
                                std::string const& server)
     : Job(NOTFOUND, snapshot, agent, jobId, creator), _server(id(server)) {}
 
@@ -56,9 +55,7 @@ CleanOutServer::CleanOutServer(Node const& snapshot, AgentInterface* agent,
 
 CleanOutServer::~CleanOutServer() {}
 
-void CleanOutServer::run() {
-  runHelper(_server, "");
-}
+void CleanOutServer::run() { runHelper(_server, ""); }
 
 JOB_STATUS CleanOutServer::status() {
   if (_status != PENDING) {
@@ -82,8 +79,8 @@ JOB_STATUS CleanOutServer::status() {
 
   if (found > 0) {  // some subjob still running
     // timeout here:
-    std::string timeCreatedString
-      = _snapshot.get(pendingPrefix + _jobId + "/timeCreated").getString();
+    std::string timeCreatedString =
+        _snapshot.get(pendingPrefix + _jobId + "/timeCreated").getString();
     Supervision::TimePoint timeCreated = stringToTimepoint(timeCreatedString);
     Supervision::TimePoint now(std::chrono::system_clock::now());
     if (now - timeCreated > std::chrono::duration<double>(7200.0)) {
@@ -105,7 +102,7 @@ JOB_STATUS CleanOutServer::status() {
     abort();
     return FAILED;
   }
-  
+
   // all subjobs done:
 
   // Put server in /Target/CleanedServers:
@@ -132,22 +129,21 @@ JOB_STATUS CleanOutServer::status() {
   write_ret_t res = singleWriteTransaction(_agent, reportTrx);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0] != 0) {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "Have reported " << _server
-                                    << " in /Target/CleanedServers";
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+        << "Have reported " << _server << " in /Target/CleanedServers";
     return FINISHED;
   }
 
-  LOG_TOPIC(ERR, Logger::SUPERVISION) << "Failed to report " << _server
-                                 << " in /Target/CleanedServers";
+  LOG_TOPIC(ERR, Logger::SUPERVISION)
+      << "Failed to report " << _server << " in /Target/CleanedServers";
   return FAILED;
 }
 
 bool CleanOutServer::create(std::shared_ptr<VPackBuilder> envelope) {
-
   LOG_TOPIC(DEBUG, Logger::SUPERVISION)
       << "Todo: Clean out server " + _server + " for shrinkage";
 
-  bool selfCreate = (envelope == nullptr); // Do we create ourselves?
+  bool selfCreate = (envelope == nullptr);  // Do we create ourselves?
 
   if (selfCreate) {
     _jb = std::make_shared<Builder>();
@@ -157,16 +153,18 @@ bool CleanOutServer::create(std::shared_ptr<VPackBuilder> envelope) {
 
   std::string path = toDoPrefix + _jobId;
 
-  { VPackArrayBuilder guard(_jb.get());
+  {
+    VPackArrayBuilder guard(_jb.get());
     VPackObjectBuilder guard2(_jb.get());
     _jb->add(VPackValue(path));
-    { VPackObjectBuilder guard3(_jb.get());
+    {
+      VPackObjectBuilder guard3(_jb.get());
       _jb->add("type", VPackValue("cleanOutServer"));
       _jb->add("server", VPackValue(_server));
       _jb->add("jobId", VPackValue(_jobId));
       _jb->add("creator", VPackValue(_creator));
       _jb->add("timeCreated",
-             VPackValue(timepointToString(std::chrono::system_clock::now())));
+               VPackValue(timepointToString(std::chrono::system_clock::now())));
     }
   }
 
@@ -191,7 +189,7 @@ bool CleanOutServer::create(std::shared_ptr<VPackBuilder> envelope) {
 bool CleanOutServer::start() {
   // If anything throws here, the run() method catches it and finishes
   // the job.
- 
+
   // Check if the server exists:
   if (!_snapshot.has(plannedServers + "/" + _server)) {
     finish("", "", false, "server does not exist as DBServer in Plan");
@@ -200,18 +198,19 @@ bool CleanOutServer::start() {
 
   // Check that the server is not locked:
   if (_snapshot.has(blockedServersPrefix + _server)) {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "server " << _server
-      << " is currently locked, not starting CleanOutServer job " << _jobId;
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+        << "server " << _server
+        << " is currently locked, not starting CleanOutServer job " << _jobId;
     return false;
   }
 
   // Check that the server is in state "GOOD":
   std::string health = checkServerGood(_snapshot, _server);
   if (health != "GOOD") {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "server " << _server
-      << " is currently " << health << ", not starting CleanOutServer job "
-      << _jobId;
-      return false;
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+        << "server " << _server << " is currently " << health
+        << ", not starting CleanOutServer job " << _jobId;
+    return false;
   }
 
   // Check that _to is not in `Target/CleanedServers`:
@@ -219,13 +218,10 @@ bool CleanOutServer::start() {
   try {
     auto cleanedServersNode = _snapshot.get(cleanedPrefix);
     cleanedServersNode.toBuilder(cleanedServersBuilder);
-  }
-  catch (...) {
+  } catch (...) {
     // ignore this check
     cleanedServersBuilder.clear();
-    {
-      VPackArrayBuilder guard(&cleanedServersBuilder); 
-    }
+    { VPackArrayBuilder guard(&cleanedServersBuilder); }
   }
   VPackSlice cleanedServers = cleanedServersBuilder.slice();
   if (cleanedServers.isArray()) {
@@ -242,12 +238,10 @@ bool CleanOutServer::start() {
   try {
     auto failedServersNode = _snapshot.get(failedServersPrefix);
     failedServersNode.toBuilder(failedServersBuilder);
-  }
-  catch (...) {
+  } catch (...) {
     // ignore this check
     failedServersBuilder.clear();
-    { VPackObjectBuilder guard(&failedServersBuilder); 
-    }
+    { VPackObjectBuilder guard(&failedServersBuilder); }
   }
   VPackSlice failedServers = failedServersBuilder.slice();
   if (failedServers.isObject()) {
@@ -269,7 +263,8 @@ bool CleanOutServer::start() {
   Builder todo;
 
   // Get todo entry
-  { VPackArrayBuilder guard(&todo);
+  {
+    VPackArrayBuilder guard(&todo);
     // When create() was done with the current snapshot, then the job object
     // will not be in the snapshot under ToDo, but in this case we find it
     // in _jb:
@@ -279,8 +274,8 @@ bool CleanOutServer::start() {
       } catch (std::exception const&) {
         // Just in case, this is never going to happen, since we will only
         // call the start() method if the job is already in ToDo.
-        LOG_TOPIC(INFO, Logger::SUPERVISION) << "Failed to get key " +
-          toDoPrefix + _jobId + " from agency snapshot";
+        LOG_TOPIC(INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
+                                                    " from agency snapshot";
         return false;
       }
     } else {
@@ -289,17 +284,19 @@ bool CleanOutServer::start() {
       } catch (std::exception const& e) {
         // Just in case, this is never going to happen, since when _jb is
         // set, then the current job is stored under ToDo.
-        LOG_TOPIC(WARN, Logger::SUPERVISION) << e.what() << ": " 
-          << __FILE__ << ":" << __LINE__;
+        LOG_TOPIC(WARN, Logger::SUPERVISION)
+            << e.what() << ": " << __FILE__ << ":" << __LINE__;
         return false;
       }
     }
   }
 
   // Enter pending, remove todo, block toserver
-  { VPackArrayBuilder listOfTransactions(pending.get());
+  {
+    VPackArrayBuilder listOfTransactions(pending.get());
 
-    { VPackObjectBuilder objectForMutation(pending.get());
+    {
+      VPackObjectBuilder objectForMutation(pending.get());
 
       addPutJobIntoSomewhere(*pending, "Pending", todo.slice()[0]);
       addRemoveJobFromSomewhere(*pending, "ToDo", _jobId);
@@ -315,7 +312,8 @@ bool CleanOutServer::start() {
     }  // mutation part of transaction done
 
     // Preconditions
-    { VPackObjectBuilder objectForPrecondition(pending.get());
+    {
+      VPackObjectBuilder objectForPrecondition(pending.get());
       addPreconditionServerNotBlocked(*pending, _server);
       addPreconditionServerGood(*pending, _server);
       addPreconditionUnchanged(*pending, failedServersPrefix, failedServers);
@@ -327,8 +325,7 @@ bool CleanOutServer::start() {
   write_ret_t res = singleWriteTransaction(_agent, *pending);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "Pending: Clean out server "
-      + _server;
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "Pending: Clean out server " + _server;
 
     return true;
   }
@@ -340,25 +337,21 @@ bool CleanOutServer::start() {
 }
 
 bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
-
   std::vector<std::string> servers = availableServers(_snapshot);
 
   Node::Children const& databases = _snapshot.get("/Plan/Collections").children();
   size_t sub = 0;
 
   for (auto const& database : databases) {
-    
     // Find shardsLike dependencies
     for (auto const& collptr : database.second->children()) {
-      
       auto const& collection = *(collptr.second);
-      
+
       if (collection.has("distributeShardsLike")) {
         continue;
       }
 
       for (auto const& shard : collection("shards").children()) {
-        
         // Only shards, which are affected
         int found = -1;
         int count = 0;
@@ -377,28 +370,27 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
 
         // Only destinations, which are not already holding this shard
         for (auto const& dbserver : VPackArrayIterator(shard.second->slice())) {
-          serversCopy.erase(
-            std::remove(serversCopy.begin(), serversCopy.end(),
-                        dbserver.copyString()),
-            serversCopy.end());
+          serversCopy.erase(std::remove(serversCopy.begin(), serversCopy.end(),
+                                        dbserver.copyString()),
+                            serversCopy.end());
         }
 
         // Among those a random destination:
         std::string toServer;
         if (serversCopy.empty()) {
           LOG_TOPIC(DEBUG, Logger::SUPERVISION)
-            << "No servers remain as target for MoveShard";
+              << "No servers remain as target for MoveShard";
           return false;
         }
 
-        toServer = serversCopy.at(arangodb::RandomGenerator::interval(
-            static_cast<int64_t>(0), serversCopy.size()-1));
+        toServer = serversCopy.at(
+            arangodb::RandomGenerator::interval(static_cast<int64_t>(0),
+                                                serversCopy.size() - 1));
 
         // Schedule move into trx:
-        MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
-                  _jobId, database.first, collptr.first,
-                  shard.first, _server, toServer, found == 0)
-          .create(trx);
+        MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++), _jobId,
+                  database.first, collptr.first, shard.first, _server, toServer, found == 0)
+            .create(trx);
       }
     }
   }
@@ -412,7 +404,7 @@ bool CleanOutServer::checkFeasibility() {
   // Minimum 1 DB server must remain:
   if (availServers.size() == 1) {
     LOG_TOPIC(ERR, Logger::SUPERVISION)
-      << "DB server " << _server << " is the last standing db server.";
+        << "DB server " << _server << " is the last standing db server.";
     return false;
   }
 
@@ -453,9 +445,8 @@ bool CleanOutServer::checkFeasibility() {
     }
 
     LOG_TOPIC(ERR, Logger::SUPERVISION)
-        << "Cannot accomodate shards " << collections.str()
-        << "with replication factors " << factors.str()
-        << "after cleaning out server " << _server;
+        << "Cannot accomodate shards " << collections.str() << "with replication factors "
+        << factors.str() << "after cleaning out server " << _server;
     return false;
   }
 
@@ -467,7 +458,8 @@ arangodb::Result CleanOutServer::abort() {
   Result result;
 
   if (_status == NOTFOUND || _status == FINISHED || _status == FAILED) {
-    result = Result(TRI_ERROR_SUPERVISION_GENERAL_FAILURE, "Failed aborting failedServer beyond pending stage");
+    result = Result(TRI_ERROR_SUPERVISION_GENERAL_FAILURE,
+                    "Failed aborting failedServer beyond pending stage");
     return result;
   }
 
@@ -495,6 +487,4 @@ arangodb::Result CleanOutServer::abort() {
   finish(_server, "", false, "job aborted");
 
   return result;
-  
 }
-

@@ -27,7 +27,7 @@
 #include <regex>
 
 using namespace arangodb;
-  
+
 std::string LdapUrlParseResult::toString() const {
   std::string result("ldap://");
   if (host.set) {
@@ -72,7 +72,7 @@ void LdapUrlParser::parse(std::string const& url, LdapUrlParseResult& result) {
     size_t pos = view.find('/');
     if (pos != std::string::npos) {
       l = pos;
-    } 
+    }
     pos = view.find('?');
     if (pos != std::string::npos && pos < l) {
       l = pos;
@@ -87,19 +87,22 @@ void LdapUrlParser::parse(std::string const& url, LdapUrlParseResult& result) {
       result.host.populate(std::string(host.begin(), colon));
       result.port.populate(std::string(host.begin() + colon + 1, host.size() - colon - 1));
 
-      if (!std::regex_match(result.port.value, std::regex("^[0-9]+$", std::regex::nosubs | std::regex::ECMAScript))) {
+      if (!std::regex_match(result.port.value,
+                            std::regex("^[0-9]+$", std::regex::nosubs | std::regex::ECMAScript))) {
         // port number must be numeric
         result.valid = false;
       }
     }
-      
-    if (!std::regex_match(result.host.value, std::regex("^[a-zA-Z0-9\\-.]+$", std::regex::nosubs | std::regex::ECMAScript))) {
+
+    if (!std::regex_match(result.host.value,
+                          std::regex("^[a-zA-Z0-9\\-.]+$",
+                                     std::regex::nosubs | std::regex::ECMAScript))) {
       // host pattern is invalid
       result.valid = false;
     }
 
     view = StringRef(host.begin() + host.size());
-  } 
+  }
 
   // handle basedn
   if (!view.empty() && view[0] == '/') {
@@ -110,7 +113,7 @@ void LdapUrlParser::parse(std::string const& url, LdapUrlParseResult& result) {
     size_t pos = view.find('?');
     if (pos != std::string::npos) {
       l = pos;
-    } 
+    }
 
     StringRef basedn(view.begin(), l);
     result.basedn.populate(std::string(basedn.begin(), basedn.size()));
@@ -123,7 +126,7 @@ void LdapUrlParser::parse(std::string const& url, LdapUrlParseResult& result) {
       // basedn contains "/"
       result.valid = false;
     }
-    
+
     view = StringRef(basedn.begin() + basedn.size());
   } else {
     // if there is no basedn, we cannot have anything else
@@ -143,16 +146,19 @@ void LdapUrlParser::parse(std::string const& url, LdapUrlParseResult& result) {
     size_t pos = view.find('?');
     if (pos != std::string::npos) {
       l = pos;
-    } 
+    }
 
     StringRef searchAttribute(view.begin(), l);
-    result.searchAttribute.populate(std::string(searchAttribute.begin(), searchAttribute.size()));
+    result.searchAttribute.populate(
+        std::string(searchAttribute.begin(), searchAttribute.size()));
     if (result.searchAttribute.value.empty() ||
-        !std::regex_match(result.searchAttribute.value, std::regex("^[a-zA-Z0-9\\-_]+$", std::regex::nosubs | std::regex::ECMAScript))) {
+        !std::regex_match(result.searchAttribute.value,
+                          std::regex("^[a-zA-Z0-9\\-_]+$",
+                                     std::regex::nosubs | std::regex::ECMAScript))) {
       // search attribute pattern is invalid
       result.valid = false;
     }
-    
+
     view = StringRef(searchAttribute.begin() + searchAttribute.size());
   } else {
     // if there is no searchAttribute, there must not be anything else
@@ -162,7 +168,7 @@ void LdapUrlParser::parse(std::string const& url, LdapUrlParseResult& result) {
     }
     return;
   }
-  
+
   // handle deep
   if (!view.empty() && view[0] == '?') {
     // skip over "?"
@@ -172,18 +178,20 @@ void LdapUrlParser::parse(std::string const& url, LdapUrlParseResult& result) {
     size_t pos = view.find('?');
     if (pos != std::string::npos) {
       l = pos;
-    } 
+    }
 
     StringRef deep(view.begin(), l);
     result.deep.populate(std::string(deep.begin(), deep.size()));
     if (result.deep.value.empty() ||
-        !std::regex_match(result.deep.value, std::regex("^[a-zA-Z0-9\\-_]+$", std::regex::nosubs | std::regex::ECMAScript))) {
+        !std::regex_match(result.deep.value,
+                          std::regex("^[a-zA-Z0-9\\-_]+$",
+                                     std::regex::nosubs | std::regex::ECMAScript))) {
       // invalid deep pattern
       result.valid = false;
     }
-    
+
     view = StringRef(deep.begin() + deep.size());
-  } 
+  }
 
   // we must be at the end of the string here
   if (!view.empty()) {

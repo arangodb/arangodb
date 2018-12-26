@@ -27,8 +27,7 @@
 #include "VocBase/AuthInfo.h"
 
 namespace arangodb {
-class AuthenticationFeature final
-    : public application_features::ApplicationFeature {
+class AuthenticationFeature final : public application_features::ApplicationFeature {
  private:
   const size_t _maxSecretLength = 64;
 
@@ -64,12 +63,10 @@ class AuthenticationFeature final
     authInfo()->setJwtSecret(jwtSecret);
   }
   AuthInfo* authInfo();
-  AuthLevel canUseDatabase(std::string const& username,
-                           std::string const& dbname);
-  AuthLevel canUseCollection(std::string const& username,
-                             std::string const& dbname,
+  AuthLevel canUseDatabase(std::string const& username, std::string const& dbname);
+  AuthLevel canUseCollection(std::string const& username, std::string const& dbname,
                              std::string const& collection);
 };
-};
+};  // namespace arangodb
 
 #endif

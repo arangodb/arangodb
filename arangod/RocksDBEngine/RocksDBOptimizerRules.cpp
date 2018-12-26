@@ -64,20 +64,21 @@ class AttributeAccessReplacer final : public WalkerWorker<ExecutionNode> {
 };
 
 void RocksDBOptimizerRules::registerResources() {
-  OptimizerRulesFeature::registerRule("reduce-extraction-to-projection", reduceExtractionToProjectionRule, 
-               OptimizerRule::reduceExtractionToProjectionRule_pass6, false, true);
+  OptimizerRulesFeature::registerRule("reduce-extraction-to-projection",
+                                      reduceExtractionToProjectionRule,
+                                      OptimizerRule::reduceExtractionToProjectionRule_pass6,
+                                      false, true);
 }
 
 // simplify an EnumerationCollectionNode that fetches an entire document to a projection of this document
-void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt, 
-                                                             std::unique_ptr<ExecutionPlan> plan, 
-                                                             OptimizerRule const* rule) {
+void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
+    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan, OptimizerRule const* rule) {
   // These are all the nodes where we start traversing (including all
   // subqueries)
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
-  
-  std::vector<ExecutionNode::NodeType> const types = {ExecutionNode::ENUMERATE_COLLECTION}; 
+
+  std::vector<ExecutionNode::NodeType> const types = {ExecutionNode::ENUMERATE_COLLECTION};
   plan->findNodesOfType(nodes, types, true);
 
   bool modified = false;
@@ -90,12 +91,13 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt,
     attributeNames.clear();
     DocumentProducingNode* e = dynamic_cast<DocumentProducingNode*>(n);
     if (e == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot convert node to DocumentProducingNode");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL, "cannot convert node to DocumentProducingNode");
     }
 
     Variable const* v = e->outVariable();
     Variable const* replaceVar = nullptr;
-              
+
     ExecutionNode* current = n->getFirstParent();
     while (current != nullptr) {
       if (current->getType() == EN::CALCULATION) {
@@ -105,12 +107,12 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt,
           AstNode const* node = exp->node();
           vars.clear();
           current->getVariablesUsedHere(vars);
-            
+
           if (vars.find(v) != vars.end()) {
             if (attributeNames.empty()) {
               vars.clear();
               current->getVariablesUsedHere(vars);
-              
+
               if (node != nullptr) {
                 if (Ast::populateSingleAttributeAccess(node, v, attributeNames)) {
                   if (!Ast::variableOnlyUsedForSingleAttributeAccess(node, v, attributeNames)) {
@@ -161,13 +163,13 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt,
 
       AttributeAccessReplacer finder(v, attributeNames);
       plan->root()->walk(&finder);
-      
+
       std::reverse(attributeNames.begin(), attributeNames.end());
       e->setProjection(std::move(attributeNames));
 
       modified = true;
     }
   }
-    
+
   opt->addPlan(std::move(plan), rule, modified);
 }

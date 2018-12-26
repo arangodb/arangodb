@@ -74,6 +74,6 @@ class RestEngine {
 
   EventLoop _loop;
 };
-}
+}  // namespace arangodb
 
 #endif

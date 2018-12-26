@@ -29,8 +29,8 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
-#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/AsyncJobManager.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
@@ -53,23 +53,22 @@ namespace {
 static std::string const AdminAardvark("/_admin/aardvark/");
 static std::string const ApiUser("/_api/user/");
 static std::string const Open("/_open/");
-}
+}  // namespace
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 GeneralCommTask::GeneralCommTask(EventLoop loop, GeneralServer* server,
-                                 std::unique_ptr<Socket> socket,
-                                 ConnectionInfo&& info, double keepAliveTimeout,
-                                 bool skipSocketInit)
+                                 std::unique_ptr<Socket> socket, ConnectionInfo&& info,
+                                 double keepAliveTimeout, bool skipSocketInit)
     : Task(loop, "GeneralCommTask"),
-      SocketTask(loop, std::move(socket), std::move(info), keepAliveTimeout,
-                 skipSocketInit),
+      SocketTask(loop, std::move(socket), std::move(info), keepAliveTimeout, skipSocketInit),
       _server(server),
       _authentication(nullptr) {
-  _authentication = application_features::ApplicationServer::getFeature<
-  AuthenticationFeature>("Authentication");
+  _authentication =
+      application_features::ApplicationServer::getFeature<AuthenticationFeature>(
+          "Authentication");
   TRI_ASSERT(_authentication != nullptr);
 }
 
@@ -111,13 +110,11 @@ void GeneralCommTask::setStatistics(uint64_t id, RequestStatistics* stat) {
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
 
-void GeneralCommTask::executeRequest(
-    std::unique_ptr<GeneralRequest>&& request,
-    std::unique_ptr<GeneralResponse>&& response) {
+void GeneralCommTask::executeRequest(std::unique_ptr<GeneralRequest>&& request,
+                                     std::unique_ptr<GeneralResponse>&& response) {
   // check for an async request (before the handler steals the request)
   bool found = false;
-  std::string const& asyncExecution =
-      request->header(StaticStrings::Async, found);
+  std::string const& asyncExecution = request->header(StaticStrings::Async, found);
 
   // store the message id for error handling
   uint64_t messageId = 0UL;
@@ -132,12 +129,13 @@ void GeneralCommTask::executeRequest(
 
   // create a handler, this takes ownership of request and response
   std::shared_ptr<RestHandler> handler(
-      GeneralServerFeature::HANDLER_FACTORY->createHandler(
-          std::move(request), std::move(response)));
+      GeneralServerFeature::HANDLER_FACTORY->createHandler(std::move(request),
+                                                           std::move(response)));
 
   // give up, if we cannot find a handler
   if (handler == nullptr) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "no handler is known, giving up";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+        << "no handler is known, giving up";
     handleSimpleError(rest::ResponseCode::NOT_FOUND, *request, messageId);
     return;
   }
@@ -270,29 +268,27 @@ bool GeneralCommTask::handleRequest(std::shared_ptr<RestHandler> handler) {
   auto self = shared_from_this();
 
   if (isPrio) {
-    SchedulerFeature::SCHEDULER->post(
-        [self, this, handler]() {
-          handleRequestDirectly(basics::ConditionalLocking::DoLock, std::move(handler));
-        });
+    SchedulerFeature::SCHEDULER->post([self, this, handler]() {
+      handleRequestDirectly(basics::ConditionalLocking::DoLock, std::move(handler));
+    });
     return true;
   }
 
   // ok, we need to queue the request
-  LOG_TOPIC(TRACE, Logger::THREADS) << "too much work, queuing handler: "
-                                    << _loop._scheduler->infoStatus();
+  LOG_TOPIC(TRACE, Logger::THREADS)
+      << "too much work, queuing handler: " << _loop._scheduler->infoStatus();
   uint64_t messageId = handler->messageId();
 
   std::unique_ptr<Job> job(
-      new Job(_server, std::move(handler),
-              [self, this](std::shared_ptr<RestHandler> h) {
-                handleRequestDirectly(basics::ConditionalLocking::DoLock, h);
-              }));
+      new Job(_server, std::move(handler), [self, this](std::shared_ptr<RestHandler> h) {
+        handleRequestDirectly(basics::ConditionalLocking::DoLock, h);
+      }));
 
   bool ok = SchedulerFeature::SCHEDULER->queue(std::move(job));
 
   if (!ok) {
-
-    handleSimpleError(rest::ResponseCode::SERVICE_UNAVAILABLE, *(handler->request()), TRI_ERROR_QUEUE_FULL,
+    handleSimpleError(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                      *(handler->request()), TRI_ERROR_QUEUE_FULL,
                       TRI_errno_string(TRI_ERROR_QUEUE_FULL), messageId);
   }
 
@@ -347,9 +343,10 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
   // queue this job
   auto self = shared_from_this();
 
-  auto job = std::make_unique<Job>(
-      _server, std::move(handler),
-      [self, this](std::shared_ptr<RestHandler> h) { h->asyncRunEngine(); });
+  auto job = std::make_unique<Job>(_server, std::move(handler),
+                                   [self, this](std::shared_ptr<RestHandler> h) {
+                                     h->asyncRunEngine();
+                                   });
 
   return SchedulerFeature::SCHEDULER->queue(std::move(job));
 }
@@ -359,7 +356,6 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
 ////////////////////////////////////////////////////////////////////////////////
 
 rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const {
-
   if (!_authentication->isActive()) {
     // no authentication required at all
     return rest::ResponseCode::OK;
@@ -369,8 +365,8 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
   std::string const& dbname = request->databaseName();
   std::string const& username = request->user();
   bool userAuthorized = request->authorized();
-  rest::ResponseCode result = userAuthorized ? rest::ResponseCode::OK :
-    rest::ResponseCode::UNAUTHORIZED;
+  rest::ResponseCode result =
+      userAuthorized ? rest::ResponseCode::OK : rest::ResponseCode::UNAUTHORIZED;
   AuthLevel dbLevel = AuthLevel::NONE;
 
   if (userAuthorized && path == "/_api/cluster/endpoints") {
@@ -380,22 +376,21 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
   // mop: inside authenticateRequest() request->user will be populated
   bool forceOpen = false;
   if (userAuthorized && !username.empty()) {
-    AuthLevel sysLevel = _authentication->canUseDatabase(username, StaticStrings::SystemDatabase);
+    AuthLevel sysLevel =
+        _authentication->canUseDatabase(username, StaticStrings::SystemDatabase);
     if (dbname == StaticStrings::SystemDatabase) {
-      // the request is made in the system database, and we have already queried our
-      // privileges for it. simply reuse the already queried privileges now
+      // the request is made in the system database, and we have already queried
+      // our privileges for it. simply reuse the already queried privileges now
       dbLevel = sysLevel;
     } else {
       // we have to query again but for a different database
       dbLevel = _authentication->canUseDatabase(username, dbname);
     }
 
-    request->setExecContext(new ExecContext(username, dbname,
-                                            sysLevel, dbLevel));
+    request->setExecContext(new ExecContext(username, dbname, sysLevel, dbLevel));
   }
 
   if (!request->authorized()) {
-
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
     // check if we need to run authentication for this type of
     // endpoint
@@ -409,8 +404,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
     }
 #endif
 
-    if (result != rest::ResponseCode::OK &&
-        _authentication->authenticationSystemOnly()) {
+    if (result != rest::ResponseCode::OK && _authentication->authenticationSystemOnly()) {
       // authentication required, but only for /_api, /_admin etc.
 
       if (!path.empty()) {
@@ -424,8 +418,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
     }
 
     if (result != rest::ResponseCode::OK) {
-      if (path == "/" ||
-          StringUtils::isPrefix(path, Open) ||
+      if (path == "/" || StringUtils::isPrefix(path, Open) ||
           StringUtils::isPrefix(path, AdminAardvark)) {
         // mop: these paths are always callable...they will be able to check
         // req.user when it could be validated
@@ -458,8 +451,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
       }
     }
 
-    if (dbLevel == AuthLevel::NONE &&
-        !StringUtils::isPrefix(path, ApiUser)) {
+    if (dbLevel == AuthLevel::NONE && !StringUtils::isPrefix(path, ApiUser)) {
       events::NotAuthorized(request);
       result = rest::ResponseCode::UNAUTHORIZED;
     }

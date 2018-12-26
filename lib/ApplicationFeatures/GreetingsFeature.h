@@ -34,6 +34,6 @@ class GreetingsFeature final : public application_features::ApplicationFeature {
   void prepare() override final;
   void unprepare() override final;
 };
-}
+}  // namespace arangodb
 
 #endif

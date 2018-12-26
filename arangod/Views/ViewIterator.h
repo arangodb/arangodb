@@ -42,13 +42,14 @@ class ViewIterator {
  public:
   typedef std::function<void(DocumentIdentifierToken const& token)> TokenCallback;
 
-  typedef std::function<void(DocumentIdentifierToken const& token, arangodb::velocypack::Slice extra)> ExtraCallback; 
+  typedef std::function<void(DocumentIdentifierToken const& token, arangodb::velocypack::Slice extra)> ExtraCallback;
 
   ViewIterator() = delete;
   ViewIterator(ViewIterator const&) = delete;
   ViewIterator& operator=(ViewIterator const&) = delete;
 
-  ViewIterator(ViewImplementation* view, transaction::Methods* trx) : _view(view), _trx(trx) {}
+  ViewIterator(ViewImplementation* view, transaction::Methods* trx)
+      : _view(view), _trx(trx) {}
   virtual ~ViewIterator() {}
 
   virtual char const* typeName() const = 0;
@@ -70,17 +71,18 @@ class ViewIterator {
   virtual void reset();
 
   virtual bool nextExtra(ExtraCallback const& callback, size_t limit);
-  virtual bool hasExtra() const; 
+  virtual bool hasExtra() const;
 
-  virtual void skip(uint64_t count, uint64_t& skipped); // same as IndexIterator API
+  virtual void skip(uint64_t count, uint64_t& skipped);  // same as IndexIterator API
 
-  bool readDocument(arangodb::DocumentIdentifierToken const& token, arangodb::ManagedDocumentResult& result) const; 
+  bool readDocument(arangodb::DocumentIdentifierToken const& token,
+                    arangodb::ManagedDocumentResult& result) const;
 
  protected:
   ViewImplementation* _view;
   transaction::Methods* _trx;
 };
 
-}
+}  // namespace arangodb
 
 #endif

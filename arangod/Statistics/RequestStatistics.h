@@ -152,19 +152,15 @@ class RequestStatistics {
   void trace_log();
 
  private:
-  static size_t const QUEUE_SIZE = 64 * 1024 - 2; // current (1.62) boost maximum
+  static size_t const QUEUE_SIZE = 64 * 1024 - 2;  // current (1.62) boost maximum
 
   static arangodb::Mutex _dataLock;
 
   static std::unique_ptr<RequestStatistics[]> _statisticsBuffer;
 
-  static boost::lockfree::queue<RequestStatistics*,
-                                boost::lockfree::capacity<QUEUE_SIZE>>
-      _freeList;
+  static boost::lockfree::queue<RequestStatistics*, boost::lockfree::capacity<QUEUE_SIZE>> _freeList;
 
-  static boost::lockfree::queue<RequestStatistics*,
-                                boost::lockfree::capacity<QUEUE_SIZE>>
-      _finishedList;
+  static boost::lockfree::queue<RequestStatistics*, boost::lockfree::capacity<QUEUE_SIZE>> _finishedList;
 
   static void process(RequestStatistics*);
 
@@ -191,12 +187,12 @@ class RequestStatistics {
     _inQueue = false;
   }
 
-  double _readStart;     // CommTask::processRead - read first byte of message
-  double _readEnd;       // CommTask::processRead - message complete
-  double _queueStart;    // job added to JobQueue
-  double _queueEnd;      // job removed from JobQueue
+  double _readStart;   // CommTask::processRead - read first byte of message
+  double _readEnd;     // CommTask::processRead - message complete
+  double _queueStart;  // job added to JobQueue
+  double _queueEnd;    // job removed from JobQueue
   int64_t _queueSize;
-  
+
   double _requestStart;  // GeneralServerJob::work
   double _requestEnd;
   double _writeStart;
@@ -214,6 +210,6 @@ class RequestStatistics {
   bool _released;
   bool _inQueue;
 };
-}
+}  // namespace arangodb
 
 #endif

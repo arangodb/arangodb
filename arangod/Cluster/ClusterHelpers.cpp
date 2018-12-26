@@ -46,7 +46,8 @@ bool ClusterHelpers::compareServerLists(Slice plan, Slice current) {
   return compareServerLists(planv, currv);
 }
 
-bool ClusterHelpers::compareServerLists(std::vector<std::string> planned, std::vector<std::string> current) {
+bool ClusterHelpers::compareServerLists(std::vector<std::string> planned,
+                                        std::vector<std::string> current) {
   bool equalLeader =
       !planned.empty() && !current.empty() && planned.front() == current.front();
   std::sort(planned.begin(), planned.end());

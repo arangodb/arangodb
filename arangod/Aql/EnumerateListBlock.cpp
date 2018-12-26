@@ -30,8 +30,7 @@
 
 using namespace arangodb::aql;
 
-EnumerateListBlock::EnumerateListBlock(ExecutionEngine* engine,
-                                       EnumerateListNode const* en)
+EnumerateListBlock::EnumerateListBlock(ExecutionEngine* engine, EnumerateListNode const* en)
     : ExecutionBlock(engine, en),
       _index(0),
       _docVecSize(0),
@@ -49,7 +48,7 @@ EnumerateListBlock::EnumerateListBlock(ExecutionEngine* engine,
 EnumerateListBlock::~EnumerateListBlock() {}
 
 int EnumerateListBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
-  DEBUG_BEGIN_BLOCK();  
+  DEBUG_BEGIN_BLOCK();
   int res = ExecutionBlock::initializeCursor(items, pos);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -57,14 +56,14 @@ int EnumerateListBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   }
 
   // handle local data (if any)
-  _index = 0;      // index in _inVariable for next run
+  _index = 0;  // index in _inVariable for next run
 
   return TRI_ERROR_NO_ERROR;
-  DEBUG_END_BLOCK();  
+  DEBUG_END_BLOCK();
 }
 
 AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
-  DEBUG_BEGIN_BLOCK();  
+  DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin();
   if (_done) {
     traceGetSomeEnd(nullptr);
@@ -107,8 +106,7 @@ AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
         _docVecSize = inVarReg.docvecSize();
       }
       sizeInVar = _docVecSize;
-    }
-    else {
+    } else {
       sizeInVar = inVarReg.length();
     }
 
@@ -118,7 +116,8 @@ AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
       size_t toSend = (std::min)(atMost, sizeInVar - _index);
 
       // create the result
-      res.reset(requestBlock(toSend, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+      res.reset(requestBlock(
+          toSend, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
       inheritRegisters(cur, res.get(), _pos);
 
@@ -135,8 +134,8 @@ AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
         res->setValue(j, cur->getNrRegs(), a);
-        guard.steal(); // itemblock is now responsible for value
-        
+        guard.steal();  // itemblock is now responsible for value
+
         if (j > 0) {
           // re-use already copied AqlValues
           res->copyValuesFromFirstRow(j, cur->getNrRegs());
@@ -159,11 +158,11 @@ AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
   clearRegisters(res.get());
   traceGetSomeEnd(res.get());
   return res.release();
-  DEBUG_END_BLOCK();  
+  DEBUG_END_BLOCK();
 }
 
 size_t EnumerateListBlock::skipSome(size_t atLeast, size_t atMost) {
-  DEBUG_BEGIN_BLOCK();  
+  DEBUG_BEGIN_BLOCK();
   if (_done) {
     return 0;
   }
@@ -189,7 +188,7 @@ size_t EnumerateListBlock::skipSome(size_t atLeast, size_t atMost) {
     if (!inVarReg.isArray()) {
       throwArrayExpectedException(inVarReg);
     }
-    
+
     size_t sizeInVar;
     if (inVarReg.isDocvec()) {
       // special handling here. calculate docvec length only once
@@ -198,8 +197,7 @@ size_t EnumerateListBlock::skipSome(size_t atLeast, size_t atMost) {
         _docVecSize = inVarReg.docvecSize();
       }
       sizeInVar = _docVecSize;
-    }
-    else {
+    } else {
       sizeInVar = inVarReg.length();
     }
 
@@ -219,26 +217,25 @@ size_t EnumerateListBlock::skipSome(size_t atLeast, size_t atMost) {
     }
   }
   return skipped;
-  DEBUG_END_BLOCK();  
+  DEBUG_END_BLOCK();
 }
 
 /// @brief create an AqlValue from the inVariable using the current _index
 AqlValue EnumerateListBlock::getAqlValue(AqlValue const& inVarReg, bool& mustDestroy) {
-  DEBUG_BEGIN_BLOCK();  
+  DEBUG_BEGIN_BLOCK();
   TRI_IF_FAILURE("EnumerateListBlock::getAqlValue") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
   return inVarReg.at(_trx, _index++, mustDestroy, true);
-  DEBUG_END_BLOCK();  
+  DEBUG_END_BLOCK();
 }
 
 void EnumerateListBlock::throwArrayExpectedException(AqlValue const& value) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_QUERY_ARRAY_EXPECTED,
-      std::string("collection or ") +
-      TRI_errno_string(TRI_ERROR_QUERY_ARRAY_EXPECTED) +
-          std::string(" as operand to FOR loop; you provided a value of type '") +
-        value.getTypeString () +
-        std::string("'"));
+      std::string("collection or ") + TRI_errno_string(TRI_ERROR_QUERY_ARRAY_EXPECTED) +
+          std::string(
+              " as operand to FOR loop; you provided a value of type '") +
+          value.getTypeString() + std::string("'"));
 }

@@ -35,7 +35,7 @@ class ShellColorsFeature final : public application_features::ApplicationFeature
 
  private:
   bool useColors();
-  bool prepareConsole(); 
+  bool prepareConsole();
 
  public:
   static char const* SHELL_COLOR_RED;
@@ -58,6 +58,6 @@ class ShellColorsFeature final : public application_features::ApplicationFeature
   static char const* SHELL_COLOR_BRIGHT;
   static char const* SHELL_COLOR_RESET;
 };
-}
+}  // namespace arangodb
 
 #endif

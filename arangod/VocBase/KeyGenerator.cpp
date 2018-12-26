@@ -22,11 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "KeyGenerator.h"
-#include "Basics/conversions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
-#include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/conversions.h"
+#include "Basics/tri-strings.h"
 #include "Basics/voc-errors.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -43,10 +43,9 @@ std::array<bool, 256> KeyGenerator::LookupTable;
 void KeyGenerator::Initialize() {
   for (int c = 0; c < 256; ++c) {
     if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-        (c >= '0' && c <= '9') || c == '_' || c == ':' || c == '-' ||
-        c == '@' || c == '.' || c == '(' || c == ')' || c == '+' || c == ',' ||
-        c == '=' || c == ';' || c == '$' || c == '!' || c == '*' || c == '\'' ||
-        c == '%') {
+        (c >= '0' && c <= '9') || c == '_' || c == ':' || c == '-' || c == '@' ||
+        c == '.' || c == '(' || c == ')' || c == '+' || c == ',' || c == '=' ||
+        c == ';' || c == '$' || c == '!' || c == '*' || c == '\'' || c == '%') {
       LookupTable[c] = true;
     } else {
       LookupTable[c] = false;
@@ -62,8 +61,7 @@ KeyGenerator::KeyGenerator(bool allowUserKeys)
 KeyGenerator::~KeyGenerator() {}
 
 /// @brief get the generator type from VelocyPack
-KeyGenerator::GeneratorType KeyGenerator::generatorType(
-    VPackSlice const& parameters) {
+KeyGenerator::GeneratorType KeyGenerator::generatorType(VPackSlice const& parameters) {
   if (!parameters.isObject()) {
     return KeyGenerator::TYPE_TRADITIONAL;
   }
@@ -73,8 +71,7 @@ KeyGenerator::GeneratorType KeyGenerator::generatorType(
     return KeyGenerator::TYPE_TRADITIONAL;
   }
 
-  std::string const typeName =
-      arangodb::basics::StringUtils::tolower(type.copyString());
+  std::string const typeName = arangodb::basics::StringUtils::tolower(type.copyString());
 
   if (typeName == TraditionalKeyGenerator::name()) {
     return KeyGenerator::TYPE_TRADITIONAL;
@@ -101,15 +98,17 @@ KeyGenerator* KeyGenerator::factory(VPackSlice const& options) {
   }
 
   if (type == TYPE_UNKNOWN) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR, "invalid key generator type");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR,
+                                   "invalid key generator type");
   }
 
   bool allowUserKeys = true;
 
   if (readOptions) {
     // Change allowUserKeys only if it is a boolean value, otherwise use default
-    allowUserKeys = arangodb::basics::VelocyPackHelper::getBooleanValue(
-        options, "allowUserKeys", allowUserKeys);
+    allowUserKeys =
+        arangodb::basics::VelocyPackHelper::getBooleanValue(options,
+                                                            "allowUserKeys", allowUserKeys);
   }
 
   if (type == TYPE_TRADITIONAL) {
@@ -127,13 +126,17 @@ KeyGenerator* KeyGenerator::factory(VPackSlice const& options) {
         double v = incrementSlice.getNumericValue<double>();
         if (v <= 0.0) {
           // negative or 0 increment is not allowed
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR, "increment value must be greater than zero");
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR,
+              "increment value must be greater than zero");
         }
 
         increment = incrementSlice.getNumericValue<uint64_t>();
 
         if (increment == 0 || increment >= (1ULL << 16)) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR, "increment value must be greater than zero");
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR,
+              "increment value must be greater than zero");
         }
       }
 
@@ -143,13 +146,16 @@ KeyGenerator* KeyGenerator::factory(VPackSlice const& options) {
         double v = offsetSlice.getNumericValue<double>();
         if (v < 0.0) {
           // negative or 0 offset is not allowed
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR, "offset value must be zero or greater");
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR,
+              "offset value must be zero or greater");
         }
 
         offset = offsetSlice.getNumericValue<uint64_t>();
 
         if (offset >= UINT64_MAX) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR, "offset value is too high");
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR,
+                                         "offset value is too high");
         }
       }
     }
@@ -158,7 +164,8 @@ KeyGenerator* KeyGenerator::factory(VPackSlice const& options) {
   }
 
   // unknown key generator type
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR, "invalid key generator type");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR,
+                                 "invalid key generator type");
 }
 
 /// @brief check global key attributes
@@ -220,7 +227,7 @@ bool TraditionalKeyGenerator::validateKey(char const* key, size_t len) {
 /// @brief generate a key
 std::string TraditionalKeyGenerator::generate() {
   TRI_voc_tick_t tick = TRI_NewTickServer();
-  
+
   {
     MUTEX_LOCKER(mutexLocker, _lock);
 
@@ -250,7 +257,7 @@ int TraditionalKeyGenerator::validate(char const* p, size_t length, bool isResto
   if (!validateKey(p, length)) {
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
   }
-  
+
   if (length > 0 && p[0] >= '0' && p[0] <= '9') {
     // potentially numeric key
     uint64_t value = StringUtils::uint64(p, length);
@@ -292,12 +299,8 @@ void TraditionalKeyGenerator::toVelocyPack(VPackBuilder& builder) const {
 
 /// @brief create the generator
 AutoIncrementKeyGenerator::AutoIncrementKeyGenerator(bool allowUserKeys,
-                                                     uint64_t offset,
-                                                     uint64_t increment)
-    : KeyGenerator(allowUserKeys),
-      _lastValue(0),
-      _offset(offset),
-      _increment(increment) {}
+                                                     uint64_t offset, uint64_t increment)
+    : KeyGenerator(allowUserKeys), _lastValue(0), _offset(offset), _increment(increment) {}
 
 /// @brief destroy the generator
 AutoIncrementKeyGenerator::~AutoIncrementKeyGenerator() {}
@@ -332,8 +335,7 @@ std::string AutoIncrementKeyGenerator::generate() {
     if (_lastValue < _offset) {
       keyValue = _offset;
     } else {
-      keyValue =
-          _lastValue + _increment - ((_lastValue - _offset) % _increment);
+      keyValue = _lastValue + _increment - ((_lastValue - _offset) % _increment);
     }
 
     // bounds and sanity checks
@@ -363,7 +365,7 @@ int AutoIncrementKeyGenerator::validate(char const* p, size_t length, bool isRes
   }
 
   uint64_t intValue = arangodb::basics::StringUtils::uint64(p, length);
-    
+
   MUTEX_LOCKER(mutexLocker, _lock);
 
   if (intValue > _lastValue) {
@@ -379,7 +381,7 @@ void AutoIncrementKeyGenerator::track(char const* p, size_t length) {
   // check the numeric key part
   if (length > 0 && p[0] >= '0' && p[0] <= '9') {
     uint64_t value = StringUtils::uint64(p, length);
-  
+
     MUTEX_LOCKER(mutexLocker, _lock);
 
     if (value > _lastValue) {
@@ -400,8 +402,7 @@ void AutoIncrementKeyGenerator::toVelocyPack(VPackBuilder& builder) const {
 }
 
 /// @brief validate a document id (collection name + / + document key)
-bool TRI_ValidateDocumentIdKeyGenerator(char const* key, size_t len,
-                                        size_t* split) {
+bool TRI_ValidateDocumentIdKeyGenerator(char const* key, size_t len, size_t* split) {
   if (len == 0) {
     return false;
   }

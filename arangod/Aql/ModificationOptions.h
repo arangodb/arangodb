@@ -59,7 +59,7 @@ struct ModificationOptions {
   bool consultAqlWriteFilter;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

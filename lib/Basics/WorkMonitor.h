@@ -50,8 +50,7 @@ class WorkMonitor : public Thread {
   static void freeWorkDescription(WorkDescription* desc);
   static bool pushThread(Thread* thread);
   static void popThread(Thread* thread);
-  static void pushAql(TRI_vocbase_t*, uint64_t queryId, char const* text,
-                      size_t length);
+  static void pushAql(TRI_vocbase_t*, uint64_t queryId, char const* text, size_t length);
   static void pushAql(TRI_vocbase_t*, uint64_t queryId);
   static void popAql();
   static void pushCustom(char const* type, char const* text, size_t length);
@@ -89,9 +88,7 @@ class WorkMonitor : public Thread {
 
   static boost::lockfree::queue<WorkDescription*> _emptyWorkDescription;
   static boost::lockfree::queue<WorkDescription*> _freeableWorkDescription;
-  static boost::lockfree::queue<
-      std::pair<std::shared_ptr<rest::RestHandler>, std::function<void()>>*>
-      _workOverview;
+  static boost::lockfree::queue<std::pair<std::shared_ptr<rest::RestHandler>, std::function<void()>>*> _workOverview;
 
   static Mutex _cancelLock;
   static std::set<uint64_t> _cancelIds;
@@ -155,8 +152,7 @@ class AqlWorkStack {
   AqlWorkStack& operator=(const AqlWorkStack&) = delete;
 
  public:
-  AqlWorkStack(TRI_vocbase_t* vocbase, uint64_t queryId, char const* text,
-               size_t length) {
+  AqlWorkStack(TRI_vocbase_t* vocbase, uint64_t queryId, char const* text, size_t length) {
     WorkMonitor::pushAql(vocbase, queryId, text, length);
   }
 
@@ -186,6 +182,6 @@ class CustomWorkStack {
 
   ~CustomWorkStack() { WorkMonitor::popCustom(); }
 };
-}
+}  // namespace arangodb
 
 #endif

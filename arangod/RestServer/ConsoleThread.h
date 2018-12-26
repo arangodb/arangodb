@@ -67,6 +67,6 @@ class ConsoleThread : public Thread {
   TRI_vocbase_t* _vocbase;
   std::atomic<bool> _userAborted;
 };
-}
+}  // namespace arangodb
 
 #endif

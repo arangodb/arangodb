@@ -24,8 +24,8 @@
 #ifndef ARANGOD_MMFILES_MMFILES_REVISIONS_CACHE_H
 #define ARANGOD_MMFILES_MMFILES_REVISIONS_CACHE_H 1
 
-#include "Basics/Common.h"
 #include "Basics/AssocUnique.h"
+#include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "MMFiles/MMFilesDocumentPosition.h"
 #include "VocBase/voc-types.h"
@@ -38,7 +38,7 @@ class MMFilesRevisionsCache {
  public:
   MMFilesRevisionsCache();
   ~MMFilesRevisionsCache();
-  
+
  public:
   void sizeHint(int64_t hint);
   size_t size();
@@ -46,20 +46,23 @@ class MMFilesRevisionsCache {
   size_t memoryUsage();
   void clear();
   MMFilesDocumentPosition lookup(TRI_voc_rid_t revisionId) const;
-  MMFilesDocumentPosition insert(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal, bool shouldLock);
+  MMFilesDocumentPosition insert(TRI_voc_rid_t revisionId, uint8_t const* dataptr,
+                                 TRI_voc_fid_t fid, bool isInWal, bool shouldLock);
   void insert(MMFilesDocumentPosition const& position, bool shouldLock);
-  void update(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal);
-  bool updateConditional(TRI_voc_rid_t revisionId, MMFilesMarker const* oldPosition, MMFilesMarker const* newPosition, TRI_voc_fid_t newFid, bool isInWal);
+  void update(TRI_voc_rid_t revisionId, uint8_t const* dataptr,
+              TRI_voc_fid_t fid, bool isInWal);
+  bool updateConditional(TRI_voc_rid_t revisionId, MMFilesMarker const* oldPosition,
+                         MMFilesMarker const* newPosition, TRI_voc_fid_t newFid,
+                         bool isInWal);
   void remove(TRI_voc_rid_t revisionId);
   MMFilesDocumentPosition fetchAndRemove(TRI_voc_rid_t revisionId);
 
  private:
-  mutable arangodb::basics::ReadWriteLock _lock; 
-  
+  mutable arangodb::basics::ReadWriteLock _lock;
+
   arangodb::basics::AssocUnique<TRI_voc_rid_t, MMFilesDocumentPosition> _positions;
 };
 
-} // namespace arangodb
+}  // namespace arangodb
 
 #endif
-

@@ -61,7 +61,6 @@ class TraversalBlock final : public ExecutionBlock {
   size_t skipSome(size_t atLeast, size_t atMost) override final;
 
  private:
-
   /// @brief cleanup, here we clean up all internally generated values
   void freeCaches();
 
@@ -152,7 +151,7 @@ class TraversalBlock final : public ExecutionBlock {
 
   std::unordered_map<ServerID, traverser::TraverserEngineID> const* _engines;
 };
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

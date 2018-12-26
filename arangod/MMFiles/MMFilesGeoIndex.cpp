@@ -35,10 +35,12 @@
 
 using namespace arangodb;
 
-MMFilesGeoIndexIterator::MMFilesGeoIndexIterator(
-    LogicalCollection* collection, transaction::Methods* trx,
-    ManagedDocumentResult* mmdr, MMFilesGeoIndex const* index,
-    arangodb::aql::AstNode const* cond, arangodb::aql::Variable const* var)
+MMFilesGeoIndexIterator::MMFilesGeoIndexIterator(LogicalCollection* collection,
+                                                 transaction::Methods* trx,
+                                                 ManagedDocumentResult* mmdr,
+                                                 MMFilesGeoIndex const* index,
+                                                 arangodb::aql::AstNode const* cond,
+                                                 arangodb::aql::Variable const* var)
     : IndexIterator(collection, trx, mmdr, index),
       _index(index),
       _cursor(nullptr),
@@ -173,8 +175,8 @@ bool MMFilesGeoIndexIterator::next(TokenCallback const& cb, size_t limit) {
       withDistances = true;
       maxDistance = _radius;
     }
-    auto coords = std::unique_ptr<GeoCoordinates>(::GeoIndex_ReadCursor(
-        _cursor, static_cast<int>(limit), withDistances, maxDistance));
+    auto coords = std::unique_ptr<GeoCoordinates>(
+        ::GeoIndex_ReadCursor(_cursor, static_cast<int>(limit), withDistances, maxDistance));
 
     size_t const length = coords ? coords->length : 0;
 
@@ -193,8 +195,7 @@ bool MMFilesGeoIndexIterator::next(TokenCallback const& cb, size_t limit) {
     }
 
     for (size_t i = 0; i < numDocs; ++i) {
-      cb(::MMFilesGeoIndex::toDocumentIdentifierToken(
-          coords->coordinates[i].data));
+      cb(::MMFilesGeoIndex::toDocumentIdentifierToken(coords->coordinates[i].data));
     }
     // If we return less then limit many docs we are done.
     _done = numDocs < limit;
@@ -215,33 +216,30 @@ void MMFilesGeoIndexIterator::createCursor(double lat, double lon) {
   replaceCursor(::GeoIndex_NewCursor(_index->_geoIndex, &_coor));
 }
 
-uint64_t MMFilesGeoIndex::fromDocumentIdentifierToken(
-    DocumentIdentifierToken const& token) {
+uint64_t MMFilesGeoIndex::fromDocumentIdentifierToken(DocumentIdentifierToken const& token) {
   auto tkn = static_cast<MMFilesToken const*>(&token);
   return static_cast<uint64_t>(tkn->revisionId());
 }
 
-DocumentIdentifierToken MMFilesGeoIndex::toDocumentIdentifierToken(
-    uint64_t internal) {
+DocumentIdentifierToken MMFilesGeoIndex::toDocumentIdentifierToken(uint64_t internal) {
   return MMFilesToken{internal};
 }
 
 /// @brief creates an IndexIterator for the given Condition
-IndexIterator* MMFilesGeoIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
-    arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, bool) {
+IndexIterator* MMFilesGeoIndex::iteratorForCondition(transaction::Methods* trx,
+                                                     ManagedDocumentResult* mmdr,
+                                                     arangodb::aql::AstNode const* node,
+                                                     arangodb::aql::Variable const* reference,
+                                                     bool) {
   TRI_IF_FAILURE("GeoIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  return new MMFilesGeoIndexIterator(_collection, trx, mmdr, this, node,
-                                     reference);
+  return new MMFilesGeoIndexIterator(_collection, trx, mmdr, this, node, reference);
 }
 
 void MMFilesGeoIndexIterator::reset() { replaceCursor(nullptr); }
 
-MMFilesGeoIndex::MMFilesGeoIndex(TRI_idx_iid_t iid,
-                                 arangodb::LogicalCollection* collection,
+MMFilesGeoIndex::MMFilesGeoIndex(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
                                  VPackSlice const& info)
     : Index(iid, collection, info),
       _variant(INDEX_GEO_INDIVIDUAL_LAT_LON),
@@ -252,15 +250,14 @@ MMFilesGeoIndex::MMFilesGeoIndex(TRI_idx_iid_t iid,
   _sparse = true;
 
   if (_fields.size() == 1) {
-    _geoJson = arangodb::basics::VelocyPackHelper::getBooleanValue(
-        info, "geoJson", false);
+    _geoJson =
+        arangodb::basics::VelocyPackHelper::getBooleanValue(info, "geoJson", false);
     auto& loc = _fields[0];
     _location.reserve(loc.size());
     for (auto const& it : loc) {
       _location.emplace_back(it.name);
     }
-    _variant =
-        _geoJson ? INDEX_GEO_COMBINED_LAT_LON : INDEX_GEO_COMBINED_LON_LAT;
+    _variant = _geoJson ? INDEX_GEO_COMBINED_LAT_LON : INDEX_GEO_COMBINED_LON_LAT;
   } else if (_fields.size() == 2) {
     _variant = INDEX_GEO_INDIVIDUAL_LAT_LON;
     auto& lat = _fields[0];
@@ -303,8 +300,7 @@ void MMFilesGeoIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
   // Basic index
   Index::toVelocyPack(builder, withFigures, forPersistence);
 
-  if (_variant == INDEX_GEO_COMBINED_LAT_LON ||
-      _variant == INDEX_GEO_COMBINED_LON_LAT) {
+  if (_variant == INDEX_GEO_COMBINED_LAT_LON || _variant == INDEX_GEO_COMBINED_LON_LAT) {
     builder.add("geoJson", VPackValue(_geoJson));
   }
 
@@ -350,18 +346,18 @@ bool MMFilesGeoIndex::matchesDefinition(VPackSlice const& info) const {
   if (n != _fields.size()) {
     return false;
   }
-  if (_unique != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                     info, "unique", false)) {
+  if (_unique !=
+      arangodb::basics::VelocyPackHelper::getBooleanValue(info, "unique", false)) {
     return false;
   }
-  if (_sparse != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                     info, "sparse", true)) {
+  if (_sparse !=
+      arangodb::basics::VelocyPackHelper::getBooleanValue(info, "sparse", true)) {
     return false;
   }
 
   if (n == 1) {
-    if (_geoJson != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                        info, "geoJson", false)) {
+    if (_geoJson !=
+        arangodb::basics::VelocyPackHelper::getBooleanValue(info, "geoJson", false)) {
       return false;
     }
   }
@@ -377,8 +373,7 @@ bool MMFilesGeoIndex::matchesDefinition(VPackSlice const& info) const {
     }
     arangodb::StringRef in(f);
     TRI_ParseAttributeString(in, translate, true);
-    if (!arangodb::basics::AttributeName::isIdentical(_fields[i], translate,
-                                                      false)) {
+    if (!arangodb::basics::AttributeName::isIdentical(_fields[i], translate, false)) {
       return false;
     }
   }
@@ -531,9 +526,8 @@ void MMFilesGeoIndex::unload() {
 }
 
 /// @brief looks up all points within a given radius
-GeoCoordinates* MMFilesGeoIndex::withinQuery(transaction::Methods* trx,
-                                             double lat, double lon,
-                                             double radius) const {
+GeoCoordinates* MMFilesGeoIndex::withinQuery(transaction::Methods* trx, double lat,
+                                             double lon, double radius) const {
   GeoCoordinate gc;
   gc.latitude = lat;
   gc.longitude = lon;
@@ -542,9 +536,8 @@ GeoCoordinates* MMFilesGeoIndex::withinQuery(transaction::Methods* trx,
 }
 
 /// @brief looks up the nearest points
-GeoCoordinates* MMFilesGeoIndex::nearQuery(transaction::Methods* trx,
-                                           double lat, double lon,
-                                           size_t count) const {
+GeoCoordinates* MMFilesGeoIndex::nearQuery(transaction::Methods* trx, double lat,
+                                           double lon, size_t count) const {
   GeoCoordinate gc;
   gc.latitude = lat;
   gc.longitude = lon;

@@ -21,14 +21,14 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "v8-vocbaseprivate.h"
+#include "V8Server/v8-voccursor.h"
 #include "Basics/conversions.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
-#include "Transaction/StandaloneContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-vpack.h"
-#include "V8Server/v8-voccursor.h"
+#include "v8-vocbaseprivate.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -96,11 +96,12 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_ASSERT(builder.get() != nullptr);
 
   try {
-    arangodb::Cursor* cursor = cursors->createFromQueryResult(
-        std::move(result), static_cast<size_t>(batchSize), nullptr, ttl, true);
+    arangodb::Cursor* cursor =
+        cursors->createFromQueryResult(std::move(result), static_cast<size_t>(batchSize),
+                                       nullptr, ttl, true);
 
     TRI_ASSERT(cursor != nullptr);
-    auto id = cursor->id(); // need to fetch id before release() as release() will delete the cursor
+    auto id = cursor->id();  // need to fetch id before release() as release() will delete the cursor
     cursors->release(cursor);
 
     auto result = TRI_V8UInt64String<TRI_voc_tick_t>(isolate, id);
@@ -130,8 +131,8 @@ static void JS_JsonCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string const id = TRI_ObjectToString(args[0]);
-  auto cursorId = static_cast<arangodb::CursorId>(
-      arangodb::basics::StringUtils::uint64(id));
+  auto cursorId =
+      static_cast<arangodb::CursorId>(arangodb::basics::StringUtils::uint64(id));
 
   // find the cursor
   auto cursors = vocbase->cursorRepository();
@@ -189,8 +190,7 @@ static void JS_JsonCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
                        v8::Number::New(isolate, static_cast<double>(count)));
     }
     if (!extra.isNone()) {
-      result->ForceSet(TRI_V8_ASCII_STRING(isolate, "extra"),
-                       TRI_VPackToV8(isolate, extra));
+      result->ForceSet(TRI_V8_ASCII_STRING(isolate, "extra"), TRI_VPackToV8(isolate, extra));
     }
 
     cursors->release(cursor);

@@ -106,6 +106,6 @@ class BenchFeature final : public application_features::ApplicationFeature {
  private:
   static std::atomic<int> _started;
 };
-}
+}  // namespace arangodb
 
 #endif

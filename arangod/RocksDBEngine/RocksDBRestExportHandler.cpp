@@ -48,8 +48,7 @@ RocksDBRestExportHandler::RocksDBRestExportHandler(GeneralRequest* request,
 
 RestStatus RocksDBRestExportHandler::execute() {
   if (ServerState::instance()->isCoordinator()) {
-    generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                  TRI_ERROR_CLUSTER_UNSUPPORTED,
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_CLUSTER_UNSUPPORTED,
                   "'/_api/export' is not yet supported in a cluster");
     return RestStatus::DONE;
   }
@@ -72,8 +71,7 @@ RestStatus RocksDBRestExportHandler::execute() {
     return RestStatus::DONE;
   }
 
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
 
@@ -191,8 +189,7 @@ void RocksDBRestExportHandler::createCursor() {
   std::string const& name = _request->value("collection", found);
 
   if (!found || name.empty()) {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting "
                   "/_api/export?collection=<identifier>");
     return;
@@ -221,25 +218,26 @@ void RocksDBRestExportHandler::createCursor() {
   }
 
   VPackSlice options = optionsBuilder.slice();
-  size_t limit = arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
-      options, "limit", 0);
+  size_t limit =
+      arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(options,
+                                                                  "limit", 0);
 
   size_t batchSize =
-      arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
-          options, "batchSize", 1000);
-  double ttl = arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-      options, "ttl", 30);
-  bool count = arangodb::basics::VelocyPackHelper::getBooleanValue(
-      options, "count", false);
+      arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(options,
+                                                                  "batchSize", 1000);
+  double ttl =
+      arangodb::basics::VelocyPackHelper::getNumericValue<double>(options, "ttl", 30);
+  bool count =
+      arangodb::basics::VelocyPackHelper::getBooleanValue(options, "count", false);
 
   auto cursors = _vocbase->cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
   Cursor* c = nullptr;
   {
-    auto cursor = std::make_unique<RocksDBExportCursor>(
-        _vocbase, name, _restrictions, TRI_NewTickServer(), limit, batchSize,
-        ttl, count);
+    auto cursor = std::make_unique<RocksDBExportCursor>(_vocbase, name, _restrictions,
+                                                        TRI_NewTickServer(), limit,
+                                                        batchSize, ttl, count);
 
     cursor->use();
     c = cursors->addCursor(std::move(cursor));
@@ -254,8 +252,7 @@ void RocksDBRestExportHandler::createCursor() {
     VPackBuilder builder(buffer);
     builder.openObject();
     builder.add("error", VPackValue(false));
-    builder.add("code",
-                VPackValue(static_cast<int>(_response->responseCode())));
+    builder.add("code", VPackValue(static_cast<int>(_response->responseCode())));
     c->dump(builder);
     builder.close();
 
@@ -283,15 +280,14 @@ void RocksDBRestExportHandler::modifyCursor() {
   auto cursors = _vocbase->cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
-  auto cursorId = static_cast<arangodb::CursorId>(
-      arangodb::basics::StringUtils::uint64(id));
+  auto cursorId =
+      static_cast<arangodb::CursorId>(arangodb::basics::StringUtils::uint64(id));
   bool busy;
   auto cursor = cursors->find(cursorId, Cursor::CURSOR_EXPORT, busy);
 
   if (cursor == nullptr) {
     if (busy) {
-      generateError(GeneralResponse::responseCode(TRI_ERROR_CURSOR_BUSY),
-                    TRI_ERROR_CURSOR_BUSY);
+      generateError(GeneralResponse::responseCode(TRI_ERROR_CURSOR_BUSY), TRI_ERROR_CURSOR_BUSY);
     } else {
       generateError(GeneralResponse::responseCode(TRI_ERROR_CURSOR_NOT_FOUND),
                     TRI_ERROR_CURSOR_NOT_FOUND);
@@ -334,8 +330,8 @@ void RocksDBRestExportHandler::deleteCursor() {
   auto cursors = _vocbase->cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
-  auto cursorId = static_cast<arangodb::CursorId>(
-      arangodb::basics::StringUtils::uint64(id));
+  auto cursorId =
+      static_cast<arangodb::CursorId>(arangodb::basics::StringUtils::uint64(id));
   bool found = cursors->remove(cursorId, Cursor::CURSOR_EXPORT);
 
   if (!found) {
@@ -347,8 +343,7 @@ void RocksDBRestExportHandler::deleteCursor() {
   result.openObject();
   result.add("id", VPackValue(id));
   result.add("error", VPackValue(false));
-  result.add("code",
-             VPackValue(static_cast<int>(rest::ResponseCode::ACCEPTED)));
+  result.add("code", VPackValue(static_cast<int>(rest::ResponseCode::ACCEPTED)));
   result.close();
 
   generateResult(rest::ResponseCode::ACCEPTED, result.slice());

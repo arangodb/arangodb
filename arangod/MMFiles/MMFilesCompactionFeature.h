@@ -34,13 +34,14 @@ class ProgramOptions;
 class MMFilesCompactionFeature : public application_features::ApplicationFeature {
  public:
   static MMFilesCompactionFeature* COMPACTOR;
+
  private:
   /// @brief wait time between compaction runs when idle
   double _compactionSleepTime;
 
   /// @brief compaction interval in seconds
   double _compactionCollectionInterval;
-  
+
   /// @brief maximum number of files to compact and concat
   uint64_t _maxFiles;
 
@@ -50,7 +51,7 @@ class MMFilesCompactionFeature : public application_features::ApplicationFeature
   uint64_t _maxSizeFactor;
 
   uint64_t _smallDatafileSize;
-  
+
   /// @brief maximum filesize of resulting compacted file
   uint64_t _maxResultFilesize;
 
@@ -79,11 +80,15 @@ class MMFilesCompactionFeature : public application_features::ApplicationFeature
   ~MMFilesCompactionFeature() {}
 
   /// @brief wait time between compaction runs when idle
-  uint64_t compactionSleepTime() const { return static_cast<uint64_t>(_compactionSleepTime) * 1000000ULL; }
+  uint64_t compactionSleepTime() const {
+    return static_cast<uint64_t>(_compactionSleepTime) * 1000000ULL;
+  }
 
   /// @brief compaction interval in seconds
-  double compactionCollectionInterval() const { return _compactionCollectionInterval; }
-  
+  double compactionCollectionInterval() const {
+    return _compactionCollectionInterval;
+  }
+
   /// @brief maximum number of files to compact and concat
   size_t maxFiles() const { return static_cast<size_t>(_maxFiles); }
 
@@ -93,7 +98,7 @@ class MMFilesCompactionFeature : public application_features::ApplicationFeature
   uint64_t maxSizeFactor() const { return _maxSizeFactor; }
 
   uint64_t smallDatafileSize() const { return _smallDatafileSize; }
-  
+
   /// @brief maximum filesize of resulting compacted file
   uint64_t maxResultFilesize() const { return _maxResultFilesize; }
 
@@ -114,12 +119,11 @@ class MMFilesCompactionFeature : public application_features::ApplicationFeature
   /// if this value if higher than the threshold, the datafile will be compacted
   double deadShare() const { return _deadShare; }
 
-  
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 };
 
-}
+}  // namespace arangodb
 
 #endif

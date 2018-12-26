@@ -165,8 +165,7 @@ class MMFilesRestReplicationHandler : public RestReplicationHandler {
   /// @brief restores the structure of a collection TODO MOVE
   //////////////////////////////////////////////////////////////////////////////
 
-  int processRestoreCollection(VPackSlice const&, bool, bool, bool,
-                               std::string&);
+  int processRestoreCollection(VPackSlice const&, bool, bool, bool, std::string&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the structure of a collection, coordinator case
@@ -191,11 +190,9 @@ class MMFilesRestReplicationHandler : public RestReplicationHandler {
   /// @brief apply a single marker from the collection dump
   //////////////////////////////////////////////////////////////////////////////
 
-  int applyCollectionDumpMarker(transaction::Methods&,
-                                CollectionNameResolver const&,
+  int applyCollectionDumpMarker(transaction::Methods&, CollectionNameResolver const&,
                                 std::string const&, TRI_replication_operation_e,
-                                VPackSlice const&, VPackSlice const&,
-                                std::string&);
+                                VPackSlice const&, VPackSlice const&, std::string&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief produce list of keys for a specific collection
@@ -335,8 +332,8 @@ class MMFilesRestReplicationHandler : public RestReplicationHandler {
   /// id mapping to false here indicates that a request to get the
   /// read lock has been started, the mapped value holds the
   /// actual transaction. if the read lock is not yet acquired, the
-  /// shared_ptr will contain a nullptr still. 
-  /// To cancel the read lock, 
+  /// shared_ptr will contain a nullptr still.
+  /// To cancel the read lock,
   /// remove the entry here (under the protection of the mutex of
   /// condVar) and send a broadcast to the condition variable,
   /// the job with that id is terminated. If it timeouts, then
@@ -346,6 +343,6 @@ class MMFilesRestReplicationHandler : public RestReplicationHandler {
 
   static std::unordered_map<std::string, std::shared_ptr<SingleCollectionTransaction>> _holdReadLockJobs;
 };
-}
+}  // namespace arangodb
 
 #endif

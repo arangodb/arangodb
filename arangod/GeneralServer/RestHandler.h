@@ -71,10 +71,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   RequestStatistics* statistics() const { return _statistics.load(); }
 
-  RequestStatistics* stealStatistics() {
-    return _statistics.exchange(nullptr);
-  }
-  
+  RequestStatistics* stealStatistics() { return _statistics.exchange(nullptr); }
+
   void setStatistics(RequestStatistics* stat) {
     RequestStatistics* old = _statistics.exchange(stat);
 
@@ -120,8 +118,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   bool _needsOwnThread = false;
 
  public:
-  void initEngine(EventLoop loop,
-                  std::function<void(RestHandler*)> storeResult) {
+  void initEngine(EventLoop loop, std::function<void(RestHandler*)> storeResult) {
     _storeResult = storeResult;
     _engine.init(loop);
   }
@@ -157,7 +154,7 @@ inline uint64_t RestHandler::messageId() const {
 
   return messageId;
 }
-}
-}
+}  // namespace rest
+}  // namespace arangodb
 
 #endif

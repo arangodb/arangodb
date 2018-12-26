@@ -94,8 +94,7 @@ rest::RestHandlerFactory* GeneralServerFeature::HANDLER_FACTORY = nullptr;
 rest::AsyncJobManager* GeneralServerFeature::JOB_MANAGER = nullptr;
 GeneralServerFeature* GeneralServerFeature::GENERAL_SERVER = nullptr;
 
-GeneralServerFeature::GeneralServerFeature(
-    application_features::ApplicationServer* server)
+GeneralServerFeature::GeneralServerFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "GeneralServer"),
       _allowMethodOverride(false),
       _proxyCheck(true) {
@@ -113,8 +112,7 @@ GeneralServerFeature::GeneralServerFeature(
   startsAfter("Upgrade");
 }
 
-void GeneralServerFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
+void GeneralServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "Server features");
 
   options->addOldOption("server.allow-method-override",
@@ -140,10 +138,9 @@ void GeneralServerFeature::collectOptions(
       "do not expose \"Server: ArangoDB\" header in HTTP responses",
       new BooleanParameter(&HttpResponse::HIDE_PRODUCT_HEADER));
 
-  options->addOption(
-      "--http.trusted-origin",
-      "trusted origin URLs for CORS requests with credentials",
-      new VectorParameter<StringParameter>(&_accessControlAllowOrigins));
+  options->addOption("--http.trusted-origin",
+                     "trusted origin URLs for CORS requests with credentials",
+                     new VectorParameter<StringParameter>(&_accessControlAllowOrigins));
 
   options->addSection("frontend", "Frontend options");
 
@@ -198,8 +195,7 @@ static TRI_vocbase_t* LookupDatabaseFromRequest(GeneralRequest* request) {
     // as a fallback
     request->setDatabaseName(StaticStrings::SystemDatabase);
     if (ServerState::instance()->isCoordinator()) {
-      return databaseFeature->useDatabaseCoordinator(
-          StaticStrings::SystemDatabase);
+      return databaseFeature->useDatabaseCoordinator(StaticStrings::SystemDatabase);
     }
     return databaseFeature->useDatabase(StaticStrings::SystemDatabase);
   }
@@ -228,8 +224,7 @@ static bool SetRequestContext(GeneralRequest* request, void* data) {
   }
 
   // the vocbase context is now responsible for releasing the vocbase
-  request->setRequestContext(new VocbaseContext(request, vocbase),
-                             true);
+  request->setRequestContext(new VocbaseContext(request, vocbase), true);
 
   // the "true" means the request is the owner of the context
   return true;
@@ -258,8 +253,7 @@ void GeneralServerFeature::start() {
 
   // populate the authentication cache. otherwise no one can access the new
   // database
-  auto authentication =
-      FeatureCacheFeature::instance()->authenticationFeature();
+  auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
   TRI_ASSERT(authentication != nullptr);
   if (authentication->isActive()) {
     authentication->authInfo()->outdate();
@@ -316,9 +310,8 @@ void GeneralServerFeature::buildServers() {
 void GeneralServerFeature::defineHandlers() {
   TRI_ASSERT(_jobManager != nullptr);
 
-  AgencyFeature* agency =
-      application_features::ApplicationServer::getFeature<AgencyFeature>(
-          "Agency");
+  AgencyFeature* agency = application_features::ApplicationServer::getFeature<AgencyFeature>(
+      "Agency");
   TRI_ASSERT(agency != nullptr);
 
   ClusterFeature* cluster =
@@ -327,130 +320,108 @@ void GeneralServerFeature::defineHandlers() {
   TRI_ASSERT(cluster != nullptr);
 
   AuthenticationFeature* authentication =
-      application_features::ApplicationServer::getFeature<
-          AuthenticationFeature>("Authentication");
+      application_features::ApplicationServer::getFeature<AuthenticationFeature>(
+          "Authentication");
   TRI_ASSERT(authentication != nullptr);
 
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
-  auto traverserEngineRegistry =
-      TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY;
+  auto traverserEngineRegistry = TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY;
 
   // ...........................................................................
   // /_msg
   // ...........................................................................
 
-  _handlerFactory->addPrefixHandler(
-      "/_msg/please-upgrade",
-      RestHandlerCreator<RestPleaseUpgradeHandler>::createNoData);
+  _handlerFactory->addPrefixHandler("/_msg/please-upgrade",
+                                    RestHandlerCreator<RestPleaseUpgradeHandler>::createNoData);
 
   // ...........................................................................
   // /_api
   // ...........................................................................
 
-  _handlerFactory->addPrefixHandler(
-      RestVocbaseBaseHandler::BATCH_PATH,
-      RestHandlerCreator<RestBatchHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::BATCH_PATH,
+                                    RestHandlerCreator<RestBatchHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler(
-      RestVocbaseBaseHandler::CURSOR_PATH,
-      RestHandlerCreator<RestCursorHandler>::createData<aql::QueryRegistry*>,
-      queryRegistry);
+  _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::CURSOR_PATH,
+                                    RestHandlerCreator<RestCursorHandler>::createData<aql::QueryRegistry*>,
+                                    queryRegistry);
 
-  _handlerFactory->addPrefixHandler(
-      RestVocbaseBaseHandler::DATABASE_PATH,
-      RestHandlerCreator<RestDatabaseHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::DATABASE_PATH,
+                                    RestHandlerCreator<RestDatabaseHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler(
-      RestVocbaseBaseHandler::DOCUMENT_PATH,
-      RestHandlerCreator<RestDocumentHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH,
+                                    RestHandlerCreator<RestDocumentHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler(
-      RestVocbaseBaseHandler::EDGES_PATH,
-      RestHandlerCreator<RestEdgesHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::EDGES_PATH,
+                                    RestHandlerCreator<RestEdgesHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler(
-      RestVocbaseBaseHandler::ENDPOINT_PATH,
-      RestHandlerCreator<RestEndpointHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::ENDPOINT_PATH,
+                                    RestHandlerCreator<RestEndpointHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler(
-      RestVocbaseBaseHandler::IMPORT_PATH,
-      RestHandlerCreator<RestImportHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::IMPORT_PATH,
+                                    RestHandlerCreator<RestImportHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler(
-      RestVocbaseBaseHandler::INDEX_PATH,
-      RestHandlerCreator<RestIndexHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::INDEX_PATH,
+                                    RestHandlerCreator<RestIndexHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH,
-      RestHandlerCreator<RestSimpleQueryHandler>::createData<
-          aql::QueryRegistry*>,
+      RestHandlerCreator<RestSimpleQueryHandler>::createData<aql::QueryRegistry*>,
       queryRegistry);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_KEYS_PATH,
-      RestHandlerCreator<RestSimpleQueryHandler>::createData<
-          aql::QueryRegistry*>,
+      RestHandlerCreator<RestSimpleQueryHandler>::createData<aql::QueryRegistry*>,
       queryRegistry);
-  
+
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::SIMPLE_QUERY_BY_EXAMPLE,
-      RestHandlerCreator<RestSimpleQueryHandler>::createData<
-      aql::QueryRegistry*>, queryRegistry);
-
-  _handlerFactory->addPrefixHandler(
-      RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH,
-      RestHandlerCreator<RestSimpleHandler>::createData<aql::QueryRegistry*>,
+      RestHandlerCreator<RestSimpleQueryHandler>::createData<aql::QueryRegistry*>,
       queryRegistry);
 
-  _handlerFactory->addPrefixHandler(
-      RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH,
-      RestHandlerCreator<RestSimpleHandler>::createData<aql::QueryRegistry*>,
-      queryRegistry);
+  _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH,
+                                    RestHandlerCreator<RestSimpleHandler>::createData<aql::QueryRegistry*>,
+                                    queryRegistry);
 
-  _handlerFactory->addPrefixHandler(
-      RestVocbaseBaseHandler::UPLOAD_PATH,
-      RestHandlerCreator<RestUploadHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH,
+                                    RestHandlerCreator<RestSimpleHandler>::createData<aql::QueryRegistry*>,
+                                    queryRegistry);
 
-  _handlerFactory->addPrefixHandler(
-    RestVocbaseBaseHandler::USERS_PATH,
-    RestHandlerCreator<RestUsersHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::UPLOAD_PATH,
+                                    RestHandlerCreator<RestUploadHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler(
-      RestVocbaseBaseHandler::VIEW_PATH,
-      RestHandlerCreator<RestViewHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::USERS_PATH,
+                                    RestHandlerCreator<RestUsersHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler(
-      "/_api/aql",
-      RestHandlerCreator<aql::RestAqlHandler>::createData<aql::QueryRegistry*>,
-      queryRegistry);
+  _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::VIEW_PATH,
+                                    RestHandlerCreator<RestViewHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler(
-      "/_api/aql-builtin",
-      RestHandlerCreator<RestAqlFunctionsHandler>::createNoData);
+  _handlerFactory->addPrefixHandler("/_api/aql",
+                                    RestHandlerCreator<aql::RestAqlHandler>::createData<aql::QueryRegistry*>,
+                                    queryRegistry);
 
-  _handlerFactory->addPrefixHandler(
-      "/_api/explain", RestHandlerCreator<RestExplainHandler>::createNoData);
+  _handlerFactory->addPrefixHandler("/_api/aql-builtin",
+                                    RestHandlerCreator<RestAqlFunctionsHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler(
-      "/_api/query", RestHandlerCreator<RestQueryHandler>::createNoData);
+  _handlerFactory->addPrefixHandler("/_api/explain",
+                                    RestHandlerCreator<RestExplainHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler(
-      "/_api/query-cache",
-      RestHandlerCreator<RestQueryCacheHandler>::createNoData);
+  _handlerFactory->addPrefixHandler("/_api/query",
+                                    RestHandlerCreator<RestQueryHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler(
-      "/_api/pregel", RestHandlerCreator<RestPregelHandler>::createNoData);
+  _handlerFactory->addPrefixHandler("/_api/query-cache",
+                                    RestHandlerCreator<RestQueryCacheHandler>::createNoData);
+
+  _handlerFactory->addPrefixHandler("/_api/pregel",
+                                    RestHandlerCreator<RestPregelHandler>::createNoData);
 
   if (agency->isEnabled()) {
-    _handlerFactory->addPrefixHandler(
-        RestVocbaseBaseHandler::AGENCY_PATH,
-        RestHandlerCreator<RestAgencyHandler>::createData<consensus::Agent*>,
-        agency->agent());
+    _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::AGENCY_PATH,
+                                      RestHandlerCreator<RestAgencyHandler>::createData<consensus::Agent*>,
+                                      agency->agent());
 
     _handlerFactory->addPrefixHandler(
         RestVocbaseBaseHandler::AGENCY_PRIV_PATH,
-        RestHandlerCreator<RestAgencyPrivHandler>::createData<
-            consensus::Agent*>,
+        RestHandlerCreator<RestAgencyPrivHandler>::createData<consensus::Agent*>,
         agency->agent());
   }
 
@@ -458,86 +429,76 @@ void GeneralServerFeature::defineHandlers() {
     // add "/agency-callbacks" handler
     _handlerFactory->addPrefixHandler(
         cluster->agencyCallbacksPath(),
-        RestHandlerCreator<RestAgencyCallbacksHandler>::createData<
-            AgencyCallbackRegistry*>,
+        RestHandlerCreator<RestAgencyCallbacksHandler>::createData<AgencyCallbackRegistry*>,
         cluster->agencyCallbackRegistry());
   }
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH,
-      RestHandlerCreator<InternalRestTraverserHandler>::createData<
-          traverser::TraverserEngineRegistry*>,
+      RestHandlerCreator<InternalRestTraverserHandler>::createData<traverser::TraverserEngineRegistry*>,
       traverserEngineRegistry);
 
   // And now some handlers which are registered in both /_api and /_admin
-  _handlerFactory->addPrefixHandler(
-      "/_api/job", RestHandlerCreator<arangodb::RestJobHandler>::createData<
-                       AsyncJobManager*>,
-      _jobManager.get());
+  _handlerFactory->addPrefixHandler("/_api/job",
+                                    RestHandlerCreator<arangodb::RestJobHandler>::createData<AsyncJobManager*>,
+                                    _jobManager.get());
 
-  _handlerFactory->addPrefixHandler(
-      "/_api/engine", RestHandlerCreator<RestEngineHandler>::createNoData);
+  _handlerFactory->addPrefixHandler("/_api/engine",
+                                    RestHandlerCreator<RestEngineHandler>::createNoData);
 
-  _handlerFactory->addHandler(
-      "/_api/version", RestHandlerCreator<RestVersionHandler>::createNoData);
-  
-  _handlerFactory->addHandler(
-      "/_api/transaction", RestHandlerCreator<RestTransactionHandler>::createNoData);
+  _handlerFactory->addHandler("/_api/version",
+                              RestHandlerCreator<RestVersionHandler>::createNoData);
+
+  _handlerFactory->addHandler("/_api/transaction",
+                              RestHandlerCreator<RestTransactionHandler>::createNoData);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  _handlerFactory->addHandler(
-      "/_admin/demo-engine", RestHandlerCreator<RestDemoHandler>::createNoData);
+  _handlerFactory->addHandler("/_admin/demo-engine",
+                              RestHandlerCreator<RestDemoHandler>::createNoData);
 #endif
 
   // ...........................................................................
   // /_admin
   // ...........................................................................
 
-  _handlerFactory->addPrefixHandler(
-      "/_admin/job", RestHandlerCreator<arangodb::RestJobHandler>::createData<
-                         AsyncJobManager*>,
-      _jobManager.get());
+  _handlerFactory->addPrefixHandler("/_admin/job",
+                                    RestHandlerCreator<arangodb::RestJobHandler>::createData<AsyncJobManager*>,
+                                    _jobManager.get());
 
-  _handlerFactory->addHandler(
-      "/_admin/version", RestHandlerCreator<RestVersionHandler>::createNoData);
+  _handlerFactory->addHandler("/_admin/version",
+                              RestHandlerCreator<RestVersionHandler>::createNoData);
 
   // further admin handlers
-  _handlerFactory->addPrefixHandler(
-      "/_admin/log",
-      RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData);
+  _handlerFactory->addPrefixHandler("/_admin/log",
+                                    RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler(
-      "/_admin/routing",
-      RestHandlerCreator<arangodb::RestAdminRoutingHandler>::createNoData);
+  _handlerFactory->addPrefixHandler("/_admin/routing",
+                                    RestHandlerCreator<arangodb::RestAdminRoutingHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler(
-      "/_admin/work-monitor",
-      RestHandlerCreator<WorkMonitorHandler>::createNoData);
+  _handlerFactory->addPrefixHandler("/_admin/work-monitor",
+                                    RestHandlerCreator<WorkMonitorHandler>::createNoData);
 
-  _handlerFactory->addHandler(
-      "/_admin/json-echo", RestHandlerCreator<RestEchoHandler>::createNoData);
+  _handlerFactory->addHandler("/_admin/json-echo",
+                              RestHandlerCreator<RestEchoHandler>::createNoData);
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // This handler is to activate SYS_DEBUG_FAILAT on DB servers
-  _handlerFactory->addPrefixHandler(
-      "/_admin/debug", RestHandlerCreator<RestDebugHandler>::createNoData);
+  _handlerFactory->addPrefixHandler("/_admin/debug",
+                                    RestHandlerCreator<RestDebugHandler>::createNoData);
 #endif
 
-  _handlerFactory->addPrefixHandler(
-      "/_admin/shutdown",
-      RestHandlerCreator<arangodb::RestShutdownHandler>::createNoData);
+  _handlerFactory->addPrefixHandler("/_admin/shutdown",
+                                    RestHandlerCreator<arangodb::RestShutdownHandler>::createNoData);
 
   if (authentication->isActive()) {
-    _handlerFactory->addPrefixHandler(
-        "/_open/auth",
-        RestHandlerCreator<arangodb::RestAuthHandler>::createNoData);
+    _handlerFactory->addPrefixHandler("/_open/auth",
+                                      RestHandlerCreator<arangodb::RestAuthHandler>::createNoData);
   }
 
   // ...........................................................................
   // /_admin
   // ...........................................................................
 
-  _handlerFactory->addPrefixHandler(
-      "/", RestHandlerCreator<RestActionHandler>::createNoData);
+  _handlerFactory->addPrefixHandler("/", RestHandlerCreator<RestActionHandler>::createNoData);
 
   // engine specific handlers
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
