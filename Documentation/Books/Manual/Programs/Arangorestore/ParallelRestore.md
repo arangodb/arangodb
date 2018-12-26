@@ -22,8 +22,17 @@ Please refer to
 section for further information on the factors affecting
 restore speed when restoring using _arangorestore_ in a Cluster.
 
+The speed improvement obtained by following the _Parallel Restore Procedure_
+is achieved by:
+
+1. Restoring into a Cluster that has _replication factor_ 1, thus reducing
+   number of network hops needed during the restore operation (_replication factor_
+   is reverted to initial value at the end of the procedure - steps #2, #3 and #6).
+2. Restoring in parallel multiple collections on different _Coordinators_ 
+   (steps #4 and #5).  
+
 Step 1: Allocate dump Directory
------------------------
+-------------------------------
 
 The first step is to copy the directory that contains the dump to all machines
 where _Coordinators_ are running. 
@@ -35,10 +44,10 @@ significantly improved.
 {% endhint %}
 	
 Step 2: Restore Collection Structure
-----------------------------
+------------------------------------
 
-The collection structure has to be restored from exactly one coordinator (any
-coordinator can be used) with the following command:
+The collection structure has to be restored from exactly one _Coordinator_ (any
+_Coordinator_ can be used) with the following command:
 
 ```
 arangorestore
@@ -49,16 +58,17 @@ arangorestore
   --input-directory <dump-directory>
 ```
 
-
 The option `--import-data false`  tells _arangorestore_ to restore only the
-collection structure and no data.
+collection structure and no data. Reason why the structure is restored before
+the data is that this allows to change _replication factor_ before restoring
+the data.
 
 Step 3: Set Replication Factor to 1
----------------------------
+-----------------------------------
 
-It is necessary to set the the replication factor to 1 before importing any
-data. Run the following command from exactly one coordinator (any coordinator
-can be used):
+To speed up restore, it is possible to set the _replication factor_ to 1 before
+importing any data. Run the following command from exactly one _Coordinator_ (any
+_Coordinator_ can be used):
 
 ```
 echo 'db._collections().filter(function(c) { return c.name()[0] !== "_"; })
@@ -72,10 +82,10 @@ c.properties().replicationFactor); c.properties({ replicationFactor: 1 }); });'
 ```
 
 Step 4: Create parallel restore scripts
--------------------------------
+---------------------------------------
 
-Now that the cluster is prepared, the parallel restore scripts have to be
-created. Therefore we will use a script that is provided in the following.
+Now that the Cluster is prepared, the parallel restore scripts have to be
+created. Therefore we will use a script that is provided below:
 
 _parallelRestore.js_:
 
@@ -185,27 +195,32 @@ provided. The example below is a template for a cluster with 3 coordinators:
   --create-collection false
 ```
 
-This time the option `--create-collection false` is used since we already
-created the document structure before. The above command will create 3 scripts,
+Note the use of the option `--create-collection false` (since we already
+created the collection structure before). The above command will create 3 scripts,
 whereas 3 corresponds to the amount of listed coordinators. The resulting
 scripts are named `coordinator_<number-of-coordinator>.sh` (e.g.
 `coordinator_0.sh`, `coordinator_1.sh`, `coordinator_2.sh`).
 
+**Note:** starting from v.3.4.0 the _arangorestore_ option *--threads* can be
+passed to the script as well, to further parallelize (so there will be a
+parallelization also in each _Coordinator_).
+
 Step 5: Execute parallel restore scripts
---------------------------------
+----------------------------------------
 
 The `coordinator_<number-of-coordinator>.sh` scripts, that were created in the
-previous script, now have to be executed on each machine where a coordinator
+previous step, now have to be executed on each machine where a _Coordinator_
 is running. This will start a parallel restore of the dump.
 
 Step 6: Revert to the initial Replication Factor
-----------------------------------------
+------------------------------------------------
 
-Once the _arangorestore_ process on every coordinator is completed, the
-replication factor has to be set to its initial value.
+Once the _arangorestore_ process on every _Coordinator_ is completed, the
+_replication factor_ has to be set to its initial value.
 
-Run the following command from exactly one coordinator (any coordinator can be
-used) - please adjust the `replicationFactor` value accordingly:
+Run the following command from exactly one _Coordinator_ (any _Coordinator_ can be
+used) - please adjust the `replicationFactor` value to your specific case (2 in the
+example below):
 
 ```
 echo 'db._collections().filter(function(c) { return c.name()[0] !== "_"; })
