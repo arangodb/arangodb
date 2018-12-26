@@ -40,7 +40,9 @@ class RestAgencyHandler : public RestBaseHandler {
  public:
   char const* name() const override final { return "RestAgencyHandler"; }
 
-  RequestLane lane() const override final { return RequestLane::AGENCY_CLUSTER; }
+  RequestLane lane() const override final {
+    return RequestLane::AGENCY_CLUSTER;
+  }
 
   RestStatus execute() override;
 
@@ -63,6 +65,6 @@ class RestAgencyHandler : public RestBaseHandler {
   void redirectRequest(std::string const& leaderId);
   consensus::Agent* _agent;
 };
-}
+}  // namespace arangodb
 
 #endif

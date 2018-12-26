@@ -30,7 +30,6 @@ namespace arangodb {
 namespace consensus {
 
 class Agent;
-
 }
 
 class AgencyFeature : virtual public application_features::ApplicationFeature {
@@ -74,6 +73,6 @@ class AgencyFeature : virtual public application_features::ApplicationFeature {
   std::unique_ptr<consensus::Agent> _agent;
 };
 
-}
+}  // namespace arangodb
 
 #endif

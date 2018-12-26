@@ -38,7 +38,8 @@ int TRI_closesocket(TRI_socket_t s) {
     if (res != 0) {
       // Windows complains about shutting down a socket that was not bound
       // so we will not print out the error here
-      // LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "socket shutdown error: " << WSAGetLastError();
+      // LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "socket shutdown error: "
+      // << WSAGetLastError();
     } else {
       char buf[256];
       int len;
@@ -49,7 +50,8 @@ int TRI_closesocket(TRI_socket_t s) {
     res = closesocket(s.fileHandle);
 
     if (res != 0) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "socket close error: " << WSAGetLastError();
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+          << "socket close error: " << WSAGetLastError();
     }
   }
 #else
@@ -58,7 +60,8 @@ int TRI_closesocket(TRI_socket_t s) {
 
     if (res == -1) {
       int myerrno = errno;
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "socket close error: " << myerrno << ": " << strerror(myerrno);
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+          << "socket close error: " << myerrno << ": " << strerror(myerrno);
     }
   }
 #endif
@@ -66,8 +69,7 @@ int TRI_closesocket(TRI_socket_t s) {
   return res;
 }
 
-int TRI_readsocket(TRI_socket_t s, void* buffer, size_t numBytesToRead,
-                   int flags) {
+int TRI_readsocket(TRI_socket_t s, void* buffer, size_t numBytesToRead, int flags) {
   int res;
 #ifdef _WIN32
   res = recv(s.fileHandle, (char*)(buffer), (int)(numBytesToRead), flags);
@@ -77,12 +79,10 @@ int TRI_readsocket(TRI_socket_t s, void* buffer, size_t numBytesToRead,
   return res;
 }
 
-int TRI_writesocket(TRI_socket_t s, const void* buffer, size_t numBytesToWrite,
-                    int flags) {
+int TRI_writesocket(TRI_socket_t s, const void* buffer, size_t numBytesToWrite, int flags) {
   int res;
 #ifdef _WIN32
-  res =
-      send(s.fileHandle, (char const*)(buffer), (int)(numBytesToWrite), flags);
+  res = send(s.fileHandle, (char const*)(buffer), (int)(numBytesToWrite), flags);
 #else
   res = (int)write(s.fileDescriptor, buffer, numBytesToWrite);
 #endif

@@ -32,7 +32,6 @@
 #include <stack>
 namespace arangodb {
 
-
 namespace aql {
 
 class ExecutionEngine;
@@ -48,7 +47,7 @@ class EngineInfoContainerCoordinator {
     EngineInfo(QueryId id, size_t idOfRemoteNode);
     ~EngineInfo();
 #if (_MSC_VER != 0)
-#pragma warning( disable : 4521) // stfu wintendo.
+#pragma warning(disable : 4521)  // stfu wintendo.
 #endif
     EngineInfo(EngineInfo&) = delete;
     EngineInfo(EngineInfo const& other) = delete;
@@ -56,20 +55,16 @@ class EngineInfoContainerCoordinator {
 
     void addNode(ExecutionNode* en);
 
-    Result buildEngine(Query* query, QueryRegistry* queryRegistry,
-                       std::string const& dbname,
+    Result buildEngine(Query* query, QueryRegistry* queryRegistry, std::string const& dbname,
                        std::unordered_set<std::string> const& restrictToShards,
                        MapRemoteToSnippet const& dbServerQueryIds,
                        std::vector<uint64_t>& coordinatorQueryIds,
                        std::unordered_set<ShardID> const& lockedShards) const;
 
-    QueryId queryId() const {
-      return _id;
-    }
+    QueryId queryId() const { return _id; }
 
    private:
-
-    // The generated id how we can find this query part 
+    // The generated id how we can find this query part
     // in the coordinators registry.
     QueryId const _id;
 
@@ -78,7 +73,6 @@ class EngineInfoContainerCoordinator {
 
     // id of the remote node this plan collects data from
     size_t _idOfRemoteNode;
-
   };
 
  public:
@@ -103,11 +97,11 @@ class EngineInfoContainerCoordinator {
   //   * Creates the ExecutionBlocks
   //   * Injects all Parts but the First one into QueryRegistery
   //   Return the first engine which is not added in the Registry
-  ExecutionEngineResult buildEngines(
-      Query* query, QueryRegistry* registry, std::string const& dbname,
-      std::unordered_set<std::string> const& restrictToShards,
-      MapRemoteToSnippet const& dbServerQueryIds,
-      std::unordered_set<ShardID> const& lockedShards) const;
+  ExecutionEngineResult buildEngines(Query* query, QueryRegistry* registry,
+                                     std::string const& dbname,
+                                     std::unordered_set<std::string> const& restrictToShards,
+                                     MapRemoteToSnippet const& dbServerQueryIds,
+                                     std::unordered_set<ShardID> const& lockedShards) const;
 
  private:
   // @brief List of EngineInfos to distribute accross the cluster
@@ -116,7 +110,7 @@ class EngineInfoContainerCoordinator {
   std::stack<size_t> _engineStack;
 };
 
-}  // aql
-}  // arangodb
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

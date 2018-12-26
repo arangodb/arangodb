@@ -70,17 +70,15 @@ bool authorized(std::pair<std::string, std::shared_ptr<arangodb::Task>> const& t
 
   return (task.first == context->user());
 }
-}
+}  // namespace
 
 namespace arangodb {
 
 Mutex Task::_tasksLock;
 std::unordered_map<std::string, std::pair<std::string, std::shared_ptr<Task>>> Task::_tasks;
 
-std::shared_ptr<Task> Task::createTask(std::string const& id,
-                                       std::string const& name,
-                                       TRI_vocbase_t* vocbase,
-                                       std::string const& command,
+std::shared_ptr<Task> Task::createTask(std::string const& id, std::string const& name,
+                                       TRI_vocbase_t* vocbase, std::string const& command,
                                        bool allowUseDatabase, int& ec) {
   if (id.empty()) {
     ec = TRI_ERROR_TASK_INVALID_ID;
@@ -101,8 +99,7 @@ std::shared_ptr<Task> Task::createTask(std::string const& id,
                                    // would fail Task constructor
 
   std::string user = ExecContext::CURRENT ? ExecContext::CURRENT->user() : "";
-  auto task =
-      std::make_shared<Task>(id, name, *vocbase, command, allowUseDatabase);
+  auto task = std::make_shared<Task>(id, name, *vocbase, command, allowUseDatabase);
   auto itr = _tasks.emplace(id, std::make_pair(user, std::move(task)));
 
   ec = TRI_ERROR_NO_ERROR;
@@ -154,9 +151,9 @@ std::shared_ptr<VPackBuilder> Task::registeredTasks() {
 
     for (auto& it : _tasks) {
       if (::authorized(it.second)) {
-      VPackObjectBuilder b2(builder.get());
-      it.second.second->toVelocyPack(*builder);
-    }
+        VPackObjectBuilder b2(builder.get());
+        it.second.second->toVelocyPack(*builder);
+      }
     }
   } catch (...) {
     return std::make_shared<VPackBuilder>();
@@ -212,9 +209,8 @@ bool Task::databaseMatches(std::string const& name) const {
   return (_dbGuard->database().name() == name);
 }
 
-Task::Task(std::string const& id, std::string const& name,
-           TRI_vocbase_t& vocbase, std::string const& command,
-           bool allowUseDatabase)
+Task::Task(std::string const& id, std::string const& name, TRI_vocbase_t& vocbase,
+           std::string const& command, bool allowUseDatabase)
     : _id(id),
       _name(name),
       _created(TRI_microtime()),
@@ -233,13 +229,11 @@ void Task::setOffset(double offset) {
 
 void Task::setPeriod(double offset, double period) {
   _offset = std::chrono::microseconds(static_cast<long long>(offset * 1000000));
-  _interval =
-      std::chrono::microseconds(static_cast<long long>(period * 1000000));
+  _interval = std::chrono::microseconds(static_cast<long long>(period * 1000000));
   _periodic.store(true);
 }
 
-void Task::setParameter(
-    std::shared_ptr<arangodb::velocypack::Builder> const& parameters) {
+void Task::setParameter(std::shared_ptr<arangodb::velocypack::Builder> const& parameters) {
   _parameters = parameters;
 }
 
@@ -282,28 +276,26 @@ std::function<void(const asio::error_code&)> Task::callbackFunction() {
     }
 
     // now do the work:
-    SchedulerFeature::SCHEDULER->queue(
-      RequestPriority::LOW, [self, this, execContext] {
-          ExecContextScope scope(_user.empty() ? ExecContext::superuser()
-                                               : execContext.get());
+    SchedulerFeature::SCHEDULER->queue(RequestPriority::LOW, [self, this, execContext] {
+      ExecContextScope scope(_user.empty() ? ExecContext::superuser()
+                                           : execContext.get());
 
-          work(execContext.get());
+      work(execContext.get());
 
-          if (_periodic.load() && !SchedulerFeature::SCHEDULER->isStopping()) {
-            // requeue the task
-            queue(_interval);
-          } else {
-            // in case of one-off tasks or in case of a shutdown, simply
-            // remove the task from the list
-            Task::unregisterTask(_id, false);
-          }
-        });
+      if (_periodic.load() && !SchedulerFeature::SCHEDULER->isStopping()) {
+        // requeue the task
+        queue(_interval);
+      } else {
+        // in case of one-off tasks or in case of a shutdown, simply
+        // remove the task from the list
+        Task::unregisterTask(_id, false);
+      }
+    });
   };
 }
 
 void Task::start() {
-  TRI_ASSERT(ExecContext::CURRENT == nullptr ||
-             ExecContext::CURRENT->isAdminUser() ||
+  TRI_ASSERT(ExecContext::CURRENT == nullptr || ExecContext::CURRENT->isAdminUser() ||
              (!_user.empty() && ExecContext::CURRENT->user() == _user));
   {
     MUTEX_LOCKER(lock, _timerMutex);
@@ -367,8 +359,7 @@ void Task::toVelocyPack(VPackBuilder& builder) const {
 }
 
 void Task::work(ExecContext const* exec) {
-  auto context = V8DealerFeature::DEALER->enterContext(&(_dbGuard->database()),
-                                                       _allowUseDatabase);
+  auto context = V8DealerFeature::DEALER->enterContext(&(_dbGuard->database()), _allowUseDatabase);
 
   // note: the context might be 0 in case of shut-down
   if (context == nullptr) {
@@ -423,8 +414,8 @@ void Task::work(ExecContext const* exec) {
         }
       } catch (arangodb::basics::Exception const& ex) {
         LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-            << "caught exception in V8 user task: "
-            << TRI_errno_string(ex.code()) << " " << ex.what();
+            << "caught exception in V8 user task: " << TRI_errno_string(ex.code())
+            << " " << ex.what();
       } catch (std::bad_alloc const&) {
         LOG_TOPIC(ERR, arangodb::Logger::FIXME)
             << "caught exception in V8 user task: "

@@ -25,9 +25,9 @@
 #ifndef ARANGOD_REPLICATION_UTILITIES_H
 #define ARANGOD_REPLICATION_UTILITIES_H 1
 
+#include <mutex>
 #include <string>
 #include <unordered_map>
-#include <mutex>
 
 #include "Basics/Result.h"
 #include "VocBase/ticks.h"
@@ -53,9 +53,7 @@ namespace replutils {
 extern std::string const ReplicationUrl;
 
 struct Connection {
-
-  Connection(Syncer* syncer,
-             ReplicationApplierConfiguration const& applierConfig);
+  Connection(Syncer* syncer, ReplicationApplierConfiguration const& applierConfig);
 
   /// @brief determine if the client connection is open and valid
   bool valid() const;
@@ -71,15 +69,15 @@ struct Connection {
 
   /// @brief Thread-safe check aborted
   bool isAborted() const;
-  
-  /// @brief get an exclusive connection 
-  template<typename F>
+
+  /// @brief get an exclusive connection
+  template <typename F>
   void lease(F&& func) & {
     std::lock_guard<std::mutex> guard(_mutex);
     std::forward<F>(func)(_client.get());
   }
-  
-  template<typename F>
+
+  template <typename F>
   void lease(F&& func) const& {
     std::lock_guard<std::mutex> guard(_mutex);
     std::forward<F>(func)(_client.get());
@@ -88,7 +86,7 @@ struct Connection {
  private:
   std::string const _endpointString;
   std::string const _localServerId;
-  
+
   /// lock to protect client connection
   mutable std::mutex _mutex;
   /// @brief the http client we're using
@@ -102,8 +100,7 @@ struct ProgressInfo {
   /// @brief progress message
   std::string message{"not started"};
   /// @brief collections synced
-  std::map<TRI_voc_cid_t, std::string>
-      processedCollections{};  // TODO worker safety
+  std::map<TRI_voc_cid_t, std::string> processedCollections{};  // TODO worker safety
 
   // @brief constructor to optionally provide a setter/handler for messages
   explicit ProgressInfo(Setter);
@@ -128,10 +125,10 @@ struct BarrierInfo {
 
   /// @brief send a "create barrier" command
   Result create(Connection&, TRI_voc_tick_t);
-  
+
   /// @brief send an "extend barrier" command
   Result extend(Connection&, TRI_voc_tick_t = 0);  // TODO worker safety
-  
+
   /// @brief send remove barrier command
   Result remove(Connection&) noexcept;
 };
@@ -162,7 +159,7 @@ struct BatchInfo {
 
 struct MasterInfo {
   std::string endpoint;
-  std::string engine; // storage engine (optional)
+  std::string engine;  // storage engine (optional)
   TRI_server_id_t serverId{0};
   int majorVersion{0};
   int minorVersion{0};

@@ -53,11 +53,9 @@ class GeneralClientConnection {
   /// @brief creates a new client connection
   //////////////////////////////////////////////////////////////////////////////
 
-  GeneralClientConnection(Endpoint* endpoint, double, double,
-                          size_t);
+  GeneralClientConnection(Endpoint* endpoint, double, double, size_t);
 
-  GeneralClientConnection(std::unique_ptr<Endpoint>& endpoint,
-                          double, double, size_t);
+  GeneralClientConnection(std::unique_ptr<Endpoint>& endpoint, double, double, size_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroys a client connection
@@ -70,13 +68,12 @@ class GeneralClientConnection {
   /// @brief create a new connection from an endpoint
   //////////////////////////////////////////////////////////////////////////////
 
-  static GeneralClientConnection* factory(Endpoint*, double requestTimeout,
-                                          double connectTimeout, size_t numRetries, 
-                                          uint64_t sslProtocol);
+  static GeneralClientConnection* factory(Endpoint*, double requestTimeout, double connectTimeout,
+                                          size_t numRetries, uint64_t sslProtocol);
 
-  static GeneralClientConnection* factory(
-      std::unique_ptr<Endpoint>&, double requestTimeout, double connectTimeout, 
-      size_t numRetries, uint64_t sslProtocol);
+  static GeneralClientConnection* factory(std::unique_ptr<Endpoint>&,
+                                          double requestTimeout, double connectTimeout,
+                                          size_t numRetries, uint64_t sslProtocol);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the endpoint
@@ -132,8 +129,7 @@ class GeneralClientConnection {
   /// @brief read data from endpoint
   //////////////////////////////////////////////////////////////////////////////
 
-  bool handleRead(double, arangodb::basics::StringBuffer&,
-                  bool& connectionClosed);
+  bool handleRead(double, arangodb::basics::StringBuffer&, bool& connectionClosed);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the endpoint
@@ -145,13 +141,17 @@ class GeneralClientConnection {
   /// @brief whether or not the current operation should be interrupted
   //////////////////////////////////////////////////////////////////////////////
 
-  bool isInterrupted() const { return _isInterrupted.load(std::memory_order_acquire); }
+  bool isInterrupted() const {
+    return _isInterrupted.load(std::memory_order_acquire);
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief interrupt the current operation
   //////////////////////////////////////////////////////////////////////////////
 
-  void setInterrupted(bool value) { _isInterrupted.store(value, std::memory_order_release); }
+  void setInterrupted(bool value) {
+    _isInterrupted.store(value, std::memory_order_release);
+  }
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -165,7 +165,7 @@ class GeneralClientConnection {
   //////////////////////////////////////////////////////////////////////////////
 
   virtual void disconnectSocket() = 0;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief prepare connection for read/write I/O
   //////////////////////////////////////////////////////////////////////////////
@@ -188,8 +188,7 @@ class GeneralClientConnection {
   /// @brief read data from the connection
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual bool readClientConnection(arangodb::basics::StringBuffer&,
-                                    bool& porgress) = 0;
+  virtual bool readClientConnection(arangodb::basics::StringBuffer&, bool& porgress) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return whether the connection is readable
@@ -247,13 +246,18 @@ class GeneralClientConnection {
 
   bool _isConnected;
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  uint64_t _read;
+  uint64_t _written;
+#endif
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the current operation should be interrupted
   //////////////////////////////////////////////////////////////////////////////
 
   std::atomic<bool> _isInterrupted;
 };
-}
-}
+}  // namespace httpclient
+}  // namespace arangodb
 
 #endif

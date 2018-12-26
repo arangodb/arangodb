@@ -28,28 +28,29 @@
 using namespace arangodb;
 
 ClusterRestCollectionHandler::ClusterRestCollectionHandler(GeneralRequest* request,
-                                             GeneralResponse* response)
+                                                           GeneralResponse* response)
     : RestCollectionHandler(request, response) {}
 
 Result ClusterRestCollectionHandler::handleExtraCommandPut(LogicalCollection& coll,
                                                            std::string const& suffix,
                                                            velocypack::Builder& builder) {
-  
   if (suffix == "recalculateCount") {
-    Result res = arangodb::rocksdb::recalculateCountsOnAllDBServers(_vocbase.name(), coll.name());
+    Result res = arangodb::rocksdb::recalculateCountsOnAllDBServers(_vocbase.name(),
+                                                                    coll.name());
     if (res.ok()) {
       VPackObjectBuilder guard(&builder);
       builder.add("result", VPackValue(true));
     }
     return res;
   } else if (suffix == "rotate") {
-    Result res = arangodb::mmfiles::rotateActiveJournalOnAllDBServers(_vocbase.name(), coll.name());
+    Result res = arangodb::mmfiles::rotateActiveJournalOnAllDBServers(_vocbase.name(),
+                                                                      coll.name());
     if (res.ok()) {
       VPackObjectBuilder guard(&builder);
       builder.add("result", VPackValue(true));
     }
     return res;
   }
-  
+
   return TRI_ERROR_NOT_IMPLEMENTED;
 }

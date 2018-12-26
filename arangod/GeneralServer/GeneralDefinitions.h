@@ -4,6 +4,6 @@
 namespace arangodb {
 namespace rest {
 enum class ProtocolType { HTTP, HTTPS, VST, VSTS };
-}  // rest
-}  // arangodb
+}  // namespace rest
+}  // namespace arangodb
 #endif

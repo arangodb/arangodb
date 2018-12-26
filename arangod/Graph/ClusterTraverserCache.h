@@ -42,19 +42,17 @@ class Methods;
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 namespace graph {
 
 class ClusterTraverserCache : public TraverserCache {
  public:
-  ClusterTraverserCache(
-      aql::Query* query,
-      std::unordered_map<ServerID, traverser::TraverserEngineID> const*
-          engines);
+  ClusterTraverserCache(aql::Query* query,
+                        std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines);
 
   ~ClusterTraverserCache() {}
-  
+
   /// @brief will convert the EdgeDocumentToken to a slice
   arangodb::velocypack::Slice lookupToken(EdgeDocumentToken const& token) override;
 
@@ -64,10 +62,9 @@ class ClusterTraverserCache : public TraverserCache {
   //////////////////////////////////////////////////////////////////////////////
   void insertEdgeIntoResult(graph::EdgeDocumentToken const& idToken,
                             arangodb::velocypack::Builder& builder) override;
-  
+
   /// Lookup document in cache and add it into the builder
-  void insertVertexIntoResult(StringRef idString,
-                              velocypack::Builder& builder) override;
+  void insertVertexIntoResult(StringRef idString, velocypack::Builder& builder) override;
   /// Lookup document in cache and transform it to an AqlValue
   aql::AqlValue fetchVertexAqlResult(StringRef idString) override;
 
@@ -91,16 +88,11 @@ class ClusterTraverserCache : public TraverserCache {
     return _datalake;
   }
 
-  size_t& insertedDocuments() {
-    return _insertedDocuments;
-  }
+  size_t& insertedDocuments() { return _insertedDocuments; }
 
-  size_t& filteredDocuments() {
-    return _filteredDocuments;
-  }
-  
+  size_t& filteredDocuments() { return _filteredDocuments; }
+
  private:
-
   /// @brief link by _id into our data dump
   std::unordered_map<StringRef, arangodb::velocypack::Slice> _cache;
   /// @brief dump for our edge and vertex documents

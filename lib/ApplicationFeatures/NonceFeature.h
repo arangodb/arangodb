@@ -42,6 +42,6 @@ class NonceFeature : public application_features::ApplicationFeature {
   uint64_t _size;
 };
 
-}
+}  // namespace arangodb
 
 #endif

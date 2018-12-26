@@ -59,7 +59,7 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
   PhysicalCollectionMock(arangodb::LogicalCollection& collection, arangodb::velocypack::Slice const& info);
   virtual PhysicalCollection* clone(arangodb::LogicalCollection& collection) const override;
   virtual int close() override;
-  virtual std::shared_ptr<arangodb::Index> createIndex(arangodb::velocypack::Slice const& info, bool restore, bool& created) override;
+  virtual std::shared_ptr<arangodb::Index> createIndex(arangodb::velocypack::Slice const& info, bool, bool&) override;
   virtual void deferDropCollection(std::function<bool(arangodb::LogicalCollection&)> const& callback) override;
   virtual bool dropIndex(TRI_idx_iid_t iid) override;
   virtual void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) override;
@@ -75,7 +75,6 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
       arangodb::KeyLockInfo* /*keyLockInfo*/,
       std::function<arangodb::Result(void)> callbackDuringLock) override;
   virtual void invokeOnAllElements(arangodb::transaction::Methods* trx, std::function<bool(arangodb::LocalDocumentId const&)> callback) override;
-  virtual std::shared_ptr<arangodb::Index> lookupIndex(arangodb::velocypack::Slice const&) const override;
   virtual arangodb::LocalDocumentId lookupKey(arangodb::transaction::Methods*, arangodb::velocypack::Slice const&) const override;
   virtual size_t memory() const override;
   virtual uint64_t numberDocuments(arangodb::transaction::Methods* trx) const override;
@@ -171,10 +170,10 @@ class StorageEngineMock: public arangodb::StorageEngine {
   virtual void addOptimizerRules() override;
   virtual void addRestHandlers(arangodb::rest::RestHandlerFactory& handlerFactory) override;
   virtual void addV8Functions() override;
-  virtual void changeCollection(TRI_vocbase_t& vocbase, TRI_voc_cid_t id, arangodb::LogicalCollection const& collection, bool doSync) override;
+  virtual void changeCollection(TRI_vocbase_t& vocbase, arangodb::LogicalCollection const& collection, bool doSync) override;
   virtual arangodb::Result changeView(TRI_vocbase_t& vocbase, arangodb::LogicalView const& view, bool doSync) override;
   virtual std::string collectionPath(TRI_vocbase_t const& vocbase, TRI_voc_cid_t id) const override;
-  virtual std::string createCollection(TRI_vocbase_t& vocbase, TRI_voc_cid_t id, arangodb::LogicalCollection const& collection) override;
+  virtual std::string createCollection(TRI_vocbase_t& vocbase, arangodb::LogicalCollection const& collection) override;
   virtual std::unique_ptr<TRI_vocbase_t> createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& args, int& status) override;
   virtual arangodb::Result createLoggerState(TRI_vocbase_t*, VPackBuilder&) override;
   virtual std::unique_ptr<arangodb::PhysicalCollection> createPhysicalCollection(arangodb::LogicalCollection& collection, arangodb::velocypack::Slice const& info) override;
@@ -188,10 +187,10 @@ class StorageEngineMock: public arangodb::StorageEngine {
   virtual TRI_voc_tick_t currentTick() const override;
   virtual std::string databasePath(TRI_vocbase_t const* vocbase) const override;
   virtual void destroyCollection(TRI_vocbase_t& vocbase, arangodb::LogicalCollection& collection) override;
-  virtual void destroyView(TRI_vocbase_t& vocbase, arangodb::LogicalView& view) noexcept override;
+  virtual void destroyView(TRI_vocbase_t const& vocbase, arangodb::LogicalView const& view) noexcept override;
   virtual arangodb::Result dropCollection(TRI_vocbase_t& vocbase, arangodb::LogicalCollection& collection) override;
   virtual arangodb::Result dropDatabase(TRI_vocbase_t& vocbase) override;
-  virtual arangodb::Result dropView(TRI_vocbase_t& vocbase, arangodb::LogicalView& view) override;
+  virtual arangodb::Result dropView(TRI_vocbase_t const& vocbase, arangodb::LogicalView const& view) override;
   virtual arangodb::Result firstTick(uint64_t&) override;
   virtual std::vector<std::string> currentWalFiles() const override;
   virtual arangodb::Result flushWal(bool waitForSync, bool waitForCollector, bool writeShutdownFile) override;

@@ -68,9 +68,9 @@ class ApplicationFeature {
   // enable or disable a feature
   void setEnabled(bool value) {
     if (!value && !isOptional()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_BAD_PARAMETER,
-          "cannot disable non-optional feature '" + name() + "'");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "cannot disable non-optional feature '" +
+                                         name() + "'");
     }
     _enabled = value;
   }
@@ -102,8 +102,7 @@ class ApplicationFeature {
 
   // load options from somewhere. this method will only be called for enabled
   // features
-  virtual void loadOptions(std::shared_ptr<options::ProgramOptions>,
-                           char const* binaryPath);
+  virtual void loadOptions(std::shared_ptr<options::ProgramOptions>, char const* binaryPath);
 
   // validate the feature's options. this method will only be called for active
   // features, after the ApplicationServer has determined which features should
@@ -164,7 +163,9 @@ class ApplicationFeature {
   // determine all direct and indirect ancestors of a feature
   std::unordered_set<std::string> ancestors() const;
 
-  void onlyEnabledWith(std::string const& other) { _onlyEnabledWith.emplace(other); }
+  void onlyEnabledWith(std::string const& other) {
+    _onlyEnabledWith.emplace(other);
+  }
 
   // return the list of other features that this feature depends on
   std::unordered_set<std::string> const& onlyEnabledWith() const {
@@ -174,9 +175,7 @@ class ApplicationFeature {
  private:
   // set a feature's state. this method should be called by the
   // application server only
-  void state(ApplicationServer::FeatureState state) {
-    _state = state;
-  }
+  void state(ApplicationServer::FeatureState state) { _state = state; }
 
   // determine all direct and indirect ancestors of a feature
   void determineAncestors();
@@ -199,7 +198,7 @@ class ApplicationFeature {
 
   // list of direct and indirect ancestors of the feature
   std::unordered_set<std::string> _ancestors;
-  
+
   // enable this feature only if the following other features are enabled
   std::unordered_set<std::string> _onlyEnabledWith;
 
@@ -218,7 +217,7 @@ class ApplicationFeature {
   bool _ancestorsDetermined;
 };
 
-}
-}
+}  // namespace application_features
+}  // namespace arangodb
 
 #endif

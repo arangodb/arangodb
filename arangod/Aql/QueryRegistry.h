@@ -24,9 +24,9 @@
 #ifndef ARANGOD_AQL_QUERY_REGISTRY_H
 #define ARANGOD_AQL_QUERY_REGISTRY_H 1
 
+#include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
-#include "Aql/types.h"
 #include "Cluster/ResultT.h"
 
 struct TRI_vocbase_t;
@@ -41,9 +41,8 @@ class QueryRegistry {
   explicit QueryRegistry(double defTTL) : _defaultTTL(defTTL) {}
 
   TEST_VIRTUAL ~QueryRegistry();
-  
-public:
 
+ public:
   /// @brief insert, this inserts the query <query> for the vocbase <vocbase>
   /// and the id <id> into the registry. It is in error if there is already
   /// a query for this <vocbase> and <id> combination and an exception will
@@ -90,12 +89,11 @@ public:
 
   /// @brief for shutdown, we need to shut down all queries:
   void destroyAll();
-  
+
   /// @brief return the default TTL value
   TEST_VIRTUAL double defaultTTL() const { return _defaultTTL; }
 
  private:
-
   /**
    * @brief Set the thread-local _noLockHeaders variable
    *
@@ -119,23 +117,22 @@ public:
     bool _isOpen;             // flag indicating whether or not the query
                               // is in use
     bool _isPrepared;
-    double _timeToLive;       // in seconds
-    double _expires;          // UNIX UTC timestamp of expiration
+    double _timeToLive;  // in seconds
+    double _expires;     // UNIX UTC timestamp of expiration
   };
 
   /// @brief _queries, the actual map of maps for the registry
   /// maps from vocbase name to list queries
-  std::unordered_map<std::string, std::unordered_map<QueryId, std::unique_ptr<QueryInfo>>>
-      _queries;
+  std::unordered_map<std::string, std::unordered_map<QueryId, std::unique_ptr<QueryInfo>>> _queries;
 
   /// @brief _lock, the read/write lock for access
   basics::ReadWriteLock _lock;
-  
+
   /// @brief the default TTL value
   double const _defaultTTL;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

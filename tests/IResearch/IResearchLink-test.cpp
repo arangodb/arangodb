@@ -178,7 +178,7 @@ SECTION("test_defaults") {
     CHECK((true == !link));
   }
 
-  // no view can be found
+  // no view can be found (e.g. db-server coming up with view not available from Agency yet)
   {
     s.engine.views.clear();
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
@@ -187,8 +187,8 @@ SECTION("test_defaults") {
     REQUIRE((nullptr != logicalCollection));
     auto json = arangodb::velocypack::Parser::fromJson("{ \"view\": \"42\" }");
     std::shared_ptr<arangodb::Index> link;
-    CHECK((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(link, *logicalCollection, json->slice(), 1, false).errorNumber()));
-    CHECK((true == !link));
+    CHECK((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(link, *logicalCollection, json->slice(), 1, false).ok()));
+    CHECK((false == !link));
   }
 
   // valid link creation
@@ -214,7 +214,6 @@ SECTION("test_defaults") {
     CHECK((false == link->hasExpansion()));
     CHECK((false == link->hasSelectivityEstimate()));
     CHECK((false == link->implicitlyUnique()));
-    CHECK((true == link->isPersistent()));
     CHECK((false == link->isSorted()));
     CHECK((0 < link->memory()));
     CHECK((true == link->sparse()));
@@ -266,7 +265,6 @@ SECTION("test_defaults") {
     CHECK((false == link->hasExpansion()));
     CHECK((false == link->hasSelectivityEstimate()));
     CHECK((false == link->implicitlyUnique()));
-    CHECK((true == link->isPersistent()));
     CHECK((false == link->isSorted()));
     CHECK((0 < link->memory()));
     CHECK((true == link->sparse()));

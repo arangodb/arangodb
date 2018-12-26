@@ -63,19 +63,17 @@ class GeoUtils {
  public:
   /// Generate a cover cell from an array [lat, lng] or [lng, lat]
   static Result indexCellsLatLng(velocypack::Slice const& data, bool isGeoJson,
-                                 std::vector<S2CellId>& cells,
-                                 S2Point& centroid);
+                                 std::vector<S2CellId>& cells, S2Point& centroid);
 
   /// generate intervalls of list of intervals to scan
-  static void scanIntervals(QueryParams const& params,
-                            S2RegionCoverer* coverer, S2Region const& region,
+  static void scanIntervals(QueryParams const& params, S2RegionCoverer* coverer,
+                            S2Region const& region,
                             std::vector<geo::Interval>& sortedIntervals);
 
   /// will return all the intervals including the cells containing them
   /// in the less detailed levels. Should allow us to scan all intervals
   /// which may contain intersecting geometries
-  static void scanIntervals(QueryParams const& params,
-                            std::vector<S2CellId> const& cover,
+  static void scanIntervals(QueryParams const& params, std::vector<S2CellId> const& cover,
                             std::vector<geo::Interval>& sortedIntervals);
 };
 

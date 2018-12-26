@@ -46,21 +46,16 @@ class ClusterFeature : public application_features::ApplicationFeature {
   void beginShutdown() override final;
   void unprepare() override final;
 
-  std::vector<std::string> agencyEndpoints() const {
-    return _agencyEndpoints;
-  }
+  std::vector<std::string> agencyEndpoints() const { return _agencyEndpoints; }
 
-  std::string agencyPrefix() const {
-    return _agencyPrefix;
-  }
+  std::string agencyPrefix() const { return _agencyPrefix; }
 
   void syncDBServerStatusQuo();
 
-protected:
+ protected:
   void startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
-                            uint64_t interval_ms,
-                            uint64_t maxFailsBeforeWarning,
-                            const std::string & endpoints);
+                            uint64_t interval_ms, uint64_t maxFailsBeforeWarning,
+                            const std::string& endpoints);
 
  private:
   std::vector<std::string> _agencyEndpoints;
@@ -83,12 +78,12 @@ protected:
     return "/_api/agency/agency-callbacks";
   };
 
-  std::string const clusterRestPath() const {
-    return "/_api/cluster";
-  };
+  std::string const clusterRestPath() const { return "/_api/cluster"; };
 
   void setUnregisterOnShutdown(bool);
-  bool createWaitsForSyncReplication() const { return _createWaitsForSyncReplication; };
+  bool createWaitsForSyncReplication() const {
+    return _createWaitsForSyncReplication;
+  };
   double indexCreationTimeout() const { return _indexCreationTimeout; }
   uint32_t systemReplicationFactor() { return _systemReplicationFactor; };
 
@@ -104,6 +99,6 @@ protected:
   ServerState::RoleEnum _requestedRole;
 };
 
-}
+}  // namespace arangodb
 
 #endif

@@ -1148,19 +1148,19 @@ SECTION("createBlockSingleServer") {
     // start transaction (put snapshot into)
     REQUIRE(query.trx()->state());
     CHECK(nullptr == arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(*logicalView).snapshot(
-      *query.trx(), arangodb::iresearch::IResearchView::Snapshot::Find
+      *query.trx(), arangodb::iresearch::IResearchView::SnapshotMode::Find
     ));
     auto* snapshot = arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(*logicalView).snapshot(
-      *query.trx(), arangodb::iresearch::IResearchView::Snapshot::FindOrCreate
+      *query.trx(), arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate
     );
     CHECK(snapshot == arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(*logicalView).snapshot(
-      *query.trx(), arangodb::iresearch::IResearchView::Snapshot::Find
+      *query.trx(), arangodb::iresearch::IResearchView::SnapshotMode::Find
     ));
     CHECK(snapshot == arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(*logicalView).snapshot(
-      *query.trx(), arangodb::iresearch::IResearchView::Snapshot::FindOrCreate
+      *query.trx(), arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate
     ));
     CHECK(snapshot == arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(*logicalView).snapshot(
-      *query.trx(), arangodb::iresearch::IResearchView::Snapshot::SyncAndReplace
+      *query.trx(), arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace
     ));
 
     // after transaction has started

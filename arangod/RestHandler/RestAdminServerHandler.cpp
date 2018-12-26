@@ -31,8 +31,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAdminServerHandler::RestAdminServerHandler(GeneralRequest* request,
-                                       GeneralResponse* response)
+RestAdminServerHandler::RestAdminServerHandler(GeneralRequest* request, GeneralResponse* response)
     : RestBaseHandler(request, response) {}
 
 RestStatus RestAdminServerHandler::execute() {
@@ -55,41 +54,35 @@ void RestAdminServerHandler::writeModeResult(bool readOnly) {
   VPackBuilder builder;
   {
     VPackObjectBuilder b(&builder);
-    builder.add("mode", VPackValue(readOnly ? "readonly" : "default")
-    );
+    builder.add("mode", VPackValue(readOnly ? "readonly" : "default"));
   }
   generateOk(rest::ResponseCode::OK, builder);
 }
 
 void RestAdminServerHandler::handleId() {
   if (_request->requestType() != rest::RequestType::GET) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-      TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return;
   }
 
   auto instance = ServerState::instance();
   if (!instance->isRunningInCluster()) {
     // old behaviour...klingt komisch, is aber so
-    generateError(rest::ResponseCode::SERVER_ERROR,
-      TRI_ERROR_HTTP_SERVER_ERROR);
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR);
     return;
   }
 
   VPackBuilder builder;
   {
     VPackObjectBuilder b(&builder);
-    builder.add(
-        "id", VPackValue(instance->getId())
-    );
+    builder.add("id", VPackValue(instance->getId()));
   }
   generateOk(rest::ResponseCode::OK, builder);
 }
 
 void RestAdminServerHandler::handleRole() {
   if (_request->requestType() != rest::RequestType::GET) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-      TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return;
   }
   auto state = ServerState::instance();
@@ -97,16 +90,12 @@ void RestAdminServerHandler::handleRole() {
   if (ReplicationFeature::INSTANCE != nullptr &&
       ReplicationFeature::INSTANCE->isActiveFailoverEnabled()) {
     hasFailover = true;
-  } 
+  }
   VPackBuilder builder;
   {
     VPackObjectBuilder b(&builder);
-    builder.add(
-       "role", VPackValue(state->roleToString(state->getRole()))
-    );
-    builder.add(
-      "mode", hasFailover ? VPackValue("resilient") : VPackValue("default")
-    );
+    builder.add("role", VPackValue(state->roleToString(state->getRole())));
+    builder.add("mode", hasFailover ? VPackValue("resilient") : VPackValue("default"));
   }
   generateOk(rest::ResponseCode::OK, builder);
 }
@@ -119,24 +108,23 @@ void RestAdminServerHandler::handleRole() {
 /// to read-only or a follower in case of active failover
 void RestAdminServerHandler::handleAvailability() {
   if (_request->requestType() != rest::RequestType::GET) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-      TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return;
   }
-  
+
   bool available = false;
   switch (ServerState::mode()) {
     case ServerState::Mode::DEFAULT:
       available = !application_features::ApplicationServer::isStopping();
       break;
-    case ServerState::Mode::MAINTENANCE: 
+    case ServerState::Mode::MAINTENANCE:
     case ServerState::Mode::REDIRECT:
-    case ServerState::Mode::TRYAGAIN: 
+    case ServerState::Mode::TRYAGAIN:
     case ServerState::Mode::INVALID:
       TRI_ASSERT(!available);
       break;
   }
- 
+
   if (!available) {
     // this will produce an HTTP 503 result
     generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_HTTP_SERVICE_UNAVAILABLE);
@@ -151,13 +139,12 @@ void RestAdminServerHandler::handleMode() {
   if (requestType == rest::RequestType::GET) {
     writeModeResult(ServerState::readOnly());
   } else if (requestType == rest::RequestType::PUT) {
-    
     AuthenticationFeature* af = AuthenticationFeature::instance();
     if (af->isActive() && !_request->user().empty()) {
       auth::Level lvl = auth::Level::NONE;
       if (af->userManager() != nullptr) {
-        lvl = af->userManager()->databaseAuthLevel(_request->user(),
-                                                   TRI_VOC_SYSTEM_DATABASE, /*configured*/true);
+        lvl = af->userManager()->databaseAuthLevel(_request->user(), TRI_VOC_SYSTEM_DATABASE,
+                                                   /*configured*/ true);
       } else {
         lvl = auth::Level::RW;
       }
@@ -166,50 +153,49 @@ void RestAdminServerHandler::handleMode() {
         return;
       }
     }
-    
+
     bool parseSuccess = false;
     VPackSlice slice = this->parseVPackBody(parseSuccess);
     if (!parseSuccess) {
-      generateError(rest::ResponseCode::BAD,
-                    TRI_ERROR_HTTP_BAD_PARAMETER, "invalid JSON");
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "invalid JSON");
       return;
     }
-    
+
     if (!slice.isObject()) {
-      generateError(rest::ResponseCode::BAD,
-                    TRI_ERROR_HTTP_BAD_PARAMETER, "body must be an object");
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "body must be an object");
       return;
     }
-    
+
     auto modeSlice = slice.get("mode");
     if (!modeSlice.isString()) {
-      generateError(rest::ResponseCode::BAD,
-                    TRI_ERROR_HTTP_BAD_PARAMETER, "mode must be a string");
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "mode must be a string");
       return;
     }
-    
-    
+
     Result res;
     if (modeSlice.compareString("readonly") == 0) {
       res = ServerState::instance()->propagateClusterReadOnly(true);
     } else if (modeSlice.compareString("default") == 0) {
       res = ServerState::instance()->propagateClusterReadOnly(false);
     } else {
-      generateError(rest::ResponseCode::BAD,
-                    TRI_ERROR_HTTP_BAD_PARAMETER, "mode invalid");
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "mode invalid");
       return;
     }
-    
+
     if (res.fail()) {
-      generateError(rest::ResponseCode::BAD,
-                    TRI_ERROR_HTTP_SERVER_ERROR, "couldn't set requested mode");
-      LOG_TOPIC(ERR, Logger::FIXME) << "Couldn't set requested mode: " << res.errorMessage();
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SERVER_ERROR,
+                    "couldn't set requested mode");
+      LOG_TOPIC(ERR, Logger::FIXME)
+          << "Couldn't set requested mode: " << res.errorMessage();
       return;
     }
     writeModeResult(ServerState::readOnly());
-    
+
   } else {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   }
 }

@@ -29,9 +29,7 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-FoxxQueuesFeature::FoxxQueuesFeature(
-    application_features::ApplicationServer& server
-)
+FoxxQueuesFeature::FoxxQueuesFeature(application_features::ApplicationServer& server)
     : application_features::ApplicationFeature(server, "FoxxQueues"),
       _pollInterval(1.0),
       _enabled(true) {
@@ -41,19 +39,16 @@ FoxxQueuesFeature::FoxxQueuesFeature(
 
 void FoxxQueuesFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("foxx", "Configure Foxx");
-  
+
   options->addOldOption("server.foxx-queues", "foxx.queues");
-  options->addOldOption("server.foxx-queues-poll-interval", "foxx.queues-poll-interval");
+  options->addOldOption("server.foxx-queues-poll-interval",
+                        "foxx.queues-poll-interval");
 
-  options->addOption(
-      "--foxx.queues", 
-      "enable Foxx queues",
-      new BooleanParameter(&_enabled));
+  options->addOption("--foxx.queues", "enable Foxx queues", new BooleanParameter(&_enabled));
 
-  options->addOption(
-      "--foxx.queues-poll-interval",
-      "poll interval (in seconds) for Foxx queue manager",
-      new DoubleParameter(&_pollInterval));
+  options->addOption("--foxx.queues-poll-interval",
+                     "poll interval (in seconds) for Foxx queue manager",
+                     new DoubleParameter(&_pollInterval));
 }
 
 void FoxxQueuesFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -63,4 +58,4 @@ void FoxxQueuesFeature::validateOptions(std::shared_ptr<ProgramOptions> options)
   }
 }
 
-} // arangodb
+}  // namespace arangodb

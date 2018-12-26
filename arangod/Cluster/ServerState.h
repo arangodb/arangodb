@@ -60,7 +60,7 @@ class ServerState {
     TRYAGAIN = 2,
     /// redirect to lead server if possible
     REDIRECT = 3,
-    INVALID = 255, // this mode is used to indicate shutdown
+    INVALID = 255,  // this mode is used to indicate shutdown
   };
 
  public:
@@ -97,22 +97,20 @@ class ServerState {
 
   /// @brief convert a string representation to a mode
   static Mode stringToMode(std::string const&);
-  
+
   /// @brief atomically load current server mode
   static Mode mode();
-  
+
   /// @brief sets server mode, returns previously held
   /// value (performs atomic read-modify-write operation)
-  static  Mode setServerMode(Mode mode);
-  
+  static Mode setServerMode(Mode mode);
+
   /// @brief checks maintenance mode
-  static bool isMaintenance() {
-    return mode() == Mode::MAINTENANCE;
-  }
-  
+  static bool isMaintenance() { return mode() == Mode::MAINTENANCE; }
+
   /// @brief should not allow DDL operations / transactions
   static bool readOnly();
-  
+
   /// @brief set server read-only
   static bool setReadOnly(bool ro);
 
@@ -156,12 +154,11 @@ class ServerState {
   /// @brief whether or not the role is a cluster-related role
   static bool isClusterRole(ServerState::RoleEnum role) {
     TRI_ASSERT(role != ServerState::ROLE_UNDEFINED);
-    return (role == ServerState::ROLE_PRIMARY ||
-            role == ServerState::ROLE_COORDINATOR);
+    return (role == ServerState::ROLE_PRIMARY || role == ServerState::ROLE_COORDINATOR);
   }
 
   /// @brief whether or not the role is a cluster-related role
-  bool isClusterRole() {return (isClusterRole(loadRole()));};
+  bool isClusterRole() { return (isClusterRole(loadRole())); };
 
   /// @brief check whether the server is an agent
   bool isAgent() { return isAgent(loadRole()); }
@@ -190,7 +187,7 @@ class ServerState {
   inline RoleEnum getRole() const { return loadRole(); }
 
   /// @brief register with agency, create / load server ID
-  bool integrateIntoCluster(RoleEnum role,  std::string const& myAddr,
+  bool integrateIntoCluster(RoleEnum role, std::string const& myAddr,
                             std::string const& myAdvEndpoint);
 
   /// @brief unregister this server with the agency
@@ -221,9 +218,7 @@ class ServerState {
   void findHost(std::string const& fallback);
 
   /// @brief get a string to identify the host we are running on
-  std::string getHost() {
-    return _host;
-  }
+  std::string getHost() { return _host; }
 
   /// @brief get the current state
   StateEnum getState();
@@ -269,21 +264,20 @@ class ServerState {
 
   /// @brief validate a state transition for a coordinator server
   bool checkCoordinatorState(StateEnum);
-  
+
   /// @brief check equality of engines with other registered servers
   bool checkEngineEquality(AgencyComm&);
 
   /// @brief register at agency, might already be done
   bool registerAtAgencyPhase1(AgencyComm&, const RoleEnum&);
-  
+
   /// @brief write the Current/ServersRegistered entry
   bool registerAtAgencyPhase2(AgencyComm&);
-  
-private:
-  
+
+ private:
   /// @brief server role
   std::atomic<RoleEnum> _role;
-  
+
   /// @brief r/w lock for state
   mutable arangodb::basics::ReadWriteSpinLock _lock;
 
@@ -316,7 +310,7 @@ private:
 
   bool _foxxmasterQueueupdate;
 };
-}
+}  // namespace arangodb
 
 std::ostream& operator<<(std::ostream&, arangodb::ServerState::RoleEnum);
 

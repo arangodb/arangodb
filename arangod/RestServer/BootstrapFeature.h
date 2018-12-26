@@ -37,15 +37,13 @@ class BootstrapFeature final : public application_features::ApplicationFeature {
 
   static std::string const& name() noexcept;
 
-  bool isReady() const {
-    return _isReady;
-  }
+  bool isReady() const { return _isReady; }
 
  private:
   bool _isReady;
   bool _bark;
 };
 
-}
+}  // namespace arangodb
 
 #endif

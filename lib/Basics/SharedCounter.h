@@ -38,8 +38,7 @@ template <uint64_t stripes = 64, bool everywhereNonNegative = false>
 struct SharedCounter {
   typedef std::function<uint64_t()> IdFunc;
   static uint64_t DefaultIdFunc() {
-    return fasthash64_uint64(Thread::currentThreadNumber(),
-                             0xdeadbeefdeadbeefULL);
+    return fasthash64_uint64(Thread::currentThreadNumber(), 0xdeadbeefdeadbeefULL);
   }
 
   SharedCounter() : SharedCounter(DefaultIdFunc) {}
@@ -71,7 +70,7 @@ struct SharedCounter {
   void sub(int64_t arg, std::memory_order order = std::memory_order_seq_cst) {
     int64_t prev = _data[_id() & _mask].fetch_sub(arg, order);
     TRI_ASSERT(!everywhereNonNegative || (prev - arg >= 0));
- }
+  }
 
   int64_t value(std::memory_order order = std::memory_order_seq_cst) const {
     int64_t sum = 0;
@@ -108,9 +107,7 @@ struct SharedCounter {
       _id = other._id;
       _mask = other._mask;
       for (size_t i = 0; i < stripes; i++) {
-        _data[i].store(
-          other._data[i].load(std::memory_order_acquire),
-          std::memory_order_release);
+        _data[i].store(other._data[i].load(std::memory_order_acquire), std::memory_order_release);
       }
     }
   }

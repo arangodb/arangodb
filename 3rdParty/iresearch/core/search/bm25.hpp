@@ -47,13 +47,13 @@ class bm25_sort : public sort {
 
   typedef float_t score_t;
 
-  bm25_sort(float_t k = K(), float_t b = B());
+  explicit bm25_sort(float_t k = K(), float_t b = B()) NOEXCEPT;
 
-  float_t k() const { return k_; }
-  void k(float_t k) { k_ = k; }
+  float_t k() const NOEXCEPT { return k_; }
+  void k(float_t k) NOEXCEPT { k_ = k; }
 
-  float_t b() const { return b_; }
-  void b(float_t b) { b_ = b; }
+  float_t b() const NOEXCEPT { return b_; }
+  void b(float_t b) NOEXCEPT { b_ = b; }
 
   // returns 'true' if current scorer is 'bm11'
   bool bm11() const NOEXCEPT {

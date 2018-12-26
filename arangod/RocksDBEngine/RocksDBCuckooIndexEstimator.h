@@ -64,8 +64,7 @@ class HashWithSeed {
 
 template <class Key, class HashKey = HashWithSeed<Key, 0xdeadbeefdeadbeefULL>,
           class Fingerprint = HashWithSeed<Key, 0xabcdefabcdef1234ULL>,
-          class HashShort = HashWithSeed<uint16_t, 0xfedcbafedcba4321ULL>,
-          class CompKey = std::equal_to<Key>>
+          class HashShort = HashWithSeed<uint16_t, 0xfedcbafedcba4321ULL>, class CompKey = std::equal_to<Key>>
 class RocksDBCuckooIndexEstimator {
   // Note that the following has to be a power of two and at least 4!
   static constexpr uint32_t kSlotsPerBucket = 4;
@@ -75,7 +74,6 @@ class RocksDBCuckooIndexEstimator {
   static constexpr size_t kCounterSize = sizeof(uint32_t);
   // maximum number of cuckoo rounds on insertion
   static constexpr unsigned kMaxRounds = 16;
-
 
  private:
   // Helper class to hold the finger prints.
@@ -230,10 +228,8 @@ class RocksDBCuckooIndexEstimator {
 
   RocksDBCuckooIndexEstimator(RocksDBCuckooIndexEstimator const&) = delete;
   RocksDBCuckooIndexEstimator(RocksDBCuckooIndexEstimator&&) = delete;
-  RocksDBCuckooIndexEstimator& operator=(RocksDBCuckooIndexEstimator const&) =
-      delete;
-  RocksDBCuckooIndexEstimator& operator=(RocksDBCuckooIndexEstimator&&) =
-      delete;
+  RocksDBCuckooIndexEstimator& operator=(RocksDBCuckooIndexEstimator const&) = delete;
+  RocksDBCuckooIndexEstimator& operator=(RocksDBCuckooIndexEstimator&&) = delete;
 
   /**
    * @brief Serialize estimator for persistence, applying any buffered updates
@@ -249,16 +245,15 @@ class RocksDBCuckooIndexEstimator {
    * @param  commitSeq  Above that are still uncommited operations
    * @return            The committed seq/tick (safe tick to keep in WAL)
    */
-  rocksdb::SequenceNumber serialize(std::string& serialized,
-                                    rocksdb::SequenceNumber commitSeq) {
+  rocksdb::SequenceNumber serialize(std::string& serialized, rocksdb::SequenceNumber commitSeq) {
     // We always have to start with the commit seq, type and then the length
 
     // commit seq, above that is an uncommited operations
-//    rocksdb::SequenceNumber commitSeq = committableSeq();
+    //    rocksdb::SequenceNumber commitSeq = committableSeq();
     // must apply updates first to be valid, WAL needs to preserve
     rocksdb::SequenceNumber appliedSeq = applyUpdates(commitSeq);
     TRI_ASSERT(appliedSeq <= commitSeq);
-    
+
     {
       // Sorry we need a consistent state, so we have to read-lock
       READ_LOCKER(locker, _lock);
@@ -274,9 +269,8 @@ class RocksDBCuckooIndexEstimator {
       // length
       uint64_t serialLength =
           (sizeof(SerializeFormat) + sizeof(uint64_t) + sizeof(_size) +
-           sizeof(_nrUsed) + sizeof(_nrCuckood) + sizeof(_nrTotal) +
-           sizeof(_niceSize) + sizeof(_logSize) +
-           (_size * kSlotSize * kSlotsPerBucket)) +
+           sizeof(_nrUsed) + sizeof(_nrCuckood) + sizeof(_nrTotal) + sizeof(_niceSize) +
+           sizeof(_logSize) + (_size * kSlotSize * kSlotsPerBucket)) +
           (_size * kCounterSize * kSlotsPerBucket);
 
       serialized.reserve(sizeof(uint64_t) + serialLength);
@@ -295,18 +289,16 @@ class RocksDBCuckooIndexEstimator {
       // Size is as follows: nrOfBuckets * kSlotsPerBucket * SlotSize
       TRI_ASSERT((_size * kSlotSize * kSlotsPerBucket) <= _slotAllocSize);
 
-      for (uint64_t i = 0; i < (_size * kSlotSize * kSlotsPerBucket);
-           i += kSlotSize) {
-        rocksutils::uint16ToPersistent(
-            serialized, *(reinterpret_cast<uint16_t*>(_base + i)));
+      for (uint64_t i = 0; i < (_size * kSlotSize * kSlotsPerBucket); i += kSlotSize) {
+        rocksutils::uint16ToPersistent(serialized,
+                                       *(reinterpret_cast<uint16_t*>(_base + i)));
       }
 
       TRI_ASSERT((_size * kCounterSize * kSlotsPerBucket) <= _counterAllocSize);
 
-      for (uint64_t i = 0; i < (_size * kCounterSize * kSlotsPerBucket);
-           i += kCounterSize) {
-        rocksutils::uint32ToPersistent(
-            serialized, *(reinterpret_cast<uint32_t*>(_counters + i)));
+      for (uint64_t i = 0; i < (_size * kCounterSize * kSlotsPerBucket); i += kCounterSize) {
+        rocksutils::uint32ToPersistent(serialized,
+                                       *(reinterpret_cast<uint32_t*>(_counters + i)));
       }
 
       bool havePendingUpdates = !_insertBuffers.empty() || !_removalBuffers.empty() ||
@@ -338,7 +330,7 @@ class RocksDBCuckooIndexEstimator {
 
     _needToPersist.store(true);
   }
-  
+
   Result bufferTruncate(rocksdb::SequenceNumber seq) {
     Result res = basics::catchVoidToResult([&]() -> void {
       WRITE_LOCKER(locker, _lock);
@@ -357,8 +349,8 @@ class RocksDBCuckooIndexEstimator {
     }
     TRI_ASSERT(_nrUsed <= _nrTotal);
     if (_nrUsed > _nrTotal) {
-      _nrTotal = _nrUsed; // should never happen, but will keep estimates valid
-                          // for production where the above assert is disabled
+      _nrTotal = _nrUsed;  // should never happen, but will keep estimates valid
+                           // for production where the above assert is disabled
     }
 
     return (static_cast<double>(_nrUsed) / static_cast<double>(_nrTotal));
@@ -505,8 +497,7 @@ class RocksDBCuckooIndexEstimator {
       }
       if (foundSomething) {
         _needToPersist.store(true);
-        LOG_TOPIC(TRACE, Logger::ENGINES)
-            << "buffered updates with stamp " << seq;
+        LOG_TOPIC(TRACE, Logger::ENGINES) << "buffered updates with stamp " << seq;
       }
     });
     return res;
@@ -528,7 +519,7 @@ class RocksDBCuckooIndexEstimator {
   void setCommitSeq(rocksdb::SequenceNumber seq) {
     _committedSeq.store(seq, std::memory_order_release);
   }
-  
+
  private:  // methods
   /// @brief call with output from committableSeq(current), and before serialize
   rocksdb::SequenceNumber applyUpdates(rocksdb::SequenceNumber commitSeq) {
@@ -536,7 +527,7 @@ class RocksDBCuckooIndexEstimator {
     Result res = basics::catchVoidToResult([&]() -> void {
       std::vector<Key> inserts;
       std::vector<Key> removals;
-      
+
       // truncate will increase this sequence
       rocksdb::SequenceNumber ignoreSeq = 0;
       while (true) {
@@ -546,7 +537,7 @@ class RocksDBCuckooIndexEstimator {
           WRITE_LOCKER(locker, _lock);
 
           // check for a truncate marker
-          auto it = _truncateBuffer.begin(); // sorted ASC
+          auto it = _truncateBuffer.begin();  // sorted ASC
           while (it != _truncateBuffer.end() && *it <= commitSeq) {
             ignoreSeq = *it;
             TRI_ASSERT(ignoreSeq != 0);
@@ -554,10 +545,10 @@ class RocksDBCuckooIndexEstimator {
             appliedSeq = std::max(appliedSeq, ignoreSeq);
             it = _truncateBuffer.erase(it);
           }
-            
+
           // check for inserts
           if (!_insertBuffers.empty()) {
-            auto it = _insertBuffers.begin(); // sorted ASC
+            auto it = _insertBuffers.begin();  // sorted ASC
             if (it->first <= commitSeq) {
               if (it->first >= ignoreSeq) {
                 inserts = std::move(it->second);
@@ -570,7 +561,7 @@ class RocksDBCuckooIndexEstimator {
 
           // check for removals
           if (!_removalBuffers.empty()) {
-            auto it = _removalBuffers.begin(); // sorted ASC
+            auto it = _removalBuffers.begin();  // sorted ASC
             if (it->first <= commitSeq) {
               if (it->first >= ignoreSeq) {
                 removals = std::move(it->second);
@@ -581,16 +572,16 @@ class RocksDBCuckooIndexEstimator {
             }
           }
         }
-        
+
         if (foundTruncate) {
-          clear(); // clear estimates
+          clear();  // clear estimates
         }
 
         // no inserts or removals left to apply, drop out of loop
         if (inserts.empty() && removals.empty()) {
           break;
         }
-        
+
         if (!inserts.empty()) {
           // apply inserts
           for (auto const& key : inserts) {
@@ -606,18 +597,16 @@ class RocksDBCuckooIndexEstimator {
           }
           removals.clear();
         }
-      } // </while(true)>
+      }  // </while(true)>
     });
     return appliedSeq;
   }
 
   uint64_t memoryUsage() const {
-    return sizeof(RocksDBCuckooIndexEstimator) + _slotAllocSize +
-           _counterAllocSize;
+    return sizeof(RocksDBCuckooIndexEstimator) + _slotAllocSize + _counterAllocSize;
   }
 
-  Slot findSlotNoCuckoo(uint64_t pos1, uint64_t pos2, uint16_t fp,
-                        bool& found) const {
+  Slot findSlotNoCuckoo(uint64_t pos1, uint64_t pos2, uint16_t fp, bool& found) const {
     found = false;
     Slot s = findSlotNoCuckoo(pos1, fp, found);
     if (found) {
@@ -774,8 +763,7 @@ class RocksDBCuckooIndexEstimator {
   }
 
   uint32_t* findCounter(uint64_t pos, uint64_t slot) const {
-    TRI_ASSERT(kCounterSize * (pos * kSlotsPerBucket + slot) <=
-               _counterAllocSize);
+    TRI_ASSERT(kCounterSize * (pos * kSlotsPerBucket + slot) <= _counterAllocSize);
     char* address = _counters + kCounterSize * (pos * kSlotsPerBucket + slot);
     return reinterpret_cast<uint32_t*>(address);
   }
@@ -787,8 +775,8 @@ class RocksDBCuckooIndexEstimator {
 
   uint16_t keyToFingerprint(Key const& k) const {
     uint64_t hash = _fingerprint(k);
-    uint16_t fingerprint = (uint16_t)(
-        (hash ^ (hash >> 16) ^ (hash >> 32) ^ (hash >> 48)) & 0xFFFF);
+    uint16_t fingerprint =
+        (uint16_t)((hash ^ (hash >> 16) ^ (hash >> 32) ^ (hash >> 48)) & 0xFFFF);
     return (fingerprint ? fingerprint : 1);
   }
 
@@ -844,17 +832,15 @@ class RocksDBCuckooIndexEstimator {
     // Validate that we have enough data in the serialized format.
     TRI_ASSERT(serialized.size() ==
                (sizeof(SerializeFormat) + sizeof(uint64_t) + sizeof(_size) +
-                sizeof(_nrUsed) + sizeof(_nrCuckood) + sizeof(_nrTotal) +
-                sizeof(_niceSize) + sizeof(_logSize) +
-                (_size * kSlotSize * kSlotsPerBucket)) +
+                sizeof(_nrUsed) + sizeof(_nrCuckood) + sizeof(_nrTotal) + sizeof(_niceSize) +
+                sizeof(_logSize) + (_size * kSlotSize * kSlotsPerBucket)) +
                    (_size * kCounterSize * kSlotsPerBucket));
 
     // Insert the raw data
     // Size is as follows: nrOfBuckets * kSlotsPerBucket * SlotSize
     TRI_ASSERT((_size * kSlotSize * kSlotsPerBucket) <= _slotAllocSize);
 
-    for (uint64_t i = 0; i < (_size * kSlotSize * kSlotsPerBucket);
-         i += kSlotSize) {
+    for (uint64_t i = 0; i < (_size * kSlotSize * kSlotsPerBucket); i += kSlotSize) {
       *(reinterpret_cast<uint16_t*>(_base + i)) =
           rocksutils::uint16FromPersistent(current);
       current += kSlotSize;
@@ -862,8 +848,7 @@ class RocksDBCuckooIndexEstimator {
 
     TRI_ASSERT((_size * kCounterSize * kSlotsPerBucket) <= _counterAllocSize);
 
-    for (uint64_t i = 0; i < (_size * kCounterSize * kSlotsPerBucket);
-         i += kCounterSize) {
+    for (uint64_t i = 0; i < (_size * kCounterSize * kSlotsPerBucket); i += kCounterSize) {
       *(reinterpret_cast<uint32_t*>(_counters + i)) =
           rocksutils::uint32FromPersistent(current);
       current += kCounterSize;
@@ -917,7 +902,6 @@ class RocksDBCuckooIndexEstimator {
   }
 
  private:               // member variables
-  
   uint64_t _randState;  // pseudo random state for expunging
 
   uint64_t _logSize;    // logarithm (base 2) of number of buckets

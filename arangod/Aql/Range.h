@@ -44,7 +44,7 @@ struct Range {
   int64_t const _low;
   int64_t const _high;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

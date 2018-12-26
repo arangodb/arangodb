@@ -74,6 +74,6 @@ class JobGuard : public SameThreadAsserter {
 
   static thread_local size_t _isWorking;
 };
-}
+}  // namespace arangodb
 
 #endif
