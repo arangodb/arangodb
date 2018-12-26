@@ -210,5 +210,5 @@ To create a Skiplist index in the background in *arangosh* just specify `inBackg
 db.collection.ensureIndex({ type: "skiplist", fields: [ "value" ], inBackground: true });
 ```
 
-For more information see [Creating Indexes in Background](IndexBasics.md#creating-indexes-in-background)
+For more information see "Creating Indexes in Background" in the [Index basics](IndexBasics.md#) page.
 ###}
