@@ -564,7 +564,7 @@ that the collection (or the respective shards) are not available as long as the 
 is created. This "foreground" index creation can be undesirable, if you have to perform it
 on a live system without a dedicated maintenance window.
 
-Indexes can also be created in "background", not using an exclusive lock during the creation. 
+**STARTING FROM VERSION vX.Y.Z**, indexes can also be created in "background", not using an exclusive lock during the creation. 
 The collection remains available, other CRUD operations can run on the collection while the index is created.
 This can be achieved by using the *inBackground* option.
 
