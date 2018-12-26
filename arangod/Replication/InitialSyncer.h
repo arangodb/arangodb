@@ -57,7 +57,8 @@ struct InitialSyncerIncrementalSyncStats {
   uint64_t numDocsInserted = 0;
   // total number of remove operations performed during sync
   uint64_t numDocsRemoved = 0;
-  // total time spent waiting on response for initial call to /_api/replication/keys
+  // total time spent waiting on response for initial call to
+  // /_api/replication/keys
   double waitedForInitial = 0.0;
   // total time spent waiting for responses to /_api/replication/keys?type=keys
   double waitedForKeys = 0.0;
@@ -68,8 +69,7 @@ struct InitialSyncerIncrementalSyncStats {
 class InitialSyncer : public Syncer {
  public:
   explicit InitialSyncer(ReplicationApplierConfiguration const&,
-                         replutils::ProgressInfo::Setter s =
-                             [](std::string const&) -> void {});
+                         replutils::ProgressInfo::Setter s = [](std::string const&) -> void {});
 
   ~InitialSyncer();
 
@@ -80,7 +80,9 @@ class InitialSyncer : public Syncer {
   TRI_voc_tick_t getLastLogTick() const { return _state.master.lastLogTick; }
 
   /// @brief return the last uncommitted log tick of the master at start
-  TRI_voc_tick_t getLastUncommittedLogTick() const { return _state.master.lastUncommittedLogTick; }
+  TRI_voc_tick_t getLastUncommittedLogTick() const {
+    return _state.master.lastUncommittedLogTick;
+  }
 
   /// @brief return the collections that were synced
   std::map<TRI_voc_cid_t, std::string> const& getProcessedCollections() const {
@@ -88,9 +90,8 @@ class InitialSyncer : public Syncer {
   }
 
   std::string progress() const { return _progress.message; }
-  
+
  protected:
-  
   /// @brief start a recurring task to extend the batch
   void startRecurringBatchExtension();
 

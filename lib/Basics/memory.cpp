@@ -57,9 +57,7 @@ void* TRI_Reallocate(void* m, size_t n) {
 }
 
 /// @brief basic memory management for deallocate
-void TRI_Free(void* m) {
-  ::free(m);
-}
+void TRI_Free(void* m) { ::free(m); }
 
 /// @brief securely zero memory
 void TRI_ZeroMemory(void* m, size_t size) {

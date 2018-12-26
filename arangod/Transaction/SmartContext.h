@@ -23,8 +23,8 @@
 #ifndef ARANGOD_TRANSACTION_GLOBAL_CONTEXT_H
 #define ARANGOD_TRANSACTION_GLOBAL_CONTEXT_H 1
 
-#include "Context.h"
 #include "Basics/Common.h"
+#include "Context.h"
 #include "VocBase/vocbase.h"
 
 struct TRI_vocbase_t;
@@ -35,19 +35,21 @@ class TransactionState;
 
 namespace transaction {
 
-/// transaction context that will manage the creation or acquisition of a TransactionState
-/// for transaction::Methods instances for cluster wide transactions. Cluster wide transactions
-/// essentially just mean that all operations will use a consistent transaction ID and
-/// on the same server the same TransactionState instance will be used.
-/// The class supports three different use-cases
-/// (1) Constructor with TID and Type::Default can be used to share a TransactionState between
+/// transaction context that will manage the creation or acquisition of a
+/// TransactionState for transaction::Methods instances for cluster wide
+/// transactions. Cluster wide transactions essentially just mean that all
+/// operations will use a consistent transaction ID and on the same server the
+/// same TransactionState instance will be used. The class supports three
+/// different use-cases (1) Constructor with TID and Type::Default can be used
+/// to share a TransactionState between
 ///     multiple transaction::Methods instances
-/// (2) Constructor with TID and Type::Global will try to lease an already existing TransactionState
-///     from the TransactionManager. This supports global transaction with explicit begin / end requests
+/// (2) Constructor with TID and Type::Global will try to lease an already
+/// existing TransactionState
+///     from the TransactionManager. This supports global transaction with
+///     explicit begin / end requests
 /// (3) Construcor with TransactionState* is used to manage a global transaction
 class SmartContext final : public Context {
  public:
-  
   /// @brief create the context, with given TID
   explicit SmartContext(TRI_vocbase_t& vocbase);
 
@@ -55,8 +57,7 @@ class SmartContext final : public Context {
   ~SmartContext() = default;
 
   /// @brief order a custom type handler
-  std::shared_ptr<arangodb::velocypack::CustomTypeHandler>
-  orderCustomTypeHandler() override final;
+  std::shared_ptr<arangodb::velocypack::CustomTypeHandler> orderCustomTypeHandler() override final;
 
   /// @brief return the resolver
   CollectionNameResolver const& resolver() override final;
@@ -72,15 +73,15 @@ class SmartContext final : public Context {
 
   /// @brief whether or not the transaction is embeddable
   bool isEmbeddable() const override;
-  
+
   static std::shared_ptr<Context> Create(TRI_vocbase_t&);
-  
-private:
+
+ private:
   /// @brief managed TransactionState
-  TransactionState *_state;
+  TransactionState* _state;
 };
 
-}
-}
+}  // namespace transaction
+}  // namespace arangodb
 
 #endif

@@ -52,9 +52,7 @@ void TRI_InitThread(TRI_thread_t*);
 /// @brief starts a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_StartThread(TRI_thread_t*, 
-                     char const*,
-                     void (*starter)(void*), void* data);
+bool TRI_StartThread(TRI_thread_t*, char const*, void (*starter)(void*), void* data);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if we are the thread

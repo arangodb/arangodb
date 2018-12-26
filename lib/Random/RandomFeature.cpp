@@ -61,4 +61,4 @@ void RandomFeature::prepare() {
   RandomGenerator::initialize((RandomGenerator::RandomType)_randomGenerator);
 }
 
-} // arangodb
+}  // namespace arangodb

@@ -63,6 +63,6 @@ class LogThread final : public Thread {
   arangodb::basics::ConditionVariable _condition;
   boost::lockfree::queue<LogMessage*> _messages;
 };
-}
+}  // namespace arangodb
 
 #endif

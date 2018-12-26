@@ -30,7 +30,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
-
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -40,49 +39,43 @@ namespace methods {
 
 /// Common code for ensureIndexes and api-index.js
 struct Indexes {
-  static arangodb::Result getIndex(
-                LogicalCollection const* collection,
-                velocypack::Slice const& indexId,
-                velocypack::Builder&);
+  static arangodb::Result getIndex(LogicalCollection const* collection,
+                                   velocypack::Slice const& indexId, velocypack::Builder&);
 
   /// @brief get all indexes, skips view links
   static arangodb::Result getAll(LogicalCollection const* collection,
                                  std::underlying_type<Index::Serialize>::type,
                                  bool withHidden, arangodb::velocypack::Builder&);
-  
+
   static arangodb::Result createIndex(LogicalCollection*, Index::IndexType,
                                       std::vector<std::string> const&,
                                       bool unique, bool sparse);
 
-  static arangodb::Result ensureIndex(
-      LogicalCollection* collection,
-      velocypack::Slice const& definition, bool create,
-      velocypack::Builder& output);
+  static arangodb::Result ensureIndex(LogicalCollection* collection,
+                                      velocypack::Slice const& definition,
+                                      bool create, velocypack::Builder& output);
 
   static arangodb::Result drop(LogicalCollection* collection,
                                velocypack::Slice const& indexArg);
 
-  static arangodb::Result extractHandle(
-          LogicalCollection const* collection,
-          CollectionNameResolver const* resolver,
-          velocypack::Slice const& val, TRI_idx_iid_t& iid);
+  static arangodb::Result extractHandle(LogicalCollection const* collection,
+                                        CollectionNameResolver const* resolver,
+                                        velocypack::Slice const& val, TRI_idx_iid_t& iid);
 
  private:
-  static arangodb::Result ensureIndexCoordinator(
-            LogicalCollection const* collection,
-            velocypack::Slice const& indexDef, bool create,
-            velocypack::Builder& resultBuilder);
+  static arangodb::Result ensureIndexCoordinator(LogicalCollection const* collection,
+                                                 velocypack::Slice const& indexDef, bool create,
+                                                 velocypack::Builder& resultBuilder);
 
 #ifdef USE_ENTERPRISE
   static arangodb::Result ensureIndexCoordinatorEE(
-      arangodb::LogicalCollection const* collection,
-      arangodb::velocypack::Slice const slice, bool create,
-      arangodb::velocypack::Builder& resultBuilder);
-  static arangodb::Result dropCoordinatorEE(
-      arangodb::LogicalCollection const* collection, TRI_idx_iid_t const iid);
+      arangodb::LogicalCollection const* collection, arangodb::velocypack::Slice const slice,
+      bool create, arangodb::velocypack::Builder& resultBuilder);
+  static arangodb::Result dropCoordinatorEE(arangodb::LogicalCollection const* collection,
+                                            TRI_idx_iid_t const iid);
 #endif
 };
-}
-}
+}  // namespace methods
+}  // namespace arangodb
 
 #endif

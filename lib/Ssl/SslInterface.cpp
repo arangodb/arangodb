@@ -27,13 +27,13 @@
 #include "Basics/StringUtils.h"
 #include "Random/UniformCharacter.h"
 
-#include <openssl/md5.h>
-#include <openssl/sha.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
+#include <openssl/md5.h>
 #include <openssl/rand.h>
+#include <openssl/sha.h>
 
-#ifdef OPENSSL_NO_SSL2 // OpenSSL > 1.1.0 deprecates RAND_pseudo_bytes
+#ifdef OPENSSL_NO_SSL2  // OpenSSL > 1.1.0 deprecates RAND_pseudo_bytes
 #define RAND_BYTES RAND_bytes
 #else
 #define RAND_BYTES RAND_pseudo_bytes
@@ -75,8 +75,7 @@ std::string sslMD5(std::string const& inputStr) {
   return std::string(hex, 32);
 }
 
-void sslMD5(char const* inputStr, size_t length, char*& outputStr,
-            size_t& outputLen) {
+void sslMD5(char const* inputStr, size_t length, char*& outputStr, size_t& outputLen) {
   if (outputStr == nullptr) {
     outputStr = new char[MD5_DIGEST_LENGTH];
     outputLen = MD5_DIGEST_LENGTH;
@@ -104,8 +103,7 @@ void sslMD5(char const* input1, size_t length1, char const* input2,
   MD5_Final((unsigned char*)outputStr, &ctx);
 }
 
-void sslSHA1(char const* inputStr, size_t length, char*& outputStr,
-             size_t& outputLen) {
+void sslSHA1(char const* inputStr, size_t length, char*& outputStr, size_t& outputLen) {
   if (outputStr == nullptr) {
     outputStr = new char[SHA_DIGEST_LENGTH];
     outputLen = SHA_DIGEST_LENGTH;
@@ -118,8 +116,7 @@ void sslSHA1(char const* inputStr, char*& outputStr, size_t& outputLen) {
   sslSHA1(inputStr, strlen(inputStr), outputStr, outputLen);
 }
 
-void sslSHA224(char const* inputStr, size_t length, char*& outputStr,
-               size_t& outputLen) {
+void sslSHA224(char const* inputStr, size_t length, char*& outputStr, size_t& outputLen) {
   if (outputStr == nullptr) {
     outputStr = new char[SHA224_DIGEST_LENGTH];
     outputLen = SHA224_DIGEST_LENGTH;
@@ -132,8 +129,7 @@ void sslSHA224(char const* inputStr, char*& outputStr, size_t& outputLen) {
   sslSHA224(inputStr, strlen(inputStr), outputStr, outputLen);
 }
 
-void sslSHA256(char const* inputStr, size_t length, char*& outputStr,
-               size_t& outputLen) {
+void sslSHA256(char const* inputStr, size_t length, char*& outputStr, size_t& outputLen) {
   if (outputStr == nullptr) {
     outputStr = new char[SHA256_DIGEST_LENGTH];
     outputLen = SHA256_DIGEST_LENGTH;
@@ -146,8 +142,7 @@ void sslSHA256(char const* inputStr, char*& outputStr, size_t& outputLen) {
   sslSHA256(inputStr, strlen(inputStr), outputStr, outputLen);
 }
 
-void sslSHA384(char const* inputStr, size_t length, char*& outputStr,
-               size_t& outputLen) {
+void sslSHA384(char const* inputStr, size_t length, char*& outputStr, size_t& outputLen) {
   if (outputStr == nullptr) {
     outputStr = new char[SHA384_DIGEST_LENGTH];
     outputLen = SHA384_DIGEST_LENGTH;
@@ -160,8 +155,7 @@ void sslSHA384(char const* inputStr, char*& outputStr, size_t& outputLen) {
   sslSHA384(inputStr, strlen(inputStr), outputStr, outputLen);
 }
 
-void sslSHA512(char const* inputStr, size_t length, char*& outputStr,
-               size_t& outputLen) {
+void sslSHA512(char const* inputStr, size_t length, char*& outputStr, size_t& outputLen) {
   if (outputStr == nullptr) {
     outputStr = new char[SHA512_DIGEST_LENGTH];
     outputLen = SHA512_DIGEST_LENGTH;
@@ -174,8 +168,7 @@ void sslSHA512(char const* inputStr, char*& outputStr, size_t& outputLen) {
   sslSHA512(inputStr, strlen(inputStr), outputStr, outputLen);
 }
 
-void sslHEX(char const* inputStr, size_t length, char*& outputStr,
-            size_t& outputLen) {
+void sslHEX(char const* inputStr, size_t length, char*& outputStr, size_t& outputLen) {
   static char const hexval[16] = {'0', '1', '2', '3', '4', '5', '6', '7',
                                   '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 
@@ -199,8 +192,7 @@ void sslHEX(char const* inputStr, char*& outputStr, size_t& outputLen) {
   sslHEX(inputStr, strlen(inputStr), outputStr, outputLen);
 }
 
-void sslBASE64(char const* inputStr, size_t length, char*& outputStr,
-               size_t& outputLen) {
+void sslBASE64(char const* inputStr, size_t length, char*& outputStr, size_t& outputLen) {
   std::string b = StringUtils::encodeBase64(std::string(inputStr, length));
 
   if (outputStr == nullptr) {
@@ -216,9 +208,8 @@ void sslBASE64(char const* inputStr, char*& outputStr, size_t& outputLen) {
 }
 
 std::string sslPBKDF2HS1(char const* salt, size_t saltLength, char const* pass,
-                      size_t passLength, int iter, int keyLength) {
-  unsigned char* dk =
-      (unsigned char*)TRI_Allocate(keyLength + 1);
+                         size_t passLength, int iter, int keyLength) {
+  unsigned char* dk = (unsigned char*)TRI_Allocate(keyLength + 1);
   if (dk == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -251,16 +242,15 @@ std::string sslPBKDF2(char const* salt, size_t saltLength, char const* pass,
     evp_md = const_cast<EVP_MD*>(EVP_sha256());
   }
 
-  unsigned char* dk =
-      (unsigned char*)TRI_Allocate(keyLength + 1);
+  unsigned char* dk = (unsigned char*)TRI_Allocate(keyLength + 1);
   if (dk == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
-  
+
   TRI_DEFER(TRI_Free(dk));
 
   PKCS5_PBKDF2_HMAC(pass, (int)passLength, (const unsigned char*)salt,
-                         (int)saltLength, iter, evp_md, keyLength, dk);
+                    (int)saltLength, iter, evp_md, keyLength, dk);
 
   // return value as hex
   return StringUtils::encodeHex((char*)dk, keyLength);
@@ -285,17 +275,15 @@ std::string sslHMAC(char const* key, size_t keyLength, char const* message,
     evp_md = const_cast<EVP_MD*>(EVP_sha256());
   }
 
-  unsigned char* md =
-      (unsigned char*)TRI_Allocate(EVP_MAX_MD_SIZE + 1);
+  unsigned char* md = (unsigned char*)TRI_Allocate(EVP_MAX_MD_SIZE + 1);
   if (md == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
-  
+
   TRI_DEFER(TRI_Free(md));
   unsigned int md_len;
 
-  HMAC(evp_md, key, (int)keyLength, (const unsigned char*)message, messageLen,
-       md, &md_len);
+  HMAC(evp_md, key, (int)keyLength, (const unsigned char*)message, messageLen, md, &md_len);
 
   return std::string((char*)md, md_len);
 }
@@ -307,11 +295,9 @@ bool verifyHMAC(char const* challenge, size_t challengeLength,
   // secret, secretLen = message
   // result must == BASE64(response, responseLen)
 
-  std::string s =
-      sslHMAC(challenge, challengeLength, secret, secretLen, algorithm);
+  std::string s = sslHMAC(challenge, challengeLength, secret, secretLen, algorithm);
 
-  if (s.length() == responseLen &&
-      s.compare(std::string(response, responseLen)) == 0) {
+  if (s.length() == responseLen && s.compare(std::string(response, responseLen)) == 0) {
     return true;
   }
 
@@ -342,6 +328,6 @@ int sslRand(int32_t* value) {
   return 0;
 }
 
-}
-}
-}
+}  // namespace SslInterface
+}  // namespace rest
+}  // namespace arangodb

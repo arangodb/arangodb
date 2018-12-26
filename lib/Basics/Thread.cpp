@@ -32,8 +32,8 @@
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
 
-#include <thread>
 #include <chrono>
+#include <thread>
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -69,9 +69,7 @@ void Thread::startThread(void* arg) {
 
   LOCAL_THREAD_NAME = ptr->name().c_str();
 
-  auto guard = scopeGuard([&ptr]() {
-    ptr->cleanupMe();
-  });
+  auto guard = scopeGuard([&ptr]() { ptr->cleanupMe(); });
 
   try {
     ptr->runMe();
@@ -80,7 +78,7 @@ void Thread::startThread(void* arg) {
         << "caught exception in thread '" << ptr->_name << "': " << ex.what();
     ptr->crashNotification(ex);
     throw;
-  } 
+  }
 }
 
 /// @brief returns the process id
@@ -189,9 +187,8 @@ void Thread::beginShutdown() {
     _state.compare_exchange_strong(state, ThreadState::STOPPING);
   }
 
-  LOG_TOPIC(TRACE, Logger::THREADS)
-      << "beginShutdown(" << _name << ") reached state "
-      << stringify(_state.load());
+  LOG_TOPIC(TRACE, Logger::THREADS) << "beginShutdown(" << _name << ") reached state "
+                                    << stringify(_state.load());
 }
 
 /// @brief derived class MUST call from its destructor
@@ -213,9 +210,8 @@ void Thread::shutdown() {
 
     if (!isSilent() && _state.load() != ThreadState::STOPPING &&
         _state.load() != ThreadState::STOPPED) {
-      LOG_TOPIC(WARN, Logger::THREADS)
-          << "forcefully shutting down thread '" << _name << "' in state "
-          << stringify(_state.load());
+      LOG_TOPIC(WARN, Logger::THREADS) << "forcefully shutting down thread '" << _name
+                                       << "' in state " << stringify(_state.load());
     }
   }
 
@@ -248,8 +244,7 @@ bool Thread::isStopping() const {
 bool Thread::start(ConditionVariable* finishedCondition) {
   if (!isSystem() && !ApplicationServer::isPrepared()) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-        << "trying to start a thread '" << _name
-        << "' before prepare has finished, current state: "
+        << "trying to start a thread '" << _name << "' before prepare has finished, current state: "
         << (ApplicationServer::server == nullptr
                 ? -1
                 : (int)ApplicationServer::server->state());
@@ -279,8 +274,7 @@ bool Thread::start(ConditionVariable* finishedCondition) {
   TRI_ASSERT(!_threadStructInitialized);
   memset(&_thread, 0, sizeof(thread_t));
 
-  bool ok =
-      TRI_StartThread(&_thread, _name.c_str(), &startThread, this);
+  bool ok = TRI_StartThread(&_thread, _name.c_str(), &startThread, this);
 
   if (!ok) {
     // could not start the thread

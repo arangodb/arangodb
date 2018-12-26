@@ -35,7 +35,7 @@ class RestBatchHandler;
 namespace rest {
 class HttpCommTask;
 class GeneralCommTask;
-}
+}  // namespace rest
 
 class HttpResponse : public GeneralResponse {
   friend class rest::HttpCommTask;
@@ -47,12 +47,10 @@ class HttpResponse : public GeneralResponse {
 
  public:
   explicit HttpResponse(ResponseCode);
-  explicit HttpResponse(ResponseCode code,
-                        basics::StringBuffer* leased);
+  explicit HttpResponse(ResponseCode code, basics::StringBuffer* leased);
   ~HttpResponse();
 
  public:
-  
   bool isHeadResponse() const { return _isHeadResponse; }
 
  public:
@@ -79,23 +77,20 @@ class HttpResponse : public GeneralResponse {
   void writeHeader(basics::StringBuffer*);  // override;
 
  public:
-  
   void reset(ResponseCode code) override final;
-  
-  void addPayload(VPackSlice const&,
-                  arangodb::velocypack::Options const* = nullptr,
+
+  void addPayload(VPackSlice const&, arangodb::velocypack::Options const* = nullptr,
                   bool resolve_externals = true) override;
-  void addPayload(VPackBuffer<uint8_t>&&,
-                  arangodb::velocypack::Options const* = nullptr,
+  void addPayload(VPackBuffer<uint8_t>&&, arangodb::velocypack::Options const* = nullptr,
                   bool resolve_externals = true) override;
-  
+
   /// used for head-responses
   bool setGenerateBody(bool generateBody) override final {
     return _generateBody = generateBody;
   }
-  
+
   int reservePayload(std::size_t size) override { return _body->reserve(size); }
-  
+
   arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::HTTP;
   }
@@ -109,16 +104,15 @@ class HttpResponse : public GeneralResponse {
     _body = nullptr;
     return bb;
   }
-  
+
  private:
   bool _isHeadResponse;
   std::vector<std::string> _cookies;
-  basics::StringBuffer *_body;
+  basics::StringBuffer* _body;
   size_t _bodySize;
-    
-  void addPayloadInternal(velocypack::Slice, size_t,
-                          velocypack::Options const*, bool);
+
+  void addPayloadInternal(velocypack::Slice, size_t, velocypack::Options const*, bool);
 };
-}
+}  // namespace arangodb
 
 #endif

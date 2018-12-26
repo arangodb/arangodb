@@ -67,7 +67,7 @@ class ClientConnection final : public GeneralClientConnection {
   //////////////////////////////////////////////////////////////////////////////
 
   void disconnectSocket() override;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief write data to the connection
   //////////////////////////////////////////////////////////////////////////////
@@ -78,8 +78,7 @@ class ClientConnection final : public GeneralClientConnection {
   /// @brief read data from the connection
   //////////////////////////////////////////////////////////////////////////////
 
-  bool readClientConnection(arangodb::basics::StringBuffer&,
-                            bool& connectionClosed) override;
+  bool readClientConnection(arangodb::basics::StringBuffer&, bool& connectionClosed) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return whether the connection is readable
@@ -87,7 +86,7 @@ class ClientConnection final : public GeneralClientConnection {
 
   bool readable() override;
 };
-}
-}
+}  // namespace httpclient
+}  // namespace arangodb
 
 #endif

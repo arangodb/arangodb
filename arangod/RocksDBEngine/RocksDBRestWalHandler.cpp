@@ -38,18 +38,17 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RocksDBRestWalHandler::RocksDBRestWalHandler(GeneralRequest* request,
-                                             GeneralResponse* response)
+RocksDBRestWalHandler::RocksDBRestWalHandler(GeneralRequest* request, GeneralResponse* response)
     : RestBaseHandler(request, response) {}
 
-RestStatus RocksDBRestWalHandler::execute() {  
+RestStatus RocksDBRestWalHandler::execute() {
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting /_admin/wal/<operation>");
     return RestStatus::DONE;
   }
-  
+
   // extract the sub-request type
   auto const type = _request->requestType();
   std::string const& operation = suffixes[0];
@@ -74,8 +73,7 @@ RestStatus RocksDBRestWalHandler::execute() {
     return RestStatus::DONE;
   }
 
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
 
@@ -120,7 +118,7 @@ void RocksDBRestWalHandler::flush() {
     } else if (value.isBoolean()) {
       waitForCollector = value.getBoolean();
     }
-    
+
     value = slice.get("maxWaitTime");
     if (value.isNumber()) {
       maxWaitTime = value.getNumericValue<double>();
@@ -144,16 +142,14 @@ void RocksDBRestWalHandler::flush() {
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  generateResult(rest::ResponseCode::OK,
-                 arangodb::velocypack::Slice::emptyObjectSlice());
+  generateResult(rest::ResponseCode::OK, arangodb::velocypack::Slice::emptyObjectSlice());
 }
 
 void RocksDBRestWalHandler::transactions() {
   TransactionManager* mngr = TransactionManagerFeature::manager();
   VPackBuilder builder;
   builder.openObject();
-  builder.add("runningTransactions",
-              VPackValue(mngr->getActiveTransactionCount()));
+  builder.add("runningTransactions", VPackValue(mngr->getActiveTransactionCount()));
 
   // lastCollectedId
   /*{
