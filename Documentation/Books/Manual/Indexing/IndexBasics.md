@@ -29,7 +29,7 @@ if you have to perform it on a live system without a dedicated maintenance windo
 
 For potentially long running index  creation operations the _rocksdb_ storage-engine also supports 
 creating indexes in "background". The collection remains available during the index creation, 
-see the section [Creating Indexes in Background](#creating-indexes-in-background) for more information.
+see the section "Creating Indexes in Background" for more information.
 ###}
 
 ArangoDB provides the following index types:
