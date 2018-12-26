@@ -1,11 +1,26 @@
 Parallel Restore Procedure
 ==========================
 
-The following parallel restore procedure is recommended to speed up the
+The following _Parallel Restore Procedure_ is recommended to speed up the
 performance of [_arangorestore_](../Arangorestore/README.md) in a
-cluster environment.
-It is assumed that a cluster environment is running and a logical backup
-with [_arangodump_](../Arangodump/README.md) has already been created.
+Cluster environment.
+
+It is assumed that a Cluster environment is running and a _logical_ backup
+with [_arangodump_](../Arangodump/README.md) has already been taken.
+
+{% hint 'info' %}
+The procedure described in this page is particularly useful for ArangoDB
+version 3.3, but can be used in 3.4 and later versions as well. Note that 
+from v3.4, _arangorestore_ includes the option _threads_ which can be a first
+good step already in achieving restore parallelization and its speed benefit. 
+However, the part regarding setting _replication factor_ to 1 is still useful
+in 3.4 and later versions.
+{% endhint %}
+
+Please refer to 
+[this](Examples.md#factors-affecting-speed-of-arangorestore-in-a-cluster) 
+section for further information on the factors affecting
+restore speed when restoring using _arangorestore_ in a Cluster.
 
 Allocate dump Directory
 -----------------------
@@ -174,7 +189,7 @@ This time the option `--create-collection false` is used since we already
 created the document structure before. The above command will create 3 scripts,
 whereas 3 corresponds to the amount of listed coordinators. The resulting
 scripts are named `coordinator_<number-of-coordinator>.sh` (e.g.
-coordinator_0.sh, coordinator_1.sh, coordinator_2.sh).
+`coordinator_0.sh`, `coordinator_1.sh`, `coordinator_2.sh`).
 
 Execute parallel restore scripts
 --------------------------------
