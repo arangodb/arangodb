@@ -59,7 +59,7 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
   PhysicalCollectionMock(arangodb::LogicalCollection& collection, arangodb::velocypack::Slice const& info);
   virtual PhysicalCollection* clone(arangodb::LogicalCollection& collection) const override;
   virtual int close() override;
-  virtual std::shared_ptr<arangodb::Index> createIndex(arangodb::velocypack::Slice const& info, bool, bool&) override;
+  virtual std::shared_ptr<arangodb::Index> createIndex(arangodb::velocypack::Slice const& info, bool restore, bool& created) override;
   virtual void deferDropCollection(std::function<bool(arangodb::LogicalCollection&)> const& callback) override;
   virtual bool dropIndex(TRI_idx_iid_t iid) override;
   virtual void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) override;
@@ -163,6 +163,7 @@ class StorageEngineMock: public arangodb::StorageEngine {
  public:
   static std::function<void()> before;
   static bool inRecoveryResult;
+  static std::string versionFilenameResult;
   std::map<std::pair<TRI_voc_tick_t, TRI_voc_cid_t>, arangodb::velocypack::Builder> views;
   std::atomic<size_t> vocbaseCount;
 

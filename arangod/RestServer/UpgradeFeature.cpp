@@ -30,8 +30,8 @@
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
-#include "VocBase/Methods/Upgrade.h"
 #include "VocBase/vocbase.h"
+#include "VocBase/Methods/Upgrade.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -39,8 +39,11 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-UpgradeFeature::UpgradeFeature(application_features::ApplicationServer& server,
-                               int* result, std::vector<std::string> const& nonServerFeatures)
+UpgradeFeature::UpgradeFeature(
+    application_features::ApplicationServer& server,
+    int* result,
+    std::vector<std::string> const& nonServerFeatures
+)
     : ApplicationFeature(server, "Upgrade"),
       _upgrade(false),
       _upgradeCheck(true),
@@ -48,6 +51,10 @@ UpgradeFeature::UpgradeFeature(application_features::ApplicationServer& server,
       _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
   startsAfter("AQLPhase");
+}
+
+void UpgradeFeature::addTask(methods::Upgrade::Task&& task) {
+  _tasks.push_back(std::move(task));
 }
 
 void UpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -59,35 +66,33 @@ void UpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "perform a database upgrade if necessary",
                      new BooleanParameter(&_upgrade));
 
-  options->addOption("--database.upgrade-check", "skip a database upgrade",
+  options->addOption("--database.upgrade-check",
+                     "skip a database upgrade",
                      new BooleanParameter(&_upgradeCheck),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
 void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (_upgrade && !_upgradeCheck) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-        << "cannot specify both '--database.auto-upgrade true' and "
-           "'--database.upgrade-check false'";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot specify both '--database.auto-upgrade true' and "
+                  "'--database.upgrade-check false'";
     FATAL_ERROR_EXIT();
   }
 
   if (!_upgrade) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-        << "executing upgrade check: not disabling server features";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "executing upgrade check: not disabling server features";
     return;
   }
 
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME)
-      << "executing upgrade procedure: disabling server features";
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "executing upgrade procedure: disabling server features";
 
   ApplicationServer::forceDisableFeatures(_nonServerFeatures);
   std::vector<std::string> otherFeaturesToDisable = {
-      "Bootstrap",
-      "Endpoint",
+    "Bootstrap",
+    "Endpoint",
   };
   ApplicationServer::forceDisableFeatures(otherFeaturesToDisable);
-
+  
   ReplicationFeature* replicationFeature =
       ApplicationServer::getFeature<ReplicationFeature>("Replication");
   replicationFeature->disableReplicationApplier();
@@ -108,15 +113,15 @@ void UpgradeFeature::prepare() {
 }
 
 void UpgradeFeature::start() {
-  auto init =
-      ApplicationServer::getFeature<InitDatabaseFeature>("InitDatabase");
+  auto init = ApplicationServer::getFeature<InitDatabaseFeature>("InitDatabase");
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
-
+  
   // upgrade the database
   if (_upgradeCheck) {
     upgradeDatabase();
 
-    if (!init->restoreAdmin() && !init->defaultPassword().empty() && um != nullptr) {
+    if (!init->restoreAdmin() && !init->defaultPassword().empty() &&
+        um != nullptr) {
       um->updateUser("root", [&](auth::User& user) {
         user.updatePassword(init->defaultPassword());
         return TRI_ERROR_NO_ERROR;
@@ -125,11 +130,13 @@ void UpgradeFeature::start() {
   }
 
   // change admin user
-  if (init->restoreAdmin() && ServerState::instance()->isSingleServerOrCoordinator()) {
+  if (init->restoreAdmin() &&
+      ServerState::instance()->isSingleServerOrCoordinator()) {
+    
     Result res = um->removeAllUsers();
     if (res.fail()) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-          << "failed to clear users: " << res.errorMessage();
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to clear users: "
+                                              << res.errorMessage();
       *_result = EXIT_FAILURE;
       return;
     }
@@ -141,8 +148,8 @@ void UpgradeFeature::start() {
     }
 
     if (res.fail()) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-          << "failed to create root user: " << res.errorMessage();
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to create root user: "
+                                              << res.errorMessage();
       *_result = EXIT_FAILURE;
       return;
     }
@@ -160,8 +167,7 @@ void UpgradeFeature::start() {
     }
 
     LOG_TOPIC(INFO, arangodb::Logger::STARTUP)
-        << "server will now shut down due to upgrade, database initialization "
-           "or admin restoration.";
+      << "server will now shut down due to upgrade, database initialization or admin restoration.";
 
     server()->beginShutdown();
   }
@@ -170,10 +176,8 @@ void UpgradeFeature::start() {
 void UpgradeFeature::upgradeDatabase() {
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "starting database init/upgrade";
 
-  DatabaseFeature* databaseFeature =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database");
-
+  DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+  
   bool ignoreDatafileErrors = false;
   {
     VPackBuilder options = server()->options(std::unordered_set<std::string>());
@@ -187,26 +191,26 @@ void UpgradeFeature::upgradeDatabase() {
     TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(name);
     TRI_ASSERT(vocbase != nullptr);
 
-    auto res = methods::Upgrade::startup(*vocbase, _upgrade, ignoreDatafileErrors);
+    auto res =
+      methods::Upgrade::startup(*vocbase, _upgrade, ignoreDatafileErrors);
 
     if (res.fail()) {
       char const* typeName = "initialization";
 
       if (res.type == methods::VersionResult::UPGRADE_NEEDED) {
-        typeName = "upgrade";  // an upgrade failed or is required
+        typeName = "upgrade"; // an upgrade failed or is required
 
         if (!_upgrade) {
           LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-              << "Database '" << vocbase->name() << "' needs upgrade. "
-              << "Please start the server with --database.auto-upgrade";
+          << "Database '" << vocbase->name() << "' needs upgrade. "
+          << "Please start the server with --database.auto-upgrade";
         }
       }
 
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-          << "Database '" << vocbase->name() << "' " << typeName << " failed ("
-          << res.errorMessage() << "). "
-          << "Please inspect the logs from the " << typeName << " procedure"
-          << " and try starting the server again.";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Database '" << vocbase->name()
+      << "' " << typeName << " failed (" << res.errorMessage() << "). "
+      << "Please inspect the logs from the " << typeName << " procedure"
+      << " and try starting the server again.";
 
       FATAL_ERROR_EXIT();
     }
@@ -221,4 +225,4 @@ void UpgradeFeature::upgradeDatabase() {
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "finished database init/upgrade";
 }
 
-}  // namespace arangodb
+} // arangodb
