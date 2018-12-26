@@ -29,7 +29,9 @@
 using namespace arangodb::options;
 
 // adds a program option to the section
-void Section::addOption(Option const& option) { options.emplace(option.name, option); }
+void Section::addOption(Option const& option) {
+  options.emplace(option.name, option);
+}
 
 // whether or not the section has (displayable) options
 bool Section::hasOptions() const {
@@ -51,11 +53,11 @@ void Section::printHelp(std::string const& search, size_t tw, size_t ow, bool co
   }
 
   if (colors) {
-    std::cout << "Section '" << ShellColorsFeature::SHELL_COLOR_BRIGHT << displayName() << ShellColorsFeature::SHELL_COLOR_RESET << "' (" << description << ")"
-              << std::endl;
+    std::cout << "Section '" << ShellColorsFeature::SHELL_COLOR_BRIGHT
+              << displayName() << ShellColorsFeature::SHELL_COLOR_RESET << "' ("
+              << description << ")" << std::endl;
   } else {
-    std::cout << "Section '" << displayName() << "' (" << description << ")"
-              << std::endl;
+    std::cout << "Section '" << displayName() << "' (" << description << ")" << std::endl;
   }
 
   // propagate print command to options
@@ -78,4 +80,3 @@ size_t Section::optionsWidth() const {
 
   return width;
 }
-

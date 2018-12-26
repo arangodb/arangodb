@@ -34,14 +34,15 @@
 
 using namespace arangodb::aql;
 
-DocumentProducingNode::DocumentProducingNode(Variable const* outVariable)  
+DocumentProducingNode::DocumentProducingNode(Variable const* outVariable)
     : _outVariable(outVariable) {
   TRI_ASSERT(_outVariable != nullptr);
 }
 
-DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan, 
+DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
                                              arangodb::velocypack::Slice slice)
-    : _outVariable(Variable::varFromVPack(plan->getAst(), slice, "outVariable")) {
+    : _outVariable(
+          Variable::varFromVPack(plan->getAst(), slice, "outVariable")) {
   TRI_ASSERT(_outVariable != nullptr);
 
   if (slice.hasKey("projection")) {
@@ -50,7 +51,7 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
     if (p.isArray()) {
       for (auto const& it : VPackArrayIterator(p)) {
         _projections.emplace_back(it.copyString());
-        break; // stop after first sub-attribute!
+        break;  // stop after first sub-attribute!
       }
     }
   } else if (slice.hasKey("projections")) {
@@ -62,20 +63,21 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
           _projections.emplace_back(it.copyString());
         }
       }
-    } 
+    }
   }
 }
-  
+
 void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   builder.add(VPackValue("outVariable"));
   _outVariable->toVelocyPack(builder);
- 
-  // export in new format 
+
+  // export in new format
   builder.add("projections", VPackValue(VPackValueType::Array));
   for (auto const& it : _projections) {
     builder.add(VPackValue(it));
   }
   builder.close();
-  
-  builder.add("producesResult", VPackValue(dynamic_cast<ExecutionNode const*>(this)->isVarUsedLater(_outVariable)));
+
+  builder.add("producesResult",
+              VPackValue(dynamic_cast<ExecutionNode const*>(this)->isVarUsedLater(_outVariable)));
 }

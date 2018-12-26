@@ -39,8 +39,7 @@ using namespace arangodb::httpclient;
 ArangoClientHelper::ArangoClientHelper() : _httpClient(nullptr) {}
 
 // helper to rewrite HTTP location
-std::string ArangoClientHelper::rewriteLocation(void* data,
-                                                std::string const& location) {
+std::string ArangoClientHelper::rewriteLocation(void* data, std::string const& location) {
   if (location.compare(0, 5, "/_db/") == 0) {
     return location;
   }
@@ -55,8 +54,7 @@ std::string ArangoClientHelper::rewriteLocation(void* data,
 }
 
 // extract an error message from a response
-std::string ArangoClientHelper::getHttpErrorMessage(SimpleHttpResult* result,
-                                                    int* err) {
+std::string ArangoClientHelper::getHttpErrorMessage(SimpleHttpResult* result, int* err) {
   if (err != nullptr) {
     *err = TRI_ERROR_NO_ERROR;
   }
@@ -69,15 +67,15 @@ std::string ArangoClientHelper::getHttpErrorMessage(SimpleHttpResult* result,
     std::string const& errorMessage =
         arangodb::basics::VelocyPackHelper::getStringValue(body, "errorMessage",
                                                            "");
-    int errorNum = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-        body, "errorNum", 0);
+    int errorNum =
+        arangodb::basics::VelocyPackHelper::getNumericValue<int>(body,
+                                                                 "errorNum", 0);
 
     if (errorMessage != "" && errorNum > 0) {
       if (err != nullptr) {
         *err = errorNum;
       }
-      details =
-          ": ArangoError " + StringUtils::itoa(errorNum) + ": " + errorMessage;
+      details = ": ArangoError " + StringUtils::itoa(errorNum) + ": " + errorMessage;
     }
   } catch (...) {
     // No action, fallthrough for error
@@ -89,8 +87,8 @@ std::string ArangoClientHelper::getHttpErrorMessage(SimpleHttpResult* result,
 
 // check if server is a coordinator of a cluster
 bool ArangoClientHelper::getArangoIsCluster(int* err) {
-  std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
-      rest::RequestType::GET, "/_admin/server/role", "", 0));
+  std::unique_ptr<SimpleHttpResult> response(
+      _httpClient->request(rest::RequestType::GET, "/_admin/server/role", "", 0));
 
   if (response == nullptr || !response->isComplete()) {
     return false;
@@ -98,7 +96,7 @@ bool ArangoClientHelper::getArangoIsCluster(int* err) {
 
   std::string role = "UNDEFINED";
 
-  if (response->getHttpReturnCode() == (int) rest::ResponseCode::OK) {
+  if (response->getHttpReturnCode() == (int)rest::ResponseCode::OK) {
     try {
       std::shared_ptr<VPackBuilder> parsedBody = response->getBodyVelocyPack();
       VPackSlice const body = parsedBody->slice();
@@ -109,8 +107,7 @@ bool ArangoClientHelper::getArangoIsCluster(int* err) {
     }
   } else {
     if (response->wasHttpError()) {
-      _httpClient->setErrorMessage(getHttpErrorMessage(response.get(), err),
-                                   false);
+      _httpClient->setErrorMessage(getHttpErrorMessage(response.get(), err), false);
     }
 
     _httpClient->disconnect();

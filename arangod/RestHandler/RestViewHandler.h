@@ -51,6 +51,6 @@ class RestViewHandler : public RestVocbaseBaseHandler {
   void getViews();
 };
 
-}
+}  // namespace arangodb
 
 #endif

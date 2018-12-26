@@ -28,8 +28,8 @@
 
 #include "V8/v8-globals.h"
 
-namespace arangodb{
-  class Result;
+namespace arangodb {
+class Result;
 }
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Converts an object to a UTF-8-encoded and normalized character array.
@@ -72,7 +72,6 @@ static int const SLOT_CLASS = 1;
 /// @brief slot for a V8 external
 static int const SLOT_EXTERNAL = 2;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shell command program name (may be printed in stack traces)
 ////////////////////////////////////////////////////////////////////////////////
@@ -93,8 +92,8 @@ static T* TRI_UnwrapClass(v8::Handle<v8::Object> obj, int32_t type) {
     return nullptr;
   }
 
-  return static_cast<T*>(v8::Handle<v8::External>::Cast(
-                             obj->GetInternalField(SLOT_CLASS))->Value());
+  return static_cast<T*>(
+      v8::Handle<v8::External>::Cast(obj->GetInternalField(SLOT_CLASS))->Value());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -137,10 +136,11 @@ bool TRI_ParseJavaScriptFile(v8::Isolate* isolate, char const*, bool);
 /// @brief executes a string within a V8 context, optionally print the result
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(
-    v8::Isolate* isolate, v8::Handle<v8::Context> context,
-    v8::Handle<v8::String> const source, v8::Handle<v8::String> const name,
-    bool printResult);
+v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(v8::Isolate* isolate,
+                                                  v8::Handle<v8::Context> context,
+                                                  v8::Handle<v8::String> const source,
+                                                  v8::Handle<v8::String> const name,
+                                                  bool printResult);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error in a javascript object, based on error number only
@@ -185,8 +185,7 @@ void TRI_ClearObjectCacheV8(v8::Isolate*);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context>,
-                     std::string const& startupPath,
-                     std::string const& modules);
+                     std::string const& startupPath, std::string const& modules);
 
 void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args);
 

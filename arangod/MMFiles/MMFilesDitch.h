@@ -95,8 +95,8 @@ class MMFilesDocumentDitch final : public MMFilesDitch {
   friend class MMFilesDitches;
 
  public:
-  MMFilesDocumentDitch(MMFilesDitches* ditches, bool usedByTransaction, char const* filename,
-                int line);
+  MMFilesDocumentDitch(MMFilesDitches* ditches, bool usedByTransaction,
+                       char const* filename, int line);
 
   ~MMFilesDocumentDitch();
 
@@ -141,9 +141,9 @@ class MMFilesCompactionDitch final : public MMFilesDitch {
 class MMFilesDropDatafileDitch final : public MMFilesDitch {
  public:
   MMFilesDropDatafileDitch(MMFilesDitches* ditches, MMFilesDatafile* datafile,
-                    LogicalCollection* collection,
-                    std::function<void(MMFilesDatafile*, LogicalCollection*)> const& callback,
-                    char const* filename, int line);
+                           LogicalCollection* collection,
+                           std::function<void(MMFilesDatafile*, LogicalCollection*)> const& callback,
+                           char const* filename, int line);
 
   ~MMFilesDropDatafileDitch();
 
@@ -152,7 +152,10 @@ class MMFilesDropDatafileDitch final : public MMFilesDitch {
 
   char const* typeName() const override final { return "datafile-drop"; }
 
-  void executeCallback() { _callback(_datafile, _collection); _datafile = nullptr; }
+  void executeCallback() {
+    _callback(_datafile, _collection);
+    _datafile = nullptr;
+  }
 
  private:
   MMFilesDatafile* _datafile;
@@ -163,10 +166,11 @@ class MMFilesDropDatafileDitch final : public MMFilesDitch {
 /// @brief datafile rename ditch
 class MMFilesRenameDatafileDitch final : public MMFilesDitch {
  public:
-  MMFilesRenameDatafileDitch(MMFilesDitches* ditches, MMFilesDatafile* datafile,
-                      MMFilesDatafile* compactor, LogicalCollection* collection,
-                      std::function<void(MMFilesDatafile*, MMFilesDatafile*, LogicalCollection*)> const& callback,
-                      char const* filename, int line);
+  MMFilesRenameDatafileDitch(
+      MMFilesDitches* ditches, MMFilesDatafile* datafile,
+      MMFilesDatafile* compactor, LogicalCollection* collection,
+      std::function<void(MMFilesDatafile*, MMFilesDatafile*, LogicalCollection*)> const& callback,
+      char const* filename, int line);
 
   ~MMFilesRenameDatafileDitch();
 
@@ -187,10 +191,9 @@ class MMFilesRenameDatafileDitch final : public MMFilesDitch {
 /// @brief collection unload ditch
 class MMFilesUnloadCollectionDitch final : public MMFilesDitch {
  public:
-  MMFilesUnloadCollectionDitch(
-      MMFilesDitches* ditches, LogicalCollection* collection,
-      std::function<bool(LogicalCollection*)> const& callback,
-      char const* filename, int line);
+  MMFilesUnloadCollectionDitch(MMFilesDitches* ditches, LogicalCollection* collection,
+                               std::function<bool(LogicalCollection*)> const& callback,
+                               char const* filename, int line);
 
   ~MMFilesUnloadCollectionDitch();
 
@@ -208,13 +211,10 @@ class MMFilesUnloadCollectionDitch final : public MMFilesDitch {
 /// @brief collection drop ditch
 class MMFilesDropCollectionDitch final : public MMFilesDitch {
  public:
-  MMFilesDropCollectionDitch(
-    arangodb::MMFilesDitches* ditches,
-    arangodb::LogicalCollection& collection,
-    std::function<bool(arangodb::LogicalCollection&)> const& callback,
-    char const* filename,
-    int line
-  );
+  MMFilesDropCollectionDitch(arangodb::MMFilesDitches* ditches,
+                             arangodb::LogicalCollection& collection,
+                             std::function<bool(arangodb::LogicalCollection&)> const& callback,
+                             char const* filename, int line);
 
   ~MMFilesDropCollectionDitch();
 
@@ -251,8 +251,9 @@ class MMFilesDitches {
 
   /// @brief process the first element from the list
   /// the list will remain unchanged if the first element is either a
-  /// MMFilesDocumentDitch, a MMFilesReplicationDitch or a MMFilesCompactionDitch, or if the list
-  /// contains any MMFilesDocumentMMFilesDitches.
+  /// MMFilesDocumentDitch, a MMFilesReplicationDitch or a
+  /// MMFilesCompactionDitch, or if the list contains any
+  /// MMFilesDocumentMMFilesDitches.
   MMFilesDitch* process(bool&, std::function<bool(MMFilesDitch const*)>);
 
   /// @brief return the type name of the ditch at the head of the active ditches
@@ -274,7 +275,7 @@ class MMFilesDitches {
 
   /// @brief creates a new document ditch and links it
   MMFilesDocumentDitch* createMMFilesDocumentDitch(bool usedByTransaction,
-                                     char const* filename, int line);
+                                                   char const* filename, int line);
 
   /// @brief creates a new replication ditch and links it
   MMFilesReplicationDitch* createMMFilesReplicationDitch(char const* filename, int line);
@@ -284,7 +285,7 @@ class MMFilesDitches {
 
   /// @brief creates a new datafile deletion ditch
   MMFilesDropDatafileDitch* createMMFilesDropDatafileDitch(
-      MMFilesDatafile* datafile, LogicalCollection* collection, 
+      MMFilesDatafile* datafile, LogicalCollection* collection,
       std::function<void(MMFilesDatafile*, LogicalCollection*)> const& callback,
       char const* filename, int line);
 
@@ -296,17 +297,14 @@ class MMFilesDitches {
 
   /// @brief creates a new collection unload ditch
   MMFilesUnloadCollectionDitch* createMMFilesUnloadCollectionDitch(
-      LogicalCollection* collection,
-      std::function<bool(LogicalCollection*)> const& callback,
+      LogicalCollection* collection, std::function<bool(LogicalCollection*)> const& callback,
       char const* filename, int line);
 
   /// @brief creates a new collection drop ditch
   MMFilesDropCollectionDitch* createMMFilesDropCollectionDitch(
-    arangodb::LogicalCollection& collection,
-    std::function<bool(arangodb::LogicalCollection&)> const& callback,
-    char const* filename,
-    int line
-  );
+      arangodb::LogicalCollection& collection,
+      std::function<bool(arangodb::LogicalCollection&)> const& callback,
+      char const* filename, int line);
 
  private:
   /// @brief inserts the ditch into the linked list of ditches
@@ -323,6 +321,6 @@ class MMFilesDitches {
   MMFilesDitch* _end;
   uint64_t _numMMFilesDocumentMMFilesDitches;
 };
-}
+}  // namespace arangodb
 
 #endif

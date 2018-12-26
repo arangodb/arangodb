@@ -33,7 +33,6 @@ namespace arangodb {
 namespace rest {
 
 class Scheduler;
-
 }
 
 class SchedulerFeature final : public application_features::ApplicationFeature {
@@ -79,6 +78,6 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   std::shared_ptr<asio_ns::signal_set> _hangupSignals;
 };
 
-}
+}  // namespace arangodb
 
 #endif

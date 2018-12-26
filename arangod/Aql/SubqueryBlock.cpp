@@ -130,7 +130,8 @@ ExecutionState SubqueryBlock::getSomeNonConstSubquery(size_t atMost) {
     if (!_subqueryCompleted) {
       auto state = executeSubquery();
       if (state == ExecutionState::WAITING) {
-        // If this assert is violated we will not end up in executeSubQuery again.
+        // If this assert is violated we will not end up in executeSubQuery
+        // again.
         TRI_ASSERT(!_subqueryCompleted);
         // We need to wait
         return state;

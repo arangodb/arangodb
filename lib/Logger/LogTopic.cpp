@@ -45,7 +45,7 @@ class Topics {
     return INSTANCE;
   }
 
-  template<typename Visitor>
+  template <typename Visitor>
   bool visit(Visitor const& visitor) const {
     MUTEX_LOCKER(guard, _namesLock);
 
@@ -87,7 +87,8 @@ class Topics {
     try {
       MUTEX_LOCKER(guard, _namesLock);
       _names[name] = topic;
-    } catch(...) { }
+    } catch (...) {
+    }
   }
 
  private:
@@ -97,9 +98,9 @@ class Topics {
   Topics() = default;
   Topics(const Topics&) = delete;
   Topics& operator=(const Topics&) = delete;
-}; // Topics
+};  // Topics
 
-}
+}  // namespace
 
 LogTopic Logger::AGENCY("agency", LogLevel::INFO);
 LogTopic Logger::AGENCYCOMM("agencycomm", LogLevel::INFO);
@@ -181,7 +182,7 @@ std::string LogTopic::lookup(size_t topicId) {
   auto visitor = [&name, topicId](std::string const&, LogTopic const* topic) {
     if (topic->_id == topicId) {
       name = topic->_name;
-      return false; // break the loop
+      return false;  // break the loop
     }
     return true;
   };

@@ -106,6 +106,6 @@ class LineEditor {
 
   std::function<void()> _signalFunc;
 };
-}
+}  // namespace arangodb
 
 #endif

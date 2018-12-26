@@ -50,8 +50,8 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::rocksutils;
 
-RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(
-    GeneralRequest* request, GeneralResponse* response)
+RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(GeneralRequest* request,
+                                                             GeneralResponse* response)
     : RestReplicationHandler(request, response),
       _manager(globalRocksEngine()->replicationManager()) {}
 
@@ -65,7 +65,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
 
   if (type == rest::RequestType::POST) {
     // create a new blocker
-    
+
     bool parseSuccess = true;
     VPackSlice body = this->parseVPackBody(parseSuccess);
     if (!parseSuccess || !body.isObject()) {
@@ -74,7 +74,8 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
       return;
     }
     double ttl = VelocyPackHelper::getNumericValue<double>(body, "ttl", 0);
-    std::string patchCount = VelocyPackHelper::getStringValue(body, "patchCount", "");
+    std::string patchCount =
+        VelocyPackHelper::getStringValue(body, "patchCount", "");
 
     bool found;
     std::string const& value = _request->value("serverId", found);
@@ -87,13 +88,14 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     // create transaction+snapshot, ttl will be 300 if `ttl == 0``
     auto* ctx = _manager->createContext(ttl, serverId);
     RocksDBReplicationContextGuard guard(_manager, ctx);
-    
+
     if (!patchCount.empty()) {
       auto triple = ctx->bindCollectionIncremental(_vocbase, patchCount);
       Result res = std::get<0>(triple);
       if (res.fail()) {
-        LOG_TOPIC(WARN, Logger::REPLICATION) << "Error during first phase of"
-        << " collection count patching: " << res.errorMessage();
+        LOG_TOPIC(WARN, Logger::REPLICATION)
+            << "Error during first phase of"
+            << " collection count patching: " << res.errorMessage();
       }
     }
 
@@ -109,8 +111,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
 
   if (type == rest::RequestType::PUT && len >= 2) {
     // extend an existing blocker
-    TRI_voc_tick_t id =
-        static_cast<TRI_voc_tick_t>(StringUtils::uint64(suffixes[1]));
+    TRI_voc_tick_t id = static_cast<TRI_voc_tick_t>(StringUtils::uint64(suffixes[1]));
 
     auto input = _request->toVelocyPackBuilderPtr();
 
@@ -134,11 +135,10 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     std::string const& value = _request->value("serverId", found);
     if (!found) {
       LOG_TOPIC(DEBUG, Logger::REPLICATION)
-          << "no serverId parameter found in request to "
-          << _request->fullUrl();
+          << "no serverId parameter found in request to " << _request->fullUrl();
     }
 
-    TRI_server_id_t serverId = id; // just use context id as fallback
+    TRI_server_id_t serverId = id;  // just use context id as fallback
     if (!value.empty() && value != "none") {
       serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
     }
@@ -154,8 +154,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
 
   if (type == rest::RequestType::DELETE_REQ && len >= 2) {
     // delete an existing blocker
-    TRI_voc_tick_t id =
-        static_cast<TRI_voc_tick_t>(StringUtils::uint64(suffixes[1]));
+    TRI_voc_tick_t id = static_cast<TRI_voc_tick_t>(StringUtils::uint64(suffixes[1]));
 
     bool found = _manager->remove(id);
     if (found) {
@@ -168,8 +167,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
   }
 
   // we get here if anything above is invalid
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 }
 
 // handled by the batch for rocksdb
@@ -184,8 +182,7 @@ void RocksDBRestReplicationHandler::handleCommandBarrier() {
     b.add("id", VPackValue(idString));
     b.close();
     generateResult(rest::ResponseCode::OK, b.slice());
-  } else if (type == rest::RequestType::PUT ||
-             type == rest::RequestType::DELETE_REQ) {
+  } else if (type == rest::RequestType::PUT || type == rest::RequestType::DELETE_REQ) {
     resetResponse(rest::ResponseCode::NO_CONTENT);
   } else if (type == rest::RequestType::GET) {
     generateResult(rest::ResponseCode::OK, VPackSlice::emptyArraySlice());
@@ -241,8 +238,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
     auto c = _vocbase.lookupCollection(value6);
 
     if (c == nullptr) {
-      generateError(rest::ResponseCode::NOT_FOUND,
-                    TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
       return;
     }
 
@@ -254,9 +250,8 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
 
   builder.openArray();
 
-  auto result = tailWal(&_vocbase, tickStart, tickEnd, static_cast<size_t>(chunkSize),
-                        includeSystem, cid, builder
-  );
+  auto result = tailWal(&_vocbase, tickStart, tickEnd,
+                        static_cast<size_t>(chunkSize), includeSystem, cid, builder);
 
   builder.close();
 
@@ -288,20 +283,21 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   // set headers
   _response->setHeaderNC(StaticStrings::ReplicationHeaderCheckMore,
                          checkMore ? "true" : "false");
-  _response->setHeaderNC(
-      StaticStrings::ReplicationHeaderLastIncluded,
-      StringUtils::itoa((length == 0) ? 0 : result.maxTick()));
-  _response->setHeaderNC(StaticStrings::ReplicationHeaderLastTick, StringUtils::itoa(latest));
-  _response->setHeaderNC(StaticStrings::ReplicationHeaderLastScanned, StringUtils::itoa(result.lastScannedTick()));
-  _response->setHeaderNC(StaticStrings::ReplicationHeaderActive, "true"); // TODO remove
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderLastIncluded,
+                         StringUtils::itoa((length == 0) ? 0 : result.maxTick()));
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderLastTick,
+                         StringUtils::itoa(latest));
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderLastScanned,
+                         StringUtils::itoa(result.lastScannedTick()));
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderActive,
+                         "true");  // TODO remove
   _response->setHeaderNC(StaticStrings::ReplicationHeaderFromPresent,
                          result.minTickIncluded() ? "true" : "false");
 
   if (length > 0) {
     if (useVst) {
       for (auto message : arangodb::velocypack::ArrayIterator(data)) {
-        _response->addPayload(VPackSlice(message),
-                              trxContext->getVPackOptions(), true);
+        _response->addPayload(VPackSlice(message), trxContext->getVPackOptions(), true);
       }
     } else {
       HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
@@ -318,7 +314,8 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
       for (auto marker : arangodb::velocypack::ArrayIterator(data)) {
         dumper.dump(marker);
         httpResponse->body().appendChar('\n');
-        //LOG_TOPIC(INFO, Logger::REPLICATION) << marker.toJson(trxContext->getVPackOptions());
+        // LOG_TOPIC(INFO, Logger::REPLICATION) <<
+        // marker.toJson(trxContext->getVPackOptions());
       }
     }
   }
@@ -331,11 +328,8 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   // note a higher tick than the slave will have received, which may
   // lead to the master eventually deleting a WAL section that the
   // slave will still request later
-  _vocbase.updateReplicationClient(
-    serverId,
-    tickStart == 0 ? 0 : tickStart - 1,
-    replutils::BatchInfo::DefaultTimeout
-  );
+  _vocbase.updateReplicationClient(serverId, tickStart == 0 ? 0 : tickStart - 1,
+                                   replutils::BatchInfo::DefaultTimeout);
 }
 
 /// @brief run the command that determines which transactions were open at
@@ -359,7 +353,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
                   "batchId not specified");
     return;
   }
-  
+
   RocksDBReplicationContext* ctx = _manager->find(StringUtils::uint64(batchId));
   RocksDBReplicationContextGuard guard(_manager, ctx);
   if (ctx == nullptr) {
@@ -387,8 +381,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   } else {
     grantTemporaryRights();
     res = ctx->getInventory(_vocbase, includeSystem, false, builder);
-    TRI_ASSERT(builder.hasKey("collections") &&
-               builder.hasKey("views"));
+    TRI_ASSERT(builder.hasKey("collections") && builder.hasKey("views"));
   }
 
   if (res.fail()) {
@@ -408,7 +401,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   builder.close();  // </state>
   builder.add("tick", VPackValue(std::to_string(tick)));
   builder.close();  // Toplevel
-  
+
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
@@ -423,7 +416,7 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
   // to is ignored because the snapshot time is the latest point in time
 
   RocksDBReplicationContext* ctx = nullptr;
-  //get batchId from url parameters
+  // get batchId from url parameters
   bool found;
   std::string batchId = _request->value("batchId", found);
 
@@ -440,19 +433,20 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
 
   // bind collection to context - will initialize iterator
   Result res;
-  TRI_voc_cid_t cid; uint64_t numDocs;
+  TRI_voc_cid_t cid;
+  uint64_t numDocs;
   std::tie(res, cid, numDocs) = ctx->bindCollectionIncremental(_vocbase, collection);
 
   if (res.fail()) {
     generateError(res);
     return;
   }
-  
+
   // keysId = <batchId>-<cid>
   std::string keysId = StringUtils::itoa(ctx->id());
   keysId.push_back('-');
   keysId.append(StringUtils::itoa(cid));
-  
+
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
   result.add("id", VPackValue(keysId));
@@ -461,12 +455,11 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
   generateResult(rest::ResponseCode::OK, result.slice());
 }
 
-static std::pair<uint64_t, TRI_voc_cid_t>
-  extractBatchAndCid(std::string const& input) {
+static std::pair<uint64_t, TRI_voc_cid_t> extractBatchAndCid(std::string const& input) {
   auto pos = input.find('-');
   if (pos != std::string::npos && input.size() > pos + 1 && pos > 1) {
     return std::make_pair(StringUtils::uint64(input.c_str(), pos),
-                          StringUtils::uint64(input.substr(pos+1)));
+                          StringUtils::uint64(input.substr(pos + 1)));
   }
   return std::make_pair(0, 0);
 }
@@ -492,14 +485,15 @@ void RocksDBRestReplicationHandler::handleCommandGetKeys() {
     chunkSize = 20000;
   }
 
-  //first suffix needs to be the key id
-  std::string const& keysId = suffixes[1]; // <batchId>-<cid>
-  uint64_t batchId; TRI_voc_cid_t cid;
+  // first suffix needs to be the key id
+  std::string const& keysId = suffixes[1];  // <batchId>-<cid>
+  uint64_t batchId;
+  TRI_voc_cid_t cid;
   std::tie(batchId, cid) = extractBatchAndCid(keysId);
 
   // get context
   RocksDBReplicationContext* ctx = _manager->find(batchId);
-  //lock context
+  // lock context
   RocksDBReplicationContextGuard guard(_manager, ctx);
 
   if (ctx == nullptr) {
@@ -553,9 +547,10 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
     return;
   }
 
-  //first suffix needs to be the key id
-  std::string const& keysId = suffixes[1]; // <batchId>-<cid>
-  uint64_t batchId; TRI_voc_cid_t cid;
+  // first suffix needs to be the key id
+  std::string const& keysId = suffixes[1];  // <batchId>-<cid>
+  uint64_t batchId;
+  TRI_voc_cid_t cid;
   std::tie(batchId, cid) = extractBatchAndCid(keysId);
 
   RocksDBReplicationContext* ctx = _manager->find(batchId);
@@ -565,7 +560,7 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
                   "batchId not specified or not found");
     return;
   }
-  
+
   auto transactionContext = transaction::StandaloneContext::Create(_vocbase);
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer, transactionContext->getVPackOptions());
@@ -578,7 +573,6 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
       return;
     }
   } else {
-    
     size_t offsetInChunk = 0;
     size_t maxChunkSize = SIZE_MAX;
     std::string const& value2 = _request->value("offset", found);
@@ -591,7 +585,7 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
       // if a client does not send an "offset" parameter at all, we are
       // not sure if it supports this protocol (3.2 and before) or not
     }
-    
+
     bool success = false;
     VPackSlice const parsedIds = this->parseVPackBody(success);
     if (!success) {
@@ -609,8 +603,7 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
     }
   }
 
-  generateResult(rest::ResponseCode::OK, std::move(buffer),
-                 transactionContext);
+  generateResult(rest::ResponseCode::OK, std::move(buffer), transactionContext);
 }
 
 void RocksDBRestReplicationHandler::handleCommandRemoveKeys() {
@@ -622,9 +615,10 @@ void RocksDBRestReplicationHandler::handleCommandRemoveKeys() {
     return;
   }
 
-  //first suffix needs to be the key id
-  std::string const& keysId = suffixes[1]; // <batchId>-<cid>
-  uint64_t batchId; TRI_voc_cid_t cid;
+  // first suffix needs to be the key id
+  std::string const& keysId = suffixes[1];  // <batchId>-<cid>
+  uint64_t batchId;
+  TRI_voc_cid_t cid;
   std::tie(batchId, cid) = extractBatchAndCid(keysId);
 
   RocksDBReplicationContext* ctx = _manager->find(batchId);
@@ -632,8 +626,7 @@ void RocksDBRestReplicationHandler::handleCommandRemoveKeys() {
   if (ctx != nullptr) {
     ctx->releaseIterators(_vocbase, cid);
   }
-  
-  
+
   VPackBuilder resultBuilder;
   resultBuilder.openObject();
   resultBuilder.add("id", VPackValue(keysId));  // id as a string
@@ -673,12 +666,13 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   }
 
   // acquire context
-  RocksDBReplicationContext* ctx = _manager->find(contextId, /*ttl*/0);
+  RocksDBReplicationContext* ctx = _manager->find(contextId, /*ttl*/ 0);
   RocksDBReplicationContextGuard guard(_manager, ctx);
 
   if (ctx == nullptr) {
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "replication dump - unable to find context (it could be expired)");
+    generateError(
+        rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
+        "replication dump - unable to find context (it could be expired)");
     return;
   }
 
@@ -690,10 +684,8 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   grantTemporaryRights();
 
   ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr &&
-      !exec->canUseCollection(_vocbase.name(), cname, auth::Level::RO)) {
-    generateError(rest::ResponseCode::FORBIDDEN,
-                  TRI_ERROR_FORBIDDEN);
+  if (exec != nullptr && !exec->canUseCollection(_vocbase.name(), cname, auth::Level::RO)) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return;
   }
 
@@ -702,9 +694,8 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
 
   RocksDBReplicationContext::DumpResult res(TRI_ERROR_NO_ERROR);
   if (request()->contentTypeResponse() == rest::ContentType::VPACK) {
-
     VPackBuffer<uint8_t> buffer;
-    buffer.reserve(reserve); // avoid reallocs
+    buffer.reserve(reserve);  // avoid reallocs
 
     res = ctx->dumpVPack(_vocbase, cname, buffer, chunkSize);
     // generate the result
@@ -730,7 +721,8 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     auto response = dynamic_cast<HttpResponse*>(_response.get());
     StringBuffer dump(reserve, false);
     if (response == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response type");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "invalid response type");
     }
 
     // do the work!

@@ -92,6 +92,6 @@ class RestBatchHandler : public RestVocbaseBaseHandler {
   size_t _errors;
   std::string _boundary;
 };
-}
+}  // namespace arangodb
 
 #endif

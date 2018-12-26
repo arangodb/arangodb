@@ -24,7 +24,7 @@
 */
 
 #include "fasthash.h"
-  
+
 uint64_t fasthash64(const void* buf, size_t len, uint64_t seed) {
 #ifndef TRI_UNALIGNED_ACCESS
   // byte-wise hashing to support platforms that don't permit
@@ -33,7 +33,7 @@ uint64_t fasthash64(const void* buf, size_t len, uint64_t seed) {
   uint8_t const* pos = (uint8_t const*)buf;
   uint8_t const* end = pos + len;
   uint64_t h = seed ^ (len * fasthash_m);
-  
+
   while (pos != end) {
     len = end - pos;
     if (len > 8) {
@@ -88,7 +88,7 @@ uint64_t fasthash64(const void* buf, size_t len, uint64_t seed) {
     h ^= fasthash_mix(v);
     h *= fasthash_m;
   }
-  
+
   pos2 = (const unsigned char*)pos;
   v = 0;
 

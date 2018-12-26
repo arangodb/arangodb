@@ -48,41 +48,36 @@ ParseResult<AttributeMasking> AttributeMasking::parse(Maskings* maskings,
 
     if (key == "type") {
       if (!entry.value.isString()) {
-        return ParseResult<AttributeMasking>(
-            ParseResult<AttributeMasking>::ILLEGAL_PARAMETER,
-            "type must be a string");
+        return ParseResult<AttributeMasking>(ParseResult<AttributeMasking>::ILLEGAL_PARAMETER,
+                                             "type must be a string");
       }
 
       type = entry.value.copyString();
     } else if (key == "path") {
       if (!entry.value.isString()) {
-        return ParseResult<AttributeMasking>(
-            ParseResult<AttributeMasking>::ILLEGAL_PARAMETER,
-            "path must be a string");
+        return ParseResult<AttributeMasking>(ParseResult<AttributeMasking>::ILLEGAL_PARAMETER,
+                                             "path must be a string");
       }
 
       path = entry.value.copyString();
     } else if (key == "unmaskedLength") {
       if (!entry.value.isInteger()) {
-        return ParseResult<AttributeMasking>(
-            ParseResult<AttributeMasking>::ILLEGAL_PARAMETER,
-            "length must be an integer");
+        return ParseResult<AttributeMasking>(ParseResult<AttributeMasking>::ILLEGAL_PARAMETER,
+                                             "length must be an integer");
       }
 
       length = entry.value.getInt();
     } else if (key == "hash") {
       if (!entry.value.isBool()) {
-        return ParseResult<AttributeMasking>(
-            ParseResult<AttributeMasking>::ILLEGAL_PARAMETER,
-            "hash must be an integer");
+        return ParseResult<AttributeMasking>(ParseResult<AttributeMasking>::ILLEGAL_PARAMETER,
+                                             "hash must be an integer");
       }
 
       hash = entry.value.getBool();
     } else if (key == "seed") {
       if (!entry.value.isInteger()) {
-        return ParseResult<AttributeMasking>(
-            ParseResult<AttributeMasking>::ILLEGAL_PARAMETER,
-            "seed must be an integer");
+        return ParseResult<AttributeMasking>(ParseResult<AttributeMasking>::ILLEGAL_PARAMETER,
+                                             "seed must be an integer");
       }
 
       seed = entry.value.getInt();
@@ -90,9 +85,8 @@ ParseResult<AttributeMasking> AttributeMasking::parse(Maskings* maskings,
   }
 
   if (path.empty()) {
-    return ParseResult<AttributeMasking>(
-        ParseResult<AttributeMasking>::ILLEGAL_PARAMETER,
-        "path must not be empty");
+    return ParseResult<AttributeMasking>(ParseResult<AttributeMasking>::ILLEGAL_PARAMETER,
+                                         "path must not be empty");
   }
 
   ParseResult<Path> ap = Path::parse(path);
@@ -109,8 +103,8 @@ ParseResult<AttributeMasking> AttributeMasking::parse(Maskings* maskings,
           "expecting length to be at least for xify_front");
     }
 
-    return ParseResult<AttributeMasking>(AttributeMasking(
-        ap.result, new XifyFront(maskings, length, hash, seed)));
+    return ParseResult<AttributeMasking>(
+        AttributeMasking(ap.result, new XifyFront(maskings, length, hash, seed)));
   }
 
   return ParseResult<AttributeMasking>(

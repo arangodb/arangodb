@@ -74,13 +74,14 @@ struct consolidate_docs_fill {
 /// @param max_segments_bytes maxinum allowed size of all consolidated segments
 /// @param floor_segment_bytes treat all smaller segments as equal for consolidation selection
 /// @param lookahead how many tiers have to be inspected
+/// @param min_score filter out candidates with score less than min_score
 ////////////////////////////////////////////////////////////////////////////////
 struct consolidate_tier {
   size_t min_segments = 1;
   size_t max_segments = 10;
   size_t max_segments_bytes = size_t(5)*(1<<30);
   size_t floor_segment_bytes = size_t(2)*(1<<20);
-  size_t lookahead = integer_traits<size_t>::const_max;
+  double_t min_score = 0.;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -52,8 +52,7 @@ _to:doc._to} IN edges
   )
   RETURN SUM(values)
 
-
-# AWK Scripts
+#AWK Scripts
 
 Make CSV file with ID’s unique
 cat edges.csv | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | awk '!seen[$0]++' > vertices.csv

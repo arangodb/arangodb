@@ -75,10 +75,8 @@ class Maskings {
                       std::vector<std::string>& path, VPackSlice const& data);
   void addMaskedObject(Collection& collection, VPackBuilder& builder,
                        std::vector<std::string>& path, VPackSlice const& data);
-  void addMasked(Collection& collection, VPackBuilder& builder,
-                 VPackSlice const& data);
-  void addMasked(Collection& collection, basics::StringBuffer&,
-                 VPackSlice const& data);
+  void addMasked(Collection& collection, VPackBuilder& builder, VPackSlice const& data);
+  void addMasked(Collection& collection, basics::StringBuffer&, VPackSlice const& data);
 
  private:
   std::map<std::string, Collection> _collections;

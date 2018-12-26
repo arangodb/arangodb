@@ -29,8 +29,8 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
-#include "GeneralRequest.h"
 #include "Endpoint/Endpoint.h"
+#include "GeneralRequest.h"
 #include "Logger/Logger.h"
 #include "Rest/CommonDefines.h"
 
@@ -38,10 +38,10 @@ namespace arangodb {
 namespace velocypack {
 struct Options;
 class Slice;
-}
+}  // namespace velocypack
 
-using rest::ContentType;
 using rest::ConnectionType;
+using rest::ContentType;
 using rest::ResponseCode;
 
 class GeneralRequest;
@@ -74,8 +74,7 @@ class GeneralResponse {
   }
 
   void setContentType(std::string&& contentType) {
-    _headers[arangodb::StaticStrings::ContentTypeHeader] =
-        std::move(contentType);
+    _headers[arangodb::StaticStrings::ContentTypeHeader] = std::move(contentType);
     _contentType = ContentType::CUSTOM;
   }
 
@@ -107,7 +106,7 @@ class GeneralResponse {
   std::unordered_map<std::string, std::string> const& headers() const {
     return _headers;
   }
-  
+
   // adds a header. the header field name will be lower-cased
   void setHeader(std::string const& key, std::string const& value) {
     _headers[basics::StringUtils::tolower(key)] = value;
@@ -122,7 +121,7 @@ class GeneralResponse {
   void setHeaderNC(std::string const& key, std::string&& value) {
     _headers[key] = std::move(value);
   }
-  
+
   // adds a header if not set. the header field name must be lower-cased
   void setHeaderNCIfNotSet(std::string const& key, std::string const& value) {
     if (_headers.find(key) != _headers.end()) {
@@ -131,7 +130,7 @@ class GeneralResponse {
     }
     _headers.emplace(key, value);
   }
-  
+
  public:
   virtual uint64_t messageId() const { return 1; }
 
@@ -147,24 +146,21 @@ class GeneralResponse {
     addPayload(std::forward<Payload>(payload), &options, resolveExternals);
   }
 
-  virtual void addPayload(VPackSlice const&,
-                  arangodb::velocypack::Options const* = nullptr,
-                  bool resolveExternals = true) = 0;
+  virtual void addPayload(VPackSlice const&, arangodb::velocypack::Options const* = nullptr,
+                          bool resolveExternals = true) = 0;
   virtual void addPayload(VPackBuffer<uint8_t>&&,
-                  arangodb::velocypack::Options const* = nullptr,
-                  bool resolveExternals = true) = 0;
-  
+                          arangodb::velocypack::Options const* = nullptr,
+                          bool resolveExternals = true) = 0;
+
   virtual int reservePayload(std::size_t size) { return TRI_ERROR_NO_ERROR; }
-  
+
   /// used for head
   bool generateBody() const { return _generateBody; };
   /// used for head
-  virtual bool setGenerateBody(bool) {
-    return _generateBody;
-  };
+  virtual bool setGenerateBody(bool) { return _generateBody; };
 
  protected:
-  ResponseCode _responseCode;  // http response code
+  ResponseCode _responseCode;                             // http response code
   std::unordered_map<std::string, std::string> _headers;  // headers/metadata map
 
   ContentType _contentType;
@@ -172,6 +168,6 @@ class GeneralResponse {
   bool _generateBody;
   ContentType _contentTypeRequested;
 };
-}
+}  // namespace arangodb
 
 #endif

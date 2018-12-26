@@ -30,7 +30,7 @@ set(IResearchTests_INCLUDE_DIR
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-if (USE_OPTIMIZE_FOR_ARCHITECTURE)
+if (USE_SIMDCOMP)
   set(IReSearch_tests_optimized_sources
     ./store/store_utils_optimized_tests.cpp
   )
@@ -212,7 +212,7 @@ target_link_libraries(${IResearchTests_TARGET_NAME}-shared
 
 target_link_libraries(${IResearchTests_TARGET_NAME}-static
   ${GCOV_LIBRARY}
-  ${IResearch_TARGET_NAME}-static
+  ${IResearch_TARGET_NAME}-static-allinone
   ${GTEST_STATIC_LIBS}
   ${PTHREAD_LIBRARY}
 )

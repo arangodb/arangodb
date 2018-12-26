@@ -34,40 +34,35 @@ NS_BEGIN(aql)
 struct AstNode;
 struct Variable;
 
-NS_END // aql
+NS_END  // aql
+
+    NS_BEGIN(iresearch)
+
+        struct QueryContext;
+
+NS_END  // iresearch
+
+    NS_BEGIN(transaction)
+
+        class Methods;  // forward declaration
+
+NS_END  // transaction
 
 NS_BEGIN(iresearch)
 
-struct QueryContext;
-
-NS_END // iresearch
-
-NS_BEGIN(transaction)
-
-class Methods; // forward declaration
-
-NS_END // transaction
-
-NS_BEGIN(iresearch)
-
-struct OrderFactory {
+    struct OrderFactory {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief determine if the 'node' can be converted into an iresearch scorer
-  ///        if 'scorer' != nullptr then also append build iresearch scorer there
+  ///        if 'scorer' != nullptr then also append build iresearch scorer
+  ///        there
   ////////////////////////////////////////////////////////////////////////////////
-  static bool scorer(
-    irs::sort::ptr* scorer,
-    arangodb::aql::AstNode const& node,
-    arangodb::iresearch::QueryContext const& ctx
-  );
+  static bool scorer(irs::sort::ptr* scorer, arangodb::aql::AstNode const& node,
+                     arangodb::iresearch::QueryContext const& ctx);
 
-  static bool comparer(
-    irs::sort::ptr* scorer,
-    arangodb::aql::AstNode const& node
-  );
-}; // OrderFactory
+  static bool comparer(irs::sort::ptr* scorer, arangodb::aql::AstNode const& node);
+};  // OrderFactory
 
-NS_END // iresearch
-NS_END // arangodb
+NS_END      // iresearch
+    NS_END  // arangodb
 
-#endif // ARANGOD_IRESEARCH__IRESEARCH_ORDER_FACTORY_H
+#endif  // ARANGOD_IRESEARCH__IRESEARCH_ORDER_FACTORY_H
