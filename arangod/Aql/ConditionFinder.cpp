@@ -93,8 +93,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
       TRI_ASSERT(outvars.size() == 1);
 
       _variableDefinitions.emplace(
-          outvars[0]->id,
-          static_cast<CalculationNode const*>(en)->expression()->node());
+          outvars[0]->id, static_cast<CalculationNode const*>(en)->expression()->node());
       TRI_IF_FAILURE("ConditionFinder::variableDefinition") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
@@ -132,12 +131,12 @@ bool ConditionFinder::before(ExecutionNode* en) {
                     auto s = static_cast<CalculationNode*>(setter);
                     auto filterExpression = s->expression();
                     AstNode* inNode = filterExpression->nodeForModification();
-                    if (!inNode->canThrow() && inNode->isDeterministic() && inNode->isSimple()) {
+                    if (!inNode->canThrow() && inNode->isDeterministic() &&
+                        inNode->isSimple()) {
                       return inNode;
                     }
                   }
                 }
-
               }
               return node;
             };
@@ -155,8 +154,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
 
-      bool const conditionIsImpossible =
-          (foundCondition && condition->isEmpty());
+      bool const conditionIsImpossible = (foundCondition && condition->isEmpty());
 
       if (conditionIsImpossible) {
         // condition is always false
@@ -186,7 +184,9 @@ bool ConditionFinder::before(ExecutionNode* en) {
       std::unique_ptr<SortCondition> sortCondition;
       if (!en->isInInnerLoop()) {
         // we cannot optimize away a sort if we're in an inner loop ourselves
-        sortCondition.reset(new SortCondition(_sorts, condition->getConstAttributes(node->outVariable(), false), _variableDefinitions));
+        sortCondition.reset(
+            new SortCondition(_sorts, condition->getConstAttributes(node->outVariable(), false),
+                              _variableDefinitions));
       } else {
         sortCondition.reset(new SortCondition);
       }
@@ -197,8 +197,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
       }
 
       std::vector<transaction::Methods::IndexHandle> usedIndexes;
-      auto canUseIndex =
-          condition->findIndexes(node, usedIndexes, sortCondition.get());
+      auto canUseIndex = condition->findIndexes(node, usedIndexes, sortCondition.get());
 
       if (canUseIndex.first /*filtering*/ || canUseIndex.second /*sorting*/) {
         bool reverse = false;
@@ -218,9 +217,9 @@ bool ConditionFinder::before(ExecutionNode* en) {
 
         // We either can find indexes for everything or findIndexes will clear
         // out usedIndexes
-        std::unique_ptr<ExecutionNode> newNode(new IndexNode(
-            _plan, _plan->nextId(), node->vocbase(), node->collection(),
-            node->outVariable(), usedIndexes, condition.get(), reverse));
+        std::unique_ptr<ExecutionNode> newNode(
+            new IndexNode(_plan, _plan->nextId(), node->vocbase(), node->collection(),
+                          node->outVariable(), usedIndexes, condition.get(), reverse));
         condition.release();
         TRI_IF_FAILURE("ConditionFinder::insertIndexNode") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

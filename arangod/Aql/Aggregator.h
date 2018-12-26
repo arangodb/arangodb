@@ -24,16 +24,15 @@
 #ifndef ARANGOD_AQL_AGGREGATOR_H
 #define ARANGOD_AQL_AGGREGATOR_H 1
 
-#include "Basics/Common.h"
 #include "Aql/AqlValue.h"
+#include "Basics/Common.h"
 
 #include <velocypack/Builder.h>
 
 namespace arangodb {
 namespace transaction {
 class Methods;
-}
-;
+};
 
 namespace aql {
 
@@ -52,7 +51,8 @@ struct Aggregator {
   static std::unique_ptr<Aggregator> fromTypeString(transaction::Methods*,
                                                     std::string const&);
   static std::unique_ptr<Aggregator> fromVPack(transaction::Methods*,
-                                               arangodb::velocypack::Slice const&, char const*);
+                                               arangodb::velocypack::Slice const&,
+                                               char const*);
 
   static bool isSupported(std::string const&);
   static bool requiresInput(std::string const&);
@@ -139,12 +139,7 @@ struct AggregatorAverage final : public Aggregator {
 
 struct AggregatorVarianceBase : public Aggregator {
   AggregatorVarianceBase(transaction::Methods* trx, bool population)
-      : Aggregator(trx),
-        population(population),
-        count(0),
-        sum(0.0),
-        mean(0.0),
-        invalid(false) {}
+      : Aggregator(trx), population(population), count(0), sum(0.0), mean(0.0), invalid(false) {}
 
   void reset() override final;
   void reduce(AqlValue const&) override final;
@@ -184,7 +179,7 @@ struct AggregatorStddev final : public AggregatorVarianceBase {
   AqlValue stealValue() override final;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

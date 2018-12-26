@@ -35,14 +35,12 @@ class BootstrapFeature final : public application_features::ApplicationFeature {
   void start() override final;
   void unprepare() override final;
 
-  bool isReady() const {
-    return _isReady;
-  }
+  bool isReady() const { return _isReady; }
 
  private:
   bool _isReady;
   bool _bark;
 };
-}
+}  // namespace arangodb
 
 #endif

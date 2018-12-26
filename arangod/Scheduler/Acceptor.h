@@ -46,13 +46,12 @@ class Acceptor {
   std::unique_ptr<Socket> movePeer() { return std::move(_peer); };
 
  public:
-  static std::unique_ptr<Acceptor> factory(asio_ns::io_context& _ioService,
-                                           Endpoint* endpoint);
+  static std::unique_ptr<Acceptor> factory(asio_ns::io_context& _ioService, Endpoint* endpoint);
 
  protected:
   asio_ns::io_context& _ioContext;
   Endpoint* _endpoint;
   std::unique_ptr<Socket> _peer;
 };
-}
+}  // namespace arangodb
 #endif

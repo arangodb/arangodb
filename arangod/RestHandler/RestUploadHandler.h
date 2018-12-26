@@ -47,6 +47,6 @@ class RestUploadHandler : public RestVocbaseBaseHandler {
 
   bool parseMultiPart(char const*&, size_t&);
 };
-}
+}  // namespace arangodb
 
 #endif

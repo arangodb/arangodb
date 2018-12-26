@@ -40,8 +40,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestUsersHandler::RestUsersHandler(GeneralRequest* request,
-                                   GeneralResponse* response)
+RestUsersHandler::RestUsersHandler(GeneralRequest* request, GeneralResponse* response)
     : RestBaseHandler(request, response) {}
 
 // returns the queue name
@@ -91,11 +90,11 @@ bool RestUsersHandler::canAccessUser(std::string const& user) const {
 }
 
 /// helper to generate a compliant response for individual user requests
-void RestUsersHandler::generateUserResult(rest::ResponseCode code,
-                                          VPackBuilder const& doc) {
+void RestUsersHandler::generateUserResult(rest::ResponseCode code, VPackBuilder const& doc) {
   VPackBuilder b;
-  b(VPackValue(VPackValueType::Object))(StaticStrings::Error, VPackValue(false))(
-      StaticStrings::Code, VPackValue((int)code))();
+  b(VPackValue(VPackValueType::Object))(StaticStrings::Error,
+                                        VPackValue(false))(StaticStrings::Code,
+                                                           VPackValue((int)code))();
   b = VPackCollection::merge(doc.slice(), b.slice(), false);
   generateResult(code, b.slice());
 }
@@ -145,8 +144,8 @@ RestStatus RestUsersHandler::getRequest(auth::UserManager* um) {
       } else if (suffixes.size() == 4) {
         bool configured = _request->parsedValue("configured", false);
         //_api/user/<user>/database/<dbname>/<collection>
-        auth::Level lvl = um->collectionAuthLevel(user, suffixes[2],
-                                                  suffixes[3], configured);
+        auth::Level lvl =
+            um->collectionAuthLevel(user, suffixes[2], suffixes[3], configured);
 
         VPackBuilder data;
         data.add(VPackValue(convertFromAuthLevel(lvl)));
@@ -162,8 +161,7 @@ RestStatus RestUsersHandler::getRequest(auth::UserManager* um) {
         if (suffixes.size() == 3 && resp.isObject()) {
           resp = resp.get(suffixes[2]);
         }
-        generateOk(ResponseCode::OK,
-                   resp.isNone() ? VPackSlice::nullSlice() : resp);
+        generateOk(ResponseCode::OK, resp.isNone() ? VPackSlice::nullSlice() : resp);
         return TRI_ERROR_NO_ERROR;
       });
       if (r.fail()) {
@@ -179,25 +177,22 @@ RestStatus RestUsersHandler::getRequest(auth::UserManager* um) {
 
 /// generate response for /_api/user/database?full=true/false
 void RestUsersHandler::generateDatabaseResult(auth::UserManager* um,
-                                              std::string const& username,
-                                              bool full) {
+                                              std::string const& username, bool full) {
   // return list of databases
   VPackBuilder data;
   data.openObject();
   Result res = um->accessUser(username, [&](auth::User const& user) {
     DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t* vocbase) {
-      
       if (full) {
         auth::Level lvl = user.configuredDBAuthLevel(vocbase->name());
         std::string str = convertFromAuthLevel(lvl);
         VPackObjectBuilder b(&data, vocbase->name(), true);
         data.add("permission", VPackValue(str));
         VPackObjectBuilder b2(&data, "collections", true);
-        methods::Collections::enumerate(
-            vocbase, [&](LogicalCollection* c) {
-              lvl = user.configuredCollectionAuthLevel(vocbase->name(), c->name());
-              data.add(c->name(), VPackValue(convertFromAuthLevel(lvl)));
-            });
+        methods::Collections::enumerate(vocbase, [&](LogicalCollection* c) {
+          lvl = user.configuredCollectionAuthLevel(vocbase->name(), c->name());
+          data.add(c->name(), VPackValue(convertFromAuthLevel(lvl)));
+        });
         lvl = user.configuredCollectionAuthLevel(vocbase->name(), "*");
         data.add("*", VPackValue(convertFromAuthLevel(lvl)));
       } else {  // hide db's without access
@@ -209,8 +204,8 @@ void RestUsersHandler::generateDatabaseResult(auth::UserManager* um,
     });
     if (full) {
       auth::Level lvl = user.databaseAuthLevel("*");
-      data("*", VPackValue(VPackValueType::Object))(
-          "permission", VPackValue(convertFromAuthLevel(lvl)))();
+      data("*", VPackValue(VPackValueType::Object))("permission",
+                                                    VPackValue(convertFromAuthLevel(lvl)))();
     }
     return TRI_ERROR_NO_ERROR;
   });
@@ -223,8 +218,8 @@ void RestUsersHandler::generateDatabaseResult(auth::UserManager* um,
 }
 
 /// helper to create(0), replace(1), update(2) a user
-static Result StoreUser(auth::UserManager* um, int mode, std::string const& user,
-                        VPackSlice json) {
+static Result StoreUser(auth::UserManager* um, int mode,
+                        std::string const& user, VPackSlice json) {
   std::string passwd;
   bool active = true;
   VPackSlice extra;
@@ -320,7 +315,7 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
       return RestStatus::DONE;
     }
-    
+
     Result r = StoreUser(um, 1, user, parsedBody->slice());
     if (r.ok()) {
       VPackBuilder doc = um->serializeUser(user);
@@ -340,8 +335,7 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
         return RestStatus::DONE;
       }
 
-      if (!parsedBody->slice().isObject() ||
-          !parsedBody->slice().get("grant").isString()) {
+      if (!parsedBody->slice().isObject() || !parsedBody->slice().get("grant").isString()) {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
         return RestStatus::DONE;
       }
@@ -374,7 +368,7 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
         return RestStatus::DONE;
       }
-      
+
       Result res;
       if (!parsedBody->isEmpty()) {
         std::string const& key = suffixes[2];
@@ -382,25 +376,24 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
         // If we get sth else than the above it is translated
         // to a remove of the config option.
         res = um->updateUser(name, [&](auth::User& u) {
-          
           VPackSlice newVal = parsedBody->slice();
           VPackSlice oldConf = u.userData();
           if (!newVal.isObject() || !newVal.hasKey("value")) {
             if (oldConf.isObject() && oldConf.hasKey(key)) {
-              u.setUserData(VPackCollection::remove(oldConf,
-                                      std::unordered_set<std::string>{key}));
-            } // Nothing to do. We do not have a config yet.
-          } else { // We need to merge the new key into the config
+              u.setUserData(
+                  VPackCollection::remove(oldConf, std::unordered_set<std::string>{key}));
+            }       // Nothing to do. We do not have a config yet.
+          } else {  // We need to merge the new key into the config
             VPackBuilder b;
             b(VPackValue(VPackValueType::Object))(key, newVal.get("value"))();
 
-            if (oldConf.isObject() && !oldConf.isEmptyObject()) { // merge value in
+            if (oldConf.isObject() && !oldConf.isEmptyObject()) {  // merge value in
               u.setUserData(VPackCollection::merge(oldConf, b.slice(), false));
             } else {
               u.setUserData(std::move(b));
             }
           }
-          
+
           return TRI_ERROR_NO_ERROR;
         });
       }
@@ -458,8 +451,9 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
     Result r = um->removeUser(user);
     if (r.ok()) {
       VPackBuilder b;
-      b(VPackValue(VPackValueType::Object))(StaticStrings::Error, VPackValue(false))(
-          StaticStrings::Code, VPackValue(202))();
+      b(VPackValue(VPackValueType::Object))(StaticStrings::Error,
+                                            VPackValue(false))(StaticStrings::Code,
+                                                               VPackValue(202))();
       generateResult(ResponseCode::ACCEPTED, b.slice());
     } else {
       generateError(r);
@@ -501,14 +495,15 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
       });
       if (r.ok()) {
         VPackBuilder b;
-        b(VPackValue(VPackValueType::Object))(StaticStrings::Error, VPackValue(false))(
-                     StaticStrings::Code, VPackValue(202))();
+        b(VPackValue(VPackValueType::Object))(StaticStrings::Error,
+                                              VPackValue(false))(StaticStrings::Code,
+                                                                 VPackValue(202))();
         generateResult(ResponseCode::ACCEPTED, b.slice());
       } else {
         generateError(r);
       }
     } else if (suffixes[1] == "config") {
-      // remove internal config data, used in the WebUI 
+      // remove internal config data, used in the WebUI
       if (canAccessUser(user)) {
         std::string const& key = suffixes[2];
         Result r = um->updateUser(user, [&](auth::User& u) {
@@ -519,7 +514,7 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
           }
           return TRI_ERROR_NO_ERROR;
         });
-        
+
         if (r.ok()) {
           resetResponse(ResponseCode::OK);
         } else {

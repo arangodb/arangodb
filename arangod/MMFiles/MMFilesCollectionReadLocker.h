@@ -33,15 +33,12 @@ namespace arangodb {
 class MMFilesCollectionReadLocker {
  public:
   MMFilesCollectionReadLocker(MMFilesCollectionReadLocker const&) = delete;
-  MMFilesCollectionReadLocker& operator=(MMFilesCollectionReadLocker const&) =
-      delete;
+  MMFilesCollectionReadLocker& operator=(MMFilesCollectionReadLocker const&) = delete;
 
   /// @brief create the locker
   MMFilesCollectionReadLocker(MMFilesCollection* collection,
                               bool useDeadlockDetector, bool doLock)
-      : _collection(collection),
-        _useDeadlockDetector(useDeadlockDetector),
-        _doLock(false) {
+      : _collection(collection), _useDeadlockDetector(useDeadlockDetector), _doLock(false) {
     if (doLock) {
       int res = _collection->lockRead(_useDeadlockDetector);
 
@@ -74,6 +71,6 @@ class MMFilesCollectionReadLocker {
   /// @brief lock flag
   bool _doLock;
 };
-}
+}  // namespace arangodb
 
 #endif

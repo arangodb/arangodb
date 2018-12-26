@@ -24,10 +24,10 @@
 #ifndef ARANGOD_AQL_CLUSTER_BLOCKS_H
 #define ARANGOD_AQL_CLUSTER_BLOCKS_H 1
 
-#include "Basics/Common.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
+#include "Basics/Common.h"
 #include "Rest/GeneralRequest.h"
 
 namespace arangodb {
@@ -48,7 +48,7 @@ class ExecutionEngine;
 /// (e.g. 3.3 coordinator but a 3.4 DB server that will
 /// now send back requests to the 3.3 coordinator).
 /// A 3.4 DB server will likely buffer initializeCursor
-/// requests, but 3.3 requires them. 
+/// requests, but 3.3 requires them.
 /// In order to not fall apart, this class keeps a
 /// state for the cluster blocks in 3.3 whether they
 /// have called their own initializeCursor method at
@@ -59,7 +59,7 @@ class LazyInitializeBlock {
 
   void setInitialized() { _initialized = true; }
 
-  bool wasInitialized() { 
+  bool wasInitialized() {
     bool result = _initialized;
     _initialized = true;
     return result;
@@ -132,12 +132,9 @@ class GatherBlock : public ExecutionBlock, public LazyInitializeBlock {
     OurLessThan(transaction::Methods* trx,
                 std::vector<std::deque<AqlItemBlock*>>& gatherBlockBuffer,
                 std::vector<SortElementBlock>& sortRegisters)
-        : _trx(trx),
-          _gatherBlockBuffer(gatherBlockBuffer),
-          _sortRegisters(sortRegisters) {}
+        : _trx(trx), _gatherBlockBuffer(gatherBlockBuffer), _sortRegisters(sortRegisters) {}
 
-    bool operator()(std::pair<size_t, size_t> const& a,
-                    std::pair<size_t, size_t> const& b);
+    bool operator()(std::pair<size_t, size_t> const& a, std::pair<size_t, size_t> const& b);
 
    private:
     transaction::Methods* _trx;
@@ -187,12 +184,10 @@ class BlockWithClients : public ExecutionBlock, public LazyInitializeBlock {
   }
 
   /// @brief getSomeForShard
-  AqlItemBlock* getSomeForShard(size_t atLeast, size_t atMost,
-                                std::string const& shardId);
+  AqlItemBlock* getSomeForShard(size_t atLeast, size_t atMost, std::string const& shardId);
 
   /// @brief skipSomeForShard
-  size_t skipSomeForShard(size_t atLeast, size_t atMost,
-                          std::string const& shardId);
+  size_t skipSomeForShard(size_t atLeast, size_t atMost, std::string const& shardId);
 
   /// @brief skipForShard
   bool skipForShard(size_t number, std::string const& shardId);
@@ -205,9 +200,8 @@ class BlockWithClients : public ExecutionBlock, public LazyInitializeBlock {
 
  protected:
   /// @brief getOrSkipSomeForShard
-  virtual int getOrSkipSomeForShard(size_t atLeast, size_t atMost,
-                                    bool skipping, AqlItemBlock*& result,
-                                    size_t& skipped,
+  virtual int getOrSkipSomeForShard(size_t atLeast, size_t atMost, bool skipping,
+                                    AqlItemBlock*& result, size_t& skipped,
                                     std::string const& shardId) = 0;
 
   /// @brief getClientId: get the number <clientId> (used internally)
@@ -261,8 +255,7 @@ class ScatterBlock : public BlockWithClients {
 class DistributeBlock : public BlockWithClients {
  public:
   DistributeBlock(ExecutionEngine* engine, DistributeNode const* ep,
-                  std::vector<std::string> const& shardIds,
-                  Collection const* collection);
+                  std::vector<std::string> const& shardIds, Collection const* collection);
 
   ~DistributeBlock() {}
 
@@ -324,9 +317,8 @@ class DistributeBlock : public BlockWithClients {
 class RemoteBlock : public ExecutionBlock, public LazyInitializeBlock {
   /// @brief constructors/destructors
  public:
-  RemoteBlock(ExecutionEngine* engine, RemoteNode const* en,
-              std::string const& server, std::string const& ownName,
-              std::string const& queryId);
+  RemoteBlock(ExecutionEngine* engine, RemoteNode const* en, std::string const& server,
+              std::string const& ownName, std::string const& queryId);
 
   /// @brief timeout
   static double const defaultTimeOut;
@@ -357,9 +349,9 @@ class RemoteBlock : public ExecutionBlock, public LazyInitializeBlock {
 
   /// @brief internal method to send a request
  private:
-  std::unique_ptr<arangodb::ClusterCommResult> sendRequest(
-      rest::RequestType type, std::string const& urlPart,
-      std::string const& body) const;
+  std::unique_ptr<arangodb::ClusterCommResult> sendRequest(rest::RequestType type,
+                                                           std::string const& urlPart,
+                                                           std::string const& body) const;
 
   /// @brief our server, can be like "shard:S1000" or like "server:Claus"
   std::string _server;
@@ -370,17 +362,17 @@ class RemoteBlock : public ExecutionBlock, public LazyInitializeBlock {
 
   /// @brief the ID of the query on the server as a string
   std::string _queryId;
-  
-  /// @brief whether or not this block has buffered a call to /_api/aql/initialize
-  /// that it will send with its follow-up request
+
+  /// @brief whether or not this block has buffered a call to
+  /// /_api/aql/initialize that it will send with its follow-up request
   bool _mustInitialize;
 
-  /// @brief whether or not this block will forward initialize, 
+  /// @brief whether or not this block will forward initialize,
   /// initializeCursor or shutDown requests
   bool const _isResponsibleForInitializeCursor;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

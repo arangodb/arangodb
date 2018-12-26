@@ -45,10 +45,8 @@ struct thread_data_t {
   void* _data;
   std::string _name;
 
-  thread_data_t(void (*starter)(void*), void* data, char const* name) 
-      : _starter(starter),
-        _data(data),
-        _name(name) {}
+  thread_data_t(void (*starter)(void*), void* data, char const* name)
+      : _starter(starter), _data(data), _name(name) {}
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -97,7 +95,8 @@ bool TRI_StartThread(TRI_thread_t* thread, TRI_tid_t* threadId,
   try {
     d.reset(new thread_data_t(starter, data, name));
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "could not start thread: out of memory";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "could not start thread: out of memory";
     return false;
   }
 
@@ -108,7 +107,8 @@ bool TRI_StartThread(TRI_thread_t* thread, TRI_tid_t* threadId,
   if (rc != 0) {
     errno = rc;
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "could not start thread: " << strerror(errno);
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "could not start thread: " << strerror(errno);
 
     return false;
   }
@@ -145,7 +145,8 @@ int TRI_DetachThread(TRI_thread_t* thread) {
   int res = pthread_detach(*thread);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(WARN, arangodb::Logger::THREADS) << "cannot detach thread: " << strerror(res);
+    LOG_TOPIC(WARN, arangodb::Logger::THREADS)
+        << "cannot detach thread: " << strerror(res);
   }
   return res;
 }
@@ -181,8 +182,8 @@ void TRI_SetProcessorAffinity(TRI_thread_t* thread, size_t core) {
   int s = pthread_setaffinity_np(*thread, sizeof(cpu_set_t), &cpuset);
 
   if (s != 0) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot set affinity to core " << core << ": "
-             << strerror(errno);
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "cannot set affinity to core " << core << ": " << strerror(errno);
   }
 
 #endif
@@ -195,8 +196,8 @@ void TRI_SetProcessorAffinity(TRI_thread_t* thread, size_t core) {
                                (thread_policy_t)&policy, 1);
 
   if (res != KERN_SUCCESS) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot set affinity to core " << core << ": "
-             << strerror(errno);
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "cannot set affinity to core " << core << ": " << strerror(errno);
   }
 
 #endif

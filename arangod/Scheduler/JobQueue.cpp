@@ -32,9 +32,8 @@
 using namespace arangodb;
 
 namespace arangodb {
-class JobQueueThread final
-    : public Thread,
-      public std::enable_shared_from_this<JobQueueThread> {
+class JobQueueThread final : public Thread,
+                             public std::enable_shared_from_this<JobQueueThread> {
  public:
   JobQueueThread(JobQueue* server, rest::Scheduler* scheduler)
       : Thread("JobQueueThread"), _jobQueue(server), _scheduler(scheduler) {}
@@ -127,9 +126,10 @@ JobQueue::JobQueue(size_t maxQueueSize, rest::Scheduler* scheduler)
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
-void JobQueue::start() { 
+void JobQueue::start() {
   if (!_queueThread->start()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "unable to start jobqueue thread");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,
+                                   "unable to start jobqueue thread");
   }
 }
 

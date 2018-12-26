@@ -54,8 +54,7 @@ static void EnvGetter(v8::Local<v8::String> property,
   // If result >= sizeof buffer the buffer was too small. That should never
   // happen. If result == 0 and result != ERROR_SUCCESS the variable was not
   // not found.
-  if ((result > 0 || GetLastError() == ERROR_SUCCESS) &&
-      result < sizeof(buffer)) {
+  if ((result > 0 || GetLastError() == ERROR_SUCCESS) && result < sizeof(buffer)) {
     uint16_t const* two_byte_buffer = reinterpret_cast<uint16_t const*>(buffer);
     TRI_V8_RETURN(TRI_V8_STRING_UTF16(isolate, two_byte_buffer, result));
   }
@@ -64,8 +63,7 @@ static void EnvGetter(v8::Local<v8::String> property,
   TRI_V8_RETURN(args.Data().As<v8::Object>()->Get(property));
 }
 
-static void EnvSetter(v8::Local<v8::String> property,
-                      v8::Local<v8::Value> value,
+static void EnvSetter(v8::Local<v8::String> property, v8::Local<v8::Value> value,
                       const v8::PropertyCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
@@ -101,14 +99,12 @@ static void EnvQuery(v8::Local<v8::String> property,
   WCHAR* key_ptr = reinterpret_cast<WCHAR*>(*key);
   SetLastError(ERROR_SUCCESS);
 
-  if (GetEnvironmentVariableW(key_ptr, nullptr, 0) > 0 ||
-      GetLastError() == ERROR_SUCCESS) {
+  if (GetEnvironmentVariableW(key_ptr, nullptr, 0) > 0 || GetLastError() == ERROR_SUCCESS) {
     rc = 0;
     if (key_ptr[0] == L'=') {
       // Environment variables that start with '=' are hidden and read-only.
       rc = static_cast<int32_t>(v8::ReadOnly) |
-           static_cast<int32_t>(v8::DontDelete) |
-           static_cast<int32_t>(v8::DontEnum);
+           static_cast<int32_t>(v8::DontDelete) | static_cast<int32_t>(v8::DontEnum);
     }
   }
 #endif
@@ -134,8 +130,7 @@ static void EnvDeleter(v8::Local<v8::String> property,
   if (key_ptr[0] == L'=' || !SetEnvironmentVariableW(key_ptr, nullptr)) {
     // Deletion failed. Return true if the key wasn't there in the first place,
     // false if it is still there.
-    rc = GetEnvironmentVariableW(key_ptr, nullptr, 0) == 0 &&
-         GetLastError() != ERROR_SUCCESS;
+    rc = GetEnvironmentVariableW(key_ptr, nullptr, 0) == 0 && GetLastError() != ERROR_SUCCESS;
   }
 #endif
   if (rc) {

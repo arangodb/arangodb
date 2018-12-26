@@ -22,13 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "V8Executor.h"
-#include "Aql/AstNode.h"
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/AstNode.h"
 #include "Aql/Functions.h"
 #include "Aql/V8Expression.h"
 #include "Aql/Variable.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StringBuffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
@@ -75,8 +75,9 @@ V8Expression* V8Executor::generateExpression(AstNode const* node) {
 
   TRI_ASSERT(_buffer != nullptr);
 
-  v8::Handle<v8::Script> compiled = v8::Script::Compile(
-      TRI_V8_STD_STRING(isolate, (*_buffer)), TRI_V8_ASCII_STRING(isolate, "--script--"));
+  v8::Handle<v8::Script> compiled =
+      v8::Script::Compile(TRI_V8_STD_STRING(isolate, (*_buffer)),
+                          TRI_V8_ASCII_STRING(isolate, "--script--"));
 
   if (!compiled.IsEmpty()) {
     v8::Handle<v8::Value> func(compiled->Run());
@@ -96,22 +97,21 @@ V8Expression* V8Executor::generateExpression(AstNode const* node) {
 
     return new V8Expression(isolate, v8::Handle<v8::Function>::Cast(func),
                             constantValues, isSimple);
-  }
-  else {
+  } else {
     v8::Handle<v8::Value> empty;
     TRI_ASSERT(_buffer != nullptr);
     HandleV8Error(tryCatch, empty, _buffer.get(), true);
-    
+
     // well we're almost sure we never reach this since the above call should throw:
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to compile AQL script code");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "unable to compile AQL script code");
   }
 }
 
 /// @brief executes an expression directly
 /// this method is called during AST optimization and will be used to calculate
 /// values for constant expressions
-int V8Executor::executeExpression(Query* query, AstNode const* node, 
-                                VPackBuilder& builder) {
+int V8Executor::executeExpression(Query* query, AstNode const* node, VPackBuilder& builder) {
   ISOLATE;
 
   _constantRegisters.clear();
@@ -124,11 +124,11 @@ int V8Executor::executeExpression(Query* query, AstNode const* node,
 
   TRI_ASSERT(_buffer != nullptr);
 
-  v8::Handle<v8::Script> compiled = v8::Script::Compile(
-      TRI_V8_STD_STRING(isolate, (*_buffer)), TRI_V8_ASCII_STRING(isolate, "--script--"));
+  v8::Handle<v8::Script> compiled =
+      v8::Script::Compile(TRI_V8_STD_STRING(isolate, (*_buffer)),
+                          TRI_V8_ASCII_STRING(isolate, "--script--"));
 
   if (!compiled.IsEmpty()) {
-
     v8::Handle<v8::Value> func(compiled->Run());
 
     // exit early if an error occurred
@@ -145,9 +145,8 @@ int V8Executor::executeExpression(Query* query, AstNode const* node,
       TRI_ASSERT(v8g->_query != nullptr);
 
       // execute the function
-      v8::Handle<v8::Value> args[] = { v8::Object::New(isolate), v8::Object::New(isolate) };
-      result = v8::Handle<v8::Function>::Cast(func)
-        ->Call(v8::Object::New(isolate), 2, args);
+      v8::Handle<v8::Value> args[] = {v8::Object::New(isolate), v8::Object::New(isolate)};
+      result = v8::Handle<v8::Function>::Cast(func)->Call(v8::Object::New(isolate), 2, args);
 
       v8g->_query = old;
 
@@ -163,13 +162,13 @@ int V8Executor::executeExpression(Query* query, AstNode const* node,
       return TRI_ERROR_NO_ERROR;
     }
     return TRI_V8ToVPack(isolate, builder, result, false);
-  }
-  else {
+  } else {
     v8::Handle<v8::Value> empty;
     HandleV8Error(tryCatch, empty, _buffer.get(), true);
 
     // well we're almost sure we never reach this since the above call should throw:
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to compile AQL script code");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "unable to compile AQL script code");
   }
 }
 
@@ -199,7 +198,7 @@ void V8Executor::detectConstantValues(AstNode const* node, AstNodeType previous)
 
   if (previous != NODE_TYPE_FCALL && previous != NODE_TYPE_FCALL_USER) {
     // FCALL has an ARRAY node as its immediate child
-    // however, we do not want to constify this whole array, but just its 
+    // however, we do not want to constify this whole array, but just its
     // individual members
     // otherwise, only the ARRAY node will be marked as constant but not
     // its members. When the code is generated for the function call,
@@ -236,8 +235,7 @@ void V8Executor::detectConstantValues(AstNode const* node, AstNodeType previous)
 }
 
 /// @brief convert an AST value node to a V8 object
-v8::Handle<v8::Value> V8Executor::toV8(v8::Isolate* isolate,
-                                     AstNode const* node) const {
+v8::Handle<v8::Value> V8Executor::toV8(v8::Isolate* isolate, AstNode const* node) const {
   if (node->type == NODE_TYPE_ARRAY) {
     size_t const n = node->numMembers();
 
@@ -254,9 +252,9 @@ v8::Handle<v8::Value> V8Executor::toV8(v8::Isolate* isolate,
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
     for (size_t i = 0; i < n; ++i) {
       auto sub = node->getMember(i);
-      result->ForceSet(
-          TRI_V8_PAIR_STRING(isolate, sub->getStringValue(), sub->getStringLength()),
-          toV8(isolate, sub->getMember(0)));
+      result->ForceSet(TRI_V8_PAIR_STRING(isolate, sub->getStringValue(),
+                                          sub->getStringLength()),
+                       toV8(isolate, sub->getMember(0)));
     }
     return result;
   }
@@ -268,11 +266,9 @@ v8::Handle<v8::Value> V8Executor::toV8(v8::Isolate* isolate,
       case VALUE_TYPE_BOOL:
         return v8::Boolean::New(isolate, node->value.value._bool);
       case VALUE_TYPE_INT:
-        return v8::Number::New(isolate,
-                               static_cast<double>(node->value.value._int));
+        return v8::Number::New(isolate, static_cast<double>(node->value.value._int));
       case VALUE_TYPE_DOUBLE:
-        return v8::Number::New(isolate,
-                               static_cast<double>(node->value.value._double));
+        return v8::Number::New(isolate, static_cast<double>(node->value.value._double));
       case VALUE_TYPE_STRING:
         return TRI_V8_PAIR_STRING(isolate, node->value.value._string,
                                   node->value.length);
@@ -283,10 +279,9 @@ v8::Handle<v8::Value> V8Executor::toV8(v8::Isolate* isolate,
 
 /// @brief checks if a V8 exception has occurred and throws an appropriate C++
 /// exception from it if so
-void V8Executor::HandleV8Error(v8::TryCatch& tryCatch,
-                             v8::Handle<v8::Value>& result,
-                             arangodb::basics::StringBuffer* const buffer,
-                             bool duringCompile) {
+void V8Executor::HandleV8Error(v8::TryCatch& tryCatch, v8::Handle<v8::Value>& result,
+                               arangodb::basics::StringBuffer* const buffer,
+                               bool duringCompile) {
   ISOLATE;
 
   bool failed = false;
@@ -306,22 +301,21 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch,
     if (tryCatch.Exception()->IsObject()) {
       // cast the exception to an object
 
-      v8::Handle<v8::Array> objValue =
-          v8::Handle<v8::Array>::Cast(tryCatch.Exception());
-      v8::Handle<v8::String> errorNum = TRI_V8_ASCII_STRING(isolate, "errorNum");
-      v8::Handle<v8::String> errorMessage = TRI_V8_ASCII_STRING(isolate, "errorMessage");
+      v8::Handle<v8::Array> objValue = v8::Handle<v8::Array>::Cast(tryCatch.Exception());
+      v8::Handle<v8::String> errorNum =
+          TRI_V8_ASCII_STRING(isolate, "errorNum");
+      v8::Handle<v8::String> errorMessage =
+          TRI_V8_ASCII_STRING(isolate, "errorMessage");
 
       TRI_Utf8ValueNFC stacktrace(tryCatch.StackTrace());
 
-      if (objValue->HasOwnProperty(errorNum) &&
-          objValue->HasOwnProperty(errorMessage)) {
+      if (objValue->HasOwnProperty(errorNum) && objValue->HasOwnProperty(errorMessage)) {
         v8::Handle<v8::Value> errorNumValue = objValue->Get(errorNum);
         v8::Handle<v8::Value> errorMessageValue = objValue->Get(errorMessage);
 
         // found something that looks like an ArangoError
         if ((errorNumValue->IsNumber() || errorNumValue->IsNumberObject()) &&
-            (errorMessageValue->IsString() ||
-             errorMessageValue->IsStringObject())) {
+            (errorMessageValue->IsString() || errorMessageValue->IsStringObject())) {
           int errorCode = static_cast<int>(TRI_ObjectToInt64(errorNumValue));
           std::string errorMessage(TRI_ObjectToString(errorMessageValue));
 
@@ -338,8 +332,9 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch,
       std::string details(TRI_ObjectToString(tryCatch.Exception()));
 
       if (buffer) {
-        //std::string script(buffer->c_str(), buffer->length());
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << details << " " << Logger::CHARS(buffer->c_str(), buffer->length());
+        // std::string script(buffer->c_str(), buffer->length());
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+            << details << " " << Logger::CHARS(buffer->c_str(), buffer->length());
         details += "\nSee log for more details";
       }
       if (*stacktrace && stacktrace.length() > 0) {
@@ -363,14 +358,15 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch,
       msg += " (during compilation)";
     }
     if (buffer) {
-      //std::string script(buffer->c_str(), buffer->length());
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg << " " << Logger::CHARS(buffer->c_str(), buffer->length());
+      // std::string script(buffer->c_str(), buffer->length());
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << msg << " " << Logger::CHARS(buffer->c_str(), buffer->length());
       msg += " See log for details";
     }
     // we can't figure out what kind of error occurred and throw a generic error
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_SCRIPT, msg);
   }
-  
+
   // if we get here, no exception has been raised
 }
 
@@ -383,12 +379,12 @@ void V8Executor::generateCodeExpression(AstNode const* node) {
   // write prologue
   // this checks if global variable _AQL is set and populates if it not
   // the check is only performed if "state.i" (=init) is not yet set
-  _buffer->appendText(TRI_CHAR_LENGTH_PAIR(
-      "(function (vars, state, consts) { "
-      "if (!state.i) { "
-      "if (_AQL === undefined) { "
-      "_AQL = require(\"@arangodb/aql\"); } "
-      "_AQL.clearCaches(); "));
+  _buffer->appendText(
+      TRI_CHAR_LENGTH_PAIR("(function (vars, state, consts) { "
+                           "if (!state.i) { "
+                           "if (_AQL === undefined) { "
+                           "_AQL = require(\"@arangodb/aql\"); } "
+                           "_AQL.clearCaches(); "));
 
   // lookup all user-defined functions used and store them in variables
   // "state.f\d+"
@@ -399,24 +395,28 @@ void V8Executor::generateCodeExpression(AstNode const* node) {
     _buffer->appendText(it.first);
     _buffer->appendText(TRI_CHAR_LENGTH_PAIR("\", {}); "));
   }
- 
-  // generate specialized functions for UDFs 
+
+  // generate specialized functions for UDFs
   for (auto const& it : _userFunctions) {
     _buffer->appendText(TRI_CHAR_LENGTH_PAIR("state.e"));
     _buffer->appendInteger(it.second);
-    // "state.e\d+" executes the user function in a wrapper, converting the 
+    // "state.e\d+" executes the user function in a wrapper, converting the
     // function result back into the allowed range, and catching any errors
-    // thrown by the function 
-    _buffer->appendText(TRI_CHAR_LENGTH_PAIR(" = function(params) { try { return _AQL.fixValue(state.f"));
+    // thrown by the function
+    _buffer->appendText(TRI_CHAR_LENGTH_PAIR(
+        " = function(params) { try { return _AQL.fixValue(state.f"));
     _buffer->appendInteger(it.second);
     _buffer->appendText(TRI_CHAR_LENGTH_PAIR(".apply({ name: \""));
     _buffer->appendText(it.first);
-    _buffer->appendText(TRI_CHAR_LENGTH_PAIR("\" }, params)); } catch (err) { _AQL.throwFromFunction(\""));
+    _buffer->appendText(TRI_CHAR_LENGTH_PAIR(
+        "\" }, params)); } catch (err) { _AQL.throwFromFunction(\""));
     _buffer->appendText(it.first);
-    _buffer->appendText(TRI_CHAR_LENGTH_PAIR("\", require(\"internal\").errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR, _AQL.AQL_TO_STRING(err.stack || String(err))); } }; "));
+    _buffer->appendText(TRI_CHAR_LENGTH_PAIR(
+        "\", require(\"internal\").errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR, "
+        "_AQL.AQL_TO_STRING(err.stack || String(err))); } }; "));
   }
-   
-  // set "state.i" to true (=initialized) 
+
+  // set "state.i" to true (=initialized)
   _buffer->appendText(TRI_CHAR_LENGTH_PAIR("state.i = true; } return "));
 
   generateCodeNode(node);
@@ -479,12 +479,10 @@ void V8Executor::generateCodeForcedArray(AstNode const* node, int64_t levels) {
   if (node->type == NODE_TYPE_ARRAY) {
     // value is an array already
     castToArray = false;
-  } else if (node->type == NODE_TYPE_EXPANSION &&
-             node->getMember(0)->type == NODE_TYPE_ARRAY) {
+  } else if (node->type == NODE_TYPE_EXPANSION && node->getMember(0)->type == NODE_TYPE_ARRAY) {
     // value is an expansion over an array
     castToArray = false;
-  } else if (node->type == NODE_TYPE_ITERATOR &&
-             node->getMember(1)->type == NODE_TYPE_ARRAY) {
+  } else if (node->type == NODE_TYPE_ITERATOR && node->getMember(1)->type == NODE_TYPE_ARRAY) {
     castToArray = false;
   }
 
@@ -589,7 +587,9 @@ void V8Executor::generateCodeUnaryOperator(AstNode const* node) {
   TRI_ASSERT(functions != nullptr);
 
   _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL."));
-  _buffer->appendText(functions->getOperatorName(node->type, "unary operator function not found"));
+  _buffer->appendText(
+      functions->getOperatorName(node->type,
+                                 "unary operator function not found"));
   _buffer->appendChar('(');
 
   generateCodeNode(node->getMember(0));
@@ -607,7 +607,9 @@ void V8Executor::generateCodeBinaryOperator(AstNode const* node) {
                node->type == NODE_TYPE_OPERATOR_BINARY_OR);
 
   _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL."));
-  _buffer->appendText(functions->getOperatorName(node->type, "binary operator function not found"));
+  _buffer->appendText(
+      functions->getOperatorName(node->type,
+                                 "binary operator function not found"));
   _buffer->appendChar('(');
 
   if (wrap) {
@@ -633,7 +635,9 @@ void V8Executor::generateCodeBinaryArrayOperator(AstNode const* node) {
   TRI_ASSERT(functions != nullptr);
 
   _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL."));
-  _buffer->appendText(functions->getOperatorName(node->type, "binary array function not found"));
+  _buffer->appendText(
+      functions->getOperatorName(node->type,
+                                 "binary array function not found"));
   _buffer->appendChar('(');
 
   generateCodeNode(node->getMember(0));
@@ -658,7 +662,8 @@ void V8Executor::generateCodeTernaryOperator(AstNode const* node) {
   TRI_ASSERT(functions != nullptr);
 
   _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL."));
-  _buffer->appendText(functions->getOperatorName(node->type, "function not found"));
+  _buffer->appendText(
+      functions->getOperatorName(node->type, "function not found"));
   _buffer->appendChar('(');
 
   generateCodeNode(node->getMember(0));
@@ -715,7 +720,7 @@ void V8Executor::generateCodeFunctionCall(AstNode const* node) {
   TRI_ASSERT(args->type == NODE_TYPE_ARRAY);
 
   if (func->name != "V8") {
-    // special case for the V8 function... this is actually not a function 
+    // special case for the V8 function... this is actually not a function
     // call at all, but a wrapper to ensure that the following expression
     // is executed using V8
     _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL."));
@@ -747,9 +752,8 @@ void V8Executor::generateCodeFunctionCall(AstNode const* node) {
       generateCodeString(member->getStringValue(), member->getStringLength());
     } else if (conversion == Function::CONVERSION_REQUIRED) {
       // the parameter at the position is not a collection name... fail
-      THROW_ARANGO_EXCEPTION_PARAMS(
-          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-          func->name.c_str());
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                    func->name.c_str());
     } else {
       generateCodeNode(args->getMember(i));
     }
@@ -770,7 +774,8 @@ void V8Executor::generateCodeUserFunctionCall(AstNode const* node) {
   auto it = _userFunctions.find(node->getString());
 
   if (it == _userFunctions.end()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "user function not found");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "user function not found");
   }
 
   _buffer->appendText(TRI_CHAR_LENGTH_PAIR("state.e"));

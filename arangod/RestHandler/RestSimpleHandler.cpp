@@ -47,9 +47,8 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestSimpleHandler::RestSimpleHandler(
-    GeneralRequest* request, GeneralResponse* response,
-    arangodb::aql::QueryRegistry* queryRegistry)
+RestSimpleHandler::RestSimpleHandler(GeneralRequest* request, GeneralResponse* response,
+                                     arangodb::aql::QueryRegistry* queryRegistry)
     : RestVocbaseBaseHandler(request, response),
       _queryRegistry(queryRegistry),
       _queryLock(),
@@ -65,8 +64,7 @@ RestStatus RestSimpleHandler::execute() {
 
   if (type == rest::RequestType::PUT) {
     bool parsingSuccess = true;
-    std::shared_ptr<VPackBuilder> parsedBody =
-        parseVelocyPackBody(parsingSuccess);
+    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parsingSuccess);
 
     if (!parsingSuccess) {
       return RestStatus::DONE;
@@ -94,8 +92,7 @@ RestStatus RestSimpleHandler::execute() {
     return RestStatus::DONE;
   }
 
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
 
@@ -169,8 +166,7 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
 
       collectionName = value.copyString();
 
-      if (!collectionName.empty() && collectionName[0] >= '0' &&
-          collectionName[0] <= '9') {
+      if (!collectionName.empty() && collectionName[0] >= '0' && collectionName[0] <= '9') {
         // If we have a numeric name we probably have to translate it.
         CollectionNameResolver resolver(_vocbase);
         collectionName = resolver.getCollectionName(collectionName);
@@ -235,11 +231,13 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
     if (queryResult.code != TRI_ERROR_NO_ERROR) {
       if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
           (queryResult.code == TRI_ERROR_QUERY_KILLED && wasCanceled())) {
-        generateError(GeneralResponse::responseCode(TRI_ERROR_REQUEST_CANCELED), TRI_ERROR_REQUEST_CANCELED);
+        generateError(GeneralResponse::responseCode(TRI_ERROR_REQUEST_CANCELED),
+                      TRI_ERROR_REQUEST_CANCELED);
         return;
       }
 
-      generateError(GeneralResponse::responseCode(queryResult.code), queryResult.code, queryResult.details);
+      generateError(GeneralResponse::responseCode(queryResult.code),
+                    queryResult.code, queryResult.details);
       return;
     }
 
@@ -268,14 +266,14 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
       result.add("removed", VPackValue(removed));
       result.add("ignored", VPackValue(ignored));
       result.add(StaticStrings::Error, VPackValue(false));
-      result.add(StaticStrings::Code, VPackValue(static_cast<int>(rest::ResponseCode::OK)));
+      result.add(StaticStrings::Code,
+                 VPackValue(static_cast<int>(rest::ResponseCode::OK)));
       if (!silent) {
         result.add("old", queryResult.result->slice());
       }
       result.close();
 
-      generateResult(rest::ResponseCode::OK, result.slice(),
-                     queryResult.context);
+      generateResult(rest::ResponseCode::OK, result.slice(), queryResult.context);
     }
   } catch (...) {
     unregisterQuery();
@@ -328,14 +326,15 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
     bindVars->openObject();
     bindVars->add("@collection", VPackValue(collectionName));
     bindVars->add(VPackValue("keys"));
-    arangodb::aql::BindParameters::stripCollectionNames(keys, collectionName, *bindVars.get());
+    arangodb::aql::BindParameters::stripCollectionNames(keys, collectionName,
+                                                        *bindVars.get());
     bindVars->close();
 
     std::string const aql(
         "FOR doc IN @@collection FILTER doc._key IN @keys RETURN doc");
 
-    arangodb::aql::Query query(false, _vocbase, aql::QueryString(aql),
-                               bindVars, nullptr, arangodb::aql::PART_MAIN);
+    arangodb::aql::Query query(false, _vocbase, aql::QueryString(aql), bindVars,
+                               nullptr, arangodb::aql::PART_MAIN);
 
     registerQuery(&query);
     auto queryResult = query.execute(_queryRegistry);
@@ -344,11 +343,13 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
     if (queryResult.code != TRI_ERROR_NO_ERROR) {
       if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
           (queryResult.code == TRI_ERROR_QUERY_KILLED && wasCanceled())) {
-        generateError(GeneralResponse::responseCode(TRI_ERROR_REQUEST_CANCELED), TRI_ERROR_REQUEST_CANCELED);
+        generateError(GeneralResponse::responseCode(TRI_ERROR_REQUEST_CANCELED),
+                      TRI_ERROR_REQUEST_CANCELED);
         return;
       }
 
-      generateError(GeneralResponse::responseCode(queryResult.code), queryResult.code, queryResult.details);
+      generateError(GeneralResponse::responseCode(queryResult.code),
+                    queryResult.code, queryResult.details);
       return;
     }
 
@@ -374,8 +375,7 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
                  VPackValue(static_cast<int>(_response->responseCode())));
     }
 
-    generateResult(rest::ResponseCode::OK, std::move(resultBuffer),
-                   queryResult.context);
+    generateResult(rest::ResponseCode::OK, std::move(resultBuffer), queryResult.context);
 
     queryResult.result = nullptr;
   } catch (...) {

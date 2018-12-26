@@ -29,9 +29,8 @@
 using namespace arangodb;
 using namespace arangodb::options;
 
-ShutdownFeature::ShutdownFeature(
-    application_features::ApplicationServer* server,
-    std::vector<std::string> const& features)
+ShutdownFeature::ShutdownFeature(application_features::ApplicationServer* server,
+                                 std::vector<std::string> const& features)
     : ApplicationFeature(server, "Shutdown") {
   setOptional(true);
   requiresElevatedPrivileges(false);

@@ -26,11 +26,10 @@
 using namespace arangodb;
 using namespace arangodb::application_features;
 
-traverser::TraverserEngineRegistry*
-    TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY = nullptr;
+traverser::TraverserEngineRegistry* TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY =
+    nullptr;
 
-TraverserEngineRegistryFeature::TraverserEngineRegistryFeature(
-    ApplicationServer* server)
+TraverserEngineRegistryFeature::TraverserEngineRegistryFeature(ApplicationServer* server)
     : ApplicationFeature(server, "TraverserEngineRegistry") {
   setOptional(false);
   requiresElevatedPrivileges(false);
@@ -38,12 +37,10 @@ TraverserEngineRegistryFeature::TraverserEngineRegistryFeature(
   startsAfter("Database");
 }
 
-void TraverserEngineRegistryFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
+void TraverserEngineRegistryFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
 }
 
-void TraverserEngineRegistryFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
+void TraverserEngineRegistryFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
 }
 
 void TraverserEngineRegistryFeature::prepare() {
@@ -51,8 +48,7 @@ void TraverserEngineRegistryFeature::prepare() {
   _engineRegistry.reset(new traverser::TraverserEngineRegistry());
   TRAVERSER_ENGINE_REGISTRY = _engineRegistry.get();
 }
-void TraverserEngineRegistryFeature::start() {
-}
+void TraverserEngineRegistryFeature::start() {}
 
 void TraverserEngineRegistryFeature::unprepare() {
   TRAVERSER_ENGINE_REGISTRY = nullptr;

@@ -28,12 +28,12 @@
 #include "Basics/Result.h"
 #include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
-#include "RocksDBEngine/RocksDBCommon.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
+#include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBValue.h"
-#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/Events.h"
@@ -64,8 +64,7 @@ RocksDBView::RocksDBView(LogicalView* logical, PhysicalView* physical)
 
 RocksDBView::~RocksDBView() {}
 
-void RocksDBView::getPropertiesVPack(velocypack::Builder& result,
-                                     bool includeSystem) const {
+void RocksDBView::getPropertiesVPack(velocypack::Builder& result, bool includeSystem) const {
   TRI_ASSERT(result.isOpenObject());
   if (includeSystem) {
     result.add("path", VPackValue(_path));
@@ -88,8 +87,7 @@ void RocksDBView::drop() {
   }
 }
 
-arangodb::Result RocksDBView::updateProperties(VPackSlice const& slice,
-                                               bool doSync) {
+arangodb::Result RocksDBView::updateProperties(VPackSlice const& slice, bool doSync) {
   // nothing to do here
   return arangodb::Result{};
 }

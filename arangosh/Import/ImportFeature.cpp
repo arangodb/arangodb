@@ -40,8 +40,7 @@ using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::options;
 
-ImportFeature::ImportFeature(application_features::ApplicationServer* server,
-                             int* result)
+ImportFeature::ImportFeature(application_features::ApplicationServer* server, int* result)
     : ApplicationFeature(server, "Import"),
       _filename(""),
       _useBackslash(false),
@@ -70,8 +69,7 @@ ImportFeature::ImportFeature(application_features::ApplicationServer* server,
   startsAfter("Logger");
 }
 
-void ImportFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
+void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
   options->addOption("--file", "file name (\"-\" for STDIN)",
                      new StringParameter(&_filename));
 
@@ -89,8 +87,7 @@ void ImportFeature::collectOptions(
       "Number of parallel import threads. Most useful for the rocksdb engine",
       new UInt32Parameter(&_threadCount));
 
-  options->addOption("--collection", "collection name",
-                     new StringParameter(&_collectionName));
+  options->addOption("--collection", "collection name", new StringParameter(&_collectionName));
 
   options->addOption("--from-collection-prefix",
                      "_from collection name prefix (will be prepended to all "
@@ -130,18 +127,16 @@ void ImportFeature::collectOptions(
   std::vector<std::string> typesVector(types.begin(), types.end());
   std::string typesJoined = StringUtils::join(typesVector, " or ");
 
-  options->addOption(
-      "--create-collection-type",
-      "type of collection if collection is created (" + typesJoined + ")",
-      new DiscreteValuesParameter<StringParameter>(&_createCollectionType,
-                                                   types));
+  options->addOption("--create-collection-type",
+                     "type of collection if collection is created (" +
+                         typesJoined + ")",
+                     new DiscreteValuesParameter<StringParameter>(&_createCollectionType, types));
 
   std::unordered_set<std::string> imports = {"csv", "tsv", "json", "jsonl",
                                              "auto"};
 
-  options->addOption(
-      "--type", "type of import file",
-      new DiscreteValuesParameter<StringParameter>(&_typeImport, imports));
+  options->addOption("--type", "type of import file",
+                     new DiscreteValuesParameter<StringParameter>(&_typeImport, imports));
 
   options->addOption(
       "--overwrite",
@@ -155,8 +150,7 @@ void ImportFeature::collectOptions(
   options->addOption("--separator", "field separator, used for csv and tsv",
                      new StringParameter(&_separator));
 
-  options->addOption("--progress", "show progress",
-                     new BooleanParameter(&_progress));
+  options->addOption("--progress", "show progress", new BooleanParameter(&_progress));
 
   options->addOption("--ignore-missing", "ignore missing columns in csv input",
                      new BooleanParameter(&_ignoreMissing));
@@ -170,12 +164,10 @@ void ImportFeature::collectOptions(
                      "action to perform when a unique key constraint "
                      "violation occurs. Possible values: " +
                          actionsJoined,
-                     new DiscreteValuesParameter<StringParameter>(
-                         &_onDuplicateAction, actions));
+                     new DiscreteValuesParameter<StringParameter>(&_onDuplicateAction, actions));
 }
 
-void ImportFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
+void ImportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
   auto const& positionals = options->processingResult()._positionals;
   size_t n = positionals.size();
 
@@ -192,7 +184,6 @@ void ImportFeature::validateOptions(
     FATAL_ERROR_EXIT();
   }
 
-
   // _chunkSize is dynamic ... unless user explicitly sets it
   _autoChunkSize = !options->processingResult().touched("--batch-size");
 
@@ -200,38 +191,36 @@ void ImportFeature::validateOptions(
     // it's not sensible to raise the batch size beyond this value
     // because the server has a built-in limit for the batch size too
     // and will reject bigger HTTP request bodies
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "capping --batch-size value to "
-                                             << arangodb::import::ImportHelper::MaxBatchSize;
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "capping --batch-size value to "
+        << arangodb::import::ImportHelper::MaxBatchSize;
     _chunkSize = arangodb::import::ImportHelper::MaxBatchSize;
   }
 
   if (_threadCount < 1) {
     // it's not sensible to use just one thread
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "capping --threads value to "
-                                             << 1;
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "capping --threads value to " << 1;
     _threadCount = 1;
   }
-  if (_threadCount > TRI_numberProcessors()*2) {
+  if (_threadCount > TRI_numberProcessors() * 2) {
     // it's not sensible to use just one thread
     //  and import's CPU usage is negligible, real limit is cluster cores
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "capping --threads value to "
-                                             << TRI_numberProcessors()*2;
-    _threadCount = (uint32_t)TRI_numberProcessors()*2;
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "capping --threads value to " << TRI_numberProcessors() * 2;
+    _threadCount = (uint32_t)TRI_numberProcessors() * 2;
   }
 
   for (auto const& it : _translations) {
     auto parts = StringUtils::split(it, "=");
     if (parts.size() != 2) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid translation '" << it
-                                                << "'";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid translation '" << it << "'";
       FATAL_ERROR_EXIT();
     }
     StringUtils::trimInPlace(parts[0]);
     StringUtils::trimInPlace(parts[1]);
 
     if (parts[0].empty() || parts[1].empty()) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid translation '" << it
-                                                << "'";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid translation '" << it << "'";
       FATAL_ERROR_EXIT();
     }
   }
@@ -239,16 +228,15 @@ void ImportFeature::validateOptions(
     StringUtils::trimInPlace(str);
     if (str.empty()) {
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-        << "cannot remove an empty attribute";
+          << "cannot remove an empty attribute";
       FATAL_ERROR_EXIT();
     }
   }
 }
 
 void ImportFeature::start() {
-  ClientFeature* client =
-      application_features::ApplicationServer::getFeature<ClientFeature>(
-          "Client");
+  ClientFeature* client = application_features::ApplicationServer::getFeature<ClientFeature>(
+      "Client");
 
   int ret = EXIT_SUCCESS;
   *_result = ret;
@@ -268,7 +256,8 @@ void ImportFeature::start() {
       }
     } else {
       LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-          << "Unable to auto-detect file type from filename '" << _filename << "'. using filetype 'json'";
+          << "Unable to auto-detect file type from filename '" << _filename
+          << "'. using filetype 'json'";
       _typeImport = "json";
     }
   }
@@ -283,38 +272,31 @@ void ImportFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-  httpClient->params().setLocationRewriter(static_cast<void*>(client),
-                                           &rewriteLocation);
-  httpClient->params().setUserNamePassword("/", client->username(),
-                                           client->password());
+  httpClient->params().setLocationRewriter(static_cast<void*>(client), &rewriteLocation);
+  httpClient->params().setUserNamePassword("/", client->username(), client->password());
 
   // must stay here in order to establish the connection
   httpClient->getServerVersion();
 
   if (!httpClient->isConnected()) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "Could not connect to endpoint '" << client->endpoint()
-        << "', database: '" << client->databaseName() << "', username: '"
-        << client->username() << "'";
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << httpClient->getErrorMessage()
-                                              << "'";
+        << "Could not connect to endpoint '" << client->endpoint() << "', database: '"
+        << client->databaseName() << "', username: '" << client->username() << "'";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << httpClient->getErrorMessage() << "'";
     FATAL_ERROR_EXIT();
   }
 
   // successfully connected
-  std::cout << "Connected to ArangoDB '"
-            << httpClient->getEndpointSpecification() << "', version "
-            << httpClient->getServerVersion() << ", database: '"
-            << client->databaseName() << "', username: '" << client->username()
-            << "'" << std::endl;
+  std::cout << "Connected to ArangoDB '" << httpClient->getEndpointSpecification()
+            << "', version " << httpClient->getServerVersion()
+            << ", database: '" << client->databaseName() << "', username: '"
+            << client->username() << "'" << std::endl;
 
   std::cout << "----------------------------------------" << std::endl;
-  std::cout << "database:               " << client->databaseName()
-            << std::endl;
+  std::cout << "database:               " << client->databaseName() << std::endl;
   std::cout << "collection:             " << _collectionName << std::endl;
   if (!_fromCollectionPrefix.empty()) {
-    std::cout << "from collection prefix: " << _fromCollectionPrefix
-              << std::endl;
+    std::cout << "from collection prefix: " << _fromCollectionPrefix << std::endl;
   }
   if (!_toCollectionPrefix.empty()) {
     std::cout << "to collection prefix:   " << _toCollectionPrefix << std::endl;
@@ -332,10 +314,8 @@ void ImportFeature::start() {
   }
   std::cout << "threads:                " << _threadCount << std::endl;
 
-  std::cout << "connect timeout:        " << client->connectionTimeout()
-            << std::endl;
-  std::cout << "request timeout:        " << client->requestTimeout()
-            << std::endl;
+  std::cout << "connect timeout:        " << client->connectionTimeout() << std::endl;
+  std::cout << "request timeout:        " << client->requestTimeout() << std::endl;
   std::cout << "----------------------------------------" << std::endl;
   httpClient->disconnect();  // we do not reuse this anymore
 
@@ -418,8 +398,8 @@ void ImportFeature::start() {
           << "Specified file '" << _filename
           << "' is a directory. Please use a regular file.";
     } else {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Cannot open '" << _filename
-                                                << "'. Invalid file type.";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+          << "Cannot open '" << _filename << "'. Invalid file type.";
     }
 
     FATAL_ERROR_EXIT();
@@ -466,8 +446,7 @@ void ImportFeature::start() {
     }
 
     else {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Wrong type '" << _typeImport
-                                                << "'.";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Wrong type '" << _typeImport << "'.";
       FATAL_ERROR_EXIT();
     }
 
@@ -491,8 +470,8 @@ void ImportFeature::start() {
       }
     }
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Caught exception " << ex.what()
-                                            << " during import";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "Caught exception " << ex.what() << " during import";
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "Got an unknown exception during import";

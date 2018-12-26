@@ -37,8 +37,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestBatchHandler::RestBatchHandler(GeneralRequest* request,
-                                   GeneralResponse* response)
+RestBatchHandler::RestBatchHandler(GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
 RestBatchHandler::~RestBatchHandler() {}
@@ -77,8 +76,7 @@ RestStatus RestBatchHandler::executeHttp() {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response type");
   }
 
-  HttpRequest const* httpRequest =
-      dynamic_cast<HttpRequest const*>(_request.get());
+  HttpRequest const* httpRequest = dynamic_cast<HttpRequest const*>(_request.get());
 
   if (httpRequest == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
@@ -88,8 +86,7 @@ RestStatus RestBatchHandler::executeHttp() {
   auto const type = _request->requestType();
 
   if (type != rest::RequestType::POST && type != rest::RequestType::PUT) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
 
@@ -102,13 +99,13 @@ RestStatus RestBatchHandler::executeHttp() {
     return RestStatus::FAIL;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "boundary of multipart-message is '" << boundary << "'";
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+      << "boundary of multipart-message is '" << boundary << "'";
 
   size_t errors = 0;
 
   // get authorization header. we will inject this into the subparts
-  std::string const& authorization =
-      _request->header(StaticStrings::Authorization);
+  std::string const& authorization = _request->header(StaticStrings::Authorization);
 
   // create the response
   resetResponse(rest::ResponseCode::OK);
@@ -131,7 +128,8 @@ RestStatus RestBatchHandler::executeHttp() {
       // error
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "invalid multipart message received");
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "received a corrupted multipart message";
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+          << "received a corrupted multipart message";
 
       return RestStatus::FAIL;
     }
@@ -168,10 +166,11 @@ RestStatus RestBatchHandler::executeHttp() {
     }
 
     // set up request object for the part
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "part header is: " << std::string(headerStart, headerLength);
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+        << "part header is: " << std::string(headerStart, headerLength);
 
-    std::unique_ptr<HttpRequest> request(new HttpRequest(
-        _request->connectionInfo(), headerStart, headerLength, false));
+    std::unique_ptr<HttpRequest> request(
+        new HttpRequest(_request->connectionInfo(), headerStart, headerLength, false));
 
     // we do not have a client task id here
     request->setClientTaskId(0);
@@ -182,8 +181,8 @@ RestStatus RestBatchHandler::executeHttp() {
     request->setDatabaseName(_request->databaseName());
 
     if (bodyLength > 0) {
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "part body is '" << std::string(bodyStart, bodyLength)
-                 << "'";
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+          << "part body is '" << std::string(bodyStart, bodyLength) << "'";
       request->setBody(bodyStart, bodyLength);
     }
 
@@ -199,8 +198,8 @@ RestStatus RestBatchHandler::executeHttp() {
     {
       std::unique_ptr<HttpResponse> response(new HttpResponse(rest::ResponseCode::SERVER_ERROR));
 
-      auto h = GeneralServerFeature::HANDLER_FACTORY->createHandler(
-              std::move(request), std::move(response));
+      auto h = GeneralServerFeature::HANDLER_FACTORY->createHandler(std::move(request),
+                                                                    std::move(response));
 
       if (h == nullptr) {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
@@ -216,13 +215,12 @@ RestStatus RestBatchHandler::executeHttp() {
     {
       // ignore any errors here, will be handled later by inspecting the response
       try {
-        ExecContextScope scope(nullptr);// workaround because of assertions
+        ExecContextScope scope(nullptr);  // workaround because of assertions
         handler->runHandler([](RestHandler*) {});
       } catch (...) {
       }
 
-      HttpResponse* partResponse =
-          dynamic_cast<HttpResponse*>(handler->response());
+      HttpResponse* partResponse = dynamic_cast<HttpResponse*>(handler->response());
 
       if (partResponse == nullptr) {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
@@ -245,8 +243,7 @@ RestStatus RestBatchHandler::executeHttp() {
       // append content-id if it is present
       if (helper.contentId != 0) {
         httpResponse->body().appendText(
-            "\r\nContent-Id: " +
-            std::string(helper.contentId, helper.contentIdLength));
+            "\r\nContent-Id: " + std::string(helper.contentId, helper.contentIdLength));
       }
 
       httpResponse->body().appendText(TRI_CHAR_LENGTH_PAIR("\r\n\r\n"));
@@ -357,13 +354,11 @@ bool RestBatchHandler::getBoundaryHeader(std::string* result) {
 
   std::string boundary = parts[1].substr(boundaryLength);
 
-  if ((boundary[0]  == '"') &&
-      (boundary.length() > 1) && 
-      (boundary[boundary.length() -1] == '"')) {
+  if ((boundary[0] == '"') && (boundary.length() > 1) &&
+      (boundary[boundary.length() - 1] == '"')) {
     StringUtils::trimInPlace(boundary, "\"");
-  } else if ((boundary[0] == '\'') &&
-             (boundary.length() > 1) && 
-             (boundary[boundary.length() -1] == '\'')) {
+  } else if ((boundary[0] == '\'') && (boundary.length() > 1) &&
+             (boundary[boundary.length() - 1] == '\'')) {
     StringUtils::trimInPlace(boundary, "'");
   }
 
@@ -486,8 +481,7 @@ bool RestBatchHandler::extractPart(SearchHelper* helper) {
     }
 
     // split key/value of header
-    char const* colon =
-        static_cast<char const*>(memchr(found, (int)':', eol - found));
+    char const* colon = static_cast<char const*>(memchr(found, (int)':', eol - found));
 
     if (nullptr == colon) {
       // invalid header, not containing ':'
@@ -517,9 +511,9 @@ bool RestBatchHandler::extractPart(SearchHelper* helper) {
         if (value == StaticStrings::BatchContentType) {
           hasTypeHeader = true;
         } else {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "unexpected content-type '" << value
-                    << "' for multipart-message. expected: '"
-                    << StaticStrings::BatchContentType << "'";
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+              << "unexpected content-type '" << value << "' for multipart-message. expected: '"
+              << StaticStrings::BatchContentType << "'";
         }
       } else if ("content-id" == key) {
         helper->contentId = colon;

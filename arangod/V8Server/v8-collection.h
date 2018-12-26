@@ -43,8 +43,7 @@ void ReleaseCollection(arangodb::LogicalCollection const* collection);
 /// @brief return all collections in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<arangodb::LogicalCollection*> GetCollectionsCluster(
-  TRI_vocbase_t* vocbase);
+std::vector<arangodb::LogicalCollection*> GetCollectionsCluster(TRI_vocbase_t* vocbase);
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief check if a name belongs to a collection
@@ -61,11 +60,10 @@ bool EqualCollection(arangodb::CollectionNameResolver const* resolver,
 /// will be called when the V8 object is garbage collected.
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Object> WrapCollection(
-    v8::Isolate* isolate, arangodb::LogicalCollection const* collection);
+v8::Handle<v8::Object> WrapCollection(v8::Isolate* isolate,
+                                      arangodb::LogicalCollection const* collection);
 
-void TRI_InitV8Collections(v8::Handle<v8::Context> context,
-                           TRI_vocbase_t* vocbase, 
+void TRI_InitV8Collections(v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase,
                            TRI_v8_global_t* v8g, v8::Isolate* isolate,
                            v8::Handle<v8::ObjectTemplate> ArangoDBNS);
 

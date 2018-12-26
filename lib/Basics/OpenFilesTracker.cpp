@@ -29,19 +29,19 @@ using namespace arangodb;
 namespace {
 // single global instance which keeps track of all opened/closed files
 OpenFilesTracker Instance;
-}
+}  // namespace
 
-OpenFilesTracker::OpenFilesTracker() 
-    : _warnThreshold(0), _lastWarning(0.0) {}
+OpenFilesTracker::OpenFilesTracker() : _warnThreshold(0), _lastWarning(0.0) {}
 
 OpenFilesTracker::~OpenFilesTracker() {}
 
 int OpenFilesTracker::create(char const* path, int oflag, int mode) {
   // call underlying open() function from OS
   int res = TRI_CREATE(path, oflag, mode);
-  
+
   if (res >= 0) {
-    LOG_TOPIC(TRACE, Logger::SYSCALL) << "created file '" << path << "' was assigned file descriptor " << res;
+    LOG_TOPIC(TRACE, Logger::SYSCALL)
+        << "created file '" << path << "' was assigned file descriptor " << res;
 
     increase();
   }
@@ -51,9 +51,10 @@ int OpenFilesTracker::create(char const* path, int oflag, int mode) {
 int OpenFilesTracker::open(char const* path, int oflag) {
   // call underlying open() function from OS
   int res = TRI_OPEN(path, oflag);
-  
+
   if (res >= 0) {
-    LOG_TOPIC(TRACE, Logger::SYSCALL) << "opened file '" << path << "' was assigned file descriptor " << res;
+    LOG_TOPIC(TRACE, Logger::SYSCALL)
+        << "opened file '" << path << "' was assigned file descriptor " << res;
 
     increase();
   }
@@ -63,7 +64,7 @@ int OpenFilesTracker::open(char const* path, int oflag) {
 int OpenFilesTracker::close(int fd) noexcept {
   // call underlying close() function from OS
   int res = TRI_CLOSE(fd);
-  
+
   if (res == TRI_ERROR_NO_ERROR) {
     LOG_TOPIC(TRACE, Logger::SYSCALL) << "closed file with file descriptor " << fd;
 
@@ -72,7 +73,7 @@ int OpenFilesTracker::close(int fd) noexcept {
 
   return res;
 }
-    
+
 void OpenFilesTracker::increase() {
   uint64_t nowOpen = ++_numOpenFiles;
 
@@ -81,7 +82,9 @@ void OpenFilesTracker::increase() {
 
     if (_lastWarning <= 0.0 || now - _lastWarning >= 30.0) {
       // warn only every x seconds at most
-      LOG_TOPIC(WARN, Logger::SYSCALL) << "number of currently open files is now " << nowOpen << " and exceeds the warning threshold value " << _warnThreshold;
+      LOG_TOPIC(WARN, Logger::SYSCALL)
+          << "number of currently open files is now " << nowOpen
+          << " and exceeds the warning threshold value " << _warnThreshold;
       _lastWarning = now;
     }
   }
@@ -89,6 +92,4 @@ void OpenFilesTracker::increase() {
 
 void OpenFilesTracker::decrease() noexcept { --_numOpenFiles; }
 
-OpenFilesTracker* OpenFilesTracker::instance() {
-  return &Instance;
-}
+OpenFilesTracker* OpenFilesTracker::instance() { return &Instance; }

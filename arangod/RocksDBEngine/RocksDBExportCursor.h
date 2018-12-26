@@ -66,6 +66,6 @@ class RocksDBExportCursor final : public Cursor {
   std::unique_ptr<IndexIterator> _iter;
   size_t _size;
 };
-}
+}  // namespace arangodb
 
 #endif

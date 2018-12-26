@@ -22,9 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MMFilesAllocatorThread.h"
-#include "Logger/Logger.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
+#include "Logger/Logger.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 
 using namespace arangodb;
@@ -51,7 +51,7 @@ int MMFilesAllocatorThread::waitForResult(uint64_t timeout) {
       return TRI_ERROR_LOCK_TIMEOUT;
     }
   }
- 
+
   int res = _allocatorResult;
 
   // convert "locked" into NO_ERROR
@@ -102,10 +102,9 @@ void MMFilesAllocatorThread::run() {
 
     int res = TRI_ERROR_NO_ERROR;
     bool worked = false;
-    
+
     try {
-      if (requestedSize == 0 && !inRecovery() &&
-          !_logfileManager->hasReserveLogfiles()) {
+      if (requestedSize == 0 && !inRecovery() && !_logfileManager->hasReserveLogfiles()) {
         // reset allocator status
         {
           CONDITION_LOCKER(guard, _allocatorResultCondition);
@@ -115,8 +114,7 @@ void MMFilesAllocatorThread::run() {
         // only create reserve files if we are not in the recovery mode
         worked = true;
         res = createReserveLogfile(0);
-      } else if (requestedSize > 0 &&
-                 _logfileManager->logfileCreationAllowed(requestedSize)) {
+      } else if (requestedSize > 0 && _logfileManager->logfileCreationAllowed(requestedSize)) {
         // reset allocator status
         {
           CONDITION_LOCKER(guard, _allocatorResultCondition);
@@ -128,16 +126,18 @@ void MMFilesAllocatorThread::run() {
       }
     } catch (arangodb::basics::Exception const& ex) {
       res = ex.code();
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "got unexpected error in allocatorThread: "
-               << TRI_errno_string(res);
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "got unexpected error in allocatorThread: " << TRI_errno_string(res);
     } catch (...) {
       res = TRI_ERROR_INTERNAL;
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "got unspecific error in allocatorThread";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "got unspecific error in allocatorThread";
     }
 
     if (worked) {
       if (res != TRI_ERROR_NO_ERROR) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unable to create new WAL reserve logfile: " << TRI_errno_string(res);
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+            << "unable to create new WAL reserve logfile: " << TRI_errno_string(res);
       }
 
       // broadcast new allocator status

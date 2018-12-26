@@ -255,8 +255,8 @@ typedef struct {
   int pathlength;
   int path[50];
 } GeoPath;
-}
-}
+}  // namespace rocksdbengine
+}  // namespace arangodb
 
 // must be included here after struct definition
 #include <RocksDBEngine/RocksDBCommon.h>
@@ -341,10 +341,10 @@ static void toPersistent(GeoPot const& in, char* out) {
 /* CRUD interface */
 
 inline void RocksRead(RocksDBMethods* rocksMethods, RocksDBKey const& key, std::string* val) {
-  arangodb::Result r =
-      rocksMethods->Get(RocksDBColumnFamily::geo(), key, val);
+  arangodb::Result r = rocksMethods->Get(RocksDBColumnFamily::geo(), key, val);
   if (!r.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), "GeoIndex - document read " + r.errorMessage());
+    THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(),
+                                   "GeoIndex - document read " + r.errorMessage());
   }
 }
 
@@ -354,31 +354,32 @@ inline void RocksWrite(RocksDBMethods* rocksMethods, RocksDBKey const& key,
   if (rocksMethods == nullptr) {
     rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
     rocksdb::WriteOptions wo;
-    rocksdb::Status s =
-        db->Put(wo, RocksDBColumnFamily::geo(), key.string(), slice);
+    rocksdb::Status s = db->Put(wo, RocksDBColumnFamily::geo(), key.string(), slice);
     if (!s.ok()) {
       arangodb::Result r = rocksutils::convertStatus(s, rocksutils::index);
       THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
     }
   } else {
-    arangodb::Result r = rocksMethods->Put(RocksDBColumnFamily::geo(), key,
-                                           slice, rocksutils::index);
+    arangodb::Result r =
+        rocksMethods->Put(RocksDBColumnFamily::geo(), key, slice, rocksutils::index);
     if (!r.ok()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), "GeoIndex - document wirte " + r.errorMessage());
+      THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(),
+                                     "GeoIndex - document wirte " + r.errorMessage());
     }
   }
 }
 
 inline void RocksDelete(RocksDBMethods* rocksMethods, RocksDBKey const& key) {
   TRI_ASSERT(rocksMethods);
-  arangodb::Result r =
-      rocksMethods->Delete(RocksDBColumnFamily::geo(), key);
+  arangodb::Result r = rocksMethods->Delete(RocksDBColumnFamily::geo(), key);
   if (!r.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), "GeoIndex - document delete " + r.errorMessage());
+    THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(),
+                                   "GeoIndex - document delete " + r.errorMessage());
   }
 }
 
-void SlotRead(GeoIx const* gix, RocksDBMethods* rocksMethods, int slot, GeoCoordinate* gc /*out param*/) {
+void SlotRead(GeoIx const* gix, RocksDBMethods* rocksMethods, int slot,
+              GeoCoordinate* gc /*out param*/) {
   RocksDBKey key;
   key.constructGeoIndexValue(gix->objectId, slot, true);
   std::string slotValue;
@@ -433,8 +434,7 @@ double GeoIndex_distance(GeoCoordinate* c1, GeoCoordinate* c2) {
   z2 = sin(c2->latitude * M_PI / 180.0);
   x2 = cos(c2->latitude * M_PI / 180.0) * cos(c2->longitude * M_PI / 180.0);
   y2 = cos(c2->latitude * M_PI / 180.0) * sin(c2->longitude * M_PI / 180.0);
-  mole = sqrt((xx1 - x2) * (xx1 - x2) + (yy1 - y2) * (yy1 - y2) +
-              (z1 - z2) * (z1 - z2));
+  mole = sqrt((xx1 - x2) * (xx1 - x2) + (yy1 - y2) * (yy1 - y2) + (z1 - z2) * (z1 - z2));
   if (mole > 2.0) mole = 2.0; /* make sure arcsin succeeds! */
   return 2.0 * EARTHRADIAN * asin(mole / 2.0);
 }
@@ -488,13 +488,13 @@ int GeoIndexNewPot(GeoIx* gix) {  // rocksdb initial put
 /* GeoString values of real (latitude, longitude)      */
 /* points                                              */
 /* =================================================== */
-GeoIdx* GeoIndex_new(RocksDBMethods* rocksMethods, uint64_t objectId, int numPots, int numSlots) {
+GeoIdx* GeoIndex_new(RocksDBMethods* rocksMethods, uint64_t objectId,
+                     int numPots, int numSlots) {
   TRI_ASSERT(objectId != 0);
   GeoIx* gix;
   int i;
 
-  gix = static_cast<GeoIx*>(
-      TRI_Allocate(sizeof(GeoIx)));
+  gix = static_cast<GeoIx*>(TRI_Allocate(sizeof(GeoIx)));
 
   if (gix == nullptr) {
     return (GeoIdx*)gix;
@@ -635,7 +635,7 @@ void GeoIndex_reset(GeoIdx* gi, RocksDBMethods* rocksMethods) {
   TRI_ASSERT(gi != nullptr);
   TRI_ASSERT(gix->nextFreePot >= 2);
   TRI_ASSERT(gix->nextFreeSlot >= 1);
-  
+
   GeoPot gp;
   gp.LorLeaf = 0;    // leaf pot
   gp.RorPoints = 0;  // with no points in it!
@@ -646,7 +646,7 @@ void GeoIndex_reset(GeoIdx* gi, RocksDBMethods* rocksMethods) {
   for (int i = 0; i < GeoIndexFIXEDPOINTS; i++) gp.maxdist[i] = 0;
   PotWrite(gix, rocksMethods, 1, &gp);  // pot 1 is root
 }
-  
+
 /* =================================================== */
 /*               GeoIndex_free routine                 */
 /* Destroys the GeoIndex, and frees all the memory that*/
@@ -853,7 +853,8 @@ void GeoSetDistance(GeoDetailedPoint* gd, double snmd) {
 /* points (on the Hilbert curve, anyway) to be on the  */
 /* to of the stack and to contain few points           */
 /* =================================================== */
-void GeoStackSet(RocksDBMethods* rocksMethods, GeoStack* gk, GeoDetailedPoint* gd, GeoResults* gr) {
+void GeoStackSet(RocksDBMethods* rocksMethods, GeoStack* gk,
+                 GeoDetailedPoint* gd, GeoResults* gr) {
   int pot;
   GeoIx* gix;
   GeoPot gp;
@@ -892,12 +893,9 @@ GeoResults* GeoResultsCons(int alloc) {
     return nullptr;
   }
 
-  gres = static_cast<GeoResults*>(
-      TRI_Allocate(sizeof(GeoResults)));
-  sa = static_cast<int*>(
-      TRI_Allocate(alloc * sizeof(int)));
-  dd = static_cast<double*>(
-      TRI_Allocate(alloc * sizeof(double)));
+  gres = static_cast<GeoResults*>(TRI_Allocate(sizeof(GeoResults)));
+  sa = static_cast<int*>(TRI_Allocate(alloc * sizeof(int)));
+  dd = static_cast<double*>(TRI_Allocate(alloc * sizeof(double)));
   if ((gres == nullptr) || (sa == nullptr) || (dd == nullptr)) {
     if (gres != nullptr) {
       TRI_Free(gres);
@@ -1009,10 +1007,8 @@ int GeoResultsGrow(GeoResults* gr) {
   /* otherwise grow by about 50%  */
   newsiz = gr->pointsct + (gr->pointsct / 2) + 1;
   if (newsiz > 1000000000) return -1;
-  sa = static_cast<int*>(
-      TRI_Reallocate(gr->slot, newsiz * sizeof(int)));
-  dd = static_cast<double*>(
-      TRI_Reallocate(gr->snmd, newsiz * sizeof(double)));
+  sa = static_cast<int*>(TRI_Reallocate(gr->slot, newsiz * sizeof(int)));
+  dd = static_cast<double*>(TRI_Reallocate(gr->snmd, newsiz * sizeof(double)));
   if ((sa == nullptr) || (dd == nullptr)) {
     if (sa != nullptr) gr->slot = sa;
     if (dd != nullptr) gr->snmd = dd;
@@ -1042,7 +1038,8 @@ int GeoResultsGrow(GeoResults* gr) {
 /* distances that could be calculated by a separate    */
 /* call to GeoIndex_distance because of rounding errors*/
 /* =================================================== */
-GeoCoordinates* GeoAnswers(GeoIx* gix, RocksDBMethods* rocksMethods, GeoResults* gr, bool returnDistances) {
+GeoCoordinates* GeoAnswers(GeoIx* gix, RocksDBMethods* rocksMethods,
+                           GeoResults* gr, bool returnDistances) {
   GeoCoordinates* ans;
   GeoCoordinate* gc;
   int i, j;
@@ -1055,10 +1052,8 @@ GeoCoordinates* GeoAnswers(GeoIx* gix, RocksDBMethods* rocksMethods, GeoResults*
     return nullptr;
   }
 
-  ans = static_cast<GeoCoordinates*>(
-      TRI_Allocate(sizeof(GeoCoordinates)));
-  gc = static_cast<GeoCoordinate*>(TRI_Allocate(
-      gr->pointsct * sizeof(GeoCoordinate)));
+  ans = static_cast<GeoCoordinates*>(TRI_Allocate(sizeof(GeoCoordinates)));
+  gc = static_cast<GeoCoordinate*>(TRI_Allocate(gr->pointsct * sizeof(GeoCoordinate)));
 
   if ((ans == nullptr) || (gc == nullptr)) {
     if (ans != nullptr) {
@@ -1130,8 +1125,7 @@ double GeoSNMD(GeoDetailedPoint* gd, GeoCoordinate* c) {
   z = sin(lat);
   x = latCos * cos(lon);
   y = latCos * sin(lon);
-  return (x - gd->x) * (x - gd->x) + (y - gd->y) * (y - gd->y) +
-         (z - gd->z) * (z - gd->z);
+  return (x - gd->x) * (x - gd->x) + (y - gd->y) * (y - gd->y) + (z - gd->z) * (z - gd->z);
 }
 /* =================================================== */
 /*           GeoIndex_PointsWithinRadius               */
@@ -1163,8 +1157,8 @@ double GeoSNMD(GeoDetailedPoint* gd, GeoCoordinate* c) {
 /* GeoCoordinate data (lat/longitude and data pointer) */
 /* needed for the return to the caller.                */
 /* =================================================== */
-GeoCoordinates* GeoIndex_PointsWithinRadius(GeoIdx* gi, RocksDBMethods* rocksMethods, GeoCoordinate* c,
-                                            double d) {
+GeoCoordinates* GeoIndex_PointsWithinRadius(GeoIdx* gi, RocksDBMethods* rocksMethods,
+                                            GeoCoordinate* c, double d) {
   GeoResults* gres;
   GeoCoordinates* answer;
   GeoDetailedPoint gd;
@@ -1230,8 +1224,8 @@ GeoCoordinates* GeoIndex_PointsWithinRadius(GeoIdx* gi, RocksDBMethods* rocksMet
 /* useful points onto the top of the stack for early   */
 /* processing.                                         */
 /* =================================================== */
-GeoCoordinates* GeoIndex_NearestCountPoints(GeoIdx* gi, RocksDBMethods* rocksMethods, GeoCoordinate* c,
-                                            int count) {
+GeoCoordinates* GeoIndex_NearestCountPoints(GeoIdx* gi, RocksDBMethods* rocksMethods,
+                                            GeoCoordinate* c, int count) {
   GeoResults* gr;
   GeoDetailedPoint gd;
   GeoCoordinates* answer;
@@ -1397,8 +1391,7 @@ int GeoFind(GeoPath* gt, RocksDBMethods* rocksMethods, GeoDetailedPoint* gd) {
       slot = gp.points[i];
       SlotRead(gix, rocksMethods, slot, &gc);
       if (((gd->gc)->latitude == gc.latitude) &&
-          ((gd->gc)->longitude == gc.longitude) &&
-          ((gd->gc)->data == gc.data)) {
+          ((gd->gc)->longitude == gc.longitude) && ((gd->gc)->data == gc.data)) {
         gt->path[gt->pathlength] = i;
         return 1;
       }
@@ -1685,8 +1678,7 @@ int GeoIndex_insert(GeoIdx* gi, RocksDBMethods* rocksMethods, GeoCoordinate* c) 
           mid = gsl[j];
         }
       }
-      TRI_ASSERT(jj1 !=
-                 std::numeric_limits<int>::max());  // jj1 -- must have been set
+      TRI_ASSERT(jj1 != std::numeric_limits<int>::max());  // jj1 -- must have been set
       gsl[jj1] = 0xfffffffffffffffful;
     }
     for (i = 0; i < GeoIndexPOTSIZE; i++) {
@@ -2315,8 +2307,7 @@ GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count,
           hs.snmd = GeoSNMD(&(gcr->gd), &ct);
           hs.slot = j;
           gcr->slotheap.push_back(hs);
-          std::push_heap(gcr->slotheap.begin(), gcr->slotheap.end(),
-                         hslotcompare);
+          std::push_heap(gcr->slotheap.begin(), gcr->slotheap.end(), hslotcompare);
         }
         if (!gcr->slotheap.empty()) {
           gcr->slotsnmd = gcr->slotheap.front().snmd;
@@ -2380,8 +2371,7 @@ void RecursivePotDump(GeoIx* gix, RocksDBMethods* rocksMethods, FILE* f, int pot
   GeoPot gp;
   GeoCoordinate gc;
   PotRead(gix, rocksMethods, pot, &gp);
-  fprintf(f, "GP. pot %d level %d  Kids %d %d\n", pot, gp.level, gp.LorLeaf,
-          gp.RorPoints);
+  fprintf(f, "GP. pot %d level %d  Kids %d %d\n", pot, gp.level, gp.LorLeaf, gp.RorPoints);
   fprintf(f, "strings %llx %llx %llx\n", gp.start, gp.middle,
           gp.end);  // fixme - usage of printf is broken
                     // fast_uint64_t is not necessarily a long long
@@ -2505,6 +2495,6 @@ int GeoIndex_INDEXVALID(GeoIdx* gi, RocksDBMethods* rocksMethods) {
 }
 
 #endif
-}
-}
+}  // namespace rocksdbengine
+}  // namespace arangodb
 /* end of GeoIndex.c  */

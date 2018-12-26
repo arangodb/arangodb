@@ -28,34 +28,23 @@
 #include "Basics/Exceptions.h"
 
 namespace arangodb {
- 
+
 struct AccessMode {
-  enum class Type {
-    NONE = 0,
-    READ = 1,
-    WRITE = 2,
-    EXCLUSIVE = 4
-  };
+  enum class Type { NONE = 0, READ = 1, WRITE = 2, EXCLUSIVE = 4 };
   // no need to create an object of it
-  AccessMode() = delete; 
+  AccessMode() = delete;
 
   static_assert(AccessMode::Type::NONE < AccessMode::Type::READ &&
-                AccessMode::Type::READ < AccessMode::Type::WRITE &&
-                AccessMode::Type::READ < AccessMode::Type::EXCLUSIVE,
+                    AccessMode::Type::READ < AccessMode::Type::WRITE &&
+                    AccessMode::Type::READ < AccessMode::Type::EXCLUSIVE,
                 "AccessMode::Type total order fail");
-  
-  static inline bool isNone(Type type) {
-    return (type == Type::NONE);
-  }
-  
-  static inline bool isRead(Type type) {
-    return (type == Type::READ);
-  }
-  
-  static inline bool isWrite(Type type) {
-    return (type == Type::WRITE);
-  }
-  
+
+  static inline bool isNone(Type type) { return (type == Type::NONE); }
+
+  static inline bool isRead(Type type) { return (type == Type::READ); }
+
+  static inline bool isWrite(Type type) { return (type == Type::WRITE); }
+
   static inline bool isExclusive(Type type) {
     return (type == Type::EXCLUSIVE);
   }
@@ -68,21 +57,20 @@ struct AccessMode {
   static Type fromString(char const* value) {
     if (strcmp(value, "read") == 0) {
       return Type::READ;
-    } 
+    }
     if (strcmp(value, "write") == 0) {
       return Type::WRITE;
-    } 
+    }
     if (strcmp(value, "exclusive") == 0) {
       return Type::EXCLUSIVE;
-    } 
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                  "invalid access type");
+    }
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid access type");
   }
 
   /// @brief return the type of the transaction as a string
   static inline char const* typeString(Type value) {
     switch (value) {
-      case Type::NONE: 
+      case Type::NONE:
         return "none";
       case Type::READ:
         return "read";
@@ -91,11 +79,10 @@ struct AccessMode {
       case Type::EXCLUSIVE:
         return "exclusive";
     }
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                  "invalid access type");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid access type");
   }
 };
 
-}
+}  // namespace arangodb
 
 #endif

@@ -166,8 +166,7 @@ void TRI_BroadcastCondition(TRI_condition_t* cond) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_WaitCondition(TRI_condition_t* cond) {
-  SleepConditionVariableCS(&cond->_conditionVariable, &cond->_lockWaiters,
-                           INFINITE);
+  SleepConditionVariableCS(&cond->_conditionVariable, &cond->_lockWaiters, INFINITE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

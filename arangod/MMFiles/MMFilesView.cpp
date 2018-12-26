@@ -63,9 +63,8 @@ MMFilesView::~MMFilesView() {
   if (_logicalView->deleted()) {
     try {
       StorageEngine* engine = EngineSelectorFeature::ENGINE;
-      std::string directory =
-          static_cast<MMFilesEngine*>(engine)->viewDirectory(
-              _logicalView->vocbase()->id(), _logicalView->id());
+      std::string directory = static_cast<MMFilesEngine*>(engine)->viewDirectory(
+          _logicalView->vocbase()->id(), _logicalView->id());
       TRI_RemoveDirectory(directory.c_str());
     } catch (...) {
       // must ignore errors here as we are in the destructor
@@ -73,8 +72,7 @@ MMFilesView::~MMFilesView() {
   }
 }
 
-void MMFilesView::getPropertiesVPack(velocypack::Builder& result,
-                                     bool includeSystem) const {
+void MMFilesView::getPropertiesVPack(velocypack::Builder& result, bool includeSystem) const {
   TRI_ASSERT(result.isOpenObject());
   if (includeSystem) {
     result.add("path", VPackValue(_path));
@@ -86,16 +84,16 @@ void MMFilesView::getPropertiesVPack(velocypack::Builder& result,
 void MMFilesView::open() {}
 
 void MMFilesView::drop() {
-  bool const doSync =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database")
-          ->forceSyncProperties();
+  bool const doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>(
+                          "Database")
+                          ->forceSyncProperties();
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  static_cast<MMFilesEngine*>(engine)->saveViewInfo(_logicalView->vocbase(), _logicalView->id(), _logicalView, doSync);
+  static_cast<MMFilesEngine*>(engine)->saveViewInfo(_logicalView->vocbase(),
+                                                    _logicalView->id(),
+                                                    _logicalView, doSync);
 }
 
-arangodb::Result MMFilesView::updateProperties(VPackSlice const& slice,
-                                               bool doSync) {
+arangodb::Result MMFilesView::updateProperties(VPackSlice const& slice, bool doSync) {
   // nothing to do here
   return {};
 }
@@ -123,8 +121,7 @@ arangodb::Result MMFilesView::persistProperties() {
   if (res != TRI_ERROR_NO_ERROR) {
     // TODO: what to do here
     LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-        << "could not save view change marker in log: "
-        << TRI_errno_string(res);
+        << "could not save view change marker in log: " << TRI_errno_string(res);
     return {res, TRI_errno_string(res)};
   }
   return {};

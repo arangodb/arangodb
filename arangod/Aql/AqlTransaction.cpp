@@ -42,20 +42,17 @@ AqlTransaction* AqlTransaction::create(
     std::unordered_set<std::string> inaccessibleCollections) {
 #ifdef USE_ENTERPRISE
   if (options.skipInaccessibleCollections) {
-    return new transaction::IgnoreNoAccessAqlTransaction(
-        transactionContext, collections, options, isMainTransaction,
-        inaccessibleCollections);
+    return new transaction::IgnoreNoAccessAqlTransaction(transactionContext, collections,
+                                                         options, isMainTransaction,
+                                                         inaccessibleCollections);
   }
 #endif
-  return new AqlTransaction(transactionContext, collections, options,
-                            isMainTransaction);
+  return new AqlTransaction(transactionContext, collections, options, isMainTransaction);
 }
 
 /// @brief clone, used to make daughter transactions for parts of a
 /// distributed AQL query running on the coordinator
-transaction::Methods* AqlTransaction::clone(
-    transaction::Options const& options) const {
-  
+transaction::Methods* AqlTransaction::clone(transaction::Options const& options) const {
   auto ctx = transaction::StandaloneContext::Create(vocbase());
   return new AqlTransaction(ctx, &_collections, options, false);
 }
@@ -70,12 +67,10 @@ Result AqlTransaction::processCollection(aql::Collection* collection) {
 
 /// @brief add a coordinator collection to the transaction
 
-Result AqlTransaction::processCollectionCoordinator(
-    aql::Collection* collection) {
+Result AqlTransaction::processCollectionCoordinator(aql::Collection* collection) {
   TRI_voc_cid_t cid = resolver()->getCollectionId(collection->getName());
 
-  return addCollection(cid, collection->getName().c_str(),
-                       collection->accessType);
+  return addCollection(cid, collection->getName().c_str(), collection->accessType);
 }
 
 /// @brief add a regular collection to the transaction
@@ -101,8 +96,7 @@ Result AqlTransaction::processCollectionNormal(aql::Collection* collection) {
     cid = col->cid();
   }
 
-  Result res =
-      addCollection(cid, collection->getName(), collection->accessType);
+  Result res = addCollection(cid, collection->getName(), collection->accessType);
 
   if (res.ok() && col != nullptr) {
     collection->setCollection(const_cast<arangodb::LogicalCollection*>(col));

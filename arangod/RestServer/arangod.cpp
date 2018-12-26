@@ -37,9 +37,9 @@
 #include "ApplicationFeatures/MaxMapCountFeature.h"
 #include "ApplicationFeatures/NonceFeature.h"
 #include "ApplicationFeatures/PageSizeFeature.h"
+#include "ApplicationFeatures/PrivilegeFeature.h"
 #include "ApplicationFeatures/RocksDBOptionFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
-#include "ApplicationFeatures/PrivilegeFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/SupervisorFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
@@ -106,26 +106,22 @@
 
 using namespace arangodb;
 
-static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
+static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
   try {
     context.installSegv();
     context.runStartupChecks();
-    
+
     std::string name = context.binaryName();
 
     auto options = std::make_shared<options::ProgramOptions>(
-        argv[0], "Usage: " + name + " [<options>]", "For more information use:",
-        SBIN_DIRECTORY);
+        argv[0], "Usage: " + name + " [<options>]", "For more information use:", SBIN_DIRECTORY);
 
     application_features::ApplicationServer server(options, SBIN_DIRECTORY);
 
     std::vector<std::string> nonServerFeatures = {
-        "Action",        "Agency",
-        "Cluster",       "Daemon",
-        "FoxxQueues",    "GeneralServer", 
-        "Greetings",     "LoggerBufferFeature",
-        "Server",        "SslServer",
-        "Statistics",    "Supervisor"};
+        "Action",     "Agency",        "Cluster",    "Daemon",
+        "FoxxQueues", "GeneralServer", "Greetings",  "LoggerBufferFeature",
+        "Server",     "SslServer",     "Statistics", "Supervisor"};
 
     int ret = EXIT_FAILURE;
 
@@ -137,8 +133,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new AqlFeature(&server));
     server.addFeature(new BootstrapFeature(&server));
     server.addFeature(new CacheManagerFeature(&server));
-    server.addFeature(
-        new CheckVersionFeature(&server, &ret, nonServerFeatures));
+    server.addFeature(new CheckVersionFeature(&server, &ret, nonServerFeatures));
     server.addFeature(new ClusterFeature(&server));
     server.addFeature(new ConfigFeature(&server, name));
     server.addFeature(new ConsoleFeature(&server));
@@ -214,8 +209,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-          << "arangod terminated because of an exception: "
-          << ex.what();
+          << "arangod terminated because of an exception: " << ex.what();
       ret = EXIT_FAILURE;
     } catch (...) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
@@ -227,8 +221,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     return context.exit(ret);
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "arangod terminated because of an exception: "
-        << ex.what();
+        << "arangod terminated because of an exception: " << ex.what();
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "arangod terminated because of an xception of "
@@ -246,8 +239,7 @@ static void WINAPI ServiceMain(DWORD dwArgc, LPSTR* lpszArgv) {
     return;
   }
   // register the service ctrl handler,  lpszArgv[0] contains service name
-  ServiceStatus =
-      RegisterServiceCtrlHandlerA(lpszArgv[0], (LPHANDLER_FUNCTION)ServiceCtrl);
+  ServiceStatus = RegisterServiceCtrlHandlerA(lpszArgv[0], (LPHANDLER_FUNCTION)ServiceCtrl);
 
   // set start pending
   SetServiceStatus(SERVICE_START_PENDING, 0, 1, 10000, 0);
@@ -268,8 +260,8 @@ int main(int argc, char* argv[]) {
     ARGC = argc;
     ARGV = argv;
 
-    SERVICE_TABLE_ENTRY ste[] = {
-      {TEXT(""), (LPSERVICE_MAIN_FUNCTION)ServiceMain}, {nullptr, nullptr}};
+    SERVICE_TABLE_ENTRY ste[] = {{TEXT(""), (LPSERVICE_MAIN_FUNCTION)ServiceMain},
+                                 {nullptr, nullptr}};
 
     if (!StartServiceCtrlDispatcher(ste)) {
       std::cerr << "FATAL: StartServiceCtrlDispatcher has failed with "

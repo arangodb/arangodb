@@ -38,8 +38,7 @@ static ExecutionCondition const NotInCoordinator = [] {
 
 AqlFunctionFeature* AqlFunctionFeature::AQLFUNCTIONS = nullptr;
 
-AqlFunctionFeature::AqlFunctionFeature(
-    application_features::ApplicationServer* server)
+AqlFunctionFeature::AqlFunctionFeature(application_features::ApplicationServer* server)
     : application_features::ApplicationFeature(server, "AQLFunctions"),
       _internalFunctionNames{
           {static_cast<int>(NODE_TYPE_OPERATOR_UNARY_PLUS), "UNARY_PLUS"},
@@ -92,12 +91,10 @@ AqlFunctionFeature::AqlFunctionFeature(
 }
 
 // This feature does not have any options
-void AqlFunctionFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions>) {}
+void AqlFunctionFeature::collectOptions(std::shared_ptr<options::ProgramOptions>) {}
 
 // This feature does not have any options
-void AqlFunctionFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions>) {}
+void AqlFunctionFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {}
 
 void AqlFunctionFeature::prepare() {
   // set singleton
@@ -114,16 +111,15 @@ void AqlFunctionFeature::prepare() {
   addDateFunctions();
   addMiscFunctions();
   addStorageEngineFunctions();
-  
-  add({"PREGEL_RESULT", ".", false, true,
-    true, true, &Functions::PregelResult, NotInCoordinator});
+
+  add({"PREGEL_RESULT", ".", false, true, true, true, &Functions::PregelResult, NotInCoordinator});
 }
 
 void AqlFunctionFeature::unprepare() {
   // Just unlink nothing more todo
   AQLFUNCTIONS = nullptr;
 }
-  
+
 /// @brief returns a reference to a built-in function
 Function const* AqlFunctionFeature::getFunctionByName(std::string const& name) {
   TRI_ASSERT(AQLFUNCTIONS != nullptr);
@@ -141,7 +137,7 @@ void AqlFunctionFeature::addAlias(std::string const& alias, std::string const& o
   TRI_ASSERT(it != _functionNames.end());
 
   // intentionally copy original function, as we want to give it another name
-  Function aliasFunction = (*it).second; 
+  Function aliasFunction = (*it).second;
   aliasFunction.name = alias;
 
   add(aliasFunction);
@@ -159,7 +155,7 @@ void AqlFunctionFeature::toVelocyPack(VPackBuilder& builder) {
     if (it.second.implementation != nullptr) {
       builder.add(VPackValue("cxx"));
     }
-    builder.close(); // implementations
+    builder.close();  // implementations
     builder.add("deterministic", VPackValue(it.second.isDeterministic));
     builder.add("cacheable", VPackValue(it.second.isCacheable()));
     builder.add("canThrow", VPackValue(it.second.canThrow));
@@ -172,16 +168,15 @@ Function const* AqlFunctionFeature::byName(std::string const& name) {
   auto it = _functionNames.find(name);
 
   if (it == _functionNames.end()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN,
-                                  name.c_str());
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN, name.c_str());
   }
 
   // return the address of the function
   return &((*it).second);
 }
 
-std::string const& AqlFunctionFeature::getOperatorName(
-    AstNodeType const type, std::string const& errorMessage) {
+std::string const& AqlFunctionFeature::getOperatorName(AstNodeType const type,
+                                                       std::string const& errorMessage) {
   auto it = _internalFunctionNames.find(static_cast<int>(type));
 
   if (it == _internalFunctionNames.end()) {
@@ -203,27 +198,19 @@ std::string const& AqlFunctionFeature::getOperatorName(
 
 void AqlFunctionFeature::addTypeCheckFunctions() {
   // type check functions
-  add({"IS_NULL", ".", true, false, true, true,
-       &Functions::IsNull});
-  add({"IS_BOOL", ".", true, false, true, true,
-       &Functions::IsBool});
-  add({"IS_NUMBER", ".", true, false, true, true,
-       &Functions::IsNumber});
-  add({"IS_STRING", ".", true, false, true, true,
-       &Functions::IsString});
-  add({"IS_ARRAY", ".", true, false, true, true,
-       &Functions::IsArray});
+  add({"IS_NULL", ".", true, false, true, true, &Functions::IsNull});
+  add({"IS_BOOL", ".", true, false, true, true, &Functions::IsBool});
+  add({"IS_NUMBER", ".", true, false, true, true, &Functions::IsNumber});
+  add({"IS_STRING", ".", true, false, true, true, &Functions::IsString});
+  add({"IS_ARRAY", ".", true, false, true, true, &Functions::IsArray});
   // IS_LIST is an alias for IS_ARRAY
   addAlias("IS_LIST", "IS_ARRAY");
-  add({"IS_OBJECT", ".", true, false, true, true,
-       &Functions::IsObject});
+  add({"IS_OBJECT", ".", true, false, true, true, &Functions::IsObject});
   // IS_DOCUMENT is an alias for IS_OBJECT
   addAlias("IS_DOCUMENT", "IS_OBJECT");
 
-  add({"IS_DATESTRING", ".", true, false, true,
-       true});
-  add({"TYPENAME", ".", true, false, true, true,
-       &Functions::Typename});
+  add({"IS_DATESTRING", ".", true, false, true, true});
+  add({"TYPENAME", ".", true, false, true, true, &Functions::Typename});
 }
 
 void AqlFunctionFeature::addTypeCastFunctions() {
@@ -239,8 +226,7 @@ void AqlFunctionFeature::addTypeCastFunctions() {
 void AqlFunctionFeature::addStringFunctions() {
   // string functions
   add({"CONCAT", ".|+", true, false, true, true, &Functions::Concat});
-  add({"CONCAT_SEPARATOR", ".,.|+", true, false,
-       true, true, &Functions::ConcatSeparator});
+  add({"CONCAT_SEPARATOR", ".,.|+", true, false, true, true, &Functions::ConcatSeparator});
   add({"CHAR_LENGTH", ".", true, false, true, true, &Functions::CharLength});
   add({"LOWER", ".", true, false, true, true, &Functions::Lower});
   add({"UPPER", ".", true, false, true, true, &Functions::Upper});
@@ -248,8 +234,7 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"CONTAINS", ".,.|.", true, false, true, true, &Functions::Contains});
   add({"LIKE", ".,.|.", true, false, true, true, &Functions::Like});
   add({"REGEX_TEST", ".,.|.", true, false, true, true, &Functions::RegexTest});
-  add({"REGEX_REPLACE", ".,.,.|.", true, false, true,
-       true, &Functions::RegexReplace});
+  add({"REGEX_REPLACE", ".,.,.|.", true, false, true, true, &Functions::RegexReplace});
   add({"LEFT", ".,.", true, false, true, true, &Functions::Left});
   add({"RIGHT", ".,.", true, false, true, true, &Functions::Right});
   add({"TRIM", ".|.", true, false, true, true, &Functions::Trim});
@@ -268,227 +253,145 @@ void AqlFunctionFeature::addStringFunctions() {
 
 void AqlFunctionFeature::addNumericFunctions() {
   // numeric functions
-  add({"FLOOR", ".", true, false, true, true,
-       &Functions::Floor});
-  add({"CEIL", ".", true, false, true, true,
-       &Functions::Ceil});
-  add({"ROUND", ".", true, false, true, true,
-       &Functions::Round});
+  add({"FLOOR", ".", true, false, true, true, &Functions::Floor});
+  add({"CEIL", ".", true, false, true, true, &Functions::Ceil});
+  add({"ROUND", ".", true, false, true, true, &Functions::Round});
   add({"ABS", ".", true, false, true, true, &Functions::Abs});
-  add({"RAND", "", false, false, true, true,
-       &Functions::Rand});
-  add({"SQRT", ".", true, false, true, true,
-       &Functions::Sqrt});
-  add({"POW", ".,.", true, false, true, true,
-       &Functions::Pow});
+  add({"RAND", "", false, false, true, true, &Functions::Rand});
+  add({"SQRT", ".", true, false, true, true, &Functions::Sqrt});
+  add({"POW", ".,.", true, false, true, true, &Functions::Pow});
   add({"LOG", ".", true, false, true, true, &Functions::Log});
-  add({"LOG2", ".", true, false, true, true,
-       &Functions::Log2});
-  add({"LOG10", ".", true, false, true, true,
-       &Functions::Log10});
+  add({"LOG2", ".", true, false, true, true, &Functions::Log2});
+  add({"LOG10", ".", true, false, true, true, &Functions::Log10});
   add({"EXP", ".", true, false, true, true, &Functions::Exp});
-  add({"EXP2", ".", true, false, true, true,
-       &Functions::Exp2});
+  add({"EXP2", ".", true, false, true, true, &Functions::Exp2});
   add({"SIN", ".", true, false, true, true, &Functions::Sin});
   add({"COS", ".", true, false, true, true, &Functions::Cos});
   add({"TAN", ".", true, false, true, true, &Functions::Tan});
-  add({"ASIN", ".", true, false, true, true,
-       &Functions::Asin});
-  add({"ACOS", ".", true, false, true, true,
-       &Functions::Acos});
-  add({"ATAN", ".", true, false, true, true,
-       &Functions::Atan});
-  add({"ATAN2", ".,.", true, false, true, true,
-       &Functions::Atan2});
-  add({"RADIANS", ".", true, false, true, true,
-       &Functions::Radians});
-  add({"DEGREES", ".", true, false, true, true,
-       &Functions::Degrees});
+  add({"ASIN", ".", true, false, true, true, &Functions::Asin});
+  add({"ACOS", ".", true, false, true, true, &Functions::Acos});
+  add({"ATAN", ".", true, false, true, true, &Functions::Atan});
+  add({"ATAN2", ".,.", true, false, true, true, &Functions::Atan2});
+  add({"RADIANS", ".", true, false, true, true, &Functions::Radians});
+  add({"DEGREES", ".", true, false, true, true, &Functions::Degrees});
   add({"PI", "", true, false, true, true, &Functions::Pi});
 }
 
 void AqlFunctionFeature::addListFunctions() {
   // list functions
-  add({"RANGE", ".,.|.", true, false, true, true,
-       &Functions::Range});
-  add({"UNION", ".,.|+", true, false, true, true,
-       &Functions::Union});
-  add({"UNION_DISTINCT", ".,.|+", true, false, true,
-       true, &Functions::UnionDistinct});
-  add({"MINUS", ".,.|+", true, false, true, true,
-       &Functions::Minus});
-  add({"OUTERSECTION", ".,.|+", true, false, true,
-       true, &Functions::Outersection});
-  add({"INTERSECTION", ".,.|+", true, false, true,
-       true, &Functions::Intersection});
-  add({"FLATTEN", ".|.", true, false, true, true,
-       &Functions::Flatten});
-  add({"LENGTH", ".", true, false, true, true,
-       &Functions::Length});
+  add({"RANGE", ".,.|.", true, false, true, true, &Functions::Range});
+  add({"UNION", ".,.|+", true, false, true, true, &Functions::Union});
+  add({"UNION_DISTINCT", ".,.|+", true, false, true, true, &Functions::UnionDistinct});
+  add({"MINUS", ".,.|+", true, false, true, true, &Functions::Minus});
+  add({"OUTERSECTION", ".,.|+", true, false, true, true, &Functions::Outersection});
+  add({"INTERSECTION", ".,.|+", true, false, true, true, &Functions::Intersection});
+  add({"FLATTEN", ".|.", true, false, true, true, &Functions::Flatten});
+  add({"LENGTH", ".", true, false, true, true, &Functions::Length});
   addAlias("COUNT", "LENGTH");
   add({"MIN", ".", true, false, true, true, &Functions::Min});
   add({"MAX", ".", true, false, true, true, &Functions::Max});
   add({"SUM", ".", true, false, true, true, &Functions::Sum});
-  add({"MEDIAN", ".", true, false, true, true,
-       &Functions::Median});
-  add({"PERCENTILE", ".,.|.", true, false, true, true,
-       &Functions::Percentile});
-  add({"AVERAGE", ".", true, false, true, true,
-       &Functions::Average});
+  add({"MEDIAN", ".", true, false, true, true, &Functions::Median});
+  add({"PERCENTILE", ".,.|.", true, false, true, true, &Functions::Percentile});
+  add({"AVERAGE", ".", true, false, true, true, &Functions::Average});
   addAlias("AVG", "AVERAGE");
-  add({"VARIANCE_SAMPLE", ".", true, false, true,
-       true, &Functions::VarianceSample});
-  add({"VARIANCE_POPULATION", ".", true, false,
-       true, true, &Functions::VariancePopulation});
+  add({"VARIANCE_SAMPLE", ".", true, false, true, true, &Functions::VarianceSample});
+  add({"VARIANCE_POPULATION", ".", true, false, true, true, &Functions::VariancePopulation});
   addAlias("VARIANCE", "VARIANCE_POPULATION");
-  add({"STDDEV_SAMPLE", ".", true, false, true, true,
-       &Functions::StdDevSample});
-  add({"STDDEV_POPULATION", ".", true, false,
-       true, true, &Functions::StdDevPopulation});
+  add({"STDDEV_SAMPLE", ".", true, false, true, true, &Functions::StdDevSample});
+  add({"STDDEV_POPULATION", ".", true, false, true, true, &Functions::StdDevPopulation});
   addAlias("STDDEV", "STDDEV_POPULATION");
-  add({"UNIQUE", ".", true, false, true, true,
-       &Functions::Unique});
-  add({"SORTED_UNIQUE", ".", true, false, true, true,
-       &Functions::SortedUnique});
-  add({"SLICE", ".,.|.", true, false, true, true,
-       &Functions::Slice});
-  add({"REVERSE", ".", true, false, true,
-       true});  // note: REVERSE() can be applied on strings, too
-  add({"FIRST", ".", true, false, true, true,
-       &Functions::First});
-  add({"LAST", ".", true, false, true, true,
-       &Functions::Last});
-  add({"NTH", ".,.", true, false, true, true,
-       &Functions::Nth});
-  add({"POSITION", ".,.|.", true, false, true, true,
-       &Functions::Position});
+  add({"UNIQUE", ".", true, false, true, true, &Functions::Unique});
+  add({"SORTED_UNIQUE", ".", true, false, true, true, &Functions::SortedUnique});
+  add({"SLICE", ".,.|.", true, false, true, true, &Functions::Slice});
+  add({"REVERSE", ".", true, false, true, true});  // note: REVERSE() can be applied on strings, too
+  add({"FIRST", ".", true, false, true, true, &Functions::First});
+  add({"LAST", ".", true, false, true, true, &Functions::Last});
+  add({"NTH", ".,.", true, false, true, true, &Functions::Nth});
+  add({"POSITION", ".,.|.", true, false, true, true, &Functions::Position});
   add({"CALL", ".|.+", false, true, false, true});
   add({"APPLY", ".|.", false, true, false, false});
-  add({"PUSH", ".,.|.", true, false, true, false,
-       &Functions::Push});
-  add({"APPEND", ".,.|.", true, false, true, true,
-       &Functions::Append});
+  add({"PUSH", ".,.|.", true, false, true, false, &Functions::Push});
+  add({"APPEND", ".,.|.", true, false, true, true, &Functions::Append});
   add({"POP", ".", true, false, true, true, &Functions::Pop});
-  add({"SHIFT", ".", true, false, true, true,
-       &Functions::Shift});
-  add({"UNSHIFT", ".,.|.", true, false, true, true,
-       &Functions::Unshift});
-  add({"REMOVE_VALUE", ".,.|.", true, false, true,
-       true, &Functions::RemoveValue});
-  add({"REMOVE_VALUES", ".,.", true, false, true,
-       true, &Functions::RemoveValues});
-  add({"REMOVE_NTH", ".,.", true, false, true, true,
-       &Functions::RemoveNth});
+  add({"SHIFT", ".", true, false, true, true, &Functions::Shift});
+  add({"UNSHIFT", ".,.|.", true, false, true, true, &Functions::Unshift});
+  add({"REMOVE_VALUE", ".,.|.", true, false, true, true, &Functions::RemoveValue});
+  add({"REMOVE_VALUES", ".,.", true, false, true, true, &Functions::RemoveValues});
+  add({"REMOVE_NTH", ".,.", true, false, true, true, &Functions::RemoveNth});
 }
 
 void AqlFunctionFeature::addDocumentFunctions() {
   // document functions
-  add({"HAS", ".,.", true, false, true, true,
-       &Functions::Has});
-  add({"ATTRIBUTES", ".|.,.", true, false, true, true,
-       &Functions::Attributes});
-  add({"VALUES", ".|.", true, false, true, true,
-       &Functions::Values});
-  add({"MERGE", ".|+", true, false, true, true,
-       &Functions::Merge});
-  add({"MERGE_RECURSIVE", ".,.|+", true, false,
-       true, true, &Functions::MergeRecursive});
+  add({"HAS", ".,.", true, false, true, true, &Functions::Has});
+  add({"ATTRIBUTES", ".|.,.", true, false, true, true, &Functions::Attributes});
+  add({"VALUES", ".|.", true, false, true, true, &Functions::Values});
+  add({"MERGE", ".|+", true, false, true, true, &Functions::Merge});
+  add({"MERGE_RECURSIVE", ".,.|+", true, false, true, true, &Functions::MergeRecursive});
   add({"DOCUMENT", "h.|.", false, true, false, true, &Functions::Document});
   add({"MATCHES", ".,.|.", true, false, true, true, &Functions::Matches});
-  add({"UNSET", ".,.|+", true, false, true, true,
-       &Functions::Unset});
-  add({"UNSET_RECURSIVE", ".,.|+", true, false,
-       true, true, &Functions::UnsetRecursive});
-  add({"KEEP", ".,.|+", true, false, true, true,
-       &Functions::Keep});
+  add({"UNSET", ".,.|+", true, false, true, true, &Functions::Unset});
+  add({"UNSET_RECURSIVE", ".,.|+", true, false, true, true, &Functions::UnsetRecursive});
+  add({"KEEP", ".,.|+", true, false, true, true, &Functions::Keep});
   add({"TRANSLATE", ".,.|.", true, false, true, true});
-  add({"ZIP", ".,.", true, false, true, true,
-       &Functions::Zip});
-  add({"JSON_STRINGIFY", ".", true, false, true,
-       true, &Functions::JsonStringify});
-  add({"JSON_PARSE", ".", true, false, true, true,
-       &Functions::JsonParse});
+  add({"ZIP", ".,.", true, false, true, true, &Functions::Zip});
+  add({"JSON_STRINGIFY", ".", true, false, true, true, &Functions::JsonStringify});
+  add({"JSON_PARSE", ".", true, false, true, true, &Functions::JsonParse});
 }
 
 void AqlFunctionFeature::addGeoFunctions() {
   // geo functions
-  add({"DISTANCE", ".,.,.,.", true, false, true, true,
-       &Functions::Distance});
-  add({"WITHIN_RECTANGLE", "h.,.,.,.,.", false,
-       true, false, true});
-  add({"IS_IN_POLYGON", ".,.|.", true, false, true,
-       true});
+  add({"DISTANCE", ".,.,.,.", true, false, true, true, &Functions::Distance});
+  add({"WITHIN_RECTANGLE", "h.,.,.,.,.", false, true, false, true});
+  add({"IS_IN_POLYGON", ".,.|.", true, false, true, true});
 }
 
 void AqlFunctionFeature::addDateFunctions() {
   // date functions
   add({"DATE_NOW", "", false, false, true, true});
-  add({"DATE_TIMESTAMP", ".|.,.,.,.,.,.", 
-       true, false, true, true});
-  add({"DATE_ISO8601", ".|.,.,.,.,.,.", true,
-       false, true, true});
-  add({"DATE_DAYOFWEEK", ".", true, false, true,
-       true});
+  add({"DATE_TIMESTAMP", ".|.,.,.,.,.,.", true, false, true, true});
+  add({"DATE_ISO8601", ".|.,.,.,.,.,.", true, false, true, true});
+  add({"DATE_DAYOFWEEK", ".", true, false, true, true});
   add({"DATE_YEAR", ".", true, false, true, true});
   add({"DATE_MONTH", ".", true, false, true, true});
   add({"DATE_DAY", ".", true, false, true, true});
   add({"DATE_HOUR", ".", true, false, true, true});
   add({"DATE_MINUTE", ".", true, false, true, true});
   add({"DATE_SECOND", ".", true, false, true, true});
-  add({"DATE_MILLISECOND", ".", true, false,
-       true, true});
-  add({"DATE_DAYOFYEAR", ".", true, false, true,
-       true});
-  add({"DATE_ISOWEEK", ".", true, false, true,
-       true});
-  add({"DATE_LEAPYEAR", ".", true, false, true,
-       true});
-  add({"DATE_QUARTER", ".", true, false, true,
-       true});
-  add({"DATE_DAYS_IN_MONTH", ".", true, false,
-       true, true});
+  add({"DATE_MILLISECOND", ".", true, false, true, true});
+  add({"DATE_DAYOFYEAR", ".", true, false, true, true});
+  add({"DATE_ISOWEEK", ".", true, false, true, true});
+  add({"DATE_LEAPYEAR", ".", true, false, true, true});
+  add({"DATE_QUARTER", ".", true, false, true, true});
+  add({"DATE_DAYS_IN_MONTH", ".", true, false, true, true});
   add({"DATE_ADD", ".,.|.", true, false, true, true});
-  add({"DATE_SUBTRACT", ".,.|.", true, false, true,
-       true});
-  add({"DATE_DIFF", ".,.,.|.", true, false, true,
-       true});
-  add({"DATE_COMPARE", ".,.,.|.", true, false, true,
-       true});
-  add({"DATE_FORMAT", ".,.", true, false, true,
-       true});
+  add({"DATE_SUBTRACT", ".,.|.", true, false, true, true});
+  add({"DATE_DIFF", ".,.,.|.", true, false, true, true});
+  add({"DATE_COMPARE", ".,.,.|.", true, false, true, true});
+  add({"DATE_FORMAT", ".,.", true, false, true, true});
 }
 
 void AqlFunctionFeature::addMiscFunctions() {
   // misc functions
   add({"FAIL", "|.", false, true, true, true});
-  add({"PASSTHRU", ".", false, false, true, true,
-       &Functions::Passthru});
+  add({"PASSTHRU", ".", false, false, true, true, &Functions::Passthru});
   addAlias("NOOPT", "PASSTHRU");
   add({"V8", ".", true, false, true, true});
-  add({"TEST_INTERNAL", ".,.", false, false, true,
-       false});
+  add({"TEST_INTERNAL", ".,.", false, false, true, false});
   add({"SLEEP", ".", false, true, true, true, &Functions::Sleep});
   add({"COLLECTIONS", "", false, true, false, true, &Functions::Collections});
-  add({"NOT_NULL", ".|+", true, false, true, true,
-       &Functions::NotNull});
-  add({"FIRST_LIST", ".|+", true, false, true, true,
-       &Functions::FirstList});
-  add({"FIRST_DOCUMENT", ".|+", true, false, true,
-       true, &Functions::FirstDocument});
-  add({"PARSE_IDENTIFIER", ".", true, false, true,
-       true, &Functions::ParseIdentifier});
-  add({"IS_SAME_COLLECTION", ".h,.h", true,
-       false, true, true, &Functions::IsSameCollection});
-  add({"CURRENT_USER", "", false, false, false,
-       true});
-  add({"CURRENT_DATABASE", "", false, false,
-       false, true, &Functions::CurrentDatabase});
-  add({"COLLECTION_COUNT", ".h", false, true,
-       false, true, &Functions::CollectionCount});
+  add({"NOT_NULL", ".|+", true, false, true, true, &Functions::NotNull});
+  add({"FIRST_LIST", ".|+", true, false, true, true, &Functions::FirstList});
+  add({"FIRST_DOCUMENT", ".|+", true, false, true, true, &Functions::FirstDocument});
+  add({"PARSE_IDENTIFIER", ".", true, false, true, true, &Functions::ParseIdentifier});
+  add({"IS_SAME_COLLECTION", ".h,.h", true, false, true, true, &Functions::IsSameCollection});
+  add({"CURRENT_USER", "", false, false, false, true});
+  add({"CURRENT_DATABASE", "", false, false, false, true, &Functions::CurrentDatabase});
+  add({"COLLECTION_COUNT", ".h", false, true, false, true, &Functions::CollectionCount});
 }
 
 void AqlFunctionFeature::addStorageEngineFunctions() {
-  StorageEngine* engine = EngineSelectorFeature::ENGINE; 
-  TRI_ASSERT(engine != nullptr); // Engine not loaded. Startup broken
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine != nullptr);  // Engine not loaded. Startup broken
   engine->addAqlFunctions();
 }

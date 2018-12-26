@@ -28,16 +28,14 @@
 namespace arangodb {
 class TransactionManager;
 
-class TransactionManagerFeature final
-    : public application_features::ApplicationFeature {
+class TransactionManagerFeature final : public application_features::ApplicationFeature {
  public:
-  explicit TransactionManagerFeature(
-      application_features::ApplicationServer* server);
+  explicit TransactionManagerFeature(application_features::ApplicationServer* server);
 
  public:
   void prepare() override final;
   void unprepare() override final;
-  
+
   static TransactionManager* manager() {
     TRI_ASSERT(MANAGER != nullptr);
     return MANAGER.get();
@@ -46,6 +44,6 @@ class TransactionManagerFeature final
  private:
   static std::unique_ptr<TransactionManager> MANAGER;
 };
-}
+}  // namespace arangodb
 
 #endif

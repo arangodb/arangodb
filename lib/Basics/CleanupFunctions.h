@@ -41,7 +41,7 @@ class CleanupFunctions {
   CleanupFunctions& operator=(CleanupFunctions const&) = delete;
 
   // Typedefs
-public:
+ public:
   /**
    * @brief A cleanup function, will be called with the exit code
    * and some data that is generated during exit (just as TRI_ExitFunction_t).
@@ -49,7 +49,7 @@ public:
   typedef std::function<void(int, void*)> CleanupFunction;
 
   // Functions
-public:
+ public:
   /**
    * @brief Register a new function to be executed during
    * any "expected" exit of the server (FATAL, CTRL+C, Shutdown)
@@ -66,23 +66,21 @@ public:
    */
   static void run(int code, void* data);
 
-private:
-/**
- * @brief A lock for the cleanup functions.
- * Used to make sure they are only executed once.
- * This is NOT performance critical as those functions
- * only kick in on startup (insert) and shutdown (execute)
- */
-static Mutex _functionsMutex;
+ private:
+  /**
+   * @brief A lock for the cleanup functions.
+   * Used to make sure they are only executed once.
+   * This is NOT performance critical as those functions
+   * only kick in on startup (insert) and shutdown (execute)
+   */
+  static Mutex _functionsMutex;
 
-/**
- * @brief A list of functions to be executed during cleanup
- */
-static std::vector<std::unique_ptr<CleanupFunction>> _cleanupFunctions;
-
-
+  /**
+   * @brief A list of functions to be executed during cleanup
+   */
+  static std::vector<std::unique_ptr<CleanupFunction>> _cleanupFunctions;
 };
-} // namespace basics
-} // namespace arangodb
+}  // namespace basics
+}  // namespace arangodb
 
 #endif

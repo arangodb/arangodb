@@ -42,8 +42,7 @@ class DumpFeature final : public application_features::ApplicationFeature,
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(
-      std::shared_ptr<options::ProgramOptions> options) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions> options) override final;
   void prepare() override final;
   void start() override final;
 
@@ -65,9 +64,8 @@ class DumpFeature final : public application_features::ApplicationFeature,
   int startBatch(std::string DBserver, std::string& errorMsg);
   void extendBatch(std::string DBserver);
   void endBatch(std::string DBserver);
-  int dumpCollection(int fd, std::string const& collectionId,
-                     std::string const& name, uint64_t maxTick,
-                     std::string& errorMsg);
+  int dumpCollection(int fd, std::string const& collectionId, std::string const& name,
+                     uint64_t maxTick, std::string& errorMsg);
   void flushWal();
   int runDump(std::string& dbName, std::string& errorMsg);
   int dumpShard(int fd, std::string const& DBserver, std::string const& name,
@@ -78,7 +76,7 @@ class DumpFeature final : public application_features::ApplicationFeature,
   void beginEncryption(int fd);
   void endEncryption(int fd);
 
-  bool isIgnoredHiddenEnterpriseCollection(std::string const &name) const;
+  bool isIgnoredHiddenEnterpriseCollection(std::string const& name) const;
 
  private:
   int* _result;
@@ -93,8 +91,7 @@ class DumpFeature final : public application_features::ApplicationFeature,
     uint64_t _totalCollections;
     uint64_t _totalWritten;
   } _stats;
-
 };
-}
+}  // namespace arangodb
 
 #endif

@@ -31,7 +31,7 @@
 /// @brief warn if return value is unused
 #if defined(__GNUC__) || defined(__GNUG__)
 #define TRI_WARN_UNUSED_RESULT __attribute__((warn_unused_result))
-#elif defined(__clang__) 
+#elif defined(__clang__)
 #define TRI_WARN_UNUSED_RESULT __attribute__((warn_unused_result))
 #else
 #define TRI_WARN_UNUSED_RESULT /* unused */
@@ -45,15 +45,17 @@
 #elif defined(__clang__)
 #define TRI_UNREACHABLE __builtin_unreachable()
 #else
-#define TRI_UNREACHABLE TRI_ASSERT(false); std::abort()
+#define TRI_UNREACHABLE \
+  TRI_ASSERT(false);    \
+  std::abort()
 #endif
 
 /// @brief likely/unlikely branch indicator
 /// macro definitions similar to the ones at
 /// https://kernelnewbies.org/FAQ/LikelyUnlikely
 #if defined(__GNUC__) || defined(__GNUG__)
-#define TRI_LIKELY(v) __builtin_expect (!!(v), 1)
-#define TRI_UNLIKELY(v) __builtin_expect (!!(v), 0)
+#define TRI_LIKELY(v) __builtin_expect(!!(v), 1)
+#define TRI_UNLIKELY(v) __builtin_expect(!!(v), 0)
 #else
 #define TRI_LIKELY(v) v
 #define TRI_UNLIKELY(v) v

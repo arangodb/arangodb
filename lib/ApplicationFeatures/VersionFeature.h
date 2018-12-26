@@ -40,6 +40,6 @@ class VersionFeature final : public application_features::ApplicationFeature {
  private:
   bool _printVersion;
 };
-}
+}  // namespace arangodb
 
 #endif

@@ -25,18 +25,22 @@
 #define ARANGODB_V8_V8__HELPER_H 1
 
 #include <v8.h>
-#include "v8-globals.h"
 #include "V8/v8-conv.h"
+#include "v8-globals.h"
 namespace arangodb {
 
 inline std::string stringify(v8::Isolate* isolate, v8::Handle<v8::Value> value) {
   // function converts js object to string using JSON.stringify
-	if (value.IsEmpty()) {
-   return std::string{};
+  if (value.IsEmpty()) {
+    return std::string{};
   }
-  v8::Local<v8::Object> json = isolate->GetCurrentContext()->Global()->Get(TRI_V8_ASCII_STRING(isolate, "JSON"))->ToObject();
-  v8::Local<v8::Function> stringify = json->Get(TRI_V8_ASCII_STRING(isolate, "stringify")).As<v8::Function>();
-  v8::Local<v8::Value> args[1] = { value };
+  v8::Local<v8::Object> json = isolate->GetCurrentContext()
+                                   ->Global()
+                                   ->Get(TRI_V8_ASCII_STRING(isolate, "JSON"))
+                                   ->ToObject();
+  v8::Local<v8::Function> stringify =
+      json->Get(TRI_V8_ASCII_STRING(isolate, "stringify")).As<v8::Function>();
+  v8::Local<v8::Value> args[1] = {value};
   v8::Local<v8::Value> jsString = stringify->Call(json, 1, args);
   v8::String::Utf8Value const rv(jsString);
   return std::string(*rv, rv.length());
@@ -48,33 +52,28 @@ class v8gHelper {
   v8::Isolate* _isolate;
   v8::TryCatch& _tryCatch;
 
-public:
-  v8gHelper(v8::Isolate* isolate
-           ,v8::TryCatch& tryCatch
-           ,v8::Handle<v8::Value>& request
-           ,v8::Handle<v8::Value>& response
-           )
-           : _isolate(isolate)
-           , _tryCatch(tryCatch)
-  {
+ public:
+  v8gHelper(v8::Isolate* isolate, v8::TryCatch& tryCatch,
+            v8::Handle<v8::Value>& request, v8::Handle<v8::Value>& response)
+      : _isolate(isolate), _tryCatch(tryCatch) {
     TRI_GET_GLOBALS();
     _v8g = v8g;
     _v8g->_currentRequest = request;
   }
 
-  void cancel(bool doCancel){
-    if(doCancel){
-      _v8g->_canceled=true;
+  void cancel(bool doCancel) {
+    if (doCancel) {
+      _v8g->_canceled = true;
     }
   }
 
   ~v8gHelper() {
-    if(_v8g->_canceled){
+    if (_v8g->_canceled) {
       return;
     }
 
-    if(_tryCatch.HasCaught() && !_tryCatch.CanContinue()){
-      _v8g->_canceled=true;
+    if (_tryCatch.HasCaught() && !_tryCatch.CanContinue()) {
+      _v8g->_canceled = true;
     } else {
       _v8g->_currentRequest = v8::Undefined(_isolate);
       _v8g->_currentResponse = v8::Undefined(_isolate);
@@ -82,61 +81,61 @@ public:
   }
 };
 
-inline bool isContextCanceled(v8::Isolate* isolate){
+inline bool isContextCanceled(v8::Isolate* isolate) {
   TRI_GET_GLOBALS();
   return v8g->_canceled;
 }
 
-inline std::tuple<bool,bool,Result> extractArangoError(v8::Isolate* isolate, v8::TryCatch& tryCatch){
+inline std::tuple<bool, bool, Result> extractArangoError(v8::Isolate* isolate,
+                                                         v8::TryCatch& tryCatch) {
   // function tries to receive arango error form tryCatch Object
   // return tuple:
-	//   bool - can continue
+  //   bool - can continue
   //   bool - could convert
   //   result - extracted arango error
-  std::tuple<bool,bool,Result> rv = {};
+  std::tuple<bool, bool, Result> rv = {};
 
   std::get<0>(rv) = true;
   std::get<1>(rv) = false;
 
-  if(!tryCatch.CanContinue()){
+  if (!tryCatch.CanContinue()) {
     std::get<0>(rv) = false;
     TRI_GET_GLOBALS();
     v8g->_canceled = true;
   }
 
   v8::Handle<v8::Value> exception = tryCatch.Exception();
-  if(!exception->IsObject()){
+  if (!exception->IsObject()) {
     return rv;
   }
 
   v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(exception);
 
   try {
-
-    if(object->Has(TRI_V8_ASCII_STRING(isolate, "errorNum")) &&
-       object->Has(TRI_V8_ASCII_STRING(isolate, "errorMessage"))
-      )
-    {
-      int errorNum = static_cast<int>(TRI_ObjectToInt64(object->Get(TRI_V8_ASCII_STRING(isolate, "errorNum"))));
-      std::string  errorMessage = *v8::String::Utf8Value(object->Get(TRI_V8_ASCII_STRING(isolate, "errorMessage")));
+    if (object->Has(TRI_V8_ASCII_STRING(isolate, "errorNum")) &&
+        object->Has(TRI_V8_ASCII_STRING(isolate, "errorMessage"))) {
+      int errorNum = static_cast<int>(TRI_ObjectToInt64(
+          object->Get(TRI_V8_ASCII_STRING(isolate, "errorNum"))));
+      std::string errorMessage = *v8::String::Utf8Value(
+          object->Get(TRI_V8_ASCII_STRING(isolate, "errorMessage")));
       std::get<1>(rv) = true;
-      std::get<2>(rv).reset(errorNum,errorMessage);
+      std::get<2>(rv).reset(errorNum, errorMessage);
       tryCatch.Reset();
       return rv;
     }
 
-    if(object->Has(TRI_V8_ASCII_STRING(isolate, "name")) &&
-       object->Has(TRI_V8_ASCII_STRING(isolate, "message"))
-      )
-    {
+    if (object->Has(TRI_V8_ASCII_STRING(isolate, "name")) &&
+        object->Has(TRI_V8_ASCII_STRING(isolate, "message"))) {
       std::string name;
-      v8::String::Utf8Value nameString(object->Get(TRI_V8_ASCII_STRING(isolate, "name")));
+      v8::String::Utf8Value nameString(
+          object->Get(TRI_V8_ASCII_STRING(isolate, "name")));
       if (*nameString != nullptr) {
         name = std::string(*nameString, nameString.length());
       }
 
       std::string message;
-      v8::String::Utf8Value messageString(object->Get(TRI_V8_ASCII_STRING(isolate, "message")));
+      v8::String::Utf8Value messageString(
+          object->Get(TRI_V8_ASCII_STRING(isolate, "message")));
       if (*messageString != nullptr) {
         message = std::string(*messageString, messageString.length());
       }
@@ -156,5 +155,5 @@ inline std::tuple<bool,bool,Result> extractArangoError(v8::Isolate* isolate, v8:
 
   return rv;
 }
-}
+}  // namespace arangodb
 #endif

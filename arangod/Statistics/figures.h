@@ -92,7 +92,7 @@ struct StatisticsDistribution {
   std::vector<double> _cuts;
   std::vector<uint64_t> _counts;
 };
-}
-}
+}  // namespace basics
+}  // namespace arangodb
 
 #endif

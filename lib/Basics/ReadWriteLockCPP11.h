@@ -26,8 +26,8 @@
 
 #include "Basics/Common.h"
 
-#include <mutex>
 #include <condition_variable>
+#include <mutex>
 #include <thread>
 
 namespace arangodb {
@@ -64,10 +64,10 @@ class ReadWriteLockCPP11 {
 
   /// @brief releases the read-lock or write-lock
   void unlock();
-  
+
   /// @brief releases the read-lock
   void unlockRead();
-  
+
   /// @brief releases the write-lock
   void unlockWrite();
 
@@ -85,7 +85,7 @@ class ReadWriteLockCPP11 {
   /// @brief _wantWrite, is set if somebody is waiting for the write lock
   bool _wantWrite;
 };
-}
-}
+}  // namespace basics
+}  // namespace arangodb
 
 #endif

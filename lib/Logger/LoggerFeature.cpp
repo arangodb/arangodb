@@ -36,10 +36,8 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-LoggerFeature::LoggerFeature(application_features::ApplicationServer* server,
-                             bool threaded)
-    : ApplicationFeature(server, "Logger"),
-      _threaded(threaded) {
+LoggerFeature::LoggerFeature(application_features::ApplicationServer* server, bool threaded)
+    : ApplicationFeature(server, "Logger"), _threaded(threaded) {
   setOptional(false);
   requiresElevatedPrivileges(false);
 
@@ -52,9 +50,7 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer* server,
   _foregroundTty = (isatty(STDOUT_FILENO) == 1);
 }
 
-LoggerFeature::~LoggerFeature() {
-  Logger::shutdown();
-}
+LoggerFeature::~LoggerFeature() { Logger::shutdown(); }
 
 void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("log.tty", "log.foreground-tty");
@@ -62,12 +58,12 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("log.source-filter", "");
   options->addOldOption("log.application", "");
   options->addOldOption("log.facility", "");
-  
+
   options->addHiddenOption("--log", "the global or topic-specific log level",
                            new VectorParameter<StringParameter>(&_levels));
 
   options->addSection("log", "Configure the logging");
-  
+
   options->addOption("--log.color", "use colors for TTY logging",
                      new BooleanParameter(&_useColor));
 
@@ -77,20 +73,15 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--log.level,-l", "the global or topic-specific log level",
                      new VectorParameter<StringParameter>(&_levels));
 
-  options->addOption("--log.use-local-time",
-                     "use local timezone instead of UTC",
+  options->addOption("--log.use-local-time", "use local timezone instead of UTC",
                      new BooleanParameter(&_useLocalTime));
 
-  options->addOption("--log.use-microtime",
-                     "use microtime instead",
+  options->addOption("--log.use-microtime", "use microtime instead",
                      new BooleanParameter(&_useMicrotime));
-  
-  options->addOption("--log.role",
-                     "log server role",
-                     new BooleanParameter(&_showRole));
 
-  options->addHiddenOption("--log.prefix",
-                           "prefix log message with this string",
+  options->addOption("--log.role", "log server role", new BooleanParameter(&_showRole));
+
+  options->addHiddenOption("--log.prefix", "prefix log message with this string",
                            new StringParameter(&_prefix));
 
   options->addHiddenOption("--log.file",
@@ -100,15 +91,16 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addHiddenOption("--log.line-number",
                            "append line number and file name",
                            new BooleanParameter(&_lineNumber));
-  
-  options->addHiddenOption("--log.shorten-filenames",
-                           "shorten filenames in log output (use with --log.line-number)",
-                           new BooleanParameter(&_shortenFilenames));
+
+  options->addHiddenOption(
+      "--log.shorten-filenames",
+      "shorten filenames in log output (use with --log.line-number)",
+      new BooleanParameter(&_shortenFilenames));
 
   options->addHiddenOption("--log.thread",
                            "show thread identifier in log message",
                            new BooleanParameter(&_threadId));
-  
+
   options->addHiddenOption("--log.thread-name",
                            "show thread name in log message",
                            new BooleanParameter(&_threadName));
@@ -129,14 +121,14 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                            "do not start a seperate thread for logging",
                            new BooleanParameter(&_forceDirect));
 
-  options->addHiddenOption("--log.request-parameters",
-                           "include full URLs and HTTP request parameters in trace logs",
-                           new BooleanParameter(&_logRequestParameters));
+  options->addHiddenOption(
+      "--log.request-parameters",
+      "include full URLs and HTTP request parameters in trace logs",
+      new BooleanParameter(&_logRequestParameters));
 }
 
-void LoggerFeature::loadOptions(
-    std::shared_ptr<options::ProgramOptions> options,
-    char const* binaryPath) {
+void LoggerFeature::loadOptions(std::shared_ptr<options::ProgramOptions> options,
+                                char const* binaryPath) {
   // for debugging purpose, we set the log levels NOW
   // this might be overwritten latter
   Logger::setLogLevel(_levels);
@@ -200,6 +192,4 @@ void LoggerFeature::prepare() {
   }
 }
 
-void LoggerFeature::unprepare() {
-  Logger::flush();
-}
+void LoggerFeature::unprepare() { Logger::flush(); }

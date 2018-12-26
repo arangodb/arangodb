@@ -39,6 +39,6 @@ class RestShutdownHandler : public RestBaseHandler {
   bool isDirect() const override;
   RestStatus execute() override;
 };
-}
+}  // namespace arangodb
 
 #endif

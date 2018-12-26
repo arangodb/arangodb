@@ -36,8 +36,7 @@ using namespace arangodb::application_features;
 AqlFeature* AqlFeature::_AQL = nullptr;
 Mutex AqlFeature::_aqlFeatureMutex;
 
-AqlFeature::AqlFeature(
-    application_features::ApplicationServer* server)
+AqlFeature::AqlFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Aql"), _numberLeases(0), _isStopped(false) {
   setOptional(false);
   requiresElevatedPrivileges(false);
@@ -97,19 +96,18 @@ void AqlFeature::stop() {
       MUTEX_LOCKER(locker, AqlFeature::_aqlFeatureMutex);
       m = _numberLeases;
       n = QueryRegistryFeature::QUERY_REGISTRY->numberRegisteredQueries();
-      o = TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY
-          ->numberRegisteredEngines();
+      o = TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY->numberRegisteredEngines();
     }
     if (n == 0 && m == 0 && o == 0) {
       break;
     }
-    LOG_TOPIC(DEBUG, Logger::QUERIES) << "AQLFeature shutdown, waiting for "
-      << o << " registered traverser engines to terminate and for "
-      << n << " registered queries to terminate and for "
-      << m << " feature leases to be released";
+    LOG_TOPIC(DEBUG, Logger::QUERIES)
+        << "AQLFeature shutdown, waiting for " << o
+        << " registered traverser engines to terminate and for " << n
+        << " registered queries to terminate and for " << m
+        << " feature leases to be released";
     usleep(500000);
   }
   MUTEX_LOCKER(locker, AqlFeature::_aqlFeatureMutex);
   AqlFeature::_AQL = nullptr;
 }
-

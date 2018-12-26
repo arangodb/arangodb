@@ -61,7 +61,7 @@ class Collections {
 
   static size_t const MaxCollections = 2048;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

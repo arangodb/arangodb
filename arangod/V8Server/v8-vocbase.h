@@ -36,7 +36,7 @@ class QueryRegistry;
 
 class CollectionNameResolver;
 class JSLoader;
-}
+}  // namespace arangodb
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run version check
@@ -48,15 +48,13 @@ bool TRI_UpgradeDatabase(TRI_vocbase_t*, v8::Handle<v8::Context>);
 /// @brief run upgrade check
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CheckDatabaseVersion(TRI_vocbase_t* vocbase,
-                             v8::Handle<v8::Context> context);
+int TRI_CheckDatabaseVersion(TRI_vocbase_t* vocbase, v8::Handle<v8::Context> context);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a TRI_vocbase_t global context
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context>,
-                         arangodb::aql::QueryRegistry*, 
-                         TRI_vocbase_t*, size_t);
+                         arangodb::aql::QueryRegistry*, TRI_vocbase_t*, size_t);
 
 #endif

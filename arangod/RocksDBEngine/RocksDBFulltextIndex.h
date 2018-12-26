@@ -70,8 +70,7 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
  public:
   RocksDBFulltextIndex() = delete;
 
-  RocksDBFulltextIndex(TRI_idx_iid_t, LogicalCollection*,
-                       arangodb::velocypack::Slice const&);
+  RocksDBFulltextIndex(TRI_idx_iid_t, LogicalCollection*, arangodb::velocypack::Slice const&);
 
   ~RocksDBFulltextIndex() {}
 
@@ -98,10 +97,8 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
     TRI_AttributeNamesToString(fields()[0], fieldString);
     return (_minWordLength == minWordLength && fieldString == field);
   }
-  
-  
-  IndexIterator* iteratorForCondition(transaction::Methods* trx,
-                                      ManagedDocumentResult* mdr,
+
+  IndexIterator* iteratorForCondition(transaction::Methods* trx, ManagedDocumentResult* mdr,
                                       aql::AstNode const* condNode,
                                       aql::Variable const* var, bool) override;
 
@@ -113,14 +110,12 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
   /// insert index elements into the specified write batch.
   Result insertInternal(transaction::Methods* trx, RocksDBMethods*,
                         LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice const&,
-                        OperationMode mode) override;
+                        arangodb::velocypack::Slice const&, OperationMode mode) override;
 
   /// remove index elements and put it in the specified write batch.
   Result removeInternal(transaction::Methods*, RocksDBMethods*,
                         LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice const&,
-                        OperationMode mode) override;
+                        arangodb::velocypack::Slice const&, OperationMode mode) override;
 
  private:
   std::set<std::string> wordlist(arangodb::velocypack::Slice const&);
@@ -131,27 +126,25 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
   /// @brief minimum word length
   int _minWordLength;
 
-  arangodb::Result applyQueryToken(transaction::Methods* trx,
-                                   FulltextQueryToken const&,
+  arangodb::Result applyQueryToken(transaction::Methods* trx, FulltextQueryToken const&,
                                    std::set<LocalDocumentId>& resultSet);
 };
-  
+
 /// El Cheapo index iterator
 class RocksDBFulltextIndexIterator : public IndexIterator {
-public:
+ public:
   RocksDBFulltextIndexIterator(LogicalCollection* collection,
-                               transaction::Methods* trx,
-                               ManagedDocumentResult* mmdr,
+                               transaction::Methods* trx, ManagedDocumentResult* mmdr,
                                RocksDBFulltextIndex const* index,
                                std::set<LocalDocumentId>&& docs)
-  : IndexIterator(collection, trx, mmdr, index),
-  _docs(std::move(docs)),
-  _pos(_docs.begin()) {}
-  
+      : IndexIterator(collection, trx, mmdr, index),
+        _docs(std::move(docs)),
+        _pos(_docs.begin()) {}
+
   ~RocksDBFulltextIndexIterator() {}
-  
+
   char const* typeName() const override { return "fulltext-index-iterator"; }
-  
+
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
     TRI_ASSERT(limit > 0);
     while (_pos != _docs.end() && limit > 0) {
@@ -161,21 +154,21 @@ public:
     }
     return _pos != _docs.end();
   }
-  
+
   void reset() override { _pos = _docs.begin(); }
-  
+
   void skip(uint64_t count, uint64_t& skipped) override {
     while (_pos != _docs.end() && skipped < count) {
       _pos++;
       skipped++;
     }
   }
-  
-private:
+
+ private:
   std::set<LocalDocumentId> const _docs;
   std::set<LocalDocumentId>::iterator _pos;
 };
-  
+
 }  // namespace arangodb
 
 #endif

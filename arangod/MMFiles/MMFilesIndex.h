@@ -24,8 +24,8 @@
 #ifndef ARANGOD_MMFILES_MMFILES_INDEX_H
 #define ARANGOD_MMFILES_MMFILES_INDEX_H 1
 
-#include "Basics/Common.h"
 #include "Basics/AttributeNameParser.h"
+#include "Basics/Common.h"
 #include "Indexes/Index.h"
 
 #include <velocypack/Slice.h>
@@ -38,13 +38,11 @@ class MMFilesIndex : public Index {
  public:
   MMFilesIndex(TRI_idx_iid_t id, LogicalCollection* collection,
                std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
-               bool unique, bool sparse) 
-    : Index(id, collection, attributes, unique, sparse) {}
+               bool unique, bool sparse)
+      : Index(id, collection, attributes, unique, sparse) {}
 
-  MMFilesIndex(TRI_idx_iid_t id, LogicalCollection* collection,
-               VPackSlice const& info) 
-    : Index(id, collection, info) {}
-
+  MMFilesIndex(TRI_idx_iid_t id, LogicalCollection* collection, VPackSlice const& info)
+      : Index(id, collection, info) {}
 
   int afterTruncate() override {
     // for mmfiles, truncating the index just unloads it
@@ -52,6 +50,6 @@ class MMFilesIndex : public Index {
     return TRI_ERROR_NO_ERROR;
   }
 };
-}
+}  // namespace arangodb
 
 #endif

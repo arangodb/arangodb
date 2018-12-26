@@ -81,15 +81,14 @@ static TRI_voc_cid_t ReadPlanId(VPackSlice info, TRI_voc_cid_t vid) {
   return vid;
 }
 
-static std::string const ReadStringValue(VPackSlice info,
-                                         std::string const& name,
+static std::string const ReadStringValue(VPackSlice info, std::string const& name,
                                          std::string const& def) {
   if (!info.isObject()) {
     return def;
   }
   return Helper::getStringValue(info, name, def);
 }
-}
+}  // namespace
 
 /// @brief This the "copy" constructor used in the cluster
 ///        it is required to create objects that survive plan
@@ -142,8 +141,7 @@ bool LogicalView::IsAllowedName(std::string const& name) {
   // allowed
   for (ptr = name.c_str(); *ptr; ++ptr) {
     if (length == 0) {
-      ok = (*ptr == '_') || ('a' <= *ptr && *ptr <= 'z') ||
-           ('A' <= *ptr && *ptr <= 'Z');
+      ok = (*ptr == '_') || ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
     } else {
       ok = (*ptr == '_') || (*ptr == '-') || ('0' <= *ptr && *ptr <= '9') ||
            ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
@@ -195,8 +193,7 @@ void LogicalView::drop() {
   _physical->drop();
 }
 
-VPackBuilder LogicalView::toVelocyPack(bool includeProperties,
-                                       bool includeSystem) const {
+VPackBuilder LogicalView::toVelocyPack(bool includeProperties, bool includeSystem) const {
   VPackBuilder builder;
   builder.openObject();
   toVelocyPack(builder, includeProperties, includeSystem);
@@ -233,8 +230,7 @@ void LogicalView::toVelocyPack(VPackBuilder& result, bool includeProperties,
 }
 
 arangodb::Result LogicalView::updateProperties(VPackSlice const& slice,
-                                               bool partialUpdate,
-                                               bool doSync) {
+                                               bool partialUpdate, bool doSync) {
   WRITE_LOCKER(writeLocker, _infoLock);
 
   TRI_ASSERT(getImplementation() != nullptr);
@@ -267,8 +263,8 @@ void LogicalView::persistPhysicalView() {
   engine->createView(_vocbase, _id, this);
 }
 
-void LogicalView::spawnImplementation(
-    ViewCreator creator, arangodb::velocypack::Slice const& parameters,
-    bool isNew) {
+void LogicalView::spawnImplementation(ViewCreator creator,
+                                      arangodb::velocypack::Slice const& parameters,
+                                      bool isNew) {
   _implementation = creator(this, parameters, isNew);
 }

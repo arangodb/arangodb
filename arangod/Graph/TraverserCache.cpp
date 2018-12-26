@@ -45,7 +45,8 @@ using namespace arangodb::graph;
 TraverserCache::TraverserCache(aql::Query* query)
     : _mmdr(new ManagedDocumentResult{}),
       _query(query),
-      _trx(query->trx()), _insertedDocuments(0),
+      _trx(query->trx()),
+      _insertedDocuments(0),
       _filteredDocuments(0),
       _stringHeap(new StringHeap{4096}) /* arbitrary block-size may be adjusted for performance */ {
 }
@@ -58,17 +59,19 @@ VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
 
   if (col == nullptr) {
     // collection gone... should not happen
-    LOG_TOPIC(ERR, arangodb::Logger::GRAPHS) << "Could not extract indexed edge document. collection not found";
-    TRI_ASSERT(col != nullptr); // for maintainer mode
+    LOG_TOPIC(ERR, arangodb::Logger::GRAPHS)
+        << "Could not extract indexed edge document. collection not found";
+    TRI_ASSERT(col != nullptr);  // for maintainer mode
     return basics::VelocyPackHelper::NullValue();
   }
 
   if (!col->readDocument(_trx, idToken.localDocumentId(), *_mmdr.get())) {
     // We already had this token, inconsistent state. Return NULL in Production
-    LOG_TOPIC(ERR, arangodb::Logger::GRAPHS) << "Could not extract indexed edge document, return 'null' instead. "
-      << "This is most likely a caching issue. Try: 'db."
-      << col->name() <<".unload(); db." << col->name() << ".load()' in arangosh to fix this.";
-    TRI_ASSERT(false); // for maintainer mode
+    LOG_TOPIC(ERR, arangodb::Logger::GRAPHS)
+        << "Could not extract indexed edge document, return 'null' instead. "
+        << "This is most likely a caching issue. Try: 'db." << col->name()
+        << ".unload(); db." << col->name() << ".load()' in arangosh to fix this.";
+    TRI_ASSERT(false);  // for maintainer mode
     return basics::VelocyPackHelper::NullValue();
   }
 
@@ -76,12 +79,12 @@ VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
 }
 
 VPackSlice TraverserCache::lookupInCollection(StringRef id) {
-  //TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  // TRI_ASSERT(!ServerState::instance()->isCoordinator());
   size_t pos = id.find('/');
   if (pos == std::string::npos || pos + 1 == id.size()) {
-    // Invalid input. If we get here somehow we managed to store invalid _from/_to
-    // values or the traverser did a let an illegal start through
-    TRI_ASSERT(false); // for maintainer mode
+    // Invalid input. If we get here somehow we managed to store invalid
+    // _from/_to values or the traverser did a let an illegal start through
+    TRI_ASSERT(false);  // for maintainer mode
     return basics::VelocyPackHelper::NullValue();
   }
 
@@ -106,13 +109,12 @@ VPackSlice TraverserCache::lookupInCollection(StringRef id) {
 }
 
 void TraverserCache::insertEdgeIntoResult(EdgeDocumentToken const& idToken,
-                                      VPackBuilder& builder) {
+                                          VPackBuilder& builder) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   builder.add(lookupToken(idToken));
 }
 
-void TraverserCache::insertVertexIntoResult(StringRef idString,
-                                      VPackBuilder& builder) {
+void TraverserCache::insertVertexIntoResult(StringRef idString, VPackBuilder& builder) {
   builder.add(lookupInCollection(idString));
 }
 
@@ -125,8 +127,7 @@ aql::AqlValue TraverserCache::fetchVertexAqlResult(StringRef idString) {
   return aql::AqlValue(lookupInCollection(idString));
 }
 
-StringRef TraverserCache::persistString(
-    StringRef const idString) {
+StringRef TraverserCache::persistString(StringRef const idString) {
   auto it = _persistedStrings.find(idString);
   if (it != _persistedStrings.end()) {
     return *it;

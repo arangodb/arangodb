@@ -41,7 +41,7 @@ namespace aql {
 class QueryRegistry;
 }
 namespace basics {
-template<typename T>
+template <typename T>
 class ReadLocker;
 }
 
@@ -84,9 +84,8 @@ class UserManager {
 
   velocypack::Builder allUsers();
   /// Add user from arangodb, do not use for LDAP  users
-  Result storeUser(bool replace, std::string const& user,
-                   std::string const& pass, bool active,
-                   velocypack::Slice extras);
+  Result storeUser(bool replace, std::string const& user, std::string const& pass,
+                   bool active, velocypack::Slice extras);
 
   /// Enumerate list of all users
   Result enumerateUsers(std::function<bool(auth::User&)>&&);
@@ -115,42 +114,36 @@ class UserManager {
 #endif
 
   auth::Level databaseAuthLevel(std::string const& username,
-                                std::string const& dbname,
-                                bool configured = false);
-  auth::Level collectionAuthLevel(std::string const& username,
-                                  std::string const& dbname,
-                                  std::string const& coll,
-                                  bool configured = false);
+                                std::string const& dbname, bool configured = false);
+  auth::Level collectionAuthLevel(std::string const& username, std::string const& dbname,
+                                  std::string const& coll, bool configured = false);
 
   /// Overwrite internally cached permissions, only use
   /// for testing purposes
   void setAuthInfo(auth::UserMap const& userEntryMap);
-  
+
 #ifdef USE_ENTERPRISE
-  
+
   /// @brief apply roles to all users in cache
   void applyRolesToAllUsers();
   /// @brief apply roles to user, must lock _userCacheLock
   void applyRoles(auth::User&) const;
-  
+
   /// @brief Check authorization with external system
   /// @param userCached is the user cached locally
   /// @param a read guard which may need to be released
   bool checkPasswordExt(std::string const& username,
-                        std::string const& password,
-                        bool userCached,
+                        std::string const& password, bool userCached,
                         basics::ReadLocker<basics::ReadWriteLock>& readGuard);
 #endif
 
  private:
-  
   /// @brief load users and permissions from local database
   void loadFromDB();
   /// @brief store or replace user object
   Result storeUserInternal(auth::User const& user, bool replace);
 
  private:
-  
   /// Protected the sync process from db, always lock
   /// before locking _userCacheLock
   Mutex _loadFromDBLock;
@@ -170,7 +163,7 @@ class UserManager {
   arangodb::auth::Handler* _authHandler;
 #endif
 };
-}  // auth
-}  // arangodb
+}  // namespace auth
+}  // namespace arangodb
 
 #endif

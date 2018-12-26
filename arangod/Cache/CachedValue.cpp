@@ -28,8 +28,7 @@
 
 using namespace arangodb::cache;
 
-const size_t CachedValue::_headerAllocSize = sizeof(CachedValue) +
-                                       CachedValue::_padding;
+const size_t CachedValue::_headerAllocSize = sizeof(CachedValue) + CachedValue::_padding;
 
 CachedValue* CachedValue::copy() const {
   uint8_t* buf = new uint8_t[size()];
@@ -44,8 +43,7 @@ CachedValue* CachedValue::copy() const {
   return value;
 }
 
-CachedValue* CachedValue::construct(void const* k, size_t kSize,
-                                    void const* v, size_t vSize) {
+CachedValue* CachedValue::construct(void const* k, size_t kSize, void const* v, size_t vSize) {
   if (kSize == 0 || k == nullptr || (vSize > 0 && v == nullptr) ||
       kSize > maxKeySize || vSize > maxValueSize) {
     return nullptr;
@@ -55,8 +53,7 @@ CachedValue* CachedValue::construct(void const* k, size_t kSize,
   CachedValue* cv = nullptr;
   try {
     uint8_t* aligned = reinterpret_cast<uint8_t*>(
-      (reinterpret_cast<size_t>(buf) + _headerAllocOffset) &
-      _headerAllocMask);
+        (reinterpret_cast<size_t>(buf) + _headerAllocOffset) & _headerAllocMask);
     size_t offset = buf - aligned;
     cv = new (aligned) CachedValue(offset, k, kSize, v, vSize);
   } catch (...) {
@@ -71,14 +68,14 @@ void CachedValue::operator delete(void* ptr) {
   CachedValue* cv = reinterpret_cast<CachedValue*>(ptr);
   size_t offset = cv->offset();
   cv->~CachedValue();
-  delete[] (reinterpret_cast<uint8_t*>(ptr) - offset);
+  delete[](reinterpret_cast<uint8_t*>(ptr) - offset);
 }
 
-CachedValue::CachedValue(size_t off, void const* k, size_t kSize,
-                         void const* v, size_t vSize) noexcept
-  : _refCount(0),
-    _keySize(static_cast<uint32_t>(kSize + (off << _offsetShift))),
-    _valueSize(static_cast<uint32_t>(vSize)) {
+CachedValue::CachedValue(size_t off, void const* k, size_t kSize, void const* v,
+                         size_t vSize) noexcept
+    : _refCount(0),
+      _keySize(static_cast<uint32_t>(kSize + (off << _offsetShift))),
+      _valueSize(static_cast<uint32_t>(vSize)) {
   std::memcpy(const_cast<uint8_t*>(key()), k, kSize);
   if (vSize > 0) {
     std::memcpy(const_cast<uint8_t*>(value()), v, vSize);
@@ -86,9 +83,6 @@ CachedValue::CachedValue(size_t off, void const* k, size_t kSize,
 }
 
 CachedValue::CachedValue(CachedValue const& other) noexcept
-  : _refCount(0),
-    _keySize(other._keySize),
-    _valueSize(other._valueSize) {
-  std::memcpy(const_cast<uint8_t*>(key()), other.key(),
-              keySize() + valueSize());
+    : _refCount(0), _keySize(other._keySize), _valueSize(other._valueSize) {
+  std::memcpy(const_cast<uint8_t*>(key()), other.key(), keySize() + valueSize());
 }

@@ -43,7 +43,7 @@ class NotifyCallback : public arangodb::ClusterCommCallback {
  private:
   std::function<void(bool)> _cb;
 };
-}
-}  // namespace
+}  // namespace consensus
+}  // namespace arangodb
 
 #endif

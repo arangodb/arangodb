@@ -26,8 +26,8 @@
 #define ARANGODB_BASICS_READ_WRITE_LOCK_H 1
 
 #include "Basics/Common.h"
-#include "Basics/locks.h"
 #include "Basics/ReadWriteLockCPP11.h"
+#include "Basics/locks.h"
 
 namespace arangodb {
 namespace basics {
@@ -89,7 +89,7 @@ class ReadWriteLock {
 
 #endif
 
-}
-}
+}  // namespace basics
+}  // namespace arangodb
 
 #endif

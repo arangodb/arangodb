@@ -24,9 +24,9 @@
 #ifndef ARANGOD_AQL_SORT_CONDITION_H
 #define ARANGOD_AQL_SORT_CONDITION_H 1
 
-#include "Basics/Common.h"
 #include "Aql/Variable.h"
 #include "Basics/AttributeNameParser.h"
+#include "Basics/Common.h"
 
 namespace arangodb {
 namespace aql {
@@ -75,16 +75,13 @@ class SortCondition {
 
   /// @brief returns the number of attributes in the sort condition covered
   /// by the specified index fields
-  size_t coveredAttributes(
-      Variable const*,
-      std::vector<std::vector<arangodb::basics::AttributeName>> const&) const;
+  size_t coveredAttributes(Variable const*,
+                           std::vector<std::vector<arangodb::basics::AttributeName>> const&) const;
 
  private:
-
   /// @brief fields used in the sort conditions
-  std::vector<std::pair<Variable const*,
-                        std::vector<arangodb::basics::AttributeName>>> _fields;
-  
+  std::vector<std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>> _fields;
+
   /// @brief const attributes
   std::vector<std::vector<arangodb::basics::AttributeName>> const _constAttributes;
 
@@ -98,7 +95,7 @@ class SortCondition {
   /// this is only meaningful if the sort is unidirectional
   bool _ascending;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

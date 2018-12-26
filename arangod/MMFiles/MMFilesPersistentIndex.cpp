@@ -70,28 +70,26 @@ using namespace arangodb;
 MMFilesPersistentIndexIterator::MMFilesPersistentIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     ManagedDocumentResult* mmdr, arangodb::MMFilesPersistentIndex const* index,
-    arangodb::MMFilesPrimaryIndex* primaryIndex,
-    rocksdb::OptimisticTransactionDB* db, bool reverse, VPackSlice const& left,
-    VPackSlice const& right)
+    arangodb::MMFilesPrimaryIndex* primaryIndex, rocksdb::OptimisticTransactionDB* db,
+    bool reverse, VPackSlice const& left, VPackSlice const& right)
     : IndexIterator(collection, trx, mmdr, index),
       _primaryIndex(primaryIndex),
       _db(db),
       _reverse(reverse),
       _probe(false) {
   TRI_idx_iid_t const id = index->id();
-  std::string const prefix = MMFilesPersistentIndex::buildPrefix(
-      trx->vocbase()->id(), _primaryIndex->collection()->cid(), id);
+  std::string const prefix =
+      MMFilesPersistentIndex::buildPrefix(trx->vocbase()->id(),
+                                          _primaryIndex->collection()->cid(), id);
   TRI_ASSERT(prefix.size() == MMFilesPersistentIndex::keyPrefixSize());
 
   _leftEndpoint.reset(new arangodb::velocypack::Buffer<char>());
-  _leftEndpoint->reserve(MMFilesPersistentIndex::keyPrefixSize() +
-                         left.byteSize());
+  _leftEndpoint->reserve(MMFilesPersistentIndex::keyPrefixSize() + left.byteSize());
   _leftEndpoint->append(prefix.c_str(), prefix.size());
   _leftEndpoint->append(left.startAs<char const>(), left.byteSize());
 
   _rightEndpoint.reset(new arangodb::velocypack::Buffer<char>());
-  _rightEndpoint->reserve(MMFilesPersistentIndex::keyPrefixSize() +
-                          right.byteSize());
+  _rightEndpoint->reserve(MMFilesPersistentIndex::keyPrefixSize() + right.byteSize());
   _rightEndpoint->append(prefix.c_str(), prefix.size());
   _rightEndpoint->append(right.startAs<char const>(), right.byteSize());
 
@@ -114,8 +112,7 @@ MMFilesPersistentIndexIterator::MMFilesPersistentIndexIterator(
 void MMFilesPersistentIndexIterator::reset() {
   if (_reverse) {
     _probe = true;
-    _cursor->Seek(
-        rocksdb::Slice(_rightEndpoint->data(), _rightEndpoint->size()));
+    _cursor->Seek(rocksdb::Slice(_rightEndpoint->data(), _rightEndpoint->size()));
     if (!_cursor->Valid()) {
       _cursor->SeekToLast();
     }
@@ -124,8 +121,7 @@ void MMFilesPersistentIndexIterator::reset() {
   }
 }
 
-bool MMFilesPersistentIndexIterator::next(LocalDocumentIdCallback const& cb,
-                                          size_t limit) {
+bool MMFilesPersistentIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   auto comparator = MMFilesPersistentIndexFeature::instance()->comparator();
   while (limit > 0) {
     if (!_cursor->Valid()) {
@@ -138,8 +134,8 @@ bool MMFilesPersistentIndexIterator::next(LocalDocumentIdCallback const& cb,
     // VPackSlice(key.data() +
     // MMFilesPersistentIndex::keyPrefixSize()).toJson();
 
-    int res = comparator->Compare(
-        key, rocksdb::Slice(_leftEndpoint->data(), _leftEndpoint->size()));
+    int res = comparator->Compare(key, rocksdb::Slice(_leftEndpoint->data(),
+                                                      _leftEndpoint->size()));
     // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "comparing: " <<
     // VPackSlice(key.data() + MMFilesPersistentIndex::keyPrefixSize()).toJson()
     // << " with " << VPackSlice((char const*) _leftEndpoint->data() +
@@ -155,8 +151,8 @@ bool MMFilesPersistentIndexIterator::next(LocalDocumentIdCallback const& cb,
       continue;
     }
 
-    res = comparator->Compare(
-        key, rocksdb::Slice(_rightEndpoint->data(), _rightEndpoint->size()));
+    res = comparator->Compare(key, rocksdb::Slice(_rightEndpoint->data(),
+                                                  _rightEndpoint->size()));
     // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "comparing: " <<
     // VPackSlice(key.data() + MMFilesPersistentIndex::keyPrefixSize()).toJson()
     // << " with " << VPackSlice((char const*) _rightEndpoint->data() +
@@ -202,8 +198,7 @@ bool MMFilesPersistentIndexIterator::next(LocalDocumentIdCallback const& cb,
   return true;
 }
 
-bool MMFilesPersistentIndexIterator::nextDocument(DocumentCallback const& cb,
-                                                  size_t limit) {
+bool MMFilesPersistentIndexIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
   _documentIds.clear();
   _documentIds.reserve(limit);
 
@@ -221,8 +216,8 @@ bool MMFilesPersistentIndexIterator::nextDocument(DocumentCallback const& cb,
     // VPackSlice(key.data() +
     // MMFilesPersistentIndex::keyPrefixSize()).toJson();
 
-    int res = comparator->Compare(
-        key, rocksdb::Slice(_leftEndpoint->data(), _leftEndpoint->size()));
+    int res = comparator->Compare(key, rocksdb::Slice(_leftEndpoint->data(),
+                                                      _leftEndpoint->size()));
     // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "comparing: " <<
     // VPackSlice(key.data() + MMFilesPersistentIndex::keyPrefixSize()).toJson()
     // << " with " << VPackSlice((char const*) _leftEndpoint->data() +
@@ -239,8 +234,8 @@ bool MMFilesPersistentIndexIterator::nextDocument(DocumentCallback const& cb,
       continue;
     }
 
-    res = comparator->Compare(
-        key, rocksdb::Slice(_rightEndpoint->data(), _rightEndpoint->size()));
+    res = comparator->Compare(key, rocksdb::Slice(_rightEndpoint->data(),
+                                                  _rightEndpoint->size()));
     // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "comparing: " <<
     // VPackSlice(key.data() + MMFilesPersistentIndex::keyPrefixSize()).toJson()
     // << " with " << VPackSlice((char const*) _rightEndpoint->data() +
@@ -284,18 +279,17 @@ bool MMFilesPersistentIndexIterator::nextDocument(DocumentCallback const& cb,
       _probe = false;
     }
   }
-  
+
   auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
   physical->readDocumentWithCallback(_trx, _documentIds, cb);
   return !done;
 }
 
 /// @brief create the index
-MMFilesPersistentIndex::MMFilesPersistentIndex(
-    TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
-    arangodb::velocypack::Slice const& info)
-    : MMFilesPathBasedIndex(iid, collection, info, sizeof(LocalDocumentId),
-                            true) {}
+MMFilesPersistentIndex::MMFilesPersistentIndex(TRI_idx_iid_t iid,
+                                               arangodb::LogicalCollection* collection,
+                                               arangodb::velocypack::Slice const& info)
+    : MMFilesPathBasedIndex(iid, collection, info, sizeof(LocalDocumentId), true) {}
 
 /// @brief destroy the index
 MMFilesPersistentIndex::~MMFilesPersistentIndex() {}
@@ -307,8 +301,7 @@ size_t MMFilesPersistentIndex::memory() const {
 /// @brief inserts a document into the index
 Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
                                       LocalDocumentId const& documentId,
-                                      VPackSlice const& doc,
-                                      OperationMode mode) {
+                                      VPackSlice const& doc, OperationMode mode) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
   int res;
@@ -338,8 +331,7 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
   ManagedDocumentResult result;
   IndexLookupContext context(trx, _collection, &result, numPaths());
   VPackSlice const key = transaction::helpers::extractKeyFromDocument(doc);
-  std::string const prefix =
-      buildPrefix(trx->vocbase()->id(), _collection->cid(), _iid);
+  std::string const prefix = buildPrefix(trx->vocbase()->id(), _collection->cid(), _iid);
 
   VPackBuilder builder;
   std::vector<std::string> values;
@@ -422,9 +414,9 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
         iterator->Seek(rocksdb::Slice(bound.first.c_str(), bound.first.size()));
 
         if (iterator->Valid()) {
-          int res = comparator->Compare(
-              iterator->key(),
-              rocksdb::Slice(bound.second.c_str(), bound.second.size()));
+          int res = comparator->Compare(iterator->key(),
+                                        rocksdb::Slice(bound.second.c_str(),
+                                                       bound.second.size()));
 
           if (res <= 0) {
             uniqueConstraintViolated = true;
@@ -441,8 +433,7 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
       if (uniqueConstraintViolated) {
         // duplicate key
         res = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
-        auto physical =
-            static_cast<MMFilesCollection*>(_collection->getPhysical());
+        auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
         TRI_ASSERT(physical != nullptr);
         if (!physical->useSecondaryIndexes()) {
           // suppress the error during recovery
@@ -485,8 +476,7 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
 /// @brief removes a document from the index
 Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
                                       LocalDocumentId const& documentId,
-                                      VPackSlice const& doc,
-                                      OperationMode mode) {
+                                      VPackSlice const& doc, OperationMode mode) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
   int res;
@@ -665,35 +655,28 @@ MMFilesPersistentIndexIterator* MMFilesPersistentIndex::lookup(
   auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
   auto idx = physical->primaryIndex();
   auto db = MMFilesPersistentIndexFeature::instance()->db();
-  return new MMFilesPersistentIndexIterator(
-      _collection, trx, mmdr, this, idx, db, reverse, leftBorder, rightBorder);
+  return new MMFilesPersistentIndexIterator(_collection, trx, mmdr, this, idx,
+                                            db, reverse, leftBorder, rightBorder);
 }
 
 bool MMFilesPersistentIndex::accessFitsIndex(
     arangodb::aql::AstNode const* access, arangodb::aql::AstNode const* other,
     arangodb::aql::AstNode const* op, arangodb::aql::Variable const* reference,
-    std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&
-        found,
-    std::unordered_set<std::string>& nonNullAttributes,
-    bool isExecution) const {
-  if (!canUseConditionPart(access, other, op, reference, nonNullAttributes,
-                           isExecution)) {
+    std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>& found,
+    std::unordered_set<std::string>& nonNullAttributes, bool isExecution) const {
+  if (!canUseConditionPart(access, other, op, reference, nonNullAttributes, isExecution)) {
     return false;
   }
 
   arangodb::aql::AstNode const* what = access;
-  std::pair<arangodb::aql::Variable const*,
-            std::vector<arangodb::basics::AttributeName>>
-      attributeData;
+  std::pair<arangodb::aql::Variable const*, std::vector<arangodb::basics::AttributeName>> attributeData;
 
   if (op->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
-    if (!what->isAttributeAccessForVariable(attributeData) ||
-        attributeData.first != reference) {
+    if (!what->isAttributeAccessForVariable(attributeData) || attributeData.first != reference) {
       // this access is not referencing this collection
       return false;
     }
-    if (arangodb::basics::TRI_AttributeNamesHaveExpansion(
-            attributeData.second)) {
+    if (arangodb::basics::TRI_AttributeNamesHaveExpansion(attributeData.second)) {
       // doc.value[*] == 'value'
       return false;
     }
@@ -707,10 +690,8 @@ bool MMFilesPersistentIndex::accessFitsIndex(
     TRI_ASSERT(op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN);
     bool canUse = false;
 
-    if (what->isAttributeAccessForVariable(attributeData) &&
-        attributeData.first == reference &&
-        !arangodb::basics::TRI_AttributeNamesHaveExpansion(
-            attributeData.second) &&
+    if (what->isAttributeAccessForVariable(attributeData) && attributeData.first == reference &&
+        !arangodb::basics::TRI_AttributeNamesHaveExpansion(attributeData.second) &&
         attributeMatches(attributeData.second)) {
       // doc.value IN 'value'
       // can use this index
@@ -719,8 +700,7 @@ bool MMFilesPersistentIndex::accessFitsIndex(
       // check for  'value' IN doc.value  AND  'value' IN doc.value[*]
       what = other;
       if (what->isAttributeAccessForVariable(attributeData) &&
-          attributeData.first == reference &&
-          isAttributeExpanded(attributeData.second) &&
+          attributeData.first == reference && isAttributeExpanded(attributeData.second) &&
           attributeMatches(attributeData.second)) {
         canUse = true;
       }
@@ -731,8 +711,7 @@ bool MMFilesPersistentIndex::accessFitsIndex(
     }
   }
 
-  std::vector<arangodb::basics::AttributeName> const& fieldNames =
-      attributeData.second;
+  std::vector<arangodb::basics::AttributeName> const& fieldNames = attributeData.second;
 
   for (size_t i = 0; i < _fields.size(); ++i) {
     if (_fields[i].size() != fieldNames.size()) {
@@ -740,14 +719,12 @@ bool MMFilesPersistentIndex::accessFitsIndex(
       continue;
     }
 
-    if (this->isAttributeExpanded(i) &&
-        op->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+    if (this->isAttributeExpanded(i) && op->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
       // If this attribute is correct or not, it could only serve for IN
       continue;
     }
 
-    bool match = arangodb::basics::AttributeName::isIdentical(_fields[i],
-                                                              fieldNames, true);
+    bool match = arangodb::basics::AttributeName::isIdentical(_fields[i], fieldNames, true);
 
     if (match) {
       // mark ith attribute as being covered
@@ -770,10 +747,8 @@ bool MMFilesPersistentIndex::accessFitsIndex(
 }
 
 void MMFilesPersistentIndex::matchAttributes(
-    arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference,
-    std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&
-        found,
+    arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
+    std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>& found,
     size_t& values, std::unordered_set<std::string>& nonNullAttributes,
     bool isExecution) const {
   for (size_t i = 0; i < node->numMembers(); ++i) {
@@ -811,9 +786,8 @@ void MMFilesPersistentIndex::matchAttributes(
 }
 
 bool MMFilesPersistentIndex::supportsFilterCondition(
-    arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, size_t itemsInIndex,
-    size_t& estimatedItems, double& estimatedCost) const {
+    arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
+    size_t itemsInIndex, size_t& estimatedItems, double& estimatedCost) const {
   std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
   std::unordered_set<std::string> nonNullAttributes;
   size_t values = 0;
@@ -892,14 +866,13 @@ bool MMFilesPersistentIndex::supportsFilterCondition(
     return true;
   }
 
-  if (attributesCovered > 0 &&
-      (!_sparse || attributesCovered == _fields.size())) {
+  if (attributesCovered > 0 && (!_sparse || attributesCovered == _fields.size())) {
     // if the condition contains at least one index attribute and is not sparse,
     // or the index is sparse and all attributes are covered by the condition,
     // then it can be used (note: additional checks for condition parts in
     // sparse indexes are contained in Index::canUseConditionPart)
-    estimatedItems = static_cast<size_t>((std::max)(
-        static_cast<size_t>(estimatedCost * values), static_cast<size_t>(1)));
+    estimatedItems = static_cast<size_t>(
+        (std::max)(static_cast<size_t>(estimatedCost * values), static_cast<size_t>(1)));
     estimatedCost *= static_cast<double>(values);
     return true;
   }
@@ -910,10 +883,10 @@ bool MMFilesPersistentIndex::supportsFilterCondition(
   return false;
 }
 
-bool MMFilesPersistentIndex::supportsSortCondition(
-    arangodb::aql::SortCondition const* sortCondition,
-    arangodb::aql::Variable const* reference, size_t itemsInIndex,
-    double& estimatedCost, size_t& coveredAttributes) const {
+bool MMFilesPersistentIndex::supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
+                                                   arangodb::aql::Variable const* reference,
+                                                   size_t itemsInIndex, double& estimatedCost,
+                                                   size_t& coveredAttributes) const {
   TRI_ASSERT(sortCondition != nullptr);
 
   if (!_sparse) {
@@ -974,8 +947,7 @@ IndexIterator* MMFilesPersistentIndex::iteratorForCondition(
     // Create the search Values for the lookup
     VPackArrayBuilder guard(&searchValues);
 
-    std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>
-        found;
+    std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
     std::unordered_set<std::string> nonNullAttributes;
     size_t unused = 0;
     matchAttributes(node, reference, found, unused, nonNullAttributes, true);
@@ -991,15 +963,11 @@ IndexIterator* MMFilesPersistentIndex::iteratorForCondition(
                               arangodb::aql::AstNode const*& value) -> bool {
       access = comp->getMember(0);
       value = comp->getMember(1);
-      std::pair<arangodb::aql::Variable const*,
-                std::vector<arangodb::basics::AttributeName>>
-          paramPair;
-      if (!(access->isAttributeAccessForVariable(paramPair) &&
-            paramPair.first == reference)) {
+      std::pair<arangodb::aql::Variable const*, std::vector<arangodb::basics::AttributeName>> paramPair;
+      if (!(access->isAttributeAccessForVariable(paramPair) && paramPair.first == reference)) {
         access = comp->getMember(1);
         value = comp->getMember(0);
-        if (!(access->isAttributeAccessForVariable(paramPair) &&
-              paramPair.first == reference)) {
+        if (!(access->isAttributeAccessForVariable(paramPair) && paramPair.first == reference)) {
           // Both side do not have a correct AttributeAccess, this should not
           // happen and indicates
           // an error in the optimizer
@@ -1149,8 +1117,7 @@ IndexIterator* MMFilesPersistentIndex::iteratorForCondition(
 
 /// @brief specializes the condition for use with the index
 arangodb::aql::AstNode* MMFilesPersistentIndex::specializeCondition(
-    arangodb::aql::AstNode* node,
-    arangodb::aql::Variable const* reference) const {
+    arangodb::aql::AstNode* node, arangodb::aql::Variable const* reference) const {
   std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
   std::unordered_set<std::string> nonNullAttributes;
   size_t values = 0;
@@ -1184,8 +1151,7 @@ arangodb::aql::AstNode* MMFilesPersistentIndex::specializeCondition(
     }
 
     std::sort(nodes.begin(), nodes.end(),
-              [](arangodb::aql::AstNode const* lhs,
-                 arangodb::aql::AstNode const* rhs) -> bool {
+              [](arangodb::aql::AstNode const* lhs, arangodb::aql::AstNode const* rhs) -> bool {
                 return sortWeight(lhs) < sortWeight(rhs);
               });
 
@@ -1211,20 +1177,17 @@ arangodb::aql::AstNode* MMFilesPersistentIndex::specializeCondition(
   return node;
 }
 
-bool MMFilesPersistentIndex::isDuplicateOperator(
-    arangodb::aql::AstNode const* node,
-    std::unordered_set<int> const& operatorsFound) const {
+bool MMFilesPersistentIndex::isDuplicateOperator(arangodb::aql::AstNode const* node,
+                                                 std::unordered_set<int> const& operatorsFound) const {
   auto type = node->type;
   if (operatorsFound.find(static_cast<int>(type)) != operatorsFound.end()) {
     // duplicate operator
     return true;
   }
 
-  if (operatorsFound.find(
-          static_cast<int>(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ)) !=
+  if (operatorsFound.find(static_cast<int>(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ)) !=
           operatorsFound.end() ||
-      operatorsFound.find(
-          static_cast<int>(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN)) !=
+      operatorsFound.find(static_cast<int>(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN)) !=
           operatorsFound.end()) {
     return true;
   }
@@ -1232,33 +1195,27 @@ bool MMFilesPersistentIndex::isDuplicateOperator(
   bool duplicate = false;
   switch (type) {
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
-      duplicate = operatorsFound.find(static_cast<int>(
-                      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE)) !=
+      duplicate = operatorsFound.find(static_cast<int>(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE)) !=
                   operatorsFound.end();
       break;
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
-      duplicate = operatorsFound.find(static_cast<int>(
-                      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT)) !=
+      duplicate = operatorsFound.find(static_cast<int>(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT)) !=
                   operatorsFound.end();
       break;
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
-      duplicate = operatorsFound.find(static_cast<int>(
-                      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE)) !=
+      duplicate = operatorsFound.find(static_cast<int>(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE)) !=
                   operatorsFound.end();
       break;
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
-      duplicate = operatorsFound.find(static_cast<int>(
-                      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT)) !=
+      duplicate = operatorsFound.find(static_cast<int>(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT)) !=
                   operatorsFound.end();
       break;
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
-      duplicate = operatorsFound.find(static_cast<int>(
-                      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN)) !=
+      duplicate = operatorsFound.find(static_cast<int>(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN)) !=
                   operatorsFound.end();
       break;
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN:
-      duplicate = operatorsFound.find(static_cast<int>(
-                      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ)) !=
+      duplicate = operatorsFound.find(static_cast<int>(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ)) !=
                   operatorsFound.end();
       break;
     default: {

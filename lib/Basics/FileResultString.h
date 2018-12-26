@@ -42,6 +42,6 @@ class FileResultString : public FileResult {
  protected:
   std::string const _result;
 };
-}
+}  // namespace arangodb
 
 #endif

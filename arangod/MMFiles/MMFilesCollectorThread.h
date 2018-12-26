@@ -56,7 +56,7 @@ class MMFilesCollectorThread final : public Thread {
 
   /// @brief signal the thread that there is something to do
   void signal();
-  
+
   /// @brief force the shutdown by setting _forcedStopIterations
   void forceStop();
 
@@ -78,9 +78,9 @@ class MMFilesCollectorThread final : public Thread {
 
  private:
   /// @brief process a single marker in collector step 2
-  void processCollectionMarker(
-      arangodb::SingleCollectionTransaction&,
-      arangodb::LogicalCollection*, MMFilesCollectorCache*, MMFilesCollectorOperation const&);
+  void processCollectionMarker(arangodb::SingleCollectionTransaction&,
+                               arangodb::LogicalCollection*, MMFilesCollectorCache*,
+                               MMFilesCollectorOperation const&);
 
   /// @brief return the number of queued operations
   size_t numQueuedOperations();
@@ -107,7 +107,7 @@ class MMFilesCollectorThread final : public Thread {
   /// @brief update a collection's datafile information
   int updateDatafileStatistics(LogicalCollection*, MMFilesCollectorCache*);
 
-  void broadcastCollectorResult(int res); 
+  void broadcastCollectorResult(int res);
 
  private:
   /// @brief the logfile manager
@@ -124,8 +124,7 @@ class MMFilesCollectorThread final : public Thread {
   arangodb::Mutex _operationsQueueLock;
 
   /// @brief operations to collect later
-  std::unordered_map<TRI_voc_cid_t, std::vector<MMFilesCollectorCache*>>
-      _operationsQueue;
+  std::unordered_map<TRI_voc_cid_t, std::vector<MMFilesCollectorCache*>> _operationsQueue;
 
   /// @brief whether or not the queue is currently in use
   bool _operationsQueueInUse;
@@ -143,6 +142,6 @@ class MMFilesCollectorThread final : public Thread {
   static uint64_t const Interval;
 };
 
-}
+}  // namespace arangodb
 
 #endif

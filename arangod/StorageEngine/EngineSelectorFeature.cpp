@@ -36,8 +36,7 @@ using namespace arangodb::options;
 
 StorageEngine* EngineSelectorFeature::ENGINE = nullptr;
 
-EngineSelectorFeature::EngineSelectorFeature(
-    application_features::ApplicationServer* server)
+EngineSelectorFeature::EngineSelectorFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "EngineSelector"), _engine("auto") {
   setOptional(false);
   requiresElevatedPrivileges(false);
@@ -49,33 +48,42 @@ EngineSelectorFeature::EngineSelectorFeature(
 void EngineSelectorFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "Server features");
 
-  options->addOption("--server.storage-engine", 
-                     "storage engine type",
+  options->addOption("--server.storage-engine", "storage engine type",
                      new DiscreteValuesParameter<StringParameter>(&_engine, availableEngineNames()));
 }
 
 void EngineSelectorFeature::prepare() {
   // read engine from file in database_directory ENGINE (mmfiles/rocksdb)
-  auto databasePathFeature = application_features::ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
+  auto databasePathFeature =
+      application_features::ApplicationServer::getFeature<DatabasePathFeature>(
+          "DatabasePath");
   auto path = databasePathFeature->directory();
   _engineFilePath = basics::FileUtils::buildFilename(path, "ENGINE");
-  LOG_TOPIC(DEBUG, Logger::STARTUP) << "looking for previously selected engine in file '" << _engineFilePath << "'";
+  LOG_TOPIC(DEBUG, Logger::STARTUP)
+      << "looking for previously selected engine in file '" << _engineFilePath << "'";
 
   // file if engine in file does not match command-line option
   if (basics::FileUtils::isRegularFile(_engineFilePath)) {
     try {
-      std::string content = basics::StringUtils::trim(basics::FileUtils::slurp(_engineFilePath));
+      std::string content =
+          basics::StringUtils::trim(basics::FileUtils::slurp(_engineFilePath));
       if (content != _engine && _engine != "auto") {
-        LOG_TOPIC(FATAL, Logger::STARTUP) << "content of 'ENGINE' file '" << _engineFilePath << "' and command-line/configuration option value do not match: '" << content << "' != '" << _engine << "'. please validate the command-line/configuration option value of '--server.storage-engine' or use a different database directory if the change is intentional";
+        LOG_TOPIC(FATAL, Logger::STARTUP)
+            << "content of 'ENGINE' file '" << _engineFilePath
+            << "' and command-line/configuration option value do not match: '"
+            << content << "' != '"
+            << _engine << "'. please validate the command-line/configuration option value of '--server.storage-engine' or use a different database directory if the change is intentional";
         FATAL_ERROR_EXIT();
       }
       _engine = content;
     } catch (std::exception const& ex) {
-      LOG_TOPIC(FATAL, Logger::STARTUP) << "unable to read content of 'ENGINE' file '" << _engineFilePath << "': " << ex.what() << ". please make sure the file/directory is readable for the arangod process and user";
+      LOG_TOPIC(FATAL, Logger::STARTUP)
+          << "unable to read content of 'ENGINE' file '" << _engineFilePath
+          << "': " << ex.what() << ". please make sure the file/directory is readable for the arangod process and user";
       FATAL_ERROR_EXIT();
     }
   }
-    
+
   if (_engine == "auto") {
     _engine = MMFilesEngine::EngineName;
   }
@@ -84,7 +92,8 @@ void EngineSelectorFeature::prepare() {
 
   // deactivate all engines but the selected one
   for (auto const& engine : availableEngines()) {
-    StorageEngine* e = application_features::ApplicationServer::getFeature<StorageEngine>(engine.second);
+    StorageEngine* e = application_features::ApplicationServer::getFeature<StorageEngine>(
+        engine.second);
 
     if (engine.first == _engine) {
       // this is the selected engine
@@ -102,7 +111,9 @@ void EngineSelectorFeature::prepare() {
   }
 
   if (ENGINE == nullptr) {
-    LOG_TOPIC(FATAL, Logger::STARTUP) << "unable to figure out storage engine from selection '" << _engine << "'. please use the '--server.storage-engine' option to select an existing storage engine";
+    LOG_TOPIC(FATAL, Logger::STARTUP)
+        << "unable to figure out storage engine from selection '"
+        << _engine << "'. please use the '--server.storage-engine' option to select an existing storage engine";
     FATAL_ERROR_EXIT();
   }
 }
@@ -115,7 +126,9 @@ void EngineSelectorFeature::start() {
     try {
       basics::FileUtils::spit(_engineFilePath, _engine, true);
     } catch (std::exception const& ex) {
-      LOG_TOPIC(FATAL, Logger::STARTUP) << "unable to write 'ENGINE' file '" << _engineFilePath << "': " << ex.what() << ". please make sure the file/directory is writable for the arangod process and user";
+      LOG_TOPIC(FATAL, Logger::STARTUP)
+          << "unable to write 'ENGINE' file '" << _engineFilePath
+          << "': " << ex.what() << ". please make sure the file/directory is writable for the arangod process and user";
       FATAL_ERROR_EXIT();
     }
   }
@@ -137,13 +150,10 @@ std::unordered_set<std::string> EngineSelectorFeature::availableEngineNames() {
 }
 
 // return all available storage engines
-std::unordered_map<std::string, std::string> EngineSelectorFeature::availableEngines() { 
+std::unordered_map<std::string, std::string> EngineSelectorFeature::availableEngines() {
   return std::unordered_map<std::string, std::string>{
-    {MMFilesEngine::EngineName, MMFilesEngine::FeatureName},
-    {RocksDBEngine::EngineName, RocksDBEngine::FeatureName}
-  };
+      {MMFilesEngine::EngineName, MMFilesEngine::FeatureName},
+      {RocksDBEngine::EngineName, RocksDBEngine::FeatureName}};
 }
-  
-char const* EngineSelectorFeature::engineName() {
-  return ENGINE->typeName();
-}
+
+char const* EngineSelectorFeature::engineName() { return ENGINE->typeName(); }

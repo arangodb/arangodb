@@ -40,6 +40,7 @@ class JobQueueThread;
 
 class JobQueue {
   friend class JobQueueThread;
+
  public:
   // ordered by priority (highst prio first)
   static size_t const AQL_QUEUE = 1;
@@ -77,9 +78,8 @@ class JobQueue {
     wakeup();
     return true;
   }
-  
-private:
 
+ private:
   bool pop(Job*& job) {
     bool ok = _queue.pop(job) && job != nullptr;
 
@@ -89,10 +89,10 @@ private:
 
     return ok;
   }
-  
+
  public:
   void wakeup();
-  
+
  private:
   int64_t const _maxQueueSize;
   boost::lockfree::queue<Job*> _queue;
@@ -102,6 +102,6 @@ private:
 
   std::shared_ptr<JobQueueThread> _queueThread;
 };
-}
+}  // namespace arangodb
 
 #endif

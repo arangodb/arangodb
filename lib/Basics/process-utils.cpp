@@ -24,8 +24,8 @@
 #include "process-utils.h"
 
 #if defined(TRI_HAVE_MACOS_MEM_STATS)
-#include <sys/types.h>
 #include <sys/sysctl.h>
+#include <sys/types.h>
 #endif
 
 #ifdef TRI_HAVE_SYS_PRCTL_H
@@ -46,12 +46,12 @@
 #include <TlHelp32.h>
 #endif
 
-#include "Logger/Logger.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/tri-strings.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb;
 
@@ -73,43 +73,46 @@ std::vector<ExternalProcess*> ExternalProcesses;
 
 static arangodb::Mutex ExternalProcessesLock;
 
-ProcessInfo::ProcessInfo():
-  _minorPageFaults(0),
-  _majorPageFaults(0),
-  _userTime(0),
-  _systemTime(0),
-  _numberThreads(0),
-  _residentSize(0),  // resident set size in number of bytes
-  _virtualSize(0),
-  _scClkTck(0){}
+ProcessInfo::ProcessInfo()
+    : _minorPageFaults(0),
+      _majorPageFaults(0),
+      _userTime(0),
+      _systemTime(0),
+      _numberThreads(0),
+      _residentSize(0),  // resident set size in number of bytes
+      _virtualSize(0),
+      _scClkTck(0) {}
 
-ExternalId::ExternalId():
+ExternalId::ExternalId()
+    :
 #ifndef _WIN32
-  _pid(0),
-  _readPipe(-1),
-  _writePipe(-1) {}
+      _pid(0),
+      _readPipe(-1),
+      _writePipe(-1) {
+}
 #else
-  _pid(0),
-  _readPipe(INVALID_HANDLE_VALUE),
-  _writePipe(INVALID_HANDLE_VALUE) {}
+      _pid(0),
+      _readPipe(INVALID_HANDLE_VALUE),
+      _writePipe(INVALID_HANDLE_VALUE) {
+}
 #endif
 
-ExternalProcess::ExternalProcess():
-  _numberArguments(0),
-  _arguments(nullptr),
+ExternalProcess::ExternalProcess()
+    : _numberArguments(0),
+      _arguments(nullptr),
 #ifndef _WIN32
-  _pid(0),
-  _readPipe(-1),
-  _writePipe(-1),
+      _pid(0),
+      _readPipe(-1),
+      _writePipe(-1),
 #else
-  _pid(0),
-  _process(nullptr),
-  _readPipe(INVALID_HANDLE_VALUE),
-  _writePipe(INVALID_HANDLE_VALUE),
+      _pid(0),
+      _process(nullptr),
+      _readPipe(INVALID_HANDLE_VALUE),
+      _writePipe(INVALID_HANDLE_VALUE),
 #endif
-  _status(TRI_EXT_NOT_STARTED),
-  _exitStatus(0) {}
-
+      _status(TRI_EXT_NOT_STARTED),
+      _exitStatus(0) {
+}
 
 ExternalProcess::~ExternalProcess() {
   for (size_t i = 0; i < _numberArguments; i++) {
@@ -139,11 +142,8 @@ ExternalProcess::~ExternalProcess() {
 #endif
 }
 
-ExternalProcessStatus::ExternalProcessStatus():
-  _status(TRI_EXT_NOT_STARTED),
-  _exitStatus(0),
-  _errorMessage() {}
-
+ExternalProcessStatus::ExternalProcessStatus()
+    : _status(TRI_EXT_NOT_STARTED), _exitStatus(0), _errorMessage() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates pipe pair
@@ -259,7 +259,7 @@ static bool createPipes(HANDLE* hChildStdinRd, HANDLE* hChildStdinWr,
   // create a pipe for the child process's STDOUT
   if (!CreatePipe(hChildStdoutRd, hChildStdoutWr, &saAttr, 0)) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << ""
-             << "stdout pipe creation failed";
+                                            << "stdout pipe creation failed";
     return false;
   }
 
@@ -361,11 +361,11 @@ static bool startProcess(ExternalProcess* external, HANDLE rd, HANDLE wr) {
   STARTUPINFO siStartInfo;
   BOOL bFuncRetn = FALSE;
   TRI_ERRORBUF;
-  
+
   args = makeWindowsArgs(external);
   if (args == nullptr) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "execute of '" << external->_executable
-             << "' failed making args";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "execute of '" << external->_executable << "' failed making args";
     return false;
   }
 
@@ -397,8 +397,9 @@ static bool startProcess(ExternalProcess* external, HANDLE rd, HANDLE wr) {
 
   if (bFuncRetn == FALSE) {
     TRI_SYSTEM_ERROR();
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "execute of '" << external->_executable
-             << "' failed, error: " << GetLastError() << " " << TRI_GET_ERRORBUF;
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "execute of '" << external->_executable
+        << "' failed, error: " << GetLastError() << " " << TRI_GET_ERRORBUF;
     return false;
   } else {
     external->_pid = piProcInfo.dwProcessId;
@@ -413,8 +414,7 @@ static void StartExternalProcess(ExternalProcess* external, bool usePipes) {
   HANDLE hChildStdoutRd = NULL, hChildStdoutWr = NULL;
   bool fSuccess;
   if (usePipes) {
-    fSuccess = createPipes(&hChildStdinRd, &hChildStdinWr, &hChildStdoutRd,
-                           &hChildStdoutWr);
+    fSuccess = createPipes(&hChildStdinRd, &hChildStdinWr, &hChildStdoutRd, &hChildStdoutWr);
 
     if (!fSuccess) {
       external->_status = TRI_EXT_PIPE_FAILED;
@@ -451,15 +451,17 @@ static void StartExternalProcess(ExternalProcess* external, bool usePipes) {
   external->_status = TRI_EXT_RUNNING;
 }
 #endif
-      
+
 void TRI_LogProcessInfoSelf(char const* message) {
   ProcessInfo info = TRI_ProcessInfoSelf();
 
   if (message == nullptr) {
     message = "";
   }
-  
-  LOG_TOPIC(TRACE, Logger::MEMORY) << message << "virtualSize: " << info._virtualSize << ", residentSize: " << info._residentSize << ", numberThreads: " << info._numberThreads;
+
+  LOG_TOPIC(TRACE, Logger::MEMORY) << message << "virtualSize: " << info._virtualSize
+                                   << ", residentSize: " << info._residentSize
+                                   << ", numberThreads: " << info._numberThreads;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -531,8 +533,7 @@ ProcessInfo TRI_ProcessInfoSelf() {
         mach_port_deallocate(mach_task_self(), array[i]);
       }
 
-      vm_deallocate(mach_task_self(), (vm_address_t)array,
-                    sizeof(thread_t) * count);
+      vm_deallocate(mach_task_self(), (vm_address_t)array, sizeof(thread_t) * count);
     }
   }
 
@@ -541,8 +542,7 @@ ProcessInfo TRI_ProcessInfoSelf() {
     struct task_basic_info t_info;
     mach_msg_type_number_t t_info_count = TASK_BASIC_INFO_COUNT;
 
-    rc = task_info(mach_task_self(), TASK_BASIC_INFO, (task_info_t)&t_info,
-                   &t_info_count);
+    rc = task_info(mach_task_self(), TASK_BASIC_INFO, (task_info_t)&t_info, &t_info_count);
     if (rc == KERN_SUCCESS) {
       result._virtualSize = t_info.virtual_size;
       result._residentSize = t_info.resident_size;
@@ -590,8 +590,7 @@ ProcessInfo TRI_ProcessInfoSelf() {
   pmc.cb = sizeof(PROCESS_MEMORY_COUNTERS_EX);
   // compiler warning wird in kauf genommen!c
   // http://msdn.microsoft.com/en-us/library/windows/desktop/ms684874(v=vs.85).aspx
-  if (GetProcessMemoryInfo(GetCurrentProcess(), (PPROCESS_MEMORY_COUNTERS)&pmc,
-                           pmc.cb)) {
+  if (GetProcessMemoryInfo(GetCurrentProcess(), (PPROCESS_MEMORY_COUNTERS)&pmc, pmc.cb)) {
     result._majorPageFaults = pmc.PageFaultCount;
     // there is not any corresponce to minflt in linux
     result._minorPageFaults = 0;
@@ -616,8 +615,7 @@ ProcessInfo TRI_ProcessInfoSelf() {
   }
   /// computing times
   FILETIME creationTime, exitTime, kernelTime, userTime;
-  if (GetProcessTimes(GetCurrentProcess(), &creationTime, &exitTime,
-                      &kernelTime, &userTime)) {
+  if (GetProcessTimes(GetCurrentProcess(), &creationTime, &exitTime, &kernelTime, &userTime)) {
     // see remarks in
     // http://msdn.microsoft.com/en-us/library/windows/desktop/ms683223(v=vs.85).aspx
     // value in seconds
@@ -792,11 +790,10 @@ ProcessInfo TRI_ProcessInfo(TRI_pid_t pid) {
     sscanf(str,
            "%d %s %c %d %d %d %d %d %u %lu %lu %lu %lu %lu %lu %ld %ld %ld %ld "
            "%ld %ld %llu %lu %ld",
-           &st.pid, (char*)&st.comm, &st.state, &st.ppid, &st.pgrp, &st.session,
-           &st.tty_nr, &st.tpgid, &st.flags, &st.minflt, &st.cminflt,
-           &st.majflt, &st.cmajflt, &st.utime, &st.stime, &st.cutime,
-           &st.cstime, &st.priority, &st.nice, &st.num_threads, &st.itrealvalue,
-           &st.starttime, &st.vsize, &st.rss);
+           &st.pid, (char*)&st.comm, &st.state, &st.ppid, &st.pgrp, &st.session, &st.tty_nr,
+           &st.tpgid, &st.flags, &st.minflt, &st.cminflt, &st.majflt, &st.cmajflt,
+           &st.utime, &st.stime, &st.cutime, &st.cstime, &st.priority, &st.nice,
+           &st.num_threads, &st.itrealvalue, &st.starttime, &st.vsize, &st.rss);
 
     result._minorPageFaults = st.minflt;
     result._majorPageFaults = st.majflt;
@@ -839,7 +836,7 @@ void TRI_SetProcessTitle(char const* title) {
 /// @brief starts an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CreateExternalProcess(char const* executable, 
+void TRI_CreateExternalProcess(char const* executable,
                                std::vector<std::string> const& arguments,
                                bool usePipes, ExternalId* pid) {
   size_t const n = arguments.size();
@@ -848,8 +845,7 @@ void TRI_CreateExternalProcess(char const* executable,
   external->_executable = executable;
   external->_numberArguments = n + 1;
 
-  external->_arguments = static_cast<char**>(
-      TRI_Allocate((n + 2) * sizeof(char*)));
+  external->_arguments = static_cast<char**>(TRI_Allocate((n + 2) * sizeof(char*)));
 
   if (external->_arguments == nullptr) {
     // gracefully handle out of memory
@@ -885,7 +881,8 @@ void TRI_CreateExternalProcess(char const* executable,
     return;
   }
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "adding process " << external->_pid << " to list";
+  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+      << "adding process " << external->_pid << " to list";
 
   // Note that the following deals with different types under windows,
   // however, this code here can be written in a platform-independent
@@ -909,8 +906,7 @@ void TRI_CreateExternalProcess(char const* executable,
 /// @brief returns the status of an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid,
-                                               bool wait) {
+ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait) {
   ExternalProcessStatus status;
   status._status = TRI_EXT_NOT_FOUND;
   status._exitStatus = 0;
@@ -932,13 +928,13 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid,
         std::string("the pid you're looking for is not in our list: ") +
         arangodb::basics::StringUtils::itoa(static_cast<int64_t>(pid._pid));
     status._status = TRI_EXT_NOT_FOUND;
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "checkExternal: pid not found: " << pid._pid;
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "checkExternal: pid not found: " << pid._pid;
 
     return status;
   }
 
-  if (external->_status == TRI_EXT_RUNNING ||
-      external->_status == TRI_EXT_STOPPED) {
+  if (external->_status == TRI_EXT_RUNNING || external->_status == TRI_EXT_STOPPED) {
 #ifndef _WIN32
     int opts;
     int loc = 0;
@@ -978,14 +974,13 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid,
         external->_status = TRI_EXT_NOT_FOUND;
       }
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "waitpid returned error for pid " << external->_pid << " ("
-                << wait << "): " << TRI_last_error();
-      status._errorMessage =
-          std::string("waitpid returned error for pid ") +
-          arangodb::basics::StringUtils::itoa(external->_pid) +
-          std::string(": ") + std::string(TRI_last_error());
-    } else if (static_cast<TRI_pid_t>(external->_pid) ==
-               static_cast<TRI_pid_t>(res)) {
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+          << "waitpid returned error for pid " << external->_pid << " (" << wait
+          << "): " << TRI_last_error();
+      status._errorMessage = std::string("waitpid returned error for pid ") +
+                             arangodb::basics::StringUtils::itoa(external->_pid) +
+                             std::string(": ") + std::string(TRI_last_error());
+    } else if (static_cast<TRI_pid_t>(external->_pid) == static_cast<TRI_pid_t>(res)) {
       if (WIFEXITED(loc)) {
         external->_status = TRI_EXT_TERMINATED;
         external->_exitStatus = WEXITSTATUS(loc);
@@ -1000,12 +995,12 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid,
         external->_exitStatus = 0;
       }
     } else {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "unexpected waitpid result for pid " << external->_pid
-                << ": " << res;
-      status._errorMessage =
-          std::string("unexpected waitpid result for pid ") +
-          arangodb::basics::StringUtils::itoa(external->_pid) +
-          std::string(": ") + arangodb::basics::StringUtils::itoa(res);
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+          << "unexpected waitpid result for pid " << external->_pid << ": " << res;
+      status._errorMessage = std::string("unexpected waitpid result for pid ") +
+                             arangodb::basics::StringUtils::itoa(external->_pid) +
+                             std::string(": ") +
+                             arangodb::basics::StringUtils::itoa(res);
     }
 #else
     {
@@ -1017,12 +1012,12 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid,
         if (result == WAIT_FAILED) {
           FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), 0,
                         windowsErrorBuf, sizeof(windowsErrorBuf), NULL);
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not wait for subprocess with pid "
-                    << external->_pid << ": " << windowsErrorBuf;
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+              << "could not wait for subprocess with pid " << external->_pid
+              << ": " << windowsErrorBuf;
           status._errorMessage =
               std::string("could not wait for subprocess with pid ") +
-              arangodb::basics::StringUtils::itoa(
-                  static_cast<int64_t>(external->_pid)) +
+              arangodb::basics::StringUtils::itoa(static_cast<int64_t>(external->_pid)) +
               windowsErrorBuf;
           status._exitStatus = GetLastError();
         }
@@ -1032,8 +1027,9 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid,
         switch (result) {
           case WAIT_ABANDONED:
             wantGetExitCode = true;
-            LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "WAIT_ABANDONED while waiting for subprocess with pid "
-                      << external->_pid;
+            LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+                << "WAIT_ABANDONED while waiting for subprocess with pid "
+                << external->_pid;
             break;
           case WAIT_OBJECT_0:
             /// this seems to be the exit case - want getExitCodeProcess here.
@@ -1046,8 +1042,9 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid,
           case WAIT_FAILED:
             FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), 0,
                           windowsErrorBuf, sizeof(windowsErrorBuf), NULL);
-            LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not wait for subprocess with pid "
-                      << external->_pid << ": " << windowsErrorBuf;
+            LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+                << "could not wait for subprocess with pid " << external->_pid
+                << ": " << windowsErrorBuf;
             status._errorMessage =
                 std::string("could not wait for subprocess with PID '") +
                 arangodb::basics::StringUtils::itoa(
@@ -1064,12 +1061,11 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid,
       if (wantGetExitCode) {
         DWORD exitCode = STILL_ACTIVE;
         if (!GetExitCodeProcess(external->_process, &exitCode)) {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "exit status could not be determined for pid "
-                    << external->_pid;
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+              << "exit status could not be determined for pid " << external->_pid;
           status._errorMessage =
               std::string("exit status could not be determined for pid ") +
-              arangodb::basics::StringUtils::itoa(
-                  static_cast<int64_t>(external->_pid));
+              arangodb::basics::StringUtils::itoa(static_cast<int64_t>(external->_pid));
         } else {
           if (exitCode == STILL_ACTIVE) {
             external->_exitStatus = 0;
@@ -1088,25 +1084,23 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid,
     }
 #endif
   } else {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "unexpected process status " << external->_status << ": "
-              << external->_exitStatus;
-    status._errorMessage =
-        std::string("unexpected process status ") +
-        arangodb::basics::StringUtils::itoa(external->_status) +
-        std::string(": ") +
-        arangodb::basics::StringUtils::itoa(external->_exitStatus);
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "unexpected process status " << external->_status << ": "
+        << external->_exitStatus;
+    status._errorMessage = std::string("unexpected process status ") +
+                           arangodb::basics::StringUtils::itoa(external->_status) +
+                           std::string(": ") +
+                           arangodb::basics::StringUtils::itoa(external->_exitStatus);
   }
 
   status._status = external->_status;
   status._exitStatus = external->_exitStatus;
 
   // Do we have to free our data?
-  if (external->_status != TRI_EXT_RUNNING &&
-      external->_status != TRI_EXT_STOPPED) {
+  if (external->_status != TRI_EXT_RUNNING && external->_status != TRI_EXT_STOPPED) {
     MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
 
-    for (auto it = ExternalProcesses.begin(); it != ExternalProcesses.end();
-         ++it) {
+    for (auto it = ExternalProcesses.begin(); it != ExternalProcesses.end(); ++it) {
       if ((*it)->_pid == pid._pid) {
         ExternalProcesses.erase(it);
         break;
@@ -1137,16 +1131,16 @@ static ExternalProcess* getExternalProcess(TRI_pid_t pid) {
 
     return external;
   }
-  
-  LOG_TOPIC(WARN, arangodb::Logger::FIXME) <<
-    "checking for external process: '" << pid <<
-    "' failed with error: " << strerror(errno);
+
+  LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+      << "checking for external process: '" << pid
+      << "' failed with error: " << strerror(errno);
   return nullptr;
 }
 #else
 static ExternalProcess* getExternalProcess(TRI_pid_t pid) {
   HANDLE hProcess;
-  
+
   hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
   if (hProcess != nullptr) {
     ExternalProcess* external = new ExternalProcess();
@@ -1171,7 +1165,7 @@ static ExternalProcess* getExternalProcess(TRI_pid_t pid) {
 //        send it signals.
 #ifndef _WIN32
 static bool killProcess(ExternalProcess* pid, int signal) {
-  TRI_ASSERT(pid != nullptr); 
+  TRI_ASSERT(pid != nullptr);
   if (kill(pid->_pid, signal) == 0) {
     return true;
   }
@@ -1180,7 +1174,7 @@ static bool killProcess(ExternalProcess* pid, int signal) {
 
 #else
 static bool killProcess(ExternalProcess* pid, int signal) {
-  TRI_ASSERT(pid != nullptr); 
+  TRI_ASSERT(pid != nullptr);
   UINT uExitCode = 0;
 
   // kill worker process
@@ -1218,72 +1212,72 @@ static e_sig_action whatDoesSignal(int signal) {
 #ifndef SIGPWR
 #define SIGPWR 29
 #endif
-  
-//     Signal       Value     Action   Comment
-//     ────────────────────────────────────────────────────────────────────
+
+  //     Signal       Value     Action   Comment
+  //     ────────────────────────────────────────────────────────────────────
   switch (signal) {
-  case SIGHUP:    //    1       Term    Hangup detected on controlling terminal
-    return logrotate; //             or death of controlling process
-                  //                 we say this is non-deadly since we should do a logrotate.
-  case SIGINT:    //    2       Term    Interrupt from keyboard
-    return term;
-  case SIGQUIT:   //    3       Core    Quit from keyboard
-  case SIGILL:    //    4       Core    Illegal Instruction
-  case SIGABRT:   //    6       Core    Abort signal from abort(3)
-  case SIGFPE:    //    8       Core    Floating-point exception
-  case SIGSEGV:   //   11       Core    Invalid memory reference
-    return core;
-  case SIGKILL:   //    9       Term    Kill signal
-  case SIGPIPE:   //   13       Term    Broken pipe: write to pipe with no
-                  //                   readers; see pipe(7)
-  case SIGALRM:   //   14       Term    Timer signal from alarm(2)
-  case SIGTERM:   //   15       Term    Termination signal
-  case SIGUSR1:   // 30,10,16   Term    User-defined signal 1
-  case SIGUSR2:   // 31,12,17   Term    User-defined signal 2
-    return term;
-  case SIGCHLD:   // 20,17,18   Ign     Child stopped or terminated
-    return ign;
-  case SIGCONT:   // 19,18,25   Cont    Continue if stopped
-    return cont;
-  case SIGSTOP:   // 17,19,23   Stop    Stop process
-  case SIGTSTP:   // 18,20,24   Stop    Stop typed at terminal
-  case SIGTTIN:   // 21,21,26   Stop    Terminal input for background process
-  case SIGTTOU:   // 22,22,27   Stop    Terminal output for background process
-    return stop;
-  case SIGBUS:    //  10,7,10   Core    Bus error (bad memory access)
-    return core;
-  case SIGPOLL:   //            Term    Pollable event (Sys V).
-    return term;  //                    Synonym for SIGIO
-  case SIGPROF:   //  27,27,29  Term    Profiling timer expired
-    return term;
-  case SIGSYS:    //  12,31,12  Core    Bad system call (SVr4);
-                  //                     see also seccomp(2)
-  case SIGTRAP:   //     5      Core    Trace/breakpoint trap
-    return core;
-  case SIGURG:    //  16,23,21  Ign     Urgent condition on socket (4.2BSD)
-    return ign;
-  case SIGVTALRM: //  26,26,28  Term    Virtual alarm clock (4.2BSD)
-    return term;
-  case SIGXCPU:   //  24,24,30  Core    CPU time limit exceeded (4.2BSD);
-                  //                    see setrlimit(2)
-  case SIGXFSZ:   //  25,25,31  Core    File size limit exceeded (4.2BSD);
-                  //                     see setrlimit(2)
-//case SIGIOT:    //     6      Core    IOT trap. A synonym for SIGABRT
-    return core;
-//case SIGEMT:    //   7,-,7    Term    Emulator trap
-  case SIGSTKFLT: //   -,16,-   Term    Stack fault on coprocessor (unused)
-//case SIGIO:     //  23,29,22  Term    I/O now possible (4.2BSD)
-  case SIGPWR:    //  29,30,19  Term    Power failure (System V)
-//case SIGINFO:   //   29,-,-           A synonym for SIGPWR
-//case SIGLOST:   //   -,-,-    Term    File lock lost (unused)
-    return term;
-//case SIGCLD:    //   -,-,18   Ign     A synonym for SIGCHLD
-  case SIGWINCH:  //  28,28,20  Ign     Window resize signal (4.3BSD, Sun)
-    return ign;
-//case SIGUNUSED: //   -,31,-   Core    Synonymous with SIGSYS
-//  return core;
-  default:
-    return user;
+    case SIGHUP:  //    1       Term    Hangup detected on controlling terminal
+      return logrotate;  //             or death of controlling process
+                         //                 we say this is non-deadly since we should do a logrotate.
+    case SIGINT:  //    2       Term    Interrupt from keyboard
+      return term;
+    case SIGQUIT:  //    3       Core    Quit from keyboard
+    case SIGILL:   //    4       Core    Illegal Instruction
+    case SIGABRT:  //    6       Core    Abort signal from abort(3)
+    case SIGFPE:   //    8       Core    Floating-point exception
+    case SIGSEGV:  //   11       Core    Invalid memory reference
+      return core;
+    case SIGKILL:  //    9       Term    Kill signal
+    case SIGPIPE:  //   13       Term    Broken pipe: write to pipe with no
+                   //                   readers; see pipe(7)
+    case SIGALRM:  //   14       Term    Timer signal from alarm(2)
+    case SIGTERM:  //   15       Term    Termination signal
+    case SIGUSR1:  // 30,10,16   Term    User-defined signal 1
+    case SIGUSR2:  // 31,12,17   Term    User-defined signal 2
+      return term;
+    case SIGCHLD:  // 20,17,18   Ign     Child stopped or terminated
+      return ign;
+    case SIGCONT:  // 19,18,25   Cont    Continue if stopped
+      return cont;
+    case SIGSTOP:  // 17,19,23   Stop    Stop process
+    case SIGTSTP:  // 18,20,24   Stop    Stop typed at terminal
+    case SIGTTIN:  // 21,21,26   Stop    Terminal input for background process
+    case SIGTTOU:  // 22,22,27   Stop    Terminal output for background process
+      return stop;
+    case SIGBUS:  //  10,7,10   Core    Bus error (bad memory access)
+      return core;
+    case SIGPOLL:   //            Term    Pollable event (Sys V).
+      return term;  //                    Synonym for SIGIO
+    case SIGPROF:   //  27,27,29  Term    Profiling timer expired
+      return term;
+    case SIGSYS:   //  12,31,12  Core    Bad system call (SVr4);
+                   //                     see also seccomp(2)
+    case SIGTRAP:  //     5      Core    Trace/breakpoint trap
+      return core;
+    case SIGURG:  //  16,23,21  Ign     Urgent condition on socket (4.2BSD)
+      return ign;
+    case SIGVTALRM:  //  26,26,28  Term    Virtual alarm clock (4.2BSD)
+      return term;
+    case SIGXCPU:  //  24,24,30  Core    CPU time limit exceeded (4.2BSD);
+                   //                    see setrlimit(2)
+    case SIGXFSZ:  //  25,25,31  Core    File size limit exceeded (4.2BSD);
+                   //                     see setrlimit(2)
+      // case SIGIOT:    //     6      Core    IOT trap. A synonym for SIGABRT
+      return core;
+      // case SIGEMT:    //   7,-,7    Term    Emulator trap
+    case SIGSTKFLT:  //   -,16,-   Term    Stack fault on coprocessor (unused)
+      // case SIGIO:     //  23,29,22  Term    I/O now possible (4.2BSD)
+    case SIGPWR:  //  29,30,19  Term    Power failure (System V)
+                  // case SIGINFO:   //   29,-,-           A synonym for SIGPWR
+      // case SIGLOST:   //   -,-,-    Term    File lock lost (unused)
+      return term;
+      // case SIGCLD:    //   -,-,18   Ign     A synonym for SIGCHLD
+    case SIGWINCH:  //  28,28,20  Ign     Window resize signal (4.3BSD, Sun)
+      return ign;
+      // case SIGUNUSED: //   -,31,-   Core    Synonymous with SIGSYS
+      //  return core;
+    default:
+      return user;
   }
   return term;
 }
@@ -1291,20 +1285,20 @@ static e_sig_action whatDoesSignal(int signal) {
 bool TRI_IsDeadlySignal(int signal) {
 #ifndef _WIN32
   switch (whatDoesSignal(signal)) {
-  case term:
-    return true;
-  case core:
-    return true;
-  case cont:
-    return false;
-  case ign:
-    return false;
-  case logrotate:
-    return false;
-  case stop:
-    return false;
-  case user: // user signals aren't supposed to be deadly.
-    return false;
+    case term:
+      return true;
+    case core:
+      return true;
+    case cont:
+      return false;
+    case ign:
+      return false;
+    case logrotate:
+      return false;
+    case stop:
+      return false;
+    case user:  // user signals aren't supposed to be deadly.
+      return false;
   }
 #else
   // well windows... always deadly.
@@ -1316,14 +1310,14 @@ bool TRI_IsDeadlySignal(int signal) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ExternalProcessStatus TRI_KillExternalProcess(ExternalId pid, int signal, bool isTerminal) {
-  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "Sending process: " << pid._pid << " the signal: " << signal;
+  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+      << "Sending process: " << pid._pid << " the signal: " << signal;
 
-  ExternalProcess* external = nullptr;  
+  ExternalProcess* external = nullptr;
   {
     MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
 
-    for (auto it = ExternalProcesses.begin(); it != ExternalProcesses.end();
-         ++it) {
+    for (auto it = ExternalProcesses.begin(); it != ExternalProcesses.end(); ++it) {
       if ((*it)->_pid == pid._pid) {
         external = (*it);
         break;
@@ -1335,13 +1329,16 @@ ExternalProcessStatus TRI_KillExternalProcess(ExternalId pid, int signal, bool i
   if (!isChild) {
     external = getExternalProcess(pid._pid);
     if (external == nullptr) {
-      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "kill: process not found: " << pid._pid << " in our starting table and it doesn't exist.";
+      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+          << "kill: process not found: " << pid._pid
+          << " in our starting table and it doesn't exist.";
       ExternalProcessStatus status;
       status._status = TRI_EXT_NOT_FOUND;
       status._exitStatus = -1;
       return status;
     }
-    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "kill: process not found: " << pid._pid << " in our starting table - adding";
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+        << "kill: process not found: " << pid._pid << " in our starting table - adding";
 
     // ok, we didn't spawn it, but now we claim the
     // ownership.
@@ -1358,46 +1355,44 @@ ExternalProcessStatus TRI_KillExternalProcess(ExternalId pid, int signal, bool i
       return status;
     }
   }
- 
-  TRI_ASSERT(external != nullptr); 
+
+  TRI_ASSERT(external != nullptr);
   if (killProcess(external, signal)) {
     external->_status = TRI_EXT_STOPPED;
     // if the process wasn't spawned by us, no waiting required.
     int count = 0;
     while (true) {
       ExternalProcessStatus status = TRI_CheckExternalProcess(pid, false);
-      if (! isTerminal) {
+      if (!isTerminal) {
         // we just sent a signal, don't care whether
         // the process is gone by now.
         return status;
       }
-      if ((status._status == TRI_EXT_TERMINATED) ||
-          (status._status == TRI_EXT_ABORTED) ||
+      if ((status._status == TRI_EXT_TERMINATED) || (status._status == TRI_EXT_ABORTED) ||
           (status._status == TRI_EXT_NOT_FOUND)) {
         // Its dead and gone - good.
         MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
-        for (auto it = ExternalProcesses.begin(); it != ExternalProcesses.end();
-             ++it) {
+        for (auto it = ExternalProcesses.begin(); it != ExternalProcesses.end(); ++it) {
           if (*it == external) {
             ExternalProcesses.erase(it);
             break;
           }
         }
-        if (!isChild && (status._status == TRI_EXT_NOT_FOUND) ) {
-            status._status = TRI_EXT_TERMINATED;
-            status._errorMessage.clear();
+        if (!isChild && (status._status == TRI_EXT_NOT_FOUND)) {
+          status._status = TRI_EXT_TERMINATED;
+          status._errorMessage.clear();
         }
         return status;
       }
       sleep(1);
       if (count >= 8) {
-        TRI_ASSERT(external != nullptr); 
+        TRI_ASSERT(external != nullptr);
         killProcess(external, SIGKILL);
       }
       if (count > 20) {
         return status;
       }
-      count ++;
+      count++;
     }
   }
   return TRI_CheckExternalProcess(pid, false);
@@ -1476,7 +1471,7 @@ static uint64_t GetPhysicalMemory() {
   return (uint64_t)status.ullTotalPhys;
 }
 
-#endif // TRI_HAVE_WIN32_GLOBAL_MEMORY_STATUS
+#endif  // TRI_HAVE_WIN32_GLOBAL_MEMORY_STATUS
 #endif
 #endif
 
@@ -1484,9 +1479,7 @@ static uint64_t GetPhysicalMemory() {
 /// @brief initializes the process components
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitializeProcess() {
-  TRI_PhysicalMemory = GetPhysicalMemory();
-}
+void TRI_InitializeProcess() { TRI_PhysicalMemory = GetPhysicalMemory(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shuts down the process components

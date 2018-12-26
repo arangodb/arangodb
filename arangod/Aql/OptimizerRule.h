@@ -30,7 +30,7 @@ namespace aql {
 class ExecutionPlan;
 class Optimizer;
 struct OptimizerRule;
-  
+
 /// @brief type of an optimizer rule function, the function gets an
 /// optimizer, an ExecutionPlan, and the current rule. it has
 /// to append one or more plans to the resulting deque. This must
@@ -38,8 +38,7 @@ struct OptimizerRule;
 /// set the level of the appended plan to the largest level of rule
 /// that ought to be considered as done to indicate which rule is to be
 /// applied next.
-typedef std::function<void(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*)>
-    RuleFunction;
+typedef std::function<void(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*)> RuleFunction;
 
 /// @brief type of an optimizer rule
 struct OptimizerRule {
@@ -72,7 +71,7 @@ struct OptimizerRule {
 
     // "Pass 2": try to remove redundant or unnecessary nodes
     // ======================================================
-    
+
     // remove filters from the query that are not necessary at all
     // filters that are always true will be removed entirely
     // filters that are always false will be replaced with a NoResults node
@@ -80,7 +79,7 @@ struct OptimizerRule {
 
     // remove calculations that are never necessary
     removeUnnecessaryCalculationsRule_pass2,
-    
+
     // determine the "right" type of CollectNode and
     // add a sort node for each COLLECT (may be removed later)
     specializeCollectRule_pass1,
@@ -92,12 +91,12 @@ struct OptimizerRule {
     //           this is level 500, please never let new plans from higher
     //           levels go back to this or lower levels!
     // ======================================================
-    
+
     interchangeAdjacentEnumerationsRule_pass3,
 
     // "Pass 4": moving nodes "up" (potentially outside loops) (second try):
     // ======================================================
-    
+
     // move calculations up the dependency chain (to pull them out of
     // inner loops etc.)
     moveCalculationsUpRule_pass4,
@@ -135,10 +134,10 @@ struct OptimizerRule {
 
     // remove redundant OR conditions
     removeRedundantOrRule_pass6,
-    
+
     // remove FILTER and SORT if there are geoindexes
     applyGeoIndexRule_pass6,
-    
+
     // replace FULLTEXT with index
     applyFulltextIndexRule_pass6,
 
@@ -151,15 +150,15 @@ struct OptimizerRule {
 
     // try to find sort blocks which are superseeded by indexes
     useIndexForSortRule_pass6,
-    
+
     // sort values used in IN comparisons of remaining filters
     sortInValuesRule_pass6,
-    
+
     // merge filters into graph traversals
     optimizeTraversalsRule_pass6,
     // remove redundant filters statements
     removeFiltersCoveredByTraversal_pass6,
-    
+
     // remove calculations that are redundant
     // needs to run after filter removal
     removeUnnecessaryCalculationsRule_pass6,
@@ -172,22 +171,22 @@ struct OptimizerRule {
 
     /// Pass 9: patch update statements
     patchUpdateStatementsRule_pass9,
-    
+
     /// "Pass 10": final transformations for the cluster
-    
+
     // optimize queries in the cluster so that the entire query
     // gets pushed to a single server
     optimizeClusterSingleShardRule_pass10,
 
     // make operations on sharded collections use distribute
     distributeInClusterRule_pass10,
-    
+
     // try to find candidates for shard-local joins in the cluster
     optimizeClusterJoinsRule_pass10,
 
     // make operations on sharded collections use scatter / gather / remote
     scatterInClusterRule_pass10,
-    
+
     // move FilterNodes & Calculation nodes in between
     // scatter(remote) <-> gather(remote) so they're
     // distributed to the cluster nodes.
@@ -200,7 +199,7 @@ struct OptimizerRule {
     // try to get rid of a RemoteNode->ScatterNode combination which has
     // only a SingletonNode and possibly some CalculationNodes as dependencies
     removeUnnecessaryRemoteScatterRule_pass10,
-    
+
 #ifdef USE_ENTERPRISE
     // remove any superflous satellite collection joins...
     // put it after Scatter rule because we would do
@@ -210,13 +209,13 @@ struct OptimizerRule {
 
     // recognize that a RemoveNode can be moved to the shards
     undistributeRemoveAfterEnumCollRule_pass10,
-    
+
     // push collect operations to the db servers
     collectInClusterRule_pass10,
 
     // try to restrict fragments to a single shard if possible
     restrictToSingleShardRule_pass10,
-    
+
     // simplify an EnumerationCollectionNode that fetches an
     // entire document to a projection of this document
     reduceExtractionToProjectionRule_pass10,
@@ -232,17 +231,16 @@ struct OptimizerRule {
   OptimizerRule() = delete;
 
   OptimizerRule(std::string const& name, RuleFunction const& func, RuleLevel level,
-        bool canCreateAdditionalPlans, bool canBeDisabled, bool isHidden)
+                bool canCreateAdditionalPlans, bool canBeDisabled, bool isHidden)
       : name(name),
         func(func),
         level(level),
         canCreateAdditionalPlans(canCreateAdditionalPlans),
         canBeDisabled(canBeDisabled),
         isHidden(isHidden) {}
- 
 };
 
-} // namespace aql
-} // namespace arangodb
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

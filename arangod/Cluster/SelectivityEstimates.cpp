@@ -30,11 +30,11 @@
 
 using namespace arangodb;
 
-ClusterSelectivityEstimates::ClusterSelectivityEstimates(LogicalCollection* collection) 
+ClusterSelectivityEstimates::ClusterSelectivityEstimates(LogicalCollection* collection)
     : _collection(collection), _expires(0.0), _updating(false) {}
-  
+
 ClusterSelectivityEstimates& ClusterSelectivityEstimates::operator=(ClusterSelectivityEstimates const& other) {
-  if (this != &other) { 
+  if (this != &other) {
     WRITE_LOCKER(locker1, _lock);
     READ_LOCKER(locker2, other._lock);
 
@@ -47,7 +47,7 @@ ClusterSelectivityEstimates& ClusterSelectivityEstimates::operator=(ClusterSelec
 }
 
 ClusterSelectivityEstimates& ClusterSelectivityEstimates::operator=(ClusterSelectivityEstimates&& other) {
-  if (this != &other) { 
+  if (this != &other) {
     WRITE_LOCKER(locker1, _lock);
     WRITE_LOCKER(locker2, other._lock);
 
@@ -68,12 +68,11 @@ bool ClusterSelectivityEstimates::defined() const {
 }
 
 ClusterSelectivityEstimates::ValueType ClusterSelectivityEstimates::fetch() {
-  double now = TRI_microtime(); 
+  double now = TRI_microtime();
   {
     READ_LOCKER(locker, _lock);
 
-    if (!_estimates.empty() && 
-        (now - _expires < defaultExpireTime)) {
+    if (!_estimates.empty() && (now - _expires < defaultExpireTime)) {
       return _estimates;
     }
 
@@ -84,10 +83,9 @@ ClusterSelectivityEstimates::ValueType ClusterSelectivityEstimates::fetch() {
     bool weAreUpdating = false;
     {
       WRITE_LOCKER(locker, _lock);
-      
+
       // re-check update condition
-      if (!_estimates.empty() &&
-          (now - _expires < defaultExpireTime)) {
+      if (!_estimates.empty() && (now - _expires < defaultExpireTime)) {
         // another thread has updated the estimates
         return _estimates;
       }
@@ -99,17 +97,18 @@ ClusterSelectivityEstimates::ValueType ClusterSelectivityEstimates::fetch() {
     }
 
     if (weAreUpdating) {
-      ValueType estimates;    
-      selectivityEstimatesOnCoordinator(_collection->vocbase()->name(), _collection->name(), estimates);
+      ValueType estimates;
+      selectivityEstimatesOnCoordinator(_collection->vocbase()->name(),
+                                        _collection->name(), estimates);
 
       WRITE_LOCKER(locker, _lock);
       _estimates = estimates;
-      _expires = now; 
+      _expires = now;
       _updating = false;
       return _estimates;
-    } 
-    
-    now = TRI_microtime(); 
+    }
+
+    now = TRI_microtime();
     usleep(10000);
   }
 }
@@ -118,4 +117,3 @@ ClusterSelectivityEstimates::ValueType ClusterSelectivityEstimates::get() const 
   READ_LOCKER(locker, _lock);
   return _estimates;
 }
-

@@ -39,17 +39,16 @@
 
 using namespace arangodb::aql;
 
-EnumerateCollectionBlock::EnumerateCollectionBlock(
-    ExecutionEngine* engine, EnumerateCollectionNode const* ep)
-    : ExecutionBlock(engine, ep), 
+EnumerateCollectionBlock::EnumerateCollectionBlock(ExecutionEngine* engine,
+                                                   EnumerateCollectionNode const* ep)
+    : ExecutionBlock(engine, ep),
       DocumentProducingBlock(ep, _trx),
       _collection(ep->_collection),
       _mmdr(new ManagedDocumentResult),
-      _cursor(
-          _trx->indexScan(_collection->getName(),
-                          (ep->_random ? transaction::Methods::CursorType::ANY
-                                       : transaction::Methods::CursorType::ALL),
-                          _mmdr.get(), false)) {
+      _cursor(_trx->indexScan(_collection->getName(),
+                              (ep->_random ? transaction::Methods::CursorType::ANY
+                                           : transaction::Methods::CursorType::ALL),
+                              _mmdr.get(), false)) {
   TRI_ASSERT(_cursor->ok());
 
   buildCallback();
@@ -71,8 +70,8 @@ int EnumerateCollectionBlock::initialize() {
     double endTime = startTime + maxWait;
 
     while (!inSync) {
-      auto collectionInfoCurrent = ClusterInfo::instance()->getCollectionCurrent(
-        dbName, std::to_string(cid));
+      auto collectionInfoCurrent =
+          ClusterInfo::instance()->getCollectionCurrent(dbName, std::to_string(cid));
       auto followers = collectionInfoCurrent->servers(_collection->getName());
       inSync = std::find(followers.begin(), followers.end(),
                          ServerState::instance()->getId()) != followers.end();
@@ -89,9 +88,10 @@ int EnumerateCollectionBlock::initialize() {
     }
 
     if (!inSync) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
-          "collection " + _collection->name + " did not come into sync in time (" + std::to_string(maxWait) +")");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
+                                     "collection " + _collection->name +
+                                         " did not come into sync in time (" +
+                                         std::to_string(maxWait) + ")");
     }
   }
 
@@ -101,8 +101,7 @@ int EnumerateCollectionBlock::initialize() {
   DEBUG_END_BLOCK();
 }
 
-int EnumerateCollectionBlock::initializeCursor(AqlItemBlock* items,
-                                               size_t pos) {
+int EnumerateCollectionBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
   int res = ExecutionBlock::initializeCursor(items, pos);
 
@@ -136,7 +135,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
     traceGetSomeEnd(nullptr);
     return nullptr;
   }
-    
+
   bool needMore;
   AqlItemBlock* cur = nullptr;
   size_t send = 0;
@@ -187,24 +186,28 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
     inheritRegisters(cur, res.get(), _pos);
 
     throwIfKilled();  // check if we were aborted
-    
+
     TRI_IF_FAILURE("EnumerateCollectionBlock::moreDocuments") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-   
+
     bool tmp;
     if (produceResult()) {
       // properly build up results by fetching the actual documents
       // using nextDocument()
-      tmp = _cursor->nextDocument([&](LocalDocumentId const&, VPackSlice slice) {
-        _documentProducer(res.get(), slice, curRegs, send, 0);
-      }, atMost);
+      tmp = _cursor->nextDocument(
+          [&](LocalDocumentId const&, VPackSlice slice) {
+            _documentProducer(res.get(), slice, curRegs, send, 0);
+          },
+          atMost);
     } else {
       // performance optimization: we do not need the documents at all,
       // so just call next()
-      tmp = _cursor->next([&](LocalDocumentId const&) {
-        _documentProducer(res.get(), VPackSlice::nullSlice(), curRegs, send, 0);
-      }, atMost);
+      tmp = _cursor->next(
+          [&](LocalDocumentId const&) {
+            _documentProducer(res.get(), VPackSlice::nullSlice(), curRegs, send, 0);
+          },
+          atMost);
     }
     if (!tmp) {
       TRI_ASSERT(!_cursor->hasMore());

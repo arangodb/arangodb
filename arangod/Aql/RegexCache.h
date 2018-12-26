@@ -38,22 +38,24 @@ class RegexCache {
 
   RegexCache() = default;
   ~RegexCache();
-  
+
   void clear() noexcept;
 
   icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length, bool caseInsensitive);
   icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length, bool caseInsensitive);
- 
- private: 
+
+ private:
   /// @brief clear the specified cache
   void clear(std::unordered_map<std::string, icu::RegexMatcher*>& cache) noexcept;
 
   /// @brief get matcher from cache, or insert a new matcher for the specified pattern
-  icu::RegexMatcher* fromCache(std::string const& pattern, 
+  icu::RegexMatcher* fromCache(std::string const& pattern,
                                std::unordered_map<std::string, icu::RegexMatcher*>& cache);
 
-  static void buildRegexPattern(std::string& out, char const* ptr, size_t length, bool caseInsensitive);
-  static void buildLikePattern(std::string& out, char const* ptr, size_t length, bool caseInsensitive);
+  static void buildRegexPattern(std::string& out, char const* ptr,
+                                size_t length, bool caseInsensitive);
+  static void buildLikePattern(std::string& out, char const* ptr, size_t length,
+                               bool caseInsensitive);
 
  private:
   /// @brief cache for compiled regexes (REGEX function)
@@ -64,7 +66,7 @@ class RegexCache {
   std::string _temp;
 };
 
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

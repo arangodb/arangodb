@@ -24,8 +24,8 @@
 #ifndef ARANGODB_BASICS_MEMORY__MAP_H
 #define ARANGODB_BASICS_MEMORY__MAP_H 1
 
-#include "Basics/Common.h"
 #include "ApplicationFeatures/PageSizeFeature.h"
+#include "Basics/Common.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wrapper macro for anonymous memory mapping

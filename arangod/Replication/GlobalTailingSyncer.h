@@ -24,21 +24,19 @@
 #ifndef ARANGOD_REPLICATION_GLOBAL_CONTINUOUS_SYNCER_H
 #define ARANGOD_REPLICATION_GLOBAL_CONTINUOUS_SYNCER_H 1
 
-#include "TailingSyncer.h"
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationApplierConfiguration.h"
+#include "TailingSyncer.h"
 
 namespace arangodb {
 class GlobalReplicationApplier;
 
 class GlobalTailingSyncer : public TailingSyncer {
  public:
-  GlobalTailingSyncer(ReplicationApplierConfiguration const&,
-                      TRI_voc_tick_t initialTick, bool useTick,
-                      TRI_voc_tick_t barrierId);
+  GlobalTailingSyncer(ReplicationApplierConfiguration const&, TRI_voc_tick_t initialTick,
+                      bool useTick, TRI_voc_tick_t barrierId);
 
  public:
-
   /// @brief return the syncer's replication applier
   GlobalReplicationApplier* applier() const {
     return static_cast<GlobalReplicationApplier*>(_applier);
@@ -50,15 +48,15 @@ class GlobalTailingSyncer : public TailingSyncer {
 
   /// @brief save the current applier state
   Result saveApplierState() override;
-  
+
   bool skipMarker(arangodb::velocypack::Slice const& slice) override;
- 
- private: 
+
+ private:
   /// @brief translation between globallyUniqueId and collection name
   std::unordered_map<std::string, std::string> _translations;
 
   bool _queriedTranslations;
 };
-}
+}  // namespace arangodb
 
 #endif

@@ -37,19 +37,19 @@ class ManagedDocumentResult;
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 namespace aql {
 struct AstNode;
 class Expression;
 class Query;
 class TraversalNode;
-}
+}  // namespace aql
 
 namespace graph {
 class EdgeUniquenessChecker;
 class TraverserCache;
-}
+}  // namespace graph
 
 namespace traverser {
 
@@ -62,7 +62,6 @@ struct TraverserOptions : public graph::BaseOptions {
   enum UniquenessLevel { NONE, PATH, GLOBAL };
 
  protected:
-
   std::unordered_map<uint64_t, std::vector<LookupInfo>> _depthLookupInfo;
 
   std::unordered_map<uint64_t, aql::Expression*> _vertexExpressions;
@@ -113,7 +112,7 @@ struct TraverserOptions : public graph::BaseOptions {
   bool vertexHasFilter(uint64_t) const;
 
   bool hasEdgeFilter(int64_t, size_t) const;
-  
+
   bool evaluateEdgeExpression(arangodb::velocypack::Slice, StringRef vertexId,
                               uint64_t, size_t) const;
 
@@ -126,9 +125,8 @@ struct TraverserOptions : public graph::BaseOptions {
   double estimateCost(size_t& nrItems) const;
 
  private:
-
   graph::EdgeCursor* nextCursorCoordinator(StringRef vid, uint64_t);
 };
-}
-}
+}  // namespace traverser
+}  // namespace arangodb
 #endif

@@ -33,12 +33,13 @@
 #include "VocBase/ticks.h"
 
 using namespace arangodb;
-  
-static uint32_t const PrologueSize = encoding::alignedSize<uint32_t>(sizeof(MMFilesPrologueMarker));
+
+static uint32_t const PrologueSize =
+    encoding::alignedSize<uint32_t>(sizeof(MMFilesPrologueMarker));
 
 /// @brief create the slots
-MMFilesWalSlots::MMFilesWalSlots(MMFilesLogfileManager* logfileManager, size_t numberOfSlots,
-             MMFilesWalSlot::TickType tick)
+MMFilesWalSlots::MMFilesWalSlots(MMFilesLogfileManager* logfileManager,
+                                 size_t numberOfSlots, MMFilesWalSlot::TickType tick)
     : _logfileManager(logfileManager),
       _condition(),
       _lock(),
@@ -55,7 +56,7 @@ MMFilesWalSlots::MMFilesWalSlots(MMFilesLogfileManager* logfileManager, size_t n
       _numEvents(0),
       _numEventsSync(0),
       _lastDatabaseId(0),
-      _lastCollectionId(0), 
+      _lastCollectionId(0),
       _shutdown(false) {
   _slots = new MMFilesWalSlot[numberOfSlots];
 }
@@ -70,11 +71,10 @@ void MMFilesWalSlots::shutdown() {
 }
 
 /// @brief get the statistics of the slots
-void MMFilesWalSlots::statistics(MMFilesWalSlot::TickType& lastAssignedTick, 
-                       MMFilesWalSlot::TickType& lastCommittedTick,
-                       MMFilesWalSlot::TickType& lastCommittedDataTick,
-                       uint64_t& numEvents,
-                       uint64_t& numEventsSync) {
+void MMFilesWalSlots::statistics(MMFilesWalSlot::TickType& lastAssignedTick,
+                                 MMFilesWalSlot::TickType& lastCommittedTick,
+                                 MMFilesWalSlot::TickType& lastCommittedDataTick,
+                                 uint64_t& numEvents, uint64_t& numEventsSync) {
   MUTEX_LOCKER(mutexLocker, _lock);
   lastAssignedTick = _lastAssignedTick;
   lastCommittedTick = _lastCommittedTick;
@@ -82,7 +82,7 @@ void MMFilesWalSlots::statistics(MMFilesWalSlot::TickType& lastAssignedTick,
   numEvents = _numEvents;
   numEventsSync = _numEventsSync;
 }
-  
+
 /// @brief initially set the last ticks on start
 void MMFilesWalSlots::setLastTick(MMFilesWalSlot::TickType const& tick) {
   MUTEX_LOCKER(mutexLocker, _lock);
@@ -142,14 +142,13 @@ MMFilesWalSlotInfo MMFilesWalSlots::nextUnused(uint32_t size) {
 }
 
 /// @brief return the next unused slot
-MMFilesWalSlotInfo MMFilesWalSlots::nextUnused(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-                           uint32_t size) {
-
+MMFilesWalSlotInfo MMFilesWalSlots::nextUnused(TRI_voc_tick_t databaseId,
+                                               TRI_voc_cid_t collectionId, uint32_t size) {
   // we need to use the aligned size for writing
   uint32_t alignedSize = encoding::alignedSize<uint32_t>(size);
   int iterations = 0;
   bool hasWaited = false;
-  bool mustWritePrologue = false; 
+  bool mustWritePrologue = false;
 
   TRI_ASSERT(size > 0);
 
@@ -165,8 +164,7 @@ MMFilesWalSlotInfo MMFilesWalSlots::nextUnused(TRI_voc_tick_t databaseId, TRI_vo
       // this is required because in some cases we need two free slots
       // to write a WAL entry: the first slot for the prologue marker
       // and the second slot for the actual marker
-      if (slot->isUnused() && 
-          _slots[nextHandoutIndex()].isUnused()) {
+      if (slot->isUnused() && _slots[nextHandoutIndex()].isUnused()) {
         if (hasWaited) {
           CONDITION_LOCKER(guard, _condition);
           TRI_ASSERT(_waiting > 0);
@@ -176,12 +174,8 @@ MMFilesWalSlotInfo MMFilesWalSlots::nextUnused(TRI_voc_tick_t databaseId, TRI_vo
         if (databaseId == 0 && collectionId == 0) {
           _lastDatabaseId = 0;
           _lastCollectionId = 0;
-        }
-        else if (!mustWritePrologue &&
-                 databaseId > 0 && 
-                 collectionId > 0 && 
-                 (_lastDatabaseId != databaseId || 
-                  _lastCollectionId != collectionId)) {
+        } else if (!mustWritePrologue && databaseId > 0 && collectionId > 0 &&
+                   (_lastDatabaseId != databaseId || _lastCollectionId != collectionId)) {
           // write a prologue
           alignedSize = size + PrologueSize;
           mustWritePrologue = true;
@@ -197,8 +191,8 @@ MMFilesWalSlotInfo MMFilesWalSlots::nextUnused(TRI_voc_tick_t databaseId, TRI_vo
             if (res != TRI_ERROR_NO_ERROR) {
               return MMFilesWalSlotInfo(res);
             }
-         
-            // new datafile. must write a prologue 
+
+            // new datafile. must write a prologue
             if (databaseId > 0 && collectionId > 0 && !mustWritePrologue) {
               alignedSize = size + PrologueSize;
               mustWritePrologue = true;
@@ -236,8 +230,8 @@ MMFilesWalSlotInfo MMFilesWalSlots::nextUnused(TRI_voc_tick_t databaseId, TRI_vo
               if (res != TRI_ERROR_NO_ERROR) {
                 return MMFilesWalSlotInfo(res);
               }
-            
-              // new datafile. must write a prologue 
+
+              // new datafile. must write a prologue
               if (databaseId > 0 && collectionId > 0 && !mustWritePrologue) {
                 alignedSize = size + PrologueSize;
                 mustWritePrologue = true;
@@ -257,7 +251,8 @@ MMFilesWalSlotInfo MMFilesWalSlots::nextUnused(TRI_voc_tick_t databaseId, TRI_vo
         char* mem = _logfile->reserve(alignedSize);
 
         if (mem == nullptr) {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not find free WAL slot"; 
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+              << "could not find free WAL slot";
           return MMFilesWalSlotInfo(TRI_ERROR_INTERNAL);
         }
 
@@ -274,9 +269,9 @@ MMFilesWalSlotInfo MMFilesWalSlots::nextUnused(TRI_voc_tick_t databaseId, TRI_vo
           }
 
           // now return the slot
-          mem += PrologueSize; // advance memory pointer
+          mem += PrologueSize;  // advance memory pointer
           TRI_ASSERT(reinterpret_cast<uintptr_t>(mem) % 8 == 0);
-          
+
           // use following slot for the actual data
           slot = &_slots[_handoutIndex];
 
@@ -322,7 +317,8 @@ int MMFilesWalSlots::returnUsed(MMFilesWalSlotInfo& slotInfo, bool wakeUpSynchro
   TRI_ASSERT(!waitUntilSyncDone || waitForSyncRequested);
 
   MMFilesWalSlot::TickType tick = slotInfo.slot->tick();
-  MMFilesMarker const* marker = reinterpret_cast<MMFilesMarker const*>(slotInfo.slot->mem());
+  MMFilesMarker const* marker =
+      reinterpret_cast<MMFilesMarker const*>(slotInfo.slot->mem());
   MMFilesWalLogfile const* logfile = slotInfo.logfile;
 
   TRI_ASSERT(tick > 0);
@@ -344,7 +340,7 @@ int MMFilesWalSlots::returnUsed(MMFilesWalSlotInfo& slotInfo, bool wakeUpSynchro
   if (wakeUpSynchronizer) {
     _logfileManager->signalSync(waitForSyncRequested);
   }
-  
+
   if (waitUntilSyncDone) {
     // on shutdown, return early
     if (application_features::ApplicationServer::isStopping()) {
@@ -380,8 +376,7 @@ MMFilesWalSyncRegion MMFilesWalSlots::getSyncRegion() {
       // the region for
       auto otherId = slot->logfileId();
 
-      if (region.logfileId != 0 && otherId != 0 &&
-          otherId != region.logfileId) {
+      if (region.logfileId != 0 && otherId != 0 && otherId != region.logfileId) {
         region.canSeal = true;
       }
       break;
@@ -453,10 +448,8 @@ void MMFilesWalSlots::returnSyncRegion(MMFilesWalSyncRegion const& region) {
       _lastCommittedTick = tick;
 
       // update the data tick
-      MMFilesMarker const* m =
-          static_cast<MMFilesMarker const*>(slot->mem());
-      if (m->getType() != TRI_DF_MARKER_HEADER &&
-          m->getType() != TRI_DF_MARKER_FOOTER) {
+      MMFilesMarker const* m = static_cast<MMFilesMarker const*>(slot->mem());
+      if (m->getType() != TRI_DF_MARKER_HEADER && m->getType() != TRI_DF_MARKER_FOOTER) {
         _lastCommittedDataTick = tick;
       }
 
@@ -490,8 +483,8 @@ void MMFilesWalSlots::returnSyncRegion(MMFilesWalSyncRegion const& region) {
 
 /// @brief get the current open region of a logfile
 /// this uses the slots lock
-void MMFilesWalSlots::getActiveLogfileRegion(MMFilesWalLogfile* logfile, char const*& begin,
-                                   char const*& end) {
+void MMFilesWalSlots::getActiveLogfileRegion(MMFilesWalLogfile* logfile,
+                                             char const*& begin, char const*& end) {
   MUTEX_LOCKER(mutexLocker, _lock);
 
   MMFilesDatafile* datafile = logfile->df();
@@ -502,8 +495,8 @@ void MMFilesWalSlots::getActiveLogfileRegion(MMFilesWalLogfile* logfile, char co
 
 /// @brief get the current tick range of a logfile
 /// this uses the slots lock
-void MMFilesWalSlots::getActiveTickRange(MMFilesWalLogfile* logfile, TRI_voc_tick_t& tickMin,
-                               TRI_voc_tick_t& tickMax) {
+void MMFilesWalSlots::getActiveTickRange(MMFilesWalLogfile* logfile,
+                                         TRI_voc_tick_t& tickMin, TRI_voc_tick_t& tickMax) {
   MUTEX_LOCKER(mutexLocker, _lock);
 
   MMFilesDatafile* datafile = logfile->df();
@@ -546,7 +539,8 @@ int MMFilesWalSlots::closeLogfile(MMFilesWalSlot::TickType& lastCommittedTick, b
           int res = writeFooter(slot);
 
           if (res != TRI_ERROR_NO_ERROR) {
-            LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "could not write logfile footer: " << TRI_errno_string(res);
+            LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+                << "could not write logfile footer: " << TRI_errno_string(res);
             return res;
           }
 
@@ -588,7 +582,8 @@ int MMFilesWalSlots::closeLogfile(MMFilesWalSlot::TickType& lastCommittedTick, b
             res = writeHeader(slot);
 
             if (res != TRI_ERROR_NO_ERROR) {
-              LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "could not write logfile header: " << TRI_errno_string(res);
+              LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+                  << "could not write logfile header: " << TRI_errno_string(res);
               return res;
             }
 
@@ -620,7 +615,7 @@ int MMFilesWalSlots::closeLogfile(MMFilesWalSlot::TickType& lastCommittedTick, b
     if (mustWait) {
       guard.wait(10 * 1000);
     }
-    
+
     if (TRI_microtime() >= end) {
       // time's up!
       break;
@@ -635,9 +630,8 @@ int MMFilesWalSlots::writeHeader(MMFilesWalSlot* slot) {
   TRI_ASSERT(_logfile != nullptr);
 
   MMFilesDatafileHeaderMarker header = MMFilesDatafileHelper::CreateHeaderMarker(
-    static_cast<uint32_t>(_logfile->allocatedSize()), 
-    static_cast<TRI_voc_fid_t>(_logfile->id())
-  );
+      static_cast<uint32_t>(_logfile->allocatedSize()),
+      static_cast<TRI_voc_fid_t>(_logfile->id()));
   size_t const size = header.base.getSize();
 
   auto* mem = static_cast<void*>(_logfile->reserve(size));
@@ -656,8 +650,10 @@ int MMFilesWalSlots::writeHeader(MMFilesWalSlot* slot) {
 }
 
 /// @brief write a prologue marker
-int MMFilesWalSlots::writePrologue(MMFilesWalSlot* slot, void* mem, TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) {
-  MMFilesPrologueMarker header = MMFilesDatafileHelper::CreatePrologueMarker(databaseId, collectionId);
+int MMFilesWalSlots::writePrologue(MMFilesWalSlot* slot, void* mem,
+                                   TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) {
+  MMFilesPrologueMarker header =
+      MMFilesDatafileHelper::CreatePrologueMarker(databaseId, collectionId);
   size_t const size = header.base.getSize();
 
   TRI_ASSERT(size == PrologueSize);
@@ -686,7 +682,7 @@ int MMFilesWalSlots::writeFooter(MMFilesWalSlot* slot) {
   slot->setUsed(mem, static_cast<uint32_t>(size), _logfile, handout());
   slot->fill(&footer.base, size);
   slot->setReturned(true);  // sync
-  
+
   // reset values for next write
   _lastDatabaseId = 0;
   _lastCollectionId = 0;
@@ -708,7 +704,7 @@ MMFilesWalSlot::TickType MMFilesWalSlots::handout() {
   return _lastAssignedTick;
 }
 
-/// @brief return the next slots that would be handed out, without 
+/// @brief return the next slots that would be handed out, without
 /// actually handing it out
 size_t MMFilesWalSlots::nextHandoutIndex() const {
   size_t handoutIndex = _handoutIndex;

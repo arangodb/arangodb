@@ -41,9 +41,9 @@ class Context;
 ///  The caller has to take care for the memory.
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::aql::Graph* lookupGraphByName(std::shared_ptr<transaction::Context>, std::string const& name);
+arangodb::aql::Graph* lookupGraphByName(std::shared_ptr<transaction::Context>,
+                                        std::string const& name);
 
 }  // namespace arangodb
 
 #endif
-

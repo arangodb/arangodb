@@ -108,7 +108,7 @@ void TRI_FlushDebugging(char const* file, int line, char const* message);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump pair contents to an ostream
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 template <typename T1, typename T2>
 std::ostream& operator<<(std::ostream& stream, std::pair<T1, T2> const& obj) {
   stream << '(' << obj.first << ", " << obj.second << ')';
@@ -166,8 +166,7 @@ std::ostream& operator<<(std::ostream& stream, std::deque<T> const& data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
-std::ostream& operator<<(std::ostream& stream,
-                         std::unordered_set<T> const& data) {
+std::ostream& operator<<(std::ostream& stream, std::unordered_set<T> const& data) {
   bool first = true;
 
   stream << "{";
@@ -190,8 +189,7 @@ std::ostream& operator<<(std::ostream& stream,
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename K, typename V>
-std::ostream& operator<<(std::ostream& stream,
-                         std::unordered_map<K, V> const& data) {
+std::ostream& operator<<(std::ostream& stream, std::unordered_map<K, V> const& data) {
   bool first = true;
 
   stream << "{";

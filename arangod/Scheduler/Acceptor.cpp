@@ -34,8 +34,7 @@ using namespace arangodb;
 Acceptor::Acceptor(asio_ns::io_context& ioService, Endpoint* endpoint)
     : _ioContext(ioService), _endpoint(endpoint) {}
 
-std::unique_ptr<Acceptor> Acceptor::factory(asio_ns::io_context& ioService,
-                                            Endpoint* endpoint) {
+std::unique_ptr<Acceptor> Acceptor::factory(asio_ns::io_context& ioService, Endpoint* endpoint) {
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
   if (endpoint->domainType() == Endpoint::DomainType::UNIX) {
     return std::make_unique<AcceptorUnixDomain>(ioService, endpoint);

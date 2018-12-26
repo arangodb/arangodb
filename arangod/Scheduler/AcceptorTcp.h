@@ -39,6 +39,6 @@ class AcceptorTcp final : public Acceptor {
  private:
   asio_ns::ip::tcp::acceptor _acceptor;
 };
-}
+}  // namespace arangodb
 
 #endif

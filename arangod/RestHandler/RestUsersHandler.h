@@ -27,7 +27,7 @@
 
 namespace arangodb {
 namespace auth {
-  class UserManager;
+class UserManager;
 }
 
 class RestUsersHandler : public arangodb::RestBaseHandler {
@@ -47,8 +47,7 @@ class RestUsersHandler : public arangodb::RestBaseHandler {
   /// helper to generate a compliant response for individual user requests
   void generateUserResult(rest::ResponseCode code, VPackBuilder const& doc);
 
-  void generateDatabaseResult(auth::UserManager*, std::string const& user,
-                              bool full);
+  void generateDatabaseResult(auth::UserManager*, std::string const& user, bool full);
 
   RestStatus getRequest(auth::UserManager*);
   RestStatus postRequest(auth::UserManager*);
@@ -56,6 +55,6 @@ class RestUsersHandler : public arangodb::RestBaseHandler {
   RestStatus patchRequest(auth::UserManager*);
   RestStatus deleteRequest(auth::UserManager*);
 };
-}
+}  // namespace arangodb
 
 #endif

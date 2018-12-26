@@ -47,20 +47,18 @@ class DatabaseManagerThread : public Thread {
   DatabaseManagerThread(DatabaseManagerThread const&) = delete;
   DatabaseManagerThread& operator=(DatabaseManagerThread const&) = delete;
 
-  DatabaseManagerThread(); 
+  DatabaseManagerThread();
   ~DatabaseManagerThread();
 
   void run() override;
 
  private:
   // how long will the thread pause between iterations
-  static constexpr unsigned long waitTime() {
-    return 500 * 1000;
-  }
+  static constexpr unsigned long waitTime() { return 500 * 1000; }
 };
 
 class DatabaseFeature : public application_features::ApplicationFeature {
- friend class DatabaseManagerThread;
+  friend class DatabaseManagerThread;
 
  public:
   static DatabaseFeature* DATABASE;
@@ -94,14 +92,14 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   std::vector<std::string> getDatabaseNamesCoordinator();
   std::vector<std::string> getDatabaseNamesForUser(std::string const& user);
 
-  int createDatabaseCoordinator(TRI_voc_tick_t id, std::string const& name, TRI_vocbase_t*& result);
+  int createDatabaseCoordinator(TRI_voc_tick_t id, std::string const& name,
+                                TRI_vocbase_t*& result);
   int createDatabase(TRI_voc_tick_t id, std::string const& name, TRI_vocbase_t*& result);
   int dropDatabaseCoordinator(TRI_voc_tick_t id, bool force);
   int dropDatabase(std::string const& name, bool waitForDeletion, bool removeAppsDirectory);
   int dropDatabase(TRI_voc_tick_t id, bool waitForDeletion, bool removeAppsDirectory);
 
-  void inventory(arangodb::velocypack::Builder& result,
-                 TRI_voc_tick_t, 
+  void inventory(arangodb::velocypack::Builder& result, TRI_voc_tick_t,
                  std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter);
 
   TRI_vocbase_t* useDatabaseCoordinator(std::string const& name);
@@ -112,7 +110,8 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   TRI_vocbase_t* lookupDatabaseCoordinator(std::string const& name);
   TRI_vocbase_t* lookupDatabase(std::string const& name);
   void enumerateDatabases(std::function<void(TRI_vocbase_t*)>);
-  std::string translateCollectionName(std::string const& dbName, std::string const& collectionName);
+  std::string translateCollectionName(std::string const& dbName,
+                                      std::string const& collectionName);
 
   void useSystemDatabase();
   TRI_vocbase_t* systemDatabase() const { return _vocbase; }
@@ -127,9 +126,15 @@ class DatabaseFeature : public application_features::ApplicationFeature {
 
   void enableCheckVersion() { _checkVersion = true; }
   void enableUpgrade() { _upgrade = true; }
-  bool throwCollectionNotLoadedError() const { return _throwCollectionNotLoadedError.load(std::memory_order_relaxed); }
-  void throwCollectionNotLoadedError(bool value) { _throwCollectionNotLoadedError.store(value); }
-  bool check30Revisions() const { return _check30Revisions == "true" || _check30Revisions == "fail"; }
+  bool throwCollectionNotLoadedError() const {
+    return _throwCollectionNotLoadedError.load(std::memory_order_relaxed);
+  }
+  void throwCollectionNotLoadedError(bool value) {
+    _throwCollectionNotLoadedError.store(value);
+  }
+  bool check30Revisions() const {
+    return _check30Revisions == "true" || _check30Revisions == "fail";
+  }
   bool fail30Revisions() const { return _check30Revisions == "fail"; }
   void isInitiallyEmpty(bool value) { _isInitiallyEmpty = value; }
 
@@ -139,7 +144,7 @@ class DatabaseFeature : public application_features::ApplicationFeature {
 
   /// @brief create base app directory
   int createBaseApplicationDirectory(std::string const& appPath, std::string const& type);
-  
+
   /// @brief create app subdirectory for a database
   int createApplicationDirectory(std::string const& name, std::string const& basePath);
 
@@ -165,11 +170,10 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   std::string _check30Revisions;
   std::atomic<bool> _throwCollectionNotLoadedError;
 
-
-  TRI_vocbase_t* _vocbase; // _system database
+  TRI_vocbase_t* _vocbase;  // _system database
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
 
-  std::atomic<DatabasesLists*> _databasesLists; 
+  std::atomic<DatabasesLists*> _databasesLists;
   // TODO: Make this again a template once everybody has gcc >= 4.9.2
   // arangodb::basics::DataProtector<64>
   arangodb::basics::DataProtector _databasesProtector;
@@ -184,9 +188,9 @@ class DatabaseFeature : public application_features::ApplicationFeature {
 
   /// @brief a simple version tracker for all database objects
   /// maintains a global counter that is increased on every modification
-  /// (addition, removal, change) of database objects  
+  /// (addition, removal, change) of database objects
   VersionTracker _versionTracker;
 };
-}
+}  // namespace arangodb
 
 #endif

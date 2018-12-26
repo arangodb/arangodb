@@ -26,8 +26,8 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "VocBase/LocalDocumentId.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "VocBase/LocalDocumentId.h"
 
 using namespace arangodb;
 using namespace arangodb::rocksutils;
@@ -103,7 +103,8 @@ TRI_voc_rid_t RocksDBValue::revisionId(rocksdb::Slice const& slice) {
     return id;
   }
   TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,"Could not receive revisionId from rocksdb::Slice");
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL, "Could not receive revisionId from rocksdb::Slice");
 }
 
 StringRef RocksDBValue::vertexId(rocksdb::Slice const& s) {
@@ -136,18 +137,19 @@ uint64_t RocksDBValue::keyValue(std::string const& s) {
 
 RocksDBValue::RocksDBValue(RocksDBEntryType type) : _type(type), _buffer() {}
 
-RocksDBValue::RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId, TRI_voc_rid_t revision)
+RocksDBValue::RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId,
+                           TRI_voc_rid_t revision)
     : _type(type), _buffer() {
   switch (_type) {
     case RocksDBEntryType::UniqueVPackIndexValue:
     case RocksDBEntryType::PrimaryIndexValue: {
-      if(!revision){
+      if (!revision) {
         _buffer.reserve(sizeof(uint64_t));
         uint64ToPersistent(_buffer, docId.id());  // LocalDocumentId
       } else {
         _buffer.reserve(sizeof(uint64_t) * 2);
         uint64ToPersistent(_buffer, docId.id());  // LocalDocumentId
-        uint64ToPersistent(_buffer, revision); // revision
+        uint64ToPersistent(_buffer, revision);    // revision
       }
       break;
     }
@@ -170,9 +172,9 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, VPackSlice const& data)
                      static_cast<size_t>(data.byteSize()));
       break;
     }
-      
+
     case RocksDBEntryType::Document:
-      TRI_ASSERT(false);// use for document => get free schellen
+      TRI_ASSERT(false);  // use for document => get free schellen
       break;
 
     default:

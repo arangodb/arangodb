@@ -66,7 +66,8 @@ ConditionLocker::~ConditionLocker() {
 
 #ifdef TRI_SHOW_LOCK_TIME
   if (_time > TRI_SHOW_LOCK_THRESHOLD) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "ConditionLocker " << _file << ":" << _line << " took " << _time << " s";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "ConditionLocker " << _file << ":" << _line << " took " << _time << " s";
   }
 #endif
 }
@@ -75,7 +76,7 @@ ConditionLocker::~ConditionLocker() {
 void ConditionLocker::wait() { _conditionVariable->wait(); }
 
 /// @brief waits for an event to occur, with a timeout in microseconds
-/// returns true when the condition was signaled, false on timeout 
+/// returns true when the condition was signaled, false on timeout
 bool ConditionLocker::wait(uint64_t delay) {
   return _conditionVariable->wait(delay);
 }
@@ -95,15 +96,14 @@ void ConditionLocker::signal() { _conditionVariable->signal(); }
 /// @brief unlocks the variable (handle with care, no exception allowed)
 void ConditionLocker::unlock() {
   if (_isLocked) {
-    _conditionVariable->unlock(); 
+    _conditionVariable->unlock();
     _isLocked = false;
   }
 }
 
 /// @brief relock the variable after unlock
-void ConditionLocker::lock() { 
+void ConditionLocker::lock() {
   TRI_ASSERT(!_isLocked);
-  _conditionVariable->lock(); 
+  _conditionVariable->lock();
   _isLocked = true;
 }
-

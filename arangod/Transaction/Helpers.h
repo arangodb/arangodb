@@ -48,64 +48,62 @@ class Context;
 class Methods;
 
 namespace helpers {
-  /// @brief extract the _key attribute from a slice
-  StringRef extractKeyPart(VPackSlice);
-  
-  std::string extractIdString(CollectionNameResolver const*, 
-                              VPackSlice, VPackSlice const&);
+/// @brief extract the _key attribute from a slice
+StringRef extractKeyPart(VPackSlice);
 
-  /// @brief quick access to the _key attribute in a database document
-  /// the document must have at least two attributes, and _key is supposed to
-  /// be the first one
-  VPackSlice extractKeyFromDocument(VPackSlice);
-  
-  /// @brief quick access to the _id attribute in a database document
-  /// the document must have at least two attributes, and _id is supposed to
-  /// be the second one
-  /// note that this may return a Slice of type Custom!
-  /// do NOT call this method when 
-  /// - the input slice is not a database document
-  /// - you are not willing to deal with slices of type Custom
-  VPackSlice extractIdFromDocument(VPackSlice);
-  
-  /// @brief quick access to the _from attribute in a database document
-  /// the document must have at least five attributes: _key, _id, _from, _to
-  /// and _rev (in this order)
-  VPackSlice extractFromFromDocument(VPackSlice);
+std::string extractIdString(CollectionNameResolver const*, VPackSlice, VPackSlice const&);
 
-  /// @brief quick access to the _to attribute in a database document
-  /// the document must have at least five attributes: _key, _id, _from, _to
-  /// and _rev (in this order)
-  VPackSlice extractToFromDocument(VPackSlice);
-  
-  /// @brief extract _key and _rev from a document, in one go
-  /// this is an optimized version used when loading collections, WAL 
-  /// collection and compaction
-  void extractKeyAndRevFromDocument(VPackSlice slice,
-                                    VPackSlice& keySlice,
-                                    TRI_voc_rid_t& revisionId);
-  
-  /// @brief extract _rev from a database document
-  TRI_voc_rid_t extractRevFromDocument(VPackSlice slice);
-  VPackSlice extractRevSliceFromDocument(VPackSlice slice);
+/// @brief quick access to the _key attribute in a database document
+/// the document must have at least two attributes, and _key is supposed to
+/// be the first one
+VPackSlice extractKeyFromDocument(VPackSlice);
 
+/// @brief quick access to the _id attribute in a database document
+/// the document must have at least two attributes, and _id is supposed to
+/// be the second one
+/// note that this may return a Slice of type Custom!
+/// do NOT call this method when
+/// - the input slice is not a database document
+/// - you are not willing to deal with slices of type Custom
+VPackSlice extractIdFromDocument(VPackSlice);
 
-  OperationResult buildCountResult(std::vector<std::pair<std::string, uint64_t>> const& count, bool aggregate);
-  
-  /// @brief creates an id string from a custom _id value and the _key string
-  std::string makeIdFromCustom(CollectionNameResolver const* resolver,
-                               VPackSlice const& idPart, 
-                               VPackSlice const& keyPart);
-};
+/// @brief quick access to the _from attribute in a database document
+/// the document must have at least five attributes: _key, _id, _from, _to
+/// and _rev (in this order)
+VPackSlice extractFromFromDocument(VPackSlice);
+
+/// @brief quick access to the _to attribute in a database document
+/// the document must have at least five attributes: _key, _id, _from, _to
+/// and _rev (in this order)
+VPackSlice extractToFromDocument(VPackSlice);
+
+/// @brief extract _key and _rev from a document, in one go
+/// this is an optimized version used when loading collections, WAL
+/// collection and compaction
+void extractKeyAndRevFromDocument(VPackSlice slice, VPackSlice& keySlice,
+                                  TRI_voc_rid_t& revisionId);
+
+/// @brief extract _rev from a database document
+TRI_voc_rid_t extractRevFromDocument(VPackSlice slice);
+VPackSlice extractRevSliceFromDocument(VPackSlice slice);
+
+OperationResult buildCountResult(std::vector<std::pair<std::string, uint64_t>> const& count,
+                                 bool aggregate);
+
+/// @brief creates an id string from a custom _id value and the _key string
+std::string makeIdFromCustom(CollectionNameResolver const* resolver,
+                             VPackSlice const& idPart, VPackSlice const& keyPart);
+};  // namespace helpers
 
 class StringBufferLeaser {
  public:
-  explicit StringBufferLeaser(Methods*); 
-  explicit StringBufferLeaser(transaction::Context*); 
+  explicit StringBufferLeaser(Methods*);
+  explicit StringBufferLeaser(transaction::Context*);
   ~StringBufferLeaser();
   arangodb::basics::StringBuffer* stringBuffer() const { return _stringBuffer; }
   arangodb::basics::StringBuffer* operator->() const { return _stringBuffer; }
   arangodb::basics::StringBuffer* get() const { return _stringBuffer; }
+
  private:
   transaction::Context* _transactionContext;
   arangodb::basics::StringBuffer* _stringBuffer;
@@ -113,23 +111,24 @@ class StringBufferLeaser {
 
 class BuilderLeaser {
  public:
-  explicit BuilderLeaser(transaction::Methods*); 
-  explicit BuilderLeaser(transaction::Context*); 
+  explicit BuilderLeaser(transaction::Methods*);
+  explicit BuilderLeaser(transaction::Context*);
   ~BuilderLeaser();
   inline arangodb::velocypack::Builder* builder() const { return _builder; }
   inline arangodb::velocypack::Builder* operator->() const { return _builder; }
   inline arangodb::velocypack::Builder* get() const { return _builder; }
-  inline arangodb::velocypack::Builder* steal() { 
+  inline arangodb::velocypack::Builder* steal() {
     arangodb::velocypack::Builder* res = _builder;
     _builder = nullptr;
     return res;
   }
+
  private:
   transaction::Context* _transactionContext;
   arangodb::velocypack::Builder* _builder;
 };
 
-}
-}
+}  // namespace transaction
+}  // namespace arangodb
 
 #endif

@@ -25,8 +25,8 @@
 
 #include "Graph/EdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
-#include "Graph/TraverserCache.h"
 #include "Graph/Traverser.h"
+#include "Graph/TraverserCache.h"
 #include "Graph/TraverserOptions.h"
 
 #include <velocypack/Slice.h>
@@ -39,20 +39,16 @@ using namespace arangodb::traverser;
 BreadthFirstEnumerator::PathStep::PathStep(StringRef const vertex)
     : sourceIdx(0), edge(EdgeDocumentToken()), vertex(vertex) {}
 
-BreadthFirstEnumerator::PathStep::PathStep(
-    size_t sourceIdx, EdgeDocumentToken&& edge,
-    StringRef const vertex)
+BreadthFirstEnumerator::PathStep::PathStep(size_t sourceIdx, EdgeDocumentToken&& edge,
+                                           StringRef const vertex)
     : sourceIdx(sourceIdx), edge(edge), vertex(vertex) {}
 
 BreadthFirstEnumerator::PathStep::~PathStep() {}
 
 BreadthFirstEnumerator::PathStep::PathStep(PathStep& other)
-    : sourceIdx(other.sourceIdx),
-      edge(other.edge),
-      vertex(other.vertex) {}
+    : sourceIdx(other.sourceIdx), edge(other.edge), vertex(other.vertex) {}
 
-BreadthFirstEnumerator::BreadthFirstEnumerator(Traverser* traverser,
-                                               VPackSlice startVertex,
+BreadthFirstEnumerator::BreadthFirstEnumerator(Traverser* traverser, VPackSlice startVertex,
                                                TraverserOptions* opts)
     : PathEnumerator(traverser, startVertex.copyString(), opts),
       _schreierIndex(1),
@@ -128,16 +124,14 @@ bool BreadthFirstEnumerator::next() {
       bool shouldReturnPath = _currentDepth + 1 >= _opts->minDepth;
       bool didInsert = false;
 
-      auto callback = [&](graph::EdgeDocumentToken&& eid,
-                          VPackSlice e, size_t cursorIdx) -> void {
-        
+      auto callback = [&](graph::EdgeDocumentToken&& eid, VPackSlice e,
+                          size_t cursorIdx) -> void {
         if (_opts->hasEdgeFilter(_currentDepth, cursorIdx)) {
           VPackSlice edge = e;
           if (edge.isString()) {
             edge = _opts->cache()->lookupToken(eid);
           }
-          if (!_traverser->edgeMatchesConditions(edge, nextVertex, _currentDepth,
-                                                 cursorIdx)) {
+          if (!_traverser->edgeMatchesConditions(edge, nextVertex, _currentDepth, cursorIdx)) {
             return;
           }
         }
@@ -149,7 +143,6 @@ bool BreadthFirstEnumerator::next() {
         }
 
         if (_traverser->getSingleVertex(e, nextVertex, _currentDepth + 1, vId)) {
-         
           if (_opts->uniqueVertices == TraverserOptions::UniquenessLevel::PATH) {
             if (pathContainsVertex(nextIdx, vId)) {
               // This vertex is on the path.
@@ -157,8 +150,7 @@ bool BreadthFirstEnumerator::next() {
             }
           }
 
-          _schreier.emplace_back(
-              std::make_unique<PathStep>(nextIdx, std::move(eid), vId));
+          _schreier.emplace_back(std::make_unique<PathStep>(nextIdx, std::move(eid), vId));
           if (_currentDepth < _opts->maxDepth - 1) {
             _nextDepth.emplace_back(NextStep(_schreierIndex));
           }
@@ -198,14 +190,12 @@ arangodb::aql::AqlValue BreadthFirstEnumerator::lastEdgeToAqlValue() {
   TRI_ASSERT(_lastReturned < _schreier.size());
   if (_lastReturned == 0) {
     // This is the first Vertex. No Edge Pointing to it
-    return arangodb::aql::AqlValue(
-        arangodb::basics::VelocyPackHelper::NullValue());
+    return arangodb::aql::AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
   return _opts->cache()->fetchEdgeAqlResult(_schreier[_lastReturned]->edge);
 }
 
-arangodb::aql::AqlValue BreadthFirstEnumerator::pathToAqlValue(
-    arangodb::velocypack::Builder& result) {
+arangodb::aql::AqlValue BreadthFirstEnumerator::pathToAqlValue(arangodb::velocypack::Builder& result) {
   // TODO make deque class variable
   std::deque<size_t> fullPath;
   size_t cur = _lastReturned;
@@ -255,7 +245,8 @@ bool BreadthFirstEnumerator::pathContainsVertex(size_t index, StringRef vertex) 
   return false;
 }
 
-bool BreadthFirstEnumerator::pathContainsEdge(size_t index, graph::EdgeDocumentToken const& edge) const {
+bool BreadthFirstEnumerator::pathContainsEdge(size_t index,
+                                              graph::EdgeDocumentToken const& edge) const {
   while (index != 0) {
     TRI_ASSERT(index < _schreier.size());
     auto const& step = _schreier[index];
@@ -266,6 +257,6 @@ bool BreadthFirstEnumerator::pathContainsEdge(size_t index, graph::EdgeDocumentT
       return true;
     }
     index = step->sourceIdx;
-  } 
+  }
   return false;
 }
