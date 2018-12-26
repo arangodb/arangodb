@@ -24,20 +24,27 @@ If you have installed via the _Installer_, to upgrade:
 - Download the new _Installer_ and run it.
 - The _Installer_ will ask if you want to update your current database: select
   the option "_Automatically update existing ArangoDB database_" so that the database
-  files will be upgraded (Figure 1).
+  files will be upgraded.
+
+![Update Option](installer_upgrade.png)
 
 {% hint 'info' %} 
 Upgrading via the Installer, when the old data is kept, will keep your 
-password and choice of storage engine as it is (Figure 2).
+password and choice of storage engine as it is.
 {% endhint %}
 
 - After installing the new package, you will have both packages installed.
 You can uninstall the old one manually.
 
+![Uninstall old version](both_installations.png)
+
 {% hint 'danger' %} 
 When uninstalling the old package, please make sure the option
 "_Delete databases with unistallation_" is **not** checked.
 {% endhint %}
+
+![Delete Option](installer_delete.png)
+
 
 Manual upgrade of 'ZIP archive' installation
 --------------------------------------------
