@@ -38,6 +38,11 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+
+#if USE_ENTERPRISE
+  #include "Enterprise/Ldap/LdapFeature.h"
+#endif
+
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchCommon.h"
@@ -401,6 +406,11 @@ SECTION("test_upgrade0_1") {
     server.addFeature(new arangodb::ShardingFeature(server)); // required for LogicalCollection::LogicalCollection(...)
     server.addFeature(new arangodb::UpgradeFeature(server, nullptr, {})); // required for upgrade tasks
     server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
+
+    #if USE_ENTERPRISE
+      server.addFeature(new arangodb::LdapFeature(server)); // required for AuthenticationFeature with USE_ENTERPRISE
+    #endif
+
     feature.prepare(); // register iresearch view type
     feature.start(); // register upgrade tasks
     server.lookupFeature<arangodb::AuthenticationFeature>("Authentication")->prepare(); // create AuthenticationFeature::INSTANCE
