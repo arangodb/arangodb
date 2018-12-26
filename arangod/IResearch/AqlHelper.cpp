@@ -152,6 +152,18 @@ size_t hash(aql::AstNode const* node, size_t hash /*= 0*/) noexcept {
     return hash;
   }
 
+  auto hashMembers = [](aql::AstNode const& node, size_t& hash) {
+    for (size_t i = 0, n = node.numMembers(); i < n; ++i) {
+      auto sub = node.getMemberUnchecked(i);
+
+      if (sub) {
+        hash = iresearch::hash(sub, hash);
+      }
+    }
+
+    return hash;
+  };
+
   switch (node->type) {
     case aql::NODE_TYPE_VARIABLE: {
       hash = fasthash64(static_cast<const void*>("variable"), 8, hash);
@@ -159,46 +171,20 @@ size_t hash(aql::AstNode const* node, size_t hash /*= 0*/) noexcept {
     }
 
     case aql::NODE_TYPE_ATTRIBUTE_ACCESS: {
-      hash = fasthash64(static_cast<const void*>("access"), 6, hash);
+      hash = fasthash64(static_cast<const void*>("attribute access"), 16, hash);
+      hash = aql::AstNode(node->value).hashValue(hash);
+      return hashMembers(*node, hash);
+    }
 
-      // FIXME
+    case aql::NODE_TYPE_INDEXED_ACCESS: {
+      hash = fasthash64(static_cast<const void*>("indexed access"), 14, hash);
+      hash = aql::AstNode(node->value).hashValue(hash);
+      return hashMembers(*node, hash);
+    }
 
-      struct Visitor {
-        explicit Visitor(size_t& hash) noexcept
-          : hash(hash) {
-        }
-
-        bool attributeAccess(arangodb::aql::AstNode const& node) noexcept {
-          irs::string_ref value;
-          parseValue(value, node);
-
-          hash = fasthash64(static_cast<const void*>("attribute"), 9, hash);
-          hash = fasthash64(value.c_str(), value.size(), hash);
-          return true;
-        }
-
-        bool expansion(arangodb::aql::AstNode const&) noexcept {
-          hash = fasthash64(static_cast<const void*>("*"), 1, hash);
-          return true;
-        }
-
-        bool indexAccess(arangodb::aql::AstNode const& node) noexcept {
-          hash = fasthash64(static_cast<const void*>("index"), 5, hash);
-          hash = iresearch::hash(&node, hash);
-          return true;
-        }
-
-        size_t& hash;
-      } hasher(hash);
-
-      aql::AstNode const* head = nullptr;
-      visitAttributeAccess(head, node, hasher);
-
-      if (head) {
-        hash = fasthash64(head, sizeof(head), hash);
-      }
-
-      return hash;
+    case aql::NODE_TYPE_EXPANSION: {
+      hash = fasthash64(static_cast<const void*>("*"), 1, hash);
+      return hashMembers(*node, hash);
     }
 
     case aql::NODE_TYPE_VALUE: {
@@ -225,14 +211,7 @@ size_t hash(aql::AstNode const* node, size_t hash /*= 0*/) noexcept {
 
     case aql::NODE_TYPE_ARRAY: {
       hash = fasthash64(static_cast<const void*>("array"), 5, hash);
-      for (size_t i = 0, n = node->numMembers(); i < n; ++i) {
-        auto sub = node->getMemberUnchecked(i);
-
-        if (sub) {
-          hash = iresearch::hash(sub, hash);
-        }
-      }
-      return hash;
+      return hashMembers(*node, hash);
     }
 
     case aql::NODE_TYPE_OBJECT: {
@@ -265,38 +244,19 @@ size_t hash(aql::AstNode const* node, size_t hash /*= 0*/) noexcept {
       hash = fasthash64(static_cast<const void*>("fcall"), 5, hash);
       hash = fasthash64(node->getData(), sizeof(void*), hash);
       hash = fasthash64(fn->name.c_str(), fn->name.size(), hash);
-      for (size_t i = 0, n = node->numMembers(); i < n; ++i) {
-        auto sub = node->getMemberUnchecked(i);
-        TRI_ASSERT(sub);
-        hash = iresearch::hash(sub, hash);
-      }
-      return hash;
+      return hashMembers(*node, hash);
     }
 
     case aql::NODE_TYPE_FCALL_USER: {
       hash = fasthash64(static_cast<const void*>("fcalluser"), 9, hash);
       hash = fasthash64(static_cast<const void*>(node->getStringValue()),
                         node->getStringLength(), hash);
-      for (size_t i = 0, n = node->numMembers(); i < n; ++i) {
-        auto sub = node->getMemberUnchecked(i);
-
-        if (sub) {
-          hash = iresearch::hash(sub, hash);
-        }
-      }
-      return hash;
+      return hashMembers(*node, hash);
     }
 
     case aql::NODE_TYPE_RANGE: {
       hash = fasthash64(static_cast<const void*>("range"), 5, hash);
-      for (size_t i = 0, n = node->numMembers(); i < n; ++i) {
-        auto sub = node->getMemberUnchecked(i);
-
-        if (sub) {
-          hash = iresearch::hash(sub, hash);
-        }
-      }
-      return hash;
+      return hashMembers(*node, hash);
     }
 
     default: {
