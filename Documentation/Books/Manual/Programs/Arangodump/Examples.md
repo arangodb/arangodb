@@ -69,9 +69,10 @@ Cluster Backup
 --------------
 
 Starting with Version 2.1 of ArangoDB, the *arangodump* tool also
-supports sharding. Simply point it to one of the coordinators and it
+supports sharding and can be used to backup data from a Cluster. 
+Simply point it to one of the _Coordinators_ and it
 will behave exactly as described above, working on sharded collections
-in the cluster.
+in the Cluster.
 
 Please see the [Limitations](Limitations.md).
 
