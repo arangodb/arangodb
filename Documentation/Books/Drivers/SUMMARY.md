@@ -57,6 +57,7 @@
       * [Indexes](JS/Reference/Collection/Indexes.md)
       * [Simple Queries](JS/Reference/Collection/SimpleQueries.md)
       * [Bulk Import](JS/Reference/Collection/BulkImport.md)
+    * [AQL Helpers](JS/Reference/Aql.md)
     * [View Manipulation](JS/Reference/ViewManipulation.md) 
     * [Cursor](JS/Reference/Cursor.md)
     * [Graph](JS/Reference/Graph/README.md)
