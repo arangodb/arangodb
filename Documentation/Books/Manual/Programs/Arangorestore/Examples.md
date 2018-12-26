@@ -162,19 +162,20 @@ After that, run the following command:
     
     arangorestore --collection mycopyvalues --server.database mycopy --input-directory "dump"
 
-Using arangorestore with sharding
----------------------------------
+Restoring in a Cluster
+----------------------
 
-As of Version 2.1 the *arangorestore* tool supports sharding. Simply
-point it to one of the coordinators in your cluster and it will
-work as usual but on sharded collections in the cluster.
+As of Version 2.1 the *arangorestore* tool supports sharding and can be
+used to restore data into a Cluster. Simply point it to one of the 
+_Coordinators_ in your Cluster and it will work as usual but on sharded
+collections in the Cluster.
 
 If *arangorestore* is asked to drop and re-create a collection, it
 will use the same number of shards and the same shard keys as when
 the collection was dumped. The distribution of the shards to the
 servers will also be the same as at the time of the dump. This means 
-in particular that DBservers with the same IDs as before must be present in the
-cluster at time of the restore. 
+in particular that _DBServers_ with the same IDs as before must be
+present in the cluster at time of the restore. 
 
 If a collection was dumped from a single instance, one can manually
 add the structural description for the shard keys and the number and
@@ -188,6 +189,24 @@ be ignored.
 Note that in a cluster, every newly created collection will have a new
 ID, it is not possible to reuse the ID from the originally dumped
 collection. This is for safety reasons to ensure consistency of IDs.
+
+### Factors affecting speed of arangorestore in a Cluster
+
+The following factors affect speed of _arangorestore_ in a cluster:
+
+- **Replication Factor**: the higher the _replication factor_, the more
+  time the restore will take. To speed up the restore you can restore
+  using a _replication factor_ of 1 and then increase it again
+  after the restore. This will reduce number of network hops needed
+  during the restore.
+- **Restore Parallelization**: if the collections are not restored in
+  parallel, the restore speed is highly affected. Parallel restore can
+  be done from v3.4.0 by using the _threads_ option of _arangorestore_.
+  Before v3.4.0 it is possible to achieve parallelization in other ways. 
+  
+Please refer to the [Parallel Restore Procedure](ParallelRestore.md) page
+for further operative details on how to take into account, when restoring
+using _arangorestore_, the two factors described above.
 
 ### Restoring collections with sharding prototypes
 
