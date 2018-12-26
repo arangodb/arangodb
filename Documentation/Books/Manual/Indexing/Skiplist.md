@@ -187,7 +187,7 @@ and
 will match.
 
 
-<!--
+{###
 Creating Skiplist Index in Background
 -------------------------------------
 
@@ -211,4 +211,4 @@ db.collection.ensureIndex({ type: "skiplist", fields: [ "value" ], inBackground:
 ```
 
 For more information see [Creating Indexes in Background](IndexBasics.md#creating-indexes-in-background)
--->
+###}
