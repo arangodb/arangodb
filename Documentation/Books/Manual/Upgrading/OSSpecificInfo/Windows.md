@@ -34,13 +34,23 @@ password and choice of storage engine as it is.
 {% endhint %}
 
 - After installing the new package, you will have both packages installed.
-You can uninstall the old one manually.
+You can uninstall the old one manually (make a copy of your old configuration
+file first).
 
 ![Uninstall old version](both_installations.png)
 
 {% hint 'danger' %} 
 When uninstalling the old package, please make sure the option
 "_Delete databases with unistallation_" is **not** checked.
+{% endhint %}
+
+{% hint 'danger' %} 
+When upgrading, the Windows Installer does not use the old configuration file
+for the installed _Single Instance_ but a new (default) one ([Issue #3773](https://github.com/arangodb/arangodb/issues/3773)).
+To use the old configuration, it is currently needed to:
+- stop the server
+- replace the new with the old confituration file
+- restart the server
 {% endhint %}
 
 ![Delete Option](installer_delete.png)
