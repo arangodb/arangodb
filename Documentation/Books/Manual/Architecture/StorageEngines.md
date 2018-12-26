@@ -18,9 +18,11 @@ possible to mix engines. The transaction handling and write-ahead-log
 format in the individual engines is very different and therefore cannot 
 be mixed.
 
+{% hint 'tip' %}
 For practical information on how to switch storage engine please refer to the
 [Switching the storage engine](../Administration/Engine/SwitchEngine.md)
 page.
+{% endhint %}
 
 | MMFiles | RocksDB |
 |---|---|
