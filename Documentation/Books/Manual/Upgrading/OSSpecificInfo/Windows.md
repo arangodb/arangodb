@@ -42,6 +42,8 @@ When uninstalling the old package, please make sure the option
 "_Delete databases with unistallation_" is **not** checked.
 {% endhint %}
 
+![Delete Option](installer_delete.png)
+
 {% hint 'danger' %} 
 When upgrading, the Windows Installer does not use the old configuration file
 for the installed _Single Instance_ but a new (default) one ([Issue #3773](https://github.com/arangodb/arangodb/issues/3773)).
@@ -50,9 +52,6 @@ To use the old configuration, it is currently needed to:
 - Replace the new with the old confituration file
 - Restart the server
 {% endhint %}
-
-![Delete Option](installer_delete.png)
-
 
 Manual upgrade of 'ZIP archive' installation
 --------------------------------------------
@@ -88,10 +87,11 @@ to perform the upgrade of a _Single Instance_:
    passing:
    - _directory1_ as *--database.directory*,
    - _file_ as *--configuration*
-   - *database.auto-upgrade* (so that the old data directory will be upgraded)
+   - the option *--database.auto-upgrade* (so that the old data directory will
+     be upgraded)
 4. When the previous step is finished the server will stop automatically; you
    can now start your server again as done in the previous step but without
-   passing the *database.auto-upgrade* option
+   passing the *--database.auto-upgrade* option
 5. Optionally remove the old server package by dropping the corresponding
    directory when you are confident enough that all is working fine.
    
@@ -112,4 +112,4 @@ To perform the upgrade of a _Single Instance_:
 7. Restore the backup into the new server using _arangorestore_
 8. Re-enable the writes (e.g. allow again incoming connections)
 9. Optionally remove the old server package by dropping the corresponding
-   directory when you are confident enough that all is working fine
+   directory when you are confident enough that all is working fine.
