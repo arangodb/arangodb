@@ -1,5 +1,3 @@
-**TMP**
-
 Upgrading on Windows
 ====================
 
