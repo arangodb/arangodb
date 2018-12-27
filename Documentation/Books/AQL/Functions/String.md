@@ -411,10 +411,10 @@ quantifiers:
 - `x?` – matches one or zero occurrences of *x*
 - `x{y}` – matches exactly *y* occurrences of *x*
 - `x{y,z}` – matches between *y* and *z* occurrences of *x*
-- `x{y,}` – matches at least *y* occurences of *x*
+- `x{y,}` – matches at least *y* occurrences of *x*
 
 Note that `xyz+` matches *xyzzz*, but if you want to match *xyzxyz* instead,
-you need to define a pattern group by wrapping the subexpression in parentheses
+you need to define a pattern group by wrapping the sub-expression in parentheses
 and place the quantifier right behind it: `(xyz)+`.
 
 If the regular expression in *regex* is invalid, a warning will be raised
@@ -478,10 +478,10 @@ quantifiers:
 - `x?` – matches one or zero occurrences of *x*
 - `x{y}` – matches exactly *y* occurrences of *x*
 - `x{y,z}` – matches between *y* and *z* occurrences of *x*
-- `x{y,}` – matches at least *y* occurences of *x*
+- `x{y,}` – matches at least *y* occurrences of *x*
 
 Note that `xyz+` matches *xyzzz*, but if you want to match *xyzxyz* instead,
-you need to define a pattern group by wrapping the subexpression in parentheses
+you need to define a pattern group by wrapping the sub-expression in parentheses
 and place the quantifier right behind it: `(xyz)+`.
 
 If the regular expression in *splitExpression* is invalid, a warning will be raised
@@ -547,10 +547,10 @@ quantifiers:
 - `x?` – matches one or zero occurrences of *x*
 - `x{y}` – matches exactly *y* occurrences of *x*
 - `x{y,z}` – matches between *y* and *z* occurrences of *x*
-- `x{y,}` – matches at least *y* occurences of *x*
+- `x{y,}` – matches at least *y* occurrences of *x*
 
 Note that `xyz+` matches *xyzzz*, but if you want to match *xyzxyz* instead,
-you need to define a pattern group by wrapping the subexpression in parentheses
+you need to define a pattern group by wrapping the sub-expression in parentheses
 and place the quantifier right behind it: `(xyz)+`.
  
 If the regular expression in *search* is invalid, a warning will be raised

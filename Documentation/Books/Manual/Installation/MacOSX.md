@@ -1,7 +1,7 @@
-Installing ArangoDB on MacOS
+Installing ArangoDB on macOS
 ============================
 
-ArangoDB under MacOS can be installed via:
+ArangoDB under macOS can be installed via:
 
 1. [Homebrew](#homebrew)
 2. [_DMG_ Package](#package-installation)
@@ -11,7 +11,7 @@ Homebrew
 --------
 
 {% hint 'info' %}
-When installing ArangoDB via the MacOS package manager Homebrew,
+When installing ArangoDB via the macOS package manager Homebrew,
 only the Community Edition is available.
 {% endhint %}
 
@@ -85,7 +85,7 @@ Package Installation
 --------------------
 
 Visit the official [Download](https://www.arangodb.com/download) page of the
-ArangoDB website and download the *DMG* Package for MacOS.
+ArangoDB website and download the *DMG* Package for macOS.
 
 ### Graphical App
 
@@ -124,9 +124,9 @@ the port used.
 Installing using the archive
 ----------------------------
 
-Starting from v3.4.0 a _tar.gz_ package is also available for MacOS.
+Starting from v3.4.0 a _tar.gz_ package is also available for macOS.
 
 Visit the official [Download](https://www.arangodb.com/download) page of the ArangoDB
-website and download the _tar.gz_ archive for MacOS.
+website and download the _tar.gz_ archive for macOS.
 
 To install, just extract the archive.
