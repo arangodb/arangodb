@@ -52,7 +52,7 @@ class RocksDBSyncThread final : public Thread {
   /// this is the preferred method to call when trying to avoid redundant
   /// syncs by foreground work and the background sync thread
   Result syncWal();
-  
+
   /// @brief unconditionally syncs the RocksDB WAL, static variant
   static Result sync(rocksdb::DB* db);
 

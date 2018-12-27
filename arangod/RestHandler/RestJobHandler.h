@@ -32,7 +32,7 @@ namespace arangodb {
 namespace rest {
 class AsyncJobManager;
 class Dispatcher;
-}
+}  // namespace rest
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief job control request handler
@@ -93,6 +93,6 @@ class RestJobHandler : public RestBaseHandler {
 
   rest::AsyncJobManager* _jobManager;
 };
-}
+}  // namespace arangodb
 
 #endif

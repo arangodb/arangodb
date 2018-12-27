@@ -63,8 +63,8 @@ class ClientTaskQueue {
    * @param  jobData Data describing the job
    * @return         The result status of the job
    */
-  using JobProcessor = std::function<Result(
-      httpclient::SimpleHttpClient& client, JobData& jobData)>;
+  using JobProcessor =
+      std::function<Result(httpclient::SimpleHttpClient& client, JobData& jobData)>;
 
   /**
    * @brief Handles the result of an individual jobs
@@ -78,8 +78,8 @@ class ClientTaskQueue {
    * @param jobData Data describing the job which was just processed
    * @param result  The result status of the job
    */
-  using JobResultHandler = std::function<void(
-      std::unique_ptr<JobData>&& jobData, Result const& result)>;
+  using JobResultHandler =
+      std::function<void(std::unique_ptr<JobData>&& jobData, Result const& result)>;
 
  public:
   ClientTaskQueue(JobProcessor processJob, JobResultHandler handleJobResult);
@@ -96,8 +96,7 @@ class ClientTaskQueue {
    * @param  numWorkers The number of workers to spawn
    * @return            `true` if successful
    */
-  bool spawnWorkers(ClientManager& manager,
-                    uint32_t const& numWorkers) noexcept;
+  bool spawnWorkers(ClientManager& manager, uint32_t const& numWorkers) noexcept;
 
   /**
    * @brief Determines if the job queue is currently empty
@@ -107,7 +106,7 @@ class ClientTaskQueue {
    * @return `true` if there are no pending jobs
    */
   bool isQueueEmpty() const noexcept;
-  
+
   /**
    * @brief Determines the number of currently queued jobs, the number
    * of total workers and the number of busy workers
@@ -207,8 +206,8 @@ class ClientTaskQueue {
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename JobData>
-inline ClientTaskQueue<JobData>::ClientTaskQueue(
-    JobProcessor processJob, JobResultHandler handleJobResult)
+inline ClientTaskQueue<JobData>::ClientTaskQueue(JobProcessor processJob,
+                                                 JobResultHandler handleJobResult)
     : _processJob(processJob), _handleJobResult(handleJobResult) {}
 
 template <typename JobData>
@@ -220,8 +219,8 @@ ClientTaskQueue<JobData>::~ClientTaskQueue() {
 }
 
 template <typename JobData>
-inline bool ClientTaskQueue<JobData>::spawnWorkers(
-    ClientManager& manager, uint32_t const& numWorkers) noexcept {
+inline bool ClientTaskQueue<JobData>::spawnWorkers(ClientManager& manager,
+                                                   uint32_t const& numWorkers) noexcept {
   uint32_t spawned = 0;
   try {
     MUTEX_LOCKER(lock, _workersLock);
@@ -248,7 +247,8 @@ inline bool ClientTaskQueue<JobData>::isQueueEmpty() const noexcept {
 }
 
 template <typename JobData>
-inline std::tuple<size_t, size_t, size_t> ClientTaskQueue<JobData>::statistics() const noexcept {
+inline std::tuple<size_t, size_t, size_t> ClientTaskQueue<JobData>::statistics() const
+    noexcept {
   size_t busy = 0;
   size_t workers = 0;
   MUTEX_LOCKER(lock, _jobsLock);
@@ -290,8 +290,7 @@ inline bool ClientTaskQueue<JobData>::allWorkersIdle() const noexcept {
 }
 
 template <typename JobData>
-inline bool ClientTaskQueue<JobData>::queueJob(
-    std::unique_ptr<JobData>&& job) noexcept {
+inline bool ClientTaskQueue<JobData>::queueJob(std::unique_ptr<JobData>&& job) noexcept {
   try {
     MUTEX_LOCKER(lock, _jobsLock);
     _jobs.emplace(std::move(job));
@@ -368,13 +367,9 @@ inline void ClientTaskQueue<JobData>::notifyIdle() noexcept {
 }
 
 template <typename JobData>
-inline ClientTaskQueue<JobData>::Worker::Worker(
-    ClientTaskQueue<JobData>& queue,
-    std::unique_ptr<httpclient::SimpleHttpClient>&& client)
-    : Thread("Worker"),
-      _queue(queue),
-      _client(std::move(client)),
-      _idle(true) {}
+inline ClientTaskQueue<JobData>::Worker::Worker(ClientTaskQueue<JobData>& queue,
+                                                std::unique_ptr<httpclient::SimpleHttpClient>&& client)
+    : Thread("Worker"), _queue(queue), _client(std::move(client)), _idle(true) {}
 
 template <typename JobData>
 inline ClientTaskQueue<JobData>::Worker::~Worker() {

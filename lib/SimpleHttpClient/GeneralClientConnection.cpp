@@ -24,18 +24,18 @@
 #include "GeneralClientConnection.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationPhase.h"
+#include "Basics/socket-utils.h"
+#include "Logger/Logger.h"
 #include "SimpleHttpClient/ClientConnection.h"
 #include "SimpleHttpClient/SslClientConnection.h"
-#include "Logger/Logger.h"
-#include "Basics/socket-utils.h"
 
 #ifdef TRI_HAVE_POLL_H
 #include <poll.h>
 #endif
 
 #ifdef TRI_HAVE_WINSOCK2_H
-#include <WinSock2.h>
 #include <WS2tcpip.h>
+#include <WinSock2.h>
 #endif
 
 #include <sys/types.h>
@@ -58,10 +58,8 @@ using namespace arangodb::httpclient;
 /// @brief creates a new client connection
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralClientConnection::GeneralClientConnection(Endpoint* endpoint,
-                                                 double requestTimeout,
-                                                 double connectTimeout,
-                                                 size_t connectRetries)
+GeneralClientConnection::GeneralClientConnection(Endpoint* endpoint, double requestTimeout,
+                                                 double connectTimeout, size_t connectRetries)
     : _endpoint(endpoint),
       _freeEndpointOnDestruction(false),
       _requestTimeout(requestTimeout),
@@ -77,9 +75,9 @@ GeneralClientConnection::GeneralClientConnection(Endpoint* endpoint,
   TRI_invalidatesocket(&_socket);
 }
 
-GeneralClientConnection::GeneralClientConnection(
-    std::unique_ptr<Endpoint>& endpoint, double requestTimeout,
-    double connectTimeout, size_t connectRetries)
+GeneralClientConnection::GeneralClientConnection(std::unique_ptr<Endpoint>& endpoint,
+                                                 double requestTimeout,
+                                                 double connectTimeout, size_t connectRetries)
     : _endpoint(endpoint.release()),
       _freeEndpointOnDestruction(true),
       _requestTimeout(requestTimeout),
@@ -109,12 +107,13 @@ GeneralClientConnection::~GeneralClientConnection() {
 /// @brief create a new connection from an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralClientConnection* GeneralClientConnection::factory(
-    Endpoint* endpoint, double requestTimeout, double connectTimeout,
-    size_t numRetries, uint64_t sslProtocol) {
+GeneralClientConnection* GeneralClientConnection::factory(Endpoint* endpoint,
+                                                          double requestTimeout,
+                                                          double connectTimeout,
+                                                          size_t numRetries,
+                                                          uint64_t sslProtocol) {
   if (endpoint->encryption() == Endpoint::EncryptionType::NONE) {
-    return new ClientConnection(endpoint, requestTimeout, connectTimeout,
-                                numRetries);
+    return new ClientConnection(endpoint, requestTimeout, connectTimeout, numRetries);
   } else if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
     return new SslClientConnection(endpoint, requestTimeout, connectTimeout,
                                    numRetries, sslProtocol);
@@ -124,11 +123,10 @@ GeneralClientConnection* GeneralClientConnection::factory(
 }
 
 GeneralClientConnection* GeneralClientConnection::factory(
-    std::unique_ptr<Endpoint>& endpoint, double requestTimeout, double connectTimeout,
-    size_t numRetries, uint64_t sslProtocol) {
+    std::unique_ptr<Endpoint>& endpoint, double requestTimeout,
+    double connectTimeout, size_t numRetries, uint64_t sslProtocol) {
   if (endpoint->encryption() == Endpoint::EncryptionType::NONE) {
-    return new ClientConnection(endpoint, requestTimeout, connectTimeout,
-                                numRetries);
+    return new ClientConnection(endpoint, requestTimeout, connectTimeout, numRetries);
   } else if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
     return new SslClientConnection(endpoint, requestTimeout, connectTimeout,
                                    numRetries, sslProtocol);
@@ -171,8 +169,10 @@ void GeneralClientConnection::disconnect() {
     if ((_written + _read) == 0) {
       std::string bt;
       TRI_GetBacktrace(bt);
-      LOG_TOPIC(WARN, Logger::COMMUNICATION) <<
-        "Closing HTTP-connection right after opening it without sending data!" << bt;
+      LOG_TOPIC(WARN, Logger::COMMUNICATION)
+          << "Closing HTTP-connection right after opening it without sending "
+             "data!"
+          << bt;
     }
     _written = 0;
     _read = 0;
@@ -196,8 +196,9 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool 
   double start = TRI_microtime();
   int res;
 
-  auto comm = application_features::ApplicationServer::getFeature<
-    arangodb::application_features::CommunicationFeaturePhase>("CommunicationPhase");
+  auto comm =
+      application_features::ApplicationServer::getFeature<arangodb::application_features::CommunicationFeaturePhase>(
+          "CommunicationPhase");
 
 #ifdef TRI_HAVE_POLL_H
   // Here we have poll, on all other platforms we use select
@@ -216,9 +217,10 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool 
   poller.events = (isWrite ? POLLOUT : POLLIN);
 
   while (true) {  // will be left by break
-    res = poll(&poller, 1, towait > static_cast<int>(POLL_DURATION * 1000.0)
-                               ? static_cast<int>(POLL_DURATION * 1000.0)
-                               : towait);
+    res = poll(&poller, 1,
+               towait > static_cast<int>(POLL_DURATION * 1000.0)
+                   ? static_cast<int>(POLL_DURATION * 1000.0)
+                   : towait);
     if (res == -1 && errno == EINTR) {
       if (!nowait) {
         double end = TRI_microtime();
@@ -375,8 +377,7 @@ bool GeneralClientConnection::checkSocket() {
 
   TRI_ASSERT(TRI_isvalidsocket(_socket));
 
-  int res =
-      TRI_getsockopt(_socket, SOL_SOCKET, SO_ERROR, (void*)&so_error, &len);
+  int res = TRI_getsockopt(_socket, SOL_SOCKET, SO_ERROR, (void*)&so_error, &len);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(errno);

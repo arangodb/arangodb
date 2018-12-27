@@ -57,9 +57,7 @@ namespace {
 class SchedulerManagerThread final : public Thread {
  public:
   SchedulerManagerThread(std::shared_ptr<Scheduler> const& scheduler, asio_ns::io_context* service)
-      : Thread("SchedulerManager", true),
-        _scheduler(scheduler),
-        _service(service) {}
+      : Thread("SchedulerManager", true), _scheduler(scheduler), _service(service) {}
 
   ~SchedulerManagerThread() { shutdown(); }
 
@@ -99,13 +97,12 @@ class arangodb::SchedulerThread : public Thread {
 
     // when we enter this method,
     // _nrRunning has already been increased for this thread
-    LOG_TOPIC(DEBUG, Logger::THREADS)
-        << "started thread: " << _scheduler->infoStatus();
+    LOG_TOPIC(DEBUG, Logger::THREADS) << "started thread: " << _scheduler->infoStatus();
 
     // some random delay value to avoid all initial threads checking for
     // their deletion at the very same time
-    double const randomWait = static_cast<double>(RandomGenerator::interval(
-        int64_t(0), static_cast<int64_t>(MIN_SECONDS * 0.5)));
+    double const randomWait = static_cast<double>(
+        RandomGenerator::interval(int64_t(0), static_cast<int64_t>(MIN_SECONDS * 0.5)));
 
     double start = TRI_microtime() + randomWait;
     size_t counter = 0;
@@ -148,8 +145,7 @@ class arangodb::SchedulerThread : public Thread {
       }
     }
 
-    LOG_TOPIC(DEBUG, Logger::THREADS)
-        << "stopped (" << _scheduler->infoStatus() << ")";
+    LOG_TOPIC(DEBUG, Logger::THREADS) << "stopped (" << _scheduler->infoStatus() << ")";
 
     if (doDecrement) {
       // only decrement here if this wasn't already done above
@@ -168,8 +164,7 @@ class arangodb::SchedulerThread : public Thread {
 // --SECTION--                                                         Scheduler
 // -----------------------------------------------------------------------------
 
-Scheduler::Scheduler(uint64_t nrMinimum, uint64_t nrMaximum,
-                     uint64_t fifo1Size, uint64_t fifo2Size)
+Scheduler::Scheduler(uint64_t nrMinimum, uint64_t nrMaximum, uint64_t fifo1Size, uint64_t fifo2Size)
     : _counters(0),
       _maxFifoSize{fifo1Size, fifo2Size, fifo2Size},
       _fifo1(_maxFifoSize[FIFO1]),
@@ -179,7 +174,8 @@ Scheduler::Scheduler(uint64_t nrMinimum, uint64_t nrMaximum,
       _minThreads(nrMinimum),
       _maxThreads(nrMaximum),
       _lastAllBusyStamp(0.0) {
-  LOG_TOPIC(DEBUG, Logger::THREADS) << "Scheduler configuration min: " << nrMinimum << " max: " << nrMaximum;
+  LOG_TOPIC(DEBUG, Logger::THREADS)
+      << "Scheduler configuration min: " << nrMinimum << " max: " << nrMaximum;
   _fifoSize[FIFO1] = 0;
   _fifoSize[FIFO2] = 0;
   _fifoSize[FIFO3] = 0;
@@ -230,8 +226,7 @@ void Scheduler::post(std::function<void()> const callback) {
 }
 
 // do not pass callback by reference, might get deleted before execution
-void Scheduler::post(asio_ns::io_context::strand& strand,
-                     std::function<void()> const callback) {
+void Scheduler::post(asio_ns::io_context::strand& strand, std::function<void()> const callback) {
   incQueued();
 
   auto guardQueue = scopeGuard([this]() { decQueued(); });
@@ -248,8 +243,7 @@ void Scheduler::post(asio_ns::io_context::strand& strand,
   guardQueue.cancel();
 }
 
-bool Scheduler::queue(RequestPriority prio,
-                      std::function<void()> const& callback) {
+bool Scheduler::queue(RequestPriority prio, std::function<void()> const& callback) {
   bool ok = true;
 
   switch (prio) {
@@ -284,7 +278,8 @@ bool Scheduler::queue(RequestPriority prio,
     // append it to the fifo2. Otherwise directly queue
     // it.
     case RequestPriority::LOW:
-      if (0 < _fifoSize[FIFO1] || 0 < _fifoSize[FIFO2] || 0 < _fifoSize[FIFO3] || !canPostDirectly(prio)) {
+      if (0 < _fifoSize[FIFO1] || 0 < _fifoSize[FIFO2] ||
+          0 < _fifoSize[FIFO3] || !canPostDirectly(prio)) {
         ok = pushToFifo(FIFO3, callback);
       } else {
         post(callback);
@@ -360,12 +355,10 @@ std::string Scheduler::infoStatus() {
   return "scheduler " + std::to_string(numRunning(counters)) + " (" +
          std::to_string(_minThreads) + "<" + std::to_string(_maxThreads) +
          ") in-progress " + std::to_string(numWorking(counters)) + " queued " +
-         std::to_string(numQueued(counters)) +
-         " F1 " + std::to_string(_fifoSize[FIFO1]) +
+         std::to_string(numQueued(counters)) + " F1 " + std::to_string(_fifoSize[FIFO1]) +
          " (<=" + std::to_string(_maxFifoSize[FIFO1]) + ") F2 " +
-         std::to_string(_fifoSize[FIFO2]) +
-         " (<=" + std::to_string(_maxFifoSize[FIFO2]) + ") F3 " +
-         std::to_string(_fifoSize[FIFO3]) +
+         std::to_string(_fifoSize[FIFO2]) + " (<=" + std::to_string(_maxFifoSize[FIFO2]) +
+         ") F3 " + std::to_string(_fifoSize[FIFO3]) +
          " (<=" + std::to_string(_maxFifoSize[FIFO3]) + ")";
 }
 
@@ -378,8 +371,10 @@ bool Scheduler::canPostDirectly(RequestPriority prio) const noexcept {
     case RequestPriority::HIGH:
       return nrWorking + nrQueued < _maxThreads;
 
-    // the "/ 2" is an assumption that HIGH is typically responses to our outbound messages
-    //  where MED & LOW are incoming requests.  Keep half the threads processing our work and half their work.
+    // the "/ 2" is an assumption that HIGH is typically responses to our
+    // outbound messages
+    //  where MED & LOW are incoming requests.  Keep half the threads processing
+    //  our work and half their work.
     case RequestPriority::MED:
     case RequestPriority::LOW:
       return nrWorking + nrQueued < _maxThreads / 2;
@@ -414,8 +409,8 @@ bool Scheduler::pushToFifo(int64_t fifo, std::function<void()> const& callback) 
 
     if (0 == nrWorking + nrQueued) {
       post([] {
-          LOG_TOPIC(DEBUG, Logger::THREADS) << "Wakeup alarm";
-          /*wakeup call for scheduler thread*/
+        LOG_TOPIC(DEBUG, Logger::THREADS) << "Wakeup alarm";
+        /*wakeup call for scheduler thread*/
       });
     }
   } catch (...) {
@@ -441,7 +436,7 @@ bool Scheduler::popFifo(int64_t fifo) {
       }
     });
 
-   post(job->_callback);
+    post(job->_callback);
 
     --_fifoSize[p];
   }
@@ -533,8 +528,8 @@ void Scheduler::shutdown() {
   }
 
   // One has to clean up the ioContext here, because there could a lambda
-  // in its queue, that requires for it finalization some object (for example vocbase)
-  // that would already be destroyed
+  // in its queue, that requires for it finalization some object (for example
+  // vocbase) that would already be destroyed
   _managerContext.reset();
   _ioContext.reset();
 }
@@ -590,9 +585,9 @@ void Scheduler::stopRebalancer() noexcept {
   }
 }
 
-
 //
-// This routine tries to keep only the most likely needed count of threads running:
+// This routine tries to keep only the most likely needed count of threads
+// running:
 //  - asio io_context runs less efficiently if it has too many threads, but
 //  - there is a latency hit to starting a new thread.
 //
@@ -602,11 +597,9 @@ void Scheduler::rebalanceThreads() {
   ++count;
 
   if (count % 50 == 0) {
-    LOG_TOPIC(DEBUG, Logger::THREADS)
-        << "rebalancing threads: " << infoStatus();
+    LOG_TOPIC(DEBUG, Logger::THREADS) << "rebalancing threads: " << infoStatus();
   } else if (count % 5 == 0) {
-    LOG_TOPIC(TRACE, Logger::THREADS)
-        << "rebalancing threads: " << infoStatus();
+    LOG_TOPIC(TRACE, Logger::THREADS) << "rebalancing threads: " << infoStatus();
   }
 
   while (true) {

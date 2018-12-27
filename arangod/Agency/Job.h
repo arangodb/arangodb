@@ -60,12 +60,11 @@ extern std::string const asyncReplLeader;
 extern std::string const asyncReplTransientPrefix;
 
 struct Job {
-
   struct shard_t {
     std::string collection;
     std::string shard;
-    shard_t (std::string const& c, std::string const& s) :
-      collection(c), shard(s) {}
+    shard_t(std::string const& c, std::string const& s)
+        : collection(c), shard(s) {}
   };
 
   Job(JOB_STATUS status, Node const& snapshot, AgentInterface* agent,
@@ -80,10 +79,10 @@ struct Job {
       return;
     }
     try {
-      status();   // This runs everything to to with state PENDING if needed!
+      status();  // This runs everything to to with state PENDING if needed!
     } catch (std::exception const& e) {
-      LOG_TOPIC(WARN, Logger::AGENCY) << "Exception caught in status() method: "
-        << e.what();
+      LOG_TOPIC(WARN, Logger::AGENCY)
+          << "Exception caught in status() method: " << e.what();
       finish(server, shard, false, e.what());
     }
     try {
@@ -96,16 +95,17 @@ struct Job {
       }
     } catch (std::exception const& e) {
       LOG_TOPIC(WARN, Logger::AGENCY) << "Exception caught in create() or "
-        "start() method: " << e.what();
+                                         "start() method: "
+                                      << e.what();
       finish("", "", false, e.what());
     }
   }
 
   virtual Result abort() = 0;
 
-  virtual bool finish(
-    std::string const& server, std::string const& shard, bool success = true,
-    std::string const& reason = std::string(), query_t const payload = nullptr);
+  virtual bool finish(std::string const& server, std::string const& shard,
+                      bool success = true, std::string const& reason = std::string(),
+                      query_t const payload = nullptr);
 
   virtual JOB_STATUS status() = 0;
 
@@ -121,25 +121,23 @@ struct Job {
 
   /// @brief Get a random server, which is not blocked, in good condition and
   ///        excluding "exclude" vector
-  static std::string randomIdleGoodAvailableServer(
-    Node const& snap, std::vector<std::string> const& exclude);
-  static std::string randomIdleGoodAvailableServer(
-    Node const& snap, VPackSlice const& exclude);
+  static std::string randomIdleGoodAvailableServer(Node const& snap,
+                                                   std::vector<std::string> const& exclude);
+  static std::string randomIdleGoodAvailableServer(Node const& snap, VPackSlice const& exclude);
 
   /// @brief Get servers from plan, which are not failed or cleaned out
-  static std::vector<std::string> availableServers(
-    const arangodb::consensus::Node&);
-  
+  static std::vector<std::string> availableServers(const arangodb::consensus::Node&);
+
   /// @brief Get servers from Supervision with health status GOOD
   static std::vector<std::string> healthyServers(arangodb::consensus::Node const&);
 
-  static std::vector<shard_t> clones(
-    Node const& snap, std::string const& db, std::string const& col,
-    std::string const& shrd);
+  static std::vector<shard_t> clones(Node const& snap, std::string const& db,
+                                     std::string const& col, std::string const& shrd);
 
-  static std::string findNonblockedCommonHealthyInSyncFollower(
-    Node const& snap, std::string const& db, std::string const& col,
-    std::string const& shrd);
+  static std::string findNonblockedCommonHealthyInSyncFollower(Node const& snap,
+                                                               std::string const& db,
+                                                               std::string const& col,
+                                                               std::string const& shrd);
 
   JOB_STATUS _status;
   Node const _snapshot;
@@ -151,10 +149,9 @@ struct Job {
 
   std::shared_ptr<Builder> _jb;
 
-  static void doForAllShards(Node const& snapshot,
-    std::string& database,
-    std::vector<shard_t>& shards,
-    std::function<void(Slice plan, Slice current, std::string& planPath)> worker);
+  static void doForAllShards(
+      Node const& snapshot, std::string& database, std::vector<shard_t>& shards,
+      std::function<void(Slice plan, Slice current, std::string& planPath)> worker);
 
   // The following methods adds an operation to a transaction object or
   // a condition to a precondition object. In all cases, the builder trx
@@ -164,9 +161,9 @@ struct Job {
   static void addRemoveJobFromSomewhere(Builder& trx, std::string const& where,
                                         std::string const& jobId);
   static void addPutJobIntoSomewhere(Builder& trx, std::string const& where,
-    Slice job, std::string const& reason = "");
-  static void addPreconditionCollectionStillThere(Builder& pre,
-    std::string const& database, std::string const& collection);
+                                     Slice job, std::string const& reason = "");
+  static void addPreconditionCollectionStillThere(Builder& pre, std::string const& database,
+                                                  std::string const& collection);
   static void addBlockServer(Builder& trx, std::string const& server,
                              std::string const& jobId);
   static void addBlockShard(Builder& trx, std::string const& shard, std::string const& jobId);
@@ -176,23 +173,22 @@ struct Job {
   static void addPreconditionServerHealth(Builder& pre, std::string const& server,
                                           std::string const& health);
   static void addPreconditionShardNotBlocked(Builder& pre, std::string const& shard);
-  static void addPreconditionUnchanged(Builder& pre,
-    std::string const& key, Slice value);
+  static void addPreconditionUnchanged(Builder& pre, std::string const& key, Slice value);
   static std::string checkServerHealth(Node const& snapshot, std::string const& server);
 };
 
-inline arangodb::consensus::write_ret_t singleWriteTransaction(
-  AgentInterface* _agent,
-  Builder const& transaction,
-  bool waitForCommit = true) {
-
+inline arangodb::consensus::write_ret_t singleWriteTransaction(AgentInterface* _agent,
+                                                               Builder const& transaction,
+                                                               bool waitForCommit = true) {
   query_t envelope = std::make_shared<Builder>();
 
   Slice trx = transaction.slice();
   try {
-    { VPackArrayBuilder listOfTrxs(envelope.get());
+    {
+      VPackArrayBuilder listOfTrxs(envelope.get());
       VPackArrayBuilder onePair(envelope.get());
-      { VPackObjectBuilder mutationPart(envelope.get());
+      {
+        VPackObjectBuilder mutationPart(envelope.get());
         for (auto const& pair : VPackObjectIterator(trx[0])) {
           envelope->add("/" + Job::agencyPrefix + pair.key.copyString(), pair.value);
         }
@@ -206,7 +202,7 @@ inline arangodb::consensus::write_ret_t singleWriteTransaction(
     }
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::SUPERVISION)
-      << "Supervision failed to build single-write transaction: " << e.what();
+        << "Supervision failed to build single-write transaction: " << e.what();
   }
 
   auto ret = _agent->write(envelope);
@@ -219,20 +215,20 @@ inline arangodb::consensus::write_ret_t singleWriteTransaction(
   return ret;
 }
 
-inline arangodb::consensus::trans_ret_t generalTransaction(
-  AgentInterface* _agent, Builder const& transaction) {
-
+inline arangodb::consensus::trans_ret_t generalTransaction(AgentInterface* _agent,
+                                                           Builder const& transaction) {
   query_t envelope = std::make_shared<Builder>();
   Slice trx = transaction.slice();
 
   try {
-    { VPackArrayBuilder listOfTrxs(envelope.get());
+    {
+      VPackArrayBuilder listOfTrxs(envelope.get());
       for (auto const& singleTrans : VPackArrayIterator(trx)) {
-
         TRI_ASSERT(singleTrans.isArray() && singleTrans.length() > 0);
         if (singleTrans[0].isObject()) {
           VPackArrayBuilder onePair(envelope.get());
-          { VPackObjectBuilder mutationPart(envelope.get());
+          {
+            VPackObjectBuilder mutationPart(envelope.get());
             for (auto const& pair : VPackObjectIterator(singleTrans[0])) {
               envelope->add("/" + Job::agencyPrefix + pair.key.copyString(), pair.value);
             }
@@ -253,7 +249,7 @@ inline arangodb::consensus::trans_ret_t generalTransaction(
     }
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::SUPERVISION)
-      << "Supervision failed to build transaction: " << e.what();
+        << "Supervision failed to build transaction: " << e.what();
   }
 
   auto ret = _agent->transact(envelope);
@@ -263,7 +259,6 @@ inline arangodb::consensus::trans_ret_t generalTransaction(
   }
 
   return ret;
-
 }
 
 inline arangodb::consensus::trans_ret_t transient(AgentInterface* _agent,
@@ -272,9 +267,11 @@ inline arangodb::consensus::trans_ret_t transient(AgentInterface* _agent,
 
   Slice trx = transaction.slice();
   try {
-    { VPackArrayBuilder listOfTrxs(envelope.get());
+    {
+      VPackArrayBuilder listOfTrxs(envelope.get());
       VPackArrayBuilder onePair(envelope.get());
-      { VPackObjectBuilder mutationPart(envelope.get());
+      {
+        VPackObjectBuilder mutationPart(envelope.get());
         for (auto const& pair : VPackObjectIterator(trx[0])) {
           envelope->add("/" + Job::agencyPrefix + pair.key.copyString(), pair.value);
         }

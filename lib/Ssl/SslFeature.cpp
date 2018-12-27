@@ -50,10 +50,8 @@ SslFeature::SslFeature(application_features::ApplicationServer& server)
   startsAfter("GreetingsPhase");
 }
 
-void SslFeature::prepare() {
-}
+void SslFeature::prepare() {}
 
-void SslFeature::unprepare() {
-}
+void SslFeature::unprepare() {}
 
-} // arangodb
+}  // namespace arangodb

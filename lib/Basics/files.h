@@ -91,8 +91,7 @@ int TRI_CreateRecursiveDirectory(char const* path, long& systemError,
 /// @brief creates a directory
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CreateDirectory(char const* path, long& systemError,
-                        std::string& systemErrorStr);
+int TRI_CreateDirectory(char const* path, long& systemError, std::string& systemErrorStr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an empty directory
@@ -141,8 +140,7 @@ std::vector<std::string> TRI_FullTreeDirectory(char const* path);
 /// @brief renames a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RenameFile(char const* old, char const* filename,
-                   long* systemError = nullptr,
+int TRI_RenameFile(char const* old, char const* filename, long* systemError = nullptr,
                    std::string* systemErrorStr = nullptr);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -301,8 +299,7 @@ int TRI_GetTempName(char const* directory, std::string& result, bool createFile,
 /// @brief copies a file from source to dest.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CopyFile(std::string const& src, std::string const& dst,
-                  std::string& error);
+bool TRI_CopyFile(std::string const& src, std::string const& dst, std::string& error);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies the file Attributes from source to dest.
@@ -368,5 +365,5 @@ void TRI_ShutdownFiles();
 /// @brief if which is found, value is overwriten, true returned.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_GETENV(char const* which, std::string &value);
+bool TRI_GETENV(char const* which, std::string& value);
 #endif

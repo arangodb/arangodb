@@ -47,23 +47,22 @@ namespace algos {
 struct HITS : public SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>> {
  public:
   explicit HITS(VPackSlice userParams)
-      : SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>>("HITS",
-                                                                  userParams) {}
+      : SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>>("HITS", userParams) {}
 
   GraphFormat<HITSValue, int8_t>* inputFormat() const override;
   MessageFormat<SenderMessage<double>>* messageFormat() const override {
     return new SenderMessageFormat<double>();
   }
 
-  VertexComputation<HITSValue, int8_t, SenderMessage<double>>*
-  createComputation(WorkerConfig const*) const override;
+  VertexComputation<HITSValue, int8_t, SenderMessage<double>>* createComputation(
+      WorkerConfig const*) const override;
 
   WorkerContext* workerContext(VPackSlice userParams) const override;
   MasterContext* masterContext(VPackSlice userParams) const override;
 
   IAggregator* aggregator(std::string const& name) const override;
 };
-}
-}
-}
+}  // namespace algos
+}  // namespace pregel
+}  // namespace arangodb
 #endif

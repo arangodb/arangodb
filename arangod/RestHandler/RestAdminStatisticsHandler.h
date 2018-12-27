@@ -32,7 +32,9 @@ class RestAdminStatisticsHandler : public RestBaseHandler {
   RestAdminStatisticsHandler(GeneralRequest*, GeneralResponse*);
 
  public:
-  char const* name() const override final { return "RestAdminStatisticsHandler"; }
+  char const* name() const override final {
+    return "RestAdminStatisticsHandler";
+  }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   RestStatus execute() override final;
 
@@ -40,6 +42,6 @@ class RestAdminStatisticsHandler : public RestBaseHandler {
   void getStatistics();
   void getStatisticsDescription();
 };
-}
+}  // namespace arangodb
 
 #endif

@@ -31,7 +31,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
-  
+
 /// @brief create a hash value for the bind parameters
 uint64_t BindParameters::hash() const {
   if (_builder == nullptr) {
@@ -60,16 +60,14 @@ void BindParameters::process() {
   for (auto const& it : VPackObjectIterator(slice, false)) {
     std::string const key(it.key.copyString());
     VPackSlice const value(it.value);
-    
+
     if (value.isNone()) {
-      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE,
-                                    key.c_str());
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, key.c_str());
     }
 
     if (key[0] == '@' && !value.isString()) {
       // collection bind parameter
-      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE,
-                                    key.c_str());
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, key.c_str());
     }
 
     _parameters.emplace(std::move(key), std::make_pair(value, false));
@@ -104,4 +102,3 @@ void BindParameters::stripCollectionNames(VPackSlice const& keys,
   }
   result.close();
 }
-

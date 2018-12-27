@@ -35,5 +35,5 @@ ClusterFeaturePhase::ClusterFeaturePhase(ApplicationServer& server)
   startsAfter("ReplicationTimeout");
 }
 
-} // application_features
-} // arangodb
+}  // namespace application_features
+}  // namespace arangodb

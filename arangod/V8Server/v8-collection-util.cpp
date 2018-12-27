@@ -21,21 +21,20 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "v8-collection.h"
-#include "Basics/conversions.h"
 #include "Basics/StringUtils.h"
-#include "VocBase/LogicalCollection.h"
-#include "VocBase/vocbase.h"
+#include "Basics/conversions.h"
 #include "V8/v8-conv.h"
 #include "V8Server/v8-externals.h"
 #include "V8Server/v8-vocbaseprivate.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/vocbase.h"
+#include "v8-collection.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 
 /// @brief check if a name belongs to a collection
-bool EqualCollection(CollectionNameResolver const* resolver,
-                     std::string const& collectionName,
+bool EqualCollection(CollectionNameResolver const* resolver, std::string const& collectionName,
                      LogicalCollection const* collection) {
   if (collectionName == collection->name()) {
     return true;
@@ -45,11 +44,10 @@ bool EqualCollection(CollectionNameResolver const* resolver,
     return true;
   }
 
-  // Shouldn't it just be: If we are on DBServer we also have to check for global ID
-  // name and cid should be the shard.
+  // Shouldn't it just be: If we are on DBServer we also have to check for
+  // global ID name and cid should be the shard.
   if (ServerState::instance()->isCoordinator()) {
-    if (collectionName ==
-        resolver->getCollectionNameCluster(collection->id())) {
+    if (collectionName == resolver->getCollectionNameCluster(collection->id())) {
       return true;
     }
     return false;
@@ -68,10 +66,8 @@ bool EqualCollection(CollectionNameResolver const* resolver,
 /// be freed. If it is not a local collection (coordinator case), then delete
 /// will be called when the V8 object is garbage collected.
 ////////////////////////////////////////////////////////////////////////////////
-v8::Handle<v8::Object> WrapCollection(
-    v8::Isolate* isolate,
-    std::shared_ptr<arangodb::LogicalCollection> const& collection
-) {
+v8::Handle<v8::Object> WrapCollection(v8::Isolate* isolate,
+                                      std::shared_ptr<arangodb::LogicalCollection> const& collection) {
   v8::EscapableHandleScope scope(isolate);
 
   TRI_GET_GLOBALS();
@@ -81,43 +77,34 @@ v8::Handle<v8::Object> WrapCollection(
   if (!result.IsEmpty()) {
     auto* ptr = collection.get();
     auto itr = v8g->JSDatasources.emplace(
-      std::piecewise_construct,
-      std::forward_as_tuple(collection.get()),
-      std::forward_as_tuple(
-        isolate,
-        collection,
-        [ptr]()->void { // FIXME TODO find a way to move this callback code into DataSourcePersistent
-          TRI_ASSERT(!ptr->vocbase().isDangling());
-          ptr->vocbase().release(); // decrease the reference-counter for the database
-        }
-      )
-    );
+        std::piecewise_construct, std::forward_as_tuple(collection.get()),
+        std::forward_as_tuple(isolate, collection,
+                              [ptr]() -> void {  // FIXME TODO find a way to move this callback
+                                                 // code into DataSourcePersistent
+                                TRI_ASSERT(!ptr->vocbase().isDangling());
+                                ptr->vocbase().release();  // decrease the reference-counter for
+                                                           // the database
+                              }));
     auto& entry = itr.first->second;
 
-    if (itr.second) { // FIXME TODO find a way to move this code into DataSourcePersistent
+    if (itr.second) {  // FIXME TODO find a way to move this code into
+                       // DataSourcePersistent
       TRI_ASSERT(!ptr->vocbase().isDangling());
-      ptr->vocbase().forceUse(); // increase the reference-counter for the database
+      ptr->vocbase().forceUse();  // increase the reference-counter for the database
     }
 
-    result->SetInternalField(
-      SLOT_CLASS_TYPE, v8::Integer::New(isolate, WRP_VOCBASE_COL_TYPE)
-    );
+    result->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(isolate, WRP_VOCBASE_COL_TYPE));
     result->SetInternalField(SLOT_CLASS, entry.get());
     result->SetInternalField(SLOT_EXTERNAL, entry.get());
 
     TRI_GET_GLOBAL_STRING(_IdKey);
     TRI_GET_GLOBAL_STRING(_DbNameKey);
     TRI_GET_GLOBAL_STRING(VersionKeyHidden);
-    result->ForceSet(
-      _IdKey,
-      TRI_V8UInt64String<TRI_voc_cid_t>(isolate, collection->id()),
-      v8::ReadOnly
-    );
+    result->ForceSet(_IdKey,
+                     TRI_V8UInt64String<TRI_voc_cid_t>(isolate, collection->id()),
+                     v8::ReadOnly);
     result->Set(_DbNameKey, TRI_V8_STD_STRING(isolate, collection->vocbase().name()));
-    result->ForceSet(
-        VersionKeyHidden,
-        v8::Integer::NewFromUnsigned(isolate, 5),
-        v8::DontEnum);
+    result->ForceSet(VersionKeyHidden, v8::Integer::NewFromUnsigned(isolate, 5), v8::DontEnum);
   }
 
   return scope.Escape<v8::Object>(result);
@@ -127,10 +114,6 @@ v8::Handle<v8::Object> WrapCollection(
 /// @brief unwrap a LogicalCollection wrapped via WrapCollection(...)
 /// @return collection or nullptr on failure
 ////////////////////////////////////////////////////////////////////////////////
-arangodb::LogicalCollection* UnwrapCollection(
-    v8::Local<v8::Object> const& holder
-) {
-  return TRI_UnwrapClass<arangodb::LogicalCollection>(
-    holder, WRP_VOCBASE_COL_TYPE
-  );
+arangodb::LogicalCollection* UnwrapCollection(v8::Local<v8::Object> const& holder) {
+  return TRI_UnwrapClass<arangodb::LogicalCollection>(holder, WRP_VOCBASE_COL_TYPE);
 }

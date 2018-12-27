@@ -52,7 +52,8 @@ struct Section {
   bool hasOptions() const;
 
   // print help for a section
-  // the special search string "." will show help for all sections, even if hidden
+  // the special search string "." will show help for all sections, even if
+  // hidden
   void printHelp(std::string const& search, size_t tw, size_t ow, bool colors) const;
 
   // determine display width for a section
@@ -74,12 +75,12 @@ struct Section {
 struct EnterpriseSection : public Section {
   EnterpriseSection(std::string const& name, std::string const& description,
                     std::string const& alias, bool hidden, bool obsolete)
-    : Section(name, description, alias, hidden, obsolete) {
+      : Section(name, description, alias, hidden, obsolete) {
     enterpriseOnly = true;
   }
 };
 
-}
-}
+}  // namespace options
+}  // namespace arangodb
 
 #endif

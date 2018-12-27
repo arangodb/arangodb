@@ -32,8 +32,7 @@
 using namespace arangodb;
 
 bool PersistentIndexAttributeMatcher::supportsSortCondition(
-    arangodb::Index const* idx,
-    arangodb::aql::SortCondition const* sortCondition,
+    arangodb::Index const* idx, arangodb::aql::SortCondition const* sortCondition,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     double& estimatedCost, size_t& coveredAttributes) {
   TRI_ASSERT(sortCondition != nullptr);
@@ -42,8 +41,7 @@ bool PersistentIndexAttributeMatcher::supportsSortCondition(
     // only non-sparse indexes can be used for sorting
     if (!idx->hasExpansion() && sortCondition->isUnidirectional() &&
         sortCondition->isOnlyAttributeAccess()) {
-      coveredAttributes =
-          sortCondition->coveredAttributes(reference, idx->fields());
+      coveredAttributes = sortCondition->coveredAttributes(reference, idx->fields());
 
       if (coveredAttributes >= sortCondition->numAttributes()) {
         // sort is fully covered by index. no additional sort costs!

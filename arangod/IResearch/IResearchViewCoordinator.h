@@ -24,17 +24,17 @@
 #ifndef ARANGODB_IRESEARCH__IRESEARCH_VIEW_COORDINATOR_H
 #define ARANGODB_IRESEARCH__IRESEARCH_VIEW_COORDINATOR_H 1
 
-#include "VocBase/LogicalView.h"
 #include "IResearch/IResearchViewMeta.h"
+#include "VocBase/LogicalView.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
 namespace arangodb {
 
-struct ViewFactory; // forward declaration
+struct ViewFactory;  // forward declaration
 
-} // arangodb
+}  // namespace arangodb
 
 namespace arangodb {
 namespace iresearch {
@@ -44,7 +44,7 @@ namespace iresearch {
 /// @brief an abstraction over the distributed IResearch index implementing the
 ///        LogicalView interface
 ///////////////////////////////////////////////////////////////////////////////
-class IResearchViewCoordinator final: public arangodb::LogicalView {
+class IResearchViewCoordinator final : public arangodb::LogicalView {
  public:
   virtual ~IResearchViewCoordinator();
 
@@ -58,11 +58,8 @@ class IResearchViewCoordinator final: public arangodb::LogicalView {
   /// @param value the link definition to use in appendVelocyPack(...)
   /// @return the 'cid' was newly added to the IResearch View
   ////////////////////////////////////////////////////////////////////////////////
-  bool emplace(
-    TRI_voc_cid_t cid,
-    std::string const& key,
-    arangodb::velocypack::Slice const& value
-  );
+  bool emplace(TRI_voc_cid_t cid, std::string const& key,
+               arangodb::velocypack::Slice const& value);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the factory for this type of view
@@ -74,10 +71,8 @@ class IResearchViewCoordinator final: public arangodb::LogicalView {
   }
 
   using LogicalDataSource::properties;
-  virtual arangodb::Result properties(
-    velocypack::Slice const& properties,
-    bool partialUpdate
-  ) override;
+  virtual arangodb::Result properties(velocypack::Slice const& properties,
+                                      bool partialUpdate) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unlink remove 'cid' from the persisted list of tracked collection
@@ -88,31 +83,25 @@ class IResearchViewCoordinator final: public arangodb::LogicalView {
 
   bool visitCollections(CollectionVisitor const& visitor) const override;
 
-
  protected:
-  virtual Result appendVelocyPackImpl(
-    arangodb::velocypack::Builder& builder,
-    bool detailed,
-    bool forPersistence
-  ) const override;
+  virtual Result appendVelocyPackImpl(arangodb::velocypack::Builder& builder,
+                                      bool detailed, bool forPersistence) const override;
 
   virtual arangodb::Result dropImpl() override;
 
   arangodb::Result renameImpl(std::string const& oldName) override;
 
  private:
-  struct ViewFactory; // forward declaration
+  struct ViewFactory;  // forward declaration
 
-  IResearchViewCoordinator(
-    TRI_vocbase_t& vocbase, velocypack::Slice info, uint64_t planVersion
-  );
+  IResearchViewCoordinator(TRI_vocbase_t& vocbase, velocypack::Slice info, uint64_t planVersion);
 
-  std::unordered_map<TRI_voc_cid_t, std::pair<std::string, arangodb::velocypack::Builder>> _collections; // transient member, not persisted
-  mutable irs::async_utils::read_write_mutex _mutex; // for use with '_collections'
+  std::unordered_map<TRI_voc_cid_t, std::pair<std::string, arangodb::velocypack::Builder>> _collections;  // transient member, not persisted
+  mutable irs::async_utils::read_write_mutex _mutex;  // for use with '_collections'
   IResearchViewMeta _meta;
-}; // IResearchViewCoordinator
+};  // IResearchViewCoordinator
 
-} // iresearch
-} // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
-#endif // ARANGODB_IRESEARCH__IRESEARCH_VIEW_COORDINATOR_H
+#endif  // ARANGODB_IRESEARCH__IRESEARCH_VIEW_COORDINATOR_H

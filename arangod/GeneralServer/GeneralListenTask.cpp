@@ -38,9 +38,8 @@ using namespace arangodb::rest;
 /// @brief listen to given port
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralListenTask::GeneralListenTask(GeneralServer &server, GeneralServer::IoContext& context,
-                                     Endpoint* endpoint,
-                                     ProtocolType connectionType)
+GeneralListenTask::GeneralListenTask(GeneralServer& server, GeneralServer::IoContext& context,
+                                     Endpoint* endpoint, ProtocolType connectionType)
     : IoTask(server, context, "GeneralListenTask"),
       ListenTask(server, context, endpoint),
       _connectionType(connectionType) {
@@ -55,5 +54,6 @@ void GeneralListenTask::handleConnected(std::unique_ptr<Socket> socket,
                                                  std::move(info), _keepAliveTimeout);
   bool res = commTask->start();
   LOG_TOPIC_IF(DEBUG, Logger::COMMUNICATION, res) << "Started comm task";
-  LOG_TOPIC_IF(DEBUG, Logger::COMMUNICATION, !res) << "Failed to start comm task";
+  LOG_TOPIC_IF(DEBUG, Logger::COMMUNICATION, !res)
+      << "Failed to start comm task";
 }

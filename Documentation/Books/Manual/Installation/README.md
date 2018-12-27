@@ -20,7 +20,7 @@ tracking most of the community contributions (including new or updated images) i
 our newsletter: https://www.arangodb.com/category/newsletter/
 
 - [Linux](Linux.md)
-- [Mac OS X](MacOSX.md)
+- [MacOS](MacOSX.md)
 - [Windows](Windows.md)
 
 If you prefer to compile ArangoDB from source, please refer to the [Compiling](Compiling.md)

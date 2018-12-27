@@ -76,9 +76,8 @@ class NumberGraphFormat : public GraphFormat<V, E> {
         _vDefault(vertexNull),
         _eDefault(edgeNull) {}
 
-  size_t copyVertexData(std::string const& documentId,
-                        arangodb::velocypack::Slice document, V* targetPtr,
-                        size_t maxSize) override {
+  size_t copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
+                        V* targetPtr, size_t maxSize) override {
     arangodb::velocypack::Slice val = document.get(_sourceField);
     if (std::is_integral<V>::value) {
       if (std::is_signed<V>::value) {
@@ -92,8 +91,7 @@ class NumberGraphFormat : public GraphFormat<V, E> {
     return sizeof(V);
   }
 
-  size_t copyEdgeData(arangodb::velocypack::Slice document, E* targetPtr,
-                      size_t maxSize) override {
+  size_t copyEdgeData(arangodb::velocypack::Slice document, E* targetPtr, size_t maxSize) override {
     arangodb::velocypack::Slice val = document.get(_sourceField);
     if (std::is_integral<E>::value) {
       if (std::is_signed<E>::value) {  // getNumber does range checks
@@ -170,15 +168,13 @@ class VertexGraphFormat : public GraphFormat<V, E> {
   size_t estimatedVertexSize() const override { return sizeof(V); };
   size_t estimatedEdgeSize() const override { return 0; };
 
-  size_t copyVertexData(std::string const& documentId,
-                        arangodb::velocypack::Slice document, V* targetPtr,
-                        size_t maxSize) override {
+  size_t copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
+                        V* targetPtr, size_t maxSize) override {
     *targetPtr = _vDefault;
     return sizeof(V);
   }
 
-  size_t copyEdgeData(arangodb::velocypack::Slice document, V* targetPtr,
-                      size_t maxSize) override {
+  size_t copyEdgeData(arangodb::velocypack::Slice document, V* targetPtr, size_t maxSize) override {
     return 0;
   }
 
@@ -193,6 +189,6 @@ class VertexGraphFormat : public GraphFormat<V, E> {
     return false;
   }
 };
-}
-}
+}  // namespace pregel
+}  // namespace arangodb
 #endif

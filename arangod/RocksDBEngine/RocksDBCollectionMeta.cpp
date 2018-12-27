@@ -24,8 +24,8 @@
 
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
-#include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "VocBase/KeyGenerator.h"
@@ -40,13 +40,13 @@
 using namespace arangodb;
 
 RocksDBCollectionMeta::DocCount::DocCount(VPackSlice const& slice)
-: _committedSeq(0), _added(0), _removed(0), _revisionId(0) {
+    : _committedSeq(0), _added(0), _removed(0), _revisionId(0) {
   if (!slice.isArray()) {
     // got a somewhat invalid slice. probably old data from before the key
     // structure changes
     return;
   }
-  
+
   VPackArrayIterator array(slice);
   if (array.valid()) {
     this->_committedSeq = (*array).getUInt();
@@ -70,8 +70,7 @@ void RocksDBCollectionMeta::DocCount::toVelocyPack(VPackBuilder& b) const {
   b.close();
 }
 
-RocksDBCollectionMeta::RocksDBCollectionMeta()
-  : _count(0,0,0,0) {}
+RocksDBCollectionMeta::RocksDBCollectionMeta() : _count(0, 0, 0, 0) {}
 
 /**
  * @brief Place a blocker to allow proper commit/serialize semantics
@@ -88,11 +87,10 @@ Result RocksDBCollectionMeta::placeBlocker(uint64_t trxId, rocksdb::SequenceNumb
   return basics::catchToResult([&]() -> Result {
     Result res;
     WRITE_LOCKER(locker, _blockerLock);
-    
+
     TRI_ASSERT(_blockers.end() == _blockers.find(trxId));
-    TRI_ASSERT(_blockersBySeq.end() ==
-               _blockersBySeq.find(std::make_pair(seq, trxId)));
-    
+    TRI_ASSERT(_blockersBySeq.end() == _blockersBySeq.find(std::make_pair(seq, trxId)));
+
     auto insert = _blockers.emplace(trxId, seq);
     auto crosslist = _blockersBySeq.emplace(seq, trxId);
     if (!insert.second || !crosslist.second) {
@@ -139,7 +137,7 @@ rocksdb::SequenceNumber RocksDBCollectionMeta::committableSeq() const {
 rocksdb::SequenceNumber RocksDBCollectionMeta::applyAdjustments(rocksdb::SequenceNumber commitSeq,
                                                                 bool& didWork) {
   rocksdb::SequenceNumber appliedSeq = _count._committedSeq;
-  
+
   decltype(_bufferedAdjs) swapper;
   {
     std::lock_guard<std::mutex> guard(_countLock);
@@ -152,7 +150,7 @@ rocksdb::SequenceNumber RocksDBCollectionMeta::applyAdjustments(rocksdb::Sequenc
   if (!swapper.empty()) {
     _stagedAdjs.insert(swapper.begin(), swapper.end());
   }
-  
+
   auto it = _stagedAdjs.begin();
   while (it != _stagedAdjs.end() && it->first < commitSeq) {
     appliedSeq = std::max(appliedSeq, it->first);
@@ -173,15 +171,14 @@ rocksdb::SequenceNumber RocksDBCollectionMeta::applyAdjustments(rocksdb::Sequenc
 
 /// @brief get the current count
 RocksDBCollectionMeta::DocCount RocksDBCollectionMeta::currentCount() {
-  
   bool didWork = false;
   const rocksdb::SequenceNumber commitSeq = committableSeq();
   rocksdb::SequenceNumber seq = applyAdjustments(commitSeq, didWork);
-  if (didWork) { // make sure serializeMeta has something to do
+  if (didWork) {  // make sure serializeMeta has something to do
     std::lock_guard<std::mutex> guard(_countLock);
     _bufferedAdjs.emplace(seq, Adjustment{0, 0});
   }
-  
+
   return _count;
 }
 
@@ -194,24 +191,25 @@ void RocksDBCollectionMeta::adjustNumberDocuments(rocksdb::SequenceNumber seq,
 }
 
 /// @brief serialize the collection metadata
-Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch, LogicalCollection& coll,
-                                            bool force, VPackBuilder& tmp,
+Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
+                                            LogicalCollection& coll, bool force,
+                                            VPackBuilder& tmp,
                                             rocksdb::SequenceNumber& appliedSeq) {
   Result res;
-  
+
   bool didWork = false;
   const rocksdb::SequenceNumber maxCommitSeq = committableSeq();
   rocksdb::SequenceNumber seq = applyAdjustments(maxCommitSeq, didWork);
   if (didWork) {
     appliedSeq = std::min(appliedSeq, seq);
-  } else { // maxCommitSeq is == UINT64_MAX without any blockers
+  } else {  // maxCommitSeq is == UINT64_MAX without any blockers
     appliedSeq = std::min(appliedSeq, maxCommitSeq);
   }
-  
+
   RocksDBKey key;
   rocksdb::ColumnFamilyHandle* const cf = RocksDBColumnFamily::definitions();
   RocksDBCollection* const rcoll = static_cast<RocksDBCollection*>(coll.getPhysical());
-  
+
   // Step 1. store the document count
   tmp.clear();
   if (didWork || force) {
@@ -221,12 +219,12 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch, LogicalC
     rocksdb::Status s = batch.Put(cf, key.string(), value);
     if (!s.ok()) {
       LOG_TOPIC(WARN, Logger::ENGINES)
-      << "writing counter for collection with objectId '" << rcoll->objectId()
-      << "' failed: " << s.ToString();
+          << "writing counter for collection with objectId '"
+          << rcoll->objectId() << "' failed: " << s.ToString();
       return res.reset(rocksutils::convertStatus(s));
     }
   }
-  
+
   if (coll.deleted()) {
     return Result();
   }
@@ -236,12 +234,12 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch, LogicalC
   if ((didWork || force) && keyGen->hasDynamicState()) {
     // only a key generator with dynamic data needs to be recovered
     key.constructKeyGeneratorValue(rcoll->objectId());
-    
+
     tmp.clear();
     tmp.openObject();
     keyGen->toVelocyPack(tmp);
     tmp.close();
-    
+
     RocksDBValue value = RocksDBValue::KeyGeneratorValue(tmp.slice());
     rocksdb::Status s = batch.Put(cf, key.string(), value.string());
     LOG_TOPIC(TRACE, Logger::ENGINES) << "writing key generator coll " << coll.name();
@@ -251,38 +249,38 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch, LogicalC
       return res.reset(rocksutils::convertStatus(s));
     }
   }
-  
+
   if (coll.deleted()) {
     return Result();
   }
-  
+
   // Step 3. store the index estimates
   std::string output;
   auto indexes = coll.getIndexes();
   for (std::shared_ptr<arangodb::Index>& index : indexes) {
     RocksDBIndex* idx = static_cast<RocksDBIndex*>(index.get());
     RocksDBCuckooIndexEstimator<uint64_t>* est = idx->estimator();
-    if (est == nullptr) { // does not have an estimator
+    if (est == nullptr) {  // does not have an estimator
       continue;
     }
     if (coll.deleted()) {
       return Result();
     }
-    
+
     if (est->needToPersist() || force) {
       LOG_TOPIC(TRACE, Logger::ENGINES)
-      << "beginning estimate serialization for index '" << idx->objectId() << "'";
+          << "beginning estimate serialization for index '" << idx->objectId() << "'";
       output.clear();
 
       seq = est->serialize(output, maxCommitSeq);
       // calculate retention sequence number
       appliedSeq = std::min(appliedSeq, seq);
       TRI_ASSERT(output.size() > sizeof(uint64_t));
-      
+
       LOG_TOPIC(TRACE, Logger::ENGINES)
-      << "serialized estimate for index '" << idx->objectId()
-      << "' valid through seq " << seq;
-      
+          << "serialized estimate for index '" << idx->objectId()
+          << "' valid through seq " << seq;
+
       key.constructIndexEstimateValue(idx->objectId());
       rocksdb::Slice value(output);
       rocksdb::Status s = batch.Put(cf, key.string(), value);
@@ -292,22 +290,22 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch, LogicalC
       }
     }
   }
-  
+
   return res;
 }
 
 /// @brief deserialize collection metadata, only called on startup
 Result RocksDBCollectionMeta::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll) {
   RocksDBCollection* rcoll = static_cast<RocksDBCollection*>(coll.getPhysical());
-  
+
   // Step 1. load the counter
   auto cf = RocksDBColumnFamily::definitions();
   rocksdb::ReadOptions ro;
   ro.fill_cache = false;
-  
+
   RocksDBKey key;
   key.constructCounterValue(rcoll->objectId());
-  
+
   rocksdb::PinnableSlice value;
   rocksdb::Status s = db->Get(ro, cf, key.string(), &value);
   if (s.ok()) {
@@ -316,7 +314,7 @@ Result RocksDBCollectionMeta::deserializeMeta(rocksdb::DB* db, LogicalCollection
   } else if (!s.IsNotFound()) {
     return rocksutils::convertStatus(s);
   }
-  
+
   // Step 2. load the key generator
   KeyGenerator* keyGen = coll.keyGenerator();
   if (keyGen->hasDynamicState()) {
@@ -324,7 +322,6 @@ Result RocksDBCollectionMeta::deserializeMeta(rocksdb::DB* db, LogicalCollection
     key.constructKeyGeneratorValue(rcoll->objectId());
     s = db->Get(ro, cf, key.string(), &value);
     if (s.ok()) {
-      
       VPackSlice keyGenProps = RocksDBValue::data(value);
       TRI_ASSERT(keyGenProps.isObject());
       // simon: wtf who decided this is a good deserialization routine ?!
@@ -338,7 +335,7 @@ Result RocksDBCollectionMeta::deserializeMeta(rocksdb::DB* db, LogicalCollection
         std::string str = std::to_string(lastValue);
         keyGen->track(str.data(), str.size());
       }
-      
+
     } else if (!s.IsNotFound()) {
       return rocksutils::convertStatus(s);
     }
@@ -351,68 +348,66 @@ Result RocksDBCollectionMeta::deserializeMeta(rocksdb::DB* db, LogicalCollection
     if (idx->estimator() == nullptr) {
       continue;
     }
-    
+
     key.constructIndexEstimateValue(idx->objectId());
     s = db->Get(ro, cf, key.string(), &value);
     if (!s.ok() && !s.IsNotFound()) {
       return rocksutils::convertStatus(s);
-    } else if (s.IsNotFound()) { // expected with nosync recovery tests
-      LOG_TOPIC(WARN, Logger::ROCKSDB) << "recalculating index estimate for index "
-      << "type '" << idx->typeName() << "' with id '" << idx->id() << "'";
+    } else if (s.IsNotFound()) {  // expected with nosync recovery tests
+      LOG_TOPIC(WARN, Logger::ROCKSDB)
+          << "recalculating index estimate for index "
+          << "type '" << idx->typeName() << "' with id '" << idx->id() << "'";
       idx->recalculateEstimates();
       continue;
     }
-    
-    StringRef estimateInput(value.data() + sizeof(uint64_t),
-                            value.size() - sizeof(uint64_t));
-    
+
+    StringRef estimateInput(value.data() + sizeof(uint64_t), value.size() - sizeof(uint64_t));
+
     uint64_t committedSeq = rocksutils::uint64FromPersistent(value.data());
     if (RocksDBCuckooIndexEstimator<uint64_t>::isFormatSupported(estimateInput)) {
       TRI_ASSERT(committedSeq <= db->GetLatestSequenceNumber());
-      
+
       auto est = std::make_unique<RocksDBCuckooIndexEstimator<uint64_t>>(committedSeq, estimateInput);
       LOG_TOPIC(DEBUG, Logger::ENGINES)
-      << "found index estimator for objectId '" << idx->objectId()
-      << "' committed seqNr '" << committedSeq << "' with estimate "
-      << est->computeEstimate();
-      
+          << "found index estimator for objectId '" << idx->objectId() << "' committed seqNr '"
+          << committedSeq << "' with estimate " << est->computeEstimate();
+
       idx->setEstimator(std::move(est));
     } else {
-      LOG_TOPIC(ERR, Logger::ENGINES) << "unsupported index estimator format in index "
-      << "with objectId '" << idx->objectId() << "'";
+      LOG_TOPIC(ERR, Logger::ENGINES)
+          << "unsupported index estimator format in index "
+          << "with objectId '" << idx->objectId() << "'";
     }
   }
-  
+
   return Result();
 }
 
 /// @brief load collection
-/*static*/ RocksDBCollectionMeta::DocCount
-    RocksDBCollectionMeta::loadCollectionCount(rocksdb::DB* db, uint64_t objectId) {
-      
+/*static*/ RocksDBCollectionMeta::DocCount RocksDBCollectionMeta::loadCollectionCount(
+    rocksdb::DB* db, uint64_t objectId) {
   auto cf = RocksDBColumnFamily::definitions();
   rocksdb::ReadOptions ro;
   ro.fill_cache = false;
-  
+
   RocksDBKey key;
   key.constructCounterValue(objectId);
-  
+
   rocksdb::PinnableSlice value;
   rocksdb::Status s = db->Get(ro, cf, key.string(), &value);
   if (s.ok()) {
     VPackSlice countSlice = RocksDBValue::data(value);
     return RocksDBCollectionMeta::DocCount(countSlice);
   }
-  return DocCount(0,0,0,0);
+  return DocCount(0, 0, 0, 0);
 }
 
 /// @brief remove collection metadata
-/*static*/ Result RocksDBCollectionMeta::deleteCollectionMeta(rocksdb::DB* db, uint64_t objectId) {
-  
-
+/*static*/ Result RocksDBCollectionMeta::deleteCollectionMeta(rocksdb::DB* db,
+                                                              uint64_t objectId) {
   rocksdb::ColumnFamilyHandle* const cf = RocksDBColumnFamily::definitions();
   rocksdb::WriteOptions wo;
-  
+
   // Step 1. delete the document count
   RocksDBKey key;
   key.constructCounterValue(objectId);
@@ -421,23 +416,23 @@ Result RocksDBCollectionMeta::deserializeMeta(rocksdb::DB* db, LogicalCollection
     LOG_TOPIC(ERR, Logger::ENGINES) << "could not delete counter value: " << s.ToString();
     // try to remove the key generator value regardless
   }
-  
+
   key.constructKeyGeneratorValue(objectId);
   s = db->Delete(wo, cf, key.string());
   if (!s.ok() && !s.IsNotFound()) {
-    LOG_TOPIC(ERR, Logger::ENGINES) << "could not delete key generator value: " << s.ToString();
+    LOG_TOPIC(ERR, Logger::ENGINES)
+        << "could not delete key generator value: " << s.ToString();
     return rocksutils::convertStatus(s);
   }
-  
+
   return Result();
 }
 
 /// @brief remove collection index estimate
 /*static*/ Result RocksDBCollectionMeta::deleteIndexEstimate(rocksdb::DB* db, uint64_t objectId) {
-  
   rocksdb::ColumnFamilyHandle* const cf = RocksDBColumnFamily::definitions();
   rocksdb::WriteOptions wo;
-  
+
   RocksDBKey key;
   key.constructIndexEstimateValue(objectId);
   rocksdb::Status s = db->Delete(wo, cf, key.string());

@@ -27,9 +27,10 @@
 
 using namespace arangodb;
 
-RocksDBLogger::RocksDBLogger(rocksdb::InfoLogLevel level) : rocksdb::Logger(level), _enabled(true) {}
+RocksDBLogger::RocksDBLogger(rocksdb::InfoLogLevel level)
+    : rocksdb::Logger(level), _enabled(true) {}
 RocksDBLogger::~RocksDBLogger() {}
-  
+
 void RocksDBLogger::Logv(const rocksdb::InfoLogLevel logLevel, char const* format, va_list ap) {
   if (logLevel < GetInfoLogLevel()) {
     return;
@@ -37,15 +38,17 @@ void RocksDBLogger::Logv(const rocksdb::InfoLogLevel logLevel, char const* forma
   if (!_enabled) {
     return;
   }
-  
-  static constexpr size_t prefixSize = 9; // strlen("rocksdb: ");
+
+  static constexpr size_t prefixSize = 9;  // strlen("rocksdb: ");
   // truncate all log messages after this length
   char buffer[4096];
-  memcpy(&buffer[0], "rocksdb: \0", strlen("rocksdb: \0")); // add trailing \0 byte already for safety
+  memcpy(&buffer[0], "rocksdb: \0",
+         strlen("rocksdb: \0"));  // add trailing \0 byte already for safety
 
   va_list backup;
   va_copy(backup, ap);
-  int length = vsnprintf(&buffer[0] + prefixSize, sizeof(buffer) - prefixSize - 1, format, backup);
+  int length = vsnprintf(&buffer[0] + prefixSize,
+                         sizeof(buffer) - prefixSize - 1, format, backup);
   va_end(backup);
   buffer[sizeof(buffer) - 1] = '\0';  // Windows
 
@@ -79,8 +82,8 @@ void RocksDBLogger::Logv(const rocksdb::InfoLogLevel logLevel, char const* forma
     case rocksdb::InfoLogLevel::FATAL_LEVEL:
       LOG_TOPIC(ERR, arangodb::Logger::ROCKSDB) << StringRef(buffer, l);
       break;
-    default: { 
-      // ignore other levels 
+    default: {
+      // ignore other levels
     }
   }
 }

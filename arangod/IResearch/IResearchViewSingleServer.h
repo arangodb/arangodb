@@ -42,16 +42,13 @@ class IResearchViewSingleServer final {
   /// @brief view factory
   /// @returns initialized view object
   ///////////////////////////////////////////////////////////////////////////////
-  static std::shared_ptr<LogicalView> make(
-    TRI_vocbase_t& vocbase,
-    velocypack::Slice const& info,
-    bool isNew,
-    uint64_t planVersion,
-    LogicalView::PreCommitCallback const& preCommit
-  );
+  static std::shared_ptr<LogicalView> make(TRI_vocbase_t& vocbase,
+                                           velocypack::Slice const& info,
+                                           bool isNew, uint64_t planVersion,
+                                           LogicalView::PreCommitCallback const& preCommit);
 };
 
-} // iresearch
-} // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
-#endif // ARANGODB_IRESEARCH__IRESEARCH_VIEW_SINGLE_SERVER_H
+#endif  // ARANGODB_IRESEARCH__IRESEARCH_VIEW_SINGLE_SERVER_H
