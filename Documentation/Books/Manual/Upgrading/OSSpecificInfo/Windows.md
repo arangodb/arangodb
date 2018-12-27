@@ -67,8 +67,37 @@ from a _ZIP_ package:
 
 ### In-Place upgrade
 
+{% hint 'info' %} This method works easier if: 
+- You are using a data directory which is located outside of the directory 
+  created when extracting the _ZIP_  archive (data directory can be set via
+  the server option *--database.directory*)
+- You are using a configuration file which is located outside of the directory 
+  created when extracting the _ZIP_  archive (a configuration file can be passed via
+  the server option *--configuration*)
+{% endhint %}
+
+Assuming that:
+- Your data directory is _directory1_ (e.g. "D:\arango\data")
+- Your configuration file is _file_ (e.g. "D:\arango\conf\arangod.conf")
+- Your old binaries are on _directory2_ (e.g. "C:\tools\arangodb-3.4.0")
+
+to perform the upgrade of a _Single Instance_:
+
+1. Download and extract the new _ZIP_ package into a new directory (e.g
+   _directory3_ "C:\tools\arangodb-3.4.1")
+2. Stop your old server
+3. Start again the server (this time using the binary located in _directory3_)
+   passing:
+   - _directory1_ as *--database.directory*,
+   - _file_ as *--configuration*
+   - *database.auto-upgrade* (so that the old data directory will be upgraded)
+4. When the previous step is finished the server will stop automatically; you
+   can now start your server again as done in the previous step but without
+   passing the *database.auto-upgrade* option.
 
 ### Logical upgrade
+
+To perform the upgrade of a _Single Instance_:
 
 1. Download the new package and extract it on a different location than the
    previous one
