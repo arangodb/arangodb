@@ -511,8 +511,7 @@ void Constituent::callElection() {
     }
 
     if (!isStopping() && cc != nullptr) {
-      auto res = cc->wait(
-        coordinatorTransactionID, 0, "",
+      auto res = cc->wait(coordinatorTransactionID, 0, "",
         duration<double>(timeout - steady_clock::now()).count());
       
       if (res.status == CL_COMM_SENT) {
