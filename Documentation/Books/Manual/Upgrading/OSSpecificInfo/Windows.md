@@ -6,9 +6,9 @@ method depends on the installation method that was used.
 
 In general, it will be needed to:
 
-- install the new ArangoDB binaries on the system
-- upgrade the database
-- optinal (but suggested) to keep the system clean (unless there are specific
+- Install the new ArangoDB binaries on the system
+- Upgrade the current database (or perform a restore)
+- Optional (but suggested) to keep the system clean (unless there are specific
   reasons to not do so): remove the old binaries from the system
 
 Some of the above steps may be done automatically, depending on your
@@ -46,9 +46,9 @@ When uninstalling the old package, please make sure the option
 When upgrading, the Windows Installer does not use the old configuration file
 for the installed _Single Instance_ but a new (default) one ([Issue #3773](https://github.com/arangodb/arangodb/issues/3773)).
 To use the old configuration, it is currently needed to:
-- stop the server
-- replace the new with the old confituration file
-- restart the server
+- Stop the server
+- Replace the new with the old confituration file
+- Restart the server
 {% endhint %}
 
 ![Delete Option](installer_delete.png)
@@ -91,8 +91,10 @@ to perform the upgrade of a _Single Instance_:
    - *database.auto-upgrade* (so that the old data directory will be upgraded)
 4. When the previous step is finished the server will stop automatically; you
    can now start your server again as done in the previous step but without
-   passing the *database.auto-upgrade* option.
-
+   passing the *database.auto-upgrade* option
+5. Optionally remove the old server package by dropping the corresponding
+   directory when you are confident enough that all is working fine.
+   
 ### Logical upgrade
 
 To perform the upgrade of a _Single Instance_:
@@ -109,5 +111,5 @@ To perform the upgrade of a _Single Instance_:
    inside the directory created when extracting the _ZIP_ archive)
 7. Restore the backup into the new server using _arangorestore_
 8. Re-enable the writes (e.g. allow again incoming connections)
-9. Optionally remove the old server package when you are confident enough
-   that all is working fine (a copy of the directory package, 
+9. Optionally remove the old server package by dropping the corresponding
+   directory when you are confident enough that all is working fine
