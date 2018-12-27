@@ -1,4 +1,4 @@
-Upgrading on MacOS
+Upgrading on macOS
 ==================
 
 This _Section_ describes upgrading an ArangoDB single-server installation, which
@@ -22,7 +22,7 @@ brew upgrade arangodb
 Upgrading via Package
 --------------------------
 
-[Download](https://www.arangodb.com/download/) the latest ArangoDB Mac OS package and install it as usual by
+[Download](https://www.arangodb.com/download/) the latest ArangoDB macOS package and install it as usual by
 mounting the `.dmg` file. Just drag and drop the `ArangoDB3-CLI` (community) or
 the `ArangoDB3e-CLI` (enterprise) file into the shown `Applications` folder.
 You will be asked if you want to replace the old file with the newer one.
