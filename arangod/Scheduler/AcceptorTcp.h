@@ -28,8 +28,8 @@
 namespace arangodb {
 class AcceptorTcp final : public Acceptor {
  public:
-  AcceptorTcp(rest::GeneralServer &server,
-              rest::GeneralServer::IoContext &context, Endpoint* endpoint)
+  AcceptorTcp(rest::GeneralServer& server,
+              rest::GeneralServer::IoContext& context, Endpoint* endpoint)
       : Acceptor(server, context, endpoint), _acceptor(context.newAcceptor()) {}
 
  public:
@@ -46,6 +46,6 @@ class AcceptorTcp final : public Acceptor {
  private:
   std::unique_ptr<asio_ns::ip::tcp::acceptor> _acceptor;
 };
-}
+}  // namespace arangodb
 
 #endif

@@ -35,6 +35,6 @@ struct MMFilesRestHandlers {
   static void registerResources(rest::RestHandlerFactory*);
 };
 
-} // namespace arangodb
+}  // namespace arangodb
 
 #endif

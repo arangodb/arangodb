@@ -34,26 +34,26 @@ namespace aql {
 class ExecutionEngine;
 
 class ExecutionEngineResult : public Result {
-  public:
-    ExecutionEngineResult();
-    explicit ExecutionEngineResult(int errorNumber);
-    ExecutionEngineResult(int errorNumber, std::string const& errorMessage);
-    ExecutionEngineResult(int errorNumber, std::string&& errorMessage);
+ public:
+  ExecutionEngineResult();
+  explicit ExecutionEngineResult(int errorNumber);
+  ExecutionEngineResult(int errorNumber, std::string const& errorMessage);
+  ExecutionEngineResult(int errorNumber, std::string&& errorMessage);
 
-    // This is not explicit on purpose
-    // NOLINTNEXTLINE(google-explicit-constructor,hicpp-explicit-conversions)
-    ExecutionEngineResult(Result const& result);
-    explicit ExecutionEngineResult(ExecutionEngine*);
+  // This is not explicit on purpose
+  // NOLINTNEXTLINE(google-explicit-constructor,hicpp-explicit-conversions)
+  ExecutionEngineResult(Result const& result);
+  explicit ExecutionEngineResult(ExecutionEngine*);
 
-    ~ExecutionEngineResult();
+  ~ExecutionEngineResult();
 
-    ExecutionEngine* engine() const;
+  ExecutionEngine* engine() const;
 
-  private:
-    ExecutionEngine* _engine;
+ private:
+  ExecutionEngine* _engine;
 };
 
-} // aql
-} // arangodb
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

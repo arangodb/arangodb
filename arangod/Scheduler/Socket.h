@@ -37,17 +37,14 @@ namespace rest {
 class Scheduler;
 }
 
-typedef std::function<void(const asio_ns::error_code& ec,
-                           std::size_t transferred)>
-    AsyncHandler;
+typedef std::function<void(const asio_ns::error_code& ec, std::size_t transferred)> AsyncHandler;
 
 class Socket {
  public:
-  Socket(rest::GeneralServer::IoContext &context, bool encrypted)
-      : _context(context),
-        _encrypted(encrypted) {
-      _context._clients++;
-    }
+  Socket(rest::GeneralServer::IoContext& context, bool encrypted)
+      : _context(context), _encrypted(encrypted) {
+    _context._clients++;
+  }
 
   Socket(Socket const& that) = delete;
   Socket(Socket&& that) = delete;
@@ -66,8 +63,7 @@ class Socket {
     return false;
   }
 
-  void shutdown(asio_ns::error_code& ec, bool mustCloseSend,
-                bool mustCloseReceive) {
+  void shutdown(asio_ns::error_code& ec, bool mustCloseSend, bool mustCloseReceive) {
     if (mustCloseSend) {
       this->shutdownSend(ec);
       if (ec && ec != asio_ns::error::not_connected) {
@@ -85,7 +81,7 @@ class Socket {
     }
   }
 
-  void post(std::function<void()> && handler) {
+  void post(std::function<void()>&& handler) {
     _context.post(std::move(handler));
   }
 
@@ -95,8 +91,7 @@ class Socket {
   virtual std::string peerAddress() const = 0;
   virtual int peerPort() const = 0;
   virtual void setNonBlocking(bool) = 0;
-  virtual size_t writeSome(basics::StringBuffer* buffer,
-                           asio_ns::error_code& ec) = 0;
+  virtual size_t writeSome(basics::StringBuffer* buffer, asio_ns::error_code& ec) = 0;
   virtual void asyncWrite(asio_ns::mutable_buffers_1 const& buffer,
                           AsyncHandler const& handler) = 0;
   virtual size_t readSome(asio_ns::mutable_buffers_1 const& buffer,
@@ -112,13 +107,12 @@ class Socket {
   virtual void shutdownSend(asio_ns::error_code& ec) = 0;
 
  protected:
-  rest::GeneralServer::IoContext &_context;
+  rest::GeneralServer::IoContext& _context;
 
  private:
   bool const _encrypted;
   bool _handshakeDone = false;
-
 };
-}
+}  // namespace arangodb
 
 #endif

@@ -33,20 +33,19 @@ bool VersionSort::operator()(std::string const& a, std::string const& b) const {
   std::vector<CharOrInt> va = splitVersion(a);
   std::vector<CharOrInt> vb = splitVersion(b);
 
-  auto compareResult = std::lexicographical_compare(
-      va.begin(), va.end(), vb.begin(), vb.end(),
-      [](CharOrInt const& a, CharOrInt const& b) -> bool {
-        if (a.which() != b.which()) {
-          return a.which() < b.which();
-        }
-        return a < b;
-      });
+  auto compareResult =
+      std::lexicographical_compare(va.begin(), va.end(), vb.begin(), vb.end(),
+                                   [](CharOrInt const& a, CharOrInt const& b) -> bool {
+                                     if (a.which() != b.which()) {
+                                       return a.which() < b.which();
+                                     }
+                                     return a < b;
+                                   });
 
   return compareResult;
 }
 
-std::vector<VersionSort::CharOrInt> VersionSort::splitVersion(
-    std::string const& str) {
+std::vector<VersionSort::CharOrInt> VersionSort::splitVersion(std::string const& str) {
   size_t from = std::string::npos;
   size_t to = std::string::npos;
 
@@ -82,32 +81,27 @@ std::vector<VersionSort::CharOrInt> VersionSort::splitVersion(
 
 bool cluster_repairs::operator==(BeginRepairsOperation const& left,
                                  BeginRepairsOperation const& right) {
-  return left.database == right.database &&
-         left.collectionId == right.collectionId &&
+  return left.database == right.database && left.collectionId == right.collectionId &&
          left.collectionName == right.collectionName &&
          left.protoCollectionId == right.protoCollectionId &&
          left.protoCollectionName == right.protoCollectionName &&
-         left.collectionReplicationFactor ==
-             right.collectionReplicationFactor &&
+         left.collectionReplicationFactor == right.collectionReplicationFactor &&
          left.protoReplicationFactor == right.protoReplicationFactor &&
          left.renameDistributeShardsLike == right.renameDistributeShardsLike;
 }
 
 bool cluster_repairs::operator==(FinishRepairsOperation const& left,
                                  FinishRepairsOperation const& right) {
-  return left.database == right.database &&
-         left.collectionId == right.collectionId &&
+  return left.database == right.database && left.collectionId == right.collectionId &&
          left.collectionName == right.collectionName &&
          left.protoCollectionId == right.protoCollectionId &&
          left.protoCollectionName == right.protoCollectionName &&
-         left.shards == right.shards &&
-         left.replicationFactor == right.replicationFactor;
+         left.shards == right.shards && left.replicationFactor == right.replicationFactor;
 }
 
 bool cluster_repairs::operator==(MoveShardOperation const& left,
                                  MoveShardOperation const& right) {
-  return left.database == right.database &&
-         left.collectionId == right.collectionId &&
+  return left.database == right.database && left.collectionId == right.collectionId &&
          left.collectionName == right.collectionName &&
          left.shard == right.shard && left.from == right.from &&
          left.to == right.to && left.isLeader == right.isLeader;
@@ -115,8 +109,7 @@ bool cluster_repairs::operator==(MoveShardOperation const& left,
 
 bool cluster_repairs::operator==(FixServerOrderOperation const& left,
                                  FixServerOrderOperation const& right) {
-  return left.database == right.database &&
-         left.collectionId == right.collectionId &&
+  return left.database == right.database && left.collectionId == right.collectionId &&
          left.collectionName == right.collectionName &&
          left.protoCollectionId == right.protoCollectionId &&
          left.protoCollectionName == right.protoCollectionName &&
@@ -125,27 +118,26 @@ bool cluster_repairs::operator==(FixServerOrderOperation const& left,
          left.protoFollowers == right.protoFollowers;
 }
 
-std::ostream& cluster_repairs::operator<<(
-    std::ostream& ostream, BeginRepairsOperation const& operation) {
+std::ostream& cluster_repairs::operator<<(std::ostream& ostream,
+                                          BeginRepairsOperation const& operation) {
   ostream << "BeginRepairsOperation" << std::endl
           << "{ database: " << operation.database << std::endl
           << ", collection: " << operation.collectionName << " ("
           << operation.collectionId << ")" << std::endl
           << ", protoCollection: " << operation.protoCollectionName << " ("
           << operation.protoCollectionId << ")" << std::endl
-          << ", collectionReplicationFactor: "
-          << operation.collectionReplicationFactor << std::endl
-          << ", protoReplicationFactor: " << operation.protoReplicationFactor
+          << ", collectionReplicationFactor: " << operation.collectionReplicationFactor
           << std::endl
-          << ", renameDistributeShardsLike: "
-          << operation.renameDistributeShardsLike << std::endl
+          << ", protoReplicationFactor: " << operation.protoReplicationFactor << std::endl
+          << ", renameDistributeShardsLike: " << operation.renameDistributeShardsLike
+          << std::endl
           << "}";
 
   return ostream;
 }
 
-std::ostream& cluster_repairs::operator<<(
-    std::ostream& ostream, FinishRepairsOperation const& operation) {
+std::ostream& cluster_repairs::operator<<(std::ostream& ostream,
+                                          FinishRepairsOperation const& operation) {
   auto printShard = [](std::ostream& ostream,
                        ShardWithProtoAndDbServers shardWithProtoAndDbServers) {
     ShardID shardId, protoShardId;
@@ -174,8 +166,8 @@ std::ostream& cluster_repairs::operator<<(
     ostream << "}";
   };
 
-  auto printShards = [&printShard](
-      std::ostream& ostream, std::vector<ShardWithProtoAndDbServers> shards) {
+  auto printShards = [&printShard](std::ostream& ostream,
+                                   std::vector<ShardWithProtoAndDbServers> shards) {
     if (shards.empty()) {
       ostream << "  []";
       return;
@@ -228,8 +220,8 @@ std::ostream& cluster_repairs::operator<<(std::ostream& ostream,
   return ostream;
 }
 
-std::ostream& cluster_repairs::operator<<(
-    std::ostream& ostream, FixServerOrderOperation const& operation) {
+std::ostream& cluster_repairs::operator<<(std::ostream& ostream,
+                                          FixServerOrderOperation const& operation) {
   ostream << "FixServerOrderOperation" << std::endl
           << "{ database: " << operation.database << std::endl
           << ", collection: " << operation.collectionName << " ("
@@ -254,8 +246,7 @@ std::ostream& cluster_repairs::operator<<(
   return ostream;
 }
 
-class StreamRepairOperationVisitor
-    : public boost::static_visitor<std::ostream&> {
+class StreamRepairOperationVisitor : public boost::static_visitor<std::ostream&> {
  public:
   StreamRepairOperationVisitor() = delete;
 
@@ -285,13 +276,12 @@ std::ostream& cluster_repairs::operator<<(std::ostream& ostream,
   return boost::apply_visitor(visitor, operation);
 }
 
-std::string getExtendedIsoString(
-    std::chrono::system_clock::time_point time_point) {
+std::string getExtendedIsoString(std::chrono::system_clock::time_point time_point) {
   std::time_t time_t = std::chrono::system_clock::to_time_t(time_point);
   char const* format = "%FT%TZ";
   char timeString[100];
-  size_t bytesWritten = std::strftime(timeString, sizeof(timeString), format,
-                                      std::gmtime(&time_t));
+  size_t bytesWritten =
+      std::strftime(timeString, sizeof(timeString), format, std::gmtime(&time_t));
 
   TRI_ASSERT(bytesWritten > 0);
   if (bytesWritten == 0) {
@@ -303,8 +293,7 @@ std::string getExtendedIsoString(
   return std::string(timeString);
 }
 
-class RepairOperationTypeStringVisitor
-    : public boost::static_visitor<std::string> {
+class RepairOperationTypeStringVisitor : public boost::static_visitor<std::string> {
  public:
   std::string operator()(BeginRepairsOperation const& op) const {
     return "BeginRepairsOperation";
@@ -325,8 +314,7 @@ std::string cluster_repairs::getTypeAsString(RepairOperation const& op) {
 }
 
 VPackBufferPtr MoveShardOperation::toVPackTodo(
-    uint64_t jobId,
-    std::chrono::system_clock::time_point jobCreationTimestamp) const {
+    uint64_t jobId, std::chrono::system_clock::time_point jobCreationTimestamp) const {
   std::string const serverId = ServerState::instance()->getId();
 
   std::string const isoTimeString = getExtendedIsoString(jobCreationTimestamp);
@@ -360,8 +348,7 @@ VPackSlice RepairOperationToTransactionVisitor::createSingleValueVPack(T val) {
   return slice;
 };
 
-RepairOperationToTransactionVisitor::ReturnValueT
-RepairOperationToTransactionVisitor::operator()(
+RepairOperationToTransactionVisitor::ReturnValueT RepairOperationToTransactionVisitor::operator()(
     BeginRepairsOperation const& op) {
   std::string const distributeShardsLikePath =
       agencyCollectionId(op.database, op.collectionId) + "/" +
@@ -376,12 +363,10 @@ RepairOperationToTransactionVisitor::operator()(
       agencyCollectionId(op.database, op.protoCollectionId) + "/" +
       "replicationFactor";
 
-  VPackSlice protoCollectionIdSlice =
-      createSingleValueVPack(op.protoCollectionId);
+  VPackSlice protoCollectionIdSlice = createSingleValueVPack(op.protoCollectionId);
   VPackSlice collectionReplicationFactorSlice =
       createSingleValueVPack(op.collectionReplicationFactor);
-  VPackSlice protoReplicationFactorSlice =
-      createSingleValueVPack(op.protoReplicationFactor);
+  VPackSlice protoReplicationFactorSlice = createSingleValueVPack(op.protoReplicationFactor);
 
   std::vector<AgencyPrecondition> preconditions;
   std::vector<AgencyOperation> operations;
@@ -390,66 +375,61 @@ RepairOperationToTransactionVisitor::operator()(
     // assert that distributeShardsLike is set, but
     // repairingDistributeShardsLike
     // is not
-    preconditions.emplace_back(AgencyPrecondition{
-        distributeShardsLikePath, AgencyPrecondition::Type::VALUE,
-        protoCollectionIdSlice});
-    preconditions.emplace_back(
-        AgencyPrecondition{repairingDistributeShardsLikePath,
-                           AgencyPrecondition::Type::EMPTY, true});
+    preconditions.emplace_back(AgencyPrecondition{distributeShardsLikePath,
+                                                  AgencyPrecondition::Type::VALUE,
+                                                  protoCollectionIdSlice});
+    preconditions.emplace_back(AgencyPrecondition{repairingDistributeShardsLikePath,
+                                                  AgencyPrecondition::Type::EMPTY, true});
 
     // rename distributeShardsLike to repairingDistributeShardsLike
     operations.emplace_back(AgencyOperation{repairingDistributeShardsLikePath,
                                             AgencyValueOperationType::SET,
                                             protoCollectionIdSlice});
-    operations.emplace_back(AgencyOperation{
-        distributeShardsLikePath, AgencySimpleOperationType::DELETE_OP});
+    operations.emplace_back(AgencyOperation{distributeShardsLikePath,
+                                            AgencySimpleOperationType::DELETE_OP});
 
     // assert replicationFactors
-    preconditions.emplace_back(AgencyPrecondition{
-        replicationFactorPath, AgencyPrecondition::Type::VALUE,
-        collectionReplicationFactorSlice});
-    preconditions.emplace_back(AgencyPrecondition{
-        protoReplicationFactorPath, AgencyPrecondition::Type::VALUE,
-        protoReplicationFactorSlice});
+    preconditions.emplace_back(
+        AgencyPrecondition{replicationFactorPath, AgencyPrecondition::Type::VALUE,
+                           collectionReplicationFactorSlice});
+    preconditions.emplace_back(AgencyPrecondition{protoReplicationFactorPath,
+                                                  AgencyPrecondition::Type::VALUE,
+                                                  protoReplicationFactorSlice});
 
     // set collection.replicationFactor = proto.replicationFactor
-    operations.emplace_back(AgencyOperation{replicationFactorPath,
-                                            AgencyValueOperationType::SET,
+    operations.emplace_back(AgencyOperation{replicationFactorPath, AgencyValueOperationType::SET,
                                             protoReplicationFactorSlice});
   } else {
     // assert that repairingDistributeShardsLike is set, but
     // distributeShardsLike
     // is not
-    preconditions.emplace_back(AgencyPrecondition{
-        repairingDistributeShardsLikePath, AgencyPrecondition::Type::VALUE,
-        protoCollectionIdSlice});
-    preconditions.emplace_back(AgencyPrecondition{
-        distributeShardsLikePath, AgencyPrecondition::Type::EMPTY, true});
+    preconditions.emplace_back(AgencyPrecondition{repairingDistributeShardsLikePath,
+                                                  AgencyPrecondition::Type::VALUE,
+                                                  protoCollectionIdSlice});
+    preconditions.emplace_back(AgencyPrecondition{distributeShardsLikePath,
+                                                  AgencyPrecondition::Type::EMPTY, true});
 
     // assert replicationFactors to match
-    preconditions.emplace_back(AgencyPrecondition{
-        replicationFactorPath, AgencyPrecondition::Type::VALUE,
-        protoReplicationFactorSlice});
-    preconditions.emplace_back(AgencyPrecondition{
-        protoReplicationFactorPath, AgencyPrecondition::Type::VALUE,
-        protoReplicationFactorSlice});
+    preconditions.emplace_back(AgencyPrecondition{replicationFactorPath,
+                                                  AgencyPrecondition::Type::VALUE,
+                                                  protoReplicationFactorSlice});
+    preconditions.emplace_back(AgencyPrecondition{protoReplicationFactorPath,
+                                                  AgencyPrecondition::Type::VALUE,
+                                                  protoReplicationFactorSlice});
   }
 
-  operations.emplace_back(AgencyOperation("Plan/Version",
-        AgencySimpleOperationType::INCREMENT_OP));
+  operations.emplace_back(
+      AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP));
 
   return {AgencyWriteTransaction{operations, preconditions}, boost::none};
 }
 
-RepairOperationToTransactionVisitor::ReturnValueT
-RepairOperationToTransactionVisitor::operator()(
+RepairOperationToTransactionVisitor::ReturnValueT RepairOperationToTransactionVisitor::operator()(
     FinishRepairsOperation const& op) {
-  std::string const oldAttrPath =
-      agencyCollectionId(op.database, op.collectionId) + "/" +
-      "repairingDistributeShardsLike";
-  std::string const newAttrPath =
-      agencyCollectionId(op.database, op.collectionId) + "/" +
-      "distributeShardsLike";
+  std::string const oldAttrPath = agencyCollectionId(op.database, op.collectionId) +
+                                  "/" + "repairingDistributeShardsLike";
+  std::string const newAttrPath = agencyCollectionId(op.database, op.collectionId) +
+                                  "/" + "distributeShardsLike";
   std::string const replicationFactorPath =
       agencyCollectionId(op.database, op.collectionId) + "/" +
       "replicationFactor";
@@ -457,20 +437,15 @@ RepairOperationToTransactionVisitor::operator()(
       agencyCollectionId(op.database, op.protoCollectionId) + "/" +
       "replicationFactor";
 
-  VPackSlice protoCollectionIdSlice =
-      createSingleValueVPack(op.protoCollectionId);
-  VPackSlice replicationFactorSlice =
-      createSingleValueVPack(op.replicationFactor);
+  VPackSlice protoCollectionIdSlice = createSingleValueVPack(op.protoCollectionId);
+  VPackSlice replicationFactorSlice = createSingleValueVPack(op.replicationFactor);
 
   std::vector<AgencyPrecondition> preconditions{
-      AgencyPrecondition{oldAttrPath, AgencyPrecondition::Type::VALUE,
-                         protoCollectionIdSlice},
+      AgencyPrecondition{oldAttrPath, AgencyPrecondition::Type::VALUE, protoCollectionIdSlice},
       AgencyPrecondition{newAttrPath, AgencyPrecondition::Type::EMPTY, true},
-      AgencyPrecondition{replicationFactorPath, AgencyPrecondition::Type::VALUE,
-                         replicationFactorSlice},
+      AgencyPrecondition{replicationFactorPath, AgencyPrecondition::Type::VALUE, replicationFactorSlice},
       AgencyPrecondition{protoReplicationFactorPath,
-                         AgencyPrecondition::Type::VALUE,
-                         replicationFactorSlice}};
+                         AgencyPrecondition::Type::VALUE, replicationFactorSlice}};
 
   for (auto const& it : op.shards) {
     ShardID shardId, protoShardId;
@@ -479,8 +454,7 @@ RepairOperationToTransactionVisitor::operator()(
     std::string const shardPath =
         agencyCollectionId(op.database, op.collectionId) + "/shards/" + shardId;
     std::string const protoShardPath =
-        agencyCollectionId(op.database, op.protoCollectionId) + "/shards/" +
-        protoShardId;
+        agencyCollectionId(op.database, op.protoCollectionId) + "/shards/" + protoShardId;
 
     VPackSlice dbServersSlice;
     {
@@ -495,28 +469,26 @@ RepairOperationToTransactionVisitor::operator()(
       _vpackBufferArray.emplace_back(dbServerBuilder.steal());
     }
 
-    preconditions.emplace_back(AgencyPrecondition{
-        shardPath, AgencyPrecondition::Type::VALUE, dbServersSlice});
-    preconditions.emplace_back(AgencyPrecondition{
-        protoShardPath, AgencyPrecondition::Type::VALUE, dbServersSlice});
+    preconditions.emplace_back(
+        AgencyPrecondition{shardPath, AgencyPrecondition::Type::VALUE, dbServersSlice});
+    preconditions.emplace_back(
+        AgencyPrecondition{protoShardPath, AgencyPrecondition::Type::VALUE, dbServersSlice});
   }
 
   std::vector<AgencyOperation> operations{
-      AgencyOperation{newAttrPath, AgencyValueOperationType::SET,
-                      protoCollectionIdSlice},
+      AgencyOperation{newAttrPath, AgencyValueOperationType::SET, protoCollectionIdSlice},
       AgencyOperation{oldAttrPath, AgencySimpleOperationType::DELETE_OP}};
 
-  operations.emplace_back(AgencyOperation("Plan/Version",
-        AgencySimpleOperationType::INCREMENT_OP));
+  operations.emplace_back(
+      AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP));
 
   return {AgencyWriteTransaction{operations, preconditions}, boost::none};
 }
 
-RepairOperationToTransactionVisitor::ReturnValueT
-RepairOperationToTransactionVisitor::operator()(MoveShardOperation const& op) {
+RepairOperationToTransactionVisitor::ReturnValueT RepairOperationToTransactionVisitor::operator()(
+    MoveShardOperation const& op) {
   uint64_t jobId = _getJobId();
-  std::chrono::system_clock::time_point jobCreationTimestamp =
-      _getJobCreationTimestamp();
+  std::chrono::system_clock::time_point jobCreationTimestamp = _getJobCreationTimestamp();
 
   VPackBufferPtr vpackTodo = op.toVPackTodo(jobId, jobCreationTimestamp);
 
@@ -525,21 +497,18 @@ RepairOperationToTransactionVisitor::operator()(MoveShardOperation const& op) {
   std::string const agencyKey = "Target/ToDo/" + std::to_string(jobId);
 
   return std::make_pair(
-      AgencyWriteTransaction{
-          AgencyOperation{agencyKey, AgencyValueOperationType::SET,
-                          VPackSlice(vpackTodo->data())},
-          AgencyPrecondition{agencyKey, AgencyPrecondition::Type::EMPTY, true}},
+      AgencyWriteTransaction{AgencyOperation{agencyKey, AgencyValueOperationType::SET,
+                                             VPackSlice(vpackTodo->data())},
+                             AgencyPrecondition{agencyKey, AgencyPrecondition::Type::EMPTY, true}},
       jobId);
 }
 
-RepairOperationToTransactionVisitor::ReturnValueT
-RepairOperationToTransactionVisitor::operator()(
+RepairOperationToTransactionVisitor::ReturnValueT RepairOperationToTransactionVisitor::operator()(
     FixServerOrderOperation const& op) {
   std::string const agencyShardId =
       agencyCollectionId(op.database, op.collectionId) + "/shards/" + op.shard;
   std::string const agencyProtoShardId =
-      agencyCollectionId(op.database, op.protoCollectionId) + "/shards/" +
-      op.protoShard;
+      agencyCollectionId(op.database, op.protoCollectionId) + "/shards/" + op.protoShard;
 
   VPackBufferPtr vpack = createShardDbServerArray(op.leader, op.followers);
   VPackSlice oldDbServerSlice = velocypack::Slice(vpack->data());
@@ -550,20 +519,17 @@ RepairOperationToTransactionVisitor::operator()(
   _vpackBufferArray.emplace_back(std::move(vpack));
 
   std::vector<AgencyPrecondition> agencyPreconditions{
-      AgencyPrecondition{agencyShardId, AgencyPrecondition::Type::VALUE,
-                         oldDbServerSlice},
-      AgencyPrecondition{agencyProtoShardId, AgencyPrecondition::Type::VALUE,
-                         protoDbServerSlice}};
+      AgencyPrecondition{agencyShardId, AgencyPrecondition::Type::VALUE, oldDbServerSlice},
+      AgencyPrecondition{agencyProtoShardId, AgencyPrecondition::Type::VALUE, protoDbServerSlice}};
 
   AgencyOperation agencyOperation{agencyShardId, AgencyValueOperationType::SET,
                                   protoDbServerSlice};
 
-  return {AgencyWriteTransaction{agencyOperation, agencyPreconditions},
-          boost::none};
+  return {AgencyWriteTransaction{agencyOperation, agencyPreconditions}, boost::none};
 }
 
-std::string RepairOperationToTransactionVisitor::agencyCollectionId(
-    DatabaseID database, CollectionID collection) const {
+std::string RepairOperationToTransactionVisitor::agencyCollectionId(DatabaseID database,
+                                                                    CollectionID collection) const {
   return "Plan/Collections/" + database + "/" + collection;
 }
 
@@ -586,13 +552,11 @@ VPackBufferPtr RepairOperationToTransactionVisitor::createShardDbServerArray(
 
 RepairOperationToTransactionVisitor::RepairOperationToTransactionVisitor()
     : _getJobId([]() { return ClusterInfo::instance()->uniqid(); }),
-      _getJobCreationTimestamp(
-          []() { return std::chrono::system_clock::now(); }) {}
+      _getJobCreationTimestamp([]() { return std::chrono::system_clock::now(); }) {}
 
 RepairOperationToTransactionVisitor::RepairOperationToTransactionVisitor(
     std::function<uint64_t()> getJobId_,
-    std::function<std::chrono::system_clock::time_point()>
-        getJobCreationTimestamp_)
+    std::function<std::chrono::system_clock::time_point()> getJobCreationTimestamp_)
     : _getJobId(std::move(getJobId_)),
       _getJobCreationTimestamp(std::move(getJobCreationTimestamp_)) {}
 
@@ -600,14 +564,12 @@ std::vector<VPackBufferPtr>&& RepairOperationToTransactionVisitor::steal() {
   return std::move(_vpackBufferArray);
 }
 
-RepairOperationToVPackVisitor::RepairOperationToVPackVisitor(
-    VPackBuilder& builder_)
+RepairOperationToVPackVisitor::RepairOperationToVPackVisitor(VPackBuilder& builder_)
     : _builder(builder_) {}
 
 VPackBuilder& RepairOperationToVPackVisitor::builder() { return _builder; }
 
-void RepairOperationToVPackVisitor::operator()(
-    BeginRepairsOperation const& op) {
+void RepairOperationToVPackVisitor::operator()(BeginRepairsOperation const& op) {
   VPackObjectBuilder outerObject(&builder());
   {
     VPackObjectBuilder innerObject(&builder(), "BeginRepairsOperation");
@@ -615,14 +577,12 @@ void RepairOperationToVPackVisitor::operator()(
     builder().add("database", VPackValue(op.database));
     builder().add("collection", VPackValue(op.collectionName));
     builder().add("distributeShardsLike", VPackValue(op.protoCollectionName));
-    builder().add("renameDistributeShardsLike",
-                  VPackValue(op.renameDistributeShardsLike));
+    builder().add("renameDistributeShardsLike", VPackValue(op.renameDistributeShardsLike));
     builder().add("replicationFactor", VPackValue(op.protoReplicationFactor));
   }
 }
 
-void RepairOperationToVPackVisitor::operator()(
-    FinishRepairsOperation const& op) {
+void RepairOperationToVPackVisitor::operator()(FinishRepairsOperation const& op) {
   VPackObjectBuilder outerObject(&builder());
   {
     VPackObjectBuilder innerObject(&builder(), "FinishRepairsOperation");
@@ -663,8 +623,7 @@ void RepairOperationToVPackVisitor::operator()(MoveShardOperation const& op) {
   }
 }
 
-void RepairOperationToVPackVisitor::operator()(
-    FixServerOrderOperation const& op) {
+void RepairOperationToVPackVisitor::operator()(FixServerOrderOperation const& op) {
   VPackObjectBuilder outerObject(&builder());
   {
     VPackObjectBuilder innerObject(&builder(), "FixServerOrderOperation");
@@ -694,16 +653,11 @@ BeginRepairsOperation::BeginRepairsOperation(
     const tagged_argument<tag::database, DatabaseID> database_,
     const tagged_argument<tag::collectionId, CollectionID> collectionId_,
     const tagged_argument<tag::collectionName, std::string> collectionName_,
-    const tagged_argument<tag::protoCollectionId, CollectionID>
-        protoCollectionId_,
-    const tagged_argument<tag::protoCollectionName, std::string>
-        protoCollectionName_,
-    const tagged_argument<tag::collectionReplicationFactor, uint64_t>
-        collectionReplicationFactor_,
-    const tagged_argument<tag::protoReplicationFactor, uint64_t>
-        protoReplicationFactor_,
-    const tagged_argument<tag::renameDistributeShardsLike, bool>
-        renameDistributeShardsLike_)
+    const tagged_argument<tag::protoCollectionId, CollectionID> protoCollectionId_,
+    const tagged_argument<tag::protoCollectionName, std::string> protoCollectionName_,
+    const tagged_argument<tag::collectionReplicationFactor, uint64_t> collectionReplicationFactor_,
+    const tagged_argument<tag::protoReplicationFactor, uint64_t> protoReplicationFactor_,
+    const tagged_argument<tag::renameDistributeShardsLike, bool> renameDistributeShardsLike_)
     : database(database_.value),
       collectionId(collectionId_.value),
       collectionName(collectionName_.value),
@@ -717,12 +671,9 @@ FinishRepairsOperation::FinishRepairsOperation(
     const tagged_argument<tag::database, DatabaseID> database_,
     const tagged_argument<tag::collectionId, CollectionID> collectionId_,
     const tagged_argument<tag::collectionName, std::string> collectionName_,
-    const tagged_argument<tag::protoCollectionId, CollectionID>
-        protoCollectionId_,
-    const tagged_argument<tag::protoCollectionName, std::string>
-        protoCollectionName_,
-    const tagged_argument<tag::shards, std::vector<ShardWithProtoAndDbServers>>
-        shards_,
+    const tagged_argument<tag::protoCollectionId, CollectionID> protoCollectionId_,
+    const tagged_argument<tag::protoCollectionName, std::string> protoCollectionName_,
+    const tagged_argument<tag::shards, std::vector<ShardWithProtoAndDbServers>> shards_,
     const tagged_argument<tag::replicationFactor, uint64_t> replicationFactor_)
     : database(database_.value),
       collectionId(collectionId_.value),
@@ -752,16 +703,13 @@ FixServerOrderOperation::FixServerOrderOperation(
     const tagged_argument<tag::database, DatabaseID> database_,
     const tagged_argument<tag::collectionId, CollectionID> collectionId_,
     const tagged_argument<tag::collectionName, std::string> collectionName_,
-    const tagged_argument<tag::protoCollectionId, CollectionID>
-        protoCollectionId_,
-    const tagged_argument<tag::protoCollectionName, std::string>
-        protoCollectionName_,
+    const tagged_argument<tag::protoCollectionId, CollectionID> protoCollectionId_,
+    const tagged_argument<tag::protoCollectionName, std::string> protoCollectionName_,
     const tagged_argument<tag::shard, ShardID> shard_,
     const tagged_argument<tag::protoShard, ShardID> protoShard_,
     const tagged_argument<tag::leader, ServerID> leader_,
     const tagged_argument<tag::followers, std::vector<ServerID>> followers_,
-    const tagged_argument<tag::protoFollowers, std::vector<ServerID>>
-        protoFollowers_)
+    const tagged_argument<tag::protoFollowers, std::vector<ServerID>> protoFollowers_)
     : database(database_.value),
       collectionId(collectionId_.value),
       collectionName(collectionName_.value),

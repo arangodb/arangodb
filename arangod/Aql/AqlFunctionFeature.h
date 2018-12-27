@@ -77,7 +77,7 @@ class AqlFunctionFeature final : public application_features::ApplicationFeature
   std::unordered_map<std::string, Function const> _functionNames;
 };
 
-} // namespace aql
-} // namespace arangodb
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

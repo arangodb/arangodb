@@ -70,9 +70,7 @@ RocksDBValue RocksDBValue::KeyGeneratorValue(VPackSlice const& data) {
   return RocksDBValue(RocksDBEntryType::KeyGeneratorValue, data);
 }
 
-RocksDBValue RocksDBValue::S2Value(S2Point const& p) {
-  return RocksDBValue(p);
-}
+RocksDBValue RocksDBValue::S2Value(S2Point const& p) { return RocksDBValue(p); }
 
 RocksDBValue RocksDBValue::Empty(RocksDBEntryType type) {
   return RocksDBValue(type);
@@ -103,7 +101,8 @@ TRI_voc_rid_t RocksDBValue::revisionId(RocksDBValue const& value) {
   if (revisionId(rocksdb::Slice(value.string()), id)) {
     return id;
   }
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,"Could not extract revisionId from rocksdb::Slice");
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL, "Could not extract revisionId from rocksdb::Slice");
 }
 
 TRI_voc_rid_t RocksDBValue::revisionId(rocksdb::Slice const& slice) {
@@ -111,7 +110,8 @@ TRI_voc_rid_t RocksDBValue::revisionId(rocksdb::Slice const& slice) {
   if (revisionId(slice, id)) {
     return id;
   }
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,"Could not extract revisionId from rocksdb::Slice");
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL, "Could not extract revisionId from rocksdb::Slice");
 }
 
 StringRef RocksDBValue::vertexId(rocksdb::Slice const& s) {
@@ -143,7 +143,8 @@ S2Point RocksDBValue::centroid(rocksdb::Slice const& s) {
 
 RocksDBValue::RocksDBValue(RocksDBEntryType type) : _type(type), _buffer() {}
 
-RocksDBValue::RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId, TRI_voc_rid_t revision)
+RocksDBValue::RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId,
+                           TRI_voc_rid_t revision)
     : _type(type), _buffer() {
   switch (_type) {
     case RocksDBEntryType::UniqueVPackIndexValue:
@@ -154,7 +155,7 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId, 
       } else {
         _buffer.reserve(sizeof(uint64_t) * 2);
         uint64ToPersistent(_buffer, docId.id());  // LocalDocumentId
-        uint64ToPersistent(_buffer, revision); // revision
+        uint64ToPersistent(_buffer, revision);    // revision
       }
       break;
     }
@@ -179,7 +180,7 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, VPackSlice const& data)
     }
 
     case RocksDBEntryType::Document:
-      TRI_ASSERT(false);// use for document => get free schellen
+      TRI_ASSERT(false);  // use for document => get free schellen
       break;
 
     default:
@@ -202,8 +203,8 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, StringRef const& data)
 }
 
 RocksDBValue::RocksDBValue(S2Point const& p)
-  : _type(RocksDBEntryType::GeoIndexValue), _buffer() {
-      _buffer.reserve(sizeof(uint64_t) * 3);
+    : _type(RocksDBEntryType::GeoIndexValue), _buffer() {
+  _buffer.reserve(sizeof(uint64_t) * 3);
   uint64ToPersistent(_buffer, rocksutils::doubleToInt(p.x()));
   uint64ToPersistent(_buffer, rocksutils::doubleToInt(p.y()));
   uint64ToPersistent(_buffer, rocksutils::doubleToInt(p.z()));

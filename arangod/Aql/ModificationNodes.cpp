@@ -31,8 +31,7 @@
 
 using namespace arangodb::aql;
 
-ModificationNode::ModificationNode(ExecutionPlan* plan,
-                                   arangodb::velocypack::Slice const& base)
+ModificationNode::ModificationNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       CollectionAccessingNode(plan, base),
       _options(base),
@@ -41,20 +40,21 @@ ModificationNode::ModificationNode(ExecutionPlan* plan,
       _outVariableNew(
           Variable::varFromVPack(plan->getAst(), base, "outVariableNew", true)),
       _countStats(base.get("countStats").getBool()),
-      _producesResults(base.hasKey("producesResults") ? base.get("producesResults").getBool() : true) {}
+      _producesResults(base.hasKey("producesResults")
+                           ? base.get("producesResults").getBool()
+                           : true) {}
 
 /// @brief toVelocyPack
-void ModificationNode::toVelocyPackHelper(VPackBuilder& builder,
-                                          unsigned flags) const {
+void ModificationNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags) const {
   // call base class method
   ExecutionNode::toVelocyPackHelperGeneric(builder, flags);
-  
+
   // add collection information
   CollectionAccessingNode::toVelocyPack(builder);
 
   // Now put info about vocbase and cid in there
   builder.add("countStats", VPackValue(_countStats));
-  
+
   builder.add("producesResults", VPackValue(_producesResults));
 
   // add out variables
@@ -70,7 +70,7 @@ void ModificationNode::toVelocyPackHelper(VPackBuilder& builder,
 
   _options.toVelocyPack(builder);
 }
-  
+
 /// @brief estimateCost
 /// Note that all the modifying nodes use this estimateCost method which is
 /// why we can make it final here.
@@ -107,9 +107,7 @@ void RemoveNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> RemoveNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
-) const {
+    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   return std::make_unique<RemoveBlock>(&engine, this);
 }
 
@@ -121,14 +119,13 @@ ExecutionNode* RemoveNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   if (withProperties) {
     if (_outVariableOld != nullptr) {
-      outVariableOld =
-          plan->getAst()->variables()->createVariable(outVariableOld);
+      outVariableOld = plan->getAst()->variables()->createVariable(outVariableOld);
     }
     inVariable = plan->getAst()->variables()->createVariable(inVariable);
   }
 
   auto c = std::make_unique<RemoveNode>(plan, _id, _collection, _options,
-                          inVariable, outVariableOld);
+                                        inVariable, outVariableOld);
   ModificationNode::cloneCommon(c.get());
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
@@ -140,7 +137,7 @@ InsertNode::InsertNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
 
 /// @brief toVelocyPack
 void InsertNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
-  ModificationNode::toVelocyPackHelper(nodes, flags); // call base class method
+  ModificationNode::toVelocyPackHelper(nodes, flags);  // call base class method
 
   // Now put info about vocbase and cid in there
   nodes.add(VPackValue("inVariable"));
@@ -152,9 +149,7 @@ void InsertNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
-) const {
+    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   return std::make_unique<InsertBlock>(&engine, this);
 }
 
@@ -167,26 +162,26 @@ ExecutionNode* InsertNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   if (withProperties) {
     if (_outVariableNew != nullptr) {
-      outVariableNew =
-          plan->getAst()->variables()->createVariable(outVariableNew);
+      outVariableNew = plan->getAst()->variables()->createVariable(outVariableNew);
     }
     if (_outVariableOld != nullptr) {
-      outVariableOld =
-          plan->getAst()->variables()->createVariable(outVariableOld);
+      outVariableOld = plan->getAst()->variables()->createVariable(outVariableOld);
     }
     inVariable = plan->getAst()->variables()->createVariable(inVariable);
   }
 
   auto c = std::make_unique<InsertNode>(plan, _id, _collection, _options,
-                          inVariable, outVariableOld, outVariableNew);
+                                        inVariable, outVariableOld, outVariableNew);
   ModificationNode::cloneCommon(c.get());
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
-UpdateReplaceNode::UpdateReplaceNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
+UpdateReplaceNode::UpdateReplaceNode(ExecutionPlan* plan,
+                                     arangodb::velocypack::Slice const& base)
     : ModificationNode(plan, base),
-      _inDocVariable(Variable::varFromVPack(plan->getAst(), base, "inDocVariable")),
+      _inDocVariable(
+          Variable::varFromVPack(plan->getAst(), base, "inDocVariable")),
       _inKeyVariable(
           Variable::varFromVPack(plan->getAst(), base, "inKeyVariable", true)) {}
 
@@ -214,9 +209,7 @@ void UpdateNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
-) const {
+    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   return std::make_unique<UpdateBlock>(&engine, this);
 }
 
@@ -230,29 +223,25 @@ ExecutionNode* UpdateNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   if (withProperties) {
     if (_outVariableOld != nullptr) {
-      outVariableOld =
-          plan->getAst()->variables()->createVariable(outVariableOld);
+      outVariableOld = plan->getAst()->variables()->createVariable(outVariableOld);
     }
     if (_outVariableNew != nullptr) {
-      outVariableNew =
-          plan->getAst()->variables()->createVariable(outVariableNew);
+      outVariableNew = plan->getAst()->variables()->createVariable(outVariableNew);
     }
     if (inKeyVariable != nullptr) {
-      inKeyVariable =
-          plan->getAst()->variables()->createVariable(inKeyVariable);
+      inKeyVariable = plan->getAst()->variables()->createVariable(inKeyVariable);
     }
     inDocVariable = plan->getAst()->variables()->createVariable(inDocVariable);
   }
 
   auto c = std::make_unique<UpdateNode>(plan, _id, _collection, _options, inDocVariable,
-                     inKeyVariable, outVariableOld, outVariableNew);
+                                        inKeyVariable, outVariableOld, outVariableNew);
   ModificationNode::cloneCommon(c.get());
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
-ReplaceNode::ReplaceNode(ExecutionPlan* plan,
-                         arangodb::velocypack::Slice const& base)
+ReplaceNode::ReplaceNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : UpdateReplaceNode(plan, base) {}
 
 /// @brief toVelocyPack
@@ -264,9 +253,7 @@ void ReplaceNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const 
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
-) const {
+    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   return std::make_unique<ReplaceBlock>(&engine, this);
 }
 
@@ -280,22 +267,19 @@ ExecutionNode* ReplaceNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   if (withProperties) {
     if (_outVariableOld != nullptr) {
-      outVariableOld =
-          plan->getAst()->variables()->createVariable(outVariableOld);
+      outVariableOld = plan->getAst()->variables()->createVariable(outVariableOld);
     }
     if (_outVariableNew != nullptr) {
-      outVariableNew =
-          plan->getAst()->variables()->createVariable(outVariableNew);
+      outVariableNew = plan->getAst()->variables()->createVariable(outVariableNew);
     }
     if (inKeyVariable != nullptr) {
-      inKeyVariable =
-          plan->getAst()->variables()->createVariable(inKeyVariable);
+      inKeyVariable = plan->getAst()->variables()->createVariable(inKeyVariable);
     }
     inDocVariable = plan->getAst()->variables()->createVariable(inDocVariable);
   }
 
   auto c = std::make_unique<ReplaceNode>(plan, _id, _collection, _options, inDocVariable,
-                      inKeyVariable, outVariableOld, outVariableNew);
+                                         inKeyVariable, outVariableOld, outVariableNew);
   ModificationNode::cloneCommon(c.get());
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
@@ -303,9 +287,12 @@ ExecutionNode* ReplaceNode::clone(ExecutionPlan* plan, bool withDependencies,
 
 UpsertNode::UpsertNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ModificationNode(plan, base),
-      _inDocVariable(Variable::varFromVPack(plan->getAst(), base, "inDocVariable")),
-      _insertVariable(Variable::varFromVPack(plan->getAst(), base, "insertVariable")),
-      _updateVariable(Variable::varFromVPack(plan->getAst(), base, "updateVariable")),
+      _inDocVariable(
+          Variable::varFromVPack(plan->getAst(), base, "inDocVariable")),
+      _insertVariable(
+          Variable::varFromVPack(plan->getAst(), base, "insertVariable")),
+      _updateVariable(
+          Variable::varFromVPack(plan->getAst(), base, "updateVariable")),
       _isReplace(base.get("isReplace").getBoolean()) {}
 
 /// @brief toVelocyPack
@@ -327,9 +314,7 @@ void UpsertNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
-) const {
+    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   return std::make_unique<UpsertBlock>(&engine, this);
 }
 
@@ -343,19 +328,16 @@ ExecutionNode* UpsertNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   if (withProperties) {
     if (_outVariableNew != nullptr) {
-      outVariableNew =
-          plan->getAst()->variables()->createVariable(outVariableNew);
+      outVariableNew = plan->getAst()->variables()->createVariable(outVariableNew);
     }
     inDocVariable = plan->getAst()->variables()->createVariable(inDocVariable);
-    insertVariable =
-        plan->getAst()->variables()->createVariable(insertVariable);
-    updateVariable =
-        plan->getAst()->variables()->createVariable(updateVariable);
+    insertVariable = plan->getAst()->variables()->createVariable(insertVariable);
+    updateVariable = plan->getAst()->variables()->createVariable(updateVariable);
   }
 
   auto c = std::make_unique<UpsertNode>(plan, _id, _collection, _options,
-                          inDocVariable, insertVariable, updateVariable,
-                          outVariableNew, _isReplace);
+                                        inDocVariable, insertVariable,
+                                        updateVariable, outVariableNew, _isReplace);
   ModificationNode::cloneCommon(c.get());
 
   return cloneHelper(std::move(c), withDependencies, withProperties);

@@ -24,23 +24,22 @@
 #include "SingleCollectionTransaction.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
-#include "Utils/CollectionNameResolver.h"
-#include "Transaction/Methods.h"
 #include "Transaction/Context.h"
+#include "Transaction/Methods.h"
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalDataSource.h"
 
 namespace arangodb {
 
 /// @brief create the transaction, using a data-source
 SingleCollectionTransaction::SingleCollectionTransaction(
-  std::shared_ptr<transaction::Context> const& transactionContext,
-  LogicalDataSource const& dataSource,
-  AccessMode::Type accessType
-): transaction::Methods(transactionContext),
-   _cid(dataSource.id()),
-   _trxCollection(nullptr),
-   _documentCollection(nullptr),
-   _accessType(accessType) {
+    std::shared_ptr<transaction::Context> const& transactionContext,
+    LogicalDataSource const& dataSource, AccessMode::Type accessType)
+    : transaction::Methods(transactionContext),
+      _cid(dataSource.id()),
+      _trxCollection(nullptr),
+      _documentCollection(nullptr),
+      _accessType(accessType) {
   // add the (sole) data-source
   addCollection(dataSource.id(), dataSource.name(), _accessType);
   addHint(transaction::Hints::Hint::NO_DLD);
@@ -48,13 +47,13 @@ SingleCollectionTransaction::SingleCollectionTransaction(
 
 /// @brief create the transaction, using a collection name
 SingleCollectionTransaction::SingleCollectionTransaction(
-  std::shared_ptr<transaction::Context> const& transactionContext,
-  std::string const& name, AccessMode::Type accessType)
-      : transaction::Methods(transactionContext),
-        _cid(0),
-        _trxCollection(nullptr),
-        _documentCollection(nullptr),
-        _accessType(accessType) {
+    std::shared_ptr<transaction::Context> const& transactionContext,
+    std::string const& name, AccessMode::Type accessType)
+    : transaction::Methods(transactionContext),
+      _cid(0),
+      _trxCollection(nullptr),
+      _documentCollection(nullptr),
+      _accessType(accessType) {
   // add the (sole) collection
   _cid = resolver()->getCollectionId(name);
   addCollection(_cid, name.c_str(), _accessType);
@@ -84,16 +83,16 @@ LogicalCollection* SingleCollectionTransaction::documentCollection() {
   if (_documentCollection != nullptr) {
     return _documentCollection;
   }
- 
+
   resolveTrxCollection();
   TRI_ASSERT(_documentCollection != nullptr);
   return _documentCollection;
 }
-  
+
 /// @brief get the underlying collection's name
-std::string SingleCollectionTransaction::name() { 
-   // will ensure we have the _trxCollection object set
+std::string SingleCollectionTransaction::name() {
+  // will ensure we have the _trxCollection object set
   return resolveTrxCollection()->collectionName();
 }
 
-} // arangodb
+}  // namespace arangodb

@@ -430,6 +430,72 @@ describe ArangoDB do
       end
     end
 
+    context "add with link to non-existing collection:" do
+      it "creating a view with link to non-existing collection" do
+        cmd = api
+        body = <<-JSON
+               { "name": "abc",
+                 "type": "arangosearch",
+                 "links": { "wrong" : {} } 
+               }
+               JSON
+        doc = ArangoDB.log_post("#{prefix}-create-a-view", cmd, :body => body)
+
+        doc.code.should eq(404)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(404)
+        doc.parsed_response['errorMessage'].should eq("while validating arangosearch link definition, error: collection 'wrong' not found")
+        doc.parsed_response['errorNum'].should eq(1203)
+      end
+    end
+
+    context "add with link to existing collection:" do
+      cn = "right"
+
+      before do
+        ArangoDB.drop_collection(cn)
+        @cid = ArangoDB.create_collection(cn)
+      end
+
+      after do
+        ArangoDB.drop_collection(cn)
+      end
+
+      it "creating a view with link to existing collection/drop" do
+        cmd = api
+        body = <<-JSON
+               { "name": "abc",
+                 "type": "arangosearch",
+                 "links": { "right" : { "includeAllFields": true } } 
+               }
+               JSON
+        doc = ArangoDB.log_post("#{prefix}-create-a-view", cmd, :body => body)
+
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['name'].should eq("abc")
+        doc.parsed_response['type'].should eq("arangosearch")
+        doc.parsed_response['links']['right'].should be_kind_of(Object)
+      end
+
+      it "dropping a view" do
+        cmd1 = api + "/abc"
+        doc1 = ArangoDB.log_delete("#{prefix}-drop-a-view", cmd1)
+
+        doc1.code.should eq(200)
+        doc1.headers['content-type'].should eq("application/json; charset=utf-8")
+
+        cmd2 = api + "/abc"
+        doc2 = ArangoDB.log_get("#{prefix}-drop-a-view", cmd2)
+
+        doc2.code.should eq(404)
+        doc2.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc2.parsed_response['error'].should eq(true)
+        doc2.parsed_response['code'].should eq(404)
+      end
+    end
+
     context "retrieval:" do
       it "empty list" do
         cmd = api

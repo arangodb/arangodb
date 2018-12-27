@@ -34,17 +34,15 @@ namespace arangodb {
 namespace maintenance {
 
 class UpdateCollection : public ActionBase {
-
-public:
-
+ public:
   UpdateCollection(MaintenanceFeature&, ActionDescription const&);
 
   virtual ~UpdateCollection();
 
   virtual bool first() override final;
-
 };
 
-}}
+}  // namespace maintenance
+}  // namespace arangodb
 
 #endif

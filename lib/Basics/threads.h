@@ -52,8 +52,7 @@ void TRI_InitThread(TRI_thread_t*);
 /// @brief starts a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_StartThread(TRI_thread_t*, TRI_tid_t*, char const*,
-                     void (*starter)(void*), void* data);
+bool TRI_StartThread(TRI_thread_t*, char const*, void (*starter)(void*), void* data);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if we are the thread
@@ -64,8 +63,6 @@ bool TRI_IsSelfThread(TRI_thread_t* thread);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the process affinity
 ////////////////////////////////////////////////////////////////////////////////
-
-void TRI_SetProcessorAffinity(TRI_thread_t*, size_t core);
 
 // SHOULD BE REMOVED
 void TRI_InitThread(TRI_thread_t* thread);

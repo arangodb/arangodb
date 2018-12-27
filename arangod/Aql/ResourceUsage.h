@@ -35,40 +35,38 @@ struct ResourceUsage {
   explicit ResourceUsage(size_t memoryUsage) : memoryUsage(memoryUsage) {}
 
   void clear() { memoryUsage = 0; }
-   
+
   size_t memoryUsage;
 };
 
 struct ResourceMonitor {
   ResourceMonitor() : currentResources(), maxResources() {}
-  explicit ResourceMonitor(ResourceUsage const& maxResources) : currentResources(), maxResources(maxResources) {}
- 
-  void setMemoryLimit(size_t value) {
-    maxResources.memoryUsage = value;
-  }
-   
+  explicit ResourceMonitor(ResourceUsage const& maxResources)
+      : currentResources(), maxResources(maxResources) {}
+
+  void setMemoryLimit(size_t value) { maxResources.memoryUsage = value; }
+
   inline void increaseMemoryUsage(size_t value) {
-    if (maxResources.memoryUsage > 0 && 
+    if (maxResources.memoryUsage > 0 &&
         currentResources.memoryUsage + value > maxResources.memoryUsage) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_RESOURCE_LIMIT, "query would use more memory than allowed");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_RESOURCE_LIMIT, "query would use more memory than allowed");
     }
     currentResources.memoryUsage += value;
   }
-  
+
   inline void decreaseMemoryUsage(size_t value) noexcept {
     TRI_ASSERT(currentResources.memoryUsage >= value);
     currentResources.memoryUsage -= value;
   }
 
-  void clear() {
-    currentResources.clear();
-  }
+  void clear() { currentResources.clear(); }
 
   ResourceUsage currentResources;
   ResourceUsage maxResources;
 };
 
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

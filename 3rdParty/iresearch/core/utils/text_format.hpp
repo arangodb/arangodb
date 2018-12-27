@@ -67,8 +67,8 @@ IRESEARCH_IGNORE_UNUSED static const auto& json = json_t();
 ////////////////////////////////////////////////////////////////////////////////
 /// @class raw text format type without any specific encoding
 ////////////////////////////////////////////////////////////////////////////////
-IRESEARCH_IGNORE_UNUSED IRESEARCH_API const type_id& text_t();
-static const auto& text = text_t();
+IRESEARCH_API const type_id& text_t();
+IRESEARCH_IGNORE_UNUSED static const auto& text = text_t();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class XML format type https://en.wikipedia.org/wiki/XML

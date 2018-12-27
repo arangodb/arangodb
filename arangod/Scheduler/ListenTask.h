@@ -36,9 +36,6 @@
 #include "Scheduler/Acceptor.h"
 #include "Scheduler/Socket.h"
 
-
-
-
 namespace arangodb {
 
 class ListenTask : virtual public rest::IoTask {
@@ -46,7 +43,7 @@ class ListenTask : virtual public rest::IoTask {
   static size_t const MAX_ACCEPT_ERRORS = 128;
 
  public:
-  ListenTask(rest::GeneralServer &server, rest::GeneralServer::IoContext&, Endpoint*);
+  ListenTask(rest::GeneralServer& server, rest::GeneralServer::IoContext&, Endpoint*);
   ~ListenTask();
 
  public:
@@ -69,7 +66,6 @@ class ListenTask : virtual public rest::IoTask {
   std::unique_ptr<Acceptor> _acceptor;
   std::function<void(asio_ns::error_code const&)> _handler;
 };
-}
-
+}  // namespace arangodb
 
 #endif

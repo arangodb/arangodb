@@ -24,15 +24,15 @@
 #ifndef ARANGOD_AQL_SORT_CONDITION_H
 #define ARANGOD_AQL_SORT_CONDITION_H 1
 
-#include "Basics/Common.h"
 #include "Aql/Variable.h"
 #include "Basics/AttributeNameParser.h"
+#include "Basics/Common.h"
 
 namespace arangodb {
 namespace velocypack {
-  class Builder;
-  class Slice;
-}
+class Builder;
+class Slice;
+}  // namespace velocypack
 
 namespace aql {
 struct AstNode;
@@ -47,8 +47,7 @@ class SortCondition {
   SortCondition();
 
   /// @brief create the sort condition
-  SortCondition(ExecutionPlan* plan,
-                std::vector<std::pair<Variable const*, bool>> const&,
+  SortCondition(ExecutionPlan* plan, std::vector<std::pair<Variable const*, bool>> const&,
                 std::vector<std::vector<arangodb::basics::AttributeName>> const&,
                 std::unordered_map<VariableId, AstNode const*> const&);
 
@@ -82,9 +81,8 @@ class SortCondition {
 
   /// @brief returns the number of attributes in the sort condition covered
   /// by the specified index fields
-  size_t coveredAttributes(
-      Variable const*,
-      std::vector<std::vector<arangodb::basics::AttributeName>> const&) const;
+  size_t coveredAttributes(Variable const*,
+                           std::vector<std::vector<arangodb::basics::AttributeName>> const&) const;
 
   /// @brief  return the sort condition (as a tuple containing variable, AstNode
   /// and sort order) at `position`.
@@ -94,15 +92,13 @@ class SortCondition {
   std::tuple<Variable const*, AstNode const*, bool> field(size_t position) const;
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          bool) const;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, bool) const;
 
-  static std::shared_ptr<SortCondition> fromVelocyPack(
-      ExecutionPlan const* plan, arangodb::velocypack::Slice const& base,
-      std::string const& name);
+  static std::shared_ptr<SortCondition> fromVelocyPack(ExecutionPlan const* plan,
+                                                       arangodb::velocypack::Slice const& base,
+                                                       std::string const& name);
 
  private:
-
   struct SortField {
     Variable const* variable;
     std::vector<arangodb::basics::AttributeName> attributes;
@@ -128,7 +124,7 @@ class SortCondition {
   /// this is only meaningful if the sort is unidirectional
   bool _ascending;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

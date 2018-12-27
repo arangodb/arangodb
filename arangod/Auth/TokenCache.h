@@ -54,10 +54,8 @@ class TokenCache {
    public:
     explicit Entry(std::string const& username, bool a, double t)
         : _username(username), _authenticated(a), _expiry(t) {}
-    
-    static Entry Unauthenticated() {
-      return Entry("", false, 0);
-    }
+
+    static Entry Unauthenticated() { return Entry("", false, 0); }
 
     std::string const& username() const { return _username; }
     bool authenticated() const { return _authenticated; }
@@ -75,8 +73,8 @@ class TokenCache {
   };
 
  public:
-  TokenCache::Entry checkAuthentication(
-      arangodb::rest::AuthenticationMethod authType, std::string const& secret);
+  TokenCache::Entry checkAuthentication(arangodb::rest::AuthenticationMethod authType,
+                                        std::string const& secret);
 
   /// Clear the cache of username / password auth
   void invalidateBasicCache();
@@ -103,8 +101,7 @@ class TokenCache {
   TokenCache::Entry validateJwtBody(std::string const&);
   bool validateJwtHMAC256Signature(std::string const&, std::string const&);
 
-  std::shared_ptr<velocypack::Builder> parseJson(std::string const&,
-                                                 std::string const&);
+  std::shared_ptr<velocypack::Builder> parseJson(std::string const&, std::string const&);
 
   /// generate new _jwtToken
   void generateJwtToken();
@@ -120,11 +117,11 @@ class TokenCache {
 
   std::string _jwtSecret;
   std::string _jwtToken;
-  
+
   mutable arangodb::basics::ReadWriteLock _jwtLock;
   arangodb::basics::LruCache<std::string, TokenCache::Entry> _jwtCache;
 };
-}  // auth
-}  // arangodb
+}  // namespace auth
+}  // namespace arangodb
 
 #endif

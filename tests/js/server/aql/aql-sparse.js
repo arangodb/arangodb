@@ -472,6 +472,190 @@ function optimizerSparseTestSuite () {
       assertTrue(indexes[0].indexes[0].sparse);
       assertTrue(indexes[1].indexes[0].sparse);
     },
+    
+    testSparseConditionRemovalGreaterThan : function () {
+      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+        
+      let query = "FOR doc IN " + c.name() + " FILTER doc.value1 > 1995 SORT doc.value1 RETURN doc.value1";
+      let results = AQL_EXECUTE(query).json;
+      assertEqual([ 1996, 1997, 1998, 1999 ], results);
+
+      let plan = AQL_EXPLAIN(query).plan;
+      let nodes = plan.nodes;
+      // should use the sparse index, no sorting, and no extra filter!
+      let indexes = nodes.filter(function(n) { return n.type === 'IndexNode'; });
+      assertEqual(1, indexes.length);
+      assertTrue(indexes[0].indexes[0].sparse);
+      assertTrue(indexes[0].ascending);
+      
+      let sorts = nodes.filter(function(n) { return n.type === 'SortNode'; });
+      assertEqual(0, sorts.length);
+      
+      let filters = nodes.filter(function(n) { return n.type === 'FilterNode'; });
+      assertEqual(0, filters.length);
+
+      assertNotEqual(-1, plan.rules.indexOf("use-indexes"));
+      assertNotEqual(-1, plan.rules.indexOf("use-index-for-sort"));
+      assertNotEqual(-1, plan.rules.indexOf("remove-filter-covered-by-index"));
+    },
+    
+    testSparseConditionRemovalNotNull : function () {
+      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+        
+      let query = "FOR doc IN " + c.name() + " FILTER doc.value1 != null SORT doc.value1 RETURN doc.value1";
+      let results = AQL_EXECUTE(query).json;
+      assertEqual(2000, results.length);
+
+      let plan = AQL_EXPLAIN(query).plan;
+      let nodes = plan.nodes;
+      // should use the sparse index, no sorting, and no extra filter!
+      let indexes = nodes.filter(function(n) { return n.type === 'IndexNode'; });
+      assertEqual(1, indexes.length);
+      assertTrue(indexes[0].indexes[0].sparse);
+      assertTrue(indexes[0].ascending);
+      
+      let sorts = nodes.filter(function(n) { return n.type === 'SortNode'; });
+      assertEqual(0, sorts.length);
+      
+      let filters = nodes.filter(function(n) { return n.type === 'FilterNode'; });
+      assertEqual(0, filters.length);
+
+      assertNotEqual(-1, plan.rules.indexOf("use-indexes"));
+      assertNotEqual(-1, plan.rules.indexOf("use-index-for-sort"));
+      assertNotEqual(-1, plan.rules.indexOf("remove-filter-covered-by-index"));
+    },
+    
+    testSparseConditionRemovalNotNullReverse : function () {
+      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+        
+      let query = "FOR doc IN " + c.name() + " FILTER doc.value1 != null SORT doc.value1 DESC RETURN doc.value1";
+      let results = AQL_EXECUTE(query).json;
+      assertEqual(2000, results.length);
+
+      let plan = AQL_EXPLAIN(query).plan;
+      let nodes = plan.nodes;
+      // should use the sparse index, no sorting, and no extra filter!
+      let indexes = nodes.filter(function(n) { return n.type === 'IndexNode'; });
+      assertEqual(1, indexes.length);
+      assertTrue(indexes[0].indexes[0].sparse);
+      assertFalse(indexes[0].ascending);
+      
+      let sorts = nodes.filter(function(n) { return n.type === 'SortNode'; });
+      assertEqual(0, sorts.length);
+      
+      let filters = nodes.filter(function(n) { return n.type === 'FilterNode'; });
+      assertEqual(0, filters.length);
+
+      assertNotEqual(-1, plan.rules.indexOf("use-indexes"));
+      assertNotEqual(-1, plan.rules.indexOf("use-index-for-sort"));
+      assertNotEqual(-1, plan.rules.indexOf("remove-filter-covered-by-index"));
+    },
+    
+    testSparseConditionRemovalCorrectCondition1 : function () {
+      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+        
+      let query = "FOR doc IN " + c.name() + " FILTER doc.value1 != null FILTER doc.value1.foobar != null SORT doc.value1 RETURN doc.value1";
+      let results = AQL_EXECUTE(query).json;
+      assertEqual(0, results.length);
+
+      let plan = AQL_EXPLAIN(query).plan;
+      let nodes = plan.nodes;
+      // should use the sparse index, no sorting, but still post-filter on value1.foobar!
+      let indexes = nodes.filter(function(n) { return n.type === 'IndexNode'; });
+      assertEqual(1, indexes.length);
+      assertTrue(indexes[0].indexes[0].sparse);
+      assertTrue(indexes[0].ascending);
+      
+      let sorts = nodes.filter(function(n) { return n.type === 'SortNode'; });
+      assertEqual(0, sorts.length);
+      
+      let filters = nodes.filter(function(n) { return n.type === 'FilterNode'; });
+      assertEqual(1, filters.length);
+
+      assertNotEqual(-1, plan.rules.indexOf("use-indexes"));
+      assertNotEqual(-1, plan.rules.indexOf("use-index-for-sort"));
+      assertNotEqual(-1, plan.rules.indexOf("remove-filter-covered-by-index"));
+    },
+    
+    testSparseConditionRemovalCorrectCondition2 : function () {
+      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "skiplist", fields: ["value1.foobar"], sparse: true });
+        
+      let query = "FOR doc IN " + c.name() + " FILTER doc.value1 != null FILTER doc.value1.foobar != null SORT doc.value1 RETURN doc.value1";
+      let results = AQL_EXECUTE(query).json;
+      assertEqual(0, results.length);
+
+      let plan = AQL_EXPLAIN(query).plan;
+      let nodes = plan.nodes;
+      // should use the sparse index, no sorting, but still post-filter on value1.foobar!
+      let indexes = nodes.filter(function(n) { return n.type === 'IndexNode'; });
+      assertEqual(1, indexes.length);
+      assertTrue(indexes[0].indexes[0].sparse);
+      assertTrue(indexes[0].ascending);
+      
+      let sorts = nodes.filter(function(n) { return n.type === 'SortNode'; });
+      assertEqual(0, sorts.length);
+      
+      let filters = nodes.filter(function(n) { return n.type === 'FilterNode'; });
+      assertEqual(1, filters.length);
+
+      assertNotEqual(-1, plan.rules.indexOf("use-indexes"));
+      assertNotEqual(-1, plan.rules.indexOf("use-index-for-sort"));
+      assertNotEqual(-1, plan.rules.indexOf("remove-filter-covered-by-index"));
+    },
+    
+    testSparseConditionRemovalCorrectCondition3 : function () {
+      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+        
+      let query = "FOR doc IN " + c.name() + " FILTER doc.value1 != null FILTER doc._key != null SORT doc.value1 RETURN doc.value1";
+      let results = AQL_EXECUTE(query).json;
+      assertEqual(2000, results.length);
+
+      let plan = AQL_EXPLAIN(query).plan;
+      let nodes = plan.nodes;
+      // should use the sparse index, no sorting, no post-filter!
+      let indexes = nodes.filter(function(n) { return n.type === 'IndexNode'; });
+      assertEqual(1, indexes.length);
+      assertTrue(indexes[0].indexes[0].sparse);
+      assertTrue(indexes[0].ascending);
+      
+      let sorts = nodes.filter(function(n) { return n.type === 'SortNode'; });
+      assertEqual(0, sorts.length);
+      
+      let filters = nodes.filter(function(n) { return n.type === 'FilterNode'; });
+      assertEqual(1, filters.length);
+
+      assertNotEqual(-1, plan.rules.indexOf("use-indexes"));
+      assertNotEqual(-1, plan.rules.indexOf("use-index-for-sort"));
+      assertNotEqual(-1, plan.rules.indexOf("remove-filter-covered-by-index"));
+    },
+    
+    testSparseConditionRemovalCorrectConditionDescending : function () {
+      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+        
+      let query = "FOR doc IN " + c.name() + " FILTER doc.value1 != null FILTER doc.value1.foobar != null SORT doc.value1 RETURN doc.value1";
+      let results = AQL_EXECUTE(query).json;
+      assertEqual(0, results.length);
+
+      let plan = AQL_EXPLAIN(query).plan;
+      let nodes = plan.nodes;
+      // should use the sparse index, no sorting, but still post-filter on value1.foobar!
+      let indexes = nodes.filter(function(n) { return n.type === 'IndexNode'; });
+      assertEqual(1, indexes.length);
+      assertTrue(indexes[0].indexes[0].sparse);
+      assertTrue(indexes[0].ascending);
+      
+      let sorts = nodes.filter(function(n) { return n.type === 'SortNode'; });
+      assertEqual(0, sorts.length);
+      
+      let filters = nodes.filter(function(n) { return n.type === 'FilterNode'; });
+      assertEqual(1, filters.length);
+
+      assertNotEqual(-1, plan.rules.indexOf("use-indexes"));
+      assertNotEqual(-1, plan.rules.indexOf("use-index-for-sort"));
+      assertNotEqual(-1, plan.rules.indexOf("remove-filter-covered-by-index"));
+    },
+
   };
 }
 

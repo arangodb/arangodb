@@ -24,8 +24,8 @@
 #ifndef ARANGODB_BASICS_VPACKSTRING_H
 #define ARANGODB_BASICS_VPACKSTRING_H
 
-#include "Basics/StringBuffer.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StringBuffer.h"
 
 #include <velocypack/Sink.h>
 #include <velocypack/velocypack-aliases.h>
@@ -75,7 +75,7 @@ class VPackStringBufferAdapter final : public VPackSink {
  private:
   TRI_string_buffer_t* _buffer;
 };
-}
-}
+}  // namespace basics
+}  // namespace arangodb
 
 #endif

@@ -26,57 +26,13 @@
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Aql/Variable.h"
-#include "Basics/StringRef.h"
 #include "Indexes/Index.h"
-#include "Indexes/SimpleAttributeEqualityMatcher.h"
-#include "Indexes/SkiplistIndexAttributeMatcher.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
 
-bool PersistentIndexAttributeMatcher::accessFitsIndex(
-    arangodb::Index const* idx, arangodb::aql::AstNode const* access,
-    arangodb::aql::AstNode const* other, arangodb::aql::AstNode const* op,
-    arangodb::aql::Variable const* reference,
-    std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&
-        found,
-    std::unordered_set<std::string>& nonNullAttributes, bool isExecution) {
-
-  // just forward to reference implementation
-  return SkiplistIndexAttributeMatcher::accessFitsIndex(idx, access, other, op, reference, found, nonNullAttributes, isExecution);
-}
-
-void PersistentIndexAttributeMatcher::matchAttributes(
-    arangodb::Index const* idx, arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference,
-    std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&
-        found,
-    size_t& values, std::unordered_set<std::string>& nonNullAttributes,
-    bool isExecution) {
-
-  // just forward to reference implementation
-  return SkiplistIndexAttributeMatcher::matchAttributes(idx, node, reference, found, values, nonNullAttributes, isExecution);
-}
-
-bool PersistentIndexAttributeMatcher::supportsFilterCondition(
-    std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-    arangodb::Index const* idx, arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, size_t itemsInIndex,
-    size_t& estimatedItems, double& estimatedCost) {
-  // mmfiles failure point compat
-  if (idx->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
-    TRI_IF_FAILURE("SimpleAttributeMatcher::accessFitsIndex") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-  }
-  
-  // just forward to reference implementation
-  return SkiplistIndexAttributeMatcher::supportsFilterCondition(allIndexes, idx, node, reference, itemsInIndex, estimatedItems, estimatedCost);
-}
-
 bool PersistentIndexAttributeMatcher::supportsSortCondition(
-    arangodb::Index const* idx,
-    arangodb::aql::SortCondition const* sortCondition,
+    arangodb::Index const* idx, arangodb::aql::SortCondition const* sortCondition,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     double& estimatedCost, size_t& coveredAttributes) {
   TRI_ASSERT(sortCondition != nullptr);
@@ -85,8 +41,7 @@ bool PersistentIndexAttributeMatcher::supportsSortCondition(
     // only non-sparse indexes can be used for sorting
     if (!idx->hasExpansion() && sortCondition->isUnidirectional() &&
         sortCondition->isOnlyAttributeAccess()) {
-      coveredAttributes =
-          sortCondition->coveredAttributes(reference, idx->fields());
+      coveredAttributes = sortCondition->coveredAttributes(reference, idx->fields());
 
       if (coveredAttributes >= sortCondition->numAttributes()) {
         // sort is fully covered by index. no additional sort costs!
@@ -120,30 +75,4 @@ bool PersistentIndexAttributeMatcher::supportsSortCondition(
     estimatedCost = 0.0;
   }
   return false;
-}
-
-/// @brief specializes the condition for use with the index
-arangodb::aql::AstNode* PersistentIndexAttributeMatcher::specializeCondition(
-    arangodb::Index const* idx, arangodb::aql::AstNode* node,
-    arangodb::aql::Variable const* reference) {
-  // mmfiles failure compat
-  if (idx->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
-    TRI_IF_FAILURE("SimpleAttributeMatcher::specializeAllChildrenEQ") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-    TRI_IF_FAILURE("SimpleAttributeMatcher::specializeAllChildrenIN") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-  }
-
-  // just forward to reference implementation
-  return SkiplistIndexAttributeMatcher::specializeCondition(idx, node, reference);
-}
-
-bool PersistentIndexAttributeMatcher::isDuplicateOperator(
-    arangodb::aql::AstNode const* node,
-    std::unordered_set<int> const& operatorsFound) {
-
-  // just forward to reference implementation
-  return SkiplistIndexAttributeMatcher::isDuplicateOperator(node, operatorsFound);
 }
