@@ -60,7 +60,7 @@ Manual upgrade of 'ZIP archive' installation
 --------------------------------------------
 
 There are two ways to upgrade a _Single Instance_ that has been started
-using a _ZIP_ package:
+from a _ZIP_ package:
 
 - In-Place upgrade
 - Logical upgrade
@@ -75,6 +75,12 @@ using a _ZIP_ package:
 2. Stop writes to the old server (e.g. block incoming connections)
 3. Take a backup of the data using _arangodump_
 4. Stop the old server
-5. Start the new server
-6. Restore the backup using _arangorestore_
-7. Re-enable the writes (e.g. allow again incoming connections)
+5. Optional (depending on whether or not you modfied default confiugaration),
+   copy old ArangoDB configuration file to the new server (or just edit
+   the new configuration file)
+6. Start the new server (with a fresh data directory, by default it will be
+   inside the directory created when extracting the _ZIP_ archive)
+7. Restore the backup into the new server using _arangorestore_
+8. Re-enable the writes (e.g. allow again incoming connections)
+9. Optionally remove the old server package when you are confident enough
+   that all is working fine (a copy of the directory package, 
