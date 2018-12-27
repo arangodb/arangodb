@@ -33,11 +33,8 @@ class RocksDBHashIndex final : public RocksDBVPackIndex {
  public:
   RocksDBHashIndex() = delete;
 
-  RocksDBHashIndex(
-      TRI_idx_iid_t iid,
-      LogicalCollection& coll,
-      arangodb::velocypack::Slice const& info
-  )
+  RocksDBHashIndex(TRI_idx_iid_t iid, LogicalCollection& coll,
+                   arangodb::velocypack::Slice const& info)
       : RocksDBVPackIndex(iid, coll, info) {}
 
   IndexType type() const override { return Index::TRI_IDX_TYPE_HASH_INDEX; }
@@ -49,6 +46,6 @@ class RocksDBHashIndex final : public RocksDBVPackIndex {
   bool matchesDefinition(VPackSlice const& info) const override;
 };
 
-}
+}  // namespace arangodb
 
 #endif

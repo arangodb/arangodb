@@ -25,8 +25,8 @@
 #ifndef ARANGOD_STORAGE_ENGINE_STORAGE_ENGINE_FEATURE_H
 #define ARANGOD_STORAGE_ENGINE_STORAGE_ENGINE_FEATURE_H 1
 
-#include "Basics/Common.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/Common.h"
 
 namespace arangodb {
 
@@ -41,6 +41,6 @@ class StorageEngineFeature : public application_features::ApplicationFeature {
   }
 };
 
-}
+}  // namespace arangodb
 
 #endif

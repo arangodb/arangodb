@@ -63,13 +63,12 @@ struct IAlgorithm {
     return nullptr;
   }
 
-  virtual MasterContext* masterContext(
-      arangodb::velocypack::Slice userParams) const {
+  virtual MasterContext* masterContext(arangodb::velocypack::Slice userParams) const {
     return nullptr;
   }
 
   // ============= Configure runtime parameters ============
-  
+
   std::string const& name() const { return _name; }
 
  protected:
@@ -89,10 +88,8 @@ struct Algorithm : IAlgorithm {
   virtual GraphFormat<V, E>* inputFormat() const = 0;
   virtual MessageFormat<M>* messageFormat() const = 0;
   virtual MessageCombiner<M>* messageCombiner() const { return nullptr; };
-  virtual VertexComputation<V, E, M>* createComputation(
-      WorkerConfig const*) const = 0;
-  virtual VertexCompensation<V, E, M>* createCompensation(
-      WorkerConfig const*) const {
+  virtual VertexComputation<V, E, M>* createComputation(WorkerConfig const*) const = 0;
+  virtual VertexCompensation<V, E, M>* createCompensation(WorkerConfig const*) const {
     return nullptr;
   }
   virtual std::set<std::string> initialActiveSet() {
@@ -128,6 +125,6 @@ class SimpleAlgorithm : public Algorithm<V, E, M> {
     _resultField = field.isString() ? field.copyString() : "result";
   }
 };
-}
-}
+}  // namespace pregel
+}  // namespace arangodb
 #endif

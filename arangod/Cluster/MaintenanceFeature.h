@@ -24,7 +24,6 @@
 #ifndef ARANGOD_CLUSTER_MAINTENANCE_FEATURE
 #define ARANGOD_CLUSTER_MAINTENANCE_FEATURE 1
 
-
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
@@ -44,17 +43,13 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   virtual ~MaintenanceFeature() {}
 
   struct errors_t {
-    std::map<std::string,
-             std::map<std::string,
-                      std::shared_ptr<VPackBuffer<uint8_t>>>> indexes;
+    std::map<std::string, std::map<std::string, std::shared_ptr<VPackBuffer<uint8_t>>>> indexes;
 
     // dbname/collection/shardid -> error
-    std::unordered_map<std::string,
-                       std::shared_ptr<VPackBuffer<uint8_t>>> shards;
+    std::unordered_map<std::string, std::shared_ptr<VPackBuffer<uint8_t>>> shards;
 
     // dbname -> error
-    std::unordered_map<std::string,
-                       std::shared_ptr<VPackBuffer<uint8_t>>> databases;
+    std::unordered_map<std::string, std::shared_ptr<VPackBuffer<uint8_t>>> databases;
   };
 
  public:
@@ -77,26 +72,23 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   virtual void stop() override;
 
   // shut down the feature
-  virtual void unprepare() override {};
-
-
+  virtual void unprepare() override{};
 
   //
   // api features
   //
 
   /// @brief This is the  API for creating an Action and executing it.
-  ///  Execution can be immediate by calling thread, or asynchronous via thread pool.
-  ///  not yet:  ActionDescription parameter will be MOVED to new object.
-  virtual Result addAction(
-    std::shared_ptr<maintenance::ActionDescription> const & description,
-    bool executeNow=false);
+  ///  Execution can be immediate by calling thread, or asynchronous via thread
+  ///  pool. not yet:  ActionDescription parameter will be MOVED to new object.
+  virtual Result addAction(std::shared_ptr<maintenance::ActionDescription> const& description,
+                           bool executeNow = false);
 
   /// @brief This is the  API for creating an Action and executing it.
-  ///  Execution can be immediate by calling thread, or asynchronous via thread pool.
-  ///  not yet:  ActionDescription parameter will be MOVED to new object.
-  virtual Result addAction(
-    std::shared_ptr<maintenance::Action> action, bool executeNow=false);
+  ///  Execution can be immediate by calling thread, or asynchronous via thread
+  ///  pool. not yet:  ActionDescription parameter will be MOVED to new object.
+  virtual Result addAction(std::shared_ptr<maintenance::Action> action,
+                           bool executeNow = false);
 
   /// @brief Internal API that allows existing actions to create pre actions
   /// FIXDOC: Please explain how this works in a lot more detail, for example,
@@ -104,26 +96,24 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// running action is postponed in this case. Explain semantics such that
   /// somebody not knowing the code can use it.
   std::shared_ptr<maintenance::Action> preAction(
-    std::shared_ptr<maintenance::ActionDescription> const & description);
+      std::shared_ptr<maintenance::ActionDescription> const& description);
 
   /// @brief Internal API that allows existing actions to create post actions
   /// FIXDOC: Please explain how this works in a lot more detail, such that
   /// somebody not knowing the code can use it.
   std::shared_ptr<maintenance::Action> postAction(
-    std::shared_ptr<maintenance::ActionDescription> const & description);
+      std::shared_ptr<maintenance::ActionDescription> const& description);
 
-protected:
+ protected:
   std::shared_ptr<maintenance::Action> createAction(
-    std::shared_ptr<maintenance::ActionDescription> const & description);
+      std::shared_ptr<maintenance::ActionDescription> const& description);
 
-  void registerAction(
-    std::shared_ptr<maintenance::Action> action, bool executeNow);
+  void registerAction(std::shared_ptr<maintenance::Action> action, bool executeNow);
 
   std::shared_ptr<maintenance::Action> createAndRegisterAction(
-    std::shared_ptr<maintenance::ActionDescription> const & description,
-    bool executeNow);
+      std::shared_ptr<maintenance::ActionDescription> const& description, bool executeNow);
 
-public:
+ public:
   /// @brief This API will attempt to fail an existing Action that is waiting
   ///  or executing.  Will not fail Actions that have already succeeded or failed.
   Result deleteAction(uint64_t id);
@@ -135,28 +125,26 @@ public:
   void toVelocyPack(VPackBuilder& envelope) const;
 
   /// @brief Returns json array of all MaintenanceActions within the deque
-  Result toJson(VPackBuilder & builder);
+  Result toJson(VPackBuilder& builder);
 
   /// @brief Return pointer to next ready action, or nullptr
   std::shared_ptr<maintenance::Action> findReadyAction(
-    std::unordered_set<std::string> const& options =
-    std::unordered_set<std::string>());
-  
+      std::unordered_set<std::string> const& options = std::unordered_set<std::string>());
+
   /// @brief Process specific ID for a new action
   /// @returns uint64_t
-  uint64_t nextActionId() {return _nextActionId++;};
+  uint64_t nextActionId() { return _nextActionId++; };
 
-  bool isShuttingDown() const {return(_isShuttingDown);};
+  bool isShuttingDown() const { return (_isShuttingDown); };
 
   /// @brief Return number of seconds to say "not done" to block retries too soon
-  uint32_t getSecondsActionsBlock() const {return _secondsActionsBlock;};
+  uint32_t getSecondsActionsBlock() const { return _secondsActionsBlock; };
 
   /**
    * @brief Find and return found action or nullptr
    * @param desc Description of sought action
    */
-  std::shared_ptr<maintenance::Action> findAction(
-    std::shared_ptr<maintenance::ActionDescription> const desc);
+  std::shared_ptr<maintenance::Action> findAction(std::shared_ptr<maintenance::ActionDescription> const desc);
 
   /**
    * @brief add index error to bucket
@@ -169,10 +157,9 @@ public:
    *
    * @return success
    */
-  arangodb::Result storeIndexError (
-    std::string const& database, std::string const& collection,
-    std::string const& shard, std::string const& indexId,
-    std::shared_ptr<VPackBuffer<uint8_t>> error);
+  arangodb::Result storeIndexError(std::string const& database, std::string const& collection,
+                                   std::string const& shard, std::string const& indexId,
+                                   std::shared_ptr<VPackBuffer<uint8_t>> error);
 
   /**
    * @brief get all pending index errors for a specific shard
@@ -185,9 +172,8 @@ public:
    * @return success
    */
   arangodb::Result indexErrors(
-    std::string const& database, std::string const& collection,
-    std::string const& shard,
-    std::map<std::string, std::shared_ptr<VPackBuffer<uint8_t>>>& errors) const ;
+      std::string const& database, std::string const& collection, std::string const& shard,
+      std::map<std::string, std::shared_ptr<VPackBuffer<uint8_t>>>& errors) const;
 
   /**
    * @brief remove 1+ errors from index error bucket
@@ -200,11 +186,11 @@ public:
    *
    * @return success
    */
-  arangodb::Result removeIndexErrors (
-    std::string const& database, std::string const& collection,
-    std::string const& shard, std::unordered_set<std::string> const& indexIds);
-  arangodb::Result removeIndexErrors (
-    std::string const& path, std::unordered_set<std::string> const& indexIds);
+  arangodb::Result removeIndexErrors(std::string const& database,
+                                     std::string const& collection, std::string const& shard,
+                                     std::unordered_set<std::string> const& indexIds);
+  arangodb::Result removeIndexErrors(std::string const& path,
+                                     std::unordered_set<std::string> const& indexIds);
 
   /**
    * @brief add shard error to bucket
@@ -216,14 +202,13 @@ public:
    *
    * @return success
    */
-  arangodb::Result storeShardError (
-    std::string const& database, std::string const& collection,
-    std::string const& shard, std::shared_ptr<VPackBuffer<uint8_t>> error);
+  arangodb::Result storeShardError(std::string const& database,
+                                   std::string const& collection, std::string const& shard,
+                                   std::shared_ptr<VPackBuffer<uint8_t>> error);
 
-  arangodb::Result storeShardError (
-    std::string const& database, std::string const& collection,
-    std::string const& shard, std::string const& serverId,
-    arangodb::Result const& failure);
+  arangodb::Result storeShardError(std::string const& database, std::string const& collection,
+                                   std::string const& shard, std::string const& serverId,
+                                   arangodb::Result const& failure);
 
   /**
    * @brief get all pending shard errors
@@ -234,9 +219,9 @@ public:
    *
    * @return success
    */
-  arangodb::Result shardError(
-    std::string const& database, std::string const& collection,
-    std::string const& shard, std::shared_ptr<VPackBuffer<uint8_t>>& error) const;
+  arangodb::Result shardError(std::string const& database,
+                              std::string const& collection, std::string const& shard,
+                              std::shared_ptr<VPackBuffer<uint8_t>>& error) const;
 
   /**
    * @brief remove error from shard bucket
@@ -248,10 +233,9 @@ public:
    *
    * @return success
    */
-  arangodb::Result removeShardError (
-    std::string const& database, std::string const& collection,
-    std::string const& shard);
-  arangodb::Result removeShardError (std::string const& key);
+  arangodb::Result removeShardError(std::string const& database, std::string const& collection,
+                                    std::string const& shard);
+  arangodb::Result removeShardError(std::string const& key);
 
   /**
    * @brief add shard error to bucket
@@ -261,11 +245,10 @@ public:
    *
    * @return success
    */
-  arangodb::Result storeDBError (
-    std::string const& database, std::shared_ptr<VPackBuffer<uint8_t>> error);
+  arangodb::Result storeDBError(std::string const& database,
+                                std::shared_ptr<VPackBuffer<uint8_t>> error);
 
-  arangodb::Result storeDBError (
-    std::string const& database, Result const& failure);
+  arangodb::Result storeDBError(std::string const& database, Result const& failure);
 
   /**
    * @brief get all pending shard errors
@@ -274,8 +257,8 @@ public:
    *
    * @return success
    */
-  arangodb::Result dbError(
-    std::string const& database, std::shared_ptr<VPackBuffer<uint8_t>>& error) const;
+  arangodb::Result dbError(std::string const& database,
+                           std::shared_ptr<VPackBuffer<uint8_t>>& error) const;
 
   /**
    * @brief remove an error from db error bucket
@@ -285,7 +268,7 @@ public:
    *
    * @return success
    */
-  arangodb::Result removeDBError (std::string const& database);
+  arangodb::Result removeDBError(std::string const& database);
 
   /**
    * @brief copy all error maps (shards, indexes and databases) for Maintenance
@@ -316,8 +299,8 @@ public:
    * @param  shard  Shard name
    */
   void delShardVersion(std::string const& shardId);
-  
-protected:
+
+ protected:
   /// @brief common code used by multiple constructors
   void init();
 
@@ -359,8 +342,8 @@ protected:
 
   //
   // Lock notes:
-  //  Reading _actionRegistry requires Read or Write lock via _actionRegistryLock
-  //  Writing _actionRegistry requires BOTH:
+  //  Reading _actionRegistry requires Read or Write lock via
+  //  _actionRegistryLock Writing _actionRegistry requires BOTH:
   //    - CONDITION_LOCKER on _actionRegistryCond
   //    - then write lock via _actionRegistryLock
   //
@@ -386,32 +369,25 @@ protected:
   /// @brief lock for index error bucket
   mutable arangodb::Mutex _ieLock;
   /// @brief pending errors raised by EnsureIndex
-  std::map<std::string,
-           std::map<std::string,
-                    std::shared_ptr<VPackBuffer<uint8_t>>>> _indexErrors;
+  std::map<std::string, std::map<std::string, std::shared_ptr<VPackBuffer<uint8_t>>>> _indexErrors;
 
   /// @brief lock for shard error bucket
   mutable arangodb::Mutex _seLock;
   /// @brief pending errors raised by CreateCollection/UpdateCollection
-  std::unordered_map<std::string,
-                     std::shared_ptr<VPackBuffer<uint8_t>>> _shardErrors;
+  std::unordered_map<std::string, std::shared_ptr<VPackBuffer<uint8_t>>> _shardErrors;
 
   /// @brief lock for database error bucket
   mutable arangodb::Mutex _dbeLock;
   /// @brief pending errors raised by CreateDatabase
-  std::unordered_map<std::string,
-                     std::shared_ptr<VPackBuffer<uint8_t>>> _dbErrors;
+  std::unordered_map<std::string, std::shared_ptr<VPackBuffer<uint8_t>>> _dbErrors;
 
   /// @brief lock for shard version map
   mutable arangodb::Mutex _versionLock;
   /// @brief shards have versions in order to be able to distinguish between
   /// independant actions
   std::unordered_map<std::string, size_t> _shardVersion;
-
-  
-  
 };
 
-}
+}  // namespace arangodb
 
 #endif

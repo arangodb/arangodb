@@ -37,28 +37,27 @@
 NS_BEGIN(arangodb)
 NS_BEGIN(velocypack)
 
-class Builder; // forward declarations
-struct ObjectBuilder; // forward declarations
-class Slice; // forward declarations
+class Builder;         // forward declarations
+struct ObjectBuilder;  // forward declarations
+class Slice;           // forward declarations
 
-NS_END // velocypack
-NS_END // arangodb
+NS_END      // velocypack
+    NS_END  // arangodb
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+        NS_BEGIN(arangodb) NS_BEGIN(iresearch)
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
+    // -----------------------------------------------------------------------------
+    // --SECTION--                                                      public types
+    // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enum of possible ways to store values in the view
-////////////////////////////////////////////////////////////////////////////////
-enum class ValueStorage : uint32_t {
-  NONE = 0, // do not store values in the view
-  ID, // only store value existance
-  FULL, // store full value in the view
-};
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief enum of possible ways to store values in the view
+    ////////////////////////////////////////////////////////////////////////////////
+    enum class ValueStorage : uint32_t {
+      NONE = 0,  // do not store values in the view
+      ID,        // only store value existance
+      FULL,      // store full value in the view
+    };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief metadata describing how to process a field in a collection
@@ -78,11 +77,11 @@ struct IResearchLinkMeta {
   // can't use IResearchLinkMeta as value type since it's incomplete type so far
   typedef UnorderedRefKeyMap<char, UniqueHeapInstance<IResearchLinkMeta>> Fields;
 
-  Analyzers _analyzers; // analyzers to apply to every field
-  Fields _fields; // explicit list of fields to be indexed with optional overrides
-  bool _includeAllFields; // include all fields or only fields listed in '_fields'
-  bool _trackListPositions; // append relative offset in list to attribute name (as opposed to without offset)
-  ValueStorage _storeValues; // how values should be stored inside the view
+  Analyzers _analyzers;  // analyzers to apply to every field
+  Fields _fields;  // explicit list of fields to be indexed with optional overrides
+  bool _includeAllFields;  // include all fields or only fields listed in '_fields'
+  bool _trackListPositions;  // append relative offset in list to attribute name (as opposed to without offset)
+  ValueStorage _storeValues;  // how values should be stored inside the view
   // NOTE: if adding fields don't forget to modify the default constructor !!!
   // NOTE: if adding fields don't forget to modify the copy assignment operator !!!
   // NOTE: if adding fields don't forget to modify the move assignment operator !!!
@@ -114,12 +113,8 @@ struct IResearchLinkMeta {
   ///        on failure state is undefined
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
-  bool init(
-    arangodb::velocypack::Slice const& slice,
-    std::string& errorField,
-    IResearchLinkMeta const& defaults = DEFAULT(),
-    Mask* mask = nullptr
-  ) noexcept;
+  bool init(arangodb::velocypack::Slice const& slice, std::string& errorField,
+            IResearchLinkMeta const& defaults = DEFAULT(), Mask* mask = nullptr) noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchLinkMeta object
@@ -128,11 +123,8 @@ struct IResearchLinkMeta {
   ///        elements are appended to an existing object
   ///        return success or set TRI_set_errno(...) and return false
   ////////////////////////////////////////////////////////////////////////////////
-  bool json(
-    arangodb::velocypack::Builder& builder,
-    IResearchLinkMeta const* ignoreEqual = nullptr,
-    Mask const* mask = nullptr
-  ) const;
+  bool json(arangodb::velocypack::Builder& builder,
+            IResearchLinkMeta const* ignoreEqual = nullptr, Mask const* mask = nullptr) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchLinkMeta object
@@ -141,19 +133,16 @@ struct IResearchLinkMeta {
   ///        elements are appended to an existing object
   ///        return success or set TRI_set_errno(...) and return false
   ////////////////////////////////////////////////////////////////////////////////
-  bool json(
-    arangodb::velocypack::ObjectBuilder const& builder,
-    IResearchLinkMeta const* ignoreEqual = nullptr,
-    Mask const* mask = nullptr
-  ) const;
+  bool json(arangodb::velocypack::ObjectBuilder const& builder,
+            IResearchLinkMeta const* ignoreEqual = nullptr, Mask const* mask = nullptr) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief amount of memory in bytes occupied by this iResearch Link meta
   ////////////////////////////////////////////////////////////////////////////////
   size_t memory() const noexcept;
-}; // IResearchLinkMeta
+};  // IResearchLinkMeta
 
-NS_END // iresearch
-NS_END // arangodb
+NS_END      // iresearch
+    NS_END  // arangodb
 
 #endif

@@ -33,12 +33,11 @@ using namespace arangodb::aql;
 
 namespace {
 
-static void escapeRegexParams(std::string &out, const char* ptr, size_t length) {
+static void escapeRegexParams(std::string& out, const char* ptr, size_t length) {
   for (size_t i = 0; i < length; ++i) {
     char const c = ptr[i];
-    if (c == '?' || c == '+' || c == '[' || c == '(' || c == ')' ||
-                 c == '{' || c == '}' || c == '^' || c == '$' || c == '|' ||
-                 c == '.' || c == '*' || c == '\\') {
+    if (c == '?' || c == '+' || c == '[' || c == '(' || c == ')' || c == '{' || c == '}' ||
+        c == '^' || c == '$' || c == '|' || c == '.' || c == '*' || c == '\\') {
       // character with special meaning in a regex
       out.push_back('\\');
     }
@@ -46,30 +45,32 @@ static void escapeRegexParams(std::string &out, const char* ptr, size_t length) 
   }
 }
 
-} // namespace
+}  // namespace
 
-RegexCache::~RegexCache() {
-  clear();
-}
+RegexCache::~RegexCache() { clear(); }
 
 void RegexCache::clear() noexcept {
   _regexCache.clear();
   _likeCache.clear();
 }
 
-icu::RegexMatcher* RegexCache::buildRegexMatcher(char const* ptr, size_t length, bool caseInsensitive) {
+icu::RegexMatcher* RegexCache::buildRegexMatcher(char const* ptr, size_t length,
+                                                 bool caseInsensitive) {
   buildRegexPattern(_temp, ptr, length, caseInsensitive);
 
   return fromCache(_temp, _regexCache);
 }
 
-icu::RegexMatcher* RegexCache::buildLikeMatcher(char const* ptr, size_t length, bool caseInsensitive) {
+icu::RegexMatcher* RegexCache::buildLikeMatcher(char const* ptr, size_t length,
+                                                bool caseInsensitive) {
   buildLikePattern(_temp, ptr, length, caseInsensitive);
 
   return fromCache(_temp, _likeCache);
 }
 
-icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue const& splitExpression, arangodb::transaction::Methods* trx, bool& isEmptyExpression) {
+icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue const& splitExpression,
+                                                 arangodb::transaction::Methods* trx,
+                                                 bool& isEmptyExpression) {
   std::string rx;
 
   AqlValueMaterializer materializer(trx);
@@ -104,15 +105,17 @@ icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue const& splitExpression
 }
 
 /// @brief get matcher from cache, or insert a new matcher for the specified pattern
-icu::RegexMatcher* RegexCache::fromCache(std::string const& pattern,
-                                         std::unordered_map<std::string, std::unique_ptr<icu::RegexMatcher>>& cache) {
+icu::RegexMatcher* RegexCache::fromCache(
+    std::string const& pattern,
+    std::unordered_map<std::string, std::unique_ptr<icu::RegexMatcher>>& cache) {
   auto it = cache.find(pattern);
 
   if (it != cache.end()) {
     return (*it).second.get();
   }
 
-  auto matcher = std::unique_ptr<icu::RegexMatcher>(arangodb::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern));
+  auto matcher = std::unique_ptr<icu::RegexMatcher>(
+      arangodb::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern));
 
   auto p = matcher.get();
 
@@ -123,9 +126,8 @@ icu::RegexMatcher* RegexCache::fromCache(std::string const& pattern,
 }
 
 /// @brief compile a REGEX pattern from a string
-void RegexCache::buildRegexPattern(std::string& out,
-                                   char const* ptr, size_t length,
-                                   bool caseInsensitive) {
+void RegexCache::buildRegexPattern(std::string& out, char const* ptr,
+                                   size_t length, bool caseInsensitive) {
   out.clear();
   if (caseInsensitive) {
     out.reserve(length + 4);
@@ -136,11 +138,10 @@ void RegexCache::buildRegexPattern(std::string& out,
 }
 
 /// @brief compile a LIKE pattern from a string
-void RegexCache::buildLikePattern(std::string& out,
-                                  char const* ptr, size_t length,
-                                  bool caseInsensitive) {
+void RegexCache::buildLikePattern(std::string& out, char const* ptr,
+                                  size_t length, bool caseInsensitive) {
   out.clear();
-  out.reserve(length + 8); // reserve some room
+  out.reserve(length + 8);  // reserve some room
 
   // pattern is always anchored
   out.push_back('^');

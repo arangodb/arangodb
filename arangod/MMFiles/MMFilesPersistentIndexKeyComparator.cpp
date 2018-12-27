@@ -27,12 +27,13 @@
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesPersistentIndex.h"
 
-#include <rocksdb/db.h>
 #include <rocksdb/comparator.h>
+#include <rocksdb/db.h>
 
 using namespace arangodb;
 
-int MMFilesPersistentIndexKeyComparator::Compare(rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const {
+int MMFilesPersistentIndexKeyComparator::Compare(rocksdb::Slice const& lhs,
+                                                 rocksdb::Slice const& rhs) const {
   TRI_ASSERT(lhs.size() > 8);
   TRI_ASSERT(rhs.size() > 8);
 
@@ -42,7 +43,7 @@ int MMFilesPersistentIndexKeyComparator::Compare(rocksdb::Slice const& lhs, rock
   if (res != 0) {
     return res;
   }
-  
+
   VPackSlice const lSlice = extractKeySlice(lhs);
   TRI_ASSERT(lSlice.isArray());
   VPackSlice const rSlice = extractKeySlice(rhs);
@@ -54,10 +55,8 @@ int MMFilesPersistentIndexKeyComparator::Compare(rocksdb::Slice const& lhs, rock
 
   for (size_t i = 0; i < n; ++i) {
     int res = arangodb::basics::VelocyPackHelper::compare(
-      (i < lLength ? lSlice[i] : VPackSlice::noneSlice()), 
-      (i < rLength ? rSlice[i] : VPackSlice::noneSlice()), 
-      true
-    );
+        (i < lLength ? lSlice[i] : VPackSlice::noneSlice()),
+        (i < rLength ? rSlice[i] : VPackSlice::noneSlice()), true);
 
     if (res != 0) {
       return res;
@@ -70,4 +69,3 @@ int MMFilesPersistentIndexKeyComparator::Compare(rocksdb::Slice const& lhs, rock
 
   return 0;
 }
-

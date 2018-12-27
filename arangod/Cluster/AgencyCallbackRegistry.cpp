@@ -39,16 +39,13 @@
 using namespace arangodb;
 
 AgencyCallbackRegistry::AgencyCallbackRegistry(std::string const& callbackBasePath)
-  : _agency(),
-  _callbackBasePath(callbackBasePath) {
-}
+    : _agency(), _callbackBasePath(callbackBasePath) {}
 
-AgencyCallbackRegistry::~AgencyCallbackRegistry() {
-}
+AgencyCallbackRegistry::~AgencyCallbackRegistry() {}
 
 bool AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> cb) {
   uint32_t rand;
-  { 
+  {
     WRITE_LOCKER(locker, _lock);
     while (true) {
       rand = RandomGenerator::interval(UINT32_MAX);
@@ -68,7 +65,7 @@ bool AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> cb
     LOG_TOPIC(ERR, Logger::CLUSTER) << "Couldn't register callback " << e.what();
   } catch (...) {
     LOG_TOPIC(ERR, Logger::CLUSTER)
-      << "Couldn't register callback. Unknown exception";
+        << "Couldn't register callback. Unknown exception";
   }
   if (!ok) {
     WRITE_LOCKER(locker, _lock);
@@ -90,7 +87,7 @@ std::shared_ptr<AgencyCallback> AgencyCallbackRegistry::getCallback(uint32_t id)
 bool AgencyCallbackRegistry::unregisterCallback(std::shared_ptr<AgencyCallback> cb) {
   WRITE_LOCKER(locker, _lock);
 
-  for (auto const& it: _endpoints) {
+  for (auto const& it : _endpoints) {
     if (it.second.get() == cb.get()) {
       _agency.unregisterCallback(cb->key, getEndpointUrl(it.first));
       _endpoints.erase(it.first);

@@ -40,11 +40,8 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-ConfigFeature::ConfigFeature(
-    application_features::ApplicationServer& server,
-    std::string const& progname,
-    std::string const& configFilename
-)
+ConfigFeature::ConfigFeature(application_features::ApplicationServer& server,
+                             std::string const& progname, std::string const& configFilename)
     : ApplicationFeature(server, "Config"),
       _file(configFilename),
       _checkConfiguration(false),
@@ -69,14 +66,13 @@ void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new VectorParameter<StringParameter>(&_defines),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addOption("--check-configuration",
-                     "check the configuration and exit",
+  options->addOption("--check-configuration", "check the configuration and exit",
                      new BooleanParameter(&_checkConfiguration),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Command));
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
+                                                  arangodb::options::Flags::Command));
 }
 
-void ConfigFeature::loadOptions(std::shared_ptr<ProgramOptions> options,
-                                char const* binaryPath) {
+void ConfigFeature::loadOptions(std::shared_ptr<ProgramOptions> options, char const* binaryPath) {
   for (auto const& def : _defines) {
     arangodb::options::DefineEnvironment(def);
   }
@@ -89,8 +85,7 @@ void ConfigFeature::loadOptions(std::shared_ptr<ProgramOptions> options,
 }
 
 void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
-                                   std::string const& progname,
-                                   char const* binaryPath) {
+                                   std::string const& progname, char const* binaryPath) {
   if (StringUtils::tolower(_file) == "none") {
     LOG_TOPIC(DEBUG, Logger::CONFIG) << "using no config file at all";
     return;
@@ -108,8 +103,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
   // always prefer an explicitly given config file
   if (!_file.empty()) {
     if (!FileUtils::exists(_file)) {
-      LOG_TOPIC(FATAL, Logger::CONFIG) << "cannot read config file '" << _file
-                                       << "'";
+      LOG_TOPIC(FATAL, Logger::CONFIG) << "cannot read config file '" << _file << "'";
       FATAL_ERROR_EXIT();
     }
 
@@ -125,8 +119,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
       }
     }
 
-    LOG_TOPIC(DEBUG, Logger::CONFIG) << "using user supplied config file '"
-                                     << _file << "'";
+    LOG_TOPIC(DEBUG, Logger::CONFIG) << "using user supplied config file '" << _file << "'";
 
     if (!parser.parse(_file, true)) {
       FATAL_ERROR_EXIT();
@@ -165,8 +158,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
     // will resolve to ./build/etc/arangodb3/ in maintainer builds
     auto location = FileUtils::buildFilename(root, _SYSCONFDIR_);
 
-    LOG_TOPIC(TRACE, Logger::CONFIG) << "checking root location '" << root
-                                     << "'";
+    LOG_TOPIC(TRACE, Logger::CONFIG) << "checking root location '" << root << "'";
 
     locations.emplace_back(location);
   }
@@ -244,4 +236,4 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
   }
 }
 
-} // arangodb
+}  // namespace arangodb

@@ -28,30 +28,30 @@
 
 #include "IResearchView.h"
 #include "Transaction/Status.h"
-#include "velocypack/Builder.h"
 #include "VocBase/LogicalView.h"
+#include "velocypack/Builder.h"
 
 namespace arangodb {
 
 class DatabasePathFeature;
 class TransactionState;
-struct ViewFactory; // forward declaration
+struct ViewFactory;  // forward declaration
 class CollectionNameResolver;
 
 namespace transaction {
 
-class Methods; // forward declaration
+class Methods;  // forward declaration
 
-} // transaction
+}  // namespace transaction
 
-} // arangodb
+}  // namespace arangodb
 
 namespace arangodb {
 namespace iresearch {
 
 class AsyncMeta;
 
-class IResearchViewDBServer final: public arangodb::LogicalViewClusterInfo {
+class IResearchViewDBServer final : public arangodb::LogicalViewClusterInfo {
  public:
   virtual ~IResearchViewDBServer() noexcept;
 
@@ -70,10 +70,7 @@ class IResearchViewDBServer final: public arangodb::LogicalViewClusterInfo {
   ///         on ptr reset the view will be dropped if it has no collections
   /// @note view created in vocbase() to match callflow during regular startup
   //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<arangodb::LogicalView> ensure(
-      TRI_voc_cid_t cid,
-      bool create = true
-  );
+  std::shared_ptr<arangodb::LogicalView> ensure(TRI_voc_cid_t cid, bool create = true);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the factory for this type of view
@@ -82,10 +79,8 @@ class IResearchViewDBServer final: public arangodb::LogicalViewClusterInfo {
 
   virtual void open() override;
 
-  virtual arangodb::Result properties(
-    arangodb::velocypack::Slice const& properties,
-    bool partialUpdate
-  ) override;
+  virtual arangodb::Result properties(arangodb::velocypack::Slice const& properties,
+                                      bool partialUpdate) override;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @return pointer to an index reader containing the datastore record snapshot
@@ -93,41 +88,31 @@ class IResearchViewDBServer final: public arangodb::LogicalViewClusterInfo {
   ///         (nullptr == no view snapshot associated with the specified state)
   ///         if force == true && no snapshot -> associate current snapshot
   ////////////////////////////////////////////////////////////////////////////////
-  irs::index_reader const* snapshot(
-    transaction::Methods& trx,
-    std::vector<std::string> const& shards,
-    IResearchView::Snapshot mode = IResearchView::Snapshot::Find
-  ) const;
+  irs::index_reader const* snapshot(transaction::Methods& trx,
+                                    std::vector<std::string> const& shards,
+                                    IResearchView::Snapshot mode = IResearchView::Snapshot::Find) const;
 
-  virtual bool visitCollections(
-    CollectionVisitor const& visitor
-  ) const override;
+  virtual bool visitCollections(CollectionVisitor const& visitor) const override;
 
  protected:
-  virtual arangodb::Result appendVelocyPackDetailed(
-    arangodb::velocypack::Builder& builder,
-    bool forPersistence
-  ) const override;
+  virtual arangodb::Result appendVelocyPackDetailed(arangodb::velocypack::Builder& builder,
+                                                    bool forPersistence) const override;
 
   virtual arangodb::Result dropImpl() override;
 
  private:
-  struct ViewFactory; // forward declaration
+  struct ViewFactory;  // forward declaration
 
   std::map<TRI_voc_cid_t, std::shared_ptr<arangodb::LogicalView>> _collections;
-  std::shared_ptr<AsyncMeta> _meta; // the shared view configuration (never null!!!)
-  mutable irs::async_utils::read_write_mutex _mutex; // for use with members
+  std::shared_ptr<AsyncMeta> _meta;  // the shared view configuration (never null!!!)
+  mutable irs::async_utils::read_write_mutex _mutex;  // for use with members
 
-  IResearchViewDBServer(
-    TRI_vocbase_t& vocbase,
-    arangodb::velocypack::Slice const& info,
-    arangodb::DatabasePathFeature const& dbPathFeature,
-    uint64_t planVersion,
-    std::shared_ptr<AsyncMeta> meta = nullptr
-  );
+  IResearchViewDBServer(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& info,
+                        arangodb::DatabasePathFeature const& dbPathFeature,
+                        uint64_t planVersion, std::shared_ptr<AsyncMeta> meta = nullptr);
 };
 
-} // iresearch
-} // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
 #endif

@@ -54,7 +54,7 @@ struct UpgradeTasks {
   static bool persistLocalDocumentIds(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
 };
 
-}
-}
+}  // namespace methods
+}  // namespace arangodb
 
 #endif

@@ -37,12 +37,10 @@ using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 
-DropCollection::DropCollection(
-  MaintenanceFeature& feature, ActionDescription const& d) :
-  ActionBase(feature, d) {
-
+DropCollection::DropCollection(MaintenanceFeature& feature, ActionDescription const& d)
+    : ActionBase(feature, d) {
   std::stringstream error;
-  
+
   _labels.emplace(FAST_TRACK);
 
   if (!d.has(COLLECTION)) {
@@ -60,34 +58,28 @@ DropCollection::DropCollection(
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
-
 }
 
-DropCollection::~DropCollection() {};
+DropCollection::~DropCollection(){};
 
 bool DropCollection::first() {
-
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
 
   LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-    << "DropCollection: dropping local shard '" << database << "/" << collection;
+      << "DropCollection: dropping local shard '" << database << "/" << collection;
 
   try {
-
     DatabaseGuard guard(database);
     auto vocbase = &guard.database();
 
     Result found = methods::Collections::lookup(
-      vocbase,
-      collection,
-      [&](std::shared_ptr<LogicalCollection> const& coll)->void {
-        TRI_ASSERT(coll);
-        LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-        << "Dropping local collection " + collection;
-        _result = Collections::drop(vocbase, coll.get(), false, 120);
-      }
-    );
+        vocbase, collection, [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
+          TRI_ASSERT(coll);
+          LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+              << "Dropping local collection " + collection;
+          _result = Collections::drop(vocbase, coll.get(), false, 120);
+        });
 
     if (found.fail()) {
       std::stringstream error;
@@ -111,5 +103,4 @@ bool DropCollection::first() {
   _feature.delShardVersion(collection);
   notify();
   return false;
-
 }

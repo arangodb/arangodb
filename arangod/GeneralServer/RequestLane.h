@@ -88,6 +88,6 @@ enum class RequestLane {
 
 enum class RequestPriority { HIGH, MED, LOW };
 
-}
+}  // namespace arangodb
 
 #endif

@@ -32,7 +32,7 @@ namespace arangodb {
 namespace aql {
 class Query;
 class QueryRegistry;
-}
+}  // namespace aql
 
 class RestSimpleHandler : public RestCursorHandler {
  public:
@@ -43,7 +43,6 @@ class RestSimpleHandler : public RestCursorHandler {
   char const* name() const override final { return "RestSimpleHandler"; }
 
  private:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handle the result returned by the query. This function is guaranteed
   ///        to not be interrupted and is guaranteed to get a complete queryResult.
@@ -76,13 +75,11 @@ class RestSimpleHandler : public RestCursorHandler {
   RestStatus lookupByKeys(VPackSlice const&);
 
  private:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief if the request was silent, only relevant for remove
   //////////////////////////////////////////////////////////////////////////////
   bool _silent;
-
 };
-}
+}  // namespace arangodb
 
 #endif

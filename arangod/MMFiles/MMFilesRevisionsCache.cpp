@@ -29,8 +29,9 @@
 
 using namespace arangodb;
 
-MMFilesRevisionsCache::MMFilesRevisionsCache() 
-    : _positions(MMFilesRevisionsCacheHelper(), 8, []() -> std::string { return "mmfiles revisions"; }) {}
+MMFilesRevisionsCache::MMFilesRevisionsCache()
+    : _positions(MMFilesRevisionsCacheHelper(), 8,
+                 []() -> std::string { return "mmfiles revisions"; }) {}
 
 MMFilesRevisionsCache::~MMFilesRevisionsCache() {}
 
@@ -41,7 +42,8 @@ MMFilesDocumentPosition MMFilesRevisionsCache::lookup(LocalDocumentId const& doc
   return _positions.findByKey(nullptr, documentId.data());
 }
 
-void MMFilesRevisionsCache::batchLookup(std::vector<std::pair<LocalDocumentId, uint8_t const*>>& documentIds) const {
+void MMFilesRevisionsCache::batchLookup(
+    std::vector<std::pair<LocalDocumentId, uint8_t const*>>& documentIds) const {
   READ_LOCKER(locker, _lock);
 
   for (auto& it : documentIds) {
@@ -83,13 +85,16 @@ void MMFilesRevisionsCache::clear() {
   _positions.truncate([](MMFilesDocumentPosition&) { return true; });
 }
 
-MMFilesDocumentPosition MMFilesRevisionsCache::insert(LocalDocumentId const& documentId, 
-                                                      uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal, bool shouldLock) {
+MMFilesDocumentPosition MMFilesRevisionsCache::insert(LocalDocumentId const& documentId,
+                                                      uint8_t const* dataptr,
+                                                      TRI_voc_fid_t fid, bool isInWal,
+                                                      bool shouldLock) {
   TRI_ASSERT(documentId.isSet());
   TRI_ASSERT(dataptr != nullptr);
 
   CONDITIONAL_WRITE_LOCKER(locker, _lock, shouldLock);
-  int res = _positions.insert(nullptr, MMFilesDocumentPosition(documentId, dataptr, fid, isInWal));
+  int res = _positions.insert(nullptr, MMFilesDocumentPosition(documentId, dataptr,
+                                                               fid, isInWal));
 
   if (res != TRI_ERROR_NO_ERROR) {
     MMFilesDocumentPosition old = _positions.removeByKey(nullptr, documentId.data());
@@ -105,27 +110,29 @@ void MMFilesRevisionsCache::insert(MMFilesDocumentPosition const& position, bool
   _positions.insert(nullptr, position);
 }
 
-void MMFilesRevisionsCache::update(LocalDocumentId const& documentId, 
-                                   uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal) {
+void MMFilesRevisionsCache::update(LocalDocumentId const& documentId, uint8_t const* dataptr,
+                                   TRI_voc_fid_t fid, bool isInWal) {
   TRI_ASSERT(documentId.isSet());
   TRI_ASSERT(dataptr != nullptr);
 
   WRITE_LOCKER(locker, _lock);
-  
+
   MMFilesDocumentPosition* old = _positions.findByKeyRef(nullptr, documentId.data());
   TRI_ASSERT(old != nullptr);
 
   if (!(*old)) {
     return;
   }
-     
+
   // update the element in place
   old->dataptr(dataptr);
-  old->fid(fid, isInWal); 
+  old->fid(fid, isInWal);
 }
-  
+
 bool MMFilesRevisionsCache::updateConditional(LocalDocumentId const& documentId,
-                                              MMFilesMarker const* oldPosition, MMFilesMarker const* newPosition, TRI_voc_fid_t newFid, bool isInWal) {
+                                              MMFilesMarker const* oldPosition,
+                                              MMFilesMarker const* newPosition,
+                                              TRI_voc_fid_t newFid, bool isInWal) {
   WRITE_LOCKER(locker, _lock);
 
   MMFilesDocumentPosition* old = _positions.findByKeyRef(nullptr, documentId.data());
@@ -134,23 +141,25 @@ bool MMFilesRevisionsCache::updateConditional(LocalDocumentId const& documentId,
   if (!(*old)) {
     return false;
   }
-     
+
   uint8_t const* vpack = static_cast<uint8_t const*>(old->dataptr());
   TRI_ASSERT(vpack != nullptr);
 
-  MMFilesMarker const* markerPtr = reinterpret_cast<MMFilesMarker const*>(vpack - MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+  MMFilesMarker const* markerPtr = reinterpret_cast<MMFilesMarker const*>(
+      vpack - MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
 
   if (markerPtr != oldPosition) {
     // element already outdated
     return false;
   }
-  
-  old->dataptr(reinterpret_cast<char const*>(newPosition) + MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
-  old->fid(newFid, isInWal); 
-  
+
+  old->dataptr(reinterpret_cast<char const*>(newPosition) +
+               MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+  old->fid(newFid, isInWal);
+
   return true;
 }
-   
+
 void MMFilesRevisionsCache::remove(LocalDocumentId const& documentId) {
   TRI_ASSERT(documentId.isSet());
 

@@ -52,7 +52,7 @@ struct NonConstExpression {
   std::vector<size_t> const indexPath;
 
   NonConstExpression(std::unique_ptr<Expression> exp, std::vector<size_t>&& idxPath)
-    : expression(std::move(exp)), indexPath(std::move(idxPath)) {}
+      : expression(std::move(exp)), indexPath(std::move(idxPath)) {}
 };
 
 class IndexBlock final : public ExecutionBlock, public DocumentProducingBlock {
@@ -151,10 +151,10 @@ class IndexBlock final : public ExecutionBlock, public DocumentProducingBlock {
   ///        Used in uniqueness checks.
   bool _isLastIndex;
 
-  /// @brief true if one of the indexes uses more than one expanded attribute, e.g. 
-  /// the index is on values[*].name and values[*].type 
+  /// @brief true if one of the indexes uses more than one expanded attribute,
+  /// e.g. the index is on values[*].name and values[*].type
   bool _hasMultipleExpansions;
-  
+
   /// @brief Counter how many documents have been returned/skipped
   ///        during one call. Retained during WAITING situations.
   ///        Needs to be 0 after we return a result.

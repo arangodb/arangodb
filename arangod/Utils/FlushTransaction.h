@@ -37,22 +37,21 @@ class FlushTransaction {
   explicit FlushTransaction(std::string const& name) : _name(name) {}
 
   virtual ~FlushTransaction() = default;
-  
+
   // return the type name of the flush transaction
   // this is used when logging error messages about failed flush commits
   // so users know what exactly went wrong
   std::string const& name() { return _name; }
 
-  // finally commit the prepared flush transaction 
+  // finally commit the prepared flush transaction
   virtual Result commit() = 0;
 
  private:
   // the name of the flush transaction. used for error logging and
   // diagnostics
   std::string const _name;
-  
 };
 
-}
+}  // namespace arangodb
 
 #endif

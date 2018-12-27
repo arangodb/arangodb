@@ -30,8 +30,7 @@
 
 using namespace arangodb::aql;
 
-EnumerateListBlock::EnumerateListBlock(ExecutionEngine* engine,
-                                       EnumerateListNode const* en)
+EnumerateListBlock::EnumerateListBlock(ExecutionEngine* engine, EnumerateListNode const* en)
     : ExecutionBlock(engine, en),
       _index(0),
       _docVecSize(0),
@@ -53,21 +52,19 @@ std::pair<ExecutionState, arangodb::Result> EnumerateListBlock::initializeCursor
     AqlItemBlock* items, size_t pos) {
   auto res = ExecutionBlock::initializeCursor(items, pos);
 
-  if (res.first == ExecutionState::WAITING ||
-      !res.second.ok()) {
+  if (res.first == ExecutionState::WAITING || !res.second.ok()) {
     // If we need to wait or get an error we return as is.
     return res;
   }
 
   // handle local data (if any)
-  _index = 0;      // index in _inVariable for next run
+  _index = 0;  // index in _inVariable for next run
   _inflight = 0;
 
   return res;
 }
 
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
-EnumerateListBlock::getSome(size_t atMost) {
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> EnumerateListBlock::getSome(size_t atMost) {
   traceGetSomeBegin(atMost);
   if (_done) {
     TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
@@ -116,8 +113,7 @@ EnumerateListBlock::getSome(size_t atMost) {
         _docVecSize = inVarReg.length();
       }
       sizeInVar = _docVecSize;
-    }
-    else {
+    } else {
       sizeInVar = inVarReg.length();
     }
 
@@ -144,7 +140,7 @@ EnumerateListBlock::getSome(size_t atMost) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
         res->setValue(j, cur->getNrRegs(), a);
-        guard.steal(); // itemblock is now responsible for value
+        guard.steal();  // itemblock is now responsible for value
 
         if (j > 0) {
           // re-use already copied AqlValues
@@ -201,7 +197,7 @@ std::pair<ExecutionState, size_t> EnumerateListBlock::skipSome(size_t atMost) {
     if (!inVarReg.isArray()) {
       throwArrayExpectedException(inVarReg);
     }
-    
+
     size_t sizeInVar;
     if (inVarReg.isDocvec()) {
       // special handling here. calculate docvec length only once
@@ -210,8 +206,7 @@ std::pair<ExecutionState, size_t> EnumerateListBlock::skipSome(size_t atMost) {
         _docVecSize = inVarReg.docvecSize();
       }
       sizeInVar = _docVecSize;
-    }
-    else {
+    } else {
       sizeInVar = inVarReg.length();
     }
 
@@ -251,9 +246,8 @@ AqlValue EnumerateListBlock::getAqlValue(AqlValue const& inVarReg, size_t n, boo
 void EnumerateListBlock::throwArrayExpectedException(AqlValue const& value) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_QUERY_ARRAY_EXPECTED,
-      std::string("collection or ") +
-      TRI_errno_string(TRI_ERROR_QUERY_ARRAY_EXPECTED) +
-          std::string(" as operand to FOR loop; you provided a value of type '") +
-        value.getTypeString () +
-        std::string("'"));
+      std::string("collection or ") + TRI_errno_string(TRI_ERROR_QUERY_ARRAY_EXPECTED) +
+          std::string(
+              " as operand to FOR loop; you provided a value of type '") +
+          value.getTypeString() + std::string("'"));
 }

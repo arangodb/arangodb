@@ -74,12 +74,12 @@ struct Section {
 struct EnterpriseSection : public Section {
   EnterpriseSection(std::string const& name, std::string const& description,
                     std::string const& alias, bool hidden, bool obsolete)
-    : Section(name, description, alias, hidden, obsolete) {
+      : Section(name, description, alias, hidden, obsolete) {
     enterpriseOnly = true;
   }
 };
 
-}
-}
+}  // namespace options
+}  // namespace arangodb
 
 #endif

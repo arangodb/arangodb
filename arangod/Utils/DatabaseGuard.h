@@ -37,7 +37,7 @@ class DatabaseGuard {
   DatabaseGuard& operator=(DatabaseGuard const&) = delete;
 
   /// @brief create guard on existing db
-  explicit DatabaseGuard(TRI_vocbase_t& vocbase): _vocbase(vocbase) {
+  explicit DatabaseGuard(TRI_vocbase_t& vocbase) : _vocbase(vocbase) {
     if (!_vocbase.use()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     }
@@ -63,6 +63,6 @@ class DatabaseGuard {
   TRI_vocbase_t& _vocbase;
 };
 
-}
+}  // namespace arangodb
 
 #endif

@@ -39,78 +39,68 @@ void IndexFactory::clear() {
   _normalizers.clear();
 }
 
-Result IndexFactory::emplaceFactory(
-  std::string const& type,
-  IndexTypeFactory const& factory
-) {
+Result IndexFactory::emplaceFactory(std::string const& type, IndexTypeFactory const& factory) {
   if (!factory) {
-    return arangodb::Result(
-      TRI_ERROR_BAD_PARAMETER,
-      std::string("index factory undefined during index factory registration for index type '") + type + "'"
-    );
+    return arangodb::Result(TRI_ERROR_BAD_PARAMETER,
+                            std::string(
+                                "index factory undefined during index factory "
+                                "registration for index type '") +
+                                type + "'");
   }
 
-  auto* feature =
-    arangodb::application_features::ApplicationServer::lookupFeature("Bootstrap");
+  auto* feature = arangodb::application_features::ApplicationServer::lookupFeature(
+      "Bootstrap");
   auto* bootstrapFeature = dynamic_cast<BootstrapFeature*>(feature);
 
   // ensure new factories are not added at runtime since that would require additional locks
   if (bootstrapFeature && bootstrapFeature->isReady()) {
-    return arangodb::Result(
-      TRI_ERROR_INTERNAL,
-      std::string("index factory registration is only allowed during server startup")
-    );
+    return arangodb::Result(TRI_ERROR_INTERNAL,
+                            std::string("index factory registration is only "
+                                        "allowed during server startup"));
   }
 
   if (!_factories.emplace(type, factory).second) {
-    return arangodb::Result(
-      TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
-      std::string("index factory previously registered during index factory registration for index type '") + type + "'"
-    );
+    return arangodb::Result(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER, std::string("index factory previously registered during index factory registration for index type '") +
+                                                                       type +
+                                                                       "'");
   }
 
   return arangodb::Result();
 }
 
-Result IndexFactory::emplaceNormalizer(
-  std::string const& type,
-  IndexNormalizer const& normalizer
-) {
+Result IndexFactory::emplaceNormalizer(std::string const& type,
+                                       IndexNormalizer const& normalizer) {
   if (!normalizer) {
-    return arangodb::Result(
-      TRI_ERROR_BAD_PARAMETER,
-      std::string("index normalizer undefined during index normalizer registration for index type '") + type + "'"
-    );
+    return arangodb::Result(TRI_ERROR_BAD_PARAMETER,
+                            std::string(
+                                "index normalizer undefined during index "
+                                "normalizer registration for index type '") +
+                                type + "'");
   }
 
-  auto* feature =
-    arangodb::application_features::ApplicationServer::lookupFeature("Bootstrap");
+  auto* feature = arangodb::application_features::ApplicationServer::lookupFeature(
+      "Bootstrap");
   auto* bootstrapFeature = dynamic_cast<BootstrapFeature*>(feature);
 
   // ensure new normalizers are not added at runtime since that would require additional locks
   if (bootstrapFeature && bootstrapFeature->isReady()) {
-    return arangodb::Result(
-      TRI_ERROR_INTERNAL,
-      std::string("index normalizer registration is only allowed during server startup")
-    );
+    return arangodb::Result(TRI_ERROR_INTERNAL,
+                            std::string("index normalizer registration is only "
+                                        "allowed during server startup"));
   }
 
   if (!_normalizers.emplace(type, normalizer).second) {
-    return arangodb::Result(
-      TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
-      std::string("index normalizer previously registered during index normalizer registration for index type '") + type + "'"
-    );
+    return arangodb::Result(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER, std::string("index normalizer previously registered during index normalizer registration for index type '") +
+                                                                       type +
+                                                                       "'");
   }
 
   return arangodb::Result();
 }
 
-Result IndexFactory::enhanceIndexDefinition(
-  velocypack::Slice const definition,
-  velocypack::Builder& normalized,
-  bool isCreation,
-  bool isCoordinator
-) const {
+Result IndexFactory::enhanceIndexDefinition(velocypack::Slice const definition,
+                                            velocypack::Builder& normalized,
+                                            bool isCreation, bool isCoordinator) const {
   auto type = definition.get(StaticStrings::IndexType);
 
   if (!type.isString()) {
@@ -139,10 +129,8 @@ Result IndexFactory::enhanceIndexDefinition(
     }
 
     if (id) {
-      normalized.add(
-        StaticStrings::IndexId,
-        arangodb::velocypack::Value(std::to_string(id))
-      );
+      normalized.add(StaticStrings::IndexId,
+                     arangodb::velocypack::Value(std::to_string(id)));
     }
 
     return itr->second(normalized, definition, isCreation);
@@ -155,19 +143,16 @@ Result IndexFactory::enhanceIndexDefinition(
   }
 }
 
-std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
-  velocypack::Slice definition,
-  bool generateKey,
-  LogicalCollection& collection,
-  bool isClusterConstructor
-) const {
+std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(velocypack::Slice definition,
+                                                           bool generateKey,
+                                                           LogicalCollection& collection,
+                                                           bool isClusterConstructor) const {
   auto id = validateSlice(definition, generateKey, isClusterConstructor);
   auto type = definition.get(StaticStrings::IndexType);
 
   if (!type.isString()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_BAD_PARAMETER, "invalid index type definition"
-    );
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "invalid index type definition");
   }
 
   auto typeString = type.copyString();
@@ -175,9 +160,8 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
 
   if (itr == _factories.end()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_NOT_IMPLEMENTED,
-      std::string("invalid or unsupported index type '") + typeString + "'"
-    );
+        TRI_ERROR_NOT_IMPLEMENTED,
+        std::string("invalid or unsupported index type '") + typeString + "'");
   }
 
   return itr->second(collection, definition, id, isClusterConstructor);
@@ -185,13 +169,12 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
 
 /// same for both storage engines
 std::vector<std::string> IndexFactory::supportedIndexes() const {
-  return std::vector<std::string>{"primary", "edge", "hash", "skiplist",
-    "persistent", "geo",  "fulltext"};
+  return std::vector<std::string>{"primary",    "edge", "hash",    "skiplist",
+                                  "persistent", "geo",  "fulltext"};
 }
 
-TRI_idx_iid_t IndexFactory::validateSlice(arangodb::velocypack::Slice info, 
-                                          bool generateKey, 
-                                          bool isClusterConstructor) {
+TRI_idx_iid_t IndexFactory::validateSlice(arangodb::velocypack::Slice info,
+                                          bool generateKey, bool isClusterConstructor) {
   if (!info.isObject()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
@@ -203,8 +186,7 @@ TRI_idx_iid_t IndexFactory::validateSlice(arangodb::velocypack::Slice info,
     iid = basics::StringUtils::uint64(value.copyString());
   } else if (value.isNumber()) {
     iid = basics::VelocyPackHelper::getNumericValue<TRI_idx_iid_t>(
-      info, StaticStrings::IndexId.c_str(), 0
-    );
+        info, StaticStrings::IndexId.c_str(), 0);
   } else if (!generateKey) {
     // In the restore case it is forbidden to NOT have id
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -225,4 +207,4 @@ TRI_idx_iid_t IndexFactory::validateSlice(arangodb::velocypack::Slice info,
   return iid;
 }
 
-} // arangodb
+}  // namespace arangodb
