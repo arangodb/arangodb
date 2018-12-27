@@ -59,3 +59,22 @@ To use the old configuration, it is currently needed to:
 Manual upgrade of 'ZIP archive' installation
 --------------------------------------------
 
+There are two ways to upgrade a _Single Instance_ that has been started
+using a _ZIP_ package:
+
+- In-Place upgrade
+- Logical upgrade
+
+### In-Place upgrade
+
+
+### Logical upgrade
+
+1. Download the new package and extract it on a different location than the
+   previous one
+2. Stop writes to the old server (e.g. block incoming connections)
+3. Take a backup of the data using _arangodump_
+4. Stop the old server
+5. Start the new server
+6. Restore the backup using _arangorestore_
+7. Re-enable the writes (e.g. allow again incoming connections)
