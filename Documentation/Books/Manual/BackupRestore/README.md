@@ -6,8 +6,8 @@ Backup and restore can be done via the tools
 [_arangorestore_](../Programs/Arangorestore/README.md).
 
 In order to speed up the _arangorestore_ performance in a cluster environment,
-the [Parallel Restore Procedure](../Programs/Arangorestore/ParallelRestore.md)
-is recommended. 
+the [Fast Cluster Restore](../Programs/Arangorestore/FastClusterRestore.md)
+procedure is recommended. 
 
 Performing frequent backups is important and a recommended best practices that
 can allow you to recover your data in case unexpected problems occur.
