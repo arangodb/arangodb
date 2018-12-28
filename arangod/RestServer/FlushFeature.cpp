@@ -43,8 +43,7 @@ namespace arangodb {
 std::atomic<bool> FlushFeature::_isRunning(false);
 
 FlushFeature::FlushFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Flush"),
-      _flushInterval(1000000) {
+    : ApplicationFeature(server, "Flush"), _flushInterval(1000000) {
   setOptional(true);
   startsAfter("BasicsPhase");
 
@@ -54,10 +53,10 @@ FlushFeature::FlushFeature(application_features::ApplicationServer& server)
 
 void FlushFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "Server features");
-  options->addHiddenOption(
-      "--server.flush-interval",
-      "interval (in microseconds) for flushing data",
-      new UInt64Parameter(&_flushInterval));
+  options->addOption("--server.flush-interval",
+                     "interval (in microseconds) for flushing data",
+                     new UInt64Parameter(&_flushInterval),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
 void FlushFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -71,7 +70,8 @@ void FlushFeature::prepare() {
   // At least for now we need FlushThread for ArangoSearch views
   // on a DB/Single server only, so we avoid starting FlushThread on
   // a coordinator and on agency nodes.
-  setEnabled(!arangodb::ServerState::instance()->isCoordinator() && !arangodb::ServerState::instance()->isAgent());
+  setEnabled(!arangodb::ServerState::instance()->isCoordinator() &&
+             !arangodb::ServerState::instance()->isAgent());
 }
 
 void FlushFeature::start() {
@@ -80,21 +80,19 @@ void FlushFeature::start() {
     _flushThread.reset(new FlushThread(_flushInterval));
   }
   DatabaseFeature* dbFeature = DatabaseFeature::DATABASE;
-  dbFeature->registerPostRecoveryCallback(
-    [this]() -> Result {
-      READ_LOCKER(lock, _threadLock);
-      if (!this->_flushThread->start()) {
-        LOG_TOPIC(FATAL, Logger::FLUSH) << "unable to start FlushThread";
-        FATAL_ERROR_ABORT();
-      } else {
-        LOG_TOPIC(DEBUG, Logger::FLUSH) << "started FlushThread";
-      }
-
-      this->_isRunning.store(true);
-
-      return {TRI_ERROR_NO_ERROR};
+  dbFeature->registerPostRecoveryCallback([this]() -> Result {
+    READ_LOCKER(lock, _threadLock);
+    if (!this->_flushThread->start()) {
+      LOG_TOPIC(FATAL, Logger::FLUSH) << "unable to start FlushThread";
+      FATAL_ERROR_ABORT();
+    } else {
+      LOG_TOPIC(DEBUG, Logger::FLUSH) << "started FlushThread";
     }
-  );
+
+    this->_isRunning.store(true);
+
+    return {TRI_ERROR_NO_ERROR};
+  });
 }
 
 void FlushFeature::beginShutdown() {
@@ -160,7 +158,7 @@ void FlushFeature::executeCallbacks() {
 
     // execute all callbacks. this will create as many transactions as
     // there are callbacks
-    for (auto const& cb: _callbacks) {
+    for (auto const& cb : _callbacks) {
       // copy elision, std::move(..) not required
       LOG_TOPIC(TRACE, arangodb::Logger::FLUSH) << "executing flush callback";
       transactions.emplace_back(cb.second());
@@ -177,10 +175,10 @@ void FlushFeature::executeCallbacks() {
     Result res = trx->commit();
 
     LOG_TOPIC_IF(ERR, Logger::FLUSH, res.fail())
-      << "could not commit flush transaction '" << trx->name() << "': "
-      << res.errorMessage();
+        << "could not commit flush transaction '" << trx->name()
+        << "': " << res.errorMessage();
     // TODO: honor the commit results here
   }
 }
 
-} // arangodb
+}  // namespace arangodb

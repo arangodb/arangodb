@@ -498,6 +498,14 @@ function runProcdump (options, instanceInfo, rootDir, pid) {
   }
 }
 
+function stopProcdump (options, instanceInfo) {
+  if (instanceInfo.hasOwnProperty('monitor') &&
+      instanceInfo.monitor.pid !== null) {
+    print("wating for procdump to exit");
+    statusExternal(instanceInfo.monitor.pid, true);
+    instanceInfo.monitor.pid = null;
+  }
+}
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief executes a command and waits for result
 // //////////////////////////////////////////////////////////////////////////////
@@ -562,6 +570,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
     runProcdump(options, instanceInfo, rootDir, res.pid);
     Object.assign(instanceInfo.exitStatus, 
                   statusExternal(res.pid, true));
+    stopProcdump(options, instanceInfo);
   } else {
     res = executeExternalAndWait(cmd, args);
     instanceInfo.pid = res.pid;
@@ -917,6 +926,22 @@ function executeArangod (cmd, args, options) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief on linux get a statistic about the sockets we used
+// //////////////////////////////////////////////////////////////////////////////
+
+function getSockStat(arangod, options, preamble) {
+  if (options.getSockStat && (platform === 'linux')) {
+    let sockStat = preamble + arangod.pid + "\n";
+    try {
+      sockStat += fs.read("/proc/" + arangod.pid + "/net/sockstat");
+      return sockStat;
+    }
+    catch (e) {/* oops, process already gone? don't care. */ }
+  }
+  return "";
+}
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief commands a server to shut down via webcall
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -935,15 +960,32 @@ function shutdownArangod (arangod, options, forceTerminate) {
   if ((!arangod.hasOwnProperty('exitStatus')) ||
       (arangod.exitStatus.status === 'RUNNING')) {
     if (forceTerminate) {
+      let sockStat = getSockStat(arangod, options, "Force killing - sockstat before: ");
       arangod.exitStatus = killExternal(arangod.pid, abortSignal);
-      analyzeServerCrash(arangod, options, 'shutdown timeout; instance forcefully KILLED because of fatal timeout in testrun');
+      analyzeServerCrash(arangod, options, 'shutdown timeout; instance forcefully KILLED because of fatal timeout in testrun ' + sockStat);
     } else if (options.useKillExternal) {
+      let sockStat = getSockStat(arangod, options, "Shutdown by kill - sockstat before: ");
       arangod.exitStatus = killExternal(arangod.pid);
+      print(sockStat);
     } else {
       const requestOptions = makeAuthorizationHeaders(options);
       requestOptions.method = 'DELETE';
       print(Date() + ' ' + arangod.url + '/_admin/shutdown');
+      let sockStat = getSockStat(arangod, options, "Sock stat for: ");
       const reply = download(arangod.url + '/_admin/shutdown', '', requestOptions);
+      if ((reply.code !== 200) && // if the server should reply, we expect 200 - if not:
+          !((reply.code === 500) &&
+            (
+              (reply.message === "Connection closed by remote") || // http connection
+              reply.message.includes('failed with #111')           // https connection
+            ))) {
+        serverCrashedLocal = true;
+        print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' " + sockStat + " continuing with hard kill!");
+        shutdownArangod(arangod, options, true);
+      }
+      else {
+        print(sockStat);
+      }
       if (options.extremeVerbosity) {
         print(Date() + ' Shutdown response: ' + JSON.stringify(reply));
       }
@@ -1072,11 +1114,13 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
           print("shutdownInstance: Marking crashy - " + JSON.stringify(arangod));
           serverCrashedLocal = true;
         }
+        stopProcdump(options, arangod);
       } else {
         if (arangod.role !== 'agent') {
           nonAgenciesCount --;
         }
         print('Server "' + arangod.role + '" shutdown: Success: pid', arangod.pid);
+        stopProcdump(options, arangod);
         return false;
       }
     });
@@ -1537,6 +1581,7 @@ exports.findFreePort = findFreePort;
 
 exports.executeArangod = executeArangod;
 exports.executeAndWait = executeAndWait;
+exports.stopProcdump = stopProcdump;
 
 exports.createBaseConfig = createBaseConfigBuilder;
 exports.run = {

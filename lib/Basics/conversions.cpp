@@ -58,8 +58,7 @@ double TRI_DoubleString(char const* str) {
 
   if (*endptr != '\0') {
     TRI_set_errno(TRI_ERROR_ILLEGAL_NUMBER);
-  } else if (errno == ERANGE &&
-             (result == HUGE_VAL || result == -HUGE_VAL || result == 0)) {
+  } else if (errno == ERANGE && (result == HUGE_VAL || result == -HUGE_VAL || result == 0)) {
     TRI_set_errno(TRI_ERROR_NUMERIC_OVERFLOW);
   }
 
@@ -146,7 +145,7 @@ uint32_t TRI_UInt32String(char const* str) {
 #elif defined(TRI_HAVE__STRTOUL_R)
   result = _strtoul_r(&buffer, str, &endptr, 10);
 #else
-  result = (uint32_t) strtoul(str, &endptr, 10);
+  result = (uint32_t)strtoul(str, &endptr, 10);
 #endif
 
   while (isspace(*endptr)) {
@@ -820,8 +819,7 @@ std::string TRI_StringTimeStamp(double stamp, bool useLocalTime) {
 
   if (useLocalTime) {
     TRI_localtime(tt, &tb);
-  }
-  else {
+  } else {
     TRI_gmtime(tt, &tb);
   }
   len = strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tb);

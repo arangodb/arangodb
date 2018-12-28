@@ -59,8 +59,8 @@ static inline char const* statusString(Status status) {
   return "unknown";
 }
 
-}
-}
+}  // namespace transaction
+}  // namespace arangodb
 
 std::ostream& operator<<(std::ostream& stream, arangodb::transaction::Status const& s);
 

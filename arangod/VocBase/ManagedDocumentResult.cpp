@@ -30,7 +30,8 @@
 
 using namespace arangodb;
 
-void ManagedDocumentResult::setUnmanaged(uint8_t const* vpack, LocalDocumentId const& documentId) {
+void ManagedDocumentResult::setUnmanaged(uint8_t const* vpack,
+                                         LocalDocumentId const& documentId) {
   _string.clear();
   _vpack = const_cast<uint8_t*>(vpack);
   _localDocumentId = documentId;
@@ -44,7 +45,8 @@ void ManagedDocumentResult::setManaged(uint8_t const* vpack, LocalDocumentId con
   _managed = true;
 }
 
-void ManagedDocumentResult::addToBuilder(velocypack::Builder& builder, bool allowExternals) const {
+void ManagedDocumentResult::addToBuilder(velocypack::Builder& builder,
+                                         bool allowExternals) const {
   uint8_t const* vpack;
   if (_managed) {
     vpack = reinterpret_cast<uint8_t const*>(_string.data());

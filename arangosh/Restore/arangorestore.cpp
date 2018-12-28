@@ -25,6 +25,7 @@
 #include "Basics/directories.h"
 
 #include "ApplicationFeatures/BasicPhase.h"
+#include "ApplicationFeatures/CommunicationPhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/GreetingsPhase.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
@@ -54,12 +55,12 @@ int main(int argc, char* argv[]) {
 
     std::shared_ptr<options::ProgramOptions> options(
         new options::ProgramOptions(argv[0], "Usage: arangorestore [<options>]",
-                                    "For more information use:",
-                                    BIN_DIRECTORY));
+                                    "For more information use:", BIN_DIRECTORY));
     ApplicationServer server(options, BIN_DIRECTORY);
     int ret;
 
     server.addFeature(new application_features::BasicFeaturePhase(server, true));
+    server.addFeature(new application_features::CommunicationFeaturePhase(server));
     server.addFeature(new application_features::GreetingsFeaturePhase(server, true));
     server.addFeature(new ClientFeature(server, false));
     server.addFeature(new ConfigFeature(server, "arangorestore"));

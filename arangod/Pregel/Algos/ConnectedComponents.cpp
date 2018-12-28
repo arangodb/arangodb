@@ -43,18 +43,18 @@ struct MyComputation : public VertexComputation<int64_t, int64_t, int64_t> {
           currentComponent = *msg;
         };
       }
-      
+
       if (currentComponent != vertexData()) {
         *mutableVertexData() = currentComponent;
         sendMessageToAllNeighbours(currentComponent);
       }
       voteHalt();
-    }    
+    }
   }
 };
 
-VertexComputation<int64_t, int64_t, int64_t>*
-ConnectedComponents::createComputation(WorkerConfig const* config) const {
+VertexComputation<int64_t, int64_t, int64_t>* ConnectedComponents::createComputation(
+    WorkerConfig const* config) const {
   return new MyComputation();
 }
 
@@ -74,8 +74,7 @@ struct MyGraphFormat : public VertexGraphFormat<int64_t, int64_t> {
     }
   }
 
-  size_t copyVertexData(std::string const& documentId,
-                        arangodb::velocypack::Slice document,
+  size_t copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
                         int64_t* targetPtr, size_t maxSize) override {
     *targetPtr = vertexIdRange++;
     return sizeof(int64_t);
@@ -98,7 +97,7 @@ struct MyCompensation : public VertexCompensation<int64_t, int64_t, int64_t> {
   }
 };
 
-VertexCompensation<int64_t, int64_t, int64_t>*
-ConnectedComponents::createCompensation(WorkerConfig const* config) const {
+VertexCompensation<int64_t, int64_t, int64_t>* ConnectedComponents::createCompensation(
+    WorkerConfig const* config) const {
   return new MyCompensation();
 }

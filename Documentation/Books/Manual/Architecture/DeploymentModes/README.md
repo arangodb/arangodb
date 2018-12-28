@@ -6,3 +6,8 @@ ArangoDB Deployment Modes
 - [Active Failover](ActiveFailover/README.md)
 - [Cluster](Cluster/README.md)
 - [Multiple Datacenters](DC2DC/README.md)
+
+See also:
+
+- [Single Instance vs. Cluster](../SingleInstanceVsCluster.md)
+

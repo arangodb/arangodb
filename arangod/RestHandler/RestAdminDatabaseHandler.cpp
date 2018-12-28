@@ -41,7 +41,8 @@ RestStatus RestAdminDatabaseHandler::execute() {
   result.add(VPackValue(VPackValueType::Object));
   result.add("version", VPackValue(std::to_string(Version::getNumericServerVersion())));
   result.add("error", VPackValue(false));
-  result.add("code", VPackValue(static_cast<int>(rest::ResponseCode::OK))); // hard-coded
+  result.add("code",
+             VPackValue(static_cast<int>(rest::ResponseCode::OK)));  // hard-coded
   result.close();
 
   generateResult(rest::ResponseCode::OK, result.slice());

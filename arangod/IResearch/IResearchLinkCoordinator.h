@@ -24,14 +24,13 @@
 #ifndef ARANGODB_IRESEARCH__IRESEARCH_LINK_COORDINATOR_H
 #define ARANGODB_IRESEARCH__IRESEARCH_LINK_COORDINATOR_H 1
 
-#include "Indexes/Index.h"
 #include "ClusterEngine/ClusterIndex.h"
 #include "IResearch/IResearchLinkMeta.h"
+#include "IResearchLink.h"
 
 namespace arangodb {
 
-struct IndexTypeFactory; // forward declaration
-
+struct IndexTypeFactory;  // forward declaration
 }
 
 namespace arangodb {
@@ -43,94 +42,66 @@ class IResearchViewCoordinator;
 /// @brief common base class for functionality required to link an ArangoDB
 ///        LogicalCollection with an IResearchView on a coordinator in cluster
 ////////////////////////////////////////////////////////////////////////////////
-class IResearchLinkCoordinator final: public arangodb::ClusterIndex {
+class IResearchLinkCoordinator final : public arangodb::ClusterIndex, public IResearchLink {
  public:
-  DECLARE_SHARED_PTR(Index);
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief destructor
-  ////////////////////////////////////////////////////////////////////////////////
-  virtual ~IResearchLinkCoordinator() = default;
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief does this IResearch Link reference the supplied view
-  ////////////////////////////////////////////////////////////////////////////////
-  bool operator==(LogicalView const& view) const noexcept;
-  bool operator!=(LogicalView const& view) const noexcept {
-    return !(*this == view);
-  }
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief does this iResearch Link match the meta definition
-  ////////////////////////////////////////////////////////////////////////////////
-  bool operator==(IResearchLinkMeta const& meta) const noexcept {
-    return _meta == meta;
-  }
-
-  bool operator!=(IResearchLinkMeta const& meta) const noexcept {
-    return !(*this == meta);
-  }
-
   virtual void batchInsert(
-    transaction::Methods* trx,
-    std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& documents,
-    std::shared_ptr<arangodb::basics::LocalTaskQueue> queue
-  ) override {
-    TRI_ASSERT(false); // should not be called
+      transaction::Methods& trx,
+      std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& documents,
+      std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) override {
+    TRI_ASSERT(false);  // should not be called
   }
 
-  virtual bool canBeDropped() const override { return true; }
+  virtual bool canBeDropped() const override {
+    return IResearchLink::canBeDropped();
+  }
 
-  virtual int drop() override { return TRI_ERROR_NO_ERROR; }
+  virtual arangodb::Result drop() override { return IResearchLink::drop(); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the factory for this type of index
   //////////////////////////////////////////////////////////////////////////////
   static arangodb::IndexTypeFactory const& factory();
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief finds first link between specified collection and view
-  ////////////////////////////////////////////////////////////////////////////////
-  static std::shared_ptr<IResearchLinkCoordinator> find(
-    LogicalCollection const& collection,
-    LogicalView const& view
-  );
+  virtual bool hasBatchInsert() const override {
+    return IResearchLink::hasBatchInsert();
+  }
 
-  virtual bool hasBatchInsert() const override { return true; }
+  virtual bool hasSelectivityEstimate() const override {
+    return IResearchLink::hasSelectivityEstimate();
+  }
 
-  // selectivity can only be determined per query since multiple fields are indexed
-  virtual bool hasSelectivityEstimate() const override { return false; }
-
-  virtual arangodb::Result insert(
-    transaction::Methods* trx,
-    LocalDocumentId const& documentId,
-    VPackSlice const& doc,
-    OperationMode mode
-  ) override {
-    TRI_ASSERT(false); // should not be called
+  virtual arangodb::Result insert(transaction::Methods& trx, LocalDocumentId const& documentId,
+                                  VPackSlice const& doc, OperationMode mode) override {
+    TRI_ASSERT(false);  // should not be called
     return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
-  virtual bool isPersistent() const override { return true; }
+  bool isHidden() const override {
+    return true;  // always hide links
+  }
 
   // IResearch does not provide a fixed default sort order
-  virtual bool isSorted() const override { return false; }
+  virtual bool isSorted() const override { return IResearchLink::isSorted(); }
 
-  virtual void load() override { /* NOOP */ }
+  virtual arangodb::IndexIterator* iteratorForCondition(
+      arangodb::transaction::Methods* trx, arangodb::ManagedDocumentResult* result,
+      arangodb::aql::AstNode const* condNode, arangodb::aql::Variable const* var,
+      arangodb::IndexIteratorOptions const& opts) override {
+    TRI_ASSERT(false);  // should not be called
+    return nullptr;
+  }
 
-  virtual bool matchesDefinition(
-    arangodb::velocypack::Slice const& slice
-  ) const override;
+  virtual void load() override { IResearchLink::load(); }
 
-  virtual size_t memory() const override { return _meta.memory(); }
+  virtual bool matchesDefinition(arangodb::velocypack::Slice const& slice) const override {
+    return IResearchLink::matchesDefinition(slice);
+  }
 
-  arangodb::Result remove(
-    transaction::Methods* trx,
-    LocalDocumentId const& documentId,
-    VPackSlice const& doc,
-    OperationMode mode
-  ) override {
-    TRI_ASSERT(false); // should not be called
+  virtual size_t memory() const override { return IResearchLink::memory(); }
+
+  arangodb::Result remove(transaction::Methods& trx, LocalDocumentId const& documentId,
+                          VPackSlice const& doc, OperationMode mode) override {
+    TRI_ASSERT(false);  // should not be called
     return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
@@ -138,42 +109,35 @@ class IResearchLinkCoordinator final: public arangodb::ClusterIndex {
   /// @brief fill and return a JSON description of a IResearchLink object
   /// @param withFigures output 'figures' section with e.g. memory size
   ////////////////////////////////////////////////////////////////////////////////
-  using Index::toVelocyPack; // for Index::toVelocyPack(bool, unsigned)
-  virtual void toVelocyPack(
-    arangodb::velocypack::Builder& builder,
-    std::underlying_type<arangodb::Index::Serialize>::type flags
-  ) const override;
+  using Index::toVelocyPack;  // for Index::toVelocyPack(bool, unsigned)
+  virtual void toVelocyPack(arangodb::velocypack::Builder& builder,
+                            std::underlying_type<arangodb::Index::Serialize>::type flags) const override;
 
-  virtual IndexType type() const override {
-    return Index::TRI_IDX_TYPE_IRESEARCH_LINK;
+  virtual IndexType type() const override { return IResearchLink::type(); }
+
+  virtual char const* typeName() const override {
+    return IResearchLink::typeName();
   }
 
-  virtual char const* typeName() const override;
+  virtual void unload() override {
+    auto res = IResearchLink::unload();
 
-  virtual void unload() override { /* NOOP */ }
+    if (!res.ok()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+  }
 
  private:
-  struct IndexFactory; // forward declaration
+  struct IndexFactory;  // forward declaration
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief construct an uninitialized IResearch link, must call init(...) after
+  /// @brief construct an uninitialized IResearch link, must call init(...)
+  /// after
   ////////////////////////////////////////////////////////////////////////////////
-  IResearchLinkCoordinator(
-    TRI_idx_iid_t id,
-    LogicalCollection& collection
-  );
+  IResearchLinkCoordinator(TRI_idx_iid_t id, arangodb::LogicalCollection& collection);
+};  // IResearchLinkCoordinator
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief initialize from the specified definition
-  /// @return success
-  ////////////////////////////////////////////////////////////////////////////////
-  arangodb::Result init(arangodb::velocypack::Slice const& definition);
+}  // namespace iresearch
+}  // namespace arangodb
 
-  IResearchLinkMeta _meta; // how this collection should be indexed
-  std::shared_ptr<IResearchViewCoordinator> _view; // effectively the IResearch view itself (nullptr == not associated)
-}; // IResearchLinkCoordinator
-
-} // iresearch
-} // arangodb
-
-#endif // ARANGODB_IRESEARCH__IRESEARCH_VIEW_LINK_COORDINATOR_H 
+#endif  // ARANGODB_IRESEARCH__IRESEARCH_VIEW_LINK_COORDINATOR_H

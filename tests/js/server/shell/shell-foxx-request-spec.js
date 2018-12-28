@@ -543,17 +543,20 @@ describe('SyntheticRequest', function () {
       );
     });
     it('correctly handles unix sockets', function () {
+      const socketPath = require('internal').platform.substr(0, 3) === 'win'
+        ? "C:\\tmp\\arangod.sock"
+        : "/tmp/arangod.sock";
       const rawReq = createNativeRequest({
         db: 'bananas',
         mount: '/foxx',
         path: '/some/place/special',
         search: '?a=1&b=2',
         protocol: 'https',
-        socketPath: '/tmp/arangod.sock'
+        socketPath
       });
       const req = new SyntheticRequest(rawReq, {mount: '/foxx'});
       expect(req.makeAbsolute('../another/place')).to.equal(
-        'https://unix:/tmp/arangod.sock:/_db/bananas/another/place'
+        `https://unix:${socketPath}:/_db/bananas/another/place`
       );
     });
     it('correctly handles relative unix sockets', function () {

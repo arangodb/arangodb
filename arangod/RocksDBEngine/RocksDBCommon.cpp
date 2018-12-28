@@ -65,8 +65,7 @@ RocksDBEngine* globalRocksEngine() {
 }
 
 arangodb::Result globalRocksDBPut(rocksdb::ColumnFamilyHandle* cf,
-                                  rocksdb::Slice const& key,
-                                  rocksdb::Slice const& val,
+                                  rocksdb::Slice const& key, rocksdb::Slice const& val,
                                   rocksdb::WriteOptions const& options) {
   TRI_ASSERT(cf != nullptr);
   auto status = globalRocksDB()->Put(options, cf, key, val);
@@ -86,8 +85,7 @@ uint64_t latestSequenceNumber() {
   return static_cast<uint64_t>(seq);
 }
 
-std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(
-    uint64_t objectId) {
+std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(uint64_t objectId) {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
   RocksDBEngine* rocks = static_cast<RocksDBEngine*>(engine);
@@ -114,7 +112,8 @@ std::size_t countKeys(rocksdb::DB* db, rocksdb::ColumnFamilyHandle* cf) {
   std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(opts, cf));
   std::size_t count = 0;
 
-  rocksdb::Slice lower("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", 16);
+  rocksdb::Slice lower(
+      "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", 16);
   it->Seek(lower);
   while (it->Valid()) {
     ++count;
@@ -124,8 +123,7 @@ std::size_t countKeys(rocksdb::DB* db, rocksdb::ColumnFamilyHandle* cf) {
 }
 
 /// @brief iterate over all keys in range and count them
-std::size_t countKeyRange(rocksdb::DB* db,
-                          RocksDBKeyBounds const& bounds,
+std::size_t countKeyRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
                           bool prefix_same_as_start) {
   rocksdb::Slice lower(bounds.start());
   rocksdb::Slice upper(bounds.end());
@@ -152,10 +150,8 @@ std::size_t countKeyRange(rocksdb::DB* db,
 
 /// @brief helper method to remove large ranges of data
 /// Should mainly be used to implement the drop() call
-Result removeLargeRange(rocksdb::DB* db,
-                        RocksDBKeyBounds const& bounds,
-                        bool prefixSameAsStart,
-                        bool useRangeDelete) {
+Result removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
+                        bool prefixSameAsStart, bool useRangeDelete) {
   LOG_TOPIC(DEBUG, Logger::ENGINES) << "removing large range: " << bounds;
 
   rocksdb::ColumnFamilyHandle* cf = bounds.columnFamily();
@@ -184,7 +180,7 @@ Result removeLargeRange(rocksdb::DB* db,
       rocksdb::Status s = bDB->DeleteRange(wo, cf, lower, upper);
       if (!s.ok()) {
         LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
-        << "RocksDB key deletion failed: " << s.ToString();
+            << "RocksDB key deletion failed: " << s.ToString();
         return rocksutils::convertStatus(s);
       }
       return {};
@@ -194,12 +190,12 @@ Result removeLargeRange(rocksdb::DB* db,
     // necessarily find them all, just complete files)
     rocksdb::ReadOptions readOptions;
     readOptions.iterate_upper_bound = &upper;
-    readOptions.prefix_same_as_start = prefixSameAsStart; // for edge index
+    readOptions.prefix_same_as_start = prefixSameAsStart;  // for edge index
     readOptions.total_order_seek = !prefixSameAsStart;
     readOptions.verify_checksums = false;
     readOptions.fill_cache = false;
     std::unique_ptr<rocksdb::Iterator> it(bDB->NewIterator(readOptions, cf));
-    
+
     rocksdb::WriteOptions wo;
 
     rocksdb::Comparator const* cmp = cf->GetComparator();
@@ -255,7 +251,8 @@ Result removeLargeRange(rocksdb::DB* db,
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
         << "caught unknown exception during RocksDB key prefix deletion";
-    return Result(TRI_ERROR_INTERNAL, "unknown exception during RocksDB key prefix deletion");
+    return Result(TRI_ERROR_INTERNAL,
+                  "unknown exception during RocksDB key prefix deletion");
   }
 }
 

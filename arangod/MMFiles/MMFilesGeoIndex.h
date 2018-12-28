@@ -40,15 +40,11 @@ class MMFilesGeoIndex final : public MMFilesIndex, public geo_index::Index {
  public:
   MMFilesGeoIndex() = delete;
 
-  MMFilesGeoIndex(
-    TRI_idx_iid_t iid,
-    LogicalCollection& collection,
-    arangodb::velocypack::Slice const& info,
-    std::string const& typeName
-  );
+  MMFilesGeoIndex(TRI_idx_iid_t iid, LogicalCollection& collection,
+                  arangodb::velocypack::Slice const& info, std::string const& typeName);
 
   struct IndexValue {
-    IndexValue() : documentId(0), centroid(0,0,0) {}
+    IndexValue() : documentId(0), centroid(0, 0, 0) {}
     IndexValue(LocalDocumentId lid, S2Point&& c)
         : documentId(lid), centroid(c) {}
     LocalDocumentId documentId;
@@ -66,9 +62,7 @@ class MMFilesGeoIndex final : public MMFilesIndex, public geo_index::Index {
     return TRI_IDX_TYPE_GEO_INDEX;
   }
 
-  bool pointsOnly() const {
-    return (_typeName != "geo");
-  }
+  bool pointsOnly() const { return (_typeName != "geo"); }
 
   char const* typeName() const override { return _typeName.c_str(); }
 
@@ -86,16 +80,13 @@ class MMFilesGeoIndex final : public MMFilesIndex, public geo_index::Index {
 
   bool matchesDefinition(velocypack::Slice const& info) const override;
 
-  Result insert(transaction::Methods*, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const&,
-                OperationMode mode) override;
+  Result insert(transaction::Methods& trx, LocalDocumentId const& documentId,
+                velocypack::Slice const& doc, arangodb::Index::OperationMode mode) override;
 
-  Result remove(transaction::Methods*, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const&,
-                OperationMode mode) override;
+  Result remove(transaction::Methods& trx, LocalDocumentId const& documentId,
+                velocypack::Slice const& doc, arangodb::Index::OperationMode mode) override;
 
-  IndexIterator* iteratorForCondition(transaction::Methods*,
-                                      ManagedDocumentResult*,
+  IndexIterator* iteratorForCondition(transaction::Methods*, ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
                                       IndexIteratorOptions const&) override;

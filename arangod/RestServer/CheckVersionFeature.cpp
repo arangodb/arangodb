@@ -40,11 +40,8 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-CheckVersionFeature::CheckVersionFeature(
-    application_features::ApplicationServer& server,
-    int* result,
-    std::vector<std::string> const& nonServerFeatures
-)
+CheckVersionFeature::CheckVersionFeature(application_features::ApplicationServer& server,
+                                         int* result, std::vector<std::string> const& nonServerFeatures)
     : ApplicationFeature(server, "CheckVersion"),
       _checkVersion(false),
       _result(result),
@@ -59,19 +56,19 @@ CheckVersionFeature::CheckVersionFeature(
   startsAfter("SystemDatabase");
 }
 
-void CheckVersionFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
+void CheckVersionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("database", "Configure the database");
 
   options->addOldOption("check-version", "database.check-version");
 
-  options->addHiddenOption("--database.check-version",
-                           "checks the versions of the database and exit",
-                           new BooleanParameter(&_checkVersion));
+  options->addOption("--database.check-version",
+                     "checks the versions of the database and exit",
+                     new BooleanParameter(&_checkVersion),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
+                                                  arangodb::options::Flags::Command));
 }
 
-void CheckVersionFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
+void CheckVersionFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (!_checkVersion) {
     return;
   }
@@ -106,7 +103,9 @@ void CheckVersionFeature::start() {
 
   // check the version
   if (DatabaseFeature::DATABASE->isInitiallyEmpty()) {
-    LOG_TOPIC(TRACE, arangodb::Logger::STARTUP) << "skipping version check because database directory was initially empty";
+    LOG_TOPIC(TRACE, arangodb::Logger::STARTUP)
+        << "skipping version check because database directory was initially "
+           "empty";
     *_result = EXIT_SUCCESS;
   } else {
     checkVersion();
@@ -124,12 +123,13 @@ void CheckVersionFeature::checkVersion() {
 
   // run version check
   LOG_TOPIC(TRACE, arangodb::Logger::STARTUP) << "starting version check";
-  
+
   DatabasePathFeature* databasePathFeature =
       application_features::ApplicationServer::getFeature<DatabasePathFeature>(
           "DatabasePath");
 
-  LOG_TOPIC(TRACE, arangodb::Logger::STARTUP) << "database path is: '" << databasePathFeature->directory() << "'";
+  LOG_TOPIC(TRACE, arangodb::Logger::STARTUP)
+      << "database path is: '" << databasePathFeature->directory() << "'";
 
   // can do this without a lock as this is the startup
   DatabaseFeature* databaseFeature =
@@ -150,27 +150,31 @@ void CheckVersionFeature::checkVersion() {
     TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(name);
     methods::VersionResult res = methods::Version::check(vocbase);
     TRI_ASSERT(vocbase != nullptr);
-    
+
     if (res.status == methods::VersionResult::CANNOT_PARSE_VERSION_FILE ||
         res.status == methods::VersionResult::CANNOT_READ_VERSION_FILE) {
       if (ignoreDatafileErrors) {
         // try to install a fresh new, empty VERSION file instead
-        if (methods::Version::write(vocbase, std::map<std::string, bool>(), true).ok()) {
+        if (methods::Version::write(vocbase, std::map<std::string, bool>(), true)
+                .ok()) {
           // give it another try
           res = methods::Version::check(vocbase);
         }
-      } else { 
-        LOG_TOPIC(WARN, Logger::STARTUP) << "in order to automatically fix the VERSION file on startup, "
-                                         << "please start the server with option `--database.ignore-logfile-errors true`";
+      } else {
+        LOG_TOPIC(WARN, Logger::STARTUP)
+            << "in order to automatically fix the VERSION file on startup, "
+            << "please start the server with option "
+               "`--database.ignore-logfile-errors true`";
       }
     }
 
-    LOG_TOPIC(DEBUG, Logger::STARTUP) << "version check return status "
-                                      << res.status;
+    LOG_TOPIC(DEBUG, Logger::STARTUP) << "version check return status " << res.status;
     if (res.status < 0) {
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
           << "Database version check failed for '" << vocbase->name()
-          << "'. Please inspect the logs for any errors. If there are no obvious issues in the logs, please retry with option `--log.level startup=trace`";
+          << "'. Please inspect the logs for any errors. If there are no "
+             "obvious issues in the logs, please retry with option "
+             "`--log.level startup=trace`";
       FATAL_ERROR_EXIT_CODE(TRI_EXIT_VERSION_CHECK_FAILED);
     } else if (res.status == methods::VersionResult::DOWNGRADE_NEEDED) {
       // this is safe to do even if further databases will be checked
@@ -179,8 +183,7 @@ void CheckVersionFeature::checkVersion() {
       LOG_TOPIC(WARN, arangodb::Logger::FIXME)
           << "Database version check failed for '" << vocbase->name()
           << "': downgrade needed";
-    } else if (res.status == methods::VersionResult::UPGRADE_NEEDED &&
-               *_result == 1) {
+    } else if (res.status == methods::VersionResult::UPGRADE_NEEDED && *_result == 1) {
       // this is safe to do even if further databases will be checked
       // because we will never set the status back to success
       *_result = 2;
@@ -190,8 +193,7 @@ void CheckVersionFeature::checkVersion() {
     }
   }
 
-  LOG_TOPIC(DEBUG, Logger::STARTUP) << "final result of version check: "
-                                    << *_result;
+  LOG_TOPIC(DEBUG, Logger::STARTUP) << "final result of version check: " << *_result;
 
   if (*_result == 1) {
     *_result = EXIT_SUCCESS;
@@ -213,4 +215,4 @@ void CheckVersionFeature::checkVersion() {
   }
 }
 
-} // arangodb
+}  // namespace arangodb

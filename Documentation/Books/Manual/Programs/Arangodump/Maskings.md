@@ -4,7 +4,7 @@ Arangodump Data Maskings
 *--maskings path-of-config*
 
 It is possible to mask certain fields during dump. A JSON config file is
-used to define with fields should be masked and how.
+used to define which fields should be masked and how.
 
 The general structure of the config file is
 

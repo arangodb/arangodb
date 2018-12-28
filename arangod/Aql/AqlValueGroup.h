@@ -24,8 +24,8 @@
 #ifndef ARANGOD_AQL_AQL_VALUE_GROUP_H
 #define ARANGOD_AQL_AQL_VALUE_GROUP_H 1
 
-#include "Basics/Common.h"
 #include "Aql/AqlValue.h"
+#include "Basics/Common.h"
 
 namespace arangodb {
 namespace transaction {
@@ -45,7 +45,7 @@ struct AqlValueGroupHash {
     TRI_ASSERT(value.size() == _num);
 
     for (auto const& it : value) {
-      // we must use the slow hash function here, because a value may have 
+      // we must use the slow hash function here, because a value may have
       // different representations in case its an array/object/number
       // (calls normalizedHash() internally)
       hash = it.hash(_trx, hash);
@@ -60,16 +60,13 @@ struct AqlValueGroupHash {
 
 /// @brief comparator for a vector of AQL values
 struct AqlValueGroupEqual {
-  explicit AqlValueGroupEqual(transaction::Methods* trx)
-      : _trx(trx) {}
+  explicit AqlValueGroupEqual(transaction::Methods* trx) : _trx(trx) {}
 
-  bool operator()(std::vector<AqlValue> const& lhs,
-                  std::vector<AqlValue> const& rhs) const {
+  bool operator()(std::vector<AqlValue> const& lhs, std::vector<AqlValue> const& rhs) const {
     size_t const n = lhs.size();
 
     for (size_t i = 0; i < n; ++i) {
-      int res =
-          AqlValue::Compare(_trx, lhs[i], rhs[i], false);
+      int res = AqlValue::Compare(_trx, lhs[i], rhs[i], false);
 
       if (res != 0) {
         return false;
@@ -82,7 +79,7 @@ struct AqlValueGroupEqual {
   transaction::Methods* _trx;
 };
 
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

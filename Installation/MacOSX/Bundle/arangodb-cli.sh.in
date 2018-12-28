@@ -20,57 +20,47 @@ SCRIPTS=$( cd "${ROOTDIR}@CMAKE_INSTALL_PREFIX@" && ls -1 {"@CMAKE_INSTALL_BINDI
 for script in $SCRIPTS; do
   base=$(basename "$script")
 
-  (
-    echo "#!/bin/bash"
-    echo
-    echo "export ROOTDIR=\"${ROOTDIR}@CMAKE_INSTALL_PREFIX@\""
-    echo
+  if test $base == "arangodb"; then
+  cat > "${ROOTDIR}/$base.$$" <<-'EOF'
+#!/bin/sh
+realpath() {
+  OURPWD=$PWD
+  cd "$(dirname "$1")"
+  LINK=$(readlink "$(basename "$1")")
+  while [ "$LINK" ]; do
+    cd "$(dirname "$LINK")"
+    LINK=$(readlink "$(basename "$1")")
+  done
+  REALPATH="$PWD/$(basename "$1")"
+  cd "$OURPWD"
+  echo "$REALPATH"
+}
+me=$(realpath $0)
+program=$(basename $me)
+installation=$(dirname $me)
+executable=$installation/opt/arangodb/bin/$program
+if [ -x $executable ] ; then
+  exec $executable --server.arangod=$installation/opt/arangodb/sbin/arangod --server.js-dir=$installation/opt/arangodb/share/arangodb3/js "$@"
+fi
+echo "Could not find executable!"
+exit 1
+EOF
+  else
+    (
+      echo "#!/bin/bash"
+      echo
+      echo "export ROOTDIR=\"${ROOTDIR}@CMAKE_INSTALL_PREFIX@\""
+      echo
 
-    echo "exec \"\${ROOTDIR}/$script\" -c \"${ARANGOD_CONF_DIR}/${base}.conf\" \$*"
-  ) > "${ROOTDIR}/$base.$$"
+      echo "exec \"\${ROOTDIR}/$script\" -c \"${ARANGOD_CONF_DIR}/${base}.conf\" \$*"
+    ) > "${ROOTDIR}/$base.$$"
+  fi
 
   chmod 755 "${ROOTDIR}/$base.$$"
   mv "${ROOTDIR}/$base.$$" "${ROOTDIR}/$base"
 done
 
-if test ! -f "${HOME}@INC_CPACK_ARANGO_DATA_DIR@/SERVER" -a ! -f "${HOME}@INC_CPACK_ARANGO_DATA_DIR@/ENGINE"; then
-    STORAGE_ENGINE=$(
-        /usr/bin/osascript <<-EOF
-set issueList to {"auto", "mmfiles", "rocksdb"}
-set selectedIssue to {choose from list issueList}
-return selectedIssue
-EOF
-                  )
-
-    if test "$STORAGE_ENGINE" == "false"; then
-        STORAGE_ENGINE=auto
-    fi
-
-    sed -i -e "s;storage-engine = auto;storage-engine = $STORAGE_ENGINE;" "${ARANGOD_CONF}"
-else
-    if "${ROOTDIR}/arangod" -c "${ARANGOD_CONF}" --database.check-version true; then
-        echo "database doesn't need an upgrade."
-    else
-        UPGRADE_DB=$(/usr/bin/osascript<<END
-tell application "System Events"
-activate
-set the answer to the button returned of (display dialog "Do you want to upgrade your ArangoDB Database directory?" buttons {"Yes", "No"})
-end tell
-END
-              )
-        if test "${UPGRADE_DB}" == "Yes"; then
-            echo "Updating the database ..."
-            "${ROOTDIR}/arangod" --database.auto-upgrade -c "${ARANGOD_CONF}"
-        else
-            echo "Can't continue with not updated database."
-            exit 1
-        fi
-    fi
-fi
-
-# start the server
-
-PIDFILE="${HOMEDIR}@INC_CPACK_ARANGO_PID_DIR@/arangod.pid"
+PIDFILE="/var/tmp/arangod.pid"
 
 if [ -f "${PIDFILE}" ];  then
 result=$(
@@ -87,8 +77,46 @@ EOF
   fi
 fi
 
+if test ! -f "${HOME}@INC_CPACK_ARANGO_DATA_DIR@/SERVER" -a ! -f "${HOME}@INC_CPACK_ARANGO_DATA_DIR@/ENGINE"; then
+    STORAGE_ENGINE=$(
+        /usr/bin/osascript <<-EOF
+set issueList to {"auto", "rocksdb", "mmfiles"}
+set selectedIssue to {choose from list issueList}
+return selectedIssue
+EOF
+                  )
 
-test -d "${ROOTDIR}@INC_CPACK_ARANGO_PID_DIR@" || mkdir "${ROOTDIR}@INC_CPACK_ARANGO_PID_DIR@"
+    if test "$STORAGE_ENGINE" == "false"; then
+        STORAGE_ENGINE=auto
+    fi
+
+    sed -i -e "s;storage-engine = auto;storage-engine = $STORAGE_ENGINE;" "${ARANGOD_CONF}"
+else
+    if "${ROOTDIR}/arangod" -c "${ARANGOD_CONF}" --database.check-version true; then
+        rm -f "${HOME}@INC_CPACK_ARANGO_DATA_DIR@/LOCK" # FIXME
+        echo "database doesn't need an upgrade."
+    else
+        rm -f "${HOME}@INC_CPACK_ARANGO_DATA_DIR@/LOCK" # FIXME
+        UPGRADE_DB=$(/usr/bin/osascript<<END
+tell application "System Events"
+activate
+set the answer to the button returned of (display dialog "Do you want to upgrade your ArangoDB Database directory?" buttons {"Yes", "No"})
+end tell
+END
+              )
+        if test "${UPGRADE_DB}" == "Yes"; then
+            echo "Updating the database ..."
+            "${ROOTDIR}/arangod" --database.auto-upgrade -c "${ARANGOD_CONF}"
+            rm -f "${HOME}@INC_CPACK_ARANGO_DATA_DIR@/LOCK" # FIXME
+        else
+            echo "Can't continue with not updated database."
+            exit 1
+        fi
+    fi
+fi
+
+# start the server
+
 "${ROOTDIR}/arangod" -c "${ARANGOD_CONF}" --daemon --pid-file "${PIDFILE}"
 
 # create some information for the user
@@ -123,12 +151,6 @@ tell application "Terminal"
 end tell
 EOF
 
-# start safari and open web ui
-
+# open web ui
 sleep 10;
-/usr/bin/osascript <<-EOF
-tell application "Safari"
-  open location "http://127.0.0.1:8529/"
-  activate
-end tell
-EOF
+open "http://127.0.0.1:8529/"

@@ -309,6 +309,88 @@ TEST_CASE("IResearchQueryTestTraversal", "[iresearch][iresearch-query]") {
     CHECK(impl->commit().ok());
   }
 
+  // create view on edge collection
+  {
+    auto createJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"name\": \"testViewEdge\", \"type\": \"arangosearch\" }"
+    );
+    auto logicalView = vocbase.createView(createJson->slice());
+    REQUIRE((false == !logicalView));
+
+    view = logicalView.get();
+    auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
+    REQUIRE((false == !impl));
+
+    auto updateJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"links\": {"
+        "\"edges\": { \"includeAllFields\": true }"
+      "}}"
+    );
+    CHECK((impl->properties(updateJson->slice(), true).ok()));
+    std::set<TRI_voc_cid_t> cids;
+    impl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
+    CHECK((1 == cids.size()));
+    CHECK(impl->commit().ok());
+  }
+
+  // check system attribute _from
+  {
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      insertedDocs.back().slice()
+    };
+
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testViewEdge SEARCH d._from == 'testCollection0/6' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
+    auto slice = result.result->slice();
+    CHECK(slice.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(slice);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    auto expectedDoc = expectedDocs.begin();
+    for (; resultIt.valid(); resultIt.next()) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      ++expectedDoc;
+    }
+    CHECK(!resultIt.valid());
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // check system attribute _to
+  {
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      insertedDocs.back().slice()
+    };
+
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testViewEdge SEARCH d._to == 'testCollection0/0' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
+    auto slice = result.result->slice();
+    CHECK(slice.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(slice);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    auto expectedDoc = expectedDocs.begin();
+    for (; resultIt.valid(); resultIt.next()) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      ++expectedDoc;
+    }
+    CHECK(!resultIt.valid());
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
   // shortest path traversal
   {
     std::vector<arangodb::velocypack::Slice> expectedDocs {

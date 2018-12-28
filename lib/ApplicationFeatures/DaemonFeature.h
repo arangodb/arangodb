@@ -56,6 +56,6 @@ class DaemonFeature final : public application_features::ApplicationFeature {
   std::string _current;
 };
 
-}
+}  // namespace arangodb
 
 #endif

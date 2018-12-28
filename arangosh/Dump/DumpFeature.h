@@ -46,10 +46,8 @@ class DumpFeature : public application_features::ApplicationFeature {
   DumpFeature(application_features::ApplicationServer& server, int& exitCode);
 
   // for documentation of virtual methods, see `ApplicationFeature`
-  virtual void collectOptions(
-      std::shared_ptr<options::ProgramOptions>) override final;
-  virtual void validateOptions(
-      std::shared_ptr<options::ProgramOptions> options) override final;
+  virtual void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  virtual void validateOptions(std::shared_ptr<options::ProgramOptions> options) override final;
   virtual void start() override final;
 
   /**
@@ -93,9 +91,8 @@ class DumpFeature : public application_features::ApplicationFeature {
   /// @brief Stores all necessary data to dump a single collection or shard
   struct JobData {
     JobData(ManagedDirectory&, DumpFeature&, Options const&,
-            maskings::Maskings * maskings, Stats&,VPackSlice const&,
-            uint64_t const, std::string const&, std::string const&,
-            std::string const&);
+            maskings::Maskings* maskings, Stats&, VPackSlice const&, uint64_t const,
+            std::string const&, std::string const&, std::string const&);
 
     ManagedDirectory& directory;
     DumpFeature& feature;

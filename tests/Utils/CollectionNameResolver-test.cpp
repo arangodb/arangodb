@@ -40,10 +40,10 @@ struct TestView: public arangodb::LogicalView {
   TestView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition, uint64_t planVersion)
     : arangodb::LogicalView(vocbase, definition, planVersion) {
   }
-  virtual arangodb::Result appendVelocyPack(arangodb::velocypack::Builder&, bool , bool) const override { return arangodb::Result(); }
-  virtual arangodb::Result drop() override { deleted(true); return vocbase().dropView(id(), true); }
+  virtual arangodb::Result appendVelocyPackImpl(arangodb::velocypack::Builder&, bool , bool) const override { return arangodb::Result(); }
+  virtual arangodb::Result dropImpl() override { return arangodb::LogicalViewHelperStorageEngine::drop(*this); }
   virtual void open() override {}
-  virtual arangodb::Result rename(std::string&& newName) override { name(std::move(newName)); return arangodb::Result(); }
+  virtual arangodb::Result renameImpl(std::string const& oldName) override { return arangodb::LogicalViewHelperStorageEngine::rename(* this, oldName); }
   virtual arangodb::Result properties(arangodb::velocypack::Slice const&, bool) override { return arangodb::Result(); }
   virtual bool visitCollections(CollectionVisitor const& visitor) const override { return true; }
 };

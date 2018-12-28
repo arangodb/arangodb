@@ -118,19 +118,15 @@ class Utils {
   static std::string const rollback;
 
   // pass the db name and either "worker" or "conductor" as target.
-  static std::string baseUrl(std::string const& dbName,
-                             std::string const& target);
+  static std::string baseUrl(std::string const& dbName, std::string const& target);
   static void printResponses(std::vector<ClusterCommRequest> const& requests);
 
-  static int64_t countDocuments(TRI_vocbase_t* vocbase,
-                                std::string const& collection);
+  static int64_t countDocuments(TRI_vocbase_t* vocbase, std::string const& collection);
 
-  static int resolveShard(WorkerConfig const* config,
-                          std::string const& collectionName,
-                          std::string const& shardKey,
-                          std::string const& vertexKey,
+  static int resolveShard(WorkerConfig const* config, std::string const& collectionName,
+                          std::string const& shardKey, std::string const& vertexKey,
                           std::string& responsibleShard);
 };
-}
-}
+}  // namespace pregel
+}  // namespace arangodb
 #endif

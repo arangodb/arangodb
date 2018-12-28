@@ -25,10 +25,10 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryProfile.h"
+#include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringRef.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "VocBase/vocbase.h"
@@ -38,16 +38,18 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
-  
-QueryEntryCopy::QueryEntryCopy(TRI_voc_tick_t id,
-                               std::string&& queryString, 
+
+QueryEntryCopy::QueryEntryCopy(TRI_voc_tick_t id, std::string&& queryString,
                                std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
-                               double started,
-                               double runTime, 
-                               QueryExecutionState::ValueType state,
-                               bool stream)
-    : id(id), queryString(std::move(queryString)), bindParameters(bindParameters), 
-      started(started), runTime(runTime), state(state), stream(stream) {}
+                               double started, double runTime,
+                               QueryExecutionState::ValueType state, bool stream)
+    : id(id),
+      queryString(std::move(queryString)),
+      bindParameters(bindParameters),
+      started(started),
+      runTime(runTime),
+      state(state),
+      stream(stream) {}
 
 /// @brief create a query list
 QueryList::QueryList(TRI_vocbase_t*)
@@ -55,11 +57,19 @@ QueryList::QueryList(TRI_vocbase_t*)
       _current(),
       _slow(),
       _slowCount(0),
-      _enabled(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")->trackSlowQueries()),
-      _trackSlowQueries(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")->trackSlowQueries()),
-      _trackBindVars(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")->trackBindVars()),
-      _slowQueryThreshold(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")->slowQueryThreshold()),
-      _slowStreamingQueryThreshold(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")->slowStreamingQueryThreshold()),
+      _enabled(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")
+                   ->trackSlowQueries()),
+      _trackSlowQueries(
+          application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")
+              ->trackSlowQueries()),
+      _trackBindVars(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")
+                         ->trackBindVars()),
+      _slowQueryThreshold(
+          application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")
+              ->slowQueryThreshold()),
+      _slowStreamingQueryThreshold(
+          application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")
+              ->slowStreamingQueryThreshold()),
       _maxSlowQueries(defaultMaxSlowQueries),
       _maxQueryStringLength(defaultMaxQueryStringLength) {
   _current.reserve(64);
@@ -153,21 +163,22 @@ void QueryList::remove(Query* query) {
           }
         }
       }
-      
+
       if (loadTime >= 0.1) {
-        LOG_TOPIC(WARN, Logger::QUERIES) << "slow " << (isStreaming ? "streaming " : "") << "query: '" << q << "'" << bindParameters << ", took: " << Logger::FIXED(now - started) << " s, loading took: " << Logger::FIXED(loadTime) << " s";
+        LOG_TOPIC(WARN, Logger::QUERIES)
+            << "slow " << (isStreaming ? "streaming " : "") << "query: '" << q
+            << "'" << bindParameters << ", took: " << Logger::FIXED(now - started)
+            << " s, loading took: " << Logger::FIXED(loadTime) << " s";
       } else {
-        LOG_TOPIC(WARN, Logger::QUERIES) << "slow " << (isStreaming ? "streaming " : "") << "query: '" << q << "'" << bindParameters << ", took: " << Logger::FIXED(now - started) << " s";
+        LOG_TOPIC(WARN, Logger::QUERIES)
+            << "slow " << (isStreaming ? "streaming " : "") << "query: '" << q << "'"
+            << bindParameters << ", took: " << Logger::FIXED(now - started) << " s";
       }
 
-      _slow.emplace_back(
-          query->id(),
-          std::move(q),
-          _trackBindVars ? query->bindParameters() : nullptr,
-          started, now - started,
-          QueryExecutionState::ValueType::FINISHED,
-          isStreaming
-      );
+      _slow.emplace_back(query->id(), std::move(q),
+                         _trackBindVars ? query->bindParameters() : nullptr,
+                         started, now - started,
+                         QueryExecutionState::ValueType::FINISHED, isStreaming);
 
       if (++_slowCount > _maxSlowQueries) {
         // free first element
@@ -190,12 +201,13 @@ int QueryList::kill(TRI_voc_tick_t id) {
   }
 
   Query* query = (*it).second;
-  LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "killing AQL query " << id << " '" << query->queryString() << "'";
+  LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+      << "killing AQL query " << id << " '" << query->queryString() << "'";
 
   query->kill();
   return TRI_ERROR_NO_ERROR;
 }
-  
+
 /// @brief kills all currently running queries
 uint64_t QueryList::killAll(bool silent) {
   uint64_t killed = 0;
@@ -204,13 +216,15 @@ uint64_t QueryList::killAll(bool silent) {
 
   for (auto& it : _current) {
     Query* query = it.second;
-   
+
     if (silent) {
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "killing AQL query " << query->id() << " '" << query->queryString() << "'";
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+          << "killing AQL query " << query->id() << " '" << query->queryString() << "'";
     } else {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "killing AQL query " << query->id() << " '" << query->queryString() << "'";
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+          << "killing AQL query " << query->id() << " '" << query->queryString() << "'";
     }
-    
+
     query->kill();
     ++killed;
   }
@@ -242,16 +256,10 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
       }
 
       double const started = query->startTime();
-       
-      result.emplace_back(
-          query->id(),
-          extractQueryString(query, maxLength),
-          _trackBindVars ? query->bindParameters() : nullptr,
-          started, 
-          now - started,
-          query->state(),
-          query->queryOptions().stream
-      );
+
+      result.emplace_back(query->id(), extractQueryString(query, maxLength),
+                          _trackBindVars ? query->bindParameters() : nullptr, started,
+                          now - started, query->state(), query->queryOptions().stream);
     }
   }
 
@@ -285,7 +293,7 @@ void QueryList::clearSlow() {
   _slow.clear();
   _slowCount = 0;
 }
-      
+
 std::string QueryList::extractQueryString(Query const* query, size_t maxLength) const {
   return query->queryString().extract(maxLength);
 }

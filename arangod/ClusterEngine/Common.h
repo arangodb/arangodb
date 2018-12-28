@@ -24,13 +24,9 @@
 #define ARANGOD_CLUSTER_ENGINE_COMMON_H 1
 
 namespace arangodb {
-  
-  enum class ClusterEngineType {
-    MMFilesEngine,
-    RocksDBEngine,
-    MockEngine
-  };
-  
+
+enum class ClusterEngineType { MMFilesEngine, RocksDBEngine, MockEngine };
+
 }  // namespace arangodb
 
 #endif

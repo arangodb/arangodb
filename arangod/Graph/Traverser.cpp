@@ -25,12 +25,12 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/TraverserCache.h"
 #include "Graph/TraverserOptions.h"
+#include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
-#include "Transaction/Context.h"
 #include "VocBase/KeyGenerator.h"
 
-#include <velocypack/Iterator.h> 
+#include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -70,10 +70,10 @@ bool Traverser::VertexGetter::getSingleVertex(arangodb::velocypack::Slice edge, 
   return _traverser->vertexMatchesConditions(result, depth);
 }
 
-void Traverser::VertexGetter::reset(StringRef const&) {
-}
+void Traverser::VertexGetter::reset(StringRef const&) {}
 
-bool Traverser::UniqueVertexGetter::getVertex(VPackSlice edge, std::vector<StringRef>& result) {
+bool Traverser::UniqueVertexGetter::getVertex(VPackSlice edge,
+                                              std::vector<StringRef>& result) {
   VPackSlice toAdd = edge;
   if (!toAdd.isString()) {
     toAdd = transaction::helpers::extractFromFromDocument(edge);
@@ -84,7 +84,7 @@ bool Traverser::UniqueVertexGetter::getVertex(VPackSlice edge, std::vector<Strin
     }
     TRI_ASSERT(toAdd.isString());
   }
-  
+
   StringRef toAddStr = _traverser->traverserCache()->persistString(StringRef(toAdd));
   // First check if we visited it. If not, then mark
   if (_returnedVertices.find(toAddStr) != _returnedVertices.end()) {
@@ -102,8 +102,9 @@ bool Traverser::UniqueVertexGetter::getVertex(VPackSlice edge, std::vector<Strin
   return true;
 }
 
-bool Traverser::UniqueVertexGetter::getSingleVertex(arangodb::velocypack::Slice edge, StringRef cmp,
-                                              uint64_t depth, StringRef& result) {
+bool Traverser::UniqueVertexGetter::getSingleVertex(arangodb::velocypack::Slice edge,
+                                                    StringRef cmp, uint64_t depth,
+                                                    StringRef& result) {
   VPackSlice resSlice = edge;
   if (!resSlice.isString()) {
     resSlice = transaction::helpers::extractFromFromDocument(edge);
@@ -112,7 +113,7 @@ bool Traverser::UniqueVertexGetter::getSingleVertex(arangodb::velocypack::Slice 
     }
     TRI_ASSERT(resSlice.isString());
   }
-  
+
   result = _traverser->traverserCache()->persistString(StringRef(resSlice));
   // First check if we visited it. If not, then mark
   if (_returnedVertices.find(result) != _returnedVertices.end()) {
@@ -136,8 +137,7 @@ void Traverser::UniqueVertexGetter::reset(arangodb::StringRef const& startVertex
 }
 
 Traverser::Traverser(arangodb::traverser::TraverserOptions* opts,
-                     transaction::Methods* trx,
-                     arangodb::ManagedDocumentResult* mmdr)
+                     transaction::Methods* trx, arangodb::ManagedDocumentResult* mmdr)
     : _trx(trx),
       _mmdr(mmdr),
       _startIdBuilder(trx),
@@ -152,10 +152,8 @@ Traverser::Traverser(arangodb::traverser::TraverserOptions* opts,
   }
 }
 
-bool arangodb::traverser::Traverser::edgeMatchesConditions(VPackSlice e,
-                                                           StringRef vid,
-                                                           uint64_t depth,
-                                                           size_t cursorId) {
+bool arangodb::traverser::Traverser::edgeMatchesConditions(VPackSlice e, StringRef vid,
+                                                           uint64_t depth, size_t cursorId) {
   if (!_opts->evaluateEdgeExpression(e, vid, depth, cursorId)) {
     return false;
   }

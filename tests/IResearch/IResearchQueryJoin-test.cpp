@@ -1062,7 +1062,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   //   SEARCH d.seq == x.seq
   // RETURN d;
   {
-    std::string const query = "FOR d IN testView FOR x IN collection_3 FILTER d.seq == x.seq RETURN d";
+    std::string const query = "FOR d IN testView FOR x IN collection_3 FILTER d.seq == x.seq SORT d.seq RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
@@ -1143,7 +1143,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   //   SEARCH d.seq == x.seq
   // RETURN d;
   {
-    std::string const query = "FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 RETURN c) FOR x IN collection_3 FILTER d.seq == x.seq RETURN d";
+    std::string const query = "FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 RETURN c) FOR x IN collection_3 FILTER d.seq == x.seq SORT d.seq RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,

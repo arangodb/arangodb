@@ -36,13 +36,9 @@ using namespace arangodb::basics;
 
 std::unique_ptr<RequestStatistics[]> RequestStatistics::_statisticsBuffer;
 
-boost::lockfree::queue<RequestStatistics*,
-                       boost::lockfree::capacity<RequestStatistics::QUEUE_SIZE>>
-    RequestStatistics::_freeList;
+boost::lockfree::queue<RequestStatistics*, boost::lockfree::capacity<RequestStatistics::QUEUE_SIZE>> RequestStatistics::_freeList;
 
-boost::lockfree::queue<RequestStatistics*,
-                       boost::lockfree::capacity<RequestStatistics::QUEUE_SIZE>>
-    RequestStatistics::_finishedList;
+boost::lockfree::queue<RequestStatistics*, boost::lockfree::capacity<RequestStatistics::QUEUE_SIZE>> RequestStatistics::_finishedList;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static public methods
@@ -91,7 +87,8 @@ RequestStatistics* RequestStatistics::acquire() {
     statistics->_released = false;
   } else {
     statistics = nullptr;
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "no free element on statistics queue";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+        << "no free element on statistics queue";
   }
 
   return statistics;
@@ -105,7 +102,6 @@ void RequestStatistics::process(RequestStatistics* statistics) {
   TRI_ASSERT(statistics != nullptr);
 
   {
-
     TRI_TotalRequestsStatistics.incCounter();
 
     if (statistics->_async) {
@@ -147,8 +143,7 @@ void RequestStatistics::process(RequestStatistics* statistics) {
       }
 
       TRI_BytesSentDistributionStatistics.addFigure(statistics->_sentBytes);
-      TRI_BytesReceivedDistributionStatistics.addFigure(
-          statistics->_receivedBytes);
+      TRI_BytesReceivedDistributionStatistics.addFigure(statistics->_receivedBytes);
     }
   }
 
@@ -166,8 +161,7 @@ void RequestStatistics::process(RequestStatistics* statistics) {
   }
 
   if (tries > 1) {
-    LOG_TOPIC(WARN, Logger::MEMORY) << "_freeList.push failed " << tries - 1
-                                    << " times.";
+    LOG_TOPIC(WARN, Logger::MEMORY) << "_freeList.push failed " << tries - 1 << " times.";
   }
 }
 
@@ -193,8 +187,7 @@ void RequestStatistics::release() {
 void RequestStatistics::fill(StatisticsDistribution& totalTime,
                              StatisticsDistribution& requestTime,
                              StatisticsDistribution& queueTime,
-                             StatisticsDistribution& ioTime,
-                             StatisticsDistribution& bytesSent,
+                             StatisticsDistribution& ioTime, StatisticsDistribution& bytesSent,
                              StatisticsDistribution& bytesReceived) {
   if (!StatisticsFeature::enabled()) {
     // all the below objects may be deleted if we don't have statistics enabled
@@ -212,13 +205,11 @@ void RequestStatistics::fill(StatisticsDistribution& totalTime,
 std::string RequestStatistics::timingsCsv() {
   std::stringstream ss;
 
-  ss << std::setprecision(9) << std::fixed
-     << "read," << (_readEnd - _readStart)
-     << ",queue," << (_queueEnd - _queueStart)
-     << ",queue-size," << _queueSize
-     << ",request," << (_requestEnd - _requestStart)
-     << ",total," << (StatisticsFeature::time() - _readStart)
-     << ",error," << (_executeError ? "true" : "false");
+  ss << std::setprecision(9) << std::fixed << "read," << (_readEnd - _readStart)
+     << ",queue," << (_queueEnd - _queueStart) << ",queue-size," << _queueSize
+     << ",request," << (_requestEnd - _requestStart) << ",total,"
+     << (StatisticsFeature::time() - _readStart) << ",error,"
+     << (_executeError ? "true" : "false");
 
   return ss.str();
 }
@@ -226,8 +217,7 @@ std::string RequestStatistics::timingsCsv() {
 std::string RequestStatistics::to_string() {
   std::stringstream ss;
 
-  ss << std::boolalpha << std::setprecision(20) << "statistics      "
-     << std::endl
+  ss << std::boolalpha << std::setprecision(20) << "statistics      " << std::endl
      << "_readStart      " << _readStart << std::endl
      << "_readEnd        " << _readEnd << std::endl
      << "_queueStart     " << _queueStart << std::endl
@@ -277,8 +267,8 @@ void RequestStatistics::trace_log() {
   LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
                                      << "_sentBytes      " << _sentBytes;
 
-  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-                                     << "_async          " << _async;
+  LOG_TOPIC(TRACE, Logger::REQUESTS)
+      << std::boolalpha << std::setprecision(20) << "_async          " << _async;
 
   LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
                                      << "_tooLarge       " << _tooLarge;

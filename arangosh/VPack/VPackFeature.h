@@ -29,8 +29,7 @@
 
 namespace arangodb {
 
-class VPackFeature final
-    : public application_features::ApplicationFeature {
+class VPackFeature final : public application_features::ApplicationFeature {
  public:
   VPackFeature(application_features::ApplicationServer& server, int* result);
 
@@ -47,6 +46,6 @@ class VPackFeature final
   bool _printNonJson;
 };
 
-}
+}  // namespace arangodb
 
 #endif

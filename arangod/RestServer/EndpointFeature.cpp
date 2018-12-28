@@ -35,12 +35,8 @@ using namespace arangodb::rest;
 
 namespace arangodb {
 
-EndpointFeature::EndpointFeature(
-    application_features::ApplicationServer& server
-)
-    : ApplicationFeature(server, "Endpoint"),
-      _reuseAddress(true),
-      _backlogSize(64) {
+EndpointFeature::EndpointFeature(application_features::ApplicationServer& server)
+    : ApplicationFeature(server, "Endpoint"), _reuseAddress(true), _backlogSize(64) {
   setOptional(true);
   requiresElevatedPrivileges(true);
   startsAfter("AQLPhase");
@@ -68,18 +64,21 @@ void EndpointFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addSection("tcp", "TCP features");
 
-  options->addHiddenOption("--tcp.reuse-address", "try to reuse TCP port(s)",
-                           new BooleanParameter(&_reuseAddress));
+  options->addOption("--tcp.reuse-address", "try to reuse TCP port(s)",
+                     new BooleanParameter(&_reuseAddress),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addHiddenOption("--tcp.backlog-size", "listen backlog size",
-                           new UInt64Parameter(&_backlogSize));
+  options->addOption("--tcp.backlog-size", "listen backlog size",
+                     new UInt64Parameter(&_backlogSize),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
 void EndpointFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   if (_backlogSize > SOMAXCONN) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "value for --tcp.backlog-size exceeds default system "
-                 "header SOMAXCONN value "
-              << SOMAXCONN << ". trying to use " << SOMAXCONN << " anyway";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "value for --tcp.backlog-size exceeds default system "
+           "header SOMAXCONN value "
+        << SOMAXCONN << ". trying to use " << SOMAXCONN << " anyway";
   }
 }
 
@@ -87,15 +86,14 @@ void EndpointFeature::prepare() {
   buildEndpointLists();
 
   if (_endpointList.empty()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "no endpoints have been specified, giving up, please use the "
-                  "'--server.endpoint' option";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "no endpoints have been specified, giving up, please use the "
+           "'--server.endpoint' option";
     FATAL_ERROR_EXIT();
   }
 }
 
-void EndpointFeature::start() {
-  _endpointList.dump();
-}
+void EndpointFeature::start() { _endpointList.dump(); }
 
 std::vector<std::string> EndpointFeature::httpEndpoints() {
   auto httpEntries = _endpointList.all(Endpoint::TransportType::HTTP);
@@ -124,4 +122,4 @@ void EndpointFeature::buildEndpointLists() {
   }
 }
 
-} // arangodb
+}  // namespace arangodb
