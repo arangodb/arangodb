@@ -1,9 +1,9 @@
 Fast Cluster Restore
 ====================
 
-The restore procedure documented in this page is recommended to speed up the
-performance of [_arangorestore_](../Arangorestore/README.md) in a Cluster
-environment.
+The _Fast Cluster Restore_ procedure documented in this page is recommended
+to speed up the performance of [_arangorestore_](../Arangorestore/README.md)
+in a Cluster environment.
 
 It is assumed that a Cluster environment is running and a _logical_ backup
 with [_arangodump_](../Arangodump/README.md) has already been taken.
@@ -13,14 +13,10 @@ The procedure described in this page is particularly useful for ArangoDB
 version 3.3, but can be used in 3.4 and later versions as well. Note that 
 from v3.4, _arangorestore_ includes the option _threads_ which can be a first
 good step already in achieving restore parallelization and its speed benefit. 
-However, the part regarding temporarily setting _replication factor_ to 1 is
-still useful in 3.4 and later versions.
+However, the the procedure below allows for even further parallelization (making
+using of different _Coordinators_), and the part regarding temporarily setting
+_replication factor_ to 1 is still useful in 3.4 and later versions.
 {% endhint %}
-
-Please refer to 
-[this](Examples.md#factors-affecting-speed-of-arangorestore-in-a-cluster) 
-section for further context on the factors affecting
-restore speed when restoring using _arangorestore_ in a Cluster.
 
 The speed improvement obtained by the procedure below is achieved by:
 
@@ -29,6 +25,13 @@ The speed improvement obtained by the procedure below is achieved by:
    is reverted to initial value at the end of the procedure - steps #2, #3 and #6).
 2. Restoring in parallel multiple collections on different _Coordinators_ 
    (steps #4 and #5).  
+
+{% hint 'info' %}
+Please refer to 
+[this](Examples.md#factors-affecting-speed-of-arangorestore-in-a-cluster) 
+section for further context on the factors affecting restore speed when restoring
+using _arangorestore_ in a Cluster.
+{% endhint %}
 
 Step 1: Copy the _dump_ directory to all _Coordinators_
 -------------------------------------------------------
@@ -90,6 +93,16 @@ _parallelRestore.js_:
 
 ```
 #!/bin/sh
+#
+# Version: 0.2
+#
+# Release Notes:
+# - v0.3: ....... TODO .... fixed a bug when _ is used in the collection name
+# - v0.2: compatibility with version 3.4: now each coordinator_<number-of-coordinator>.sh
+#         includes a single restore command (instead of one for each collection)
+#         which allows making using of the --threads option in v.3.4.0 and later
+# - v0.1: initial version
+
 if test -z "$ARANGOSH" ; then
   export ARANGOSH=arangosh
 fi
@@ -155,18 +168,38 @@ for (let i = 0; i < files.length; ++i) {
 
 // Produce the scripts, one for each coordinator:
 var scripts = [];
+var collections = [];
 for (let i = 0; i < coordinators.length; ++i) {
   scripts.push([]);
+  collections.push([]);
 }
 
 var cnum = 0;
+var temp = '';
+var collections = [];
 for (let i = 0; i < dataFiles.length; ++i) {
   var f = files[dataFiles[i]];
-  scripts[cnum].push(`${arangorestore} --collection ${f.collName} --input-directory ${dumpDir} --server.endpoint ${coordinators[cnum]} ` + otherArgs.join(" "));
+  if (typeof collections[cnum] == 'undefined') {
+    collections[cnum] = (`--collection ${f.collName}`);
+  } else {
+    collections[cnum] += (` --collection ${f.collName}`);
+  }
   cnum += 1;
   if (cnum >= coordinators.length) {
     cnum = 0;
   }
+}
+
+var cnum = 0;
+// for (let i = 0; i < dataFiles.length; ++i) { 
+for (let i = 0; i < coordinators.length; ++i) {
+  // var f = files[dataFiles[i]];
+  // scripts[cnum].push(`${arangorestore} --collection ${f.collName} --input-directory ${dumpDir} --server.endpoint ${coordinators[cnum]} ` + otherArgs.join(" "));
+  scripts[i].push(`${arangorestore} --input-directory ${dumpDir} --server.endpoint ${coordinators[i]} ` + collections[i] + ' ' + otherArgs.join(" "));
+  // cnum += 1;
+  // if (cnum >= coordinators.length) {
+  //   cnum = 0;
+  // }
 }
 
 for (let i = 0; i < coordinators.length; ++i) {
