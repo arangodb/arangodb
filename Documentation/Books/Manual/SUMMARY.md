@@ -77,7 +77,7 @@
     * [Limitations](Programs/Arangodump/Limitations.md)
   * [Arangorestore](Programs/Arangorestore/README.md)
     * [Examples](Programs/Arangorestore/Examples.md)
-    * [Parallel Restore Procedure](Programs/Arangorestore/ParallelRestore.md)
+    * [Fast Cluster Restore](Programs/Arangorestore/FastClusterRestore.md)
     * [Options](Programs/Arangorestore/Options.md)
   * [Arangoimport](Programs/Arangoimport/README.md)
     * [Examples JSON](Programs/Arangoimport/ExamplesJson.md)
