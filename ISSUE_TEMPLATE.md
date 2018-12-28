@@ -7,8 +7,8 @@
 * __Configuration__:               <!-- cluster setup details, notable server settings, etc. -->
 * __Infrastructure__:               <!-- AWS | Azure | ... | own -->
 * __Operating System__:        <!-- Ubuntu 18.04 | Windows 10 | MacOS 10.13.4 | DCOS 1.10 | ... -->
-* __Total RAM in your machine__:        <!-- e.g. 32Gb -->
-* __Disks in use__:        <!-- SSD | HDD -->
+* __Total RAM in your machine__:        <!-- e.g. 32Gb. If more machines are in use, provide info for each of your machines -->
+* __Disks in use__:        <!-- SSD | HDD. If more machines are in use, provide info for each of your machines -->
 * __Used Package__:              <!-- Debian or Ubuntu .deb | SUSE or RedHat .rpm | Docker - official Docker library | other -->
 
 ## Component, Query & Data
