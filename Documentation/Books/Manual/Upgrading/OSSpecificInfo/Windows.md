@@ -6,7 +6,7 @@ method depends on the installation method that was used.
 
 In general, it will be needed to:
 
-- Install the new ArangoDB binaries on the system
+- Install (or unpack) the new ArangoDB binaries on the system
 - Upgrade the current database (or perform a restore)
 - Optional (but suggested) to keep the system clean (unless there are specific
   reasons to not do so): remove the old binaries from the system
@@ -53,8 +53,8 @@ To use the old configuration, it is currently needed to:
 - Restart the server
 {% endhint %}
 
-Manual upgrade of 'ZIP archive' installation
---------------------------------------------
+Manual upgrade of a 'ZIP archive' installation
+----------------------------------------------
 
 There are two ways to upgrade a _Single Instance_ that has been started
 from a _ZIP_ package:
