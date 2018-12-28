@@ -233,9 +233,10 @@ whereas 3 corresponds to the amount of listed coordinators. The resulting
 scripts are named `coordinator_<number-of-coordinator>.sh` (e.g.
 `coordinator_0.sh`, `coordinator_1.sh`, `coordinator_2.sh`).
 
-**Note:** starting from v.3.4.0 the _arangorestore_ option *--threads* can be
-passed to the script as well, to further parallelize (so there will be a
-parallelization also in each _Coordinator_).
+**Note:** starting from v.3.4.0 the _arangorestore_ option *--threads N* can be
+passed to the command above, where _N_ is an integer, to further parallelize 
+(so there will be a parallelization also in each _Coordinator_). *--threads 2*
+is used by default (from v.3.4.0 on) if the option *--threads* is not passed.
 
 Step 5: Execute parallel restore scripts
 ----------------------------------------
