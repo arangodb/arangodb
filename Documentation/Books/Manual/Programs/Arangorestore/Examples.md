@@ -192,7 +192,7 @@ collection. This is for safety reasons to ensure consistency of IDs.
 
 ### Factors affecting speed of arangorestore in a Cluster
 
-The following factors affect speed of _arangorestore_ in a cluster:
+The following factors affect speed of _arangorestore_ in a Cluster:
 
 - **Replication Factor**: the higher the _replication factor_, the more
   time the restore will take. To speed up the restore you can restore
@@ -204,7 +204,7 @@ The following factors affect speed of _arangorestore_ in a cluster:
   be done from v3.4.0 by using the _threads_ option of _arangorestore_.
   Before v3.4.0 it is possible to achieve parallelization in other ways. 
   
-Please refer to the [Parallel Restore Procedure](ParallelRestore.md) page
+Please refer to the [Fast Cluster Restore](FastClusterRestore.md) page
 for further operative details on how to take into account, when restoring
 using _arangorestore_, the two factors described above.
 
