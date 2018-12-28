@@ -1,9 +1,9 @@
-Parallel Restore Procedure
-==========================
+Fast Cluster Restore
+====================
 
-The following _Parallel Restore Procedure_ is recommended to speed up the
-performance of [_arangorestore_](../Arangorestore/README.md) in a
-Cluster environment.
+The restore procedure documented in this page is recommended to speed up the
+performance of [_arangorestore_](../Arangorestore/README.md) in a Cluster
+environment.
 
 It is assumed that a Cluster environment is running and a _logical_ backup
 with [_arangodump_](../Arangodump/README.md) has already been taken.
@@ -13,17 +13,16 @@ The procedure described in this page is particularly useful for ArangoDB
 version 3.3, but can be used in 3.4 and later versions as well. Note that 
 from v3.4, _arangorestore_ includes the option _threads_ which can be a first
 good step already in achieving restore parallelization and its speed benefit. 
-However, the part regarding setting _replication factor_ to 1 is still useful
-in 3.4 and later versions.
+However, the part regarding temporarily setting _replication factor_ to 1 is
+still useful in 3.4 and later versions.
 {% endhint %}
 
 Please refer to 
 [this](Examples.md#factors-affecting-speed-of-arangorestore-in-a-cluster) 
-section for further information on the factors affecting
+section for further context on the factors affecting
 restore speed when restoring using _arangorestore_ in a Cluster.
 
-The speed improvement obtained by following the _Parallel Restore Procedure_
-is achieved by:
+The speed improvement obtained by the procedure below is achieved by:
 
 1. Restoring into a Cluster that has _replication factor_ 1, thus reducing
    number of network hops needed during the restore operation (_replication factor_
@@ -31,10 +30,10 @@ is achieved by:
 2. Restoring in parallel multiple collections on different _Coordinators_ 
    (steps #4 and #5).  
 
-Step 1: Allocate dump Directory
--------------------------------
+Step 1: Copy the _dump_ directory to all _Coordinators_
+-------------------------------------------------------
 
-The first step is to copy the directory that contains the dump to all machines
+The first step is to copy the directory that contains the _dump_ to all machines
 where _Coordinators_ are running. 
 
 {% hint 'info' %}
@@ -43,10 +42,10 @@ network. However, if the restore is executed locally the restore speed is
 significantly improved.
 {% endhint %}
 	
-Step 2: Restore Collection Structure
-------------------------------------
+Step 2: Restore collection structures
+-------------------------------------
 
-The collection structure has to be restored from exactly one _Coordinator_ (any
+The collection structures have to be restored from exactly one _Coordinator_ (any
 _Coordinator_ can be used) with the following command:
 
 ```
@@ -63,8 +62,8 @@ collection structure and no data. Reason why the structure is restored before
 the data is that this allows to change _replication factor_ before restoring
 the data.
 
-Step 3: Set Replication Factor to 1
------------------------------------
+Step 3: Set _Replication Factor_ to 1
+--------------------------------------
 
 To speed up restore, it is possible to set the _replication factor_ to 1 before
 importing any data. Run the following command from exactly one _Coordinator_ (any
@@ -212,8 +211,8 @@ The `coordinator_<number-of-coordinator>.sh` scripts, that were created in the
 previous step, now have to be executed on each machine where a _Coordinator_
 is running. This will start a parallel restore of the dump.
 
-Step 6: Revert to the initial Replication Factor
-------------------------------------------------
+Step 6: Revert to the initial _Replication Factor_
+--------------------------------------------------
 
 Once the _arangorestore_ process on every _Coordinator_ is completed, the
 _replication factor_ has to be set to its initial value.
