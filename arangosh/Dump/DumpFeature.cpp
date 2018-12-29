@@ -552,7 +552,7 @@ void DumpFeature::collectOptions(std::shared_ptr<options::ProgramOptions> option
                      new UInt64Parameter(&_options.maxChunkSize));
 
   options->addOption("--threads",
-                     "maximum number of collections to process in parallel",
+                     "maximum number of collections to process in parallel. From v3.4.0",
                      new UInt32Parameter(&_options.threadCount));
 
   options->addOption("--dump-data", "dump collection data",
