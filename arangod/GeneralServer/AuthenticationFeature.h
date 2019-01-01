@@ -81,6 +81,7 @@ class AuthenticationFeature final : public application_features::ApplicationFeat
   bool _localAuthentication;
 
   std::string _jwtSecretProgramOption;
+  std::string _jwtSecretKeyfileProgramOption;
   bool _active;
 
   static AuthenticationFeature* INSTANCE;
