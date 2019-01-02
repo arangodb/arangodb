@@ -100,15 +100,13 @@ std::string escapeXml(std::string const& name);
 std::string escapeHex(std::string const& name, char quote = '%');
 
 /// @brief escape hex
-std::string escapeHex(std::string const& name, std::string const& specials,
-                      char quote = '%');
+std::string escapeHex(std::string const& name, std::string const& specials, char quote = '%');
 
 /// @brief escape as C code
 std::string escapeC(std::string const& name);
 
 /// @brief splits a string
-std::vector<std::string> split(std::string const& source, char delim = ',',
-                               char quote = '\\');
+std::vector<std::string> split(std::string const& source, char delim = ',', char quote = '\\');
 
 /// @brief splits a string
 std::vector<std::string> split(std::string const& source,
@@ -210,31 +208,30 @@ std::string urlEncode(char const* src);
 
 /// @brief url encodes the string
 std::string urlEncode(char const* src, size_t const len);
-    
+
 /// @brief uri encodes the component string
-std::string encodeURIComponent(std:: string const& str);
-    
+std::string encodeURIComponent(std::string const& str);
+
 /// @brief uri encodes the component string
 std::string encodeURIComponent(char const* src, size_t const len);
-  
+
 /// @brief converts input string to soundex code
 std::string soundex(std::string const& str);
-   
+
 /// @brief converts input string to soundex code
 std::string soundex(char const* src, size_t const len);
-   
+
 /// @brief converts input string to vector of character codes
 std::vector<uint32_t> characterCodes(std::string const& str);
-    
+
 /// @brief calculates the levenshtein distance between the input strings
 unsigned int levenshteinDistance(std::string const& str1, std::string const& str2);
-  
+
 /// @brief calculates the levenshtein distance between the input strings
 size_t levenshteinDistance(std::vector<uint32_t> vect1, std::vector<uint32_t> vect2);
 
 /// @brief unicode hexadecimal characters to utf8
-bool unicodeToUTF8(char const* inputStr, size_t const& len,
-                   std::string& outputStr);
+bool unicodeToUTF8(char const* inputStr, size_t const& len, std::string& outputStr);
 
 /// @brief converts an utf16 symbol which needs UTF16 to UTF8
 ///        The conversion correspond to the specification:
@@ -408,17 +405,15 @@ std::string encodeHex(std::string const& value);
 std::string decodeHex(char const* value, size_t length);
 std::string decodeHex(std::string const& value);
 
-bool gzipUncompress(char const* compressed, size_t compressedLength,
-                    std::string& uncompressed);
+bool gzipUncompress(char const* compressed, size_t compressedLength, std::string& uncompressed);
 
 bool gzipUncompress(std::string const& compressed, std::string& uncompressed);
 
-bool gzipDeflate(char const* compressed, size_t compressedLength,
-                 std::string& uncompressed);
+bool gzipDeflate(char const* compressed, size_t compressedLength, std::string& uncompressed);
 
 bool gzipDeflate(std::string const& compressed, std::string& uncompressed);
-}
-}
-}
+}  // namespace StringUtils
+}  // namespace basics
+}  // namespace arangodb
 
 #endif

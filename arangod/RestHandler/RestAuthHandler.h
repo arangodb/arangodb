@@ -54,6 +54,6 @@ class RestAuthHandler : public RestVocbaseBaseHandler {
   bool _isValid = false;
   std::chrono::seconds _validFor;
 };
-}
+}  // namespace arangodb
 
 #endif

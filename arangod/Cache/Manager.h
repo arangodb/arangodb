@@ -86,8 +86,7 @@ class Manager {
   /// @brief Initialize the manager with a scheduler post method and global
   /// usage limit.
   //////////////////////////////////////////////////////////////////////////////
-  Manager(PostFn schedulerPost, uint64_t globalLimit,
-          bool enableWindowedStats = true);
+  Manager(PostFn schedulerPost, uint64_t globalLimit, bool enableWindowedStats = true);
   ~Manager();
 
   //////////////////////////////////////////////////////////////////////////////
@@ -103,8 +102,7 @@ class Manager {
   /// lifetime. It should likely only be set to a non-default value for
   /// infrequently accessed or short-lived caches.
   //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<Cache> createCache(CacheType type,
-                                     bool enableWindowedStats = false,
+  std::shared_ptr<Cache> createCache(CacheType type, bool enableWindowedStats = false,
                                      uint64_t maxSize = UINT64_MAX);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -167,11 +165,9 @@ class Manager {
   // use sizeof(uint64_t) + sizeof(std::shared_ptr<Cache>) + 64 for upper bound
   // on size of std::set<std::shared_ptr<Cache>> node -- should be valid for
   // most libraries
-  static constexpr uint64_t cacheRecordOverhead =
-      sizeof(std::shared_ptr<Cache>) + 64;
+  static constexpr uint64_t cacheRecordOverhead = sizeof(std::shared_ptr<Cache>) + 64;
   // assume at most 16 slots in each stack -- TODO: check validity
-  static constexpr uint64_t tableListsOverhead =
-      32 * 16 * sizeof(std::shared_ptr<Cache>);
+  static constexpr uint64_t tableListsOverhead = 32 * 16 * sizeof(std::shared_ptr<Cache>);
   static constexpr uint64_t triesFast = 100;
   static constexpr uint64_t triesSlow = 1000;
 
@@ -229,14 +225,13 @@ class Manager {
 
  private:  // used by caches
   // register and unregister individual caches
-  std::tuple<bool, Metadata, std::shared_ptr<Table>> registerCache(
-      uint64_t fixedSize, uint64_t maxSize);
+  std::tuple<bool, Metadata, std::shared_ptr<Table>> registerCache(uint64_t fixedSize,
+                                                                   uint64_t maxSize);
   void unregisterCache(uint64_t id);
 
   // allow individual caches to request changes to their allocations
   std::pair<bool, Manager::time_point> requestGrow(Cache* cache);
-  std::pair<bool, Manager::time_point> requestMigrate(
-      Cache* cache, uint32_t requestedLogSize);
+  std::pair<bool, Manager::time_point> requestMigrate(Cache* cache, uint32_t requestedLogSize);
 
   // stat reporting
   void reportAccess(uint64_t id);
@@ -265,10 +260,8 @@ class Manager {
   bool adjustGlobalLimitsIfAllowed(uint64_t newGlobalLimit);
 
   // methods to adjust individual caches
-  void resizeCache(TaskEnvironment environment, Cache* cache,
-                   uint64_t newLimit);
-  void migrateCache(TaskEnvironment environment, Cache* cache,
-                    std::shared_ptr<Table>& table);
+  void resizeCache(TaskEnvironment environment, Cache* cache, uint64_t newLimit);
+  void migrateCache(TaskEnvironment environment, Cache* cache, std::shared_ptr<Table>& table);
   std::shared_ptr<Table> leaseTable(uint32_t logSize);
   void reclaimTable(std::shared_ptr<Table> table, bool internal = false);
 

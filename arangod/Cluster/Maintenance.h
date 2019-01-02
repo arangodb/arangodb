@@ -25,9 +25,9 @@
 #ifndef ARANGODB_MAINTENANCE_MAINTENANCE_H
 #define ARANGODB_MAINTENANCE_MAINTENANCE_H
 
+#include "Agency/Node.h"
 #include "Basics/Result.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Agency/Node.h"
 #include "Cluster/MaintenanceFeature.h"
 
 namespace arangodb {
@@ -36,15 +36,15 @@ class LogicalCollection;
 
 namespace maintenance {
 
-using Transactions = std::vector<std::pair<VPackBuilder,VPackBuilder>>;
+using Transactions = std::vector<std::pair<VPackBuilder, VPackBuilder>>;
 
-arangodb::Result diffPlanLocalForDatabases(
-  VPackSlice const&, std::vector<std::string> const&,
-  std::vector<std::string>&, std::vector<std::string>&);
-
+arangodb::Result diffPlanLocalForDatabases(VPackSlice const&,
+                                           std::vector<std::string> const&,
+                                           std::vector<std::string>&,
+                                           std::vector<std::string>&);
 
 /**
- * @brief          Difference Plan and local for phase 1 of Maintenance run 
+ * @brief          Difference Plan and local for phase 1 of Maintenance run
  *
  * @param plan     Snapshot of agency's planned state
  * @param local    Snapshot of local state
@@ -54,28 +54,29 @@ arangodb::Result diffPlanLocalForDatabases(
  *
  * @return         Result
  */
-arangodb::Result diffPlanLocal(
-  VPackSlice const& plan, VPackSlice const& local, std::string const& serverId,
-  MaintenanceFeature::errors_t& errors, std::vector<ActionDescription>& actions);
+arangodb::Result diffPlanLocal(VPackSlice const& plan, VPackSlice const& local,
+                               std::string const& serverId,
+                               MaintenanceFeature::errors_t& errors,
+                               std::vector<ActionDescription>& actions);
 
 /**
- * @brief          Difference Plan and local for phase 1 of Maintenance run 
+ * @brief          Difference Plan and local for phase 1 of Maintenance run
  *
  * @param plan     Snapshot of agency's planned state
  * @param current  Snapshot of agency's current state
  * @param local    Snapshot of local state
  * @param serverId This server's UUID
  * @param feature  Maintenance feature
- * @param report   Report 
+ * @param report   Report
  *
  * @return         Result
  */
-arangodb::Result executePlan (
-  VPackSlice const& plan, VPackSlice const& local, std::string const& serverId,
-  arangodb::MaintenanceFeature& feature, VPackBuilder& report);
+arangodb::Result executePlan(VPackSlice const& plan, VPackSlice const& local,
+                             std::string const& serverId,
+                             arangodb::MaintenanceFeature& feature, VPackBuilder& report);
 
 /**
- * @brief          Difference local and current states for phase 2 of Maintenance 
+ * @brief          Difference local and current states for phase 2 of Maintenance
  *
  * @param local    Snapshot of local state
  * @param current  Snapshot of agency's current state
@@ -84,10 +85,8 @@ arangodb::Result executePlan (
  *
  * @return         Result
  */
-arangodb::Result diffLocalCurrent (
-  VPackSlice const& local, VPackSlice const& current,
-  std::string const& serverId, Transactions& report);
-
+arangodb::Result diffLocalCurrent(VPackSlice const& local, VPackSlice const& current,
+                                  std::string const& serverId, Transactions& report);
 
 /**
  * @brief          Phase one: Execute plan, shard replication startups
@@ -101,9 +100,9 @@ arangodb::Result diffLocalCurrent (
  *
  * @return         Result
  */
-arangodb::Result phaseOne (
-  VPackSlice const& plan, VPackSlice const& local, std::string const& serverId,
-  MaintenanceFeature& feature, VPackBuilder& report);
+arangodb::Result phaseOne(VPackSlice const& plan, VPackSlice const& local,
+                          std::string const& serverId,
+                          MaintenanceFeature& feature, VPackBuilder& report);
 
 /**
  * @brief          Phase two: Report in agency
@@ -117,10 +116,9 @@ arangodb::Result phaseOne (
  *
  * @return         Result
  */
-arangodb::Result phaseTwo (
-  VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
-  std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report);
-
+arangodb::Result phaseTwo(VPackSlice const& plan, VPackSlice const& cur,
+                          VPackSlice const& local, std::string const& serverId,
+                          MaintenanceFeature& feature, VPackBuilder& report);
 
 /**
  * @brief          Report local changes to current
@@ -133,11 +131,10 @@ arangodb::Result phaseTwo (
  *
  * @return         Result
  */
-arangodb::Result reportInCurrent(
-  VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
-  MaintenanceFeature::errors_t const& allErrors,
-  std::string const& serverId, VPackBuilder& report); 
-
+arangodb::Result reportInCurrent(VPackSlice const& plan, VPackSlice const& cur,
+                                 VPackSlice const& local,
+                                 MaintenanceFeature::errors_t const& allErrors,
+                                 std::string const& serverId, VPackBuilder& report);
 
 /**
  * @brief            Schedule synchroneous replications
@@ -151,11 +148,13 @@ arangodb::Result reportInCurrent(
  *
  * @return           Success story
  */
-arangodb::Result syncReplicatedShardsWithLeaders(
-  VPackSlice const& plan, VPackSlice const& current, VPackSlice const& local,
-  std::string const& serverId, std::vector<ActionDescription>& actions);
+arangodb::Result syncReplicatedShardsWithLeaders(VPackSlice const& plan,
+                                                 VPackSlice const& current,
+                                                 VPackSlice const& local,
+                                                 std::string const& serverId,
+                                                 std::vector<ActionDescription>& actions);
 
-}}
+}  // namespace maintenance
+}  // namespace arangodb
 
 #endif
-

@@ -38,9 +38,9 @@ typedef unsigned int RegisterId;
 /// @brief type of a query id
 typedef uint64_t QueryId;
 
-//Map RemoteID->ServerID->[SnippetId]
+// Map RemoteID->ServerID->[SnippetId]
 typedef std::unordered_map<size_t, std::unordered_map<std::string, std::vector<std::string>>> MapRemoteToSnippet;
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

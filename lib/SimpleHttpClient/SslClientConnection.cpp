@@ -26,14 +26,14 @@
 #include <openssl/ssl.h>
 
 #ifdef TRI_HAVE_WINSOCK2_H
-#include <WinSock2.h>
 #include <WS2tcpip.h>
+#include <WinSock2.h>
 #endif
 
 #include <sys/types.h>
 
-#include <openssl/ssl.h>
 #include <openssl/err.h>
+#include <openssl/ssl.h>
 #include "Basics/socket-utils.h"
 #include "Logger/Logger.h"
 #include "Ssl/ssl-helper.h"
@@ -99,10 +99,9 @@ static char const* sslMessageType(int sslVersion, int msg) {
       case SSL2_MT_CLIENT_CERTIFICATE:
         return "Client CERT";
     }
-  }
-  else
+  } else
 #endif
-  if (sslVersion == SSL3_VERSION_MAJOR) {
+      if (sslVersion == SSL3_VERSION_MAJOR) {
     switch (msg) {
       case SSL3_MT_HELLO_REQUEST:
         return "Hello request";
@@ -148,42 +147,36 @@ static void sslTlsTrace(int direction, int sslVersion, int contentType,
     else
       tlsRtName = "";
 
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "SSL connection trace: " << (direction ? "out" : "in") << ", " << tlsRtName << ", " << sslMessageType(sslVersion, *static_cast<char const*>(buf));
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+        << "SSL connection trace: " << (direction ? "out" : "in") << ", " << tlsRtName
+        << ", " << sslMessageType(sslVersion, *static_cast<char const*>(buf));
   }
 }
 #endif
 
-}
+}  // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new client connection
 ////////////////////////////////////////////////////////////////////////////////
 
-SslClientConnection::SslClientConnection(Endpoint* endpoint,
-                                         double requestTimeout,
+SslClientConnection::SslClientConnection(Endpoint* endpoint, double requestTimeout,
                                          double connectTimeout,
-                                         size_t connectRetries,
-                                         uint64_t sslProtocol)
-    : GeneralClientConnection(endpoint, requestTimeout, connectTimeout,
-                              connectRetries),
+                                         size_t connectRetries, uint64_t sslProtocol)
+    : GeneralClientConnection(endpoint, requestTimeout, connectTimeout, connectRetries),
       _ssl(nullptr),
       _ctx(nullptr),
       _sslProtocol(sslProtocol) {
-
   init(sslProtocol);
 }
 
 SslClientConnection::SslClientConnection(std::unique_ptr<Endpoint>& endpoint,
-                                         double requestTimeout,
-                                         double connectTimeout,
-                                         size_t connectRetries,
-                                         uint64_t sslProtocol)
-    : GeneralClientConnection(endpoint, requestTimeout, connectTimeout,
-                              connectRetries),
+                                         double requestTimeout, double connectTimeout,
+                                         size_t connectRetries, uint64_t sslProtocol)
+    : GeneralClientConnection(endpoint, requestTimeout, connectTimeout, connectRetries),
       _ssl(nullptr),
       _ctx(nullptr),
       _sslProtocol(sslProtocol) {
-
   init(sslProtocol);
 }
 
@@ -259,8 +252,7 @@ void SslClientConnection::init(uint64_t sslProtocol) {
     // SSL_CTX_set_cipher_list(_ctx, "ALL:!EXPORT:!EXPORT40:!EXPORT56:!aNULL:!LOW:!RC4:@STRENGTH");
 
     bool sslCache = true;
-    SSL_CTX_set_session_cache_mode(
-        _ctx, sslCache ? SSL_SESS_CACHE_SERVER : SSL_SESS_CACHE_OFF);
+    SSL_CTX_set_session_cache_mode(_ctx, sslCache ? SSL_SESS_CACHE_SERVER : SSL_SESS_CACHE_OFF);
   }
 }
 
@@ -326,22 +318,23 @@ bool SslClientConnection::connectSocket() {
     long certError;
 
     errorDetail = SSL_get_error(_ssl, ret);
-    if ((errorDetail == SSL_ERROR_WANT_READ) ||
-        (errorDetail == SSL_ERROR_WANT_WRITE)) {
+    if ((errorDetail == SSL_ERROR_WANT_READ) || (errorDetail == SSL_ERROR_WANT_WRITE)) {
       return true;
     }
-      
+
     /* Gets the earliest error code from the
        thread's error queue and removes the entry. */
     unsigned long lastError = ERR_get_error();
-     
+
     if (errorDetail == SSL_ERROR_SYSCALL && lastError == 0) {
       if (ret == 0) {
-        _errorDetails += "an EOF was observed that violates the protocol. this may happen when the other side has closed the connection";
+        _errorDetails +=
+            "an EOF was observed that violates the protocol. this may happen "
+            "when the other side has closed the connection";
       } else if (ret == -1) {
         _errorDetails += "I/O reported by BIO";
       }
-    } 
+    }
 
     switch (errorDetail) {
       case 0x1407E086:
@@ -362,7 +355,8 @@ bool SslClientConnection::connectSocket() {
           _errorDetails += std::string("certificate problem: ") +
                            X509_verify_cert_error_string(certError);
         } else {
-          _errorDetails = std::string("certificate problem, verify that the CA cert is OK");
+          _errorDetails =
+              std::string("certificate problem, verify that the CA cert is OK");
         }
         break;
 
@@ -372,16 +366,16 @@ bool SslClientConnection::connectSocket() {
         _errorDetails += std::string(" - details: ") + errorBuffer;
         break;
     }
-    
+
     disconnectSocket();
     _isConnected = false;
     return false;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "SSL connection opened: " 
-             << SSL_get_cipher(_ssl) << ", " 
-             << SSL_get_cipher_version(_ssl) 
-             << " (" << SSL_get_cipher_bits(_ssl, nullptr) << " bits)"; 
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+      << "SSL connection opened: " << SSL_get_cipher(_ssl) << ", "
+      << SSL_get_cipher_version(_ssl) << " ("
+      << SSL_get_cipher_bits(_ssl, nullptr) << " bits)";
 
   return true;
 }
@@ -404,8 +398,7 @@ void SslClientConnection::disconnectSocket() {
 /// @brief write data to the connection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SslClientConnection::writeClientConnection(void const* buffer,
-                                                size_t length,
+bool SslClientConnection::writeClientConnection(void const* buffer, size_t length,
                                                 size_t* bytesWritten) {
   TRI_ASSERT(bytesWritten != nullptr);
 
@@ -443,7 +436,7 @@ bool SslClientConnection::writeClientConnection(void const* buffer,
       break;
     }
 
-    case SSL_ERROR_SSL:{
+    case SSL_ERROR_SSL: {
       /*  A failure in the SSL library occurred, usually a protocol error.
           The OpenSSL error queue contains more information on the error. */
       unsigned long errorDetail = ERR_get_error();
@@ -452,11 +445,10 @@ bool SslClientConnection::writeClientConnection(void const* buffer,
       _errorDetails = std::string("SSL: while writing: ") + errorBuffer;
       break;
     }
-      
+
     default:
       /* a true error */
-      _errorDetails =
-          std::string("SSL: while writing: error ") + std::to_string(err);
+      _errorDetails = std::string("SSL: while writing: error ") + std::to_string(err);
   }
 
   return false;
@@ -466,8 +458,7 @@ bool SslClientConnection::writeClientConnection(void const* buffer,
 /// @brief read data from the connection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SslClientConnection::readClientConnection(StringBuffer& stringBuffer,
-                                               bool& connectionClosed) {
+bool SslClientConnection::readClientConnection(StringBuffer& stringBuffer, bool& connectionClosed) {
 #ifdef _WIN32
   char windowsErrorBuf[256];
 #endif

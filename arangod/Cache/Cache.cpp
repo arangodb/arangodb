@@ -48,10 +48,9 @@ uint64_t Cache::_findStatsCapacity = 16384;
 
 Cache::ConstructionGuard::ConstructionGuard() {}
 
-Cache::Cache(ConstructionGuard guard, Manager* manager, uint64_t id, Metadata&& metadata,
-             std::shared_ptr<Table> table, bool enableWindowedStats,
-             std::function<Table::BucketClearer(Metadata*)> bucketClearer,
-             size_t slotsPerBucket)
+Cache::Cache(ConstructionGuard guard, Manager* manager, uint64_t id,
+             Metadata&& metadata, std::shared_ptr<Table> table, bool enableWindowedStats,
+             std::function<Table::BucketClearer(Metadata*)> bucketClearer, size_t slotsPerBucket)
     : _taskLock(),
       _shutdown(false),
       _enableWindowedStats(enableWindowedStats),
@@ -122,11 +121,12 @@ void Cache::sizeHint(uint64_t numElements) {
     return;
   }
 
-  uint64_t numBuckets = static_cast<uint64_t>(static_cast<double>(numElements)
-    / (static_cast<double>(_slotsPerBucket) * Table::idealUpperRatio));
+  uint64_t numBuckets = static_cast<uint64_t>(
+      static_cast<double>(numElements) /
+      (static_cast<double>(_slotsPerBucket) * Table::idealUpperRatio));
   uint32_t requestedLogSize = 0;
-  for (; (static_cast<uint64_t>(1) << requestedLogSize) < numBuckets;
-    requestedLogSize++) {}
+  for (; (static_cast<uint64_t>(1) << requestedLogSize) < numBuckets; requestedLogSize++) {
+  }
   requestMigrate(requestedLogSize);
 }
 
@@ -197,8 +197,7 @@ bool Cache::isBusy() {
   }
 
   _metadata.readLock();
-  bool busy = _metadata.isResizing() ||
-              _metadata.isMigrating();
+  bool busy = _metadata.isResizing() || _metadata.isMigrating();
   _metadata.readUnlock();
 
   return busy;
@@ -223,8 +222,7 @@ void Cache::requestGrow() {
       ok = !_metadata.isResizing();
       _metadata.readUnlock();
       if (ok) {
-        std::tie(ok, _resizeRequestTime) =
-            _manager->requestGrow(this);
+        std::tie(ok, _resizeRequestTime) = _manager->requestGrow(this);
       }
     }
     _taskLock.writeUnlock();
@@ -241,12 +239,10 @@ void Cache::requestMigrate(uint32_t requestedLogSize) {
   if (ok) {
     if (!isShutdown() && std::chrono::steady_clock::now() > _migrateRequestTime) {
       _metadata.readLock();
-      ok = !_metadata.isMigrating() &&
-           (requestedLogSize != _table->logSize());
+      ok = !_metadata.isMigrating() && (requestedLogSize != _table->logSize());
       _metadata.readUnlock();
       if (ok) {
-        std::tie(ok, _migrateRequestTime) =
-            _manager->requestMigrate(this, requestedLogSize);
+        std::tie(ok, _migrateRequestTime) = _manager->requestMigrate(this, requestedLogSize);
       }
     }
     _taskLock.writeUnlock();
@@ -271,8 +267,7 @@ bool Cache::reclaimMemory(uint64_t size) {
 }
 
 uint32_t Cache::hashKey(void const* key, size_t keySize) const {
-  return (std::max)(static_cast<uint32_t>(1),
-                    fasthash32(key, keySize, 0xdeadbeefUL));
+  return (std::max)(static_cast<uint32_t>(1), fasthash32(key, keySize, 0xdeadbeefUL));
 }
 
 void Cache::recordStat(Stat stat) {
@@ -297,7 +292,9 @@ void Cache::recordStat(Stat stat) {
       _manager->reportHitStat(Stat::findMiss);
       break;
     }
-    default: { break; }
+    default: {
+      break;
+    }
   }
 }
 
@@ -310,8 +307,7 @@ bool Cache::reportInsert(bool hadEviction) {
   if ((basics::SharedPRNG::rand() & _evictionMask) == 0) {
     uint64_t total = _insertsTotal.value(std::memory_order_relaxed);
     uint64_t evictions = _insertEvictions.value(std::memory_order_relaxed);
-    if ((static_cast<double>(evictions) / static_cast<double>(total))
-        > _evictionRateThreshold) {
+    if ((static_cast<double>(evictions) / static_cast<double>(total)) > _evictionRateThreshold) {
       shouldMigrate = true;
       _table->signalEvictions();
     }
@@ -338,8 +334,7 @@ void Cache::shutdown() {
 
     _metadata.readLock();
     while (true) {
-      if (!_metadata.isMigrating() &&
-          !_metadata.isResizing()) {
+      if (!_metadata.isMigrating() && !_metadata.isResizing()) {
         break;
       }
       _metadata.readUnlock();
@@ -350,8 +345,7 @@ void Cache::shutdown() {
     }
     _metadata.readUnlock();
 
-    std::shared_ptr<Table> extra =
-        _table->setAuxiliary(std::shared_ptr<Table>(nullptr));
+    std::shared_ptr<Table> extra = _table->setAuxiliary(std::shared_ptr<Table>(nullptr));
     if (extra) {
       extra->clear();
       _manager->reclaimTable(extra);
@@ -375,8 +369,7 @@ bool Cache::canResize() {
 
   bool allowed = true;
   _metadata.readLock();
-  if (_metadata.isResizing() ||
-      _metadata.isMigrating()) {
+  if (_metadata.isResizing() || _metadata.isMigrating()) {
     allowed = false;
   }
   _metadata.readUnlock();
@@ -440,8 +433,7 @@ bool Cache::migrate(std::shared_ptr<Table> newTable) {
 
   // do the actual migration
   for (uint32_t i = 0; i < _table->size(); i++) {
-    migrateBucket(_table->primaryBucket(i), _table->auxiliaryBuckets(i),
-                            newTable);
+    migrateBucket(_table->primaryBucket(i), _table->auxiliaryBuckets(i), newTable);
   }
 
   // swap tables

@@ -35,15 +35,12 @@ class QueryRegistry;
 
 class QueryRegistryFeature final : public application_features::ApplicationFeature {
  public:
-  
   static aql::QueryRegistry* registry() {
     return QUERY_REGISTRY.load(std::memory_order_acquire);
   }
   static constexpr double DefaultQueryTTL = 600.0;
 
-  explicit QueryRegistryFeature(
-    application_features::ApplicationServer& server
-  );
+  explicit QueryRegistryFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -54,7 +51,9 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   bool trackSlowQueries() const { return _trackSlowQueries; }
   bool trackBindVars() const { return _trackBindVars; }
   double slowQueryThreshold() const { return _slowQueryThreshold; }
-  double slowStreamingQueryThreshold() const { return _slowStreamingQueryThreshold; }
+  double slowStreamingQueryThreshold() const {
+    return _slowStreamingQueryThreshold;
+  }
   bool failOnWarning() const { return _failOnWarning; }
   uint64_t queryMemoryLimit() const { return _queryMemoryLimit; }
   uint64_t maxQueryPlans() const { return _maxQueryPlans; }
@@ -83,6 +82,6 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   std::unique_ptr<aql::QueryRegistry> _queryRegistry;
 };
 
-}
+}  // namespace arangodb
 
 #endif

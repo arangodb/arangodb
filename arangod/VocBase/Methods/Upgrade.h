@@ -63,8 +63,7 @@ struct Upgrade {
     CLUSTER_DB_SERVER_LOCAL = (1u << 9)
   };
 
-  typedef std::function<bool(TRI_vocbase_t&, velocypack::Slice const&)>
-      TaskFunction;
+  typedef std::function<bool(TRI_vocbase_t&, velocypack::Slice const&)> TaskFunction;
   struct Task {
     std::string name;
     std::string description;
@@ -81,37 +80,26 @@ struct Upgrade {
 
   /// @brief create a database
   /// corresponding to local-database.js
-  static UpgradeResult createDB(
-    TRI_vocbase_t& vocbase,
-    arangodb::velocypack::Slice const& users
-  );
+  static UpgradeResult createDB(TRI_vocbase_t& vocbase,
+                                arangodb::velocypack::Slice const& users);
 
   /// @brief executed on startup
   /// @param upgrade  Perform an actual upgrade
   /// Corresponds to upgrade-database.js
-  static UpgradeResult startup(
-    TRI_vocbase_t& vocbase,
-    bool upgrade,
-    bool ignoreFileErrors
-  );
+  static UpgradeResult startup(TRI_vocbase_t& vocbase, bool upgrade, bool ignoreFileErrors);
 
  private:
   static std::vector<Task> _tasks;
-  static void addTask(std::string&& name, std::string&& desc,
-                      uint32_t systemFlag, uint32_t clusterFlag,
-                      uint32_t dbFlag, TaskFunction&& action) {
+  static void addTask(std::string&& name, std::string&& desc, uint32_t systemFlag,
+                      uint32_t clusterFlag, uint32_t dbFlag, TaskFunction&& action) {
     _tasks.push_back(Task{name, desc, systemFlag, clusterFlag, dbFlag, action});
   }
 
   /// @brief register tasks, only run once on startup
   static void registerTasks();
-  static UpgradeResult runTasks(
-    TRI_vocbase_t& vocbase,
-    VersionResult& vinfo,
-    arangodb::velocypack::Slice const& params,
-    uint32_t clusterFlag,
-    uint32_t dbFlag
-  );
+  static UpgradeResult runTasks(TRI_vocbase_t& vocbase, VersionResult& vinfo,
+                                arangodb::velocypack::Slice const& params,
+                                uint32_t clusterFlag, uint32_t dbFlag);
 
   /*
   /// @brief system database only
@@ -136,7 +124,7 @@ struct Upgrade {
   constexpr int DATABASE_EXISTING = 3002;*/
 };
 
-}
-}
+}  // namespace methods
+}  // namespace arangodb
 
 #endif

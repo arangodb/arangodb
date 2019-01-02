@@ -40,8 +40,7 @@ using namespace arangodb::aql;
 // --SECTION--                                             Coordinator Container
 // -----------------------------------------------------------------------------
 
-EngineInfoContainerCoordinator::EngineInfo::EngineInfo(QueryId id,
-                                                       size_t idOfRemoteNode)
+EngineInfoContainerCoordinator::EngineInfo::EngineInfo(QueryId id, size_t idOfRemoteNode)
     : _id(id), _idOfRemoteNode(idOfRemoteNode) {
   TRI_ASSERT(_nodes.empty());
 }
@@ -63,8 +62,7 @@ void EngineInfoContainerCoordinator::EngineInfo::addNode(ExecutionNode* en) {
 Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
     Query* query, QueryRegistry* queryRegistry, std::string const& dbname,
     std::unordered_set<std::string> const& restrictToShards,
-    MapRemoteToSnippet const& dbServerQueryIds,
-    std::vector<uint64_t>& coordinatorQueryIds,
+    MapRemoteToSnippet const& dbServerQueryIds, std::vector<uint64_t>& coordinatorQueryIds,
     std::unordered_set<ShardID> const& lockedShards) const {
   TRI_ASSERT(!_nodes.empty());
   {
@@ -83,8 +81,7 @@ Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
 
   TRI_ASSERT(engine->root() != nullptr);
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Storing Coordinator engine: "
-                                          << _id;
+  LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Storing Coordinator engine: " << _id;
 
   // For _id == 0 this thread will always maintain the handle to
   // the engine and will clean up. We do not keep track of it seperately
@@ -116,10 +113,8 @@ EngineInfoContainerCoordinator::EngineInfoContainerCoordinator() {
 EngineInfoContainerCoordinator::~EngineInfoContainerCoordinator() {}
 
 void EngineInfoContainerCoordinator::addNode(ExecutionNode* node) {
-  TRI_ASSERT(
-    node->getType() != ExecutionNode::INDEX
-      && node->getType() != ExecutionNode::ENUMERATE_COLLECTION
-  );
+  TRI_ASSERT(node->getType() != ExecutionNode::INDEX &&
+             node->getType() != ExecutionNode::ENUMERATE_COLLECTION);
 
   TRI_ASSERT(!_engines.empty());
   TRI_ASSERT(!_engineStack.empty());
@@ -168,14 +163,14 @@ ExecutionEngineResult EngineInfoContainerCoordinator::buildEngines(
         localQuery = query->clone(PART_DEPENDENT, false);
         if (localQuery == nullptr) {
           // clone() cannot return nullptr, but some mocks seem to do it
-          return ExecutionEngineResult(TRI_ERROR_INTERNAL, "cannot clone query");
+          return ExecutionEngineResult(TRI_ERROR_INTERNAL,
+                                       "cannot clone query");
         }
         TRI_ASSERT(localQuery != nullptr);
       }
       try {
-        auto res = info.buildEngine(localQuery, registry, dbname,
-                                    restrictToShards, dbServerQueryIds,
-                                    coordinatorQueryIds, lockedShards);
+        auto res = info.buildEngine(localQuery, registry, dbname, restrictToShards,
+                                    dbServerQueryIds, coordinatorQueryIds, lockedShards);
         if (!res.ok()) {
           if (!first) {
             // We need to clean up this query.

@@ -24,17 +24,18 @@
 #ifndef ARANGOD_CLUSTER_CLUSTER_HELPERS_H
 #define ARANGOD_CLUSTER_CLUSTER_HELPERS_H 1
 
-#include "Basics/Common.h"
 #include <velocypack/Slice.h>
+#include "Basics/Common.h"
 
 namespace arangodb {
 class ClusterHelpers {
  public:
-  static bool compareServerLists(arangodb::velocypack::Slice plan, arangodb::velocypack::Slice current);
+  static bool compareServerLists(arangodb::velocypack::Slice plan,
+                                 arangodb::velocypack::Slice current);
 
   // values are passed by value intentionally, as they will be sorted inside the function
   static bool compareServerLists(std::vector<std::string>, std::vector<std::string>);
 };
-}
+}  // namespace arangodb
 
 #endif

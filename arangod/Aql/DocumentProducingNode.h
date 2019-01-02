@@ -44,11 +44,9 @@ class DocumentProducingNode {
  public:
   /// @brief return the out variable
   Variable const* outVariable() const { return _outVariable; }
-  
-  std::vector<std::string> const& projections() const {
-    return _projections;
-  }
-  
+
+  std::vector<std::string> const& projections() const { return _projections; }
+
   void projections(std::vector<std::string> const& projections) {
     _projections = projections;
   }
@@ -56,7 +54,7 @@ class DocumentProducingNode {
   void projections(std::vector<std::string>&& projections) {
     _projections = std::move(projections);
   }
-  
+
   void projections(std::unordered_set<std::string>&& projections) {
     _projections.clear();
     _projections.reserve(projections.size());
@@ -64,15 +62,15 @@ class DocumentProducingNode {
       _projections.push_back(std::move(it));
     }
   }
-  
-  std::vector<size_t> const& coveringIndexAttributePositions() const { 
+
+  std::vector<size_t> const& coveringIndexAttributePositions() const {
     return _coveringIndexAttributePositions;
   }
-  
-  void resetCoveringIndexAttributePositions() const { 
+
+  void resetCoveringIndexAttributePositions() const {
     _coveringIndexAttributePositions.clear();
   }
-  
+
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
 
  protected:
@@ -90,7 +88,7 @@ class DocumentProducingNode {
   std::vector<std::size_t> mutable _coveringIndexAttributePositions;
 };
 
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

@@ -83,8 +83,7 @@ class NearUtils {
 
  public:
   /// @brief Type of documents buffer
-  typedef std::priority_queue<Document, std::vector<Document>, CMP>
-      GeoDocumentsQueue;
+  typedef std::priority_queue<Document, std::vector<Document>, CMP> GeoDocumentsQueue;
 
   explicit NearUtils(geo::QueryParams&& params) noexcept;
   ~NearUtils();
@@ -99,11 +98,9 @@ class NearUtils {
 
   /// @brief all intervals are covered, no more buffered results
   bool isDone() const {
-    TRI_ASSERT(_innerAngle >= S1ChordAngle::Zero() &&
-               _innerAngle <= _outerAngle);
+    TRI_ASSERT(_innerAngle >= S1ChordAngle::Zero() && _innerAngle <= _outerAngle);
     TRI_ASSERT(_outerAngle <= _maxAngle &&
-               _maxAngle <=
-                   S1ChordAngle::Radians(geo::kMaxRadiansBetweenPoints));
+               _maxAngle <= S1ChordAngle::Radians(geo::kMaxRadiansBetweenPoints));
     return _buffer.empty() && _allIntervalsCovered;
   }
 

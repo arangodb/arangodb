@@ -97,7 +97,7 @@ Result PlainCache::insert(CachedValue* value) {
       change -= static_cast<int64_t>(candidate->size());
     }
 
-    _metadata.readLock(); // special case
+    _metadata.readLock();  // special case
     allowed = _metadata.adjustUsageIfAllowed(change);
     _metadata.readUnlock();
 
@@ -147,7 +147,7 @@ Result PlainCache::remove(void const* key, uint32_t keySize) {
   if (candidate != nullptr) {
     int64_t change = -static_cast<int64_t>(candidate->size());
 
-    _metadata.readLock(); // special case
+    _metadata.readLock();  // special case
     bool allowed = _metadata.adjustUsageIfAllowed(change);
     TRI_ASSERT(allowed);
     _metadata.readUnlock();
@@ -170,9 +170,9 @@ Result PlainCache::blacklist(void const* key, uint32_t keySize) {
 
 uint64_t PlainCache::allocationSize(bool enableWindowedStats) {
   return sizeof(PlainCache) +
-         (enableWindowedStats ? (sizeof(StatBuffer) +
-                                 StatBuffer::allocationSize(_findStatsCapacity))
-                              : 0);
+         (enableWindowedStats
+              ? (sizeof(StatBuffer) + StatBuffer::allocationSize(_findStatsCapacity))
+              : 0);
 }
 
 std::shared_ptr<Cache> PlainCache::create(Manager* manager, uint64_t id, Metadata&& metadata,
@@ -182,9 +182,9 @@ std::shared_ptr<Cache> PlainCache::create(Manager* manager, uint64_t id, Metadat
                                       std::move(metadata), table, enableWindowedStats);
 }
 
-PlainCache::PlainCache(Cache::ConstructionGuard guard, Manager* manager, uint64_t id,
-                       Metadata&& metadata, std::shared_ptr<Table> table,
-                       bool enableWindowedStats)
+PlainCache::PlainCache(Cache::ConstructionGuard guard, Manager* manager,
+                       uint64_t id, Metadata&& metadata,
+                       std::shared_ptr<Table> table, bool enableWindowedStats)
     : Cache(guard, manager, id, std::move(metadata), table, enableWindowedStats,
             PlainCache::bucketClearer, PlainBucket::slotsData) {}
 
@@ -229,8 +229,7 @@ uint64_t PlainCache::freeMemoryFrom(uint32_t hash) {
   return reclaimed;
 }
 
-void PlainCache::migrateBucket(void* sourcePtr,
-                               std::unique_ptr<Table::Subtable> targets,
+void PlainCache::migrateBucket(void* sourcePtr, std::unique_ptr<Table::Subtable> targets,
                                std::shared_ptr<Table> newTable) {
   // lock current bucket
   auto source = reinterpret_cast<PlainBucket*>(sourcePtr);
@@ -248,8 +247,7 @@ void PlainCache::migrateBucket(void* sourcePtr,
       uint32_t hash = source->_cachedHashes[k];
       CachedValue* value = source->_cachedData[k];
 
-      auto targetBucket =
-          reinterpret_cast<PlainBucket*>(targets->fetchBucket(hash));
+      auto targetBucket = reinterpret_cast<PlainBucket*>(targets->fetchBucket(hash));
       bool haveSpace = true;
       if (targetBucket->isFull()) {
         CachedValue* candidate = targetBucket->evictionCandidate();
@@ -289,8 +287,8 @@ void PlainCache::migrateBucket(void* sourcePtr,
   source->unlock();
 }
 
-std::tuple<Result, PlainBucket*, Table*> PlainCache::getBucket(
-    uint32_t hash, uint64_t maxTries, bool singleOperation) {
+std::tuple<Result, PlainBucket*, Table*> PlainCache::getBucket(uint32_t hash, uint64_t maxTries,
+                                                               bool singleOperation) {
   Result status;
   PlainBucket* bucket = nullptr;
   Table* source = nullptr;
@@ -304,7 +302,6 @@ std::tuple<Result, PlainBucket*, Table*> PlainCache::getBucket(
   if (singleOperation) {
     _manager->reportAccess(_id);
   }
-
 
   auto pair = table->fetchAndLockBucket(hash, maxTries);
   bucket = reinterpret_cast<PlainBucket*>(pair.first);
@@ -325,7 +322,7 @@ Table::BucketClearer PlainCache::bucketClearer(Metadata* metadata) {
       if (bucket->_cachedData[j] != nullptr) {
         uint64_t size = bucket->_cachedData[j]->size();
         freeValue(bucket->_cachedData[j]);
-        metadata->readLock(); // special case
+        metadata->readLock();  // special case
         metadata->adjustUsageIfAllowed(-static_cast<int64_t>(size));
         metadata->readUnlock();
       }

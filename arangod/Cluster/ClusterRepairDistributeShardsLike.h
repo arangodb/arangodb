@@ -30,16 +30,16 @@
 #include <boost/variant.hpp>
 
 #include "Agency/AgencyComm.h"
-#include "ResultT.h"
 #include "ClusterInfo.h"
 #include "ClusterRepairOperations.h"
+#include "ResultT.h"
 
 namespace arangodb {
 namespace velocypack {
 class Slice;
 template <typename T>
 class Buffer;
-}
+}  // namespace velocypack
 
 namespace cluster_repairs {
 
@@ -57,8 +57,7 @@ std::ostream& operator<<(std::ostream& stream, std::array<T, N> array) {
   return stream;
 }
 
-inline std::ostream& operator<<(std::ostream& stream,
-                                VPackBufferPtr const& vpack) {
+inline std::ostream& operator<<(std::ostream& stream, VPackBufferPtr const& vpack) {
   return stream << "std::shared_ptr<VPackBuffer> { "
                 << velocypack::Slice(vpack->data()).toJson() << " "
                 << "}";
@@ -82,46 +81,32 @@ struct Collection {
   Collection() = delete;
 
   // constructor with named parameters
-  Collection(
-      tagged_argument<tag::database, DatabaseID> database_,
-      tagged_argument<tag::collectionId, CollectionID> collectionId_,
-      tagged_argument<tag::collectionName, std::string> collectionName_,
-      tagged_argument<tag::replicationFactor, uint64_t> replicationFactor_,
-      tagged_argument<tag::deleted, bool> deleted_,
-      tagged_argument<tag::isSmart, bool> isSmart_,
-      tagged_argument<tag::distributeShardsLike, boost::optional<CollectionID>>
-          distributeShardsLike_,
-      tagged_argument<tag::repairingDistributeShardsLike,
-                      boost::optional<CollectionID>>
-          repairingDistributeShardsLike_,
-      tagged_argument<tag::shardsById,
-                      std::map<ShardID, DBServers, VersionSort>>
-          shardsById_);
+  Collection(tagged_argument<tag::database, DatabaseID> database_,
+             tagged_argument<tag::collectionId, CollectionID> collectionId_,
+             tagged_argument<tag::collectionName, std::string> collectionName_,
+             tagged_argument<tag::replicationFactor, uint64_t> replicationFactor_,
+             tagged_argument<tag::deleted, bool> deleted_,
+             tagged_argument<tag::isSmart, bool> isSmart_,
+             tagged_argument<tag::distributeShardsLike, boost::optional<CollectionID>> distributeShardsLike_,
+             tagged_argument<tag::repairingDistributeShardsLike, boost::optional<CollectionID>> repairingDistributeShardsLike_,
+             tagged_argument<tag::shardsById, std::map<ShardID, DBServers, VersionSort>> shardsById_);
 };
 
 class DistributeShardsLikeRepairer {
  public:
-  ResultT<std::map<
-      CollectionID,
-      ResultT<std::list<
-          RepairOperation>>>> static repairDistributeShardsLike(velocypack::
-                                                                    Slice const&
-                                                                        planCollections,
-                                                                velocypack::
-                                                                    Slice const&
-                                                                        supervisionHealth);
+  ResultT<std::map<CollectionID, ResultT<std::list<RepairOperation>>>> static repairDistributeShardsLike(
+      velocypack::Slice const& planCollections, velocypack::Slice const& supervisionHealth);
 
  private:
-  std::map<ShardID, DBServers, VersionSort> static readShards(
-      velocypack::Slice const& shards);
+  std::map<ShardID, DBServers, VersionSort> static readShards(velocypack::Slice const& shards);
 
   DBServers static readDatabases(velocypack::Slice const& planDbServers);
 
   ResultT<std::map<CollectionID, struct Collection>> static readCollections(
       velocypack::Slice const& collectionsByDatabase);
 
-  boost::optional<ServerID const> static findFreeServer(
-      DBServers const& availableDbServers, DBServers const& shardDbServers);
+  boost::optional<ServerID const> static findFreeServer(DBServers const& availableDbServers,
+                                                        DBServers const& shardDbServers);
 
   std::vector<std::pair<CollectionID, Result>> static findCollectionsToFix(
       std::map<CollectionID, struct Collection> collections);
@@ -130,22 +115,26 @@ class DistributeShardsLikeRepairer {
 
   DBServers static serverSetSymmetricDifference(DBServers setA, DBServers setB);
 
-  MoveShardOperation static createMoveShardOperation(
-      struct Collection& collection, ShardID const& shardId,
-      ServerID const& fromServerId, ServerID const& toServerId, bool isLeader);
+  MoveShardOperation static createMoveShardOperation(struct Collection& collection,
+                                                     ShardID const& shardId,
+                                                     ServerID const& fromServerId,
+                                                     ServerID const& toServerId,
+                                                     bool isLeader);
 
   // "proto collection" always means the collection referred to in the
   // "distributeShardsLike" attribute of "collection"
 
-  ResultT<std::list<RepairOperation>> static fixLeader(
-      DBServers const& availableDbServers, struct Collection& collection,
-      struct Collection const& proto, ShardID const& shardId,
-      ShardID const& protoShardId);
+  ResultT<std::list<RepairOperation>> static fixLeader(DBServers const& availableDbServers,
+                                                       struct Collection& collection,
+                                                       struct Collection const& proto,
+                                                       ShardID const& shardId,
+                                                       ShardID const& protoShardId);
 
-  ResultT<std::list<RepairOperation>> static fixShard(
-      DBServers const& availableDbServers, struct Collection& collection,
-      struct Collection const& proto, ShardID const& shardId,
-      ShardID const& protoShardId);
+  ResultT<std::list<RepairOperation>> static fixShard(DBServers const& availableDbServers,
+                                                      struct Collection& collection,
+                                                      struct Collection const& proto,
+                                                      ShardID const& shardId,
+                                                      ShardID const& protoShardId);
 
   ResultT<boost::optional<FixServerOrderOperation>> static createFixServerOrderOperation(
       struct Collection& collection, struct Collection const& proto,
@@ -154,10 +143,9 @@ class DistributeShardsLikeRepairer {
   ResultT<BeginRepairsOperation> static createBeginRepairsOperation(
       struct Collection& collection, struct Collection const& proto);
 
-  std::
-      vector<cluster_repairs::ShardWithProtoAndDbServers> static createShardVector(
-          std::map<ShardID, DBServers, VersionSort> const& shardsById,
-          std::map<ShardID, DBServers, VersionSort> const& protoShardsById);
+  std::vector<cluster_repairs::ShardWithProtoAndDbServers> static createShardVector(
+      std::map<ShardID, DBServers, VersionSort> const& shardsById,
+      std::map<ShardID, DBServers, VersionSort> const& protoShardsById);
 
   ResultT<FinishRepairsOperation> static createFinishRepairsOperation(
       struct Collection& collection, struct Collection const& proto);
@@ -166,7 +154,7 @@ class DistributeShardsLikeRepairer {
       struct Collection& collection, struct Collection const& proto,
       DBServers const& availableDbServers);
 };
-}
-}
+}  // namespace cluster_repairs
+}  // namespace arangodb
 
 #endif  // ARANGOD_CLUSTER_CLUSTER_REPAIR_DISTRIBUTE_SHARDS_LIKE_H

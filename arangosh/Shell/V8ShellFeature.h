@@ -25,8 +25,8 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
-#include <v8.h>
 #include <libplatform/libplatform.h>
+#include <v8.h>
 
 #include "Shell/ConsoleFeature.h"
 #include "Shell/ShellFeature.h"
@@ -38,21 +38,15 @@ class V8ClientConnection;
 
 class V8ShellFeature final : public application_features::ApplicationFeature {
  public:
-  V8ShellFeature(
-    application_features::ApplicationServer& server,
-    std::string const& name
-  );
+  V8ShellFeature(application_features::ApplicationServer& server, std::string const& name);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(
-      std::shared_ptr<options::ProgramOptions> options) override;
+  void validateOptions(std::shared_ptr<options::ProgramOptions> options) override;
   void start() override final;
   void unprepare() override final;
   void stop() override final;
 
-  std::string const& startupDirectory() const {
-    return _startupDirectory;
-  }
+  std::string const& startupDirectory() const { return _startupDirectory; }
 
  private:
   std::string _startupDirectory;
@@ -69,8 +63,7 @@ class V8ShellFeature final : public application_features::ApplicationFeature {
   int runShell(std::vector<std::string> const&);
   bool runScript(std::vector<std::string> const& files,
                  std::vector<std::string> const&, bool);
-  bool runString(std::vector<std::string> const& files,
-                 std::vector<std::string> const&);
+  bool runString(std::vector<std::string> const& files, std::vector<std::string> const&);
   bool runUnitTests(std::vector<std::string> const& files,
                     std::vector<std::string> const& positionals,
                     std::string const& testFilter);
@@ -82,8 +75,8 @@ class V8ShellFeature final : public application_features::ApplicationFeature {
   void initGlobals();
   void initMode(ShellFeature::RunMode, std::vector<std::string> const&);
   void loadModules(ShellFeature::RunMode);
-  std::shared_ptr<V8ClientConnection> setup(v8::Local<v8::Context>& context, bool,
-                                            std::vector<std::string> const&,
+  std::shared_ptr<V8ClientConnection> setup(v8::Local<v8::Context>& context,
+                                            bool, std::vector<std::string> const&,
                                             bool* promptError = nullptr);
 
   std::string _name;
@@ -92,6 +85,6 @@ class V8ShellFeature final : public application_features::ApplicationFeature {
   ConsoleFeature* _console;
 };
 
-}
+}  // namespace arangodb
 
 #endif

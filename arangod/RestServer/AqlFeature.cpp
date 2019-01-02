@@ -38,13 +38,11 @@ namespace {
 // if not set, then no new lease can be acquired.
 std::atomic<uint64_t> leases{0};
 static constexpr uint64_t readyBit = 0x8000000000000000ULL;
-} // namespace
+}  // namespace
 
 namespace arangodb {
 
-AqlFeature::AqlFeature(
-    application_features::ApplicationServer& server
-)
+AqlFeature::AqlFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Aql") {
   setOptional(false);
   startsAfter("V8Phase");
@@ -61,7 +59,7 @@ AqlFeature::~AqlFeature() {
 bool AqlFeature::lease() noexcept {
   uint64_t previous = ::leases.fetch_add(1);
   if ((previous & ::readyBit) == 0) {
-    // oops, no lease can be acquired yet. 
+    // oops, no lease can be acquired yet.
     // revert the increase and return false
     ::leases.fetch_sub(1);
     return false;
@@ -69,9 +67,7 @@ bool AqlFeature::lease() noexcept {
   return true;
 }
 
-void AqlFeature::unlease() noexcept {
-  ::leases.fetch_sub(1);
-}
+void AqlFeature::unlease() noexcept { ::leases.fetch_sub(1); }
 
 void AqlFeature::start() {
   ::leases.fetch_or(::readyBit);
@@ -81,7 +77,7 @@ void AqlFeature::start() {
 
 void AqlFeature::stop() {
   ::leases.fetch_and(~::readyBit);
-  
+
   LOG_TOPIC(DEBUG, Logger::QUERIES) << "AQL feature stopped";
 
   // Wait until all AQL queries are done
@@ -101,12 +97,13 @@ void AqlFeature::stop() {
     if (n == 0 && m == 0 && o == 0) {
       break;
     }
-    LOG_TOPIC(DEBUG, Logger::QUERIES) << "AQLFeature shutdown, waiting for "
-      << o << " registered traverser engines to terminate and for "
-      << n << " registered queries to terminate and for "
-      << m << " feature leases to be released";
+    LOG_TOPIC(DEBUG, Logger::QUERIES)
+        << "AQLFeature shutdown, waiting for " << o
+        << " registered traverser engines to terminate and for " << n
+        << " registered queries to terminate and for " << m
+        << " feature leases to be released";
     std::this_thread::sleep_for(std::chrono::microseconds(500000));
   }
 }
 
-} // arangodb
+}  // namespace arangodb

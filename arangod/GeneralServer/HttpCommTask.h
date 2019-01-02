@@ -31,17 +31,16 @@ class HttpCommTask final : public GeneralCommTask {
   bool processRead(double startTime) override;
   void compactify() override;
 
-  std::unique_ptr<GeneralResponse> createResponse(
-      rest::ResponseCode, uint64_t messageId) override final;
+  std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode,
+                                                  uint64_t messageId) override final;
 
-  void addResponse(GeneralResponse& response,
-                   RequestStatistics* stat) override;
+  void addResponse(GeneralResponse& response, RequestStatistics* stat) override;
 
   bool allowDirectHandling() const override final { return true; }
 
   /// @brief send error response including response body
-  void addSimpleResponse(rest::ResponseCode, rest::ContentType,
-                         uint64_t messageId, velocypack::Buffer<uint8_t>&&) override;
+  void addSimpleResponse(rest::ResponseCode, rest::ContentType, uint64_t messageId,
+                         velocypack::Buffer<uint8_t>&&) override;
 
  private:
   void processRequest(std::unique_ptr<HttpRequest>);
@@ -55,7 +54,6 @@ class HttpCommTask final : public GeneralCommTask {
   std::string authenticationRealm() const;
   ResponseCode authenticateRequest(HttpRequest*);
   ResponseCode handleAuthHeader(HttpRequest* request) const;
-
 
  private:
   size_t _readPosition;       // current read position
@@ -82,7 +80,7 @@ class HttpCommTask final : public GeneralCommTask {
 
   std::unique_ptr<HttpRequest> _incompleteRequest;
 };
-}
-}
+}  // namespace rest
+}  // namespace arangodb
 
 #endif

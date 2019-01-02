@@ -41,10 +41,12 @@ class GeneralClientConnection;
 class SimpleHttpClient;
 class SimpleHttpResult;
 }  // namespace httpclient
-  
-namespace fuerte { inline namespace v1 {
+
+namespace fuerte {
+inline namespace v1 {
 class Connection;
-}}
+}
+}  // namespace fuerte
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class for http requests
@@ -61,7 +63,7 @@ class V8ClientConnection {
  public:
   void setInterrupted(bool interrupted);
   bool isConnected();
-  
+
   void connect(ClientFeature*);
   void reconnect(ClientFeature*);
 
@@ -75,56 +77,58 @@ class V8ClientConnection {
   std::string const& mode() const { return _mode; }
   std::string endpointSpecification() const;
 
-  v8::Handle<v8::Value> getData(
-      v8::Isolate* isolate, StringRef const& location,
-      std::unordered_map<std::string, std::string> const& headerFields, bool raw);
+  v8::Handle<v8::Value> getData(v8::Isolate* isolate, StringRef const& location,
+                                std::unordered_map<std::string, std::string> const& headerFields,
+                                bool raw);
 
-  v8::Handle<v8::Value> headData(
-      v8::Isolate* isolate, StringRef const& location,
-      std::unordered_map<std::string, std::string> const& headerFields, bool raw);
+  v8::Handle<v8::Value> headData(v8::Isolate* isolate, StringRef const& location,
+                                 std::unordered_map<std::string, std::string> const& headerFields,
+                                 bool raw);
 
-  v8::Handle<v8::Value> deleteData(
-      v8::Isolate* isolate, StringRef const& location, v8::Local<v8::Value> const& body,
-      std::unordered_map<std::string, std::string> const& headerFields, bool raw);
+  v8::Handle<v8::Value> deleteData(v8::Isolate* isolate, StringRef const& location,
+                                   v8::Local<v8::Value> const& body,
+                                   std::unordered_map<std::string, std::string> const& headerFields,
+                                   bool raw);
 
-  v8::Handle<v8::Value> optionsData(
-      v8::Isolate* isolate, StringRef const& location, v8::Local<v8::Value> const& body,
-      std::unordered_map<std::string, std::string> const& headerFields, bool raw);
+  v8::Handle<v8::Value> optionsData(v8::Isolate* isolate, StringRef const& location,
+                                    v8::Local<v8::Value> const& body,
+                                    std::unordered_map<std::string, std::string> const& headerFields,
+                                    bool raw);
 
-  v8::Handle<v8::Value> postData(
-      v8::Isolate* isolate, StringRef const& location, v8::Local<v8::Value> const& body,
-      std::unordered_map<std::string, std::string> const& headerFields, bool raw = false,
-      bool isFile = false);
+  v8::Handle<v8::Value> postData(v8::Isolate* isolate, StringRef const& location,
+                                 v8::Local<v8::Value> const& body,
+                                 std::unordered_map<std::string, std::string> const& headerFields,
+                                 bool raw = false, bool isFile = false);
 
-  v8::Handle<v8::Value> putData(
-      v8::Isolate* isolate, StringRef const& location, v8::Local<v8::Value> const& body,
-      std::unordered_map<std::string, std::string> const& headerFields, bool raw);
+  v8::Handle<v8::Value> putData(v8::Isolate* isolate, StringRef const& location,
+                                v8::Local<v8::Value> const& body,
+                                std::unordered_map<std::string, std::string> const& headerFields,
+                                bool raw);
 
-  v8::Handle<v8::Value> patchData(
-      v8::Isolate* isolate, StringRef const& location, v8::Local<v8::Value> const& body,
-      std::unordered_map<std::string, std::string> const& headerFields, bool raw);
+  v8::Handle<v8::Value> patchData(v8::Isolate* isolate, StringRef const& location,
+                                  v8::Local<v8::Value> const& body,
+                                  std::unordered_map<std::string, std::string> const& headerFields,
+                                  bool raw);
 
-  void initServer(v8::Isolate*, v8::Handle<v8::Context> context,
-                  ClientFeature*);
-  
+  void initServer(v8::Isolate*, v8::Handle<v8::Context> context, ClientFeature*);
+
  private:
-  
   void createConnection();
 
-  v8::Local<v8::Value> requestData(
-      v8::Isolate* isolate, fuerte::RestVerb verb,
-      StringRef const& location, v8::Local<v8::Value> const& body,
-      std::unordered_map<std::string, std::string> const& headerFields,
-      bool isFile = false);
+  v8::Local<v8::Value> requestData(v8::Isolate* isolate, fuerte::RestVerb verb,
+                                   StringRef const& location,
+                                   v8::Local<v8::Value> const& body,
+                                   std::unordered_map<std::string, std::string> const& headerFields,
+                                   bool isFile = false);
 
-  v8::Local<v8::Value> requestDataRaw(
-      v8::Isolate* isolate, fuerte::RestVerb verb,
-      StringRef const& location, v8::Local<v8::Value> const& body,
-      std::unordered_map<std::string, std::string> const& headerFields);
+  v8::Local<v8::Value> requestDataRaw(v8::Isolate* isolate, fuerte::RestVerb verb,
+                                      StringRef const& location,
+                                      v8::Local<v8::Value> const& body,
+                                      std::unordered_map<std::string, std::string> const& headerFields);
 
   v8::Local<v8::Value> handleResult(v8::Isolate* isolate,
-                                     std::unique_ptr<fuerte::Response> response,
-                                     fuerte::ErrorCondition ec);
+                                    std::unique_ptr<fuerte::Response> response,
+                                    fuerte::ErrorCondition ec);
 
   /// @brief shuts down the connection _connection and resets the pointer
   /// to a nullptr
@@ -133,13 +137,13 @@ class V8ClientConnection {
  private:
   std::string _databaseName;
   std::chrono::duration<double> _requestTimeout;
-  
+
   std::mutex _lock;
   int _lastHttpReturnCode;
   std::string _lastErrorMessage;
   std::string _version;
   std::string _mode;
-  
+
   fuerte::EventLoopService _loop;
   fuerte::ConnectionBuilder _builder;
   std::shared_ptr<fuerte::Connection> _connection;

@@ -42,7 +42,8 @@
 #include "Logger/Logger.h"
 
 namespace {
-std::function<bool(std::string const&)> const passAllFilter = [](std::string const&) { return false; };
+std::function<bool(std::string const&)> const passAllFilter =
+    [](std::string const&) { return false; };
 }
 
 namespace arangodb {
@@ -80,7 +81,7 @@ void normalizePath(std::string& name) {
   // in this case we collapse duplicate dir separators to a single one.
   // we intentionally ignore the first 2 characters, because they may
   // contain a network share filename such as "\\foo\bar"
-  
+
   size_t const n = name.size();
   size_t out = 0;
 
@@ -146,8 +147,7 @@ static void throwFileReadError(std::string const& filename) {
   TRI_set_errno(TRI_ERROR_SYS_ERROR);
   int res = TRI_errno();
 
-  std::string message("read failed for file '" + filename + "': " +
-                      strerror(res));
+  std::string message("read failed for file '" + filename + "': " + strerror(res));
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << message;
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SYS_ERROR, message);
@@ -215,8 +215,7 @@ static void throwFileWriteError(std::string const& filename) {
 }
 
 void spit(std::string const& filename, char const* ptr, size_t len, bool sync) {
-  int fd = TRI_TRACKED_CREATE_FILE(filename.c_str(),
-                                   O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC,
+  int fd = TRI_TRACKED_CREATE_FILE(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC,
                                    S_IRUSR | S_IWUSR | S_IRGRP);
 
   if (fd == -1) {
@@ -295,8 +294,7 @@ bool createDirectory(std::string const& name, int mask, int* errorNumber) {
 
 /// @brief will not copy files/directories for which the filter function
 /// returns true
-bool copyRecursive(std::string const& source, 
-                   std::string const& target,
+bool copyRecursive(std::string const& source, std::string const& target,
                    std::function<bool(std::string const&)> const& filter,
                    std::string& error) {
   if (isDirectory(source)) {
@@ -311,8 +309,7 @@ bool copyRecursive(std::string const& source,
 
 /// @brief will not copy files/directories for which the filter function
 /// returns true
-bool copyDirectoryRecursive(std::string const& source,
-                            std::string const& target, 
+bool copyDirectoryRecursive(std::string const& source, std::string const& target,
                             std::function<bool(std::string const&)> const& filter,
                             std::string& error) {
   char* fn = nullptr;
@@ -327,7 +324,7 @@ bool copyDirectoryRecursive(std::string const& source,
 
   std::string rcs;
   std::string flt = source + "\\*";
-  
+
   UnicodeString f(flt.c_str());
 
   handle = _wfindfirst(f.getTerminatedBuffer(), &oneItem);
@@ -339,10 +336,9 @@ bool copyDirectoryRecursive(std::string const& source,
 
   do {
     rcs.clear();
-    UnicodeString d((wchar_t*) oneItem.name,
-                    static_cast<int32_t>(wcslen(oneItem.name)));
+    UnicodeString d((wchar_t*)oneItem.name, static_cast<int32_t>(wcslen(oneItem.name)));
     d.toUTF8String<std::string>(rcs);
-    fn = (char*) rcs.c_str();
+    fn = (char*)rcs.c_str();
 #else
   DIR* filedir = opendir(source.c_str());
 
@@ -365,8 +361,7 @@ bool copyDirectoryRecursive(std::string const& source,
 
     // Now iterate over the items.
     // check its not the pointer to the upper directory:
-    if (!strcmp(fn, ".") ||
-        !strcmp(fn, "..")) {
+    if (!strcmp(fn, ".") || !strcmp(fn, "..")) {
       continue;
     }
     std::string dst = target + TRI_DIR_SEPARATOR_STR + fn;
@@ -431,19 +426,18 @@ std::vector<std::string> listFiles(std::string const& directory) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     int res = TRI_errno();
 
-    std::string message("failed to enumerate files in directory '" + directory + "': " + strerror(res));
+    std::string message("failed to enumerate files in directory '" + directory +
+                        "': " + strerror(res));
     THROW_ARANGO_EXCEPTION_MESSAGE(res, message);
   }
 
   do {
     rcs.clear();
-    UnicodeString d((wchar_t*) oneItem.name,
-                    static_cast<int32_t>(wcslen(oneItem.name)));
+    UnicodeString d((wchar_t*)oneItem.name, static_cast<int32_t>(wcslen(oneItem.name)));
     d.toUTF8String<std::string>(rcs);
-    fn = (char*) rcs.c_str();
+    fn = (char*)rcs.c_str();
 
-    if (!strcmp(fn, ".") ||
-        !strcmp(fn, "..")) {
+    if (!strcmp(fn, ".") || !strcmp(fn, "..")) {
       continue;
     }
 
@@ -460,7 +454,8 @@ std::vector<std::string> listFiles(std::string const& directory) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     int res = TRI_errno();
 
-    std::string message("failed to enumerate files in directory '" + directory + "': " + strerror(res));
+    std::string message("failed to enumerate files in directory '" + directory +
+                        "': " + strerror(res));
     THROW_ARANGO_EXCEPTION_MESSAGE(res, message);
   }
 
@@ -536,8 +531,7 @@ off_t size(std::string const& path) {
   return (off_t)result;
 }
 
-std::string stripExtension(std::string const& path,
-                           std::string const& extension) {
+std::string stripExtension(std::string const& path, std::string const& extension) {
   size_t pos = path.rfind(extension);
   if (pos == std::string::npos) {
     return path;
@@ -612,8 +606,7 @@ static void throwProgramError(std::string const& filename) {
   TRI_set_errno(TRI_ERROR_SYS_ERROR);
   int res = TRI_errno();
 
-  std::string message("open failed for file '" + filename + "': " +
-                      strerror(res));
+  std::string message("open failed for file '" + filename + "': " + strerror(res));
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << message;
 
   THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
@@ -634,7 +627,7 @@ std::string slurpProgram(std::string const& program) {
     int c;
 
     while ((c = getc(fp)) != EOF) {
-      buffer.appendChar((char) c);
+      buffer.appendChar((char)c);
     }
 
 #ifdef _WIN32
@@ -652,6 +645,6 @@ std::string slurpProgram(std::string const& program) {
 
   return std::string(buffer.data(), buffer.length());
 }
-}
-}
-}
+}  // namespace FileUtils
+}  // namespace basics
+}  // namespace arangodb

@@ -39,20 +39,18 @@ namespace rest {
 class AsyncJobManager;
 class RestHandlerFactory;
 class GeneralServer;
-}
+}  // namespace rest
 
 class RestServerThread;
 
-class GeneralServerFeature final
-    : public application_features::ApplicationFeature {
+class GeneralServerFeature final : public application_features::ApplicationFeature {
  public:
   static rest::RestHandlerFactory* HANDLER_FACTORY;
   static rest::AsyncJobManager* JOB_MANAGER;
 
  public:
   static double keepAliveTimeout() {
-    return GENERAL_SERVER != nullptr ? GENERAL_SERVER->_keepAliveTimeout
-                                     : 300.0;
+    return GENERAL_SERVER != nullptr ? GENERAL_SERVER->_keepAliveTimeout : 300.0;
   };
 
   static bool hasProxyCheck() {
@@ -89,9 +87,7 @@ class GeneralServerFeature final
   static GeneralServerFeature* GENERAL_SERVER;
 
  public:
-  explicit GeneralServerFeature(
-    application_features::ApplicationServer& server
-  );
+  explicit GeneralServerFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -118,12 +114,10 @@ class GeneralServerFeature final
 
   std::unique_ptr<rest::RestHandlerFactory> _handlerFactory;
   std::unique_ptr<rest::AsyncJobManager> _jobManager;
-  std::unique_ptr<
-      std::pair<aql::QueryRegistry*, traverser::TraverserEngineRegistry*>>
-      _combinedRegistries;
+  std::unique_ptr<std::pair<aql::QueryRegistry*, traverser::TraverserEngineRegistry*>> _combinedRegistries;
   std::vector<rest::GeneralServer*> _servers;
 };
 
-}
+}  // namespace arangodb
 
 #endif

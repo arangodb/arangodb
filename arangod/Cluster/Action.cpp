@@ -41,76 +41,77 @@
 using namespace arangodb;
 using namespace arangodb::maintenance;
 
-using factories_t = std::unordered_map<
-  std::string, std::function<std::unique_ptr<ActionBase>(
-                               MaintenanceFeature&,ActionDescription const&)>>;
+using factories_t =
+    std::unordered_map<std::string, std::function<std::unique_ptr<ActionBase>(MaintenanceFeature&, ActionDescription const&)>>;
 
-Action::Action(
-  MaintenanceFeature& feature,
-  ActionDescription const& description) : _action(nullptr) {
+Action::Action(MaintenanceFeature& feature, ActionDescription const& description)
+    : _action(nullptr) {
   TRI_ASSERT(description.has(NAME));
   create(feature, description);
 }
 
-Action::Action(
-  MaintenanceFeature& feature,
-  ActionDescription&& description) : _action(nullptr) {
+Action::Action(MaintenanceFeature& feature, ActionDescription&& description)
+    : _action(nullptr) {
   TRI_ASSERT(description.has(NAME));
   create(feature, std::move(description));
 }
 
-Action::Action(
-  MaintenanceFeature& feature,
-  std::shared_ptr<ActionDescription> const &description)
-  : _action(nullptr) {
+Action::Action(MaintenanceFeature& feature, std::shared_ptr<ActionDescription> const& description)
+    : _action(nullptr) {
   TRI_ASSERT(description->has(NAME));
   create(feature, *description);
 }
 
 Action::Action(std::unique_ptr<ActionBase> action)
-  : _action(std::move(action)) {}
+    : _action(std::move(action)) {}
 
 Action::~Action() {}
 
-void Action::create(
-  MaintenanceFeature& feature, ActionDescription const& description) {
-
-  static factories_t const factories = factories_t {
-    {CREATE_COLLECTION,
-     [](MaintenanceFeature& f,ActionDescription const& a) {
-        return std::unique_ptr<ActionBase>(new CreateCollection(f,a)); }},
-    {CREATE_DATABASE,
-     [](MaintenanceFeature& f,ActionDescription const& a) {
-        return std::unique_ptr<ActionBase>(new CreateDatabase(f,a)); }},
-    {DROP_COLLECTION,
-     [](MaintenanceFeature& f,ActionDescription const& a) {
-        return std::unique_ptr<ActionBase>(new DropCollection(f,a)); }},
-    {DROP_DATABASE,
-     [](MaintenanceFeature& f,ActionDescription const& a) {
-        return std::unique_ptr<ActionBase>(new DropDatabase(f,a)); }},
-    {DROP_INDEX,
-     [](MaintenanceFeature& f,ActionDescription const& a) {
-        return std::unique_ptr<ActionBase>(new DropIndex(f,a)); }},
-    {ENSURE_INDEX,
-     [](MaintenanceFeature& f,ActionDescription const& a) {
-        return std::unique_ptr<ActionBase>(new EnsureIndex(f,a)); }},
-    {RESIGN_SHARD_LEADERSHIP,
-     [](MaintenanceFeature& f,ActionDescription const& a) {
-        return std::unique_ptr<ActionBase>(new ResignShardLeadership(f,a)); }},
-    {SYNCHRONIZE_SHARD,
-     [](MaintenanceFeature& f,ActionDescription const& a) {
-        return std::unique_ptr<ActionBase>(new SynchronizeShard(f,a)); }},
-    {UPDATE_COLLECTION,
-     [](MaintenanceFeature& f,ActionDescription const& a) {
-        return std::unique_ptr<ActionBase>(new UpdateCollection(f,a)); }},
+void Action::create(MaintenanceFeature& feature, ActionDescription const& description) {
+  static factories_t const factories = factories_t{
+      {CREATE_COLLECTION,
+       [](MaintenanceFeature& f, ActionDescription const& a) {
+         return std::unique_ptr<ActionBase>(new CreateCollection(f, a));
+       }},
+      {CREATE_DATABASE,
+       [](MaintenanceFeature& f, ActionDescription const& a) {
+         return std::unique_ptr<ActionBase>(new CreateDatabase(f, a));
+       }},
+      {DROP_COLLECTION,
+       [](MaintenanceFeature& f, ActionDescription const& a) {
+         return std::unique_ptr<ActionBase>(new DropCollection(f, a));
+       }},
+      {DROP_DATABASE,
+       [](MaintenanceFeature& f, ActionDescription const& a) {
+         return std::unique_ptr<ActionBase>(new DropDatabase(f, a));
+       }},
+      {DROP_INDEX,
+       [](MaintenanceFeature& f, ActionDescription const& a) {
+         return std::unique_ptr<ActionBase>(new DropIndex(f, a));
+       }},
+      {ENSURE_INDEX,
+       [](MaintenanceFeature& f, ActionDescription const& a) {
+         return std::unique_ptr<ActionBase>(new EnsureIndex(f, a));
+       }},
+      {RESIGN_SHARD_LEADERSHIP,
+       [](MaintenanceFeature& f, ActionDescription const& a) {
+         return std::unique_ptr<ActionBase>(new ResignShardLeadership(f, a));
+       }},
+      {SYNCHRONIZE_SHARD,
+       [](MaintenanceFeature& f, ActionDescription const& a) {
+         return std::unique_ptr<ActionBase>(new SynchronizeShard(f, a));
+       }},
+      {UPDATE_COLLECTION,
+       [](MaintenanceFeature& f, ActionDescription const& a) {
+         return std::unique_ptr<ActionBase>(new UpdateCollection(f, a));
+       }},
   };
 
   auto factory = factories.find(description.name());
 
-  _action = (factory != factories.end()) ?
-    factory->second(feature, description) :
-    std::unique_ptr<ActionBase>(new NonAction(feature, description));    
-  
+  _action = (factory != factories.end())
+                ? factory->second(feature, description)
+                : std::unique_ptr<ActionBase>(new NonAction(feature, description));
 }
 
 ActionDescription const& Action::describe() const {
@@ -157,21 +158,13 @@ arangodb::Result Action::progress(double& p) {
   return _action->progress(p);
 }
 
-ActionState Action::getState() const {
-  return _action->getState();
-}
+ActionState Action::getState() const { return _action->getState(); }
 
-void Action::startStats() {
-  _action->startStats();
-}
+void Action::startStats() { _action->startStats(); }
 
-void Action::incStats() {
-  _action->incStats();
-}
+void Action::incStats() { _action->incStats(); }
 
-void Action::endStats() {
-  _action->endStats();
-}
+void Action::endStats() { _action->endStats(); }
 
 void Action::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   TRI_ASSERT(_action != nullptr);
@@ -179,8 +172,8 @@ void Action::toVelocyPack(arangodb::velocypack::Builder& builder) const {
 }
 
 namespace std {
-ostream& operator<< (
-  ostream& out, arangodb::maintenance::Action const& d) {
+ostream& operator<<(ostream& out, arangodb::maintenance::Action const& d) {
   out << d.toVelocyPack().toJson();
   return out;
-}}
+}
+}  // namespace std

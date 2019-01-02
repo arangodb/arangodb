@@ -70,9 +70,7 @@ void LogThread::wakeup() {
   guard.signal();
 }
 
-bool LogThread::hasMessages() {
-  return (!MESSAGES->empty());
-}
+bool LogThread::hasMessages() { return (!MESSAGES->empty()); }
 
 void LogThread::run() {
   LogMessage* msg;

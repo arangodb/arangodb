@@ -46,11 +46,8 @@ template <typename CMP = geo_index::DocumentsAscending>
 struct NearIterator final : public IndexIterator {
   /// @brief Construct an RocksDBGeoIndexIterator based on Ast Conditions
   NearIterator(LogicalCollection* collection, transaction::Methods* trx,
-               MMFilesGeoIndex const* index,
-               geo::QueryParams&& params)
-      : IndexIterator(collection, trx),
-        _index(index),
-        _near(std::move(params)) {
+               MMFilesGeoIndex const* index, geo::QueryParams&& params)
+      : IndexIterator(collection, trx), _index(index), _near(std::move(params)) {
     if (!params.fullRange) {
       estimateDensity();
     }
@@ -61,8 +58,8 @@ struct NearIterator final : public IndexIterator {
   char const* typeName() const override { return "s2-index-iterator"; }
 
   /// internal retrieval loop
-  inline bool nextToken(
-      std::function<bool(geo_index::Document const& gdoc)>&& cb, size_t limit) {
+  inline bool nextToken(std::function<bool(geo_index::Document const& gdoc)>&& cb,
+                        size_t limit) {
     if (_near.isDone()) {
       // we already know that no further results will be returned by the index
       TRI_ASSERT(!_near.hasNearest());
@@ -88,27 +85,25 @@ struct NearIterator final : public IndexIterator {
   bool nextDocument(DocumentCallback const& cb, size_t limit) override {
     return nextToken(
         [this, &cb](geo_index::Document const& gdoc) -> bool {
-          bool result = true; // updated by the callback
+          bool result = true;  // updated by the callback
           if (!_collection->readDocumentWithCallback(_trx, gdoc.token, [&](LocalDocumentId const&, VPackSlice doc) {
-            geo::FilterType const ft = _near.filterType();
-            if (ft != geo::FilterType::NONE) {  // expensive test
-              geo::ShapeContainer const& filter = _near.filterShape();
-              TRI_ASSERT(!filter.empty());
-              geo::ShapeContainer test;
-              Result res = _index->shape(doc, test);
-              TRI_ASSERT(res.ok() &&
-                        !test.empty());  // this should never fail here
-              if (res.fail() ||
-                  (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
-                  (ft == geo::FilterType::INTERSECTS &&
-                  !filter.intersects(&test))) {
-                result = false; // skip
-                return;
-              }
-            }
-            cb(gdoc.token, doc);  // return result
-            result = true;
-          })) {
+                geo::FilterType const ft = _near.filterType();
+                if (ft != geo::FilterType::NONE) {  // expensive test
+                  geo::ShapeContainer const& filter = _near.filterShape();
+                  TRI_ASSERT(!filter.empty());
+                  geo::ShapeContainer test;
+                  Result res = _index->shape(doc, test);
+                  TRI_ASSERT(res.ok() && !test.empty());  // this should never fail here
+                  if (res.fail() ||
+                      (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
+                      (ft == geo::FilterType::INTERSECTS && !filter.intersects(&test))) {
+                    result = false;  // skip
+                    return;
+                  }
+                }
+                cb(gdoc.token, doc);  // return result
+                result = true;
+              })) {
             return false;  // skip
           }
           return result;
@@ -123,20 +118,19 @@ struct NearIterator final : public IndexIterator {
           if (ft != geo::FilterType::NONE) {
             geo::ShapeContainer const& filter = _near.filterShape();
             TRI_ASSERT(!filter.empty());
-            bool result = true; // updated by the callback
+            bool result = true;  // updated by the callback
             if (!_collection->readDocumentWithCallback(_trx, gdoc.token, [&](LocalDocumentId const&, VPackSlice doc) {
-              geo::ShapeContainer test;
-              Result res = _index->shape(doc, test);
-              TRI_ASSERT(res.ok());  // this should never fail here
-              if (res.fail() ||
-                  (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
-                  (ft == geo::FilterType::INTERSECTS &&
-                   !filter.intersects(&test))) {
-                result = false;
-              } else {
-                result = true;
-              }
-            })) {
+                  geo::ShapeContainer test;
+                  Result res = _index->shape(doc, test);
+                  TRI_ASSERT(res.ok());  // this should never fail here
+                  if (res.fail() ||
+                      (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
+                      (ft == geo::FilterType::INTERSECTS && !filter.intersects(&test))) {
+                    result = false;
+                  } else {
+                    result = true;
+                  }
+                })) {
               return false;
             }
             return result;
@@ -214,15 +208,10 @@ struct NearIterator final : public IndexIterator {
 
 typedef NearIterator<geo_index::DocumentsAscending> LegacyIterator;
 
-MMFilesGeoIndex::MMFilesGeoIndex(
-    TRI_idx_iid_t iid,
-    LogicalCollection& collection,
-    arangodb::velocypack::Slice const& info,
-    std::string const& typeName
-)
-    : MMFilesIndex(iid, collection, info),
-      geo_index::Index(info, _fields),
-      _typeName(typeName) {
+MMFilesGeoIndex::MMFilesGeoIndex(TRI_idx_iid_t iid, LogicalCollection& collection,
+                                 arangodb::velocypack::Slice const& info,
+                                 std::string const& typeName)
+    : MMFilesIndex(iid, collection, info), geo_index::Index(info, _fields), _typeName(typeName) {
   TRI_ASSERT(iid != 0);
   _unique = false;
   _sparse = true;
@@ -233,24 +222,17 @@ size_t MMFilesGeoIndex::memory() const { return _tree.bytes_used(); }
 
 /// @brief return a JSON representation of the index
 void MMFilesGeoIndex::toVelocyPack(VPackBuilder& builder,
-       std::underlying_type<arangodb::Index::Serialize>::type flags) const {
+                                   std::underlying_type<arangodb::Index::Serialize>::type flags) const {
   TRI_ASSERT(_variant != geo_index::Index::Variant::NONE);
   builder.openObject();
   // Basic index
   MMFilesIndex::toVelocyPack(builder, flags);
   _coverParams.toVelocyPack(builder);
-  builder.add("geoJson",
-              VPackValue(_variant == geo_index::Index::Variant::GEOJSON));
+  builder.add("geoJson", VPackValue(_variant == geo_index::Index::Variant::GEOJSON));
   // geo indexes are always non-unique
-  builder.add(
-    arangodb::StaticStrings::IndexUnique,
-    arangodb::velocypack::Value(false)
-  );
+  builder.add(arangodb::StaticStrings::IndexUnique, arangodb::velocypack::Value(false));
   // geo indexes are always sparse.
-  builder.add(
-    arangodb::StaticStrings::IndexSparse,
-    arangodb::velocypack::Value(true)
-  );
+  builder.add(arangodb::StaticStrings::IndexSparse, arangodb::velocypack::Value(true));
   builder.close();
 }
 
@@ -277,17 +259,13 @@ bool MMFilesGeoIndex::matchesDefinition(VPackSlice const& info) const {
     return idRef == std::to_string(_iid);
   }
 
-  if (_unique != basics::VelocyPackHelper::getBooleanValue(
-                   info, arangodb::StaticStrings::IndexUnique, false
-                 )
-     ) {
+  if (_unique != basics::VelocyPackHelper::getBooleanValue(info, arangodb::StaticStrings::IndexUnique,
+                                                           false)) {
     return false;
   }
 
-  if (_sparse != basics::VelocyPackHelper::getBooleanValue(
-                   info, arangodb::StaticStrings::IndexSparse, true
-                 )
-     ) {
+  if (_sparse != basics::VelocyPackHelper::getBooleanValue(info, arangodb::StaticStrings::IndexSparse,
+                                                           true)) {
     return false;
   }
 
@@ -303,8 +281,7 @@ bool MMFilesGeoIndex::matchesDefinition(VPackSlice const& info) const {
   }
 
   if (n == 1) {
-    bool geoJson1 =
-        basics::VelocyPackHelper::getBooleanValue(info, "geoJson", false);
+    bool geoJson1 = basics::VelocyPackHelper::getBooleanValue(info, "geoJson", false);
     bool geoJson2 = _variant == geo_index::Index::Variant::GEOJSON;
     if (geoJson1 != geoJson2) {
       return false;
@@ -329,8 +306,7 @@ bool MMFilesGeoIndex::matchesDefinition(VPackSlice const& info) const {
   return true;
 }
 
-Result MMFilesGeoIndex::insert(transaction::Methods*,
-                               LocalDocumentId const& documentId,
+Result MMFilesGeoIndex::insert(transaction::Methods*, LocalDocumentId const& documentId,
                                VPackSlice const& doc, OperationMode mode) {
   // covering and centroid of coordinate / polygon / ...
   size_t reserve = _variant == Variant::GEOJSON ? 8 : 1;
@@ -356,8 +332,7 @@ Result MMFilesGeoIndex::insert(transaction::Methods*,
   return IndexResult();
 }
 
-Result MMFilesGeoIndex::remove(transaction::Methods*,
-                               LocalDocumentId const& documentId,
+Result MMFilesGeoIndex::remove(transaction::Methods*, LocalDocumentId const& documentId,
                                VPackSlice const& doc, OperationMode mode) {
   // covering and centroid of coordinate / polygon / ...
   size_t reserve = _variant == Variant::GEOJSON ? 8 : 1;
@@ -388,10 +363,8 @@ Result MMFilesGeoIndex::remove(transaction::Methods*,
 
 /// @brief creates an IndexIterator for the given Condition
 IndexIterator* MMFilesGeoIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult*,
-    arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference,
-    IndexIteratorOptions const& opts) {
+    transaction::Methods* trx, ManagedDocumentResult*, arangodb::aql::AstNode const* node,
+    arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_ASSERT(node != nullptr);
 
@@ -422,13 +395,11 @@ IndexIterator* MMFilesGeoIndex::iteratorForCondition(
 
   // why does this have to be shit?
   if (params.ascending) {
-    return new NearIterator<geo_index::DocumentsAscending>(
-      &_collection, trx, this, std::move(params)
-    );
+    return new NearIterator<geo_index::DocumentsAscending>(&_collection, trx, this,
+                                                           std::move(params));
   } else {
-    return new NearIterator<geo_index::DocumentsDescending>(
-      &_collection, trx, this, std::move(params)
-    );
+    return new NearIterator<geo_index::DocumentsDescending>(&_collection, trx, this,
+                                                            std::move(params));
   }
 }
 

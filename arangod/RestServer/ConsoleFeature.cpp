@@ -29,8 +29,8 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/ConsoleThread.h"
-#include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/ServerFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 
 #include <iostream>
 
@@ -57,14 +57,11 @@ void ConsoleFeature::start() {
 
   LOG_TOPIC(TRACE, Logger::STARTUP) << "server operation mode: CONSOLE";
 
-  auto* sysDbFeature = arangodb::application_features::ApplicationServer::getFeature<
-    arangodb::SystemDatabaseFeature
-  >();
+  auto* sysDbFeature =
+      arangodb::application_features::ApplicationServer::getFeature<arangodb::SystemDatabaseFeature>();
   auto database = sysDbFeature->use();
 
-  _consoleThread.reset(
-    new ConsoleThread(ApplicationFeature::server(), database.get())
-  );
+  _consoleThread.reset(new ConsoleThread(ApplicationFeature::server(), database.get()));
   _consoleThread->start();
 }
 
@@ -85,4 +82,4 @@ void ConsoleFeature::unprepare() {
   std::cout << std::endl << TRI_BYE_MESSAGE << std::endl;
 }
 
-} // arangodb
+}  // namespace arangodb

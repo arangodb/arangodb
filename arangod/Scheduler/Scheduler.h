@@ -59,8 +59,7 @@ class Scheduler {
   friend class arangodb::SchedulerThread;
 
  public:
-  Scheduler(uint64_t minThreads, uint64_t maxThreads,
-            uint64_t fifo1Size, uint64_t fifo2Size);
+  Scheduler(uint64_t minThreads, uint64_t maxThreads, uint64_t fifo1Size, uint64_t fifo2Size);
   virtual ~Scheduler();
 
   // queue handling:
@@ -154,7 +153,6 @@ class Scheduler {
     _counters -= 1ULL << 16;
   }
 
-
   // we store most of the threads status info in a single atomic uint64_t
   // the encoding of the values inside this variable is (left to right means
   // high to low bytes):
@@ -180,8 +178,7 @@ class Scheduler {
   // queue is full
 
   struct FifoJob {
-    FifoJob(std::function<void(bool)> const& callback)
-        : _callback(callback) {}
+    FifoJob(std::function<void(bool)> const& callback) : _callback(callback) {}
     std::function<void(bool)> _callback;
   };
 
@@ -216,7 +213,7 @@ class Scheduler {
   }
 
   asio_ns::io_context::strand* newStrand();
-  void releaseStrand(asio_ns::io_context::strand * strandDone);
+  void releaseStrand(asio_ns::io_context::strand* strandDone);
 
   asio_ns::ip::tcp::acceptor* newAcceptor() {
     return new asio_ns::ip::tcp::acceptor(*_ioContext);
@@ -238,10 +235,8 @@ class Scheduler {
   }
 #endif
 
-  asio_ns::ssl::stream<asio_ns::ip::tcp::socket>* newSslSocket(
-      asio_ns::ssl::context& context) {
-    return new asio_ns::ssl::stream<asio_ns::ip::tcp::socket>(*_ioContext,
-                                                              context);
+  asio_ns::ssl::stream<asio_ns::ip::tcp::socket>* newSslSocket(asio_ns::ssl::context& context) {
+    return new asio_ns::ssl::stream<asio_ns::ip::tcp::socket>(*_ioContext, context);
   }
 
   asio_ns::ip::tcp::resolver* newResolver() {

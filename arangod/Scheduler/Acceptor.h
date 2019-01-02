@@ -53,5 +53,5 @@ class Acceptor {
   Endpoint* _endpoint;
   std::unique_ptr<Socket> _peer;
 };
-}
+}  // namespace arangodb
 #endif

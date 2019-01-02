@@ -43,15 +43,11 @@ class ManagedDirectory;
 
 class RestoreFeature final : public application_features::ApplicationFeature {
  public:
-  RestoreFeature(
-    application_features::ApplicationServer& server,
-    int& exitCode
-  );
+  RestoreFeature(application_features::ApplicationServer& server, int& exitCode);
 
   // for documentation of virtual methods, see `ApplicationFeature`
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(
-      std::shared_ptr<options::ProgramOptions> options) override;
+  void validateOptions(std::shared_ptr<options::ProgramOptions> options) override;
   void prepare() override;
   void start() override;
 
@@ -113,8 +109,7 @@ class RestoreFeature final : public application_features::ApplicationFeature {
 
     VPackSlice collection;
 
-    JobData(ManagedDirectory&, RestoreFeature&, Options const&, Stats&,
-            VPackSlice const&);
+    JobData(ManagedDirectory&, RestoreFeature&, Options const&, Stats&, VPackSlice const&);
   };
 
  private:

@@ -39,14 +39,12 @@ class MMFilesWalRecoveryFeature final : public application_features::Application
   MMFilesWalRecoveryFeature& operator=(MMFilesWalRecoveryFeature const&) = delete;
 
  public:
-  explicit MMFilesWalRecoveryFeature(
-    application_features::ApplicationServer& server
-  );
+  explicit MMFilesWalRecoveryFeature(application_features::ApplicationServer& server);
   ~MMFilesWalRecoveryFeature() {}
 
   void start() override final;
 };
 
-}
+}  // namespace arangodb
 
 #endif

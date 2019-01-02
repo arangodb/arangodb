@@ -33,7 +33,7 @@ namespace aql {
 class AqlItemBlock;
 struct AstNode;
 class ExecutionEngine;
-} // aql
+}  // namespace aql
 
 namespace iresearch {
 
@@ -45,15 +45,14 @@ class IResearchViewNode;
 ///        epxressions with loop variable in SEARCH expressions
 ///////////////////////////////////////////////////////////////////////////////
 struct ViewExpressionContextBase : public aql::ExpressionContext {
-  aql::AstNode const* _expr{}; // for troubleshooting
-}; // ViewExpressionContextBase
+  aql::AstNode const* _expr{};  // for troubleshooting
+};                              // ViewExpressionContextBase
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @struct ViewExpressionContext
 ///////////////////////////////////////////////////////////////////////////////
 struct ViewExpressionContext final : public ViewExpressionContextBase {
-  explicit ViewExpressionContext(IResearchViewNode const& node)
-    : _node(&node) {
+  explicit ViewExpressionContext(IResearchViewNode const& node) : _node(&node) {
     TRI_ASSERT(_node);
   }
 
@@ -67,18 +66,15 @@ struct ViewExpressionContext final : public ViewExpressionContextBase {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
-  virtual aql::AqlValue getVariableValue(
-    aql::Variable const* variable,
-    bool doCopy,
-    bool& mustDestroy
-  ) const override;
+  virtual aql::AqlValue getVariableValue(aql::Variable const* variable, bool doCopy,
+                                         bool& mustDestroy) const override;
 
   aql::AqlItemBlock const* _data{};
   IResearchViewNode const* _node;
   size_t _pos{};
-}; // ViewExpressionContext
+};  // ViewExpressionContext
 
-} // iresearch 
-} // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
-#endif // ARANGOD_IRESEARCH__IRESEARCH_EXPRESSION_CONTEXT_H 1
+#endif  // ARANGOD_IRESEARCH__IRESEARCH_EXPRESSION_CONTEXT_H 1

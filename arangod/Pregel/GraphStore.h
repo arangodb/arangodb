@@ -50,7 +50,7 @@ struct TypedBuffer;
 class WorkerConfig;
 template <typename V, typename E>
 struct GraphFormat;
-  
+
 // private struct to store some internal information
 struct VertexShardInfo {
   ShardID vertexShard;
@@ -66,7 +66,6 @@ struct VertexShardInfo {
 ////////////////////////////////////////////////////////////////////////////////
 template <typename V, typename E>
 class GraphStore {
-
  public:
   GraphStore(TRI_vocbase_t& vocbase, GraphFormat<V, E>* graphFormat);
   ~GraphStore();
@@ -78,8 +77,7 @@ class GraphStore {
   // ====================== NOT THREAD SAFE ===========================
   void loadShards(WorkerConfig* state, std::function<void(bool)> const&);
   void loadDocument(WorkerConfig* config, std::string const& documentID);
-  void loadDocument(WorkerConfig* config, PregelShard sourceShard,
-                    PregelKey const& _key);
+  void loadDocument(WorkerConfig* config, PregelShard sourceShard, PregelKey const& _key);
   // ======================================================================
 
   // only thread safe if your threads coordinate access to memory locations
@@ -95,15 +93,12 @@ class GraphStore {
   /// Write results to database
   void storeResults(WorkerConfig* config, std::function<void(bool)> const&);
 
-private:
-  
+ private:
   std::map<CollectionID, std::vector<VertexShardInfo>> _allocateSpace();
-  
-  void _loadVertices(transaction::Methods&,
-                     ShardID const& vertexShard,
+
+  void _loadVertices(transaction::Methods&, ShardID const& vertexShard,
                      std::vector<ShardID> const& edgeShards,
-                     size_t vertexOffset,
-                     size_t& edgeOffset);
+                     size_t vertexOffset, size_t& edgeOffset);
   void _loadEdges(transaction::Methods& trx, ShardID const& shard,
                   VertexEntry& vertexEntry, std::string const& documentID);
   void _storeVertices(std::vector<ShardID> const& globalShards,
@@ -133,7 +128,7 @@ private:
   bool _destroyed = false;
 };
 
-}
-}
+}  // namespace pregel
+}  // namespace arangodb
 
 #endif

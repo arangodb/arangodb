@@ -35,11 +35,10 @@ namespace graph {
 class TraverserCache;
 
 namespace cacheFactory {
-TraverserCache* CreateCache(
-    arangodb::aql::Query* query, bool activateDocumentCache,
-    std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines);
+TraverserCache* CreateCache(arangodb::aql::Query* query, bool activateDocumentCache,
+                            std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines);
 
 }  // namespace cacheFactory
-}  // namespace traverser
+}  // namespace graph
 }  // namespace arangodb
 #endif

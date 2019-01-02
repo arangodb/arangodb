@@ -55,7 +55,7 @@ class GeneralServer {
   std::vector<std::unique_ptr<ListenTask>> _listenTasks;
   EndpointList const* _endpointList = nullptr;
 };
-}
-}
+}  // namespace rest
+}  // namespace arangodb
 
 #endif

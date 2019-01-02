@@ -35,8 +35,8 @@
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "VocBase/Methods/Upgrade.h"
 #include "V8Server/V8DealerFeature.h"
+#include "VocBase/Methods/Upgrade.h"
 
 namespace {
 static std::string const FEATURE_NAME("Bootstrap");
@@ -47,9 +47,7 @@ using namespace arangodb::options;
 
 static std::string const boostrapKey = "Bootstrap";
 
-BootstrapFeature::BootstrapFeature(
-    application_features::ApplicationServer& server
-)
+BootstrapFeature::BootstrapFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, ::FEATURE_NAME), _isReady(false), _bark(false) {
   startsAfter("ServerPhase");
   startsAfter(SystemDatabaseFeature::name());
@@ -72,8 +70,7 @@ BootstrapFeature::BootstrapFeature(
 }
 
 void BootstrapFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption("hund", "make ArangoDB bark on startup",
-                     new BooleanParameter(&_bark),
+  options->addOption("hund", "make ArangoDB bark on startup", new BooleanParameter(&_bark),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
@@ -91,26 +88,26 @@ void raceForClusterBootstrap() {
     if (!result.successful()) {
       // Error in communication, note that value not found is not an error
       LOG_TOPIC(TRACE, Logger::STARTUP)
-      << "raceForClusterBootstrap: no agency communication";
+          << "raceForClusterBootstrap: no agency communication";
       std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;
     }
 
     VPackSlice value = result.slice()[0].get(
-                std::vector<std::string>({AgencyCommManager::path(), boostrapKey}));
+        std::vector<std::string>({AgencyCommManager::path(), boostrapKey}));
     if (value.isString()) {
       // key was found and is a string
       std::string boostrapVal = value.copyString();
       if (boostrapVal.find("done") != std::string::npos) {
         // all done, let's get out of here:
         LOG_TOPIC(TRACE, Logger::STARTUP)
-          << "raceForClusterBootstrap: bootstrap already done";
+            << "raceForClusterBootstrap: bootstrap already done";
         return;
       } else if (boostrapVal == ServerState::instance()->getId()) {
         agency.removeValues(boostrapKey, false);
       }
       LOG_TOPIC(DEBUG, Logger::STARTUP)
-        << "raceForClusterBootstrap: somebody else does the bootstrap";
+          << "raceForClusterBootstrap: somebody else does the bootstrap";
       std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;
     }
@@ -121,7 +118,7 @@ void raceForClusterBootstrap() {
     result = agency.casValue(boostrapKey, b.slice(), false, 300, 15);
     if (!result.successful()) {
       LOG_TOPIC(DEBUG, Logger::STARTUP)
-      << "raceForClusterBootstrap: lost race, somebody else will bootstrap";
+          << "raceForClusterBootstrap: lost race, somebody else will bootstrap";
       // Cannot get foot into the door, try again later:
       std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;
@@ -143,19 +140,16 @@ void raceForClusterBootstrap() {
       continue;
     }
 
-    auto* sysDbFeature = arangodb::application_features::ApplicationServer::lookupFeature<
-      arangodb::SystemDatabaseFeature
-    >();
+    auto* sysDbFeature =
+        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>();
     arangodb::SystemDatabaseFeature::ptr vocbase =
-      sysDbFeature ? sysDbFeature->use() : nullptr;
-    auto upgradeRes = vocbase
-      ? methods::Upgrade::clusterBootstrap(*vocbase)
-      : arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)
-      ;
+        sysDbFeature ? sysDbFeature->use() : nullptr;
+    auto upgradeRes = vocbase ? methods::Upgrade::clusterBootstrap(*vocbase)
+                              : arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
 
     if (upgradeRes.fail()) {
       LOG_TOPIC(ERR, Logger::STARTUP) << "Problems with cluster bootstrap, "
-      << "marking as not successful.";
+                                      << "marking as not successful.";
       agency.removeValues(boostrapKey, false);
       std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;
@@ -194,31 +188,34 @@ void runCoordinatorJS(TRI_vocbase_t* vocbase) {
   bool success = false;
   while (!success) {
     LOG_TOPIC(DEBUG, Logger::STARTUP)
-    << "Running server/bootstrap/coordinator.js";
+        << "Running server/bootstrap/coordinator.js";
 
     VPackBuilder builder;
-    V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(vocbase,
-                                        "server/bootstrap/coordinator.js", &builder);
+    V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(
+        vocbase, "server/bootstrap/coordinator.js", &builder);
 
     auto slice = builder.slice();
     if (slice.isArray()) {
       if (slice.length() > 0) {
         bool newResult = true;
-        for (VPackSlice val: VPackArrayIterator(slice)) {
+        for (VPackSlice val : VPackArrayIterator(slice)) {
           newResult = newResult && val.isTrue();
         }
         if (!newResult) {
           LOG_TOPIC(ERR, Logger::STARTUP)
-          << "result of bootstrap was: " << builder.toJson() << ". retrying bootstrap in 1s.";
+              << "result of bootstrap was: " << builder.toJson()
+              << ". retrying bootstrap in 1s.";
         }
         success = newResult;
       } else {
         LOG_TOPIC(ERR, Logger::STARTUP)
-        << "bootstrap wasn't executed in a single context! retrying bootstrap in 1s.";
+            << "bootstrap wasn't executed in a single context! retrying "
+               "bootstrap in 1s.";
       }
     } else {
       LOG_TOPIC(ERR, Logger::STARTUP)
-      << "result of bootstrap was not an array: " << slice.typeName() << ". retrying bootstrap in 1s.";
+          << "result of bootstrap was not an array: " << slice.typeName()
+          << ". retrying bootstrap in 1s.";
     }
     if (!success) {
       std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -236,43 +233,45 @@ void runActiveFailoverStart(std::string const& myId) {
     AgencyCommResult res = agency.getValues(leaderPath);
     if (res.successful()) {
       VPackSlice leader = res.slice()[0].get(AgencyCommManager::slicePath(leaderPath));
-      if (!leader.isString() || leader.getStringLength() == 0) { // no leader in agency
+      if (!leader.isString() || leader.getStringLength() == 0) {  // no leader in agency
         if (leader.isNone()) {
           res = agency.casValue(leaderPath, myIdBuilder.slice(), /*prevExist*/ false,
                                 /*ttl*/ 0, /*timeout*/ 5.0);
         } else {
-          res = agency.casValue(leaderPath, /*old*/leader, /*new*/myIdBuilder.slice(),
+          res = agency.casValue(leaderPath, /*old*/ leader, /*new*/ myIdBuilder.slice(),
                                 /*ttl*/ 0, /*timeout*/ 5.0);
         }
-        if (res.successful()) { // sucessfull leadership takeover
+        if (res.successful()) {  // sucessfull leadership takeover
           leader = myIdBuilder.slice();
-        } // ignore for now, heartbeat thread will handle it
+        }  // ignore for now, heartbeat thread will handle it
       }
 
       if (leader.isString() && leader.getStringLength() > 0) {
         ServerState::instance()->setFoxxmaster(leader.copyString());
         if (leader == myIdBuilder.slice()) {
-          LOG_TOPIC(INFO, Logger::STARTUP) << "Became leader in active-failover setup";
+          LOG_TOPIC(INFO, Logger::STARTUP)
+              << "Became leader in active-failover setup";
         } else {
-          LOG_TOPIC(INFO, Logger::STARTUP) << "Following: " << ServerState::instance()->getFoxxmaster();
+          LOG_TOPIC(INFO, Logger::STARTUP)
+              << "Following: " << ServerState::instance()->getFoxxmaster();
         }
       }
     }
-  } catch(...) {} // weglaecheln
+  } catch (...) {
+  }  // weglaecheln
 }
-}
+}  // namespace
 
 void BootstrapFeature::start() {
-  auto* sysDbFeature = arangodb::application_features::ApplicationServer::lookupFeature<
-    arangodb::SystemDatabaseFeature
-  >();
+  auto* sysDbFeature =
+      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>();
   arangodb::SystemDatabaseFeature::ptr vocbase =
-    sysDbFeature ? sysDbFeature->use() : nullptr;
+      sysDbFeature ? sysDbFeature->use() : nullptr;
   bool v8Enabled = V8DealerFeature::DEALER && V8DealerFeature::DEALER->isEnabled();
   TRI_ASSERT(vocbase.get() != nullptr);
 
   auto ss = ServerState::instance();
-  ServerState::RoleEnum role =  ServerState::instance()->getRole();
+  ServerState::RoleEnum role = ServerState::instance()->getRole();
 
   if (ServerState::isRunningInCluster(role)) {
     // the coordinators will race to perform the cluster initialization.
@@ -297,20 +296,21 @@ void BootstrapFeature::start() {
       TRI_ASSERT(false);
     }
   } else {
-    std::string const myId = ServerState::instance()->getId(); // local cluster UUID
+    std::string const myId = ServerState::instance()->getId();  // local cluster UUID
 
     // become leader before running server.js to ensure the leader
     // is the foxxmaster. Everything else is handled in heartbeat
     if (ServerState::isSingleServer(role) && AgencyCommManager::isEnabled()) {
       ::runActiveFailoverStart(myId);
     } else {
-      ss->setFoxxmaster(myId); // could be empty, but set anyway
+      ss->setFoxxmaster(myId);  // could be empty, but set anyway
     }
 
-    if (v8Enabled) { // runs the single server boostrap JS
+    if (v8Enabled) {  // runs the single server boostrap JS
       // will run foxx/manager.js::_startup() and more (start queues, load routes, etc)
       LOG_TOPIC(DEBUG, Logger::STARTUP) << "Running server/server.js";
-      V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(vocbase.get(), "server/server.js", nullptr);
+      V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(
+          vocbase.get(), "server/server.js", nullptr);
     }
     auth::UserManager* um = AuthenticationFeature::instance()->userManager();
     if (um != nullptr) {
@@ -327,8 +327,9 @@ void BootstrapFeature::start() {
     ServerState::setServerMode(ServerState::Mode::DEFAULT);
   }
 
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "ArangoDB (version " << ARANGODB_VERSION_FULL
-            << ") is ready for business. Have fun!";
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+      << "ArangoDB (version " << ARANGODB_VERSION_FULL
+      << ") is ready for business. Have fun!";
   if (_bark) {
     LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "The dog says: wau wau!";
   }

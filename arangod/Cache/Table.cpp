@@ -62,11 +62,7 @@ bool Table::GenericBucket::isMigrated() const {
 
 Table::Subtable::Subtable(std::shared_ptr<Table> source, GenericBucket* buckets,
                           uint64_t size, uint32_t mask, uint32_t shift)
-    : _source(source),
-      _buckets(buckets),
-      _size(size),
-      _mask(mask),
-      _shift(shift) {}
+    : _source(source), _buckets(buckets), _size(size), _mask(mask), _shift(shift) {}
 
 void* Table::Subtable::fetchBucket(uint32_t hash) {
   return &(_buckets[(hash & _mask) >> _shift]);
@@ -116,8 +112,7 @@ Table::~Table() {
 }
 
 uint64_t Table::allocationSize(uint32_t logSize) {
-  return sizeof(Table) + (BUCKET_SIZE * (static_cast<uint64_t>(1) << logSize)) +
-         Table::padding;
+  return sizeof(Table) + (BUCKET_SIZE * (static_cast<uint64_t>(1) << logSize)) + Table::padding;
 }
 
 uint64_t Table::memoryUsage() const { return Table::allocationSize(_logSize); }
@@ -126,8 +121,7 @@ uint64_t Table::size() const { return _size; }
 
 uint32_t Table::logSize() const { return _logSize; }
 
-std::pair<void*, Table*> Table::fetchAndLockBucket(uint32_t hash,
-                                                   uint64_t maxTries) {
+std::pair<void*, Table*> Table::fetchAndLockBucket(uint32_t hash, uint64_t maxTries) {
   GenericBucket* bucket = nullptr;
   Table* source = nullptr;
   bool ok = _lock.readLock(maxTries);
@@ -252,14 +246,12 @@ bool Table::isEnabled(uint64_t maxTries) {
 
 bool Table::slotFilled() {
   size_t i = _slotsUsed.fetch_add(1, std::memory_order_acq_rel);
-  return ((static_cast<double>(i + 1) / static_cast<double>(_slotsTotal)) >
-          Table::idealUpperRatio);
+  return ((static_cast<double>(i + 1) / static_cast<double>(_slotsTotal)) > Table::idealUpperRatio);
 }
 
 bool Table::slotEmptied() {
   size_t i = _slotsUsed.fetch_sub(1, std::memory_order_acq_rel);
-  return (((static_cast<double>(i - 1) / static_cast<double>(_slotsTotal)) <
-           Table::idealLowerRatio) &&
+  return (((static_cast<double>(i - 1) / static_cast<double>(_slotsTotal)) < Table::idealLowerRatio) &&
           (_logSize > Table::minLogSize));
 }
 
@@ -283,8 +275,8 @@ uint32_t Table::idealSize() {
     return logSize() + 1;
   }
 
-  return (((static_cast<double>(_slotsUsed.load()) /
-            static_cast<double>(_slotsTotal)) > Table::idealUpperRatio)
+  return (((static_cast<double>(_slotsUsed.load()) / static_cast<double>(_slotsTotal)) >
+           Table::idealUpperRatio)
               ? (logSize() + 1)
               : (((static_cast<double>(_slotsUsed.load()) /
                    static_cast<double>(_slotsTotal)) < Table::idealLowerRatio)

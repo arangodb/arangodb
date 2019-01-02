@@ -22,14 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AqlHelper.h"
-#include "IResearchCommon.h"
-#include "IResearchDocument.h"
-#include "IResearchFilterFactory.h"
-#include "IResearchOrderFactory.h"
-#include "IResearchView.h"
 #include "IResearchViewBlock.h"
-#include "IResearchViewNode.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Ast.h"
@@ -37,12 +30,19 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Query.h"
+#include "AqlHelper.h"
 #include "Basics/Exceptions.h"
+#include "IResearchCommon.h"
+#include "IResearchDocument.h"
+#include "IResearchFilterFactory.h"
+#include "IResearchOrderFactory.h"
+#include "IResearchView.h"
+#include "IResearchViewNode.h"
 #include "Logger/LogMacros.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "StorageEngine/TransactionState.h"
 #include "StorageEngine/TransactionCollection.h"
+#include "StorageEngine/TransactionState.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
@@ -54,20 +54,18 @@ namespace {
 
 typedef std::vector<arangodb::iresearch::DocumentPrimaryKey::type> pks_t;
 
-pks_t::iterator readPKs(
-    irs::doc_iterator& it,
-    irs::columnstore_reader::values_reader_f const& values,
-    pks_t& keys,
-    size_t limit
-) {
+pks_t::iterator readPKs(irs::doc_iterator& it,
+                        irs::columnstore_reader::values_reader_f const& values,
+                        pks_t& keys, size_t limit) {
   keys.clear();
   keys.resize(limit);
 
   auto begin = keys.begin();
   auto end = keys.end();
 
-  for (irs::bytes_ref key; begin != end && it.next(); ) {
-    if (values(it.value(), key) && arangodb::iresearch::DocumentPrimaryKey::read(*begin, key)) {
+  for (irs::bytes_ref key; begin != end && it.next();) {
+    if (values(it.value(), key) &&
+        arangodb::iresearch::DocumentPrimaryKey::read(*begin, key)) {
       ++begin;
     }
   }
@@ -75,19 +73,14 @@ pks_t::iterator readPKs(
   return begin;
 }
 
-inline irs::columnstore_reader::values_reader_f pkColumn(
-    irs::sub_reader const& segment
-) {
-  auto const* reader = segment.column_reader(
-    arangodb::iresearch::DocumentPrimaryKey::PK()
-  );
+inline irs::columnstore_reader::values_reader_f pkColumn(irs::sub_reader const& segment) {
+  auto const* reader =
+      segment.column_reader(arangodb::iresearch::DocumentPrimaryKey::PK());
 
-  return reader
-    ? reader->values()
-    : irs::columnstore_reader::values_reader_f{};
+  return reader ? reader->values() : irs::columnstore_reader::values_reader_f{};
 }
 
-}
+}  // namespace
 
 namespace arangodb {
 namespace iresearch {
@@ -99,65 +92,60 @@ using namespace arangodb::aql;
 // -----------------------------------------------------------------------------
 
 /*static*/ IndexIterator::DocumentCallback IResearchViewBlockBase::ReadContext::copyDocumentCallback(
-    IResearchViewBlockBase::ReadContext& ctx
-) {
+    IResearchViewBlockBase::ReadContext& ctx) {
   auto* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine);
 
-  typedef std::function<
-    IndexIterator::DocumentCallback(IResearchViewBlockBase::ReadContext&)
-  > CallbackFactory;
+  typedef std::function<IndexIterator::DocumentCallback(IResearchViewBlockBase::ReadContext&)> CallbackFactory;
 
-  static CallbackFactory const callbackFactories[] {
-    [](ReadContext& ctx) {
-      // capture only one reference to potentially avoid heap allocation
-      return [&ctx] (LocalDocumentId /*id*/, VPackSlice doc) {
-        ctx.res->emplaceValue(ctx.pos, ctx.curRegs, AqlValueHintCopy(doc.begin()));
-      };
-    },
+  static CallbackFactory const callbackFactories[]{
+      [](ReadContext& ctx) {
+        // capture only one reference to potentially avoid heap allocation
+        return [&ctx](LocalDocumentId /*id*/, VPackSlice doc) {
+          ctx.res->emplaceValue(ctx.pos, ctx.curRegs, AqlValueHintCopy(doc.begin()));
+        };
+      },
 
-    [](ReadContext& ctx) {
-      // capture only one reference to potentially avoid heap allocation
-      return [&ctx] (LocalDocumentId /*id*/, VPackSlice doc) {
-        ctx.res->emplaceValue(ctx.pos, ctx.curRegs, AqlValueHintDocumentNoCopy(doc.begin()));
-      };
-    }
-  };
+      [](ReadContext& ctx) {
+        // capture only one reference to potentially avoid heap allocation
+        return [&ctx](LocalDocumentId /*id*/, VPackSlice doc) {
+          ctx.res->emplaceValue(ctx.pos, ctx.curRegs,
+                                AqlValueHintDocumentNoCopy(doc.begin()));
+        };
+      }};
 
   return callbackFactories[size_t(engine->useRawDocumentPointers())](ctx);
 }
 
-IResearchViewBlockBase::IResearchViewBlockBase(
-    irs::index_reader const& reader,
-    ExecutionEngine& engine,
-    IResearchViewNode const& en)
-  : ExecutionBlock(&engine, &en),
-    _filterCtx(1), // arangodb::iresearch::ExpressionExecutionContext
-    _ctx(en),
-    _reader(reader),
-    _filter(irs::filter::prepared::empty()),
-    _execCtx(*_trx, _ctx),
-    _inflight(0),
-    _hasMore(true), // has more data initially
-    _volatileSort(true),
-    _volatileFilter(true) {
+IResearchViewBlockBase::IResearchViewBlockBase(irs::index_reader const& reader,
+                                               ExecutionEngine& engine,
+                                               IResearchViewNode const& en)
+    : ExecutionBlock(&engine, &en),
+      _filterCtx(1),  // arangodb::iresearch::ExpressionExecutionContext
+      _ctx(en),
+      _reader(reader),
+      _filter(irs::filter::prepared::empty()),
+      _execCtx(*_trx, _ctx),
+      _inflight(0),
+      _hasMore(true),  // has more data initially
+      _volatileSort(true),
+      _volatileFilter(true) {
   TRI_ASSERT(_trx);
 
   // add expression execution context
   _filterCtx.emplace(_execCtx);
 }
 
-std::pair<ExecutionState, Result> IResearchViewBlockBase::initializeCursor(
-    AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, Result> IResearchViewBlockBase::initializeCursor(AqlItemBlock* items,
+                                                                           size_t pos) {
   const auto res = ExecutionBlock::initializeCursor(items, pos);
 
-  if (res.first == ExecutionState::WAITING ||
-      !res.second.ok()) {
+  if (res.first == ExecutionState::WAITING || !res.second.ok()) {
     // If we need to wait or get an error we return as is.
     return res;
   }
 
-  _hasMore = true; // has more data initially
+  _hasMore = true;  // has more data initially
   _inflight = 0;
 
   return res;
@@ -173,14 +161,14 @@ void IResearchViewBlockBase::reset() {
   auto& viewNode = *ExecutionNode::castTo<IResearchViewNode const*>(getPlanNode());
   auto* plan = const_cast<ExecutionPlan*>(viewNode.plan());
 
-  arangodb::iresearch::QueryContext const queryCtx = {
-    _trx, plan, plan->getAst(), &_ctx, &viewNode.outVariable()
-  };
+  arangodb::iresearch::QueryContext const queryCtx = {_trx, plan, plan->getAst(), &_ctx,
+                                                      &viewNode.outVariable()};
 
-  if (_volatileFilter) { // `_volatileSort` implies `_volatileFilter`
+  if (_volatileFilter) {  // `_volatileSort` implies `_volatileFilter`
     irs::Or root;
 
-    if (!arangodb::iresearch::FilterFactory::filter(&root, queryCtx, viewNode.filterCondition())) {
+    if (!arangodb::iresearch::FilterFactory::filter(&root, queryCtx,
+                                                    viewNode.filterCondition())) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
           << "failed to build filter while querying arangosearch view , query '"
           << viewNode.filterCondition().toVelocyPack(true)->toJson() << "'";
@@ -216,48 +204,48 @@ void IResearchViewBlockBase::reset() {
   }
 }
 
-bool IResearchViewBlockBase::readDocument(
-    DocumentPrimaryKey::type const& docPk,
-    IndexIterator::DocumentCallback const& callback
-) {
+bool IResearchViewBlockBase::readDocument(DocumentPrimaryKey::type const& docPk,
+                                          IndexIterator::DocumentCallback const& callback) {
   TRI_ASSERT(_trx->state());
 
   // this is necessary for MMFiles
   _trx->pinData(docPk.first);
 
   // `Methods::documentCollection(TRI_voc_cid_t)` may throw exception
-  auto* collection = _trx->state()->collection(docPk.first, arangodb::AccessMode::Type::READ);
+  auto* collection =
+      _trx->state()->collection(docPk.first, arangodb::AccessMode::Type::READ);
 
   if (!collection) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed to find collection while reading document from arangosearch view, cid '" << docPk.first
-      << "', rid '" << docPk.second << "'";
+        << "failed to find collection while reading document from arangosearch "
+           "view, cid '"
+        << docPk.first << "', rid '" << docPk.second << "'";
 
-    return false; // not a valid collection reference
+    return false;  // not a valid collection reference
   }
 
   TRI_ASSERT(collection->collection());
 
   return collection->collection()->readDocumentWithCallback(
-    _trx, arangodb::LocalDocumentId(docPk.second), callback
-  );
+      _trx, arangodb::LocalDocumentId(docPk.second), callback);
 }
 
-bool IResearchViewBlockBase::readDocument(
-    irs::doc_id_t const docId,
-    irs::columnstore_reader::values_reader_f const& pkValues,
-    IndexIterator::DocumentCallback const& callback
-) {
+bool IResearchViewBlockBase::readDocument(irs::doc_id_t const docId,
+                                          irs::columnstore_reader::values_reader_f const& pkValues,
+                                          IndexIterator::DocumentCallback const& callback) {
   TRI_ASSERT(pkValues);
 
   arangodb::iresearch::DocumentPrimaryKey::type docPk;
   irs::bytes_ref tmpRef;
 
-  if (!pkValues(docId, tmpRef) || !arangodb::iresearch::DocumentPrimaryKey::read(docPk, tmpRef)) {
+  if (!pkValues(docId, tmpRef) ||
+      !arangodb::iresearch::DocumentPrimaryKey::read(docPk, tmpRef)) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed to read document primary key while reading document from arangosearch view, doc_id '" << docId << "'";
+        << "failed to read document primary key while reading document from "
+           "arangosearch view, doc_id '"
+        << docId << "'";
 
-    return false; // not a valid document reference
+    return false;  // not a valid document reference
   }
 
   TRI_ASSERT(_trx->state());
@@ -266,25 +254,25 @@ bool IResearchViewBlockBase::readDocument(
   _trx->pinData(docPk.first);
 
   // `Methods::documentCollection(TRI_voc_cid_t)` may throw exception
-  auto* collection = _trx->state()->collection(docPk.first, arangodb::AccessMode::Type::READ);
+  auto* collection =
+      _trx->state()->collection(docPk.first, arangodb::AccessMode::Type::READ);
 
   if (!collection) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed to find collection while reading document from arangosearch view, cid '" << docPk.first
-      << "', rid '" << docPk.second << "'";
+        << "failed to find collection while reading document from arangosearch "
+           "view, cid '"
+        << docPk.first << "', rid '" << docPk.second << "'";
 
-    return false; // not a valid collection reference
+    return false;  // not a valid collection reference
   }
 
   TRI_ASSERT(collection->collection());
 
   return collection->collection()->readDocumentWithCallback(
-    _trx, arangodb::LocalDocumentId(docPk.second), callback
-  );
+      _trx, arangodb::LocalDocumentId(docPk.second), callback);
 }
 
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
-IResearchViewBlockBase::getSome(size_t atMost) {
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> IResearchViewBlockBase::getSome(size_t atMost) {
   traceGetSomeBegin(atMost);
 
   if (_done) {
@@ -301,17 +289,17 @@ IResearchViewBlockBase::getSome(size_t atMost) {
       size_t const toFetch = (std::min)(DefaultBatchSize(), atMost);
 
       switch (getBlockIfNeeded(toFetch)) {
-       case BufferState::NO_MORE_BLOCKS:
-        TRI_ASSERT(_inflight == 0);
-        _done = true;
-        TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
-        traceGetSomeEnd(nullptr, ExecutionState::DONE);
-        return {ExecutionState::DONE, nullptr};
-       case BufferState::WAITING:
-        traceGetSomeEnd(nullptr, ExecutionState::WAITING);
-        return {ExecutionState::WAITING, nullptr};
-       default:
-        reset();
+        case BufferState::NO_MORE_BLOCKS:
+          TRI_ASSERT(_inflight == 0);
+          _done = true;
+          TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
+          traceGetSomeEnd(nullptr, ExecutionState::DONE);
+          return {ExecutionState::DONE, nullptr};
+        case BufferState::WAITING:
+          traceGetSomeEnd(nullptr, ExecutionState::WAITING);
+          return {ExecutionState::WAITING, nullptr};
+        default:
+          reset();
       }
     }
 
@@ -438,12 +426,11 @@ std::pair<ExecutionState, size_t> IResearchViewBlockBase::skipSome(size_t atMost
 // --SECTION--                                 IResearchViewBlock implementation
 // -----------------------------------------------------------------------------
 
-IResearchViewBlock::IResearchViewBlock(
-    irs::index_reader const& reader,
-    aql::ExecutionEngine& engine,
-    IResearchViewNode const& node
-): IResearchViewUnorderedBlock(reader, engine, node),
-    _scr(&irs::score::no_score()) {
+IResearchViewBlock::IResearchViewBlock(irs::index_reader const& reader,
+                                       aql::ExecutionEngine& engine,
+                                       IResearchViewNode const& node)
+    : IResearchViewUnorderedBlock(reader, engine, node),
+      _scr(&irs::score::no_score()) {
   _volatileSort = true;
 }
 
@@ -465,14 +452,12 @@ bool IResearchViewBlock::resetIterator() {
   return true;
 }
 
-bool IResearchViewBlock::next(
-    ReadContext& ctx,
-    size_t limit) {
+bool IResearchViewBlock::next(ReadContext& ctx, size_t limit) {
   TRI_ASSERT(_filter);
   auto const& viewNode = *ExecutionNode::castTo<IResearchViewNode const*>(getPlanNode());
   auto const numSorts = viewNode.sortCondition().size();
 
-  for (size_t count = _reader.size(); _readerOffset < count; ) {
+  for (size_t count = _reader.size(); _readerOffset < count;) {
     if (!_itr && !resetIterator()) {
       continue;
     }
@@ -495,13 +480,11 @@ bool IResearchViewBlock::next(
         // in 3.4 we assume all scorers return float_t
         auto const score = _order.get<float_t>(_scrVal.c_str(), i);
 
-        ctx.res->setValue(
-          ctx.pos,
-          ++scoreRegs,
+        ctx.res->setValue(ctx.pos, ++scoreRegs,
 #if 0
           _order.to_string<AqlValue, std::char_traits<char>>(_scrVal.c_str(), i)
 #else
-          AqlValue(AqlValueHintDouble(double_t(score)))
+                          AqlValue(AqlValueHintDouble(double_t(score)))
 #endif
         );
       }
@@ -518,7 +501,7 @@ bool IResearchViewBlock::next(
     if (!limit) {
       // return 'true' if we've reached the requested limit,
       // but don't know exactly are there any more data
-      return true; // do not change iterator if already reached limit
+      return true;  // do not change iterator if already reached limit
     }
 
     ++_readerOffset;
@@ -545,7 +528,7 @@ size_t IResearchViewBlock::skip(size_t limit) {
     }
 
     if (!limit) {
-      break; // do not change iterator if already reached limit
+      break;  // do not change iterator if already reached limit
     }
 
     ++_readerOffset;
@@ -559,12 +542,11 @@ size_t IResearchViewBlock::skip(size_t limit) {
 // --SECTION--                        IResearchViewUnorderedBlock implementation
 // -----------------------------------------------------------------------------
 
-IResearchViewUnorderedBlock::IResearchViewUnorderedBlock(
-    irs::index_reader const& reader,
-    aql::ExecutionEngine& engine,
-    IResearchViewNode const& node
-): IResearchViewBlockBase(reader, engine, node), _readerOffset(0) {
-  _volatileSort = false; // do not evaluate sort
+IResearchViewUnorderedBlock::IResearchViewUnorderedBlock(irs::index_reader const& reader,
+                                                         aql::ExecutionEngine& engine,
+                                                         IResearchViewNode const& node)
+    : IResearchViewBlockBase(reader, engine, node), _readerOffset(0) {
+  _volatileSort = false;  // do not evaluate sort
 }
 
 bool IResearchViewUnorderedBlock::resetIterator() {
@@ -576,23 +558,20 @@ bool IResearchViewUnorderedBlock::resetIterator() {
 
   if (!_pkReader) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "encountered a sub-reader without a primary key column while executing a query, ignoring";
+        << "encountered a sub-reader without a primary key column while "
+           "executing a query, ignoring";
     return false;
   }
 
-  _itr = segmentReader.mask(_filter->execute(
-    segmentReader, _order, _filterCtx
-  ));
+  _itr = segmentReader.mask(_filter->execute(segmentReader, _order, _filterCtx));
 
   return true;
 }
 
-bool IResearchViewUnorderedBlock::next(
-    ReadContext& ctx,
-    size_t limit) {
+bool IResearchViewUnorderedBlock::next(ReadContext& ctx, size_t limit) {
   TRI_ASSERT(_filter);
 
-  for (size_t count = _reader.size(); _readerOffset < count; ) {
+  for (size_t count = _reader.size(); _readerOffset < count;) {
     if (!_itr && !resetIterator()) {
       continue;
     }
@@ -620,7 +599,7 @@ bool IResearchViewUnorderedBlock::next(
     if (!limit) {
       // return 'true' since we've reached the requested limit,
       // but don't know exactly are there any more data
-      return true; // do not change iterator if already reached limit
+      return true;  // do not change iterator if already reached limit
     }
 
     ++_readerOffset;
@@ -647,7 +626,7 @@ size_t IResearchViewUnorderedBlock::skip(size_t limit) {
     }
 
     if (!limit) {
-      break; // do not change iterator if already reached limit
+      break;  // do not change iterator if already reached limit
     }
 
     ++_readerOffset;
@@ -657,8 +636,8 @@ size_t IResearchViewUnorderedBlock::skip(size_t limit) {
   return skipped;
 }
 
-} // iresearch
-} // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

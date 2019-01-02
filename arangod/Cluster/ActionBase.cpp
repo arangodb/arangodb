@@ -33,7 +33,6 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 
-
 std::string const ActionBase::FAST_TRACK = "fastTrack";
 
 inline static std::chrono::system_clock::duration secs_since_epoch() {
@@ -41,17 +40,12 @@ inline static std::chrono::system_clock::duration secs_since_epoch() {
 }
 
 ActionBase::ActionBase(MaintenanceFeature& feature, ActionDescription const& desc)
-  : _feature(feature), _description(desc), _state(READY),
-    _progress(0) {
-
+    : _feature(feature), _description(desc), _state(READY), _progress(0) {
   init();
-
 }
 
-ActionBase::ActionBase(MaintenanceFeature& feature,  ActionDescription&& desc)
-  : _feature(feature), _description(std::move(desc)), _state(READY),
-    _progress(0) {
-
+ActionBase::ActionBase(MaintenanceFeature& feature, ActionDescription&& desc)
+    : _feature(feature), _description(std::move(desc)), _state(READY), _progress(0) {
   init();
 }
 
@@ -67,27 +61,22 @@ void ActionBase::init() {
   _actionDone = std::chrono::system_clock::duration::zero();
 }
 
-
-ActionBase::~ActionBase() {
-}
-
+ActionBase::~ActionBase() {}
 
 void ActionBase::notify() {
-
   LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-    << "Job " << _description << " calling syncDBServerStatusQuo";
+      << "Job " << _description << " calling syncDBServerStatusQuo";
   auto cf = ApplicationServer::getFeature<ClusterFeature>("Cluster");
   if (cf != nullptr) {
     cf->syncDBServerStatusQuo();
   }
 }
 
-
 bool ActionBase::matches(std::unordered_set<std::string> const& labels) const {
   for (auto const& label : labels) {
     if (_labels.find(label) == _labels.end()) {
       LOG_TOPIC(TRACE, Logger::MAINTENANCE)
-        << "Must not run in worker with " << label << ": " << *this;
+          << "Must not run in worker with " << label << ": " << *this;
       return false;
     }
   }
@@ -98,31 +87,24 @@ bool ActionBase::fastTrack() const {
   return _labels.find(FAST_TRACK) != _labels.end();
 }
 
-
 /// @brief execution finished successfully or failed ... and race timer expired
 bool ActionBase::done() const {
+  return (COMPLETE == _state || FAILED == _state) &&
+         _actionDone.load() + std::chrono::seconds(_feature.getSecondsActionsBlock()) <=
+             secs_since_epoch();
 
-  return (COMPLETE==_state || FAILED==_state) &&
-    _actionDone.load() + std::chrono::seconds(_feature.getSecondsActionsBlock()) <= secs_since_epoch();
+}  // ActionBase::done
 
-} // ActionBase::done
+ActionDescription const& ActionBase::describe() const { return _description; }
 
-ActionDescription const& ActionBase::describe() const {
-  return _description;
-}
-
-MaintenanceFeature& ActionBase::feature() const {
-  return _feature;
-}
+MaintenanceFeature& ActionBase::feature() const { return _feature; }
 
 VPackSlice const ActionBase::properties() const {
   return _description.properties()->slice();
 }
 
-
 /// @brief Initiate a new action that will start immediately, pausing this action
-void ActionBase::createPreAction(std::shared_ptr<ActionDescription> const & description) {
-
+void ActionBase::createPreAction(std::shared_ptr<ActionDescription> const& description) {
   _preAction = description;
   std::shared_ptr<Action> new_action = _feature.preAction(description);
 
@@ -132,61 +114,51 @@ void ActionBase::createPreAction(std::shared_ptr<ActionDescription> const & desc
     setState(WAITINGPRE);
   } else {
     _result.reset(TRI_ERROR_BAD_PARAMETER, "preAction rejected parameters.");
-  } // else
+  }  // else
 
-} // ActionBase::createPreAction
-
+}  // ActionBase::createPreAction
 
 /// @brief Retrieve pointer to action that should run before this one
 std::shared_ptr<Action> ActionBase::getPreAction() {
   return (_preAction != nullptr) ? _feature.findAction(_preAction) : nullptr;
 }
 
-
 /// @brief Retrieve pointer to action that should run after this one
 std::shared_ptr<Action> ActionBase::getPostAction() {
   return (_postAction != nullptr) ? _feature.findAction(_postAction) : nullptr;
 }
-
 
 // FIXMEMAINTENANCE: Code path could corrupt registry object because
 //   this does not hold lock.
 
 /// @brief Create a new action that will start after this action successfully completes
 void ActionBase::createPostAction(std::shared_ptr<ActionDescription> const& description) {
-
   // postAction() sets up what we need
   _postAction = description;
   if (_postAction) {
     _feature.postAction(description);
   } else {
-    _result.reset(TRI_ERROR_BAD_PARAMETER, "postAction rejected parameters for _postAction.");
+    _result.reset(TRI_ERROR_BAD_PARAMETER,
+                  "postAction rejected parameters for _postAction.");
   }
-} // ActionBase::createPostAction
-
+}  // ActionBase::createPostAction
 
 void ActionBase::startStats() {
-
   _actionStarted = secs_since_epoch();
 
-} // ActionBase::startStats
-
+}  // ActionBase::startStats
 
 /// @brief show progress on Action, and when that progress occurred
 void ActionBase::incStats() {
-
   ++_progress;
   _actionLastStat = secs_since_epoch();
 
-} // ActionBase::incStats
-
+}  // ActionBase::incStats
 
 void ActionBase::endStats() {
-
   _actionDone = secs_since_epoch();
 
-} // ActionBase::endStats
-
+}  // ActionBase::endStats
 
 Result arangodb::actionError(int errorCode, std::string const& errorMessage) {
   LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMessage;
@@ -198,7 +170,7 @@ Result arangodb::actionWarn(int errorCode, std::string const& errorMessage) {
   return Result(errorCode, errorMessage);
 }
 
-void ActionBase::toVelocyPack(VPackBuilder & builder) const {
+void ActionBase::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder ob(&builder);
 
   builder.add("id", VPackValue(_id));
@@ -213,10 +185,12 @@ void ActionBase::toVelocyPack(VPackBuilder & builder) const {
   builder.add("result", VPackValue(_result.errorNumber()));
 
   builder.add(VPackValue("description"));
-  { VPackObjectBuilder desc(&builder);
-    _description.toVelocyPack(builder); }
+  {
+    VPackObjectBuilder desc(&builder);
+    _description.toVelocyPack(builder);
+  }
 
-} // MaintanceAction::toVelocityPack
+}  // MaintanceAction::toVelocityPack
 
 VPackBuilder ActionBase::toVelocyPack() const {
   VPackBuilder builder;
@@ -224,17 +198,14 @@ VPackBuilder ActionBase::toVelocyPack() const {
   return builder;
 }
 
-
-
 /**
  * kill() operation is an expected future feature.  Not supported in the
  *  original ActionBase derivatives
  */
 arangodb::Result ActionBase::kill(Signal const& signal) {
-  return actionError(
-    TRI_ERROR_ACTION_OPERATION_UNABORTABLE, "Kill operation not supported on this action.");
+  return actionError(TRI_ERROR_ACTION_OPERATION_UNABORTABLE,
+                     "Kill operation not supported on this action.");
 }
-
 
 /**
  * progress() operation is an expected future feature.  Not supported in the
@@ -245,10 +216,9 @@ arangodb::Result ActionBase::progress(double& progress) {
   return arangodb::Result(TRI_ERROR_NO_ERROR);
 }
 
-
 namespace std {
-ostream& operator<< (
-  ostream& out, arangodb::maintenance::ActionBase const& d) {
+ostream& operator<<(ostream& out, arangodb::maintenance::ActionBase const& d) {
   out << d.toVelocyPack().toJson();
   return out;
-}}
+}
+}  // namespace std

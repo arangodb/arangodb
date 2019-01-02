@@ -69,8 +69,7 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--agency.activate", "Activate agency",
                      new BooleanParameter(&_activated));
 
-  options->addOption("--agency.size", "number of agents",
-                     new UInt64Parameter(&_size));
+  options->addOption("--agency.size", "number of agents", new UInt64Parameter(&_size));
 
   options->addOption("--agency.pool-size", "number of agent pool",
                      new UInt64Parameter(&_poolSize));
@@ -125,11 +124,11 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new UInt64Parameter(&_maxAppendSize),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addOption(
-    "--agency.disaster-recovery-id",
-    "allows for specification of the id for this agent; dangerous option for disaster recover only!",
-    new StringParameter(&_recoveryId),
-    arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+  options->addOption("--agency.disaster-recovery-id",
+                     "allows for specification of the id for this agent; "
+                     "dangerous option for disaster recover only!",
+                     new StringParameter(&_recoveryId),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
 void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -206,8 +205,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     std::string const unified = Endpoint::unifiedForm(_agencyMyAddress);
 
     if (unified.empty()) {
-      LOG_TOPIC(FATAL, Logger::AGENCY) << "invalid endpoint '"
-                                       << _agencyMyAddress
+      LOG_TOPIC(FATAL, Logger::AGENCY) << "invalid endpoint '" << _agencyMyAddress
                                        << "' specified for --agency.my-address";
       FATAL_ERROR_EXIT();
     }
@@ -216,7 +214,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     // Now extract the hostname/IP:
     auto pos = fallback.find("://");
     if (pos != std::string::npos) {
-      fallback = fallback.substr(pos+3);
+      fallback = fallback.substr(pos + 3);
     }
     pos = fallback.rfind(':');
     if (pos != std::string::npos) {
@@ -231,20 +229,20 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   // turn off the following features, as they are not needed in an agency:
-  // - MMFilesPersistentIndex: not needed by agency even if MMFiles is 
+  // - MMFilesPersistentIndex: not needed by agency even if MMFiles is
   //   the selected storage engine
   // - ArangoSearch: not needed by agency even if MMFiles is the selected
   //   storage engine
   // - Statistics: turn off statistics gathering for agency
   // - Action/Script/FoxxQueues/Frontend: Foxx and JavaScript APIs
 
-  std::vector<std::string> disabledFeatures( 
-      {"MMFilesPersistentIndex", "ArangoSearch", "Statistics", "Action", "Script", "FoxxQueues", "Frontend"}
-  );
+  std::vector<std::string> disabledFeatures(
+      {"MMFilesPersistentIndex", "ArangoSearch", "Statistics", "Action",
+       "Script", "FoxxQueues", "Frontend"});
   if (!result.touched("console") || !*(options->get<BooleanParameter>("console")->ptr)) {
     // specifiying --console requires JavaScript, so we can only turn it off
     // if not specified
-    
+
     // console mode inactive. so we can turn off V8
     disabledFeatures.emplace_back("V8Platform");
     disabledFeatures.emplace_back("V8Dealer");
@@ -262,9 +260,10 @@ void AgencyFeature::prepare() {
   // Find the agency prefix:
   auto feature = ApplicationServer::getFeature<ClusterFeature>("Cluster");
   if (!feature->agencyPrefix().empty()) {
-    arangodb::consensus::Supervision::setAgencyPrefix(
-      std::string("/") + feature->agencyPrefix());
-    arangodb::consensus::Job::agencyPrefix = feature->agencyPrefix();;
+    arangodb::consensus::Supervision::setAgencyPrefix(std::string("/") +
+                                                      feature->agencyPrefix());
+    arangodb::consensus::Job::agencyPrefix = feature->agencyPrefix();
+    ;
   }
 
   std::string endpoint;
@@ -296,14 +295,11 @@ void AgencyFeature::prepare() {
     _maxAppendSize /= 10;
   }
 
-  _agent.reset(
-    new consensus::Agent(
-      consensus::config_t(
-        _recoveryId, _size, _poolSize, _minElectionTimeout, _maxElectionTimeout,
-        endpoint, _agencyEndpoints, _supervision, _supervisionTouched,
-        _waitForSync, _supervisionFrequency, _compactionStepSize,
-        _compactionKeepSize, _supervisionGracePeriod, _cmdLineTimings,
-        _maxAppendSize)));
+  _agent.reset(new consensus::Agent(consensus::config_t(
+      _recoveryId, _size, _poolSize, _minElectionTimeout, _maxElectionTimeout,
+      endpoint, _agencyEndpoints, _supervision, _supervisionTouched, _waitForSync,
+      _supervisionFrequency, _compactionStepSize, _compactionKeepSize,
+      _supervisionGracePeriod, _cmdLineTimings, _maxAppendSize)));
 
   AGENT = _agent.get();
 }
@@ -312,10 +308,10 @@ void AgencyFeature::start() {
   if (!isEnabled()) {
     return;
   }
- 
+
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting agency personality";
   _agent->start();
-  
+
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Loading agency";
   _agent->load();
 }
@@ -324,7 +320,7 @@ void AgencyFeature::beginShutdown() {
   if (!isEnabled()) {
     return;
   }
-  
+
   // pass shutdown event to _agent so it can notify all its sub-threads
   _agent->beginShutdown();
 }
@@ -334,16 +330,17 @@ void AgencyFeature::stop() {
     return;
   }
 
-  if (_agent->inception() != nullptr) { // can only exist in resilient agents
+  if (_agent->inception() != nullptr) {  // can only exist in resilient agents
     int counter = 0;
     while (_agent->inception()->isRunning()) {
       std::this_thread::sleep_for(std::chrono::microseconds(100000));
       // emit warning after 5 seconds
       if (++counter == 10 * 5) {
-        LOG_TOPIC(WARN, Logger::AGENCY) << "waiting for inception thread to finish";
+        LOG_TOPIC(WARN, Logger::AGENCY)
+            << "waiting for inception thread to finish";
       }
     }
-  }  
+  }
 
   if (_agent != nullptr) {
     int counter = 0;
@@ -374,4 +371,4 @@ void AgencyFeature::unprepare() {
   _agent.reset();
 }
 
-} // arangodb
+}  // namespace arangodb

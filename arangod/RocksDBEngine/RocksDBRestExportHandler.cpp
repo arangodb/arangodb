@@ -52,8 +52,7 @@ RocksDBRestExportHandler::RocksDBRestExportHandler(GeneralRequest* request,
 
 RestStatus RocksDBRestExportHandler::execute() {
   if (ServerState::instance()->isCoordinator()) {
-    generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                  TRI_ERROR_CLUSTER_UNSUPPORTED,
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_CLUSTER_UNSUPPORTED,
                   "'/_api/export' is not yet supported in a cluster");
     return RestStatus::DONE;
   }
@@ -73,8 +72,7 @@ RestStatus RocksDBRestExportHandler::execute() {
     return RestCursorHandler::execute();
   }
 
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
 
@@ -87,7 +85,7 @@ VPackBuilder RocksDBRestExportHandler::buildQueryOptions(std::string const& cnam
   if (!slice.isObject()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
-  
+
   VPackBuilder options;
   options.openObject();
 
@@ -102,38 +100,38 @@ VPackBuilder RocksDBRestExportHandler::buildQueryOptions(std::string const& cnam
   } else {
     options.add("batchSize", VPackValue(1000));
   }
-  
+
   VPackSlice ttl = slice.get("ttl");
   if (ttl.isNumber()) {
     options.add("ttl", ttl);
   } else {
     options.add("ttl", VPackValue(30));
   }
-  
+
   int64_t limit = INT64_MAX;
   VPackSlice limitSlice = slice.get("limit");
   if (limitSlice.isNumber()) {
     limit = limitSlice.getInt();
   }
-  
+
   options.add("options", VPackValue(VPackValueType::Object));
-  options.add("stream", VPackValue(true)); // important!!
+  options.add("stream", VPackValue(true));  // important!!
   VPackSlice count = slice.get("count");
   if (count.isBool() && count.getBool()) {
     // QueryStreamCursor will add `exportCount` as `count`
     options.add("exportCollection", VPackValue(cname));
   }
-  options.close(); // options
-  
+  options.close();  // options
+
   std::string query = "FOR doc IN @@collection ";
-  
+
   options.add("bindVars", VPackValue(VPackValueType::Object));
   options.add("@collection", VPackValue(cname));
   if (limit != INT64_MAX) {
     query.append("LIMIT @limit ");
     options.add("limit", limitSlice);
   }
-  
+
   // handle "restrict" parameter
   VPackSlice restrct = slice.get("restrict");
   if (restrct.isObject()) {
@@ -143,13 +141,13 @@ VPackBuilder RocksDBRestExportHandler::buildQueryOptions(std::string const& cnam
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "expecting string for 'restrict.type'");
     }
-    
+
     VPackSlice fields = restrct.get("fields");
     if (!fields.isArray()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "expecting array for 'restrict.fields'");
     }
-    
+
     if (type.isEqualString("include")) {
       if (fields.length() == 0) {
         query.append("RETURN {}");
@@ -163,10 +161,11 @@ VPackBuilder RocksDBRestExportHandler::buildQueryOptions(std::string const& cnam
         query.append("RETURN UNSET(doc");
       }
     } else {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "expecting either 'include' or 'exclude' for 'restrict.type'");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "expecting either 'include' or 'exclude' for 'restrict.type'");
     }
-    
+
     if (fields.length() > 0) {
       // "restrict"."fields"
       int i = 0;
@@ -182,15 +181,16 @@ VPackBuilder RocksDBRestExportHandler::buildQueryOptions(std::string const& cnam
 
   } else {
     if (!restrct.isNone()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TYPE_ERROR, "expecting object for 'restrict'");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TYPE_ERROR,
+                                     "expecting object for 'restrict'");
     }
     query.append("RETURN doc");
   }
-  
-  options.close(); // bindVars
+
+  options.close();  // bindVars
   options.add("query", VPackValue(query));
   options.close();
-  
+
   return options;
 }
 
@@ -212,8 +212,7 @@ RestStatus RocksDBRestExportHandler::createCursor() {
   std::string const& name = _request->value("collection", found);
 
   if (!found || name.empty()) {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting "
                   "/_api/export?collection=<identifier>");
     return RestStatus::DONE;

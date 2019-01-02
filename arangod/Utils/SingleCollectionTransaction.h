@@ -39,13 +39,10 @@ class Context;
 
 class SingleCollectionTransaction final : public transaction::Methods {
  public:
-
   /// @brief create the transaction, using a data-source
-  SingleCollectionTransaction(
-    std::shared_ptr<transaction::Context> const& transactionContext,
-    LogicalDataSource const& collection,
-    AccessMode::Type accessType
-  );
+  SingleCollectionTransaction(std::shared_ptr<transaction::Context> const& transactionContext,
+                              LogicalDataSource const& collection,
+                              AccessMode::Type accessType);
 
   /// @brief create the transaction, using a collection name
   SingleCollectionTransaction(std::shared_ptr<transaction::Context> const&,
@@ -75,7 +72,6 @@ class SingleCollectionTransaction final : public transaction::Methods {
   std::string name();
 
  private:
-  
   /// @brief get the underlying transaction collection
   TransactionCollection* resolveTrxCollection();
 
@@ -92,6 +88,6 @@ class SingleCollectionTransaction final : public transaction::Methods {
   AccessMode::Type _accessType;
 };
 
-}
+}  // namespace arangodb
 
 #endif

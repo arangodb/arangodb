@@ -23,8 +23,8 @@
 #ifndef ARANGOD_TRANSACTION_GLOBAL_CONTEXT_H
 #define ARANGOD_TRANSACTION_GLOBAL_CONTEXT_H 1
 
-#include "Context.h"
 #include "Basics/Common.h"
+#include "Context.h"
 #include "VocBase/vocbase.h"
 
 struct TRI_vocbase_t;
@@ -47,7 +47,6 @@ namespace transaction {
 /// (3) Construcor with TransactionState* is used to manage a global transaction
 class SmartContext final : public Context {
  public:
-  
   /// @brief create the context, with given TID
   explicit SmartContext(TRI_vocbase_t& vocbase);
 
@@ -55,8 +54,7 @@ class SmartContext final : public Context {
   ~SmartContext() = default;
 
   /// @brief order a custom type handler
-  std::shared_ptr<arangodb::velocypack::CustomTypeHandler>
-  orderCustomTypeHandler() override final;
+  std::shared_ptr<arangodb::velocypack::CustomTypeHandler> orderCustomTypeHandler() override final;
 
   /// @brief return the resolver
   CollectionNameResolver const& resolver() override final;
@@ -72,15 +70,15 @@ class SmartContext final : public Context {
 
   /// @brief whether or not the transaction is embeddable
   bool isEmbeddable() const override;
-  
+
   static std::shared_ptr<Context> Create(TRI_vocbase_t&);
-  
-private:
+
+ private:
   /// @brief managed TransactionState
-  TransactionState *_state;
+  TransactionState* _state;
 };
 
-}
-}
+}  // namespace transaction
+}  // namespace arangodb
 
 #endif

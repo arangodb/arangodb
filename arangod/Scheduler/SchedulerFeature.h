@@ -79,6 +79,6 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   std::shared_ptr<asio_ns::signal_set> _hangupSignals;
 };
 
-}
+}  // namespace arangodb
 
 #endif

@@ -62,7 +62,12 @@ class MMFilesCompactorThread final : public Thread {
     bool _failed;
 
     CompactionInitialContext(transaction::Methods* trx, LogicalCollection* collection)
-        : _trx(trx), _collection(collection), _targetSize(0), _fid(0), _keepDeletions(false), _failed(false) {}
+        : _trx(trx),
+          _collection(collection),
+          _targetSize(0),
+          _fid(0),
+          _keepDeletions(false),
+          _failed(false) {}
   };
 
  public:
@@ -74,16 +79,17 @@ class MMFilesCompactorThread final : public Thread {
   /// @brief callback to drop a datafile
   static void DropDatafileCallback(MMFilesDatafile* datafile, LogicalCollection* collection);
   /// @brief callback to rename a datafile
-  static void RenameDatafileCallback(MMFilesDatafile* datafile, MMFilesDatafile* compactor, LogicalCollection* collection);
+  static void RenameDatafileCallback(MMFilesDatafile* datafile, MMFilesDatafile* compactor,
+                                     LogicalCollection* collection);
 
  protected:
   void run() override;
 
  private:
   /// @brief calculate the target size for the compactor to be created
-  CompactionInitialContext getCompactionContext(
-    transaction::Methods* trx, LogicalCollection* collection,
-    std::vector<CompactionInfo> const& toCompact);
+  CompactionInitialContext getCompactionContext(transaction::Methods* trx,
+                                                LogicalCollection* collection,
+                                                std::vector<CompactionInfo> const& toCompact);
 
   /// @brief compact the specified datafiles
   void compactDatafiles(LogicalCollection* collection, std::vector<CompactionInfo> const&);
@@ -107,6 +113,6 @@ class MMFilesCompactorThread final : public Thread {
   arangodb::basics::ConditionVariable _condition;
 };
 
-}
+}  // namespace arangodb
 
 #endif

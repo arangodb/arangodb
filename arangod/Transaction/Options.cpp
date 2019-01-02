@@ -28,7 +28,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::transaction;
-  
+
 uint64_t Options::defaultMaxTransactionSize = UINT64_MAX;
 uint64_t Options::defaultIntermediateCommitSize = 512 * 1024 * 1024;
 uint64_t Options::defaultIntermediateCommitCount = 1 * 1000 * 1000;
@@ -41,11 +41,14 @@ Options::Options()
       allowImplicitCollections(true),
       waitForSync(false)
 #ifdef USE_ENTERPRISE
-      ,skipInaccessibleCollections(false)
+      ,
+      skipInaccessibleCollections(false)
 #endif
-{}
-  
-void Options::setLimits(uint64_t maxTransactionSize, uint64_t intermediateCommitSize, uint64_t intermediateCommitCount) {
+{
+}
+
+void Options::setLimits(uint64_t maxTransactionSize, uint64_t intermediateCommitSize,
+                        uint64_t intermediateCommitCount) {
   defaultMaxTransactionSize = maxTransactionSize;
   defaultIntermediateCommitSize = intermediateCommitSize;
   defaultIntermediateCommitCount = intermediateCommitCount;
@@ -53,7 +56,7 @@ void Options::setLimits(uint64_t maxTransactionSize, uint64_t intermediateCommit
 
 void Options::fromVelocyPack(arangodb::velocypack::Slice const& slice) {
   VPackSlice value;
-  
+
   value = slice.get("lockTimeout");
   if (value.isNumber()) {
     lockTimeout = value.getNumber<double>();
@@ -85,8 +88,8 @@ void Options::fromVelocyPack(arangodb::velocypack::Slice const& slice) {
   }
 #endif
 }
- 
-/// @brief add the options to an opened vpack builder 
+
+/// @brief add the options to an opened vpack builder
 void Options::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
 
@@ -97,7 +100,6 @@ void Options::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   builder.add("allowImplicitCollections", VPackValue(allowImplicitCollections));
   builder.add("waitForSync", VPackValue(waitForSync));
 #ifdef USE_ENTERPRISE
-  builder.add("skipInaccessibleCollections",
-              VPackValue(skipInaccessibleCollections));
+  builder.add("skipInaccessibleCollections", VPackValue(skipInaccessibleCollections));
 #endif
 }

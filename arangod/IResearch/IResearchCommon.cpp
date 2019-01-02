@@ -34,9 +34,8 @@ namespace arangodb {
 namespace iresearch {
 
 arangodb::LogicalDataSource::Type const& dataSourceType() {
-  static auto& type = arangodb::LogicalDataSource::Type::emplace(
-    arangodb::velocypack::StringRef(TYPE)
-  );
+  static auto& type =
+      arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef(TYPE));
 
   return type;
 }
@@ -55,8 +54,8 @@ std::string const StaticStrings::LinksField("links");
 std::string const StaticStrings::VersionField("version");
 std::string const StaticStrings::ViewIdField("view");
 
-} // iresearch
-} // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

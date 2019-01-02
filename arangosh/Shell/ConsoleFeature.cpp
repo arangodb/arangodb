@@ -21,10 +21,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
+#include <locale.h>
+#include <string.h>
 #include <tchar.h>
 #include <unicode/locid.h>
-#include <string.h>
-#include <locale.h>
 #endif
 
 #include "ConsoleFeature.h"
@@ -45,10 +45,8 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 #ifdef _WIN32
-static const int FOREGROUND_WHITE =
-    FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE;
-static const int BACKGROUND_WHITE =
-    BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE;
+static const int FOREGROUND_WHITE = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE;
+static const int BACKGROUND_WHITE = BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE;
 static const int INTENSITY = FOREGROUND_INTENSITY | BACKGROUND_INTENSITY;
 #endif
 
@@ -94,8 +92,7 @@ ConsoleFeature::ConsoleFeature(application_features::ApplicationServer& server)
 }
 
 void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption("--quiet", "silent startup",
-                     new BooleanParameter(&_quiet));
+  options->addOption("--quiet", "silent startup", new BooleanParameter(&_quiet));
 
   options->addSection("console", "Configure the console");
 
@@ -112,32 +109,32 @@ void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "audit log file to save commands and results",
                      new StringParameter(&_auditFile));
 
-  options->addOption("--console.pager", "enable paging",
-                     new BooleanParameter(&_pager));
+  options->addOption("--console.pager", "enable paging", new BooleanParameter(&_pager));
 
   options->addOption("--console.pager-command", "pager command",
                      new StringParameter(&_pagerCommand),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addOption("--console.prompt", "prompt used in REPL. prompt components are: '%t': current time as timestamp, '%p': duration of last command in seconds, '%d': name of current database, '%e': current endpoint, '%E': current endpoint without protocol, '%u': current user",
-                     new StringParameter(&_prompt));
+  options->addOption(
+      "--console.prompt",
+      "prompt used in REPL. prompt components are: '%t': current time as "
+      "timestamp, '%p': duration of last command in seconds, '%d': name of "
+      "current database, '%e': current endpoint, '%E': current endpoint "
+      "without protocol, '%u': current user",
+      new StringParameter(&_prompt));
 }
 
 void ConsoleFeature::prepare() {
 #if _WIN32
-  if (_is_cyg_tty (STDOUT_FILENO) || getenv("SHELL") != nullptr) {
+  if (_is_cyg_tty(STDOUT_FILENO) || getenv("SHELL") != nullptr) {
     _cygwinShell = true;
   }
 #endif
 }
 
-void ConsoleFeature::start() {
-  openLog();
-}
+void ConsoleFeature::start() { openLog(); }
 
-void ConsoleFeature::unprepare() {
-  closeLog();
-}
+void ConsoleFeature::unprepare() { closeLog(); }
 
 #ifdef _WIN32
 static void _newLine() { fprintf(stdout, "\n"); }
@@ -202,8 +199,7 @@ void ConsoleFeature::_print(std::string const& s) {
 
                 case 1:  // BOLD
                 case 5:  // BLINK
-                  _consoleAttribute =
-                      (_defaultAttribute ^ FOREGROUND_INTENSITY) & INTENSITY;
+                  _consoleAttribute = (_defaultAttribute ^ FOREGROUND_INTENSITY) & INTENSITY;
                   break;
 
                 case 30:
@@ -219,8 +215,7 @@ void ConsoleFeature::_print(std::string const& s) {
                   break;
 
                 case 33:
-                  _consoleColor =
-                      FOREGROUND_RED | FOREGROUND_GREEN | _defaultBackground;
+                  _consoleColor = FOREGROUND_RED | FOREGROUND_GREEN | _defaultBackground;
                   break;
 
                 case 34:
@@ -228,13 +223,11 @@ void ConsoleFeature::_print(std::string const& s) {
                   break;
 
                 case 35:
-                  _consoleColor =
-                      FOREGROUND_BLUE | FOREGROUND_RED | _defaultBackground;
+                  _consoleColor = FOREGROUND_BLUE | FOREGROUND_RED | _defaultBackground;
                   break;
 
                 case 36:
-                  _consoleColor =
-                      FOREGROUND_BLUE | FOREGROUND_GREEN | _defaultBackground;
+                  _consoleColor = FOREGROUND_BLUE | FOREGROUND_GREEN | _defaultBackground;
                   break;
 
                 case 37:
@@ -479,9 +472,11 @@ ConsoleFeature::Prompt ConsoleFeature::buildPrompt(ClientFeature* client) {
 
   if (_supportsColors && _colors) {
     if (_promptError) {
-      colored = ShellColorsFeature::SHELL_COLOR_BOLD_RED + result + ShellColorsFeature::SHELL_COLOR_RESET;
+      colored = ShellColorsFeature::SHELL_COLOR_BOLD_RED + result +
+                ShellColorsFeature::SHELL_COLOR_RESET;
     } else {
-      colored = ShellColorsFeature::SHELL_COLOR_BOLD_GREEN + result + ShellColorsFeature::SHELL_COLOR_RESET;
+      colored = ShellColorsFeature::SHELL_COLOR_BOLD_GREEN + result +
+                ShellColorsFeature::SHELL_COLOR_RESET;
     }
   } else {
     colored = result;
@@ -499,7 +494,8 @@ void ConsoleFeature::startPager() {
     _toPager = popen(_pagerCommand.c_str(), "w");
 
     if (_toPager == nullptr) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "popen() for pager failed! Using stdout instead!";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "popen() for pager failed! Using stdout instead!";
       _toPager = stdout;
       _pager = false;
     }
@@ -516,4 +512,4 @@ void ConsoleFeature::stopPager() {
 #endif
 }
 
-} // arangodb
+}  // namespace arangodb
