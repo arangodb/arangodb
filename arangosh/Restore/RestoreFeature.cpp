@@ -1040,11 +1040,11 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
                      new BooleanParameter(&_options.overwrite));
 
   options->addOption("--number-of-shards",
-                     "value for numberOfShards (can be specified multiple times, e.g. --numberOfShards 2 --numberOfShards myCollection=3)",
+                     "override value for numberOfShards (can be specified multiple times, e.g. --numberOfShards 2 --numberOfShards myCollection=3)",
                      new VectorParameter<StringParameter>(&_options.numberOfShards));
   
   options->addOption("--replication-factor",
-                     "value for replicationFactor (can be specified multiple times, e.g. --replicationFactor 2 --replicationFactor myCollection=3)",
+                     "override value for replicationFactor (can be specified multiple times, e.g. --replicationFactor 2 --replicationFactor myCollection=3)",
                      new VectorParameter<StringParameter>(&_options.replicationFactor));
 
   options->addOption(
@@ -1058,13 +1058,14 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
   
   // deprecated options
   options->addOption("--default-number-of-shards",
-                     "default value for numberOfShards if not specified",
-                     new UInt64Parameter(&_options.defaultNumberOfShards));
+                     "default value for numberOfShards if not specified in dump (deprecated since 3.4.2)",
+                     new UInt64Parameter(&_options.defaultNumberOfShards),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--default-replication-factor",
-                     "default value for replicationFactor if not specified",
-                     new UInt64Parameter(&_options.defaultReplicationFactor));
-
+                     "default value for replicationFactor if not specified in dump (deprecated since 3.4.2)",
+                     new UInt64Parameter(&_options.defaultReplicationFactor),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
 void RestoreFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
