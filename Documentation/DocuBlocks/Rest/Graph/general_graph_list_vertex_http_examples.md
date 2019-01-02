@@ -1,15 +1,14 @@
-
 @startDocuBlock general_graph_list_vertex_http_examples
 @brief Lists all vertex collections used in this graph.
 
-@RESTHEADER{GET /_api/gharial/{graph-name}/vertex, List vertex collections}
+@RESTHEADER{GET /_api/gharial/{graph}/vertex, List vertex collections}
 
 @RESTDESCRIPTION
 Lists all vertex collections within this graph.
 
 @RESTURLPARAMETERS
 
-@RESTURLPARAM{graph-name,string,required}
+@RESTURLPARAM{graph,string,required}
 The name of the graph.
 
 @RESTRETURNCODES
@@ -17,8 +16,32 @@ The name of the graph.
 @RESTRETURNCODE{200}
 Is returned if the collections could be listed.
 
+@RESTREPLYBODY{error,boolean,required,}
+Flag if there was an error (true) or not (false).
+It is false in this response.
+
+@RESTREPLYBODY{code,integer,required,}
+The response code.
+
+@RESTREPLYBODY{collections,array,required,string}
+The list of all vertex collections within this graph.
+Includes collections in edgeDefinitions as well as orphans.
+
 @RESTRETURNCODE{404}
 Returned if no graph with this name could be found.
+
+@RESTREPLYBODY{error,boolean,required,}
+Flag if there was an error (true) or not (false).
+It is true in this response.
+
+@RESTREPLYBODY{code,integer,required,}
+The response code.
+
+@RESTREPLYBODY{errorNum,integer,required,}
+ArangoDB error number for the error that occured.
+
+@RESTREPLYBODY{errorMessage,string,required,}
+A message created for this error.
 
 @EXAMPLES
 
@@ -35,4 +58,3 @@ Returned if no graph with this name could be found.
 ~ examples.dropGraph("social");
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

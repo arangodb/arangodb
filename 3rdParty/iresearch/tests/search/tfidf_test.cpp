@@ -248,10 +248,10 @@ TEST_F(tfidf_test, test_phrase) {
 
     std::multimap<irs::bstring, std::string, decltype(comparer)> sorted(comparer);
 
-    std::vector<std::string> expected{
+    std::vector<std::string> expected {
+      "O", // jumps high jumps high hotdog
       "P", // jumps high jumps left jumps right jumps down jumps back
       "Q", // jumps high jumps left jumps right jumps down walks back
-      "O", // jumps high jumps high hotdog
       "R"  // jumps high jumps left jumps right walks down walks back
     };
 
@@ -621,7 +621,7 @@ TEST_F(tfidf_test, test_make) {
     auto scorer = irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::NIL);
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::tfidf_sort&>(*scorer);
-    ASSERT_EQ(false, scr.normalize());
+    ASSERT_FALSE(scr.normalize());
   }
 
   // invalid args

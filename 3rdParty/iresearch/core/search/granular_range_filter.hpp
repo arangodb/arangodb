@@ -50,7 +50,7 @@ class IRESEARCH_API by_granular_range: public filter {
   typedef terms_t::iterator iterator;
   typedef terms_t::key_type level_t;
   DECLARE_FILTER_TYPE();
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
 
   by_granular_range();
 

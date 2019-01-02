@@ -23,8 +23,8 @@
 
 #include "Aql/Parser.h"
 #include "Aql/AstNode.h"
-#include "Aql/QueryResult.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/QueryResult.h"
 
 #include <sstream>
 
@@ -42,19 +42,18 @@ Parser::Parser(Query* query)
       _marker(nullptr),
       _stack() {
   _stack.reserve(4);
-    
+
   QueryString const& qs = queryString();
-  _queryStringStart = qs.data(); 
-  _buffer = qs.data(); 
-  _remainingLength = qs.size(); 
+  _queryStringStart = qs.data();
+  _buffer = qs.data();
+  _remainingLength = qs.size();
 }
 
 /// @brief destroy the parser
 Parser::~Parser() {}
 
 /// @brief set data for write queries
-bool Parser::configureWriteQuery(AstNode const* collectionNode,
-                                 AstNode* optionNode) {
+bool Parser::configureWriteQuery(AstNode const* collectionNode, AstNode* optionNode) {
   bool isExclusiveAccess = false;
 
   if (optionNode != nullptr) {
@@ -64,7 +63,7 @@ bool Parser::configureWriteQuery(AstNode const* collectionNode,
 
     isExclusiveAccess = ExecutionPlan::hasExclusiveAccessOption(optionNode);
   }
- 
+
   // now track which collection is going to be modified
   _ast->addWriteCollection(collectionNode, isExclusiveAccess);
 
@@ -75,7 +74,7 @@ bool Parser::configureWriteQuery(AstNode const* collectionNode,
 }
 
 /// @brief parse the query
-QueryResult Parser::parse(bool withDetails) {
+void Parser::parse() {
   if (queryString().empty() || remainingLength() == 0) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_EMPTY);
   }
@@ -111,14 +110,16 @@ QueryResult Parser::parse(bool withDetails) {
   }
 
   TRI_ASSERT(scopes->numActive() == 0);
+}
+
+/// @brief parse the query and retun parse details
+QueryResult Parser::parseWithDetails() {
+  parse();
 
   QueryResult result;
-
-  if (withDetails) {
-    result.collectionNames = _query->collectionNames();
-    result.bindParameters = _ast->bindParameters();
-    result.result = _ast->toVelocyPack(false);
-  }
+  result.collectionNames = _query->collectionNames();
+  result.bindParameters = _ast->bindParameters();
+  result.result = _ast->toVelocyPack(false);
 
   return result;
 }
@@ -137,8 +138,7 @@ void Parser::registerParseError(int errorCode, char const* format,
 }
 
 /// @brief register a parse error, position is specified as line / column
-void Parser::registerParseError(int errorCode, char const* data, int line,
-                                int column) {
+void Parser::registerParseError(int errorCode, char const* data, int line, int column) {
   TRI_ASSERT(errorCode != TRI_ERROR_NO_ERROR);
   TRI_ASSERT(data != nullptr);
 
@@ -174,10 +174,25 @@ void Parser::registerError(int errorCode, char const* data) {
 }
 
 /// @brief register a warning
-void Parser::registerWarning(int errorCode, char const* data, int line,
-                             int column) {
+void Parser::registerWarning(int errorCode, char const* data, int line, int column) {
   // ignore line and column for now
   _query->registerWarning(errorCode, data);
+}
+
+/// @brief push an AstNode array element on top of the stack
+/// the array must be removed from the stack via popArray
+void Parser::pushArray(AstNode* array) {
+  TRI_ASSERT(array->type == NODE_TYPE_ARRAY);
+  array->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
+  pushStack(array);
+}
+
+/// @brief pop an array value from the parser's stack
+/// the array must have been added to the stack via pushArray
+AstNode* Parser::popArray() {
+  AstNode* array = static_cast<AstNode*>(popStack());
+  TRI_ASSERT(array->type == NODE_TYPE_ARRAY);
+  return array;
 }
 
 /// @brief push an AstNode into the array element on top of the stack
@@ -185,11 +200,13 @@ void Parser::pushArrayElement(AstNode* node) {
   auto array = static_cast<AstNode*>(peekStack());
   TRI_ASSERT(array->type == NODE_TYPE_ARRAY);
   array->addMember(node);
+  if (array->hasFlag(AstNodeFlagType::VALUE_CONSTANT) && !node->isConstant()) {
+    array->removeFlag(AstNodeFlagType::VALUE_CONSTANT);
+  }
 }
 
 /// @brief push an AstNode into the object element on top of the stack
-void Parser::pushObjectElement(char const* attributeName, size_t nameLength,
-                               AstNode* node) {
+void Parser::pushObjectElement(char const* attributeName, size_t nameLength, AstNode* node) {
   auto object = static_cast<AstNode*>(peekStack());
   TRI_ASSERT(object->type == NODE_TYPE_OBJECT);
   auto element = _ast->createNodeObjectElement(attributeName, nameLength, node);

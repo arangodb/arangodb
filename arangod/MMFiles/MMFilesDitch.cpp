@@ -29,11 +29,7 @@
 using namespace arangodb;
 
 MMFilesDitch::MMFilesDitch(MMFilesDitches* ditches, char const* filename, int line)
-    : _ditches(ditches),
-      _prev(nullptr),
-      _next(nullptr),
-      _filename(filename),
-      _line(line) {}
+    : _ditches(ditches), _prev(nullptr), _next(nullptr), _filename(filename), _line(line) {}
 
 MMFilesDitch::~MMFilesDitch() {}
 
@@ -43,28 +39,27 @@ LogicalCollection* MMFilesDitch::collection() const {
 }
 
 MMFilesDocumentDitch::MMFilesDocumentDitch(MMFilesDitches* ditches, bool usedByTransaction,
-                             char const* filename, int line)
-    : MMFilesDitch(ditches, filename, line),
-      _usedByTransaction(usedByTransaction) {}
+                                           char const* filename, int line)
+    : MMFilesDitch(ditches, filename, line), _usedByTransaction(usedByTransaction) {}
 
 MMFilesDocumentDitch::~MMFilesDocumentDitch() {}
 
-MMFilesReplicationDitch::MMFilesReplicationDitch(MMFilesDitches* ditches, char const* filename,
-                                   int line)
+MMFilesReplicationDitch::MMFilesReplicationDitch(MMFilesDitches* ditches,
+                                                 char const* filename, int line)
     : MMFilesDitch(ditches, filename, line) {}
 
 MMFilesReplicationDitch::~MMFilesReplicationDitch() {}
 
-MMFilesCompactionDitch::MMFilesCompactionDitch(MMFilesDitches* ditches, char const* filename,
-                                 int line)
+MMFilesCompactionDitch::MMFilesCompactionDitch(MMFilesDitches* ditches,
+                                               char const* filename, int line)
     : MMFilesDitch(ditches, filename, line) {}
 
 MMFilesCompactionDitch::~MMFilesCompactionDitch() {}
 
 MMFilesDropDatafileDitch::MMFilesDropDatafileDitch(
     MMFilesDitches* ditches, MMFilesDatafile* datafile, LogicalCollection* collection,
-    std::function<void(MMFilesDatafile*, LogicalCollection*)> const& callback, char const* filename,
-    int line)
+    std::function<void(MMFilesDatafile*, LogicalCollection*)> const& callback,
+    char const* filename, int line)
     : MMFilesDitch(ditches, filename, line),
       _datafile(datafile),
       _collection(collection),
@@ -73,10 +68,10 @@ MMFilesDropDatafileDitch::MMFilesDropDatafileDitch(
 MMFilesDropDatafileDitch::~MMFilesDropDatafileDitch() { delete _datafile; }
 
 MMFilesRenameDatafileDitch::MMFilesRenameDatafileDitch(
-    MMFilesDitches* ditches, MMFilesDatafile* datafile, MMFilesDatafile* compactor,
-    LogicalCollection* collection,
-    std::function<void(MMFilesDatafile*, MMFilesDatafile*, LogicalCollection*)> const& callback, char const* filename,
-    int line)
+    MMFilesDitches* ditches, MMFilesDatafile* datafile,
+    MMFilesDatafile* compactor, LogicalCollection* collection,
+    std::function<void(MMFilesDatafile*, MMFilesDatafile*, LogicalCollection*)> const& callback,
+    char const* filename, int line)
     : MMFilesDitch(ditches, filename, line),
       _datafile(datafile),
       _compactor(compactor),
@@ -87,24 +82,16 @@ MMFilesRenameDatafileDitch::~MMFilesRenameDatafileDitch() {}
 
 MMFilesUnloadCollectionDitch::MMFilesUnloadCollectionDitch(
     MMFilesDitches* ditches, LogicalCollection* collection,
-    std::function<bool(LogicalCollection*)> const& callback,
-    char const* filename, int line)
-    : MMFilesDitch(ditches, filename, line),
-      _collection(collection),
-      _callback(callback) {}
+    std::function<bool(LogicalCollection*)> const& callback, char const* filename, int line)
+    : MMFilesDitch(ditches, filename, line), _collection(collection), _callback(callback) {}
 
 MMFilesUnloadCollectionDitch::~MMFilesUnloadCollectionDitch() {}
 
 MMFilesDropCollectionDitch::MMFilesDropCollectionDitch(
-    MMFilesDitches* ditches,
-    arangodb::LogicalCollection& collection,
+    MMFilesDitches* ditches, arangodb::LogicalCollection& collection,
     std::function<bool(arangodb::LogicalCollection&)> const& callback,
-    char const* filename,
-    int line
-)
-    : MMFilesDitch(ditches, filename, line),
-      _collection(collection),
-      _callback(callback) {}
+    char const* filename, int line)
+    : MMFilesDitch(ditches, filename, line), _collection(collection), _callback(callback) {}
 
 MMFilesDropCollectionDitch::~MMFilesDropCollectionDitch() {}
 
@@ -136,10 +123,11 @@ void MMFilesDitches::destroy() {
         type == MMFilesDitch::TRI_DITCH_COMPACTION) {
       delete ptr;
     } else if (type == MMFilesDitch::TRI_DITCH_DOCUMENT) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "logic error. shouldn't have document ditches on unload";
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+          << "logic error. shouldn't have document ditches on unload";
       TRI_ASSERT(false);
     } else {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unknown ditch type";
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << "unknown ditch type";
     }
 
     ptr = next;
@@ -157,10 +145,10 @@ void MMFilesDitches::executeProtected(std::function<void()> callback) {
 
 /// @brief process the first element from the list
 /// the list will remain unchanged if the first element is either a
-/// MMFilesDocumentDitch, a MMFilesReplicationDitch or a MMFilesCompactionDitch, or if the list
-/// contains any MMFilesDocumentMMFilesDitches.
+/// MMFilesDocumentDitch, a MMFilesReplicationDitch or a MMFilesCompactionDitch,
+/// or if the list contains any MMFilesDocumentMMFilesDitches.
 MMFilesDitch* MMFilesDitches::process(bool& popped,
-                        std::function<bool(MMFilesDitch const*)> callback) {
+                                      std::function<bool(MMFilesDitch const*)> callback) {
   popped = false;
 
   MUTEX_LOCKER(mutexLocker, _lock);
@@ -176,10 +164,10 @@ MMFilesDitch* MMFilesDitches::process(bool& popped,
 
   auto const type = ditch->type();
 
-  // if it is a MMFilesDocumentDitch, it means that there is still a reference held
-  // to document data in a datafile. We must then not unload or remove a file
-  if (type == MMFilesDitch::TRI_DITCH_DOCUMENT ||
-      type == MMFilesDitch::TRI_DITCH_REPLICATION ||
+  // if it is a MMFilesDocumentDitch, it means that there is still a reference
+  // held to document data in a datafile. We must then not unload or remove a
+  // file
+  if (type == MMFilesDitch::TRI_DITCH_DOCUMENT || type == MMFilesDitch::TRI_DITCH_REPLICATION ||
       type == MMFilesDitch::TRI_DITCH_COMPACTION || _numMMFilesDocumentMMFilesDitches > 0) {
     // did not find anything at the head of the barrier list or found an element
     // marker
@@ -188,15 +176,14 @@ MMFilesDitch* MMFilesDitches::process(bool& popped,
     return nullptr;
   }
 
-  // no MMFilesDocumentDitch at the head of the ditches list. This means that there is
-  // some other action we can perform (i.e. unloading a datafile or a
+  // no MMFilesDocumentDitch at the head of the ditches list. This means that
+  // there is some other action we can perform (i.e. unloading a datafile or a
   // collection)
 
-  // note that there is no need to check the entire list for a MMFilesDocumentDitch as
-  // the list is filled up in chronological order. New ditches are always added
-  // to the
-  // tail of the list, and if we have the following list
-  // HEAD -> TRI_DITCH_DATAFILE_CALLBACK -> TRI_DITCH_DOCUMENT
+  // note that there is no need to check the entire list for a
+  // MMFilesDocumentDitch as the list is filled up in chronological order. New
+  // ditches are always added to the tail of the list, and if we have the
+  // following list HEAD -> TRI_DITCH_DATAFILE_CALLBACK -> TRI_DITCH_DOCUMENT
   // then it is still safe to execute the datafile callback operation, even if
   // there
   // is a TRI_DITCH_DOCUMENT after it.
@@ -286,14 +273,14 @@ void MMFilesDitches::freeDitch(MMFilesDitch* ditch) {
 /// the flags by the lock
 void MMFilesDitches::freeMMFilesDocumentDitch(MMFilesDocumentDitch* ditch, bool fromTransaction) {
   TRI_ASSERT(ditch != nullptr);
-    
+
   // First see who might still be using the ditch:
   if (fromTransaction) {
     TRI_ASSERT(ditch->usedByTransaction() == true);
   }
 
   {
-    MUTEX_LOCKER(mutexLocker, _lock); 
+    MUTEX_LOCKER(mutexLocker, _lock);
 
     unlink(ditch);
 
@@ -306,7 +293,8 @@ void MMFilesDitches::freeMMFilesDocumentDitch(MMFilesDocumentDitch* ditch, bool 
 
 /// @brief creates a new document ditch and links it
 MMFilesDocumentDitch* MMFilesDitches::createMMFilesDocumentDitch(bool usedByTransaction,
-                                            char const* filename, int line) {
+                                                                 char const* filename,
+                                                                 int line) {
   try {
     auto ditch = new MMFilesDocumentDitch(this, usedByTransaction, filename, line);
     link(ditch);
@@ -319,7 +307,7 @@ MMFilesDocumentDitch* MMFilesDitches::createMMFilesDocumentDitch(bool usedByTran
 
 /// @brief creates a new replication ditch and links it
 MMFilesReplicationDitch* MMFilesDitches::createMMFilesReplicationDitch(char const* filename,
-                                                  int line) {
+                                                                       int line) {
   try {
     auto ditch = new MMFilesReplicationDitch(this, filename, line);
     link(ditch);
@@ -332,7 +320,7 @@ MMFilesReplicationDitch* MMFilesDitches::createMMFilesReplicationDitch(char cons
 
 /// @brief creates a new compaction ditch and links it
 MMFilesCompactionDitch* MMFilesDitches::createMMFilesCompactionDitch(char const* filename,
-                                                int line) {
+                                                                     int line) {
   try {
     auto ditch = new MMFilesCompactionDitch(this, filename, line);
     link(ditch);
@@ -345,14 +333,14 @@ MMFilesCompactionDitch* MMFilesDitches::createMMFilesCompactionDitch(char const*
 
 /// @brief creates a new datafile deletion ditch
 MMFilesDropDatafileDitch* MMFilesDitches::createMMFilesDropDatafileDitch(
-    MMFilesDatafile* datafile, LogicalCollection* collection, 
+    MMFilesDatafile* datafile, LogicalCollection* collection,
     std::function<void(MMFilesDatafile*, LogicalCollection*)> const& callback,
     char const* filename, int line) {
   try {
-    auto ditch =
-        new MMFilesDropDatafileDitch(this, datafile, collection, callback, filename, line);
+    auto ditch = new MMFilesDropDatafileDitch(this, datafile, collection,
+                                              callback, filename, line);
     link(ditch);
-      
+
     return ditch;
   } catch (...) {
     return nullptr;
@@ -365,8 +353,8 @@ MMFilesRenameDatafileDitch* MMFilesDitches::createMMFilesRenameDatafileDitch(
     std::function<void(MMFilesDatafile*, MMFilesDatafile*, LogicalCollection*)> const& callback,
     char const* filename, int line) {
   try {
-    auto ditch =
-        new MMFilesRenameDatafileDitch(this, datafile, compactor, collection, callback, filename, line);
+    auto ditch = new MMFilesRenameDatafileDitch(this, datafile, compactor, collection,
+                                                callback, filename, line);
     link(ditch);
 
     return ditch;
@@ -377,12 +365,11 @@ MMFilesRenameDatafileDitch* MMFilesDitches::createMMFilesRenameDatafileDitch(
 
 /// @brief creates a new collection unload ditch
 MMFilesUnloadCollectionDitch* MMFilesDitches::createMMFilesUnloadCollectionDitch(
-    LogicalCollection* collection, 
-    std::function<bool(LogicalCollection*)> const& callback,
+    LogicalCollection* collection, std::function<bool(LogicalCollection*)> const& callback,
     char const* filename, int line) {
   try {
-    auto ditch = new MMFilesUnloadCollectionDitch(this, collection, callback,
-                                           filename, line);
+    auto ditch =
+        new MMFilesUnloadCollectionDitch(this, collection, callback, filename, line);
     link(ditch);
 
     return ditch;
@@ -397,8 +384,7 @@ MMFilesDropCollectionDitch* MMFilesDitches::createMMFilesDropCollectionDitch(
     std::function<bool(arangodb::LogicalCollection&)> const& callback,
     char const* filename, int line) {
   try {
-    auto ditch = new MMFilesDropCollectionDitch(this, collection, callback,
-                                         filename, line);
+    auto ditch = new MMFilesDropCollectionDitch(this, collection, callback, filename, line);
     link(ditch);
 
     return ditch;
@@ -410,10 +396,10 @@ MMFilesDropCollectionDitch* MMFilesDitches::createMMFilesDropCollectionDitch(
 /// @brief inserts the ditch into the linked list of ditches
 void MMFilesDitches::link(MMFilesDitch* ditch) {
   TRI_ASSERT(ditch != nullptr);
-    
+
   ditch->_next = nullptr;
   ditch->_prev = nullptr;
-  
+
   bool const isMMFilesDocumentDitch = (ditch->type() == MMFilesDitch::TRI_DITCH_DOCUMENT);
 
   MUTEX_LOCKER(mutexLocker, _lock);  // FIX_MUTEX
@@ -428,7 +414,7 @@ void MMFilesDitches::link(MMFilesDitch* ditch) {
     ditch->_prev = _end;
     _end->_next = ditch;
   }
-    
+
   _end = ditch;
 
   if (isMMFilesDocumentDitch) {

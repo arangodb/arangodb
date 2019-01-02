@@ -28,6 +28,7 @@
 #include "Cluster/ServerState.h"
 #include "Replication/InitialSyncer.h"
 #include "Replication/utilities.h"
+#include "Utils/SingleCollectionTransaction.h"
 
 struct TRI_vocbase_t;
 
@@ -38,21 +39,17 @@ class DatabaseInitialSyncer;
 class ReplicationApplierConfiguration;
 
 class DatabaseInitialSyncer final : public InitialSyncer {
-  friend ::arangodb::Result handleSyncKeysMMFiles(
-      DatabaseInitialSyncer& syncer, 
-      arangodb::LogicalCollection* col,
-      std::string const& keysId);
-  friend ::arangodb::Result handleSyncKeysRocksDB(
-      DatabaseInitialSyncer& syncer, 
-      arangodb::LogicalCollection* col,
-      std::string const& keysId);
+  friend ::arangodb::Result handleSyncKeysMMFiles(DatabaseInitialSyncer& syncer,
+                                                  arangodb::LogicalCollection* col,
+                                                  std::string const& keysId);
+  friend ::arangodb::Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
+                                                  arangodb::LogicalCollection* col,
+                                                  std::string const& keysId);
   friend ::arangodb::Result syncChunkRocksDB(
-      DatabaseInitialSyncer& syncer, 
-      SingleCollectionTransaction* trx,
-      InitialSyncerIncrementalSyncStats& stats,
-      std::string const& keysId, uint64_t chunkId, std::string const& lowString,
-      std::string const& highString,
-      std::vector<std::string> const& markers);
+      DatabaseInitialSyncer& syncer, SingleCollectionTransaction* trx,
+      InitialSyncerIncrementalSyncStats& stats, std::string const& keysId,
+      uint64_t chunkId, std::string const& lowString,
+      std::string const& highString, std::vector<std::string> const& markers);
 
  public:
   /// @brief apply phases
@@ -68,17 +65,17 @@ class DatabaseInitialSyncer final : public InitialSyncer {
     /// @brief replication applier config (from the base Syncer)
     ReplicationApplierConfiguration const& applier;
     /// @brief the compaction barrier state (from the base Syncer)
-    replutils::BarrierInfo& barrier; // TODO worker safety
+    replutils::BarrierInfo& barrier;  // TODO worker safety
     /// @brief the dump batch state (from the base InitialSyncer)
-    replutils::BatchInfo& batch; // TODO worker safety
+    replutils::BatchInfo& batch;  // TODO worker safety
     /// @brief the client connection (from the base Syncer)
     replutils::Connection& connection;
     /// @brief whether or not we have flushed the WAL on the remote server
-    bool flushed; // TODO worker safety
+    bool flushed;  // TODO worker safety
     /// @brief info about master node (from the base Syncer)
     replutils::MasterInfo& master;
     /// @brief the progress info (from the base InitialSyncer)
-    replutils::ProgressInfo& progress; // TODO worker safety
+    replutils::ProgressInfo& progress;  // TODO worker safety
     /// @brief the syncer state (from the base Syncer)
     SyncerState& state;
     /// @brief the database to dump
@@ -86,12 +83,10 @@ class DatabaseInitialSyncer final : public InitialSyncer {
 
     explicit Configuration(ReplicationApplierConfiguration const&,
                            replutils::BarrierInfo&, replutils::BatchInfo&,
-                           replutils::Connection&, bool,
-                           replutils::MasterInfo&,
-                           replutils::ProgressInfo&, SyncerState& state,
-                           TRI_vocbase_t&);
+                           replutils::Connection&, bool, replutils::MasterInfo&,
+                           replutils::ProgressInfo&, SyncerState& state, TRI_vocbase_t&);
 
-    bool isChild() const; // TODO worker safety
+    bool isChild() const;  // TODO worker safety
   };
 
   DatabaseInitialSyncer(TRI_vocbase_t& vocbase,
@@ -138,11 +133,10 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   bool isAborted() const override;
 
   /// @brief insert the batch id and barrier ID.
-  ///        For use in globalinitalsyncer
+  ///        For use in globalinitialsyncer
   // TODO worker safety
   void useAsChildSyncer(replutils::MasterInfo const& info, uint64_t barrierId,
-                        double barrierUpdateTime, uint64_t batchId,
-                        double batchUpdateTime) {
+                        double barrierUpdateTime, uint64_t batchId, double batchUpdateTime) {
     _state.isChildSyncer = true;
     _state.master = info;
     _state.barrier.id = barrierId;
@@ -161,18 +155,14 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   double batchUpdateTime() const { return _config.batch.updateTime; }
 
   /// @brief fetch the server's inventory, public method
-  Result inventory(arangodb::velocypack::Builder& builder);
+  Result getInventory(arangodb::velocypack::Builder& builder);
 
  private:
   /// @brief order a new chunk from the /dump API
   void fetchDumpChunk(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
-                      std::string const& baseUrl, 
-                      arangodb::LogicalCollection* coll, 
-                      std::string const& leaderColl,
-                      InitialSyncerDumpStats& stats,
-                      int batch, 
-                      TRI_voc_tick_t fromTick, 
-                      uint64_t chunkSize);
+                      std::string const& baseUrl, arangodb::LogicalCollection* coll,
+                      std::string const& leaderColl, InitialSyncerDumpStats& stats,
+                      int batch, TRI_voc_tick_t fromTick, uint64_t chunkSize);
 
   /// @brief fetch the server's inventory
   Result fetchInventory(arangodb::velocypack::Builder& builder);
@@ -185,8 +175,7 @@ class DatabaseInitialSyncer final : public InitialSyncer {
 
   /// @brief handle a single dump marker
   // TODO worker-safety
-  Result parseCollectionDumpMarker(transaction::Methods&,
-                                   arangodb::LogicalCollection*,
+  Result parseCollectionDumpMarker(transaction::Methods&, arangodb::LogicalCollection*,
                                    arangodb::velocypack::Slice const&);
 
   /// @brief apply the data from a collection dump
@@ -209,24 +198,23 @@ class DatabaseInitialSyncer final : public InitialSyncer {
 
   /// @brief changes the properties of a collection, based on the VelocyPack
   /// provided
-  Result changeCollection(arangodb::LogicalCollection*,
-                          arangodb::velocypack::Slice const&);
+  Result changeCollection(arangodb::LogicalCollection*, arangodb::velocypack::Slice const&);
 
   /// @brief handle the information about a collection
   // TODO worker-safety
   Result handleCollection(arangodb::velocypack::Slice const&,
-                          arangodb::velocypack::Slice const&, bool incremental,
-                          SyncPhase);
+                          arangodb::velocypack::Slice const&, bool incremental, SyncPhase);
 
   /// @brief handle the inventory response of the master
-  Result handleLeaderCollections(arangodb::velocypack::Slice const&, bool);
+  Result handleCollectionsAndViews(arangodb::velocypack::Slice const& colls,
+                                   arangodb::velocypack::Slice const& views,
+                                   bool incremental);
 
   /// @brief iterate over all collections from an array and apply an action
   Result iterateCollections(
-      std::vector<std::pair<arangodb::velocypack::Slice,
-                            arangodb::velocypack::Slice>> const&,
+      std::vector<std::pair<arangodb::velocypack::Slice, arangodb::velocypack::Slice>> const&,
       bool incremental, SyncPhase);
-  
+
   /// @brief create non-existing views locally
   Result handleViewCreation(VPackSlice const& views);
 

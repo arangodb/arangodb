@@ -46,7 +46,7 @@ bool authorized(std::pair<arangodb::Cursor*, std::string> const& cursor) {
 
   return (cursor.second == context->user());
 }
-}
+}  // namespace
 
 using namespace arangodb;
 
@@ -80,12 +80,14 @@ CursorRepository::~CursorRepository() {
     }
 
     if (tries == 0) {
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "waiting for used cursors to become unused";
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+          << "waiting for used cursors to become unused";
     } else if (tries == 120) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "giving up waiting for unused cursors";
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+          << "giving up waiting for unused cursors";
     }
 
-    std::this_thread::sleep_for(std::chrono::microseconds(500000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
     ++tries;
   }
 
@@ -127,15 +129,14 @@ Cursor* CursorRepository::addCursor(std::unique_ptr<Cursor> cursor) {
 /// the cursor will take ownership and retain the entire QueryResult object
 ////////////////////////////////////////////////////////////////////////////////
 
-Cursor* CursorRepository::createFromQueryResult(
-    aql::QueryResult&& result, size_t batchSize,
-    double ttl, bool hasCount) {
+Cursor* CursorRepository::createFromQueryResult(aql::QueryResult&& result, size_t batchSize,
+                                                double ttl, bool hasCount) {
   TRI_ASSERT(result.result != nullptr);
 
-  CursorId const id = TRI_NewServerSpecificTick(); // embedded server id
-
-  std::unique_ptr<Cursor> cursor(new aql::QueryResultCursor(
-      _vocbase, id, std::move(result), batchSize, ttl, hasCount));
+  CursorId const id = TRI_NewServerSpecificTick();  // embedded server id
+  TRI_ASSERT(id != 0);
+  std::unique_ptr<Cursor> cursor(
+      new aql::QueryResultCursor(_vocbase, id, std::move(result), batchSize, ttl, hasCount));
   cursor->use();
 
   return addCursor(std::move(cursor));
@@ -151,12 +152,15 @@ Cursor* CursorRepository::createFromQueryResult(
 Cursor* CursorRepository::createQueryStream(std::string const& query,
                                             std::shared_ptr<VPackBuilder> const& binds,
                                             std::shared_ptr<VPackBuilder> const& opts,
-                                            size_t batchSize, double ttl) {
+                                            size_t batchSize, double ttl,
+                                            bool contextOwnedByExterior) {
   TRI_ASSERT(!query.empty());
 
-  CursorId const id = TRI_NewServerSpecificTick(); // embedded server id
-  std::unique_ptr<Cursor> cursor(new aql::QueryStreamCursor(
-        _vocbase, id, query, binds, opts, batchSize, ttl));
+  CursorId const id = TRI_NewServerSpecificTick();  // embedded server id
+  TRI_ASSERT(id != 0);
+  auto cursor = std::make_unique<aql::QueryStreamCursor>(_vocbase, id, query, binds,
+                                                         opts, batchSize, ttl,
+                                                         contextOwnedByExterior);
   cursor->use();
 
   return addCursor(std::move(cursor));
@@ -192,7 +196,7 @@ bool CursorRepository::remove(CursorId id, Cursor::CursorType type) {
 
     if (cursor->isUsed()) {
       // cursor is in use by someone else. now mark as deleted
-      cursor->deleted();
+      cursor->setDeleted();
       return true;
     }
 
@@ -310,7 +314,8 @@ bool CursorRepository::garbageCollect(bool force) {
       }
 
       if (force || cursor->expires() < now) {
-        cursor->deleted();
+        cursor->kill();
+        cursor->setDeleted();
       }
 
       if (cursor->isDeleted()) {

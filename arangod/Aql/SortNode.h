@@ -24,11 +24,11 @@
 #ifndef ARANGOD_AQL_SORT_NODE_H
 #define ARANGOD_AQL_SORT_NODE_H 1
 
-#include "Basics/Common.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/types.h"
 #include "Aql/Variable.h"
+#include "Aql/types.h"
+#include "Basics/Common.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -50,9 +50,11 @@ class SortNode : public ExecutionNode {
   friend class RedundantCalculationsReplacer;
 
  public:
-  SortNode(ExecutionPlan* plan, size_t id, SortElementVector const& elements,
-           bool stable)
-      : ExecutionNode(plan, id), _reinsertInCluster(true), _elements(elements), _stable(stable) {}
+  SortNode(ExecutionPlan* plan, size_t id, SortElementVector const& elements, bool stable)
+      : ExecutionNode(plan, id),
+        _reinsertInCluster(true),
+        _elements(elements),
+        _stable(stable) {}
 
   SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
            SortElementVector const& elements, bool stable);
@@ -64,23 +66,18 @@ class SortNode : public ExecutionNode {
   inline bool isStable() const { return _stable; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          unsigned flags) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
-  ) const override;
+      ExecutionEngine& engine,
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    return cloneHelper(
-      std::make_unique<SortNode>(plan, _id, _elements, _stable),
-      withDependencies,
-      withProperties
-    );
+    return cloneHelper(std::make_unique<SortNode>(plan, _id, _elements, _stable),
+                       withDependencies, withProperties);
   }
 
   /// @brief estimateCost
@@ -98,8 +95,7 @@ class SortNode : public ExecutionNode {
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(
-      std::unordered_set<Variable const*>& vars) const override final {
+  void getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const override final {
     for (auto& p : _elements) {
       vars.emplace(p.var);
     }
@@ -109,8 +105,7 @@ class SortNode : public ExecutionNode {
   SortElementVector const& elements() const { return _elements; }
 
   /// @brief returns all sort information
-  SortInformation getSortInformation(ExecutionPlan*,
-                                     arangodb::basics::StringBuffer*) const;
+  SortInformation getSortInformation(ExecutionPlan*, arangodb::basics::StringBuffer*) const;
 
   std::vector<std::pair<ExecutionNode*, bool>> getCalcNodePairs();
 
@@ -125,7 +120,8 @@ class SortNode : public ExecutionNode {
   /// values (e.g. when a FILTER condition exists that guarantees this)
   void removeConditions(size_t count);
 
-  // reinsert node when building gather node - this is used e.g for the geo-index
+  // reinsert node when building gather node - this is used e.g for the
+  // geo-index
   bool _reinsertInCluster;
 
  private:
@@ -137,7 +133,7 @@ class SortNode : public ExecutionNode {
   bool _stable;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

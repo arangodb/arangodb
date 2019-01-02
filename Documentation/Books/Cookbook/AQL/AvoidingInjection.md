@@ -151,7 +151,7 @@ There is also a template string generator function `aql` that can be used to saf
 can be invoked as follows:
 
 ```js
-const aql = require('@arangodb')aql; // not needed in arangosh
+const aql = require('@arangodb').aql; // not needed in arangosh
 
 var value = "some input value";
 var query = aql`FOR doc IN collection

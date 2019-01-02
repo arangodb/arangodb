@@ -36,7 +36,7 @@ NS_ROOT
 class IRESEARCH_API by_column_existence final : public filter {
  public:
   DECLARE_FILTER_TYPE();
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
 
   by_column_existence() NOEXCEPT;
 

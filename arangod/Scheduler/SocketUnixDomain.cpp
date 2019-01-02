@@ -26,15 +26,13 @@
 
 using namespace arangodb;
 
-size_t SocketUnixDomain::writeSome(basics::StringBuffer* buffer,
-                                   asio_ns::error_code& ec) {
-  return _socket->write_some(asio_ns::buffer(buffer->begin(), buffer->length()),
-                            ec);
+size_t SocketUnixDomain::writeSome(basics::StringBuffer* buffer, asio_ns::error_code& ec) {
+  return _socket->write_some(asio_ns::buffer(buffer->begin(), buffer->length()), ec);
 }
 
 void SocketUnixDomain::asyncWrite(asio_ns::mutable_buffers_1 const& buffer,
                                   AsyncHandler const& handler) {
-  return asio_ns::async_write(*_socket, buffer, _strand->wrap(handler));
+  return asio_ns::async_write(*_socket, buffer, handler);
 }
 
 size_t SocketUnixDomain::readSome(asio_ns::mutable_buffers_1 const& buffer,
@@ -48,12 +46,11 @@ std::size_t SocketUnixDomain::available(asio_ns::error_code& ec) {
 
 void SocketUnixDomain::asyncRead(asio_ns::mutable_buffers_1 const& buffer,
                                  AsyncHandler const& handler) {
-  return _socket->async_read_some(buffer, _strand->wrap(handler));
+  return _socket->async_read_some(buffer, handler);
 }
 
 void SocketUnixDomain::shutdownReceive(asio_ns::error_code& ec) {
-  _socket->shutdown(asio_ns::local::stream_protocol::socket::shutdown_receive,
-                    ec);
+  _socket->shutdown(asio_ns::local::stream_protocol::socket::shutdown_receive, ec);
 }
 
 void SocketUnixDomain::shutdownSend(asio_ns::error_code& ec) {
@@ -64,8 +61,8 @@ void SocketUnixDomain::close(asio_ns::error_code& ec) {
   if (_socket->is_open()) {
     _socket->close(ec);
     if (ec && ec != asio_ns::error::not_connected) {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "closing socket failed with: "
-                                              << ec.message();
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+          << "closing socket failed with: " << ec.message();
     }
   }
 }

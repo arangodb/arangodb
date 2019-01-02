@@ -75,8 +75,7 @@ struct SPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
   }
 };
 
-struct arangodb::pregel::algos::SPGraphFormat
-    : public InitGraphFormat<int64_t, int64_t> {
+struct arangodb::pregel::algos::SPGraphFormat : public InitGraphFormat<int64_t, int64_t> {
   std::string _sourceDocId, _targetDocId;
 
  public:
@@ -85,8 +84,7 @@ struct arangodb::pregel::algos::SPGraphFormat
         _sourceDocId(source),
         _targetDocId(target) {}
 
-  size_t copyVertexData(std::string const& documentId,
-                        arangodb::velocypack::Slice document,
+  size_t copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
                         int64_t* targetPtr, size_t maxSize) override {
     *targetPtr = documentId == _sourceDocId ? 0 : INT64_MAX;
     return sizeof(int64_t);
@@ -118,8 +116,8 @@ GraphFormat<int64_t, int64_t>* ShortestPathAlgorithm::inputFormat() const {
   return new SPGraphFormat(_source, _target);
 }
 
-VertexComputation<int64_t, int64_t, int64_t>*
-ShortestPathAlgorithm::createComputation(WorkerConfig const* _config) const {
+VertexComputation<int64_t, int64_t, int64_t>* ShortestPathAlgorithm::createComputation(
+    WorkerConfig const* _config) const {
   PregelID target = _config->documentIdToPregel(_target);
   return new SPComputation(target);
 }

@@ -29,64 +29,87 @@
 
 NS_ROOT
 
-class phrase_iterator final : public conjunction {
+// implementation is optimized for frequency based similarity measures
+// for generic implementation see a03025accd8b84a5f8ecaaba7412fc92a1636be3
+class phrase_iterator final : public doc_iterator_base {
  public:
   typedef std::pair<
-    position::cref, // position attribute
+    position::ref, // position attribute
     position::value_t // desired offset in the phrase
   > position_t;
   typedef std::vector<position_t> positions_t;
 
   phrase_iterator(
       conjunction::doc_iterators_t&& itrs,
-      const order::prepared& ord,
-      positions_t&& pos)
-    : conjunction(std::move(itrs), ord),
-     pos_(std::move(pos)) {
+      positions_t&& pos,
+      const sub_reader& segment,
+      const term_reader& field,
+      const attribute_store& stats,
+      const order::prepared& ord
+  ) : doc_iterator_base(ord),
+      approx_(std::move(itrs)),
+      pos_(std::move(pos)) {
     assert(!pos_.empty()); // must not be empty
     assert(0 == pos_.front().second); // lead offset is always 0
 
-    // add phrase frequency
-    conjunction::attrs_.emplace(phrase_freq_);
+    // FIXME find a better estimation
+    // estimate iterator
+    estimate([this](){ return irs::cost::extract(approx_.attributes()); });
+
+    // set attributes
+    attrs_.emplace(phrase_freq_); // phrase frequency
+    attrs_.emplace(doc_); // document (required by scorers)
+
+    // set scorers
+    scorers_ = ord_->prepare_scorers(segment, field, stats, attributes());
+    prepare_score([this](byte_type* score) { scorers_.score(*ord_, score); });
+  }
+
+  virtual doc_id_t value() const override {
+    return approx_.value();
   }
 
   virtual bool next() override {
     bool next = false;
-    while((next = conjunction::next()) && !(phrase_freq_.value = phrase_freq())) {}
+    while ((next = approx_.next()) && !(phrase_freq_.value = phrase_freq())) {}
+
+    doc_.value = approx_.value();
+
     return next;
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
-    const auto doc = conjunction::seek(target);
+    doc_.value = approx_.seek(target);
 
-    if (type_limits<type_t::doc_id_t>::eof(doc) || (phrase_freq_.value = phrase_freq())) {
-      return doc;
+    if (type_limits<type_t::doc_id_t>::eof(doc_.value) || (phrase_freq_.value = phrase_freq())) {
+      return doc_.value;
     }
 
     next();
-    return this->value();
+
+    return value();
   }
 
  private:
   // returns frequency of the phrase
-  frequency::value_t phrase_freq() const {
+  frequency::value_t phrase_freq() {
     frequency::value_t freq = 0;
     bool match;
 
-    const position& lead = pos_.front().first;
+    position& lead = pos_.front().first;
     lead.next();
 
-    const auto end = pos_.end();
-    while (position::NO_MORE != lead.value()) {
+    for (auto end = pos_.end(); !type_limits<type_t::pos_t>::eof(lead.value());) {
       const position::value_t base_offset = lead.value();
 
       match = true;
+
       for (auto it = pos_.begin() + 1; it != end; ++it) {
-        const position& pos = it->first;
+        position& pos = it->first;
         const auto term_offset = base_offset + it->second;
         const auto seeked = pos.seek(term_offset);
 
-        if (position::NO_MORE == seeked) {
+        if (irs::type_limits<irs::type_t::pos_t>::eof(seeked)) {
           // exhausted
           return freq;
         } else if (seeked != term_offset) {
@@ -111,11 +134,11 @@ class phrase_iterator final : public conjunction {
     return freq;
   }
 
-  // a value representing the freqency of the phrase in the document
-  // FIXME TODO: should be used to modify scoring by supporting scorers
-  frequency phrase_freq_;
-
-  positions_t pos_;
+  order::prepared::scorers scorers_;
+  conjunction approx_; // first approximation (conjunction over all words in a phrase)
+  document doc_; // document itself
+  frequency phrase_freq_; // freqency of the phrase in a document
+  positions_t pos_; // list of desired positions along with corresponding attributes
 }; // phrase_iterator
 
 NS_END // ROOT

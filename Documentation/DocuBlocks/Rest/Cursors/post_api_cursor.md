@@ -29,7 +29,7 @@ is useful to ensure garbage collection of cursors that are not fully fetched
 by clients. If not set, a server-defined value will be used.
 
 @RESTBODYPARAM{cache,boolean,optional,}
-flag to determine whether the AQL query cache
+flag to determine whether the AQL query results cache
 shall be used. If set to *false*, then any query cache lookup will be skipped
 for the query. If set to *true*, it will lead to the query cache being checked
 for the query if the query cache mode is either *on* or *demand*.

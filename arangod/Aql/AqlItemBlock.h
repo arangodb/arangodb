@@ -24,11 +24,11 @@
 #ifndef ARANGOD_AQL_AQL_ITEM_BLOCK_H
 #define ARANGOD_AQL_AQL_ITEM_BLOCK_H 1
 
-#include "Basics/Common.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Range.h"
 #include "Aql/ResourceUsage.h"
 #include "Aql/types.h"
+#include "Basics/Common.h"
 
 #include <utility>
 
@@ -124,8 +124,11 @@ class AqlItemBlock {
   /// @brief emplaceValue, set the current value of a register, constructing
   /// it in place
   template <typename... Args>
-  std::enable_if_t<!std::is_same<AqlValue,std::decay_t<Args>...>::value, void>
-  emplaceValue(size_t index, RegisterId varNr, Args&&... args) {
+  /* 
+   * Sorry this does not compile
+   * std::enable_if_t<!std::is_same<AqlValue,std::decay_t<Args>...>::value, void>
+   */
+  void emplaceValue(size_t index, RegisterId varNr, Args&&... args) {
     TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
     TRI_ASSERT(_data[index * _nrRegs + varNr].isEmpty());
 
@@ -205,8 +208,9 @@ class AqlItemBlock {
     element.erase();
   }
 
-  /// @brief eraseValue, erase the current value of all values, not freeing them.
-  /// this is used if the value is stolen and later released from elsewhere
+  /// @brief eraseValue, erase the current value of all values, not freeing
+  /// them. this is used if the value is stolen and later released from
+  /// elsewhere
   void eraseAll() {
     for (auto& it : _data) {
       if (!it.isEmpty()) {
@@ -317,8 +321,7 @@ class AqlItemBlock {
 
   /// @brief slice/clone chosen rows for a subset, this does a deep copy
   /// of all entries
-  AqlItemBlock* slice(std::vector<size_t> const& chosen, size_t from,
-                      size_t to) const;
+  AqlItemBlock* slice(std::vector<size_t> const& chosen, size_t from, size_t to) const;
 
   /// @brief steal for a subset, this does not copy the entries, rather,
   /// it remembers which it has taken. This is stored in the
@@ -337,8 +340,7 @@ class AqlItemBlock {
 
   /// @brief toJson, transfer a whole AqlItemBlock to Json, the result can
   /// be used to recreate the AqlItemBlock via the Json constructor
-  void toVelocyPack(transaction::Methods* trx,
-                    arangodb::velocypack::Builder&) const;
+  void toVelocyPack(transaction::Methods* trx, arangodb::velocypack::Builder&) const;
 
  private:
   /// @brief _data, the actual data as a single vector of dimensions _nrItems
@@ -363,7 +365,7 @@ class AqlItemBlock {
   ResourceMonitor* _resourceMonitor;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

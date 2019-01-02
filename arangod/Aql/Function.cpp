@@ -27,10 +27,8 @@
 using namespace arangodb::aql;
 
 /// @brief create the function
-Function::Function(std::string const& name,
-                   char const* arguments,
-                   std::underlying_type<Flags>::type flags,
-                   FunctionImplementation const& implementation)
+Function::Function(std::string const& name, char const* arguments,
+                   std::underlying_type<Flags>::type flags, FunctionImplementation implementation)
     : name(name),
       arguments(arguments),
       flags(flags),
@@ -40,12 +38,13 @@ Function::Function(std::string const& name,
 
   // almost all AQL functions have a cxx implementation
   // only function V8() plus the ArangoSearch functions do not
-  LOG_TOPIC(TRACE, Logger::FIXME) << "registered AQL function '" << name <<
-                                     "'. cacheable: " << hasFlag(Flags::Cacheable) <<
-                                     ", deterministic: " << hasFlag(Flags::Deterministic) <<
-                                     ", canRunOnDBServer: " << hasFlag(Flags::CanRunOnDBServer) <<
-                                     ", hasCxxImplementation: " << (implementation != nullptr) <<
-                                     ", hasConversions: " << !conversions.empty();
+  LOG_TOPIC(TRACE, Logger::FIXME)
+      << "registered AQL function '" << name
+      << "'. cacheable: " << hasFlag(Flags::Cacheable)
+      << ", deterministic: " << hasFlag(Flags::Deterministic)
+      << ", canRunOnDBServer: " << hasFlag(Flags::CanRunOnDBServer)
+      << ", hasCxxImplementation: " << (implementation != nullptr)
+      << ", hasConversions: " << !conversions.empty();
 }
 
 /// @brief parse the argument list and set the minimum and maximum number of
@@ -135,7 +134,8 @@ void Function::initializeArguments() {
 
       default: {
         // unknown parameter type
-        std::string message("unknown function signature parameter type for AQL function '");
+        std::string message(
+            "unknown function signature parameter type for AQL function '");
         message += name + "': " + c;
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
       }

@@ -19,9 +19,10 @@ Usage
 
 Here follow some basic usage examples. More details can be found in the
 following chapters:
+
+- [ArangoSearch Views](../../Views/ArangoSearch/README.md)
 - [Database Methods for Views](DatabaseMethods.md)
 - [View Methods](ViewMethods.md)
-- [ArangoSearch Views](../Views/README.md)
 
 Create a view with default properties:
 

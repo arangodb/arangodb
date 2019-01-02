@@ -459,15 +459,14 @@ class Parser;
   if (valid) {
     node = parser->ast()->createNodeValueInt(value1);
   } else {
-    try {
-      double value2 = TRI_DoubleString(yytext);
-      node = parser->ast()->createNodeValueDouble(value2);
-    } catch (...) {
-      parser->registerWarning(
-        TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE,
-        TRI_errno_string(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE),
-        yylloc->first_line, yylloc->first_column);
+    // TODO: use std::from_chars
+    double value2 = TRI_DoubleString(yytext);
+
+    if (TRI_errno() != TRI_ERROR_NO_ERROR) {
+      parser->registerWarning(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, TRI_errno_string(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE), yylloc->first_line, yylloc->first_column);
       node = parser->ast()->createNodeValueNull();
+    } else {
+      node = parser->ast()->createNodeValueDouble(value2);
     }
   }
 
@@ -476,18 +475,18 @@ class Parser;
   return T_INTEGER;
 }
 
-(0|[1-9][0-9]*)((\.[0-9]+)?([eE][\-\+]?[0-9]+)?) {
+((0|[1-9][0-9]*)(\.[0-9]+)?|\.[0-9]+)([eE][\-\+]?[0-9]+)? {
   /* a numeric double value */
 
   arangodb::aql::AstNode* node = nullptr;
   auto parser = yyextra;
+  // TODO: use std::from_chars
   double value = TRI_DoubleString(yytext);
 
   if (TRI_errno() != TRI_ERROR_NO_ERROR) {
     parser->registerWarning(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, TRI_errno_string(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE), yylloc->first_line, yylloc->first_column);
     node = parser->ast()->createNodeValueNull();
-  }
-  else {
+  } else {
     node = parser->ast()->createNodeValueDouble(value);
   }
 

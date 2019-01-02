@@ -24,9 +24,9 @@
 #ifndef ARANGOD_AQL_ATTRIBUTE_ACCESSOR_H
 #define ARANGOD_AQL_ATTRIBUTE_ACCESSOR_H 1
 
-#include "Basics/Common.h"
 #include "Aql/AqlValue.h"
 #include "Aql/types.h"
+#include "Basics/Common.h"
 
 namespace arangodb {
 namespace transaction {
@@ -52,14 +52,15 @@ class AttributeAccessor {
   void replaceVariable(std::unordered_map<VariableId, Variable const*> const& replacements);
 
   /// @brief the attribute names vector (e.g. [ "a", "b", "c" ] for a.b.c)
-  static AttributeAccessor* create(std::vector<std::string>&& path, Variable const* variable, bool dataIsFromCollection);
- 
+  static AttributeAccessor* create(std::vector<std::string>&& path,
+                                   Variable const* variable, bool dataIsFromCollection);
+
  protected:
   /// @brief the accessed variable
   Variable const* _variable;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

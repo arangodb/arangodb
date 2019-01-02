@@ -53,9 +53,7 @@ if (USE_IRESEARCH)
     IResearch/ApplicationServerHelper.h IResearch/ApplicationServerHelper.cpp
     IResearch/Containers.cpp IResearch/Containers.h
     IResearch/IResearchAnalyzerFeature.cpp IResearch/IResearchAnalyzerFeature.h
-    IResearch/IResearchAttributes.cpp IResearch/IResearchAttributes.h
     IResearch/IResearchCommon.cpp IResearch/IResearchCommon.h
-    IResearch/IResearchViewDBServer.cpp IResearch/IResearchViewDBServer.h
     IResearch/IResearchKludge.cpp IResearch/IResearchKludge.h
     IResearch/IResearchLink.cpp IResearch/IResearchLink.h
     IResearch/IResearchLinkCoordinator.cpp IResearch/IResearchLinkCoordinator.h
@@ -70,10 +68,11 @@ if (USE_IRESEARCH)
     IResearch/IResearchViewOptimizerRules.cpp IResearch/IResearchViewOptimizerRules.h
     IResearch/IResearchViewNode.cpp IResearch/IResearchViewNode.h
     IResearch/IResearchViewBlock.cpp IResearch/IResearchViewBlock.h
+    IResearch/IResearchExpressionContext.cpp IResearch/IResearchExpressionContext.h
     IResearch/IResearchViewMeta.cpp IResearch/IResearchViewMeta.h
-    IResearch/IResearchViewSingleServer.cpp IResearch/IResearchViewSingleServer.h
     IResearch/IResearchFeature.cpp IResearch/IResearchFeature.h
     IResearch/IResearchDocument.cpp IResearch/IResearchDocument.h
+    IResearch/IResearchPrimaryKeyFilter.cpp IResearch/IResearchPrimaryKeyFilter.h
     IResearch/IResearchFilterFactory.cpp IResearch/IResearchFilterFactory.h
     IResearch/IResearchOrderFactory.cpp IResearch/IResearchOrderFactory.h
     IResearch/VelocyPackHelper.cpp IResearch/VelocyPackHelper.h
@@ -149,7 +148,6 @@ SET(ARANGOD_SOURCES
   Agency/AddFollower.cpp
   Agency/AgencyComm.cpp
   Agency/AgencyFeature.cpp
-  Agency/AgencyStrings.cpp
   Agency/Agent.cpp
   Agency/AgentCallback.cpp
   Agency/AgentConfiguration.cpp
@@ -165,7 +163,6 @@ SET(ARANGOD_SOURCES
   Agency/JobContext.cpp
   Agency/MoveShard.cpp
   Agency/Node.cpp
-  Agency/NotifyCallback.cpp
   Agency/RemoveFollower.cpp
   Agency/RestAgencyHandler.cpp
   Agency/RestAgencyPrivHandler.cpp
@@ -312,7 +309,6 @@ SET(ARANGOD_SOURCES
   Cluster/CreateCollection.cpp
   Cluster/CreateDatabase.cpp
   Cluster/CriticalThread.cpp
-  Cluster/EngineEqualityCheckFeature.cpp
   Cluster/FollowerInfo.cpp
   Cluster/DBServerAgencySync.cpp
   Cluster/DropCollection.cpp
@@ -343,6 +339,7 @@ SET(ARANGOD_SOURCES
   GeneralServer/GeneralServer.cpp
   GeneralServer/GeneralServerFeature.cpp
   GeneralServer/HttpCommTask.cpp
+  GeneralServer/IoTask.cpp
   GeneralServer/RestHandler.cpp
   GeneralServer/RestHandlerFactory.cpp
   GeneralServer/VstCommTask.cpp
@@ -371,7 +368,6 @@ SET(ARANGOD_SOURCES
   Indexes/Index.cpp
   Indexes/IndexFactory.cpp
   Indexes/IndexIterator.cpp
-  Indexes/IndexLookupContext.cpp
   Indexes/PersistentIndexAttributeMatcher.cpp
   Indexes/SimpleAttributeEqualityMatcher.cpp
   Indexes/SkiplistIndexAttributeMatcher.cpp
@@ -474,6 +470,7 @@ SET(ARANGOD_SOURCES
   RestServer/FortuneFeature.cpp
   RestServer/FrontendFeature.cpp
   RestServer/InitDatabaseFeature.cpp
+  RestServer/LanguageCheckFeature.cpp
   RestServer/LockfileFeature.cpp
   RestServer/QueryRegistryFeature.cpp
   RestServer/ScriptFeature.cpp
@@ -557,6 +554,7 @@ SET(ARANGOD_SOURCES
   VocBase/Methods/UpgradeTasks.cpp
   VocBase/Methods/Version.cpp
   VocBase/KeyGenerator.cpp
+  VocBase/KeyLockInfo.cpp
   VocBase/LogicalCollection.cpp
   VocBase/LogicalDataSource.cpp
   VocBase/LogicalView.cpp

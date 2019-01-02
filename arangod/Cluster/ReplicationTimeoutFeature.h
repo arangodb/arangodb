@@ -32,9 +32,7 @@ namespace arangodb {
 
 class ReplicationTimeoutFeature : public application_features::ApplicationFeature {
  public:
-  explicit ReplicationTimeoutFeature(
-    application_features::ApplicationServer& server
-  );
+  explicit ReplicationTimeoutFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
@@ -44,6 +42,6 @@ class ReplicationTimeoutFeature : public application_features::ApplicationFeatur
   static double lowerLimit;
 };
 
-}
+}  // namespace arangodb
 
 #endif

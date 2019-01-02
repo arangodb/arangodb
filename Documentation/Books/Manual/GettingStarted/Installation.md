@@ -8,7 +8,7 @@ the instructions on how to install with a package manager, if available.
 If you installed a binary package under Linux, the server is
 automatically started.
 
-If you installed ArangoDB using homebrew under MacOS X, start the
+If you installed ArangoDB using homebrew under macOS, start the
 server by running `/usr/local/sbin/arangod`.
 
 If you installed ArangoDB under Windows as a service, the server is

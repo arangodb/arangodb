@@ -25,93 +25,115 @@
 #include "formats/skip_list.hpp"
 #include "store/memory_directory.hpp"
 #include "index/iterators.hpp"
+#include "index/index_tests.hpp"
 
-NS_BEGIN(tests)
+NS_LOCAL
 
-void write_flush(size_t count, size_t max_levels, size_t skip) {
-  std::vector<std::vector<int>> levels(max_levels);
-
-  irs::skip_writer writer(skip, skip);
-  ASSERT_FALSE(writer);
-  irs::memory_directory dir;
-
-  // write data
-  {
-    size_t cur_doc = irs::integer_traits<size_t>::const_max;
-
-    writer.prepare(
-      max_levels, count,
-      [&levels, &cur_doc](size_t level, irs::index_output& out) {
-        levels[level].push_back(irs::doc_id_t(cur_doc));
-        out.write_vlong(irs::doc_id_t(cur_doc));
-    });
-    ASSERT_TRUE(static_cast<bool>(writer));
-
-    for (size_t doc = 0; doc < count; ++doc) {
-      cur_doc = doc;
-      // skip every "skip" document
-      if (doc && 0 == doc % skip) {
-        writer.skip(doc);
-      }
-    }
-
-    auto out = dir.create("docs");
-    ASSERT_FALSE(!out);
-    writer.flush(*out);
+class skip_writer_test : public test_base {
+  virtual void SetUp() {
+    test_base::SetUp();
   }
 
-  // check levels data
-  {
-    size_t step = skip;
-    for (auto& level : levels) {
-      int expected_doc = 0;
-
-      for (auto doc : level) {
-        expected_doc += irs::doc_id_t(step);
-        ASSERT_EQ(expected_doc, doc);
-      }
-      step *= skip;
-    }
+  virtual void TearDown() {
+    test_base::TearDown();
   }
 
-  // check data in stream
-  // we write levels in reverse order into a stream (from n downto 0)
-  {
-    auto in = dir.open("docs", irs::IOAdvice::NORMAL);
-    ASSERT_FALSE(!in);
+ protected:
+  void write_flush(size_t count, size_t max_levels, size_t skip) {
+    std::vector<std::vector<int>> levels(max_levels);
 
-    // skip number of levels
-    in->read_vint();
+    irs::skip_writer writer(skip, skip);
+    ASSERT_FALSE(writer);
+    irs::memory_directory dir;
 
-    // check levels from n downto 1
-    for (size_t i = writer.num_levels(); i > 1; --i) {
-      // skip level size
-      in->read_vlong();
-      auto& level = levels[i-1];
-      for (auto expected_doc : level) {
-        auto doc = in->read_vint();
-        ASSERT_EQ(expected_doc, doc);
-        // skip child pointer
-        in->read_vlong();
-      }
-    }
-
-    // check level 0
+    // write data
     {
-      // skip level size
-      in->read_vlong();
-      auto& level = levels[0];
-      for (auto expected_doc : level) {
-        auto doc = in->read_vint();
-        ASSERT_EQ(expected_doc, doc);
+      size_t cur_doc = irs::integer_traits<size_t>::const_max;
+
+      writer.prepare(
+        max_levels, count,
+        [&levels, &cur_doc](size_t level, irs::index_output& out) {
+          levels[level].push_back(irs::doc_id_t(cur_doc));
+          out.write_vlong(irs::doc_id_t(cur_doc));
+      });
+      ASSERT_TRUE(static_cast<bool>(writer));
+
+      for (size_t doc = 0; doc < count; ++doc) {
+        cur_doc = doc;
+        // skip every "skip" document
+        if (doc && 0 == doc % skip) {
+          writer.skip(doc);
+        }
+      }
+
+      auto out = dir.create("docs");
+      ASSERT_FALSE(!out);
+      writer.flush(*out);
+    }
+
+    // check levels data
+    {
+      size_t step = skip;
+      for (auto& level : levels) {
+        int expected_doc = 0;
+
+        for (auto doc : level) {
+          expected_doc += irs::doc_id_t(step);
+          ASSERT_EQ(expected_doc, doc);
+        }
+        step *= skip;
+      }
+    }
+
+    // check data in stream
+    // we write levels in reverse order into a stream (from n downto 0)
+    {
+      auto in = dir.open("docs", irs::IOAdvice::NORMAL);
+      ASSERT_FALSE(!in);
+
+      // skip number of levels
+      in->read_vint();
+
+      // check levels from n downto 1
+      for (size_t i = writer.num_levels(); i > 1; --i) {
+        // skip level size
+        in->read_vlong();
+        auto& level = levels[i-1];
+        for (auto expected_doc : level) {
+          auto doc = in->read_vint();
+          ASSERT_EQ(expected_doc, doc);
+          // skip child pointer
+          in->read_vlong();
+        }
+      }
+
+      // check level 0
+      {
+        // skip level size
+        in->read_vlong();
+        auto& level = levels[0];
+        for (auto expected_doc : level) {
+          auto doc = in->read_vint();
+          ASSERT_EQ(expected_doc, doc);
+        }
       }
     }
   }
-}
+};
 
-NS_END // tests
+class skip_reader_test : public test_base {
+  virtual void SetUp() {
+    test_base::SetUp();
+  }
 
-TEST(skip_writer_test, prepare) {
+  virtual void TearDown() {
+    test_base::TearDown();
+  }
+};
+
+NS_END
+
+TEST_F(skip_writer_test, prepare) {
   // empty doc count
   {
     const size_t max_levels = 10;
@@ -171,11 +193,11 @@ TEST(skip_writer_test, prepare) {
   }
 }
 
-TEST(skip_writer_test, write_flush) {
-  tests::write_flush(1923, 5, 8);
+TEST_F(skip_writer_test, write_flush) {
+  skip_writer_test::write_flush(1923, 5, 8);
 }
 
-TEST(skip_writer_test, reset) {
+TEST_F(skip_writer_test, reset) {
   const size_t skip = 13;
   const size_t max_levels = 10;
   const size_t count = 2873;
@@ -338,7 +360,7 @@ TEST(skip_writer_test, reset) {
   }
 }
 
-TEST(skip_reader_test, prepare) {
+TEST_F(skip_reader_test, prepare) {
   // prepare empty
   {
     size_t count = 1000;
@@ -411,7 +433,7 @@ TEST(skip_reader_test, prepare) {
   }
 }
 
-TEST(skip_reader_test, seek) {
+TEST_F(skip_reader_test, seek) {
   {
     const size_t count = 1932;
     const size_t max_levels = 5;

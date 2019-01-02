@@ -36,22 +36,17 @@ namespace arangodb {
 namespace httpclient {
 
 class SimpleHttpResult;
-
 }
 
 class ManagedDirectory;
 
 class RestoreFeature final : public application_features::ApplicationFeature {
  public:
-  RestoreFeature(
-    application_features::ApplicationServer& server,
-    int& exitCode
-  );
+  RestoreFeature(application_features::ApplicationServer& server, int& exitCode);
 
   // for documentation of virtual methods, see `ApplicationFeature`
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(
-      std::shared_ptr<options::ProgramOptions> options) override;
+  void validateOptions(std::shared_ptr<options::ProgramOptions> options) override;
   void prepare() override;
   void start() override;
 
@@ -76,6 +71,7 @@ class RestoreFeature final : public application_features::ApplicationFeature {
   /// @brief Holds configuration data to pass between methods
   struct Options {
     std::vector<std::string> collections{};
+    std::vector<std::string> views{};
     std::string inputPath{};
     uint64_t chunkSize{1024 * 1024 * 8};
     uint64_t defaultNumberOfShards{1};
@@ -112,8 +108,7 @@ class RestoreFeature final : public application_features::ApplicationFeature {
 
     VPackSlice collection;
 
-    JobData(ManagedDirectory&, RestoreFeature&, Options const&, Stats&,
-            VPackSlice const&);
+    JobData(ManagedDirectory&, RestoreFeature&, Options const&, Stats&, VPackSlice const&);
   };
 
  private:

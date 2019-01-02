@@ -24,6 +24,7 @@
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "Transaction/Methods.h"
 
 #include <rocksdb/db.h>
 #include <rocksdb/options.h>
@@ -36,13 +37,16 @@ using namespace arangodb;
 
 // ================= RocksDBSavePoint ==================
 
-RocksDBSavePoint::RocksDBSavePoint(
-    RocksDBMethods* trx, bool handled)
-    : _trx(trx), _handled(handled) {
+RocksDBSavePoint::RocksDBSavePoint(transaction::Methods* trx,
+                                   TRI_voc_document_operation_e operationType)
+    : _trx(trx),
+      _operationType(operationType),
+      _handled(_trx->isSingleOperationTransaction()) {
   TRI_ASSERT(trx != nullptr);
   if (!_handled) {
+    auto mthds = RocksDBTransactionState::toMethods(_trx);
     // only create a savepoint when necessary
-    _trx->SetSavePoint();
+    mthds->SetSavePoint();
   }
 }
 
@@ -53,9 +57,11 @@ RocksDBSavePoint::~RocksDBSavePoint() {
       // not performed an intermediate commit in-between
       rollback();
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, Logger::ROCKSDB) << "caught exception during rollback to savepoint: " << ex.what();
+      LOG_TOPIC(ERR, Logger::ENGINES)
+          << "caught exception during rollback to savepoint: " << ex.what();
     } catch (...) {
-      // whatever happens during rollback, no exceptions are allowed to escape from here
+      // whatever happens during rollback, no exceptions are allowed to escape
+      // from here
     }
   }
 }
@@ -71,26 +77,26 @@ void RocksDBSavePoint::finish(bool hasPerformedIntermediateCommit) {
     // leave the savepoint alone, because it belonged to another
     // transaction, and the current transaction will not have any
     // savepoint
-    _trx->PopSavePoint();
+    auto mthds = RocksDBTransactionState::toMethods(_trx);
+    mthds->PopSavePoint();
   }
-  
+
   // this will prevent the rollback call in the destructor
-  _handled = true;  
+  _handled = true;
 }
 
 void RocksDBSavePoint::rollback() {
   TRI_ASSERT(!_handled);
-  _trx->RollbackToSavePoint();
+  auto mthds = RocksDBTransactionState::toMethods(_trx);
+  mthds->RollbackToSavePoint();
+
+  auto state = RocksDBTransactionState::toState(_trx);
+  state->rollbackOperation(_operationType);
+
   _handled = true;  // in order to not roll back again by accident
 }
 
 // =================== RocksDBMethods ===================
-
-arangodb::Result RocksDBMethods::Get(rocksdb::ColumnFamilyHandle* cf,
-                                     RocksDBKey const& key,
-                                     std::string* val) {
-  return Get(cf, key.string(), val);
-}
 
 rocksdb::SequenceNumber RocksDBMethods::sequenceNumber() {
   return _state->sequenceNumber();
@@ -109,13 +115,14 @@ rocksdb::ReadOptions RocksDBMethods::iteratorReadOptions() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 std::size_t RocksDBMethods::countInBounds(RocksDBKeyBounds const& bounds, bool isElementInRange) {
   std::size_t count = 0;
-  
-  //iterator is from read only / trx / writebatch
-  std::unique_ptr<rocksdb::Iterator> iter = this->NewIterator(iteratorReadOptions(), bounds.columnFamily());
+
+  // iterator is from read only / trx / writebatch
+  std::unique_ptr<rocksdb::Iterator> iter =
+      this->NewIterator(iteratorReadOptions(), bounds.columnFamily());
   iter->Seek(bounds.start());
   auto end = bounds.end();
-  rocksdb::Comparator const * cmp = bounds.columnFamily()->GetComparator();
-  
+  rocksdb::Comparator const* cmp = bounds.columnFamily()->GetComparator();
+
   // extra check to aviod extra comparisons with isElementInRage later;
   if (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
     ++count;
@@ -124,7 +131,7 @@ std::size_t RocksDBMethods::countInBounds(RocksDBKeyBounds const& bounds, bool i
     }
     iter->Next();
   }
-  
+
   while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
     iter->Next();
     ++count;
@@ -140,39 +147,35 @@ RocksDBReadOnlyMethods::RocksDBReadOnlyMethods(RocksDBTransactionState* state)
   _db = rocksutils::globalRocksDB();
 }
 
-bool RocksDBReadOnlyMethods::Exists(rocksdb::ColumnFamilyHandle* cf,
-                                    RocksDBKey const& key) {
-  TRI_ASSERT(cf != nullptr);
-  std::string val;  // do not care about value
-  bool mayExist = _db->KeyMayExist(_state->_rocksReadOptions, cf, key.string(),
-                                    &val, nullptr);
-  if (mayExist) {
-    rocksdb::Status s =
-        _db->Get(_state->_rocksReadOptions, cf, key.string(), &val);
-    return !s.IsNotFound();
-  }
-  return false;
-}
-
-arangodb::Result RocksDBReadOnlyMethods::Get(rocksdb::ColumnFamilyHandle* cf,
-                                             rocksdb::Slice const& key,
-                                             std::string* val) {
+rocksdb::Status RocksDBReadOnlyMethods::Get(rocksdb::ColumnFamilyHandle* cf,
+                                            rocksdb::Slice const& key, std::string* val) {
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions const& ro = _state->_rocksReadOptions;
   TRI_ASSERT(ro.snapshot != nullptr);
-  rocksdb::Status s = _db->Get(ro, cf, key, val);
-  return s.ok() ? arangodb::Result() : rocksutils::convertStatus(s, rocksutils::StatusHint::document, "", "Get - in RocksDBReadOnlyMethods");
+  return _db->Get(ro, cf, key, val);
 }
 
-arangodb::Result RocksDBReadOnlyMethods::Put(rocksdb::ColumnFamilyHandle* cf,
-                                             RocksDBKey const&,
-                                             rocksdb::Slice const&,
-                                             rocksutils::StatusHint) {
+rocksdb::Status RocksDBReadOnlyMethods::Get(rocksdb::ColumnFamilyHandle* cf,
+                                            rocksdb::Slice const& key,
+                                            rocksdb::PinnableSlice* val) {
+  TRI_ASSERT(cf != nullptr);
+  rocksdb::ReadOptions const& ro = _state->_rocksReadOptions;
+  TRI_ASSERT(ro.snapshot != nullptr);
+  return _db->Get(ro, cf, key, val);
+}
+
+rocksdb::Status RocksDBReadOnlyMethods::Put(rocksdb::ColumnFamilyHandle* cf,
+                                            RocksDBKey const&, rocksdb::Slice const&) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
 }
 
-arangodb::Result RocksDBReadOnlyMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
-                                                RocksDBKey const& key) {
+rocksdb::Status RocksDBReadOnlyMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
+                                               RocksDBKey const& key) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
+}
+
+rocksdb::Status RocksDBReadOnlyMethods::SingleDelete(rocksdb::ColumnFamilyHandle*,
+                                                     RocksDBKey const&) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
 }
 
@@ -183,7 +186,7 @@ std::unique_ptr<rocksdb::Iterator> RocksDBReadOnlyMethods::NewIterator(
 }
 
 // =================== RocksDBTrxMethods ====================
-  
+
 bool RocksDBTrxMethods::DisableIndexing() {
   if (!_indexingDisabled) {
     _state->_rocksTransaction->DisableIndexing();
@@ -201,62 +204,55 @@ void RocksDBTrxMethods::EnableIndexing() {
 }
 
 RocksDBTrxMethods::RocksDBTrxMethods(RocksDBTransactionState* state)
-    : RocksDBMethods(state),
-      _indexingDisabled(false) {}
+    : RocksDBMethods(state), _indexingDisabled(false) {}
 
-bool RocksDBTrxMethods::Exists(rocksdb::ColumnFamilyHandle* cf,
-                               RocksDBKey const& key) {
-  TRI_ASSERT(cf != nullptr);
-  std::string val;
-  rocksdb::Status s = _state->_rocksTransaction->Get(_state->_rocksReadOptions,
-                                                     cf, key.string(), &val);
-  return !s.IsNotFound();
-}
-
-arangodb::Result RocksDBTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf,
-                                        rocksdb::Slice const& key,
-                                        std::string* val) {
-  arangodb::Result rv;
+rocksdb::Status RocksDBTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf,
+                                       rocksdb::Slice const& key, std::string* val) {
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions const& ro = _state->_rocksReadOptions;
   TRI_ASSERT(ro.snapshot != nullptr);
-  rocksdb::Status s = _state->_rocksTransaction->Get(ro, cf, key, val);
-  if (!s.ok()) {
-    rv = rocksutils::convertStatus(s, rocksutils::StatusHint::document, "", "Get - in RocksDBTrxMethods");
-  }
-  return rv;
+  return _state->_rocksTransaction->Get(ro, cf, key, val);
 }
 
-arangodb::Result RocksDBTrxMethods::Put(rocksdb::ColumnFamilyHandle* cf,
-                                        RocksDBKey const& key,
-                                        rocksdb::Slice const& val,
-                                        rocksutils::StatusHint hint) {
+rocksdb::Status RocksDBTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf,
+                                       rocksdb::Slice const& key,
+                                       rocksdb::PinnableSlice* val) {
   TRI_ASSERT(cf != nullptr);
-  rocksdb::Status s = _state->_rocksTransaction->Put(cf, key.string(), val);
-  return s.ok() ? arangodb::Result() : rocksutils::convertStatus(s, hint);
+  rocksdb::ReadOptions const& ro = _state->_rocksReadOptions;
+  TRI_ASSERT(ro.snapshot != nullptr);
+  return _state->_rocksTransaction->Get(ro, cf, key, val);
 }
 
-arangodb::Result RocksDBTrxMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
-                                           RocksDBKey const& key) {
+rocksdb::Status RocksDBTrxMethods::Put(rocksdb::ColumnFamilyHandle* cf,
+                                       RocksDBKey const& key, rocksdb::Slice const& val) {
   TRI_ASSERT(cf != nullptr);
-  rocksdb::Status s = _state->_rocksTransaction->Delete(cf, key.string());
-  return s.ok() ? arangodb::Result() : rocksutils::convertStatus(s);
+  return _state->_rocksTransaction->Put(cf, key.string(), val);
+}
+
+rocksdb::Status RocksDBTrxMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
+                                          RocksDBKey const& key) {
+  TRI_ASSERT(cf != nullptr);
+  return _state->_rocksTransaction->Delete(cf, key.string());
+}
+
+rocksdb::Status RocksDBTrxMethods::SingleDelete(rocksdb::ColumnFamilyHandle* cf,
+                                                RocksDBKey const& key) {
+  TRI_ASSERT(cf != nullptr);
+  return _state->_rocksTransaction->SingleDelete(cf, key.string());
 }
 
 std::unique_ptr<rocksdb::Iterator> RocksDBTrxMethods::NewIterator(
     rocksdb::ReadOptions const& opts, rocksdb::ColumnFamilyHandle* cf) {
   TRI_ASSERT(cf != nullptr);
-  return std::unique_ptr<rocksdb::Iterator>(
-      _state->_rocksTransaction->GetIterator(opts, cf));
+  return std::unique_ptr<rocksdb::Iterator>(_state->_rocksTransaction->GetIterator(opts, cf));
 }
 
 void RocksDBTrxMethods::SetSavePoint() {
   _state->_rocksTransaction->SetSavePoint();
 }
 
-arangodb::Result RocksDBTrxMethods::RollbackToSavePoint() {
-  return rocksutils::convertStatus(
-      _state->_rocksTransaction->RollbackToSavePoint());
+rocksdb::Status RocksDBTrxMethods::RollbackToSavePoint() {
+  return _state->_rocksTransaction->RollbackToSavePoint();
 }
 
 void RocksDBTrxMethods::PopSavePoint() {
@@ -273,67 +269,161 @@ void RocksDBTrxMethods::PopSavePoint() {
 RocksDBTrxUntrackedMethods::RocksDBTrxUntrackedMethods(RocksDBTransactionState* state)
     : RocksDBTrxMethods(state) {}
 
-arangodb::Result RocksDBTrxUntrackedMethods::Put(rocksdb::ColumnFamilyHandle* cf,
-                                                 RocksDBKey const& key,
-                                                 rocksdb::Slice const& val,
-                                                 rocksutils::StatusHint hint) {
+rocksdb::Status RocksDBTrxUntrackedMethods::Put(rocksdb::ColumnFamilyHandle* cf,
+                                                RocksDBKey const& key,
+                                                rocksdb::Slice const& val) {
   TRI_ASSERT(cf != nullptr);
-  rocksdb::Status s = _state->_rocksTransaction->PutUntracked(cf, key.string(), val);
-  return s.ok() ? arangodb::Result() : rocksutils::convertStatus(s, hint);
+  return _state->_rocksTransaction->PutUntracked(cf, key.string(), val);
 }
 
-arangodb::Result RocksDBTrxUntrackedMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
-                                                    RocksDBKey const& key) {
+rocksdb::Status RocksDBTrxUntrackedMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
+                                                   RocksDBKey const& key) {
   TRI_ASSERT(cf != nullptr);
-  rocksdb::Status s = _state->_rocksTransaction->DeleteUntracked(cf, key.string());
-  return s.ok() ? arangodb::Result() : rocksutils::convertStatus(s);
+  return _state->_rocksTransaction->DeleteUntracked(cf, key.string());
+}
+
+rocksdb::Status RocksDBTrxUntrackedMethods::SingleDelete(rocksdb::ColumnFamilyHandle* cf,
+                                                         RocksDBKey const& key) {
+  TRI_ASSERT(cf != nullptr);
+  return _state->_rocksTransaction->SingleDeleteUntracked(cf, key.string());
 }
 
 // =================== RocksDBBatchedMethods ====================
 
 RocksDBBatchedMethods::RocksDBBatchedMethods(RocksDBTransactionState* state,
-                                             rocksdb::WriteBatchWithIndex* wb)
+                                             rocksdb::WriteBatch* wb)
+    : RocksDBMethods(state), _wb(wb) {}
+
+rocksdb::Status RocksDBBatchedMethods::Get(rocksdb::ColumnFamilyHandle* cf,
+                                           rocksdb::Slice const& key, std::string* val) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "BatchedMethods does not provide Get");
+}
+
+rocksdb::Status RocksDBBatchedMethods::Get(rocksdb::ColumnFamilyHandle* cf,
+                                           rocksdb::Slice const& key,
+                                           rocksdb::PinnableSlice* val) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "BatchedMethods does not provide Get");
+}
+
+rocksdb::Status RocksDBBatchedMethods::Put(rocksdb::ColumnFamilyHandle* cf,
+                                           RocksDBKey const& key,
+                                           rocksdb::Slice const& val) {
+  TRI_ASSERT(cf != nullptr);
+  return _wb->Put(cf, key.string(), val);
+}
+
+rocksdb::Status RocksDBBatchedMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
+                                              RocksDBKey const& key) {
+  TRI_ASSERT(cf != nullptr);
+  return _wb->Delete(cf, key.string());
+}
+
+rocksdb::Status RocksDBBatchedMethods::SingleDelete(rocksdb::ColumnFamilyHandle* cf,
+                                                    RocksDBKey const& key) {
+  TRI_ASSERT(cf != nullptr);
+  return _wb->SingleDelete(cf, key.string());
+}
+
+std::unique_ptr<rocksdb::Iterator> RocksDBBatchedMethods::NewIterator(
+    rocksdb::ReadOptions const&, rocksdb::ColumnFamilyHandle*) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "BatchedMethods does not provide NewIterator");
+}
+
+// =================== RocksDBBatchedWithIndexMethods ====================
+
+RocksDBBatchedWithIndexMethods::RocksDBBatchedWithIndexMethods(RocksDBTransactionState* state,
+                                                               rocksdb::WriteBatchWithIndex* wb)
     : RocksDBMethods(state), _wb(wb) {
   _db = rocksutils::globalRocksDB();
 }
 
-bool RocksDBBatchedMethods::Exists(rocksdb::ColumnFamilyHandle* cf,
-                                   RocksDBKey const& key) {
+rocksdb::Status RocksDBBatchedWithIndexMethods::Get(rocksdb::ColumnFamilyHandle* cf,
+                                                    rocksdb::Slice const& key,
+                                                    std::string* val) {
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions ro;
-  std::string val;  // do not care about value
-  rocksdb::Status s = _wb->GetFromBatchAndDB(_db, ro, cf, key.string(), &val);
-  return !s.IsNotFound();
+  return _wb->GetFromBatchAndDB(_db, ro, cf, key, val);
 }
 
-arangodb::Result RocksDBBatchedMethods::Get(rocksdb::ColumnFamilyHandle* cf,
-                                            rocksdb::Slice const& key,
-                                            std::string* val) {
+rocksdb::Status RocksDBBatchedWithIndexMethods::Get(rocksdb::ColumnFamilyHandle* cf,
+                                                    rocksdb::Slice const& key,
+                                                    rocksdb::PinnableSlice* val) {
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions ro;
-  rocksdb::Status s = _wb->GetFromBatchAndDB(_db, ro, cf, key, val);
-  return s.ok() ? arangodb::Result() : rocksutils::convertStatus(s, rocksutils::StatusHint::document, "", "Get - in RocksDBBatchedMethods");
+  return _wb->GetFromBatchAndDB(_db, ro, cf, key, val);
 }
 
-arangodb::Result RocksDBBatchedMethods::Put(rocksdb::ColumnFamilyHandle* cf,
-                                            RocksDBKey const& key,
-                                            rocksdb::Slice const& val,
-                                            rocksutils::StatusHint) {
+rocksdb::Status RocksDBBatchedWithIndexMethods::Put(rocksdb::ColumnFamilyHandle* cf,
+                                                    RocksDBKey const& key,
+                                                    rocksdb::Slice const& val) {
   TRI_ASSERT(cf != nullptr);
-  _wb->Put(cf, key.string(), val);
-  return arangodb::Result();
+  return _wb->Put(cf, key.string(), val);
 }
 
-arangodb::Result RocksDBBatchedMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
-                                               RocksDBKey const& key) {
+rocksdb::Status RocksDBBatchedWithIndexMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
+                                                       RocksDBKey const& key) {
   TRI_ASSERT(cf != nullptr);
-  _wb->Delete(cf, key.string());
-  return arangodb::Result();
+  return _wb->Delete(cf, key.string());
 }
 
-std::unique_ptr<rocksdb::Iterator> RocksDBBatchedMethods::NewIterator(
+rocksdb::Status RocksDBBatchedWithIndexMethods::SingleDelete(rocksdb::ColumnFamilyHandle* cf,
+                                                             RocksDBKey const& key) {
+  TRI_ASSERT(cf != nullptr);
+  return _wb->SingleDelete(cf, key.string());
+}
+
+std::unique_ptr<rocksdb::Iterator> RocksDBBatchedWithIndexMethods::NewIterator(
     rocksdb::ReadOptions const& ro, rocksdb::ColumnFamilyHandle* cf) {
   TRI_ASSERT(cf != nullptr);
   return std::unique_ptr<rocksdb::Iterator>(
       _wb->NewIteratorWithBase(_db->NewIterator(ro, cf)));
+}
+
+// =================== RocksDBSideTrxMethods ====================
+
+/// transaction wrapper, uses the provided rocksdb transaction
+RocksDBSideTrxMethods::RocksDBSideTrxMethods(RocksDBTransactionState* state,
+                                             rocksdb::Transaction* trx)
+    : RocksDBMethods(state), _trx(trx) {
+  _ro.prefix_same_as_start = true;
+  _ro.fill_cache = false;
+}
+
+rocksdb::Status RocksDBSideTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf,
+                                           rocksdb::Slice const& key, std::string* val) {
+  TRI_ASSERT(cf != nullptr);
+  return _trx->Get(_ro, cf, key, val);
+}
+
+rocksdb::Status RocksDBSideTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf,
+                                           rocksdb::Slice const& key,
+                                           rocksdb::PinnableSlice* val) {
+  TRI_ASSERT(cf != nullptr);
+  return _trx->Get(_ro, cf, key, val);
+}
+
+rocksdb::Status RocksDBSideTrxMethods::Put(rocksdb::ColumnFamilyHandle* cf,
+                                           RocksDBKey const& key,
+                                           rocksdb::Slice const& val) {
+  TRI_ASSERT(cf != nullptr);
+  return _trx->Put(cf, key.string(), val);
+}
+rocksdb::Status RocksDBSideTrxMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
+                                              RocksDBKey const& key) {
+  TRI_ASSERT(cf != nullptr);
+  return _trx->Delete(cf, key.string());
+}
+
+rocksdb::Status RocksDBSideTrxMethods::SingleDelete(rocksdb::ColumnFamilyHandle* cf,
+                                                    RocksDBKey const& key) {
+  TRI_ASSERT(cf != nullptr);
+  return _trx->SingleDelete(cf, key.string());
+}
+
+bool RocksDBSideTrxMethods::DisableIndexing() {
+  _trx->DisableIndexing();
+  return true;
 }

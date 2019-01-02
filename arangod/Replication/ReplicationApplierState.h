@@ -37,15 +37,15 @@ namespace arangodb {
 /// @brief state information about replication application
 struct ReplicationApplierState {
   enum class ActivityPhase {
-    INACTIVE, /// sleeping
-    INITIAL, /// running initial syncer
-    TAILING, /// running tailing syncer
-    SHUTDOWN /// cleaning up
+    INACTIVE,  /// sleeping
+    INITIAL,   /// running initial syncer
+    TAILING,   /// running tailing syncer
+    SHUTDOWN   /// cleaning up
   };
 
   ReplicationApplierState();
   ~ReplicationApplierState();
-  
+
   ReplicationApplierState(ReplicationApplierState const& other) = delete;
   ReplicationApplierState& operator=(ReplicationApplierState const& other);
 
@@ -53,9 +53,10 @@ struct ReplicationApplierState {
   void toVelocyPack(arangodb::velocypack::Builder& result, bool full) const;
 
   bool hasProcessedSomething() const {
-    return (_lastProcessedContinuousTick > 0 || _lastAppliedContinuousTick > 0 || _safeResumeTick > 0);
+    return (_lastProcessedContinuousTick > 0 ||
+            _lastAppliedContinuousTick > 0 || _safeResumeTick > 0);
   }
-   
+
   TRI_voc_tick_t _lastProcessedContinuousTick;
   TRI_voc_tick_t _lastAppliedContinuousTick;
   TRI_voc_tick_t _lastAvailableContinuousTick;
@@ -63,44 +64,31 @@ struct ReplicationApplierState {
   ActivityPhase _phase;
   bool _preventStart;
   bool _stopInitialSynchronization;
-  
+
   std::string _progressMsg;
   char _progressTime[24];
   TRI_server_id_t _serverId;
-  
-  /// performs inital sync or running tailing syncer
+
+  /// performs initial sync or running tailing syncer
   bool isActive() const {
-    return (_phase == ActivityPhase::INITIAL ||
-            _phase == ActivityPhase::TAILING);
+    return (_phase == ActivityPhase::INITIAL || _phase == ActivityPhase::TAILING);
   }
-  
-  /// performs inital sync or running tailing syncer
-  bool isInitializing() const {
-    return _phase == ActivityPhase::INITIAL;
-  }
-  
+
+  /// performs initial sync or running tailing syncer
+  bool isInitializing() const { return _phase == ActivityPhase::INITIAL; }
+
   /// performs tailing sync
-  bool isTailing() const {
-    return (_phase == ActivityPhase::TAILING);
-  }
+  bool isTailing() const { return (_phase == ActivityPhase::TAILING); }
 
-  bool isShuttingDown() const {
-    return (_phase == ActivityPhase::SHUTDOWN);
-  }
+  bool isShuttingDown() const { return (_phase == ActivityPhase::SHUTDOWN); }
 
-  void setError(int code, std::string const& msg) {
-    _lastError.set(code, msg);
-  }
+  void setError(int code, std::string const& msg) { _lastError.set(code, msg); }
 
-  void clearError() {
-    _lastError.reset();
-  }
-  
+  void clearError() { _lastError.reset(); }
+
   // last error that occurred during replication
   struct LastError {
-    LastError() : code(TRI_ERROR_NO_ERROR), message() { 
-      time[0] = '\0'; 
-    }
+    LastError() : code(TRI_ERROR_NO_ERROR), message() { time[0] = '\0'; }
 
     void reset() {
       code = TRI_ERROR_NO_ERROR;
@@ -143,6 +131,6 @@ struct ReplicationApplierState {
   uint64_t _skippedOperations;
 };
 
-}
+}  // namespace arangodb
 
 #endif

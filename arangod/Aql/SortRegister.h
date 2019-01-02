@@ -27,7 +27,7 @@
 #include "Aql/ExecutionNode.h"
 #include "types.h"
 
-#ifdef USE_IRESEARCH
+#if 0  // #ifdef USE_IRESEARCH
 #include "search/sort.hpp"
 #endif
 
@@ -39,7 +39,7 @@ namespace aql {
 struct SortRegister {
    SortRegister(SortRegister&) = delete; //we can not copy the ireseach scorer
    SortRegister(SortRegister&&) = default;
-#ifdef USE_IRESEARCH
+#if 0  // #ifdef USE_IRESEARCH
   typedef int(*CompareFunc)(
     irs::sort::prepared const* scorer,
     transaction::Methods* trx,
@@ -55,7 +55,7 @@ struct SortRegister {
   RegisterId reg;
   bool asc;
 
-#ifdef USE_IRESEARCH
+#if 0 // #ifdef USE_IRESEARCH
   SortRegister(RegisterId reg, SortElement const& element,
                CompareFunc comparator) noexcept
       : comparator(comparator),
@@ -63,22 +63,16 @@ struct SortRegister {
         reg(reg),
         asc(element.ascending) {}
 #else
-  SortRegister::SortRegister(RegisterId reg,
-                             SortElement const& element) noexcept
-      : attributePath(element.attributePath),
-        reg(reg),
-        asc(element.ascending) {}
+  SortRegister(RegisterId reg, SortElement const& element) noexcept;
 #endif
 
-  static void fill(
-    ExecutionPlan const& /*execPlan*/,
-    ExecutionNode::RegisterPlan const& regPlan,
-    std::vector<SortElement> const& elements,
-    std::vector<SortRegister>& sortRegisters
-  );
-}; // SortRegister
+  static void fill(ExecutionPlan const& /*execPlan*/,
+                   ExecutionNode::RegisterPlan const& regPlan,
+                   std::vector<SortElement> const& elements,
+                   std::vector<SortRegister>& sortRegisters);
+};  // SortRegister
 
-} // aql
-} // arangodb
+}  // namespace aql
+}  // namespace arangodb
 
-#endif // ARANGOD_AQL_SORT_REGISTER_H
+#endif  // ARANGOD_AQL_SORT_REGISTER_H

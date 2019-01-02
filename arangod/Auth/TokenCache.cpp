@@ -76,14 +76,14 @@ void auth::TokenCache::setJwtSecret(std::string const& jwtSecret) {
 
 std::string auth::TokenCache::jwtSecret() const {
   READ_LOCKER(writeLocker, _jwtLock);
-  return _jwtSecret; // intentional copy
+  return _jwtSecret;  // intentional copy
 }
 
 // public called from HttpCommTask.cpp and VstCommTask.cpp
 // should only lock if required, otherwise we will serialize all
 // requests whether we need to or not
-auth::TokenCache::Entry auth::TokenCache::checkAuthentication(
-    AuthenticationMethod authType, std::string const& secret) {
+auth::TokenCache::Entry auth::TokenCache::checkAuthentication(AuthenticationMethod authType,
+                                                              std::string const& secret) {
   switch (authType) {
     case AuthenticationMethod::BASIC:
       return checkAuthenticationBasic(secret);
@@ -102,16 +102,15 @@ void auth::TokenCache::invalidateBasicCache() {
 }
 
 // private
-auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(
-    std::string const& secret) {
-  if (_userManager == nullptr) { // server does not support users
+auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(std::string const& secret) {
+  if (_userManager == nullptr) {  // server does not support users
     LOG_TOPIC(DEBUG, Logger::AUTHENTICATION) << "Basic auth not supported";
     return auth::TokenCache::Entry::Unauthenticated();
   }
-  
+
   uint64_t version = _userManager->globalVersion();
   if (_basicCacheVersion.load(std::memory_order_acquire) != version) {
-     WRITE_LOCKER(guard, _basicLock);
+    WRITE_LOCKER(guard, _basicLock);
     _basicCache.clear();
     _basicCacheVersion.store(version, std::memory_order_release);
   }
@@ -120,9 +119,16 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(
     READ_LOCKER(guard, _basicLock);
     auto const& it = _basicCache.find(secret);
     if (it != _basicCache.end() && !it->second.expired()) {
+      // copy entry under the read-lock
+      auth::TokenCache::Entry res = it->second;
+      // and now give up on the read-lock
+      guard.unlock();
+
       // LDAP rights might need to be refreshed
-      _userManager->refreshUser(it->second.username());
-      return it->second;
+      if (!_userManager->refreshUser(res.username())) {
+        return res;
+      }
+      // fallthrough intentional here
     }
   }
 
@@ -164,33 +170,29 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(
   return entry;
 }
 
-auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(
-    std::string const& jwt) {
-  try {
-    // note that we need the write lock here because it is an LRU
-    // cache. reading from it will move the read entry to the start of
-    // the cache's linked list. so acquiring just a read-lock is
-    // insufficient!!
+auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(std::string const& jwt) {
+  // note that we need the write lock here because it is an LRU
+  // cache. reading from it will move the read entry to the start of
+  // the cache's linked list. so acquiring just a read-lock is
+  // insufficient!!
+  {
     WRITE_LOCKER(writeLocker, _jwtLock);
     // intentionally copy the entry from the cache
-    auth::TokenCache::Entry const& entry = _jwtCache.get(jwt);
-    if (entry.expired()) {
-      try {
+    auth::TokenCache::Entry const* entry = _jwtCache.get(jwt);
+    if (entry != nullptr) {
+      // would have thrown if not found
+      if (entry->expired()) {
         _jwtCache.remove(jwt);
-      } catch (std::range_error const&) {
+        LOG_TOPIC(TRACE, Logger::AUTHENTICATION) << "JWT Token expired";
+        return auth::TokenCache::Entry::Unauthenticated();
       }
-      LOG_TOPIC(TRACE, Logger::AUTHENTICATION) << "JWT Token expired";
-      return auth::TokenCache::Entry::Unauthenticated();
+      if (_userManager != nullptr) {
+        // LDAP rights might need to be refreshed
+        _userManager->refreshUser(entry->username());
+      }
+      return *entry;
     }
-    if (_userManager != nullptr) {
-      // LDAP rights might need to be refreshed
-      _userManager->refreshUser(entry.username());
-    }
-    return entry;
-  } catch (std::range_error const&) {
-    // mop: not found
   }
-
   std::vector<std::string> const parts = StringUtils::split(jwt, '.');
   if (parts.size() != 3) {
     LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION)
@@ -208,41 +210,40 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
-  auth::TokenCache::Entry entry = validateJwtBody(body);
-  if (!entry._authenticated) {
+  std::string const message = header + "." + body;
+  if (!validateJwtHMAC256Signature(message, signature)) {
+    LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION)
+        << "Couldn't validate jwt signature " << signature << " against " << _jwtSecret;
+    return auth::TokenCache::Entry::Unauthenticated();
+  }
+
+  auth::TokenCache::Entry newEntry = validateJwtBody(body);
+  if (!newEntry._authenticated) {
     LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION)
         << "Couldn't validate jwt body " << body;
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
-  std::string const message = header + "." + body;
-  if (!validateJwtHMAC256Signature(message, signature)) {
-    LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION)
-        << "Couldn't validate jwt signature " << signature << " against "
-        << _jwtSecret;
-    return auth::TokenCache::Entry::Unauthenticated();
-  }
-
   WRITE_LOCKER(writeLocker, _jwtLock);
-  _jwtCache.put(jwt, entry);
-  return entry;
+  _jwtCache.put(jwt, newEntry);
+  return newEntry;
 }
 
-std::shared_ptr<VPackBuilder> auth::TokenCache::parseJson(
-    std::string const& str, std::string const& hint) {
+std::shared_ptr<VPackBuilder> auth::TokenCache::parseJson(std::string const& str,
+                                                          std::string const& hint) {
   std::shared_ptr<VPackBuilder> result;
   VPackParser parser;
   try {
     parser.parse(str);
     result = parser.steal();
   } catch (std::bad_alloc const&) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(ERR, arangodb::Logger::AUTHENTICATION)
         << "Out of memory parsing " << hint << "!";
   } catch (VPackException const& ex) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+    LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION)
         << "Couldn't parse " << hint << ": " << ex.what();
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(ERR, arangodb::Logger::AUTHENTICATION)
         << "Got unknown exception trying to parse " << hint;
   }
 
@@ -284,8 +285,7 @@ bool auth::TokenCache::validateJwtHeader(std::string const& header) {
   return true;
 }
 
-auth::TokenCache::Entry auth::TokenCache::validateJwtBody(
-    std::string const& body) {
+auth::TokenCache::Entry auth::TokenCache::validateJwtBody(std::string const& body) {
   std::shared_ptr<VPackBuilder> bodyBuilder =
       parseJson(StringUtils::decodeBase64(body), "jwt body");
   if (bodyBuilder.get() == nullptr) {
@@ -313,10 +313,13 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(
   auth::TokenCache::Entry authResult("", false, 0);
   if (bodySlice.hasKey("preferred_username")) {
     VPackSlice const usernameSlice = bodySlice.get("preferred_username");
-    if (!usernameSlice.isString()) {
+    if (!usernameSlice.isString() || usernameSlice.getStringLength() == 0) {
       return auth::TokenCache::Entry::Unauthenticated();
     }
     authResult._username = usernameSlice.copyString();
+    if (_userManager == nullptr || !_userManager->userExists(authResult._username)) {
+      return auth::TokenCache::Entry::Unauthenticated();
+    }
   } else if (bodySlice.hasKey("server_id")) {
     // mop: hmm...nothing to do here :D
   } else {
@@ -349,14 +352,13 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(
   return authResult;
 }
 
-bool auth::TokenCache::validateJwtHMAC256Signature(
-    std::string const& message, std::string const& signature) {
+bool auth::TokenCache::validateJwtHMAC256Signature(std::string const& message,
+                                                   std::string const& signature) {
   std::string decodedSignature = StringUtils::decodeBase64U(signature);
 
   return verifyHMAC(_jwtSecret.c_str(), _jwtSecret.length(), message.c_str(),
                     message.length(), decodedSignature.c_str(),
-                    decodedSignature.length(),
-                    SslInterface::Algorithm::ALGORITHM_SHA256);
+                    decodedSignature.length(), SslInterface::Algorithm::ALGORITHM_SHA256);
 }
 
 std::string auth::TokenCache::generateRawJwt(VPackSlice const& body) const {

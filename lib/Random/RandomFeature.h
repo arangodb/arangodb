@@ -37,6 +37,6 @@ class RandomFeature final : public application_features::ApplicationFeature {
   uint32_t _randomGenerator;
 };
 
-}
+}  // namespace arangodb
 
 #endif

@@ -28,37 +28,24 @@
 #include "Basics/Exceptions.h"
 
 namespace arangodb {
- 
+
 struct AccessMode {
-  enum class Type {
-    NONE = 0,
-    READ = 1,
-    WRITE = 2,
-    EXCLUSIVE = 4
-  };
+  enum class Type { NONE = 0, READ = 1, WRITE = 2, EXCLUSIVE = 4 };
   // no need to create an object of it
-  AccessMode() = delete; 
+  AccessMode() = delete;
 
   static_assert(AccessMode::Type::NONE < AccessMode::Type::READ &&
-                AccessMode::Type::READ < AccessMode::Type::WRITE &&
-                AccessMode::Type::READ < AccessMode::Type::EXCLUSIVE,
+                    AccessMode::Type::READ < AccessMode::Type::WRITE &&
+                    AccessMode::Type::WRITE < AccessMode::Type::EXCLUSIVE,
                 "AccessMode::Type total order fail");
-  
-  static bool isNone(Type type) {
-    return (type == Type::NONE);
-  }
-  
-  static bool isRead(Type type) {
-    return (type == Type::READ);
-  }
-  
-  static bool isWrite(Type type) {
-    return (type == Type::WRITE);
-  }
-  
-  static bool isExclusive(Type type) {
-    return (type == Type::EXCLUSIVE);
-  }
+
+  static bool isNone(Type type) { return (type == Type::NONE); }
+
+  static bool isRead(Type type) { return (type == Type::READ); }
+
+  static bool isWrite(Type type) { return (type == Type::WRITE); }
+
+  static bool isExclusive(Type type) { return (type == Type::EXCLUSIVE); }
 
   static bool isWriteOrExclusive(Type type) {
     return (isWrite(type) || isExclusive(type));
@@ -75,21 +62,20 @@ struct AccessMode {
   static Type fromString(char const* value) {
     if (strcmp(value, "read") == 0) {
       return Type::READ;
-    } 
+    }
     if (strcmp(value, "write") == 0) {
       return Type::WRITE;
-    } 
+    }
     if (strcmp(value, "exclusive") == 0) {
       return Type::EXCLUSIVE;
-    } 
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                  "invalid access type");
+    }
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid access type");
   }
 
   /// @brief return the type of the transaction as a string
   static char const* typeString(Type value) {
     switch (value) {
-      case Type::NONE: 
+      case Type::NONE:
         return "none";
       case Type::READ:
         return "read";
@@ -98,12 +84,11 @@ struct AccessMode {
       case Type::EXCLUSIVE:
         return "exclusive";
     }
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                  "invalid access type");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid access type");
   }
 };
 
-}
+}  // namespace arangodb
 
 namespace std {
 template <>
@@ -112,5 +97,5 @@ struct hash<arangodb::AccessMode::Type> {
     return static_cast<size_t>(value);
   }
 };
-}
+}  // namespace std
 #endif

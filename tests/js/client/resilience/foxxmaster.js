@@ -1,5 +1,5 @@
 /*jshint strict: false, sub: true */
-/*global print, arango, assertTrue, assertNotNull, assertNotUndefined */
+/*global print, arango, assertTrue, assertNotNull, assertNotUndefined, assertNotEqual */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -69,24 +69,25 @@ let executeOnServer = function(code) {
 
 function serverSetup() {
   let directory = require('./' + pathForTesting('client/assets/queuetest/dirname.js'));
-  foxxManager.install(directory, '/queuetest');
   db._create('foxxqueuetest', {numberOfShards: 1, replicationFactor: 1});
   db.foxxqueuetest.insert({'_key': 'test', 'date': null, 'server': null});
+  foxxManager.install(directory, '/queuetest');
   
   const serverCode = `
-const queues = require('@arangodb/foxx/queues');
+    const queues = require('@arangodb/foxx/queues');
+    let queue = queues.create('q');
+    queue.push({mount: '/queuetest', name: 'queuetest', 'repeatTimes': -1, 'repeatDelay': 1000}, {});
+    `;
 
-let queue = queues.create('q');
-queue.push({mount: '/queuetest', name: 'queuetest', 'repeatTimes': -1, 'repeatDelay': 1000}, {});
-`;
   executeOnServer(serverCode);
 }
 
 function serverTeardown() {
   const serverCode = `
-const queues = require('@arangodb/foxx/queues');
-queues.delete('q');
-`;
+    const queues = require('@arangodb/foxx/queues');
+    queues.delete('q');
+    `;
+
   executeOnServer(serverCode);
   foxxManager.uninstall('/queuetest');
   db._drop('foxxqueuetest');
@@ -94,18 +95,28 @@ queues.delete('q');
 
 function FoxxmasterSuite() {
   return {
-    setUp: function() {
+    setUpAll: function() {
       serverSetup();
-      wait(2.1);
+
+      let document = db._collection('foxxqueuetest').document('test');
+      let count = 0;
+
+      // Even a minute could be not enough to start a Foxx service in a queue
+      while (document.server == null && count++ < 12) {
+        wait(10);
+        document = db._collection('foxxqueuetest').document('test');
+      }
     },
 
-    tearDown : function () {
+    tearDownAll : function () {
       serverTeardown();
     },
 
     testQueueWorks: function() {
       let document = db._collection('foxxqueuetest').document('test');
       assertNotNull(document.server);
+      wait(2);
+      assertNotEqual(document.date, db._collection('foxxqueuetest').document('test').date);
     },
     
     testQueueFailover: function() {
@@ -133,10 +144,10 @@ function FoxxmasterSuite() {
         return arangod.role === 'coordinator' && arangod.pid !== instance.pid;
       })[0];
       arango.reconnect(newEndpoint.endpoint, db._name(), 'root', '');
-      let waitInterval = 0.1;
+      let waitInterval = 1;
       let waited = 0;
       let ok = false;
-      while (waited <= 20) {
+      while (waited <= 30) {
         document = db._collection('foxxqueuetest').document('test');
         let newServer = document.server;
         if (server !== newServer) {
@@ -148,6 +159,7 @@ function FoxxmasterSuite() {
       }
       assertTrue(continueExternal(instance.pid));
       // mop: currently supervision would run every 5s
+      // vadim: but that is not guaranteed that a Foxx service will be srarted right after that, so the timeout of expected 'newServer' was raised to 30s
       if (!ok) {
         throw new Error('Supervision should have moved the Foxx queues and Foxx queues should have been started to run on a new coordinator');
       }

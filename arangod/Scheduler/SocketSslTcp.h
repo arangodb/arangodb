@@ -33,10 +33,10 @@ class SocketSslTcp final : public Socket {
   friend class AcceptorTcp;
 
  public:
-  SocketSslTcp(rest::Scheduler* scheduler, asio_ns::ssl::context&& context)
-      : Socket(scheduler, /*encrypted*/ true),
-        _sslContext(std::move(context)),
-        _sslSocket(scheduler->newSslSocket(_sslContext)),
+  SocketSslTcp(rest::GeneralServer::IoContext& context, asio_ns::ssl::context&& sslContext)
+      : Socket(context, /*encrypted*/ true),
+        _sslContext(std::move(sslContext)),
+        _sslSocket(context.newSslSocket(_sslContext)),
         _socket(_sslSocket->next_layer()),
         _peerEndpoint() {}
 
@@ -53,25 +53,20 @@ class SocketSslTcp final : public Socket {
 
   void setNonBlocking(bool v) override { _socket.non_blocking(v); }
 
-  size_t writeSome(basics::StringBuffer* buffer,
-                   asio_ns::error_code& ec) override {
-    return _sslSocket->write_some(
-        asio_ns::buffer(buffer->begin(), buffer->length()), ec);
+  size_t writeSome(basics::StringBuffer* buffer, asio_ns::error_code& ec) override {
+    return _sslSocket->write_some(asio_ns::buffer(buffer->begin(), buffer->length()), ec);
   }
 
-  void asyncWrite(asio_ns::mutable_buffers_1 const& buffer,
-                  AsyncHandler const& handler) override {
-    return asio_ns::async_write(*_sslSocket, buffer, _strand->wrap(handler));
+  void asyncWrite(asio_ns::mutable_buffers_1 const& buffer, AsyncHandler const& handler) override {
+    return asio_ns::async_write(*_sslSocket, buffer, handler);
   }
 
-  size_t readSome(asio_ns::mutable_buffers_1 const& buffer,
-                  asio_ns::error_code& ec) override {
+  size_t readSome(asio_ns::mutable_buffers_1 const& buffer, asio_ns::error_code& ec) override {
     return _sslSocket->read_some(buffer, ec);
   }
 
-  void asyncRead(asio_ns::mutable_buffers_1 const& buffer,
-                 AsyncHandler const& handler) override {
-    return _sslSocket->async_read_some(buffer, _strand->wrap(handler));
+  void asyncRead(asio_ns::mutable_buffers_1 const& buffer, AsyncHandler const& handler) override {
+    return _sslSocket->async_read_some(buffer, handler);
   }
 
   std::size_t available(asio_ns::error_code& ec) override {
@@ -105,6 +100,6 @@ class SocketSslTcp final : public Socket {
   asio_ns::ip::tcp::socket& _socket;
   asio_ns::ip::tcp::acceptor::endpoint_type _peerEndpoint;
 };
-}
+}  // namespace arangodb
 
 #endif

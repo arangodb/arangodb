@@ -25,7 +25,7 @@
 #include "Basics/fasthash.h"
 
 using namespace arangodb::aql;
-  
+
 void QueryString::append(std::string& out) const {
   if (empty()) {
     return;
@@ -33,19 +33,19 @@ void QueryString::append(std::string& out) const {
   out.append(_queryString);
 }
 
-uint64_t QueryString::hash() {
+uint64_t QueryString::hash() const {
   if (!_hashed) {
     if (empty()) {
       return 0;
     }
 
-    _hash =  fasthash64(data(), length(), 0x3123456789abcdef);
+    _hash = fasthash64(data(), length(), 0x3123456789abcdef);
     _hashed = true;
   }
 
   return _hash;
 }
-    
+
 std::string QueryString::extract(size_t maxLength) const {
   if (size() <= maxLength) {
     // no truncation
@@ -54,7 +54,7 @@ std::string QueryString::extract(size_t maxLength) const {
 
   // query string needs truncation
   size_t length = maxLength;
-    
+
   // do not create invalid UTF-8 sequences
   while (length > 0) {
     uint8_t c = _queryString[length - 1];
@@ -91,8 +91,7 @@ std::string QueryString::extractRegion(int line, int column) const {
   size_t const n = size();
 
   while ((static_cast<size_t>(p - s) < n) && (c = *p)) {
-    if (currentLine > line ||
-        (currentLine >= line && currentColumn >= column)) {
+    if (currentLine > line || (currentLine >= line && currentColumn >= column)) {
       break;
     }
 
@@ -145,9 +144,9 @@ std::ostream& operator<<(std::ostream& stream, QueryString const& queryString) {
   } else {
     stream.write(queryString.data(), queryString.length());
   }
-   
+
   return stream;
 }
 
-}
-}
+}  // namespace aql
+}  // namespace arangodb

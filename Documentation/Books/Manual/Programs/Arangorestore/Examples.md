@@ -115,6 +115,15 @@ collections being processed before all [edge collection](../../Appendix/Glossary
 data into edge collections will have the document collections linked in edges (*_from* and
 *_to* attributes) loaded.
 
+To restrict reloading to specific views, there is the *--view* option.
+Should you specify the *--collection* parameter views will not be restored _unless_ you explicitly
+specify them via the *--view* option.
+    
+    arangorestore --collection myusers --view myview --input-directory "dump"
+    
+In the case of an arangosearch view you must make sure that the linked collections are either
+also restored or already present on the server.
+
 Encryption
 ----------
 

@@ -48,7 +48,7 @@
             db._useDatabase(name);
             internal.autoloadModules();
           } catch (e) {
-            console.info('trying to autoload new database %s, ignored', name);
+            console.info('trying to autoload new database %s, ignored because of: %s', name, String(e));
           }
         }
       } finally {

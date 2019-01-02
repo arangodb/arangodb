@@ -12,7 +12,7 @@
      For more info read MiniZip_info.txt
 
 */
-
+#include <unicode/unistr.h>
 #include <stdlib.h>
 
 #include "zlib.h"
@@ -108,10 +108,16 @@ win32_open64_file_funcA(voidpf opaque, const void* filename, int mode) {
   win32_translate_open_mode(mode, &dwDesiredAccess, &dwCreationDisposition,
                             &dwShareMode, &dwFlagsAndAttributes);
 
-  if ((filename != NULL) && (dwDesiredAccess != 0))
-    hFile = CreateFileA((LPCSTR)filename, dwDesiredAccess, dwShareMode, NULL,
-                        dwCreationDisposition, dwFlagsAndAttributes, NULL);
-
+  if ((filename != NULL) && (dwDesiredAccess != 0)) {
+    UnicodeString fn((LPSTR)filename);
+    hFile = CreateFileW(fn.getTerminatedBuffer(),
+                        dwDesiredAccess,
+                        dwShareMode,
+                        NULL,
+                        dwCreationDisposition,
+                        dwFlagsAndAttributes,
+                        NULL);
+  }
   return win32_build_iowin(hFile);
 }
 

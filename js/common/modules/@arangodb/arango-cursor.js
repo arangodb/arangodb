@@ -4,8 +4,6 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Arango Simple Query Language
 // /
-// / @file
-// /
 // / DISCLAIMER
 // /
 // / Copyright 2012 triagens GmbH, Cologne, Germany
@@ -164,7 +162,7 @@ GeneralArrayCursor.prototype.toArray =
 // //////////////////////////////////////////////////////////////////////////////
 
 GeneralArrayCursor.prototype.count = function (applyPagination) {
-  if (applyPagination === undefined || ! applyPagination) {
+  if (applyPagination === undefined || !applyPagination) {
     return this._countTotal;
   }
 

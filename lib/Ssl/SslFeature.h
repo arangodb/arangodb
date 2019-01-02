@@ -42,6 +42,6 @@ class SslFeature final : public application_features::ApplicationFeature {
   static const asio::ssl::detail::openssl_init<true> sslBase;
 };
 
-}
+}  // namespace arangodb
 
 #endif

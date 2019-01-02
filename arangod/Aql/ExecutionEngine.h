@@ -46,13 +46,11 @@ class ExecutionEngine {
 
  public:
   // @brief create an execution engine from a plan
-  static ExecutionEngine* instantiateFromPlan(QueryRegistry*, Query*,
-                                              ExecutionPlan*, bool);
+  static ExecutionEngine* instantiateFromPlan(QueryRegistry*, Query*, ExecutionPlan*, bool);
 
-  TEST_VIRTUAL Result createBlocks(
-      std::vector<ExecutionNode*> const& nodes,
-      std::unordered_set<std::string> const& restrictToShards,
-      MapRemoteToSnippet const& queryIds);
+  TEST_VIRTUAL Result createBlocks(std::vector<ExecutionNode*> const& nodes,
+                                   std::unordered_set<std::string> const& restrictToShards,
+                                   MapRemoteToSnippet const& queryIds);
 
   /// @brief get the root block
   TEST_VIRTUAL ExecutionBlock* root() const {
@@ -72,10 +70,12 @@ class ExecutionEngine {
   /// @brief initializeCursor, could be called multiple times
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos);
 
-  /// @brief shutdown, will be called exactly once for the whole query, blocking variant
+  /// @brief shutdown, will be called exactly once for the whole query, blocking
+  /// variant
   Result shutdownSync(int errorCode) noexcept;
 
-  /// @brief shutdown, will be called exactly once for the whole query, may return waiting
+  /// @brief shutdown, will be called exactly once for the whole query, may
+  /// return waiting
   std::pair<ExecutionState, Result> shutdown(int errorCode);
 
   /// @brief getSome
@@ -133,7 +133,7 @@ class ExecutionEngine {
   bool _wasShutdown;
 
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

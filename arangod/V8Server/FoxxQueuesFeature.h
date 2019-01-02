@@ -39,6 +39,6 @@ class FoxxQueuesFeature final : public application_features::ApplicationFeature 
   bool _enabled;
 };
 
-}
+}  // namespace arangodb
 
 #endif

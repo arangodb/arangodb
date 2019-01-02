@@ -53,8 +53,7 @@ EndpointList::~EndpointList() {
 /// @brief add a new endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-bool EndpointList::add(std::string const& specification, int backLogSize,
-                       bool reuseAddress) {
+bool EndpointList::add(std::string const& specification, int backLogSize, bool reuseAddress) {
   std::string const key = Endpoint::unifiedForm(specification);
 
   if (key.empty()) {
@@ -124,8 +123,7 @@ std::vector<std::string> EndpointList::all() const {
 /// @brief return all typed endpoints
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<std::string> EndpointList::all(
-    Endpoint::TransportType transport) const {
+std::vector<std::string> EndpointList::all(Endpoint::TransportType transport) const {
   std::vector<std::string> result;
   std::string prefix;
 
@@ -217,8 +215,9 @@ void EndpointList::dump() const {
   for (auto& it : _endpoints) {
     Endpoint const* ep = it.second;
 
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "using endpoint '" << it.first << "' for "
-              << encryptionName(ep->encryption()) << " requests";
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+        << "using endpoint '" << it.first << "' for "
+        << encryptionName(ep->encryption()) << " requests";
   }
 }
 

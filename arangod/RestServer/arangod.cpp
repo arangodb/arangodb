@@ -28,30 +28,31 @@
 
 #include "Actions/ActionFeature.h"
 #include "Agency/AgencyFeature.h"
-#include "ApplicationFeatures/AgencyPhase.h"
 #include "ApplicationFeatures/AQLPhase.h"
+#include "ApplicationFeatures/AgencyPhase.h"
 #include "ApplicationFeatures/BasicPhase.h"
 #include "ApplicationFeatures/ClusterPhase.h"
-#include "ApplicationFeatures/DatabasePhase.h"
-#include "ApplicationFeatures/FinalPhase.h"
-#include "ApplicationFeatures/FoxxPhase.h"
-#include "ApplicationFeatures/GreetingsPhase.h"
-#include "ApplicationFeatures/ServerPhase.h"
-#include "ApplicationFeatures/V8Phase.h"
+#include "ApplicationFeatures/CommunicationPhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/DaemonFeature.h"
+#include "ApplicationFeatures/DatabasePhase.h"
 #include "ApplicationFeatures/EnvironmentFeature.h"
+#include "ApplicationFeatures/FinalPhase.h"
+#include "ApplicationFeatures/FoxxPhase.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
+#include "ApplicationFeatures/GreetingsPhase.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/MaxMapCountFeature.h"
 #include "ApplicationFeatures/NonceFeature.h"
 #include "ApplicationFeatures/PageSizeFeature.h"
 #include "ApplicationFeatures/PrivilegeFeature.h"
 #include "ApplicationFeatures/RocksDBOptionFeature.h"
+#include "ApplicationFeatures/ServerPhase.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/SupervisorFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
+#include "ApplicationFeatures/V8Phase.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Aql/AqlFunctionFeature.h"
@@ -59,7 +60,6 @@
 #include "Basics/ArangoGlobalContext.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/EngineEqualityCheckFeature.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ReplicationTimeoutFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -82,6 +82,7 @@
 #include "RestServer/FortuneFeature.h"
 #include "RestServer/FrontendFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
+#include "RestServer/LanguageCheckFeature.h"
 #include "RestServer/LockfileFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ScriptFeature.h"
@@ -111,8 +112,8 @@
 #endif
 
 #ifdef USE_IRESEARCH
-  #include "IResearch/IResearchAnalyzerFeature.h"
-  #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
+#include "IResearch/IResearchFeature.h"
 #endif
 
 // storage engines
@@ -126,7 +127,7 @@
 
 using namespace arangodb;
 
-static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
+static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
   try {
     context.installSegv();
     context.runStartupChecks();
@@ -134,24 +135,22 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     std::string name = context.binaryName();
 
     auto options = std::make_shared<options::ProgramOptions>(
-        argv[0], "Usage: " + name + " [<options>]", "For more information use:",
-        SBIN_DIRECTORY);
+        argv[0], "Usage: " + name + " [<options>]", "For more information use:", SBIN_DIRECTORY);
 
     application_features::ApplicationServer server(options, SBIN_DIRECTORY);
 
     std::vector<std::string> nonServerFeatures = {
-        "Action",              "Agency",
-        "Cluster",             "Daemon",
-        "Endpoint",            "EngineEqualityCheck", 
-        "FoxxQueues",          "GeneralServer",       
-        "Greetings",           "LoggerBufferFeature", 
-        "Server",              "SslServer",           
-        "Statistics",          "Supervisor"};
+        "Action",        "Agency",    "Cluster",
+        "Daemon",        "Endpoint",  "FoxxQueues",
+        "GeneralServer", "Greetings", "LoggerBufferFeature",
+        "Server",        "SslServer", "Statistics",
+        "Supervisor"};
 
     int ret = EXIT_FAILURE;
 
     // Adding the Phases
     server.addFeature(new application_features::AgencyFeaturePhase(server));
+    server.addFeature(new application_features::CommunicationFeaturePhase(server));
     server.addFeature(new application_features::AQLFeaturePhase(server));
     server.addFeature(new application_features::BasicFeaturePhase(server, false));
     server.addFeature(new application_features::ClusterFeaturePhase(server));
@@ -176,7 +175,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new DatabaseFeature(server));
     server.addFeature(new DatabasePathFeature(server));
     server.addFeature(new EndpointFeature(server));
-    server.addFeature(new EngineEqualityCheckFeature(server));
     server.addFeature(new EngineSelectorFeature(server));
     server.addFeature(new EnvironmentFeature(server));
     server.addFeature(new FileDescriptorsFeature(server));
@@ -187,6 +185,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new GeneralServerFeature(server));
     server.addFeature(new GreetingsFeature(server));
     server.addFeature(new InitDatabaseFeature(server, nonServerFeatures));
+    server.addFeature(new LanguageCheckFeature(server));
     server.addFeature(new LanguageFeature(server));
     server.addFeature(new LockfileFeature(server));
     server.addFeature(new LoggerBufferFeature(server));
@@ -257,8 +256,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-          << "arangod terminated because of an exception: "
-          << ex.what();
+          << "arangod terminated because of an exception: " << ex.what();
       ret = EXIT_FAILURE;
     } catch (...) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
@@ -270,11 +268,10 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     return context.exit(ret);
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "arangod terminated because of an exception: "
-        << ex.what();
+        << "arangod terminated because of an exception: " << ex.what();
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "arangod terminated because of an xception of "
+        << "arangod terminated because of an exception of "
            "unknown type";
   }
   exit(EXIT_FAILURE);
@@ -289,12 +286,12 @@ static void WINAPI ServiceMain(DWORD dwArgc, LPSTR* lpszArgv) {
     return;
   }
   // register the service ctrl handler,  lpszArgv[0] contains service name
-  ServiceStatus =
-      RegisterServiceCtrlHandlerA(lpszArgv[0], (LPHANDLER_FUNCTION)ServiceCtrl);
+  ServiceStatus = RegisterServiceCtrlHandlerA(lpszArgv[0], (LPHANDLER_FUNCTION)ServiceCtrl);
 
   // set start pending
   SetServiceStatus(SERVICE_START_PENDING, 0, 1, 10000, 0);
 
+  TRI_GET_ARGV(ARGC, ARGV);
   ArangoGlobalContext context(ARGC, ARGV, SBIN_DIRECTORY);
   runServer(ARGC, ARGV, context);
 
@@ -306,13 +303,20 @@ static void WINAPI ServiceMain(DWORD dwArgc, LPSTR* lpszArgv) {
 #endif
 
 int main(int argc, char* argv[]) {
+#ifdef __linux__
+#if USE_ENTERPRISE
+  arangodb::checkLicenseKey();
+#endif
+#endif
+
+  TRI_GET_ARGV(argc, argv);
 #if _WIN32
   if (argc > 1 && TRI_EqualString("--start-service", argv[1])) {
     ARGC = argc;
     ARGV = argv;
 
-    SERVICE_TABLE_ENTRY ste[] = {
-      {TEXT(""), (LPSERVICE_MAIN_FUNCTION)ServiceMain}, {nullptr, nullptr}};
+    SERVICE_TABLE_ENTRY ste[] = {{TEXT(""), (LPSERVICE_MAIN_FUNCTION)ServiceMain},
+                                 {nullptr, nullptr}};
 
     if (!StartServiceCtrlDispatcher(ste)) {
       std::cerr << "FATAL: StartServiceCtrlDispatcher has failed with "

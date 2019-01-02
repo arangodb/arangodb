@@ -162,35 +162,33 @@ doc_iterator::ptr range_query::execute(
     const sub_reader& rdr,
     const order::prepared& ord,
     const attribute_view& /*ctx*/) const {
-  /* get term state for the specified reader */
+  // get term state for the specified reader
   auto state = states_.find(rdr);
   if (!state) {
-    /* invalid state */
+    // invalid state
     return doc_iterator::empty();
   }
 
-  /* get terms iterator */
+  // get terms iterator
   auto terms = state->reader->iterator();
 
-  /* find min term using cached state */
+  // find min term using cached state
   if (!terms->seek(state->min_term, *(state->min_cookie))) {
     return doc_iterator::empty();
   }
 
-  /* prepared disjunction */
+  // prepared disjunction
+  const bool has_bit_set = state->unscored_docs.any();
   disjunction::doc_iterators_t itrs;
-  itrs.reserve(state->count + 1); // +1 for possible bitset_doc_iterator
+  itrs.reserve(state->count + size_t(has_bit_set)); // +1 for possible bitset_doc_iterator
 
-  /* get required features for order */
+  // get required features for order
   auto& features = ord.features();
 
   // add an iterator for the unscored docs
-  if (state->unscored_docs.any()) {
+  if (has_bit_set) {
     itrs.emplace_back(doc_iterator::make<bitset_doc_iterator>(
-      rdr,
-      attribute_store::empty_instance(), // no attributes for this filter
-      state->unscored_docs,
-      ord
+      state->unscored_docs
     ));
   }
 

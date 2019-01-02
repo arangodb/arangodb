@@ -38,11 +38,14 @@ class InternalRestTraverserHandler : public RestVocbaseBaseHandler {
 
  public:
   RestStatus execute() override final;
-  char const* name() const override final { return "InternalRestTraverserHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLUSTER_INTERNAL; }
+  char const* name() const override final {
+    return "InternalRestTraverserHandler";
+  }
+  RequestLane lane() const override final {
+    return RequestLane::CLUSTER_INTERNAL;
+  }
 
  private:
-
   // @brief create a new Traverser Engine.
   void createEngine();
 
@@ -55,5 +58,5 @@ class InternalRestTraverserHandler : public RestVocbaseBaseHandler {
  private:
   traverser::TraverserEngineRegistry* _registry;
 };
-} //namespace arangodb
+}  // namespace arangodb
 #endif

@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/spring-data.git / docs/Drivers/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/spring-data.git / docs/Drivers/ -->
 # Repositories
 
 Spring Data Commons provides a composable repository infrastructure which Spring Data ArangoDB is built on. These allow for interface-based composition of repositories consisting of provided default implementations for certain interfaces (like `CrudRepository`) and custom implementations for other methods.

@@ -25,6 +25,7 @@
 #include "Basics/directories.h"
 
 #include "ApplicationFeatures/BasicPhase.h"
+#include "ApplicationFeatures/CommunicationPhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/GreetingsPhase.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
@@ -47,17 +48,18 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 
 int main(int argc, char* argv[]) {
+  TRI_GET_ARGV(argc, argv);
   return ClientFeature::runMain(argc, argv, [&](int argc, char* argv[]) -> int {
     ArangoGlobalContext context(argc, argv, BIN_DIRECTORY);
     context.installHup();
 
     std::shared_ptr<options::ProgramOptions> options(
         new options::ProgramOptions(argv[0], "Usage: arangodump [<options>]",
-                                    "For more information use:",
-                                    BIN_DIRECTORY));
+                                    "For more information use:", BIN_DIRECTORY));
     ApplicationServer server(options, BIN_DIRECTORY);
     int ret;
 
+    server.addFeature(new application_features::CommunicationFeaturePhase(server));
     server.addFeature(new application_features::BasicFeaturePhase(server, true));
     server.addFeature(new application_features::GreetingsFeaturePhase(server, true));
 
@@ -83,8 +85,7 @@ int main(int argc, char* argv[]) {
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-          << "arangodump terminated because of an unhandled exception: "
-          << ex.what();
+          << "arangodump terminated because of an unhandled exception: " << ex.what();
       ret = EXIT_FAILURE;
     } catch (...) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)

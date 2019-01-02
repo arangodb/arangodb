@@ -209,22 +209,29 @@ These tests are ran using the jasmine framework instead of jsunity.
 --------
 These tests produce a certain thread on infrastructure or the test system, and therefore should only be executed once per day.
 
+-grey
+-----
+These tests are currently listed as "grey", which means that they are
+known to be unstable or broken. These tests will not be executed by the
+testing framework if the option `--skipGrey` is given. See
+`tests/Greylist.txt` for up-to-date information about greylisted tests.
+Please help to keep this file up to date.
+
 Test frameworks used
 ====================
 There are several major places where unittests live: 
  - *UnitTests/HttpInterface*        - rspec tests
  - tests/*                          - catch unittests
- - *js/server/tests*                - runneable on the server
- - *js/common/tests*                - runneable on the server & via arangosh
+ - *js/server/tests*                - runnable on the server
+ - *js/common/tests*                - runnable on the server & via arangosh
  - *js/common/test-data*
- - *js/client/tests*                - runneable via arangosh
+ - *js/client/tests*                - runnable via arangosh
  - *js/apps/system/aardvark/test*
 
 
 Debugging Tests (quick intro)
 -----------------------------
-
-runnuing single rspec test
+running single rspec test
 
    ./scripts/unittest http_server --test api-import-spec.rb
 
@@ -318,8 +325,8 @@ _________________
 The first parameter chooses the facility to execute.
 Available choices include:
  - *all*:                (calls multiple) This target is utilized by most of the jenkins builds invoking unit tests.
- - *single_client*:      (see Running a single unittestsuite)
- - *single_server*:      (see Running a single unittestsuite)
+ - *single_client*:      (see Running a single unittest suite)
+ - *single_server*:      (see Running a single unittest suite)
  - many more -           call without arguments for more details.
 
 Passing Options
@@ -360,13 +367,13 @@ To debug AQL execution blocks, two steps are required:
 
 you now will get log-entries with the contents being passed between the blocks.
 
-Running a single unittestsuite
-------------------------------
+Running a single unittest suite
+-------------------------------
 Testing a single test with the framework directly on a server:
 
     scripts/unittest single_server --test js/server/tests/aql/aql-escaping.js
 
-You can also only execute a single test case in a jsunity testsuite (in this case `testTokens`:
+You can also only execute a single test case in a jsunity test suite (in this case `testTokens`):
 
     scripts/unittest single_server --test js/server/tests/aql/aql-escaping.js --testCase testTokens
 
@@ -454,7 +461,7 @@ The non permanent way of doing this in a running system is:
 
 (you may also inspect these files to validate the current settings)
 
-More modern systems facilitate [`systemd-coredump`](https://www.freedesktop.org/software/systemd/man/systemd-coredump.html) (via a similar named package) to controll coredumps.
+More modern systems facilitate [`systemd-coredump`](https://www.freedesktop.org/software/systemd/man/systemd-coredump.html) (via a similar named package) to control coredumps.
 On most systems it will put compressed coredumps to `/var/lib/systemd/coredump`. 
 
 In order to use automatic coredump analysis with the unittests you need to configure 
@@ -492,6 +499,20 @@ make the above change permanent:
 
 `echo "sys.fs.suid_dumpable = 1" >> /etc/sysctl.d/99-suid-coredump.conf` 
 
+You can also generate coredumps from running processes without killing them by using gdb:
+
+    # sleep 100000 & 
+    [2] 6942
+    # gdb /bin/sleep 6942 
+    ...
+    0x00007faaa7abd4e4 in __GI___nanosleep (requested_time=0x7ffd047c9940, remaining=0x0) at ../sysdeps/unix/sysv/linux/nanosleep.c:28
+    gdb> gcore 
+    Saved corefile core.6942
+    gdb> quit
+    Detaching from program: /bin/sleep, process 6942
+    # ls -l core*
+    -rw-r--r--  1 me users  352664 Nov 27 10:48  core.6942
+
 Analyzing Coredumps on Linux
 ============================
 We offer debug packages containing the debug symbols for your binaries. Please install them if you didn't compile yourselves.
@@ -525,20 +546,20 @@ It will keep on running and monitor arangod until eventually a crash happens. Yo
 Debugging symbols
 -----------------
 Releases are supported by a public symbol server so you will be able to debug cores.
-Releases starting with **2.5.6, 2.6.3** onwards are supported; Note that you should run the latest version of a release series before reporting bugs.
+Please replace XX with the Major & Minor release number. Note that you should run the latest version of a release series before reporting bugs.
 Either [WinDbg](http://go.microsoft.com/fwlink/p/?linkid=84137) or Visual studio support setting the symbol path
-via the environment variable or in the menu. Given we want to store the symbols on *e:\symbol_cach* we add the arangodb symbolserver like this:
+via the environment variable or in the menu. Given we want to store the symbols on *e:\symbol_cache* we add the arangodb symbolserver like this:
 
-    set _NT_SYMBOL_PATH=cache*e:\symbol_cache\cache;srv*e:\symbol_cache\arango*https://www.arangodb.com/repositories/symsrv/;SRV*e:\symbol_cache\ms*http://msdl.microsoft.com/download/symbols
+    set _NT_SYMBOL_PATH=SRV*e:\symbol_cache\arango*https://download.arangodb.com/symsrv_arangodbXX/;SRV*e:\symbol_cache\ms*http://msdl.microsoft.com/download/symbols
 
 You then will be able to see stack traces in the debugger.
 
 You may also try to download the symbols manually using: 
 
-    symchk.exe arangod.exe /s SRV*e:/symbol_cache/cache*https://www.arangodb.com/repositories/symsrv/
+    symchk.exe arangod.exe /s SRV*e:/symbol_cache/cache*https://download.arangodb.com/symsrv_arangodbXX/
 
 
-The symbolserver over at https://www.arangodb.com/repositories/symsrv/ is browseable; thus you can easily download the files you need by hand. It contains of a list of directories corosponding to the components of arangodb:
+The symbolserver over at https://download.arangodb.com/symsrv_arangodbXX/ is browseable; thus you can easily download the files you need by hand. It contains of a list of directories corresponding to the components of arangodb:
 
   - arango - the basic arangodb library needed by all components
   - arango_v8 - the basic V8 wrappers needed by all components
@@ -552,14 +573,13 @@ The symbolserver over at https://www.arangodb.com/repositories/symsrv/ is browse
     - arangosh
     - arangovpack
 
-In these directories you will find subdirectories with the hash corosponding to the id of the binaries. Their date should corrospond to the release date of their respective arango release. 
+In these directories you will find subdirectories with the hash corresponding to the id of the binaries. Their date should corrospond to the release date of their respective arango release. 
 
 This means i.e. for ArangoDB 3.1.11: 
 
- https://www.arangodb.com/repositories/symsrv/arangod.pdb/A8B899D2EDFC40E994C30C32FCE5FB346/arangod.pd_
+ https://download.arangodb.com/symsrv_arangodb31/arangod.pdb/A8B899D2EDFC40E994C30C32FCE5FB346/arangod.pd_
 
-This file is a microsoft cabinet file, which is a little bit compressed. You can dismantle it so the windows explorer offers you its proper handler by renaming it to .cab; click on the now named `arangod.cab`, copy the contained arangod.pdb into your symbol path.
-
+This file is a microsoft cabinet file, which is a little bit compressed. You can extract it by invoking `cabextract` or dismantle it so the windows explorer offers you its proper handler by renaming it to .cab; click on the now named `arangod.cab`, copy the contained arangod.pdb into your symbol path.
 
 Coredump analysis
 -----------------
@@ -576,6 +596,12 @@ These commands for `-c` mean:
     q            quit the debugger
 
 If you don't specify them via -c you can also use them in an interactive manner.
+
+Alternatively you can also directly specify the symbol path via the `-y` parameter (replace XX):
+
+    cdb -z <dump file> -y 'SRV*e:\symbol_cache*https://download.arangodb.com/symsrv_arangodbXX;SRV*e:\symbol_cache\ms*http://msdl.microsoft'
+
+and use the commands above to obtain stacktraces.
 
 --------------------------------------------------------------------------------
 

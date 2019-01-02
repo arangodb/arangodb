@@ -45,10 +45,8 @@ struct thread_data_t {
   void* _data;
   std::string _name;
 
-  thread_data_t(void (*starter)(void*), void* data, char const* name) 
-      : _starter(starter),
-        _data(data),
-        _name(name) {}
+  thread_data_t(void (*starter)(void*), void* data, char const* name)
+      : _starter(starter), _data(data), _name(name) {}
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -90,14 +88,15 @@ void TRI_InitThread(TRI_thread_t* thread) {
 /// @brief starts a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_StartThread(TRI_thread_t* thread, TRI_tid_t* threadId,
-                     char const* name, void (*starter)(void*), void* data) {
+bool TRI_StartThread(TRI_thread_t* thread, char const* name,
+                     void (*starter)(void*), void* data) {
   std::unique_ptr<thread_data_t> d;
 
   try {
     d.reset(new thread_data_t(starter, data, name));
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "could not start thread: out of memory";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "could not start thread: out of memory";
     return false;
   }
 
@@ -106,24 +105,24 @@ bool TRI_StartThread(TRI_thread_t* thread, TRI_tid_t* threadId,
   pthread_attr_t stackSizeAttribute;
   size_t stackSize = 0;
 
-  auto err = pthread_attr_init (&stackSizeAttribute);
+  auto err = pthread_attr_init(&stackSizeAttribute);
   if (err) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-      << "could not initialize stack size attribute.";
+        << "could not initialize stack size attribute.";
     return false;
   }
-  err = pthread_attr_getstacksize(&stackSizeAttribute, &stackSize); 
+  err = pthread_attr_getstacksize(&stackSizeAttribute, &stackSize);
   if (err) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-      << "could not acquire stack size from pthread.";
+        << "could not acquire stack size from pthread.";
     return false;
   }
 
-  if (stackSize < 8388608) { // 8MB
-    err = pthread_attr_setstacksize (&stackSizeAttribute, 8388608);
+  if (stackSize < 8388608) {  // 8MB
+    err = pthread_attr_setstacksize(&stackSizeAttribute, 8388608);
     if (err) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "could not assign new stack size in pthread.";
+          << "could not assign new stack size in pthread.";
       return false;
     }
   }
@@ -133,13 +132,10 @@ bool TRI_StartThread(TRI_thread_t* thread, TRI_tid_t* threadId,
   if (rc != 0) {
     errno = rc;
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "could not start thread: " << strerror(errno);
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "could not start thread: " << strerror(errno);
 
     return false;
-  }
-
-  if (threadId != nullptr) {
-    *threadId = (TRI_tid_t)*thread;
   }
 
   // object must linger around until later
@@ -170,7 +166,8 @@ int TRI_DetachThread(TRI_thread_t* thread) {
   int res = pthread_detach(*thread);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(WARN, arangodb::Logger::THREADS) << "cannot detach thread: " << strerror(res);
+    LOG_TOPIC(WARN, arangodb::Logger::THREADS)
+        << "cannot detach thread: " << strerror(res);
   }
   return res;
 }
@@ -181,42 +178,6 @@ int TRI_DetachThread(TRI_thread_t* thread) {
 
 bool TRI_IsSelfThread(TRI_thread_t* thread) {
   return pthread_self() == *thread;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the process affinity
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_SetProcessorAffinity(TRI_thread_t* thread, size_t core) {
-#ifdef ARANGODB_HAVE_THREAD_AFFINITY
-
-  cpu_set_t cpuset;
-
-  CPU_ZERO(&cpuset);
-  CPU_SET(core, &cpuset);
-
-  int s = pthread_setaffinity_np(*thread, sizeof(cpu_set_t), &cpuset);
-
-  if (s != 0) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot set affinity to core " << core << ": "
-             << strerror(errno);
-  }
-
-#endif
-
-#ifdef ARANGODB_HAVE_THREAD_POLICY
-
-  thread_affinity_policy_data_t policy = {(int)core};
-  auto mach_thread = pthread_mach_thread_np(*thread);
-  auto res = thread_policy_set(mach_thread, THREAD_AFFINITY_POLICY,
-                               (thread_policy_t)&policy, 1);
-
-  if (res != KERN_SUCCESS) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot set affinity to core " << core << ": "
-             << strerror(errno);
-  }
-
-#endif
 }
 
 #endif

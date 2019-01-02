@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/arangodb-java-driver.git / docs/Drivers/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/arangodb-java-driver.git / docs/Drivers/ -->
 # Manipulating the view
 
 These functions implement
@@ -6,9 +6,7 @@ These functions implement
 
 ## ArangoDatabase.createView
 
-```
-ArangoDatabase.createView(String name, ViewType type) : ViewEntity
-```
+`ArangoDatabase.createView(String name, ViewType type) : ViewEntity`
 
 Creates a view of the given _type_, then returns view information from the server.
 
@@ -33,9 +31,7 @@ db.createView("myView", ViewType.ARANGO_SEARCH);
 
 ## ArangoView.rename
 
-```
-ArangoView.rename(String newName) : ViewEntity
-```
+`ArangoView.rename(String newName) : ViewEntity`
 
 Renames the view.
 
@@ -59,9 +55,7 @@ assertThat(result.getName(), is("new-view-name");
 
 ## ArangoView.drop
 
-```
-ArangoView.drop() : void
-```
+`ArangoView.drop() : void`
 
 Deletes the view from the database.
 

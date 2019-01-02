@@ -46,7 +46,7 @@ struct IRESEARCH_API boost : basic_stored_attribute<float_t> {
   /// @brief applies boost to the specified attributes collection ("src")
   //////////////////////////////////////////////////////////////////////////////
   static void apply(attribute_store& src, boost_t value) {
-    if (boost::no_boost() == value) {
+    if (irs::boost::no_boost() == value) {
       return;
     }
 
@@ -67,7 +67,7 @@ struct IRESEARCH_API boost : basic_stored_attribute<float_t> {
   }
 
   DECLARE_ATTRIBUTE_TYPE();
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
 
   boost();
 
@@ -89,7 +89,7 @@ typedef bool (*score_less_f)(const byte_type* lhs, const byte_type* rhs);
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API sort {
  public:
-  DECLARE_SPTR(sort);
+  DECLARE_SHARED_PTR(sort);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief object used for collecting index statistics for a specific term
@@ -97,8 +97,8 @@ class IRESEARCH_API sort {
   ////////////////////////////////////////////////////////////////////////////////
   class IRESEARCH_API collector {
    public:
-    DECLARE_PTR(collector);
-    DECLARE_FACTORY(collector);
+    DECLARE_UNIQUE_PTR(collector);
+    DEFINE_FACTORY_INLINE(collector);
 
     virtual ~collector();
 
@@ -128,8 +128,8 @@ class IRESEARCH_API sort {
   ////////////////////////////////////////////////////////////////////////////////
   class IRESEARCH_API scorer {
    public:
-    DECLARE_PTR(scorer);
-    DECLARE_FACTORY(scorer);
+    DECLARE_UNIQUE_PTR(scorer);
+    DEFINE_FACTORY_INLINE(scorer);
 
     virtual ~scorer();
 
@@ -144,7 +144,8 @@ class IRESEARCH_API sort {
    public:
     typedef T score_t;
 
-    FORCE_INLINE static T& score_cast(byte_type* score_buf) {
+    FORCE_INLINE static T& score_cast(byte_type* score_buf) NOEXCEPT {
+      assert(score_buf);
       return *reinterpret_cast<T*>(score_buf);
     }
   }; // scorer_base
@@ -155,7 +156,7 @@ class IRESEARCH_API sort {
   ////////////////////////////////////////////////////////////////////////////////
   class IRESEARCH_API prepared : public util::attribute_view_provider {
    public:
-    DECLARE_PTR(prepared);
+    DECLARE_UNIQUE_PTR(prepared);
 
     prepared() = default;
     explicit prepared(attribute_view&& attrs);
@@ -214,53 +215,62 @@ class IRESEARCH_API sort {
   /// @brief template score for base class for all prepared(compiled) sort entries
   ////////////////////////////////////////////////////////////////////////////////
   template <typename T>
-  class prepared_base: public prepared {
+  class prepared_base : public prepared {
    public:
     typedef T score_t;
+
+    FORCE_INLINE static const T& score_cast(const byte_type* score_buf) NOEXCEPT {
+      assert(score_buf);
+      return *reinterpret_cast<const T*>(score_buf);
+    }
+
+    FORCE_INLINE static T& score_cast(byte_type* score_buf) NOEXCEPT {
+      assert(score_buf);
+      return *reinterpret_cast<T*>(score_buf);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief number of bytes required to store the score type (i.e. sizeof(score))
+    ////////////////////////////////////////////////////////////////////////////////
+    virtual inline size_t size() const final override {
+      return sizeof(score_t);
+    }
+  }; // prepared_base
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief template score for base class for basic
+  ///        prepared(compiled) sort entries
+  ////////////////////////////////////////////////////////////////////////////////
+  template <typename T>
+  class prepared_basic : public prepared_base<T> {
+    typedef prepared_base<T> base_t;
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief initialize the score container and prepare it for add(...) calls
     ////////////////////////////////////////////////////////////////////////////////
-    virtual inline void prepare_score(byte_type* score) const final override {
-      assert(score);
-      prepare_score(*reinterpret_cast<T*>(score));
-    }
-
-    virtual void prepare_score(T& score) const {
-      std::memset(&score, 0, size());
+    virtual inline void prepare_score(byte_type* score) const override final {
+      base_t::score_cast(score) = T();
     }
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief add the score from 'src' to the score in 'dst', i.e. +=
     ////////////////////////////////////////////////////////////////////////////////
     virtual inline void add(
-      byte_type* dst, const byte_type* src
-    ) const final override {
-      assert(dst);
-      assert(src);
-      add(*reinterpret_cast<T*>(dst), *reinterpret_cast<const T*>(src));
+      byte_type* dst,
+      const byte_type* src
+    ) const override final {
+      base_t::score_cast(dst) += base_t::score_cast(src);
     }
-
-    virtual void add(score_t& dst, const score_t& src) const = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief compare two score containers and determine if 'lhs' < 'rhs', i.e. <
     ////////////////////////////////////////////////////////////////////////////////
     virtual inline bool less(
       const byte_type* lhs, const byte_type* rhs
-    ) const final override {
-      assert(lhs);
-      assert(rhs);
-      return less(*reinterpret_cast<const T*>(lhs), *reinterpret_cast<const T*>(rhs));
+    ) const override final {
+      return base_t::score_cast(lhs) < base_t::score_cast(rhs);
     }
-
-    virtual bool less(const score_t& lhs, const score_t& rhs) const = 0;
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief number of bytes required to store the score type (i.e. sizeof(score))
-    ////////////////////////////////////////////////////////////////////////////////
-    virtual inline size_t size() const final override { return sizeof(score_t); }
-  };
+  }; // prepared_basic
 
   //////////////////////////////////////////////////////////////////////////////
   /// @class type_id
@@ -273,7 +283,7 @@ class IRESEARCH_API sort {
 
    private:
     string_ref name_;
-  };
+  }; // type_id
 
   explicit sort(const type_id& id);
   virtual ~sort();

@@ -56,12 +56,11 @@ class RecoveryManager {
   ~RecoveryManager();
 
   void monitorCollections(DatabaseID const& database,
-                          std::vector<CollectionID> const& collections,
-                          Conductor* listener);
+                          std::vector<CollectionID> const& collections, Conductor* listener);
   void stopMonitoring(Conductor*);
   int filterGoodServers(std::vector<ServerID> const& servers,
                         std::vector<ServerID>& goodServers);
-  void updatedFailedServers();
+  void updatedFailedServers(std::vector<ServerID> const& failedServers);
   // bool allServersAvailable(std::vector<ServerID> const& dbServers);
 };
 
@@ -85,6 +84,6 @@ class CheckpointingManager {
 
   void reloadPlanData() { _secondaries.clear(); }
 };*/
-}
-}
+}  // namespace pregel
+}  // namespace arangodb
 #endif

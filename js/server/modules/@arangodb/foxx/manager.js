@@ -130,7 +130,7 @@ function parallelClusterRequests (requests) {
 function selfHealAll (skipReloadRouting) {
   const db = require('internal').db;
   const dbName = db._name();
-  let modified;
+  let modified = false;
   try {
     db._useDatabase('_system');
     const databases = db._databases();
@@ -175,6 +175,9 @@ function selfHeal () {
   let modified = false;
   const knownBundlePaths = new Array(serviceDefinitions.length);
   const knownServicePaths = new Array(serviceDefinitions.length);
+  if (!GLOBAL_SERVICE_MAP.has(db._name())) {
+    initLocalServiceMap();
+  }
   const localServiceMap = GLOBAL_SERVICE_MAP.get(db._name());
   for (const [mount, checksum, rev, bundleExists] of serviceDefinitions) {
     const bundlePath = FoxxService.bundlePath(mount);
@@ -182,10 +185,8 @@ function selfHeal () {
     knownBundlePaths.push(bundlePath);
     knownServicePaths.push(basePath);
 
-    if (localServiceMap) {
-      if (!localServiceMap.has(mount) || localServiceMap.get(mount)._rev !== rev) {
-        modified = true;
-      }
+    if (!localServiceMap.has(mount) || localServiceMap.get(mount)._rev !== rev) {
+      modified = true;
     }
 
     const hasBundle = fs.exists(bundlePath);
@@ -303,15 +304,19 @@ function startup () {
   if (global.ArangoServerState.role() === 'SINGLE') {
     commitLocalState(true);
   }
-  selfHealAll(true);
+  selfHealAll();
 }
 
 function upsertSystemServices () {
   const serviceDefinitions = new Map();
   for (const mount of SYSTEM_SERVICE_MOUNTS) {
-    const serviceDefinition = utils.getServiceDefinition(mount) || {mount};
-    const service = FoxxService.create(serviceDefinition);
-    serviceDefinitions.set(mount, service.toJSON());
+    try {
+      const serviceDefinition = utils.getServiceDefinition(mount) || {mount};
+      const service = FoxxService.create(serviceDefinition);
+      serviceDefinitions.set(mount, service.toJSON());
+    } catch (e) {
+      console.errorStack(e);
+    }
   }
   db._query(aql`
     FOR item IN ${Array.from(serviceDefinitions)}
@@ -379,6 +384,7 @@ function commitLocalState (replace) {
   }
   if (modified) {
     propagateSelfHeal();
+    reloadRouting();
   }
 }
 
@@ -399,7 +405,6 @@ function propagateSelfHeal () {
   } catch (e) {
     console.errorStack(e, 'Failure during propagate self heal');
   }
-  reloadRouting();
 }
 
 // GLOBAL_SERVICE_MAP manipulation
@@ -407,9 +412,13 @@ function propagateSelfHeal () {
 function initLocalServiceMap () {
   const localServiceMap = new Map();
   for (const mount of SYSTEM_SERVICE_MOUNTS) {
-    const serviceDefinition = utils.getServiceDefinition(mount) || {mount};
-    const service = FoxxService.create(serviceDefinition);
-    localServiceMap.set(service.mount, service);
+    try {
+      const serviceDefinition = utils.getServiceDefinition(mount) || {mount};
+      const service = FoxxService.create(serviceDefinition);
+      localServiceMap.set(service.mount, service);
+    } catch (e) {
+      console.errorStack(e);
+    }
   }
   for (const serviceDefinition of utils.getStorage().all()) {
     try {
@@ -528,7 +537,7 @@ function patchManifestFile (servicePath, patchData) {
   fs.writeFileSync(filename, JSON.stringify(manifest, null, 2));
 }
 
-function _prepareService (serviceInfo, options = {}) {
+function _prepareService (serviceInfo, legacy = false) {
   const tempServicePath = utils.joinLastPath(fs.getTempFile('services', false));
   const tempBundlePath = utils.joinLastPath(fs.getTempFile('bundles', false));
   try {
@@ -582,7 +591,7 @@ function _prepareService (serviceInfo, options = {}) {
       patchManifestFile(tempServicePath, info.manifest);
       utils.zipDirectory(tempServicePath, tempBundlePath);
     }
-    if (options.legacy) {
+    if (legacy) {
       patchManifestFile(tempServicePath, {engines: {arangodb: '^2.8.0'}});
       if (fs.exists(tempBundlePath)) {
         fs.remove(tempBundlePath);
@@ -619,34 +628,7 @@ function _buildServiceBundleFromScript (tempServicePath, tempBundlePath, jsBuffe
   utils.zipDirectory(tempServicePath, tempBundlePath);
 }
 
-function _deleteTempPaths({tempServicePath, tempBundlePath}) {
-  fs.remove(tempBundlePath);
-  fs.removeDirectoryRecursive(tempServicePath);
-}
-
-function _deleteServiceFromPath (mount, options) {
-  const servicePath = FoxxService.basePath(mount);
-  if (fs.exists(servicePath)) {
-    try {
-      fs.removeDirectoryRecursive(servicePath, true);
-    } catch (e) {
-      if (!options.force) {
-        throw e;
-      }
-      console.warnStack(e);
-    }
-  }
-  const bundlePath = FoxxService.bundlePath(mount);
-  if (fs.exists(bundlePath)) {
-    try {
-      fs.remove(bundlePath);
-    } catch (e) {
-      if (!options.force) {
-        throw e;
-      }
-      console.warnStack(e);
-    }
-  }
+function _deleteServiceFromPath (mount, force) {
 }
 
 // @brief Save foxx service to the database, i.e. _apps and _appbundles.
@@ -655,57 +637,48 @@ function _deleteServiceFromPath (mount, options) {
 // FoxxService.basePath(mount) and FoxxService.bundlePath(mount). This is to
 // avoid a race condition with selfHeal() which could delete the files before
 // the service is saved to the database.
-function _install (mount, tempPaths, options = {}) {
+function _install (tempService, tempBundlePath, options = {}) {
   try {
-    const {tempServicePath: servicePath, tempBundlePath: bundlePath} = tempPaths;
-    const collection = utils.getStorage();
-    let service;
-    try {
-      service = FoxxService.create({
-        mount,
-        options,
-        basePath: servicePath,
-        noisy: true
-      });
-      if (options.setup !== false) {
-        service.executeScript('setup');
+    if (options.setup !== false) {
+      try {
+        tempService.executeScript('setup');
+      } catch (e) {
+        if (!options.force) {
+          e.codeFrame = codeFrame(e, tempService.basePath);
+          throw e;
+        } else {
+          console.warnStack(e);
+        }
       }
+    }
+    // instead of service.updateChecksum(), update the checksum
+    // manually from the temporary path.
+    tempService.checksum = FoxxService._checksumPath(tempBundlePath);
+    try {
+      ensureServiceExecuted(tempService, true);
     } catch (e) {
       if (!options.force) {
-        e.codeFrame = codeFrame(e, servicePath);
+        e.codeFrame = codeFrame(e, tempService.basePath);
         throw e;
       } else {
         console.warnStack(e);
       }
     }
-    // instead of service.updateChecksum(), update the checksum
-    // manually from the temporary path.
-    service.checksum = FoxxService._checksumPath(bundlePath);
     const bundleCollection = utils.getBundleStorage();
-    if (!bundleCollection.exists(service.checksum)) {
-      bundleCollection._binaryInsert({_key: service.checksum}, bundlePath);
+    if (!bundleCollection.exists(tempService.checksum)) {
+      bundleCollection._binaryInsert({_key: tempService.checksum}, tempBundlePath);
     }
-    const serviceDefinition = service.toJSON();
-    const meta = db._query(aql`
-      UPSERT {mount: ${mount}}
+    const serviceDefinition = tempService.toJSON();
+    const collection = utils.getStorage();
+    db._query(aql`
+      UPSERT {mount: ${tempService.mount}}
       INSERT ${serviceDefinition}
       REPLACE ${serviceDefinition}
       IN ${collection}
-      RETURN NEW
-    `).next();
-    service._rev = meta._rev;
-    GLOBAL_SERVICE_MAP.get(db._name()).set(mount, service);
-    try {
-      ensureServiceExecuted(service, true);
-    } catch (e) {
-      if (!options.force) {
-        console.errorStack(e);
-      } else {
-        console.warnStack(e);
-      }
-    }
+    `);
   } finally {
-    _deleteTempPaths(tempPaths);
+    fs.remove(tempBundlePath);
+    fs.removeDirectoryRecursive(tempService.basePath);
   }
 }
 
@@ -734,25 +707,34 @@ function _uninstall (mount, options = {}) {
     }
   }
   const collection = utils.getStorage();
-  const serviceDefinition = db._query(aql`
+  db._query(aql`
     FOR service IN ${collection}
     FILTER service.mount == ${mount}
     REMOVE service IN ${collection}
-    RETURN OLD
-  `).next();
-  if (serviceDefinition) {
-    const checksumRefs = db._query(aql`
-      FOR service IN ${collection}
-      FILTER service.checksum == ${serviceDefinition.checksum}
-      RETURN 1
-    `).toArray();
-    const bundleCollection = utils.getBundleStorage();
-    if (!checksumRefs.length && bundleCollection.exists(serviceDefinition.checksum)) {
-      bundleCollection.remove(serviceDefinition.checksum);
+  `);
+  GLOBAL_SERVICE_MAP.get(db._name()).delete(mount);
+  const servicePath = FoxxService.basePath(mount);
+  if (fs.exists(servicePath)) {
+    try {
+      fs.removeDirectoryRecursive(servicePath, true);
+    } catch (e) {
+      if (!options.force) {
+        throw e;
+      }
+      console.warnStack(e);
     }
   }
-  GLOBAL_SERVICE_MAP.get(db._name()).delete(mount);
-  _deleteServiceFromPath(mount, options);
+  const bundlePath = FoxxService.bundlePath(mount);
+  if (fs.exists(bundlePath)) {
+    try {
+      fs.remove(bundlePath);
+    } catch (e) {
+      if (!options.force) {
+        throw e;
+      }
+      console.warnStack(e);
+    }
+  }
   return service;
 }
 
@@ -843,22 +825,35 @@ function install (serviceInfo, mount, options = {}) {
       `
     });
   }
-  const tempPaths = _prepareService(serviceInfo, options);
-  _install(mount, tempPaths, options);
+  const tempPaths = _prepareService(serviceInfo, options.legacy);
+  const tempService = FoxxService.create({
+    mount,
+    basePath: tempPaths.tempServicePath,
+    noisy: true,
+    options: {
+      development: options.development,
+      configuration: options.configuration,
+      dependencies: options.dependencies
+    }
+  });
+  _install(tempService, tempPaths.tempBundlePath, {
+    setup: options.setup !== false,
+    force: options.force === true
+  });
   selfHeal();
   propagateSelfHeal();
+  reloadRouting();
 
-  return FoxxService.create({
-    mount,
-    options
-  });
+  return getServiceInstance(mount);
 }
 
 function uninstall (mount, options = {}) {
   ensureFoxxInitialized();
-  const service = _uninstall(mount, options);
+  const oldService = _uninstall(mount, options);
+  selfHeal();
   propagateSelfHeal();
-  return service;
+  reloadRouting();
+  return oldService;
 }
 
 function replace (serviceInfo, mount, options = {}) {
@@ -877,54 +872,75 @@ function replace (serviceInfo, mount, options = {}) {
   } else {
     utils.validateMount(mount);
   }
-  const tempPaths = _prepareService(serviceInfo, options);
-  FoxxService.validatedManifest({
+  const tempPaths = _prepareService(serviceInfo, options.legacy);
+  const tempService = FoxxService.create({
     mount,
     basePath: tempPaths.tempServicePath,
-    noisy: true
+    noisy: true,
+    options: {
+      development: options.development,
+      configuration: options.configuration,
+      dependencies: options.dependencies
+    }
   });
-  _uninstall(mount, Object.assign({teardown: true}, options, {force: true}));
-  _install(mount, tempPaths, Object.assign({}, options, {force: true}));
+  _uninstall(mount, {
+    teardown: options.teardown !== false,
+    force: true
+  });
+  _install(tempService, tempPaths.tempBundlePath, {
+    setup: options.setup !== false,
+    force: true
+  });
   selfHeal();
   propagateSelfHeal();
+  reloadRouting();
 
-  return FoxxService.create({
-    mount,
-    options
-  });
+  return getServiceInstance(mount);
 }
 
 function upgrade (serviceInfo, mount, options = {}) {
   ensureFoxxInitialized();
   const serviceDefinition = utils.getServiceDefinition(mount);
-  if (!serviceDefinition) {
-    throw new ArangoError({
-      errorNum: errors.ERROR_SERVICE_NOT_FOUND.code,
-      errorMessage: dd`
-        ${errors.ERROR_SERVICE_NOT_FOUND.message}
-        Mount path: "${mount}".
-      `
-    });
+  let old = {};
+  if (serviceDefinition) {
+    old = serviceDefinition.options;
+  } else {
+    if (!options.force) {
+      throw new ArangoError({
+        errorNum: errors.ERROR_SERVICE_NOT_FOUND.code,
+        errorMessage: dd`
+          ${errors.ERROR_SERVICE_NOT_FOUND.message}
+          Mount path: "${mount}".
+        `
+      });
+    }
+    utils.validateMount(mount);
   }
-  const serviceOptions = serviceDefinition.options;
-  Object.assign(serviceOptions.configuration, options.configuration);
-  Object.assign(serviceOptions.dependencies, options.dependencies);
-  serviceOptions.development = options.development;
-  const tempPaths = _prepareService(serviceInfo, options);
-  FoxxService.validatedManifest({
+
+  const tempPaths = _prepareService(serviceInfo, options.legacy);
+  const tempService = FoxxService.create({
     mount,
     basePath: tempPaths.tempServicePath,
-    noisy: true
+    noisy: true,
+    options: {
+      development: options.development,
+      configuration: Object.assign({}, old.configuration, options.configuration),
+      dependencies: Object.assign({}, old.dependencies, options.dependencies)
+    }
   });
-  _uninstall(mount, Object.assign({teardown: false}, options, {force: true}));
-  _install(mount, tempPaths, Object.assign({}, options, serviceOptions, {force: true}));
+  _uninstall(mount, {
+    teardown: options.teardown === true,
+    force: true
+  });
+  _install(tempService, tempPaths.tempBundlePath, {
+    setup: options.setup !== false,
+    force: true
+  });
   selfHeal();
   propagateSelfHeal();
+  reloadRouting();
 
-  return FoxxService.create({
-    mount,
-    options
-  });
+  return getServiceInstance(mount);
 }
 
 function runScript (scriptName, mount, options) {
@@ -966,6 +982,7 @@ function enableDevelopmentMode (mount) {
   service.development(true);
   utils.updateService(mount, service.toJSON());
   propagateSelfHeal();
+  reloadRouting();
   return service;
 }
 
@@ -985,6 +1002,7 @@ function disableDevelopmentMode (mount) {
   // Make sure setup changes from devmode are respected
   service.executeScript('setup');
   propagateSelfHeal();
+  reloadRouting();
   return service;
 }
 
@@ -996,6 +1014,7 @@ function setConfiguration (mount, options = {}) {
   const warnings = service.applyConfiguration(options.configuration, options.replace);
   utils.updateService(mount, service.toJSON());
   propagateSelfHeal();
+  reloadRouting();
   return warnings;
 }
 
@@ -1007,6 +1026,7 @@ function setDependencies (mount, options = {}) {
   const warnings = service.applyDependencies(options.dependencies, options.replace);
   utils.updateService(mount, service.toJSON());
   propagateSelfHeal();
+  reloadRouting();
   return warnings;
 }
 

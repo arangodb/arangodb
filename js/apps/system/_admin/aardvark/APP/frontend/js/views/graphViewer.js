@@ -149,7 +149,6 @@
           self.renderGraph(data);
         },
         error: function (e) {
-          console.log(e);
           arangoHelper.arangoError('Graph', 'Could not load full graph.');
         }
       });
@@ -534,17 +533,22 @@
           */
         });
       } else if (type === 'array') {
-        _.each(data, function (edge) {
-          vertices[edge._from] = null;
-          vertices[edge._to] = null;
+        var edgeObj = {};
 
-          returnObj.edges.push({
-            id: edge._id,
-            source: edge._from,
-            // label: edge._key,
-            color: '#cccccc',
-            target: edge._to
-          });
+        _.each(data, function (edge) {
+          if (edge) {
+            vertices[edge._from] = null;
+            vertices[edge._to] = null;
+
+            if (edge._id) {
+              edgeObj[edge._id] = {
+                id: edge._id,
+                source: edge._from,
+                color: '#cccccc',
+                target: edge._to
+              };
+            }
+          }
         });
 
         _.each(vertices, function (val, key) {
@@ -556,6 +560,9 @@
             x: Math.random(),
             y: Math.random()
           });
+        });
+        _.each(edgeObj, function (edge) {
+          returnObj.edges.push(edge);
         });
       }
 
@@ -1216,8 +1223,8 @@
       this.openNodesDate = new Date();
     },
 
-      // click nodes context menu
-      /*
+    // click nodes context menu
+    /*
       createNodesContextMenu: function () {
         var self = this;
         var e = self.nodesContextEventState;
@@ -1596,7 +1603,9 @@
           if (found === false) {
             if (newNode.id === existingNode.id) {
               if (existingNode.id === origin) {
-                existingNode.label = existingNode.label + ' (expanded)';
+                if (existingNode.label.indexOf(' (expanded)') === -1) {
+                  existingNode.label = existingNode.label + ' (expanded)';
+                }
               }
               found = true;
             } else {

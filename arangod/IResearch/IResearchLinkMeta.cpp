@@ -29,8 +29,8 @@
 #include "utils/hash_utils.hpp"
 #include "utils/locale_utils.hpp"
 
-#include "VelocyPackHelper.h"
 #include "Basics/StringUtils.h"
+#include "VelocyPackHelper.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
 
@@ -39,28 +39,26 @@
 
 NS_LOCAL
 
-bool equalAnalyzers(
-  arangodb::iresearch::IResearchLinkMeta::Analyzers const& lhs,
-  arangodb::iresearch::IResearchLinkMeta::Analyzers const& rhs
-) noexcept {
+bool equalAnalyzers(arangodb::iresearch::IResearchLinkMeta::Analyzers const& lhs,
+                    arangodb::iresearch::IResearchLinkMeta::Analyzers const& rhs) noexcept {
   if (lhs.size() != rhs.size()) {
     return false;
   }
 
   std::unordered_multiset<irs::string_ref> expected;
 
-  for (auto& entry: lhs) {
+  for (auto& entry : lhs) {
     expected.emplace(entry ? irs::string_ref(entry->name()) : irs::string_ref::NIL);
   }
 
-  for (auto& entry: rhs) {
+  for (auto& entry : rhs) {
     auto itr = expected.find(entry ? irs::string_ref(entry->name()) : irs::string_ref::NIL);
 
     if (itr == expected.end()) {
-      return false; // values do not match
+      return false;  // values do not match
     }
 
-    expected.erase(itr); // ensure same count of duplicates
+    expected.erase(itr);  // ensure same count of duplicates
   }
 
   return true;
@@ -72,18 +70,18 @@ NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
 IResearchLinkMeta::Mask::Mask(bool mask /*= false*/) noexcept
-  : _analyzers(mask),
-    _fields(mask),
-    _includeAllFields(mask),
-    _trackListPositions(mask),
-    _storeValues(mask) {
-}
+    : _analyzers(mask),
+      _fields(mask),
+      _includeAllFields(mask),
+      _trackListPositions(mask),
+      _storeValues(mask) {}
 
 IResearchLinkMeta::IResearchLinkMeta()
-  : //_fields(<empty>), // no fields to index by default
-    _includeAllFields(false), // true to match all encountered fields, false match only fields in '_fields'
-    _trackListPositions(false), // treat '_trackListPositions' as SQL-IN
-    _storeValues(ValueStorage::NONE) { // do not track values at all
+    :  //_fields(<empty>), // no fields to index by default
+      _includeAllFields(false),  // true to match all encountered fields, false
+                                 // match only fields in '_fields'
+      _trackListPositions(false),  // treat '_trackListPositions' as SQL-IN
+      _storeValues(ValueStorage::NONE) {  // do not track values at all
   auto analyzer = IResearchAnalyzerFeature::identity();
 
   // identity-only tokenization
@@ -92,13 +90,19 @@ IResearchLinkMeta::IResearchLinkMeta()
   }
 }
 
-IResearchLinkMeta::IResearchLinkMeta(IResearchLinkMeta const& other) {
-  *this = other;
-}
+IResearchLinkMeta::IResearchLinkMeta(IResearchLinkMeta const& other)
+    : _analyzers(other._analyzers),
+      _fields(other._fields),
+      _includeAllFields(other._includeAllFields),
+      _trackListPositions(other._trackListPositions),
+      _storeValues(other._storeValues) {}
 
-IResearchLinkMeta::IResearchLinkMeta(IResearchLinkMeta&& other) noexcept {
-  *this = std::move(other);
-}
+IResearchLinkMeta::IResearchLinkMeta(IResearchLinkMeta&& other) noexcept
+    : _analyzers(std::move(other._analyzers)),
+      _fields(std::move(other._fields)),
+      _includeAllFields(other._includeAllFields),
+      _trackListPositions(other._trackListPositions),
+      _storeValues(other._storeValues) {}
 
 IResearchLinkMeta& IResearchLinkMeta::operator=(IResearchLinkMeta&& other) noexcept {
   if (this != &other) {
@@ -124,45 +128,41 @@ IResearchLinkMeta& IResearchLinkMeta::operator=(IResearchLinkMeta const& other) 
   return *this;
 }
 
-bool IResearchLinkMeta::operator==(
-  IResearchLinkMeta const& other
-) const noexcept {
+bool IResearchLinkMeta::operator==(IResearchLinkMeta const& other) const noexcept {
   if (!equalAnalyzers(_analyzers, other._analyzers)) {
-    return false; // values do not match
+    return false;  // values do not match
   }
 
   if (_fields.size() != other._fields.size()) {
-    return false; // values do not match
+    return false;  // values do not match
   }
 
   auto itr = other._fields.begin();
 
-  for (auto& entry: _fields) {
+  for (auto& entry : _fields) {
     if (itr.key() != entry.key() || itr.value() != entry.value()) {
-      return false; // values do not match
+      return false;  // values do not match
     }
 
     ++itr;
   }
 
   if (_includeAllFields != other._includeAllFields) {
-    return false; // values do not match
+    return false;  // values do not match
   }
 
   if (_trackListPositions != other._trackListPositions) {
-    return false; // values do not match
+    return false;  // values do not match
   }
 
   if (_storeValues != other._storeValues) {
-    return false; // values do not match
+    return false;  // values do not match
   }
 
   return true;
 }
 
-bool IResearchLinkMeta::operator!=(
-  IResearchLinkMeta const& other
-) const noexcept {
+bool IResearchLinkMeta::operator!=(IResearchLinkMeta const& other) const noexcept {
   return !(*this == other);
 }
 
@@ -172,12 +172,10 @@ bool IResearchLinkMeta::operator!=(
   return meta;
 }
 
-bool IResearchLinkMeta::init(
-  arangodb::velocypack::Slice const& slice,
-  std::string& errorField,
-  IResearchLinkMeta const& defaults /*= DEFAULT()*/,
-  Mask* mask /*= nullptr*/
-) noexcept {
+bool IResearchLinkMeta::init(arangodb::velocypack::Slice const& slice, std::string& errorField,
+                             IResearchLinkMeta const& defaults /*= DEFAULT()*/,
+                             Mask* mask /*= nullptr*/
+                             ) noexcept {
   if (!slice.isObject()) {
     return false;
   }
@@ -197,9 +195,8 @@ bool IResearchLinkMeta::init(
     if (!mask->_analyzers) {
       _analyzers = defaults._analyzers;
     } else {
-      auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
-        IResearchAnalyzerFeature
-      >();
+      auto* analyzers =
+          arangodb::application_features::ApplicationServer::lookupFeature<IResearchAnalyzerFeature>();
       auto field = slice.get(fieldName);
 
       if (!analyzers || !field.isArray()) {
@@ -208,13 +205,14 @@ bool IResearchLinkMeta::init(
         return false;
       }
 
-      _analyzers.clear(); // reset to match read values exactly
+      _analyzers.clear();  // reset to match read values exactly
 
       for (arangodb::velocypack::ArrayIterator itr(field); itr.valid(); ++itr) {
         auto key = *itr;
 
         if (!key.isString()) {
-          errorField = fieldName + "=>[" + arangodb::basics::StringUtils::itoa(itr.index()) + "]";
+          errorField = fieldName + "=>[" +
+                       arangodb::basics::StringUtils::itoa(itr.index()) + "]";
 
           return false;
         }
@@ -228,7 +226,8 @@ bool IResearchLinkMeta::init(
           return false;
         }
 
-        // inserting two identical values for name is a poor-man's boost multiplier
+        // inserting two identical values for name is a poor-man's boost
+        // multiplier
         _analyzers.emplace_back(analyzer);
       }
     }
@@ -294,10 +293,7 @@ bool IResearchLinkMeta::init(
       }
 
       static const std::unordered_map<std::string, ValueStorage> policies = {
-        { "none", ValueStorage::NONE },
-        { "id", ValueStorage::ID },
-        { "full", ValueStorage::FULL }
-      };
+          {"none", ValueStorage::NONE}, {"id", ValueStorage::ID}, {"full", ValueStorage::FULL}};
       auto name = field.copyString();
       auto itr = policies.find(name);
 
@@ -334,15 +330,16 @@ bool IResearchLinkMeta::init(
 
       auto subDefaults = *this;
 
-      subDefaults._fields.clear(); // do not inherit fields and overrides from this field
-      _fields.clear(); // reset to match either defaults or read values exactly
+      subDefaults._fields.clear();  // do not inherit fields and overrides from this field
+      _fields.clear();  // reset to match either defaults or read values exactly
 
       for (arangodb::velocypack::ObjectIterator itr(field); itr.valid(); ++itr) {
         auto key = itr.key();
         auto value = itr.value();
 
         if (!key.isString()) {
-          errorField = fieldName + "=>[" + arangodb::basics::StringUtils::itoa(itr.index()) + "]";
+          errorField = fieldName + "=>[" +
+                       arangodb::basics::StringUtils::itoa(itr.index()) + "]";
 
           return false;
         }
@@ -369,23 +366,22 @@ bool IResearchLinkMeta::init(
   return true;
 }
 
-bool IResearchLinkMeta::json(
-  arangodb::velocypack::Builder& builder,
-  IResearchLinkMeta const* ignoreEqual /*= nullptr*/,
-  Mask const* mask /*= nullptr*/
-) const {
+bool IResearchLinkMeta::json(arangodb::velocypack::Builder& builder,
+                             IResearchLinkMeta const* ignoreEqual /*= nullptr*/,
+                             Mask const* mask /*= nullptr*/
+                             ) const {
   if (!builder.isOpenObject()) {
     return false;
   }
 
-  if ((!ignoreEqual || !equalAnalyzers(_analyzers, ignoreEqual->_analyzers))
-      && (!mask || mask->_analyzers)) {
+  if ((!ignoreEqual || !equalAnalyzers(_analyzers, ignoreEqual->_analyzers)) &&
+      (!mask || mask->_analyzers)) {
     arangodb::velocypack::Builder analyzersBuilder;
 
     analyzersBuilder.openArray();
 
-    for (auto& entry: _analyzers) {
-      if (entry) { // skip null analyzers
+    for (auto& entry : _analyzers) {
+      if (entry) {  // skip null analyzers
         analyzersBuilder.add(arangodb::velocypack::Value(entry->name()));
       }
     }
@@ -394,21 +390,23 @@ bool IResearchLinkMeta::json(
     builder.add("analyzers", analyzersBuilder.slice());
   }
 
-  if (!mask || mask->_fields) { // fields are not inherited from parent
+  if (!mask || mask->_fields) {  // fields are not inherited from parent
     arangodb::velocypack::Builder fieldsBuilder;
 
     {
       arangodb::velocypack::ObjectBuilder fieldsBuilderWrapper(&fieldsBuilder);
       arangodb::velocypack::Builder fieldBuilder;
-      Mask mask(true); // output all non-matching fields
+      Mask mask(true);  // output all non-matching fields
       auto subDefaults = *this;
 
-      subDefaults._fields.clear(); // do not inherit fields and overrides overrides from this field
+      subDefaults._fields.clear();  // do not inherit fields and overrides
+                                    // overrides from this field
 
-      for(auto& entry: _fields) {
-        mask._fields = !entry.value()->_fields.empty(); // do not output empty fields on subobjects
+      for (auto& entry : _fields) {
+        mask._fields = !entry.value()->_fields.empty();  // do not output empty fields on subobjects
 
-        if (!entry.value()->json(arangodb::velocypack::ObjectBuilder(&fieldBuilder), &subDefaults, &mask)) {
+        if (!entry.value()->json(arangodb::velocypack::ObjectBuilder(&fieldBuilder),
+                                 &subDefaults, &mask)) {
           return false;
         }
 
@@ -420,30 +418,32 @@ bool IResearchLinkMeta::json(
     builder.add("fields", fieldsBuilder.slice());
   }
 
-  if ((!ignoreEqual || _includeAllFields != ignoreEqual->_includeAllFields) && (!mask || mask->_includeAllFields)) {
+  if ((!ignoreEqual || _includeAllFields != ignoreEqual->_includeAllFields) &&
+      (!mask || mask->_includeAllFields)) {
     builder.add("includeAllFields", arangodb::velocypack::Value(_includeAllFields));
   }
 
-  if ((!ignoreEqual || _trackListPositions != ignoreEqual->_trackListPositions) && (!mask || mask->_trackListPositions)) {
+  if ((!ignoreEqual || _trackListPositions != ignoreEqual->_trackListPositions) &&
+      (!mask || mask->_trackListPositions)) {
     builder.add("trackListPositions", arangodb::velocypack::Value(_trackListPositions));
   }
 
-  if ((!ignoreEqual || _storeValues != ignoreEqual->_storeValues) && (!mask || mask->_storeValues)) {
-    static_assert(adjacencyChecker<ValueStorage>::checkAdjacency<
-      ValueStorage::FULL, ValueStorage::ID, ValueStorage::NONE>(),
-      "Values are not adjacent"
-    );
+  if ((!ignoreEqual || _storeValues != ignoreEqual->_storeValues) &&
+      (!mask || mask->_storeValues)) {
+    static_assert(adjacencyChecker<ValueStorage>::checkAdjacency<ValueStorage::FULL, ValueStorage::ID, ValueStorage::NONE>(),
+                  "Values are not adjacent");
 
-    static const std::string policies[] {
-      "none", // ValueStorage::NONE
-      "id", // ValueStorage::ID
-      "full" // ValueStorage::FULL
+    static const std::string policies[]{
+        "none",  // ValueStorage::NONE
+        "id",    // ValueStorage::ID
+        "full"   // ValueStorage::FULL
     };
 
-    auto const policyIdx = static_cast<std::underlying_type<ValueStorage>::type>(_storeValues);
+    auto const policyIdx =
+        static_cast<std::underlying_type<ValueStorage>::type>(_storeValues);
 
     if (policyIdx >= IRESEARCH_COUNTOF(policies)) {
-      return false; // unsupported value storage policy
+      return false;  // unsupported value storage policy
     }
 
     builder.add("storeValues", arangodb::velocypack::Value(policies[policyIdx]));
@@ -452,21 +452,20 @@ bool IResearchLinkMeta::json(
   return true;
 }
 
-bool IResearchLinkMeta::json(
-  arangodb::velocypack::ObjectBuilder const& builder,
-  IResearchLinkMeta const* ignoreEqual /*= nullptr*/,
-  Mask const* mask /*= nullptr*/
-) const {
+bool IResearchLinkMeta::json(arangodb::velocypack::ObjectBuilder const& builder,
+                             IResearchLinkMeta const* ignoreEqual /*= nullptr*/,
+                             Mask const* mask /*= nullptr*/
+                             ) const {
   return builder.builder && json(*(builder.builder), ignoreEqual, mask);
 }
 
-size_t IResearchLinkMeta::memory() const {
+size_t IResearchLinkMeta::memory() const noexcept {
   auto size = sizeof(IResearchLinkMeta);
 
   size += _analyzers.size() * sizeof(decltype(_analyzers)::value_type);
   size += _fields.size() * sizeof(decltype(_fields)::value_type);
 
-  for (auto& entry: _fields) {
+  for (auto& entry : _fields) {
     size += entry.key().size();
     size += entry.value()->memory();
   }
@@ -474,9 +473,9 @@ size_t IResearchLinkMeta::memory() const {
   return size;
 }
 
-NS_END // iresearch
-NS_END // arangodb
+NS_END      // iresearch
+    NS_END  // arangodb
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+    // -----------------------------------------------------------------------------
+    // --SECTION-- END-OF-FILE
+    // -----------------------------------------------------------------------------

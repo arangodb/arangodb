@@ -32,7 +32,7 @@
 
     initialize: function () {
       var self = this;
-      this.fetch().done(function () {
+      this.fetch({cache: false}).done(function () {
         self.sort();
       });
     },
@@ -43,7 +43,7 @@
 
     getDatabases: function () {
       var self = this;
-      this.fetch().done(function () {
+      this.fetch({cache: false}).done(function () {
         self.sort();
       });
       return this.models;

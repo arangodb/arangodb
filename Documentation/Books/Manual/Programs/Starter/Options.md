@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb-helper/arangodb.git / docs/Manual/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb-helper/arangodb.git / docs/Manual/ -->
 # Option reference
 
 The ArangoDB Starter provides a lot of options to control various aspects

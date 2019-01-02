@@ -70,12 +70,11 @@ class AssocUnique {
   std::function<std::string()> _contextCallback;
 
  public:
-  AssocUnique(AssocUniqueHelper&& helper,
-              size_t numberBuckets = 1,
-              std::function<std::string()> contextCallback =
-                  []() -> std::string { return ""; })
-      : _helper(std::move(helper)),
-        _contextCallback(contextCallback) {
+  AssocUnique(AssocUniqueHelper&& helper, size_t numberBuckets = 1,
+              std::function<std::string()> contextCallback = []() -> std::string {
+                return "";
+              })
+      : _helper(std::move(helper)), _contextCallback(contextCallback) {
     // Make the number of buckets a power of two:
     size_t ex = 0;
     size_t nr = 1;
@@ -125,13 +124,11 @@ class AssocUnique {
   /// @brief resizes the array
   //////////////////////////////////////////////////////////////////////////////
 
-  void resizeInternal(UserData* userData, Bucket& b, uint64_t targetSize,
-                      bool allowShrink) {
+  void resizeInternal(UserData* userData, Bucket& b, uint64_t targetSize, bool allowShrink) {
     if (b._nrAlloc > targetSize && !allowShrink) {
       return;
     }
-    if (allowShrink && b._nrAlloc >= targetSize &&
-        b._nrAlloc < 1.25 * targetSize) {
+    if (allowShrink && b._nrAlloc >= targetSize && b._nrAlloc < 1.25 * targetSize) {
       // no need to shrink
       return;
     }
@@ -140,8 +137,9 @@ class AssocUnique {
 
     TRI_ASSERT(targetSize > 0);
     targetSize = TRI_NearPrime(targetSize);
-    
-    PerformanceLogScope logScope(std::string("unique hash-resize ") + cb + ", target size: " + std::to_string(targetSize));
+
+    PerformanceLogScope logScope(std::string("unique hash-resize ") + cb +
+                                 ", target size: " + std::to_string(targetSize));
 
     Bucket copy;
     copy.allocate(targetSize);
@@ -197,9 +195,9 @@ class AssocUnique {
   ///        Iterates using the given step size
   //////////////////////////////////////////////////////////////////////////////
 
-  Element findElementSequentialBucketsRandom(
-      UserData* userData, BucketPosition& position, uint64_t const step,
-      BucketPosition const& initial) const {
+  Element findElementSequentialBucketsRandom(UserData* userData, BucketPosition& position,
+                                             uint64_t const step,
+                                             BucketPosition const& initial) const {
     Element found;
     Bucket const* b = &_buckets[position.bucketId];
     do {
@@ -223,8 +221,7 @@ class AssocUnique {
   ///        This does not resize and expects to have enough space
   //////////////////////////////////////////////////////////////////////////////
 
-  int doInsert(UserData* userData, Element const& element, Bucket& b,
-               uint64_t hash) {
+  int doInsert(UserData* userData, Element const& element, Bucket& b, uint64_t hash) {
     uint64_t const n = b._nrAlloc;
     uint64_t i = hash % n;
     uint64_t k = i;
@@ -392,9 +389,7 @@ class AssocUnique {
     i = i % n;
     uint64_t k = i;
 
-    for (; i < n && b._table[i] &&
-           !_helper.IsEqualKeyElement(userData, key, b._table[i]);
-         ++i)
+    for (; i < n && b._table[i] && !_helper.IsEqualKeyElement(userData, key, b._table[i]); ++i)
       ;
     if (i == n) {
       for (i = 0; i < k && b._table[i] &&
@@ -421,9 +416,7 @@ class AssocUnique {
     i = i % n;
     uint64_t k = i;
 
-    for (; i < n && b._table[i] &&
-           !_helper.IsEqualKeyElement(userData, key, b._table[i]);
-         ++i)
+    for (; i < n && b._table[i] && !_helper.IsEqualKeyElement(userData, key, b._table[i]); ++i)
       ;
     if (i == n) {
       for (i = 0; i < k && b._table[i] &&
@@ -458,9 +451,7 @@ class AssocUnique {
     i = i % n;
     uint64_t k = i;
 
-    for (; i < n && b._table[i] &&
-           !_helper.IsEqualKeyElement(userData, key, b._table[i]);
-         ++i)
+    for (; i < n && b._table[i] && !_helper.IsEqualKeyElement(userData, key, b._table[i]); ++i)
       ;
     if (i == n) {
       for (i = 0; i < k && b._table[i] &&
@@ -570,15 +561,13 @@ class AssocUnique {
     inserters->reserve(_buckets.size());
 
     std::shared_ptr<std::vector<std::vector<DocumentsPerBucket>>> allBuckets;
-    allBuckets.reset(
-        new std::vector<std::vector<DocumentsPerBucket>>(_buckets.size()));
+    allBuckets.reset(new std::vector<std::vector<DocumentsPerBucket>>(_buckets.size()));
 
     auto doInsertBinding = [&](UserData* userData, Element const& element,
                                Bucket& b, uint64_t hashByKey) -> int {
       return doInsert(userData, element, b, hashByKey);
     };
-    auto checkResizeBinding = [&](UserData* userData, Bucket& b,
-                                  uint64_t expected) -> bool {
+    auto checkResizeBinding = [&](UserData* userData, Bucket& b, uint64_t expected) -> bool {
       return checkResize(userData, b, expected);
     };
 
@@ -586,9 +575,8 @@ class AssocUnique {
       // generate inserter tasks to be dispatched later by partitioners
       for (size_t i = 0; i < allBuckets->size(); i++) {
         std::shared_ptr<Inserter> worker;
-        worker.reset(new Inserter(queue, contextDestroyer, &_buckets,
-                                  doInsertBinding, checkResizeBinding, i,
-                                  contextCreator(), allBuckets));
+        worker.reset(new Inserter(queue, contextDestroyer, &_buckets, doInsertBinding,
+                                  checkResizeBinding, i, contextCreator(), allBuckets));
         inserters->emplace_back(worker);
       }
       // queue partitioner tasks
@@ -605,9 +593,8 @@ class AssocUnique {
 
         std::shared_ptr<Partitioner> worker;
         worker.reset(new Partitioner(queue, AssocUniqueHelper::HashElement, contextDestroyer,
-                                     data, lower, upper, contextCreator(),
-                                     bucketFlags, bucketMapLocker, allBuckets,
-                                     inserters));
+                                     data, lower, upper, contextCreator(), bucketFlags,
+                                     bucketMapLocker, allBuckets, inserters));
         queue->enqueue(worker);
       }
     } catch (...) {
@@ -668,9 +655,7 @@ class AssocUnique {
     i = i % n;
     uint64_t k = i;
 
-    for (; i < n && b._table[i] &&
-           !_helper.IsEqualKeyElement(userData, key, b._table[i]);
-         ++i)
+    for (; i < n && b._table[i] && !_helper.IsEqualKeyElement(userData, key, b._table[i]); ++i)
       ;
     if (i == n) {
       for (i = 0; i < k && b._table[i] &&
@@ -790,8 +775,7 @@ class AssocUnique {
   ///        During a continue the total will not be modified.
   //////////////////////////////////////////////////////////////////////////////
 
-  Element findSequential(UserData* userData, BucketPosition& position,
-                         uint64_t& total) const {
+  Element findSequential(UserData* userData, BucketPosition& position, uint64_t& total) const {
     if (position.bucketId >= _buckets.size()) {
       // bucket id is out of bounds. now handle edge cases
       if (position.bucketId < SIZE_MAX - 1) {
@@ -820,8 +804,7 @@ class AssocUnique {
       Bucket const& b = _buckets[position.bucketId];
       uint64_t const n = b._nrAlloc;
 
-      for (; position.position < n && !b._table[position.position];
-           ++position.position)
+      for (; position.position < n && !b._table[position.position]; ++position.position)
         ;
 
       if (position.position != n) {
@@ -854,8 +837,7 @@ class AssocUnique {
   ///        Convention: position === UINT64_MAX indicates a new start.
   //////////////////////////////////////////////////////////////////////////////
 
-  Element findSequentialReverse(UserData* userData,
-                                BucketPosition& position) const {
+  Element findSequentialReverse(UserData* userData, BucketPosition& position) const {
     if (position.bucketId >= _buckets.size()) {
       // bucket id is out of bounds. now handle edge cases
       if (position.bucketId < SIZE_MAX - 1) {
@@ -901,8 +883,7 @@ class AssocUnique {
   //////////////////////////////////////////////////////////////////////////////
 
   Element findRandom(UserData* userData, BucketPosition& initialPosition,
-                     BucketPosition& position, uint64_t& step,
-                     uint64_t& total) const {
+                     BucketPosition& position, uint64_t& step, uint64_t& total) const {
     if (step != 0 && position == initialPosition) {
       // already read all documents
       return Element();
@@ -923,8 +904,7 @@ class AssocUnique {
       // find a co-prime for total
       while (true) {
         step = RandomGenerator::interval(UINT32_MAX) % total;
-        if (step > 10 &&
-            arangodb::basics::binaryGcd<uint64_t>(total, step) == 1) {
+        if (step > 10 && arangodb::basics::binaryGcd<uint64_t>(total, step) == 1) {
           uint64_t initialPositionNr = 0;
           while (initialPositionNr == 0) {
             initialPositionNr = RandomGenerator::interval(UINT32_MAX) % total;
@@ -944,8 +924,7 @@ class AssocUnique {
       }
     }
 
-    return findElementSequentialBucketsRandom(userData, position, step,
-                                              initialPosition);
+    return findElementSequentialBucketsRandom(userData, position, step, initialPosition);
   }
 };
 }  // namespace basics

@@ -30,34 +30,32 @@
 NS_BEGIN(arangodb)
 NS_BEGIN(transaction)
 
-class Methods; // forward declaration
+class Methods;  // forward declaration
 
-NS_END // transaction
-NS_END // arangodb
+NS_END      // transaction
+    NS_END  // arangodb
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
-NS_BEGIN(attribute)
+    NS_BEGIN(arangodb) NS_BEGIN(iresearch) NS_BEGIN(attribute)
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief contains the path to the attribute encoded as a jSON array
-//////////////////////////////////////////////////////////////////////////////
-struct AttributePath: irs::basic_stored_attribute<arangodb::velocypack::Builder> {
+    //////////////////////////////////////////////////////////////////////////////
+    /// @brief contains the path to the attribute encoded as a jSON array
+    //////////////////////////////////////////////////////////////////////////////
+    struct AttributePath : irs::basic_stored_attribute<arangodb::velocypack::Builder> {
   DECLARE_ATTRIBUTE_TYPE();
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
 };
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief contains a pointer to the current transaction
 //////////////////////////////////////////////////////////////////////////////
-struct Transaction: irs::basic_attribute<arangodb::transaction::Methods&> {
+struct Transaction : irs::basic_attribute<arangodb::transaction::Methods&> {
   DECLARE_ATTRIBUTE_TYPE();
 
   explicit Transaction(arangodb::transaction::Methods& trx);
 };
 
-NS_END // attribute
-NS_END // iresearch
-NS_END // arangodb
+NS_END          // attribute
+    NS_END      // iresearch
+        NS_END  // arangodb
 
 #endif

@@ -37,15 +37,13 @@ class ContextData {
   ContextData& operator=(ContextData const&) = delete;
 
  protected:
-
   /// @brief create the context data
   ContextData() = default;
 
  public:
-
   /// @brief destroy the context data
   virtual ~ContextData() = default;
-  
+
   /// @brief pin data for the collection
   virtual void pinData(arangodb::LogicalCollection*) = 0;
 
@@ -53,7 +51,7 @@ class ContextData {
   virtual bool isPinned(TRI_voc_cid_t) const = 0;
 };
 
-}
-}
+}  // namespace transaction
+}  // namespace arangodb
 
 #endif

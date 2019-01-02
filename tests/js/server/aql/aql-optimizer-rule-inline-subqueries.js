@@ -167,10 +167,6 @@ function optimizerRuleTestSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
-
 function optimizerRuleCollectionTestSuite () {
   var c = null;
   var cn = "UnitTestsOptimizer";
@@ -244,11 +240,79 @@ function optimizerRuleCollectionTestSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+function optimizerRuleViewTestSuite () {
+  let cn = "UnitTestsOptimizer";
+
+  return {
+
+    setUp : function () {
+      db._dropView(cn + "View");
+      db._drop(cn);
+      db._create(cn);
+      db._createView(cn + "View", "arangosearch", { links: { "UnitTestsOptimizer" : { includeAllFields: true } } });
+    },
+
+    tearDown : function () {
+      db._dropView(cn + "View");
+      db._drop(cn);
+    },
+
+    testVariableReplacementInSearchCondition : function () {
+      let query = "LET sub = (RETURN 1) FOR outer IN sub FOR v IN " + cn + "View SEARCH v.something == outer RETURN v";
+
+      let result = AQL_EXPLAIN(query);
+      assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+      
+      let nodes = helper.removeClusterNodesFromPlan(result.plan.nodes);
+
+      assertEqual("ReturnNode", nodes[nodes.length - 1].type);
+      assertEqual("EnumerateViewNode", nodes[nodes.length - 2].type);
+      
+      let viewNode = nodes[nodes.length - 2];
+      assertEqual(cn + "View", viewNode.view);
+      assertEqual("v", viewNode.outVariable.name);
+      assertEqual("n-ary or", viewNode.condition.type);
+      assertEqual("n-ary and", viewNode.condition.subNodes[0].type);
+      assertEqual("compare ==", viewNode.condition.subNodes[0].subNodes[0].type);
+      assertEqual("attribute access", viewNode.condition.subNodes[0].subNodes[0].subNodes[0].type);
+      assertEqual("something",        viewNode.condition.subNodes[0].subNodes[0].subNodes[0].name);
+      assertEqual("reference",        viewNode.condition.subNodes[0].subNodes[0].subNodes[0].subNodes[0].type);
+      assertEqual("v", viewNode.condition.subNodes[0].subNodes[0].subNodes[0].subNodes[0].name);
+      assertEqual("reference", viewNode.condition.subNodes[0].subNodes[0].subNodes[1].type);
+      assertEqual("outer", viewNode.condition.subNodes[0].subNodes[0].subNodes[1].name);
+      assertEqual([], viewNode.sortCondition);
+    },
+    
+    testNoVariableReplacementInSearchCondition : function () {
+      let query = "LET sub = (RETURN 1) FOR outer IN sub FOR v IN " + cn + "View SEARCH v.something == 1 RETURN v";
+
+      let result = AQL_EXPLAIN(query);
+      assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+      
+      let nodes = helper.removeClusterNodesFromPlan(result.plan.nodes);
+
+      assertEqual("ReturnNode", nodes[nodes.length - 1].type);
+      assertEqual("EnumerateViewNode", nodes[nodes.length - 2].type);
+      
+      let viewNode = nodes[nodes.length - 2];
+      assertEqual(cn + "View", viewNode.view);
+      assertEqual("v", viewNode.outVariable.name);
+      assertEqual("n-ary or", viewNode.condition.type);
+      assertEqual("n-ary and", viewNode.condition.subNodes[0].type);
+      assertEqual("compare ==", viewNode.condition.subNodes[0].subNodes[0].type);
+      assertEqual("attribute access", viewNode.condition.subNodes[0].subNodes[0].subNodes[0].type);
+      assertEqual("something",        viewNode.condition.subNodes[0].subNodes[0].subNodes[0].name);
+      assertEqual("reference",        viewNode.condition.subNodes[0].subNodes[0].subNodes[0].subNodes[0].type);
+      assertEqual("v", viewNode.condition.subNodes[0].subNodes[0].subNodes[0].subNodes[0].name);
+      assertEqual("value", viewNode.condition.subNodes[0].subNodes[0].subNodes[1].type);
+      assertEqual([], viewNode.sortCondition);
+    },
+
+  };
+}
 
 jsunity.run(optimizerRuleTestSuite);
 jsunity.run(optimizerRuleCollectionTestSuite);
+jsunity.run(optimizerRuleViewTestSuite);
 
 return jsunity.done();

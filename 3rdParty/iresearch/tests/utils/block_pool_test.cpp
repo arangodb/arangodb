@@ -23,6 +23,7 @@
 
 #include "tests_shared.hpp"
 #include "utils/string.hpp"
+#include "utils/string_utils.hpp"
 #include "utils/block_pool.hpp"
 #include "utils/misc.hpp"
 
@@ -53,27 +54,27 @@ class block_pool_test : public test_base {
 
   void next_buffer_clear() {
     ASSERT_EQ( BlockSize, size_t(block_type::SIZE) );
-    ASSERT_EQ( 0, pool_.count() );
-    ASSERT_EQ( 0, pool_.size() );
+    ASSERT_EQ(0, pool_.block_count());
+    ASSERT_EQ(0, pool_.value_count());
     ASSERT_EQ( pool_.begin(), pool_.end() );
 
     /* add buffer */
     pool_.alloc_buffer();
-    ASSERT_EQ( 1, pool_.count() );
-    ASSERT_EQ( BlockSize, pool_.size() );
+    ASSERT_EQ(1, pool_.block_count());
+    ASSERT_EQ(BlockSize, pool_.value_count());
     ASSERT_NE( pool_.begin(), pool_.end() );
 
     /* add several buffers */
     const size_t count = 15;
     pool_.alloc_buffer( count );
-    ASSERT_EQ( 1 + count, pool_.count() );
-    ASSERT_EQ( BlockSize*(1+count), pool_.size() );
+    ASSERT_EQ(1 + count, pool_.block_count());
+    ASSERT_EQ(BlockSize * (1 + count), pool_.value_count());
     ASSERT_NE( pool_.begin(), pool_.end() );
 
     /* clear buffers */
     pool_.clear();
-    ASSERT_EQ( 0, pool_.count() );
-    ASSERT_EQ( 0, pool_.size() );
+    ASSERT_EQ(0, pool_.block_count());
+    ASSERT_EQ(0, pool_.value_count());
     ASSERT_EQ( pool_.begin(), pool_.end() );
   }
 
@@ -124,7 +125,7 @@ class block_pool_test : public test_base {
 
       if (i % 3 == 0) { // read data within slice
         bstring payload;
-        size_t size = r.read(&(oversize(payload, slice_data.size())[0]), slice_data.size());
+        size_t size = r.read(&(string_utils::oversize(payload, slice_data.size())[0]), slice_data.size());
         EXPECT_TRUE(slice_data.size() == size);
         EXPECT_TRUE(memcmp(slice_data.c_str(), payload.data(), std::min(slice_data.size(), size)) == 0);
       }
@@ -278,3 +279,7 @@ TEST_F(byte_block_pool_test, slice_alignment_with_reuse) {
 TEST_F(byte_block_pool_test, slice_chunked_read_write) {
   slice_chunked_read_write();
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
