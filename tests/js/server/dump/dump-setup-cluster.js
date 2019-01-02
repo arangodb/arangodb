@@ -123,6 +123,8 @@ function setupSatelliteCollections() {
   db._drop("UnitTestsDumpTruncated");
   db._drop("UnitTestsDumpShards");
   db._drop("UnitTestsDumpStrings");
+  db._drop("UnitTestsDumpReplicationFactor1");
+  db._drop("UnitTestsDumpReplicationFactor2");
 
   // this remains empty
   db._create("UnitTestsDumpEmpty", { waitForSync: true, indexBuckets: 256 });
@@ -251,6 +253,9 @@ function setupSatelliteCollections() {
 
   setupSmartGraph();
   setupSatelliteCollections();
+
+  db._create("UnitTestsDumpReplicationFactor1", { replicationFactor: 1, numberOfShards: 7 });
+  db._create("UnitTestsDumpReplicationFactor2", { replicationFactor: 2, numberOfShards: 6 });
 
   // Install Foxx
   const fs = require('fs');
