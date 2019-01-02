@@ -28,19 +28,19 @@
 #include <velocypack/Slice.h>
 
 using namespace arangodb;
-  
-IndexIterator::IndexIterator(LogicalCollection* collection, 
-                             transaction::Methods* trx)
-      : _collection(collection), 
-        _trx(trx) { 
+
+IndexIterator::IndexIterator(LogicalCollection* collection, transaction::Methods* trx)
+    : _collection(collection), _trx(trx) {
   TRI_ASSERT(_collection != nullptr);
   TRI_ASSERT(_trx != nullptr);
 }
 
 bool IndexIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
-  return next([this, &cb](LocalDocumentId const& token) {
-    _collection->readDocumentWithCallback(_trx, token, cb);
-  }, limit);
+  return next(
+      [this, &cb](LocalDocumentId const& token) {
+        _collection->readDocumentWithCallback(_trx, token, cb);
+      },
+      limit);
 }
 
 /// @brief default implementation for nextCovering
@@ -73,9 +73,7 @@ void IndexIterator::reset() {}
 /// @brief default implementation for skip
 void IndexIterator::skip(uint64_t count, uint64_t& skipped) {
   // Skip the first count-many entries
-  auto cb = [&skipped] (LocalDocumentId const& ) {
-    ++skipped;
-  };
+  auto cb = [&skipped](LocalDocumentId const&) { ++skipped; };
   // TODO: Can be improved
   next(cb, count);
 }
@@ -85,7 +83,7 @@ void IndexIterator::skip(uint64_t count, uint64_t& skipped) {
 ///        If callback is called less than limit many times
 ///        all iterators are exhausted
 bool MultiIndexIterator::next(LocalDocumentIdCallback const& callback, size_t limit) {
-  auto cb = [&limit, &callback] (LocalDocumentId const& token) {
+  auto cb = [&limit, &callback](LocalDocumentId const& token) {
     --limit;
     callback(token);
   };
@@ -112,7 +110,8 @@ bool MultiIndexIterator::next(LocalDocumentIdCallback const& callback, size_t li
 ///        all iterators are exhausted
 bool MultiIndexIterator::nextCovering(DocumentCallback const& callback, size_t limit) {
   TRI_ASSERT(hasCovering());
-  auto cb = [&limit, &callback] (LocalDocumentId const& token, arangodb::velocypack::Slice slice) {
+  auto cb = [&limit, &callback](LocalDocumentId const& token,
+                                arangodb::velocypack::Slice slice) {
     --limit;
     callback(token, slice);
   };

@@ -44,11 +44,8 @@ class MMFilesCollectionExport {
   MMFilesCollectionExport(MMFilesCollectionExport const&) = delete;
   MMFilesCollectionExport& operator=(MMFilesCollectionExport const&) = delete;
 
-  MMFilesCollectionExport(
-    TRI_vocbase_t& vocbase,
-    std::string const& name,
-    CollectionExport::Restrictions const& restrictions
-  );
+  MMFilesCollectionExport(TRI_vocbase_t& vocbase, std::string const& name,
+                          CollectionExport::Restrictions const& restrictions);
 
   ~MMFilesCollectionExport();
 
@@ -64,6 +61,6 @@ class MMFilesCollectionExport {
   std::vector<uint8_t const*> _vpack;
 };
 
-}
+}  // namespace arangodb
 
 #endif

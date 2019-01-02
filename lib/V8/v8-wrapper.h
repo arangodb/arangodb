@@ -82,8 +82,7 @@ class V8Wrapper {
       TRI_ASSERT(_handle.IsNearDeath());
 
       _handle.ClearWeak();
-      v8::Local<v8::Object> data =
-          v8::Local<v8::Object>::New(_isolate, _handle);
+      v8::Local<v8::Object> data = v8::Local<v8::Object>::New(_isolate, _handle);
       data->SetInternalField(0, v8::Undefined(_isolate));
       _handle.Reset();
 
@@ -100,8 +99,8 @@ class V8Wrapper {
 
   static STRUCT* unwrap(v8::Handle<v8::Object> handle) {
     TRI_ASSERT(handle->InternalFieldCount() > 0);
-    return static_cast<V8Wrapper*>(
-               handle->GetAlignedPointerFromInternalField(0))->_object;
+    return static_cast<V8Wrapper*>(handle->GetAlignedPointerFromInternalField(0))
+        ->_object;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -165,8 +164,8 @@ class V8Wrapper {
     auto myPointer = v8::Local<v8::Object>::New(isolate, *persistent);
 
     TRI_ASSERT(myPointer->InternalFieldCount() > 0);
-    auto obj = static_cast<V8Wrapper*>(
-                   myPointer->GetAlignedPointerFromInternalField(0))->_object;
+    auto obj = static_cast<V8Wrapper*>(myPointer->GetAlignedPointerFromInternalField(0))
+                   ->_object;
 
     TRI_ASSERT(persistent == &obj->_handle);
     TRI_ASSERT(!obj->_refs);
@@ -179,7 +178,9 @@ class V8Wrapper {
   /// @brief weakens the reference
   //////////////////////////////////////////////////////////////////////////////
 
-  void makeWeak() { _handle.SetWeak(&_handle, weakCallback, v8::WeakCallbackType::kFinalizer); }
+  void makeWeak() {
+    _handle.SetWeak(&_handle, weakCallback, v8::WeakCallbackType::kFinalizer);
+  }
 
  protected:
   //////////////////////////////////////////////////////////////////////////////

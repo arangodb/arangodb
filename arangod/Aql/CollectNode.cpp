@@ -35,11 +35,8 @@ CollectNode::CollectNode(
     Variable const* expressionVariable, Variable const* outVariable,
     std::vector<Variable const*> const& keepVariables,
     std::unordered_map<VariableId, std::string const> const& variableMap,
-    std::vector<std::pair<Variable const*, Variable const*>> const&
-        groupVariables,
-    std::vector<std::pair<Variable const*,
-                          std::pair<Variable const*, std::string>>> const&
-        aggregateVariables,
+    std::vector<std::pair<Variable const*, Variable const*>> const& groupVariables,
+    std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables,
     bool count, bool isDistinctCommand)
     : ExecutionNode(plan, base),
       _options(base),
@@ -123,9 +120,7 @@ void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const 
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
-) const {
+    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   switch (aggregationMethod()) {
     case CollectOptions::CollectMethod::HASH:
       return std::make_unique<HashedCollectBlock>(&engine, this);
@@ -136,11 +131,9 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
     case CollectOptions::CollectMethod::COUNT:
       return std::make_unique<CountCollectBlock>(&engine, this);
     default:
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "cannot instantiate CollectBlock with "
-        "undetermined aggregation method"
-      );
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "cannot instantiate CollectBlock with "
+                                     "undetermined aggregation method");
   }
 }
 
@@ -154,8 +147,7 @@ ExecutionNode* CollectNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   if (withProperties) {
     if (expressionVariable != nullptr) {
-      expressionVariable =
-          plan->getAst()->variables()->createVariable(expressionVariable);
+      expressionVariable = plan->getAst()->variables()->createVariable(expressionVariable);
     }
 
     if (outVariable != nullptr) {
@@ -181,9 +173,10 @@ ExecutionNode* CollectNode::clone(ExecutionPlan* plan, bool withDependencies,
     }
   }
 
-  auto c = std::make_unique<CollectNode>(plan, _id, _options, groupVariables, aggregateVariables,
-                      expressionVariable, outVariable, _keepVariables,
-                      _variableMap, _count, _isDistinctCommand);
+  auto c = std::make_unique<CollectNode>(plan, _id, _options, groupVariables,
+                                         aggregateVariables, expressionVariable,
+                                         outVariable, _keepVariables, _variableMap,
+                                         _count, _isDistinctCommand);
 
   // specialize the cloned node
   if (isSpecialized()) {
@@ -245,8 +238,7 @@ std::vector<Variable const*> CollectNode::getVariablesUsedHere() const {
 }
 
 /// @brief getVariablesUsedHere, modifying the set in-place
-void CollectNode::getVariablesUsedHere(
-    std::unordered_set<Variable const*>& vars) const {
+void CollectNode::getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const {
   for (auto const& p : _groupVariables) {
     vars.emplace(p.second);
   }
@@ -283,7 +275,7 @@ void CollectNode::getVariablesUsedHere(
     }
   }
 }
-  
+
 void CollectNode::setAggregateVariables(
     std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables) {
   _aggregateVariables = aggregateVariables;

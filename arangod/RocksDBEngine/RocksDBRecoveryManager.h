@@ -36,12 +36,9 @@ class TransactionDB;
 
 namespace arangodb {
 
-class RocksDBRecoveryManager final
-    : public application_features::ApplicationFeature {
+class RocksDBRecoveryManager final : public application_features::ApplicationFeature {
  public:
-  explicit RocksDBRecoveryManager(
-    application_features::ApplicationServer& server
-  );
+  explicit RocksDBRecoveryManager(application_features::ApplicationServer& server);
 
   static std::string featureName() { return "RocksDBRecoveryManager"; }
   static RocksDBRecoveryManager* instance();
@@ -57,7 +54,6 @@ class RocksDBRecoveryManager final
   Result parseRocksWAL();
 
  protected:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief rocksdb instance
   //////////////////////////////////////////////////////////////////////////////

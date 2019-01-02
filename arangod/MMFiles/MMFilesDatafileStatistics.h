@@ -31,7 +31,6 @@
 
 namespace arangodb {
 
-
 /// @brief datafile statistics manager for a single collection
 class MMFilesDatafileStatistics {
  public:
@@ -54,7 +53,7 @@ class MMFilesDatafileStatistics {
 
   // @brief get current collection statistics
   MMFilesDatafileStatistics::CompactionStats getStats();
-  
+
   /// @brief create (empty) statistics for a datafile
   void create(TRI_voc_fid_t);
 
@@ -93,9 +92,9 @@ class MMFilesDatafileStatistics {
   std::unordered_map<TRI_voc_fid_t, MMFilesDatafileStatisticsContainer*> _stats;
 
   // @brief per-collection runtime statistics
-  arangodb::basics::ReadWriteLock            _statisticsLock;
+  arangodb::basics::ReadWriteLock _statisticsLock;
   MMFilesDatafileStatistics::CompactionStats _localStats;
 };
-}
+}  // namespace arangodb
 
 #endif

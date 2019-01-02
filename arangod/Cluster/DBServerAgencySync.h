@@ -67,13 +67,13 @@ class DBServerAgencySync {
    * @param  collections  Builder to fill to
    */
   static arangodb::Result getLocalCollections(VPackBuilder& collections);
-  
+
  private:
   DBServerAgencySyncResult execute();
 
  private:
   HeartbeatThread* _heartbeat;
 };
-}
+}  // namespace arangodb
 
 #endif

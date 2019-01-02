@@ -39,9 +39,7 @@ class MaintenanceFeature;
 namespace maintenance {
 
 class Action {
-
-public:
-
+ public:
   /// @brief construct with description
   Action(MaintenanceFeature&, ActionDescription const&);
 
@@ -52,7 +50,7 @@ public:
   Action(MaintenanceFeature&, std::shared_ptr<ActionDescription> const&);
 
   Action(Action const&) = delete;
-  Action(Action &&) = delete;
+  Action(Action&&) = delete;
   Action() = delete;
   Action& operator=(Action const&) = delete;
 
@@ -73,7 +71,7 @@ public:
   arangodb::Result result();
 
   /// @brief run for some time and tell, if need more time or done
-  bool first ();
+  bool first();
 
   /// @brief run for some time and tell, if need more time or done
   ActionState state() const;
@@ -98,9 +96,7 @@ public:
 
   ActionState getState() const;
 
-  void setState(ActionState state) {
-    _action->setState(state);
-  }
+  void setState(ActionState state) { _action->setState(state); }
 
   /// @brief update incremental statistics
   void startStats();
@@ -146,56 +142,57 @@ public:
   uint64_t id() const { return _action->id(); }
 
   /// @brief add VPackObject to supplied builder with info about this action
-  void toVelocyPack(VPackBuilder & builder) const;
+  void toVelocyPack(VPackBuilder& builder) const;
 
   /// @brief add VPackObject to supplied builder with info about this action
   VPackBuilder toVelocyPack() const { return _action->toVelocyPack(); }
 
   /// @brief Returns json array of object contents for status reports
   ///  Thread safety of this function is questionable for some member objects
-//  virtual Result toJson(/* builder */) {return Result;};
+  //  virtual Result toJson(/* builder */) {return Result;};
 
   /// @brief Return Result object contain action specific status
   Result result() const { return _action->result(); }
 
-  /// @brief execution finished successfully or failed ... and race timer expired
+  /// @brief execution finished successfully or failed ... and race timer
+  /// expired
   bool done() const { return _action->done(); }
 
   /// @brief waiting for a worker to grab it and go!
-  bool runable() const {return _action->runable();}
+  bool runable() const { return _action->runable(); }
 
   /// @brief When object was constructed
-  std::chrono::system_clock::time_point getCreateTime() const
-    {return _action->getCreateTime();}
+  std::chrono::system_clock::time_point getCreateTime() const {
+    return _action->getCreateTime();
+  }
 
   /// @brief When object was first started
-  std::chrono::system_clock::time_point getStartTime() const
-    {return _action->getStartTime();}
-
+  std::chrono::system_clock::time_point getStartTime() const {
+    return _action->getStartTime();
+  }
 
   /// @brief When object most recently iterated
-  std::chrono::system_clock::time_point getLastStatTime() const
-    {return _action->getLastStatTime();}
-
+  std::chrono::system_clock::time_point getLastStatTime() const {
+    return _action->getLastStatTime();
+  }
 
   /// @brief When object finished executing
-  std::chrono::system_clock::time_point getDoneTime() const
-    {return _action->getDoneTime();}
+  std::chrono::system_clock::time_point getDoneTime() const {
+    return _action->getDoneTime();
+  }
 
-private:
-
+ private:
   /// @brief actually create the concrete action
   void create(MaintenanceFeature&, ActionDescription const&);
 
   /// @brief concrete action
   std::unique_ptr<ActionBase> _action;
-
 };
 
-}}
+}  // namespace maintenance
+}  // namespace arangodb
 
 namespace std {
-ostream& operator<< (
-  ostream& o, arangodb::maintenance::Action const& d);
+ostream& operator<<(ostream& o, arangodb::maintenance::Action const& d);
 }
 #endif

@@ -47,23 +47,21 @@ namespace algos {
 struct SCC : public SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>> {
  public:
   explicit SCC(VPackSlice userParams)
-      : SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>>(
-            "SCC", userParams) {}
+      : SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>>("SCC", userParams) {}
 
   GraphFormat<SCCValue, int8_t>* inputFormat() const override;
   MessageFormat<SenderMessage<uint64_t>>* messageFormat() const override {
     return new SenderMessageFormat<uint64_t>();
   }
 
-  VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>>*
-  createComputation(WorkerConfig const*) const override;
+  VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>>* createComputation(
+      WorkerConfig const*) const override;
 
   MasterContext* masterContext(VPackSlice userParams) const override;
 
   IAggregator* aggregator(std::string const& name) const override;
-
 };
-}
-}
-}
+}  // namespace algos
+}  // namespace pregel
+}  // namespace arangodb
 #endif

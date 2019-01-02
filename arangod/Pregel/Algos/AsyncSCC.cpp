@@ -50,8 +50,7 @@ struct ASCCComputation
     : public VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>> {
   ASCCComputation() {}
 
-  void compute(
-      MessageIterator<SenderMessage<uint64_t>> const& messages) override {
+  void compute(MessageIterator<SenderMessage<uint64_t>> const& messages) override {
     if (isActive() == false) {
       // color was already determinded or vertex was trimmed
       return;
@@ -144,8 +143,8 @@ struct ASCCComputation
   }
 };
 
-VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>>*
-AsyncSCC::createComputation(WorkerConfig const* config) const {
+VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>>* AsyncSCC::createComputation(
+    WorkerConfig const* config) const {
   return new ASCCComputation();
 }
 
@@ -167,8 +166,7 @@ struct SCCGraphFormat : public GraphFormat<SCCValue, int8_t> {
 
   size_t estimatedEdgeSize() const override { return 0; };
 
-  size_t copyVertexData(std::string const& documentId,
-                        arangodb::velocypack::Slice document,
+  size_t copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
                         SCCValue* targetPtr, size_t maxSize) override {
     SCCValue* senders = (SCCValue*)targetPtr;
     senders->vertexID = vertexIdRange++;

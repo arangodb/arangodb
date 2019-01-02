@@ -33,9 +33,8 @@ namespace aql {
 struct CostEstimate {
   /// @brief create the cost estimate from values
   CostEstimate(double estimatedCost, size_t estimatedNrItems)
-      : estimatedCost(estimatedCost),
-        estimatedNrItems(estimatedNrItems) {} 
-  
+      : estimatedCost(estimatedCost), estimatedNrItems(estimatedNrItems) {}
+
   /// @brief initialize a still-invalid cost estimate
   CostEstimate() : CostEstimate(-1.0, 0) {}
 
@@ -53,14 +52,14 @@ struct CostEstimate {
     estimatedNrItems = 0;
     TRI_ASSERT(!isValid());
   }
-  
+
   /// @brief invalidate to a valid but empty estimate
   void initialize() {
     estimatedCost = 0.0;
     estimatedNrItems = 0;
     TRI_ASSERT(isValid());
   }
-  
+
   /// @brief whether or not the estimate is valid
   inline bool isValid() const {
     // a value of < 0 will mean that the cost estimation was not performed yet
@@ -69,13 +68,13 @@ struct CostEstimate {
 
   /// @brief estimated cost produced by the node
   double estimatedCost;
-  
+
   /// @brief cost
   /// @brief estimated number of items returned by the node
   size_t estimatedNrItems;
 };
 
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

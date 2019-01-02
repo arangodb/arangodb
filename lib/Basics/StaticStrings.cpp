@@ -95,6 +95,8 @@ std::string const StaticStrings::IndexId("id");
 std::string const StaticStrings::IndexSparse("sparse");
 std::string const StaticStrings::IndexType("type");
 std::string const StaticStrings::IndexUnique("unique");
+std::string const StaticStrings::IndexIsBuilding("isBuilding");
+std::string const StaticStrings::IndexInBackground("inBackground");
 
 // HTTP headers
 std::string const StaticStrings::Accept("accept");
@@ -145,7 +147,8 @@ std::string const StaticStrings::LeaderEndpoint("x-arango-endpoint");
 std::string const StaticStrings::Location("location");
 std::string const StaticStrings::NoSniff("nosniff");
 std::string const StaticStrings::Origin("origin");
-std::string const StaticStrings::PotentialDirtyRead("x-arango-potential-dirty-read");
+std::string const StaticStrings::PotentialDirtyRead(
+    "x-arango-potential-dirty-read");
 std::string const StaticStrings::RequestForwardedTo(
     "x-arango-request-forwarded-to");
 std::string const StaticStrings::ResponseCode("x-arango-response-code");

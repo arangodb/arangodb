@@ -125,8 +125,7 @@ struct SLPAComputation : public VertexComputation<SLPAValue, int8_t, uint64_t> {
   }
 };
 
-VertexComputation<SLPAValue, int8_t, uint64_t>* SLPA::createComputation(
-    WorkerConfig const* config) const {
+VertexComputation<SLPAValue, int8_t, uint64_t>* SLPA::createComputation(WorkerConfig const* config) const {
   return new SLPAComputation();
 }
 
@@ -138,10 +137,7 @@ struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
   unsigned maxCommunities;
 
   explicit SLPAGraphFormat(std::string const& result, double thr, unsigned mc)
-      : resField(result),
-        vertexIdRange(0),
-        threshold(thr),
-        maxCommunities(mc) {}
+      : resField(result), vertexIdRange(0), threshold(thr), maxCommunities(mc) {}
 
   size_t estimatedVertexSize() const override { return sizeof(LPValue); };
   size_t estimatedEdgeSize() const override { return 0; };
@@ -156,9 +152,8 @@ struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
     }
   }
 
-  size_t copyVertexData(std::string const& documentId,
-                        arangodb::velocypack::Slice document, SLPAValue* value,
-                        size_t maxSize) override {
+  size_t copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
+                        SLPAValue* value, size_t maxSize) override {
     value->nodeId = (uint32_t)vertexIdRange++;
     return sizeof(SLPAValue);
   }
@@ -192,8 +187,7 @@ struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
       } else {
         // output for use with the DMID/Metrics code
         b.add(resField, VPackValue(VPackValueType::Array));
-        for (unsigned c = 0; c < vec.size() && c < maxCommunities;
-             c++) {
+        for (unsigned c = 0; c < vec.size() && c < maxCommunities; c++) {
           b.openArray();
           b.add(VPackValue(vec[c].first));
           b.add(VPackValue(vec[c].second));

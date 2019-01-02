@@ -38,6 +38,6 @@ class AqlFeature final : public application_features::ApplicationFeature {
   void stop() override final;
 };
 
-}
+}  // namespace arangodb
 
 #endif

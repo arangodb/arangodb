@@ -24,8 +24,8 @@
 #ifndef ARANGOD_AQL_SCOPES_H
 #define ARANGOD_AQL_SCOPES_H 1
 
-#include "Basics/Common.h"
 #include "Aql/Variable.h"
+#include "Basics/Common.h"
 
 namespace arangodb {
 namespace aql {
@@ -151,7 +151,7 @@ class Scopes {
   /// @brief a stack with aliases for the $CURRENT variable
   std::vector<Variable const*> _currentVariables;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

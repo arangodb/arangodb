@@ -53,8 +53,7 @@ class CalculationBlock final : public ExecutionBlock {
 
  public:
   /// @brief getSome
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(
-      size_t atMost) override final;
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override final;
 
  private:
   /// @brief we hold a pointer to the expression in the plan
@@ -74,12 +73,12 @@ class CalculationBlock final : public ExecutionBlock {
 
   /// @brief whether or not the expression is a simple variable reference
   bool _isReference;
-  
+
   /// @brief cache the ServerState value
   bool _isRunningInCluster;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

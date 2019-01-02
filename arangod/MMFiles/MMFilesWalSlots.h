@@ -27,9 +27,9 @@
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
+#include "MMFiles/MMFilesWalLogfile.h"
 #include "MMFiles/MMFilesWalSlot.h"
 #include "MMFiles/MMFilesWalSyncRegion.h"
-#include "MMFiles/MMFilesWalLogfile.h"
 
 namespace arangodb {
 class MMFilesLogfileManager;
@@ -89,11 +89,12 @@ class MMFilesWalSlots {
   void shutdown();
 
   /// @brief get the statistics of the slots
-  void statistics(MMFilesWalSlot::TickType&, MMFilesWalSlot::TickType&, MMFilesWalSlot::TickType&, uint64_t&, uint64_t&);
+  void statistics(MMFilesWalSlot::TickType&, MMFilesWalSlot::TickType&,
+                  MMFilesWalSlot::TickType&, uint64_t&, uint64_t&);
 
   /// @brief execute a flush operation
   int flush(bool);
-  
+
   /// @brief initially set the last ticks on start
   void setLastTick(MMFilesWalSlot::TickType const&);
 
@@ -102,10 +103,10 @@ class MMFilesWalSlots {
 
   /// @brief return the next unused slot
   MMFilesWalSlotInfo nextUnused(uint32_t size);
-  
+
   /// @brief return the next unused slot
-  MMFilesWalSlotInfo nextUnused(TRI_voc_tick_t databaseId, 
-                      TRI_voc_cid_t collectionId, uint32_t size);
+  MMFilesWalSlotInfo nextUnused(TRI_voc_tick_t databaseId,
+                                TRI_voc_cid_t collectionId, uint32_t size);
 
   /// @brief return a used slot, allowing its synchronization
   int returnUsed(MMFilesWalSlotInfo&, bool wakeUpSynchronizer,
@@ -130,7 +131,7 @@ class MMFilesWalSlots {
 
   /// @brief write a header marker
   int writeHeader(MMFilesWalSlot*);
-  
+
   /// @brief writes a prologue for a document/remove marker
   int writePrologue(MMFilesWalSlot*, void*, TRI_voc_tick_t, TRI_voc_cid_t);
 
@@ -140,7 +141,7 @@ class MMFilesWalSlots {
   /// @brief handout a region and advance the handout index
   MMFilesWalSlot::TickType handout();
 
-  /// @brief return the next slots that would be handed out, without 
+  /// @brief return the next slots that would be handed out, without
   /// actually handing it out
   size_t nextHandoutIndex() const;
 
@@ -196,10 +197,10 @@ class MMFilesWalSlots {
 
   /// @brief number of sync log events handled
   uint64_t _numEventsSync;
-  
+
   /// @brief last written database id (in prologue marker)
   TRI_voc_tick_t _lastDatabaseId;
-  
+
   /// @brief last written collection id (in prologue marker)
   TRI_voc_cid_t _lastCollectionId;
 
@@ -207,6 +208,6 @@ class MMFilesWalSlots {
   bool _shutdown;
 };
 
-}
+}  // namespace arangodb
 
 #endif

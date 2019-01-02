@@ -54,8 +54,7 @@ namespace cache {
 class PlainCache final : public Cache {
  public:
   PlainCache(Cache::ConstructionGuard guard, Manager* manager, uint64_t id,
-             Metadata&& metadata, std::shared_ptr<Table> table,
-             bool enableWindowedStats);
+             Metadata&& metadata, std::shared_ptr<Table> table, bool enableWindowedStats);
   ~PlainCache();
 
   PlainCache() = delete;
@@ -110,13 +109,12 @@ class PlainCache final : public Cache {
                                        bool enableWindowedStats);
 
   virtual uint64_t freeMemoryFrom(uint32_t hash) override;
-  virtual void migrateBucket(void* sourcePtr,
-                             std::unique_ptr<Table::Subtable> targets,
+  virtual void migrateBucket(void* sourcePtr, std::unique_ptr<Table::Subtable> targets,
                              std::shared_ptr<Table> newTable) override;
 
   // helpers
-  std::tuple<Result, PlainBucket*, Table*> getBucket(
-      uint32_t hash, uint64_t maxTries, bool singleOperation = true);
+  std::tuple<Result, PlainBucket*, Table*> getBucket(uint32_t hash, uint64_t maxTries,
+                                                     bool singleOperation = true);
   uint32_t getIndex(uint32_t hash, bool useAuxiliary) const;
 
   static Table::BucketClearer bucketClearer(Metadata* metadata);
