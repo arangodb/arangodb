@@ -502,7 +502,7 @@ double Index::selectivityEstimate(StringRef const* extra) const {
   }
 
   // make sure the estimate is always within bounds
-  return std::max(0, std::min(1, estimate));
+  return std::max(0.0, std::min(1.0, estimate));
 }
 
 double Index::selectivityEstimateLocal(StringRef const* extra) const {
