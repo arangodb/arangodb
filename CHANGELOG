@@ -1,6 +1,9 @@
 devel
 -----
 
+* speed up data-modification operations in exclusive transactions in the RocksDB
+  storage engine
+
 * An AQL query that uses the edge index only and returns the opposite side of
   the edge can now be executed in a more optimized way, e.g.
 
