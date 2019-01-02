@@ -117,8 +117,10 @@ void AuthenticationFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   if (!_jwtSecretKeyfileProgramOption.empty()) {
 
     try {
-      // Maybe we want to trim the secret here? Not sure if this is wanted or unwanted
-      // Or base64 encoded?
+      // Note that the secret is trimmed for whitespace, because whitespace
+      // at the end of a file can easily happen. We do not base64-encode,
+      // though, so the bytes count as given. Zero bytes might be a problem
+      // here.
       _jwtSecretProgramOption = basics::StringUtils::trim(
           basics::FileUtils::slurp(_jwtSecretKeyfileProgramOption),
           " \t\n\r");
