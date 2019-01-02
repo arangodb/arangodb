@@ -1,5 +1,7 @@
-v3.4.2
+v3.4.2 (XXXX-XX-XX)
 -------------------
+
+* fixed issue #7834: AQL Query crashes instance
 
 * Added --server.jwt-secret-keyfile option.
 
