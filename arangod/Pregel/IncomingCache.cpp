@@ -89,8 +89,7 @@ void InCache<M>::storeMessageNoLock(PregelShard shard,
 }
 
 template <typename M>
-void InCache<M>::storeMessage(PregelShard shard, PregelKey const& vertexId,
-                              M const& data) {
+void InCache<M>::storeMessage(PregelShard shard, PregelKey const& vertexId, M const& data) {
   MUTEX_LOCKER(guard, this->_bucketLocker[shard]);
   this->_set(shard, vertexId, data);
   this->_containedMessageCount++;
@@ -99,8 +98,7 @@ void InCache<M>::storeMessage(PregelShard shard, PregelKey const& vertexId,
 // ================== ArrayIncomingCache ==================
 
 template <typename M>
-ArrayInCache<M>::ArrayInCache(WorkerConfig const* config,
-                              MessageFormat<M> const* format)
+ArrayInCache<M>::ArrayInCache(WorkerConfig const* config, MessageFormat<M> const* format)
     : InCache<M>(format) {
   if (config != nullptr) {
     std::set<PregelShard> const& shardIDs = config->localPregelShardIDs();
@@ -113,15 +111,13 @@ ArrayInCache<M>::ArrayInCache(WorkerConfig const* config,
 }
 
 template <typename M>
-void ArrayInCache<M>::_set(PregelShard shard, PregelKey const& key,
-                           M const& newValue) {
+void ArrayInCache<M>::_set(PregelShard shard, PregelKey const& key, M const& newValue) {
   HMap& vertexMap(_shardMap[shard]);
   vertexMap[key].push_back(newValue);
 }
 
 template <typename M>
-void ArrayInCache<M>::mergeCache(WorkerConfig const& config,
-                                 InCache<M> const* otherCache) {
+void ArrayInCache<M>::mergeCache(WorkerConfig const& config, InCache<M> const* otherCache) {
   ArrayInCache<M>* other = (ArrayInCache<M>*)otherCache;
   this->_containedMessageCount += other->_containedMessageCount;
 
@@ -139,7 +135,7 @@ void ArrayInCache<M>::mergeCache(WorkerConfig const& config,
     if (it != other->_shardMap.end() && it->second.size() > 0) {
       TRY_MUTEX_LOCKER(guard, this->_bucketLocker[shardId]);
       if (guard.isLocked() == false) {
-        if (i == 0) {   // eventually we hit the last one
+        if (i == 0) {  // eventually we hit the last one
           std::this_thread::sleep_for(std::chrono::microseconds(100));  // don't busy wait
         }
         continue;
@@ -159,8 +155,7 @@ void ArrayInCache<M>::mergeCache(WorkerConfig const& config,
 }
 
 template <typename M>
-MessageIterator<M> ArrayInCache<M>::getMessages(PregelShard shard,
-                                                PregelKey const& key) {
+MessageIterator<M> ArrayInCache<M>::getMessages(PregelShard shard, PregelKey const& key) {
   HMap const& vertexMap = _shardMap[shard];
   auto vmsg = vertexMap.find(key);
   if (vmsg != vertexMap.end()) {
@@ -192,8 +187,7 @@ void ArrayInCache<M>::erase(PregelShard shard, PregelKey const& key) {
 }
 
 template <typename M>
-void ArrayInCache<M>::forEach(
-    std::function<void(PregelShard, PregelKey const&, M const&)> func) {
+void ArrayInCache<M>::forEach(std::function<void(PregelShard, PregelKey const&, M const&)> func) {
   for (auto const& pair : _shardMap) {
     PregelShard shard = pair.first;
     HMap const& vertexMap = pair.second;
@@ -223,8 +217,7 @@ CombiningInCache<M>::CombiningInCache(WorkerConfig const* config,
 }
 
 template <typename M>
-void CombiningInCache<M>::_set(PregelShard shard, PregelKey const& key,
-                               M const& newValue) {
+void CombiningInCache<M>::_set(PregelShard shard, PregelKey const& key, M const& newValue) {
   HMap& vertexMap = _shardMap[shard];
   auto vmsg = vertexMap.find(key);
   if (vmsg != vertexMap.end()) {  // got a message for the same vertex
@@ -235,8 +228,7 @@ void CombiningInCache<M>::_set(PregelShard shard, PregelKey const& key,
 }
 
 template <typename M>
-void CombiningInCache<M>::mergeCache(WorkerConfig const& config,
-                                     InCache<M> const* otherCache) {
+void CombiningInCache<M>::mergeCache(WorkerConfig const& config, InCache<M> const* otherCache) {
   CombiningInCache<M>* other = (CombiningInCache<M>*)otherCache;
   this->_containedMessageCount += other->_containedMessageCount;
 
@@ -254,7 +246,7 @@ void CombiningInCache<M>::mergeCache(WorkerConfig const& config,
     if (it != other->_shardMap.end() && it->second.size() > 0) {
       TRY_MUTEX_LOCKER(guard, this->_bucketLocker[shardId]);
       if (guard.isLocked() == false) {
-        if (i == 0) {   // eventually we hit the last one
+        if (i == 0) {  // eventually we hit the last one
           std::this_thread::sleep_for(std::chrono::microseconds(100));  // don't busy wait
         }
         continue;
@@ -277,8 +269,7 @@ void CombiningInCache<M>::mergeCache(WorkerConfig const& config,
 }
 
 template <typename M>
-MessageIterator<M> CombiningInCache<M>::getMessages(PregelShard shard,
-                                                    PregelKey const& key) {
+MessageIterator<M> CombiningInCache<M>::getMessages(PregelShard shard, PregelKey const& key) {
   HMap const& vertexMap = _shardMap[shard];
   auto vmsg = vertexMap.find(key);
   if (vmsg != vertexMap.end()) {
@@ -310,8 +301,7 @@ void CombiningInCache<M>::erase(PregelShard shard, PregelKey const& key) {
 /// Calls function for each entry. DOES NOT LOCK
 template <typename M>
 void CombiningInCache<M>::forEach(
-    std::function<void(PregelShard shard, PregelKey const& key, M const&)>
-        func) {
+    std::function<void(PregelShard shard, PregelKey const& key, M const&)> func) {
   for (auto const& pair : _shardMap) {
     PregelShard shard = pair.first;
     HMap const& vertexMap = pair.second;

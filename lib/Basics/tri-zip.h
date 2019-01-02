@@ -43,7 +43,6 @@ int TRI_ZipFile(char const* filename, char const* chdir,
 /// @brief unzips a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UnzipFile(char const*, char const*, bool, bool, char const*,
-                  std::string& errorMessage);
+int TRI_UnzipFile(char const*, char const*, bool, bool, char const*, std::string& errorMessage);
 
 #endif

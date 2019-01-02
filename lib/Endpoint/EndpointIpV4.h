@@ -42,6 +42,6 @@ class EndpointIpV4 final : public EndpointIp {
     return host() + ':' + arangodb::basics::StringUtils::itoa(port());
   }
 };
-}
+}  // namespace arangodb
 
 #endif

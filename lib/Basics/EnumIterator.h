@@ -26,24 +26,24 @@
 #include "Basics/Common.h"
 
 #include <type_traits>
-    
-#define ENUM_ITERATOR(type, start, end) arangodb::EnumIterator<type, type::start, type::end>()
+
+#define ENUM_ITERATOR(type, start, end) \
+  arangodb::EnumIterator<type, type::start, type::end>()
 
 namespace arangodb {
 
 /// @brief Iterator for an enum class type
-/// will work only when the enum values are unique, contiguous and 
+/// will work only when the enum values are unique, contiguous and
 /// sorted in order
 template <typename T, T beginValue, T endValue>
 class EnumIterator {
   typedef typename std::underlying_type<T>::type ValueType;
 
  public:
-  EnumIterator(T const& current) noexcept 
+  EnumIterator(T const& current) noexcept
       : current(static_cast<ValueType>(current)) {}
 
-  EnumIterator() 
-      : current(static_cast<ValueType>(beginValue)) {}
+  EnumIterator() : current(static_cast<ValueType>(beginValue)) {}
 
   EnumIterator operator++() noexcept {
     ++current;
@@ -54,17 +54,18 @@ class EnumIterator {
 
   EnumIterator begin() noexcept { return *this; }
   EnumIterator end() noexcept {
-    static const EnumIterator endIter = ++EnumIterator(endValue); 
+    static const EnumIterator endIter = ++EnumIterator(endValue);
     return endIter;
   }
 
-  bool operator!=(EnumIterator const& other) const noexcept { 
-    return current != other.current; 
+  bool operator!=(EnumIterator const& other) const noexcept {
+    return current != other.current;
   }
+
  private:
   int current;
 };
 
-}
+}  // namespace arangodb
 
 #endif

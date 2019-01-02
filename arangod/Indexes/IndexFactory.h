@@ -35,43 +35,33 @@ class LogicalCollection;
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief factory for comparing/instantiating/normalizing a definition for a
 ///        specific Index type
 ////////////////////////////////////////////////////////////////////////////////
 struct IndexTypeFactory {
-  virtual ~IndexTypeFactory() = default; // define to silence warning
+  virtual ~IndexTypeFactory() = default;  // define to silence warning
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief determine if the two Index definitions will result in the same
   ///        index once instantiated
   //////////////////////////////////////////////////////////////////////////////
-  virtual bool equal(
-    velocypack::Slice const& lhs,
-    velocypack::Slice const& rhs
-  ) const = 0;
+  virtual bool equal(velocypack::Slice const& lhs, velocypack::Slice const& rhs) const = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief instantiate an Index definition
   //////////////////////////////////////////////////////////////////////////////
-  virtual Result instantiate(
-    std::shared_ptr<Index>& index,
-    LogicalCollection& collection,
-    velocypack::Slice const& definition,
-    TRI_idx_iid_t id,
-    bool isClusterConstructor
-  ) const = 0;
+  virtual Result instantiate(std::shared_ptr<Index>& index, LogicalCollection& collection,
+                             velocypack::Slice const& definition, TRI_idx_iid_t id,
+                             bool isClusterConstructor) const = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief normalize an Index definition prior to instantiation/persistence
   //////////////////////////////////////////////////////////////////////////////
-  virtual Result normalize(
-    velocypack::Builder& normalized,
-    velocypack::Slice definition,
-    bool isCreation
-  ) const = 0;
+  virtual Result normalize(velocypack::Builder& normalized,
+                           velocypack::Slice definition, bool isCreation) const = 0;
 };
 
 class IndexFactory {
@@ -81,46 +71,36 @@ class IndexFactory {
   /// @return 'factory' for 'type' was added successfully
   Result emplace(std::string const& type, IndexTypeFactory const& factory);
 
-  virtual Result enhanceIndexDefinition(
-    velocypack::Slice const definition,
-    velocypack::Builder& normalized,
-    bool isCreation,
-    bool isCoordinator
-  ) const;
+  virtual Result enhanceIndexDefinition(velocypack::Slice const definition,
+                                        velocypack::Builder& normalized,
+                                        bool isCreation, bool isCoordinator) const;
 
-  /// @return factory for the specified type or a failing placeholder if no such type
+  /// @return factory for the specified type or a failing placeholder if no such
+  /// type
   IndexTypeFactory const& factory(std::string const& type) const noexcept;
 
-  std::shared_ptr<Index> prepareIndexFromSlice(
-    velocypack::Slice definition,
-    bool generateKey,
-    LogicalCollection& collection,
-    bool isClusterConstructor
-  ) const;
+  std::shared_ptr<Index> prepareIndexFromSlice(velocypack::Slice definition, bool generateKey,
+                                               LogicalCollection& collection,
+                                               bool isClusterConstructor) const;
 
   /// @brief used to display storage engine capabilities
   virtual std::vector<std::string> supportedIndexes() const;
 
   /// @brief create system indexes primary / edge
-  virtual void fillSystemIndexes(
-    arangodb::LogicalCollection& col,
-    std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes
-  ) const = 0;
+  virtual void fillSystemIndexes(arangodb::LogicalCollection& col,
+                                 std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const = 0;
 
   /// @brief create indexes from a list of index definitions
-  virtual void prepareIndexes(
-    LogicalCollection& col,
-    arangodb::velocypack::Slice const& indexesSlice,
-    std::vector<std::shared_ptr<arangodb::Index>>& indexes
-  ) const = 0;
+  virtual void prepareIndexes(LogicalCollection& col,
+                              arangodb::velocypack::Slice const& indexesSlice,
+                              std::vector<std::shared_ptr<arangodb::Index>>& indexes) const = 0;
 
  protected:
   /// @brief clear internal factory/normalizer maps
   void clear();
 
-  static TRI_idx_iid_t validateSlice(arangodb::velocypack::Slice info, 
-                                     bool generateKey, 
-                                     bool isClusterConstructor);
+  static TRI_idx_iid_t validateSlice(arangodb::velocypack::Slice info,
+                                     bool generateKey, bool isClusterConstructor);
 
  private:
   std::unordered_map<std::string, IndexTypeFactory const*> _factories;

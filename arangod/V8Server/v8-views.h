@@ -31,8 +31,7 @@
 
 struct TRI_vocbase_t;
 
-void TRI_InitV8Views(v8::Handle<v8::Context> context,
-                     TRI_vocbase_t* vocbase,
+void TRI_InitV8Views(v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase,
                      TRI_v8_global_t* v8g, v8::Isolate* isolate,
                      v8::Handle<v8::ObjectTemplate> ArangoDBNS);
 

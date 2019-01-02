@@ -32,7 +32,7 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace transaction {
-  class Context;
+class Context;
 }
 
 namespace traverser {
@@ -44,6 +44,7 @@ typedef TRI_voc_tick_t TraverserEngineID;
 
 class TraverserEngineRegistry {
   friend class BaseTraverserEngine;
+
  public:
   TraverserEngineRegistry() {}
 
@@ -53,13 +54,10 @@ class TraverserEngineRegistry {
   ///        It can be referred to by the returned
   ///        ID. If the returned ID is 0 something
   ///        internally went wrong.
-  TEST_VIRTUAL TraverserEngineID createNew(
-    TRI_vocbase_t& vocbase,
-    std::shared_ptr<transaction::Context> const& ctx,
-    arangodb::velocypack::Slice engineInfo,
-    double ttl,
-    bool needToLock
-  );
+  TEST_VIRTUAL TraverserEngineID createNew(TRI_vocbase_t& vocbase,
+                                           std::shared_ptr<transaction::Context> const& ctx,
+                                           arangodb::velocypack::Slice engineInfo,
+                                           double ttl, bool needToLock);
 
   /// @brief Get the engine with the given ID.
   ///        TODO Test what happens if this pointer
@@ -86,24 +84,19 @@ class TraverserEngineRegistry {
   void destroyAll();
 
  private:
-  
   void destroy(TraverserEngineID, bool doLock);
 
   struct EngineInfo {
-    bool _isInUse;                                 // Flag if this engine is in use
-    bool _toBeDeleted;                             // Should be deleted after
-                                                   // next return
-    std::unique_ptr<BaseEngine> _engine;           // The real engine
+    bool _isInUse;                        // Flag if this engine is in use
+    bool _toBeDeleted;                    // Should be deleted after
+                                          // next return
+    std::unique_ptr<BaseEngine> _engine;  // The real engine
 
-    double _timeToLive;                            // in seconds
-    double _expires;                               // UNIX UTC timestamp for expiration
+    double _timeToLive;  // in seconds
+    double _expires;     // UNIX UTC timestamp for expiration
 
-    EngineInfo(
-      TRI_vocbase_t& vocbase,
-      std::shared_ptr<transaction::Context> const& ctx,
-      arangodb::velocypack::Slice info,
-      bool needToLock
-    );
+    EngineInfo(TRI_vocbase_t& vocbase, std::shared_ptr<transaction::Context> const& ctx,
+               arangodb::velocypack::Slice info, bool needToLock);
     ~EngineInfo();
   };
 
@@ -117,6 +110,6 @@ class TraverserEngineRegistry {
   basics::ConditionVariable _cv;
 };
 
-} // namespace traverser
-} // namespace arangodb
+}  // namespace traverser
+}  // namespace arangodb
 #endif

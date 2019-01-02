@@ -31,15 +31,14 @@
 namespace arangodb {
 namespace mmfilesutils {
 /// @brief whether or not a marker should be replicated
-bool MustReplicateWalMarkerType(MMFilesMarker const* marker,
-                                bool allowDBMarkers);
+bool MustReplicateWalMarkerType(MMFilesMarker const* marker, bool allowDBMarkers);
 
 /// @brief whether or not a marker belongs to a transaction
 bool IsTransactionWalMarkerType(MMFilesMarker const* marker);
 
 /// @brief translate a marker type to a replication type
 TRI_replication_operation_e TranslateType(MMFilesMarker const* marker);
-}
-}
-  
+}  // namespace mmfilesutils
+}  // namespace arangodb
+
 #endif

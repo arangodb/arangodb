@@ -30,11 +30,12 @@ namespace arangodb {
 class MMFilesRestCollectionHandler : public arangodb::RestCollectionHandler {
  public:
   MMFilesRestCollectionHandler(GeneralRequest*, GeneralResponse*);
-protected:
+
+ protected:
   Result handleExtraCommandPut(LogicalCollection& coll, std::string const& command,
                                velocypack::Builder& builder) override final;
 };
 
-}
+}  // namespace arangodb
 
 #endif

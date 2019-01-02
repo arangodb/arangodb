@@ -53,17 +53,12 @@ class VocbaseContext : public arangodb::ExecContext {
  private:
   TRI_vocbase_t& _vocbase;
 
-  VocbaseContext(
-    GeneralRequest& req,
-    TRI_vocbase_t& vocbase,
-    ExecContext::Type type,
-    auth::Level systemLevel,
-    auth::Level dbLevel
-  );
+  VocbaseContext(GeneralRequest& req, TRI_vocbase_t& vocbase, ExecContext::Type type,
+                 auth::Level systemLevel, auth::Level dbLevel);
   VocbaseContext(VocbaseContext const&) = delete;
   VocbaseContext& operator=(VocbaseContext const&) = delete;
 };
 
-}
+}  // namespace arangodb
 
 #endif

@@ -37,8 +37,7 @@ using namespace arangodb;
 using namespace arangodb::geo;
 
 Result GeoUtils::indexCellsLatLng(VPackSlice const& data, bool isGeoJson,
-                                  std::vector<S2CellId>& cells,
-                                  S2Point& centroid) {
+                                  std::vector<S2CellId>& cells, S2Point& centroid) {
   if (!data.isArray() || data.length() < 2) {
     return TRI_ERROR_BAD_PARAMETER;
   }
@@ -59,9 +58,8 @@ Result GeoUtils::indexCellsLatLng(VPackSlice const& data, bool isGeoJson,
 }
 
 /// generate intervalls of list of intervals to scan
-void GeoUtils::scanIntervals(QueryParams const& params,
-                             S2RegionCoverer* coverer, S2Region const& region,
-                             std::vector<Interval>& sortedIntervals) {
+void GeoUtils::scanIntervals(QueryParams const& params, S2RegionCoverer* coverer,
+                             S2Region const& region, std::vector<Interval>& sortedIntervals) {
   std::vector<S2CellId> cover;
   coverer->GetCovering(region, &cover);
   TRI_ASSERT(!cover.empty());
@@ -72,17 +70,16 @@ void GeoUtils::scanIntervals(QueryParams const& params,
 /// will return all the intervals including the cells containing them
 /// in the less detailed levels. Should allow us to scan all intervals
 /// which may contain intersecting geometries
-void GeoUtils::scanIntervals(QueryParams const& params,
-                             std::vector<S2CellId> const& cover,
+void GeoUtils::scanIntervals(QueryParams const& params, std::vector<S2CellId> const& cover,
                              std::vector<Interval>& sortedIntervals) {
   TRI_ASSERT(params.cover.worstIndexedLevel > 0);
   if (cover.empty()) {
     return;
   }
   // reserve some space
-  int pl = std::max(cover[0].level() - params.cover.worstIndexedLevel,0);
+  int pl = std::max(cover[0].level() - params.cover.worstIndexedLevel, 0);
   sortedIntervals.reserve(cover.size() + pl * cover.size());
-  
+
   // prefix matches
   for (S2CellId const& prefix : cover) {
     if (prefix.is_leaf()) {

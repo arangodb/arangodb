@@ -126,8 +126,7 @@ struct RPRMasterContext : public MasterContext {
 
   bool postGlobalSuperstep() override {
     const float* convergence = getAggregatedValue<float>(kConvergence);
-    LOG_TOPIC(DEBUG, Logger::PREGEL) << "Current convergence level"
-                                     << *convergence;
+    LOG_TOPIC(DEBUG, Logger::PREGEL) << "Current convergence level" << *convergence;
     totalRank = *getAggregatedValue<float>(kRank);
 
     float const* diff = getAggregatedValue<float>(kConvergence);
@@ -144,8 +143,7 @@ struct RPRMasterContext : public MasterContext {
       recoveryStep = 1;
 
       const float* remainingRank = getAggregatedValue<float>(kRank);
-      const uint32_t* nonfailedCount =
-          getAggregatedValue<uint32_t>(kNonFailedCount);
+      const uint32_t* nonfailedCount = getAggregatedValue<uint32_t>(kNonFailedCount);
       if (*remainingRank != 0 && *nonfailedCount != 0) {
         float scale = totalRank * (*nonfailedCount);
         scale /= this->vertexCount() * (*remainingRank);

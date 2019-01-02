@@ -28,14 +28,14 @@
 
 namespace arangodb {
 
-using tp_sys_clock_ms = std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds>;
+using tp_sys_clock_ms =
+    std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds>;
 
 namespace basics {
-bool parse_dateTime(std::string const& dateTime,
-                    tp_sys_clock_ms& date_tp);
+bool parse_dateTime(std::string const& dateTime, tp_sys_clock_ms& date_tp);
 
 bool regex_isoDuration(std::string const& isoDuration, std::smatch& durationParts);
-}
+}  // namespace basics
 }  // namespace arangodb
 
 #endif

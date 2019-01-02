@@ -24,9 +24,9 @@
 #ifndef ARANGOD_REST_HANDLER_REST_CURSOR_HANDLER_H
 #define ARANGOD_REST_HANDLER_REST_CURSOR_HANDLER_H 1
 
+#include "Aql/QueryResult.h"
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
-#include "Aql/QueryResult.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 #include <velocypack/Builder.h>
@@ -39,12 +39,12 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 namespace aql {
 class Query;
 class QueryRegistry;
 struct QueryResult;
-}
+}  // namespace aql
 
 class Cursor;
 
@@ -54,8 +54,7 @@ class Cursor;
 
 class RestCursorHandler : public RestVocbaseBaseHandler {
  public:
-  RestCursorHandler(GeneralRequest*, GeneralResponse*,
-                    arangodb::aql::QueryRegistry*);
+  RestCursorHandler(GeneralRequest*, GeneralResponse*, arangodb::aql::QueryRegistry*);
 
   ~RestCursorHandler();
 
@@ -65,7 +64,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   RequestLane lane() const override final { return RequestLane::CLIENT_AQL; }
 
   virtual RestStatus continueExecute() override;
-  
+
 #ifdef USE_ENTERPRISE
   void shutdownExecute(bool isFinalized) noexcept override;
 #endif
@@ -99,8 +98,10 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   void unregisterQuery();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief handle the result returned by the query. This function is guaranteed
-  ///        to not be interrupted and is guaranteed to get a complete queryResult.
+  /// @brief handle the result returned by the query. This function is
+  /// guaranteed
+  ///        to not be interrupted and is guaranteed to get a complete
+  ///        queryResult.
   //////////////////////////////////////////////////////////////////////////////
   virtual RestStatus handleQueryResult();
 
@@ -157,7 +158,6 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   RestStatus deleteQueryCursor();
 
  protected:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief currently running query
   //////////////////////////////////////////////////////////////////////////////
@@ -176,7 +176,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   arangodb::aql::QueryRegistry* _queryRegistry;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief leased query cursor, may be set by query continuation
   //////////////////////////////////////////////////////////////////////////////
@@ -208,15 +208,12 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
 
   bool _isValidForFinalize;
 
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief A shared pointer to the query options velocypack, s.t. we avoid
   ///        to reparse and set default options
   //////////////////////////////////////////////////////////////////////////////
   std::shared_ptr<arangodb::velocypack::Builder> _options;
-
-  
 };
-}
+}  // namespace arangodb
 
 #endif

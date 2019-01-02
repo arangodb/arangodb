@@ -42,8 +42,8 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-ClusterRestReplicationHandler::ClusterRestReplicationHandler(
-    GeneralRequest* request, GeneralResponse* response)
+ClusterRestReplicationHandler::ClusterRestReplicationHandler(GeneralRequest* request,
+                                                             GeneralResponse* response)
     : RestReplicationHandler(request, response) {}
 
 void ClusterRestReplicationHandler::handleCommandBatch() {

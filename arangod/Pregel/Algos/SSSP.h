@@ -37,10 +37,11 @@ class SSSPAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
 
  public:
   explicit SSSPAlgorithm(VPackSlice userParams) : Algorithm("SSSP") {
-      if (!userParams.isObject() || !userParams.hasKey("source")) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                       "You need to specify the source document id");
-      }
+    if (!userParams.isObject() || !userParams.hasKey("source")) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "You need to specify the source document id");
+    }
     _sourceDocumentId = userParams.get("source").copyString();
     VPackSlice slice = userParams.get("_resultField");
     if (slice.isString()) {
@@ -61,15 +62,12 @@ class SSSPAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
     return new MinCombiner<int64_t>();
   }
 
-  VertexComputation<int64_t, int64_t, int64_t>* createComputation(
-      WorkerConfig const*) const override;
-  VertexCompensation<int64_t, int64_t, int64_t>* createCompensation(
-      WorkerConfig const*) const override;
+  VertexComputation<int64_t, int64_t, int64_t>* createComputation(WorkerConfig const*) const override;
+  VertexCompensation<int64_t, int64_t, int64_t>* createCompensation(WorkerConfig const*) const override;
 
-  uint32_t messageBatchSize(WorkerConfig const& config,
-                            MessageStats const& stats) const override;
+  uint32_t messageBatchSize(WorkerConfig const& config, MessageStats const& stats) const override;
 };
-}
-}
-}
+}  // namespace algos
+}  // namespace pregel
+}  // namespace arangodb
 #endif

@@ -58,8 +58,7 @@ void WorkerConfig::updateConfig(VPackSlice params) {
   VPackSlice parallel = userParams.get(Utils::parallelismKey);
   _parallelism = PregelFeature::availableParallelism();
   if (parallel.isInteger()) {
-    _parallelism =
-        std::min(std::max((uint64_t)1, parallel.getUInt()), _parallelism);
+    _parallelism = std::min(std::max((uint64_t)1, parallel.getUInt()), _parallelism);
   }
 
   // list of all shards, equal on all workers. Used to avoid storing strings of
@@ -115,8 +114,7 @@ PregelID WorkerConfig::documentIdToPregel(std::string const& documentID) const {
   std::string _key = documentID.substr(pos + 1);
 
   ShardID responsibleShard;
-  Utils::resolveShard(this, coll, StaticStrings::KeyString, _key,
-                      responsibleShard);
+  Utils::resolveShard(this, coll, StaticStrings::KeyString, _key, responsibleShard);
 
   PregelShard source = this->shardId(responsibleShard);
   return PregelID(source, _key);

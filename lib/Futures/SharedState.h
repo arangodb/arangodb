@@ -28,7 +28,9 @@
 #include "Futures/Try.h"
 #include "Futures/function2/function2.hpp"
 
-namespace arangodb { namespace futures { namespace detail {
+namespace arangodb {
+namespace futures {
+namespace detail {
 
 /// The FSM to manage the primary producer-to-consumer info-flow has these
 ///   allowed (atomic) transitions:
@@ -44,7 +46,7 @@ namespace arangodb { namespace futures { namespace detail {
 ///   |                  \                       /                  |
 ///   |                    ---> OnlyCallback ---                    |
 ///   +-------------------------------------------------------------+
-template<typename T>
+template <typename T>
 class SharedState {
   enum class State : uint8_t {
     Start = 1 << 0,
@@ -52,7 +54,7 @@ class SharedState {
     OnlyCallback = 1 << 2,
     Done = 1 << 3,
   };
-  
+
   /// Allow us to savely pass a core pointer to the Scheduler
   struct SharedStateScope {
     explicit SharedStateScope(SharedState* state) : _state(state) {}
@@ -61,59 +63,54 @@ class SharedState {
     SharedStateScope(SharedStateScope&& o) : _state(o._state) {
       o._state = nullptr;
     }
-    
+
     ~SharedStateScope() {
       if (_state) {
         _state->_callback = nullptr;
         _state->detachOne();
       }
     }
-    
+
     SharedState* _state;
   };
-  
+
  public:
-  
   /// State will be Start
-  static SharedState* make() {
-    return new SharedState();
-  }
-  
+  static SharedState* make() { return new SharedState(); }
+
   /// State will be OnlyResult
   /// Result held will be move-constructed from `t`
-  static SharedState* make(Try<T>&& t) {
-    return new SharedState(std::move(t));
-  }
-  
+  static SharedState* make(Try<T>&& t) { return new SharedState(std::move(t)); }
+
   /// State will be OnlyResult
   /// Result held will be the `T` constructed from forwarded `args`
   template <typename... Args>
   static SharedState<T>* make(in_place_t, Args&&... args) {
     return new SharedState<T>(in_place, std::forward<Args>(args)...);
   }
-  
+
   // not copyable
   SharedState(SharedState const&) = delete;
   SharedState& operator=(SharedState const&) = delete;
-  
+
   // not movable (see comment in the implementation of Future::then)
   SharedState(SharedState&&) noexcept = delete;
   SharedState& operator=(SharedState&&) = delete;
-  
+
   /// True if state is OnlyCallback or Done.
   /// May call from any thread
   bool hasCallback() const noexcept {
     auto const state = _state.load(std::memory_order_acquire);
     return state == State::OnlyCallback || state == State::Done;
   }
-  
+
   /// True if state is OnlyResult or Done.
   /// May call from any thread
   bool hasResult() const noexcept {
     auto const state = _state.load(std::memory_order_acquire);
     return state == State::OnlyResult || state == State::Done;
   }
-  
+
   /// Call only from consumer thread (since the consumer thread can modify the
   ///   referenced Try object; see non-const overloads of `future.result()`,
   ///   etc., and certain Future-provided callbacks which move-out the result).
@@ -140,7 +137,7 @@ class SharedState {
     TRI_ASSERT(hasResult());
     return _result;
   }
-  
+
   /// Call only from consumer thread.
   /// Call only once - else undefined behavior.
   ///
@@ -152,19 +149,20 @@ class SharedState {
   template <typename F>
   void setCallback(F&& func) {
     TRI_ASSERT(!hasCallback());
-    
+
     // construct _callback first; if that fails, context_ will not leak
     _callback = std::forward<F>(func);
     //::new (&_callback) Callback(std::forward<F>(func));
-    
+
     auto state = _state.load(std::memory_order_acquire);
     while (true) {
       switch (state) {
         case State::Start:
-          if (_state.compare_exchange_strong(state, State::OnlyCallback, std::memory_order_release)) {
+          if (_state.compare_exchange_strong(state, State::OnlyCallback,
+                                             std::memory_order_release)) {
             return;
           }
-          TRI_ASSERT(state == State::OnlyResult); // race with setResult
+          TRI_ASSERT(state == State::OnlyResult);  // race with setResult
 #ifndef _MSC_VER
           [[fallthrough]];
 #endif
@@ -179,11 +177,11 @@ class SharedState {
 #endif
 
         default:
-          TRI_ASSERT(false); // unexpected state
+          TRI_ASSERT(false);  // unexpected state
       }
     }
   }
-  
+
   /// Call only from producer thread.
   /// Call only once - else undefined behavior.
   ///
@@ -196,7 +194,7 @@ class SharedState {
     TRI_ASSERT(!hasResult());
     // call move constructor of content
     ::new (&_result) Try<T>(std::move(t));
-    
+
     auto state = _state.load(std::memory_order_acquire);
     while (true) {
       switch (state) {
@@ -204,11 +202,11 @@ class SharedState {
           if (_state.compare_exchange_strong(state, State::OnlyResult, std::memory_order_release)) {
             return;
           }
-          TRI_ASSERT(state == State::OnlyCallback); // race with setCallback
+          TRI_ASSERT(state == State::OnlyCallback);  // race with setCallback
 #ifndef _MSC_VER
           [[fallthrough]];
 #endif
-          
+
         case State::OnlyCallback:
           if (_state.compare_exchange_strong(state, State::Done, std::memory_order_acquire)) {
             doCallback();
@@ -217,20 +215,18 @@ class SharedState {
 #ifndef _MSC_VER
           [[fallthrough]];
 #endif
-          
+
         default:
-          TRI_ASSERT(false); // unexpected state
+          TRI_ASSERT(false);  // unexpected state
       }
     }
   }
-  
+
   /// Called by a destructing Future (in the consumer thread, by definition).
   /// Calls `delete this` if there are no more references to `this`
   /// (including if `detachPromise()` is called previously or concurrently).
-  void detachFuture() noexcept {
-    detachOne();
-  }
-  
+  void detachFuture() noexcept { detachOne(); }
+
   /// Called by a destructing Promise (in the producer thread, by definition).
   /// Calls `delete this` if there are no more references to `this`
   /// (including if `detachFuture()` is called previously or concurrently).
@@ -238,27 +234,29 @@ class SharedState {
     TRI_ASSERT(hasResult());
     detachOne();
   }
-  
+
  private:
-  
   /// empty shared state
-  SharedState () : _state(State::Start), _attached(2) {}
-  
+  SharedState() : _state(State::Start), _attached(2) {}
+
   /// use to construct a ready future
   explicit SharedState(Try<T>&& t)
-    : _result(std::move(t)), _state(State::OnlyResult), _attached(1) {}
-  
+      : _result(std::move(t)), _state(State::OnlyResult), _attached(1) {}
+
   /// use to construct a ready future
   template <typename... Args>
-  explicit SharedState(in_place_t, Args&&... args) noexcept(std::is_nothrow_constructible<T, Args&&...>::value)
-    : _result(in_place, std::forward<Args>(args)...), _state(State::OnlyResult), _attached(1) {}
-  
+  explicit SharedState(in_place_t,
+                       Args&&... args) noexcept(std::is_nothrow_constructible<T, Args&&...>::value)
+      : _result(in_place, std::forward<Args>(args)...),
+        _state(State::OnlyResult),
+        _attached(1) {}
+
   ~SharedState() {
     TRI_ASSERT(_attached == 0);
     TRI_ASSERT(hasResult());
     _result.~Try<T>();
   }
-  
+
   /// detach promise or future from shared state
   void detachOne() noexcept {
     auto a = _attached.fetch_sub(1, std::memory_order_acq_rel);
@@ -268,32 +266,34 @@ class SharedState {
       delete this;
     }
   }
-  
+
   void doCallback() {
     TRI_ASSERT(_state == State::Done);
     TRI_ASSERT(_callback);
-    //TRI_ASSERT(SchedulerFeature::SCHEDULER);
-    
+    // TRI_ASSERT(SchedulerFeature::SCHEDULER);
+
     // in case the scheduler throws away this lamda
     _attached.fetch_add(1);
-    SharedStateScope scope(this); // will call detachOne()
+    SharedStateScope scope(this);  // will call detachOne()
     _callback(std::move(_result));
     /*SchedulerFeature::SCHEDULER->postContinuation([ref(std::move(scope))]() {
       SharedState* state = ref._state;
       state->_callback(std::move(state->_result));
     });*/
   }
-  
-private:
+
+ private:
   using Callback = fu2::unique_function<void(Try<T>&&)>;
   Callback _callback;
-  union { // avoids having to construct the result
+  union {  // avoids having to construct the result
     Try<T> _result;
   };
   std::atomic<State> _state;
   std::atomic<uint8_t> _attached;
 };
-  
-}}}
 
-#endif // ARANGOD_FUTURES_SHARED_STATE_H
+}  // namespace detail
+}  // namespace futures
+}  // namespace arangodb
+
+#endif  // ARANGOD_FUTURES_SHARED_STATE_H

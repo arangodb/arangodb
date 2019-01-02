@@ -34,14 +34,13 @@ class ManagedDocumentResult;
 namespace graph {
 class ShortestPathFinder;
 class ShortestPathResult;
-}
+}  // namespace graph
 
 namespace aql {
 
 class ShortestPathNode;
 
 class ShortestPathBlock final : public ExecutionBlock {
-
  public:
   ShortestPathBlock(ExecutionEngine* engine, ShortestPathNode const* ep);
 
@@ -51,14 +50,13 @@ class ShortestPathBlock final : public ExecutionBlock {
   std::pair<ExecutionState, Result> shutdown(int errorCode) override;
 
   /// @brief getSome
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(
-      size_t atMost) override final;
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override final;
 
   // skip atMost documents, returns the number actually skipped . . .
   // will only return less than atMost if there aren't atMost many
   // things to skip overall.
   std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final;
-  
+
  private:
   /// @brief Compute the next shortest path
   bool nextPath(AqlItemBlock const*);
@@ -82,7 +80,7 @@ class ShortestPathBlock final : public ExecutionBlock {
 
   /// @brief Register for the edge output
   RegisterId _edgeReg;
-  
+
   /// @brief options to compute the shortest path
   graph::ShortestPathOptions* _opts;
 
@@ -129,9 +127,8 @@ class ShortestPathBlock final : public ExecutionBlock {
 
   /// @brief Traverser Engines
   std::unordered_map<ServerID, traverser::TraverserEngineID> const* _engines;
-
 };
 
-} // namespace arangodb::aql
-} // namespace arangodb
+}  // namespace aql
+}  // namespace arangodb
 #endif

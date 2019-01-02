@@ -53,8 +53,8 @@ struct SLPA : public SimpleAlgorithm<SLPAValue, int8_t, uint64_t> {
     }
     val = userParams.get("maxCommunities");
     if (val.isInteger()) {
-      _maxCommunities = (unsigned)std::min(
-          (uint64_t)32, std::max(val.getUInt(), (uint64_t)0));
+      _maxCommunities =
+          (unsigned)std::min((uint64_t)32, std::max(val.getUInt(), (uint64_t)0));
     }
   }
 
@@ -63,11 +63,10 @@ struct SLPA : public SimpleAlgorithm<SLPAValue, int8_t, uint64_t> {
     return new NumberMessageFormat<uint64_t>();
   }
 
-  VertexComputation<SLPAValue, int8_t, uint64_t>* createComputation(
-      WorkerConfig const*) const override;
+  VertexComputation<SLPAValue, int8_t, uint64_t>* createComputation(WorkerConfig const*) const override;
   WorkerContext* workerContext(velocypack::Slice userParams) const override;
 };
-}
-}
-}
+}  // namespace algos
+}  // namespace pregel
+}  // namespace arangodb
 #endif

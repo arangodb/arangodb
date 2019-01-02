@@ -35,8 +35,7 @@ using namespace arangodb::basics;
 /// @brief creates a shell
 ////////////////////////////////////////////////////////////////////////////////
 
-ShellBase* ShellBase::buildShell(std::string const& history,
-                                 Completer* completer) {
+ShellBase* ShellBase::buildShell(std::string const& history, Completer* completer) {
   return new LinenoiseShell(history, completer);
 }
 
@@ -53,10 +52,7 @@ void ShellBase::sortAlternatives(std::vector<std::string>& completions) {
 }
 
 ShellBase::ShellBase(std::string const& history, Completer* completer)
-    : _current(),
-      _historyFilename(),
-      _state(STATE_NONE),
-      _completer(completer) {
+    : _current(), _historyFilename(), _state(STATE_NONE), _completer(completer) {
   // construct the complete history path
   std::string path(TRI_HomeDirectory());
 

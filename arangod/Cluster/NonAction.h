@@ -37,17 +37,15 @@ namespace maintenance {
  * @brief  Dummy action for failure to find action
  */
 class NonAction : public ActionBase {
-
-public:
-
+ public:
   NonAction(MaintenanceFeature&, ActionDescription const& d);
 
   virtual ~NonAction();
 
   virtual bool first() override final;
-
 };
 
-}}
+}  // namespace maintenance
+}  // namespace arangodb
 
 #endif

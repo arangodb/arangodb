@@ -77,8 +77,7 @@ inline const char* requestToString(RequestType requestType) {
   }
 }
 
-inline std::ostream& operator<<(std::ostream& ostream,
-                                RequestType requestType) {
+inline std::ostream& operator<<(std::ostream& ostream, RequestType requestType) {
   return ostream << requestToString(requestType);
 }
 
@@ -94,11 +93,7 @@ enum class ContentType {
 
 enum class ProtocolVersion { HTTP_1_0, HTTP_1_1, VST_1_0, VST_1_1, UNKNOWN };
 
-enum class ConnectionType {
-  C_NONE,
-  C_KEEP_ALIVE,
-  C_CLOSE
-};
+enum class ConnectionType { C_NONE, C_KEEP_ALIVE, C_CLOSE };
 
 enum class AuthenticationMethod { BASIC, JWT, NONE };
 
@@ -257,10 +252,9 @@ inline const char* responseToString(ResponseCode responseCode) {
   }
 }
 
-inline std::ostream& operator<<(std::ostream& ostream,
-                                ResponseCode responseCode) {
+inline std::ostream& operator<<(std::ostream& ostream, ResponseCode responseCode) {
   return ostream << responseToString(responseCode);
 }
-}
-}
+}  // namespace rest
+}  // namespace arangodb
 #endif

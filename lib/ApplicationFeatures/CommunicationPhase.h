@@ -36,15 +36,15 @@ class CommunicationFeaturePhase : public ApplicationFeaturePhase {
    */
   bool getCommAllowed() {
     switch (state()) {
-    case ApplicationServer::FeatureState::UNINITIALIZED:
-    case ApplicationServer::FeatureState::INITIALIZED:
-    case ApplicationServer::FeatureState::VALIDATED:
-    case ApplicationServer::FeatureState::PREPARED:
-    case ApplicationServer::FeatureState::STARTED:
-    case ApplicationServer::FeatureState::STOPPED:
-      return true;
-    case ApplicationServer::FeatureState::UNPREPARED:
-      return false;
+      case ApplicationServer::FeatureState::UNINITIALIZED:
+      case ApplicationServer::FeatureState::INITIALIZED:
+      case ApplicationServer::FeatureState::VALIDATED:
+      case ApplicationServer::FeatureState::PREPARED:
+      case ApplicationServer::FeatureState::STARTED:
+      case ApplicationServer::FeatureState::STOPPED:
+        return true;
+      case ApplicationServer::FeatureState::UNPREPARED:
+        return false;
     }
     return false;
   }

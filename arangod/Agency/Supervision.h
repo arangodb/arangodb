@@ -114,16 +114,13 @@ class Supervision : public arangodb::CriticalThread {
   static constexpr char const* HEALTH_STATUS_BAD = "BAD";
   static constexpr char const* HEALTH_STATUS_FAILED = "FAILED";
 
-  static std::string agencyPrefix() {
-    return _agencyPrefix;
-  }
+  static std::string agencyPrefix() { return _agencyPrefix; }
 
   static void setAgencyPrefix(std::string const& prefix) {
     _agencyPrefix = prefix;
   }
 
  private:
-
   /// @brief decide, if we can start supervision ahead of armageddon delay
   bool earlyBird() const;
 
@@ -136,7 +133,8 @@ class Supervision : public arangodb::CriticalThread {
   /// @brief Upgrade agency to supervision overhaul jobs
   void upgradeHealthRecords(VPackBuilder&);
 
-  /// @brief Check for orphaned index creations, which have been successfully built 
+  /// @brief Check for orphaned index creations, which have been successfully
+  /// built
   void readyOrphanedIndexCreations();
 
   /// @brief Check for inconsistencies in replication factor vs dbs entries
@@ -170,10 +168,11 @@ class Supervision : public arangodb::CriticalThread {
 
   void shrinkCluster();
 
-public:
-  static void cleanupLostCollections(Node const& snapshot, AgentInterface *agent, std::string const& jobId);
+ public:
+  static void cleanupLostCollections(Node const& snapshot, AgentInterface* agent,
+                                     std::string const& jobId);
 
-private:
+ private:
   /**
    * @brief Report status of supervision in agency
    * @param  status  Status, which will show in Supervision/State
@@ -188,7 +187,7 @@ private:
   /// @brief Migrate chains of distributeShardsLike to depth 1
   void fixPrototypeChain(VPackBuilder&);
 
-  Mutex _lock; // guards snapshot, _jobId, jobIdMax, _selfShutdown
+  Mutex _lock;   // guards snapshot, _jobId, jobIdMax, _selfShutdown
   Agent* _agent; /**< @brief My agent */
   Node _snapshot;
   Node _transient;
@@ -217,7 +216,6 @@ private:
   std::string serverHealth(std::string const&);
 
   static std::string _agencyPrefix;  // initialized in AgencyFeature
-
 };
 
 /**
@@ -229,6 +227,7 @@ private:
  */
 query_t removeTransactionBuilder(std::vector<std::string> const&);
 
-}}  // Name spaces
+}  // namespace consensus
+}  // namespace arangodb
 
 #endif

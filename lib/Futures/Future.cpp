@@ -28,17 +28,18 @@
 
 namespace arangodb {
 namespace futures {
-  // Instantiate the most common Future types to save compile time
-  template class Future<Unit>;
-  template class Future<bool>;
-  template class Future<int32_t>;
-  template class Future<uint32_t>;
-  template class Future<int64_t>;
-  template class Future<uint64_t>;
-  template class Future<std::string>;
-  template class Future<double>;
-  
-  // arangodb types
-  template class Future<arangodb::Result>;
-  template class Future<arangodb::OperationResult>;
-}}
+// Instantiate the most common Future types to save compile time
+template class Future<Unit>;
+template class Future<bool>;
+template class Future<int32_t>;
+template class Future<uint32_t>;
+template class Future<int64_t>;
+template class Future<uint64_t>;
+template class Future<std::string>;
+template class Future<double>;
+
+// arangodb types
+template class Future<arangodb::Result>;
+template class Future<arangodb::OperationResult>;
+}  // namespace futures
+}  // namespace arangodb

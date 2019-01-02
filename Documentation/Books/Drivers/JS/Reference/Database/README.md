@@ -49,11 +49,23 @@ If _config_ is a string, it will be interpreted as _config.url_.
     your certificates to the _agentOptions_, e.g.:
 
     ```js
+    ...
     agentOptions: {
       ca: [
         fs.readFileSync(".ssl/sub.class1.server.ca.pem"),
         fs.readFileSync(".ssl/ca.pem")
-      ];
+      ]
+    }
+    ```
+
+    Although this is **strongly discouraged**, it's also possible to disable
+    HTTPS certificate validation entirely, but note this has
+    **extremely dangerous** security implications:
+
+    ```js
+    ...
+    agentOptions: {
+      rejectUnauthorized: false
     }
     ```
 
