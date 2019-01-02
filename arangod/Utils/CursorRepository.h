@@ -81,8 +81,7 @@ class CursorRepository {
   Cursor* createQueryStream(std::string const& query,
                             std::shared_ptr<velocypack::Builder> const& binds,
                             std::shared_ptr<velocypack::Builder> const& opts,
-                            size_t batchSize, double ttl,
-                            bool contextOwnedByExterior);
+                            size_t batchSize, double ttl, bool contextOwnedByExterior);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove a cursor by id
@@ -112,7 +111,7 @@ class CursorRepository {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief run a garbage collection on the cursors
-  /// @return 
+  /// @return
   //////////////////////////////////////////////////////////////////////////////
 
   bool garbageCollect(bool);
@@ -143,6 +142,6 @@ class CursorRepository {
   static size_t const MaxCollectCount;
 };
 
-}
+}  // namespace arangodb
 
 #endif

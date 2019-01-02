@@ -33,8 +33,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestExplainHandler::RestExplainHandler(GeneralRequest* request,
-                                       GeneralResponse* response)
+RestExplainHandler::RestExplainHandler(GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
 RestStatus RestExplainHandler::execute() {
@@ -106,14 +105,8 @@ void RestExplainHandler::explainQuery() {
   auto optionsBuilder = std::make_shared<VPackBuilder>();
   optionsBuilder->add(optionsSlice);
 
-  arangodb::aql::Query query(
-    false,
-    _vocbase,
-    aql::QueryString(queryString),
-    bindBuilder,
-    optionsBuilder,
-    arangodb::aql::PART_MAIN
-  );
+  arangodb::aql::Query query(false, _vocbase, aql::QueryString(queryString),
+                             bindBuilder, optionsBuilder, arangodb::aql::PART_MAIN);
   auto queryResult = query.explain();
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
@@ -138,7 +131,7 @@ void RestExplainHandler::explainQuery() {
     result.add("plan", queryResult.result->slice());
     result.add("cacheable", VPackValue(queryResult.cached));
   }
-  
+
   VPackSlice extras = queryResult.extra->slice();
   if (extras.hasKey("warnings")) {
     result.add("warnings", extras.get("warnings"));

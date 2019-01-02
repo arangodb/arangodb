@@ -54,8 +54,7 @@ static void gcPrologueCallback(v8::Isolate* isolate, v8::GCType /*type*/,
   v8::HeapStatistics h;
   isolate->GetHeapStatistics(&h);
 
-  V8PlatformFeature::getIsolateData(isolate)->_heapSizeAtStart =
-      h.used_heap_size();
+  V8PlatformFeature::getIsolateData(isolate)->_heapSizeAtStart = h.used_heap_size();
 }
 
 static void gcEpilogueCallback(v8::Isolate* isolate, v8::GCType type,
@@ -72,8 +71,7 @@ static void gcEpilogueCallback(v8::Isolate* isolate, v8::GCType type,
 
   size_t freed = 0;
   size_t heapSizeAtStop = h.used_heap_size();
-  size_t heapSizeAtStart =
-      V8PlatformFeature::getIsolateData(isolate)->_heapSizeAtStart;
+  size_t heapSizeAtStart = V8PlatformFeature::getIsolateData(isolate)->_heapSizeAtStart;
 
   if (heapSizeAtStop < heapSizeAtStart) {
     freed = heapSizeAtStart - heapSizeAtStop;
@@ -84,9 +82,9 @@ static void gcEpilogueCallback(v8::Isolate* isolate, v8::GCType type,
   size_t stillFree = heapSizeLimit - usedHeadSize;
 
   if (stillFree <= LIMIT_ABS && freed <= minFreed) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "reached heap-size limit, interrupting V8 execution ("
-              << "heap size limit " << heapSizeLimit << ", used "
-              << usedHeadSize << ")";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "reached heap-size limit, interrupting V8 execution ("
+        << "heap size limit " << heapSizeLimit << ", used " << usedHeadSize << ")";
 
     isolate->TerminateExecution();
     V8PlatformFeature::setOutOfMemory(isolate);
@@ -98,11 +96,12 @@ static void gcEpilogueCallback(v8::Isolate* isolate, v8::GCType type,
 // terminate the entire process
 static void oomCallback(char const* location, bool isHeapOOM) {
   if (isHeapOOM) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "out of heap hemory in V8 (" << location << ")";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "out of heap hemory in V8 (" << location << ")";
   } else {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "out of memory in V8 (" << location << ")";
   }
-  FATAL_ERROR_EXIT(); 
+  FATAL_ERROR_EXIT();
 }
 
 // this callback is executed by V8 when it encounters a fatal error.
@@ -112,22 +111,20 @@ static void fatalCallback(char const* location, char const* message) {
   if (message == nullptr) {
     message = "no message";
   }
-  LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "fatal error in V8 (" << location << "): " << message;
-  FATAL_ERROR_EXIT(); 
+  LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+      << "fatal error in V8 (" << location << "): " << message;
+  FATAL_ERROR_EXIT();
 }
 
-}
+}  // namespace
 
-V8PlatformFeature::V8PlatformFeature(
-    application_features::ApplicationServer& server
-)
+V8PlatformFeature::V8PlatformFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "V8Platform") {
   setOptional(true);
   startsAfter("ClusterPhase");
 }
 
-void V8PlatformFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
+void V8PlatformFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("javascript", "Configure the Javascript engine");
 
   options->addOption("--javascript.v8-options", "options to pass to v8",
@@ -138,8 +135,7 @@ void V8PlatformFeature::collectOptions(
                      new UInt64Parameter(&_v8MaxHeap));
 }
 
-void V8PlatformFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
+void V8PlatformFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (!_v8Options.empty()) {
     _v8CombinedOptions = StringUtils::join(_v8Options, " ");
 
@@ -149,10 +145,12 @@ void V8PlatformFeature::validateOptions(
       exit(EXIT_SUCCESS);
     }
   }
-  
+
   if (0 < _v8MaxHeap) {
     if (_v8MaxHeap > (std::numeric_limits<int>::max)()) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "value for '--javascript.v8-max-heap' exceeds maximum value " << (std::numeric_limits<int>::max)();
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+          << "value for '--javascript.v8-max-heap' exceeds maximum value "
+          << (std::numeric_limits<int>::max)();
       FATAL_ERROR_EXIT();
     }
   }
@@ -163,8 +161,7 @@ void V8PlatformFeature::start() {
 
   // explicit option --javascript.v8-options used
   if (!_v8CombinedOptions.empty()) {
-    LOG_TOPIC(INFO, Logger::V8) << "using V8 options '" << _v8CombinedOptions
-                                << "'";
+    LOG_TOPIC(INFO, Logger::V8) << "using V8 options '" << _v8CombinedOptions << "'";
     v8::V8::SetFlagsFromString(_v8CombinedOptions.c_str(),
                                (int)_v8CombinedOptions.size());
   }
@@ -206,9 +203,9 @@ v8::Isolate* V8PlatformFeature::createIsolate() {
 
   auto data = std::make_unique<IsolateData>();
   isolate->SetData(V8_INFO, data.get());
- 
+
   {
-    MUTEX_LOCKER(guard, _lock); 
+    MUTEX_LOCKER(guard, _lock);
     try {
       _isolateData.emplace(isolate, std::move(data));
     } catch (...) {
@@ -224,7 +221,7 @@ v8::Isolate* V8PlatformFeature::createIsolate() {
 void V8PlatformFeature::disposeIsolate(v8::Isolate* isolate) {
   // must first remove from isolate-data map
   {
-    MUTEX_LOCKER(guard, _lock); 
+    MUTEX_LOCKER(guard, _lock);
     _isolateData.erase(isolate);
   }
   // because Isolate::Dispose() will delete isolate!

@@ -54,8 +54,7 @@ int main(int argc, char* argv[]) {
 
     std::shared_ptr<options::ProgramOptions> options(
         new options::ProgramOptions(argv[0], "Usage: arangodump [<options>]",
-                                    "For more information use:",
-                                    BIN_DIRECTORY));
+                                    "For more information use:", BIN_DIRECTORY));
     ApplicationServer server(options, BIN_DIRECTORY);
     int ret;
 
@@ -84,8 +83,7 @@ int main(int argc, char* argv[]) {
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-          << "arangodump terminated because of an unhandled exception: "
-          << ex.what();
+          << "arangodump terminated because of an unhandled exception: " << ex.what();
       ret = EXIT_FAILURE;
     } catch (...) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)

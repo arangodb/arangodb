@@ -37,7 +37,9 @@ class MMFilesRestReplicationHandler : public RestReplicationHandler {
   ~MMFilesRestReplicationHandler();
 
  public:
-  RequestLane lane() const override final { return RequestLane::SERVER_REPLICATION; }
+  RequestLane lane() const override final {
+    return RequestLane::SERVER_REPLICATION;
+  }
 
   char const* name() const override final {
     return "MMFilesRestReplicationHandler";
@@ -49,7 +51,7 @@ class MMFilesRestReplicationHandler : public RestReplicationHandler {
   ///        Saves a follow as synchronous up to lastTick
   ///        lastTick == 0 => new Server
   void insertClient(TRI_voc_tick_t lastTick);
-  
+
   /// @brief handle a follow command for the replication log
   void handleCommandLoggerFollow() override;
 
@@ -80,8 +82,7 @@ class MMFilesRestReplicationHandler : public RestReplicationHandler {
 
   /// @brief handle a dump command for a specific collection
   void handleCommandDump() override;
-
 };
-}
+}  // namespace arangodb
 
 #endif

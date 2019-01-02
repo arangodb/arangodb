@@ -57,9 +57,8 @@ bool BucketState::lock(uint64_t maxTries, BucketState::CallbackType cb) {
     if (current == expected) {
       uint32_t desired = expected | static_cast<uint32_t>(Flag::locked);
       // try to lock
-      bool success = _state.compare_exchange_strong(
-          expected, desired,
-          std::memory_order_acq_rel, std::memory_order_relaxed);
+      bool success = _state.compare_exchange_strong(expected, desired, std::memory_order_acq_rel,
+                                                    std::memory_order_relaxed);
       if (success) {
         cb();
         return true;
@@ -83,8 +82,7 @@ bool BucketState::isSet(BucketState::Flag flag) const {
   return ((_state.load() & static_cast<uint32_t>(flag)) > 0);
 }
 
-bool BucketState::isSet(BucketState::Flag flag1,
-                        BucketState::Flag flag2) const {
+bool BucketState::isSet(BucketState::Flag flag1, BucketState::Flag flag2) const {
   TRI_ASSERT(isLocked());
   return ((_state.load() &
            (static_cast<uint32_t>(flag1) | static_cast<uint32_t>(flag2))) > 0);

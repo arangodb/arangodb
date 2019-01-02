@@ -27,12 +27,12 @@
 
 namespace arangodb {
 namespace mmfiles {
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief rotate the active journals for the collection on all DBServers
-  ////////////////////////////////////////////////////////////////////////////////
-  
-  int rotateActiveJournalOnAllDBServers(std::string const& dbname,
-                                        std::string const& collname);
-}}
+////////////////////////////////////////////////////////////////////////////////
+/// @brief rotate the active journals for the collection on all DBServers
+////////////////////////////////////////////////////////////////////////////////
+
+int rotateActiveJournalOnAllDBServers(std::string const& dbname, std::string const& collname);
+}  // namespace mmfiles
+}  // namespace arangodb
 
 #endif

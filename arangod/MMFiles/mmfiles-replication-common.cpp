@@ -26,12 +26,11 @@
 using namespace arangodb::mmfilesutils;
 namespace arangodb {
 namespace mmfilesutils {
-  
+
 /// @brief whether or not a marker should be replicated
 bool MustReplicateWalMarkerType(MMFilesMarker const* marker, bool allowDBMarkers) {
   MMFilesMarkerType type = marker->getType();
-  return (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
-          type == TRI_DF_MARKER_VPACK_REMOVE ||
+  return (type == TRI_DF_MARKER_VPACK_DOCUMENT || type == TRI_DF_MARKER_VPACK_REMOVE ||
           type == TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION ||
           type == TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION ||
           type == TRI_DF_MARKER_VPACK_ABORT_TRANSACTION ||
@@ -39,12 +38,10 @@ bool MustReplicateWalMarkerType(MMFilesMarker const* marker, bool allowDBMarkers
           type == TRI_DF_MARKER_VPACK_DROP_COLLECTION ||
           type == TRI_DF_MARKER_VPACK_RENAME_COLLECTION ||
           type == TRI_DF_MARKER_VPACK_CHANGE_COLLECTION ||
-          type == TRI_DF_MARKER_VPACK_CREATE_INDEX ||
-          type == TRI_DF_MARKER_VPACK_DROP_INDEX ||
+          type == TRI_DF_MARKER_VPACK_CREATE_INDEX || type == TRI_DF_MARKER_VPACK_DROP_INDEX ||
           (allowDBMarkers && (type == TRI_DF_MARKER_VPACK_CREATE_DATABASE ||
                               type == TRI_DF_MARKER_VPACK_DROP_DATABASE)) ||
-          type == TRI_DF_MARKER_VPACK_CREATE_VIEW ||
-          type == TRI_DF_MARKER_VPACK_DROP_VIEW ||
+          type == TRI_DF_MARKER_VPACK_CREATE_VIEW || type == TRI_DF_MARKER_VPACK_DROP_VIEW ||
           type == TRI_DF_MARKER_VPACK_CHANGE_VIEW);
 }
 
@@ -91,12 +88,12 @@ TRI_replication_operation_e TranslateType(MMFilesMarker const* marker) {
       return REPLICATION_VIEW_DROP;
     case TRI_DF_MARKER_VPACK_CHANGE_VIEW:
       return REPLICATION_VIEW_CHANGE;
-      
+
     default:
       TRI_ASSERT(false);
       return REPLICATION_INVALID;
   }
 }
 
-}
-}
+}  // namespace mmfilesutils
+}  // namespace arangodb

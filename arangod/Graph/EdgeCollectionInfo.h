@@ -38,7 +38,6 @@ namespace traverser {
 ////////////////////////////////////////////////////////////////////////////////
 
 class EdgeCollectionInfo {
-
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the underlying transaction
@@ -72,32 +71,29 @@ class EdgeCollectionInfo {
   TRI_edge_direction_e _dir;
 
  public:
-
-  EdgeCollectionInfo(transaction::Methods* trx,
-                     std::string const& collectionName,
+  EdgeCollectionInfo(transaction::Methods* trx, std::string const& collectionName,
                      TRI_edge_direction_e const direction,
-                     std::string const& weightAttribute,
-                     double defaultWeight);
+                     std::string const& weightAttribute, double defaultWeight);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Get edges for the given direction and start vertex.
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Get edges for the given direction and start vertex.
+  ////////////////////////////////////////////////////////////////////////////////
 
-  std::unique_ptr<arangodb::OperationCursor> getEdges(std::string const&, ManagedDocumentResult*);
+  std::unique_ptr<arangodb::OperationCursor> getEdges(std::string const&,
+                                                      ManagedDocumentResult*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Get edges for the given direction and start vertex. On Coordinator.
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Get edges for the given direction and start vertex. On Coordinator.
+  ////////////////////////////////////////////////////////////////////////////////
 
-  int getEdgesCoordinator(arangodb::velocypack::Slice const&,
-                          arangodb::velocypack::Builder&);
+  int getEdgesCoordinator(arangodb::velocypack::Slice const&, arangodb::velocypack::Builder&);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Get edges for the given direction and start vertex. Reverse version
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Get edges for the given direction and start vertex. Reverse version
+  ////////////////////////////////////////////////////////////////////////////////
 
-  std::unique_ptr<arangodb::OperationCursor> getReverseEdges(
-      std::string const&, ManagedDocumentResult*);
+  std::unique_ptr<arangodb::OperationCursor> getReverseEdges(std::string const&,
+                                                             ManagedDocumentResult*);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief Get edges for the given direction and start vertex. Reverse version
@@ -108,18 +104,17 @@ class EdgeCollectionInfo {
                                  arangodb::velocypack::Builder&);
 
   double weightEdge(arangodb::velocypack::Slice const);
-  
+
   transaction::Methods* trx() const { return _trx; }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Return name of the wrapped collection
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Return name of the wrapped collection
+  ////////////////////////////////////////////////////////////////////////////////
 
-  std::string const& getName() const; 
-
+  std::string const& getName() const;
 };
 
-}
-}
+}  // namespace traverser
+}  // namespace arangodb
 
 #endif

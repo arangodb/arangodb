@@ -28,8 +28,8 @@
 #include "VocBase/ticks.h"
 
 namespace arangodb {
-/// @brief a LocalDocumentId is an identifier for storing and retrieving documents
-/// using a uint64_t value.
+/// @brief a LocalDocumentId is an identifier for storing and retrieving
+/// documents using a uint64_t value.
 class LocalDocumentId {
  public:
   typedef uint64_t BaseType;
@@ -38,9 +38,15 @@ class LocalDocumentId {
   constexpr LocalDocumentId() noexcept : _id(0) {}
   constexpr explicit LocalDocumentId(BaseType id) noexcept : _id(id) {}
   LocalDocumentId(LocalDocumentId const& other) noexcept : _id(other._id) {}
-  LocalDocumentId& operator=(LocalDocumentId const& other) noexcept { _id = other._id; return *this; }
+  LocalDocumentId& operator=(LocalDocumentId const& other) noexcept {
+    _id = other._id;
+    return *this;
+  }
   LocalDocumentId(LocalDocumentId&& other) noexcept : _id(other._id) {}
-  LocalDocumentId& operator=(LocalDocumentId&& other) noexcept { _id = other._id; return *this; }
+  LocalDocumentId& operator=(LocalDocumentId&& other) noexcept {
+    _id = other._id;
+    return *this;
+  }
 
   /// @brief whether or not the id is set
   inline bool isSet() const noexcept { return _id != 0; }
@@ -58,7 +64,9 @@ class LocalDocumentId {
     return _id == other._id;
   }
 
-  inline bool operator!=(LocalDocumentId const& other) const { return !(operator==(other)); }
+  inline bool operator!=(LocalDocumentId const& other) const {
+    return !(operator==(other));
+  }
 
   /// @brief check if two LocalDocumentIds are equal (less)
   inline bool operator<(LocalDocumentId const& other) const {
@@ -78,7 +86,9 @@ class LocalDocumentId {
   static LocalDocumentId none() { return LocalDocumentId(0); }
 
   /// @brief create a new document id
-  static LocalDocumentId create() { return LocalDocumentId(TRI_HybridLogicalClock()); }
+  static LocalDocumentId create() {
+    return LocalDocumentId(TRI_HybridLogicalClock());
+  }
 
   /// @brief create a document id from an existing id
   // clang does not like:
@@ -86,15 +96,18 @@ class LocalDocumentId {
   static LocalDocumentId create(BaseType id) { return LocalDocumentId(id); }
 
   /// @brief use to track an existing value in recovery to ensure no duplicates
-  static void track(LocalDocumentId const& id) { TRI_HybridLogicalClock(id.id()); }
+  static void track(LocalDocumentId const& id) {
+    TRI_HybridLogicalClock(id.id());
+  }
 
  private:
   BaseType _id;
 };
 
 // LocalDocumentId should not be bigger than the BaseType
-static_assert(sizeof(LocalDocumentId) == sizeof(LocalDocumentId::BaseType), "invalid size of LocalDocumentId");
-}
+static_assert(sizeof(LocalDocumentId) == sizeof(LocalDocumentId::BaseType),
+              "invalid size of LocalDocumentId");
+}  // namespace arangodb
 
 namespace std {
 template <>
@@ -108,8 +121,10 @@ struct hash<arangodb::LocalDocumentId> {
 template <>
 struct equal_to<arangodb::LocalDocumentId> {
   bool operator()(arangodb::LocalDocumentId const& lhs,
-                  arangodb::LocalDocumentId const& rhs) const { return lhs == rhs; }
+                  arangodb::LocalDocumentId const& rhs) const {
+    return lhs == rhs;
+  }
 };
-}
+}  // namespace std
 
 #endif

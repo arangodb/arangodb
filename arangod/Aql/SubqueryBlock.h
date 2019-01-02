@@ -40,8 +40,7 @@ class SubqueryBlock final : public ExecutionBlock {
   ~SubqueryBlock() = default;
 
   /// @brief getSome
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(
-      size_t atMost) override final;
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override final;
 
   /// @brief shutdown, tell dependency and the subquery
   std::pair<ExecutionState, Result> shutdown(int errorCode) override final;
@@ -71,15 +70,14 @@ class SubqueryBlock final : public ExecutionBlock {
   ExecutionState getSomeNonConstSubquery(size_t atMost);
 
  private:
-
   /// @brief output register
   RegisterId _outReg;
 
   /// @brief we need to have an executionblock and where to write the result
   ExecutionBlock* _subquery;
 
-  /// @brief whether the subquery is const and will always return the same values
-  /// when invoked multiple times
+  /// @brief whether the subquery is const and will always return the same
+  /// values when invoked multiple times
   bool const _subqueryIsConst;
 
   /// @brief whether the subquery returns data
@@ -109,7 +107,7 @@ class SubqueryBlock final : public ExecutionBlock {
   Result _mainQueryShutdownResult;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

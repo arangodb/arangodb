@@ -26,14 +26,14 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
+#include "Graph/Graph.h"
+#include "Graph/GraphManager.h"
 #include "Pregel/Conductor.h"
 #include "Pregel/PregelFeature.h"
 #include "Rest/HttpRequest.h"
 #include "Transaction/StandaloneContext.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/V8DealerFeature.h"
-#include "Graph/Graph.h"
-#include "Graph/GraphManager.h"
 #include "VocBase/Methods/Tasks.h"
 
 #include <velocypack/Builder.h>
@@ -66,8 +66,7 @@ RestStatus RestControlPregelHandler::execute() {
       break;
     }
     default: {
-      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                    TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     }
   }
   return RestStatus::DONE;
@@ -89,8 +88,7 @@ uint32_t RestControlPregelHandler::forwardingTarget() {
   uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);
   uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
 
-  return (sourceServer == ServerState::instance()->getShortId()) ? 0
-                                                                 : sourceServer;
+  return (sourceServer == ServerState::instance()->getShortId()) ? 0 : sourceServer;
 }
 
 void RestControlPregelHandler::startExecution() {
@@ -155,9 +153,8 @@ void RestControlPregelHandler::startExecution() {
     }
   }
 
-  auto res = pregel::PregelFeature::startExecution(
-      _vocbase, algorithm, vertexCollections, edgeCollections,
-      parameters);
+  auto res = pregel::PregelFeature::startExecution(_vocbase, algorithm, vertexCollections,
+                                                   edgeCollections, parameters);
   if (res.first.fail()) {
     generateError(res.first);
     return;

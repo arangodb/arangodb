@@ -111,6 +111,6 @@ class ConsoleFeature final : public application_features::ApplicationFeature {
   double const _startTime;
 };
 
-}
+}  // namespace arangodb
 
 #endif

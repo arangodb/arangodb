@@ -35,9 +35,7 @@ using FF = Function::Flags;
 
 AqlFunctionFeature* AqlFunctionFeature::AQLFUNCTIONS = nullptr;
 
-AqlFunctionFeature::AqlFunctionFeature(
-    application_features::ApplicationServer& server
-)
+AqlFunctionFeature::AqlFunctionFeature(application_features::ApplicationServer& server)
     : application_features::ApplicationFeature(server, "AQLFunctions") {
   setOptional(false);
   startsAfter("V8Phase");
@@ -45,12 +43,10 @@ AqlFunctionFeature::AqlFunctionFeature(
 }
 
 // This feature does not have any options
-void AqlFunctionFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions>) {}
+void AqlFunctionFeature::collectOptions(std::shared_ptr<options::ProgramOptions>) {}
 
 // This feature does not have any options
-void AqlFunctionFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions>) {}
+void AqlFunctionFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {}
 
 void AqlFunctionFeature::prepare() {
   // set singleton
@@ -110,7 +106,7 @@ void AqlFunctionFeature::toVelocyPack(VPackBuilder& builder) {
     } else {
       builder.add(VPackValue("cxx"));
     }
-    builder.close(); // implementations
+    builder.close();  // implementations
     builder.add("deterministic", VPackValue(it.second.hasFlag(FF::Deterministic)));
     builder.add("cacheable", VPackValue(it.second.hasFlag(FF::Cacheable)));
     builder.add("canRunOnDBServer", VPackValue(it.second.hasFlag(FF::CanRunOnDBServer)));
@@ -129,8 +125,7 @@ Function const* AqlFunctionFeature::byName(std::string const& name) {
   auto it = _functionNames.find(name);
 
   if (it == _functionNames.end()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN,
-                                  name.c_str());
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN, name.c_str());
   }
 
   // return the address of the function
@@ -216,11 +211,11 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"ENCODE_URI_COMPONENT", ".", flags, &Functions::EncodeURIComponent});
   add({"SOUNDEX", ".", flags, &Functions::Soundex});
   add({"LEVENSHTEIN_DISTANCE", ".,.", flags, &Functions::LevenshteinDistance});
-  
-  // special flags:
-  add({"RANDOM_TOKEN", ".", Function::makeFlags(FF::CanRunOnDBServer), &Functions::RandomToken}); // not deterministic and not cacheable
-  add({"UUID", "", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Uuid}); // not deterministic and not cacheable
 
+  // special flags:
+  add({"RANDOM_TOKEN", ".", Function::makeFlags(FF::CanRunOnDBServer),
+       &Functions::RandomToken});  // not deterministic and not cacheable
+  add({"UUID", "", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Uuid});  // not deterministic and not cacheable
 }
 
 void AqlFunctionFeature::addNumericFunctions() {
@@ -249,9 +244,9 @@ void AqlFunctionFeature::addNumericFunctions() {
   add({"RADIANS", ".", flags, &Functions::Radians});
   add({"DEGREES", ".", flags, &Functions::Degrees});
   add({"PI", "", flags, &Functions::Pi});
-  
+
   // special flags:
-  add({"RAND", "", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Rand}); // not deterministic and not cacheable
+  add({"RAND", "", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Rand});  // not deterministic and not cacheable
 }
 
 void AqlFunctionFeature::addListFunctions() {
@@ -267,7 +262,7 @@ void AqlFunctionFeature::addListFunctions() {
   add({"INTERSECTION", ".,.|+", flags, &Functions::Intersection});
   add({"FLATTEN", ".|.", flags, &Functions::Flatten});
   add({"LENGTH", ".", flags, &Functions::Length});
-  // COUNT is an alias for LENGTH 
+  // COUNT is an alias for LENGTH
   addAlias("COUNT", "LENGTH");
   add({"MIN", ".", flags, &Functions::Min});
   add({"MAX", ".", flags, &Functions::Max});
@@ -275,18 +270,18 @@ void AqlFunctionFeature::addListFunctions() {
   add({"MEDIAN", ".", flags, &Functions::Median});
   add({"PERCENTILE", ".,.|.", flags, &Functions::Percentile});
   add({"AVERAGE", ".", flags, &Functions::Average});
-  // AVG is an alias for AVERAGE 
+  // AVG is an alias for AVERAGE
   addAlias("AVG", "AVERAGE");
   add({"VARIANCE_SAMPLE", ".", flags, &Functions::VarianceSample});
   add({"VARIANCE_POPULATION", ".", flags, &Functions::VariancePopulation});
-  // VARIANCE is an alias for VARIANCE_POPULATION 
+  // VARIANCE is an alias for VARIANCE_POPULATION
   addAlias("VARIANCE", "VARIANCE_POPULATION");
   add({"STDDEV_SAMPLE", ".", flags, &Functions::StdDevSample});
   add({"STDDEV_POPULATION", ".", flags, &Functions::StdDevPopulation});
-  // STDDEV is an alias for STDDEV_POPULATION 
+  // STDDEV is an alias for STDDEV_POPULATION
   addAlias("STDDEV", "STDDEV_POPULATION");
   add({"COUNT_DISTINCT", ".", flags, &Functions::CountDistinct});
-  // COUNT_UNIQUE is an alias for COUNT_DISTINCT 
+  // COUNT_UNIQUE is an alias for COUNT_DISTINCT
   addAlias("COUNT_UNIQUE", "COUNT_DISTINCT");
   add({"UNIQUE", ".", flags, &Functions::Unique});
   add({"SORTED_UNIQUE", ".", flags, &Functions::SortedUnique});
@@ -307,11 +302,11 @@ void AqlFunctionFeature::addListFunctions() {
   add({"REMOVE_VALUE", ".,.|.", flags, &Functions::RemoveValue});
   add({"REMOVE_VALUES", ".,.", flags, &Functions::RemoveValues});
   add({"REMOVE_NTH", ".,.", flags, &Functions::RemoveNth});
-  
+
   // special flags:
-  // CALL and APPLY will always run on the coordinator and are not deterministic and not cacheable, as we don't know 
+  // CALL and APPLY will always run on the coordinator and are not deterministic and not cacheable, as we don't know
   // what function is actually gonna be called
-  add({"CALL", ".|.+", Function::makeFlags(), &Functions::Call}); 
+  add({"CALL", ".|.+", Function::makeFlags(), &Functions::Call});
   add({"APPLY", ".|.", Function::makeFlags(), &Functions::Apply});
 }
 
@@ -335,19 +330,31 @@ void AqlFunctionFeature::addDocumentFunctions() {
   add({"ZIP", ".,.", flags, &Functions::Zip});
   add({"JSON_STRINGIFY", ".", flags, &Functions::JsonStringify});
   add({"JSON_PARSE", ".", flags, &Functions::JsonParse});
-  
+
   // special flags:
-  add({"DOCUMENT", "h.|.", Function::makeFlags(), &Functions::Document}); // not deterministic and non-cacheable
+  add({"DOCUMENT", "h.|.", Function::makeFlags(), &Functions::Document});  // not deterministic and non-cacheable
 }
 
 void AqlFunctionFeature::addGeoFunctions() {
   // geo functions
-  add({"DISTANCE", ".,.,.,.", Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer), &Functions::Distance});
-  add({"IS_IN_POLYGON", ".,.|.", Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer), &Functions::IsInPolygon});
-  add({"GEO_DISTANCE", ".,.", Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer), &Functions::GeoDistance});
-  add({"GEO_CONTAINS", ".,.", Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer), &Functions::GeoContains});
-  add({"GEO_INTERSECTS", ".,.", Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer), &Functions::GeoIntersects});
-  add({"GEO_EQUALS", ".,.", Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer), &Functions::GeoEquals});
+  add({"DISTANCE", ".,.,.,.",
+       Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer),
+       &Functions::Distance});
+  add({"IS_IN_POLYGON", ".,.|.",
+       Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer),
+       &Functions::IsInPolygon});
+  add({"GEO_DISTANCE", ".,.",
+       Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer),
+       &Functions::GeoDistance});
+  add({"GEO_CONTAINS", ".,.",
+       Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer),
+       &Functions::GeoContains});
+  add({"GEO_INTERSECTS", ".,.",
+       Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer),
+       &Functions::GeoIntersects});
+  add({"GEO_EQUALS", ".,.",
+       Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer),
+       &Functions::GeoEquals});
 }
 
 void AqlFunctionFeature::addGeometryConstructors() {
@@ -388,10 +395,11 @@ void AqlFunctionFeature::addDateFunctions() {
   add({"DATE_DIFF", ".,.,.|.", flags, &Functions::DateDiff});
   add({"DATE_COMPARE", ".,.,.|.", flags, &Functions::DateCompare});
   add({"DATE_FORMAT", ".,.", flags, &Functions::DateFormat});
-  add({"DATE_TRUNC",   ".,.", flags, &Functions::DateTrunc});
-  
+  add({"DATE_TRUNC", ".,.", flags, &Functions::DateTrunc});
+
   // special flags:
-  add({"DATE_NOW", "", Function::makeFlags(FF::Deterministic, FF::CanRunOnDBServer), &Functions::DateNow}); // deterministic, but not cacheable!
+  add({"DATE_NOW", "", Function::makeFlags(FF::Deterministic, FF::CanRunOnDBServer),
+       &Functions::DateNow});  // deterministic, but not cacheable!
 }
 
 void AqlFunctionFeature::addMiscFunctions() {
@@ -405,29 +413,33 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"FIRST_DOCUMENT", ".|+", flags, &Functions::FirstDocument});
   add({"PARSE_IDENTIFIER", ".", flags, &Functions::ParseIdentifier});
   add({"IS_SAME_COLLECTION", ".h,.h", flags, &Functions::IsSameCollection});
-  add({"V8", ".", Function::makeFlags(FF::Deterministic, FF::Cacheable)}); // only native function without a C++ implementation
+  add({"V8", ".", Function::makeFlags(FF::Deterministic, FF::Cacheable)});  // only native function without a C++ implementation
 
   // special flags:
-  add({"VERSION", "", Function::makeFlags(FF::Deterministic), &Functions::Version}); // deterministic, not cacheable. only on coordinator
-  add({"FAIL", "|.", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Fail}); // not deterministic and not cacheable
-  add({"NOOPT", ".", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Passthru}); // prevents all optimizations!
-  add({"SLEEP", ".", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Sleep}); // not deterministic and not cacheable
-  add({"COLLECTIONS", "", Function::makeFlags(), &Functions::Collections}); // not deterministic and not cacheable
-  add({"CURRENT_USER", "", Function::makeFlags(FF::Deterministic), &Functions::CurrentUser}); // deterministic, but not cacheable
-  add({"CURRENT_DATABASE", "", Function::makeFlags(FF::Deterministic), &Functions::CurrentDatabase}); // deterministic, but not cacheable
-  add({"COLLECTION_COUNT", ".h", Function::makeFlags(), &Functions::CollectionCount}); // not deterministic and not cacheable
-  add({"CHECK_DOCUMENT", ".", Function::makeFlags(FF::CanRunOnDBServer), &Functions::CheckDocument}); // not deterministic and not cacheable
-  add({"PREGEL_RESULT", ".", Function::makeFlags(FF::CanRunOnDBServer), &Functions::PregelResult}); // not deterministic and not cacheable
-  add({"ASSERT", ".,.", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Assert}); // not deterministic and not cacheable
-  add({"WARN", ".,.", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Warn}); // not deterministic and not cacheable
-  
+  add({"VERSION", "", Function::makeFlags(FF::Deterministic), &Functions::Version});  // deterministic, not cacheable. only on coordinator
+  add({"FAIL", "|.", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Fail});  // not deterministic and not cacheable
+  add({"NOOPT", ".", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Passthru});  // prevents all optimizations!
+  add({"SLEEP", ".", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Sleep});  // not deterministic and not cacheable
+  add({"COLLECTIONS", "", Function::makeFlags(), &Functions::Collections});  // not deterministic and not cacheable
+  add({"CURRENT_USER", "", Function::makeFlags(FF::Deterministic),
+       &Functions::CurrentUser});  // deterministic, but not cacheable
+  add({"CURRENT_DATABASE", "", Function::makeFlags(FF::Deterministic),
+       &Functions::CurrentDatabase});  // deterministic, but not cacheable
+  add({"COLLECTION_COUNT", ".h", Function::makeFlags(), &Functions::CollectionCount});  // not deterministic and not cacheable
+  add({"CHECK_DOCUMENT", ".", Function::makeFlags(FF::CanRunOnDBServer), 
+       &Functions::CheckDocument}); // not deterministic and not cacheable
+  add({"PREGEL_RESULT", ".", Function::makeFlags(FF::CanRunOnDBServer),
+       &Functions::PregelResult});  // not deterministic and not cacheable
+  add({"ASSERT", ".,.", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Assert});  // not deterministic and not cacheable
+  add({"WARN", ".,.", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Warn});  // not deterministic and not cacheable
+
   // NEAR, WITHIN, WITHIN_RECTANGLE and FULLTEXT are replaced by the AQL optimizer with collection-based subqueries
   // they are all not marked as non-deterministic and non-cacheable here as they refer to documents
   add({"NEAR", ".h,.,.|.,.", Function::makeFlags(), &Functions::NotImplemented});
   add({"WITHIN", ".h,.,.,.|.", Function::makeFlags(), &Functions::NotImplemented});
-  add({"WITHIN_RECTANGLE", "h.,.,.,.,.", Function::makeFlags(), &Functions::NotImplemented });
-  add({"FULLTEXT", ".h,.,.|." , Function::makeFlags(), &Functions::NotImplemented});
+  add({"WITHIN_RECTANGLE", "h.,.,.,.,.", Function::makeFlags(), &Functions::NotImplemented});
+  add({"FULLTEXT", ".h,.,.|.", Function::makeFlags(), &Functions::NotImplemented});
 }
 
-} // aql
-} // arangodb
+}  // namespace aql
+}  // namespace arangodb
