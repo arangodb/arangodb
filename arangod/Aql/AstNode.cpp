@@ -431,8 +431,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
           setStringValue(query->registerString(p, l), l);
           break;
         }
-        default: {
-        }
+        default: {}
       }
       break;
     }
@@ -627,8 +626,7 @@ AstNode::AstNode(std::function<void(AstNode*)> const& registerNode,
           setStringValue(registerString(str), str.size());
           break;
         }
-        default: {
-        }
+        default: {}
       }
       break;
     }
@@ -980,7 +978,7 @@ void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
 
   if (type == NODE_TYPE_OBJECT) {
     builder.openObject();
-    
+
     std::unordered_set<VPackStringRef> keys;
     size_t const n = numMembers();
 
@@ -1157,8 +1155,7 @@ AstNode const* AstNode::castToBool(Ast* ast) const {
         return ast->createNodeValueBool(value.value._double != 0.0);
       case VALUE_TYPE_STRING:
         return ast->createNodeValueBool(value.length > 0);
-      default: {
-      }
+      default: {}
     }
     // intentionally falls through
   } else if (type == NODE_TYPE_ARRAY) {
@@ -1233,8 +1230,7 @@ int64_t AstNode::getIntValue() const {
         return value.value._int;
       case VALUE_TYPE_DOUBLE:
         return static_cast<int64_t>(value.value._double);
-      default: {
-      }
+      default: {}
     }
   }
 
@@ -1251,8 +1247,7 @@ double AstNode::getDoubleValue() const {
         return static_cast<double>(value.value._int);
       case VALUE_TYPE_DOUBLE:
         return value.value._double;
-      default: {
-      }
+      default: {}
     }
   }
 

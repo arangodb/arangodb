@@ -74,9 +74,7 @@ static bool SignalHandler(DWORD eventType) {
 
       return true;
     }
-    default: {
-      return true;
-    }
+    default: { return true; }
   }
 }
 

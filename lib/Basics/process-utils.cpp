@@ -1307,7 +1307,7 @@ static e_sig_action whatDoesSignal(int signal) {
       return core;
       // case SIGEMT:    //   7,-,7    Term    Emulator trap
     case SIGSTKFLT:  //   -,16,-   Term    Stack fault on coprocessor (unused)
-      // case SIGIO:     //  23,29,22  Term    I/O now possible (4.2BSD)
+                     // case SIGIO:     //  23,29,22  Term    I/O now possible (4.2BSD)
     case SIGPWR:  //  29,30,19  Term    Power failure (System V)
                   // case SIGINFO:   //   29,-,-           A synonym for SIGPWR
       // case SIGLOST:   //   -,-,-    Term    File lock lost (unused)

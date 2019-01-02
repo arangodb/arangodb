@@ -183,17 +183,13 @@ MMFilesDitch* MMFilesDitches::process(bool& popped,
   // note that there is no need to check the entire list for a
   // MMFilesDocumentDitch as the list is filled up in chronological order. New
   // ditches are always added to the tail of the list, and if we have the
-  // following list HEAD -> TRI_DITCH_DATAFILE_CALLBACK -> TRI_DITCH_DOCUMENT then
-  // it is still safe to execute the datafile callback operation, even if there
-  // is a TRI_DITCH_DOCUMENT after it.
-  // This is the case because the TRI_DITCH_DATAFILE_CALLBACK is only put into
-  // the
-  // ditches list after changing the pointers in all headers. After the pointers
-  // are
-  // changed, it is safe to unload/remove an old datafile (that noone points
-  // to). And
-  // any newer TRI_DITCH_DOCUMENTs will always reference data inside other
-  // datafiles.
+  // following list HEAD -> TRI_DITCH_DATAFILE_CALLBACK -> TRI_DITCH_DOCUMENT
+  // then it is still safe to execute the datafile callback operation, even if
+  // there is a TRI_DITCH_DOCUMENT after it. This is the case because the
+  // TRI_DITCH_DATAFILE_CALLBACK is only put into the ditches list after
+  // changing the pointers in all headers. After the pointers are changed, it is
+  // safe to unload/remove an old datafile (that noone points to). And any newer
+  // TRI_DITCH_DOCUMENTs will always reference data inside other datafiles.
 
   if (!callback(ditch)) {
     return ditch;

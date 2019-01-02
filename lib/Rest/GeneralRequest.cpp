@@ -44,9 +44,7 @@ std::string GeneralRequest::translateVersion(ProtocolVersion version) {
     case ProtocolVersion::HTTP_1_0:
       return "HTTP/1.0";
     case ProtocolVersion::UNKNOWN:
-    default: {
-      return "HTTP/1.0";
-    }
+    default: { return "HTTP/1.0"; }
   }
 }
 

@@ -67,9 +67,7 @@ RestStatus RestDocumentHandler::execute() {
     case rest::RequestType::PATCH:
       updateDocument();
       break;
-    default: {
-      generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);
-    }
+    default: { generateNotImplemented("ILLEGAL " + DOCUMENT_PATH); }
   }
 
   // this handler is done

@@ -447,9 +447,7 @@ void Manager::reportHitStat(Stat stat) {
       }
       break;
     }
-    default: {
-      break;
-    }
+    default: { break; }
   }
 }
 
@@ -475,9 +473,7 @@ void Manager::prepareTask(Manager::TaskEnvironment environment) {
       break;
     }
     case TaskEnvironment::none:
-    default: {
-      break;
-    }
+    default: { break; }
   }
 }
 
@@ -501,9 +497,7 @@ void Manager::unprepareTask(Manager::TaskEnvironment environment) {
       break;
     }
     case TaskEnvironment::none:
-    default: {
-      break;
-    }
+    default: { break; }
   }
 
   _outstandingTasks--;

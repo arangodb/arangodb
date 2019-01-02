@@ -915,9 +915,10 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
                      "maximum size for individual data batches (in bytes)",
                      new UInt64Parameter(&_options.chunkSize));
 
-  options->addOption("--threads",
-                     "maximum number of collections to process in parallel. From v3.4.0",
-                     new UInt32Parameter(&_options.threadCount));
+  options->addOption(
+      "--threads",
+      "maximum number of collections to process in parallel. From v3.4.0",
+      new UInt32Parameter(&_options.threadCount));
 
   options->addOption("--include-system-collections",
                      "include system collections",

@@ -225,9 +225,7 @@ v8::Handle<v8::Value> TRI_VPackToV8(v8::Isolate* isolate, VPackSlice const& slic
       return TRI_V8_STD_STRING(isolate, id);
     }
     case VPackValueType::None:
-    default: {
-      return v8::Undefined(isolate);
-    }
+    default: { return v8::Undefined(isolate); }
   }
 }
 

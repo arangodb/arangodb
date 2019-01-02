@@ -108,9 +108,7 @@ static void EdgesQuery(TRI_edge_direction_e direction,
         TRI_V8_THROW_EXCEPTION_USAGE("outEdges(<vertices>)");
 
       case TRI_EDGE_ANY:
-      default: {
-        TRI_V8_THROW_EXCEPTION_USAGE("edges(<vertices>)");
-      }
+      default: { TRI_V8_THROW_EXCEPTION_USAGE("edges(<vertices>)"); }
     }
   }
 

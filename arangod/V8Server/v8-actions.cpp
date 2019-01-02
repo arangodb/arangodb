@@ -743,9 +743,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         break;
       }
 
-      default: {
-        throw std::logic_error("unknown transport type");
-      }
+      default: { throw std::logic_error("unknown transport type"); }
     }
     bodySet = true;
   }

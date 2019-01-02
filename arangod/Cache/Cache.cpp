@@ -292,9 +292,7 @@ void Cache::recordStat(Stat stat) {
       _manager->reportHitStat(Stat::findMiss);
       break;
     }
-    default: {
-      break;
-    }
+    default: { break; }
   }
 }
 

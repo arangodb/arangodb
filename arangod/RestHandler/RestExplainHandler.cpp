@@ -45,9 +45,7 @@ RestStatus RestExplainHandler::execute() {
     case rest::RequestType::POST:
       explainQuery();
       break;
-    default: {
-      generateNotImplemented("Unsupported method");
-    }
+    default: { generateNotImplemented("Unsupported method"); }
   }
 
   // this handler is done
