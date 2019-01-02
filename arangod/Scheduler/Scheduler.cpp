@@ -53,12 +53,6 @@ namespace {
 constexpr double MIN_SECONDS = 30.0;
 }  // namespace
 
-namespace {
-// controls how fast excess threads to io_context get pruned.
-//  60 known to slow down tests that use single client thread (matthewv)
-constexpr double MIN_SECONDS = 30.0;
-}  // namespace
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                            SchedulerManagerThread
 // -----------------------------------------------------------------------------
