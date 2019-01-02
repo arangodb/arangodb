@@ -24,6 +24,7 @@
 
 #include <iostream>
 
+#include <velocypack/Collection.h>
 #include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -158,14 +159,14 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
 
   options->addOption("--overwrite", "overwrite collections if they exist",
                      new BooleanParameter(&_overwrite));
-
-  options->addOption("--default-number-of-shards",
-                     "default value for numberOfShards if not specified",
-                     new UInt64Parameter(&_defaultNumberOfShards));
-
-  options->addOption("--default-replication-factor",
-                     "default value for replicationFactor if not specified",
-                     new UInt64Parameter(&_defaultReplicationFactor));
+  
+  options->addOption("--number-of-shards",
+                     "value for numberOfShards (can be specified multiple times, e.g. --numberOfShards 2 --numberOfShards myCollection=3)",
+                     new VectorParameter<StringParameter>(&_numberOfShards));
+  
+  options->addOption("--replication-factor",
+                     "value for replicationFactor (can be specified multiple times, e.g. --replicationFactor 2 --replicationFactor myCollection=3)",
+                     new VectorParameter<StringParameter>(&_replicationFactor));
 
   options->addOption(
       "--ignore-distribute-shards-like-errors",
@@ -175,6 +176,16 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
   options->addOption(
       "--force", "continue restore even in the face of some server-side errors",
       new BooleanParameter(&_force));
+  
+  // deprecated options
+  options->addHiddenOption("--default-number-of-shards",
+                           "default value for numberOfShards if not specified (deprecated)",
+                           new UInt64Parameter(&_defaultNumberOfShards));
+
+  options->addHiddenOption("--default-replication-factor",
+                           "default value for replicationFactor if not specified (deprecated)",
+                           new UInt64Parameter(&_defaultReplicationFactor));
+
 }
 
 void RestoreFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -193,6 +204,53 @@ void RestoreFeature::validateOptions(std::shared_ptr<options::ProgramOptions> op
   // use a minimum value for batches
   if (_chunkSize < 1024 * 128) {
     _chunkSize = 1024 * 128;
+  }
+
+  // validate shards and replication factor
+  if (_defaultNumberOfShards == 0) {
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "invalid value for `--default-number-of-shards`, expecting at least 1";
+    FATAL_ERROR_EXIT();
+  }
+  
+  if (_defaultReplicationFactor == 0) {
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "invalid value for `--default-replication-factor, expecting at least 1";
+    FATAL_ERROR_EXIT();
+  }
+  
+  for (auto& it : _numberOfShards) {
+    auto parts = basics::StringUtils::split(it, '=');
+    if (parts.size() == 1 && basics::StringUtils::uint64(parts[0]) > 0) {
+      // valid
+      continue;
+    } else if (parts.size() == 2 && basics::StringUtils::uint64(parts[1]) > 0) {
+      // valid
+      continue;
+    }
+    // invalid!
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "got invalid value '" << it << "' for `--number-of-shards";
+    FATAL_ERROR_EXIT();
+  }
+
+  for (auto& it : _replicationFactor) {
+    auto parts = basics::StringUtils::split(it, '=');
+    if (parts.size() == 1) {
+      if (parts[0] == "satellite" || basics::StringUtils::uint64(parts[0]) > 0) {
+        // valid
+        continue;
+      }
+    } else if (parts.size() == 2) {
+      if (parts[1] == "satellite" || basics::StringUtils::uint64(parts[1]) > 0) {
+        // valid
+        continue;
+      }
+    }
+    // invalid!
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "got invalid value '" << it << "' for `--replication-factor";
+    FATAL_ERROR_EXIT();
   }
 }
 
@@ -272,28 +330,29 @@ int RestoreFeature::sendRestoreCollection(VPackSlice const& slice,
       "&ignoreDistributeShardsLikeErrors=" +
       std::string(_ignoreDistributeShardsLikeErrors ? "true" : "false");
 
-  if (_clusterMode) {
-    if (!slice.hasKey(std::vector<std::string>({"parameters", "shards"})) &&
-        !slice.hasKey(
-            std::vector<std::string>({"parameters", "numberOfShards"}))) {
-      // no "shards" and no "numberOfShards" attribute present. now assume
-      // default value from --default-number-of-shards
-      std::cerr << "# no sharding information specified for collection '"
-                << name << "', using default number of shards "
-                << _defaultNumberOfShards << std::endl;
-      url += "&numberOfShards=" + std::to_string(_defaultNumberOfShards);
-    }
-    if (!slice.hasKey(
-            std::vector<std::string>({"parameters", "replicationFactor"}))) {
-      // No replication factor given, so take the default:
-      std::cerr << "# no replication information specified for collection '"
-                << name << "', using default replication factor "
-                << _defaultReplicationFactor << std::endl;
-      url += "&replicationFactor=" + std::to_string(_defaultReplicationFactor);
-    }
-  }
+  VPackSlice const parameters = slice.get("parameters");
 
-  std::string const body = slice.toJson();
+  // build cluster options using command-line parameter values
+  VPackBuilder newOptions;
+  newOptions.openObject();
+  bool isSatellite = false;
+  uint64_t replicationFactor = getReplicationFactor(parameters, isSatellite);
+  if (isSatellite) {
+    newOptions.add("replicationFactor", VPackValue("satellite"));
+  } else {
+    newOptions.add("replicationFactor", VPackValue(replicationFactor));
+  }
+  newOptions.add("numberOfShards", VPackValue(getNumberOfShards(parameters)));
+  newOptions.close();
+
+  VPackBuilder b;
+  b.openObject();
+  b.add("indexes", slice.get("indexes"));
+  b.add(VPackValue("parameters"));
+  VPackCollection::merge(b, parameters, newOptions.slice(), true, false);
+  b.close();
+
+  std::string const body = b.slice().toJson();
 
   std::unique_ptr<SimpleHttpResult> response(
       _httpClient->request(rest::RequestType::PUT, url, body.c_str(), body.size()));
@@ -597,7 +656,7 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
       VPackSlice const collection = b.slice();
       VPackSlice const parameters = collection.get("parameters");
       VPackSlice const indexes = collection.get("indexes");
-      VPackSlice params = collection.get("parameters");
+      VPackSlice params = parameters;
       if (params.isObject()) {
         params = params.get("name");
         // Only these two are relevant for FOXX.
@@ -996,3 +1055,91 @@ void RestoreFeature::endDecryption(int fd) {
   }
 #endif
 }
+
+uint64_t RestoreFeature::getReplicationFactor(VPackSlice const& slice, bool& isSatellite) const {
+  uint64_t result = _defaultReplicationFactor;
+  isSatellite = false;
+
+  VPackSlice s = slice.get("replicationFactor");
+  if (s.isInteger()) {
+    result = s.getNumericValue<uint64_t>();
+  } else if (s.isString()) {
+    if (s.copyString() == "satellite") {
+      isSatellite = true;
+    }
+  }
+
+  s = slice.get("name");
+  if (!s.isString()) {
+    // should not happen, but anyway, let's be safe here
+    return result;
+  }
+
+  if (!_replicationFactor.empty()) {
+    std::string const name = s.copyString();
+
+    for (auto const& it : _replicationFactor) {
+      auto parts = basics::StringUtils::split(it, '=');
+      if (parts.size() == 1) {
+        // this is the default value, e.g. `--replicationFactor 2`
+        if (parts[0] == "satellite") {
+          isSatellite = true;
+        } else { 
+          result = basics::StringUtils::uint64(parts[0]);
+        }
+      }
+
+      // look if we have a more specific value, e.g. `--replicationFactor myCollection=3`
+      if (parts.size() != 2 || parts[0] != name) {
+        // somehow invalid or different collection
+        continue;
+      }
+      if (parts[1] == "satellite") {
+        isSatellite = true;
+      } else {
+        result = basics::StringUtils::uint64(parts[1]);
+      }
+      break;
+    }
+  }
+
+  return result;
+}
+
+uint64_t RestoreFeature::getNumberOfShards(VPackSlice const& slice) const {
+  uint64_t result = _defaultNumberOfShards;
+
+  VPackSlice s = slice.get("numberOfShards");
+  if (s.isInteger()) {
+    result = s.getNumericValue<uint64_t>();
+  }
+
+  s = slice.get("name");
+  if (!s.isString()) {
+    // should not happen, but anyway, let's be safe here
+    return result;
+  }
+
+  if (!_numberOfShards.empty()) {
+    std::string const name = s.copyString();
+
+    for (auto const& it : _numberOfShards) {
+      auto parts = basics::StringUtils::split(it, '=');
+      if (parts.size() == 1) {
+        // this is the default value, e.g. `--numberOfShards 2`
+        result = basics::StringUtils::uint64(parts[0]);
+      }
+
+      // look if we have a more specific value, e.g. `--numberOfShards myCollection=3`
+      if (parts.size() != 2 || parts[0] != name) {
+        // somehow invalid or different collection
+        continue;
+      }
+      result = basics::StringUtils::uint64(parts[1]);
+      break;
+    }
+  }
+
+  return result;
+}
+
