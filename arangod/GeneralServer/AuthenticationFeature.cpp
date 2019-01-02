@@ -31,6 +31,7 @@
 #include "Random/RandomGenerator.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Basics/FileUtils.h"
+#include "Basics/StringUtils.h"
 
 #if USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapAuthenticationHandler.h"
@@ -118,7 +119,9 @@ void AuthenticationFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
     try {
       // Maybe we want to trim the secret here? Not sure if this is wanted or unwanted
       // Or base64 encoded?
-      _jwtSecretProgramOption = basics::FileUtils::slurp(_jwtSecretKeyfileProgramOption);
+      _jwtSecretProgramOption = basics::StringUtils::trim(
+          basics::FileUtils::slurp(_jwtSecretKeyfileProgramOption),
+          " \t\n\r");
     } catch (std::exception const& ex) {
       LOG_TOPIC(FATAL, Logger::STARTUP)
           << "unable to read content of jwt-secret file '"
