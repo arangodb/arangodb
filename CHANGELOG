@@ -1,6 +1,8 @@
 v3.3.22 (XXXX-XX-XX)
 --------------------
 
+* Added --server.jwt-secret-keyfile option.
+
 * validate uniqueness of attribute names in AQL in cases in which it was not
   done before. When constructing AQL objects via object literals, there was
   no validation about object attribute names being unique. For example, it was
@@ -36,7 +38,6 @@ v3.3.22 (XXXX-XX-XX)
   in incoming HTTP requests 
 
 * fixed issue #7834: AQL Query crashes instance
-
 
 v3.3.21 (2018-12-13)
 --------------------
