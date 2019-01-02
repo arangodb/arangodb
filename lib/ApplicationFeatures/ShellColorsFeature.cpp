@@ -56,8 +56,7 @@ char const* ShellColorsFeature::SHELL_COLOR_BLINK = NoColor;
 char const* ShellColorsFeature::SHELL_COLOR_BRIGHT = NoColor;
 char const* ShellColorsFeature::SHELL_COLOR_RESET = NoColor;
 
-ShellColorsFeature::ShellColorsFeature(
-    application_features::ApplicationServer* server)
+ShellColorsFeature::ShellColorsFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "ShellColors") {
   setOptional(false);
   requiresElevatedPrivileges(false);

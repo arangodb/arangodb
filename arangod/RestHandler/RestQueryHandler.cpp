@@ -25,15 +25,15 @@
 
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
-#include "Basics/conversions.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Logger/Logger.h"
+#include "Basics/conversions.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
+#include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 #include "VocBase/vocbase.h"
 
@@ -42,8 +42,7 @@ using namespace arangodb::aql;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestQueryHandler::RestQueryHandler(GeneralRequest* request,
-                                   GeneralResponse* response)
+RestQueryHandler::RestQueryHandler(GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
 bool RestQueryHandler::isDirect() const {
@@ -88,10 +87,8 @@ bool RestQueryHandler::readQueryProperties() {
   result.add("trackSlowQueries", VPackValue(queryList->trackSlowQueries()));
   result.add("trackBindVars", VPackValue(queryList->trackBindVars()));
   result.add("maxSlowQueries", VPackValue(queryList->maxSlowQueries()));
-  result.add("slowQueryThreshold",
-              VPackValue(queryList->slowQueryThreshold()));
-  result.add("maxQueryStringLength",
-              VPackValue(queryList->maxQueryStringLength()));
+  result.add("slowQueryThreshold", VPackValue(queryList->slowQueryThreshold()));
+  result.add("maxQueryStringLength", VPackValue(queryList->maxQueryStringLength()));
   result.close();
 
   generateResult(rest::ResponseCode::OK, result.slice());
@@ -134,8 +131,7 @@ bool RestQueryHandler::readQuery() {
   auto const& suffixes = _request->suffixes();
 
   if (suffixes.size() != 1) {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting GET /_api/query/<type>");
     return true;
   }
@@ -150,8 +146,7 @@ bool RestQueryHandler::readQuery() {
     return readQueryProperties();
   }
 
-  generateError(rest::ResponseCode::NOT_FOUND,
-                TRI_ERROR_HTTP_NOT_FOUND,
+  generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                 "unknown type '" + name +
                     "', expecting 'slow', 'current', or 'properties'");
   return true;
@@ -200,8 +195,7 @@ bool RestQueryHandler::deleteQuery() {
   auto const& suffixes = _request->suffixes();
 
   if (suffixes.size() != 1) {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /_api/query/<id> or /_api/query/slow");
     return true;
   }
@@ -218,15 +212,13 @@ bool RestQueryHandler::replaceProperties() {
   auto const& suffixes = _request->suffixes();
 
   if (suffixes.size() != 1 || suffixes[0] != "properties") {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/query/properties");
     return true;
   }
 
   bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(parseSuccess);
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVelocyPackBody
     return true;
@@ -234,8 +226,7 @@ bool RestQueryHandler::replaceProperties() {
 
   VPackSlice body = parsedBody.get()->slice();
   if (!body.isObject()) {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting a JSON object as body");
   };
 
@@ -293,14 +284,13 @@ bool RestQueryHandler::parseQuery() {
   auto const& suffixes = _request->suffixes();
 
   if (!suffixes.empty()) {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER, "expecting POST /_api/query");
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expecting POST /_api/query");
     return true;
   }
 
   bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(parseSuccess);
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVelocyPackBody
     return true;
@@ -309,22 +299,19 @@ bool RestQueryHandler::parseQuery() {
   VPackSlice body = parsedBody.get()->slice();
 
   if (!body.isObject()) {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting a JSON object as body");
   };
 
   std::string const queryString =
       VelocyPackHelper::checkAndGetStringValue(body, "query");
 
-  Query query(false, _vocbase, QueryString(queryString),
-              nullptr, nullptr, PART_MAIN);
+  Query query(false, _vocbase, QueryString(queryString), nullptr, nullptr, PART_MAIN);
 
   auto parseResult = query.parse();
 
   if (parseResult.code != TRI_ERROR_NO_ERROR) {
-    generateError(rest::ResponseCode::BAD, parseResult.code,
-                  parseResult.details);
+    generateError(rest::ResponseCode::BAD, parseResult.code, parseResult.details);
     return true;
   }
 

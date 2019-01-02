@@ -39,10 +39,12 @@
 using namespace arangodb;
 using namespace arangodb::rocksdbengine;
 
-RocksDBGeoIndexIterator::RocksDBGeoIndexIterator(
-    LogicalCollection* collection, transaction::Methods* trx,
-    ManagedDocumentResult* mmdr, RocksDBGeoIndex const* index,
-    arangodb::aql::AstNode const* cond, arangodb::aql::Variable const* var)
+RocksDBGeoIndexIterator::RocksDBGeoIndexIterator(LogicalCollection* collection,
+                                                 transaction::Methods* trx,
+                                                 ManagedDocumentResult* mmdr,
+                                                 RocksDBGeoIndex const* index,
+                                                 arangodb::aql::AstNode const* cond,
+                                                 arangodb::aql::Variable const* var)
     : IndexIterator(collection, trx, mmdr, index),
       _index(index),
       _cursor(nullptr),
@@ -159,7 +161,8 @@ bool RocksDBGeoIndexIterator::next(LocalDocumentIdCallback const& cb, size_t lim
 
     if (!_cursor) {
       // actually validate that we got a valid cursor
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to create cursor");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "unable to create cursor");
     }
   }
 
@@ -183,8 +186,8 @@ bool RocksDBGeoIndexIterator::next(LocalDocumentIdCallback const& cb, size_t lim
       withDistances = true;
       maxDistance = _radius;
     }
-    auto coords = std::unique_ptr<GeoCoordinates>(::GeoIndex_ReadCursor(
-        _cursor, static_cast<int>(limit), withDistances, maxDistance));
+    auto coords = std::unique_ptr<GeoCoordinates>(
+        ::GeoIndex_ReadCursor(_cursor, static_cast<int>(limit), withDistances, maxDistance));
 
     size_t const length = coords ? coords->length : 0;
 
@@ -222,25 +225,25 @@ void RocksDBGeoIndexIterator::replaceCursor(::GeoCursor* c) {
 void RocksDBGeoIndexIterator::createCursor(double lat, double lon) {
   _coor = GeoCoordinate{lat, lon, 0};
   // GeoIndex is always exclusively write-locked with rocksdb
-  replaceCursor(::GeoIndex_NewCursor(_index->_geoIndex, RocksDBTransactionState::toMethods(_trx), &_coor));
+  replaceCursor(::GeoIndex_NewCursor(_index->_geoIndex,
+                                     RocksDBTransactionState::toMethods(_trx), &_coor));
 }
 
 /// @brief creates an IndexIterator for the given Condition
-IndexIterator* RocksDBGeoIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
-    arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, bool) {
+IndexIterator* RocksDBGeoIndex::iteratorForCondition(transaction::Methods* trx,
+                                                     ManagedDocumentResult* mmdr,
+                                                     arangodb::aql::AstNode const* node,
+                                                     arangodb::aql::Variable const* reference,
+                                                     bool) {
   TRI_IF_FAILURE("GeoIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  return new RocksDBGeoIndexIterator(_collection, trx, mmdr, this, node,
-                                     reference);
+  return new RocksDBGeoIndexIterator(_collection, trx, mmdr, this, node, reference);
 }
 
 void RocksDBGeoIndexIterator::reset() { replaceCursor(nullptr); }
 
-RocksDBGeoIndex::RocksDBGeoIndex(TRI_idx_iid_t iid,
-                                 arangodb::LogicalCollection* collection,
+RocksDBGeoIndex::RocksDBGeoIndex(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
                                  VPackSlice const& info)
     : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::geo(), false),
       _variant(INDEX_GEO_INDIVIDUAL_LAT_LON),
@@ -251,15 +254,14 @@ RocksDBGeoIndex::RocksDBGeoIndex(TRI_idx_iid_t iid,
   _sparse = true;
 
   if (_fields.size() == 1) {
-    _geoJson = arangodb::basics::VelocyPackHelper::getBooleanValue(
-        info, "geoJson", false);
+    _geoJson =
+        arangodb::basics::VelocyPackHelper::getBooleanValue(info, "geoJson", false);
     auto& loc = _fields[0];
     _location.reserve(loc.size());
     for (auto const& it : loc) {
       _location.emplace_back(it.name);
     }
-    _variant =
-        _geoJson ? INDEX_GEO_COMBINED_LAT_LON : INDEX_GEO_COMBINED_LON_LAT;
+    _variant = _geoJson ? INDEX_GEO_COMBINED_LAT_LON : INDEX_GEO_COMBINED_LON_LAT;
   } else if (_fields.size() == 2) {
     _variant = INDEX_GEO_INDIVIDUAL_LAT_LON;
     auto& lat = _fields[0];
@@ -311,8 +313,10 @@ RocksDBGeoIndex::RocksDBGeoIndex(TRI_idx_iid_t iid,
       iter->Next();
     }
   }
- 
-  LOG_TOPIC(TRACE, Logger::FIXME) << "using numpots: " << numPots << ", numslots: " << numSlots << " for geo index with objectId " << _objectId;
+
+  LOG_TOPIC(TRACE, Logger::FIXME)
+      << "using numpots: " << numPots << ", numslots: " << numSlots
+      << " for geo index with objectId " << _objectId;
 
   _geoIndex = GeoIndex_new(nullptr, _objectId, numPots, numSlots);
   if (_geoIndex == nullptr) {
@@ -333,8 +337,7 @@ void RocksDBGeoIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
   // Basic index
   RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
 
-  if (_variant == INDEX_GEO_COMBINED_LAT_LON ||
-      _variant == INDEX_GEO_COMBINED_LON_LAT) {
+  if (_variant == INDEX_GEO_COMBINED_LAT_LON || _variant == INDEX_GEO_COMBINED_LON_LAT) {
     builder.add("geoJson", VPackValue(_geoJson));
   }
 
@@ -380,18 +383,18 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
   if (n != _fields.size()) {
     return false;
   }
-  if (_unique != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                     info, "unique", false)) {
+  if (_unique !=
+      arangodb::basics::VelocyPackHelper::getBooleanValue(info, "unique", false)) {
     return false;
   }
-  if (_sparse != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                     info, "sparse", true)) {
+  if (_sparse !=
+      arangodb::basics::VelocyPackHelper::getBooleanValue(info, "sparse", true)) {
     return false;
   }
 
   if (n == 1) {
-    if (_geoJson != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                        info, "geoJson", false)) {
+    if (_geoJson !=
+        arangodb::basics::VelocyPackHelper::getBooleanValue(info, "geoJson", false)) {
       return false;
     }
   }
@@ -407,8 +410,7 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
     }
     arangodb::StringRef in(f);
     TRI_ParseAttributeString(in, translate, true);
-    if (!arangodb::basics::AttributeName::isIdentical(_fields[i], translate,
-                                                      false)) {
+    if (!arangodb::basics::AttributeName::isIdentical(_fields[i], translate, false)) {
       return false;
     }
   }
@@ -416,11 +418,9 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
 }
 
 /// internal insert function, set batch or trx before calling
-Result RocksDBGeoIndex::insertInternal(transaction::Methods* trx,
-                                       RocksDBMethods* mthd,
+Result RocksDBGeoIndex::insertInternal(transaction::Methods* trx, RocksDBMethods* mthd,
                                        LocalDocumentId const& documentId,
-                                       velocypack::Slice const& doc,
-                                       OperationMode mode) {
+                                       velocypack::Slice const& doc, OperationMode mode) {
   // GeoIndex is always exclusively write-locked with rocksdb
   double latitude;
   double longitude;
@@ -487,8 +487,7 @@ Result RocksDBGeoIndex::insertInternal(transaction::Methods* trx,
 }
 
 /// internal remove function, set batch or trx before calling
-Result RocksDBGeoIndex::removeInternal(transaction::Methods* trx,
-                                       RocksDBMethods* mthd,
+Result RocksDBGeoIndex::removeInternal(transaction::Methods* trx, RocksDBMethods* mthd,
                                        LocalDocumentId const& documentId,
                                        arangodb::velocypack::Slice const& doc,
                                        OperationMode mode) {
@@ -548,26 +547,27 @@ Result RocksDBGeoIndex::removeInternal(transaction::Methods* trx,
 }
 
 /// @brief looks up all points within a given radius
-GeoCoordinates* RocksDBGeoIndex::withinQuery(transaction::Methods* trx,
-                                             double lat, double lon,
-                                             double radius) const {
-  GeoCoordinate gc;
-  gc.latitude = lat;
-  gc.longitude = lon;
-  // GeoIndex is always exclusively write-locked with rocksdb
-  GeoCoordinates* coords = GeoIndex_PointsWithinRadius(_geoIndex, RocksDBTransactionState::toMethods(trx), &gc, radius);
-  return coords;
-}
-
-/// @brief looks up the nearest points
-GeoCoordinates* RocksDBGeoIndex::nearQuery(transaction::Methods* trx,
-                                           double lat, double lon,
-                                           size_t count) const {
+GeoCoordinates* RocksDBGeoIndex::withinQuery(transaction::Methods* trx, double lat,
+                                             double lon, double radius) const {
   GeoCoordinate gc;
   gc.latitude = lat;
   gc.longitude = lon;
   // GeoIndex is always exclusively write-locked with rocksdb
   GeoCoordinates* coords =
-      GeoIndex_NearestCountPoints(_geoIndex, RocksDBTransactionState::toMethods(trx), &gc, static_cast<int>(count));
+      GeoIndex_PointsWithinRadius(_geoIndex, RocksDBTransactionState::toMethods(trx),
+                                  &gc, radius);
+  return coords;
+}
+
+/// @brief looks up the nearest points
+GeoCoordinates* RocksDBGeoIndex::nearQuery(transaction::Methods* trx, double lat,
+                                           double lon, size_t count) const {
+  GeoCoordinate gc;
+  gc.latitude = lat;
+  gc.longitude = lon;
+  // GeoIndex is always exclusively write-locked with rocksdb
+  GeoCoordinates* coords =
+      GeoIndex_NearestCountPoints(_geoIndex, RocksDBTransactionState::toMethods(trx),
+                                  &gc, static_cast<int>(count));
   return coords;
 }

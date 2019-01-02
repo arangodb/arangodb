@@ -49,7 +49,7 @@ class WalkerWorker {
 
   virtual void leaveSubquery(T*,  // super,
                              T*   // sub
-                             ) {}
+  ) {}
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 
@@ -82,7 +82,7 @@ class WalkerWorker {
   std::unordered_set<T*> _done;
 #endif
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

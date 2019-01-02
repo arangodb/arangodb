@@ -26,15 +26,15 @@
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
-  class RestPregelHandler : public arangodb::RestVocbaseBaseHandler {
-  public:
-    explicit RestPregelHandler(GeneralRequest*, GeneralResponse*);
-    
-  public:
-    bool isDirect() const override { return false; }
-    RestStatus execute() override;
-    char const* name() const override {return "Pregel Rest Handler";}
-  };
-}
+class RestPregelHandler : public arangodb::RestVocbaseBaseHandler {
+ public:
+  explicit RestPregelHandler(GeneralRequest*, GeneralResponse*);
+
+ public:
+  bool isDirect() const override { return false; }
+  RestStatus execute() override;
+  char const* name() const override { return "Pregel Rest Handler"; }
+};
+}  // namespace arangodb
 
 #endif

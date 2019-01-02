@@ -53,6 +53,6 @@ struct SumCombiner : public MessageCombiner<M> {
     firstValue += secondValue;
   }
 };
-}
-}
+}  // namespace pregel
+}  // namespace arangodb
 #endif

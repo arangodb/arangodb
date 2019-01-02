@@ -28,6 +28,4 @@ using namespace arangodb;
 /// @brief if this pointer is set to an actual set, then for each request
 /// sent to a shardId using the ClusterComm library, an X-Arango-Nolock
 /// header is generated.
-thread_local std::unordered_set<std::string>* CollectionLockState::_noLockHeaders =
-    nullptr;
-  
+thread_local std::unordered_set<std::string>* CollectionLockState::_noLockHeaders = nullptr;

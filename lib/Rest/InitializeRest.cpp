@@ -78,5 +78,5 @@ void ShutdownRest() {
   TRI_ShutdownError();
   TRI_ShutdownDebugging();
 }
-}
-}
+}  // namespace rest
+}  // namespace arangodb

@@ -35,22 +35,18 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 typedef TRI_voc_tick_t CursorId;
 
 class Cursor {
  public:
-  enum CursorType {
-    CURSOR_VPACK,
-    CURSOR_EXPORT
-  };
+  enum CursorType { CURSOR_VPACK, CURSOR_EXPORT };
 
   Cursor(Cursor const&) = delete;
   Cursor& operator=(Cursor const&) = delete;
 
-  Cursor(CursorId, size_t, std::shared_ptr<arangodb::velocypack::Builder>,
-         double, bool);
+  Cursor(CursorId, size_t, std::shared_ptr<arangodb::velocypack::Builder>, double, bool);
 
   virtual ~Cursor();
 
@@ -114,14 +110,13 @@ class Cursor {
 class VelocyPackCursor final : public Cursor {
  public:
   VelocyPackCursor(TRI_vocbase_t*, CursorId, aql::QueryResult&&, size_t,
-                   std::shared_ptr<arangodb::velocypack::Builder>, double,
-                   bool);
+                   std::shared_ptr<arangodb::velocypack::Builder>, double, bool);
 
   ~VelocyPackCursor() = default;
 
  public:
   aql::QueryResult const* result() const { return &_result; }
-  
+
   CursorType type() const override final { return CURSOR_VPACK; }
 
   bool hasNext() override final;
@@ -139,6 +134,6 @@ class VelocyPackCursor final : public Cursor {
   bool _cached;
 };
 
-}
+}  // namespace arangodb
 
 #endif

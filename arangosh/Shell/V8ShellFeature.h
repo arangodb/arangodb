@@ -25,8 +25,8 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
-#include <v8.h>
 #include <libplatform/libplatform.h>
+#include <v8.h>
 
 #include "Shell/ConsoleFeature.h"
 #include "Shell/ShellFeature.h"
@@ -37,21 +37,17 @@ class V8ClientConnection;
 
 class V8ShellFeature final : public application_features::ApplicationFeature {
  public:
-  V8ShellFeature(application_features::ApplicationServer* server,
-                 std::string const&);
+  V8ShellFeature(application_features::ApplicationServer* server, std::string const&);
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(
-      std::shared_ptr<options::ProgramOptions> options) override;
+  void validateOptions(std::shared_ptr<options::ProgramOptions> options) override;
   void start() override final;
   void unprepare() override final;
   void stop() override final;
 
-  std::string const& startupDirectory() {
-    return _startupDirectory;
-  }
-  
+  std::string const& startupDirectory() { return _startupDirectory; }
+
  private:
   std::string _startupDirectory;
   std::string _nodeModulesDirectory;
@@ -67,10 +63,8 @@ class V8ShellFeature final : public application_features::ApplicationFeature {
   int runShell(std::vector<std::string> const&);
   bool runScript(std::vector<std::string> const& files,
                  std::vector<std::string> const&, bool);
-  bool runString(std::vector<std::string> const& files,
-                 std::vector<std::string> const&);
-  bool runUnitTests(std::vector<std::string> const& files,
-                    std::vector<std::string> const&);
+  bool runString(std::vector<std::string> const& files, std::vector<std::string> const&);
+  bool runUnitTests(std::vector<std::string> const& files, std::vector<std::string> const&);
   bool jslint(std::vector<std::string> const& files);
 
  private:
@@ -80,8 +74,7 @@ class V8ShellFeature final : public application_features::ApplicationFeature {
   void initMode(ShellFeature::RunMode, std::vector<std::string> const&);
   void loadModules(ShellFeature::RunMode);
   V8ClientConnection* setup(v8::Local<v8::Context>& context, bool,
-                            std::vector<std::string> const&,
-                            bool* promptError = nullptr);
+                            std::vector<std::string> const&, bool* promptError = nullptr);
 
  private:
   std::string _name;
@@ -89,6 +82,6 @@ class V8ShellFeature final : public application_features::ApplicationFeature {
   v8::Persistent<v8::Context> _context;
   ConsoleFeature* _console;
 };
-}
+}  // namespace arangodb
 
 #endif

@@ -63,8 +63,7 @@ using namespace arangodb::rest;
 
 /*static*/ constexpr double InitialSyncer::defaultBatchTimeout;
 
-InitialSyncer::InitialSyncer(
-    ReplicationApplierConfiguration const& configuration)
+InitialSyncer::InitialSyncer(ReplicationApplierConfiguration const& configuration)
     : Syncer(configuration),
       _progress("not started"),
       _processedCollections(),
@@ -75,7 +74,8 @@ InitialSyncer::InitialSyncer(
 InitialSyncer::~InitialSyncer() {
   try {
     sendFinishBatch();
-  } catch (...) {}
+  } catch (...) {
+  }
 }
 
 /// @brief send a "start batch" command
@@ -85,7 +85,7 @@ Result InitialSyncer::sendStartBatch(std::string const& patchCount) {
   if (_isChildSyncer) {
     return Result();
   }
-  
+
   double const now = TRI_microtime();
   _batchId = 0;
   // SimpleHttpClient automatically adds database prefix
@@ -104,8 +104,8 @@ Result InitialSyncer::sendStartBatch(std::string const& patchCount) {
   std::string const progress = "sending batch start command to url " + url;
   setProgress(progress);
 
-  std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
-      rest::RequestType::POST, url, body.c_str(), body.size()));
+  std::unique_ptr<SimpleHttpResult> response(
+      _client->retryRequest(rest::RequestType::POST, url, body.c_str(), body.size()));
 
   if (hasFailed(response.get())) {
     return buildHttpError(response.get(), url);
@@ -120,12 +120,14 @@ Result InitialSyncer::sendStartBatch(std::string const& patchCount) {
 
   VPackSlice const slice = builder.slice();
   if (!slice.isObject()) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "start batch response is not an object");
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                  "start batch response is not an object");
   }
 
   std::string const id = VelocyPackHelper::getStringValue(slice, "id", "");
   if (id.empty()) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "start batch id is missing in response");
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                  "start batch id is missing in response");
   }
 
   _batchId = StringUtils::uint64(id);
@@ -157,11 +159,11 @@ Result InitialSyncer::sendExtendBatch() {
 
   std::unique_ptr<SimpleHttpResult> response(
       _client->request(rest::RequestType::PUT, url, body.c_str(), body.size()));
-  
+
   if (hasFailed(response.get())) {
     return buildHttpError(response.get(), url);
   }
-  
+
   _batchUpdateTime = now;
 
   return Result();
@@ -187,7 +189,7 @@ Result InitialSyncer::sendFinishBatch() {
     if (hasFailed(response.get())) {
       return buildHttpError(response.get(), url);
     }
-    
+
     _batchId = 0;
     _batchUpdateTime = 0;
     return Result();

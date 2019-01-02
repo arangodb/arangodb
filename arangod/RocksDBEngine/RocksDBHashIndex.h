@@ -46,6 +46,6 @@ class RocksDBHashIndex final : public RocksDBVPackIndex {
 
   bool matchesDefinition(VPackSlice const& info) const override;
 };
-}
+}  // namespace arangodb
 
 #endif

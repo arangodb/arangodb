@@ -23,20 +23,20 @@
 
 #include "v8-statistics.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/process-utils.h"
 #include "Rest/GeneralRequest.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
 #include "Statistics/ServerStatistics.h"
 #include "Statistics/StatisticsFeature.h"
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb;
@@ -68,13 +68,11 @@ static void FillDistribution(v8::Isolate* isolate, v8::Handle<v8::Object> list,
                              StatisticsDistribution const& dist) {
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
-  result->Set(TRI_V8_ASCII_STRING(isolate, "sum"),
-              v8::Number::New(isolate, dist._total));
+  result->Set(TRI_V8_ASCII_STRING(isolate, "sum"), v8::Number::New(isolate, dist._total));
   result->Set(TRI_V8_ASCII_STRING(isolate, "count"),
               v8::Number::New(isolate, (double)dist._count));
 
-  v8::Handle<v8::Array> counts =
-      v8::Array::New(isolate, (int)dist._counts.size());
+  v8::Handle<v8::Array> counts = v8::Array::New(isolate, (int)dist._counts.size());
   uint32_t pos = 0;
 
   for (std::vector<uint64_t>::const_iterator i = dist._counts.begin();
@@ -97,8 +95,7 @@ static void FillDistribution(v8::Isolate* isolate, v8::Handle<v8::Object> list,
 /// - `uptime`: time since server start in seconds.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ServerStatistics(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_ServerStatistics(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
@@ -113,7 +110,8 @@ static void JS_ServerStatistics(
 
   v8::Handle<v8::Object> v8CountersObj = v8::Object::New(isolate);
   V8DealerFeature* dealer =
-    application_features::ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
+      application_features::ApplicationServer::getFeature<V8DealerFeature>(
+          "V8Dealer");
 
   auto v8Counters = dealer->getCurrentContextNumbers();
   v8CountersObj->Set(TRI_V8_ASCII_STRING(isolate, "available"),
@@ -131,11 +129,14 @@ static void JS_ServerStatistics(
   v8::Handle<v8::Object> counters = v8::Object::New(isolate);
   auto countersRaw = SchedulerFeature::SCHEDULER->getCounters();
   counters->Set(TRI_V8_ASCII_STRING(isolate, "running"),
-                v8::Number::New(isolate, static_cast<int32_t>(rest::Scheduler::numRunning(countersRaw))));
+                v8::Number::New(isolate, static_cast<int32_t>(
+                                             rest::Scheduler::numRunning(countersRaw))));
   counters->Set(TRI_V8_ASCII_STRING(isolate, "working"),
-                v8::Number::New(isolate, static_cast<int32_t>(rest::Scheduler::numWorking(countersRaw))));
+                v8::Number::New(isolate, static_cast<int32_t>(
+                                             rest::Scheduler::numWorking(countersRaw))));
   counters->Set(TRI_V8_ASCII_STRING(isolate, "blocked"),
-                v8::Number::New(isolate, static_cast<int32_t>(rest::Scheduler::numBlocked(countersRaw))));
+                v8::Number::New(isolate, static_cast<int32_t>(
+                                             rest::Scheduler::numBlocked(countersRaw))));
   result->Set(TRI_V8_ASCII_STRING(isolate, "threads"), counters);
 
   TRI_V8_RETURN(result);
@@ -146,13 +147,11 @@ static void JS_ServerStatistics(
 /// @brief whether or not server-side statistics are enabled
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_EnabledStatistics(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_EnabledStatistics(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  v8::Handle<v8::Value> result =
-      v8::Boolean::New(isolate, StatisticsFeature::enabled());
+  v8::Handle<v8::Value> result = v8::Boolean::New(isolate, StatisticsFeature::enabled());
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
@@ -161,8 +160,7 @@ static void JS_EnabledStatistics(
 /// @brief returns the current request and connection statistics
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ClientStatistics(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_ClientStatistics(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
@@ -179,8 +177,8 @@ static void JS_ClientStatistics(
 
   result->Set(TRI_V8_ASCII_STRING(isolate, "httpConnections"),
               v8::Number::New(isolate, (double)httpConnections._count));
-  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "connectionTime"),
-                   connectionTime);
+  FillDistribution(isolate, result,
+                   TRI_V8_ASCII_STRING(isolate, "connectionTime"), connectionTime);
 
   StatisticsDistribution totalTime;
   StatisticsDistribution requestTime;
@@ -189,20 +187,15 @@ static void JS_ClientStatistics(
   StatisticsDistribution bytesSent;
   StatisticsDistribution bytesReceived;
 
-  RequestStatistics::fill(totalTime, requestTime, queueTime, ioTime, bytesSent,
-                          bytesReceived);
+  RequestStatistics::fill(totalTime, requestTime, queueTime, ioTime, bytesSent, bytesReceived);
 
-  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "totalTime"),
-                   totalTime);
-  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "requestTime"),
-                   requestTime);
-  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "queueTime"),
-                   queueTime);
+  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "totalTime"), totalTime);
+  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "requestTime"), requestTime);
+  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "queueTime"), queueTime);
   FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "ioTime"), ioTime);
-  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "bytesSent"),
-                   bytesSent);
-  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "bytesReceived"),
-                   bytesReceived);
+  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "bytesSent"), bytesSent);
+  FillDistribution(isolate, result,
+                   TRI_V8_ASCII_STRING(isolate, "bytesReceived"), bytesReceived);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -232,42 +225,33 @@ static void JS_HttpStatistics(v8::FunctionCallbackInfo<v8::Value> const& args) {
               v8::Number::New(isolate, (double)totalRequests._count));
   result->Set(TRI_V8_ASCII_STRING(isolate, "requestsAsync"),
               v8::Number::New(isolate, (double)asyncRequests._count));
-  result->Set(
-      TRI_V8_ASCII_STRING(isolate, "requestsGet"),
-      v8::Number::New(
-          isolate, (double)methodRequests[(int)rest::RequestType::GET]._count));
+  result->Set(TRI_V8_ASCII_STRING(isolate, "requestsGet"),
+              v8::Number::New(
+                  isolate, (double)methodRequests[(int)rest::RequestType::GET]._count));
   result->Set(TRI_V8_ASCII_STRING(isolate, "requestsHead"),
               v8::Number::New(
-                  isolate,
-                  (double)methodRequests[(int)rest::RequestType::HEAD]._count));
+                  isolate, (double)methodRequests[(int)rest::RequestType::HEAD]._count));
   result->Set(TRI_V8_ASCII_STRING(isolate, "requestsPost"),
               v8::Number::New(
-                  isolate,
-                  (double)methodRequests[(int)rest::RequestType::POST]._count));
-  result->Set(
-      TRI_V8_ASCII_STRING(isolate, "requestsPut"),
-      v8::Number::New(
-          isolate, (double)methodRequests[(int)rest::RequestType::PUT]._count));
-  result->Set(
-      TRI_V8_ASCII_STRING(isolate, "requestsPatch"),
-      v8::Number::New(
-          isolate,
-          (double)methodRequests[(int)rest::RequestType::PATCH]._count));
+                  isolate, (double)methodRequests[(int)rest::RequestType::POST]._count));
+  result->Set(TRI_V8_ASCII_STRING(isolate, "requestsPut"),
+              v8::Number::New(
+                  isolate, (double)methodRequests[(int)rest::RequestType::PUT]._count));
+  result->Set(TRI_V8_ASCII_STRING(isolate, "requestsPatch"),
+              v8::Number::New(
+                  isolate, (double)methodRequests[(int)rest::RequestType::PATCH]._count));
   result->Set(
       TRI_V8_ASCII_STRING(isolate, "requestsDelete"),
-      v8::Number::New(
-          isolate,
-          (double)methodRequests[(int)rest::RequestType::DELETE_REQ]._count));
+      v8::Number::New(isolate,
+                      (double)methodRequests[(int)rest::RequestType::DELETE_REQ]._count));
   result->Set(
       TRI_V8_ASCII_STRING(isolate, "requestsOptions"),
-      v8::Number::New(
-          isolate,
-          (double)methodRequests[(int)rest::RequestType::OPTIONS]._count));
+      v8::Number::New(isolate,
+                      (double)methodRequests[(int)rest::RequestType::OPTIONS]._count));
   result->Set(
       TRI_V8_ASCII_STRING(isolate, "requestsOther"),
-      v8::Number::New(
-          isolate,
-          (double)methodRequests[(int)rest::RequestType::ILLEGAL]._count));
+      v8::Number::New(isolate,
+                      (double)methodRequests[(int)rest::RequestType::ILLEGAL]._count));
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -277,8 +261,7 @@ static void JS_HttpStatistics(v8::FunctionCallbackInfo<v8::Value> const& args) {
 /// @brief initializes the statistics functions
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Statistics(v8::Isolate* isolate,
-                          v8::Handle<v8::Context> context) {
+void TRI_InitV8Statistics(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   v8::HandleScope scope(isolate);
 
   // .............................................................................
@@ -286,22 +269,23 @@ void TRI_InitV8Statistics(v8::Isolate* isolate,
   // .............................................................................
 
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "SYS_ENABLED_STATISTICS"),
+                               TRI_V8_ASCII_STRING(isolate,
+                                                   "SYS_ENABLED_STATISTICS"),
                                JS_EnabledStatistics);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "SYS_CLIENT_STATISTICS"),
+                               TRI_V8_ASCII_STRING(isolate,
+                                                   "SYS_CLIENT_STATISTICS"),
                                JS_ClientStatistics);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_HTTP_STATISTICS"), JS_HttpStatistics);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "SYS_HTTP_STATISTICS"),
-                               JS_HttpStatistics);
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "SYS_SERVER_STATISTICS"),
+                               TRI_V8_ASCII_STRING(isolate,
+                                                   "SYS_SERVER_STATISTICS"),
                                JS_ServerStatistics);
 
   TRI_AddGlobalVariableVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "CONNECTION_TIME_DISTRIBUTION"),
-      DistributionList(isolate,
-                       TRI_ConnectionTimeDistributionVectorStatistics));
+      DistributionList(isolate, TRI_ConnectionTimeDistributionVectorStatistics));
   TRI_AddGlobalVariableVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "REQUEST_TIME_DISTRIBUTION"),
       DistributionList(isolate, TRI_RequestTimeDistributionVectorStatistics));

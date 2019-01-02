@@ -60,8 +60,7 @@ class HashWithSeed {
 
 template <class Key, class HashKey = HashWithSeed<Key, 0xdeadbeefdeadbeefULL>,
           class Fingerprint = HashWithSeed<Key, 0xabcdefabcdef1234ULL>,
-          class HashShort = HashWithSeed<uint16_t, 0xfedcbafedcba4321ULL>,
-          class CompKey = std::equal_to<Key>>
+          class HashShort = HashWithSeed<uint16_t, 0xfedcbafedcba4321ULL>, class CompKey = std::equal_to<Key>>
 class RocksDBCuckooIndexEstimator {
   // Note that the following has to be a power of two and at least 4!
   static constexpr uint32_t SlotsPerBucket = 4;
@@ -220,10 +219,8 @@ class RocksDBCuckooIndexEstimator {
 
   RocksDBCuckooIndexEstimator(RocksDBCuckooIndexEstimator const&) = delete;
   RocksDBCuckooIndexEstimator(RocksDBCuckooIndexEstimator&&) = delete;
-  RocksDBCuckooIndexEstimator& operator=(RocksDBCuckooIndexEstimator const&) =
-      delete;
-  RocksDBCuckooIndexEstimator& operator=(RocksDBCuckooIndexEstimator&&) =
-      delete;
+  RocksDBCuckooIndexEstimator& operator=(RocksDBCuckooIndexEstimator const&) = delete;
+  RocksDBCuckooIndexEstimator& operator=(RocksDBCuckooIndexEstimator&&) = delete;
 
   void serialize(std::string& serialized) const {
     // This format is always hard coded and the serialisation has to support
@@ -234,9 +231,8 @@ class RocksDBCuckooIndexEstimator {
 
     uint64_t serialLength =
         (sizeof(SerializeFormat) + sizeof(uint64_t) + sizeof(_size) +
-         sizeof(_nrUsed) + sizeof(_nrCuckood) + sizeof(_nrTotal) +
-         sizeof(_niceSize) + sizeof(_logSize) +
-         (_size * _slotSize * SlotsPerBucket)) +
+         sizeof(_nrUsed) + sizeof(_nrCuckood) + sizeof(_nrTotal) + sizeof(_niceSize) +
+         sizeof(_logSize) + (_size * _slotSize * SlotsPerBucket)) +
         (_size * _counterSize * SlotsPerBucket);
 
     serialized.reserve(sizeof(uint64_t) + serialLength);
@@ -259,18 +255,16 @@ class RocksDBCuckooIndexEstimator {
       // Size is as follows: nrOfBuckets * SlotsPerBucket * SlotSize
       TRI_ASSERT((_size * _slotSize * SlotsPerBucket) <= _slotAllocSize);
 
-      for (uint64_t i = 0; i < (_size * _slotSize * SlotsPerBucket);
-           i += _slotSize) {
-        rocksutils::uint16ToPersistent(
-            serialized, *(reinterpret_cast<uint16_t*>(_base + i)));
+      for (uint64_t i = 0; i < (_size * _slotSize * SlotsPerBucket); i += _slotSize) {
+        rocksutils::uint16ToPersistent(serialized,
+                                       *(reinterpret_cast<uint16_t*>(_base + i)));
       }
 
       TRI_ASSERT((_size * _counterSize * SlotsPerBucket) <= _counterAllocSize);
 
-      for (uint64_t i = 0; i < (_size * _counterSize * SlotsPerBucket);
-           i += _counterSize) {
-        rocksutils::uint32ToPersistent(
-            serialized, *(reinterpret_cast<uint32_t*>(_counters + i)));
+      for (uint64_t i = 0; i < (_size * _counterSize * SlotsPerBucket); i += _counterSize) {
+        rocksutils::uint32ToPersistent(serialized,
+                                       *(reinterpret_cast<uint32_t*>(_counters + i)));
       }
     }
   }
@@ -411,12 +405,10 @@ class RocksDBCuckooIndexEstimator {
 
  private:  // methods
   uint64_t memoryUsage() const {
-    return sizeof(RocksDBCuckooIndexEstimator) + _slotAllocSize +
-           _counterAllocSize;
+    return sizeof(RocksDBCuckooIndexEstimator) + _slotAllocSize + _counterAllocSize;
   }
 
-  Slot findSlotNoCuckoo(uint64_t pos1, uint64_t pos2, uint16_t fp,
-                        bool& found) const {
+  Slot findSlotNoCuckoo(uint64_t pos1, uint64_t pos2, uint16_t fp, bool& found) const {
     found = false;
     Slot s = findSlotNoCuckoo(pos1, fp, found);
     if (found) {
@@ -571,8 +563,7 @@ class RocksDBCuckooIndexEstimator {
   }
 
   uint32_t* findCounter(uint64_t pos, uint64_t slot) const {
-    TRI_ASSERT(_counterSize * (pos * SlotsPerBucket + slot) <=
-               _counterAllocSize);
+    TRI_ASSERT(_counterSize * (pos * SlotsPerBucket + slot) <= _counterAllocSize);
     char* address = _counters + _counterSize * (pos * SlotsPerBucket + slot);
     return reinterpret_cast<uint32_t*>(address);
   }
@@ -584,8 +575,8 @@ class RocksDBCuckooIndexEstimator {
 
   uint16_t keyToFingerprint(Key const& k) const {
     uint64_t hash = _fingerprint(k);
-    uint16_t fingerprint = (uint16_t)(
-        (hash ^ (hash >> 16) ^ (hash >> 32) ^ (hash >> 48)) & 0xFFFF);
+    uint16_t fingerprint =
+        (uint16_t)((hash ^ (hash >> 16) ^ (hash >> 32) ^ (hash >> 48)) & 0xFFFF);
     return (fingerprint ? fingerprint : 1);
   }
 
@@ -641,17 +632,15 @@ class RocksDBCuckooIndexEstimator {
     // Validate that we have enough data in the serialized format.
     TRI_ASSERT(serialized.size() ==
                (sizeof(SerializeFormat) + sizeof(uint64_t) + sizeof(_size) +
-                sizeof(_nrUsed) + sizeof(_nrCuckood) + sizeof(_nrTotal) +
-                sizeof(_niceSize) + sizeof(_logSize) +
-                (_size * _slotSize * SlotsPerBucket)) +
+                sizeof(_nrUsed) + sizeof(_nrCuckood) + sizeof(_nrTotal) + sizeof(_niceSize) +
+                sizeof(_logSize) + (_size * _slotSize * SlotsPerBucket)) +
                    (_size * _counterSize * SlotsPerBucket));
 
     // Insert the raw data
     // Size is as follows: nrOfBuckets * SlotsPerBucket * SlotSize
     TRI_ASSERT((_size * _slotSize * SlotsPerBucket) <= _slotAllocSize);
 
-    for (uint64_t i = 0; i < (_size * _slotSize * SlotsPerBucket);
-         i += _slotSize) {
+    for (uint64_t i = 0; i < (_size * _slotSize * SlotsPerBucket); i += _slotSize) {
       *(reinterpret_cast<uint16_t*>(_base + i)) =
           rocksutils::uint16FromPersistent(current);
       current += _slotSize;
@@ -659,8 +648,7 @@ class RocksDBCuckooIndexEstimator {
 
     TRI_ASSERT((_size * _counterSize * SlotsPerBucket) <= _counterAllocSize);
 
-    for (uint64_t i = 0; i < (_size * _counterSize * SlotsPerBucket);
-         i += _counterSize) {
+    for (uint64_t i = 0; i < (_size * _counterSize * SlotsPerBucket); i += _counterSize) {
       *(reinterpret_cast<uint32_t*>(_counters + i)) =
           rocksutils::uint32FromPersistent(current);
       current += _counterSize;

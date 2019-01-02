@@ -43,7 +43,6 @@ ReplicationFeature::ReplicationFeature(ApplicationServer* server)
     : ApplicationFeature(server, "Replication"),
       _replicationApplierAutoStart(true),
       _enableActiveFailover(false) {
-
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Database");
@@ -57,7 +56,7 @@ void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
                            "switch to enable or disable the automatic start "
                            "of replication appliers",
                            new BooleanParameter(&_replicationApplierAutoStart));
-  
+
   options->addSection("database", "Configure the database");
   options->addOldOption("server.disable-replication-applier",
                         "replication.auto-start");
@@ -67,37 +66,39 @@ void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
                            "Please use `--replication.active-failover` instead",
                            new BooleanParameter(&_enableActiveFailover));
   options->addOption("--replication.active-failover",
-                      "Enable active-failover during asynchronous replication",
-                      new BooleanParameter(&_enableActiveFailover));
+                     "Enable active-failover during asynchronous replication",
+                     new BooleanParameter(&_enableActiveFailover));
 }
 
 void ReplicationFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
   auto feature = ApplicationServer::getFeature<ClusterFeature>("Cluster");
   if (_enableActiveFailover && feature->agencyEndpoints().empty()) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-    << "automatic failover needs to be started with agency endpoint configured";
+        << "automatic failover needs to be started with agency endpoint "
+           "configured";
     FATAL_ERROR_EXIT();
   }
 }
 
-void ReplicationFeature::prepare() { 
-  INSTANCE = this;
-}
+void ReplicationFeature::prepare() { INSTANCE = this; }
 
-void ReplicationFeature::start() { 
-  _globalReplicationApplier.reset(new GlobalReplicationApplier(GlobalReplicationApplier::loadConfiguration()));
- 
+void ReplicationFeature::start() {
+  _globalReplicationApplier.reset(
+      new GlobalReplicationApplier(GlobalReplicationApplier::loadConfiguration()));
+
   try {
     _globalReplicationApplier->loadState();
   } catch (...) {
     // :snake:
   }
- 
-  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "checking global applier startup. autoStart: " << _globalReplicationApplier->autoStart() << ", hasState: " << _globalReplicationApplier->hasState();
-  
+
+  LOG_TOPIC(DEBUG, Logger::REPLICATION)
+      << "checking global applier startup. autoStart: "
+      << _globalReplicationApplier->autoStart()
+      << ", hasState: " << _globalReplicationApplier->hasState();
+
   if (_globalReplicationApplier->autoStart() &&
-      _globalReplicationApplier->hasState() &&
-      _replicationApplierAutoStart) {
+      _globalReplicationApplier->hasState() && _replicationApplierAutoStart) {
     _globalReplicationApplier->startTailing(0, false, 0);
   }
 }
@@ -128,7 +129,7 @@ void ReplicationFeature::unprepare() {
   }
   _globalReplicationApplier.reset();
 }
-    
+
 // start the replication applier for a single database
 void ReplicationFeature::startApplier(TRI_vocbase_t* vocbase) {
   TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
@@ -136,17 +137,20 @@ void ReplicationFeature::startApplier(TRI_vocbase_t* vocbase) {
 
   if (vocbase->replicationApplier()->autoStart()) {
     if (!_replicationApplierAutoStart) {
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "replication applier explicitly deactivated for database '"
-                << vocbase->name() << "'";
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+          << "replication applier explicitly deactivated for database '"
+          << vocbase->name() << "'";
     } else {
       try {
         vocbase->replicationApplier()->startTailing(0, false, 0);
       } catch (std::exception const& ex) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "unable to start replication applier for database '"
-                  << vocbase->name() << "': " << ex.what();
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+            << "unable to start replication applier for database '"
+            << vocbase->name() << "': " << ex.what();
       } catch (...) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "unable to start replication applier for database '"
-                  << vocbase->name() << "'";
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+            << "unable to start replication applier for database '"
+            << vocbase->name() << "'";
       }
     }
   }
@@ -164,10 +168,10 @@ void ReplicationFeature::stopApplier(TRI_vocbase_t* vocbase) {
 // replace tcp:// with http://, and ssl:// with https://
 static std::string FixEndpointProto(std::string const& endpoint) {
   if (endpoint.find("tcp://", 0, 6) == 0) {
-    return "http://" + endpoint.substr(6); // strlen("tcp://")
+    return "http://" + endpoint.substr(6);  // strlen("tcp://")
   }
   if (endpoint.find("ssl://", 0, 6) == 0) {
-    return "https://" + endpoint.substr(6); // strlen("ssl://")
+    return "https://" + endpoint.substr(6);  // strlen("ssl://")
   }
   return endpoint;
 }
@@ -183,7 +187,7 @@ static void writeError(int code, GeneralResponse* response) {
   builder.add(StaticStrings::ErrorMessage, VPackValue(TRI_errno_string(code)));
   builder.add(StaticStrings::Code, VPackValue((int)response->responseCode()));
   builder.close();
-  
+
   VPackOptions options(VPackOptions::Defaults);
   options.escapeUnicode = true;
   response->setPayload(std::move(buffer), true, VPackOptions::Defaults);
@@ -223,13 +227,12 @@ void ReplicationFeature::prepareFollowerResponse(GeneralResponse* response,
       response->setHeaderNC(StaticStrings::LeaderEndpoint, endpoint);
       writeError(TRI_ERROR_CLUSTER_NOT_LEADER, response);
       // return the endpoint of the actual leader
-    }
-    break;
-      
+    } break;
+
     case ServerState::Mode::TRYAGAIN:
-      // intentionally do not set "Location" header, but use a custom header that
-      // clients can inspect. if they find an empty endpoint, it means that there
-      // is an ongoing leadership challenge
+      // intentionally do not set "Location" header, but use a custom header
+      // that clients can inspect. if they find an empty endpoint, it means that
+      // there is an ongoing leadership challenge
       response->setHeaderNC(StaticStrings::LeaderEndpoint, "");
       writeError(TRI_ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING, response);
       break;

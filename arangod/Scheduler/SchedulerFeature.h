@@ -76,6 +76,6 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   std::function<void(const asio_ns::error_code&, int)> _hangupHandler;
   std::shared_ptr<asio_ns::signal_set> _hangupSignals;
 };
-}
+}  // namespace arangodb
 
 #endif

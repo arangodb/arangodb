@@ -66,14 +66,15 @@ MMFilesTransactionState::~MMFilesTransactionState() {
 rocksdb::Transaction* MMFilesTransactionState::rocksTransaction() {
   if (_rocksTransaction == nullptr) {
     _rocksTransaction = MMFilesPersistentIndexFeature::instance()->db()->BeginTransaction(
-      rocksdb::WriteOptions(), rocksdb::OptimisticTransactionOptions());
+        rocksdb::WriteOptions(), rocksdb::OptimisticTransactionOptions());
   }
   return _rocksTransaction;
 }
-  
+
 /// @brief start a transaction
 Result MMFilesTransactionState::beginTransaction(transaction::Hints hints) {
-  LOG_TRX(this, _nestingLevel) << "beginning " << AccessMode::typeString(_type) << " transaction";
+  LOG_TRX(this, _nestingLevel)
+      << "beginning " << AccessMode::typeString(_type) << " transaction";
   Result result;
 
   if (_nestingLevel == 0) {
@@ -82,12 +83,10 @@ Result MMFilesTransactionState::beginTransaction(transaction::Hints hints) {
     auto logfileManager = MMFilesLogfileManager::instance();
 
     if (!hasHint(transaction::Hints::Hint::NO_THROTTLING) &&
-        AccessMode::isWriteOrExclusive(_type) &&
-        logfileManager->canBeThrottled()) {
+        AccessMode::isWriteOrExclusive(_type) && logfileManager->canBeThrottled()) {
       // write-throttling?
       static uint64_t const WaitTime = 50000;
-      uint64_t const maxIterations =
-          logfileManager->maxThrottleWait() / (WaitTime / 1000);
+      uint64_t const maxIterations = logfileManager->maxThrottleWait() / (WaitTime / 1000);
       uint64_t iterations = 0;
 
       while (logfileManager->isThrottled()) {
@@ -108,11 +107,11 @@ Result MMFilesTransactionState::beginTransaction(transaction::Hints hints) {
     // register a protector
     int res = logfileManager->registerTransaction(_id, isReadOnlyTransaction());
     result.reset(res);
- 
+
     if (!result.ok()) {
       return result;
     }
-  
+
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }
@@ -141,7 +140,8 @@ Result MMFilesTransactionState::beginTransaction(transaction::Hints hints) {
 
 /// @brief commit a transaction
 Result MMFilesTransactionState::commitTransaction(transaction::Methods* activeTrx) {
-  LOG_TRX(this, _nestingLevel) << "committing " << AccessMode::typeString(_type) << " transaction";
+  LOG_TRX(this, _nestingLevel)
+      << "committing " << AccessMode::typeString(_type) << " transaction";
   TRI_ASSERT(_status == transaction::Status::RUNNING);
 
   Result result;
@@ -170,10 +170,8 @@ Result MMFilesTransactionState::commitTransaction(transaction::Methods* activeTr
     updateStatus(transaction::Status::COMMITTED);
 
     // if a write query, clear the query cache for the participating collections
-    if (AccessMode::isWriteOrExclusive(_type) &&
-        !_collections.empty() &&
-        !isSingleOperation() && 
-        arangodb::aql::QueryCache::instance()->mayBeActive()) {
+    if (AccessMode::isWriteOrExclusive(_type) && !_collections.empty() &&
+        !isSingleOperation() && arangodb::aql::QueryCache::instance()->mayBeActive()) {
       clearQueryCache();
     }
 
@@ -217,8 +215,7 @@ Result MMFilesTransactionState::abortTransaction(transaction::Methods* activeTrx
 int MMFilesTransactionState::addOperation(LocalDocumentId const& documentId,
                                           TRI_voc_rid_t revisionId,
                                           MMFilesDocumentOperation& operation,
-                                          MMFilesWalMarker const* marker,
-                                          bool& waitForSync) {
+                                          MMFilesWalMarker const* marker, bool& waitForSync) {
   LogicalCollection* collection = operation.collection();
   bool const isSingleOperationTransaction = isSingleOperation();
 
@@ -262,10 +259,10 @@ int MMFilesTransactionState::addOperation(LocalDocumentId const& documentId,
     bool const localWaitForSync = (isSingleOperationTransaction && waitForSync);
 
     // never wait until our marker was synced, even when an operation was tagged
-    // waitForSync=true. this is still safe because inside a transaction, the final
-    // commit marker will be written with waitForSync=true then, and in a standalone
-    // operation the transaction will wait until everything was synced before returning
-    // to the caller
+    // waitForSync=true. this is still safe because inside a transaction, the
+    // final commit marker will be written with waitForSync=true then, and in a
+    // standalone operation the transaction will wait until everything was
+    // synced before returning to the caller
     bool const waitForTick = false;
 
     // we should wake up the synchronizer in case this is a single operation
@@ -273,10 +270,10 @@ int MMFilesTransactionState::addOperation(LocalDocumentId const& documentId,
     bool const wakeUpSynchronizer = isSingleOperationTransaction;
 
     MMFilesWalSlotInfoCopy slotInfo =
-        MMFilesLogfileManager::instance()->allocateAndWrite(
-            _vocbase->id(), collection->cid(), 
-            marker, wakeUpSynchronizer,
-            localWaitForSync, waitForTick);
+        MMFilesLogfileManager::instance()->allocateAndWrite(_vocbase->id(),
+                                                            collection->cid(), marker,
+                                                            wakeUpSynchronizer,
+                                                            localWaitForSync, waitForTick);
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
       // some error occurred
       return slotInfo.errorCode;
@@ -305,10 +302,11 @@ int MMFilesTransactionState::addOperation(LocalDocumentId const& documentId,
       operation.type() == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
       operation.type() == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
     // adjust the data position in the header
-    uint8_t const* vpack = reinterpret_cast<uint8_t const*>(position) + MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT);
+    uint8_t const* vpack = reinterpret_cast<uint8_t const*>(position) +
+                           MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT);
     TRI_ASSERT(fid > 0);
     operation.setVPack(vpack);
-    physical->updateLocalDocumentId(documentId, vpack, fid, true); // always in WAL
+    physical->updateLocalDocumentId(documentId, vpack, fid, true);  // always in WAL
   }
 
   TRI_IF_FAILURE("TransactionOperationAfterAdjust") { return TRI_ERROR_DEBUG; }
@@ -318,40 +316,39 @@ int MMFilesTransactionState::addOperation(LocalDocumentId const& documentId,
     if (_rocksTransaction != nullptr) {
       auto status = _rocksTransaction->Commit();
 
-      if (!status.ok()) { 
+      if (!status.ok()) {
         // TODO: what to do here?
       }
     }
     operation.handled();
 
-    arangodb::aql::QueryCache::instance()->invalidate(
-        _vocbase, collection->name());
+    arangodb::aql::QueryCache::instance()->invalidate(_vocbase, collection->name());
 
     physical->increaseUncollectedLogfileEntries(1);
   } else {
     // operation is buffered and might be rolled back
-    TransactionCollection* trxCollection = this->collection(collection->cid(), AccessMode::Type::WRITE);
-    
+    TransactionCollection* trxCollection =
+        this->collection(collection->cid(), AccessMode::Type::WRITE);
+
     std::unique_ptr<MMFilesDocumentOperation> copy(operation.clone());
-   
+
     TRI_IF_FAILURE("TransactionOperationPushBack") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG); 
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-      
+
     static_cast<MMFilesTransactionCollection*>(trxCollection)->addOperation(copy.get());
-    
+
     TRI_IF_FAILURE("TransactionOperationPushBack2") {
       copy.release();
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG); 
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
     copy->handled();
     copy.release();
     operation.swapped();
     _hasOperations = true;
-    
-    arangodb::aql::QueryCache::instance()->invalidate(
-        _vocbase, collection->name());
+
+    arangodb::aql::QueryCache::instance()->invalidate(_vocbase, collection->name());
   }
 
   physical->setRevision(revisionId, false);
@@ -364,9 +361,9 @@ int MMFilesTransactionState::addOperation(LocalDocumentId const& documentId,
 /// @brief free all operations for a transaction
 void MMFilesTransactionState::freeOperations(transaction::Methods* activeTrx) {
   bool const mustRollback = (_status == transaction::Status::ABORTED);
-     
+
   TRI_ASSERT(activeTrx != nullptr);
-   
+
   for (auto& trxCollection : _collections) {
     trxCollection->freeOperations(activeTrx, mustRollback);
   }
@@ -389,10 +386,11 @@ int MMFilesTransactionState::writeBeginMarker() {
   int res;
 
   try {
-    MMFilesTransactionMarker marker(TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION, _vocbase->id(), _id);
+    MMFilesTransactionMarker marker(TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION,
+                                    _vocbase->id(), _id);
     res = GetMMFilesLogfileManager()->allocateAndWrite(marker, false).errorCode;
-    
-    TRI_IF_FAILURE("TransactionWriteBeginMarkerThrow") { 
+
+    TRI_IF_FAILURE("TransactionWriteBeginMarkerThrow") {
       throw std::bad_alloc();
     }
 
@@ -403,13 +401,16 @@ int MMFilesTransactionState::writeBeginMarker() {
     }
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save transaction begin marker in log: " << ex.what();
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "could not save transaction begin marker in log: " << ex.what();
   } catch (std::exception const& ex) {
     res = TRI_ERROR_INTERNAL;
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save transaction begin marker in log: " << ex.what();
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "could not save transaction begin marker in log: " << ex.what();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save transaction begin marker in log: unknown exception";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "could not save transaction begin marker in log: unknown exception";
   }
 
   return res;
@@ -432,25 +433,29 @@ int MMFilesTransactionState::writeAbortMarker() {
   int res;
 
   try {
-    MMFilesTransactionMarker marker(TRI_DF_MARKER_VPACK_ABORT_TRANSACTION, _vocbase->id(), _id);
+    MMFilesTransactionMarker marker(TRI_DF_MARKER_VPACK_ABORT_TRANSACTION,
+                                    _vocbase->id(), _id);
     res = GetMMFilesLogfileManager()->allocateAndWrite(marker, false).errorCode;
-    
-    TRI_IF_FAILURE("TransactionWriteAbortMarkerThrow") { 
+
+    TRI_IF_FAILURE("TransactionWriteAbortMarkerThrow") {
       throw std::bad_alloc();
     }
-  
+
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save transaction abort marker in log: " << ex.what();
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "could not save transaction abort marker in log: " << ex.what();
   } catch (std::exception const& ex) {
     res = TRI_ERROR_INTERNAL;
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save transaction abort marker in log: " << ex.what();
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "could not save transaction abort marker in log: " << ex.what();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save transaction abort marker in log: unknown exception";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "could not save transaction abort marker in log: unknown exception";
   }
 
   return res;
@@ -469,22 +474,28 @@ int MMFilesTransactionState::writeCommitMarker() {
   int res;
 
   try {
-    MMFilesTransactionMarker marker(TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION, _vocbase->id(), _id);
-    res = GetMMFilesLogfileManager()->allocateAndWrite(marker, _options.waitForSync).errorCode;
-    
-    TRI_IF_FAILURE("TransactionWriteCommitMarkerSegfault") { 
+    MMFilesTransactionMarker marker(TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION,
+                                    _vocbase->id(), _id);
+    res = GetMMFilesLogfileManager()
+              ->allocateAndWrite(marker, _options.waitForSync)
+              .errorCode;
+
+    TRI_IF_FAILURE("TransactionWriteCommitMarkerSegfault") {
       TRI_SegfaultDebugging("crashing on commit");
     }
 
-    TRI_IF_FAILURE("TransactionWriteCommitMarkerNoRocksSync") { return TRI_ERROR_NO_ERROR; }
+    TRI_IF_FAILURE("TransactionWriteCommitMarkerNoRocksSync") {
+      return TRI_ERROR_NO_ERROR;
+    }
 
     if (_options.waitForSync) {
       // also sync RocksDB WAL if required
       bool hasPersistentIndex = false;
       allCollections([&hasPersistentIndex](TransactionCollection* collection) {
         auto c = static_cast<MMFilesTransactionCollection*>(collection);
-        if (c->canAccess(AccessMode::Type::WRITE) && 
-            c->collection()->getPhysical()->hasIndexOfType(arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX)) {
+        if (c->canAccess(AccessMode::Type::WRITE) &&
+            c->collection()->getPhysical()->hasIndexOfType(
+                arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX)) {
           hasPersistentIndex = true;
           // abort iteration
           return false;
@@ -496,25 +507,27 @@ int MMFilesTransactionState::writeCommitMarker() {
         MMFilesPersistentIndexFeature::syncWal();
       }
     }
-    
-    TRI_IF_FAILURE("TransactionWriteCommitMarkerThrow") { 
+
+    TRI_IF_FAILURE("TransactionWriteCommitMarkerThrow") {
       throw std::bad_alloc();
     }
-    
+
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save transaction commit marker in log: " << ex.what();
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "could not save transaction commit marker in log: " << ex.what();
   } catch (std::exception const& ex) {
     res = TRI_ERROR_INTERNAL;
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save transaction commit marker in log: " << ex.what();
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "could not save transaction commit marker in log: " << ex.what();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save transaction commit marker in log: unknown exception";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "could not save transaction commit marker in log: unknown exception";
   }
 
   return res;
 }
-

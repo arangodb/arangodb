@@ -26,11 +26,10 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
-class InitDatabaseFeature final
-    : public application_features::ApplicationFeature {
+class InitDatabaseFeature final : public application_features::ApplicationFeature {
  public:
   InitDatabaseFeature(application_features::ApplicationServer* server,
-                 std::vector<std::string> const& nonServerFeatures);
+                      std::vector<std::string> const& nonServerFeatures);
 
  public:
   std::string const& defaultPassword() const { return _password; }
@@ -55,6 +54,6 @@ class InitDatabaseFeature final
   bool _seenPassword = false;
   std::vector<std::string> _nonServerFeatures;
 };
-}
+}  // namespace arangodb
 
 #endif

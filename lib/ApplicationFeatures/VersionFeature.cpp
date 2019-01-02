@@ -31,9 +31,8 @@ using namespace arangodb;
 using namespace arangodb::rest;
 using namespace arangodb::options;
 
-VersionFeature::VersionFeature(application_features::ApplicationServer* server) 
-    : ApplicationFeature(server, "Version"),
-      _printVersion(false) {
+VersionFeature::VersionFeature(application_features::ApplicationServer* server)
+    : ApplicationFeature(server, "Version"), _printVersion(false) {
   setOptional(false);
   requiresElevatedPrivileges(false);
 
@@ -47,7 +46,8 @@ void VersionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
 void VersionFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   if (_printVersion) {
-    std::cout << Version::getServerVersion() << std::endl << std::endl
+    std::cout << Version::getServerVersion() << std::endl
+              << std::endl
               << Version::getDetailed() << std::endl;
     exit(EXIT_SUCCESS);
   }

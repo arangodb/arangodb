@@ -32,8 +32,10 @@
 
 // debug malloc for Windows (only used when DEBUG is set)
 #define _CRTDBG_MAP_ALLOC
+// clang-format off
 #include <stdlib.h>
 #include <crtdbg.h>
+// clang-format on
 
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -42,8 +44,10 @@
 #endif
 
 #define TRI_WITHIN_COMMON 1
+// clang-format off
 #include "Basics/operating-system.h"
 #include "Basics/application-exit.h"
+// clang-format on
 #undef TRI_WITHIN_COMMON
 
 #include <ctype.h>
@@ -167,6 +171,7 @@ typedef long suseconds_t;
 #include <vector>
 
 #define TRI_WITHIN_COMMON 1
+// clang-format off
 #include "Basics/voc-errors.h"
 #include "Basics/error.h"
 #include "Basics/debugging.h"
@@ -174,10 +179,11 @@ typedef long suseconds_t;
 #include "Basics/memory.h"
 #include "Basics/system-compiler.h"
 #include "Basics/system-functions.h"
+// clang-format on
 #undef TRI_WITHIN_COMMON
 
 #ifdef _WIN32
-// some Windows headers define macros named free and small, 
+// some Windows headers define macros named free and small,
 // leading to follow-up compile errors
 #undef free
 #undef small
@@ -203,7 +209,12 @@ typedef long suseconds_t;
 
 #else
 
-#define TRI_ASSERT(expr) while (0) { (void) (expr); } do { } while (0)
+#define TRI_ASSERT(expr) \
+  while (0) {            \
+    (void)(expr);        \
+  }                      \
+  do {                   \
+  } while (0)
 
 #endif
 
@@ -211,32 +222,32 @@ typedef long suseconds_t;
 
 /// @brief aborts program execution, returning an error code
 /// if backtraces are enabled, a backtrace will be printed before
-#define FATAL_ERROR_EXIT_CODE(code)                             \
-  do {                                                          \
-    TRI_LogBacktrace();                                         \
-    arangodb::basics::CleanupFunctions::run(code, nullptr);     \
-    arangodb::Logger::flush();                                  \
-    arangodb::Logger::shutdown();                               \
-    TRI_EXIT_FUNCTION(code, nullptr);                           \
-    exit(code);                                                 \
+#define FATAL_ERROR_EXIT_CODE(code)                         \
+  do {                                                      \
+    TRI_LogBacktrace();                                     \
+    arangodb::basics::CleanupFunctions::run(code, nullptr); \
+    arangodb::Logger::flush();                              \
+    arangodb::Logger::shutdown();                           \
+    TRI_EXIT_FUNCTION(code, nullptr);                       \
+    exit(code);                                             \
   } while (0)
 
 /// @brief aborts program execution, returning an error code
 /// if backtraces are enabled, a backtrace will be printed before
-#define FATAL_ERROR_EXIT(...)                 \
-  do {                                        \
-    FATAL_ERROR_EXIT_CODE(EXIT_FAILURE);      \
+#define FATAL_ERROR_EXIT(...)            \
+  do {                                   \
+    FATAL_ERROR_EXIT_CODE(EXIT_FAILURE); \
   } while (0)
 
 /// @brief aborts program execution, calling std::abort
 /// if backtraces are enabled, a backtrace will be printed before
-#define FATAL_ERROR_ABORT(...)                                 \
-  do {                                                         \
-    TRI_LogBacktrace();                                        \
-    arangodb::basics::CleanupFunctions::run(500, nullptr);     \
-    arangodb::Logger::flush();                                 \
-    arangodb::Logger::shutdown();                              \
-    std::abort();                                              \
+#define FATAL_ERROR_ABORT(...)                             \
+  do {                                                     \
+    TRI_LogBacktrace();                                    \
+    arangodb::basics::CleanupFunctions::run(500, nullptr); \
+    arangodb::Logger::flush();                             \
+    arangodb::Logger::shutdown();                          \
+    std::abort();                                          \
   } while (0)
 
 #ifdef _WIN32
@@ -266,12 +277,16 @@ inline void ADB_WindowsExitFunction(int, void*) {}
 template <typename T>
 struct TRI_AutoOutOfScope {
   explicit TRI_AutoOutOfScope(T& destructor) : m_destructor(destructor) {}
-  ~TRI_AutoOutOfScope() { try { m_destructor(); } catch (...) { } }
+  ~TRI_AutoOutOfScope() {
+    try {
+      m_destructor();
+    } catch (...) {
+    }
+  }
 
  private:
   T& m_destructor;
 };
-
 
 #define TRI_DEFER_INTERNAL(Destructor, funcname, objname) \
   auto funcname = [&]() { Destructor; };                  \

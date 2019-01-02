@@ -45,19 +45,18 @@
 
 using namespace arangodb;
 
-RocksDBExportCursor::RocksDBExportCursor(
-    TRI_vocbase_t* vocbase, std::string const& name,
-    CollectionExport::Restrictions const& restrictions, CursorId id,
-    size_t limit, size_t batchSize, double ttl, bool hasCount)
+RocksDBExportCursor::RocksDBExportCursor(TRI_vocbase_t* vocbase, std::string const& name,
+                                         CollectionExport::Restrictions const& restrictions,
+                                         CursorId id, size_t limit,
+                                         size_t batchSize, double ttl, bool hasCount)
     : Cursor(id, batchSize, nullptr, ttl, hasCount),
       _guard(vocbase),
       _resolver(vocbase),
       _restrictions(restrictions),
       _name(name),
       _mdr() {
-  _trx.reset(new SingleCollectionTransaction(
-      transaction::StandaloneContext::Create(vocbase), _name,
-      AccessMode::Type::READ));
+  _trx.reset(new SingleCollectionTransaction(transaction::StandaloneContext::Create(vocbase),
+                                             _name, AccessMode::Type::READ));
 
   Result res = _trx->begin();
 
@@ -68,8 +67,7 @@ RocksDBExportCursor::RocksDBExportCursor(
   LogicalCollection* collection = _trx->documentCollection();
   TRI_ASSERT(collection != nullptr);
 
-  auto rocksCollection =
-      static_cast<RocksDBCollection*>(collection->getPhysical());
+  auto rocksCollection = static_cast<RocksDBCollection*>(collection->getPhysical());
   _iter = rocksCollection->getAllIterator(_trx.get(), &_mdr, false);
 
   _size = collection->numberDocuments(_trx.get());
@@ -129,16 +127,14 @@ void RocksDBExportCursor::dump(VPackBuilder& builder) {
       for (auto const& entry : VPackObjectIterator(slice)) {
         std::string key(entry.key.copyString());
 
-        if (!CollectionExport::IncludeAttribute(restrictionType,
-                                                _restrictions.fields, key)) {
+        if (!CollectionExport::IncludeAttribute(restrictionType, _restrictions.fields, key)) {
           // Ignore everything that should be excluded or not included
           continue;
         }
         // If we get here we need this entry in the final result
         if (entry.value.isCustom()) {
-          builder.add(key,
-                      VPackValue(builder.options->customTypeHandler->toString(
-                          entry.value, builder.options, slice)));
+          builder.add(key, VPackValue(builder.options->customTypeHandler->toString(
+                               entry.value, builder.options, slice)));
         } else {
           builder.add(key, entry.value);
         }

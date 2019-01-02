@@ -44,12 +44,9 @@ class MMFilesGeoIndex;
 class MMFilesGeoIndexIterator final : public IndexIterator {
  public:
   /// @brief Construct an MMFilesGeoIndexIterator based on Ast Conditions
-  MMFilesGeoIndexIterator(LogicalCollection* collection,
-                          transaction::Methods* trx,
-                          ManagedDocumentResult* mmdr,
-                          MMFilesGeoIndex const* index,
-                          arangodb::aql::AstNode const*,
-                          arangodb::aql::Variable const*);
+  MMFilesGeoIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
+                          ManagedDocumentResult* mmdr, MMFilesGeoIndex const* index,
+                          arangodb::aql::AstNode const*, arangodb::aql::Variable const*);
 
   ~MMFilesGeoIndexIterator() { replaceCursor(nullptr); }
 
@@ -83,8 +80,7 @@ class MMFilesGeoIndex final : public MMFilesIndex {
  public:
   MMFilesGeoIndex() = delete;
 
-  MMFilesGeoIndex(TRI_idx_iid_t, LogicalCollection*,
-                  arangodb::velocypack::Slice const&);
+  MMFilesGeoIndex(TRI_idx_iid_t, LogicalCollection*, arangodb::velocypack::Slice const&);
 
   ~MMFilesGeoIndex();
 
@@ -112,11 +108,9 @@ class MMFilesGeoIndex final : public MMFilesIndex {
     return "geo2";
   }
 
-  IndexIterator* iteratorForCondition(transaction::Methods*,
-                                      ManagedDocumentResult*,
+  IndexIterator* iteratorForCondition(transaction::Methods*, ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
-                                      arangodb::aql::Variable const*,
-                                      bool) override;
+                                      arangodb::aql::Variable const*, bool) override;
 
   bool allowExpansion() const override { return false; }
 
@@ -137,19 +131,16 @@ class MMFilesGeoIndex final : public MMFilesIndex {
                 arangodb::velocypack::Slice const&, OperationMode mode) override;
 
   Result remove(transaction::Methods*, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const&,
-                OperationMode mode) override;
+                arangodb::velocypack::Slice const&, OperationMode mode) override;
 
   void load() override {}
   void unload() override;
 
   /// @brief looks up all points within a given radius
-  GeoCoordinates* withinQuery(transaction::Methods*, double, double,
-                              double) const;
+  GeoCoordinates* withinQuery(transaction::Methods*, double, double, double) const;
 
   /// @brief looks up the nearest points
-  GeoCoordinates* nearQuery(transaction::Methods*, double, double,
-                            size_t) const;
+  GeoCoordinates* nearQuery(transaction::Methods*, double, double, size_t) const;
 
   bool isSame(std::vector<std::string> const& location, bool geoJson) const {
     return (!_location.empty() && _location == location && _geoJson == geoJson);
@@ -179,7 +170,7 @@ class MMFilesGeoIndex final : public MMFilesIndex {
   /// @brief the actual geo index
   GeoIdx* _geoIndex;
 };
-}
+}  // namespace arangodb
 
 namespace std {
 template <>
@@ -191,6 +182,6 @@ class default_delete<GeoCoordinates> {
     }
   }
 };
-}
+}  // namespace std
 
 #endif

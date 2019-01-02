@@ -45,8 +45,8 @@ namespace httpclient {
 class SimpleHttpClient;
 class SimpleHttpResult;
 struct SimpleHttpClientParams;
-}
-}
+}  // namespace httpclient
+}  // namespace arangodb
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class for http requests
@@ -79,8 +79,8 @@ class ImportHelper {
 
  public:
   ImportHelper(ClientFeature const* client, std::string const& endpoint,
-               httpclient::SimpleHttpClientParams const& params,
-               uint64_t maxUploadSize, uint32_t threadCount, bool autoUploadSize=false);
+               httpclient::SimpleHttpClientParams const& params, uint64_t maxUploadSize,
+               uint32_t threadCount, bool autoUploadSize = false);
 
   ~ImportHelper();
 
@@ -89,8 +89,7 @@ class ImportHelper {
   //////////////////////////////////////////////////////////////////////////////
 
   bool importDelimited(std::string const& collectionName,
-                       std::string const& fileName,
-                       DelimitedImportType typeImport);
+                       std::string const& fileName, DelimitedImportType typeImport);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief imports a file with JSON objects
@@ -156,8 +155,7 @@ class ImportHelper {
     _createCollectionType = value;
   }
 
-  void setTranslations(
-      std::unordered_map<std::string, std::string> const& translations) {
+  void setTranslations(std::unordered_map<std::string, std::string> const& translations) {
     _translations = translations;
   }
 
@@ -248,30 +246,27 @@ class ImportHelper {
 
   std::vector<std::string> getErrorMessages() { return _errorMessages; }
 
-  uint64_t getMaxUploadSize() {return(_maxUploadSize.load());}
-  void setMaxUploadSize(uint64_t newSize) {_maxUploadSize.store(newSize);}
+  uint64_t getMaxUploadSize() { return (_maxUploadSize.load()); }
+  void setMaxUploadSize(uint64_t newSize) { _maxUploadSize.store(newSize); }
 
-  uint64_t rotatePeriodByteCount() {return(_periodByteCount.exchange(0));}
-  void addPeriodByteCount(uint64_t add) {_periodByteCount.fetch_add(add);}
+  uint64_t rotatePeriodByteCount() { return (_periodByteCount.exchange(0)); }
+  void addPeriodByteCount(uint64_t add) { _periodByteCount.fetch_add(add); }
 
-  uint32_t getThreadCount() const {return _threadCount;}
+  uint32_t getThreadCount() const { return _threadCount; }
 
   static unsigned const MaxBatchSize;
 
  private:
   static void ProcessCsvBegin(TRI_csv_parser_t*, size_t);
-  static void ProcessCsvAdd(TRI_csv_parser_t*, char const*, size_t, size_t,
-                            size_t, bool);
-  static void ProcessCsvEnd(TRI_csv_parser_t*, char const*, size_t, size_t,
-                            size_t, bool);
+  static void ProcessCsvAdd(TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool);
+  static void ProcessCsvEnd(TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool);
 
   void reportProgress(int64_t, int64_t, double&);
 
   std::string getCollectionUrlPart() const;
   void beginLine(size_t row);
   void addField(char const*, size_t, size_t row, size_t column, bool escaped);
-  void addLastField(char const*, size_t, size_t row, size_t column,
-                    bool escaped);
+  void addLastField(char const*, size_t, size_t row, size_t column, bool escaped);
 
   bool checkCreateCollection();
   bool truncateCollection();
@@ -328,6 +323,6 @@ class ImportHelper {
 
   static double const ProgressStep;
 };
-}
-}
+}  // namespace import
+}  // namespace arangodb
 #endif

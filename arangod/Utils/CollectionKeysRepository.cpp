@@ -57,9 +57,11 @@ CollectionKeysRepository::~CollectionKeysRepository() {
     }
 
     if (tries == 0) {
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "waiting for used keys to become unused";
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+          << "waiting for used keys to become unused";
     } else if (tries == 120) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "giving up waiting for unused keys";
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+          << "giving up waiting for unused keys";
     }
 
     usleep(500000);

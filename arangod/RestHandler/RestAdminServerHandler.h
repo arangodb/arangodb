@@ -51,6 +51,6 @@ class RestAdminServerHandler : public RestBaseHandler {
   void handleAvailability();
   void writeModeResult(ServerState::Mode const&);
 };
-}
+}  // namespace arangodb
 
 #endif

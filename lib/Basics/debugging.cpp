@@ -22,11 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
-#include "Logger/LogAppender.h"
-#include "Logger/Logger.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/WriteLocker.h"
+#include "Logger/LogAppender.h"
+#include "Logger/Logger.h"
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #if ARANGODB_ENABLE_BACKTRACE
@@ -34,8 +34,8 @@
 #ifdef _WIN32
 #include <DbgHelp.h>
 #else
-#include <execinfo.h>
 #include <cxxabi.h>
+#include <execinfo.h>
 #endif
 #endif
 #endif
@@ -63,8 +63,7 @@ static char* MakeValue(char const* value) {
     return nullptr;
   }
 
-  char* delimited =
-      static_cast<char*>(TRI_Allocate(len + 3));
+  char* delimited = static_cast<char*>(TRI_Allocate(len + 3));
 
   if (delimited != nullptr) {
     memcpy(delimited + 1, value, len);
@@ -137,12 +136,13 @@ void TRI_AddFailurePointDebugging(char const* value) {
     // not yet found. so add it
     char* copy;
 
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "activating intentional failure point '" << value << "'. the server will misbehave!";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "activating intentional failure point '" << value
+        << "'. the server will misbehave!";
     size_t n = strlen(checkValue);
 
     if (FailurePoints == nullptr) {
-      copy =
-          static_cast<char*>(TRI_Allocate(n + 1));
+      copy = static_cast<char*>(TRI_Allocate(n + 1));
 
       if (copy == nullptr) {
         TRI_Free(checkValue);
@@ -152,8 +152,7 @@ void TRI_AddFailurePointDebugging(char const* value) {
       memcpy(copy, checkValue, n);
       copy[n] = '\0';
     } else {
-      copy = static_cast<char*>(
-          TRI_Allocate(n + strlen(FailurePoints)));
+      copy = static_cast<char*>(TRI_Allocate(n + strlen(FailurePoints)));
 
       if (copy == nullptr) {
         TRI_Free(checkValue);
@@ -199,8 +198,8 @@ void TRI_RemoveFailurePointDebugging(char const* value) {
       return;
     }
 
-    char* copy = static_cast<char*>(
-        TRI_Allocate(                     strlen(FailurePoints) - strlen(checkValue) + 2));
+    char* copy =
+        static_cast<char*>(TRI_Allocate(strlen(FailurePoints) - strlen(checkValue) + 2));
 
     if (copy == nullptr) {
       TRI_Free(checkValue);
@@ -259,7 +258,8 @@ void TRI_GetBacktrace(std::string& btstr) {
   SymInitialize(process, nullptr, true);
 
   unsigned short frames = CaptureStackBackTrace(0, 100, stack, nullptr);
-  SYMBOL_INFO* symbol = (SYMBOL_INFO*)calloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char), 1);
+  SYMBOL_INFO* symbol =
+      (SYMBOL_INFO*)calloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char), 1);
 
   if (symbol == nullptr) {
     // cannot allocate memory
@@ -289,8 +289,7 @@ void TRI_GetBacktrace(std::string& btstr) {
   for (size_t i = 0; i < size; i++) {
     std::stringstream ss;
     if (strings != nullptr) {
-      char* mangled_name = nullptr, * offset_begin = nullptr,
-            * offset_end = nullptr;
+      char *mangled_name = nullptr, *offset_begin = nullptr, *offset_end = nullptr;
 
       // find parentheses and +address offset surrounding mangled name
       for (char* p = strings[i]; *p; ++p) {
@@ -303,8 +302,7 @@ void TRI_GetBacktrace(std::string& btstr) {
           break;
         }
       }
-      if (mangled_name && offset_begin && offset_end &&
-          mangled_name < offset_begin) {
+      if (mangled_name && offset_begin && offset_end && mangled_name < offset_begin) {
         *mangled_name++ = '\0';
         *offset_begin++ = '\0';
         *offset_end++ = '\0';
@@ -363,7 +361,7 @@ void TRI_LogBacktrace() {
 #if ARANGODB_ENABLE_BACKTRACE
   std::string bt;
   TRI_GetBacktrace(bt);
-  if (!bt.empty()) {  
+  if (!bt.empty()) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << bt;
   }
 #endif
@@ -378,8 +376,8 @@ void TRI_FlushDebugging() {
 
 /// @brief flushes the logger and shuts it down
 void TRI_FlushDebugging(char const* file, int line, char const* message) {
-  LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "assertion failed in " << file << ":" << line << ": " << message;
+  LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+      << "assertion failed in " << file << ":" << line << ": " << message;
   Logger::flush();
   Logger::shutdown();
 }
-

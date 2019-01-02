@@ -65,15 +65,13 @@ class ConnectionStatistics {
     _error = false;
   }
 
-  static size_t const QUEUE_SIZE = 64 * 1024 - 2; // current (1.62) boost maximum
+  static size_t const QUEUE_SIZE = 64 * 1024 - 2;  // current (1.62) boost maximum
 
   static Mutex _dataLock;
 
   static std::unique_ptr<ConnectionStatistics[]> _statisticsBuffer;
 
-  static boost::lockfree::queue<ConnectionStatistics*,
-                                boost::lockfree::capacity<QUEUE_SIZE>>
-      _freeList;
+  static boost::lockfree::queue<ConnectionStatistics*, boost::lockfree::capacity<QUEUE_SIZE>> _freeList;
 
  private:
   double _connStart;
@@ -82,6 +80,6 @@ class ConnectionStatistics {
   bool _http;
   bool _error;
 };
-}
+}  // namespace arangodb
 
 #endif

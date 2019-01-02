@@ -25,22 +25,20 @@
 #ifndef ARANGOD_STORAGE_ENGINE_STORAGE_ENGINE_FEATURE_H
 #define ARANGOD_STORAGE_ENGINE_STORAGE_ENGINE_FEATURE_H 1
 
-#include "Basics/Common.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/Common.h"
 
 namespace arangodb {
 // a stub class that other features can use to check whether a storage
 // engine (no matter what type) is ready
 class StorageEngineFeature : public application_features::ApplicationFeature {
-
  public:
   StorageEngineFeature(application_features::ApplicationServer* server)
       : application_features::ApplicationFeature(server, "StorageEngine") {
     setOptional(false);
   }
-
 };
 
-}
+}  // namespace arangodb
 
 #endif

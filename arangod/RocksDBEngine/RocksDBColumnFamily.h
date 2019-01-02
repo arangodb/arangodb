@@ -42,7 +42,9 @@ struct RocksDBColumnFamily {
   static constexpr size_t minNumberOfColumnFamilies = 7;
   static constexpr size_t numberOfColumnFamilies = 7;
 
-  static inline rocksdb::ColumnFamilyHandle* definitions() { return _definitions; }
+  static inline rocksdb::ColumnFamilyHandle* definitions() {
+    return _definitions;
+  }
 
   static inline rocksdb::ColumnFamilyHandle* documents() { return _documents; }
 
@@ -60,7 +62,7 @@ struct RocksDBColumnFamily {
   static char const* columnFamilyName(rocksdb::ColumnFamilyHandle* cf) {
     if (cf == _definitions) {
       return "definitions";
-    } 
+    }
     if (cf == _documents) {
       return "documents";
     }
@@ -69,7 +71,7 @@ struct RocksDBColumnFamily {
     }
     if (cf == _edge) {
       return "edge";
-    } 
+    }
     if (cf == _vpack) {
       return "vpack";
     }

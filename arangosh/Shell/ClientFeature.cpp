@@ -42,8 +42,7 @@ using namespace arangodb::httpclient;
 using namespace arangodb::options;
 
 ClientFeature::ClientFeature(application_features::ApplicationServer* server,
-                             bool allowJwtSecret, double connectionTimeout,
-                             double requestTimeout)
+                             bool allowJwtSecret, double connectionTimeout, double requestTimeout)
     : ApplicationFeature(server, "Client"),
       _databaseName("_system"),
       _authentication(true),
@@ -69,8 +68,7 @@ ClientFeature::ClientFeature(application_features::ApplicationServer* server,
 void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "Configure a connection to the server");
 
-  options->addOption("--server.database",
-                     "database name to use when connecting",
+  options->addOption("--server.database", "database name to use when connecting",
                      new StringParameter(&_databaseName));
 
   options->addOption("--server.authentication",
@@ -94,16 +92,17 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   if (_allowJwtSecret) {
     // currently the option is only present for arangosh, but none
-    // of the other client tools 
+    // of the other client tools
     options->addHiddenOption(
         "--server.ask-jwt-secret",
         "if this option is specified, the user will be prompted "
         "for a JWT secret. This option is not compatible with "
-        "--server.username or --server.password. If specified, it will be used for all "
+        "--server.username or --server.password. If specified, it will be used "
+        "for all "
         "connections - even when a new connection to another server is "
         "created",
         new BooleanParameter(&_askJwtSecret));
-  } 
+  }
 
   options->addOption("--server.connection-timeout",
                      "connection timeout in seconds",
@@ -124,8 +123,7 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "ssl protocol (1 = SSLv2, 2 = SSLv2 or SSLv3 "
                      "(negotiated), 3 = SSLv3, 4 = "
                      "TLSv1, 5 = TLSV1.2)",
-                     new DiscreteValuesParameter<UInt64Parameter>(
-                         &_sslProtocol, sslProtocols));
+                     new DiscreteValuesParameter<UInt64Parameter>(&_sslProtocol, sslProtocols));
 }
 
 void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -241,8 +239,7 @@ std::unique_ptr<GeneralClientConnection> ClientFeature::createConnection() {
   return createConnection(_endpoint);
 }
 
-std::unique_ptr<GeneralClientConnection> ClientFeature::createConnection(
-    std::string const& definition) {
+std::unique_ptr<GeneralClientConnection> ClientFeature::createConnection(std::string const& definition) {
   std::unique_ptr<Endpoint> endpoint(Endpoint::clientFactory(definition));
 
   if (endpoint.get() == nullptr) {
@@ -252,9 +249,8 @@ std::unique_ptr<GeneralClientConnection> ClientFeature::createConnection(
   }
 
   std::unique_ptr<GeneralClientConnection> connection(
-      GeneralClientConnection::factory(endpoint, _requestTimeout,
-                                       _connectionTimeout, _retries,
-                                       _sslProtocol));
+      GeneralClientConnection::factory(endpoint, _requestTimeout, _connectionTimeout,
+                                       _retries, _sslProtocol));
 
   return connection;
 }
@@ -263,10 +259,8 @@ std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient() const {
   return createHttpClient(_endpoint);
 }
 
-std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient(
-    std::string const& definition) const {
-  return createHttpClient(definition,
-                          SimpleHttpClientParams(_requestTimeout, _warn));
+std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient(std::string const& definition) const {
+  return createHttpClient(definition, SimpleHttpClientParams(_requestTimeout, _warn));
 }
 
 std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
@@ -280,9 +274,8 @@ std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
   }
 
   std::unique_ptr<GeneralClientConnection> connection(
-      GeneralClientConnection::factory(endpoint, _requestTimeout,
-                                       _connectionTimeout, _retries,
-                                       _sslProtocol));
+      GeneralClientConnection::factory(endpoint, _requestTimeout, _connectionTimeout,
+                                       _retries, _sslProtocol));
 
   return std::make_unique<SimpleHttpClient>(connection, params);
 }
@@ -297,20 +290,17 @@ std::vector<std::string> ClientFeature::httpEndpoints() {
   return {http};
 }
 
-int ClientFeature::runMain(
-    int argc, char* argv[],
-    std::function<int(int argc, char* argv[])> const& mainFunc) {
+int ClientFeature::runMain(int argc, char* argv[],
+                           std::function<int(int argc, char* argv[])> const& mainFunc) {
   try {
     return mainFunc(argc, argv);
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << argv[0]
-        << " terminated because of an unhandled exception: " << ex.what();
+        << argv[0] << " terminated because of an unhandled exception: " << ex.what();
     return EXIT_FAILURE;
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << argv[0]
-        << " terminated because of an unhandled exception of unknown type";
+        << argv[0] << " terminated because of an unhandled exception of unknown type";
     return EXIT_FAILURE;
   }
 }

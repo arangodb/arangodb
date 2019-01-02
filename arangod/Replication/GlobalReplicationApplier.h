@@ -32,35 +32,35 @@ namespace arangodb {
 /// @brief server-global replication applier for all databases
 class GlobalReplicationApplier final : public ReplicationApplier {
   friend class GlobalTailingSyncer;
+
  public:
   explicit GlobalReplicationApplier(ReplicationApplierConfiguration const& configuration);
-  
+
   ~GlobalReplicationApplier();
-  
+
   /// @brief whether or not the applier is the global one
   bool isGlobal() const override { return true; }
-  
+
   /// @brief execute the check condition
   bool applies() const override { return true; }
 
   /// @brief stop the applier and "forget" everything
   void forget() override;
-  
+
   /// @brief store the configuration for the applier
   void storeConfiguration(bool doSync) override;
-  
+
   /// @brief load a persisted configuration for the applier
   static ReplicationApplierConfiguration loadConfiguration();
-  
-  std::unique_ptr<InitialSyncer> buildInitialSyncer() const override;
-  std::unique_ptr<TailingSyncer> buildTailingSyncer(TRI_voc_tick_t initialTick,
-                                                    bool useTick,
-                                                    TRI_voc_tick_t barrierId) const override;
-protected:
 
+  std::unique_ptr<InitialSyncer> buildInitialSyncer() const override;
+  std::unique_ptr<TailingSyncer> buildTailingSyncer(TRI_voc_tick_t initialTick, bool useTick,
+                                                    TRI_voc_tick_t barrierId) const override;
+
+ protected:
   std::string getStateFilename() const override;
 };
 
-}
+}  // namespace arangodb
 
 #endif

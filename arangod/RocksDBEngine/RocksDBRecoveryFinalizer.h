@@ -39,6 +39,6 @@ class RocksDBRecoveryFinalizer final : public application_features::ApplicationF
  public:
   void start() override final;
 };
-}
+}  // namespace arangodb
 
 #endif

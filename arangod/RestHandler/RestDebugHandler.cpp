@@ -29,8 +29,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestDebugHandler::RestDebugHandler(GeneralRequest* request,
-                                   GeneralResponse* response)
+RestDebugHandler::RestDebugHandler(GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
 bool RestDebugHandler::isDirect() const { return false; }

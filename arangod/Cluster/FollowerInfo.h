@@ -29,21 +29,20 @@
 
 namespace arangodb {
 
-  ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// @brief a class to track followers that are in sync for a shard
 ////////////////////////////////////////////////////////////////////////////////
 
 class FollowerInfo {
   std::shared_ptr<std::vector<ServerID> const> _followers;
-  Mutex                                        _mutex;
-  arangodb::LogicalCollection*                 _docColl;
-  std::string                                  _theLeader;
-     // if the latter is empty, the we are leading
+  Mutex _mutex;
+  arangodb::LogicalCollection* _docColl;
+  std::string _theLeader;
+  // if the latter is empty, the we are leading
 
  public:
-
   explicit FollowerInfo(arangodb::LogicalCollection* d)
-    : _followers(new std::vector<ServerID>()), _docColl(d) { }
+      : _followers(new std::vector<ServerID>()), _docColl(d) {}
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get information about current followers of a shard.
@@ -93,7 +92,6 @@ class FollowerInfo {
     MUTEX_LOCKER(locker, _mutex);
     return _theLeader;
   }
-
 };
 }  // end namespace arangodb
 

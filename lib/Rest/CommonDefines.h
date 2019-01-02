@@ -61,11 +61,7 @@ enum class ContentType {
 
 enum class ProtocolVersion { HTTP_1_0, HTTP_1_1, VST_1_0, VST_1_1, UNKNOWN };
 
-enum class ConnectionType {
-  C_NONE,
-  C_KEEP_ALIVE,
-  C_CLOSE
-};
+enum class ConnectionType { C_NONE, C_KEEP_ALIVE, C_CLOSE };
 
 enum class AuthenticationMethod { BASIC, JWT, NONE };
 
@@ -122,6 +118,6 @@ enum class ResponseCode {
   BANDWIDTH_LIMIT_EXCEEDED = 509,
   NOT_EXTENDED = 510
 };
-}
-}
+}  // namespace rest
+}  // namespace arangodb
 #endif

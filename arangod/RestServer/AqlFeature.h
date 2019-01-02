@@ -31,6 +31,7 @@ namespace arangodb {
 class AqlFeature final : public application_features::ApplicationFeature {
   static AqlFeature* _AQL;
   static Mutex _aqlFeatureMutex;
+
  public:
   explicit AqlFeature(application_features::ApplicationServer*);
 
@@ -39,11 +40,11 @@ class AqlFeature final : public application_features::ApplicationFeature {
   static void unlease();
   void start() override final;
   void stop() override final;
- 
+
  private:
   uint64_t _numberLeases;
   bool _isStopped;
 };
-}
+}  // namespace arangodb
 
 #endif

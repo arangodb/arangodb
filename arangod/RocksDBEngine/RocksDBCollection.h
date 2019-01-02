@@ -64,8 +64,7 @@ class RocksDBCollection final : public PhysicalCollection {
   std::string const& path() const override;
   void setPath(std::string const& path) override;
 
-  arangodb::Result updateProperties(VPackSlice const& slice,
-                                    bool doSync) override;
+  arangodb::Result updateProperties(VPackSlice const& slice, bool doSync) override;
   virtual arangodb::Result persistProperties() override;
 
   virtual PhysicalCollection* clone(LogicalCollection*) const override;
@@ -109,12 +108,11 @@ class RocksDBCollection final : public PhysicalCollection {
   std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx,
                                                 ManagedDocumentResult* mdr,
                                                 bool reverse) const override;
-  std::unique_ptr<IndexIterator> getAnyIterator(
-      transaction::Methods* trx, ManagedDocumentResult* mdr) const override;
+  std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx,
+                                                ManagedDocumentResult* mdr) const override;
 
-  void invokeOnAllElements(
-      transaction::Methods* trx,
-      std::function<bool(LocalDocumentId const&)> callback) override;
+  void invokeOnAllElements(transaction::Methods* trx,
+                           std::function<bool(LocalDocumentId const&)> callback) override;
 
   ////////////////////////////////////
   // -- SECTION DML Operations --
@@ -122,9 +120,8 @@ class RocksDBCollection final : public PhysicalCollection {
 
   Result truncate(transaction::Methods* trx, OperationOptions& options) override;
 
-  LocalDocumentId lookupKey(
-      transaction::Methods* trx,
-      arangodb::velocypack::Slice const& key) override;
+  LocalDocumentId lookupKey(transaction::Methods* trx,
+                            arangodb::velocypack::Slice const& key) override;
 
   Result read(transaction::Methods*, arangodb::StringRef const& key,
               ManagedDocumentResult& result, bool) override;
@@ -134,42 +131,34 @@ class RocksDBCollection final : public PhysicalCollection {
     return this->read(trx, arangodb::StringRef(key), result, locked);
   }
 
-  bool readDocument(transaction::Methods* trx,
-                    LocalDocumentId const& token,
+  bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
                     ManagedDocumentResult& result) const override;
 
-  bool readDocumentWithCallback(
-      transaction::Methods* trx, LocalDocumentId const& token,
-      IndexIterator::DocumentCallback const& cb) const override;
+  bool readDocumentWithCallback(transaction::Methods* trx, LocalDocumentId const& token,
+                                IndexIterator::DocumentCallback const& cb) const override;
 
-  Result insert(arangodb::transaction::Methods* trx,
-                arangodb::velocypack::Slice const newSlice,
+  Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
                 arangodb::ManagedDocumentResult& result,
                 OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
                 bool lock, TRI_voc_rid_t& revisionId) override;
 
-  Result update(arangodb::transaction::Methods* trx,
-                arangodb::velocypack::Slice const newSlice,
+  Result update(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
                 arangodb::ManagedDocumentResult& result,
                 OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
-                bool lock, TRI_voc_rid_t& prevRev,
-                ManagedDocumentResult& previous,
+                bool lock, TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
                 arangodb::velocypack::Slice const key) override;
 
-  Result replace(transaction::Methods* trx,
-                 arangodb::velocypack::Slice const newSlice,
+  Result replace(transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
                  ManagedDocumentResult& result, OperationOptions& options,
                  TRI_voc_tick_t& resultMarkerTick, bool lock,
                  TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous) override;
 
-  Result remove(arangodb::transaction::Methods* trx,
-                arangodb::velocypack::Slice const slice,
-                arangodb::ManagedDocumentResult& previous,
-                OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
-                bool lock, TRI_voc_rid_t& prevRev, TRI_voc_rid_t& revisionId) override;
+  Result remove(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const slice,
+                arangodb::ManagedDocumentResult& previous, OperationOptions& options,
+                TRI_voc_tick_t& resultMarkerTick, bool lock,
+                TRI_voc_rid_t& prevRev, TRI_voc_rid_t& revisionId) override;
 
-  void deferDropCollection(
-      std::function<bool(LogicalCollection*)> callback) override;
+  void deferDropCollection(std::function<bool(LogicalCollection*)> callback) override;
 
   void setRevision(TRI_voc_rid_t revisionId);
   void adjustNumberDocuments(int64_t adjustment);
@@ -201,17 +190,14 @@ class RocksDBCollection final : public PhysicalCollection {
 
  private:
   /// @brief return engine-specific figures
-  void figuresSpecific(
-      std::shared_ptr<arangodb::velocypack::Builder>&) override;
+  void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) override;
   /// @brief creates the initial indexes for the collection
   void createInitialIndexes();
   void addIndex(std::shared_ptr<arangodb::Index> idx);
   void addIndexCoordinator(std::shared_ptr<arangodb::Index> idx);
-  int saveIndex(transaction::Methods* trx,
-                std::shared_ptr<arangodb::Index> idx);
+  int saveIndex(transaction::Methods* trx, std::shared_ptr<arangodb::Index> idx);
 
-  arangodb::Result fillIndexes(transaction::Methods*,
-                               std::shared_ptr<arangodb::Index>);
+  arangodb::Result fillIndexes(transaction::Methods*, std::shared_ptr<arangodb::Index>);
 
   // @brief return the primary index
   // WARNING: Make sure that this instance
@@ -222,23 +208,24 @@ class RocksDBCollection final : public PhysicalCollection {
     return _primaryIndex;
   }
 
-  arangodb::RocksDBOperationResult insertDocument(
-      arangodb::transaction::Methods* trx, LocalDocumentId const& documentId,
-      arangodb::velocypack::Slice const& doc, OperationOptions& options) const;
+  arangodb::RocksDBOperationResult insertDocument(arangodb::transaction::Methods* trx,
+                                                  LocalDocumentId const& documentId,
+                                                  arangodb::velocypack::Slice const& doc,
+                                                  OperationOptions& options) const;
 
-  arangodb::RocksDBOperationResult removeDocument(
-      arangodb::transaction::Methods* trx, LocalDocumentId const& documentId,
-      arangodb::velocypack::Slice const& doc, OperationOptions& options,
-      bool isUpdate) const;
+  arangodb::RocksDBOperationResult removeDocument(arangodb::transaction::Methods* trx,
+                                                  LocalDocumentId const& documentId,
+                                                  arangodb::velocypack::Slice const& doc,
+                                                  OperationOptions& options,
+                                                  bool isUpdate) const;
 
-  arangodb::RocksDBOperationResult lookupDocument(
-      transaction::Methods* trx, arangodb::velocypack::Slice const& key,
-      ManagedDocumentResult& result) const;
+  arangodb::RocksDBOperationResult lookupDocument(transaction::Methods* trx,
+                                                  arangodb::velocypack::Slice const& key,
+                                                  ManagedDocumentResult& result) const;
 
   arangodb::RocksDBOperationResult updateDocument(
       transaction::Methods* trx, LocalDocumentId const& oldDocumentId,
-      arangodb::velocypack::Slice const& oldDoc,
-      LocalDocumentId const& newDocumentId,
+      arangodb::velocypack::Slice const& oldDoc, LocalDocumentId const& newDocumentId,
       arangodb::velocypack::Slice const& newDoc, OperationOptions& options) const;
 
   arangodb::Result lookupDocumentVPack(LocalDocumentId const& documentId,
@@ -246,12 +233,12 @@ class RocksDBCollection final : public PhysicalCollection {
                                        arangodb::ManagedDocumentResult&,
                                        bool withCache) const;
 
-  arangodb::Result lookupDocumentVPack(
-      LocalDocumentId const& documentId, transaction::Methods*,
-      IndexIterator::DocumentCallback const& cb, bool withCache) const;
+  arangodb::Result lookupDocumentVPack(LocalDocumentId const& documentId,
+                                       transaction::Methods*,
+                                       IndexIterator::DocumentCallback const& cb,
+                                       bool withCache) const;
 
-  void recalculateIndexEstimates(
-      std::vector<std::shared_ptr<Index>> const& indexes);
+  void recalculateIndexEstimates(std::vector<std::shared_ptr<Index>> const& indexes);
 
   void createCache() const;
 

@@ -31,7 +31,7 @@ namespace httpclient {
 class GeneralClientConnection;
 class SimpleHttpClient;
 class SimpleHttpResult;
-}
+}  // namespace httpclient
 
 class ImportFeature final : public application_features::ApplicationFeature,
                             public ArangoClientHelper {
@@ -40,8 +40,7 @@ class ImportFeature final : public application_features::ApplicationFeature,
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(
-      std::shared_ptr<options::ProgramOptions> options) override;
+  void validateOptions(std::shared_ptr<options::ProgramOptions> options) override;
   void start() override;
 
  private:
@@ -69,6 +68,6 @@ class ImportFeature final : public application_features::ApplicationFeature,
 
   int* _result;
 };
-}
+}  // namespace arangodb
 
 #endif

@@ -47,8 +47,9 @@ class ProgramOptions;
 
 struct MMFilesTransactionData final : public TransactionData {
   MMFilesTransactionData() = delete;
-  MMFilesTransactionData(MMFilesWalLogfile::IdType lastCollectedId, MMFilesWalLogfile::IdType lastSealedId) :
-      lastCollectedId(lastCollectedId), lastSealedId(lastSealedId) {}
+  MMFilesTransactionData(MMFilesWalLogfile::IdType lastCollectedId,
+                         MMFilesWalLogfile::IdType lastSealedId)
+      : lastCollectedId(lastCollectedId), lastSealedId(lastSealedId) {}
   MMFilesWalLogfile::IdType const lastCollectedId;
   MMFilesWalLogfile::IdType const lastSealedId;
 };
@@ -99,7 +100,8 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   struct LogfileBarrier {
     LogfileBarrier() = delete;
 
-    LogfileBarrier(TRI_voc_tick_t id, TRI_voc_tick_t databaseId, double expires, TRI_voc_tick_t minTick)
+    LogfileBarrier(TRI_voc_tick_t id, TRI_voc_tick_t databaseId, double expires,
+                   TRI_voc_tick_t minTick)
         : id(id), databaseId(databaseId), expires(expires), minTick(minTick) {}
 
     TRI_voc_tick_t const id;
@@ -110,13 +112,8 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
 
   struct LogfileRange {
     LogfileRange(MMFilesWalLogfile::IdType id, std::string const& filename,
-                std::string const& state, TRI_voc_tick_t tickMin,
-                TRI_voc_tick_t tickMax)
-        : id(id),
-          filename(filename),
-          state(state),
-          tickMin(tickMin),
-          tickMax(tickMax) {}
+                 std::string const& state, TRI_voc_tick_t tickMin, TRI_voc_tick_t tickMax)
+        : id(id), filename(filename), state(state), tickMin(tickMin), tickMax(tickMax) {}
 
     MMFilesWalLogfile::IdType id;
     std::string filename;
@@ -128,8 +125,7 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   typedef std::vector<LogfileRange> LogfileRanges;
 
  public:
-  void collectOptions(
-      std::shared_ptr<options::ProgramOptions> options) override final;
+  void collectOptions(std::shared_ptr<options::ProgramOptions> options) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
@@ -183,13 +179,13 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
 
   // whether or not there was a SHUTDOWN file with a last tick at
   // server start
-  static bool hasFoundLastTick() { 
+  static bool hasFoundLastTick() {
     // validate that the value is already initialized
     // -1 = uninitialized
     //  0 = last tick not found
     //  1 = last tick found
     TRI_ASSERT(FoundLastTick != -1);
-    return (FoundLastTick == 1); 
+    return (FoundLastTick == 1);
   }
 
   // return the slots manager
@@ -260,15 +256,15 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
 
   // write data into the logfile, using database id and collection id
   /// this is a convenience function that combines allocate, memcpy and finalize
-  MMFilesWalSlotInfoCopy allocateAndWrite(TRI_voc_tick_t databaseId, 
-                                TRI_voc_cid_t collectionId, 
-                                MMFilesWalMarker const*, bool wakeUpSynchronizer,
-                                bool waitForSyncRequested, bool waitUntilSyncDone);
+  MMFilesWalSlotInfoCopy allocateAndWrite(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
+                                          MMFilesWalMarker const*, bool wakeUpSynchronizer,
+                                          bool waitForSyncRequested, bool waitUntilSyncDone);
 
   // write data into the logfile
   /// this is a convenience function that combines allocate, memcpy and finalize
-  MMFilesWalSlotInfoCopy allocateAndWrite(MMFilesWalMarker const* marker, bool wakeUpSynchronizer, 
-                                bool waitForSyncRequested, bool waitUntilSyncDone);
+  MMFilesWalSlotInfoCopy allocateAndWrite(MMFilesWalMarker const* marker,
+                                          bool wakeUpSynchronizer, bool waitForSyncRequested,
+                                          bool waitUntilSyncDone);
 
   // write marker into the logfile
   // this is a convenience function with less parameters
@@ -281,7 +277,8 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   // finalize and seal the currently open logfile
   /// this is useful to ensure that any open writes up to this point have made
   /// it into a logfile
-  int flush(bool waitForSync, bool waitForCollector, bool writeShutdownFile, double maxWaitTime = -1.0);
+  int flush(bool waitForSync, bool waitForCollector, bool writeShutdownFile,
+            double maxWaitTime = -1.0);
 
   /// wait until all changes to the current logfile are synced
   bool waitForSync(double);
@@ -316,7 +313,7 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
 
   // garbage collect expires logfile barriers
   void collectLogfileBarriers();
-  
+
   // drop barriers for a specific database
   void dropLogfileBarriers(TRI_voc_tick_t databaseId);
 
@@ -327,7 +324,8 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   bool removeLogfileBarrier(TRI_voc_tick_t);
 
   // adds a barrier that prevents removal of logfiles
-  TRI_voc_tick_t addLogfileBarrier(TRI_voc_tick_t databaseId, TRI_voc_tick_t minTick, double ttl);
+  TRI_voc_tick_t addLogfileBarrier(TRI_voc_tick_t databaseId,
+                                   TRI_voc_tick_t minTick, double ttl);
 
   // extend the lifetime of a logfile barrier
   bool extendLogfileBarrier(TRI_voc_tick_t, double, TRI_voc_tick_t);
@@ -337,7 +335,7 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
 
   // get logfiles for a tick range
   std::vector<MMFilesWalLogfile*> getLogfilesForTickRange(TRI_voc_tick_t, TRI_voc_tick_t,
-                                                bool& minTickIncluded);
+                                                          bool& minTickIncluded);
 
   // return logfiles for a tick range
   void returnLogfiles(std::vector<MMFilesWalLogfile*> const&);
@@ -382,7 +380,7 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
 
   // get information about running transactions
   std::tuple<size_t, MMFilesWalLogfile::IdType, MMFilesWalLogfile::IdType> runningTransactions();
-  
+
   void waitForCollector();
 
   // execute a callback during a phase in which the collector has nothing
@@ -400,10 +398,8 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   // memcpy the data into the WAL region and return the filled slot
   // to the WAL logfile manager
   MMFilesWalSlotInfoCopy writeSlot(MMFilesWalSlotInfo& slotInfo,
-                         MMFilesWalMarker const* marker,
-                         bool wakeUpSynchronizer,
-                         bool waitForSyncRequested,
-                         bool waitUntilSyncDone);
+                                   MMFilesWalMarker const* marker, bool wakeUpSynchronizer,
+                                   bool waitForSyncRequested, bool waitUntilSyncDone);
 
   // remove a logfile in the file system
   void removeLogfile(MMFilesWalLogfile*);
@@ -477,7 +473,7 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   bool _allowOversizeEntries = true;
   bool _useMLock = false;
   std::string _directory;
-  uint32_t _historicLogfiles = 10; 
+  uint32_t _historicLogfiles = 10;
   bool _ignoreLogfileErrors = false;
   bool _ignoreRecoveryErrors = false;
   uint64_t _flushTimeout = 15000;
@@ -512,7 +508,7 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
 
   // the collector thread
   MMFilesCollectorThread* _collectorThread;
-  
+
   // lock protecting the destruction of the collector thread
   basics::ReadWriteLock _collectorThreadLock;
 
@@ -561,6 +557,6 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   std::unordered_map<TRI_voc_tick_t, LogfileBarrier*> _barriers;
 };
 
-}
+}  // namespace arangodb
 
 #endif

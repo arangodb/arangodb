@@ -48,7 +48,7 @@ static uint32_t StatisticsNonces[32][5] = {
     {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0},
     {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0},
     {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}};
-}
+}  // namespace
 
 namespace arangodb {
 namespace basics {
@@ -108,8 +108,7 @@ bool checkAndMark(std::string const& nonce) {
 
   uint8_t const* buffer = (uint8_t const*)nonce.c_str();
 
-  uint32_t timestamp = (uint32_t(buffer[0]) << 24) |
-                       (uint32_t(buffer[1]) << 16) |
+  uint32_t timestamp = (uint32_t(buffer[0]) << 24) | (uint32_t(buffer[1]) << 16) |
                        (uint32_t(buffer[2]) << 8) | uint32_t(buffer[3]);
 
   uint64_t random = (uint64_t(buffer[4]) << 56) | (uint64_t(buffer[5]) << 48) |
@@ -125,7 +124,6 @@ bool checkAndMark(uint32_t timestamp, uint64_t random) {
 
   if (TimestampNonces == nullptr) {
     create(SizeNonces);
-
   }
 
   TRI_ASSERT(TimestampNonces != nullptr);
@@ -164,7 +162,8 @@ bool checkAndMark(uint32_t timestamp, uint64_t random) {
     age >>= 1;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "age of timestamp " << timestamp << " is " << age << " (log " << l2age << ")";
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "age of timestamp " << timestamp << " is "
+                                            << age << " (log " << l2age << ")";
 
   StatisticsNonces[l2age][proofs]++;
 
@@ -226,6 +225,6 @@ std::vector<Statistics> statistics() {
 
   return result;
 }
-}
-}
-}
+}  // namespace Nonce
+}  // namespace basics
+}  // namespace arangodb

@@ -31,8 +31,7 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-std::unordered_map<std::string, arangodb::ViewCreator>
-    ViewTypesFeature::_viewCreators;
+std::unordered_map<std::string, arangodb::ViewCreator> ViewTypesFeature::_viewCreators;
 
 ViewTypesFeature::ViewTypesFeature(ApplicationServer* server)
     : ApplicationFeature(server, "ViewTypes") {
@@ -47,8 +46,7 @@ void ViewTypesFeature::prepare() {
 
 void ViewTypesFeature::unprepare() { _viewCreators.clear(); }
 
-void ViewTypesFeature::registerViewImplementation(std::string const& type,
-                                                  ViewCreator creator) {
+void ViewTypesFeature::registerViewImplementation(std::string const& type, ViewCreator creator) {
   _viewCreators.emplace(type, creator);
 }
 

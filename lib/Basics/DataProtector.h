@@ -68,7 +68,7 @@ namespace basics {
 class DataProtector {
   static constexpr int DATA_PROTECTOR_MULTIPLICITY = 64;
 
-  // disabled because of: 
+  // disabled because of:
   //   note: uses ‘void* operator new(std::size_t)’, which does not have an alignment parameter
   //   note: use ‘-faligned-new’ to enable C++17 over-aligned new support
   // struct alignas(64) Entry {  // 64 is the size of a cache line,
@@ -123,7 +123,7 @@ class DataProtector {
     }
   }
 
-  ~DataProtector() { 
+  ~DataProtector() {
     for (int i = 0; i < DATA_PROTECTOR_MULTIPLICITY; i++) {
       reinterpret_cast<Entry*>(_list + i)->~Entry();
     }
@@ -151,10 +151,10 @@ class DataProtector {
     reinterpret_cast<Entry*>(_list + id)->_count--;
   }
 
-    int getMyId();
+  int getMyId();
 };
 
-}  // namespace arangodb::basics
+}  // namespace basics
 }  // namespace arangodb
 
 #endif

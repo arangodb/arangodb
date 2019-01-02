@@ -120,10 +120,9 @@ class Conductor {
   VPackBuilder toVelocyPack() const;
 
   double totalRuntimeSecs() const {
-    return _endTimeSecs == 0 ? TRI_microtime() - _startTimeSecs
-                             : _endTimeSecs - _startTimeSecs;
+    return _endTimeSecs == 0 ? TRI_microtime() - _startTimeSecs : _endTimeSecs - _startTimeSecs;
   }
 };
-}
-}
+}  // namespace pregel
+}  // namespace arangodb
 #endif

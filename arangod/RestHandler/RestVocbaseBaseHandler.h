@@ -212,8 +212,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   void generateDocumentNotFound(std::string const& /* collection name */,
                                 std::string const& /* document key */) {
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -261,14 +260,14 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void generateTransactionError(std::string const&, OperationResult const&,
-      std::string const& key, TRI_voc_rid_t = 0);
+                                std::string const& key, TRI_voc_rid_t = 0);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generate an error message for a transaction error
   //////////////////////////////////////////////////////////////////////////////
 
   void generateTransactionError(std::string const& str, Result const& res,
-                                std::string const& key, TRI_voc_rid_t rid = 0){
+                                std::string const& key, TRI_voc_rid_t rid = 0) {
     generateTransactionError(str, OperationResult(res), key, rid);
   }
 
@@ -298,9 +297,9 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
     return extractBooleanParameter(std::string(name), def);
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts a string parameter value
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief extracts a string parameter value
+  ////////////////////////////////////////////////////////////////////////////////
 
   void extractStringParameter(std::string const& name, std::string& ret) const;
 
@@ -343,6 +342,6 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   std::unordered_set<std::string>* _nolockHeaderSet;
 };
-}
+}  // namespace arangodb
 
 #endif

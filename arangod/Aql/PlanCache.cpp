@@ -44,8 +44,7 @@ PlanCache::PlanCache() : _lock(), _plans() {}
 PlanCache::~PlanCache() {}
 
 /// @brief lookup a plan in the cache
-std::shared_ptr<PlanCacheEntry> PlanCache::lookup(TRI_vocbase_t* vocbase,
-                                                  uint64_t queryHash, 
+std::shared_ptr<PlanCacheEntry> PlanCache::lookup(TRI_vocbase_t* vocbase, uint64_t queryHash,
                                                   QueryString const& queryString) {
   READ_LOCKER(readLocker, _lock);
 
@@ -57,7 +56,7 @@ std::shared_ptr<PlanCacheEntry> PlanCache::lookup(TRI_vocbase_t* vocbase,
   }
 
   auto it2 = (*it).second.find(queryHash);
-  
+
   if (it2 == (*it).second.end()) {
     // plan not found in cache
     return std::shared_ptr<PlanCacheEntry>();
@@ -68,11 +67,10 @@ std::shared_ptr<PlanCacheEntry> PlanCache::lookup(TRI_vocbase_t* vocbase,
 }
 
 /// @brief store a plan in the cache
-void PlanCache::store(
-    TRI_vocbase_t* vocbase, uint64_t hash, QueryString const& queryString,
-    ExecutionPlan const* plan) {
- 
-  auto entry = std::make_unique<PlanCacheEntry>(queryString.extract(SIZE_MAX), plan->toVelocyPack(plan->getAst(), true)); 
+void PlanCache::store(TRI_vocbase_t* vocbase, uint64_t hash,
+                      QueryString const& queryString, ExecutionPlan const* plan) {
+  auto entry = std::make_unique<PlanCacheEntry>(queryString.extract(SIZE_MAX),
+                                                plan->toVelocyPack(plan->getAst(), true));
 
   WRITE_LOCKER(writeLocker, _lock);
 
@@ -80,7 +78,9 @@ void PlanCache::store(
 
   if (it == _plans.end()) {
     // create entry for the current database
-    it = _plans.emplace(vocbase, std::unordered_map<uint64_t, std::shared_ptr<PlanCacheEntry>>()).first;
+    it = _plans
+             .emplace(vocbase, std::unordered_map<uint64_t, std::shared_ptr<PlanCacheEntry>>())
+             .first;
   }
 
   // store cache entry
@@ -96,4 +96,3 @@ void PlanCache::invalidate(TRI_vocbase_t* vocbase) {
 
 /// @brief get the plan cache instance
 PlanCache* PlanCache::instance() { return &Instance; }
-

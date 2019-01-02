@@ -58,8 +58,7 @@ class Scheduler {
   friend class arangodb::ListenTask;
 
  public:
-  Scheduler(uint64_t nrMinimum, uint64_t nrDesired, uint64_t nrMaximum,
-            uint64_t maxQueueSize);
+  Scheduler(uint64_t nrMinimum, uint64_t nrDesired, uint64_t nrMaximum, uint64_t maxQueueSize);
   virtual ~Scheduler();
 
  public:
@@ -120,9 +119,7 @@ class Scheduler {
     return (value >> 32) & 0xFFFFULL;
   }
 
-  inline void wakeupJobQueue() noexcept {
-    _jobQueue->wakeup();
-  }
+  inline void wakeupJobQueue() noexcept { _jobQueue->wakeup(); }
 
  private:
   void startNewThread();
@@ -201,7 +198,7 @@ class Scheduler {
   mutable Mutex _threadCreateLock;
   double _lastAllBusyStamp;
 };
-}
-}
+}  // namespace rest
+}  // namespace arangodb
 
 #endif

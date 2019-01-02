@@ -169,15 +169,15 @@ class VertexEntry {
     return _current != other._current;
   }
 };*/
-}
-}
+}  // namespace pregel
+}  // namespace arangodb
 
 namespace std {
 template <>
 struct hash<arangodb::pregel::PregelID> {
   std::size_t operator()(const arangodb::pregel::PregelID& k) const {
-    using std::size_t;
     using std::hash;
+    using std::size_t;
     using std::string;
 
     // Compute individual hash values for first,
@@ -188,6 +188,6 @@ struct hash<arangodb::pregel::PregelID> {
     return h1 ^ (h2 << 1);
   }
 };
-}
+}  // namespace std
 
 #endif

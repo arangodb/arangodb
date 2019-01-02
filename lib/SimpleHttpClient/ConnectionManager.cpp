@@ -96,8 +96,7 @@ ConnectionManager::ServerConnections::~ServerConnections() {
 /// @brief adds a single connection
 ////////////////////////////////////////////////////////////////////////////////
 
-void ConnectionManager::ServerConnections::addConnection(
-    ConnectionManager::SingleServerConnection* connection) {
+void ConnectionManager::ServerConnections::addConnection(ConnectionManager::SingleServerConnection* connection) {
   WRITE_LOCKER(writeLocker, _lock);
 
   _connections.emplace_back(connection);
@@ -108,8 +107,7 @@ void ConnectionManager::ServerConnections::addConnection(
 /// available
 ////////////////////////////////////////////////////////////////////////////////
 
-ConnectionManager::SingleServerConnection*
-ConnectionManager::ServerConnections::popConnection() {
+ConnectionManager::SingleServerConnection* ConnectionManager::ServerConnections::popConnection() {
   // get an unused connection
   {
     WRITE_LOCKER(writeLocker, _lock);
@@ -129,8 +127,7 @@ ConnectionManager::ServerConnections::popConnection() {
 /// @brief push a unused connection back on the stack, allowing its re-use
 ////////////////////////////////////////////////////////////////////////////////
 
-void ConnectionManager::ServerConnections::pushConnection(
-    ConnectionManager::SingleServerConnection* connection) {
+void ConnectionManager::ServerConnections::pushConnection(ConnectionManager::SingleServerConnection* connection) {
   connection->_lastUsed = time(0);
 
   WRITE_LOCKER(writeLocker, _lock);
@@ -141,8 +138,7 @@ void ConnectionManager::ServerConnections::pushConnection(
 /// @brief remove a (broken) connection from the list of connections
 ////////////////////////////////////////////////////////////////////////////////
 
-void ConnectionManager::ServerConnections::removeConnection(
-    ConnectionManager::SingleServerConnection* connection) {
+void ConnectionManager::ServerConnections::removeConnection(ConnectionManager::SingleServerConnection* connection) {
   WRITE_LOCKER(writeLocker, _lock);
 
   for (auto it = _connections.begin(); it != _connections.end(); ++it) {
@@ -158,8 +154,7 @@ void ConnectionManager::ServerConnections::removeConnection(
 /// @brief closes unused connections
 ////////////////////////////////////////////////////////////////////////////////
 
-void ConnectionManager::ServerConnections::closeUnusedConnections(
-    double limit) {
+void ConnectionManager::ServerConnections::closeUnusedConnections(double limit) {
   time_t const t = time(0);
 
   std::list<ConnectionManager::SingleServerConnection*>::iterator current;
@@ -193,8 +188,7 @@ void ConnectionManager::ServerConnections::closeUnusedConnections(
 /// @brief open or get a previously cached connection to a server
 ////////////////////////////////////////////////////////////////////////////////
 
-ConnectionManager::SingleServerConnection* ConnectionManager::leaseConnection(
-    std::string const& endpoint) {
+ConnectionManager::SingleServerConnection* ConnectionManager::leaseConnection(std::string const& endpoint) {
   // first find a connections list
   // this is optimized for the fact that we mostly have a connections
   // list for an endpoint already
@@ -223,8 +217,7 @@ ConnectionManager::SingleServerConnection* ConnectionManager::leaseConnection(
 
     WRITE_LOCKER(writeLocker, _connectionsBuckets[slot]._lock);
 
-    auto it =
-        _connectionsBuckets[slot]._connections.emplace(endpoint, sc.get());
+    auto it = _connectionsBuckets[slot]._connections.emplace(endpoint, sc.get());
 
     if (!it.second) {
       // insert didn't work -> another thread has concurrently created a
@@ -266,11 +259,11 @@ ConnectionManager::SingleServerConnection* ConnectionManager::leaseConnection(
   }
 
   // create a connection object
-  std::unique_ptr<GeneralClientConnection> cn(GeneralClientConnection::factory(
-      ep.get(), _globalConnectionOptions._requestTimeout,
-      _globalConnectionOptions._connectTimeout,
-      _globalConnectionOptions._connectRetries,
-      _globalConnectionOptions._sslProtocol));
+  std::unique_ptr<GeneralClientConnection> cn(
+      GeneralClientConnection::factory(ep.get(), _globalConnectionOptions._requestTimeout,
+                                       _globalConnectionOptions._connectTimeout,
+                                       _globalConnectionOptions._connectRetries,
+                                       _globalConnectionOptions._sslProtocol));
 
   if (cn == nullptr) {
     // out of memory
@@ -283,8 +276,7 @@ ConnectionManager::SingleServerConnection* ConnectionManager::leaseConnection(
   }
 
   // finally create the SingleServerConnection
-  auto c =
-      std::make_unique<SingleServerConnection>(s, cn.get(), ep.get(), endpoint);
+  auto c = std::make_unique<SingleServerConnection>(s, cn.get(), ep.get(), endpoint);
 
   // Now put it into our administration:
   s->addConnection(c.get());

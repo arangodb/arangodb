@@ -35,11 +35,7 @@ class BaseExpressionContext final : public ExpressionContext {
   BaseExpressionContext(size_t startPos, AqlItemBlock const* argv,
                         std::vector<Variable const*> const& vars,
                         std::vector<RegisterId> const& regs)
-      : ExpressionContext(),
-        _startPos(startPos),
-        _argv(argv),
-        _vars(&vars),
-        _regs(&regs) {}
+      : ExpressionContext(), _startPos(startPos), _argv(argv), _vars(&vars), _regs(&regs) {}
 
   ~BaseExpressionContext() {}
 
@@ -59,6 +55,6 @@ class BaseExpressionContext final : public ExpressionContext {
   std::vector<Variable const*> const* _vars;
   std::vector<RegisterId> const* _regs;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 #endif

@@ -29,7 +29,7 @@
 
 using namespace arangodb;
 
-ReplicationApplierState::ReplicationApplierState() 
+ReplicationApplierState::ReplicationApplierState()
     : _lastProcessedContinuousTick(0),
       _lastAppliedContinuousTick(0),
       _lastAvailableContinuousTick(0),
@@ -65,7 +65,7 @@ ReplicationApplierState& ReplicationApplierState::operator=(ReplicationApplierSt
   _lastError.code = other._lastError.code;
   _lastError.message = other._lastError.message;
   memcpy(&_lastError.time[0], &other._lastError.time[0], sizeof(_lastError.time));
-  
+
   _failedConnects = other._failedConnects;
   _totalRequests = other._totalRequests;
   _totalFailedConnects = other._totalFailedConnects;
@@ -87,14 +87,14 @@ void ReplicationApplierState::reset(bool resetState) {
   _progressTime[0] = '\0';
   _serverId = 0;
   _lastError.reset();
-      
+
   _failedConnects = 0;
   _totalRequests = 0;
   _totalFailedConnects = 0;
   _totalEvents = 0;
   _totalResyncs = 0;
   _skippedOperations = 0;
-  
+
   if (resetState) {
     _phase = ActivityPhase::INACTIVE;
   }
@@ -118,26 +118,29 @@ void ReplicationApplierState::toVelocyPack(VPackBuilder& result, bool full) cons
   result.openObject();
 
   if (full) {
-    result.add("running", VPackValue(isTailing())); // isRunning
+    result.add("running", VPackValue(isTailing()));  // isRunning
     result.add("phase", VPackValue(ActivityToString(_phase)));
 
     // lastAppliedContinuousTick
     if (_lastAppliedContinuousTick > 0) {
-      result.add("lastAppliedContinuousTick", VPackValue(std::to_string(_lastAppliedContinuousTick)));
+      result.add("lastAppliedContinuousTick",
+                 VPackValue(std::to_string(_lastAppliedContinuousTick)));
     } else {
       result.add("lastAppliedContinuousTick", VPackValue(VPackValueType::Null));
     }
 
     // lastProcessedContinuousTick
     if (_lastProcessedContinuousTick > 0) {
-      result.add("lastProcessedContinuousTick", VPackValue(std::to_string(_lastProcessedContinuousTick)));
+      result.add("lastProcessedContinuousTick",
+                 VPackValue(std::to_string(_lastProcessedContinuousTick)));
     } else {
       result.add("lastProcessedContinuousTick", VPackValue(VPackValueType::Null));
     }
 
     // lastAvailableContinuousTick
     if (_lastAvailableContinuousTick > 0) {
-      result.add("lastAvailableContinuousTick", VPackValue(std::to_string(_lastAvailableContinuousTick)));
+      result.add("lastAvailableContinuousTick",
+                 VPackValue(std::to_string(_lastAvailableContinuousTick)));
     } else {
       result.add("lastAvailableContinuousTick", VPackValue(VPackValueType::Null));
     }
@@ -156,7 +159,7 @@ void ReplicationApplierState::toVelocyPack(VPackBuilder& result, bool full) cons
       result.add("message", VPackValue(_progressMsg));
     }
     result.add("failedConnects", VPackValue(_failedConnects));
-    result.close(); // progress
+    result.close();  // progress
 
     result.add("totalRequests", VPackValue(_totalRequests));
     result.add("totalFailedConnects", VPackValue(_totalFailedConnects));
@@ -172,12 +175,13 @@ void ReplicationApplierState::toVelocyPack(VPackBuilder& result, bool full) cons
     TRI_GetTimeStampReplication(timeString, sizeof(timeString) - 1);
     result.add("time", VPackValue(&timeString[0]));
   } else {
-    result.add("serverId", VPackValue(std::to_string(_serverId))); 
-    result.add("lastProcessedContinuousTick", VPackValue(std::to_string(_lastProcessedContinuousTick))); 
-    result.add("lastAppliedContinuousTick", VPackValue(std::to_string(_lastAppliedContinuousTick))); 
+    result.add("serverId", VPackValue(std::to_string(_serverId)));
+    result.add("lastProcessedContinuousTick",
+               VPackValue(std::to_string(_lastProcessedContinuousTick)));
+    result.add("lastAppliedContinuousTick",
+               VPackValue(std::to_string(_lastAppliedContinuousTick)));
     result.add("safeResumeTick", VPackValue(std::to_string(_safeResumeTick)));
   }
 
   result.close();
 }
-

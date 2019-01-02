@@ -78,14 +78,13 @@ std::vector<std::string> Databases::list(std::string const& user) {
   } else {
     // slow path for user case
     if (ServerState::instance()->isCoordinator()) {
-      
       AuthenticationFeature* af = AuthenticationFeature::instance();
       auth::UserManager* um = af->userManager();
       std::vector<std::string> names;
       std::vector<std::string> dbs = databaseFeature->getDatabaseNamesCoordinator();
       for (std::string const& db : dbs) {
-        if (!af->isActive() || (um != nullptr &&
-            um->databaseAuthLevel(user, db) > auth::Level::NONE)) {
+        if (!af->isActive() ||
+            (um != nullptr && um->databaseAuthLevel(user, db) > auth::Level::NONE)) {
           names.push_back(db);
         }
       }
@@ -99,8 +98,7 @@ std::vector<std::string> Databases::list(std::string const& user) {
 arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
   if (ServerState::instance()->isCoordinator()) {
     AgencyComm agency;
-    AgencyCommResult commRes =
-        agency.getValues("Plan/Databases/" + vocbase->name());
+    AgencyCommResult commRes = agency.getValues("Plan/Databases/" + vocbase->name());
     if (!commRes.successful()) {
       // Error in communication, note that value not found is not an error
       LOG_TOPIC(TRACE, Logger::COMMUNICATION)
@@ -138,8 +136,7 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
   return Result();
 }
 
-arangodb::Result Databases::create(std::string const& dbName,
-                                   VPackSlice const& inUsers,
+arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& inUsers,
                                    VPackSlice const& inOptions) {
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   ExecContext const* exec = ExecContext::CURRENT;
@@ -178,7 +175,7 @@ arangodb::Result Databases::create(std::string const& dbName,
     } else if (user.hasKey("user")) {
       name = user.get("user");
     }
-    if (!name.isString()) { // empty names are silently ignored later
+    if (!name.isString()) {  // empty names are silently ignored later
       return Result(TRI_ERROR_HTTP_BAD_PARAMETER);
     }
     sanitizedUsers.add("username", name);
@@ -234,8 +231,7 @@ arangodb::Result Databases::create(std::string const& dbName,
     ClusterInfo* ci = ClusterInfo::instance();
     std::string errorMsg;
 
-    int res =
-        ci->createDatabaseCoordinator(dbName, builder.slice(), errorMsg, 120.0);
+    int res = ci->createDatabaseCoordinator(dbName, builder.slice(), errorMsg, 120.0);
     if (res != TRI_ERROR_NO_ERROR) {
       return Result(res);
     }
@@ -263,12 +259,11 @@ arangodb::Result Databases::create(std::string const& dbName,
     // we need to add the permissions before running the upgrade script
     if (ExecContext::CURRENT != nullptr && um != nullptr) {
       // ignore errors here Result r =
-      um->updateUser(
-          ExecContext::CURRENT->user(), [&](auth::User& entry) {
-            entry.grantDatabase(dbName, auth::Level::RW);
-            entry.grantCollection(dbName, "*", auth::Level::RW);
-            return TRI_ERROR_NO_ERROR;
-          });
+      um->updateUser(ExecContext::CURRENT->user(), [&](auth::User& entry) {
+        entry.grantDatabase(dbName, auth::Level::RW);
+        entry.grantCollection(dbName, "*", auth::Level::RW);
+        return TRI_ERROR_NO_ERROR;
+      });
     }
 
     V8Context* ctx = V8DealerFeature::DEALER->enterContext(vocbase, true);
@@ -316,12 +311,11 @@ arangodb::Result Databases::create(std::string const& dbName,
     // we need to add the permissions before running the upgrade script
     if (ExecContext::CURRENT != nullptr && um != nullptr) {
       // ignore errors here Result r =
-      um->updateUser(
-          ExecContext::CURRENT->user(), [&](auth::User& entry) {
-             entry.grantDatabase(dbName, auth::Level::RW);
-             entry.grantCollection(dbName, "*", auth::Level::RW);
-             return TRI_ERROR_NO_ERROR;
-           });
+      um->updateUser(ExecContext::CURRENT->user(), [&](auth::User& entry) {
+        entry.grantDatabase(dbName, auth::Level::RW);
+        entry.grantCollection(dbName, "*", auth::Level::RW);
+        return TRI_ERROR_NO_ERROR;
+      });
     }
 
     TRI_ASSERT(V8DealerFeature::DEALER != nullptr);
@@ -382,8 +376,7 @@ arangodb::Result Databases::create(std::string const& dbName,
   return Result();
 }
 
-arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
-                                 std::string const& dbName) {
+arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const& dbName) {
   TRI_ASSERT(systemVocbase->isSystem());
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
@@ -457,7 +450,8 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
 
     TRI_ExecuteJavaScriptString(
         isolate, isolate->GetCurrentContext(),
-        TRI_V8_ASCII_STRING(isolate, "require('internal').executeGlobalContextFunction('"
+        TRI_V8_ASCII_STRING(isolate,
+                            "require('internal').executeGlobalContextFunction('"
                             "reloadRouting')"),
         TRI_V8_ASCII_STRING(isolate, "reload routing"), false);
   }
@@ -465,11 +459,8 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
   Result res;
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (um != nullptr) {
-    res = um->enumerateUsers([&](auth::User& entry) -> bool {
-      return entry.removeDatabase(dbName);
-    });
+    res = um->enumerateUsers(
+        [&](auth::User& entry) -> bool { return entry.removeDatabase(dbName); });
   }
   return res;
 }
-
-

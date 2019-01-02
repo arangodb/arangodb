@@ -51,12 +51,11 @@ enum SslProtocol {
 #define SSL_CONST const
 #endif
 
-boost::asio::ssl::context sslContext(
-    SslProtocol, std::string const& keyfile);
+boost::asio::ssl::context sslContext(SslProtocol, std::string const& keyfile);
 
 std::string protocolName(SslProtocol protocol);
 
 std::string lastSSLError();
-}
+}  // namespace arangodb
 
 #endif

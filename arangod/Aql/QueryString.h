@@ -37,15 +37,15 @@ class QueryString {
   QueryString(QueryString const& other) = default;
   QueryString& operator=(QueryString const& other) = default;
 
-  QueryString(char const* data, size_t length) 
+  QueryString(char const* data, size_t length)
       : _data(data), _length(length), _hash(0), _hashed(false) {}
 
-  explicit QueryString(arangodb::StringRef const& ref) 
+  explicit QueryString(arangodb::StringRef const& ref)
       : QueryString(ref.data(), ref.size()) {}
 
-  explicit QueryString(std::string const& val) 
+  explicit QueryString(std::string const& val)
       : QueryString(val.data(), val.size()) {}
-  
+
   QueryString() : QueryString(nullptr, 0) {}
 
   ~QueryString() = default;
@@ -54,7 +54,9 @@ class QueryString {
   char const* data() const { return _data; }
   size_t size() const { return _length; }
   size_t length() const { return _length; }
-  bool empty() const { return (_data == nullptr || _length == 0 || *_data == '\0'); }
+  bool empty() const {
+    return (_data == nullptr || _length == 0 || *_data == '\0');
+  }
   void append(std::string& out) const;
   uint64_t hash();
   std::string extract(size_t maxLength) const;
@@ -68,7 +70,7 @@ class QueryString {
 };
 
 std::ostream& operator<<(std::ostream&, QueryString const&);
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

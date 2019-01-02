@@ -45,12 +45,11 @@ using namespace arangodb::basics;
 // -----------------------------------------------------------------------------
 
 unsigned long RandomDevice::seed() {
-
   // Random device ---
   size_t dev = std::random_device()();
 
   // Thread ID -------
-  auto tid =  std::hash<std::thread::id>()(std::this_thread::get_id());
+  auto tid = std::hash<std::thread::id>()(std::this_thread::get_id());
 
   // Time now --------
   for (unsigned short i = 0; i < 50; ++i) {
@@ -58,10 +57,10 @@ unsigned long RandomDevice::seed() {
     std::this_thread::sleep_for(std::chrono::nanoseconds(100));
   }
   auto now = std::chrono::duration_cast<std::chrono::nanoseconds>(
-    std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+                 std::chrono::high_resolution_clock::now().time_since_epoch())
+                 .count();
 
   return (unsigned long)(dev + tid + now);
-  
 }
 
 int32_t RandomDevice::interval(int32_t left, int32_t right) {
@@ -85,7 +84,7 @@ int32_t RandomDevice::random(int32_t left, int32_t right) {
   }
 
   uint32_t range = static_cast<uint32_t>(right - left + 1);
-  
+
   switch (range) {
     case 0x00000002:
       return power2(left, 0x00000002 - 1);
@@ -168,13 +167,14 @@ int32_t RandomDevice::other(int32_t left, uint32_t range) {
 
   while (r >= g) {
     if (++count >= MAX_COUNT) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot generate small random number after " << count
-               << " tries";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "cannot generate small random number after " << count << " tries";
       r %= g;
       continue;
     }
 
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "random number too large, trying again";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+        << "random number too large, trying again";
     r = random();
   }
 
@@ -228,10 +228,12 @@ class RandomDeviceDirect : public RandomDevice {
       ssize_t r = TRI_READ(fd, ptr, static_cast<TRI_read_t>(n));
 
       if (r == 0) {
-        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "read on random device failed: nothing read";
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+            << "read on random device failed: nothing read";
         FATAL_ERROR_EXIT();
       } else if (r < 0) {
-        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "read on random device failed: " << strerror(errno);
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+            << "read on random device failed: " << strerror(errno);
         FATAL_ERROR_EXIT();
       }
 
@@ -247,7 +249,7 @@ class RandomDeviceDirect : public RandomDevice {
   uint32_t buffer[N];
   size_t pos;
 };
-}
+}  // namespace
 
 #endif
 
@@ -311,15 +313,18 @@ class RandomDeviceCombined : public RandomDevice {
       ssize_t r = TRI_READ(fd, ptr, static_cast<TRI_read_t>(n));
 
       if (r == 0) {
-        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "read on random device failed: nothing read";
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+            << "read on random device failed: nothing read";
         FATAL_ERROR_EXIT();
-      } else if (r < 0) { 
+      } else if (r < 0) {
         if (errno == EWOULDBLOCK || errno == EAGAIN) {
-          LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "not enough entropy (got " << (sizeof(buffer) - n)
-                    << "), switching to pseudo-random";
+          LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+              << "not enough entropy (got " << (sizeof(buffer) - n)
+              << "), switching to pseudo-random";
           break;
         }
-        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "read on random device failed: " << strerror(errno);
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+            << "read on random device failed: " << strerror(errno);
         FATAL_ERROR_EXIT();
       }
 
@@ -352,7 +357,7 @@ class RandomDeviceCombined : public RandomDevice {
 
   uint32_t rseed;
 };
-}
+}  // namespace
 
 #endif
 
@@ -362,11 +367,12 @@ class RandomDeviceCombined : public RandomDevice {
 
 class RandomDeviceMersenne : public RandomDevice {
  public:
-  RandomDeviceMersenne()
-      : engine((uint_fast32_t)RandomDevice::seed()) {}
+  RandomDeviceMersenne() : engine((uint_fast32_t)RandomDevice::seed()) {}
 
   uint32_t random() { return engine(); }
-  void seed(uint64_t seed) { engine.seed(static_cast<decltype(engine)::result_type>(seed)); }
+  void seed(uint64_t seed) {
+    engine.seed(static_cast<decltype(engine)::result_type>(seed));
+  }
 
   std::mt19937 engine;
 };
@@ -415,7 +421,8 @@ class RandomDeviceWin32 : public RandomDevice {
     // fill the buffer with random characters
     int result = CryptGenRandom(cryptoHandle, n, ptr);
     if (result == 0) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "read on random device failed: nothing read";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+          << "read on random device failed: nothing read";
       FATAL_ERROR_EXIT();
     }
     pos = 0;
@@ -426,7 +433,7 @@ class RandomDeviceWin32 : public RandomDevice {
   uint32_t buffer[N];
   size_t pos;
 };
-}
+}  // namespace
 
 #endif
 
@@ -561,7 +568,7 @@ uint32_t RandomGenerator::interval(uint32_t right) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "random generator not initialized");
   }
-  
+
   uint32_t value = _device->interval(static_cast<uint32_t>(0), right);
   TRI_ASSERT(value <= right);
   return value;
@@ -601,9 +608,10 @@ void RandomGenerator::seed(uint64_t seed) {
   if (!_device) {
     throw std::runtime_error("Random device not yet initialized!");
   }
-  if(RandomDeviceMersenne* dev = dynamic_cast<RandomDeviceMersenne*>(_device.get())) {
+  if (RandomDeviceMersenne* dev = dynamic_cast<RandomDeviceMersenne*>(_device.get())) {
     dev->seed(seed);
     return;
   }
-  throw std::runtime_error("Random device is not mersenne and cannot be seeded!");
+  throw std::runtime_error(
+      "Random device is not mersenne and cannot be seeded!");
 }

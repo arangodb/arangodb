@@ -28,19 +28,16 @@
 #include "Auth/UserManager.h"
 
 namespace arangodb {
-  
-class AuthenticationFeature final
-    : public application_features::ApplicationFeature {
+
+class AuthenticationFeature final : public application_features::ApplicationFeature {
  private:
   const size_t _maxSecretLength = 64;
 
  public:
   explicit AuthenticationFeature(application_features::ApplicationServer*);
   ~AuthenticationFeature();
-      
-  static inline AuthenticationFeature* instance() {
-    return INSTANCE;
-  }
+
+  static inline AuthenticationFeature* instance() { return INSTANCE; }
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -56,8 +53,10 @@ class AuthenticationFeature final
   bool authenticationSystemOnly() const { return _authenticationSystemOnly; }
   std::string jwtSecret() const { return _authCache->jwtSecret(); }
   bool hasUserdefinedJwt() const { return !_jwtSecretProgramOption.empty(); }
-      
-  double authenticationTimeout() const noexcept { return _authenticationTimeout; }
+
+  double authenticationTimeout() const noexcept {
+    return _authenticationTimeout;
+  }
   /// Enable or disable standalone authentication
   bool localAuthentication() const noexcept { return _localAuthentication; }
 
@@ -66,13 +65,13 @@ class AuthenticationFeature final
     TRI_ASSERT(_authCache);
     return _authCache;
   }
-  
+
   /// user manager may be null on DBServers and Agency
   /// @return user manager singleton
   inline auth::UserManager* userManager() const noexcept {
     return _userManager;
   }
-      
+
  private:
   auth::UserManager* _userManager;
   auth::TokenCache* _authCache;
@@ -85,8 +84,7 @@ class AuthenticationFeature final
   bool _active;
 
   static AuthenticationFeature* INSTANCE;
-
 };
-};
+};  // namespace arangodb
 
 #endif

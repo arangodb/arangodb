@@ -24,8 +24,8 @@
 #include "RestHandlerFactory.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
-#include "Replication/ReplicationFeature.h"
 #include "Replication/GlobalReplicationApplier.h"
+#include "Replication/ReplicationFeature.h"
 #include "Rest/GeneralRequest.h"
 #include "RestHandler/RestBaseHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
@@ -39,16 +39,15 @@ static std::string const ROOT_PATH = "/";
 namespace {
 class MaintenanceHandler : public RestBaseHandler {
   ServerState::Mode _mode;
+
  public:
-  MaintenanceHandler(GeneralRequest* request,
-                     GeneralResponse* response,
-                     ServerState::Mode mode)
+  MaintenanceHandler(GeneralRequest* request, GeneralResponse* response, ServerState::Mode mode)
       : RestBaseHandler(request, response), _mode(mode) {}
 
   char const* name() const override final { return "MaintenanceHandler"; }
 
   bool isDirect() const override { return true; };
-  
+
   // returns the queue name, should trigger processing without job
   size_t queue() const override { return JobQueue::AQL_QUEUE; }
 
@@ -61,17 +60,16 @@ class MaintenanceHandler : public RestBaseHandler {
     resetResponse(rest::ResponseCode::SERVICE_UNAVAILABLE);
   }
 };
-}
+}  // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new handler
 ////////////////////////////////////////////////////////////////////////////////
 
-RestHandler* RestHandlerFactory::createHandler(
-    std::unique_ptr<GeneralRequest> req,
-    std::unique_ptr<GeneralResponse> res) const {
+RestHandler* RestHandlerFactory::createHandler(std::unique_ptr<GeneralRequest> req,
+                                               std::unique_ptr<GeneralResponse> res) const {
   std::string const& path = req->requestPath();
-  
+
   // In the shutdown phase we simply return 503:
   if (application_features::ApplicationServer::isStopping()) {
     return new MaintenanceHandler(req.release(), res.release(), ServerState::Mode::INVALID);
@@ -83,10 +81,11 @@ RestHandler* RestHandlerFactory::createHandler(
   switch (mode) {
     case ServerState::Mode::MAINTENANCE: {
       if ((!ServerState::instance()->isCoordinator() &&
-          path.find("/_api/agency/agency-callbacks") == std::string::npos) ||
+           path.find("/_api/agency/agency-callbacks") == std::string::npos) ||
           (path.find("/_api/agency/agency-callbacks") == std::string::npos &&
-          path.find("/_api/aql") == std::string::npos)) {
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Maintenance mode: refused path: " << path;
+           path.find("/_api/aql") == std::string::npos)) {
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+            << "Maintenance mode: refused path: " << path;
         return new MaintenanceHandler(req.release(), res.release(), mode);
       }
       break;
@@ -105,14 +104,15 @@ RestHandler* RestHandlerFactory::createHandler(
           path.find("/_api/replication") == std::string::npos &&
           path.find("/_api/version") == std::string::npos &&
           path.find("/_api/wal") == std::string::npos) {
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Maintenance mode: refused path: " << path;
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+            << "Maintenance mode: refused path: " << path;
         return new MaintenanceHandler(req.release(), res.release(), mode);
       }
       break;
     }
     case ServerState::Mode::DEFAULT:
     case ServerState::Mode::READ_ONLY:
-    case ServerState::Mode::INVALID:    
+    case ServerState::Mode::INVALID:
       // no special handling required
       break;
   }
@@ -125,7 +125,8 @@ RestHandler* RestHandlerFactory::createHandler(
 
   // no direct match, check prefix matches
   if (i == ii.end()) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "no direct handler found, trying prefixes";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+        << "no direct handler found, trying prefixes";
 
     // find longest match
     size_t const pathLength = path.size();
@@ -135,17 +136,19 @@ RestHandler* RestHandlerFactory::createHandler(
       if (path.compare(0, pSize, p) == 0) {
         if (pSize < pathLength && path[pSize] == '/') {
           prefix = p;
-          break; // first match is longest match
+          break;  // first match is longest match
         }
       }
     }
 
     if (prefix.empty()) {
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "no prefix handler found, trying catch all";
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+          << "no prefix handler found, trying catch all";
 
       i = ii.find(ROOT_PATH);
       if (i != ii.end()) {
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "found catch all handler '/'";
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+            << "found catch all handler '/'";
 
         size_t l = 1;
         size_t n = path.find_first_of('/', l);
@@ -194,11 +197,13 @@ RestHandler* RestHandlerFactory::createHandler(
       return _notFound(req.release(), res.release(), nullptr);
     }
 
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "no not-found handler, giving up";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+        << "no not-found handler, giving up";
     return nullptr;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "found handler for path '" << *modifiedPath << "'";
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+      << "found handler for path '" << *modifiedPath << "'";
   return i->second.first(req.release(), res.release(), i->second.second);
 }
 
@@ -206,8 +211,7 @@ RestHandler* RestHandlerFactory::createHandler(
 /// @brief adds a path and constructor to the factory
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestHandlerFactory::addHandler(std::string const& path, create_fptr func,
-                                    void* data) {
+void RestHandlerFactory::addHandler(std::string const& path, create_fptr func, void* data) {
   _constructors[path] = std::make_pair(func, data);
 }
 
@@ -219,9 +223,10 @@ void RestHandlerFactory::addPrefixHandler(std::string const& path,
                                           create_fptr func, void* data) {
   _constructors[path] = std::make_pair(func, data);
   _prefixes.emplace_back(path);
-  std::sort(_prefixes.begin(), _prefixes.end(), [](std::string const& a, std::string const& b) {
-    return a.size() > b.size();
-  });
+  std::sort(_prefixes.begin(), _prefixes.end(),
+            [](std::string const& a, std::string const& b) {
+              return a.size() > b.size();
+            });
 }
 
 ////////////////////////////////////////////////////////////////////////////////

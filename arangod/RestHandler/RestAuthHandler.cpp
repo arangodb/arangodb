@@ -36,19 +36,16 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAuthHandler::RestAuthHandler(GeneralRequest* request,
-                                 GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response),
-      _validFor(60 * 60 * 24 * 30) {}
+RestAuthHandler::RestAuthHandler(GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(request, response), _validFor(60 * 60 * 24 * 30) {}
 
 bool RestAuthHandler::isDirect() const { return false; }
 
 std::string RestAuthHandler::generateJwt(std::string const& username,
                                          std::string const& password) {
-  std::chrono::seconds exp =
-      std::chrono::duration_cast<std::chrono::seconds>(
-          std::chrono::system_clock::now().time_since_epoch()) +
-      _validFor;
+  std::chrono::seconds exp = std::chrono::duration_cast<std::chrono::seconds>(
+                                 std::chrono::system_clock::now().time_since_epoch()) +
+                             _validFor;
   VPackBuilder bodyBuilder;
   {
     VPackObjectBuilder p(&bodyBuilder);
@@ -64,14 +61,12 @@ std::string RestAuthHandler::generateJwt(std::string const& username,
 RestStatus RestAuthHandler::execute() {
   auto const type = _request->requestType();
   if (type != rest::RequestType::POST) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
 
   bool parseSuccess;
-  std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(parseSuccess);
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
   if (!parseSuccess) {
     return badRequest();
   }
@@ -90,7 +85,7 @@ RestStatus RestAuthHandler::execute() {
 
   _username = usernameSlice.copyString();
   std::string const password = passwordSlice.copyString();
-  
+
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (um == nullptr) {
     std::string msg = "This server does not support users";
@@ -108,14 +103,14 @@ RestStatus RestAuthHandler::execute() {
     generateDocument(resultBuilder.slice(), true, &VPackOptions::Defaults);
   } else {
     // mop: rfc 2616 10.4.2 (if credentials wrong 401)
-    generateError(rest::ResponseCode::UNAUTHORIZED,
-                  TRI_ERROR_HTTP_UNAUTHORIZED, "Wrong credentials");
+    generateError(rest::ResponseCode::UNAUTHORIZED, TRI_ERROR_HTTP_UNAUTHORIZED,
+                  "Wrong credentials");
   }
   return RestStatus::DONE;
 }
 
 RestStatus RestAuthHandler::badRequest() {
-  generateError(rest::ResponseCode::BAD,
-                TRI_ERROR_HTTP_BAD_PARAMETER, "invalid JSON");
+  generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                "invalid JSON");
   return RestStatus::DONE;
 }

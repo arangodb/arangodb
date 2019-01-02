@@ -60,10 +60,8 @@ using namespace arangodb::rest;
 namespace {
 class V8Task : public std::enable_shared_from_this<V8Task> {
  public:
-  static std::shared_ptr<V8Task> createTask(std::string const& id,
-                                            std::string const& name,
-                                            TRI_vocbase_t*,
-                                            std::string const& command,
+  static std::shared_ptr<V8Task> createTask(std::string const& id, std::string const& name,
+                                            TRI_vocbase_t*, std::string const& command,
                                             bool allowUseDatabase, int& ec);
 
   static int unregisterTask(std::string const& id, bool cancel);
@@ -85,8 +83,7 @@ class V8Task : public std::enable_shared_from_this<V8Task> {
  public:
   void setOffset(double offset);
   void setPeriod(double offset, double period);
-  void setParameter(
-      std::shared_ptr<arangodb::velocypack::Builder> const& parameters);
+  void setParameter(std::shared_ptr<arangodb::velocypack::Builder> const& parameters);
   void setUser(std::string const& user);
 
   void start();
@@ -127,10 +124,8 @@ class V8Task : public std::enable_shared_from_this<V8Task> {
 Mutex V8Task::_tasksLock;
 std::unordered_map<std::string, std::shared_ptr<V8Task>> V8Task::_tasks;
 
-std::shared_ptr<V8Task> V8Task::createTask(std::string const& id,
-                                           std::string const& name,
-                                           TRI_vocbase_t* vocbase,
-                                           std::string const& command,
+std::shared_ptr<V8Task> V8Task::createTask(std::string const& id, std::string const& name,
+                                           TRI_vocbase_t* vocbase, std::string const& command,
                                            bool allowUseDatabase, int& ec) {
   if (id.empty()) {
     ec = TRI_ERROR_TASK_INVALID_ID;
@@ -216,7 +211,7 @@ void V8Task::shutdownTasks() {
 
 void V8Task::removeTasksForDatabase(std::string const& name) {
   MUTEX_LOCKER(guard, _tasksLock);
-    
+
   for (auto it = _tasks.begin(); it != _tasks.end(); /* no hoisting */) {
     if (!(*it).second->databaseMatches(name)) {
       ++it;
@@ -227,14 +222,13 @@ void V8Task::removeTasksForDatabase(std::string const& name) {
     }
   }
 }
-  
+
 bool V8Task::databaseMatches(std::string const& name) const {
   return (_dbGuard->database()->name() == name);
 }
 
-V8Task::V8Task(std::string const& id, std::string const& name,
-               TRI_vocbase_t* vocbase, std::string const& command,
-               bool allowUseDatabase)
+V8Task::V8Task(std::string const& id, std::string const& name, TRI_vocbase_t* vocbase,
+               std::string const& command, bool allowUseDatabase)
     : _id(id),
       _name(name),
       _created(TRI_microtime()),
@@ -253,27 +247,22 @@ void V8Task::setOffset(double offset) {
 
 void V8Task::setPeriod(double offset, double period) {
   _offset = std::chrono::microseconds(static_cast<long long>(offset * 1000000));
-  _interval =
-      std::chrono::microseconds(static_cast<long long>(period * 1000000));
+  _interval = std::chrono::microseconds(static_cast<long long>(period * 1000000));
   _periodic = true;
 }
 
-void V8Task::setParameter(
-    std::shared_ptr<arangodb::velocypack::Builder> const& parameters) {
+void V8Task::setParameter(std::shared_ptr<arangodb::velocypack::Builder> const& parameters) {
   _parameters = parameters;
 }
 
-void V8Task::setUser(std::string const& user) {
-  _user = user;
-}
+void V8Task::setUser(std::string const& user) { _user = user; }
 
-std::function<void(const boost::system::error_code&)>
-V8Task::callbackFunction() {
+std::function<void(const boost::system::error_code&)> V8Task::callbackFunction() {
   auto self = shared_from_this();
 
   return [self, this](const boost::system::error_code& error) {
     unqueue();
-    
+
     // First tell the scheduler that this thread is working:
     JobGuard guard(SchedulerFeature::SCHEDULER);
     guard.work();
@@ -295,16 +284,16 @@ V8Task::callbackFunction() {
 
     // get the permissions to be used by this task
     bool allowContinue = true;
-    
+
     std::unique_ptr<ExecContext> execContext;
-    if (!_user.empty()) { // not superuser
+    if (!_user.empty()) {  // not superuser
       std::string const& dbname = _dbGuard->database()->name();
       execContext.reset(ExecContext::create(_user, dbname));
       allowContinue = execContext->canUseDatabase(dbname, auth::Level::RW);
       allowContinue = allowContinue && ServerState::writeOpsEnabled();
     }
-    ExecContextScope scope(_user.empty() ?
-                           ExecContext::superuser() : execContext.get());
+    ExecContextScope scope(_user.empty() ? ExecContext::superuser()
+                                         : execContext.get());
 
     // permissions might have changed since starting this task
     if (SchedulerFeature::SCHEDULER->isStopping() || !allowContinue) {
@@ -327,10 +316,9 @@ V8Task::callbackFunction() {
 }
 
 void V8Task::start() {
-  TRI_ASSERT(ExecContext::CURRENT == nullptr ||
-             ExecContext::CURRENT->isAdminUser() ||
+  TRI_ASSERT(ExecContext::CURRENT == nullptr || ExecContext::CURRENT->isAdminUser() ||
              (!_user.empty() && ExecContext::CURRENT->user() == _user));
-  
+
   auto ioService = SchedulerFeature::SCHEDULER->ioContext();
   _timer.reset(new boost::asio::steady_timer(*ioService));
   if (_offset.count() <= 0) {
@@ -346,8 +334,7 @@ void V8Task::queue(std::chrono::microseconds offset) {
   _timer->async_wait(callbackFunction());
 }
 
-void V8Task::unqueue() noexcept {
-}
+void V8Task::unqueue() noexcept {}
 
 void V8Task::cancel() {
   // this will prevent the task from dispatching itself again
@@ -391,8 +378,7 @@ void V8Task::toVelocyPack(VPackBuilder& builder) const {
 }
 
 void V8Task::work(ExecContext const* exec) {
-  auto context = V8DealerFeature::DEALER->enterContext(_dbGuard->database(),
-                                                       _allowUseDatabase);
+  auto context = V8DealerFeature::DEALER->enterContext(_dbGuard->database(), _allowUseDatabase);
 
   // note: the context might be 0 in case of shut-down
   if (context == nullptr) {
@@ -446,18 +432,21 @@ void V8Task::work(ExecContext const* exec) {
           }
         }
       } catch (arangodb::basics::Exception const& ex) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception in V8 user task: "
-                 << TRI_errno_string(ex.code()) << " " << ex.what();
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+            << "caught exception in V8 user task: " << TRI_errno_string(ex.code())
+            << " " << ex.what();
       } catch (std::bad_alloc const&) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception in V8 user task: "
-                 << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+            << "caught exception in V8 user task: "
+            << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
       } catch (...) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught unknown exception in V8 user task";
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+            << "caught unknown exception in V8 user task";
       }
     }
   }
 }
-}
+}  // namespace
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          private helper
@@ -510,7 +499,7 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() != 1 || !args[0]->IsObject()) {
     TRI_V8_THROW_EXCEPTION_USAGE("register(<task>)");
   }
-  
+
   TRI_GET_GLOBALS();
 
   ExecContext const* exec = ExecContext::CURRENT;
@@ -549,21 +538,24 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   bool isSystem = false;
 
   if (obj->HasOwnProperty(TRI_V8_ASCII_STRING(isolate, "isSystem"))) {
-    isSystem = TRI_ObjectToBoolean(obj->Get(TRI_V8_ASCII_STRING(isolate, "isSystem")));
+    isSystem =
+        TRI_ObjectToBoolean(obj->Get(TRI_V8_ASCII_STRING(isolate, "isSystem")));
   }
 
   // offset in seconds into period or from now on if no period
   double offset = 0.0;
 
   if (obj->HasOwnProperty(TRI_V8_ASCII_STRING(isolate, "offset"))) {
-    offset = TRI_ObjectToDouble(obj->Get(TRI_V8_ASCII_STRING(isolate, "offset")));
+    offset =
+        TRI_ObjectToDouble(obj->Get(TRI_V8_ASCII_STRING(isolate, "offset")));
   }
 
   // period in seconds & count
   double period = 0.0;
 
   if (obj->HasOwnProperty(TRI_V8_ASCII_STRING(isolate, "period"))) {
-    period = TRI_ObjectToDouble(obj->Get(TRI_V8_ASCII_STRING(isolate, "period")));
+    period =
+        TRI_ObjectToDouble(obj->Get(TRI_V8_ASCII_STRING(isolate, "period")));
 
     if (period <= 0.0) {
       TRI_V8_THROW_EXCEPTION_PARAMETER(
@@ -573,13 +565,14 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string runAsUser;
   if (obj->HasOwnProperty(TRI_V8_ASCII_STRING(isolate, "runAsUser"))) {
-    runAsUser = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING(isolate, "runAsUser")));
+    runAsUser =
+        TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING(isolate, "runAsUser")));
   }
-  
+
   // only the superroot is allowed to run tasks as an arbitrary user
   TRI_ASSERT(exec == ExecContext::CURRENT);
   if (exec != nullptr) {
-    if (runAsUser.empty()) { // execute task as the same user
+    if (runAsUser.empty()) {  // execute task as the same user
       runAsUser = exec->user();
     } else if (exec->user() != runAsUser) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
@@ -594,11 +587,13 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string command;
   if (obj->Get(TRI_V8_ASCII_STRING(isolate, "command"))->IsFunction()) {
     // need to add ( and ) around function because call would otherwise break
-    command = "(" +
-              TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING(isolate, "command"))) +
-              ")(params)";
+    command =
+        "(" +
+        TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING(isolate, "command"))) +
+        ")(params)";
   } else {
-    command = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING(isolate, "command")));
+    command =
+        TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING(isolate, "command")));
   }
 
   if (!TryCompile(isolate, command)) {
@@ -663,7 +658,7 @@ static void JS_UnregisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("unregister(<id>)");
   }
-    
+
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
     if (exec->databaseAuthLevel() != auth::Level::RW) {
@@ -716,17 +711,17 @@ static void JS_GetTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   TRI_GET_GLOBALS();
   TRI_vocbase_t* vocbase = v8g->_vocbase;
   if (vocbase == nullptr || vocbase->isDropped()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-  
+
   if (args.Length() < 2 || !args[0]->IsString() || !args[1]->IsNumber()) {
     TRI_V8_THROW_EXCEPTION_USAGE("createQueue(<id>, <maxWorkers>)");
   }
-  
+
   std::string runAsUser;
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
@@ -737,17 +732,17 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
     runAsUser = exec->user();
     TRI_ASSERT(exec->isAdminUser() || !runAsUser.empty());
   }
-  
+
   std::string key = TRI_ObjectToString(args[0]);
   uint64_t maxWorkers = std::min(TRI_ObjectToUInt64(args[1], false), (uint64_t)64);
-  
+
   VPackBuilder doc;
   doc.openObject();
   doc.add(StaticStrings::KeyString, VPackValue(key));
   doc.add("maxWorkers", VPackValue(maxWorkers));
   doc.add("runAsUser", VPackValue(runAsUser));
   doc.close();
-  
+
   LOG_TOPIC(TRACE, Logger::FIXME) << "Adding queue " << key;
   ExecContextScope exscope(ExecContext::superuser());
   auto ctx = transaction::V8Context::Create(vocbase, false);
@@ -756,18 +751,17 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-  
+
   OperationOptions opts;
   OperationResult result = trx.insert("_queues", doc.slice(), opts);
-  if (result.fail() &&
-      result.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
+  if (result.fail() && result.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
     result = trx.replace("_queues", doc.slice(), opts);
   }
   res = trx.finish(result.result);
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-  
+
   TRI_V8_RETURN(v8::Boolean::New(isolate, result.ok()));
   TRI_V8_TRY_CATCH_END
 }
@@ -775,26 +769,26 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   TRI_GET_GLOBALS();
   TRI_vocbase_t* vocbase = v8g->_vocbase;
   if (vocbase == nullptr || vocbase->isDropped()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-  
+
   if (args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("deleteQueue(<id>)");
   }
   std::string key = TRI_ObjectToString(args[0]);
   VPackBuilder doc;
   doc(VPackValue(VPackValueType::Object))(StaticStrings::KeyString, VPackValue(key))();
-  
+
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr && exec->databaseAuthLevel() != auth::Level::RW) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "deleteQueue() needs db RW permissions");
   }
-  
+
   LOG_TOPIC(TRACE, Logger::FIXME) << "Removing queue " << key;
   ExecContextScope exscope(ExecContext::superuser());
   auto ctx = transaction::V8Context::Create(vocbase, false);
@@ -810,7 +804,7 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-  
+
   TRI_V8_RETURN(v8::Boolean::New(isolate, result.ok()));
   TRI_V8_TRY_CATCH_END
 }
@@ -819,8 +813,7 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
 // --SECTION--                                             module initialization
 // -----------------------------------------------------------------------------
 
-void TRI_InitV8Dispatcher(v8::Isolate* isolate,
-                          v8::Handle<v8::Context> context) {
+void TRI_InitV8Dispatcher(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   v8::HandleScope scope(isolate);
 
   // _queues is a RO collection and can only be written in C++, as superroot
@@ -833,13 +826,11 @@ void TRI_InitV8Dispatcher(v8::Isolate* isolate,
                                JS_DeleteQueue);
 
   // we need a scheduler and a dispatcher to define periodic tasks
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "SYS_REGISTER_TASK"),
-                               JS_RegisterTask);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_REGISTER_TASK"), JS_RegisterTask);
 
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "SYS_UNREGISTER_TASK"),
-                               JS_UnregisterTask);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_UNREGISTER_TASK"), JS_UnregisterTask);
 
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_GET_TASK"), JS_GetTask);
@@ -847,4 +838,6 @@ void TRI_InitV8Dispatcher(v8::Isolate* isolate,
 
 void TRI_ShutdownV8Dispatcher() { V8Task::shutdownTasks(); }
 
-void TRI_RemoveDatabaseTasksV8Dispatcher(std::string const& name) { V8Task::removeTasksForDatabase(name); }
+void TRI_RemoveDatabaseTasksV8Dispatcher(std::string const& name) {
+  V8Task::removeTasksForDatabase(name);
+}

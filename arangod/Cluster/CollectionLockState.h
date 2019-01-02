@@ -33,6 +33,6 @@ struct CollectionLockState {
   static thread_local std::unordered_set<std::string>* _noLockHeaders;
 };
 
-}
+}  // namespace arangodb
 
 #endif

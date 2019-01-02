@@ -78,8 +78,7 @@ static uint64_t checkTraversalDepthValue(AstNode const* node) {
 }
 
 static std::unique_ptr<graph::BaseOptions> CreateTraversalOptions(
-    aql::Query* query, AstNode const* direction,
-    AstNode const* optionsNode) {
+    aql::Query* query, AstNode const* direction, AstNode const* optionsNode) {
   auto options = std::make_unique<traverser::TraverserOptions>(query);
 
   TRI_ASSERT(direction != nullptr);
@@ -144,8 +143,7 @@ static std::unique_ptr<graph::BaseOptions> CreateTraversalOptions(
       }
     }
   }
-  if (options->uniqueVertices ==
-          arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL &&
+  if (options->uniqueVertices == arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL &&
       !options->useBreadthFirst) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "uniqueVertices: 'global' is only "
@@ -157,8 +155,8 @@ static std::unique_ptr<graph::BaseOptions> CreateTraversalOptions(
   return ret;
 }
 
-static std::unique_ptr<graph::BaseOptions> CreateShortestPathOptions(
-    arangodb::aql::Query* query, AstNode const* node) {
+static std::unique_ptr<graph::BaseOptions> CreateShortestPathOptions(arangodb::aql::Query* query,
+                                                                     AstNode const* node) {
   auto options = std::make_unique<graph::ShortestPathOptions>(query);
 
   if (node != nullptr && node->type == NODE_TYPE_OBJECT) {
@@ -218,8 +216,7 @@ ExecutionPlan* ExecutionPlan::instantiateFromAst(Ast* ast) {
   plan->_root = plan->fromNode(root);
 
   // insert fullCount flag
-  if (plan->_lastLimitNode != nullptr &&
-      ast->query()->queryOptions().fullCount) {
+  if (plan->_lastLimitNode != nullptr && ast->query()->queryOptions().fullCount) {
     static_cast<LimitNode*>(plan->_lastLimitNode)->setFullCount();
   }
 
@@ -229,8 +226,7 @@ ExecutionPlan* ExecutionPlan::instantiateFromAst(Ast* ast) {
 }
 
 /// @brief process the list of collections in a VelocyPack
-void ExecutionPlan::getCollectionsFromVelocyPack(Ast* ast,
-                                                 VPackSlice const slice) {
+void ExecutionPlan::getCollectionsFromVelocyPack(Ast* ast, VPackSlice const slice) {
   TRI_ASSERT(ast != nullptr);
 
   VPackSlice collectionsSlice = slice.get("collections");
@@ -245,16 +241,14 @@ void ExecutionPlan::getCollectionsFromVelocyPack(Ast* ast,
     ast->query()->collections()->add(
         arangodb::basics::VelocyPackHelper::checkAndGetStringValue(collection,
                                                                    "name"),
-        AccessMode::fromString(
-            arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
-                collection, "type")
-                .c_str()));
+        AccessMode::fromString(arangodb::basics::VelocyPackHelper::checkAndGetStringValue(collection,
+                                                                                          "type")
+                                   .c_str()));
   }
 }
 
 /// @brief create an execution plan from VelocyPack
-ExecutionPlan* ExecutionPlan::instantiateFromVelocyPack(
-    Ast* ast, VPackSlice const slice) {
+ExecutionPlan* ExecutionPlan::instantiateFromVelocyPack(Ast* ast, VPackSlice const slice) {
   TRI_ASSERT(ast != nullptr);
 
   auto plan = std::make_unique<ExecutionPlan>(ast);
@@ -297,8 +291,7 @@ ExecutionPlan* ExecutionPlan::clone(Query const& query) {
 }
 
 /// @brief export to VelocyPack
-std::shared_ptr<VPackBuilder> ExecutionPlan::toVelocyPack(Ast* ast,
-                                                          bool verbose) const {
+std::shared_ptr<VPackBuilder> ExecutionPlan::toVelocyPack(Ast* ast, bool verbose) const {
   auto builder = std::make_shared<VPackBuilder>();
 
   toVelocyPack(*builder, ast, verbose);
@@ -306,8 +299,7 @@ std::shared_ptr<VPackBuilder> ExecutionPlan::toVelocyPack(Ast* ast,
 }
 
 /// @brief export to VelocyPack
-void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast,
-                                 bool verbose) const {
+void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast, bool verbose) const {
   // keeps top level of built object open
   _root->toVelocyPack(builder, verbose, true);
 
@@ -327,8 +319,7 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast,
   for (auto const& c : *ast->query()->collections()->collections()) {
     builder.openObject();
     builder.add("name", VPackValue(c.first));
-    builder.add("type",
-                VPackValue(AccessMode::typeString(c.second->accessType)));
+    builder.add("type", VPackValue(AccessMode::typeString(c.second->accessType)));
     builder.close();
   }
   builder.close();
@@ -366,9 +357,9 @@ ExecutionNode* ExecutionPlan::getNodeById(size_t id) const {
 }
 
 /// @brief creates a calculation node for an arbitrary expression
-ExecutionNode* ExecutionPlan::createCalculation(
-    Variable* out, Variable const* conditionVariable, AstNode const* expression,
-    ExecutionNode* previous) {
+ExecutionNode* ExecutionPlan::createCalculation(Variable* out, Variable const* conditionVariable,
+                                                AstNode const* expression,
+                                                ExecutionNode* previous) {
   TRI_ASSERT(out != nullptr);
 
   bool const isDistinct = (expression->type == NODE_TYPE_DISTINCT);
@@ -379,13 +370,11 @@ ExecutionNode* ExecutionPlan::createCalculation(
   }
 
   // generate a temporary calculation node
-  auto expr =
-      std::make_unique<Expression>(this, _ast, const_cast<AstNode*>(expression));
+  auto expr = std::make_unique<Expression>(this, _ast, const_cast<AstNode*>(expression));
 
   CalculationNode* en;
   if (conditionVariable != nullptr) {
-    en =
-        new CalculationNode(this, nextId(), expr.get(), conditionVariable, out);
+    en = new CalculationNode(this, nextId(), expr.get(), conditionVariable, out);
   } else {
     en = new CalculationNode(this, nextId(), expr.get(), out);
   }
@@ -412,8 +401,7 @@ ExecutionNode* ExecutionPlan::createCalculation(
 
 /// @brief get the subquery node from an expression
 /// this will return a nullptr if the expression does not refer to a subquery
-SubqueryNode* ExecutionPlan::getSubqueryFromExpression(
-    AstNode const* expression) const {
+SubqueryNode* ExecutionPlan::getSubqueryFromExpression(AstNode const* expression) const {
   TRI_ASSERT(expression != nullptr);
 
   if (expression->type != NODE_TYPE_REFERENCE) {
@@ -465,21 +453,17 @@ Variable const* ExecutionPlan::getOutVariable(ExecutionNode const* node) const {
 }
 
 /// @brief creates an anonymous COLLECT node (for a DISTINCT)
-CollectNode* ExecutionPlan::createAnonymousCollect(
-    CalculationNode const* previous) {
+CollectNode* ExecutionPlan::createAnonymousCollect(CalculationNode const* previous) {
   // generate an out variable for the COLLECT
   auto out = _ast->variables()->createTemporaryVariable();
   TRI_ASSERT(out != nullptr);
 
   std::vector<std::pair<Variable const*, Variable const*>> const groupVariables{
       std::make_pair(out, previous->outVariable())};
-  std::vector<
-      std::pair<Variable const*, std::pair<Variable const*, std::string>>> const
-      aggregateVariables{};
+  std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const aggregateVariables{};
 
-  auto en = new CollectNode(this, nextId(), CollectOptions(), groupVariables,
-                            aggregateVariables, nullptr, nullptr,
-                            std::vector<Variable const*>(),
+  auto en = new CollectNode(this, nextId(), CollectOptions(), groupVariables, aggregateVariables,
+                            nullptr, nullptr, std::vector<Variable const*>(),
                             _ast->variables()->variables(false), false, true);
 
   registerNode(reinterpret_cast<ExecutionNode*>(en));
@@ -490,8 +474,7 @@ CollectNode* ExecutionPlan::createAnonymousCollect(
 }
 
 /// @brief create modification options from an AST node
-ModificationOptions ExecutionPlan::createModificationOptions(
-    AstNode const* node) {
+ModificationOptions ExecutionPlan::createModificationOptions(AstNode const* node) {
   ModificationOptions options;
 
   // parse the modification options we got
@@ -577,8 +560,7 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
 
         if (name == "method") {
           if (value->isStringValue()) {
-            options.method =
-                CollectOptions::methodFromString(value->getString());
+            options.method = CollectOptions::methodFromString(value->getString());
           }
         }
       }
@@ -604,8 +586,8 @@ ExecutionNode* ExecutionPlan::registerNode(ExecutionNode* node) {
 }
 
 /// @brief creates a anonymous calculation node for an arbitrary expression
-ExecutionNode* ExecutionPlan::createTemporaryCalculation(
-    AstNode const* expression, ExecutionNode* previous) {
+ExecutionNode* ExecutionPlan::createTemporaryCalculation(AstNode const* expression,
+                                                         ExecutionNode* previous) {
   // generate a temporary variable
   auto out = _ast->variables()->createTemporaryVariable();
   TRI_ASSERT(out != nullptr);
@@ -614,8 +596,7 @@ ExecutionNode* ExecutionPlan::createTemporaryCalculation(
 }
 
 /// @brief adds "previous" as dependency to "plan", returns "plan"
-ExecutionNode* ExecutionPlan::addDependency(ExecutionNode* previous,
-                                            ExecutionNode* plan) {
+ExecutionNode* ExecutionPlan::addDependency(ExecutionNode* previous, ExecutionNode* plan) {
   TRI_ASSERT(previous != nullptr);
   TRI_ASSERT(plan != nullptr);
 
@@ -630,8 +611,7 @@ ExecutionNode* ExecutionPlan::addDependency(ExecutionNode* previous,
 }
 
 /// @brief create an execution plan element from an AST FOR node
-ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
-                                          AstNode const* node) {
+ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous, AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_FOR);
   TRI_ASSERT(node->numMembers() == 2);
 
@@ -656,8 +636,8 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "no collection for EnumerateCollection");
     }
-    en = registerNode(new EnumerateCollectionNode(
-        this, nextId(), _ast->query()->vocbase(), collection, v, false));
+    en = registerNode(new EnumerateCollectionNode(this, nextId(), _ast->query()->vocbase(),
+                                                  collection, v, false));
   } else if (expression->type == NODE_TYPE_REFERENCE) {
     // second operand is already a variable
     auto inVariable = static_cast<Variable*>(expression->getData());
@@ -666,8 +646,7 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
   } else {
     // second operand is some misc. expression
     auto calc = createTemporaryCalculation(expression, previous);
-    en = registerNode(
-        new EnumerateListNode(this, nextId(), getOutVariable(calc), v));
+    en = registerNode(new EnumerateListNode(this, nextId(), getOutVariable(calc), v));
     previous = calc;
   }
 
@@ -677,8 +656,7 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
 }
 
 /// @brief create an execution plan element from an AST FOR TRAVERSAL node
-ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
-                                                AstNode const* node) {
+ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous, AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_TRAVERSAL);
   TRI_ASSERT(node->numMembers() >= 5);
   TRI_ASSERT(node->numMembers() <= 7);
@@ -709,8 +687,8 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
     previous = calc;
   }
 
-  auto options = CreateTraversalOptions(getAst()->query(), direction,
-                                        node->getMember(3));
+  auto options =
+      CreateTraversalOptions(getAst()->query(), direction, node->getMember(3));
 
   TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
   TRI_ASSERT(direction->numMembers() == 2);
@@ -787,16 +765,14 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
   AstNode const* direction = node->getMember(0);
   TRI_ASSERT(direction->isIntValue());
   AstNode const* start = parseTraversalVertexNode(previous, node->getMember(1));
-  AstNode const* target =
-      parseTraversalVertexNode(previous, node->getMember(2));
+  AstNode const* target = parseTraversalVertexNode(previous, node->getMember(2));
   AstNode const* graph = node->getMember(3);
 
   auto options = CreateShortestPathOptions(getAst()->query(), node->getMember(4));
 
   // First create the node
   auto spNode = new ShortestPathNode(this, nextId(), _ast->query()->vocbase(),
-                                     direction, start, target,
-                                     graph, options);
+                                     direction, start, target, graph, options);
 
   auto variable = node->getMember(5);
   TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
@@ -819,8 +795,7 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
 }
 
 /// @brief create an execution plan element from an AST FILTER node
-ExecutionNode* ExecutionPlan::fromNodeFilter(ExecutionNode* previous,
-                                             AstNode const* node) {
+ExecutionNode* ExecutionPlan::fromNodeFilter(ExecutionNode* previous, AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_FILTER);
   TRI_ASSERT(node->numMembers() == 1);
 
@@ -846,8 +821,7 @@ ExecutionNode* ExecutionPlan::fromNodeFilter(ExecutionNode* previous,
 /// @brief create an execution plan element from an AST LET node
 /// this also includes handling of subqueries (as subqueries can only occur
 /// inside LET nodes)
-ExecutionNode* ExecutionPlan::fromNodeLet(ExecutionNode* previous,
-                                          AstNode const* node) {
+ExecutionNode* ExecutionPlan::fromNodeLet(ExecutionNode* previous, AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_LET);
   TRI_ASSERT(node->numMembers() >= 2);
 
@@ -902,8 +876,7 @@ ExecutionNode* ExecutionPlan::fromNodeLet(ExecutionNode* previous,
 }
 
 /// @brief create an execution plan element from an AST SORT node
-ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous,
-                                           AstNode const* node) {
+ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous, AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_SORT);
   TRI_ASSERT(node->numMembers() == 1);
 
@@ -945,8 +918,7 @@ ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous,
       if (!handled) {
         // if no sort order is set, ensure we have one
         AstNode const* ascendingNode = ascending->castToBool(_ast);
-        if (ascendingNode->type == NODE_TYPE_VALUE &&
-            ascendingNode->value.type == VALUE_TYPE_BOOL) {
+        if (ascendingNode->type == NODE_TYPE_VALUE && ascendingNode->value.type == VALUE_TYPE_BOOL) {
           isAscending = ascendingNode->value.value._bool;
         } else {
           // must have an order
@@ -996,8 +968,7 @@ ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous,
 }
 
 /// @brief create an execution plan element from an AST COLLECT node
-ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous,
-                                              AstNode const* node) {
+ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous, AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_COLLECT);
   TRI_ASSERT(node->numMembers() == 6);
 
@@ -1037,9 +1008,7 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous,
   }
 
   // aggregate variables
-  std::vector<
-      std::pair<Variable const*, std::pair<Variable const*, std::string>>>
-      aggregateVariables;
+  std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> aggregateVariables;
   {
     auto list = node->getMember(2);
     TRI_ASSERT(list->type == NODE_TYPE_AGGREGATIONS);
@@ -1084,14 +1053,13 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous,
       if (arg->type == NODE_TYPE_REFERENCE) {
         // operand is a variable
         auto e = static_cast<Variable*>(arg->getData());
-        aggregateVariables.emplace_back(
-            std::make_pair(v, std::make_pair(e, func->name)));
+        aggregateVariables.emplace_back(std::make_pair(v, std::make_pair(e, func->name)));
       } else {
         auto calc = createTemporaryCalculation(arg, previous);
         previous = calc;
 
-        aggregateVariables.emplace_back(std::make_pair(
-            v, std::make_pair(getOutVariable(calc), func->name)));
+        aggregateVariables.emplace_back(
+            std::make_pair(v, std::make_pair(getOutVariable(calc), func->name)));
       }
     }
   }
@@ -1137,10 +1105,10 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous,
     }
   }
 
-  auto collectNode = new CollectNode(
-      this, nextId(), options, groupVariables, aggregateVariables,
-      expressionVariable, outVariable, keepVariables,
-      _ast->variables()->variables(false), false, false);
+  auto collectNode =
+      new CollectNode(this, nextId(), options, groupVariables, aggregateVariables,
+                      expressionVariable, outVariable, keepVariables,
+                      _ast->variables()->variables(false), false, false);
 
   auto en = registerNode(collectNode);
 
@@ -1196,22 +1164,19 @@ ExecutionNode* ExecutionPlan::fromNodeCollectCount(ExecutionNode* previous,
 
   TRI_ASSERT(outVariable != nullptr);
 
-  std::vector<
-      std::pair<Variable const*, std::pair<Variable const*, std::string>>> const
-      aggregateVariables{};
+  std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const aggregateVariables{};
 
-  auto collectNode = new CollectNode(
-      this, nextId(), options, groupVariables, aggregateVariables, nullptr,
-      outVariable, std::vector<Variable const*>(),
-      _ast->variables()->variables(false), true, false);
+  auto collectNode =
+      new CollectNode(this, nextId(), options, groupVariables, aggregateVariables,
+                      nullptr, outVariable, std::vector<Variable const*>(),
+                      _ast->variables()->variables(false), true, false);
   auto en = registerNode(collectNode);
 
   return addDependency(previous, en);
 }
 
 /// @brief create an execution plan element from an AST LIMIT node
-ExecutionNode* ExecutionPlan::fromNodeLimit(ExecutionNode* previous,
-                                            AstNode const* node) {
+ExecutionNode* ExecutionPlan::fromNodeLimit(ExecutionNode* previous, AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_LIMIT);
   TRI_ASSERT(node->numMembers() == 2);
 
@@ -1223,8 +1188,7 @@ ExecutionNode* ExecutionPlan::fromNodeLimit(ExecutionNode* previous,
 
   int64_t offsetValue = 0;
   if (offset->value.type != VALUE_TYPE_NULL) {
-    if ((offset->value.type != VALUE_TYPE_INT &&
-         offset->value.type != VALUE_TYPE_DOUBLE) ||
+    if ((offset->value.type != VALUE_TYPE_INT && offset->value.type != VALUE_TYPE_DOUBLE) ||
         offset->getIntValue() < 0) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE,
@@ -1234,11 +1198,9 @@ ExecutionNode* ExecutionPlan::fromNodeLimit(ExecutionNode* previous,
   }
 
   int64_t countValue =
-      128 * 1024 *
-      1024;  // arbitrary default value for an "unbounded" limit value
+      128 * 1024 * 1024;  // arbitrary default value for an "unbounded" limit value
   if (count->value.type != VALUE_TYPE_NULL) {
-    if ((count->value.type != VALUE_TYPE_INT &&
-         count->value.type != VALUE_TYPE_DOUBLE) ||
+    if ((count->value.type != VALUE_TYPE_INT && count->value.type != VALUE_TYPE_DOUBLE) ||
         count->getIntValue() < 0) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE,
@@ -1247,8 +1209,7 @@ ExecutionNode* ExecutionPlan::fromNodeLimit(ExecutionNode* previous,
     countValue = count->getIntValue();
   }
 
-  auto en = registerNode(new LimitNode(this, nextId(),
-                                       static_cast<size_t>(offsetValue),
+  auto en = registerNode(new LimitNode(this, nextId(), static_cast<size_t>(offsetValue),
                                        static_cast<size_t>(countValue)));
 
   _lastLimitNode = en;
@@ -1257,8 +1218,7 @@ ExecutionNode* ExecutionPlan::fromNodeLimit(ExecutionNode* previous,
 }
 
 /// @brief create an execution plan element from an AST RETURN node
-ExecutionNode* ExecutionPlan::fromNodeReturn(ExecutionNode* previous,
-                                             AstNode const* node) {
+ExecutionNode* ExecutionPlan::fromNodeReturn(ExecutionNode* previous, AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_RETURN);
   TRI_ASSERT(node->numMembers() == 1);
 
@@ -1282,8 +1242,7 @@ ExecutionNode* ExecutionPlan::fromNodeReturn(ExecutionNode* previous,
 }
 
 /// @brief create an execution plan element from an AST REMOVE node
-ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous,
-                                             AstNode const* node) {
+ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous, AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_REMOVE);
   TRI_ASSERT(node->numMembers() == 4);
 
@@ -1301,8 +1260,7 @@ ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous,
   ExecutionNode* en = nullptr;
 
   auto returnVarNode = node->getMember(3);
-  Variable const* outVariableOld =
-      static_cast<Variable*>(returnVarNode->getData());
+  Variable const* outVariableOld = static_cast<Variable*>(returnVarNode->getData());
 
   if (expression->type == NODE_TYPE_REFERENCE) {
     // operand is already a variable
@@ -1313,9 +1271,8 @@ ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous,
   } else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(expression, previous);
-    en = registerNode(new RemoveNode(this, nextId(), _ast->query()->vocbase(),
-                                     collection, options, getOutVariable(calc),
-                                     outVariableOld));
+    en = registerNode(new RemoveNode(this, nextId(), _ast->query()->vocbase(), collection,
+                                     options, getOutVariable(calc), outVariableOld));
     previous = calc;
   }
 
@@ -1323,8 +1280,7 @@ ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous,
 }
 
 /// @brief create an execution plan element from an AST INSERT node
-ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous,
-                                             AstNode const* node) {
+ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous, AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_INSERT);
   TRI_ASSERT(node->numMembers() == 4);
 
@@ -1335,8 +1291,7 @@ ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous,
   auto expression = node->getMember(2);
 
   auto returnVarNode = node->getMember(3);
-  Variable const* outVariableNew =
-      static_cast<Variable*>(returnVarNode->getData());
+  Variable const* outVariableNew = static_cast<Variable*>(returnVarNode->getData());
 
   ExecutionNode* en = nullptr;
 
@@ -1349,9 +1304,8 @@ ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous,
   } else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(expression, previous);
-    en = registerNode(new InsertNode(this, nextId(), _ast->query()->vocbase(),
-                                     collection, options, getOutVariable(calc),
-                                     outVariableNew));
+    en = registerNode(new InsertNode(this, nextId(), _ast->query()->vocbase(), collection,
+                                     options, getOutVariable(calc), outVariableNew));
     previous = calc;
   }
 
@@ -1359,8 +1313,7 @@ ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous,
 }
 
 /// @brief create an execution plan element from an AST UPDATE node
-ExecutionNode* ExecutionPlan::fromNodeUpdate(ExecutionNode* previous,
-                                             AstNode const* node) {
+ExecutionNode* ExecutionPlan::fromNodeUpdate(ExecutionNode* previous, AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_UPDATE);
   TRI_ASSERT(node->numMembers() == 6);
 
@@ -1374,10 +1327,8 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate(ExecutionNode* previous,
   Variable const* keyVariable = nullptr;
   ExecutionNode* en = nullptr;
 
-  Variable const* outVariableOld =
-      static_cast<Variable*>(node->getMember(4)->getData());
-  Variable const* outVariableNew =
-      static_cast<Variable*>(node->getMember(5)->getData());
+  Variable const* outVariableOld = static_cast<Variable*>(node->getMember(4)->getData());
+  Variable const* outVariableNew = static_cast<Variable*>(node->getMember(5)->getData());
 
   if (keyExpression->type == NODE_TYPE_NOP) {
     keyExpression = nullptr;
@@ -1407,9 +1358,9 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate(ExecutionNode* previous,
   } else {
     // document operand is some misc expression
     auto calc = createTemporaryCalculation(docExpression, previous);
-    en = registerNode(new UpdateNode(
-        this, nextId(), _ast->query()->vocbase(), collection, options,
-        getOutVariable(calc), keyVariable, outVariableOld, outVariableNew));
+    en = registerNode(new UpdateNode(this, nextId(), _ast->query()->vocbase(),
+                                     collection, options, getOutVariable(calc),
+                                     keyVariable, outVariableOld, outVariableNew));
     previous = calc;
   }
 
@@ -1417,8 +1368,7 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate(ExecutionNode* previous,
 }
 
 /// @brief create an execution plan element from an AST REPLACE node
-ExecutionNode* ExecutionPlan::fromNodeReplace(ExecutionNode* previous,
-                                              AstNode const* node) {
+ExecutionNode* ExecutionPlan::fromNodeReplace(ExecutionNode* previous, AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_REPLACE);
   TRI_ASSERT(node->numMembers() == 6);
 
@@ -1432,10 +1382,8 @@ ExecutionNode* ExecutionPlan::fromNodeReplace(ExecutionNode* previous,
   Variable const* keyVariable = nullptr;
   ExecutionNode* en = nullptr;
 
-  Variable const* outVariableOld =
-      static_cast<Variable*>(node->getMember(4)->getData());
-  Variable const* outVariableNew =
-      static_cast<Variable*>(node->getMember(5)->getData());
+  Variable const* outVariableOld = static_cast<Variable*>(node->getMember(4)->getData());
+  Variable const* outVariableNew = static_cast<Variable*>(node->getMember(5)->getData());
 
   if (keyExpression->type == NODE_TYPE_NOP) {
     keyExpression = nullptr;
@@ -1465,9 +1413,9 @@ ExecutionNode* ExecutionPlan::fromNodeReplace(ExecutionNode* previous,
   } else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(docExpression, previous);
-    en = registerNode(new ReplaceNode(
-        this, nextId(), _ast->query()->vocbase(), collection, options,
-        getOutVariable(calc), keyVariable, outVariableOld, outVariableNew));
+    en = registerNode(new ReplaceNode(this, nextId(), _ast->query()->vocbase(),
+                                      collection, options, getOutVariable(calc),
+                                      keyVariable, outVariableOld, outVariableNew));
     previous = calc;
   }
 
@@ -1475,8 +1423,7 @@ ExecutionNode* ExecutionPlan::fromNodeReplace(ExecutionNode* previous,
 }
 
 /// @brief create an execution plan element from an AST UPSERT node
-ExecutionNode* ExecutionPlan::fromNodeUpsert(ExecutionNode* previous,
-                                             AstNode const* node) {
+ExecutionNode* ExecutionPlan::fromNodeUpsert(ExecutionNode* previous, AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_UPSERT);
   TRI_ASSERT(node->numMembers() == 7);
 
@@ -1488,8 +1435,7 @@ ExecutionNode* ExecutionPlan::fromNodeUpsert(ExecutionNode* previous,
   auto insertExpression = node->getMember(3);
   auto updateExpression = node->getMember(4);
 
-  Variable const* outVariableNew =
-      static_cast<Variable*>(node->getMember(6)->getData());
+  Variable const* outVariableNew = static_cast<Variable*>(node->getMember(6)->getData());
 
   TRI_ASSERT(docExpression->type == NODE_TYPE_REFERENCE);
   // doc operand is already a variable
@@ -1518,12 +1464,11 @@ ExecutionNode* ExecutionPlan::fromNodeUpsert(ExecutionNode* previous,
   }
   TRI_ASSERT(updateVar != nullptr);
 
-  bool isReplace =
-      (node->getIntValue(true) == static_cast<int64_t>(NODE_TYPE_REPLACE));
+  bool isReplace = (node->getIntValue(true) == static_cast<int64_t>(NODE_TYPE_REPLACE));
 
-  ExecutionNode* en = registerNode(new UpsertNode(
-      this, nextId(), _ast->query()->vocbase(), collection, options,
-      docVariable, insertVar, updateVar, outVariableNew, isReplace));
+  ExecutionNode* en = registerNode(
+      new UpsertNode(this, nextId(), _ast->query()->vocbase(), collection, options,
+                     docVariable, insertVar, updateVar, outVariableNew, isReplace));
 
   return addDependency(previous, en);
 }
@@ -1641,18 +1586,16 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
 
 /// @brief find nodes of a certain type
 void ExecutionPlan::findNodesOfType(SmallVector<ExecutionNode*>& result,
-                                    ExecutionNode::NodeType type,
-                                    bool enterSubqueries) {
+                                    ExecutionNode::NodeType type, bool enterSubqueries) {
   NodeFinder<ExecutionNode::NodeType> finder(type, result, enterSubqueries);
   root()->walk(&finder);
 }
 
 /// @brief find nodes of a certain types
-void ExecutionPlan::findNodesOfType(
-    SmallVector<ExecutionNode*>& result,
-    std::vector<ExecutionNode::NodeType> const& types, bool enterSubqueries) {
-  NodeFinder<std::vector<ExecutionNode::NodeType>> finder(types, result,
-                                                          enterSubqueries);
+void ExecutionPlan::findNodesOfType(SmallVector<ExecutionNode*>& result,
+                                    std::vector<ExecutionNode::NodeType> const& types,
+                                    bool enterSubqueries) {
+  NodeFinder<std::vector<ExecutionNode::NodeType>> finder(types, result, enterSubqueries);
   root()->walk(&finder);
 }
 
@@ -1727,8 +1670,7 @@ struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
     _varSetBy = new std::unordered_map<VariableId, ExecutionNode*>();
   }
 
-  explicit VarUsageFinder(
-      std::unordered_map<VariableId, ExecutionNode*>* varSetBy)
+  explicit VarUsageFinder(std::unordered_map<VariableId, ExecutionNode*>* varSetBy)
       : _varSetBy(varSetBy), _ownsVarSetBy(false) {
     TRI_ASSERT(_varSetBy != nullptr);
   }
@@ -1786,8 +1728,7 @@ bool ExecutionPlan::varUsageComputed() const { return _varUsageComputed; }
 
 /// @brief unlinkNodes, note that this does not delete the removed
 /// nodes and that one cannot remove the root node of the plan.
-void ExecutionPlan::unlinkNodes(
-    std::unordered_set<ExecutionNode*> const& toRemove) {
+void ExecutionPlan::unlinkNodes(std::unordered_set<ExecutionNode*> const& toRemove) {
   for (auto& node : toRemove) {
     unlinkNode(node);
   }
@@ -1837,8 +1778,7 @@ void ExecutionPlan::unlinkNode(ExecutionNode* node, bool allowUnlinkingRoot) {
 /// @brief replaceNode, note that <newNode> must be registered with the plan
 /// before this method is called, also this does not delete the old
 /// node and that one cannot replace the root node of the plan.
-void ExecutionPlan::replaceNode(ExecutionNode* oldNode,
-                                ExecutionNode* newNode) {
+void ExecutionPlan::replaceNode(ExecutionNode* oldNode, ExecutionNode* newNode) {
   TRI_ASSERT(oldNode->id() != newNode->id());
   TRI_ASSERT(newNode->getDependencies().empty());
   TRI_ASSERT(oldNode != _root);
@@ -1870,8 +1810,7 @@ void ExecutionPlan::replaceNode(ExecutionNode* oldNode,
 /// dependency of <newNode> (and no longer a direct dependency of
 /// <oldNode>).
 /// <newNode> must be registered with the plan before this method is called.
-void ExecutionPlan::insertDependency(ExecutionNode* oldNode,
-                                     ExecutionNode* newNode) {
+void ExecutionPlan::insertDependency(ExecutionNode* oldNode, ExecutionNode* newNode) {
   TRI_ASSERT(oldNode->id() != newNode->id());
   TRI_ASSERT(newNode->getDependencies().empty());
   TRI_ASSERT(oldNode->getDependencies().size() == 1);
@@ -1966,12 +1905,9 @@ bool ExecutionPlan::isDeadSimple() const {
   while (current != nullptr) {
     auto const nodeType = current->getType();
 
-    if (nodeType == ExecutionNode::SUBQUERY ||
-        nodeType == ExecutionNode::ENUMERATE_COLLECTION ||
-        nodeType == ExecutionNode::ENUMERATE_LIST ||
-        nodeType == ExecutionNode::TRAVERSAL ||
-        nodeType == ExecutionNode::SHORTEST_PATH ||
-        nodeType == ExecutionNode::INDEX) {
+    if (nodeType == ExecutionNode::SUBQUERY || nodeType == ExecutionNode::ENUMERATE_COLLECTION ||
+        nodeType == ExecutionNode::ENUMERATE_LIST || nodeType == ExecutionNode::TRAVERSAL ||
+        nodeType == ExecutionNode::SHORTEST_PATH || nodeType == ExecutionNode::INDEX) {
       // these node types are not simple
       return false;
     }

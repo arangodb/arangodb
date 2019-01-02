@@ -43,9 +43,7 @@ class Agent;
 /// @brief This class organises the startup of the agency until the point
 ///        where the RAFT implementation can commence function
 class Inception : public Thread {
-
-public:
-
+ public:
   /// @brief Default ctor
   Inception();
 
@@ -64,7 +62,6 @@ public:
   void signalConditionVar();
 
  private:
-
   /// @brief We are a restarting active RAFT agent
   ///
   /// Make sure that majority of agents agrees on pool and active list.
@@ -79,12 +76,13 @@ public:
   /// No persistence: gossip an agency together.
   void gossip();
 
-  Agent* _agent;                           //< @brief The agent
-  arangodb::basics::ConditionVariable _cv; //< @brief For proper shutdown
-  std::unordered_map<std::string,size_t> _acked;     //< @brief acknowledged config version
-  mutable arangodb::Mutex _vLock;          //< @brieg Guard _acked
+  Agent* _agent;                            //< @brief The agent
+  arangodb::basics::ConditionVariable _cv;  //< @brief For proper shutdown
+  std::unordered_map<std::string, size_t> _acked;  //< @brief acknowledged config version
+  mutable arangodb::Mutex _vLock;                  //< @brieg Guard _acked
 };
 
-}}
+}  // namespace consensus
+}  // namespace arangodb
 
 #endif

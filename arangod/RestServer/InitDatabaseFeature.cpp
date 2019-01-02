@@ -26,8 +26,8 @@
 #include <iostream>
 #include <thread>
 
-#include "Basics/exitcodes.h"
 #include "Basics/FileUtils.h"
+#include "Basics/exitcodes.h"
 #include "Basics/terminal-utils.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
@@ -42,17 +42,16 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 InitDatabaseFeature::InitDatabaseFeature(ApplicationServer* server,
-    std::vector<std::string> const& nonServerFeatures)
-  : ApplicationFeature(server, "InitDatabase"),
-    _nonServerFeatures(nonServerFeatures) {
+                                         std::vector<std::string> const& nonServerFeatures)
+    : ApplicationFeature(server, "InitDatabase"),
+      _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Logger");
   startsAfter("DatabasePath");
 }
 
-void InitDatabaseFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
+void InitDatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("database", "Configure the database");
 
   options->addHiddenOption("--database.init-database",
@@ -68,8 +67,7 @@ void InitDatabaseFeature::collectOptions(
                            new StringParameter(&_password));
 }
 
-void InitDatabaseFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
+void InitDatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   ProgramOptions::ProcessingResult const& result = options->processingResult();
   _seenPassword = result.touched("database.password");
 
@@ -112,9 +110,11 @@ void InitDatabaseFeature::prepare() {
           _password = password1;
           break;
         }
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "passwords do not match, please repeat";
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+            << "passwords do not match, please repeat";
       } else {
-        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "initialization aborted by user";
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+            << "initialization aborted by user";
         FATAL_ERROR_EXIT();
       }
     }
@@ -145,7 +145,8 @@ std::string InitDatabaseFeature::readPassword(std::string const& message) {
 }
 
 void InitDatabaseFeature::checkEmptyDatabase() {
-  auto database = ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
+  auto database =
+      ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
   std::string path = database->directory();
   std::string serverFile = database->subdirectoryName("SERVER");
 
@@ -162,8 +163,7 @@ void InitDatabaseFeature::checkEmptyDatabase() {
 
     if (FileUtils::exists(serverFile)) {
       if (FileUtils::isDirectory(serverFile)) {
-        message =
-            "database SERVER '" + serverFile + "' is not a file";
+        message = "database SERVER '" + serverFile + "' is not a file";
         code = EXIT_FAILURE;
         goto doexit;
       }

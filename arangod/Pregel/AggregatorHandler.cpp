@@ -59,8 +59,7 @@ IAggregator* AggregatorHandler::getAggregator(AggregatorID const& name) {
   }
 }
 
-void AggregatorHandler::aggregate(AggregatorID const& name,
-                                  const void* valuePtr) {
+void AggregatorHandler::aggregate(AggregatorID const& name, const void* valuePtr) {
   IAggregator* agg = getAggregator(name);
   if (agg) {
     agg->aggregate(valuePtr);
@@ -114,8 +113,7 @@ void AggregatorHandler::resetValues() {
   }
 }
 
-bool AggregatorHandler::serializeValues(VPackBuilder& b,
-                                        bool onlyConverging) const {
+bool AggregatorHandler::serializeValues(VPackBuilder& b, bool onlyConverging) const {
   READ_LOCKER(guard, _lock);
   bool hasValues = false;
   b.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));

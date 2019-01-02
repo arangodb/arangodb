@@ -60,7 +60,9 @@ void MMFilesTransactionContextData::pinData(LogicalCollection* collection) {
   }
 
   // this method will not throw, but may return a nullptr
-  auto ditch = arangodb::MMFilesCollection::toMMFilesCollection(collection)->ditches()->createMMFilesDocumentDitch(true, __FILE__, __LINE__);
+  auto ditch = arangodb::MMFilesCollection::toMMFilesCollection(collection)
+                   ->ditches()
+                   ->createMMFilesDocumentDitch(true, __FILE__, __LINE__);
 
   if (ditch == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -68,8 +70,7 @@ void MMFilesTransactionContextData::pinData(LogicalCollection* collection) {
 
   try {
     _ditches.emplace(cid, ditch);
-  }
-  catch (...) {
+  } catch (...) {
     ditch->ditches()->freeMMFilesDocumentDitch(ditch, true);
     throw;
   }

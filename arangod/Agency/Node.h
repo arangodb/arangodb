@@ -230,53 +230,54 @@ class Node {
 
   /// @brief accessor to Node object
   /// @return  second is true if url exists, first populated if second true
-  std::pair<Node const &, bool> hasAsNode(std::string const &) const;
+  std::pair<Node const&, bool> hasAsNode(std::string const&) const;
 
   /// @brief accessor to Node object
   /// @return  second is true if url exists, first populated if second true
-  std::pair<Node &, bool> hasAsWritableNode(std::string const &);
+  std::pair<Node&, bool> hasAsWritableNode(std::string const&);
 
   /// @brief accessor to Node's type
   /// @return  second is true if url exists, first populated if second true
-  std::pair<NodeType, bool> hasAsType(std::string const &) const;
+  std::pair<NodeType, bool> hasAsType(std::string const&) const;
 
   /// @brief accessor to Node's Slice value
   /// @return  second is true if url exists, first populated if second true
-  std::pair<Slice, bool> hasAsSlice(std::string const &) const;
+  std::pair<Slice, bool> hasAsSlice(std::string const&) const;
 
   /// @brief accessor to Node's uint64_t value
   /// @return  second is true if url exists, first populated if second true
-  std::pair<uint64_t, bool> hasAsUInt(std::string const &) const;
+  std::pair<uint64_t, bool> hasAsUInt(std::string const&) const;
 
   /// @brief accessor to Node's bool value
   /// @return  second is true if url exists, first populated if second true
-  std::pair<bool, bool> hasAsBool(std::string const &) const;
+  std::pair<bool, bool> hasAsBool(std::string const&) const;
 
   /// @brief accessor to Node's std::string value
   /// @return  second is true if url exists, first populated if second true
-  std::pair<std::string, bool> hasAsString(std::string const &) const;
+  std::pair<std::string, bool> hasAsString(std::string const&) const;
 
   /// @brief accessor to Node's _children
   /// @return  second is true if url exists, first populated if second true
-  std::pair<Children, bool> hasAsChildren(std::string const &) const;
+  std::pair<Children, bool> hasAsChildren(std::string const&) const;
 
   /// @brief accessor to Node then write to builder
   /// @return  second is true if url exists, first is ignored
-  std::pair<void *, bool> hasAsBuilder(std::string const &, Builder&, bool showHidden = false) const;
+  std::pair<void*, bool> hasAsBuilder(std::string const&, Builder&,
+                                      bool showHidden = false) const;
 
   /// @brief accessor to Node's value as a Builder object
   /// @return  second is true if url exists, first populated if second true
-  std::pair<Builder, bool> hasAsBuilder(std::string const &) const;
+  std::pair<Builder, bool> hasAsBuilder(std::string const&) const;
 
   /// @brief accessor to Node's Array
   /// @return  second is true if url exists, first populated if second true
-  std::pair<Slice, bool> hasAsArray(std::string const &) const;
+  std::pair<Slice, bool> hasAsArray(std::string const&) const;
 
   //
   // These two operator() functions could be "protected" once
   //  unit tests updated.
   //
-public:
+ public:
   /// @brief Get node specified by path string
   Node& operator()(std::string const& path);
 
@@ -321,12 +322,12 @@ public:
 
   void rebuildVecBuf() const;
 
-  std::string _nodeName;  ///< @brief my name
-  Node* _parent;           ///< @brief parent
-  Store* _store;           ///< @brief Store
-  Children _children;      ///< @brief child nodes
-  TimePoint _ttl;          ///< @brief my expiry
-  std::vector<Buffer<uint8_t>> _value; ///< @brief my value
+  std::string _nodeName;                ///< @brief my name
+  Node* _parent;                        ///< @brief parent
+  Store* _store;                        ///< @brief Store
+  Children _children;                   ///< @brief child nodes
+  TimePoint _ttl;                       ///< @brief my expiry
+  std::vector<Buffer<uint8_t>> _value;  ///< @brief my value
   mutable Buffer<uint8_t> _vecBuf;
   mutable bool _vecBufDirty;
   bool _isArray;
@@ -335,7 +336,7 @@ public:
 inline std::ostream& operator<<(std::ostream& o, Node const& n) {
   return n.print(o);
 }
-}
-}  // namespaces
+}  // namespace consensus
+}  // namespace arangodb
 
 #endif

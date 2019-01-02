@@ -36,6 +36,6 @@ class RestStatusHandler : public arangodb::RestBaseHandler {
   bool isDirect() const override;
   RestStatus execute() override;
 };
-}
+}  // namespace arangodb
 
 #endif
