@@ -424,8 +424,8 @@ arangodb::Result SynchronizeShard::getReadLock(
     std::unordered_map<std::string, std::string>(), timeout);
 
   if (postres != nullptr) {
-    
-    if (postres->errorCode == 200) { // Habemus clausum, we have a lock
+
+    if (postres->result->getHttpReturnCode() == 200) { // Habemus clausum, we have a lock
       return arangodb::Result();
     }
     
