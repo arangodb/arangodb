@@ -35,6 +35,8 @@ v3.3.22 (XXXX-XX-XX)
 * do not respond with an internal error in case of JSON parse errors detected
   in incoming HTTP requests 
 
+* fixed issue #7834: AQL Query crashes instance
+
 
 v3.3.21 (2018-12-13)
 --------------------
