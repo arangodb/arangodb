@@ -48,8 +48,7 @@ Index::Index(VPackSlice const& info,
   _coverParams.fromVelocyPack(info);
 
   if (fields.size() == 1) {
-    bool geoJson =
-        basics::VelocyPackHelper::getBooleanValue(info, "geoJson", false);
+    bool geoJson = basics::VelocyPackHelper::getBooleanValue(info, "geoJson", false);
     // geojson means [<longitude>, <latitude>] or
     // json object {type:"<name>, coordinates:[]}.
     _variant = geoJson ? Variant::GEOJSON : Variant::COMBINED_LAT_LON;
@@ -116,7 +115,8 @@ Result Index::indexCells(VPackSlice const& doc, std::vector<S2CellId>& cells,
     if (!ll.is_valid()) {
       LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
           << "illegal geo-coordinates, ignoring entry";
-      return TRI_ERROR_NO_ERROR;    }
+      return TRI_ERROR_NO_ERROR;
+    }
     centroid = ll.ToPoint();
     cells.emplace_back(centroid);
     return TRI_ERROR_NO_ERROR;
@@ -124,8 +124,7 @@ Result Index::indexCells(VPackSlice const& doc, std::vector<S2CellId>& cells,
   return TRI_ERROR_INTERNAL;
 }
 
-Result Index::shape(velocypack::Slice const& doc,
-                    geo::ShapeContainer& shape) const {
+Result Index::shape(velocypack::Slice const& doc, geo::ShapeContainer& shape) const {
   if (_variant == Variant::GEOJSON) {
     VPackSlice loc = doc.get(_location);
     if (loc.isArray() && loc.length() >= 2) {
@@ -143,16 +142,14 @@ Result Index::shape(velocypack::Slice const& doc,
     if (!lon.isNumber() || !lat.isNumber()) {
       return TRI_ERROR_BAD_PARAMETER;
     }
-    shape.resetCoordinates(lat.getNumericValue<double>(),
-                           lon.getNumericValue<double>());
+    shape.resetCoordinates(lat.getNumericValue<double>(), lon.getNumericValue<double>());
     return TRI_ERROR_NO_ERROR;
   }
   return TRI_ERROR_INTERNAL;
 }
 
 // Handle GEO_DISTANCE(<something>, doc.field)
-S2LatLng Index::parseGeoDistance(aql::AstNode const* args,
-                                 aql::Variable const* ref) {
+S2LatLng Index::parseGeoDistance(aql::AstNode const* args, aql::Variable const* ref) {
   // aql::AstNode* dist = node->getMemberUnchecked(0);
   TRI_ASSERT(args->numMembers() == 2);
   if (args->numMembers() != 2) {
@@ -161,9 +158,8 @@ S2LatLng Index::parseGeoDistance(aql::AstNode const* args,
   // either doc.geo or [doc.lng, doc.lat]
   aql::AstNode const* var = args->getMember(1);
   TRI_ASSERT(var->isAttributeAccessForVariable(ref, true) ||
-             (var->isArray() &&
-                 var->getMember(0)->isAttributeAccessForVariable(ref, true) &&
-                 var->getMember(1)->isAttributeAccessForVariable(ref, true)));
+             (var->isArray() && var->getMember(0)->isAttributeAccessForVariable(ref, true) &&
+              var->getMember(1)->isAttributeAccessForVariable(ref, true)));
   aql::AstNode* cc = args->getMemberUnchecked(0);
   TRI_ASSERT(cc->type != aql::NODE_TYPE_ATTRIBUTE_ACCESS);
   if (cc->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
@@ -194,18 +190,19 @@ S2LatLng Index::parseGeoDistance(aql::AstNode const* args,
 }
 
 // either parses GEO_DISTANCE call argument values
-S2LatLng Index::parseDistFCall(aql::AstNode const* node,
-                               aql::Variable const* ref) {
+S2LatLng Index::parseDistFCall(aql::AstNode const* node, aql::Variable const* ref) {
   TRI_ASSERT(node->type == aql::NODE_TYPE_FCALL);
   aql::AstNode* args = node->getMemberUnchecked(0);
   aql::Function const* func = static_cast<aql::Function const*>(node->getData());
   TRI_ASSERT(func != nullptr);
   if (func->name == "GEO_DISTANCE") {
     return Index::parseGeoDistance(args, ref);
-  } 
+  }
   // we should not get here for any other functions, not even DISTANCE
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
-                                 std::string("parseDistFCall called for unexpected function '") + func->name + "'");
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      std::string("parseDistFCall called for unexpected function '") +
+          func->name + "'");
 }
 
 void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
@@ -218,8 +215,7 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
       aql::AstNode const* args = node->getMemberUnchecked(0);
       TRI_ASSERT(args->numMembers() == 2);
       if (args->numMembers() != 2) {
-        THROW_ARANGO_EXCEPTION(
-            TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
       }
 
       aql::AstNode const* geoJson = args->getMemberUnchecked(0);
@@ -227,8 +223,8 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
       // geojson or array with variables
       TRI_ASSERT(symbol->isAttributeAccessForVariable(ref, true) ||
                  (symbol->isArray() && symbol->numMembers() == 2 &&
-                 symbol->getMember(0)->getAttributeAccessForVariable(true) != nullptr &&
-                 symbol->getMember(1)->getAttributeAccessForVariable(true) != nullptr));
+                  symbol->getMember(0)->getAttributeAccessForVariable(true) != nullptr &&
+                  symbol->getMember(1)->getAttributeAccessForVariable(true) != nullptr));
       TRI_ASSERT(geoJson->type != aql::NODE_TYPE_REFERENCE);
 
       // arrays can't occur only handle real GeoJSON
@@ -290,8 +286,7 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
   }
 }
 
-void Index::parseCondition(aql::AstNode const* node,
-                           aql::Variable const* reference,
+void Index::parseCondition(aql::AstNode const* node, aql::Variable const* reference,
                            geo::QueryParams& params) {
   if (aql::Ast::IsAndOperatorType(node->type)) {
     for (size_t i = 0; i < node->numMembers(); i++) {

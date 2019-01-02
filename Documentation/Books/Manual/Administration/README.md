@@ -35,10 +35,14 @@ Deployment Administration
 - [Active Failover](ActiveFailover/README.md)
 - [Cluster](Cluster/README.md)
 - [Datacenter to datacenter replication](DC2DC/README.md)
-  
+- [ArangoDB Starter Administration](Starter/README.md)
+
 Other Topics
 ------------
 
+- [Configuration](Configuration/README.md)
 - [Backup & Restore](../BackupRestore/README.md)
 - [Import & Export](ImportExport.md)
 - [User Management](ManagingUsers/README.md)
+- [Switch Storage Engine](Engine/SwitchEngine.md)
+

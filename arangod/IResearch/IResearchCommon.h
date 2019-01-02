@@ -62,7 +62,7 @@ struct StaticStrings {
   static std::string const ViewIdField;
 };
 
-} // iresearch
-} // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
 #endif

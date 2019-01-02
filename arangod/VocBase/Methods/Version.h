@@ -69,7 +69,7 @@ struct Version {
   /// @brief write a VERSION file including all tasks
   static Result write(TRI_vocbase_t*, std::map<std::string, bool> tasks, bool sync);
 };
-}
-}
+}  // namespace methods
+}  // namespace arangodb
 
 #endif

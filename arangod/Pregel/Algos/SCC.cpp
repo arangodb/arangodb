@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SCC.h"
+#include <atomic>
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Pregel/Aggregator.h"
@@ -29,7 +30,6 @@
 #include "Pregel/IncomingCache.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/VertexComputation.h"
-#include <atomic>
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -51,8 +51,7 @@ struct SCCComputation
     : public VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>> {
   SCCComputation() {}
 
-  void compute(
-      MessageIterator<SenderMessage<uint64_t>> const& messages) override {
+  void compute(MessageIterator<SenderMessage<uint64_t>> const& messages) override {
     if (isActive() == false) {
       // color was already determinded or vertex was trimmed
       return;
@@ -139,8 +138,8 @@ struct SCCComputation
   }
 };
 
-VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>>*
-SCC::createComputation(WorkerConfig const* config) const {
+VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>>* SCC::createComputation(
+    WorkerConfig const* config) const {
   return new SCCComputation();
 }
 
@@ -149,7 +148,7 @@ struct SCCGraphFormat : public GraphFormat<SCCValue, int8_t> {
   std::atomic<uint64_t> vertexIdRange;
 
   explicit SCCGraphFormat(std::string const& result)
-    : _resultField(result), vertexIdRange(0) {}
+      : _resultField(result), vertexIdRange(0) {}
 
   void willLoadVertices(uint64_t count) override {
     // if we aren't running in a cluster it doesn't matter
@@ -163,8 +162,7 @@ struct SCCGraphFormat : public GraphFormat<SCCValue, int8_t> {
 
   size_t estimatedEdgeSize() const override { return 0; };
 
-  size_t copyVertexData(std::string const& documentId,
-                        arangodb::velocypack::Slice document,
+  size_t copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
                         SCCValue* targetPtr, size_t maxSize) override {
     SCCValue* senders = (SCCValue*)targetPtr;
     senders->vertexID = vertexIdRange++;

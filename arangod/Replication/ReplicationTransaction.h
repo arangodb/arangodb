@@ -26,9 +26,9 @@
 
 #include "Basics/Common.h"
 #include "StorageEngine/TransactionState.h"
-#include "Utils/DatabaseGuard.h"
-#include "Transaction/StandaloneContext.h"
 #include "Transaction/Methods.h"
+#include "Transaction/StandaloneContext.h"
+#include "Utils/DatabaseGuard.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/vocbase.h"
 
@@ -38,8 +38,8 @@ class ReplicationTransaction : public transaction::Methods {
  public:
   /// @brief create the transaction
   explicit ReplicationTransaction(TRI_vocbase_t& vocbase)
-    : transaction::Methods(transaction::StandaloneContext::Create(vocbase)),
-      _guard(vocbase) {
+      : transaction::Methods(transaction::StandaloneContext::Create(vocbase)),
+        _guard(vocbase) {
     TRI_ASSERT(_state != nullptr);
     _state->setType(AccessMode::Type::EXCLUSIVE);
   }
@@ -48,6 +48,6 @@ class ReplicationTransaction : public transaction::Methods {
   DatabaseGuard _guard;
 };
 
-}
+}  // namespace arangodb
 
 #endif

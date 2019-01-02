@@ -33,13 +33,13 @@ namespace arangodb {
 /// this version number is increased on every DDL operation, and may be sent
 /// to the agency in order to notify other listeners about DDL changes
 class VersionTracker {
- public: 
+ public:
   VersionTracker() : _value(0) {}
- 
+
   void track(char const*) {
-    ++_value; 
+    ++_value;
     // can enable this for tracking things later
-    // LOG_TOPIC(TRACE, Logger::FIXME) << "version updated by " << msg; 
+    // LOG_TOPIC(TRACE, Logger::FIXME) << "version updated by " << msg;
   }
 
   uint64_t current() const { return _value; }
@@ -47,6 +47,6 @@ class VersionTracker {
  private:
   std::atomic<uint64_t> _value;
 };
-}
+}  // namespace arangodb
 
 #endif

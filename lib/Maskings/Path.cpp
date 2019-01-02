@@ -53,9 +53,9 @@ ParseResult<Path> Path::parse(std::string const& def) {
   while (p < e) {
     if (*p == '.') {
       if (buffer.size() == 0) {
-        return ParseResult<Path>(
-            ParseResult<Path>::ILLEGAL_PARAMETER,
-            "path '" + def + "' contains an empty component");
+        return ParseResult<Path>(ParseResult<Path>::ILLEGAL_PARAMETER,
+                                 "path '" + def +
+                                     "' contains an empty component");
       }
 
       ++p;
@@ -69,14 +69,13 @@ ParseResult<Path> Path::parse(std::string const& def) {
       }
 
       if (p == e) {
-        return ParseResult<Path>(
-            ParseResult<Path>::ILLEGAL_PARAMETER,
-            "path '" + def + "' contains an unbalanced quote");
+        return ParseResult<Path>(ParseResult<Path>::ILLEGAL_PARAMETER,
+                                 "path '" + def +
+                                     "' contains an unbalanced quote");
       }
 
       ++p;
-    } else if (p[0] == -62 &&
-               p[1] == -76) {  // there is also a 0 at *e, so p[1] is ok
+    } else if (p[0] == -62 && p[1] == -76) {  // there is also a 0 at *e, so p[1] is ok
       p += 2;
 
       while (p < e - 1 && (p[0] != -62 || p[1] != -76)) {
@@ -84,14 +83,13 @@ ParseResult<Path> Path::parse(std::string const& def) {
       }
 
       if (p == e) {
-        return ParseResult<Path>(
-            ParseResult<Path>::ILLEGAL_PARAMETER,
-            "path '" + def + "' contains an unbalanced quote");
+        return ParseResult<Path>(ParseResult<Path>::ILLEGAL_PARAMETER,
+                                 "path '" + def +
+                                     "' contains an unbalanced quote");
       }
 
       p += 2;
-    } else if (p[0] == -76 &&
-               p[1] == -62) {  // there is also a 0 at *e, so p[1] is ok
+    } else if (p[0] == -76 && p[1] == -62) {  // there is also a 0 at *e, so p[1] is ok
       p += 2;
 
       while (p < e - 1 && (p[0] != -76 || p[1] != -62)) {
@@ -99,9 +97,9 @@ ParseResult<Path> Path::parse(std::string const& def) {
       }
 
       if (p == e) {
-        return ParseResult<Path>(
-            ParseResult<Path>::ILLEGAL_PARAMETER,
-            "path '" + def + "' contains an unbalanced quote");
+        return ParseResult<Path>(ParseResult<Path>::ILLEGAL_PARAMETER,
+                                 "path '" + def +
+                                     "' contains an unbalanced quote");
       }
 
       p += 2;

@@ -28,81 +28,90 @@
 namespace arangodb {
 namespace httpclient {
 
-class SimpleHttpCommunicatorResult: public SimpleHttpResult {
+class SimpleHttpCommunicatorResult : public SimpleHttpResult {
   using SimpleHttpResult::getBody;
   using SimpleHttpResult::getBodyVelocyPack;
 
-  public:
-    SimpleHttpCommunicatorResult() = delete;
-    explicit SimpleHttpCommunicatorResult(HttpResponse* response)
-      : SimpleHttpResult(), _response(response), _headers(nullptr) {
-    }
-    virtual ~SimpleHttpCommunicatorResult() {}
+ public:
+  SimpleHttpCommunicatorResult() = delete;
+  explicit SimpleHttpCommunicatorResult(HttpResponse* response)
+      : SimpleHttpResult(), _response(response), _headers(nullptr) {}
+  virtual ~SimpleHttpCommunicatorResult() {}
 
-  public:
-    virtual bool wasHttpError() const override { return getHttpReturnCode() >= 400; }
-    virtual int getHttpReturnCode() const override { return static_cast<int>(_response->responseCode()); }
-    virtual std::string getHttpReturnMessage() const override { return GeneralResponse::responseString(_response->responseCode()); }
-    virtual bool hasContentLength() const override { return true; }
-    virtual size_t getContentLength() const override { return _response->body().length(); }
-    arangodb::basics::StringBuffer& getBody() override { return _response->body(); }
-    std::shared_ptr<VPackBuilder> getBodyVelocyPack(VPackOptions const& options) const override {
-      return VPackParser::fromJson(_response->body().c_str(), _response->body().length(), &options);
+ public:
+  virtual bool wasHttpError() const override {
+    return getHttpReturnCode() >= 400;
+  }
+  virtual int getHttpReturnCode() const override {
+    return static_cast<int>(_response->responseCode());
+  }
+  virtual std::string getHttpReturnMessage() const override {
+    return GeneralResponse::responseString(_response->responseCode());
+  }
+  virtual bool hasContentLength() const override { return true; }
+  virtual size_t getContentLength() const override {
+    return _response->body().length();
+  }
+  arangodb::basics::StringBuffer& getBody() override {
+    return _response->body();
+  }
+  std::shared_ptr<VPackBuilder> getBodyVelocyPack(VPackOptions const& options) const override {
+    return VPackParser::fromJson(_response->body().c_str(),
+                                 _response->body().length(), &options);
+  }
+  virtual enum resultTypes getResultType() const override {
+    std::string message(__func__);
+    message += " not implemented";
+    throw std::runtime_error(message);
+  }
+  virtual bool isComplete() const override { return true; }
+  virtual bool isChunked() const override { return false; }
+  virtual bool isDeflated() const override {
+    std::string message(__func__);
+    message += " not implemented";
+    throw std::runtime_error(message);
+  }
+  virtual std::string getResultTypeMessage() const override {
+    std::string message(__func__);
+    message += " not implemented";
+    throw std::runtime_error(message);
+  }
+  virtual void addHeaderField(char const*, size_t) override {
+    std::string message(__func__);
+    message += " not implemented";
+    throw std::runtime_error(message);
+  }
+  virtual std::string getHeaderField(std::string const& header, bool& found) const override {
+    auto const& headers = _response->headers();
+    auto it = headers.find(header);
+    if (it == headers.end()) {
+      return "";
     }
-    virtual enum resultTypes getResultType() const override {
-      std::string message(__func__);
-      message += " not implemented";
-      throw std::runtime_error(message);
+    found = true;
+    return it->second;
+  }
+  virtual bool hasHeaderField(std::string const&) const override {
+    std::string message(__func__);
+    message += " not implemented";
+    throw std::runtime_error(message);
+  }
+  virtual std::unordered_map<std::string, std::string> const& getHeaderFields() const override {
+    if (_headers == nullptr) {
+      _headers.reset(new std::unordered_map<std::string, std::string>(_response->headers()));
     }
-    virtual bool isComplete() const override { return true; }
-    virtual bool isChunked() const override { return false; }
-    virtual bool isDeflated() const override {
-      std::string message(__func__);
-      message += " not implemented";
-      throw std::runtime_error(message);
-    }
-    virtual std::string getResultTypeMessage() const override {
-      std::string message(__func__);
-      message += " not implemented";
-      throw std::runtime_error(message);
-    }
-    virtual void addHeaderField(char const*, size_t) override {
-      std::string message(__func__);
-      message += " not implemented";
-      throw std::runtime_error(message);
-    }
-    virtual std::string getHeaderField(std::string const& header, bool& found) const override {
-      auto const& headers = _response->headers();
-      auto it = headers.find(header);
-      if (it == headers.end()) {
-        return "";
-      }
-      found = true;
-      return it->second;
-    }
-    virtual bool hasHeaderField(std::string const&) const override {
-      std::string message(__func__);
-      message += " not implemented";
-      throw std::runtime_error(message);
-    }
-    virtual std::unordered_map<std::string, std::string> const& getHeaderFields() const override {
-      if (_headers == nullptr) {
-        _headers.reset(new std::unordered_map<std::string, std::string>(_response->headers()));
-      }
-      return *_headers.get();
-    }
-    virtual bool isJson() const override {
-      std::string message(__func__);
-      message += " not implemented";
-      throw std::runtime_error(message);
-    }
-    
- 
-  private:
-    std::unique_ptr<HttpResponse> _response;
-    mutable std::unique_ptr<std::unordered_map<std::string, std::string>> _headers;
+    return *_headers.get();
+  }
+  virtual bool isJson() const override {
+    std::string message(__func__);
+    message += " not implemented";
+    throw std::runtime_error(message);
+  }
+
+ private:
+  std::unique_ptr<HttpResponse> _response;
+  mutable std::unique_ptr<std::unordered_map<std::string, std::string>> _headers;
 };
-}
-}
+}  // namespace httpclient
+}  // namespace arangodb
 
 #endif

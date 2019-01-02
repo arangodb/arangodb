@@ -30,8 +30,7 @@ static bool isEmptyString(char const* p, size_t length) noexcept {
   char const* e = p + length;
 
   while (p < e) {
-    if (*p != ' ' && *p != '\t' && *p != '\r' && *p != '\n' && *p != '\f' &&
-        *p != '\b') {
+    if (*p != ' ' && *p != '\t' && *p != '\r' && *p != '\n' && *p != '\f' && *p != '\b') {
       return false;
     }
     ++p;
@@ -40,7 +39,7 @@ static bool isEmptyString(char const* p, size_t length) noexcept {
   return true;
 }
 
-} // namespace
+}  // namespace
 
 namespace arangodb {
 namespace aql {
@@ -67,5 +66,5 @@ double stringToNumber(std::string const& value, bool& failed) noexcept {
   return 0.0;
 }
 
-}
-}
+}  // namespace aql
+}  // namespace arangodb

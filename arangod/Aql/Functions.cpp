@@ -42,24 +42,24 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fpconv.h"
 #include "Basics/tri-strings.h"
-#include "V8/v8-vpack.h"
+#include "Geo/GeoJson.h"
 #include "Geo/GeoParams.h"
 #include "Geo/GeoUtils.h"
-#include "Geo/GeoJson.h"
 #include "Geo/ShapeContainer.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "Pregel/Conductor.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Worker.h"
-#include "Rest/Version.h"
 #include "Random/UniformCharacter.h"
+#include "Rest/Version.h"
 #include "Ssl/SslInterface.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
+#include "V8/v8-vpack.h"
 #include "V8Server/v8-collection.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
@@ -69,15 +69,14 @@
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
 
-#include <s2/s2loop.h>
 #include <date/date.h>
 #include <date/iso_week.h>
+#include <s2/s2loop.h>
 
+#include <unicode/schriter.h>
 #include <unicode/stsearch.h>
 #include <unicode/uchar.h>
 #include <unicode/unistr.h>
-#include <unicode/stsearch.h>
-#include <unicode/schriter.h>
 
 #include <velocypack/Collection.h>
 #include <velocypack/Dumper.h>
@@ -94,13 +93,16 @@ using namespace date;
 /*
 - always specify your user facing function name MYFUNC in error generators
 - errors are broadcasted like this:
-    - Wrong parameter types: ::registerInvalidArgumentWarning(expressionContext, "MYFUNC")
-    - Generic errors: ::registerWarning(expressionContext, "MYFUNC", TRI_ERROR_QUERY_INVALID_REGEX);
-    - ICU related errors: if (U_FAILURE(status)) { ::registerICUWarning(expressionContext, "MYFUNC", status); }
+    - Wrong parameter types: ::registerInvalidArgumentWarning(expressionContext,
+"MYFUNC")
+    - Generic errors: ::registerWarning(expressionContext, "MYFUNC",
+TRI_ERROR_QUERY_INVALID_REGEX);
+    - ICU related errors: if (U_FAILURE(status)) {
+::registerICUWarning(expressionContext, "MYFUNC", status); }
     - close with: return AqlValue(AqlValueHintNull());
 - specify the number of parameters you expect at least and at max using:
-- if you support optional parameters, first check whether the count is sufficient
-  using parameters.size()
+- if you support optional parameters, first check whether the count is
+sufficient using parameters.size()
 - fetch the values using:
   AqlValue value
   - Anonymous  = extractFunctionParameterValue(parameters, 0);
@@ -127,7 +129,7 @@ using namespace date;
  */
 
 namespace {
-    
+
 /// @brief an empty AQL value
 static AqlValue const emptyAqlValue;
 
@@ -163,7 +165,7 @@ static_assert(DateSelectionModifier::WEEK < DateSelectionModifier::MONTH,
 static_assert(DateSelectionModifier::MONTH < DateSelectionModifier::YEAR,
               "incorrect date selection order");
 
-typedef void(*format_func_t)(std::string& wrk, tp_sys_clock_ms const&);
+typedef void (*format_func_t)(std::string& wrk, tp_sys_clock_ms const&);
 std::unordered_map<std::string, format_func_t> dateMap;
 auto const unixEpoch = date::sys_seconds{seconds{0}};
 
@@ -212,319 +214,479 @@ std::string tail(std::string const& source, size_t const length) {
     return source;
   }
   return source.substr(source.size() - length);
-} // tail
+}  // tail
 
-std::vector<std::string> const monthNames = {
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December"
-};
+std::vector<std::string> const monthNames = {"January", "February", "March",
+                                             "April",   "May",      "June",
+                                             "July",    "August",   "September",
+                                             "October", "November", "December"};
 
-std::vector<std::string> const monthNamesShort = {
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec"
-};
+std::vector<std::string> const monthNamesShort = {"Jan", "Feb", "Mar", "Apr",
+                                                  "May", "Jun", "Jul", "Aug",
+                                                  "Sep", "Oct", "Nov", "Dec"};
 
-std::vector<std::string> const weekDayNames = {
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday"
-};
+std::vector<std::string> const weekDayNames = {"Sunday",   "Monday",
+                                               "Tuesday",  "Wednesday",
+                                               "Thursday", "Friday",
+                                               "Saturday"};
 
-std::vector<std::string> const weekDayNamesShort = {
-  "Sun",
-  "Mon",
-  "Tue",
-  "Wed",
-  "Thu",
-  "Fri",
-  "Sat"
-};
+std::vector<std::string> const weekDayNamesShort = {"Sun", "Mon", "Tue", "Wed",
+                                                    "Thu", "Fri", "Sat"};
 
-std::vector<std::pair<std::string, format_func_t>> const sortedDateMap = {
-  {"%&", [](std::string& wrk, tp_sys_clock_ms const& tp) { }}, // Allow for literal "m" after "%m" ("%mm" -> %m%&m)
-  // zero-pad 4 digit years to length of 6 and add "+" prefix, keep negative as-is
-  {"%yyyyyy", [](std::string& wrk, tp_sys_clock_ms const& tp) {
-      auto ymd = year_month_day(floor<days>(tp));
-      auto yearnum = static_cast<int>(ymd.year());
-      if (yearnum < 0) {
-        if (yearnum > -10) {
-          wrk.append("-00000");
-        } else if (yearnum > -100) {
-          wrk.append("-0000");
-        } else if (yearnum > -1000) {
-          wrk.append("-000");
-        } else if (yearnum > -10000) {
-          wrk.append("-00");
-        } else if (yearnum > -100000) {
-          wrk.append("-0");
-        } else {
-          wrk.append("-");
-        }
-        wrk.append(std::to_string(abs(yearnum)));
-        return;
-      }
+std::
+    vector<std::pair<std::string, format_func_t>> const sortedDateMap = {{"%&",
+                                                                          [](std::string& wrk,
+                                                                             tp_sys_clock_ms const& tp) {
+                                                                          }},  // Allow for literal "m" after "%m" ("%mm" ->
+                                                                               // %m%&m)
+                                                                         // zero-pad 4 digit years to length of 6 and add "+"
+                                                                         // prefix, keep negative as-is
+                                                                         {"%yyy"
+                                                                          "yyy",
+                                                                          [](std::string& wrk, tp_sys_clock_ms const& tp) {
+                                                                            auto ymd = year_month_day(
+                                                                                floor<days>(tp));
+                                                                            auto yearnum = static_cast<int>(
+                                                                                ymd.year());
+                                                                            if (yearnum < 0) {
+                                                                              if (yearnum > -10) {
+                                                                                wrk.append(
+                                                                                    "-00000");
+                                                                              } else if (yearnum > -100) {
+                                                                                wrk.append(
+                                                                                    "-0000");
+                                                                              } else if (yearnum > -1000) {
+                                                                                wrk.append(
+                                                                                    "-000");
+                                                                              } else if (yearnum > -10000) {
+                                                                                wrk.append(
+                                                                                    "-00");
+                                                                              } else if (yearnum > -100000) {
+                                                                                wrk.append(
+                                                                                    "-0");
+                                                                              } else {
+                                                                                wrk.append(
+                                                                                    "-");
+                                                                              }
+                                                                              wrk.append(std::to_string(
+                                                                                  abs(yearnum)));
+                                                                              return;
+                                                                            }
 
-      TRI_ASSERT(yearnum >= 0);
+                                                                            TRI_ASSERT(yearnum >= 0);
 
-      if (yearnum > 99999) {
-        // intentionally nothing
-      } else if (yearnum > 9999) {
-        wrk.append("+0");
-      } else if (yearnum > 999) {
-        wrk.append("+00");
-      } else if (yearnum > 99) {
-        wrk.append("+000");
-      } else if (yearnum > 9) {
-        wrk.append("+0000");
-      } else {
-        wrk.append("+00000");
-      }
-      wrk.append(std::to_string(yearnum));
-    }},
-  {"%mmmm", [](std::string& wrk, tp_sys_clock_ms const& tp) {
-      auto ymd = year_month_day(floor<days>(tp));
-      wrk.append(::monthNames[static_cast<unsigned>(ymd.month()) - 1]);
-    }},
-  {"%yyyy", [](std::string& wrk, tp_sys_clock_ms const& tp) {
-      auto ymd = year_month_day(floor<days>(tp));
-      auto yearnum = static_cast<int>(ymd.year());
-      if (yearnum < 0) {
-        if (yearnum > -10) {
-          wrk.append("-000");
-        } else if (yearnum > -100) {
-          wrk.append("-00");
-        } else if (yearnum > -1000) {
-          wrk.append("-0");
-        } else {
-          wrk.append("-");
-        }
-        wrk.append(std::to_string(abs(yearnum)));
-      } else {
-        TRI_ASSERT(yearnum >= 0);
-        if (yearnum < 9) {
-          wrk.append("000");
-          wrk.append(std::to_string(yearnum));
-        } else if (yearnum < 99) {
-          wrk.append("00");
-          wrk.append(std::to_string(yearnum));
-        } else if (yearnum < 999) {
-          wrk.append("0");
-          wrk.append(std::to_string(yearnum));
-        } else {
-          std::string yearstr(std::to_string(yearnum));
-          wrk.append(::tail(yearstr, 4));
-        }
-      }
-    }},
+                                                                            if (yearnum > 99999) {
+                                                                              // intentionally nothing
+                                                                            } else if (yearnum > 9999) {
+                                                                              wrk.append(
+                                                                                  "+0");
+                                                                            } else if (yearnum > 999) {
+                                                                              wrk.append(
+                                                                                  "+00");
+                                                                            } else if (yearnum > 99) {
+                                                                              wrk.append(
+                                                                                  "+000");
+                                                                            } else if (yearnum > 9) {
+                                                                              wrk.append(
+                                                                                  "+0000");
+                                                                            } else {
+                                                                              wrk.append(
+                                                                                  "+00000");
+                                                                            }
+                                                                            wrk.append(std::to_string(yearnum));
+                                                                          }},
+                                                                         {"%mmm"
+                                                                          "m",
+                                                                          [](std::string& wrk, tp_sys_clock_ms const& tp) {
+                                                                            auto ymd = year_month_day(
+                                                                                floor<days>(tp));
+                                                                            wrk.append(
+                                                                                ::monthNames[static_cast<unsigned>(ymd.month()) - 1]);
+                                                                          }},
+                                                                         {"%yyy"
+                                                                          "y",
+                                                                          [](std::string& wrk, tp_sys_clock_ms const& tp) {
+                                                                            auto ymd = year_month_day(
+                                                                                floor<days>(tp));
+                                                                            auto yearnum = static_cast<int>(
+                                                                                ymd.year());
+                                                                            if (yearnum < 0) {
+                                                                              if (yearnum > -10) {
+                                                                                wrk.append(
+                                                                                    "-000");
+                                                                              } else if (yearnum > -100) {
+                                                                                wrk.append(
+                                                                                    "-00");
+                                                                              } else if (yearnum > -1000) {
+                                                                                wrk.append(
+                                                                                    "-0");
+                                                                              } else {
+                                                                                wrk.append(
+                                                                                    "-");
+                                                                              }
+                                                                              wrk.append(std::to_string(
+                                                                                  abs(yearnum)));
+                                                                            } else {
+                                                                              TRI_ASSERT(yearnum >= 0);
+                                                                              if (yearnum < 9) {
+                                                                                wrk.append(
+                                                                                    "000");
+                                                                                wrk.append(std::to_string(yearnum));
+                                                                              } else if (yearnum < 99) {
+                                                                                wrk.append(
+                                                                                    "00");
+                                                                                wrk.append(std::to_string(yearnum));
+                                                                              } else if (yearnum < 999) {
+                                                                                wrk.append(
+                                                                                    "0");
+                                                                                wrk.append(std::to_string(yearnum));
+                                                                              } else {
+                                                                                std::string yearstr(
+                                                                                    std::to_string(yearnum));
+                                                                                wrk.append(::tail(yearstr, 4));
+                                                                              }
+                                                                            }
+                                                                          }},
 
-  {"%wwww", [](std::string& wrk, tp_sys_clock_ms const& tp) {
-      weekday wd{floor<days>(tp)};
-      wrk.append(::weekDayNames[static_cast<unsigned>(wd)]);
-    }},
+                                                                         {"%www"
+                                                                          "w",
+                                                                          [](std::string& wrk, tp_sys_clock_ms const& tp) {
+                                                                            weekday wd{floor<days>(tp)};
+                                                                            wrk.append(
+                                                                                ::weekDayNames[static_cast<unsigned>(wd)]);
+                                                                          }},
 
-  {"%mmm", [](std::string& wrk, tp_sys_clock_ms const& tp) {
-      auto ymd = year_month_day(floor<days>(tp));
-      wrk.append(::monthNamesShort[static_cast<unsigned>(ymd.month()) - 1]);
-    }},
-  {"%www", [](std::string& wrk, tp_sys_clock_ms const& tp) {
-      weekday wd{floor<days>(tp)};
-      wrk.append(weekDayNamesShort[static_cast<unsigned>(wd)]);
-    }},
-  {"%fff", [](std::string& wrk, tp_sys_clock_ms const& tp) {
-      auto day_time = make_time(tp - floor<days>(tp));
-      uint64_t millis = day_time.subseconds().count();
-      if (millis < 10) {
-        wrk.append("00");
-      } else if (millis < 100) {
-        wrk.append("0");
-      }
-      wrk.append(std::to_string(millis));
-    }},
-  {"%xxx", [](std::string& wrk, tp_sys_clock_ms const& tp) {
-      auto ymd = year_month_day(floor<days>(tp));
-      auto yyyy = year{ymd.year()};
-      // we construct the date with the first day in the year:
-      auto firstDayInYear = yyyy / jan / day{0};
-      uint64_t daysSinceFirst = duration_cast<days>(tp - sys_days(firstDayInYear)).count();
-      if (daysSinceFirst < 10) {
-        wrk.append("00");
-      } else if (daysSinceFirst < 100) {
-        wrk.append("0");
-      }
-      wrk.append(std::to_string(daysSinceFirst));
-    }},
+                                                                         {"%mm"
+                                                                          "m",
+                                                                          [](std::string& wrk, tp_sys_clock_ms const& tp) {
+                                                                            auto ymd = year_month_day(
+                                                                                floor<days>(tp));
+                                                                            wrk.append(
+                                                                                ::monthNamesShort[static_cast<unsigned>(ymd.month()) - 1]);
+                                                                          }},
+                                                                         {"%ww"
+                                                                          "w",
+                                                                          [](std::string& wrk, tp_sys_clock_ms const& tp) {
+                                                                            weekday wd{floor<days>(tp)};
+                                                                            wrk.append(
+                                                                                weekDayNamesShort[static_cast<unsigned>(wd)]);
+                                                                          }},
+                                                                         {"%ff"
+                                                                          "f",
+                                                                          [](std::string& wrk, tp_sys_clock_ms const& tp) {
+                                                                            auto day_time = make_time(
+                                                                                tp - floor<days>(tp));
+                                                                            uint64_t millis =
+                                                                                day_time
+                                                                                    .subseconds()
+                                                                                    .count();
+                                                                            if (millis < 10) {
+                                                                              wrk.append(
+                                                                                  "00");
+                                                                            } else if (millis < 100) {
+                                                                              wrk.append(
+                                                                                  "0");
+                                                                            }
+                                                                            wrk.append(std::to_string(millis));
+                                                                          }},
+                                                                         {"%xx"
+                                                                          "x",
+                                                                          [](std::string& wrk, tp_sys_clock_ms const& tp) {
+                                                                            auto ymd = year_month_day(
+                                                                                floor<days>(tp));
+                                                                            auto yyyy =
+                                                                                year{ymd.year()};
+                                                                            // we construct the date with the first day in the
+                                                                            // year:
+                                                                            auto firstDayInYear =
+                                                                                yyyy / jan /
+                                                                                day{0};
+                                                                            uint64_t daysSinceFirst =
+                                                                                duration_cast<days>(
+                                                                                    tp - sys_days(firstDayInYear))
+                                                                                    .count();
+                                                                            if (daysSinceFirst < 10) {
+                                                                              wrk.append(
+                                                                                  "00");
+                                                                            } else if (daysSinceFirst < 100) {
+                                                                              wrk.append(
+                                                                                  "0");
+                                                                            }
+                                                                            wrk.append(std::to_string(daysSinceFirst));
+                                                                          }},
 
-  // there"s no really sensible way to handle negative years, but better not drop the sign
-  {"%yy", [](std::string& wrk, tp_sys_clock_ms const& tp) {
-      auto ymd = year_month_day(floor<days>(tp));
-      auto yearnum = static_cast<int>(ymd.year());
-      if (yearnum < 10 && yearnum > -10) {
-        wrk.append("0");
-        wrk.append(std::to_string(abs(yearnum)));
-      } else {
-        std::string yearstr(std::to_string(abs(yearnum)));
-        wrk.append(tail(yearstr, 2));
-      }
-    }},
-  {"%mm", [](std::string& wrk, tp_sys_clock_ms const& tp) {
-      auto ymd = year_month_day(floor<days>(tp));
-      auto month = static_cast<unsigned>(ymd.month());
-      if (month < 10) {
-        wrk.append("0");
-      }
-      wrk.append(std::to_string(month));
-    }},
-  {"%dd", [](std::string& wrk, tp_sys_clock_ms const& tp) {
-      auto ymd = year_month_day(floor<days>(tp));
-      auto day = static_cast<unsigned>(ymd.day());
-      if (day < 10) {
-        wrk.append("0");
-      }
-      wrk.append(std::to_string(day));
-    }},
-  {"%hh", [](std::string& wrk, tp_sys_clock_ms const& tp) {
-      auto day_time = make_time(tp - floor<days>(tp));
-      uint64_t hours = day_time.hours().count();
-      if (hours < 10) {
-        wrk.append("0");
-      }
-      wrk.append(std::to_string(hours));
-    }},
-  {"%ii", [](std::string& wrk, tp_sys_clock_ms const& tp) {
-      auto day_time = make_time(tp - floor<days>(tp));
-      uint64_t minutes = day_time.minutes().count();
-      if (minutes < 10) {
-        wrk.append("0");
-      }
-      wrk.append(std::to_string(minutes));
-    }},
-  {"%ss", [](std::string& wrk, tp_sys_clock_ms const& tp) {
-      auto day_time = make_time(tp - floor<days>(tp));
-      uint64_t seconds = day_time.seconds().count();
-      if (seconds < 10) {
-        wrk.append("0");
-      }
-      wrk.append(std::to_string(seconds));
-    }},
-  {"%kk", [](std::string& wrk, tp_sys_clock_ms const& tp) {
-      iso_week::year_weeknum_weekday yww{floor<days>(tp)};
-      uint64_t isoWeek = static_cast<unsigned>(yww.weeknum());
-      if (isoWeek < 10) {
-        wrk.append("0");
-      }
-      wrk.append(std::to_string(isoWeek));
-    }},
+                                                                         // there"s no really sensible way to handle negative
+                                                                         // years, but better not drop the sign
+                                                                         {"%yy",
+                                                                          [](std::string& wrk, tp_sys_clock_ms const& tp) {
+                                                                            auto ymd = year_month_day(
+                                                                                floor<days>(tp));
+                                                                            auto yearnum = static_cast<int>(
+                                                                                ymd.year());
+                                                                            if (yearnum < 10 &&
+                                                                                yearnum > -10) {
+                                                                              wrk.append(
+                                                                                  "0");
+                                                                              wrk.append(std::to_string(
+                                                                                  abs(yearnum)));
+                                                                            } else {
+                                                                              std::string yearstr(std::to_string(
+                                                                                  abs(yearnum)));
+                                                                              wrk.append(tail(yearstr, 2));
+                                                                            }
+                                                                          }},
+                                                                         {"%mm",
+                                                                          [](std::string& wrk, tp_sys_clock_ms const& tp) {
+                                                                            auto ymd = year_month_day(
+                                                                                floor<days>(tp));
+                                                                            auto month = static_cast<unsigned>(
+                                                                                ymd.month());
+                                                                            if (month < 10) {
+                                                                              wrk.append(
+                                                                                  "0");
+                                                                            }
+                                                                            wrk.append(std::to_string(month));
+                                                                          }},
+                                                                         {"%dd",
+                                                                          [](std::string& wrk, tp_sys_clock_ms const& tp) {
+                                                                            auto ymd = year_month_day(
+                                                                                floor<days>(tp));
+                                                                            auto day = static_cast<unsigned>(
+                                                                                ymd.day());
+                                                                            if (day < 10) {
+                                                                              wrk.append(
+                                                                                  "0");
+                                                                            }
+                                                                            wrk.append(std::to_string(day));
+                                                                          }},
+                                                                         {"%hh",
+                                                                          [](std::string& wrk, tp_sys_clock_ms const& tp) {
+                                                                            auto day_time = make_time(
+                                                                                tp - floor<days>(tp));
+                                                                            uint64_t hours =
+                                                                                day_time
+                                                                                    .hours()
+                                                                                    .count();
+                                                                            if (hours < 10) {
+                                                                              wrk.append(
+                                                                                  "0");
+                                                                            }
+                                                                            wrk.append(std::to_string(hours));
+                                                                          }},
+                                                                         {"%ii",
+                                                                          [](std::string& wrk, tp_sys_clock_ms const& tp) {
+                                                                            auto day_time = make_time(
+                                                                                tp - floor<days>(tp));
+                                                                            uint64_t minutes =
+                                                                                day_time
+                                                                                    .minutes()
+                                                                                    .count();
+                                                                            if (minutes < 10) {
+                                                                              wrk.append(
+                                                                                  "0");
+                                                                            }
+                                                                            wrk.append(std::to_string(minutes));
+                                                                          }},
+                                                                         {"%ss",
+                                                                          [](std::string& wrk, tp_sys_clock_ms const& tp) {
+                                                                            auto day_time = make_time(
+                                                                                tp - floor<days>(tp));
+                                                                            uint64_t seconds =
+                                                                                day_time
+                                                                                    .seconds()
+                                                                                    .count();
+                                                                            if (seconds < 10) {
+                                                                              wrk.append(
+                                                                                  "0");
+                                                                            }
+                                                                            wrk.append(std::to_string(seconds));
+                                                                          }},
+                                                                         {"%kk",
+                                                                          [](std::string& wrk, tp_sys_clock_ms const& tp) {
+                                                                            iso_week::year_weeknum_weekday yww{
+                                                                                floor<days>(tp)};
+                                                                            uint64_t isoWeek =
+                                                                                static_cast<unsigned>(
+                                                                                    yww.weeknum());
+                                                                            if (isoWeek < 10) {
+                                                                              wrk.append(
+                                                                                  "0");
+                                                                            }
+                                                                            wrk.append(std::to_string(isoWeek));
+                                                                          }},
 
-  {"%t", [](std::string& wrk, tp_sys_clock_ms const& tp) {
-      auto diffDuration = tp - unixEpoch;
-      auto diff = duration_cast<duration<double, std::milli>>(diffDuration).count();
-      wrk.append(std::to_string(static_cast<int64_t>(std::round(diff))));
-    }},
-  {"%z", [](std::string& wrk, tp_sys_clock_ms const& tp) {
-      std::string formatted = format("%FT%TZ", floor<milliseconds>(tp));
-      wrk.append(formatted);
-    }},
-  {"%w", [](std::string& wrk, tp_sys_clock_ms const& tp) {
-      weekday wd{floor<days>(tp)};
-      wrk.append(std::to_string(static_cast<unsigned>(wd)));
-    }},
-  {"%y", [](std::string& wrk, tp_sys_clock_ms const& tp) {
-      auto ymd = year_month_day(floor<days>(tp));
-      wrk.append(std::to_string(static_cast<int>(ymd.year())));
-    }},
-  {"%m", [](std::string& wrk, tp_sys_clock_ms const& tp) {
-      auto ymd = year_month_day(floor<days>(tp));
-      wrk.append(std::to_string(static_cast<unsigned>(ymd.month())));
-    }},
-  {"%d", [](std::string& wrk, tp_sys_clock_ms const& tp) {
-      auto ymd = year_month_day(floor<days>(tp));
-      wrk.append(std::to_string(static_cast<unsigned>(ymd.day())));
-    }},
-  {"%h", [](std::string& wrk, tp_sys_clock_ms const& tp) {
-      auto day_time = make_time(tp - floor<days>(tp));
-      uint64_t hours = day_time.hours().count();
-      wrk.append(std::to_string(hours));
-    }},
-  {"%i", [](std::string& wrk, tp_sys_clock_ms const& tp) {
-      auto day_time = make_time(tp - floor<days>(tp));
-      uint64_t minutes = day_time.minutes().count();
-      wrk.append(std::to_string(minutes));
-    }},
-  {"%s", [](std::string& wrk, tp_sys_clock_ms const& tp) {
-      auto day_time = make_time(tp - floor<days>(tp));
-      uint64_t seconds = day_time.seconds().count();
-      wrk.append(std::to_string(seconds));
-    }},
-  {"%f", [](std::string& wrk, tp_sys_clock_ms const& tp) {
-      auto day_time = make_time(tp - floor<days>(tp));
-      uint64_t millis = day_time.subseconds().count();
-      wrk.append(std::to_string(millis));
-    }},
-  {"%x", [](std::string& wrk, tp_sys_clock_ms const& tp) {
-      auto ymd = year_month_day(floor<days>(tp));
-      auto yyyy = year{ymd.year()};
-      // We construct the date with the first day in the year:
-      auto firstDayInYear = yyyy / jan / day{0};
-      uint64_t daysSinceFirst = duration_cast<days>(tp - sys_days(firstDayInYear)).count();
-      wrk.append(std::to_string(daysSinceFirst));
-    }},
-  {"%k", [](std::string& wrk, tp_sys_clock_ms const& tp) {
-      iso_week::year_weeknum_weekday yww{floor<days>(tp)};
-      uint64_t isoWeek = static_cast<unsigned>(yww.weeknum());
-      wrk.append(std::to_string(isoWeek));
-    }},
-  {"%l", [](std::string& wrk, tp_sys_clock_ms const& tp) {
-      year_month_day ymd{floor<days>(tp)};
-      if (ymd.year().is_leap()) {
-        wrk.append("1");
-      } else {
-        wrk.append("0");
-      }
-  }},
-  {"%q", [](std::string& wrk, tp_sys_clock_ms const& tp) {
-      year_month_day ymd{floor<days>(tp)};
-      month m = ymd.month();
-      uint64_t part = static_cast<uint64_t>(ceil(unsigned(m) / 3.0f));
-      TRI_ASSERT(part <= 4);
-      wrk.append(std::to_string(part));
-    }},
-  {"%a", [](std::string& wrk, tp_sys_clock_ms const& tp) {
-      auto ymd = year_month_day{floor<days>(tp)};
-      auto lastMonthDay = ymd.year() / ymd.month() / last;
-      wrk.append(std::to_string(static_cast<unsigned>(lastMonthDay.day())));
-    }},
-  {"%%", [](std::string& wrk, tp_sys_clock_ms const& tp) { wrk.append("%"); }},
-  {"%", [](std::string& wrk, tp_sys_clock_ms const& tp) { }}
-};
+                                                                         {"%t",
+                                                                          [](std::string& wrk, tp_sys_clock_ms const& tp) {
+                                                                            auto diffDuration =
+                                                                                tp - unixEpoch;
+                                                                            auto diff =
+                                                                                duration_cast<duration<double, std::milli>>(
+                                                                                    diffDuration)
+                                                                                    .count();
+                                                                            wrk.append(std::to_string(static_cast<int64_t>(
+                                                                                std::round(diff))));
+                                                                          }},
+                                                                         {"%z",
+                                                                          [](std::string& wrk,
+                                                                             tp_sys_clock_ms const& tp) {
+                                                                            std::string formatted = format(
+                                                                                "%FT%TZ",
+                                                                                floor<milliseconds>(tp));
+                                                                            wrk.append(formatted);
+                                                                          }},
+                                                                         {"%w",
+                                                                          [](std::string& wrk,
+                                                                             tp_sys_clock_ms const& tp) {
+                                                                            weekday wd{floor<days>(tp)};
+                                                                            wrk.append(std::to_string(
+                                                                                static_cast<unsigned>(wd)));
+                                                                          }},
+                                                                         {"%y",
+                                                                          [](std::string& wrk,
+                                                                             tp_sys_clock_ms const& tp) {
+                                                                            auto ymd = year_month_day(
+                                                                                floor<days>(tp));
+                                                                            wrk.append(std::to_string(static_cast<int>(
+                                                                                ymd.year())));
+                                                                          }},
+                                                                         {"%m",
+                                                                          [](std::string& wrk,
+                                                                             tp_sys_clock_ms const& tp) {
+                                                                            auto ymd = year_month_day(
+                                                                                floor<days>(tp));
+                                                                            wrk.append(std::to_string(static_cast<unsigned>(
+                                                                                ymd.month())));
+                                                                          }},
+                                                                         {"%d",
+                                                                          [](std::string& wrk,
+                                                                             tp_sys_clock_ms const& tp) {
+                                                                            auto ymd = year_month_day(
+                                                                                floor<days>(tp));
+                                                                            wrk.append(std::to_string(static_cast<unsigned>(
+                                                                                ymd.day())));
+                                                                          }},
+                                                                         {"%h",
+                                                                          [](std::string& wrk,
+                                                                             tp_sys_clock_ms const& tp) {
+                                                                            auto day_time = make_time(
+                                                                                tp - floor<days>(tp));
+                                                                            uint64_t hours =
+                                                                                day_time
+                                                                                    .hours()
+                                                                                    .count();
+                                                                            wrk.append(std::to_string(hours));
+                                                                          }},
+                                                                         {"%i",
+                                                                          [](std::string& wrk,
+                                                                             tp_sys_clock_ms const& tp) {
+                                                                            auto day_time = make_time(
+                                                                                tp - floor<days>(tp));
+                                                                            uint64_t minutes =
+                                                                                day_time
+                                                                                    .minutes()
+                                                                                    .count();
+                                                                            wrk.append(std::to_string(minutes));
+                                                                          }},
+                                                                         {"%s",
+                                                                          [](std::string& wrk,
+                                                                             tp_sys_clock_ms const& tp) {
+                                                                            auto day_time = make_time(
+                                                                                tp - floor<days>(tp));
+                                                                            uint64_t seconds =
+                                                                                day_time
+                                                                                    .seconds()
+                                                                                    .count();
+                                                                            wrk.append(std::to_string(seconds));
+                                                                          }},
+                                                                         {"%f",
+                                                                          [](std::string& wrk,
+                                                                             tp_sys_clock_ms const& tp) {
+                                                                            auto day_time = make_time(
+                                                                                tp - floor<days>(tp));
+                                                                            uint64_t millis =
+                                                                                day_time
+                                                                                    .subseconds()
+                                                                                    .count();
+                                                                            wrk.append(std::to_string(millis));
+                                                                          }},
+                                                                         {"%x",
+                                                                          [](std::string& wrk,
+                                                                             tp_sys_clock_ms const& tp) {
+                                                                            auto ymd = year_month_day(
+                                                                                floor<days>(tp));
+                                                                            auto yyyy =
+                                                                                year{ymd.year()};
+                                                                            // We construct the date with the first day in the
+                                                                            // year:
+                                                                            auto firstDayInYear =
+                                                                                yyyy / jan /
+                                                                                day{0};
+                                                                            uint64_t daysSinceFirst =
+                                                                                duration_cast<days>(
+                                                                                    tp - sys_days(firstDayInYear))
+                                                                                    .count();
+                                                                            wrk.append(std::to_string(daysSinceFirst));
+                                                                          }},
+                                                                         {"%k",
+                                                                          [](std::string& wrk,
+                                                                             tp_sys_clock_ms const& tp) {
+                                                                            iso_week::year_weeknum_weekday yww{
+                                                                                floor<days>(tp)};
+                                                                            uint64_t isoWeek =
+                                                                                static_cast<unsigned>(
+                                                                                    yww.weeknum());
+                                                                            wrk.append(std::to_string(isoWeek));
+                                                                          }},
+                                                                         {"%l",
+                                                                          [](std::string& wrk,
+                                                                             tp_sys_clock_ms const& tp) {
+                                                                            year_month_day ymd{
+                                                                                floor<days>(tp)};
+                                                                            if (ymd.year()
+                                                                                    .is_leap()) {
+                                                                              wrk.append(
+                                                                                  "1");
+                                                                            } else {
+                                                                              wrk.append(
+                                                                                  "0");
+                                                                            }
+                                                                          }},
+                                                                         {"%q",
+                                                                          [](std::string& wrk,
+                                                                             tp_sys_clock_ms const& tp) {
+                                                                            year_month_day ymd{
+                                                                                floor<days>(tp)};
+                                                                            month m = ymd.month();
+                                                                            uint64_t part = static_cast<uint64_t>(
+                                                                                ceil(unsigned(m) / 3.0f));
+                                                                            TRI_ASSERT(part <= 4);
+                                                                            wrk.append(std::to_string(part));
+                                                                          }},
+                                                                         {"%a",
+                                                                          [](std::string& wrk,
+                                                                             tp_sys_clock_ms const& tp) {
+                                                                            auto ymd = year_month_day{
+                                                                                floor<days>(tp)};
+                                                                            auto lastMonthDay =
+                                                                                ymd.year() /
+                                                                                ymd.month() / last;
+                                                                            wrk.append(std::to_string(static_cast<unsigned>(
+                                                                                lastMonthDay
+                                                                                    .day())));
+                                                                          }},
+                                                                         {"%%",
+                                                                          [](std::string& wrk,
+                                                                             tp_sys_clock_ms const& tp) {
+                                                                            wrk.append(
+                                                                                "%");
+                                                                          }},
+                                                                         {"%", [](std::string& wrk,
+                                                                                  tp_sys_clock_ms const& tp) {
+                                                                          }}};
 
 /// @brief register warning
 void registerWarning(ExpressionContext* expressionContext,
-                     char const* functionName,
-                     Result const& rr) {
+                     char const* functionName, Result const& rr) {
   std::string msg = "in function '";
   msg.append(functionName);
   msg.append("()': ");
@@ -533,7 +695,8 @@ void registerWarning(ExpressionContext* expressionContext,
 }
 
 /// @brief register warning
-void registerWarning(ExpressionContext* expressionContext, char const* functionName, int code) {
+void registerWarning(ExpressionContext* expressionContext,
+                     char const* functionName, int code) {
   if (code != TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH) {
     registerWarning(expressionContext, functionName, Result(code));
     return;
@@ -544,8 +707,7 @@ void registerWarning(ExpressionContext* expressionContext, char const* functionN
 }
 
 void registerICUWarning(ExpressionContext* expressionContext,
-                        char const* functionName,
-                        UErrorCode status) {
+                        char const* functionName, UErrorCode status) {
   std::string msg;
   msg.append("in function '");
   msg.append(functionName);
@@ -571,8 +733,8 @@ void registerError(ExpressionContext* expressionContext, char const* functionNam
 }
 
 /// @brief extract a function parameter from the arguments
-inline AqlValue const& extractFunctionParameterValue(
-    VPackFunctionParameters const& parameters, size_t position) {
+inline AqlValue const& extractFunctionParameterValue(VPackFunctionParameters const& parameters,
+                                                     size_t position) {
   if (position >= parameters.size()) {
     // parameter out of range
     return ::emptyAqlValue;
@@ -587,8 +749,7 @@ inline AqlValue numberValue(int value) {
 
 /// @brief convert a number value into an AqlValue
 AqlValue numberValue(double value, bool nullify) {
-  if (std::isnan(value) || !std::isfinite(value) || value == HUGE_VAL ||
-      value == -HUGE_VAL) {
+  if (std::isnan(value) || !std::isfinite(value) || value == HUGE_VAL || value == -HUGE_VAL) {
     if (nullify) {
       // convert to null
       return AqlValue(AqlValueHintNull());
@@ -672,10 +833,8 @@ DateSelectionModifier parseDateModifierFlag(VPackSlice flag) {
 }
 
 AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
-                                        tp_sys_clock_ms const& tp,
-                                        VPackSlice durationUnitsSlice,
-                                        VPackSlice durationType,
-                                        bool isSubtract) {
+                                        tp_sys_clock_ms const& tp, VPackSlice durationUnitsSlice,
+                                        VPackSlice durationType, bool isSubtract) {
   bool isInteger = durationUnitsSlice.isInteger();
   double durationUnits = durationUnitsSlice.getNumber<double>();
   std::chrono::duration<double, std::ratio<1l, 1000l>> ms{};
@@ -746,8 +905,7 @@ AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
       break;
     default:
       if (isSubtract) {
-        ::registerWarning(expressionContext, "DATE_SUBTRACT",
-                          TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+        ::registerWarning(expressionContext, "DATE_SUBTRACT", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
       } else {
         ::registerWarning(expressionContext, "DATE_ADD", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
       }
@@ -757,18 +915,20 @@ AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
 
   tp_sys_clock_ms resTime;
   if (isSubtract) {
-    resTime = tp_sys_clock_ms{sys_days(ymd) + day_time.to_duration() -
-                              std::chrono::duration_cast<duration<int64_t, std::milli>>(ms)};
+    resTime =
+        tp_sys_clock_ms{sys_days(ymd) + day_time.to_duration() -
+                        std::chrono::duration_cast<duration<int64_t, std::milli>>(ms)};
   } else {
-    resTime = tp_sys_clock_ms{sys_days(ymd) + day_time.to_duration() +
-                              std::chrono::duration_cast<duration<int64_t, std::milli>>(ms)};
+    resTime =
+        tp_sys_clock_ms{sys_days(ymd) + day_time.to_duration() +
+                        std::chrono::duration_cast<duration<int64_t, std::milli>>(ms)};
   }
   return ::timeAqlValue(resTime);
 }
 
-AqlValue addOrSubtractIsoDurationFromTimestamp(
-    ExpressionContext* expressionContext, tp_sys_clock_ms const& tp, std::string const& duration,
-    bool isSubtract) {
+AqlValue addOrSubtractIsoDurationFromTimestamp(ExpressionContext* expressionContext,
+                                               tp_sys_clock_ms const& tp,
+                                               std::string const& duration, bool isSubtract) {
   year_month_day ymd{floor<days>(tp)};
   auto day_time = make_time(tp - sys_days(ymd));
   std::smatch duration_parts;
@@ -814,8 +974,7 @@ AqlValue addOrSubtractIsoDurationFromTimestamp(
   // The Milli seconds can be shortened:
   // .1 => 100ms
   // so we append 00 but only take the first 3 digits
-  number = basics::StringUtils::int32(
-      (duration_parts[17].str() + "00").substr(0, 3));
+  number = basics::StringUtils::int32((duration_parts[17].str() + "00").substr(0, 3));
   ms += milliseconds{number};
 
   tp_sys_clock_ms resTime;
@@ -830,15 +989,13 @@ AqlValue addOrSubtractIsoDurationFromTimestamp(
 /// @brief register usage of an invalid function argument
 void registerInvalidArgumentWarning(ExpressionContext* expressionContext,
                                     char const* functionName) {
-  ::registerWarning(expressionContext, functionName, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  ::registerWarning(expressionContext, functionName,
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
 }
 
-bool parameterToTimePoint(ExpressionContext* expressionContext,
-                          transaction::Methods* trx,
+bool parameterToTimePoint(ExpressionContext* expressionContext, transaction::Methods* trx,
                           VPackFunctionParameters const& parameters,
-                          tp_sys_clock_ms& tp,
-                          char const* AFN,
-                          size_t parameterIndex) {
+                          tp_sys_clock_ms& tp, char const* AFN, size_t parameterIndex) {
   AqlValue const& value = extractFunctionParameterValue(parameters, parameterIndex);
 
   if (!value.isString() && !value.isNumber()) {
@@ -926,8 +1083,7 @@ double valueToNumber(VPackSlice const& slice, bool& isValid) {
 }
 
 /// @brief extract a boolean parameter from an array
-bool getBooleanParameter(transaction::Methods* trx,
-                         VPackFunctionParameters const& parameters,
+bool getBooleanParameter(transaction::Methods* trx, VPackFunctionParameters const& parameters,
                          size_t startParameter, bool defaultValue) {
   size_t const n = parameters.size();
 
@@ -939,9 +1095,9 @@ bool getBooleanParameter(transaction::Methods* trx,
 }
 
 /// @brief extra a collection name from an AqlValue
-std::string extractCollectionName(
-    transaction::Methods* trx, VPackFunctionParameters const& parameters,
-    size_t position) {
+std::string extractCollectionName(transaction::Methods* trx,
+                                  VPackFunctionParameters const& parameters,
+                                  size_t position) {
   AqlValue const& value = extractFunctionParameterValue(parameters, position);
 
   std::string identifier;
@@ -978,10 +1134,8 @@ std::string extractCollectionName(
 }
 
 /// @brief extract attribute names from the arguments
-void extractKeys(std::unordered_set<std::string>& names,
-                 ExpressionContext* expressionContext,
-                 transaction::Methods* trx,
-                 VPackFunctionParameters const& parameters,
+void extractKeys(std::unordered_set<std::string>& names, ExpressionContext* expressionContext,
+                 transaction::Methods* trx, VPackFunctionParameters const& parameters,
                  size_t startParameter, char const* functionName) {
   size_t const n = parameters.size();
 
@@ -1027,10 +1181,8 @@ void appendAsString(transaction::Methods* trx,
 }
 
 /// @brief Checks if the given list contains the element
-bool listContainsElement(transaction::Methods* trx,
-                         VPackOptions const* options,
-                         AqlValue const& list, AqlValue const& testee,
-                         size_t& index) {
+bool listContainsElement(transaction::Methods* trx, VPackOptions const* options,
+                         AqlValue const& list, AqlValue const& testee, size_t& index) {
   TRI_ASSERT(list.isArray());
   AqlValueMaterializer materializer(trx);
   VPackSlice slice = materializer.slice(list, false);
@@ -1052,13 +1204,11 @@ bool listContainsElement(transaction::Methods* trx,
 
 /// @brief Checks if the given list contains the element
 /// DEPRECATED
-bool listContainsElement(VPackOptions const* options,
-                         VPackSlice const& list,
+bool listContainsElement(VPackOptions const* options, VPackSlice const& list,
                          VPackSlice const& testee, size_t& index) {
   TRI_ASSERT(list.isArray());
   for (size_t i = 0; i < static_cast<size_t>(list.length()); ++i) {
-    if (arangodb::basics::VelocyPackHelper::compare(testee, list.at(i), false,
-                                                    options) == 0) {
+    if (arangodb::basics::VelocyPackHelper::compare(testee, list.at(i), false, options) == 0) {
       index = i;
       return true;
     }
@@ -1066,8 +1216,7 @@ bool listContainsElement(VPackOptions const* options,
   return false;
 }
 
-bool listContainsElement(VPackOptions const* options,
-                         VPackSlice const& list,
+bool listContainsElement(VPackOptions const* options, VPackSlice const& list,
                          VPackSlice const& testee) {
   size_t unused;
   return ::listContainsElement(options, list, testee, unused);
@@ -1158,10 +1307,9 @@ void unsetOrKeep(transaction::Methods* trx, VPackSlice const& value,
 
 /// @brief Helper function to get a document by it's identifier
 ///        Lazy Locks the collection if necessary.
-void getDocumentByIdentifier(transaction::Methods* trx,
-                             std::string& collectionName,
-                             std::string const& identifier,
-                             bool ignoreError, VPackBuilder& result) {
+void getDocumentByIdentifier(transaction::Methods* trx, std::string& collectionName,
+                             std::string const& identifier, bool ignoreError,
+                             VPackBuilder& result) {
   transaction::BuilderLeaser searchBuilder(trx);
 
   size_t pos = identifier.find('/');
@@ -1200,10 +1348,10 @@ void getDocumentByIdentifier(transaction::Methods* trx,
     }
     if (res.errorNumber() == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
       // special error message to indicate which collection was undeclared
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          res.errorNumber(),
-          res.errorMessage() + ": " + collectionName + " [" +
-              AccessMode::typeString(AccessMode::Type::READ) + "]");
+      THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(),
+                                     res.errorMessage() + ": " + collectionName +
+                                         " [" + AccessMode::typeString(AccessMode::Type::READ) +
+                                         "]");
     }
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -1212,8 +1360,7 @@ void getDocumentByIdentifier(transaction::Methods* trx,
 /// @brief Helper function to merge given parameters
 ///        Works for an array of objects as first parameter or arbitrary many
 ///        object parameters
-AqlValue mergeParameters(ExpressionContext* expressionContext,
-                         transaction::Methods* trx,
+AqlValue mergeParameters(ExpressionContext* expressionContext, transaction::Methods* trx,
                          VPackFunctionParameters const& parameters,
                          char const* funcName, bool recursive) {
   size_t const n = parameters.size();
@@ -1263,8 +1410,7 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
     AqlValueMaterializer materializer(trx);
     VPackSlice slice = materializer.slice(param, false);
 
-    builder = arangodb::basics::VelocyPackHelper::merge(initialSlice, slice,
-                                                        false, recursive);
+    builder = arangodb::basics::VelocyPackHelper::merge(initialSlice, slice, false, recursive);
     initialSlice = builder.slice();
   }
   if (n == 1) {
@@ -1275,8 +1421,8 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
 }
 
 /// @brief internal recursive flatten helper
-void flattenList(VPackSlice const& array, size_t maxDepth,
-                 size_t curDepth, VPackBuilder& result) {
+void flattenList(VPackSlice const& array, size_t maxDepth, size_t curDepth,
+                 VPackBuilder& result) {
   TRI_ASSERT(result.isOpenArray());
   for (auto const& tmp : VPackArrayIterator(array)) {
     if (tmp.isArray() && curDepth < maxDepth) {
@@ -1300,11 +1446,9 @@ void flattenList(VPackSlice const& array, size_t maxDepth,
  *
  * @return Returns a timestamp if asTimestamp is true, an ISO_DATE otherwise
  */
-AqlValue dateFromParameters(
-    ExpressionContext* expressionContext, transaction::Methods* trx,
-    VPackFunctionParameters const& parameters,
-    char const* AFN,
-    bool asTimestamp) {
+AqlValue dateFromParameters(ExpressionContext* expressionContext, transaction::Methods* trx,
+                            VPackFunctionParameters const& parameters,
+                            char const* AFN, bool asTimestamp) {
   tp_sys_clock_ms tp;
   duration<int64_t, std::milli> time;
 
@@ -1334,7 +1478,7 @@ AqlValue dateFromParameters(
     months m{extractFunctionParameterValue(parameters, 1).toInt64(trx)};
     days d{extractFunctionParameterValue(parameters, 2).toInt64(trx)};
 
-    if ( (y < years{0}) || (m < months{0}) || (d < days {0}) ) {
+    if ((y < years{0}) || (m < months{0}) || (d < days{0})) {
       registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
       return AqlValue(AqlValueHintNull());
     }
@@ -1356,16 +1500,12 @@ AqlValue dateFromParameters(
       s = seconds((extractFunctionParameterValue(parameters, 5).toInt64(trx)));
     }
     if (parameters.size() == 7) {
-      ms = milliseconds(
-          (extractFunctionParameterValue(parameters, 6).toInt64(trx)));
+      ms = milliseconds((extractFunctionParameterValue(parameters, 6).toInt64(trx)));
     }
 
-    if ((h < hours{0}) ||
-        (min < minutes{0}) ||
-        (s < seconds{0}) ||
+    if ((h < hours{0}) || (min < minutes{0}) || (s < seconds{0}) ||
         (ms < milliseconds{0})) {
-      registerWarning(expressionContext, AFN,
-                      TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
       return AqlValue(AqlValueHintNull());
     }
 
@@ -1383,10 +1523,8 @@ AqlValue dateFromParameters(
   return timeAqlValue(tp);
 }
 
-AqlValue callApplyBackend(ExpressionContext* expressionContext,
-                          transaction::Methods* trx,
-                          char const* AFN,
-                          AqlValue const& invokeFN,
+AqlValue callApplyBackend(ExpressionContext* expressionContext, transaction::Methods* trx,
+                          char const* AFN, AqlValue const& invokeFN,
                           VPackFunctionParameters const& invokeParams) {
   std::string ucInvokeFN;
   transaction::StringBufferLeaser buffer(trx);
@@ -1394,8 +1532,7 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext,
 
   ::appendAsString(trx, adapter, invokeFN);
 
-  UnicodeString unicodeStr(buffer->c_str(),
-                           static_cast<int32_t>(buffer->length()));
+  UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
   unicodeStr.toUpper(nullptr);
   unicodeStr.toUTF8String(ucInvokeFN);
 
@@ -1408,10 +1545,10 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext,
 
       if (invokeParams.size() < numExpectedArguments.first ||
           invokeParams.size() > numExpectedArguments.second) {
-        THROW_ARANGO_EXCEPTION_PARAMS(
-            TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, ucInvokeFN.c_str(),
-            static_cast<int>(numExpectedArguments.first),
-            static_cast<int>(numExpectedArguments.second));
+        THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
+                                      ucInvokeFN.c_str(),
+                                      static_cast<int>(numExpectedArguments.first),
+                                      static_cast<int>(numExpectedArguments.second));
       }
 
       return func->implementation(expressionContext, trx, invokeParams);
@@ -1459,7 +1596,8 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext,
     }
 
     bool dummy;
-    return Expression::invokeV8Function(expressionContext, trx, jsName, ucInvokeFN, AFN, false, callArgs, args.get(), dummy);
+    return Expression::invokeV8Function(expressionContext, trx, jsName, ucInvokeFN,
+                                        AFN, false, callArgs, args.get(), dummy);
   }
 }
 
@@ -1471,8 +1609,9 @@ AqlValue geoContainsIntersect(ExpressionContext* expressionContext,
   AqlValue const& p2 = extractFunctionParameterValue(parameters, 1);
 
   if (!p1.isObject()) {
-    registerWarning(expressionContext, func, Result(
-      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "Expecting GeoJSON object"));
+    registerWarning(expressionContext, func,
+                    Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                           "Expecting GeoJSON object"));
     return AqlValue(AqlValueHintNull());
   }
 
@@ -1484,15 +1623,19 @@ AqlValue geoContainsIntersect(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
   if (contains && !outer.isAreaType()) {
-    registerWarning(expressionContext, func, Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                    "Only Polygon and MultiPolygon types are valid as first argument"));
+    registerWarning(
+        expressionContext, func,
+        Result(
+            TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+            "Only Polygon and MultiPolygon types are valid as first argument"));
     return AqlValue(AqlValueHintNull());
   }
 
   AqlValueMaterializer mat2(trx);
-  res.reset(TRI_ERROR_BAD_PARAMETER, "Second arg requires coordinate pair or GeoJSON");
+  res.reset(TRI_ERROR_BAD_PARAMETER,
+            "Second arg requires coordinate pair or GeoJSON");
   if (p2.isArray() && p2.length() >= 2) {
-    res = inner.parseCoordinates(mat2.slice(p2, true), /*geoJson*/true);
+    res = inner.parseCoordinates(mat2.slice(p2, true), /*geoJson*/ true);
   } else if (p2.isObject()) {
     res = geo::geojson::parseRegion(mat2.slice(p2, true), inner);
   }
@@ -1505,16 +1648,17 @@ AqlValue geoContainsIntersect(ExpressionContext* expressionContext,
   return AqlValue(AqlValueHintBool(result));
 }
 
-} // namespace
+}  // namespace
 
 void Functions::init() {
   std::string myregex;
 
   dateMap.reserve(sortedDateMap.size());
-  std::for_each(sortedDateMap.begin(), sortedDateMap.end(), [&myregex](std::pair<std::string const&, format_func_t> const& p) {
-    (myregex.length() > 0) ? myregex += "|" + p.first : myregex = p.first;
-    dateMap.insert(std::make_pair(p.first, p.second));
-  });
+  std::for_each(sortedDateMap.begin(), sortedDateMap.end(),
+                [&myregex](std::pair<std::string const&, format_func_t> const& p) {
+                  (myregex.length() > 0) ? myregex += "|" + p.first : myregex = p.first;
+                  dateMap.insert(std::make_pair(p.first, p.second));
+                });
   ::theDateFormatRegex = std::regex(myregex);
 }
 
@@ -1536,8 +1680,7 @@ void Functions::Stringify(transaction::Methods* trx,
     return;
   }
 
-  VPackOptions* options =
-      trx->transactionContextPtr()->getVPackOptionsForDump();
+  VPackOptions* options = trx->transactionContextPtr()->getVPackOptionsForDump();
   VPackOptions adjustedOptions = *options;
   adjustedOptions.escapeUnicode = false;
   adjustedOptions.escapeForwardSlashes = false;
@@ -1546,56 +1689,49 @@ void Functions::Stringify(transaction::Methods* trx,
 }
 
 /// @brief function IS_NULL
-AqlValue Functions::IsNull(ExpressionContext*,
-                           transaction::Methods* trx,
+AqlValue Functions::IsNull(ExpressionContext*, transaction::Methods* trx,
                            VPackFunctionParameters const& parameters) {
   AqlValue const& a = extractFunctionParameterValue(parameters, 0);
   return AqlValue(AqlValueHintBool(a.isNull(true)));
 }
 
 /// @brief function IS_BOOL
-AqlValue Functions::IsBool(ExpressionContext*,
-                           transaction::Methods* trx,
+AqlValue Functions::IsBool(ExpressionContext*, transaction::Methods* trx,
                            VPackFunctionParameters const& parameters) {
   AqlValue const& a = extractFunctionParameterValue(parameters, 0);
   return AqlValue(AqlValueHintBool(a.isBoolean()));
 }
 
 /// @brief function IS_NUMBER
-AqlValue Functions::IsNumber(ExpressionContext*,
-                             transaction::Methods* trx,
+AqlValue Functions::IsNumber(ExpressionContext*, transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
   AqlValue const& a = extractFunctionParameterValue(parameters, 0);
   return AqlValue(AqlValueHintBool(a.isNumber()));
 }
 
 /// @brief function IS_STRING
-AqlValue Functions::IsString(ExpressionContext*,
-                             transaction::Methods* trx,
+AqlValue Functions::IsString(ExpressionContext*, transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
   AqlValue const& a = extractFunctionParameterValue(parameters, 0);
   return AqlValue(AqlValueHintBool(a.isString()));
 }
 
 /// @brief function IS_ARRAY
-AqlValue Functions::IsArray(ExpressionContext*,
-                            transaction::Methods* trx,
+AqlValue Functions::IsArray(ExpressionContext*, transaction::Methods* trx,
                             VPackFunctionParameters const& parameters) {
   AqlValue const& a = extractFunctionParameterValue(parameters, 0);
   return AqlValue(AqlValueHintBool(a.isArray()));
 }
 
 /// @brief function IS_OBJECT
-AqlValue Functions::IsObject(ExpressionContext*,
-                             transaction::Methods* trx,
+AqlValue Functions::IsObject(ExpressionContext*, transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
   AqlValue const& a = extractFunctionParameterValue(parameters, 0);
   return AqlValue(AqlValueHintBool(a.isObject()));
 }
 
 /// @brief function TYPENAME
-AqlValue Functions::Typename(ExpressionContext*,
-                             transaction::Methods* trx,
+AqlValue Functions::Typename(ExpressionContext*, transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   char const* type = value.getTypeString();
@@ -1604,8 +1740,7 @@ AqlValue Functions::Typename(ExpressionContext*,
 }
 
 /// @brief function TO_NUMBER
-AqlValue Functions::ToNumber(ExpressionContext*,
-                             transaction::Methods* trx,
+AqlValue Functions::ToNumber(ExpressionContext*, transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
   AqlValue const& a = extractFunctionParameterValue(parameters, 0);
   bool failed;
@@ -1619,8 +1754,7 @@ AqlValue Functions::ToNumber(ExpressionContext*,
 }
 
 /// @brief function TO_STRING
-AqlValue Functions::ToString(ExpressionContext*,
-                             transaction::Methods* trx,
+AqlValue Functions::ToString(ExpressionContext*, transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -1632,8 +1766,7 @@ AqlValue Functions::ToString(ExpressionContext*,
 }
 
 /// @brief function TO_BASE64
-AqlValue Functions::ToBase64(ExpressionContext*,
-                             transaction::Methods* trx,
+AqlValue Functions::ToBase64(ExpressionContext*, transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -1642,30 +1775,14 @@ AqlValue Functions::ToBase64(ExpressionContext*,
 
   ::appendAsString(trx, adapter, value);
 
-  std::string encoded = basics::StringUtils::encodeBase64(std::string(buffer->begin(), buffer->length()));
+  std::string encoded =
+      basics::StringUtils::encodeBase64(std::string(buffer->begin(), buffer->length()));
 
   return AqlValue(encoded);
 }
 
 /// @brief function TO_HEX
-AqlValue Functions::ToHex(ExpressionContext*,
-                             transaction::Methods* trx,
-                             VPackFunctionParameters const& parameters) {
-  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
-
-  transaction::StringBufferLeaser buffer(trx);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
-
-  ::appendAsString(trx, adapter, value);
-
-    std::string encoded = basics::StringUtils::encodeHex(std::string(buffer->begin(), buffer->length()));
-
-  return AqlValue(encoded);
-}
-
-/// @brief function ENCODE_URI_COMPONENT
-AqlValue Functions::EncodeURIComponent(ExpressionContext*,
-                          transaction::Methods* trx,
+AqlValue Functions::ToHex(ExpressionContext*, transaction::Methods* trx,
                           VPackFunctionParameters const& parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -1674,14 +1791,30 @@ AqlValue Functions::EncodeURIComponent(ExpressionContext*,
 
   ::appendAsString(trx, adapter, value);
 
-  std::string encoded = basics::StringUtils::encodeURIComponent(std::string(buffer->begin(), buffer->length()));
+  std::string encoded =
+      basics::StringUtils::encodeHex(std::string(buffer->begin(), buffer->length()));
+
+  return AqlValue(encoded);
+}
+
+/// @brief function ENCODE_URI_COMPONENT
+AqlValue Functions::EncodeURIComponent(ExpressionContext*, transaction::Methods* trx,
+                                       VPackFunctionParameters const& parameters) {
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+  ::appendAsString(trx, adapter, value);
+
+  std::string encoded = basics::StringUtils::encodeURIComponent(
+      std::string(buffer->begin(), buffer->length()));
 
   return AqlValue(encoded);
 }
 
 /// @brief function UUID
-AqlValue Functions::Uuid(ExpressionContext*,
-                         transaction::Methods* trx,
+AqlValue Functions::Uuid(ExpressionContext*, transaction::Methods* trx,
                          VPackFunctionParameters const& parameters) {
   boost::uuids::uuid uuid;
   {
@@ -1694,9 +1827,8 @@ AqlValue Functions::Uuid(ExpressionContext*,
 }
 
 /// @brief function SOUNDEX
-AqlValue Functions::Soundex(ExpressionContext*,
-                                       transaction::Methods* trx,
-                                       VPackFunctionParameters const& parameters) {
+AqlValue Functions::Soundex(ExpressionContext*, transaction::Methods* trx,
+                            VPackFunctionParameters const& parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
   transaction::StringBufferLeaser buffer(trx);
@@ -1704,16 +1836,15 @@ AqlValue Functions::Soundex(ExpressionContext*,
 
   ::appendAsString(trx, adapter, value);
 
-  std::string encoded = basics::StringUtils::soundex(basics::StringUtils::trim(basics::StringUtils::tolower(std::string(buffer->begin(), buffer->length()))));
+  std::string encoded = basics::StringUtils::soundex(basics::StringUtils::trim(
+      basics::StringUtils::tolower(std::string(buffer->begin(), buffer->length()))));
 
   return AqlValue(encoded);
 }
 
-
 /// @brief function LEVENSHTEIN_DISTANCE
-AqlValue Functions::LevenshteinDistance(ExpressionContext*,
-                            transaction::Methods* trx,
-                            VPackFunctionParameters const& parameters) {
+AqlValue Functions::LevenshteinDistance(ExpressionContext*, transaction::Methods* trx,
+                                        VPackFunctionParameters const& parameters) {
   AqlValue const& value1 = extractFunctionParameterValue(parameters, 0);
   AqlValue const& value2 = extractFunctionParameterValue(parameters, 1);
 
@@ -1726,22 +1857,22 @@ AqlValue Functions::LevenshteinDistance(ExpressionContext*,
   ::appendAsString(trx, adapter1, value1);
   ::appendAsString(trx, adapter2, value2);
 
-  int encoded = basics::StringUtils::levenshteinDistance(std::string(buffer1->begin(), buffer1->length()), std::string(buffer2->begin(), buffer2->length()));
+  int encoded = basics::StringUtils::levenshteinDistance(
+      std::string(buffer1->begin(), buffer1->length()),
+      std::string(buffer2->begin(), buffer2->length()));
 
   return AqlValue(AqlValueHintInt(encoded));
 }
 
 /// @brief function TO_BOOL
-AqlValue Functions::ToBool(ExpressionContext*,
-                           transaction::Methods* trx,
+AqlValue Functions::ToBool(ExpressionContext*, transaction::Methods* trx,
                            VPackFunctionParameters const& parameters) {
   AqlValue const& a = extractFunctionParameterValue(parameters, 0);
   return AqlValue(AqlValueHintBool(a.toBoolean()));
 }
 
 /// @brief function TO_ARRAY
-AqlValue Functions::ToArray(ExpressionContext*,
-                            transaction::Methods* trx,
+AqlValue Functions::ToArray(ExpressionContext*, transaction::Methods* trx,
                             VPackFunctionParameters const& parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -1776,8 +1907,7 @@ AqlValue Functions::ToArray(ExpressionContext*,
 }
 
 /// @brief function LENGTH
-AqlValue Functions::Length(ExpressionContext*,
-                           transaction::Methods* trx,
+AqlValue Functions::Length(ExpressionContext*, transaction::Methods* trx,
                            VPackFunctionParameters const& parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   if (value.isArray()) {
@@ -1867,8 +1997,7 @@ AqlValue Functions::FindFirst(ExpressionContext* expressionContext,
   UErrorCode status = U_ZERO_ERROR;
   StringSearch search(uSearchBuf, uBuf, locale, nullptr, status);
 
-  for (int pos = search.first(status);
-       U_SUCCESS(status) && pos != USEARCH_DONE;
+  for (int pos = search.first(status); U_SUCCESS(status) && pos != USEARCH_DONE;
        pos = search.next(status)) {
     if (U_FAILURE(status)) {
       ::registerICUWarning(expressionContext, AFN, status);
@@ -1883,8 +2012,7 @@ AqlValue Functions::FindFirst(ExpressionContext* expressionContext,
 
 /// @brief function FIND_LAST
 /// FIND_FIRST(text, search, start, end) → position
-AqlValue Functions::FindLast(ExpressionContext* expressionContext,
-                             transaction::Methods* trx,
+AqlValue Functions::FindLast(ExpressionContext* expressionContext, transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
   static char const* AFN = "FIND_LAST";
 
@@ -1938,8 +2066,7 @@ AqlValue Functions::FindLast(ExpressionContext* expressionContext,
   StringSearch search(uSearchBuf, uBuf, locale, nullptr, status);
 
   int foundPos = -1;
-  for (int pos = search.first(status);
-       U_SUCCESS(status) && pos != USEARCH_DONE;
+  for (int pos = search.first(status); U_SUCCESS(status) && pos != USEARCH_DONE;
        pos = search.next(status)) {
     if (U_FAILURE(status)) {
       ::registerICUWarning(expressionContext, AFN, status);
@@ -1953,8 +2080,7 @@ AqlValue Functions::FindLast(ExpressionContext* expressionContext,
 }
 
 /// @brief function REVERSE
-AqlValue Functions::Reverse(ExpressionContext* expressionContext,
-                            transaction::Methods* trx,
+AqlValue Functions::Reverse(ExpressionContext* expressionContext, transaction::Methods* trx,
                             VPackFunctionParameters const& parameters) {
   static char const* AFN = "REVERSE";
 
@@ -1972,7 +2098,7 @@ AqlValue Functions::Reverse(ExpressionContext* expressionContext,
     std::reverse(std::begin(array), std::end(array));
 
     builder->openArray();
-    for (auto const &it : array) {
+    for (auto const& it : array) {
       builder->add(it);
     }
     builder->close();
@@ -2004,8 +2130,7 @@ AqlValue Functions::Reverse(ExpressionContext* expressionContext,
 }
 
 /// @brief function FIRST
-AqlValue Functions::First(ExpressionContext* expressionContext,
-                          transaction::Methods* trx,
+AqlValue Functions::First(ExpressionContext* expressionContext, transaction::Methods* trx,
                           VPackFunctionParameters const& parameters) {
   static char const* AFN = "FIRST";
 
@@ -2026,8 +2151,7 @@ AqlValue Functions::First(ExpressionContext* expressionContext,
 }
 
 /// @brief function LAST
-AqlValue Functions::Last(ExpressionContext* expressionContext,
-                         transaction::Methods* trx,
+AqlValue Functions::Last(ExpressionContext* expressionContext, transaction::Methods* trx,
                          VPackFunctionParameters const& parameters) {
   static char const* AFN = "LAST";
 
@@ -2050,8 +2174,7 @@ AqlValue Functions::Last(ExpressionContext* expressionContext,
 }
 
 /// @brief function NTH
-AqlValue Functions::Nth(ExpressionContext* expressionContext,
-                        transaction::Methods* trx,
+AqlValue Functions::Nth(ExpressionContext* expressionContext, transaction::Methods* trx,
                         VPackFunctionParameters const& parameters) {
   static char const* AFN = "NTH";
 
@@ -2081,8 +2204,7 @@ AqlValue Functions::Nth(ExpressionContext* expressionContext,
 }
 
 /// @brief function CONTAINS
-AqlValue Functions::Contains(ExpressionContext*,
-                             transaction::Methods* trx,
+AqlValue Functions::Contains(ExpressionContext*, transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   AqlValue const& search = extractFunctionParameterValue(parameters, 1);
@@ -2104,8 +2226,7 @@ AqlValue Functions::Contains(ExpressionContext*,
 
     if (searchLength > 0) {
       char const* found = static_cast<char const*>(
-          memmem(buffer->c_str(), valueLength, buffer->c_str() + searchOffset,
-                 searchLength));
+          memmem(buffer->c_str(), valueLength, buffer->c_str() + searchOffset, searchLength));
 
       if (found != nullptr) {
         if (willReturnIndex) {
@@ -2145,8 +2266,7 @@ AqlValue Functions::Contains(ExpressionContext*,
 }
 
 /// @brief function CONCAT
-AqlValue Functions::Concat(ExpressionContext*,
-                           transaction::Methods* trx,
+AqlValue Functions::Concat(ExpressionContext*, transaction::Methods* trx,
                            VPackFunctionParameters const& parameters) {
   transaction::StringBufferLeaser buffer(trx);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
@@ -2185,8 +2305,7 @@ AqlValue Functions::Concat(ExpressionContext*,
 }
 
 /// @brief function CONCAT_SEPARATOR
-AqlValue Functions::ConcatSeparator(ExpressionContext*,
-                                    transaction::Methods* trx,
+AqlValue Functions::ConcatSeparator(ExpressionContext*, transaction::Methods* trx,
                                     VPackFunctionParameters const& parameters) {
   transaction::StringBufferLeaser buffer(trx);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
@@ -2246,8 +2365,7 @@ AqlValue Functions::ConcatSeparator(ExpressionContext*,
 }
 
 /// @brief function CHAR_LENGTH
-AqlValue Functions::CharLength(ExpressionContext*,
-                               transaction::Methods* trx,
+AqlValue Functions::CharLength(ExpressionContext*, transaction::Methods* trx,
                                VPackFunctionParameters const& parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   size_t length = 0;
@@ -2259,8 +2377,7 @@ AqlValue Functions::CharLength(ExpressionContext*,
     transaction::StringBufferLeaser buffer(trx);
     arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
 
-    VPackDumper dumper(&adapter,
-                       trx->transactionContextPtr()->getVPackOptions());
+    VPackDumper dumper(&adapter, trx->transactionContextPtr()->getVPackOptions());
     dumper.dump(slice);
 
     length = buffer->length();
@@ -2294,8 +2411,7 @@ AqlValue Functions::CharLength(ExpressionContext*,
 }
 
 /// @brief function LOWER
-AqlValue Functions::Lower(ExpressionContext*,
-                          transaction::Methods* trx,
+AqlValue Functions::Lower(ExpressionContext*, transaction::Methods* trx,
                           VPackFunctionParameters const& parameters) {
   std::string utf8;
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
@@ -2305,8 +2421,7 @@ AqlValue Functions::Lower(ExpressionContext*,
 
   ::appendAsString(trx, adapter, value);
 
-  UnicodeString unicodeStr(buffer->c_str(),
-                           static_cast<int32_t>(buffer->length()));
+  UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
   unicodeStr.toLower(nullptr);
   unicodeStr.toUTF8String(utf8);
 
@@ -2314,8 +2429,7 @@ AqlValue Functions::Lower(ExpressionContext*,
 }
 
 /// @brief function UPPER
-AqlValue Functions::Upper(ExpressionContext*,
-                          transaction::Methods* trx,
+AqlValue Functions::Upper(ExpressionContext*, transaction::Methods* trx,
                           VPackFunctionParameters const& parameters) {
   std::string utf8;
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
@@ -2325,8 +2439,7 @@ AqlValue Functions::Upper(ExpressionContext*,
 
   ::appendAsString(trx, adapter, value);
 
-  UnicodeString unicodeStr(buffer->c_str(),
-                           static_cast<int32_t>(buffer->length()));
+  UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
   unicodeStr.toUpper(nullptr);
   unicodeStr.toUTF8String(utf8);
 
@@ -2334,8 +2447,7 @@ AqlValue Functions::Upper(ExpressionContext*,
 }
 
 /// @brief function SUBSTRING
-AqlValue Functions::Substring(ExpressionContext*,
-                              transaction::Methods* trx,
+AqlValue Functions::Substring(ExpressionContext*, transaction::Methods* trx,
                               VPackFunctionParameters const& parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -2345,20 +2457,17 @@ AqlValue Functions::Substring(ExpressionContext*,
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
 
   ::appendAsString(trx, adapter, value);
-  UnicodeString unicodeStr(buffer->c_str(),
-                           static_cast<int32_t>(buffer->length()));
+  UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
 
-  int32_t offset = static_cast<int32_t>(
-      extractFunctionParameterValue(parameters, 1).toInt64(trx));
+  int32_t offset =
+      static_cast<int32_t>(extractFunctionParameterValue(parameters, 1).toInt64(trx));
 
   if (parameters.size() == 3) {
-    length = static_cast<int32_t>(
-        extractFunctionParameterValue(parameters, 2).toInt64(trx));
+    length = static_cast<int32_t>(extractFunctionParameterValue(parameters, 2).toInt64(trx));
   }
 
   if (offset < 0) {
-    offset = unicodeStr.moveIndex32(
-        unicodeStr.moveIndex32(unicodeStr.length(), 0), offset);
+    offset = unicodeStr.moveIndex32(unicodeStr.moveIndex32(unicodeStr.length(), 0), offset);
   } else {
     offset = unicodeStr.moveIndex32(0, offset);
   }
@@ -2407,8 +2516,7 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
       str = it.value.getStringUnchecked(length);
       replacePatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
     }
-  }
-  else {
+  } else {
     if (parameters.size() < 2) {
       ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
       return AqlValue(AqlValueHintNull());
@@ -2428,8 +2536,7 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
         char const* str = it.getStringUnchecked(length);
         matchPatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
       }
-    }
-    else {
+    } else {
       if (!search.isString()) {
         ::registerInvalidArgumentWarning(expressionContext, AFN);
         return AqlValue(AqlValueHintNull());
@@ -2452,16 +2559,14 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
           char const* str = it.getString(length);
           replacePatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
         }
-      }
-      else if (replace.isString()) {
+      } else if (replace.isString()) {
         // If we have a string as replacement,
         // it counts in for all found values.
         replaceWasPlainString = true;
         arangodb::velocypack::ValueLength length;
         char const* str = rslice.getString(length);
         replacePatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
-      }
-      else {
+      } else {
         ::registerInvalidArgumentWarning(expressionContext, AFN);
         return AqlValue(AqlValueHintNull());
       }
@@ -2470,7 +2575,8 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
 
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   if ((limit == 0) || (matchPatterns.size() == 0)) {
-    // if the limit is 0, or we don't have any match pattern, return the source string.
+    // if the limit is 0, or we don't have any match pattern, return the source
+    // string.
     return AqlValue(value);
   }
 
@@ -2487,7 +2593,8 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
   UErrorCode status = U_ZERO_ERROR;
   for (auto const& searchStr : matchPatterns) {
     // create a vector of string searches
-    searchVec.push_back(std::make_unique<StringSearch>(searchStr, unicodeStr, locale, nullptr, status));
+    searchVec.push_back(std::make_unique<StringSearch>(searchStr, unicodeStr,
+                                                       locale, nullptr, status));
     if (U_FAILURE(status)) {
       ::registerICUWarning(expressionContext, AFN, status);
       return AqlValue(AqlValueHintNull());
@@ -2539,10 +2646,9 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
     // from last match to this match, copy the original string.
     result.append(unicodeStr, lastStart, pos - lastStart);
     if (replacePatterns.size() != 0) {
-      if (replacePatterns.size() > (size_t) which) {
+      if (replacePatterns.size() > (size_t)which) {
         result.append(replacePatterns[which]);
-      }
-      else if (replaceWasPlainString) {
+      } else if (replaceWasPlainString) {
         result.append(replacePatterns[0]);
       }
     }
@@ -2559,8 +2665,7 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
     }
     if (pos != USEARCH_DONE) {
       mLen = search->getMatchedLength();
-    }
-    else {
+    } else {
       mLen = -1;
     }
     srchResultPtrs[which] = std::make_pair(pos, mLen);
@@ -2575,7 +2680,7 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
       int32_t thisPos;
       thisPos = searchPair.first;
       if ((thisPos != USEARCH_DONE) && (thisPos < lastStart)) {
-        auto &search = searchVec[which];
+        auto& search = searchVec[which];
         pos = thisPos;
         while ((pos < lastStart) && (pos != USEARCH_DONE)) {
           pos = search->next(status);
@@ -2592,7 +2697,7 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
       which++;
     }
 
-    count ++;
+    count++;
     if ((limit != -1) && (count >= limit)) {
       // Do we have a limit count?
       break;
@@ -2620,8 +2725,8 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
 AqlValue Functions::Left(ExpressionContext*, transaction::Methods* trx,
                          VPackFunctionParameters const& parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
-  uint32_t length = static_cast<int32_t>(
-      extractFunctionParameterValue(parameters, 1).toInt64(trx));
+  uint32_t length =
+      static_cast<int32_t>(extractFunctionParameterValue(parameters, 1).toInt64(trx));
 
   std::string utf8;
   transaction::StringBufferLeaser buffer(trx);
@@ -2629,22 +2734,19 @@ AqlValue Functions::Left(ExpressionContext*, transaction::Methods* trx,
 
   ::appendAsString(trx, adapter, value);
 
-  UnicodeString unicodeStr(buffer->c_str(),
-                           static_cast<int32_t>(buffer->length()));
-  UnicodeString left =
-      unicodeStr.tempSubString(0, unicodeStr.moveIndex32(0, length));
+  UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+  UnicodeString left = unicodeStr.tempSubString(0, unicodeStr.moveIndex32(0, length));
 
   left.toUTF8String(utf8);
   return AqlValue(utf8);
 }
 
 /// @brief function RIGHT
-AqlValue Functions::Right(ExpressionContext*,
-                          transaction::Methods* trx,
+AqlValue Functions::Right(ExpressionContext*, transaction::Methods* trx,
                           VPackFunctionParameters const& parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
-  uint32_t length = static_cast<int32_t>(
-      extractFunctionParameterValue(parameters, 1).toInt64(trx));
+  uint32_t length =
+      static_cast<int32_t>(extractFunctionParameterValue(parameters, 1).toInt64(trx));
 
   std::string utf8;
   transaction::StringBufferLeaser buffer(trx);
@@ -2652,21 +2754,18 @@ AqlValue Functions::Right(ExpressionContext*,
 
   ::appendAsString(trx, adapter, value);
 
-  UnicodeString unicodeStr(buffer->c_str(),
-                           static_cast<int32_t>(buffer->length()));
-  UnicodeString right = unicodeStr.tempSubString(unicodeStr.moveIndex32(
-      unicodeStr.length(), -static_cast<int32_t>(length)));
+  UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+  UnicodeString right = unicodeStr.tempSubString(
+      unicodeStr.moveIndex32(unicodeStr.length(), -static_cast<int32_t>(length)));
 
   right.toUTF8String(utf8);
   return AqlValue(utf8);
 }
 
 namespace {
-void ltrimInternal(uint32_t& startOffset, uint32_t& endOffset,
-                   UnicodeString& unicodeStr, uint32_t numWhitespaces,
-                   UChar32* spaceChars) {
-  for (; startOffset < endOffset;
-       startOffset = unicodeStr.moveIndex32(startOffset, 1)) {
+void ltrimInternal(uint32_t& startOffset, uint32_t& endOffset, UnicodeString& unicodeStr,
+                   uint32_t numWhitespaces, UChar32* spaceChars) {
+  for (; startOffset < endOffset; startOffset = unicodeStr.moveIndex32(startOffset, 1)) {
     bool found = false;
 
     for (uint32_t pos = 0; pos < numWhitespaces; pos++) {
@@ -2681,9 +2780,8 @@ void ltrimInternal(uint32_t& startOffset, uint32_t& endOffset,
     }
   }  // for
 }
-void rtrimInternal(uint32_t& startOffset, uint32_t& endOffset,
-                   UnicodeString& unicodeStr, uint32_t numWhitespaces,
-                   UChar32* spaceChars) {
+void rtrimInternal(uint32_t& startOffset, uint32_t& endOffset, UnicodeString& unicodeStr,
+                   uint32_t numWhitespaces, UChar32* spaceChars) {
   for (uint32_t codeUnitPos = unicodeStr.moveIndex32(unicodeStr.length(), -1);
        startOffset < codeUnitPos;
        codeUnitPos = unicodeStr.moveIndex32(codeUnitPos, -1)) {
@@ -2702,11 +2800,10 @@ void rtrimInternal(uint32_t& startOffset, uint32_t& endOffset,
     }
   }  // for
 }
-}
+}  // namespace
 
 /// @brief function TRIM
-AqlValue Functions::Trim(ExpressionContext* expressionContext,
-                         transaction::Methods* trx,
+AqlValue Functions::Trim(ExpressionContext* expressionContext, transaction::Methods* trx,
                          VPackFunctionParameters const& parameters) {
   static char const* AFN = "TRIM";
 
@@ -2714,8 +2811,7 @@ AqlValue Functions::Trim(ExpressionContext* expressionContext,
   transaction::StringBufferLeaser buffer(trx);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
   ::appendAsString(trx, adapter, value);
-  UnicodeString unicodeStr(buffer->c_str(),
-                           static_cast<int32_t>(buffer->length()));
+  UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
 
   int64_t howToTrim = 0;
   UnicodeString whitespace("\r\n\t ");
@@ -2732,8 +2828,8 @@ AqlValue Functions::Trim(ExpressionContext* expressionContext,
     } else if (optional.isString()) {
       buffer->clear();
       ::appendAsString(trx, adapter, optional);
-      whitespace = UnicodeString(buffer->c_str(),
-                                 static_cast<int32_t>(buffer->length()));
+      whitespace =
+          UnicodeString(buffer->c_str(), static_cast<int32_t>(buffer->length()));
     }
   }
 
@@ -2750,25 +2846,21 @@ AqlValue Functions::Trim(ExpressionContext* expressionContext,
   uint32_t startOffset = 0, endOffset = unicodeStr.length();
 
   if (howToTrim <= 1) {
-    ltrimInternal(startOffset, endOffset, unicodeStr, numWhitespaces,
-                  spaceChars.get());
+    ltrimInternal(startOffset, endOffset, unicodeStr, numWhitespaces, spaceChars.get());
   }
 
   if (howToTrim == 2 || howToTrim == 0) {
-    rtrimInternal(startOffset, endOffset, unicodeStr, numWhitespaces,
-                  spaceChars.get());
+    rtrimInternal(startOffset, endOffset, unicodeStr, numWhitespaces, spaceChars.get());
   }
 
-  UnicodeString result =
-      unicodeStr.tempSubString(startOffset, endOffset - startOffset);
+  UnicodeString result = unicodeStr.tempSubString(startOffset, endOffset - startOffset);
   std::string utf8;
   result.toUTF8String(utf8);
   return AqlValue(utf8);
 }
 
 /// @brief function LTRIM
-AqlValue Functions::LTrim(ExpressionContext* expressionContext,
-                          transaction::Methods* trx,
+AqlValue Functions::LTrim(ExpressionContext* expressionContext, transaction::Methods* trx,
                           VPackFunctionParameters const& parameters) {
   static char const* AFN = "LTRIM";
 
@@ -2776,16 +2868,14 @@ AqlValue Functions::LTrim(ExpressionContext* expressionContext,
   transaction::StringBufferLeaser buffer(trx);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
   ::appendAsString(trx, adapter, value);
-  UnicodeString unicodeStr(buffer->c_str(),
-                           static_cast<int32_t>(buffer->length()));
+  UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
   UnicodeString whitespace("\r\n\t ");
 
   if (parameters.size() == 2) {
     AqlValue const& pWhitespace = extractFunctionParameterValue(parameters, 1);
     buffer->clear();
     ::appendAsString(trx, adapter, pWhitespace);
-    whitespace =
-        UnicodeString(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+    whitespace = UnicodeString(buffer->c_str(), static_cast<int32_t>(buffer->length()));
   }
 
   uint32_t numWhitespaces = whitespace.countChar32();
@@ -2800,19 +2890,16 @@ AqlValue Functions::LTrim(ExpressionContext* expressionContext,
 
   uint32_t startOffset = 0, endOffset = unicodeStr.length();
 
-  ltrimInternal(startOffset, endOffset, unicodeStr, numWhitespaces,
-                spaceChars.get());
+  ltrimInternal(startOffset, endOffset, unicodeStr, numWhitespaces, spaceChars.get());
 
-  UnicodeString result =
-      unicodeStr.tempSubString(startOffset, endOffset - startOffset);
+  UnicodeString result = unicodeStr.tempSubString(startOffset, endOffset - startOffset);
   std::string utf8;
   result.toUTF8String(utf8);
   return AqlValue(utf8);
 }
 
 /// @brief function RTRIM
-AqlValue Functions::RTrim(ExpressionContext* expressionContext,
-                          transaction::Methods* trx,
+AqlValue Functions::RTrim(ExpressionContext* expressionContext, transaction::Methods* trx,
                           VPackFunctionParameters const& parameters) {
   static char const* AFN = "RTRIM";
 
@@ -2820,16 +2907,14 @@ AqlValue Functions::RTrim(ExpressionContext* expressionContext,
   transaction::StringBufferLeaser buffer(trx);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
   ::appendAsString(trx, adapter, value);
-  UnicodeString unicodeStr(buffer->c_str(),
-                           static_cast<int32_t>(buffer->length()));
+  UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
   UnicodeString whitespace("\r\n\t ");
 
   if (parameters.size() == 2) {
     AqlValue const& pWhitespace = extractFunctionParameterValue(parameters, 1);
     buffer->clear();
     ::appendAsString(trx, adapter, pWhitespace);
-    whitespace =
-        UnicodeString(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+    whitespace = UnicodeString(buffer->c_str(), static_cast<int32_t>(buffer->length()));
   }
 
   uint32_t numWhitespaces = whitespace.countChar32();
@@ -2844,19 +2929,16 @@ AqlValue Functions::RTrim(ExpressionContext* expressionContext,
 
   uint32_t startOffset = 0, endOffset = unicodeStr.length();
 
-  rtrimInternal(startOffset, endOffset, unicodeStr, numWhitespaces,
-                spaceChars.get());
+  rtrimInternal(startOffset, endOffset, unicodeStr, numWhitespaces, spaceChars.get());
 
-  UnicodeString result =
-      unicodeStr.tempSubString(startOffset, endOffset - startOffset);
+  UnicodeString result = unicodeStr.tempSubString(startOffset, endOffset - startOffset);
   std::string utf8;
   result.toUTF8String(utf8);
   return AqlValue(utf8);
 }
 
 /// @brief function LIKE
-AqlValue Functions::Like(ExpressionContext* expressionContext,
-                         transaction::Methods* trx,
+AqlValue Functions::Like(ExpressionContext* expressionContext, transaction::Methods* trx,
                          VPackFunctionParameters const& parameters) {
   static char const* AFN = "LIKE";
 
@@ -2869,8 +2951,8 @@ AqlValue Functions::Like(ExpressionContext* expressionContext,
   ::appendAsString(trx, adapter, regex);
 
   // the matcher is owned by the context!
-  ::RegexMatcher* matcher = expressionContext->buildLikeMatcher(
-      buffer->c_str(), buffer->length(), caseInsensitive);
+  ::RegexMatcher* matcher =
+      expressionContext->buildLikeMatcher(buffer->c_str(), buffer->length(), caseInsensitive);
 
   if (matcher == nullptr) {
     // compiling regular expression failed
@@ -2897,8 +2979,7 @@ AqlValue Functions::Like(ExpressionContext* expressionContext,
 }
 
 /// @brief function SPLIT
-AqlValue Functions::Split(ExpressionContext* expressionContext,
-                          transaction::Methods* trx,
+AqlValue Functions::Split(ExpressionContext* expressionContext, transaction::Methods* trx,
                           VPackFunctionParameters const& parameters) {
   static char const* AFN = "SPLIT";
 
@@ -2943,14 +3024,15 @@ AqlValue Functions::Split(ExpressionContext* expressionContext,
     return AqlValue(result);
   }
 
-   // Get ready for ICU
+  // Get ready for ICU
   transaction::StringBufferLeaser buffer(trx);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
   Stringify(trx, adapter, aqlValueToSplit.slice());
   UnicodeString valueToSplit(buffer->c_str(), static_cast<int32_t>(buffer->length()));
   bool isEmptyExpression = false;
   // the matcher is owned by the context!
-  ::RegexMatcher* matcher = expressionContext->buildSplitMatcher(aqlSeparatorExpression, trx, isEmptyExpression);
+  ::RegexMatcher* matcher =
+      expressionContext->buildSplitMatcher(aqlSeparatorExpression, trx, isEmptyExpression);
 
   if (matcher == nullptr) {
     // compiling regular expression failed
@@ -2961,7 +3043,8 @@ AqlValue Functions::Split(ExpressionContext* expressionContext,
   VPackBuilder result;
   result.openArray();
   if (!isEmptyExpression && (buffer->length() == 0)) {
-    // Edge case: splitting an empty string by non-empty expression produces an empty string again.
+    // Edge case: splitting an empty string by non-empty expression produces an
+    // empty string again.
     result.add(VPackValue(""));
     result.close();
     return AqlValue(result);
@@ -2982,19 +3065,19 @@ AqlValue Functions::Split(ExpressionContext* expressionContext,
     }
 
     if ((copyThisTime > 0) && (copyThisTime > nrResults)) {
-      // last hit is the remaining string to be fed into split in a subsequent invocation
-      copyThisTime --;
+      // last hit is the remaining string to be fed into split in a subsequent
+      // invocation
+      copyThisTime--;
     }
 
     if ((copyThisTime > 0) && ((copyThisTime == nrResults) || isEmptyExpression)) {
       // ICU will give us a traling empty string we don't care for if we split
       // with empty strings.
-      copyThisTime --;
+      copyThisTime--;
     }
 
     int64_t i = 0;
-    while ((i < copyThisTime) &&
-           ((limitNumber < 0 ) || (totalCount < limitNumber))) {
+    while ((i < copyThisTime) && ((limitNumber < 0) || (totalCount < limitNumber))) {
       if ((i == 0) && isEmptyExpression) {
         // ICU will give us an empty string that we don't care for
         // as first value of one match-chunk
@@ -3008,15 +3091,14 @@ AqlValue Functions::Split(ExpressionContext* expressionContext,
       totalCount++;
     }
 
-    if (((uCount != nrResults)) || // fetch any / found less then N
-        ((limitNumber >= 0) && (totalCount >= limitNumber))) { // fetch N
+    if (((uCount != nrResults)) ||  // fetch any / found less then N
+        ((limitNumber >= 0) && (totalCount >= limitNumber))) {  // fetch N
       break;
     }
     // ok, we have more to parse in the last result slot, reiterate with it:
-    if(uCount == nrResults) {
+    if (uCount == nrResults) {
       valueToSplit = uResults[nrResults - 1];
-    }
-    else {
+    } else {
       // should not go beyound the last match!
       TRI_ASSERT(false);
       break;
@@ -3029,8 +3111,8 @@ AqlValue Functions::Split(ExpressionContext* expressionContext,
 
 /// @brief function REGEX_MATCHES
 AqlValue Functions::RegexMatches(ExpressionContext* expressionContext,
-                                transaction::Methods* trx,
-                                VPackFunctionParameters const& parameters) {
+                                 transaction::Methods* trx,
+                                 VPackFunctionParameters const& parameters) {
   static char const* AFN = "REGEX_MATCHES";
 
   AqlValue const& aqlValueToMatch = extractFunctionParameterValue(parameters, 0);
@@ -3054,7 +3136,8 @@ AqlValue Functions::RegexMatches(ExpressionContext* expressionContext,
   bool isEmptyExpression = (buffer->length() == 0);
 
   // the matcher is owned by the context!
-  ::RegexMatcher* matcher = expressionContext->buildRegexMatcher(buffer->c_str(), buffer->length(), caseInsensitive);
+  ::RegexMatcher* matcher =
+      expressionContext->buildRegexMatcher(buffer->c_str(), buffer->length(), caseInsensitive);
 
   if (matcher == nullptr) {
     ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
@@ -3070,7 +3153,8 @@ AqlValue Functions::RegexMatches(ExpressionContext* expressionContext,
   result.openArray();
 
   if (!isEmptyExpression && (buffer->length() == 0)) {
-    // Edge case: splitting an empty string by non-empty expression produces an empty string again.
+    // Edge case: splitting an empty string by non-empty expression produces an
+    // empty string again.
     result.add(VPackValue(""));
     result.close();
     return AqlValue(result);
@@ -3146,8 +3230,8 @@ AqlValue Functions::RegexSplit(ExpressionContext* expressionContext,
   bool isEmptyExpression = (buffer->length() == 0);
 
   // the matcher is owned by the context!
-  ::RegexMatcher* matcher = expressionContext->buildRegexMatcher(
-      buffer->c_str(), buffer->length(), caseInsensitive);
+  ::RegexMatcher* matcher =
+      expressionContext->buildRegexMatcher(buffer->c_str(), buffer->length(), caseInsensitive);
 
   if (matcher == nullptr) {
     ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
@@ -3162,7 +3246,8 @@ AqlValue Functions::RegexSplit(ExpressionContext* expressionContext,
   VPackBuilder result;
   result.openArray();
   if (!isEmptyExpression && (buffer->length() == 0)) {
-    // Edge case: splitting an empty string by non-empty expression produces an empty string again.
+    // Edge case: splitting an empty string by non-empty expression produces an
+    // empty string again.
     result.add(VPackValue(""));
     result.close();
     return AqlValue(result);
@@ -3183,19 +3268,19 @@ AqlValue Functions::RegexSplit(ExpressionContext* expressionContext,
     }
 
     if ((copyThisTime > 0) && (copyThisTime > nrResults)) {
-      // last hit is the remaining string to be fed into split in a subsequent invocation
-      copyThisTime --;
+      // last hit is the remaining string to be fed into split in a subsequent
+      // invocation
+      copyThisTime--;
     }
 
     if ((copyThisTime > 0) && ((copyThisTime == nrResults) || isEmptyExpression)) {
       // ICU will give us a traling empty string we don't care for if we split
       // with empty strings.
-      copyThisTime --;
+      copyThisTime--;
     }
 
     int64_t i = 0;
-    while (i < copyThisTime &&
-        (limitNumber < 0 || totalCount < limitNumber)) {
+    while (i < copyThisTime && (limitNumber < 0 || totalCount < limitNumber)) {
       if ((i == 0) && isEmptyExpression) {
         // ICU will give us an empty string that we don't care for
         // as first value of one match-chunk
@@ -3209,8 +3294,8 @@ AqlValue Functions::RegexSplit(ExpressionContext* expressionContext,
       totalCount++;
     }
 
-    if (uCount != nrResults || // fetch any / found less then N
-        (limitNumber >= 0 && totalCount >= limitNumber)) { // fetch N
+    if (uCount != nrResults ||  // fetch any / found less then N
+        (limitNumber >= 0 && totalCount >= limitNumber)) {  // fetch N
       break;
     }
     // ok, we have more to parse in the last result slot, reiterate with it:
@@ -3242,8 +3327,8 @@ AqlValue Functions::RegexTest(ExpressionContext* expressionContext,
   ::appendAsString(trx, adapter, regex);
 
   // the matcher is owned by the context!
-  ::RegexMatcher* matcher = expressionContext->buildRegexMatcher(
-      buffer->c_str(), buffer->length(), caseInsensitive);
+  ::RegexMatcher* matcher =
+      expressionContext->buildRegexMatcher(buffer->c_str(), buffer->length(), caseInsensitive);
 
   if (matcher == nullptr) {
     // compiling regular expression failed
@@ -3284,8 +3369,8 @@ AqlValue Functions::RegexReplace(ExpressionContext* expressionContext,
   ::appendAsString(trx, adapter, regex);
 
   // the matcher is owned by the context!
-  ::RegexMatcher* matcher = expressionContext->buildRegexMatcher(
-      buffer->c_str(), buffer->length(), caseInsensitive);
+  ::RegexMatcher* matcher =
+      expressionContext->buildRegexMatcher(buffer->c_str(), buffer->length(), caseInsensitive);
 
   if (matcher == nullptr) {
     // compiling regular expression failed
@@ -3319,8 +3404,8 @@ AqlValue Functions::RegexReplace(ExpressionContext* expressionContext,
 /// @brief function DATE_NOW
 AqlValue Functions::DateNow(ExpressionContext*, transaction::Methods*,
                             VPackFunctionParameters const&) {
-  auto millis =
-      std::chrono::duration_cast<duration<int64_t, std::milli>>(system_clock::now().time_since_epoch());
+  auto millis = std::chrono::duration_cast<duration<int64_t, std::milli>>(
+      system_clock::now().time_since_epoch());
   uint64_t dur = millis.count();
   return AqlValue(AqlValueHintUInt(dur));
 }
@@ -3372,8 +3457,7 @@ AqlValue Functions::DateDayOfWeek(ExpressionContext* expressionContext,
 }
 
 /// @brief function DATE_YEAR
-AqlValue Functions::DateYear(ExpressionContext* expressionContext,
-                             transaction::Methods* trx,
+AqlValue Functions::DateYear(ExpressionContext* expressionContext, transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
   static char const* AFN = "DATE_YEAR";
   tp_sys_clock_ms tp;
@@ -3404,8 +3488,7 @@ AqlValue Functions::DateMonth(ExpressionContext* expressionContext,
 }
 
 /// @brief function DATE_DAY
-AqlValue Functions::DateDay(ExpressionContext* expressionContext,
-                            transaction::Methods* trx,
+AqlValue Functions::DateDay(ExpressionContext* expressionContext, transaction::Methods* trx,
                             VPackFunctionParameters const& parameters) {
   static char const* AFN = "DATE_DAY";
   tp_sys_clock_ms tp;
@@ -3421,8 +3504,7 @@ AqlValue Functions::DateDay(ExpressionContext* expressionContext,
 }
 
 /// @brief function DATE_HOUR
-AqlValue Functions::DateHour(ExpressionContext* expressionContext,
-                             transaction::Methods* trx,
+AqlValue Functions::DateHour(ExpressionContext* expressionContext, transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
   static char const* AFN = "DATE_HOUR";
   tp_sys_clock_ms tp;
@@ -3498,8 +3580,7 @@ AqlValue Functions::DateDayOfYear(ExpressionContext* expressionContext,
   auto yyyy = year{ymd.year()};
   // we construct the date with the first day in the year:
   auto firstDayInYear = yyyy / jan / day{0};
-  uint64_t daysSinceFirst =
-      duration_cast<days>(tp - sys_days(firstDayInYear)).count();
+  uint64_t daysSinceFirst = duration_cast<days>(tp - sys_days(firstDayInYear)).count();
 
   return AqlValue(AqlValueHintUInt(daysSinceFirst));
 }
@@ -3578,8 +3659,8 @@ AqlValue Functions::DateDaysInMonth(ExpressionContext* expressionContext,
 
 /// @brief function DATE_TRUNC
 AqlValue Functions::DateTrunc(ExpressionContext* expressionContext,
-                            transaction::Methods* trx,
-                            VPackFunctionParameters const& parameters) {
+                              transaction::Methods* trx,
+                              VPackFunctionParameters const& parameters) {
   static char const* AFN = "DATE_TRUNC";
   using namespace std::chrono;
   using namespace date;
@@ -3592,7 +3673,7 @@ AqlValue Functions::DateTrunc(ExpressionContext* expressionContext,
 
   AqlValue const& durationType = extractFunctionParameterValue(parameters, 1);
 
-  if (!durationType.isString()) { // unit type must be string
+  if (!durationType.isString()) {  // unit type must be string
     ::registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
   }
@@ -3604,9 +3685,9 @@ AqlValue Functions::DateTrunc(ExpressionContext* expressionContext,
   auto day_time = make_time(tp - sys_days(ymd));
   milliseconds ms{0};
   if (duration == "y" || duration == "year" || duration == "years") {
-    ymd = year{ymd.year()}/jan/day{1};
+    ymd = year{ymd.year()} / jan / day{1};
   } else if (duration == "m" || duration == "month" || duration == "months") {
-    ymd = year{ymd.year()}/ymd.month()/day{1};
+    ymd = year{ymd.year()} / ymd.month() / day{1};
   } else if (duration == "d" || duration == "day" || duration == "days") {
     ;
     // this would be: ymd = year{ymd.year()}/ymd.month()/ymd.day();
@@ -3618,7 +3699,8 @@ AqlValue Functions::DateTrunc(ExpressionContext* expressionContext,
     ms = day_time.hours() + day_time.minutes();
   } else if (duration == "s" || duration == "second" || duration == "seconds") {
     ms = day_time.to_duration() - day_time.subseconds();
-  } else if (duration == "f" || duration == "millisecond" || duration == "milliseconds") {
+  } else if (duration == "f" || duration == "millisecond" ||
+             duration == "milliseconds") {
     ms = day_time.to_duration();
   } else {
     ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
@@ -3626,12 +3708,11 @@ AqlValue Functions::DateTrunc(ExpressionContext* expressionContext,
   }
   tp = tp_sys_clock_ms{sys_days(ymd) + ms};
 
-  return AqlValue( format("%FT%TZ", floor<milliseconds>(tp) ));
+  return AqlValue(format("%FT%TZ", floor<milliseconds>(tp)));
 }
 
 /// @brief function DATE_ADD
-AqlValue Functions::DateAdd(ExpressionContext* expressionContext,
-                            transaction::Methods* trx,
+AqlValue Functions::DateAdd(ExpressionContext* expressionContext, transaction::Methods* trx,
                             VPackFunctionParameters const& parameters) {
   static char const* AFN = "DATE_ADD";
   tp_sys_clock_ms tp;
@@ -3715,8 +3796,7 @@ AqlValue Functions::DateSubtract(ExpressionContext* expressionContext,
 }
 
 /// @brief function DATE_DIFF
-AqlValue Functions::DateDiff(ExpressionContext* expressionContext,
-                             transaction::Methods* trx,
+AqlValue Functions::DateDiff(ExpressionContext* expressionContext, transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
   static char const* AFN = "DATE_DIFF";
   // Extract first date
@@ -3754,38 +3834,28 @@ AqlValue Functions::DateDiff(ExpressionContext* expressionContext,
 
   switch (flag) {
     case YEAR:
-      diff = duration_cast<duration<
-          double, std::ratio_multiply<std::ratio<146097, 400>, days::period>>>(
-                 diffDuration)
-                 .count();
-      break;
-    case MONTH:
       diff =
-          duration_cast<
-              duration<double, std::ratio_divide<years::period, std::ratio<12>>>>(
-              diffDuration)
+          duration_cast<duration<double, std::ratio_multiply<std::ratio<146097, 400>, days::period>>>(diffDuration)
               .count();
       break;
+    case MONTH:
+      diff = duration_cast<duration<double, std::ratio_divide<years::period, std::ratio<12>>>>(diffDuration)
+                 .count();
+      break;
     case WEEK:
-      diff = duration_cast<
-                 duration<double, std::ratio_multiply<std::ratio<7>, days::period>>>(
-                 diffDuration)
+      diff = duration_cast<duration<double, std::ratio_multiply<std::ratio<7>, days::period>>>(diffDuration)
                  .count();
       break;
     case DAY:
-      diff = duration_cast<duration<
-          double,
-          std::ratio_multiply<std::ratio<24>, std::chrono::hours::period>>>(
+      diff = duration_cast<duration<double, std::ratio_multiply<std::ratio<24>, std::chrono::hours::period>>>(
                  diffDuration)
                  .count();
       break;
     case HOUR:
-      diff =
-          duration_cast<duration<double, std::ratio<3600>>>(diffDuration).count();
+      diff = duration_cast<duration<double, std::ratio<3600>>>(diffDuration).count();
       break;
     case MINUTE:
-      diff =
-          duration_cast<duration<double, std::ratio<60>>>(diffDuration).count();
+      diff = duration_cast<duration<double, std::ratio<60>>>(diffDuration).count();
       break;
     case SECOND:
       diff = duration_cast<duration<double>>(diffDuration).count();
@@ -3821,8 +3891,7 @@ AqlValue Functions::DateCompare(ExpressionContext* expressionContext,
 
   AqlValue const& rangeStartValue = extractFunctionParameterValue(parameters, 2);
 
-  DateSelectionModifier rangeStart =
-      ::parseDateModifierFlag(rangeStartValue.slice());
+  DateSelectionModifier rangeStart = ::parseDateModifierFlag(rangeStartValue.slice());
 
   if (rangeStart == INVALID) {
     ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
@@ -3922,8 +3991,7 @@ AqlValue Functions::DateCompare(ExpressionContext* expressionContext,
 }
 
 /// @brief function PASSTHRU
-AqlValue Functions::Passthru(ExpressionContext*,
-                             transaction::Methods* trx,
+AqlValue Functions::Passthru(ExpressionContext*, transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
   if (parameters.empty()) {
     return AqlValue(AqlValueHintNull());
@@ -3933,8 +4001,7 @@ AqlValue Functions::Passthru(ExpressionContext*,
 }
 
 /// @brief function UNSET
-AqlValue Functions::Unset(ExpressionContext* expressionContext,
-                          transaction::Methods* trx,
+AqlValue Functions::Unset(ExpressionContext* expressionContext, transaction::Methods* trx,
                           VPackFunctionParameters const& parameters) {
   static char const* AFN = "UNSET";
 
@@ -4042,8 +4109,7 @@ AqlValue Functions::Translate(ExpressionContext* expressionContext,
 }
 
 /// @brief function MERGE
-AqlValue Functions::Merge(ExpressionContext* expressionContext,
-                          transaction::Methods* trx,
+AqlValue Functions::Merge(ExpressionContext* expressionContext, transaction::Methods* trx,
                           VPackFunctionParameters const& parameters) {
   return ::mergeParameters(expressionContext, trx, parameters, "MERGE", false);
 }
@@ -4100,7 +4166,7 @@ AqlValue Functions::Attributes(ExpressionContext* expressionContext,
   if (!value.isObject()) {
     // not an object
     ::registerWarning(expressionContext, "ATTRIBUTES",
-                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+                      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -4116,9 +4182,7 @@ AqlValue Functions::Attributes(ExpressionContext* expressionContext,
   VPackSlice slice = materializer.slice(value, false);
 
   if (doSort) {
-    std::set<std::string,
-             arangodb::basics::VelocyPackHelper::AttributeSorterUTF8>
-        keys;
+    std::set<std::string, arangodb::basics::VelocyPackHelper::AttributeSorterUTF8> keys;
 
     VPackCollection::keys(slice, keys);
     VPackBuilder result;
@@ -4151,8 +4215,7 @@ AqlValue Functions::Attributes(ExpressionContext* expressionContext,
 }
 
 /// @brief function VALUES
-AqlValue Functions::Values(ExpressionContext* expressionContext,
-                           transaction::Methods* trx,
+AqlValue Functions::Values(ExpressionContext* expressionContext, transaction::Methods* trx,
                            VPackFunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -4165,7 +4228,7 @@ AqlValue Functions::Values(ExpressionContext* expressionContext,
   if (!value.isObject()) {
     // not an object
     ::registerWarning(expressionContext, "VALUES",
-                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+                      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -4225,8 +4288,7 @@ AqlValue Functions::Min(ExpressionContext* expressionContext, transaction::Metho
       continue;
     }
     if (minValue.isNone() ||
-        arangodb::basics::VelocyPackHelper::compare(it, minValue, true,
-                                                    options) < 0) {
+        arangodb::basics::VelocyPackHelper::compare(it, minValue, true, options) < 0) {
       minValue = it;
     }
   }
@@ -4253,8 +4315,7 @@ AqlValue Functions::Max(ExpressionContext* expressionContext, transaction::Metho
   auto options = trx->transactionContextPtr()->getVPackOptions();
   for (auto const& it : VPackArrayIterator(slice)) {
     if (maxValue.isNone() ||
-        arangodb::basics::VelocyPackHelper::compare(it, maxValue, true,
-                                                    options) > 0) {
+        arangodb::basics::VelocyPackHelper::compare(it, maxValue, true, options) > 0) {
       maxValue = it;
     }
   }
@@ -4296,8 +4357,7 @@ AqlValue Functions::Sum(ExpressionContext* expressionContext, transaction::Metho
 }
 
 /// @brief function AVERAGE
-AqlValue Functions::Average(ExpressionContext* expressionContext,
-                            transaction::Methods* trx,
+AqlValue Functions::Average(ExpressionContext* expressionContext, transaction::Methods* trx,
                             VPackFunctionParameters const& parameters) {
   static char const* AFN = "AVERAGE";
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
@@ -4339,14 +4399,12 @@ AqlValue Functions::Average(ExpressionContext* expressionContext,
 }
 
 /// @brief function SLEEP
-AqlValue Functions::Sleep(ExpressionContext* expressionContext,
-                          transaction::Methods* trx,
+AqlValue Functions::Sleep(ExpressionContext* expressionContext, transaction::Methods* trx,
                           VPackFunctionParameters const& parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
   if (!value.isNumber() || value.toDouble(trx) < 0) {
-    ::registerWarning(expressionContext, "SLEEP",
-                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    ::registerWarning(expressionContext, "SLEEP", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -4374,16 +4432,12 @@ AqlValue Functions::Collections(ExpressionContext* expressionContext,
   auto& vocbase = expressionContext->vocbase();
   auto colls = GetCollections(vocbase);
 
-  std::sort(
-    colls.begin(),
-    colls.end(),
-    [](
-      std::shared_ptr<LogicalCollection> const& lhs,
-      std::shared_ptr<LogicalCollection> const& rhs
-    )->bool {
-      return arangodb::basics::StringUtils::tolower(lhs->name()) < arangodb::basics::StringUtils::tolower(rhs->name());
-    }
-  );
+  std::sort(colls.begin(), colls.end(),
+            [](std::shared_ptr<LogicalCollection> const& lhs,
+               std::shared_ptr<LogicalCollection> const& rhs) -> bool {
+              return arangodb::basics::StringUtils::tolower(lhs->name()) <
+                     arangodb::basics::StringUtils::tolower(rhs->name());
+            });
 
   size_t const n = colls.size();
 
@@ -4391,7 +4445,8 @@ AqlValue Functions::Collections(ExpressionContext* expressionContext,
     auto& coll = colls[i];
 
     if (ExecContext::CURRENT != nullptr &&
-        !ExecContext::CURRENT->canUseCollection(vocbase.name(), coll->name(), auth::Level::RO)) {
+        !ExecContext::CURRENT->canUseCollection(vocbase.name(), coll->name(),
+                                                auth::Level::RO)) {
       continue;
     }
 
@@ -4407,15 +4462,14 @@ AqlValue Functions::Collections(ExpressionContext* expressionContext,
 }
 
 /// @brief function RANDOM_TOKEN
-AqlValue Functions::RandomToken(ExpressionContext*,
-                                transaction::Methods* trx,
+AqlValue Functions::RandomToken(ExpressionContext*, transaction::Methods* trx,
                                 VPackFunctionParameters const& parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
   int64_t const length = value.toInt64(trx);
   if (length <= 0 || length > 65536) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "RANDOM_TOKEN");
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                  "RANDOM_TOKEN");
   }
 
   UniformCharacter JSNumGenerator(
@@ -4437,8 +4491,7 @@ AqlValue Functions::Md5(ExpressionContext*, transaction::Methods* trx,
   char* p = &hash[0];
   size_t length;
 
-  arangodb::rest::SslInterface::sslMD5(buffer->c_str(), buffer->length(), p,
-                                       length);
+  arangodb::rest::SslInterface::sslMD5(buffer->c_str(), buffer->length(), p, length);
 
   // as hex
   char hex[33];
@@ -4463,8 +4516,7 @@ AqlValue Functions::Sha1(ExpressionContext*, transaction::Methods* trx,
   char* p = &hash[0];
   size_t length;
 
-  arangodb::rest::SslInterface::sslSHA1(buffer->c_str(), buffer->length(), p,
-                                        length);
+  arangodb::rest::SslInterface::sslSHA1(buffer->c_str(), buffer->length(), p, length);
 
   // as hex
   char hex[41];
@@ -4476,8 +4528,7 @@ AqlValue Functions::Sha1(ExpressionContext*, transaction::Methods* trx,
 }
 
 /// @brief function SHA512
-AqlValue Functions::Sha512(ExpressionContext*,
-                           transaction::Methods* trx,
+AqlValue Functions::Sha512(ExpressionContext*, transaction::Methods* trx,
                            VPackFunctionParameters const& parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   transaction::StringBufferLeaser buffer(trx);
@@ -4490,8 +4541,7 @@ AqlValue Functions::Sha512(ExpressionContext*,
   char* p = &hash[0];
   size_t length;
 
-  arangodb::rest::SslInterface::sslSHA512(buffer->c_str(), buffer->length(), p,
-                                          length);
+  arangodb::rest::SslInterface::sslSHA512(buffer->c_str(), buffer->length(), p, length);
 
   // as hex
   char hex[129];
@@ -4515,8 +4565,7 @@ AqlValue Functions::Hash(ExpressionContext*, transaction::Methods* trx,
 }
 
 /// @brief function IS_KEY
-AqlValue Functions::IsKey(ExpressionContext*,
-                          transaction::Methods* trx,
+AqlValue Functions::IsKey(ExpressionContext*, transaction::Methods* trx,
                           VPackFunctionParameters const& parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   if (!value.isString()) {
@@ -4547,8 +4596,7 @@ AqlValue Functions::CountDistinct(ExpressionContext* expressionContext,
   VPackSlice slice = materializer.slice(value, false);
 
   auto options = trx->transactionContextPtr()->getVPackOptions();
-  std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackHash,
-                     arangodb::basics::VelocyPackHelper::VPackEqual>
+  std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackHash, arangodb::basics::VelocyPackHelper::VPackEqual>
       values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
              arangodb::basics::VelocyPackHelper::VPackEqual(options));
 
@@ -4562,8 +4610,7 @@ AqlValue Functions::CountDistinct(ExpressionContext* expressionContext,
 }
 
 /// @brief function UNIQUE
-AqlValue Functions::Unique(ExpressionContext* expressionContext,
-                           transaction::Methods* trx,
+AqlValue Functions::Unique(ExpressionContext* expressionContext, transaction::Methods* trx,
                            VPackFunctionParameters const& parameters) {
   static char const* AFN = "UNIQUE";
 
@@ -4579,8 +4626,7 @@ AqlValue Functions::Unique(ExpressionContext* expressionContext,
   VPackSlice slice = materializer.slice(value, false);
 
   auto options = trx->transactionContextPtr()->getVPackOptions();
-  std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackHash,
-                     arangodb::basics::VelocyPackHelper::VPackEqual>
+  std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackHash, arangodb::basics::VelocyPackHelper::VPackEqual>
       values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
              arangodb::basics::VelocyPackHelper::VPackEqual(options));
 
@@ -4618,8 +4664,7 @@ AqlValue Functions::SortedUnique(ExpressionContext* expressionContext,
 
   arangodb::basics::VelocyPackHelper::VPackLess<true> less(
       trx->transactionContext()->getVPackOptions(), &slice, &slice);
-  std::set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackLess<true>>
-      values(less);
+  std::set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackLess<true>> values(less);
   for (auto const& it : VPackArrayIterator(slice)) {
     if (!it.isNone()) {
       values.insert(it);
@@ -4636,8 +4681,7 @@ AqlValue Functions::SortedUnique(ExpressionContext* expressionContext,
 }
 
 /// @brief function SORTED
-AqlValue Functions::Sorted(ExpressionContext* expressionContext,
-                           transaction::Methods* trx,
+AqlValue Functions::Sorted(ExpressionContext* expressionContext, transaction::Methods* trx,
                            VPackFunctionParameters const& parameters) {
   static char const* AFN = "SORTED";
 
@@ -4654,9 +4698,7 @@ AqlValue Functions::Sorted(ExpressionContext* expressionContext,
 
   arangodb::basics::VelocyPackHelper::VPackLess<true> less(
       trx->transactionContext()->getVPackOptions(), &slice, &slice);
-  std::map<VPackSlice, size_t,
-           arangodb::basics::VelocyPackHelper::VPackLess<true>>
-      values(less);
+  std::map<VPackSlice, size_t, arangodb::basics::VelocyPackHelper::VPackLess<true>> values(less);
   for (auto const& it : VPackArrayIterator(slice)) {
     if (!it.isNone()) {
       auto f = values.emplace(it, 1);
@@ -4678,8 +4720,7 @@ AqlValue Functions::Sorted(ExpressionContext* expressionContext,
 }
 
 /// @brief function UNION
-AqlValue Functions::Union(ExpressionContext* expressionContext,
-                          transaction::Methods* trx,
+AqlValue Functions::Union(ExpressionContext* expressionContext, transaction::Methods* trx,
                           VPackFunctionParameters const& parameters) {
   static char const* AFN = "UNION";
 
@@ -4727,8 +4768,7 @@ AqlValue Functions::UnionDistinct(ExpressionContext* expressionContext,
   size_t const n = parameters.size();
 
   auto options = trx->transactionContextPtr()->getVPackOptions();
-  std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackHash,
-                     arangodb::basics::VelocyPackHelper::VPackEqual>
+  std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackHash, arangodb::basics::VelocyPackHelper::VPackEqual>
       values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
              arangodb::basics::VelocyPackHelper::VPackEqual(options));
 
@@ -4783,8 +4823,7 @@ AqlValue Functions::Intersection(ExpressionContext* expressionContext,
   static char const* AFN = "INTERSECTION";
 
   auto options = trx->transactionContextPtr()->getVPackOptions();
-  std::unordered_map<VPackSlice, size_t,
-                     arangodb::basics::VelocyPackHelper::VPackHash,
+  std::unordered_map<VPackSlice, size_t, arangodb::basics::VelocyPackHelper::VPackHash,
                      arangodb::basics::VelocyPackHelper::VPackEqual>
       values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
              arangodb::basics::VelocyPackHelper::VPackEqual(options));
@@ -4854,8 +4893,7 @@ AqlValue Functions::Outersection(ExpressionContext* expressionContext,
   static char const* AFN = "OUTERSECTION";
 
   auto options = trx->transactionContextPtr()->getVPackOptions();
-  std::unordered_map<VPackSlice, size_t,
-                     arangodb::basics::VelocyPackHelper::VPackHash,
+  std::unordered_map<VPackSlice, size_t, arangodb::basics::VelocyPackHelper::VPackHash,
                      arangodb::basics::VelocyPackHelper::VPackEqual>
       values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
              arangodb::basics::VelocyPackHelper::VPackEqual(options));
@@ -4906,8 +4944,7 @@ AqlValue Functions::Outersection(ExpressionContext* expressionContext,
 }
 
 /// @brief function DISTANCE
-AqlValue Functions::Distance(ExpressionContext* expressionContext,
-                             transaction::Methods* trx,
+AqlValue Functions::Distance(ExpressionContext* expressionContext, transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
   static char const* AFN = "DISTANCE";
 
@@ -4917,8 +4954,7 @@ AqlValue Functions::Distance(ExpressionContext* expressionContext,
   AqlValue const& lon2 = extractFunctionParameterValue(parameters, 3);
 
   // non-numeric input...
-  if (!lat1.isNumber() || !lon1.isNumber() || !lat2.isNumber() ||
-      !lon2.isNumber()) {
+  if (!lat1.isNumber() || !lon1.isNumber() || !lat2.isNumber() || !lon2.isNumber()) {
     ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
@@ -4948,9 +4984,8 @@ AqlValue Functions::Distance(ExpressionContext* expressionContext,
   double d1 = toRadians(lat2Value - lat1Value);
   double d2 = toRadians(lon2Value - lon1Value);
 
-  double a =
-      std::sin(d1 / 2.0) * std::sin(d1 / 2.0) +
-      std::cos(p1) * std::cos(p2) * std::sin(d2 / 2.0) * std::sin(d2 / 2.0);
+  double a = std::sin(d1 / 2.0) * std::sin(d1 / 2.0) +
+             std::cos(p1) * std::cos(p2) * std::sin(d2 / 2.0) * std::sin(d2 / 2.0);
 
   double c = 2.0 * std::atan2(std::sqrt(a), std::sqrt(1.0 - a));
   double const EARTHRADIAN = 6371000.0;  // metres
@@ -4958,11 +4993,10 @@ AqlValue Functions::Distance(ExpressionContext* expressionContext,
   return ::numberValue(EARTHRADIAN * c, true);
 }
 
-
 /// @brief function GEO_DISTANCE
 AqlValue Functions::GeoDistance(ExpressionContext* expressionContext,
-                             transaction::Methods* trx,
-                             VPackFunctionParameters const& parameters) {
+                                transaction::Methods* trx,
+                                VPackFunctionParameters const& parameters) {
   AqlValue loc1 = extractFunctionParameterValue(parameters, 0);
   AqlValue loc2 = extractFunctionParameterValue(parameters, 1);
 
@@ -4970,7 +5004,7 @@ AqlValue Functions::GeoDistance(ExpressionContext* expressionContext,
   AqlValueMaterializer mat1(trx);
   geo::ShapeContainer shape1, shape2;
   if (loc1.isArray() && loc1.length() >= 2) {
-    res = shape1.parseCoordinates(mat1.slice(loc1, true), /*geoJson*/true);
+    res = shape1.parseCoordinates(mat1.slice(loc1, true), /*geoJson*/ true);
   } else if (loc1.isObject()) {
     res = geo::geojson::parseRegion(mat1.slice(loc1, true), shape1);
   }
@@ -4982,7 +5016,7 @@ AqlValue Functions::GeoDistance(ExpressionContext* expressionContext,
   AqlValueMaterializer mat2(trx);
   res.reset(TRI_ERROR_BAD_PARAMETER, "Requires coordinate pair or GeoJSON");
   if (loc2.isArray() && loc2.length() >= 2) {
-    res = shape2.parseCoordinates(mat2.slice(loc2, true), /*geoJson*/true);
+    res = shape2.parseCoordinates(mat2.slice(loc2, true), /*geoJson*/ true);
   } else if (loc2.isObject()) {
     res = geo::geojson::parseRegion(mat2.slice(loc2, true), shape2);
   }
@@ -4998,26 +5032,29 @@ AqlValue Functions::GeoDistance(ExpressionContext* expressionContext,
 AqlValue Functions::GeoContains(ExpressionContext* expressionContext,
                                 transaction::Methods* trx,
                                 VPackFunctionParameters const& parameters) {
-  return ::geoContainsIntersect(expressionContext, trx, parameters, "GEO_CONTAINS", true);
+  return ::geoContainsIntersect(expressionContext, trx, parameters,
+                                "GEO_CONTAINS", true);
 }
 
 /// @brief function GEO_INTERSECTS
 AqlValue Functions::GeoIntersects(ExpressionContext* expressionContext,
                                   transaction::Methods* trx,
                                   VPackFunctionParameters const& parameters) {
-  return ::geoContainsIntersect(expressionContext, trx, parameters, "GEO_INTERSECTS", false);
+  return ::geoContainsIntersect(expressionContext, trx, parameters,
+                                "GEO_INTERSECTS", false);
 }
 
 /// @brief function GEO_EQUALS
 AqlValue Functions::GeoEquals(ExpressionContext* expressionContext,
-                             transaction::Methods* trx,
-                             VPackFunctionParameters const& parameters) {
+                              transaction::Methods* trx,
+                              VPackFunctionParameters const& parameters) {
   AqlValue p1 = extractFunctionParameterValue(parameters, 0);
   AqlValue p2 = extractFunctionParameterValue(parameters, 1);
 
   if (!p1.isObject() || !p2.isObject()) {
-    ::registerWarning(expressionContext, "GEO_EQUALS", Result(
-      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "Expecting GeoJSON object"));
+    ::registerWarning(expressionContext, "GEO_EQUALS",
+                      Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                             "Expecting GeoJSON object"));
     return AqlValue(AqlValueHintNull());
   }
 
@@ -5040,7 +5077,6 @@ AqlValue Functions::GeoEquals(ExpressionContext* expressionContext,
   bool result = first.equals(&second);
   return AqlValue(AqlValueHintBool(result));
 }
-
 
 /// @brief function IS_IN_POLYGON
 AqlValue Functions::IsInPolygon(ExpressionContext* expressionContext,
@@ -5102,8 +5138,7 @@ AqlValue Functions::IsInPolygon(ExpressionContext* expressionContext,
 /// @brief geo constructors
 
 /// @brief function GEO_POINT
-AqlValue Functions::GeoPoint(ExpressionContext* expressionContext,
-                             transaction::Methods* trx,
+AqlValue Functions::GeoPoint(ExpressionContext* expressionContext, transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -5118,7 +5153,7 @@ AqlValue Functions::GeoPoint(ExpressionContext* expressionContext,
   // non-numeric input
   if (!lat1.isNumber() || !lon1.isNumber()) {
     ::registerWarning(expressionContext, "GEO_POINT",
-                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+                      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(arangodb::velocypack::Slice::nullSlice());
   }
 
@@ -5162,14 +5197,13 @@ AqlValue Functions::GeoMultiPoint(ExpressionContext* expressionContext,
   AqlValue const& geoArray = extractFunctionParameterValue(parameters, 0);
 
   if (!geoArray.isArray()) {
-    ::registerWarning(expressionContext, "GEO_MULTIPOINT",
-                    TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    ::registerWarning(expressionContext, "GEO_MULTIPOINT", TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(arangodb::velocypack::Slice::nullSlice());
   }
   if (geoArray.length() < 2) {
-    ::registerWarning(expressionContext, "GEO_MULTIPOINT", Result(
-          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-          "a MultiPoint needs at least two positions"));
+    ::registerWarning(expressionContext, "GEO_MULTIPOINT",
+                      Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                             "a MultiPoint needs at least two positions"));
     return AqlValue(arangodb::velocypack::Slice::nullSlice());
   }
 
@@ -5188,17 +5222,17 @@ AqlValue Functions::GeoMultiPoint(ExpressionContext* expressionContext,
         if (coord.isNumber()) {
           b.add(VPackValue(coord.getNumber<double>()));
         } else {
-          ::registerWarning(expressionContext, "GEO_MULTIPOINT", Result(
-                TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                "not a numeric value"));
+          ::registerWarning(expressionContext, "GEO_MULTIPOINT",
+                            Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                   "not a numeric value"));
           return AqlValue(arangodb::velocypack::Slice::nullSlice());
         }
       }
       b.close();
     } else {
-      ::registerWarning(expressionContext, "GEO_MULTIPOINT", Result(
-            TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-            "not an array containing positions"));
+      ::registerWarning(expressionContext, "GEO_MULTIPOINT",
+                        Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                               "not an array containing positions"));
       return AqlValue(arangodb::velocypack::Slice::nullSlice());
     }
   }
@@ -5223,8 +5257,7 @@ AqlValue Functions::GeoPolygon(ExpressionContext* expressionContext,
   AqlValue const& geoArray = extractFunctionParameterValue(parameters, 0);
 
   if (!geoArray.isArray()) {
-    ::registerWarning(expressionContext, "GEO_POLYGON",
-                      TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    ::registerWarning(expressionContext, "GEO_POLYGON", TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(arangodb::velocypack::Slice::nullSlice());
   }
 
@@ -5255,9 +5288,10 @@ AqlValue Functions::GeoPolygon(ExpressionContext* expressionContext,
           b.add(VPackValue(coord.getNumber<double>()));
         } else if (coord.isArray()) {
           if (coord.length() < 2) {
-            ::registerWarning(expressionContext, "GEO_POLYGON", Result(
-                  TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                  "a Position needs at least two numeric values"));
+            ::registerWarning(
+                expressionContext, "GEO_POLYGON",
+                Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                       "a Position needs at least two numeric values"));
             return AqlValue(arangodb::velocypack::Slice::nullSlice());
           } else {
             b.openArray();
@@ -5271,30 +5305,30 @@ AqlValue Functions::GeoPolygon(ExpressionContext* expressionContext,
                   b.add(VPackValue(innercord.at(1).getNumber<double>()));
                   b.close();
                 } else {
-                  ::registerWarning(expressionContext, "GEO_POLYGON", Result(
-                        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                        "not a number"));
+                  ::registerWarning(expressionContext, "GEO_POLYGON",
+                                    Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                           "not a number"));
                   return AqlValue(arangodb::velocypack::Slice::nullSlice());
                 }
               } else {
-                ::registerWarning(expressionContext, "GEO_POLYGON", Result(
-                      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                      "not an array describing a position"));
+                ::registerWarning(expressionContext, "GEO_POLYGON",
+                                  Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                         "not an array describing a position"));
                 return AqlValue(arangodb::velocypack::Slice::nullSlice());
               }
             }
             b.close();
           }
         } else {
-          ::registerWarning(expressionContext, "GEO_POLYGON", Result(
-                TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                "not an array containing positions"));
+          ::registerWarning(expressionContext, "GEO_POLYGON",
+                            Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                   "not an array containing positions"));
           return AqlValue(arangodb::velocypack::Slice::nullSlice());
         }
       }
       b.close();
     } else if (v.isArray() && v.length() == 2) {
-        if (s.length() > 2) {
+      if (s.length() > 2) {
         b.openArray();
         for (auto const& innercord : VPackArrayIterator(v)) {
           if (innercord.isNumber()) {
@@ -5306,29 +5340,29 @@ AqlValue Functions::GeoPolygon(ExpressionContext* expressionContext,
               b.add(VPackValue(innercord.at(1).getNumber<double>()));
               b.close();
             } else {
-              ::registerWarning(expressionContext, "GEO_POLYGON", Result(
-                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                    "not a number"));
+              ::registerWarning(expressionContext, "GEO_POLYGON",
+                                Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                       "not a number"));
               return AqlValue(arangodb::velocypack::Slice::nullSlice());
             }
           } else {
-            ::registerWarning(expressionContext, "GEO_POLYGON", Result(
-                  TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                  "not a numeric value"));
+            ::registerWarning(expressionContext, "GEO_POLYGON",
+                              Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                     "not a numeric value"));
             return AqlValue(arangodb::velocypack::Slice::nullSlice());
           }
         }
         b.close();
       } else {
-        ::registerWarning(expressionContext, "GEO_POLYGON", Result(
-              TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-              "a Polygon needs at least three positions"));
+        ::registerWarning(expressionContext, "GEO_POLYGON",
+                          Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                 "a Polygon needs at least three positions"));
         return AqlValue(arangodb::velocypack::Slice::nullSlice());
       }
     } else {
-      ::registerWarning(expressionContext, "GEO_POLYGON", Result(
-            TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-            "not an array containing positions"));
+      ::registerWarning(expressionContext, "GEO_POLYGON",
+                        Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                               "not an array containing positions"));
       return AqlValue(arangodb::velocypack::Slice::nullSlice());
     }
   }
@@ -5346,8 +5380,8 @@ AqlValue Functions::GeoPolygon(ExpressionContext* expressionContext,
 // TODO: merge MULTIPOLYGON with POLYGON and reuse functions
 /// @brief function GEO_MULTIPOLYGON
 AqlValue Functions::GeoMultiPolygon(ExpressionContext* expressionContext,
-                               transaction::Methods* trx,
-                               VPackFunctionParameters const& parameters) {
+                                    transaction::Methods* trx,
+                                    VPackFunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
   if (n < 1) {
@@ -5358,8 +5392,7 @@ AqlValue Functions::GeoMultiPolygon(ExpressionContext* expressionContext,
   AqlValue const& geoArray = extractFunctionParameterValue(parameters, 0);
 
   if (!geoArray.isArray()) {
-    ::registerWarning(expressionContext, "GEO_MULTIPOLYGON",
-                      TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    ::registerWarning(expressionContext, "GEO_MULTIPOLYGON", TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(arangodb::velocypack::Slice::nullSlice());
   }
 
@@ -5384,14 +5417,15 @@ AqlValue Functions::GeoMultiPolygon(ExpressionContext* expressionContext,
   */
 
   if (s.isArray() && s.length() < 2) {
-    ::registerWarning(expressionContext, "GEO_MULTIPOLYGON", Result(
-          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-          "a MultiPolygon needs at least two Polygons inside."));
+    ::registerWarning(
+        expressionContext, "GEO_MULTIPOLYGON",
+        Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+               "a MultiPolygon needs at least two Polygons inside."));
     return AqlValue(arangodb::velocypack::Slice::nullSlice());
   }
 
   for (auto const& arrayOfPolygons : VPackArrayIterator(s)) {
-  b.openArray();
+    b.openArray();
     for (auto const& v : VPackArrayIterator(arrayOfPolygons)) {
       if (v.isArray() && v.length() > 2) {
         b.openArray();
@@ -5400,9 +5434,10 @@ AqlValue Functions::GeoMultiPolygon(ExpressionContext* expressionContext,
             b.add(VPackValue(coord.getNumber<double>()));
           } else if (coord.isArray()) {
             if (coord.length() < 2) {
-              ::registerWarning(expressionContext, "GEO_MULTIPOLYGON", Result(
-                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                    "a Position needs at least two numeric values"));
+              ::registerWarning(
+                  expressionContext, "GEO_MULTIPOLYGON",
+                  Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                         "a Position needs at least two numeric values"));
               return AqlValue(arangodb::velocypack::Slice::nullSlice());
             } else {
               b.openArray();
@@ -5416,32 +5451,33 @@ AqlValue Functions::GeoMultiPolygon(ExpressionContext* expressionContext,
                     b.add(VPackValue(innercord.at(1).getNumber<double>()));
                     b.close();
                   } else {
-                    ::registerWarning(expressionContext, "GEO_MULTIPOLYGON", Result(
-                          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                          "not a number"));
+                    ::registerWarning(expressionContext, "GEO_MULTIPOLYGON",
+                                      Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                             "not a number"));
                     return AqlValue(arangodb::velocypack::Slice::nullSlice());
                   }
                 } else {
-                  ::registerWarning(expressionContext, "GEO_MULTIPOLYGON", Result(
-                        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                        "not an array describing a position"));
+                  ::registerWarning(
+                      expressionContext, "GEO_MULTIPOLYGON",
+                      Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                             "not an array describing a position"));
                   return AqlValue(arangodb::velocypack::Slice::nullSlice());
                 }
               }
               b.close();
             }
           } else {
-            ::registerWarning(expressionContext, "GEO_MULTIPOLYGON", Result(
-                  TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                  "not an array containing positions"));
+            ::registerWarning(expressionContext, "GEO_MULTIPOLYGON",
+                              Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                     "not an array containing positions"));
             return AqlValue(arangodb::velocypack::Slice::nullSlice());
           }
         }
         b.close();
       } else {
-        ::registerWarning(expressionContext, "GEO_MULTIPOLYGON", Result(
-              TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-              "not an array containing positions"));
+        ::registerWarning(expressionContext, "GEO_MULTIPOLYGON",
+                          Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                 "not an array containing positions"));
         return AqlValue(arangodb::velocypack::Slice::nullSlice());
       }
     }
@@ -5468,14 +5504,13 @@ AqlValue Functions::GeoLinestring(ExpressionContext* expressionContext,
   AqlValue const& geoArray = extractFunctionParameterValue(parameters, 0);
 
   if (!geoArray.isArray()) {
-    ::registerWarning(expressionContext, "GEO_LINESTRING",
-                    TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    ::registerWarning(expressionContext, "GEO_LINESTRING", TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(arangodb::velocypack::Slice::nullSlice());
   }
   if (geoArray.length() < 2) {
-    ::registerWarning(expressionContext, "GEO_LINESTRING", Result(
-          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-          "a LineString needs at least two positions"));
+    ::registerWarning(expressionContext, "GEO_LINESTRING",
+                      Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                             "a LineString needs at least two positions"));
     return AqlValue(arangodb::velocypack::Slice::nullSlice());
   }
 
@@ -5494,17 +5529,17 @@ AqlValue Functions::GeoLinestring(ExpressionContext* expressionContext,
         if (coord.isNumber()) {
           b.add(VPackValue(coord.getNumber<double>()));
         } else {
-          ::registerWarning(expressionContext, "GEO_LINESTRING", Result(
-                TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                "not a numeric value"));
+          ::registerWarning(expressionContext, "GEO_LINESTRING",
+                            Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                   "not a numeric value"));
           return AqlValue(arangodb::velocypack::Slice::nullSlice());
         }
       }
       b.close();
     } else {
-      ::registerWarning(expressionContext, "GEO_LINESTRING", Result(
-            TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-            "not an array containing positions"));
+      ::registerWarning(expressionContext, "GEO_LINESTRING",
+                        Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                               "not an array containing positions"));
       return AqlValue(arangodb::velocypack::Slice::nullSlice());
     }
   }
@@ -5529,14 +5564,14 @@ AqlValue Functions::GeoMultiLinestring(ExpressionContext* expressionContext,
   AqlValue const& geoArray = extractFunctionParameterValue(parameters, 0);
 
   if (!geoArray.isArray()) {
-    ::registerWarning(expressionContext, "GEO_MULTILINESTRING",
-                    TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    ::registerWarning(expressionContext, "GEO_MULTILINESTRING", TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(arangodb::velocypack::Slice::nullSlice());
   }
   if (geoArray.length() < 1) {
-    ::registerWarning(expressionContext, "GEO_MULTILINESTRING", Result(
-          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-          "a MultiLineString needs at least one array of linestrings"));
+    ::registerWarning(
+        expressionContext, "GEO_MULTILINESTRING",
+        Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+               "a MultiLineString needs at least one array of linestrings"));
     return AqlValue(arangodb::velocypack::Slice::nullSlice());
   }
 
@@ -5559,31 +5594,31 @@ AqlValue Functions::GeoMultiLinestring(ExpressionContext* expressionContext,
               if (coord.isNumber()) {
                 b.add(VPackValue(coord.getNumber<double>()));
               } else {
-                ::registerWarning(expressionContext, "GEO_MULTILINESTRING", Result(
-                      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                      "not a numeric value"));
+                ::registerWarning(expressionContext, "GEO_MULTILINESTRING",
+                                  Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                         "not a numeric value"));
                 return AqlValue(arangodb::velocypack::Slice::nullSlice());
               }
             }
             b.close();
           } else {
-            ::registerWarning(expressionContext, "GEO_MULTILINESTRING", Result(
-                  TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                  "not an array containing positions"));
+            ::registerWarning(expressionContext, "GEO_MULTILINESTRING",
+                              Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                     "not an array containing positions"));
             return AqlValue(arangodb::velocypack::Slice::nullSlice());
           }
         }
         b.close();
       } else {
-        ::registerWarning(expressionContext, "GEO_MULTILINESTRING", Result(
-              TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-              "not an array containing linestrings"));
+        ::registerWarning(expressionContext, "GEO_MULTILINESTRING",
+                          Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                 "not an array containing linestrings"));
         return AqlValue(arangodb::velocypack::Slice::nullSlice());
       }
     } else {
-      ::registerWarning(expressionContext, "GEO_MULTILINESTRING", Result(
-            TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-            "not an array containing positions"));
+      ::registerWarning(expressionContext, "GEO_MULTILINESTRING",
+                        Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                               "not an array containing positions"));
       return AqlValue(arangodb::velocypack::Slice::nullSlice());
     }
   }
@@ -5595,8 +5630,7 @@ AqlValue Functions::GeoMultiLinestring(ExpressionContext* expressionContext,
 }
 
 /// @brief function FLATTEN
-AqlValue Functions::Flatten(ExpressionContext* expressionContext,
-                            transaction::Methods* trx,
+AqlValue Functions::Flatten(ExpressionContext* expressionContext, transaction::Methods* trx,
                             VPackFunctionParameters const& parameters) {
   static char const* AFN = "FLATTEN";
 
@@ -5636,10 +5670,8 @@ AqlValue Functions::Zip(ExpressionContext* expressionContext, transaction::Metho
   AqlValue const& keys = extractFunctionParameterValue(parameters, 0);
   AqlValue const& values = extractFunctionParameterValue(parameters, 1);
 
-  if (!keys.isArray() || !values.isArray() ||
-      keys.length() != values.length()) {
-    ::registerWarning(expressionContext, AFN,
-                      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  if (!keys.isArray() || !values.isArray() || keys.length() != values.length()) {
+    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -5684,8 +5716,7 @@ AqlValue Functions::Zip(ExpressionContext* expressionContext, transaction::Metho
 }
 
 /// @brief function JSON_STRINGIFY
-AqlValue Functions::JsonStringify(ExpressionContext*,
-                                  transaction::Methods* trx,
+AqlValue Functions::JsonStringify(ExpressionContext*, transaction::Methods* trx,
                                   VPackFunctionParameters const& parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   AqlValueMaterializer materializer(trx);
@@ -5737,8 +5768,7 @@ AqlValue Functions::ParseIdentifier(ExpressionContext* expressionContext,
   std::string identifier;
   if (value.isObject() && value.hasKey(trx, StaticStrings::IdString)) {
     bool localMustDestroy;
-    AqlValue valueStr =
-        value.get(trx, StaticStrings::IdString, localMustDestroy, false);
+    AqlValue valueStr = value.get(trx, StaticStrings::IdString, localMustDestroy, false);
     AqlValueGuard guard(valueStr, localMustDestroy);
 
     if (valueStr.isString()) {
@@ -5770,8 +5800,7 @@ AqlValue Functions::ParseIdentifier(ExpressionContext* expressionContext,
 }
 
 /// @brief function Slice
-AqlValue Functions::Slice(ExpressionContext* expressionContext,
-                          transaction::Methods* trx,
+AqlValue Functions::Slice(ExpressionContext* expressionContext, transaction::Methods* trx,
                           VPackFunctionParameters const& parameters) {
   static char const* AFN = "SLICE";
 
@@ -5835,8 +5864,7 @@ AqlValue Functions::Slice(ExpressionContext* expressionContext,
 }
 
 /// @brief function Minus
-AqlValue Functions::Minus(ExpressionContext* expressionContext,
-                          transaction::Methods* trx,
+AqlValue Functions::Minus(ExpressionContext* expressionContext, transaction::Methods* trx,
                           VPackFunctionParameters const& parameters) {
   static char const* AFN = "MINUS";
 
@@ -5848,8 +5876,7 @@ AqlValue Functions::Minus(ExpressionContext* expressionContext,
   }
 
   auto options = trx->transactionContextPtr()->getVPackOptions();
-  std::unordered_map<VPackSlice, size_t,
-                     arangodb::basics::VelocyPackHelper::VPackHash,
+  std::unordered_map<VPackSlice, size_t, arangodb::basics::VelocyPackHelper::VPackHash,
                      arangodb::basics::VelocyPackHelper::VPackEqual>
       contains(512, arangodb::basics::VelocyPackHelper::VPackHash(),
                arangodb::basics::VelocyPackHelper::VPackEqual(options));
@@ -5896,8 +5923,7 @@ AqlValue Functions::Minus(ExpressionContext* expressionContext,
 }
 
 /// @brief function Document
-AqlValue Functions::Document(ExpressionContext* expressionContext,
-                             transaction::Methods* trx,
+AqlValue Functions::Document(ExpressionContext* expressionContext, transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
   static char const* AFN = "DOCUMENT";
 
@@ -5922,8 +5948,7 @@ AqlValue Functions::Document(ExpressionContext* expressionContext,
         if (next.isString()) {
           std::string identifier = next.copyString();
           std::string colName;
-          ::getDocumentByIdentifier(trx, colName, identifier, true,
-                                    *builder.get());
+          ::getDocumentByIdentifier(trx, colName, identifier, true, *builder.get());
         }
       }
       builder->close();
@@ -5943,8 +5968,7 @@ AqlValue Functions::Document(ExpressionContext* expressionContext,
   if (id.isString()) {
     transaction::BuilderLeaser builder(trx);
     std::string identifier(id.slice().copyString());
-    ::getDocumentByIdentifier(trx, collectionName, identifier, true,
-                              *builder.get());
+    ::getDocumentByIdentifier(trx, collectionName, identifier, true, *builder.get());
     if (builder->isEmpty()) {
       return AqlValue(AqlValueHintNull());
     }
@@ -5974,8 +5998,7 @@ AqlValue Functions::Document(ExpressionContext* expressionContext,
 }
 
 /// @brief function MATCHES
-AqlValue Functions::Matches(ExpressionContext* expressionContext,
-                            transaction::Methods* trx,
+AqlValue Functions::Matches(ExpressionContext* expressionContext, transaction::Methods* trx,
                             VPackFunctionParameters const& parameters) {
   static char const* AFN = "MATCHES";
 
@@ -6027,16 +6050,15 @@ AqlValue Functions::Matches(ExpressionContext* expressionContext,
     TRI_ASSERT(docSlice.isObject());
     for (auto const& it : VPackObjectIterator(example, true)) {
       VPackSlice keySlice = docSlice.get(it.key.stringRef());
-      
+
       if (it.value.isNull() && keySlice.isNone()) {
         continue;
       }
-      
+
       if (keySlice.isNone() ||
           // compare inner content
-          basics::VelocyPackHelper::compare(keySlice, it.value, false,
-                                            options, &docSlice,
-                                            &example) != 0) {
+          basics::VelocyPackHelper::compare(keySlice, it.value, false, options,
+                                            &docSlice, &example) != 0) {
         foundMatch = false;
         break;
       }
@@ -6059,8 +6081,7 @@ AqlValue Functions::Matches(ExpressionContext* expressionContext,
 }
 
 /// @brief function ROUND
-AqlValue Functions::Round(ExpressionContext*,
-                          transaction::Methods* trx,
+AqlValue Functions::Round(ExpressionContext*, transaction::Methods* trx,
                           VPackFunctionParameters const& parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -6089,8 +6110,7 @@ AqlValue Functions::Ceil(ExpressionContext*, transaction::Methods* trx,
 }
 
 /// @brief function FLOOR
-AqlValue Functions::Floor(ExpressionContext*,
-                          transaction::Methods* trx,
+AqlValue Functions::Floor(ExpressionContext*, transaction::Methods* trx,
                           VPackFunctionParameters const& parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -6138,8 +6158,7 @@ AqlValue Functions::Log2(ExpressionContext*, transaction::Methods* trx,
 }
 
 /// @brief function LOG10
-AqlValue Functions::Log10(ExpressionContext*,
-                          transaction::Methods* trx,
+AqlValue Functions::Log10(ExpressionContext*, transaction::Methods* trx,
                           VPackFunctionParameters const& parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -6220,8 +6239,7 @@ AqlValue Functions::Atan(ExpressionContext*, transaction::Methods* trx,
 }
 
 /// @brief function ATAN2
-AqlValue Functions::Atan2(ExpressionContext*,
-                          transaction::Methods* trx,
+AqlValue Functions::Atan2(ExpressionContext*, transaction::Methods* trx,
                           VPackFunctionParameters const& parameters) {
   AqlValue value1 = extractFunctionParameterValue(parameters, 0);
   AqlValue value2 = extractFunctionParameterValue(parameters, 1);
@@ -6232,8 +6250,7 @@ AqlValue Functions::Atan2(ExpressionContext*,
 }
 
 /// @brief function RADIANS
-AqlValue Functions::Radians(ExpressionContext*,
-                            transaction::Methods* trx,
+AqlValue Functions::Radians(ExpressionContext*, transaction::Methods* trx,
                             VPackFunctionParameters const& parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -6243,8 +6260,7 @@ AqlValue Functions::Radians(ExpressionContext*,
 }
 
 /// @brief function DEGREES
-AqlValue Functions::Degrees(ExpressionContext*,
-                            transaction::Methods* trx,
+AqlValue Functions::Degrees(ExpressionContext*, transaction::Methods* trx,
                             VPackFunctionParameters const& parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -6268,8 +6284,7 @@ AqlValue Functions::Rand(ExpressionContext*, transaction::Methods* trx,
 }
 
 /// @brief function FIRST_DOCUMENT
-AqlValue Functions::FirstDocument(ExpressionContext*,
-                                  transaction::Methods* trx,
+AqlValue Functions::FirstDocument(ExpressionContext*, transaction::Methods* trx,
                                   VPackFunctionParameters const& parameters) {
   size_t const n = parameters.size();
   for (size_t i = 0; i < n; ++i) {
@@ -6283,8 +6298,7 @@ AqlValue Functions::FirstDocument(ExpressionContext*,
 }
 
 /// @brief function FIRST_LIST
-AqlValue Functions::FirstList(ExpressionContext*,
-                              transaction::Methods* trx,
+AqlValue Functions::FirstList(ExpressionContext*, transaction::Methods* trx,
                               VPackFunctionParameters const& parameters) {
   size_t const n = parameters.size();
   for (size_t i = 0; i < n; ++i) {
@@ -6373,8 +6387,7 @@ AqlValue Functions::Pop(ExpressionContext* expressionContext, transaction::Metho
 }
 
 /// @brief function APPEND
-AqlValue Functions::Append(ExpressionContext* expressionContext,
-                           transaction::Methods* trx,
+AqlValue Functions::Append(ExpressionContext* expressionContext, transaction::Methods* trx,
                            VPackFunctionParameters const& parameters) {
   static char const* AFN = "APPEND";
 
@@ -6440,8 +6453,7 @@ AqlValue Functions::Append(ExpressionContext* expressionContext,
 }
 
 /// @brief function UNSHIFT
-AqlValue Functions::Unshift(ExpressionContext* expressionContext,
-                            transaction::Methods* trx,
+AqlValue Functions::Unshift(ExpressionContext* expressionContext, transaction::Methods* trx,
                             VPackFunctionParameters const& parameters) {
   static char const* AFN = "UNSHIFT";
 
@@ -6486,8 +6498,7 @@ AqlValue Functions::Unshift(ExpressionContext* expressionContext,
 }
 
 /// @brief function SHIFT
-AqlValue Functions::Shift(ExpressionContext* expressionContext,
-                          transaction::Methods* trx,
+AqlValue Functions::Shift(ExpressionContext* expressionContext, transaction::Methods* trx,
                           VPackFunctionParameters const& parameters) {
   static char const* AFN = "SHIFT";
 
@@ -6566,8 +6577,7 @@ AqlValue Functions::RemoveValue(ExpressionContext* expressionContext,
       builder->add(it);
       continue;
     }
-    if (arangodb::basics::VelocyPackHelper::compare(r, it, false, options) ==
-        0) {
+    if (arangodb::basics::VelocyPackHelper::compare(r, it, false, options) == 0) {
       --limit;
       continue;
     }
@@ -6664,8 +6674,7 @@ AqlValue Functions::RemoveNth(ExpressionContext* expressionContext,
 }
 
 /// @brief function NOT_NULL
-AqlValue Functions::NotNull(ExpressionContext*,
-                            transaction::Methods* trx,
+AqlValue Functions::NotNull(ExpressionContext*, transaction::Methods* trx,
                             VPackFunctionParameters const& parameters) {
   size_t const n = parameters.size();
   for (size_t i = 0; i < n; ++i) {
@@ -6685,10 +6694,8 @@ AqlValue Functions::CurrentDatabase(ExpressionContext* expressionContext,
 }
 
 /// @brief function CURRENT_USER
-AqlValue Functions::CurrentUser(
-    ExpressionContext*, transaction::Methods* trx,
-    VPackFunctionParameters const& parameters) {
-
+AqlValue Functions::CurrentUser(ExpressionContext*, transaction::Methods* trx,
+                                VPackFunctionParameters const& parameters) {
   if (ExecContext::CURRENT == nullptr) {
     return AqlValue(AqlValueHintNull());
   }
@@ -6703,15 +6710,13 @@ AqlValue Functions::CurrentUser(
 }
 
 /// @brief function COLLECTION_COUNT
-AqlValue Functions::CollectionCount(ExpressionContext*,
-                                    transaction::Methods* trx,
+AqlValue Functions::CollectionCount(ExpressionContext*, transaction::Methods* trx,
                                     VPackFunctionParameters const& parameters) {
   static char const* AFN = "COLLECTION_COUNT";
 
   AqlValue const& element = extractFunctionParameterValue(parameters, 0);
   if (!element.isString()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, AFN);
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, AFN);
   }
 
   TRI_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());
@@ -6753,9 +6758,9 @@ AqlValue Functions::VarianceSample(ExpressionContext* expressionContext,
 }
 
 /// @brief function VARIANCE_POPULATION
-AqlValue Functions::VariancePopulation(
-    ExpressionContext* expressionContext, transaction::Methods* trx,
-    VPackFunctionParameters const& parameters) {
+AqlValue Functions::VariancePopulation(ExpressionContext* expressionContext,
+                                       transaction::Methods* trx,
+                                       VPackFunctionParameters const& parameters) {
   static char const* AFN = "VARIANCE_POPULATION";
 
   AqlValue const& list = extractFunctionParameterValue(parameters, 0);
@@ -6809,9 +6814,9 @@ AqlValue Functions::StdDevSample(ExpressionContext* expressionContext,
 }
 
 /// @brief function STDDEV_POPULATION
-AqlValue Functions::StdDevPopulation(
-    ExpressionContext* expressionContext, transaction::Methods* trx,
-    VPackFunctionParameters const& parameters) {
+AqlValue Functions::StdDevPopulation(ExpressionContext* expressionContext,
+                                     transaction::Methods* trx,
+                                     VPackFunctionParameters const& parameters) {
   static char const* AFN = "STDDEV_POPULATION";
 
   AqlValue const& list = extractFunctionParameterValue(parameters, 0);
@@ -6837,8 +6842,7 @@ AqlValue Functions::StdDevPopulation(
 }
 
 /// @brief function MEDIAN
-AqlValue Functions::Median(ExpressionContext* expressionContext,
-                           transaction::Methods* trx,
+AqlValue Functions::Median(ExpressionContext* expressionContext, transaction::Methods* trx,
                            VPackFunctionParameters const& parameters) {
   static char const* AFN = "MEDIAN";
 
@@ -6862,8 +6866,7 @@ AqlValue Functions::Median(ExpressionContext* expressionContext,
   size_t midpoint = l / 2;
 
   if (l % 2 == 0) {
-    return ::numberValue((values[midpoint - 1] + values[midpoint]) / 2,
-                       true);
+    return ::numberValue((values[midpoint - 1] + values[midpoint]) / 2, true);
   }
   return ::numberValue(values[midpoint], true);
 }
@@ -6944,9 +6947,9 @@ AqlValue Functions::Percentile(ExpressionContext* expressionContext,
 
     double const delta = idx - pos;
     return ::numberValue(delta * (values[static_cast<size_t>(pos)] -
-                                     values[static_cast<size_t>(pos) - 1]) +
-                                values[static_cast<size_t>(pos) - 1],
-                       true);
+                                  values[static_cast<size_t>(pos) - 1]) +
+                             values[static_cast<size_t>(pos) - 1],
+                         true);
   }
 
   double const idx = p * l / 100.0;
@@ -6962,8 +6965,7 @@ AqlValue Functions::Percentile(ExpressionContext* expressionContext,
 }
 
 /// @brief function RANGE
-AqlValue Functions::Range(ExpressionContext* expressionContext,
-                          transaction::Methods* trx,
+AqlValue Functions::Range(ExpressionContext* expressionContext, transaction::Methods* trx,
                           VPackFunctionParameters const& parameters) {
   static char const* AFN = "RANGE";
 
@@ -7006,8 +7008,7 @@ AqlValue Functions::Range(ExpressionContext* expressionContext,
 }
 
 /// @brief function POSITION
-AqlValue Functions::Position(ExpressionContext* expressionContext,
-                             transaction::Methods* trx,
+AqlValue Functions::Position(ExpressionContext* expressionContext, transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
   static char const* AFN = "POSITION";
 
@@ -7054,8 +7055,7 @@ AqlValue Functions::Position(ExpressionContext* expressionContext,
 }
 
 /// @brief function CALL
-AqlValue Functions::Call(ExpressionContext* expressionContext,
-                         transaction::Methods* trx,
+AqlValue Functions::Call(ExpressionContext* expressionContext, transaction::Methods* trx,
                          VPackFunctionParameters const& parameters) {
   static char const* AFN = "CALL";
 
@@ -7068,8 +7068,9 @@ AqlValue Functions::Call(ExpressionContext* expressionContext,
   SmallVector<AqlValue>::allocator_type::arena_type arena;
   VPackFunctionParameters invokeParams{arena};
   if (parameters.size() >= 2) {
-    // we have a list of parameters, need to copy them over except the functionname:
-    invokeParams.reserve(parameters.size() -1);
+    // we have a list of parameters, need to copy them over except the
+    // functionname:
+    invokeParams.reserve(parameters.size() - 1);
 
     for (uint64_t i = 1; i < parameters.size(); i++) {
       invokeParams.push_back(extractFunctionParameterValue(parameters, i));
@@ -7080,9 +7081,8 @@ AqlValue Functions::Call(ExpressionContext* expressionContext,
 }
 
 /// @brief function APPLY
-AqlValue Functions::Apply(
-    ExpressionContext* expressionContext, transaction::Methods* trx,
-    VPackFunctionParameters const& parameters) {
+AqlValue Functions::Apply(ExpressionContext* expressionContext, transaction::Methods* trx,
+                          VPackFunctionParameters const& parameters) {
   static char const* AFN = "APPLY";
 
   AqlValue const& invokeFN = extractFunctionParameterValue(parameters, 0);
@@ -7105,8 +7105,8 @@ AqlValue Functions::Apply(
   });
 
   if (parameters.size() == 2) {
-    // We have a parameter that should be an array, whichs content we need to make
-    // the sub functions parameters.
+    // We have a parameter that should be an array, whichs content we need to
+    // make the sub functions parameters.
     rawParamArray = extractFunctionParameterValue(parameters, 1);
 
     if (!rawParamArray.isArray()) {
@@ -7127,17 +7127,15 @@ AqlValue Functions::Apply(
 }
 
 /// @brief function VERSION
-AqlValue Functions::Version(
-    ExpressionContext* expressionContext, transaction::Methods* trx,
-    VPackFunctionParameters const& parameters) {
-
+AqlValue Functions::Version(ExpressionContext* expressionContext, transaction::Methods* trx,
+                            VPackFunctionParameters const& parameters) {
   return AqlValue(rest::Version::getServerVersion());
 }
 
 /// @brief function IS_SAME_COLLECTION
-AqlValue Functions::IsSameCollection(
-    ExpressionContext* expressionContext, transaction::Methods* trx,
-    VPackFunctionParameters const& parameters) {
+AqlValue Functions::IsSameCollection(ExpressionContext* expressionContext,
+                                     transaction::Methods* trx,
+                                     VPackFunctionParameters const& parameters) {
   static char const* AFN = "IS_SAME_COLLECTION";
 
   std::string const first = ::extractCollectionName(trx, parameters, 0);
@@ -7201,8 +7199,7 @@ AqlValue Functions::PregelResult(ExpressionContext* expressionContext,
   return val;
 }
 
-AqlValue Functions::Assert(ExpressionContext* expressionContext,
-                           transaction::Methods* trx,
+AqlValue Functions::Assert(ExpressionContext* expressionContext, transaction::Methods* trx,
                            VPackFunctionParameters const& parameters) {
   static char const* AFN = "ASSERT";
 
@@ -7280,7 +7277,7 @@ AqlValue Functions::DateFormat(ExpressionContext* expressionContext,
 
 AqlValue Functions::NotImplemented(ExpressionContext* expressionContext,
                                    transaction::Methods*,
-                                   VPackFunctionParameters const& params){
+                                   VPackFunctionParameters const& params) {
   ::registerError(expressionContext, "UNKNOWN", TRI_ERROR_NOT_IMPLEMENTED);
   return AqlValue(AqlValueHintNull());
 }

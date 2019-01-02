@@ -38,18 +38,18 @@ TRI_TerminalSize TRI_DefaultTerminalSize() {
     if (columns == 0 || TRI_errno() != TRI_ERROR_NO_ERROR) {
       return TRI_DEFAULT_TERMINAL_SIZE;
     }
-    
+
     e = getenv("LINES");
     if (e != 0) {
       int rows = (int)TRI_Int32String(e);
-      
+
       if (rows == 0 || TRI_errno() != TRI_ERROR_NO_ERROR) {
         return TRI_DEFAULT_TERM_SIZE;
       }
       return TRI_TerminalSize{rows, columns};
     }
   }
-  
+
   return TRI_DEFAULT_TERMINAL_SIZE;
 }
 
@@ -72,10 +72,10 @@ void TRI_SetStdinVisibility(bool visible) {
   (void)tcsetattr(STDIN_FILENO, TCSANOW, &tty);
 #else
 #ifdef _WIN32
-  HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE); 
+  HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
   DWORD mode;
   GetConsoleMode(hStdin, &mode);
-              
+
   if (visible) {
     mode |= ENABLE_ECHO_INPUT;
   } else {

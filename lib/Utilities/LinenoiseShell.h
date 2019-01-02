@@ -62,5 +62,5 @@ class LinenoiseShell final : public ShellBase {
 #endif
   }
 };
-}
+}  // namespace arangodb
 #endif

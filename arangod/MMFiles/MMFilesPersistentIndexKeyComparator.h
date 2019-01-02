@@ -42,16 +42,15 @@ class MMFilesPersistentIndexKeyComparator final : public rocksdb::Comparator {
   static inline arangodb::velocypack::Slice extractKeySlice(rocksdb::Slice const& slice) {
     return arangodb::velocypack::Slice(slice.data() + MMFilesPersistentIndex::keyPrefixSize());
   }
-  
+
   int Compare(rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const override;
 
   char const* Name() const override { return "ArangoComparator"; }
-  
-  void FindShortestSeparator(std::string*, 
-                             rocksdb::Slice const&) const override {}
+
+  void FindShortestSeparator(std::string*, rocksdb::Slice const&) const override {}
   void FindShortSuccessor(std::string*) const override {}
 };
 
-}
+}  // namespace arangodb
 
 #endif

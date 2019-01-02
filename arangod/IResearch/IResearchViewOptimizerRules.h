@@ -32,26 +32,23 @@ namespace aql {
 class Optimizer;
 struct OptimizerRule;
 class ExecutionPlan;
-} // aql
+}  // namespace aql
 
 namespace iresearch {
 
 /// @brief move filters and sort conditions into views
-void handleViewsRule(
-  arangodb::aql::Optimizer* opt,
-  std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
-  arangodb::aql::OptimizerRule const* rule
-);
+void handleViewsRule(arangodb::aql::Optimizer* opt,
+                     std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
+                     arangodb::aql::OptimizerRule const* rule);
 
 /// @brief scatter view query in cluster
-/// this rule inserts scatter, gather and remote nodes so operations on sharded views
-void scatterViewInClusterRule(
-  arangodb::aql::Optimizer* opt,
-  std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
-  arangodb::aql::OptimizerRule const* rule
-);
+/// this rule inserts scatter, gather and remote nodes so operations on sharded
+/// views
+void scatterViewInClusterRule(arangodb::aql::Optimizer* opt,
+                              std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
+                              arangodb::aql::OptimizerRule const* rule);
 
-} // iresearch
-} // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
-#endif // ARANGOD_IRESEARCH__IRESEARCH_VIEW_OPTIMIZER_RULES_H
+#endif  // ARANGOD_IRESEARCH__IRESEARCH_VIEW_OPTIMIZER_RULES_H
