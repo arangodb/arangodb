@@ -35,14 +35,13 @@ struct CleanOutServer : public Job {
                  std::string const& creator = std::string(),
                  std::string const& server = std::string());
 
-  CleanOutServer(Node const& snapshot, AgentInterface* agent,
-                 JOB_STATUS status, std::string const& jobId);
+  CleanOutServer(Node const& snapshot, AgentInterface* agent, JOB_STATUS status,
+                 std::string const& jobId);
 
   virtual ~CleanOutServer();
 
   virtual JOB_STATUS status() override final;
-  virtual bool create(std::shared_ptr<VPackBuilder> envelope = nullptr)
-    override final;
+  virtual bool create(std::shared_ptr<VPackBuilder> envelope = nullptr) override final;
   virtual void run() override final;
   virtual bool start() override final;
   virtual Result abort() override final;
@@ -53,7 +52,7 @@ struct CleanOutServer : public Job {
 
   std::string _server;
 };
-}
-}
+}  // namespace consensus
+}  // namespace arangodb
 
 #endif

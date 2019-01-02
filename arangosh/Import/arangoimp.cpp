@@ -42,44 +42,47 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 
 int main(int argc, char* argv[]) {
-  return ClientFeature::runMain(argc, argv, [&](int argc, char* argv[]) -> int {
-    ArangoGlobalContext context(argc, argv, BIN_DIRECTORY);
-    context.installHup();
+  return ClientFeature::runMain(argc, argv,
+                                [&](int argc, char* argv[]) -> int {
+                                  ArangoGlobalContext context(argc, argv, BIN_DIRECTORY);
+                                  context.installHup();
 
-    std::shared_ptr<options::ProgramOptions> options(new options::ProgramOptions(
-        argv[0], "Usage: arangoimp [<options>]", "For more information use:", BIN_DIRECTORY));
+                                  std::shared_ptr<options::ProgramOptions> options(new options::ProgramOptions(
+                                      argv[0], "Usage: arangoimp [<options>]",
+                                      "For more information use:", BIN_DIRECTORY));
 
-    ApplicationServer server(options, BIN_DIRECTORY);
+                                  ApplicationServer server(options, BIN_DIRECTORY);
 
-    int ret;
+                                  int ret;
 
-    server.addFeature(new ClientFeature(&server, false));
-    server.addFeature(new ConfigFeature(&server, "arangoimp"));
-    server.addFeature(new ImportFeature(&server, &ret));
-    server.addFeature(new LoggerFeature(&server, false));
-    server.addFeature(new RandomFeature(&server));
-    server.addFeature(new ShellColorsFeature(&server));
-    server.addFeature(new ShutdownFeature(&server, {"Import"}));
-    server.addFeature(new SslFeature(&server));
-    server.addFeature(new TempFeature(&server, "arangoimp"));
-    server.addFeature(new VersionFeature(&server));
+                                  server.addFeature(new ClientFeature(&server, false));
+                                  server.addFeature(
+                                      new ConfigFeature(&server, "arangoimp"));
+                                  server.addFeature(new ImportFeature(&server, &ret));
+                                  server.addFeature(new LoggerFeature(&server, false));
+                                  server.addFeature(new RandomFeature(&server));
+                                  server.addFeature(new ShellColorsFeature(&server));
+                                  server.addFeature(new ShutdownFeature(&server, {"Import"}));
+                                  server.addFeature(new SslFeature(&server));
+                                  server.addFeature(
+                                      new TempFeature(&server, "arangoimp"));
+                                  server.addFeature(new VersionFeature(&server));
 
-    try {
-      server.run(argc, argv);
-      if (server.helpShown()) {
-        // --help was displayed
-        ret = EXIT_SUCCESS;
-      }
-    } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "arangoimp terminated because of an unhandled exception: " << ex.what();
-      ret = EXIT_FAILURE;
-    } catch (...) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "arangoimp terminated because of an unhandled exception of unknown type";
-      ret = EXIT_FAILURE;
-    }
+                                  try {
+                                    server.run(argc, argv);
+                                    if (server.helpShown()) {
+                                      // --help was displayed
+                                      ret = EXIT_SUCCESS;
+                                    }
+                                  } catch (std::exception const& ex) {
+                                    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "arangoimp terminated because of an unhandled exception: "
+                                                                            << ex.what();
+                                    ret = EXIT_FAILURE;
+                                  } catch (...) {
+                                    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "arangoimp terminated because of an unhandled exception of unknown type";
+                                    ret = EXIT_FAILURE;
+                                  }
 
-    return context.exit(ret);
-  });
+                                  return context.exit(ret);
+                                });
 }

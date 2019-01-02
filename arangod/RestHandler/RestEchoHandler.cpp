@@ -34,12 +34,11 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 RestEchoHandler::RestEchoHandler(GeneralRequest* request, GeneralResponse* response)
-  : RestVocbaseBaseHandler(request, response) {}
+    : RestVocbaseBaseHandler(request, response) {}
 
 RestStatus RestEchoHandler::execute() {
   bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(parseSuccess);
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
 
   if (parseSuccess) {
     VPackBuilder result;

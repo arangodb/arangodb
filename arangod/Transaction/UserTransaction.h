@@ -38,10 +38,10 @@ class UserTransaction final : public transaction::Methods {
  public:
   /// @brief create the transaction
   UserTransaction(std::shared_ptr<transaction::Context> transactionContext,
-                      std::vector<std::string> const& readCollections,
-                      std::vector<std::string> const& writeCollections,
-                      std::vector<std::string> const& exclusiveCollections,
-                      transaction::Options const& options)
+                  std::vector<std::string> const& readCollections,
+                  std::vector<std::string> const& writeCollections,
+                  std::vector<std::string> const& exclusiveCollections,
+                  transaction::Options const& options)
       : transaction::Methods(transactionContext, options) {
     addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
 
@@ -57,10 +57,9 @@ class UserTransaction final : public transaction::Methods {
       addCollection(it, AccessMode::Type::READ);
     }
   }
-
 };
 
-}
-}
+}  // namespace transaction
+}  // namespace arangodb
 
 #endif

@@ -24,8 +24,8 @@
 #ifndef ARANGOD_AQL_ENUMERATE_LIST_BLOCK_H
 #define ARANGOD_AQL_ENUMERATE_LIST_BLOCK_H 1
 
-#include "ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
+#include "ExecutionBlock.h"
 
 namespace arangodb {
 namespace aql {
@@ -68,7 +68,7 @@ class EnumerateListBlock : public ExecutionBlock {
   RegisterId _inVarRegId;
 };
 
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

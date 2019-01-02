@@ -33,21 +33,17 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 /// @brief create the accessor
-AttributeAccessor::AttributeAccessor(
-    std::vector<std::string>&& attributeParts, Variable const* variable,
-    bool dataIsFromCollection)
-    : _attributeParts(attributeParts),
-      _variable(variable),
-      _type(EXTRACT_MULTI) {
-
+AttributeAccessor::AttributeAccessor(std::vector<std::string>&& attributeParts,
+                                     Variable const* variable, bool dataIsFromCollection)
+    : _attributeParts(attributeParts), _variable(variable), _type(EXTRACT_MULTI) {
   TRI_ASSERT(_variable != nullptr);
   TRI_ASSERT(!_attributeParts.empty());
 
   // determine accessor type
-  // it is only safe to use the optimized accessor functions for system attributes
-  // when the input data are collection documents. it is not safe to use them for
-  // non-collection data, as the optimized functions may easily create out-of-bounds
-  // accesses in that case
+  // it is only safe to use the optimized accessor functions for system
+  // attributes when the input data are collection documents. it is not safe to
+  // use them for non-collection data, as the optimized functions may easily
+  // create out-of-bounds accesses in that case
   if (_attributeParts.size() == 1) {
     if (dataIsFromCollection && attributeParts[0] == StaticStrings::KeyString) {
       _type = EXTRACT_KEY;
@@ -62,7 +58,7 @@ AttributeAccessor::AttributeAccessor(
     }
   }
 }
-  
+
 /// @brief replace the variable in the accessor
 void AttributeAccessor::replaceVariable(std::unordered_map<VariableId, Variable const*> const& replacements) {
   for (auto const& it : replacements) {
@@ -112,4 +108,3 @@ AqlValue AttributeAccessor::getDynamic(transaction::Methods* trx,
     }
   }
 }
-

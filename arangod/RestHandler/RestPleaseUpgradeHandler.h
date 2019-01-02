@@ -37,6 +37,6 @@ class RestPleaseUpgradeHandler : public rest::RestHandler {
   RestStatus execute() override;
   void handleError(const basics::Exception&) override;
 };
-}
+}  // namespace arangodb
 
 #endif

@@ -168,7 +168,7 @@ void TRI_WaitCondition(TRI_condition_t* cond);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief waits for a signal with a timeout in micro-seconds
-/// returns true when the condition was signaled, false on timeout 
+/// returns true when the condition was signaled, false on timeout
 ///
 /// Note that you must hold the lock.
 ////////////////////////////////////////////////////////////////////////////////

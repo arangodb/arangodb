@@ -34,14 +34,13 @@ class ManagedDocumentResult;
 namespace graph {
 class ShortestPathFinder;
 class ShortestPathResult;
-}
+}  // namespace graph
 
 namespace aql {
 
 class ShortestPathNode;
 
 class ShortestPathBlock : public ExecutionBlock {
-
  public:
   ShortestPathBlock(ExecutionEngine* engine, ShortestPathNode const* ep);
 
@@ -64,7 +63,6 @@ class ShortestPathBlock : public ExecutionBlock {
   size_t skipSome(size_t atLeast, size_t atMost) override final;
 
  private:
-
   /// SECTION private Functions
 
   /// @brief Compute the next shortest path
@@ -89,7 +87,7 @@ class ShortestPathBlock : public ExecutionBlock {
 
   /// @brief Register for the edge output
   RegisterId _edgeReg;
-  
+
   /// @brief options to compute the shortest path
   graph::ShortestPathOptions* _opts;
 
@@ -136,9 +134,8 @@ class ShortestPathBlock : public ExecutionBlock {
 
   /// @brief Traverser Engines
   std::unordered_map<ServerID, traverser::TraverserEngineID> const* _engines;
-
 };
 
-} // namespace arangodb::aql
-} // namespace arangodb
+}  // namespace aql
+}  // namespace arangodb
 #endif

@@ -43,7 +43,7 @@ using namespace arangodb::options;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief portably and safely reads a number
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 template <typename T>
 static inline T ReadNumber(uint8_t const* source, uint32_t length) {
   T value = 0;
@@ -93,13 +93,12 @@ static std::string ConvertFromHex(std::string const& value) {
 // custom type value handler, used for deciphering the _id attribute
 struct CustomTypeHandler : public VPackCustomTypeHandler {
   CustomTypeHandler() = default;
-  ~CustomTypeHandler() = default; 
+  ~CustomTypeHandler() = default;
 
-  void dump(VPackSlice const& value, VPackDumper* dumper,
-            VPackSlice const& base) override final {
+  void dump(VPackSlice const& value, VPackDumper* dumper, VPackSlice const& base) override final {
     dumper->appendString(toString(value, nullptr, base));
   }
-  
+
   std::string toString(VPackSlice const& value, VPackOptions const* options,
                        VPackSlice const& base) override final {
     uint64_t cid = ReadNumber<uint64_t>(value.begin() + 1, sizeof(uint64_t));
@@ -107,9 +106,7 @@ struct CustomTypeHandler : public VPackCustomTypeHandler {
   }
 };
 
-
-VPackFeature::VPackFeature(application_features::ApplicationServer* server,
-                           int* result)
+VPackFeature::VPackFeature(application_features::ApplicationServer* server, int* result)
     : ApplicationFeature(server, "VPack"),
       _result(result),
       _prettyPrint(true),
@@ -119,35 +116,25 @@ VPackFeature::VPackFeature(application_features::ApplicationServer* server,
   setOptional(false);
 }
 
-void VPackFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  options->addOption(
-      "--input-file", "input filename",
-      new StringParameter(&_inputFile));
-  options->addOption(
-      "--output-file", "output filename",
-      new StringParameter(&_outputFile));
-  options->addOption(
-      "--pretty", "pretty print result",
-      new BooleanParameter(&_prettyPrint));
-  options->addOption(
-      "--hex", "read hex-encoded input",
-      new BooleanParameter(&_hexInput));
-  options->addOption(
-      "--print-non-json", "print non-JSON types",
-      new BooleanParameter(&_printNonJson));
+void VPackFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
+  options->addOption("--input-file", "input filename", new StringParameter(&_inputFile));
+  options->addOption("--output-file", "output filename", new StringParameter(&_outputFile));
+  options->addOption("--pretty", "pretty print result", new BooleanParameter(&_prettyPrint));
+  options->addOption("--hex", "read hex-encoded input", new BooleanParameter(&_hexInput));
+  options->addOption("--print-non-json", "print non-JSON types",
+                     new BooleanParameter(&_printNonJson));
 }
 
 void VPackFeature::start() {
   *_result = EXIT_SUCCESS;
 
-  bool toStdOut = false; 
+  bool toStdOut = false;
 #ifdef __linux__
   // treat "-" as stdin. quick hack for linux
   if (_inputFile.empty() || _inputFile == "-") {
     _inputFile = "/proc/self/fd/0";
   }
-  
+
   // treat missing outfile as stdout
   if (_outputFile.empty() || _outputFile == "+") {
     _outputFile = "/proc/self/fd/1";
@@ -162,11 +149,11 @@ void VPackFeature::start() {
   }
 
   auto customTypeHandler = std::make_unique<CustomTypeHandler>();
-  
+
   VPackOptions options;
   options.prettyPrint = _prettyPrint;
-  options.unsupportedTypeBehavior = 
-    (_printNonJson ? VPackOptions::ConvertUnsupportedType : VPackOptions::FailOnUnsupportedType);
+  options.unsupportedTypeBehavior =
+      (_printNonJson ? VPackOptions::ConvertUnsupportedType : VPackOptions::FailOnUnsupportedType);
   options.customTypeHandler = customTypeHandler.get();
 
   try {
@@ -206,13 +193,13 @@ void VPackFeature::start() {
     *_result = TRI_ERROR_INTERNAL;
     return;
   }
-  
+
   // reset stream
   // cppcheck-suppress *
   if (!toStdOut) {
     ofs.seekp(0);
   }
-  
+
   // write into stream
   char const* start = buffer.data();
   ofs.write(start, buffer.size());
@@ -220,8 +207,7 @@ void VPackFeature::start() {
 
   // cppcheck-suppress *
   if (!toStdOut) {
-    std::cout << "Successfully converted JSON infile '" << _inputFile << "'"
-              << std::endl;
+    std::cout << "Successfully converted JSON infile '" << _inputFile << "'" << std::endl;
     std::cout << "VPack Infile size: " << s.size() << std::endl;
     std::cout << "JSON Outfile size: " << buffer.size() << std::endl;
   }

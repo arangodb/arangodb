@@ -38,9 +38,7 @@ class MMFilesCollectionWriteLocker {
   /// @brief create the locker
   MMFilesCollectionWriteLocker(arangodb::MMFilesCollection* collection,
                                bool useDeadlockDetector, bool doLock)
-      : _collection(collection),
-        _useDeadlockDetector(useDeadlockDetector),
-        _doLock(false) {
+      : _collection(collection), _useDeadlockDetector(useDeadlockDetector), _doLock(false) {
     if (doLock) {
       int res = _collection->lockWrite(_useDeadlockDetector);
 
@@ -73,6 +71,6 @@ class MMFilesCollectionWriteLocker {
   /// @brief lock flag
   bool _doLock;
 };
-}
+}  // namespace arangodb
 
 #endif

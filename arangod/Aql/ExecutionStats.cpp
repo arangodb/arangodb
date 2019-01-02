@@ -44,7 +44,7 @@ void ExecutionStats::toVelocyPack(VPackBuilder& builder, bool reportFullCount) c
     // fullCount is exceptional, as it may be hidden
     builder.add("fullCount", VPackValue(fullCount));
   }
-      
+
   builder.add("executionTime", VPackValue(executionTime));
   builder.close();
 }
@@ -72,8 +72,7 @@ ExecutionStats::ExecutionStats()
       fullCount(0),
       executionTime(0.0) {}
 
-ExecutionStats::ExecutionStats(VPackSlice const& slice) 
-    : ExecutionStats() {
+ExecutionStats::ExecutionStats(VPackSlice const& slice) : ExecutionStats() {
   if (!slice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "stats is not an object");
@@ -84,7 +83,7 @@ ExecutionStats::ExecutionStats(VPackSlice const& slice)
   scannedFull = slice.get("scannedFull").getNumber<int64_t>();
   scannedIndex = slice.get("scannedIndex").getNumber<int64_t>();
   filtered = slice.get("filtered").getNumber<int64_t>();
-  
+
   if (slice.hasKey("httpRequests")) {
     httpRequests = slice.get("httpRequests").getNumber<int64_t>();
   }

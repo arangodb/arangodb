@@ -40,17 +40,17 @@ using namespace arangodb::aql;
 
 /// @brief constructor
 IndexNode::IndexNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-            Collection const* collection, Variable const* outVariable,
-            std::vector<transaction::Methods::IndexHandle> const& indexes,
-            Condition* condition, bool reverse)
-      : ExecutionNode(plan, id),
-        DocumentProducingNode(outVariable),
-        _vocbase(vocbase),
-        _collection(collection),
-        _indexes(indexes),
-        _condition(condition),
-        _reverse(reverse),
-        _needsGatherNodeSort(false) {
+                     Collection const* collection, Variable const* outVariable,
+                     std::vector<transaction::Methods::IndexHandle> const& indexes,
+                     Condition* condition, bool reverse)
+    : ExecutionNode(plan, id),
+      DocumentProducingNode(outVariable),
+      _vocbase(vocbase),
+      _collection(collection),
+      _indexes(indexes),
+      _condition(condition),
+      _reverse(reverse),
+      _needsGatherNodeSort(false) {
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_collection != nullptr);
   TRI_ASSERT(_condition != nullptr);
@@ -58,8 +58,8 @@ IndexNode::IndexNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
   initIndexCoversProjections();
 }
 
-/// @brief constructor for IndexNode 
-IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base) 
+/// @brief constructor for IndexNode
+IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       DocumentProducingNode(plan, base),
       _vocbase(plan->getAst()->query()->vocbase()),
@@ -68,8 +68,8 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       _indexes(),
       _condition(nullptr),
       _reverse(base.get("reverse").getBoolean()),
-      _needsGatherNodeSort(basics::VelocyPackHelper::readBooleanValue(base, "needsGatherNodeSort", false)) {
-
+      _needsGatherNodeSort(
+          basics::VelocyPackHelper::readBooleanValue(base, "needsGatherNodeSort", false)) {
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_collection != nullptr);
 
@@ -83,20 +83,22 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
   VPackSlice indexes = base.get("indexes");
 
   if (!indexes.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "\"indexes\" attribute should be an array");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "\"indexes\" attribute should be an array");
   }
 
   _indexes.reserve(indexes.length());
 
   auto trx = plan->getAst()->query()->trx();
   for (auto const& it : VPackArrayIterator(indexes)) {
-    std::string iid  = it.get("id").copyString();
+    std::string iid = it.get("id").copyString();
     _indexes.emplace_back(trx->getIndexByIdentifier(_collection->getName(), iid));
   }
 
   VPackSlice condition = base.get("condition");
   if (!condition.isObject()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "\"condition\" attribute should be an object");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER, "\"condition\" attribute should be an object");
   }
 
   _condition = Condition::fromVPack(plan, condition);
@@ -140,7 +142,7 @@ void IndexNode::initIndexCoversProjections() {
     // we will not be able to satisfy all requested projections with this index
     return;
   }
-  
+
   std::vector<size_t> coveringAttributePositions;
   // test if the index fields are the same fields as used in the projection
   std::string result;
@@ -161,7 +163,7 @@ void IndexNode::initIndexCoversProjections() {
     }
     ++i;
   }
- 
+
   _coveringIndexAttributePositions = std::move(coveringAttributePositions);
 }
 
@@ -174,10 +176,10 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("collection", VPackValue(_collection->getName()));
   nodes.add("satellite", VPackValue(_collection->isSatellite()));
-  
+
   // add outvariable and projections
   DocumentProducingNode::toVelocyPack(nodes);
-  
+
   nodes.add(VPackValue("indexes"));
   {
     VPackArrayBuilder guard(&nodes);
@@ -189,7 +191,8 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   _condition->toVelocyPack(nodes, verbose);
   nodes.add("reverse", VPackValue(_reverse));
   nodes.add("needsGatherNodeSort", VPackValue(_needsGatherNodeSort));
-  nodes.add("indexCoversProjections", VPackValue(!_coveringIndexAttributePositions.empty()));
+  nodes.add("indexCoversProjections",
+            VPackValue(!_coveringIndexAttributePositions.empty()));
 
   // And close it:
   nodes.close();
@@ -205,7 +208,7 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   auto c = new IndexNode(plan, _id, _vocbase, _collection, outVariable,
                          _indexes, _condition->clone(), _reverse);
-  
+
   c->projections(_projections);
   c->needsGatherNodeSort(_needsGatherNodeSort);
   c->initIndexCoversProjections();
@@ -242,8 +245,7 @@ double IndexNode::estimateCost(size_t& nrItems) const {
     }
 
     if (condition != nullptr &&
-        trx->supportsFilterCondition(_indexes[i], condition,
-                                     _outVariable, itemsInCollection,
+        trx->supportsFilterCondition(_indexes[i], condition, _outVariable, itemsInCollection,
                                      estimatedItems, estimatedCost)) {
       totalItems += estimatedItems;
       totalCost += estimatedCost;
@@ -274,8 +276,7 @@ std::vector<Variable const*> IndexNode::getVariablesUsedHere() const {
 }
 
 /// @brief getVariablesUsedHere, modifying the set in-place
-void IndexNode::getVariablesUsedHere(
-    std::unordered_set<Variable const*>& vars) const {
+void IndexNode::getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const {
   Ast::getReferencedVariables(_condition->root(), vars);
 
   vars.erase(_outVariable);

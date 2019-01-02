@@ -35,7 +35,6 @@ class Builder;
 namespace aql {
 
 class AqlFunctionFeature final : public application_features::ApplicationFeature {
-
  public:
   static AqlFunctionFeature* AQLFUNCTIONS;
 
@@ -47,7 +46,7 @@ class AqlFunctionFeature final : public application_features::ApplicationFeature
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void unprepare() override final;
-  
+
   /// @brief returns a reference to a built-in function
   static Function const* getFunctionByName(std::string const&);
 
@@ -58,8 +57,7 @@ class AqlFunctionFeature final : public application_features::ApplicationFeature
 
   void toVelocyPack(arangodb::velocypack::Builder&);
   Function const* byName(std::string const& name);
-  std::string const& getOperatorName(AstNodeType const type,
-                                     std::string const& errorMessage);
+  std::string const& getOperatorName(AstNodeType const type, std::string const& errorMessage);
 
  private:
   // Internal functions
@@ -76,11 +74,10 @@ class AqlFunctionFeature final : public application_features::ApplicationFeature
 
  private:
   /// @brief AQL internal function names
-  std::unordered_map<int, std::string const> const
-      _internalFunctionNames;
+  std::unordered_map<int, std::string const> const _internalFunctionNames;
   /// @brief AQL user-callable function names
   std::unordered_map<std::string, Function const> _functionNames;
 };
-} // namespace aql
-} // namespace arangodb
+}  // namespace aql
+}  // namespace arangodb
 #endif

@@ -52,13 +52,12 @@ using namespace arangodb::pregel;
   ReadLocker<ReadWriteLock> obj(&lock, arangodb::basics::LockerType::BLOCKING, \
                                 true, __FILE__, __LINE__)
 
-#define MY_WRITE_LOCKER(obj, lock) \
-  WriteLocker<ReadWriteLock> obj(  \
-      &lock, arangodb::basics::LockerType::BLOCKING, true, __FILE__, __LINE__)
+#define MY_WRITE_LOCKER(obj, lock)                                              \
+  WriteLocker<ReadWriteLock> obj(&lock, arangodb::basics::LockerType::BLOCKING, \
+                                 true, __FILE__, __LINE__)
 
 template <typename V, typename E, typename M>
-Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
-                        VPackSlice initConfig)
+Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo, VPackSlice initConfig)
     : _state(WorkerState::IDLE),
       _config(vocbase, initConfig),
       _algorithm(algo),
@@ -84,10 +83,8 @@ Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
     VPackBuilder package;
     package.openObject();
     package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-    package.add(Utils::executionNumberKey,
-                VPackValue(_config.executionNumber()));
-    package.add(Utils::vertexCountKey,
-                VPackValue(_graphStore->localVertexCount()));
+    package.add(Utils::executionNumberKey, VPackValue(_config.executionNumber()));
+    package.add(Utils::vertexCountKey, VPackValue(_graphStore->localVertexCount()));
     package.add(Utils::edgeCountKey, VPackValue(_graphStore->localEdgeCount()));
     package.close();
     _callConductor(Utils::finishedStartupPath, package);
@@ -140,15 +137,16 @@ void Worker<V, E, M>::_initializeMessageCaches() {
     _writeCache = new CombiningInCache<M>(&_config, _messageFormat.get(),
                                           _messageCombiner.get());
     if (_config.asynchronousMode()) {
-      _writeCacheNextGSS = new CombiningInCache<M>(
-          &_config, _messageFormat.get(), _messageCombiner.get());
+      _writeCacheNextGSS = new CombiningInCache<M>(&_config, _messageFormat.get(),
+                                                   _messageCombiner.get());
     }
     for (size_t i = 0; i < p; i++) {
-      auto incoming = std::make_unique<CombiningInCache<M>>(
-          nullptr, _messageFormat.get(), _messageCombiner.get());
+      auto incoming =
+          std::make_unique<CombiningInCache<M>>(nullptr, _messageFormat.get(),
+                                                _messageCombiner.get());
       _inCaches.push_back(incoming.get());
-      _outCaches.push_back(new CombiningOutCache<M>(
-          &_config, _messageFormat.get(), _messageCombiner.get()));
+      _outCaches.push_back(new CombiningOutCache<M>(&_config, _messageFormat.get(),
+                                                    _messageCombiner.get()));
       incoming.release();
     }
   } else {
@@ -158,19 +156,16 @@ void Worker<V, E, M>::_initializeMessageCaches() {
       _writeCacheNextGSS = new ArrayInCache<M>(&_config, _messageFormat.get());
     }
     for (size_t i = 0; i < p; i++) {
-      auto incoming =
-          std::make_unique<ArrayInCache<M>>(nullptr, _messageFormat.get());
+      auto incoming = std::make_unique<ArrayInCache<M>>(nullptr, _messageFormat.get());
       _inCaches.push_back(incoming.get());
-      _outCaches.push_back(
-          new ArrayOutCache<M>(&_config, _messageFormat.get()));
+      _outCaches.push_back(new ArrayOutCache<M>(&_config, _messageFormat.get()));
       incoming.release();
     }
   }
 }
 
 template <typename V, typename E, typename M>
-void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data,
-                                        VPackBuilder& response) {
+void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data, VPackBuilder& response) {
   // Only expect serial calls from the conductor.
   // Lock to prevent malicous activity
   MUTEX_LOCKER(guard, _commandMutex);
@@ -233,8 +228,7 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data,
   response.openObject();
   response.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
   response.add(Utils::activeCountKey, VPackValue(_activeCount));
-  response.add(Utils::vertexCountKey,
-               VPackValue(_graphStore->localVertexCount()));
+  response.add(Utils::vertexCountKey, VPackValue(_graphStore->localVertexCount()));
   response.add(Utils::edgeCountKey, VPackValue(_graphStore->localEdgeCount()));
   _workerAggregators->serializeValues(response);
   response.close();
@@ -256,15 +250,14 @@ void Worker<V, E, M>::receivedMessages(VPackSlice const& data) {
     if (_config.asynchronousMode() && _state == WorkerState::IDLE) {
       _continueAsync();
     }
-  } else if (_config.asynchronousMode() &&
-             gss == _config._globalSuperstep + 1) {
+  } else if (_config.asynchronousMode() && gss == _config._globalSuperstep + 1) {
     MY_READ_LOCKER(guard, _cacheRWLock);
     _writeCacheNextGSS->parseMessages(data);
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Superstep out of sync");
-    LOG_TOPIC(ERR, Logger::PREGEL) << "Expected: " << _config._globalSuperstep
-                                   << "Got: " << gss;
+    LOG_TOPIC(ERR, Logger::PREGEL)
+        << "Expected: " << _config._globalSuperstep << "Got: " << gss;
   }
 }
 
@@ -357,8 +350,8 @@ void Worker<V, E, M>::_initializeVertexContext(VertexContext<V, E, M>* ctx) {
 
 // internally called in a WORKER THREAD!!
 template <typename V, typename E, typename M>
-bool Worker<V, E, M>::_processVertices(
-    size_t threadId, RangeIterator<VertexEntry>& vertexIterator) {
+bool Worker<V, E, M>::_processVertices(size_t threadId,
+                                       RangeIterator<VertexEntry>& vertexIterator) {
   double start = TRI_microtime();
 
   // thread local caches
@@ -475,10 +468,9 @@ void Worker<V, E, M>::_finishedProcessing() {
         _readCache->erase(vertexEntry->shard(), vertexEntry->key());
       }
 
-      _readCache->forEach(
-          [this](PregelShard shard, PregelKey const& key, M const&) {
-            _graphStore->loadDocument(&_config, shard, key);
-          });
+      _readCache->forEach([this](PregelShard shard, PregelKey const& key, M const&) {
+        _graphStore->loadDocument(&_config, shard, key);
+      });
 
       // only do this expensive merge operation if there are new vertices
       size_t total = _graphStore->localVertexCount();
@@ -492,8 +484,7 @@ void Worker<V, E, M>::_finishedProcessing() {
         } else {
           // TODO call _startProcessing ???
           _runningThreads = 1;
-          auto addedVertices =
-              _graphStore->vertexIterator(currentAVCount, total);
+          auto addedVertices = _graphStore->vertexIterator(currentAVCount, total);
           _processVertices(0, addedVertices);
         }
       }
@@ -506,10 +497,8 @@ void Worker<V, E, M>::_finishedProcessing() {
 
     package.openObject();
     package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-    package.add(Utils::executionNumberKey,
-                VPackValue(_config.executionNumber()));
-    package.add(Utils::globalSuperstepKey,
-                VPackValue(_config.globalSuperstep()));
+    package.add(Utils::executionNumberKey, VPackValue(_config.executionNumber()));
+    package.add(Utils::globalSuperstepKey, VPackValue(_config.globalSuperstep()));
     _messageStats.serializeValues(package);
     if (_config.asynchronousMode()) {
       _workerAggregators->serializeValues(package, true);
@@ -532,18 +521,16 @@ void Worker<V, E, M>::_finishedProcessing() {
     LOG_TOPIC(DEBUG, Logger::PREGEL) << "Finished LSS: " << package.toJson();
 
     // if the conductor is unreachable or has send data (try to) proceed
-    _callConductorWithResponse(
-        Utils::finishedWorkerStepPath, package, [this](VPackSlice response) {
-          if (response.isObject()) {
-            _conductorAggregators->aggregateValues(
-                response);  // only aggregate values
-            VPackSlice nextGSS = response.get(Utils::enterNextGSSKey);
-            if (nextGSS.isBool()) {
-              _requestedNextGSS = _requestedNextGSS || nextGSS.getBool();
-            }
-            _continueAsync();
-          }
-        });
+    _callConductorWithResponse(Utils::finishedWorkerStepPath, package, [this](VPackSlice response) {
+      if (response.isObject()) {
+        _conductorAggregators->aggregateValues(response);  // only aggregate values
+        VPackSlice nextGSS = response.get(Utils::enterNextGSSKey);
+        if (nextGSS.isBool()) {
+          _requestedNextGSS = _requestedNextGSS || nextGSS.getBool();
+        }
+        _continueAsync();
+      }
+    });
 
   } else {  // no answer expected
     _callConductor(Utils::finishedWorkerStepPath, package);
@@ -557,8 +544,7 @@ template <typename V, typename E, typename M>
 void Worker<V, E, M>::_continueAsync() {
   {
     MUTEX_LOCKER(guard, _commandMutex);
-    if (_state != WorkerState::IDLE ||
-        _writeCache->containedMessageCount() == 0) {
+    if (_state != WorkerState::IDLE || _writeCache->containedMessageCount() == 0) {
       return;
     }
     // avoid calling this method accidentially
@@ -570,11 +556,10 @@ void Worker<V, E, M>::_continueAsync() {
   TRI_ASSERT(ioService != nullptr);
 
   // wait for new messages before beginning to process
-  int64_t milli =
-      _writeCache->containedMessageCount() < _messageBatchSize ? 50 : 5;
+  int64_t milli = _writeCache->containedMessageCount() < _messageBatchSize ? 50 : 5;
   // start next iteration in $milli mseconds.
-  _boost_timer.reset(new boost::asio::deadline_timer(
-      *ioService, boost::posix_time::millisec(milli)));
+  _boost_timer.reset(
+      new boost::asio::deadline_timer(*ioService, boost::posix_time::millisec(milli)));
   _boost_timer->async_wait([this](const boost::system::error_code& error) {
     if (error != boost::asio::error::operation_aborted) {
       {  // swap these pointers atomically
@@ -700,10 +685,8 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
     VPackBuilder package;
     package.openObject();
     package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-    package.add(Utils::executionNumberKey,
-                VPackValue(_config.executionNumber()));
-    package.add(Utils::globalSuperstepKey,
-                VPackValue(_config.globalSuperstep()));
+    package.add(Utils::executionNumberKey, VPackValue(_config.executionNumber()));
+    package.add(Utils::globalSuperstepKey, VPackValue(_config.globalSuperstep()));
     _workerAggregators->serializeValues(package);
     package.close();
     _callConductor(Utils::finishedRecoveryPath, package);
@@ -725,8 +708,7 @@ void Worker<V, E, M>::finalizeRecovery(VPackSlice const& data) {
 }
 
 template <typename V, typename E, typename M>
-void Worker<V, E, M>::_callConductor(std::string const& path,
-                                     VPackBuilder const& message) {
+void Worker<V, E, M>::_callConductor(std::string const& path, VPackBuilder const& message) {
   if (ServerState::instance()->isRunningInCluster() == false) {
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
@@ -736,24 +718,21 @@ void Worker<V, E, M>::_callConductor(std::string const& path,
     });
   } else {
     std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
-    std::string baseUrl =
-        Utils::baseUrl(_config.database(), Utils::conductorPrefix);
+    std::string baseUrl = Utils::baseUrl(_config.database(), Utils::conductorPrefix);
     CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
-    auto headers =
-        std::make_unique<std::unordered_map<std::string, std::string>>();
+    auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
     auto body = std::make_shared<std::string const>(message.toJson());
-    cc->asyncRequest(
-        "", coordinatorTransactionID, "server:" + _config.coordinatorId(),
-        rest::RequestType::POST, baseUrl + path, body, headers, nullptr,
-        120.0,  // timeout
-        true);  // single request, no answer expected
+    cc->asyncRequest("", coordinatorTransactionID, "server:" + _config.coordinatorId(),
+                     rest::RequestType::POST, baseUrl + path, body, headers, nullptr,
+                     120.0,  // timeout
+                     true);  // single request, no answer expected
   }
 }
 
 template <typename V, typename E, typename M>
-void Worker<V, E, M>::_callConductorWithResponse(
-    std::string const& path, VPackBuilder const& message,
-    std::function<void(VPackSlice slice)> handle) {
+void Worker<V, E, M>::_callConductorWithResponse(std::string const& path,
+                                                 VPackBuilder const& message,
+                                                 std::function<void(VPackSlice slice)> handle) {
   LOG_TOPIC(TRACE, Logger::PREGEL) << "Calling the conductor";
   if (ServerState::instance()->isRunningInCluster() == false) {
     VPackBuilder response;
@@ -761,15 +740,14 @@ void Worker<V, E, M>::_callConductorWithResponse(
     handle(response.slice());
   } else {
     std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
-    std::string baseUrl =
-        Utils::baseUrl(_config.database(), Utils::conductorPrefix);
+    std::string baseUrl = Utils::baseUrl(_config.database(), Utils::conductorPrefix);
     CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
     std::unordered_map<std::string, std::string> headers;
 
-    std::unique_ptr<ClusterCommResult> result = cc->syncRequest(
-        "", coordinatorTransactionID, "server:" + _config.coordinatorId(),
-        rest::RequestType::POST, baseUrl + path, message.toJson(), headers,
-        120.0);
+    std::unique_ptr<ClusterCommResult> result =
+        cc->syncRequest("", coordinatorTransactionID,
+                        "server:" + _config.coordinatorId(), rest::RequestType::POST,
+                        baseUrl + path, message.toJson(), headers, 120.0);
     if (result->status == CL_COMM_SENT || result->status == CL_COMM_RECEIVED) {
       handle(result->answer->payload());
     } else {
@@ -783,10 +761,8 @@ template class arangodb::pregel::Worker<int64_t, int64_t, int64_t>;
 template class arangodb::pregel::Worker<float, float, float>;
 template class arangodb::pregel::Worker<double, float, double>;
 // custom algorihm types
-template class arangodb::pregel::Worker<SCCValue, int8_t,
-                                        SenderMessage<uint64_t>>;
-template class arangodb::pregel::Worker<HITSValue, int8_t,
-                                        SenderMessage<double>>;
+template class arangodb::pregel::Worker<SCCValue, int8_t, SenderMessage<uint64_t>>;
+template class arangodb::pregel::Worker<HITSValue, int8_t, SenderMessage<double>>;
 template class arangodb::pregel::Worker<ECValue, int8_t, HLLCounter>;
 template class arangodb::pregel::Worker<DMIDValue, float, DMIDMessage>;
 template class arangodb::pregel::Worker<LPValue, int8_t, uint64_t>;

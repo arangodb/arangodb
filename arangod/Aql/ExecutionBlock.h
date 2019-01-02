@@ -32,21 +32,24 @@
 #if 0
 
 #define DEBUG_BEGIN_BLOCK() try {  //
-#define DEBUG_END_BLOCK()                                                     \
-  }                                                                           \
-  catch (arangodb::basics::Exception const& ex) {                             \
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "arango exception caught in " << __FILE__ << ":" << __LINE__ \
-              << ":" << ex.what();                                            \
-    throw;                                                                    \
-  }                                                                           \
-  catch (std::exception const& ex) {                                          \
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "std exception caught in " << __FILE__ << ":" << __LINE__    \
-              << ": " << ex.what();                                           \
-    throw;                                                                    \
-  }                                                                           \
-  catch (...) {                                                               \
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "exception caught in " << __FILE__ << ":" << __LINE__;       \
-    throw;                                                                    \
+#define DEBUG_END_BLOCK()                                                      \
+  }                                                                            \
+  catch (arangodb::basics::Exception const& ex) {                              \
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)                                   \
+        << "arango exception caught in " << __FILE__ << ":" << __LINE__ << ":" \
+        << ex.what();                                                          \
+    throw;                                                                     \
+  }                                                                            \
+  catch (std::exception const& ex) {                                           \
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)                                   \
+        << "std exception caught in " << __FILE__ << ":" << __LINE__ << ": "   \
+        << ex.what();                                                          \
+    throw;                                                                     \
+  }                                                                            \
+  catch (...) {                                                                \
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)                                   \
+        << "exception caught in " << __FILE__ << ":" << __LINE__;              \
+    throw;                                                                     \
   }  //
 
 #else
@@ -64,7 +67,7 @@ class Methods;
 namespace aql {
 class AqlItemBlock;
 
-/// @brief sort element for block, consisting of register, sort direction, 
+/// @brief sort element for block, consisting of register, sort direction,
 /// and a possible attribute path to dig into the document
 
 struct SortElementBlock {
@@ -72,9 +75,7 @@ struct SortElementBlock {
   bool ascending;
   std::vector<std::string> attributePath;
 
-  SortElementBlock(RegisterId r, bool asc)
-    : reg(r), ascending(asc) {
-  }
+  SortElementBlock(RegisterId r, bool asc) : reg(r), ascending(asc) {}
 };
 
 class ExecutionEngine;
@@ -104,9 +105,9 @@ class ExecutionBlock {
   void throwIfKilled();
 
   /// @brief add a dependency
-  void addDependency(ExecutionBlock* ep) { 
+  void addDependency(ExecutionBlock* ep) {
     TRI_ASSERT(ep != nullptr);
-    _dependencies.emplace_back(ep); 
+    _dependencies.emplace_back(ep);
   }
 
   /// @brief get all dependencies
@@ -169,8 +170,7 @@ class ExecutionBlock {
   /// register values are cloned
   void inheritRegisters(AqlItemBlock const* src, AqlItemBlock* dst, size_t row);
 
-  void inheritRegisters(AqlItemBlock const* src, AqlItemBlock* dst, size_t,
-                        size_t);
+  void inheritRegisters(AqlItemBlock const* src, AqlItemBlock* dst, size_t, size_t);
 
   /// @brief the following is internal to pull one more block and append it to
   /// our _buffer deque. Returns true if a new block was appended and false if
@@ -207,7 +207,7 @@ class ExecutionBlock {
   virtual int64_t remaining();
 
   ExecutionNode const* getPlanNode() const { return _exeNode; }
-  
+
   transaction::Methods* transaction() const { return _trx; }
 
  protected:
@@ -248,7 +248,7 @@ class ExecutionBlock {
   int64_t _tracing;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

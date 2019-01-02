@@ -85,7 +85,7 @@ typedef struct {
   double* distances;
 } GeoCoordinates;
 
-typedef void GeoIdx;  /* to keep the structure private  */
+typedef void GeoIdx;    /* to keep the structure private  */
 typedef void GeoCursor; /* to keep the structure private  */
 
 size_t GeoIndex_MemoryUsage(void*);
@@ -96,12 +96,11 @@ double GeoIndex_distance(GeoCoordinate* c1, GeoCoordinate* c2);
 int GeoIndex_insert(GeoIdx* gi, GeoCoordinate* c);
 int GeoIndex_remove(GeoIdx* gi, GeoCoordinate* c);
 int GeoIndex_hint(GeoIdx* gi, int hint);
-GeoCoordinates* GeoIndex_PointsWithinRadius(GeoIdx* gi, GeoCoordinate* c,
-                                            double d);
-GeoCoordinates* GeoIndex_NearestCountPoints(GeoIdx* gi, GeoCoordinate* c,
-                                            int count);
+GeoCoordinates* GeoIndex_PointsWithinRadius(GeoIdx* gi, GeoCoordinate* c, double d);
+GeoCoordinates* GeoIndex_NearestCountPoints(GeoIdx* gi, GeoCoordinate* c, int count);
 GeoCursor* GeoIndex_NewCursor(GeoIdx* gi, GeoCoordinate* c);
-GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count, bool returnDistances = true, double maxDistance = -1.0);
+GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count, bool returnDistances = true,
+                                    double maxDistance = -1.0);
 void GeoIndex_CursorFree(GeoCursor* gc);
 void GeoIndex_CoordinatesFree(GeoCoordinates* clist);
 #ifdef TRI_GEO_DEBUG

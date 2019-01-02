@@ -31,7 +31,7 @@
 #include "Aql/Query.h"
 
 using namespace arangodb::aql;
-  
+
 ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
     : _engine(engine),
       _trx(engine->getQuery()->trx()),
@@ -65,8 +65,7 @@ RegisterId ExecutionBlock::getRegister(Variable const* variable) const {
 }
 
 /// @brief determine the number of rows in a vector of blocks
-size_t ExecutionBlock::countBlocksRows(
-    std::vector<AqlItemBlock*> const& blocks) const {
+size_t ExecutionBlock::countBlocksRows(std::vector<AqlItemBlock*> const& blocks) const {
   size_t count = 0;
   for (auto const& it : blocks) {
     count += it->size();
@@ -157,9 +156,9 @@ int ExecutionBlock::shutdown(int errorCode) {
 void ExecutionBlock::traceGetSomeBegin() const {
   if (_tracing > 0) {
     auto node = getPlanNode();
-    LOG_TOPIC(INFO, Logger::QUERIES) << "getSome type="
-      << node->getTypeString() << " this=" << (uintptr_t) this
-      << " id=" << node->id();
+    LOG_TOPIC(INFO, Logger::QUERIES)
+        << "getSome type=" << node->getTypeString()
+        << " this=" << (uintptr_t)this << " id=" << node->id();
   }
 }
 
@@ -167,22 +166,21 @@ void ExecutionBlock::traceGetSomeBegin() const {
 void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result) const {
   if (_tracing > 0) {
     auto node = getPlanNode();
-    LOG_TOPIC(INFO, Logger::QUERIES) << "getSome done type="
-      << node->getTypeString() << " this=" << (uintptr_t) this
-      << " id=" << node->id();
+    LOG_TOPIC(INFO, Logger::QUERIES)
+        << "getSome done type=" << node->getTypeString()
+        << " this=" << (uintptr_t)this << " id=" << node->id();
     if (_tracing > 1) {
       if (result == nullptr) {
         LOG_TOPIC(INFO, Logger::QUERIES)
             << "getSome type=" << node->getTypeString() << " result: nullptr";
       } else {
         VPackBuilder builder;
-        { 
+        {
           VPackObjectBuilder guard(&builder);
           result->toVelocyPack(_trx, builder);
         }
-        LOG_TOPIC(INFO, Logger::QUERIES)
-            << "getSome type=" << node->getTypeString()
-            << " result: " << builder.toJson();
+        LOG_TOPIC(INFO, Logger::QUERIES) << "getSome type=" << node->getTypeString()
+                                         << " result: " << builder.toJson();
       }
     }
   }
@@ -196,8 +194,7 @@ void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result) const {
 AqlItemBlock* ExecutionBlock::getSome(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin();
-  std::unique_ptr<AqlItemBlock> result(
-      getSomeWithoutRegisterClearout(atLeast, atMost));
+  std::unique_ptr<AqlItemBlock> result(getSomeWithoutRegisterClearout(atLeast, atMost));
   clearRegisters(result.get());
   traceGetSomeEnd(result.get());
   return result.release();
@@ -216,9 +213,8 @@ void ExecutionBlock::returnBlock(AqlItemBlock*& block) {
 
 /// @brief copy register data from one block (src) into another (dst)
 /// register values are cloned
-void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
-                                      AqlItemBlock* dst, size_t srcRow,
-                                      size_t dstRow) {
+void ExecutionBlock::inheritRegisters(AqlItemBlock const* src, AqlItemBlock* dst,
+                                      size_t srcRow, size_t dstRow) {
   DEBUG_BEGIN_BLOCK();
   RegisterId const n = src->getNrRegs();
   auto planNode = getPlanNode();
@@ -241,8 +237,7 @@ void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
 
 /// @brief copy register data from one block (src) into another (dst)
 /// register values are cloned
-void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
-                                      AqlItemBlock* dst, size_t row) {
+void ExecutionBlock::inheritRegisters(AqlItemBlock const* src, AqlItemBlock* dst, size_t row) {
   DEBUG_BEGIN_BLOCK();
   RegisterId const n = src->getNrRegs();
   auto planNode = getPlanNode();
@@ -275,8 +270,7 @@ bool ExecutionBlock::getBlock(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   throwIfKilled();  // check if we were aborted
 
-  std::unique_ptr<AqlItemBlock> docs(
-      _dependencies[0]->getSome(atLeast, atMost));
+  std::unique_ptr<AqlItemBlock> docs(_dependencies[0]->getSome(atLeast, atMost));
 
   if (docs == nullptr) {
     return false;
@@ -298,8 +292,7 @@ bool ExecutionBlock::getBlock(size_t atLeast, size_t atMost) {
 /// the idea is that somebody who wants to call the generic functionality
 /// in a derived class but wants to modify the results before the register
 /// cleanup can use this method, internal use only
-AqlItemBlock* ExecutionBlock::getSomeWithoutRegisterClearout(size_t atLeast,
-                                                             size_t atMost) {
+AqlItemBlock* ExecutionBlock::getSomeWithoutRegisterClearout(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(0 < atLeast && atLeast <= atMost);
   size_t skipped = 0;
@@ -417,8 +410,7 @@ int ExecutionBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
     if (cur->size() - _pos > atMost - skipped) {
       // The current block is too large for atMost:
       if (!skipping) {
-        std::unique_ptr<AqlItemBlock> more(
-            cur->slice(_pos, _pos + (atMost - skipped)));
+        std::unique_ptr<AqlItemBlock> more(cur->slice(_pos, _pos + (atMost - skipped)));
 
         TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

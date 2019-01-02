@@ -39,7 +39,7 @@
 namespace rocksdb {
 class DB;
 class Transaction;
-}
+}  // namespace rocksdb
 
 namespace arangodb {
 
@@ -60,10 +60,7 @@ class RocksDBCounterManager {
     CounterAdjustment() {}
     CounterAdjustment(rocksdb::SequenceNumber seq, uint64_t added,
                       uint64_t removed, TRI_voc_rid_t revisionId)
-        : _sequenceNum(seq),
-          _added(added),
-          _removed(removed),
-          _revisionId(revisionId) {}
+        : _sequenceNum(seq), _added(added), _removed(removed), _revisionId(revisionId) {}
 
     rocksdb::SequenceNumber sequenceNumber() const { return _sequenceNum; };
     uint64_t added() const { return _added; }
@@ -75,15 +72,14 @@ class RocksDBCounterManager {
 
   /// Thread-Safe load a counter
   CounterAdjustment loadCounter(uint64_t objectId) const;
-  
+
   /// collections / views / indexes can call this method to update
   /// their total counts. Thread-Safe needs the snapshot so we know
   /// the sequence number used
   void updateCounter(uint64_t objectId, CounterAdjustment const&);
 
   // does not modify seq or revisionid
-  arangodb::Result setAbsoluteCounter(uint64_t objectId,
-                                      uint64_t absouluteCount);
+  arangodb::Result setAbsoluteCounter(uint64_t objectId, uint64_t absouluteCount);
 
   /// Thread-Safe remove a counter
   void removeCounter(uint64_t objectId);
@@ -96,8 +92,7 @@ class RocksDBCounterManager {
   // NOTE: If this returns nullptr the recovery was not ably to find any
   // estimator
   // for this index.
-  std::unique_ptr<arangodb::RocksDBCuckooIndexEstimator<uint64_t>>
-  stealIndexEstimator(uint64_t indexObjectId);
+  std::unique_ptr<arangodb::RocksDBCuckooIndexEstimator<uint64_t>> stealIndexEstimator(uint64_t indexObjectId);
 
   // Steal the key genenerator state that recovery has detected.
   uint64_t stealKeyGenerator(uint64_t indexObjectId);
@@ -154,11 +149,7 @@ class RocksDBCounterManager {
   ///        Note the elements in this container will be moved into the
   ///        index classes and are only temporarily stored here during recovery.
   //////////////////////////////////////////////////////////////////////////////
-  std::unordered_map<
-      uint64_t,
-      std::pair<uint64_t,
-                std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>>>
-      _estimators;
+  std::unordered_map<uint64_t, std::pair<uint64_t, std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>>> _estimators;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief synced sequence numbers
@@ -185,6 +176,6 @@ class RocksDBCounterManager {
   //////////////////////////////////////////////////////////////////////////////
   mutable basics::ReadWriteLock _rwLock;
 };
-}
+}  // namespace arangodb
 
 #endif

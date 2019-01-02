@@ -28,8 +28,7 @@ using namespace arangodb::basics;
 
 size_t PageSizeFeature::PageSize = 0;
 
-PageSizeFeature::PageSizeFeature(
-    application_features::ApplicationServer* server)
+PageSizeFeature::PageSizeFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "PageSize") {
   setOptional(false);
   requiresElevatedPrivileges(false);

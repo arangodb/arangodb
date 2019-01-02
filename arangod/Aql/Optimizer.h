@@ -24,8 +24,8 @@
 #ifndef ARANGOD_AQL_OPTIMIZER_H
 #define ARANGOD_AQL_OPTIMIZER_H 1
 
-#include "Basics/Common.h"
 #include "Aql/ExecutionPlan.h"
+#include "Basics/Common.h"
 #include "Basics/RollingVector.h"
 
 #include <velocypack/Builder.h>
@@ -57,7 +57,6 @@ class Optimizer {
   };
 
  public:
-
   /// @brief the following struct keeps a list (deque) of ExecutionPlan*
   /// and has some automatic convenience functions.
   struct PlanList {
@@ -198,7 +197,7 @@ class Optimizer {
 
     return res;
   }
-  
+
   bool runOnlyRequiredRules(size_t extraPlans) const;
 
   /// @brief numberOfPlans, returns the current number of plans in the system
@@ -231,13 +230,13 @@ class Optimizer {
 
   /// @brief current list of plans (while applying optimizer rules)
   PlanList _newPlans;
-  
+
   // which optimizer rules are disabled?
   std::unordered_set<int> _disabledIds;
 
   /// @brief maximal number of plans to produce
   size_t const _maxNumberOfPlans;
-  
+
   /// @brief run only the required optimizer rules
   bool _runOnlyRequiredRules;
 };

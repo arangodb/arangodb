@@ -26,22 +26,22 @@
 
 using namespace arangodb::aql;
 
-RegexCache::~RegexCache() {
-  clear();
-}
+RegexCache::~RegexCache() { clear(); }
 
 void RegexCache::clear() noexcept {
   clear(_regexCache);
   clear(_likeCache);
 }
 
-icu::RegexMatcher* RegexCache::buildRegexMatcher(char const* ptr, size_t length, bool caseInsensitive) {
+icu::RegexMatcher* RegexCache::buildRegexMatcher(char const* ptr, size_t length,
+                                                 bool caseInsensitive) {
   buildRegexPattern(_temp, ptr, length, caseInsensitive);
 
   return fromCache(_temp, _regexCache);
 }
 
-icu::RegexMatcher* RegexCache::buildLikeMatcher(char const* ptr, size_t length, bool caseInsensitive) {
+icu::RegexMatcher* RegexCache::buildLikeMatcher(char const* ptr, size_t length,
+                                                bool caseInsensitive) {
   buildLikePattern(_temp, ptr, length, caseInsensitive);
 
   return fromCache(_temp, _likeCache);
@@ -66,7 +66,8 @@ icu::RegexMatcher* RegexCache::fromCache(std::string const& pattern,
     return (*it).second;
   }
 
-  icu::RegexMatcher* matcher = arangodb::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern);
+  icu::RegexMatcher* matcher =
+      arangodb::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern);
 
   try {
     // insert into cache, no matter if pattern is valid or not
@@ -79,9 +80,8 @@ icu::RegexMatcher* RegexCache::fromCache(std::string const& pattern,
 }
 
 /// @brief compile a REGEX pattern from a string
-void RegexCache::buildRegexPattern(std::string& out,
-                                   char const* ptr, size_t length,
-                                   bool caseInsensitive) {
+void RegexCache::buildRegexPattern(std::string& out, char const* ptr,
+                                   size_t length, bool caseInsensitive) {
   out.clear();
   if (caseInsensitive) {
     out.reserve(length + 4);
@@ -92,11 +92,10 @@ void RegexCache::buildRegexPattern(std::string& out,
 }
 
 /// @brief compile a LIKE pattern from a string
-void RegexCache::buildLikePattern(std::string& out,
-                                  char const* ptr, size_t length,
-                                  bool caseInsensitive) {
+void RegexCache::buildLikePattern(std::string& out, char const* ptr,
+                                  size_t length, bool caseInsensitive) {
   out.clear();
-  out.reserve(length + 8); // reserve some room
+  out.reserve(length + 8);  // reserve some room
 
   // pattern is always anchored
   out.push_back('^');

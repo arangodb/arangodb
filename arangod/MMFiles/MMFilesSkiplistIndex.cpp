@@ -65,18 +65,16 @@ using namespace arangodb;
 
 /// @brief compares a key with an element, version with proper types
 static int CompareKeyElement(void* userData, VPackSlice const* left,
-                             MMFilesSkiplistIndexElement const* right,
-                             size_t rightPosition) {
+                             MMFilesSkiplistIndexElement const* right, size_t rightPosition) {
   IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
   TRI_ASSERT(nullptr != left);
   TRI_ASSERT(nullptr != right);
-  return arangodb::basics::VelocyPackHelper::compare(
-      *left, right->slice(context, rightPosition), true);
+  return arangodb::basics::VelocyPackHelper::compare(*left, right->slice(context, rightPosition),
+                                                     true);
 }
 
 /// @brief compares elements, version with proper types
-static int CompareElementElement(void* userData,
-                                 MMFilesSkiplistIndexElement const* left,
+static int CompareElementElement(void* userData, MMFilesSkiplistIndexElement const* left,
                                  size_t leftPosition,
                                  MMFilesSkiplistIndexElement const* right,
                                  size_t rightPosition) {
@@ -126,9 +124,7 @@ MMFilesSkiplistLookupBuilder::MMFilesSkiplistLookupBuilder(
   auto const& last = ops.back();
   TRI_ASSERT(!last.empty());
 
-  std::pair<arangodb::aql::Variable const*,
-            std::vector<arangodb::basics::AttributeName>>
-      paramPair;
+  std::pair<arangodb::aql::Variable const*, std::vector<arangodb::basics::AttributeName>> paramPair;
 
   if (last[0]->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ &&
       last[0]->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
@@ -142,11 +138,9 @@ MMFilesSkiplistLookupBuilder::MMFilesSkiplistLookupBuilder(
                  op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN);
       TRI_ASSERT(op->numMembers() == 2);
       auto value = op->getMember(0);
-      if (value->isAttributeAccessForVariable(paramPair) &&
-          paramPair.first == var) {
+      if (value->isAttributeAccessForVariable(paramPair) && paramPair.first == var) {
         value = op->getMember(1);
-        TRI_ASSERT(!(value->isAttributeAccessForVariable(paramPair) &&
-                     paramPair.first == var));
+        TRI_ASSERT(!(value->isAttributeAccessForVariable(paramPair) && paramPair.first == var));
       }
       value->toVelocyPackValue(*(_lowerBuilder.get()));
       value->toVelocyPackValue(*(_upperBuilder.get()));
@@ -166,11 +160,9 @@ MMFilesSkiplistLookupBuilder::MMFilesSkiplistLookupBuilder(
       TRI_ASSERT(op->numMembers() == 2);
 
       auto value = op->getMember(0);
-      if (value->isAttributeAccessForVariable(paramPair) &&
-          paramPair.first == var) {
+      if (value->isAttributeAccessForVariable(paramPair) && paramPair.first == var) {
         value = op->getMember(1);
-        TRI_ASSERT(!(value->isAttributeAccessForVariable(paramPair) &&
-                     paramPair.first == var));
+        TRI_ASSERT(!(value->isAttributeAccessForVariable(paramPair) && paramPair.first == var));
         isReverseOrder = false;
       }
       switch (op->type) {
@@ -219,11 +211,9 @@ MMFilesSkiplistLookupBuilder::MMFilesSkiplistLookupBuilder(
                  op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN);
       TRI_ASSERT(op->numMembers() == 2);
       auto value = op->getMember(0);
-      if (value->isAttributeAccessForVariable(paramPair) &&
-          paramPair.first == var) {
+      if (value->isAttributeAccessForVariable(paramPair) && paramPair.first == var) {
         value = op->getMember(1);
-        TRI_ASSERT(!(value->isAttributeAccessForVariable(paramPair) &&
-                     paramPair.first == var));
+        TRI_ASSERT(!(value->isAttributeAccessForVariable(paramPair) && paramPair.first == var));
       }
       value->toVelocyPackValue(*(_lowerBuilder.get()));
     }
@@ -254,12 +244,9 @@ MMFilesSkiplistInLookupBuilder::MMFilesSkiplistInLookupBuilder(
     : MMFilesBaseSkiplistLookupBuilder(trx), _dataBuilder(trx), _done(false) {
   TRI_ASSERT(!ops.empty());  // We certainly do not need IN here
   transaction::BuilderLeaser tmp(trx);
-  std::set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackSorted<true>>
-      unique_set(
-          (arangodb::basics::VelocyPackHelper::VPackSorted<true>(reverse)));
-  std::pair<arangodb::aql::Variable const*,
-            std::vector<arangodb::basics::AttributeName>>
-      paramPair;
+  std::set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackSorted<true>> unique_set(
+      (arangodb::basics::VelocyPackHelper::VPackSorted<true>(reverse)));
+  std::pair<arangodb::aql::Variable const*, std::vector<arangodb::basics::AttributeName>> paramPair;
 
   _dataBuilder->clear();
   _dataBuilder->openArray();
@@ -272,12 +259,10 @@ MMFilesSkiplistInLookupBuilder::MMFilesSkiplistInLookupBuilder(
     TRI_ASSERT(op->numMembers() == 2);
     auto value = op->getMember(0);
     bool valueLeft = true;
-    if (value->isAttributeAccessForVariable(paramPair) &&
-        paramPair.first == var) {
+    if (value->isAttributeAccessForVariable(paramPair) && paramPair.first == var) {
       valueLeft = false;
       value = op->getMember(1);
-      TRI_ASSERT(!(value->isAttributeAccessForVariable(paramPair) &&
-                   paramPair.first == var));
+      TRI_ASSERT(!(value->isAttributeAccessForVariable(paramPair) && paramPair.first == var));
     }
     if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
       if (valueLeft) {
@@ -319,11 +304,9 @@ MMFilesSkiplistInLookupBuilder::MMFilesSkiplistInLookupBuilder(
     TRI_ASSERT(op->numMembers() == 2);
 
     auto value = op->getMember(0);
-    if (value->isAttributeAccessForVariable(paramPair) &&
-        paramPair.first == var) {
+    if (value->isAttributeAccessForVariable(paramPair) && paramPair.first == var) {
       value = op->getMember(1);
-      TRI_ASSERT(!(value->isAttributeAccessForVariable(paramPair) &&
-                   paramPair.first == var));
+      TRI_ASSERT(!(value->isAttributeAccessForVariable(paramPair) && paramPair.first == var));
       isReverseOrder = false;
     }
 
@@ -505,8 +488,7 @@ MMFilesSkiplistIterator::MMFilesSkiplistIterator(
     ManagedDocumentResult* mmdr, arangodb::MMFilesSkiplistIndex const* index,
     TRI_Skiplist const* skiplist, size_t numPaths,
     std::function<int(void*, MMFilesSkiplistIndexElement const*,
-                      MMFilesSkiplistIndexElement const*,
-                      MMFilesSkiplistCmpType)> const& CmpElmElm,
+                      MMFilesSkiplistIndexElement const*, MMFilesSkiplistCmpType)> const& CmpElmElm,
     bool reverse, MMFilesBaseSkiplistLookupBuilder* builder)
     : IndexIterator(collection, trx, mmdr, index),
       _skiplistIndex(skiplist),
@@ -524,8 +506,7 @@ MMFilesSkiplistIterator::MMFilesSkiplistIterator(
 
 /// @brief Checks if the interval is valid. It is declared invalid if
 ///        one border is nullptr or the right is lower than left.
-bool MMFilesSkiplistIterator::intervalValid(void* userData, Node* left,
-                                            Node* right) const {
+bool MMFilesSkiplistIterator::intervalValid(void* userData, Node* left, Node* right) const {
   if (left == nullptr) {
     return false;
   }
@@ -583,7 +564,7 @@ bool MMFilesSkiplistIterator::next(LocalDocumentIdCallback const& cb, size_t lim
     }
     TRI_ASSERT(tmp != nullptr);
     TRI_ASSERT(tmp->document() != nullptr);
-      
+
     cb(tmp->document()->localDocumentId());
     limit--;
   }
@@ -619,11 +600,11 @@ bool MMFilesSkiplistIterator::nextDocument(DocumentCallback const& cb, size_t li
     }
     TRI_ASSERT(tmp != nullptr);
     TRI_ASSERT(tmp->document() != nullptr);
-      
+
     _documentIds.emplace_back(std::make_pair(tmp->document()->localDocumentId(), nullptr));
     limit--;
   }
-  
+
   auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
   physical->readDocumentWithCallback(_trx, _documentIds, cb);
   return !done;
@@ -665,19 +646,18 @@ void MMFilesSkiplistIterator::initNextInterval() {
         // Builder moved forward. Try again.
         continue;
       }
-      leftBorder =
-          _skiplistIndex->leftKeyLookup(&_context, _builder->getLowerLookup());
+      leftBorder = _skiplistIndex->leftKeyLookup(&_context, _builder->getLowerLookup());
       leftBorder = leftBorder->nextNode();
       // NOTE: rightBorder < leftBorder => no Match.
       // Will be checked by interval valid
     } else {
       if (_builder->includeLower()) {
-        leftBorder = _skiplistIndex->leftKeyLookup(&_context,
-                                                   _builder->getLowerLookup());
+        leftBorder =
+            _skiplistIndex->leftKeyLookup(&_context, _builder->getLowerLookup());
         // leftKeyLookup guarantees that we find the element before search.
       } else {
-        leftBorder = _skiplistIndex->rightKeyLookup(&_context,
-                                                    _builder->getLowerLookup());
+        leftBorder =
+            _skiplistIndex->rightKeyLookup(&_context, _builder->getLowerLookup());
         // leftBorder is identical or smaller than search
       }
       // This is the first element not to be returned, but the next one
@@ -685,11 +665,11 @@ void MMFilesSkiplistIterator::initNextInterval() {
       leftBorder = leftBorder->nextNode();
 
       if (_builder->includeUpper()) {
-        rightBorder = _skiplistIndex->rightKeyLookup(
-            &_context, _builder->getUpperLookup());
+        rightBorder =
+            _skiplistIndex->rightKeyLookup(&_context, _builder->getUpperLookup());
       } else {
-        rightBorder = _skiplistIndex->leftKeyLookup(&_context,
-                                                    _builder->getUpperLookup());
+        rightBorder =
+            _skiplistIndex->leftKeyLookup(&_context, _builder->getUpperLookup());
       }
       if (rightBorder == _skiplistIndex->startNode()) {
         // No match make interval invalid
@@ -719,19 +699,18 @@ void MMFilesSkiplistIterator::initNextInterval() {
 }
 
 /// @brief create the skiplist index
-MMFilesSkiplistIndex::MMFilesSkiplistIndex(
-    TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
-    VPackSlice const& info)
+MMFilesSkiplistIndex::MMFilesSkiplistIndex(TRI_idx_iid_t iid,
+                                           arangodb::LogicalCollection* collection,
+                                           VPackSlice const& info)
     : MMFilesPathBasedIndex(iid, collection, info, sizeof(LocalDocumentId), true),
       CmpElmElm(this),
       CmpKeyElm(this),
       _skiplistIndex(nullptr) {
-  _skiplistIndex =
-      new TRI_Skiplist(CmpElmElm, CmpKeyElm,
-                       [this](MMFilesSkiplistIndexElement* element) {
-                         _allocator->deallocate(element);
-                       },
-                       _unique, _useExpansion);
+  _skiplistIndex = new TRI_Skiplist(CmpElmElm, CmpKeyElm,
+                                    [this](MMFilesSkiplistIndexElement* element) {
+                                      _allocator->deallocate(element);
+                                    },
+                                    _unique, _useExpansion);
 }
 
 /// @brief destroy the skiplist index
@@ -839,9 +818,8 @@ Result MMFilesSkiplistIndex::insert(transaction::Methods* trx,
     LocalDocumentId rev(found->document()->localDocumentId());
     ManagedDocumentResult mmdr;
     _collection->getPhysical()->readDocument(trx, rev, mmdr);
-    std::string existingId(VPackSlice(mmdr.vpack())
-                            .get(StaticStrings::KeyString)
-                            .copyString());
+    std::string existingId(
+        VPackSlice(mmdr.vpack()).get(StaticStrings::KeyString).copyString());
     if (mode == OperationMode::internal) {
       return IndexResult(res, std::move(existingId));
     }
@@ -898,14 +876,11 @@ Result MMFilesSkiplistIndex::remove(transaction::Methods* trx,
   return IndexResult(res, this);
 }
 
-void MMFilesSkiplistIndex::unload() {
-  _skiplistIndex->truncate(true);
-}
+void MMFilesSkiplistIndex::unload() { _skiplistIndex->truncate(true); }
 
 /// @brief Checks if the interval is valid. It is declared invalid if
 ///        one border is nullptr or the right is lower than left.
-bool MMFilesSkiplistIndex::intervalValid(void* userData, Node* left,
-                                         Node* right) const {
+bool MMFilesSkiplistIndex::intervalValid(void* userData, Node* left, Node* right) const {
   if (left == nullptr) {
     return false;
   }
@@ -949,8 +924,7 @@ int MMFilesSkiplistIndex::KeyElementComparator::operator()(
 /// @brief compares two elements in a skip list, this is the generic callback
 int MMFilesSkiplistIndex::ElementElementComparator::operator()(
     void* userData, MMFilesSkiplistIndexElement const* leftElement,
-    MMFilesSkiplistIndexElement const* rightElement,
-    MMFilesSkiplistCmpType cmptype) const {
+    MMFilesSkiplistIndexElement const* rightElement, MMFilesSkiplistCmpType cmptype) const {
   TRI_ASSERT(nullptr != leftElement);
   TRI_ASSERT(nullptr != rightElement);
 
@@ -965,8 +939,7 @@ int MMFilesSkiplistIndex::ElementElementComparator::operator()(
   }
 
   for (size_t j = 0; j < _idx->numPaths(); j++) {
-    int compareResult =
-        CompareElementElement(userData, leftElement, j, rightElement, j);
+    int compareResult = CompareElementElement(userData, leftElement, j, rightElement, j);
 
     if (compareResult != 0) {
       return compareResult;
@@ -998,28 +971,21 @@ int MMFilesSkiplistIndex::ElementElementComparator::operator()(
 bool MMFilesSkiplistIndex::accessFitsIndex(
     arangodb::aql::AstNode const* access, arangodb::aql::AstNode const* other,
     arangodb::aql::AstNode const* op, arangodb::aql::Variable const* reference,
-    std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&
-        found,
-    std::unordered_set<std::string>& nonNullAttributes,
-    bool isExecution) const {
-  if (!this->canUseConditionPart(access, other, op, reference,
-                                 nonNullAttributes, isExecution)) {
+    std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>& found,
+    std::unordered_set<std::string>& nonNullAttributes, bool isExecution) const {
+  if (!this->canUseConditionPart(access, other, op, reference, nonNullAttributes, isExecution)) {
     return false;
   }
 
   arangodb::aql::AstNode const* what = access;
-  std::pair<arangodb::aql::Variable const*,
-            std::vector<arangodb::basics::AttributeName>>
-      attributeData;
+  std::pair<arangodb::aql::Variable const*, std::vector<arangodb::basics::AttributeName>> attributeData;
 
   if (op->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
-    if (!what->isAttributeAccessForVariable(attributeData) ||
-        attributeData.first != reference) {
+    if (!what->isAttributeAccessForVariable(attributeData) || attributeData.first != reference) {
       // this access is not referencing this collection
       return false;
     }
-    if (arangodb::basics::TRI_AttributeNamesHaveExpansion(
-            attributeData.second)) {
+    if (arangodb::basics::TRI_AttributeNamesHaveExpansion(attributeData.second)) {
       // doc.value[*] == 'value'
       return false;
     }
@@ -1033,10 +999,8 @@ bool MMFilesSkiplistIndex::accessFitsIndex(
     TRI_ASSERT(op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN);
     bool canUse = false;
 
-    if (what->isAttributeAccessForVariable(attributeData) &&
-        attributeData.first == reference &&
-        !arangodb::basics::TRI_AttributeNamesHaveExpansion(
-            attributeData.second) &&
+    if (what->isAttributeAccessForVariable(attributeData) && attributeData.first == reference &&
+        !arangodb::basics::TRI_AttributeNamesHaveExpansion(attributeData.second) &&
         attributeMatches(attributeData.second)) {
       // doc.value IN 'value'
       // can use this index
@@ -1045,8 +1009,7 @@ bool MMFilesSkiplistIndex::accessFitsIndex(
       // check for  'value' IN doc.value  AND  'value' IN doc.value[*]
       what = other;
       if (what->isAttributeAccessForVariable(attributeData) &&
-          attributeData.first == reference &&
-          isAttributeExpanded(attributeData.second) &&
+          attributeData.first == reference && isAttributeExpanded(attributeData.second) &&
           attributeMatches(attributeData.second)) {
         canUse = true;
       }
@@ -1057,8 +1020,7 @@ bool MMFilesSkiplistIndex::accessFitsIndex(
     }
   }
 
-  std::vector<arangodb::basics::AttributeName> const& fieldNames =
-      attributeData.second;
+  std::vector<arangodb::basics::AttributeName> const& fieldNames = attributeData.second;
 
   for (size_t i = 0; i < _fields.size(); ++i) {
     if (_fields[i].size() != fieldNames.size()) {
@@ -1066,14 +1028,12 @@ bool MMFilesSkiplistIndex::accessFitsIndex(
       continue;
     }
 
-    if (this->isAttributeExpanded(i) &&
-        op->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+    if (this->isAttributeExpanded(i) && op->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
       // If this attribute is correct or not, it could only serve for IN
       continue;
     }
 
-    bool match = arangodb::basics::AttributeName::isIdentical(_fields[i],
-                                                              fieldNames, true);
+    bool match = arangodb::basics::AttributeName::isIdentical(_fields[i], fieldNames, true);
 
     if (match) {
       // mark ith attribute as being covered
@@ -1096,10 +1056,8 @@ bool MMFilesSkiplistIndex::accessFitsIndex(
 }
 
 void MMFilesSkiplistIndex::matchAttributes(
-    arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference,
-    std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&
-        found,
+    arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
+    std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>& found,
     size_t& values, std::unordered_set<std::string>& nonNullAttributes,
     bool isExecution) const {
   for (size_t i = 0; i < node->numMembers(); ++i) {
@@ -1121,7 +1079,8 @@ void MMFilesSkiplistIndex::matchAttributes(
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN:
         if (accessFitsIndex(op->getMember(0), op->getMember(1), op, reference,
                             found, nonNullAttributes, isExecution)) {
-          size_t av = SimpleAttributeEqualityMatcher::estimateNumberOfArrayMembers(op->getMember(1));
+          size_t av = SimpleAttributeEqualityMatcher::estimateNumberOfArrayMembers(
+              op->getMember(1));
           if (av > 1) {
             // attr IN [ a, b, c ]  =>  this will produce multiple items, so
             // count them!
@@ -1141,24 +1100,19 @@ bool MMFilesSkiplistIndex::accessFitsIndex(
     arangodb::aql::AstNode const* op, arangodb::aql::Variable const* reference,
     std::vector<std::vector<arangodb::aql::AstNode const*>>& found,
     std::unordered_set<std::string>& nonNullAttributes) const {
-  if (!this->canUseConditionPart(access, other, op, reference,
-                                 nonNullAttributes, true)) {
+  if (!this->canUseConditionPart(access, other, op, reference, nonNullAttributes, true)) {
     return false;
   }
 
   arangodb::aql::AstNode const* what = access;
-  std::pair<arangodb::aql::Variable const*,
-            std::vector<arangodb::basics::AttributeName>>
-      attributeData;
+  std::pair<arangodb::aql::Variable const*, std::vector<arangodb::basics::AttributeName>> attributeData;
 
   if (op->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
-    if (!what->isAttributeAccessForVariable(attributeData) ||
-        attributeData.first != reference) {
+    if (!what->isAttributeAccessForVariable(attributeData) || attributeData.first != reference) {
       // this access is not referencing this collection
       return false;
     }
-    if (arangodb::basics::TRI_AttributeNamesHaveExpansion(
-            attributeData.second)) {
+    if (arangodb::basics::TRI_AttributeNamesHaveExpansion(attributeData.second)) {
       // doc.value[*] == 'value'
       return false;
     }
@@ -1172,10 +1126,8 @@ bool MMFilesSkiplistIndex::accessFitsIndex(
     TRI_ASSERT(op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN);
     bool canUse = false;
 
-    if (what->isAttributeAccessForVariable(attributeData) &&
-        attributeData.first == reference &&
-        !arangodb::basics::TRI_AttributeNamesHaveExpansion(
-            attributeData.second) &&
+    if (what->isAttributeAccessForVariable(attributeData) && attributeData.first == reference &&
+        !arangodb::basics::TRI_AttributeNamesHaveExpansion(attributeData.second) &&
         attributeMatches(attributeData.second)) {
       // doc.value IN 'value'
       // can use this index
@@ -1184,8 +1136,7 @@ bool MMFilesSkiplistIndex::accessFitsIndex(
       // check for  'value' IN doc.value  AND  'value' IN doc.value[*]
       what = other;
       if (what->isAttributeAccessForVariable(attributeData) &&
-          attributeData.first == reference &&
-          isAttributeExpanded(attributeData.second) &&
+          attributeData.first == reference && isAttributeExpanded(attributeData.second) &&
           attributeMatches(attributeData.second)) {
         canUse = true;
       }
@@ -1196,8 +1147,7 @@ bool MMFilesSkiplistIndex::accessFitsIndex(
     }
   }
 
-  std::vector<arangodb::basics::AttributeName> const& fieldNames =
-      attributeData.second;
+  std::vector<arangodb::basics::AttributeName> const& fieldNames = attributeData.second;
 
   for (size_t i = 0; i < _fields.size(); ++i) {
     if (_fields[i].size() != fieldNames.size()) {
@@ -1205,14 +1155,12 @@ bool MMFilesSkiplistIndex::accessFitsIndex(
       continue;
     }
 
-    if (this->isAttributeExpanded(i) &&
-        op->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+    if (this->isAttributeExpanded(i) && op->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
       // If this attribute is correct or not, it could only serve for IN
       continue;
     }
 
-    bool match = arangodb::basics::AttributeName::isIdentical(_fields[i],
-                                                              fieldNames, true);
+    bool match = arangodb::basics::AttributeName::isIdentical(_fields[i], fieldNames, true);
 
     if (match) {
       // mark ith attribute as being covered
@@ -1230,10 +1178,8 @@ bool MMFilesSkiplistIndex::accessFitsIndex(
 }
 
 bool MMFilesSkiplistIndex::findMatchingConditions(
-    arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference,
-    std::vector<std::vector<arangodb::aql::AstNode const*>>& mapping,
-    bool& usesIn) const {
+    arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
+    std::vector<std::vector<arangodb::aql::AstNode const*>>& mapping, bool& usesIn) const {
   std::unordered_set<std::string> nonNullAttributes;
   usesIn = false;
 
@@ -1255,8 +1201,7 @@ bool MMFilesSkiplistIndex::findMatchingConditions(
       }
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN: {
         auto m = op->getMember(1);
-        if (accessFitsIndex(op->getMember(0), m, op, reference, mapping,
-                            nonNullAttributes)) {
+        if (accessFitsIndex(op->getMember(0), m, op, reference, mapping, nonNullAttributes)) {
           if (m->numMembers() == 0) {
             // We want to do an IN [].
             // No results
@@ -1337,24 +1282,22 @@ IndexIterator* MMFilesSkiplistIndex::iteratorForCondition(
   }
 
   if (usesIn) {
-    auto builder = std::make_unique<MMFilesSkiplistInLookupBuilder>(
-        trx, mapping, reference, reverse);
+    auto builder =
+        std::make_unique<MMFilesSkiplistInLookupBuilder>(trx, mapping, reference, reverse);
     return new MMFilesSkiplistIterator(_collection, trx, mmdr, this,
                                        _skiplistIndex, numPaths(), CmpElmElm,
                                        reverse, builder.release());
   }
-  auto builder = std::make_unique<MMFilesSkiplistLookupBuilder>(
-      trx, mapping, reference, reverse);
-  return new MMFilesSkiplistIterator(_collection, trx, mmdr, this,
-                                     _skiplistIndex, numPaths(), CmpElmElm,
-                                     reverse, builder.release());
+  auto builder =
+      std::make_unique<MMFilesSkiplistLookupBuilder>(trx, mapping, reference, reverse);
+  return new MMFilesSkiplistIterator(_collection, trx, mmdr, this, _skiplistIndex,
+                                     numPaths(), CmpElmElm, reverse, builder.release());
 }
 
-bool MMFilesSkiplistIndex::supportsFilterCondition(
-    arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, size_t itemsInIndex,
-    size_t& estimatedItems, double& estimatedCost) const {
-
+bool MMFilesSkiplistIndex::supportsFilterCondition(arangodb::aql::AstNode const* node,
+                                                   arangodb::aql::Variable const* reference,
+                                                   size_t itemsInIndex, size_t& estimatedItems,
+                                                   double& estimatedCost) const {
   std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
   std::unordered_set<std::string> nonNullAttributes;
   size_t values = 0;
@@ -1420,8 +1363,7 @@ bool MMFilesSkiplistIndex::supportsFilterCondition(
     values = 1;
   }
 
-  if (attributesCoveredByEquality == _fields.size() &&
-      (unique() || implicitlyUnique())) {
+  if (attributesCoveredByEquality == _fields.size() && (unique() || implicitlyUnique())) {
     // index is unique and condition covers all attributes by equality
     if (itemsInIndex == 0) {
       estimatedItems = 0;
@@ -1433,25 +1375,26 @@ bool MMFilesSkiplistIndex::supportsFilterCondition(
       TRI_ASSERT(itemsInIndex > 0);
 
       estimatedItems = values;
-      estimatedCost = (std::max)(static_cast<double>(1), std::log2(static_cast<double>(itemsInIndex)) * values);
+      estimatedCost = (std::max)(static_cast<double>(1),
+                                 std::log2(static_cast<double>(itemsInIndex)) * values);
     }
     // cost is already low... now slightly prioritize unique indexes
     estimatedCost *= 0.995 - 0.05 * (_fields.size() - 1);
     return true;
   }
 
-  if (attributesCovered > 0 &&
-      (!_sparse || attributesCovered == _fields.size())) {
+  if (attributesCovered > 0 && (!_sparse || attributesCovered == _fields.size())) {
     // if the condition contains at least one index attribute and is not sparse,
     // or the index is sparse and all attributes are covered by the condition,
     // then it can be used (note: additional checks for condition parts in
     // sparse indexes are contained in Index::canUseConditionPart)
-    estimatedItems = static_cast<size_t>((std::max)(
-        static_cast<size_t>(estimatedCost * values), static_cast<size_t>(1)));
+    estimatedItems = static_cast<size_t>(
+        (std::max)(static_cast<size_t>(estimatedCost * values), static_cast<size_t>(1)));
     if (itemsInIndex == 0) {
       estimatedCost = 0.0;
     } else {
-      estimatedCost = (std::max)(static_cast<double>(1), std::log2(static_cast<double>(itemsInIndex)) * values);
+      estimatedCost = (std::max)(static_cast<double>(1),
+                                 std::log2(static_cast<double>(itemsInIndex)) * values);
     }
     return true;
   }
@@ -1462,10 +1405,10 @@ bool MMFilesSkiplistIndex::supportsFilterCondition(
   return false;
 }
 
-bool MMFilesSkiplistIndex::supportsSortCondition(
-    arangodb::aql::SortCondition const* sortCondition,
-    arangodb::aql::Variable const* reference, size_t itemsInIndex,
-    double& estimatedCost, size_t& coveredAttributes) const {
+bool MMFilesSkiplistIndex::supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
+                                                 arangodb::aql::Variable const* reference,
+                                                 size_t itemsInIndex, double& estimatedCost,
+                                                 size_t& coveredAttributes) const {
   TRI_ASSERT(sortCondition != nullptr);
 
   if (!_sparse) {
@@ -1498,8 +1441,7 @@ bool MMFilesSkiplistIndex::supportsSortCondition(
 
 /// @brief specializes the condition for use with the index
 arangodb::aql::AstNode* MMFilesSkiplistIndex::specializeCondition(
-    arangodb::aql::AstNode* node,
-    arangodb::aql::Variable const* reference) const {
+    arangodb::aql::AstNode* node, arangodb::aql::Variable const* reference) const {
   std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
   std::unordered_set<std::string> nonNullAttributes;
   size_t values = 0;
@@ -1534,7 +1476,7 @@ arangodb::aql::AstNode* MMFilesSkiplistIndex::specializeCondition(
 
     std::sort(nodes.begin(), nodes.end(),
               [this](arangodb::aql::AstNode const* lhs,
-                 arangodb::aql::AstNode const* rhs) -> bool {
+                     arangodb::aql::AstNode const* rhs) -> bool {
                 return this->sortWeight(lhs) < this->sortWeight(rhs);
               });
 
@@ -1560,20 +1502,17 @@ arangodb::aql::AstNode* MMFilesSkiplistIndex::specializeCondition(
   return node;
 }
 
-bool MMFilesSkiplistIndex::isDuplicateOperator(
-    arangodb::aql::AstNode const* node,
-    std::unordered_set<int> const& operatorsFound) const {
+bool MMFilesSkiplistIndex::isDuplicateOperator(arangodb::aql::AstNode const* node,
+                                               std::unordered_set<int> const& operatorsFound) const {
   auto type = node->type;
   if (operatorsFound.find(static_cast<int>(type)) != operatorsFound.end()) {
     // duplicate operator
     return true;
   }
 
-  if (operatorsFound.find(
-          static_cast<int>(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ)) !=
+  if (operatorsFound.find(static_cast<int>(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ)) !=
           operatorsFound.end() ||
-      operatorsFound.find(
-          static_cast<int>(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN)) !=
+      operatorsFound.find(static_cast<int>(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN)) !=
           operatorsFound.end()) {
     return true;
   }
@@ -1581,33 +1520,27 @@ bool MMFilesSkiplistIndex::isDuplicateOperator(
   bool duplicate = false;
   switch (type) {
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
-      duplicate = operatorsFound.find(static_cast<int>(
-                      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE)) !=
+      duplicate = operatorsFound.find(static_cast<int>(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE)) !=
                   operatorsFound.end();
       break;
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
-      duplicate = operatorsFound.find(static_cast<int>(
-                      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT)) !=
+      duplicate = operatorsFound.find(static_cast<int>(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT)) !=
                   operatorsFound.end();
       break;
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
-      duplicate = operatorsFound.find(static_cast<int>(
-                      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE)) !=
+      duplicate = operatorsFound.find(static_cast<int>(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE)) !=
                   operatorsFound.end();
       break;
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
-      duplicate = operatorsFound.find(static_cast<int>(
-                      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT)) !=
+      duplicate = operatorsFound.find(static_cast<int>(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT)) !=
                   operatorsFound.end();
       break;
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
-      duplicate = operatorsFound.find(static_cast<int>(
-                      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN)) !=
+      duplicate = operatorsFound.find(static_cast<int>(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN)) !=
                   operatorsFound.end();
       break;
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN:
-      duplicate = operatorsFound.find(static_cast<int>(
-                      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ)) !=
+      duplicate = operatorsFound.find(static_cast<int>(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ)) !=
                   operatorsFound.end();
       break;
     default: {

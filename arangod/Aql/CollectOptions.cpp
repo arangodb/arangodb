@@ -29,7 +29,7 @@
 using namespace arangodb::aql;
 
 /// @brief constructor
-CollectOptions::CollectOptions(VPackSlice const& slice) 
+CollectOptions::CollectOptions(VPackSlice const& slice)
     : method(CollectMethod::UNDEFINED) {
   VPackSlice v = slice.get("collectOptions");
   if (v.isObject()) {
@@ -42,8 +42,7 @@ CollectOptions::CollectOptions(VPackSlice const& slice)
 
 /// @brief whether or not the method can be used
 bool CollectOptions::canUseMethod(CollectMethod method) const {
-  return (this->method == method || 
-          this->method == CollectMethod::UNDEFINED);
+  return (this->method == method || this->method == CollectMethod::UNDEFINED);
 }
 
 /// @brief whether or not the method should be used (i.e. is preferred)
@@ -58,8 +57,7 @@ void CollectOptions::toVelocyPack(VPackBuilder& builder) const {
 }
 
 /// @brief get the aggregation method from a string
-CollectOptions::CollectMethod CollectOptions::methodFromString(
-    std::string const& method) {
+CollectOptions::CollectMethod CollectOptions::methodFromString(std::string const& method) {
   if (method == "hash") {
     return CollectMethod::HASH;
   }
@@ -77,8 +75,7 @@ CollectOptions::CollectMethod CollectOptions::methodFromString(
 }
 
 /// @brief stringify the aggregation method
-std::string CollectOptions::methodToString(
-    CollectOptions::CollectMethod method) {
+std::string CollectOptions::methodToString(CollectOptions::CollectMethod method) {
   if (method == CollectMethod::HASH) {
     return std::string("hash");
   }

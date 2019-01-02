@@ -33,7 +33,7 @@ namespace arangodb {
 class GeneralRequest;
 class RequestStatistics;
 
-enum class RestStatus { DONE, WAITING, FAIL};
+enum class RestStatus { DONE, WAITING, FAIL };
 
 namespace rest {
 class RestHandler : public std::enable_shared_from_this<RestHandler> {
@@ -64,9 +64,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   }
 
   RequestStatistics* statistics() const { return _statistics.load(); }
-  RequestStatistics* stealStatistics() {
-    return _statistics.exchange(nullptr);
-  }
+  RequestStatistics* stealStatistics() { return _statistics.exchange(nullptr); }
 
   void setStatistics(RequestStatistics* stat);
 
@@ -108,7 +106,6 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   virtual void handleError(basics::Exception const&) = 0;
 
  protected:
-
   /// @brief determines the possible forwarding target for this request
   ///
   /// This method will be called to determine if the request should be
@@ -130,7 +127,6 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   void generateError(arangodb::Result const&);
 
  private:
-
   enum class HandlerState { PREPARE, EXECUTE, PAUSED, FINALIZE, DONE, FAILED };
 
   void runHandlerStateMachine();
@@ -155,7 +151,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   std::function<void(rest::RestHandler*)> _callback;
 };
 
-}
-}
+}  // namespace rest
+}  // namespace arangodb
 
 #endif

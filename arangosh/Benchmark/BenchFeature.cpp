@@ -53,8 +53,7 @@ using namespace arangodb::rest;
 BenchFeature* ARANGOBENCH;
 #include "Benchmark/test-cases.h"
 
-BenchFeature::BenchFeature(application_features::ApplicationServer* server,
-                           int* result)
+BenchFeature::BenchFeature(application_features::ApplicationServer* server, int* result)
     : ApplicationFeature(server, "Bench"),
       _async(false),
       _concurreny(1),
@@ -83,8 +82,7 @@ BenchFeature::BenchFeature(application_features::ApplicationServer* server,
 }
 
 void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption("--async", "send asynchronous requests",
-                     new BooleanParameter(&_async));
+  options->addOption("--async", "send asynchronous requests", new BooleanParameter(&_async));
 
   options->addOption("--concurrency", "number of parallel connections",
                      new UInt64Parameter(&_concurreny));
@@ -134,9 +132,8 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                                            "aqlinsert",
                                            "aqlv8"};
 
-  options->addOption(
-      "--test-case", "test case to use",
-      new DiscreteValuesParameter<StringParameter>(&_testCase, cases));
+  options->addOption("--test-case", "test case to use",
+                     new DiscreteValuesParameter<StringParameter>(&_testCase, cases));
 
   options->addOption("--complexity", "complexity parameter for the test",
                      new UInt64Parameter(&_complexity));
@@ -153,15 +150,13 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--runs", "run test n times (and calculate statistics based on median)",
       new UInt64Parameter(&_runs));
 
-  options->addOption("--progress", "show progress",
-                     new BooleanParameter(&_progress));
+  options->addOption("--progress", "show progress", new BooleanParameter(&_progress));
 
   options->addOption("--verbose",
                      "print out replies if the http-header indicates db-errors",
                      new BooleanParameter(&_verbose));
 
-  options->addOption("--quiet", "supress status messages",
-                     new BooleanParameter(&_quiet));
+  options->addOption("--quiet", "supress status messages", new BooleanParameter(&_quiet));
 }
 
 void BenchFeature::status(std::string const& value) {
@@ -177,9 +172,8 @@ void BenchFeature::updateStartCounter() { ++_started; }
 int BenchFeature::getStartCounter() { return _started; }
 
 void BenchFeature::start() {
-  ClientFeature* client =
-      application_features::ApplicationServer::getFeature<ClientFeature>(
-          "Client");
+  ClientFeature* client = application_features::ApplicationServer::getFeature<ClientFeature>(
+      "Client");
   client->setRetries(3);
   client->setWarn(true);
 
@@ -192,7 +186,8 @@ void BenchFeature::start() {
 
   if (benchmark == nullptr) {
     ARANGOBENCH = nullptr;
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid test case name '" << _testCase << "'";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "invalid test case name '" << _testCase << "'";
     FATAL_ERROR_EXIT();
   }
 
@@ -217,16 +212,15 @@ void BenchFeature::start() {
   std::vector<BenchRunResult> results;
   for (uint64_t j = 0; j < _runs; j++) {
     status("starting threads...");
-    BenchmarkCounter<unsigned long> operationsCounter(
-        0, (unsigned long)_operations);
+    BenchmarkCounter<unsigned long> operationsCounter(0, (unsigned long)_operations);
     ConditionVariable startCondition;
     // start client threads
     _started = 0;
     for (uint64_t i = 0; i < _concurreny; ++i) {
-      BenchmarkThread* thread = new BenchmarkThread(
-          benchmark.get(), &startCondition, &BenchFeature::updateStartCounter,
-          static_cast<int>(i), (unsigned long)_batchSize, &operationsCounter,
-          client, _keepAlive, _async, _verbose);
+      BenchmarkThread* thread =
+          new BenchmarkThread(benchmark.get(), &startCondition, &BenchFeature::updateStartCounter,
+                              static_cast<int>(i), (unsigned long)_batchSize,
+                              &operationsCounter, client, _keepAlive, _async, _verbose);
       thread->setOffset((size_t)(i * realStep));
       thread->start();
       threads.push_back(thread);
@@ -285,8 +279,10 @@ void BenchFeature::start() {
     }
 
     results.push_back({
-        time, operationsCounter.failures(),
-        operationsCounter.incompleteFailures(), requestTime,
+        time,
+        operationsCounter.failures(),
+        operationsCounter.incompleteFailures(),
+        requestTime,
     });
     for (size_t i = 0; i < static_cast<size_t>(_concurreny); ++i) {
       delete threads[i];
@@ -308,15 +304,12 @@ void BenchFeature::start() {
   *_result = ret;
 }
 
-bool BenchFeature::report(ClientFeature* client,
-                          std::vector<BenchRunResult> results) {
+bool BenchFeature::report(ClientFeature* client, std::vector<BenchRunResult> results) {
   std::cout << std::endl;
 
-  std::cout << "Total number of operations: " << _operations
-            << ", runs: " << _runs
+  std::cout << "Total number of operations: " << _operations << ", runs: " << _runs
             << ", keep alive: " << (_keepAlive ? "yes" : "no")
-            << ", async: " << (_async ? "yes" : "no")
-            << ", batch size: " << _batchSize
+            << ", async: " << (_async ? "yes" : "no") << ", batch size: " << _batchSize
             << ", replication factor: " << _replicationFactor
             << ", number of shards: " << _numberOfShards
             << ", wait for sync: " << (_waitForSync ? "true" : "false")
@@ -345,11 +338,10 @@ bool BenchFeature::report(ClientFeature* client,
     std::cout << "=======================" << std::endl;
     size_t mid = (size_t)size / 2;
     if (size % 2 == 0) {
-      output.update(
-          (results[mid - 1].time + results[mid].time) / 2,
-          (results[mid - 1].failures + results[mid].failures) / 2,
-          (results[mid - 1].incomplete + results[mid].incomplete) / 2,
-          (results[mid - 1].requestTime + results[mid].requestTime) / 2);
+      output.update((results[mid - 1].time + results[mid].time) / 2,
+                    (results[mid - 1].failures + results[mid].failures) / 2,
+                    (results[mid - 1].incomplete + results[mid].incomplete) / 2,
+                    (results[mid - 1].requestTime + results[mid].requestTime) / 2);
     } else {
       output = results[mid];
     }
@@ -367,8 +359,7 @@ bool BenchFeature::report(ClientFeature* client,
 bool BenchFeature::writeJunitReport(BenchRunResult const& result) {
   std::ofstream outfile(_junitReportFile, std::ofstream::binary);
   if (!outfile.is_open()) {
-    std::cerr << "Could not open JUnit Report File: " << _junitReportFile
-              << std::endl;
+    std::cerr << "Could not open JUnit Report File: " << _junitReportFile << std::endl;
     return false;
   }
 
@@ -400,8 +391,7 @@ bool BenchFeature::writeJunitReport(BenchRunResult const& result) {
             << "</testsuite>\n";
     ok = true;
   } catch (...) {
-    std::cerr << "Got an exception writing to junit report file "
-              << _junitReportFile;
+    std::cerr << "Got an exception writing to junit report file " << _junitReportFile;
     ok = false;
   }
   outfile.close();
@@ -409,8 +399,8 @@ bool BenchFeature::writeJunitReport(BenchRunResult const& result) {
 }
 
 void BenchFeature::printResult(BenchRunResult const& result) {
-  std::cout << "Total request/response duration (sum of all threads): "
-            << std::fixed << result.requestTime << " s" << std::endl;
+  std::cout << "Total request/response duration (sum of all threads): " << std::fixed
+            << result.requestTime << " s" << std::endl;
 
   std::cout << "Request/response duration (per thread): " << std::fixed
             << (result.requestTime / (double)_concurreny) << " s" << std::endl;
@@ -430,11 +420,12 @@ void BenchFeature::printResult(BenchRunResult const& result) {
             << std::endl;
 
   if (result.failures > 0) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << result.failures << " arangobench request(s) failed!";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << result.failures << " arangobench request(s) failed!";
   }
   if (result.incomplete > 0) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << result.incomplete
-              << " arangobench requests with incomplete results!";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << result.incomplete << " arangobench requests with incomplete results!";
   }
 }
 

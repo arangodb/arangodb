@@ -24,10 +24,10 @@
 #define ARANGOD_REST_HANDLER_REST_REPAIR_HANDLER_H
 
 #include "Agency/AgencyComm.h"
-#include "arangod/Cluster/ResultT.h"
 #include "Cluster/ClusterRepairs.h"
 #include "GeneralServer/AsyncJobManager.h"
 #include "RestHandler/RestBaseHandler.h"
+#include "arangod/Cluster/ResultT.h"
 
 namespace arangodb {
 namespace rest {
@@ -54,7 +54,7 @@ inline char const* toString(JobStatus jobStatus) {
       return "n/a";
   }
 }
-}
+}  // namespace rest_repair
 
 class RestRepairHandler : public arangodb::RestBaseHandler {
  public:
@@ -79,10 +79,9 @@ class RestRepairHandler : public arangodb::RestBaseHandler {
 
   // @brief Executes all operations in `list`. Returns an ok-Result iff all
   // operations executed successfully and a fail-Result otherwise.
-  Result executeRepairOperations(
-      DatabaseID const& databaseId, CollectionID const& collectionId,
-      std::string const& dbAndCollectionName,
-      std::list<cluster_repairs::RepairOperation> const& list);
+  Result executeRepairOperations(DatabaseID const& databaseId, CollectionID const& collectionId,
+                                 std::string const& dbAndCollectionName,
+                                 std::list<cluster_repairs::RepairOperation> const& list);
 
   // @brief Gets N values from the agency in a single transaction
   template <std::size_t N>
@@ -90,13 +89,11 @@ class RestRepairHandler : public arangodb::RestBaseHandler {
       std::array<std::string const, N> const& agencyKeyArray);
 
   // @brief Gets a single value from the agency
-  ResultT<cluster_repairs::VPackBufferPtr> getFromAgency(
-      std::string const& agencyKey);
+  ResultT<cluster_repairs::VPackBufferPtr> getFromAgency(std::string const& agencyKey);
 
   // @brief Returns the status of the agency job `jobId` (i.e. todo, pending,
   // finished, ...)
-  ResultT<rest_repair::JobStatus> getJobStatusFromAgency(
-      std::string const& jobId);
+  ResultT<rest_repair::JobStatus> getJobStatusFromAgency(std::string const& jobId);
 
   // @brief Checks if the agency job with id `jobId`is finished.
   ResultT<bool> jobFinished(std::string const& jobId);
@@ -106,11 +103,10 @@ class RestRepairHandler : public arangodb::RestBaseHandler {
   // and the result (success or failure and an error message on failure) to
   // `response`.
   // Returns true iff the repairs were successful.
-  bool repairCollection(
-      DatabaseID const& databaseId, CollectionID const& collectionId,
-      std::string const& dbAndCollectionName,
-      std::list<cluster_repairs::RepairOperation> const& repairOperations,
-      VPackBuilder& response);
+  bool repairCollection(DatabaseID const& databaseId, CollectionID const& collectionId,
+                        std::string const& dbAndCollectionName,
+                        std::list<cluster_repairs::RepairOperation> const& repairOperations,
+                        VPackBuilder& response);
 
   // @brief Executes the operations given by `repairOperationsByCollection`.
   // Adds information about the planned operation and the result (success or
@@ -118,16 +114,14 @@ class RestRepairHandler : public arangodb::RestBaseHandler {
   // Returns true iff repairs for all collections were successful.
   bool repairAllCollections(
       VPackSlice const& planCollections,
-      std::map<CollectionID,
-               ResultT<std::list<cluster_repairs::RepairOperation>>> const&
-          repairOperationsByCollection,
+      std::map<CollectionID, ResultT<std::list<cluster_repairs::RepairOperation>>> const& repairOperationsByCollection,
       VPackBuilder& response);
 
   // @brief Given a collection ID, looks up the name of the containing database
   // and the name of the collection in `planCollections` and returns them as
   // "dbName/collName".
-  ResultT<std::string> static getDbAndCollectionName(
-      VPackSlice planCollections, CollectionID const& collectionId);
+  ResultT<std::string> static getDbAndCollectionName(VPackSlice planCollections,
+                                                     CollectionID const& collectionId);
 
   // @brief Adds the field "errorDetails" with a detailed error message to the
   // open object in builder.
@@ -141,9 +135,8 @@ class RestRepairHandler : public arangodb::RestBaseHandler {
   // @brief Generate an HTTP Response. Like RestBaseHandler::generateOk(),
   // so it adds .error and .code to the object in payload, but allows
   // for .error to be set to true to allow for error responses with payload.
-  void generateResult(rest::ResponseCode code,
-                      const velocypack::Builder& payload, bool error);
+  void generateResult(rest::ResponseCode code, const velocypack::Builder& payload, bool error);
 };
-}
+}  // namespace arangodb
 
 #endif  // ARANGOD_REST_HANDLER_REST_REPAIR_HANDLER_H

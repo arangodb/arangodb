@@ -36,8 +36,7 @@
 
 using namespace arangodb::aql;
 
-CalculationBlock::CalculationBlock(ExecutionEngine* engine,
-                                   CalculationNode const* en)
+CalculationBlock::CalculationBlock(ExecutionEngine* engine, CalculationNode const* en)
     : ExecutionBlock(engine, en),
       _expression(en->expression()),
       _inVars(),
@@ -102,9 +101,9 @@ void CalculationBlock::fillBlockWithReference(AqlItemBlock* result) {
 /// @brief shared code for executing a simple or a V8 expression
 void CalculationBlock::executeExpression(AqlItemBlock* result) {
   DEBUG_BEGIN_BLOCK();
-  bool const hasCondition = (static_cast<CalculationNode const*>(_exeNode)
-                                 ->_conditionVariable != nullptr);
-  TRI_ASSERT(!hasCondition); // currently not implemented
+  bool const hasCondition =
+      (static_cast<CalculationNode const*>(_exeNode)->_conditionVariable != nullptr);
+  TRI_ASSERT(!hasCondition);  // currently not implemented
 
   size_t const n = result->size();
 
@@ -131,7 +130,7 @@ void CalculationBlock::executeExpression(AqlItemBlock* result) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
     result->setValue(i, _outReg, a);
-    guard.steal(); // itemblock has taken over now
+    guard.steal();    // itemblock has taken over now
     throwIfKilled();  // check if we were aborted
   }
   DEBUG_END_BLOCK();
@@ -159,17 +158,18 @@ void CalculationBlock::doEvaluation(AqlItemBlock* result) {
     executeExpression(result);
   } else {
     // must have a V8 context here to protect Expression::execute()
-    arangodb::basics::ScopeGuard guard{
-        [&]() -> void { _engine->getQuery()->enterContext(); },
-        [&]() -> void {
-          if (_isRunningInCluster) {
-            // must invalidate the expression now as we might be called from
-            // different threads
-            _expression->invalidate();
+    arangodb::basics::ScopeGuard guard{[&]() -> void {
+                                         _engine->getQuery()->enterContext();
+                                       },
+                                       [&]() -> void {
+                                         if (_isRunningInCluster) {
+                                           // must invalidate the expression now as we might be called from
+                                           // different threads
+                                           _expression->invalidate();
 
-            _engine->getQuery()->exitContext();
-          }
-        }};
+                                           _engine->getQuery()->exitContext();
+                                         }
+                                       }};
 
     ISOLATE;
     v8::HandleScope scope(isolate);  // do not delete this!

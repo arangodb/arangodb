@@ -80,15 +80,15 @@ std::string GeneralRequest::translateMethod(RequestType method) {
       return "STATUS";
 
     case RequestType::ILLEGAL:
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "illegal http request method encountered in switch";
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+          << "illegal http request method encountered in switch";
       return "UNKNOWN";
   }
 
   return "UNKNOWN";  // in order please MSVC
 }
 
-rest::RequestType GeneralRequest::translateMethod(
-    std::string const& method) {
+rest::RequestType GeneralRequest::translateMethod(std::string const& method) {
   std::string const methodString = StringUtils::toupper(method);
 
   if (methodString == "DELETE") {
@@ -122,8 +122,7 @@ void GeneralRequest::appendMethod(RequestType method, StringBuffer* buffer) {
   buffer->appendChar(' ');
 }
 
-rest::RequestType GeneralRequest::findRequestType(
-    char const* ptr, size_t const length) {
+rest::RequestType GeneralRequest::findRequestType(char const* ptr, size_t const length) {
   switch (length) {
     case 3:
       if (ptr[0] == 'g' && ptr[1] == 'e' && ptr[2] == 't') {
@@ -147,8 +146,7 @@ rest::RequestType GeneralRequest::findRequestType(
       break;
 
     case 5:
-      if (ptr[0] == 'p' && ptr[1] == 'a' && ptr[2] == 't' && ptr[3] == 'c' &&
-          ptr[4] == 'h') {
+      if (ptr[0] == 'p' && ptr[1] == 'a' && ptr[2] == 't' && ptr[3] == 'c' && ptr[4] == 'h') {
         return RequestType::PATCH;
       }
       break;
@@ -189,8 +187,7 @@ GeneralRequest::~GeneralRequest() {
   }
 }
 
-void GeneralRequest::setRequestContext(RequestContext* requestContext,
-                                       bool isRequestContextOwner) {
+void GeneralRequest::setRequestContext(RequestContext* requestContext, bool isRequestContextOwner) {
   TRI_ASSERT(requestContext != nullptr);
 
   if (_requestContext) {
@@ -232,34 +229,33 @@ void GeneralRequest::addSuffix(std::string&& part) {
 // needs to be here because of a gcc bug with templates and namespaces
 // https://stackoverflow.com/a/25594741/1473569
 namespace arangodb {
-  template <>
-  bool GeneralRequest::parsedValue(std::string const& key, bool valueNotFound) {
-    bool found = false;
-    std::string const& val = value(key, found);
-    if (found) {
-      return StringUtils::boolean(val);
-    }
-    return valueNotFound;
+template <>
+bool GeneralRequest::parsedValue(std::string const& key, bool valueNotFound) {
+  bool found = false;
+  std::string const& val = value(key, found);
+  if (found) {
+    return StringUtils::boolean(val);
   }
-  
-  template <>
-  uint64_t GeneralRequest::parsedValue(std::string const& key, uint64_t valueNotFound) {
-    bool found = false;
-    std::string const& val = value(key, found);
-    if (found) {
-      return StringUtils::uint64(val);
-    }
-    return valueNotFound;
-  }
-  
-  template <>
-  double GeneralRequest::parsedValue(std::string const& key, double valueNotFound) {
-    bool found = false;
-    std::string const& val = value(key, found);
-    if (found) {
-      return StringUtils::doubleDecimal(val);
-    }
-    return valueNotFound;
-  }
+  return valueNotFound;
 }
 
+template <>
+uint64_t GeneralRequest::parsedValue(std::string const& key, uint64_t valueNotFound) {
+  bool found = false;
+  std::string const& val = value(key, found);
+  if (found) {
+    return StringUtils::uint64(val);
+  }
+  return valueNotFound;
+}
+
+template <>
+double GeneralRequest::parsedValue(std::string const& key, double valueNotFound) {
+  bool found = false;
+  std::string const& val = value(key, found);
+  if (found) {
+    return StringUtils::doubleDecimal(val);
+  }
+  return valueNotFound;
+}
+}  // namespace arangodb

@@ -48,9 +48,8 @@ class Graph;
 class GraphNode : public ExecutionNode {
  public:
   /// @brief constructor with a vocbase and a collection name
-  GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-            AstNode const* direction, AstNode const* graph,
-            std::unique_ptr<graph::BaseOptions>& options);
+  GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase, AstNode const* direction,
+            AstNode const* graph, std::unique_ptr<graph::BaseOptions>& options);
 
   GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
@@ -65,8 +64,7 @@ class GraphNode : public ExecutionNode {
  public:
   virtual ~GraphNode();
 
-  void toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
-                          bool verbose) const;
+  void toVelocyPackHelper(arangodb::velocypack::Builder& nodes, bool verbose) const;
 
   /// @brief flag, if smart traversal (enterprise edition only!) is done
   bool isSmart() const { return _isSmart; }
@@ -114,8 +112,7 @@ class GraphNode : public ExecutionNode {
   void enhanceEngineInfo(arangodb::velocypack::Builder&) const;
 
   /// @brief Returns a reference to the engines. (CLUSTER ONLY)
-  std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines()
-      const;
+  std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines() const;
 
   std::vector<std::unique_ptr<aql::Collection>> const& edgeColls() const {
     return _edgeColls;
@@ -131,7 +128,6 @@ class GraphNode : public ExecutionNode {
   Collection const* collection() const;
 
  private:
-
   void addEdgeCollection(std::string const& n, TRI_edge_direction_e dir);
 
  protected:

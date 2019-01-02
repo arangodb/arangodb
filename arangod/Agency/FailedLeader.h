@@ -38,8 +38,8 @@ struct FailedLeader : public Job {
                std::string const& shard = std::string(),
                std::string const& from = std::string());
 
-  FailedLeader(Node const& snapshot, AgentInterface* agent,
-               JOB_STATUS status, std::string const& jobId);
+  FailedLeader(Node const& snapshot, AgentInterface* agent, JOB_STATUS status,
+               std::string const& jobId);
 
   virtual ~FailedLeader();
 
@@ -56,9 +56,8 @@ struct FailedLeader : public Job {
   std::string _from;
   std::string _to;
   std::chrono::time_point<std::chrono::system_clock> _created;
-  
 };
-}
-}  // namespaces
+}  // namespace consensus
+}  // namespace arangodb
 
 #endif

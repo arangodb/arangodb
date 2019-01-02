@@ -24,9 +24,9 @@
 #ifndef ARANGOD_AQL_CONDITION_H
 #define ARANGOD_AQL_CONDITION_H 1
 
-#include "Basics/Common.h"
 #include "Aql/AstNode.h"
 #include "Basics/AttributeNameParser.h"
+#include "Basics/Common.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Slice.h>
@@ -61,8 +61,7 @@ struct ConditionPart {
   ConditionPart(Variable const*, std::string const&, AstNode const*,
                 AttributeSideType, void*);
 
-  ConditionPart(Variable const*,
-                std::vector<arangodb::basics::AttributeName> const&,
+  ConditionPart(Variable const*, std::vector<arangodb::basics::AttributeName> const&,
                 AstNode const*, AttributeSideType, void*);
 
   ~ConditionPart();
@@ -94,15 +93,13 @@ struct ConditionPart {
 
   /// @brief returns the lower bound
   inline AstNode const* lowerBound() const {
-    if (operatorType == NODE_TYPE_OPERATOR_BINARY_GT ||
-        operatorType == NODE_TYPE_OPERATOR_BINARY_GE ||
+    if (operatorType == NODE_TYPE_OPERATOR_BINARY_GT || operatorType == NODE_TYPE_OPERATOR_BINARY_GE ||
         operatorType == NODE_TYPE_OPERATOR_BINARY_EQ) {
       return valueNode;
     }
 
-    if (operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
-        valueNode->isConstant() && valueNode->isArray() &&
-        valueNode->numMembers() > 0) {
+    if (operatorType == NODE_TYPE_OPERATOR_BINARY_IN && valueNode->isConstant() &&
+        valueNode->isArray() && valueNode->numMembers() > 0) {
       // return first item from IN array.
       // this requires IN arrays to be sorted, which they should be when
       // we get here
@@ -114,8 +111,7 @@ struct ConditionPart {
 
   /// @brief returns if the lower bound is inclusive
   inline bool isLowerInclusive() const {
-    if (operatorType == NODE_TYPE_OPERATOR_BINARY_GE ||
-        operatorType == NODE_TYPE_OPERATOR_BINARY_EQ ||
+    if (operatorType == NODE_TYPE_OPERATOR_BINARY_GE || operatorType == NODE_TYPE_OPERATOR_BINARY_EQ ||
         operatorType == NODE_TYPE_OPERATOR_BINARY_IN) {
       return true;
     }
@@ -125,15 +121,13 @@ struct ConditionPart {
 
   /// @brief returns the upper bound
   inline AstNode const* upperBound() const {
-    if (operatorType == NODE_TYPE_OPERATOR_BINARY_LT ||
-        operatorType == NODE_TYPE_OPERATOR_BINARY_LE ||
+    if (operatorType == NODE_TYPE_OPERATOR_BINARY_LT || operatorType == NODE_TYPE_OPERATOR_BINARY_LE ||
         operatorType == NODE_TYPE_OPERATOR_BINARY_EQ) {
       return valueNode;
     }
 
-    if (operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
-        valueNode->isConstant() && valueNode->isArray() &&
-        valueNode->numMembers() > 0) {
+    if (operatorType == NODE_TYPE_OPERATOR_BINARY_IN && valueNode->isConstant() &&
+        valueNode->isArray() && valueNode->numMembers() > 0) {
       // return last item from IN array.
       // this requires IN arrays to be sorted, which they should be when
       // we get here
@@ -145,8 +139,7 @@ struct ConditionPart {
 
   /// @brief returns if the upper bound is inclusive
   inline bool isUpperInclusive() const {
-    if (operatorType == NODE_TYPE_OPERATOR_BINARY_LE ||
-        operatorType == NODE_TYPE_OPERATOR_BINARY_EQ ||
+    if (operatorType == NODE_TYPE_OPERATOR_BINARY_LE || operatorType == NODE_TYPE_OPERATOR_BINARY_EQ ||
         operatorType == NODE_TYPE_OPERATOR_BINARY_IN) {
       return true;
     }
@@ -169,8 +162,7 @@ class Condition {
  private:
   typedef std::vector<std::pair<size_t, AttributeSideType>> UsagePositionType;
   typedef std::unordered_map<std::string, UsagePositionType> AttributeUsageType;
-  typedef std::unordered_map<Variable const*, AttributeUsageType>
-      VariableUsageType;
+  typedef std::unordered_map<Variable const*, AttributeUsageType> VariableUsageType;
 
  public:
   Condition(Condition const&) = delete;
@@ -184,9 +176,9 @@ class Condition {
   ~Condition();
 
  public:
-  static void CollectOverlappingMembers(
-      ExecutionPlan const* plan, Variable const* variable, AstNode* andNode,
-      AstNode* otherAndNode, std::unordered_set<size_t>& toRemove,
+  static void CollectOverlappingMembers(ExecutionPlan const* plan, Variable const* variable,
+                                        AstNode* andNode, AstNode* otherAndNode,
+                                        std::unordered_set<size_t>& toRemove,
                                         bool isFromTraverser);
 
   /// @brief return the condition root
@@ -230,7 +222,7 @@ class Condition {
 
   /// @brief removes condition parts from another
   AstNode* removeIndexCondition(ExecutionPlan const*, Variable const*, AstNode*);
-  
+
   /// @brief removes condition parts from another
   AstNode* removeTraversalCondition(ExecutionPlan const*, Variable const*, AstNode*);
 
@@ -246,10 +238,9 @@ class Condition {
 
   /// @brief get the attributes for a sub-condition that are const
   /// (i.e. compared with equality)
-  std::vector<std::vector<arangodb::basics::AttributeName>> getConstAttributes (Variable const*, bool);
+  std::vector<std::vector<arangodb::basics::AttributeName>> getConstAttributes(Variable const*, bool);
 
  private:
-
   /// @brief sort ORs for the same attribute so they are in ascending value
   /// order. this will only work if the condition is for a single attribute
   bool sortOrs(Variable const*, std::vector<Index const*>&);
@@ -269,8 +260,8 @@ class Condition {
 #endif
 
   /// @brief checks if the current condition covers the other
-  static bool CanRemove(ExecutionPlan const*, ConditionPart const&, AstNode const*,
-                        bool isFromTraverser);
+  static bool CanRemove(ExecutionPlan const*, ConditionPart const&,
+                        AstNode const*, bool isFromTraverser);
 
   /// @brief deduplicate IN condition values
   /// this may modify the node in place
@@ -304,7 +295,7 @@ class Condition {
   /// @brief whether or not the condition will return a sorted result
   bool _isSorted;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

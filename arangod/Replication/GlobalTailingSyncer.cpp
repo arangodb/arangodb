@@ -34,13 +34,12 @@ using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::rest;
 
-GlobalTailingSyncer::GlobalTailingSyncer(
-    ReplicationApplierConfiguration const& configuration,
-    TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId)
+GlobalTailingSyncer::GlobalTailingSyncer(ReplicationApplierConfiguration const& configuration,
+                                         TRI_voc_tick_t initialTick,
+                                         bool useTick, TRI_voc_tick_t barrierId)
     : TailingSyncer(ReplicationFeature::INSTANCE->globalReplicationApplier(),
                     configuration, initialTick, useTick, barrierId),
       _queriedTranslations(false) {
-
   _ignoreDatabaseMarkers = false;
   _databaseName = TRI_VOC_SYSTEM_DATABASE;
 }
@@ -52,7 +51,8 @@ std::string GlobalTailingSyncer::tailingBaseUrl(std::string const& command) {
 
   if (_masterInfo._majorVersion < 3 ||
       (_masterInfo._majorVersion == 3 && _masterInfo._minorVersion <= 2)) {
-    std::string err = "You need >= 3.3 to perform the replication of an entire server";
+    std::string err =
+        "You need >= 3.3 to perform the replication of an entire server";
     LOG_TOPIC(ERR, Logger::REPLICATION) << err;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, err);
   }
@@ -62,20 +62,20 @@ std::string GlobalTailingSyncer::tailingBaseUrl(std::string const& command) {
 /// @brief save the current applier state
 Result GlobalTailingSyncer::saveApplierState() {
   LOG_TOPIC(TRACE, Logger::REPLICATION)
-  << "saving replication applier state. last applied continuous tick: "
-  << applier()->_state._lastAppliedContinuousTick
-  << ", safe resume tick: " << applier()->_state._safeResumeTick;
-  
+      << "saving replication applier state. last applied continuous tick: "
+      << applier()->_state._lastAppliedContinuousTick
+      << ", safe resume tick: " << applier()->_state._safeResumeTick;
+
   try {
     _applier->persistState(false);
     return Result();
   } catch (basics::Exception const& ex) {
     LOG_TOPIC(WARN, Logger::REPLICATION)
-    << "unable to save replication applier state: " << ex.what();
+        << "unable to save replication applier state: " << ex.what();
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
     LOG_TOPIC(WARN, Logger::REPLICATION)
-    << "unable to save replication applier state: " << ex.what();
+        << "unable to save replication applier state: " << ex.what();
     return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
     return Result(TRI_ERROR_INTERNAL, "unknown exception");
@@ -87,12 +87,12 @@ bool GlobalTailingSyncer::skipMarker(VPackSlice const& slice) {
   // we do not have a "cname" attribute in the marker...
   // now check for a globally unique id attribute ("cuid")
   // if its present, then we will use our local cuid -> collection name
-  // translation table 
+  // translation table
   VPackSlice const name = slice.get("cuid");
   if (!name.isString()) {
     return false;
   }
-  
+
   if (_masterInfo._majorVersion < 3 ||
       (_masterInfo._majorVersion == 3 && _masterInfo._minorVersion <= 2)) {
     // globallyUniqueId only exists in 3.3 and higher
@@ -107,14 +107,17 @@ bool GlobalTailingSyncer::skipMarker(VPackSlice const& slice) {
       VPackBuilder inventoryResponse;
       Result res = init.inventory(inventoryResponse);
       _queriedTranslations = true;
-      
+
       if (res.fail()) {
-        LOG_TOPIC(ERR, Logger::REPLICATION) << "got error while fetching master inventory for collection name translations: " << res.errorMessage();
+        LOG_TOPIC(ERR, Logger::REPLICATION)
+            << "got error while fetching master inventory for collection name "
+               "translations: "
+            << res.errorMessage();
         return false;
       }
 
       VPackSlice invSlice = inventoryResponse.slice();
-      if (!invSlice.isObject()) { 
+      if (!invSlice.isObject()) {
         return false;
       }
       invSlice = invSlice.get("databases");
@@ -132,7 +135,7 @@ bool GlobalTailingSyncer::skipMarker(VPackSlice const& slice) {
         if (!dbObj.isArray()) {
           return false;
         }
-    
+
         for (auto const& it : VPackArrayIterator(dbObj)) {
           if (!it.isObject()) {
             continue;
@@ -141,17 +144,19 @@ bool GlobalTailingSyncer::skipMarker(VPackSlice const& slice) {
           if (c.hasKey("name") && c.hasKey("globallyUniqueId")) {
             // we'll store everything for all databases in a global hash table,
             // as we expect the globally unique ids to be unique...
-            _translations[c.get("globallyUniqueId").copyString()] = c.get("name").copyString();
+            _translations[c.get("globallyUniqueId").copyString()] =
+                c.get("name").copyString();
           }
         }
       }
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, Logger::REPLICATION) << "got error while fetching inventory: " << ex.what();
+      LOG_TOPIC(ERR, Logger::REPLICATION)
+          << "got error while fetching inventory: " << ex.what();
       return false;
     }
   }
 
-  // look up cuid in translations map 
+  // look up cuid in translations map
   auto it = _translations.find(name.copyString());
 
   if (it != _translations.end()) {

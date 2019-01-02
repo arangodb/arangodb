@@ -37,7 +37,7 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 class KeyGenerator {
  public:
@@ -108,7 +108,6 @@ class TraditionalKeyGenerator final : public KeyGenerator {
   static bool validateKey(char const* key, size_t len);
 
  public:
-  
   bool trackKeys() const override { return true; }
 
   /// @brief generate a key
@@ -145,7 +144,6 @@ class AutoIncrementKeyGenerator final : public KeyGenerator {
   static bool validateKey(char const* key, size_t len);
 
  public:
-
   bool trackKeys() const override { return true; }
 
   /// @brief generate a key
@@ -173,7 +171,7 @@ class AutoIncrementKeyGenerator final : public KeyGenerator {
   uint64_t _increment;  // increment value
 };
 
-}
+}  // namespace arangodb
 
 /// @brief validate a document id (collection name + / + document key)
 bool TRI_ValidateDocumentIdKeyGenerator(char const*, size_t, size_t*);

@@ -41,11 +41,7 @@ using namespace arangodb::aql;
 /// @brief create the v8 expression
 V8Expression::V8Expression(v8::Isolate* isolate, v8::Handle<v8::Function> func,
                            v8::Handle<v8::Object> constantValues, bool isSimple)
-    : isolate(isolate),
-      _func(),
-      _state(),
-      _constantValues(),
-      _isSimple(isSimple) {
+    : isolate(isolate), _func(), _state(), _constantValues(), _isSimple(isSimple) {
   _func.Reset(isolate, func);
   _state.Reset(isolate, v8::Object::New(isolate));
   _constantValues.Reset(isolate, constantValues);
@@ -59,10 +55,8 @@ V8Expression::~V8Expression() {
 }
 
 /// @brief execute the expression
-AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
-                               transaction::Methods* trx,
-                               ExpressionContext* context,
-                               bool& mustDestroy) {
+AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query, transaction::Methods* trx,
+                               ExpressionContext* context, bool& mustDestroy) {
   bool const hasRestrictions = !_attributeRestrictions.empty();
 
   v8::Handle<v8::Object> values = v8::Object::New(isolate);
@@ -85,9 +79,8 @@ AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
 
       if (it != _attributeRestrictions.end()) {
         // build a partial object
-        values->ForceSet(
-            TRI_V8_STD_STRING(isolate, varname),
-            value.toV8Partial(isolate, trx, (*it).second));
+        values->ForceSet(TRI_V8_STD_STRING(isolate, varname),
+                         value.toV8Partial(isolate, trx, (*it).second));
         continue;
       }
     }
@@ -95,8 +88,7 @@ AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
     // fallthrough to building the complete object
 
     // build the regular object
-    values->ForceSet(TRI_V8_STD_STRING(isolate, varname),
-                     value.toV8(isolate, trx));
+    values->ForceSet(TRI_V8_STD_STRING(isolate, varname), value.toV8(isolate, trx));
   }
 
   TRI_ASSERT(query != nullptr);
@@ -110,7 +102,7 @@ AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
   try {
     v8g->_query = static_cast<void*>(query);
     TRI_ASSERT(v8g->_query != nullptr);
-    
+
     auto state = v8::Local<v8::Object>::New(isolate, _state);
 
     // set constant function arguments
@@ -123,7 +115,7 @@ AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
     // won't modify their arguments is unsafe
     auto constantValues = v8::Local<v8::Object>::New(isolate, _constantValues);
 
-    v8::Handle<v8::Value> args[] = { values, state, constantValues };
+    v8::Handle<v8::Value> args[] = {values, state, constantValues};
 
     // execute the function
     v8::TryCatch tryCatch;
@@ -146,8 +138,8 @@ AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
     // expression does not have any (defined) value. replace with null
     mustDestroy = false;
     return AqlValue(AqlValueHintNull());
-  } 
-  
+  }
+
   // expression had a result. convert it to JSON
   if (_builder == nullptr) {
     _builder.reset(new VPackBuilder);
@@ -166,7 +158,6 @@ AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  mustDestroy = true; // builder = dynamic data
+  mustDestroy = true;  // builder = dynamic data
   return AqlValue(_builder.get());
 }
-

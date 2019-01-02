@@ -71,7 +71,7 @@ class RocksDBValue {
   /// May be called only on PrimaryIndexValue values. Other types will throw.
   //////////////////////////////////////////////////////////////////////////////
 
-  static TRI_voc_rid_t revisionId(rocksdb::Slice const&); // throwing
+  static TRI_voc_rid_t revisionId(rocksdb::Slice const&);  // throwing
   static bool revisionId(rocksdb::Slice const&, TRI_voc_rid_t& id);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -112,13 +112,13 @@ class RocksDBValue {
 
   RocksDBValue(RocksDBEntryType type, rocksdb::Slice slice)
       : _type(type), _buffer(slice.data(), slice.size()) {}
-  
+
   RocksDBValue(RocksDBValue const&) = delete;
   RocksDBValue& operator=(RocksDBValue const&) = delete;
 
   RocksDBValue(RocksDBValue&& other) noexcept
       : _type(other._type), _buffer(std::move(other._buffer)) {}
-  
+
   RocksDBValue& operator=(RocksDBValue&& other) noexcept {
     TRI_ASSERT(_type == other._type);
     _buffer = std::move(other._buffer);

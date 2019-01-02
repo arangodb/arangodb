@@ -32,8 +32,7 @@
 using namespace arangodb::rest;
 
 namespace {
-std::atomic_uint_fast64_t NEXT_TASK_ID(static_cast<uint64_t>(TRI_microtime() *
-                                                             100000.0));
+std::atomic_uint_fast64_t NEXT_TASK_ID(static_cast<uint64_t>(TRI_microtime() * 100000.0));
 }
 
 Task::Task(arangodb::EventLoop loop, std::string const& name)

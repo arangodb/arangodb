@@ -35,19 +35,19 @@ using namespace arangodb;
 using namespace arangodb::traverser;
 using namespace arangodb::rest;
 
-InternalRestTraverserHandler::InternalRestTraverserHandler(
-    GeneralRequest* request, GeneralResponse* response,
-    TraverserEngineRegistry* engineRegistry)
+InternalRestTraverserHandler::InternalRestTraverserHandler(GeneralRequest* request,
+                                                           GeneralResponse* response,
+                                                           TraverserEngineRegistry* engineRegistry)
     : RestVocbaseBaseHandler(request, response), _registry(engineRegistry) {
   TRI_ASSERT(_registry != nullptr);
 }
 
 // returns the queue name
-size_t InternalRestTraverserHandler::queue() const { 
+size_t InternalRestTraverserHandler::queue() const {
   if (ServerState::instance()->isCoordinator()) {
-    return JobQueue::BACKGROUND_QUEUE; 
+    return JobQueue::BACKGROUND_QUEUE;
   }
-  return JobQueue::STANDARD_QUEUE; 
+  return JobQueue::STANDARD_QUEUE;
 }
 
 RestStatus InternalRestTraverserHandler::execute() {
@@ -141,9 +141,10 @@ void InternalRestTraverserHandler::queryEngine() {
   }
 
   auto& registry = _registry;  // For the guard
-  arangodb::basics::ScopeGuard guard{
-      []() -> void {},
-      [registry, &engineId]() -> void { registry->returnEngine(engineId); }};
+  arangodb::basics::ScopeGuard guard{[]() -> void {},
+                                     [registry, &engineId]() -> void {
+                                       registry->returnEngine(engineId);
+                                     }};
 
   if (option == "lock") {
     if (count != 3) {
@@ -157,8 +158,7 @@ void InternalRestTraverserHandler::queryEngine() {
                     "lock lead to an exception");
       return;
     }
-    generateResult(ResponseCode::OK,
-                   arangodb::basics::VelocyPackHelper::TrueValue());
+    generateResult(ResponseCode::OK, arangodb::basics::VelocyPackHelper::TrueValue());
     return;
   }
 
@@ -232,8 +232,7 @@ void InternalRestTraverserHandler::queryEngine() {
     }
 
     VPackSlice depthSlice = body.get("depth");
-    if (depthSlice.isNone() ||
-        engine->getType() != BaseEngine::EngineType::TRAVERSER) {
+    if (depthSlice.isNone() || engine->getType() != BaseEngine::EngineType::TRAVERSER) {
       engine->getVertexData(keysSlice, result);
     } else {
       if (!depthSlice.isInteger()) {
@@ -244,8 +243,7 @@ void InternalRestTraverserHandler::queryEngine() {
       // Save Cast BaseTraverserEngines are all of type TRAVERSER
       auto eng = static_cast<BaseTraverserEngine*>(engine);
       TRI_ASSERT(eng != nullptr);
-      eng->getVertexData(keysSlice, depthSlice.getNumericValue<size_t>(),
-                         result);
+      eng->getVertexData(keysSlice, depthSlice.getNumericValue<size_t>(), result);
     }
   } else if (option == "smartSearch") {
     if (engine->getType() != BaseEngine::EngineType::TRAVERSER) {
@@ -279,14 +277,13 @@ void InternalRestTraverserHandler::destroyEngine() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   if (suffixes.size() != 1) {
     // DELETE requires the id as path parameter
-    generateError(
-        ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        "expected DELETE " + INTERNAL_TRAVERSER_PATH + "/<TraverserEngineId>");
+    generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expected DELETE " + INTERNAL_TRAVERSER_PATH +
+                      "/<TraverserEngineId>");
     return;
   }
 
   TraverserEngineID id = basics::StringUtils::uint64(suffixes[0]);
   _registry->destroy(id);
-  generateResult(ResponseCode::OK,
-                 arangodb::basics::VelocyPackHelper::TrueValue());
+  generateResult(ResponseCode::OK, arangodb::basics::VelocyPackHelper::TrueValue());
 }

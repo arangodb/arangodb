@@ -37,6 +37,4 @@ LoggerBufferFeature::LoggerBufferFeature(application_features::ApplicationServer
   startsAfter("Logger");
 }
 
-void LoggerBufferFeature::prepare() {
-  LogBuffer::initialize();
-}
+void LoggerBufferFeature::prepare() { LogBuffer::initialize(); }

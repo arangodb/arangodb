@@ -67,6 +67,6 @@ class DatabaseGuard {
   /// @brief pointer to database
   TRI_vocbase_t* _vocbase;
 };
-}
+}  // namespace arangodb
 
 #endif

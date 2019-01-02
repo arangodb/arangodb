@@ -41,8 +41,7 @@ using namespace arangodb::options;
 
 AuthenticationFeature* AuthenticationFeature::INSTANCE = nullptr;
 
-AuthenticationFeature::AuthenticationFeature(
-    application_features::ApplicationServer* server)
+AuthenticationFeature::AuthenticationFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Authentication"),
       _userManager(nullptr),
       _authCache(nullptr),
@@ -65,8 +64,7 @@ AuthenticationFeature::~AuthenticationFeature() {
   delete _authCache;
 }
 
-void AuthenticationFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
+void AuthenticationFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "Server features");
 
   options->addOldOption("server.disable-authentication",
@@ -126,14 +124,14 @@ void AuthenticationFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 void AuthenticationFeature::prepare() {
   TRI_ASSERT(isEnabled());
   TRI_ASSERT(_userManager == nullptr);
-  
+
   ServerState::RoleEnum role = ServerState::instance()->getRole();
   TRI_ASSERT(role != ServerState::RoleEnum::ROLE_UNDEFINED);
   if (ServerState::isSingleServer(role) || ServerState::isCoordinator(role)) {
 #if USE_ENTERPRISE
-    if (application_features::ApplicationServer::getFeature<LdapFeature>("Ldap")
-            ->isEnabled()) {
-      _userManager = new auth::UserManager(std::make_unique<LdapAuthenticationHandler>());
+    if (application_features::ApplicationServer::getFeature<LdapFeature>("Ldap")->isEnabled()) {
+      _userManager =
+          new auth::UserManager(std::make_unique<LdapAuthenticationHandler>());
     } else {
       _userManager = new auth::UserManager();
     }
@@ -143,7 +141,7 @@ void AuthenticationFeature::prepare() {
   } else {
     LOG_TOPIC(DEBUG, Logger::AUTHENTICATION) << "Not creating user manager";
   }
-  
+
   TRI_ASSERT(_authCache == nullptr);
   _authCache = new auth::TokenCache(_userManager, _authenticationTimeout);
 
@@ -171,7 +169,8 @@ void AuthenticationFeature::start() {
 
   if (_userManager != nullptr) {
     auto queryRegistryFeature =
-    application_features::ApplicationServer::getFeature<QueryRegistryFeature>("QueryRegistry");
+        application_features::ApplicationServer::getFeature<QueryRegistryFeature>(
+            "QueryRegistry");
     _userManager->setQueryRegistry(queryRegistryFeature->queryRegistry());
   }
 

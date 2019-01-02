@@ -115,16 +115,14 @@ class RocksDBKeyBounds {
   /// @brief Bounds for all documents within a value range belonging to a
   /// specified unique index
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds UniqueVPackIndex(uint64_t indexId,
-                                           VPackSlice const& left,
+  static RocksDBKeyBounds UniqueVPackIndex(uint64_t indexId, VPackSlice const& left,
                                            VPackSlice const& right);
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all documents within a value range belonging to a
   /// specified unique index. this method is used for point lookups
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds UniqueVPackIndex(uint64_t indexId,
-                                           VPackSlice const& left);
+  static RocksDBKeyBounds UniqueVPackIndex(uint64_t indexId, VPackSlice const& left);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all views belonging to a specified database
@@ -149,14 +147,12 @@ class RocksDBKeyBounds {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all entries of a fulltext index, matching prefixes
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds FulltextIndexPrefix(uint64_t,
-                                              arangodb::StringRef const&);
+  static RocksDBKeyBounds FulltextIndexPrefix(uint64_t, arangodb::StringRef const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all entries of a fulltext index, matching the word
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds FulltextIndexComplete(uint64_t,
-                                                arangodb::StringRef const&);
+  static RocksDBKeyBounds FulltextIndexComplete(uint64_t, arangodb::StringRef const&);
 
  public:
   RocksDBKeyBounds(RocksDBKeyBounds const& other);
@@ -203,10 +199,8 @@ class RocksDBKeyBounds {
   RocksDBKeyBounds();
   explicit RocksDBKeyBounds(RocksDBEntryType type);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first);
-  RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
-                   arangodb::StringRef const& second);
-  RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
-                   VPackSlice const& second);
+  RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, arangodb::StringRef const& second);
+  RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, VPackSlice const& second);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
                    VPackSlice const& second, VPackSlice const& third);
 
@@ -220,8 +214,7 @@ class RocksDBKeyBounds {
     BoundsBuffer() : _separatorPosition(0) {}
 
     BoundsBuffer(BoundsBuffer const& other)
-        : _buffer(other._buffer),
-          _separatorPosition(other._separatorPosition) {}
+        : _buffer(other._buffer), _separatorPosition(other._separatorPosition) {}
 
     BoundsBuffer(BoundsBuffer&& other)
         : _buffer(std::move(other._buffer)),

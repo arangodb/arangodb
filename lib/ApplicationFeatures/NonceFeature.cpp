@@ -51,6 +51,4 @@ void NonceFeature::prepare() {
   }
 }
 
-void NonceFeature::unprepare() {
-  Nonce::destroy();
-}
+void NonceFeature::unprepare() { Nonce::destroy(); }

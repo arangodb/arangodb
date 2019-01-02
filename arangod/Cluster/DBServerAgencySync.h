@@ -59,6 +59,6 @@ class DBServerAgencySync {
  private:
   HeartbeatThread* _heartbeat;
 };
-}
+}  // namespace arangodb
 
 #endif

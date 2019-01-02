@@ -33,6 +33,6 @@ class EnvironmentFeature final : public application_features::ApplicationFeature
  public:
   void prepare() override final;
 };
-}
+}  // namespace arangodb
 
 #endif

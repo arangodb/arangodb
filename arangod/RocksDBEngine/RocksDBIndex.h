@@ -35,7 +35,7 @@
 namespace rocksdb {
 class Comparator;
 class ColumnFamilyHandle;
-}
+}  // namespace rocksdb
 namespace arangodb {
 namespace cache {
 class Cache;
@@ -54,13 +54,11 @@ class RocksDBIndex : public Index {
 
  protected:
   RocksDBIndex(TRI_idx_iid_t, LogicalCollection*,
-               std::vector<std::vector<arangodb::basics::AttributeName>> const&
-                   attributes,
+               std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
                bool unique, bool sparse, rocksdb::ColumnFamilyHandle* cf,
                uint64_t objectId, bool useCache);
 
-  RocksDBIndex(TRI_idx_iid_t, LogicalCollection*,
-               arangodb::velocypack::Slice const&,
+  RocksDBIndex(TRI_idx_iid_t, LogicalCollection*, arangodb::velocypack::Slice const&,
                rocksdb::ColumnFamilyHandle* cf, bool useCache);
 
  public:
@@ -98,8 +96,7 @@ class RocksDBIndex : public Index {
   }
 
   Result remove(transaction::Methods* trx, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const& doc,
-                OperationMode mode) override {
+                arangodb::velocypack::Slice const& doc, OperationMode mode) override {
     auto mthds = RocksDBTransactionState::toMethods(trx);
     return removeInternal(trx, mthds, documentId, doc, mode);
   }
@@ -127,8 +124,7 @@ class RocksDBIndex : public Index {
                                 LocalDocumentId const& oldDocumentId,
                                 arangodb::velocypack::Slice const& oldDoc,
                                 LocalDocumentId const& newDocumentId,
-                                velocypack::Slice const& newDoc,
-                                OperationMode mode);
+                                velocypack::Slice const& newDoc, OperationMode mode);
 
   /// remove index elements and put it in the specified write batch.
   virtual Result removeInternal(transaction::Methods* trx, RocksDBMethods*,
@@ -144,8 +140,7 @@ class RocksDBIndex : public Index {
     return RocksDBIndex::getBounds(type(), _objectId, _unique);
   };
 
-  static RocksDBKeyBounds getBounds(Index::IndexType type, uint64_t objectId,
-                                    bool unique);
+  static RocksDBKeyBounds getBounds(Index::IndexType type, uint64_t objectId, bool unique);
 
   virtual void applyCommitedEstimates(std::vector<uint64_t> const& inserts,
                                       std::vector<uint64_t> const& removes);

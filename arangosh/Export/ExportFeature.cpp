@@ -35,8 +35,8 @@
 
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/detail/xml_parser_utils.hpp>
-#include <regex>
 #include <iostream>
+#include <regex>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -44,8 +44,7 @@ using namespace arangodb::httpclient;
 using namespace arangodb::options;
 using namespace boost::property_tree::xml_parser;
 
-ExportFeature::ExportFeature(application_features::ApplicationServer* server,
-                             int* result)
+ExportFeature::ExportFeature(application_features::ApplicationServer* server, int* result)
     : ApplicationFeature(server, "Export"),
       _collections(),
       _graphName(),
@@ -69,19 +68,17 @@ ExportFeature::ExportFeature(application_features::ApplicationServer* server,
   startsAfter("Config");
   startsAfter("Logger");
 
-  _outputDirectory = FileUtils::buildFilename(
-      FileUtils::currentDirectory().result(), "export");
+  _outputDirectory = FileUtils::buildFilename(FileUtils::currentDirectory().result(),
+                                              "export");
 }
 
-void ExportFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
+void ExportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
   options->addOption(
       "--collection",
       "restrict to collection name (can be specified multiple times)",
       new VectorParameter<StringParameter>(&_collections));
-  
-  options->addOption("--query", "AQL query to run",
-                     new StringParameter(&_query));
+
+  options->addOption("--query", "AQL query to run", new StringParameter(&_query));
 
   options->addOption("--graph-name", "name of a graph to export",
                      new StringParameter(&_graphName));
@@ -99,8 +96,7 @@ void ExportFeature::collectOptions(
   options->addOption("--overwrite", "overwrite data in output directory",
                      new BooleanParameter(&_overwrite));
 
-  options->addOption("--progress", "show progress",
-                     new BooleanParameter(&_progress));
+  options->addOption("--progress", "show progress", new BooleanParameter(&_progress));
 
   options->addOption("--fields",
                      "comma separated list of fileds to export into a csv file",
@@ -108,13 +104,11 @@ void ExportFeature::collectOptions(
 
   std::unordered_set<std::string> exports = {"csv", "json", "jsonl", "xgmml",
                                              "xml"};
-  options->addOption(
-      "--type", "type of export",
-      new DiscreteValuesParameter<StringParameter>(&_typeExport, exports));
+  options->addOption("--type", "type of export",
+                     new DiscreteValuesParameter<StringParameter>(&_typeExport, exports));
 }
 
-void ExportFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
+void ExportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
   auto const& positionals = options->processingResult()._positionals;
   size_t n = positionals.size();
 
@@ -129,8 +123,7 @@ void ExportFeature::validateOptions(
 
   // trim trailing slash from path because it may cause problems on ...
   // Windows
-  if (!_outputDirectory.empty() &&
-      _outputDirectory.back() == TRI_DIR_SEPARATOR_CHAR) {
+  if (!_outputDirectory.empty() && _outputDirectory.back() == TRI_DIR_SEPARATOR_CHAR) {
     TRI_ASSERT(_outputDirectory.size() > 0);
     _outputDirectory.pop_back();
   }
@@ -153,10 +146,10 @@ void ExportFeature::validateOptions(
     FATAL_ERROR_EXIT();
   }
 
-  if ((_typeExport == "json" || _typeExport == "jsonl" ||
-       _typeExport == "csv") &&
+  if ((_typeExport == "json" || _typeExport == "jsonl" || _typeExport == "csv") &&
       _collections.empty() && _query.empty()) {
-    LOG_TOPIC(FATAL, Logger::CONFIG) << "expecting at least one collection or an AQL query";
+    LOG_TOPIC(FATAL, Logger::CONFIG)
+        << "expecting at least one collection or an AQL query";
     FATAL_ERROR_EXIT();
   }
 
@@ -179,19 +172,17 @@ void ExportFeature::prepare() {
     isDirectory = TRI_IsDirectory(_outputDirectory.c_str());
 
     if (isDirectory) {
-      std::vector<std::string> files(
-          TRI_FullTreeDirectory(_outputDirectory.c_str()));
+      std::vector<std::string> files(TRI_FullTreeDirectory(_outputDirectory.c_str()));
       // we don't care if the target directory is empty
       // note: TRI_FullTreeDirectory always returns at least one
       // element (""), even if directory is empty.
-      isEmptyDirectory = (files.size() <= 1);  
+      isEmptyDirectory = (files.size() <= 1);
     }
   }
 
-  if (_outputDirectory.empty() ||
-      (TRI_ExistsFile(_outputDirectory.c_str()) && !isDirectory)) {
-    LOG_TOPIC(FATAL, Logger::SYSCALL) << "cannot write to output directory '"
-                                      << _outputDirectory << "'";
+  if (_outputDirectory.empty() || (TRI_ExistsFile(_outputDirectory.c_str()) && !isDirectory)) {
+    LOG_TOPIC(FATAL, Logger::SYSCALL)
+        << "cannot write to output directory '" << _outputDirectory << "'";
     FATAL_ERROR_EXIT();
   }
 
@@ -206,22 +197,19 @@ void ExportFeature::prepare() {
   if (!isDirectory) {
     long systemError;
     std::string errorMessage;
-    int res = TRI_CreateDirectory(_outputDirectory.c_str(), systemError,
-                                  errorMessage);
+    int res = TRI_CreateDirectory(_outputDirectory.c_str(), systemError, errorMessage);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC(ERR, Logger::SYSCALL) << "unable to create output directory '"
-                                      << _outputDirectory
-                                      << "': " << errorMessage;
+                                      << _outputDirectory << "': " << errorMessage;
       FATAL_ERROR_EXIT();
     }
   }
 }
 
 void ExportFeature::start() {
-  ClientFeature* client =
-      application_features::ApplicationServer::getFeature<ClientFeature>(
-          "Client");
+  ClientFeature* client = application_features::ApplicationServer::getFeature<ClientFeature>(
+      "Client");
 
   int ret = EXIT_SUCCESS;
   *_result = ret;
@@ -244,20 +232,17 @@ void ExportFeature::start() {
 
   if (!httpClient->isConnected()) {
     LOG_TOPIC(ERR, Logger::COMMUNICATION)
-        << "Could not connect to endpoint '" << client->endpoint()
-        << "', database: '" << client->databaseName() << "', username: '"
-        << client->username() << "'";
-    LOG_TOPIC(FATAL, Logger::COMMUNICATION) << httpClient->getErrorMessage()
-                                            << "'";
+        << "Could not connect to endpoint '" << client->endpoint() << "', database: '"
+        << client->databaseName() << "', username: '" << client->username() << "'";
+    LOG_TOPIC(FATAL, Logger::COMMUNICATION) << httpClient->getErrorMessage() << "'";
     FATAL_ERROR_EXIT();
   }
 
   // successfully connected
-  std::cout << "Connected to ArangoDB '"
-            << httpClient->getEndpointSpecification() << "', version "
-            << httpClient->getServerVersion() << ", database: '"
-            << client->databaseName() << "', username: '" << client->username()
-            << "'" << std::endl;
+  std::cout << "Connected to ArangoDB '" << httpClient->getEndpointSpecification()
+            << "', version " << httpClient->getServerVersion()
+            << ", database: '" << client->databaseName() << "', username: '"
+            << client->username() << "'" << std::endl;
 
   uint64_t exportedSize = 0;
 
@@ -267,8 +252,8 @@ void ExportFeature::start() {
       collectionExport(httpClient.get());
 
       for (auto const& collection : _collections) {
-        std::string filePath = _outputDirectory + TRI_DIR_SEPARATOR_STR +
-                               collection + "." + _typeExport;
+        std::string filePath =
+            _outputDirectory + TRI_DIR_SEPARATOR_STR + collection + "." + _typeExport;
         int64_t fileSize = TRI_SizeFile(filePath.c_str());
 
         if (0 < fileSize) {
@@ -277,14 +262,15 @@ void ExportFeature::start() {
       }
     } else if (!_query.empty()) {
       queryExport(httpClient.get());
-        
-      std::string filePath = _outputDirectory + TRI_DIR_SEPARATOR_STR + "query." + _typeExport;
+
+      std::string filePath =
+          _outputDirectory + TRI_DIR_SEPARATOR_STR + "query." + _typeExport;
       exportedSize += TRI_SizeFile(filePath.c_str());
     }
   } else if (_typeExport == "xgmml" && _graphName.size()) {
     graphExport(httpClient.get());
-    std::string filePath = _outputDirectory + TRI_DIR_SEPARATOR_STR +
-                           _graphName + "." + _typeExport;
+    std::string filePath =
+        _outputDirectory + TRI_DIR_SEPARATOR_STR + _graphName + "." + _typeExport;
     int64_t fileSize = TRI_SizeFile(filePath.c_str());
 
     if (0 < fileSize) {
@@ -292,9 +278,8 @@ void ExportFeature::start() {
     }
   }
 
-  std::cout << "Processed " << _collections.size() << " collection(s), wrote "
-            << exportedSize << " byte(s), " << _httpRequestsDone
-            << " HTTP request(s)" << std::endl;
+  std::cout << "Processed " << _collections.size() << " collection(s), wrote " << exportedSize
+            << " byte(s), " << _httpRequestsDone << " HTTP request(s)" << std::endl;
 
   *_result = ret;
 }
@@ -304,14 +289,13 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
 
   for (auto const& collection : _collections) {
     if (_progress) {
-      std::cout << "# Exporting collection '" << collection << "'..."
-                << std::endl;
+      std::cout << "# Exporting collection '" << collection << "'..." << std::endl;
     }
 
     _currentCollection = collection;
 
-    std::string fileName = _outputDirectory + TRI_DIR_SEPARATOR_STR +
-                           collection + "." + _typeExport;
+    std::string fileName =
+        _outputDirectory + TRI_DIR_SEPARATOR_STR + collection + "." + _typeExport;
 
     // remove an existing file first
     if (TRI_ExistsFile(fileName.c_str())) {
@@ -332,9 +316,8 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
         httpCall(httpClient, url, rest::RequestType::POST, post.toJson());
     VPackSlice body = parsedBody->slice();
 
-    int fd =
-        TRI_TRACKED_CREATE_FILE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
-                   S_IRUSR | S_IWUSR);
+    int fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+                                     S_IRUSR | S_IWUSR);
 
     if (fd < 0) {
       errorMsg = "cannot write to file '" + fileName + "'";
@@ -390,9 +373,8 @@ void ExportFeature::queryExport(SimpleHttpClient* httpClient) {
       httpCall(httpClient, url, rest::RequestType::POST, post.toJson());
   VPackSlice body = parsedBody->slice();
 
-  int fd =
-      TRI_TRACKED_CREATE_FILE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
-                  S_IRUSR | S_IWUSR);
+  int fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+                                   S_IRUSR | S_IWUSR);
 
   if (fd < 0) {
     errorMsg = "cannot write to file '" + fileName + "'";
@@ -422,7 +404,8 @@ void ExportFeature::queryExport(SimpleHttpClient* httpClient) {
   }
 }
 
-void ExportFeature::writeFirstLine(int fd, std::string const& fileName, std::string const& collection) {
+void ExportFeature::writeFirstLine(int fd, std::string const& fileName,
+                                   std::string const& collection) {
   _firstLine = true;
   if (_typeExport == "json") {
     std::string openingBracket = "[";
@@ -532,17 +515,17 @@ void ExportFeature::writeBatch(int fd, VPackArrayIterator it, std::string const&
   }
 }
 
-void ExportFeature::writeToFile(int fd, std::string const& line,
-                                std::string const& fileName) {
+void ExportFeature::writeToFile(int fd, std::string const& line, std::string const& fileName) {
   if (!TRI_WritePointer(fd, line.c_str(), line.size())) {
     std::string errorMsg = "cannot write to file '" + fileName + "'";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CANNOT_WRITE_FILE, errorMsg);
   }
 }
 
-std::shared_ptr<VPackBuilder> ExportFeature::httpCall(
-    SimpleHttpClient* httpClient, std::string const& url,
-    rest::RequestType requestType, std::string postBody) {
+std::shared_ptr<VPackBuilder> ExportFeature::httpCall(SimpleHttpClient* httpClient,
+                                                      std::string const& url,
+                                                      rest::RequestType requestType,
+                                                      std::string postBody) {
   std::string errorMsg;
 
   std::unique_ptr<SimpleHttpResult> response(
@@ -550,8 +533,7 @@ std::shared_ptr<VPackBuilder> ExportFeature::httpCall(
   _httpRequestsDone++;
 
   if (response == nullptr || !response->isComplete()) {
-    errorMsg =
-        "got invalid response from server: " + httpClient->getErrorMessage();
+    errorMsg = "got invalid response from server: " + httpClient->getErrorMessage();
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
   }
 
@@ -560,11 +542,9 @@ std::shared_ptr<VPackBuilder> ExportFeature::httpCall(
   if (response->wasHttpError()) {
     if (response->getHttpReturnCode() == 404) {
       if (_currentGraph.size()) {
-        LOG_TOPIC(FATAL, Logger::CONFIG) << "Graph '" << _currentGraph
-                                         << "' not found.";
+        LOG_TOPIC(FATAL, Logger::CONFIG) << "Graph '" << _currentGraph << "' not found.";
       } else if (_currentCollection.size()) {
-        LOG_TOPIC(FATAL, Logger::CONFIG) << "Collection " << _currentCollection
-                                         << " not found.";
+        LOG_TOPIC(FATAL, Logger::CONFIG) << "Collection " << _currentCollection << " not found.";
       }
 
       FATAL_ERROR_EXIT();
@@ -604,8 +584,7 @@ void ExportFeature::graphExport(SimpleHttpClient* httpClient) {
     if (_progress) {
       std::cout << "# Export graph '" << _graphName << "'" << std::endl;
     }
-    std::string const url =
-        "/_api/gharial/" + StringUtils::urlEncode(_graphName);
+    std::string const url = "/_api/gharial/" + StringUtils::urlEncode(_graphName);
     std::shared_ptr<VPackBuilder> parsedBody =
         httpCall(httpClient, url, rest::RequestType::GET);
     VPackSlice body = parsedBody->slice();
@@ -644,9 +623,8 @@ void ExportFeature::graphExport(SimpleHttpClient* httpClient) {
     TRI_UnlinkFile(fileName.c_str());
   }
 
-  int fd =
-      TRI_TRACKED_CREATE_FILE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
-                 S_IRUSR | S_IWUSR);
+  int fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+                                   S_IRUSR | S_IWUSR);
 
   if (fd < 0) {
     errorMsg = "cannot write to file '" + fileName + "'";
@@ -668,8 +646,7 @@ directed="1">
 
   for (auto const& collection : _collections) {
     if (_progress) {
-      std::cout << "# Exporting collection '" << collection << "'..."
-                << std::endl;
+      std::cout << "# Exporting collection '" << collection << "'..." << std::endl;
     }
 
     std::string const url = "_api/cursor";
@@ -705,21 +682,19 @@ directed="1">
   }
 }
 
-void ExportFeature::writeGraphBatch(int fd, VPackArrayIterator it,
-                                    std::string const& fileName) {
+void ExportFeature::writeGraphBatch(int fd, VPackArrayIterator it, std::string const& fileName) {
   std::string xmlTag;
 
   for (auto const& doc : it) {
     if (doc.hasKey("_from")) {
-      xmlTag =
-          "<edge label=\"" +
-          encode_char_entities(doc.hasKey(_xgmmlLabelAttribute) &&
-                                       doc.get(_xgmmlLabelAttribute).isString()
-                                   ? doc.get(_xgmmlLabelAttribute).copyString()
-                                   : "Default-Label") +
-          "\" source=\"" + encode_char_entities(doc.get("_from").copyString()) +
-          "\" target=\"" + encode_char_entities(doc.get("_to").copyString()) +
-          "\"";
+      xmlTag = "<edge label=\"" +
+               encode_char_entities(doc.hasKey(_xgmmlLabelAttribute) &&
+                                            doc.get(_xgmmlLabelAttribute).isString()
+                                        ? doc.get(_xgmmlLabelAttribute).copyString()
+                                        : "Default-Label") +
+               "\" source=\"" + encode_char_entities(doc.get("_from").copyString()) +
+               "\" target=\"" +
+               encode_char_entities(doc.get("_to").copyString()) + "\"";
       writeToFile(fd, xmlTag, fileName);
       if (!_xgmmlLabelOnly) {
         xmlTag = ">\n";
