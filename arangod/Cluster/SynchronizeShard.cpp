@@ -397,75 +397,78 @@ arangodb::Result SynchronizeShard::getReadLock(
     return arangodb::Result(TRI_ERROR_SHUTTING_DOWN,
                             "startReadLockOnLeader: Shutting down");
   }
-
+  
   VPackBuilder body;
-  {
-    VPackObjectBuilder o(&body);
+  { VPackObjectBuilder o(&body);
     body.add(ID, VPackValue(std::to_string(rlid)));
     body.add(COLLECTION, VPackValue(collection));
     body.add(TTL, VPackValue(timeout));
-    body.add(StaticStrings::ReplicationSoftLockOnly, VPackValue(soft));
-  }
+    body.add(StaticStrings::ReplicationSoftLockOnly, VPackValue(soft)); }
 
   auto url = DB + database + REPL_HOLD_READ_LOCK;
+  
+  auto const transactionId = TRI_NewTickServer();
+  auto postres = cc->asyncRequest(
+    "", transactionId, endpoint, rest::RequestType::POST, url,
+    std::make_shared<std::string>(body.toJson()),
+    std::unordered_map<std::string, std::string>(),
+    std::make_shared<SynchronizeShardCallback>(this), timeout, true, timeout);
+  
+  // Intentionally do not look at the outcome, even in case of an error
+  // we must make sure that the read lock on the leader is not active!
+  // This is done automatically below. But we at least make sure that we could
+  // deliver the async request
 
-  while (true) {
+  while (true) {  // wait for some time until read lock established:
 
-    auto const transactionId = TRI_NewTickServer();
-    cc->asyncRequest(
-      "", transactionId, endpoint, rest::RequestType::POST, url,
-      std::make_shared<std::string>(body.toJson()),
-      std::unordered_map<std::string, std::string>(),
-      std::make_shared<SynchronizeShardCallback>(this), 60.0, true, 60.0);
-
-    // Intentionally do not look at the outcome, even in case of an error
-    // we must make sure that the read lock on the leader is not active!
-    // This is done automatically below. But we at least make sure that we could
-    // deliver the async request.
-
-    auto res = cc->wait("", transactionId, 0, "", 60.0);
-    if (res.status == CL_COMM_SENT) {
-      break;
-    }
-    if (duration_cast<seconds>(steady_clock::now()-start).count() > timeout) {
-      return arangodb::Result(
-        TRI_ERROR_CLUSTER_TIMEOUT,
-        "startReadLockOnLeader: couldn't connect to shard leader giving up");
-    }
-  }
-
-  double sleepTime = 0.5;
-  size_t count = 0;
-  size_t maxTries = static_cast<size_t>(std::floor(600.0 / sleepTime));
-  while (++count < maxTries) {  // wait for some time until read lock established:
-
+    // Shutdown s
     if (isStopping()) {
       return arangodb::Result(TRI_ERROR_SHUTTING_DOWN);
     }
 
-    // Now check that we hold the read lock:
-    auto putres = cc->syncRequest(clientId, 1, endpoint, rest::RequestType::PUT,
-                                  url, body.toJson(),
-                                  std::unordered_map<std::string, std::string>(), timeout);
-
-    auto result = putres->result;
-    if (result != nullptr && result->getHttpReturnCode() == 200) {
-      auto const vp = putres->result->getBodyVelocyPack();
-      auto const& slice = vp->slice();
-      TRI_ASSERT(slice.isObject());
-      if (slice.hasKey("lockHeld") && slice.get("lockHeld").isBoolean() &&
-          slice.get("lockHeld").getBool()) {
-        return arangodb::Result();
-      }
-      LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-          << "startReadLockOnLeader: Lock not yet acquired...";
-    } else {
-      LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-          << "startReadLockOnLeader: Do not see read lock yet:"
-          << putres->stringifyErrorMessage();
+    // Timeout
+    if (duration_cast<seconds>(steady_clock::now() - start).count() > timeout) {
+      break;
     }
 
-    std::this_thread::sleep_for(duration<double>(sleepTime));
+    // See if above POST has been returned (>= 3.4)
+    auto enqres = cc->enquire(postres);
+    if (enqres.status == CL_COMM_SENT) {
+      if (enqres.result != nullptr && enqres.result->getHttpReturnCode() == 200) {
+        // Habemus clausum
+        return arangodb::Result();
+      }
+    }
+
+    // Now check that we hold the read lock:
+    auto putres = cc->syncRequest(
+      clientId, 1, endpoint, rest::RequestType::PUT, url, body.toJson(),
+      std::unordered_map<std::string, std::string>(), 15.0);
+
+    auto result = putres->result;
+    if (result != nullptr) {
+      if (result->getHttpReturnCode() == 200) {
+        auto const vp = putres->result->getBodyVelocyPack();
+        auto const& slice = vp->slice();
+        TRI_ASSERT(slice.isObject());
+        if (slice.hasKey("lockHeld") && slice.get("lockHeld").isBoolean() &&
+            slice.get("lockHeld").getBool()) {    // Habemus clausum
+          return arangodb::Result();
+        }
+        LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+          << "startReadLockOnLeader: Lock not yet acquired, retrying... ";
+      } else if (enqres.status == CL_COMM_SENT) { // POST sent in meantime: Error
+        LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+          << "startReadLockOnLeader: Failed to acquire read lock: "
+          << putres->stringifyErrorMessage();
+      } else {                                    // No news
+        LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+          << "startReadLockOnLeader: Lock not yet acquired, retrying... "
+          << putres->stringifyErrorMessage();
+      }
+      std::this_thread::sleep_for(seconds(1));
+    }
+    
   }
 
   LOG_TOPIC(ERR, Logger::MAINTENANCE)
