@@ -423,22 +423,26 @@ arangodb::Result SynchronizeShard::getReadLock(
     TRI_NewTickServer(), endpoint, rest::RequestType::POST, url, body.toJson(),
     std::unordered_map<std::string, std::string>(), timeout);
 
-  if (postres != nullptr && !postres->errorCode == 200) { // Habemus clausum
-    return arangodb::Result();
+  if (postres != nullptr) {
+    
+    if (postres->errorCode == 200) { // Habemus clausum, we have a lock
+      return arangodb::Result();
+    }
+    
+    // We MUSTN'T exit without trying to clean up a lock that was maybe acquired   
+    if (postres->status == CL_COMM_SENT) {
+      return arangodb::Result(
+        TRI_ERROR_INTERNAL,
+        "startReadLockOnLeader: couldn't POST lock body, giving up.");
+    }
+    
   }
-  
+
   LOG_TOPIC(ERR, Logger::MAINTENANCE)
     << "startReadLockOnLeader: couldn't POST lock body, giving up.";
   
-  // We MUSTN'T exit without trying to clean up a lock that was maybe acquired   
-  if (postres->status == CL_COMM_SENT) {
-    return arangodb::Result(
-      TRI_ERROR_INTERNAL,
-      "startReadLockOnLeader: couldn't POST lock body, giving up.");
-  }
-  
   auto const expired = duration_cast<seconds>(steady_clock::now()-start).count();
-  // Ambiguous POST, we'll try to DELETE an acquired lock
+  // Ambiguous POST, we'll try to DELETE a potentially acquired lock
   auto r = cc->syncRequest(
     TRI_NewTickServer(), endpoint, rest::RequestType::DELETE_REQ, url,
     body.toJson(), std::unordered_map<std::string, std::string>(), timeout-expired);
