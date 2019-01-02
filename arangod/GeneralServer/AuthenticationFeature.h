@@ -79,6 +79,7 @@ class AuthenticationFeature final : public application_features::ApplicationFeat
   double _authenticationTimeout;
 
   std::string _jwtSecretProgramOption;
+  std::string _jwtSecretKeyfileProgramOption;
 
   static AuthenticationFeature* INSTANCE;
 };
