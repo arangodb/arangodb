@@ -31,11 +31,11 @@
 #define ARANGO_ENABLE_DEADLOCK_DETECTION
 #if defined(__SANITIZE_THREAD__)
 // Avoid fals positives with ThreadSanitizer
-#  undef ARANGO_ENABLE_DEADLOCK_DETECTION
+#undef ARANGO_ENABLE_DEADLOCK_DETECTION
 #elif defined(__has_feature)
-#  if __has_feature(thread_sanitizer)
-#    undef ARANGO_ENABLE_DEADLOCK_DETECTION
-#  endif
+#if __has_feature(thread_sanitizer)
+#undef ARANGO_ENABLE_DEADLOCK_DETECTION
+#endif
 #endif
 #endif
 
@@ -58,7 +58,7 @@ class Mutex {
   void lock();
   bool tryLock();
   void unlock();
-  
+
   // assert that the mutex is locked by the current thread. will do
   // nothing in non-maintainer mode and will do nothing for non-posix locks
 #ifdef ARANGO_ENABLE_DEADLOCK_DETECTION
@@ -84,6 +84,6 @@ class Mutex {
   TRI_tid_t _holder;
 #endif
 };
-}
+}  // namespace arangodb
 
 #endif

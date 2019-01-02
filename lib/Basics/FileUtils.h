@@ -62,12 +62,9 @@ std::string slurp(std::string const& filename);
 void slurp(std::string const& filename, StringBuffer& result);
 
 // creates file and writes string to it
-void spit(std::string const& filename, char const* ptr, size_t len,
-          bool sync = false);
-void spit(std::string const& filename, std::string const& content,
-          bool sync = false);
-void spit(std::string const& filename, StringBuffer const& content,
-          bool sync = false);
+void spit(std::string const& filename, char const* ptr, size_t len, bool sync = false);
+void spit(std::string const& filename, std::string const& content, bool sync = false);
+void spit(std::string const& filename, StringBuffer const& content, bool sync = false);
 
 // returns true if a file could be removed
 bool remove(std::string const& fileName, int* errorNumber = nullptr);
@@ -79,15 +76,13 @@ bool createDirectory(std::string const& name, int mask, int* errorNumber = nullp
 /// @brief copies directories / files recursive
 /// will not copy files/directories for which the filter function
 /// returns true
-bool copyRecursive(std::string const& source, 
-                   std::string const& target,
+bool copyRecursive(std::string const& source, std::string const& target,
                    std::function<bool(std::string const&)> const& filter,
                    std::string& error);
 
 /// @brief will not copy files/directories for which the filter function
 /// returns true
-bool copyDirectoryRecursive(std::string const& source,
-                            std::string const& target, 
+bool copyDirectoryRecursive(std::string const& source, std::string const& target,
                             std::function<bool(std::string const&)> const& filter,
                             std::string& error);
 
@@ -111,8 +106,7 @@ bool exists(std::string const& path);
 off_t size(std::string const& path);
 
 // strip extension
-std::string stripExtension(std::string const& path,
-                           std::string const& extension);
+std::string stripExtension(std::string const& path, std::string const& extension);
 
 // changes into directory
 FileResult changeDirectory(std::string const& path);
@@ -131,8 +125,8 @@ std::string dirname(std::string const&);
 
 // returns the output of a program
 std::string slurpProgram(std::string const& program);
-}
-}
-}
+}  // namespace FileUtils
+}  // namespace basics
+}  // namespace arangodb
 
 #endif

@@ -54,13 +54,13 @@ class Task : public std::enable_shared_from_this<Task> {
   void toVelocyPack(arangodb::velocypack::Builder&) const;
 
  protected:
-  Scheduler * const _scheduler;
+  Scheduler* const _scheduler;
   uint64_t const _taskId;
 
  private:
   std::string const _name;
 };
-}
-}
+}  // namespace rest
+}  // namespace arangodb
 
 #endif

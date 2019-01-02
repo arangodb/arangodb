@@ -37,16 +37,13 @@ namespace arangodb {
 
 uint64_t const FileDescriptorsFeature::RECOMMENDED = 8192;
 
-FileDescriptorsFeature::FileDescriptorsFeature(
-    application_features::ApplicationServer& server
-)
+FileDescriptorsFeature::FileDescriptorsFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "FileDescriptors"), _descriptorsMinimum(0) {
   setOptional(false);
   startsAfter("GreetingsPhase");
 }
 
-void FileDescriptorsFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
+void FileDescriptorsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 #ifdef TRI_HAVE_GETRLIMIT
   options->addSection("server", "Server features");
 
@@ -115,9 +112,8 @@ void FileDescriptorsFeature::adjustFileDescriptors() {
   }
 
   LOG_TOPIC(DEBUG, arangodb::Logger::SYSCALL)
-      << "file-descriptors (nofiles) hard limit is "
-      << StringifyLimitValue(rlim.rlim_max) << ", soft limit is "
-      << StringifyLimitValue(rlim.rlim_cur);
+      << "file-descriptors (nofiles) hard limit is " << StringifyLimitValue(rlim.rlim_max)
+      << ", soft limit is " << StringifyLimitValue(rlim.rlim_cur);
 
   uint64_t recommended = RECOMMENDED;
   uint64_t minimum = _descriptorsMinimum;
@@ -176,4 +172,4 @@ void FileDescriptorsFeature::adjustFileDescriptors() {
 #endif
 }
 
-} // arangodb
+}  // namespace arangodb

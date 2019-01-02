@@ -41,31 +41,33 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
-  
+
 namespace {
 
-std::vector<ExecutionNode::NodeType> const reduceExtractionToProjectionTypes = {ExecutionNode::ENUMERATE_COLLECTION, ExecutionNode::INDEX}; 
+std::vector<ExecutionNode::NodeType> const reduceExtractionToProjectionTypes = {
+    ExecutionNode::ENUMERATE_COLLECTION, ExecutionNode::INDEX};
 
-} // namespace
+}  // namespace
 
 void RocksDBOptimizerRules::registerResources() {
   // simplify an EnumerationCollectionNode that fetches an entire document to a projection of this document
-  OptimizerRulesFeature::registerRule("reduce-extraction-to-projection", reduceExtractionToProjectionRule, 
-               OptimizerRule::reduceExtractionToProjectionRule, false, true);
+  OptimizerRulesFeature::registerRule("reduce-extraction-to-projection",
+                                      reduceExtractionToProjectionRule,
+                                      OptimizerRule::reduceExtractionToProjectionRule,
+                                      false, true);
   // remove SORT RAND() LIMIT 1 if appropriate
   OptimizerRulesFeature::registerRule("remove-sort-rand-limit-1", removeSortRandRule,
                                       OptimizerRule::removeSortRandRule, false, true);
 }
 
 // simplify an EnumerationCollectionNode that fetches an entire document to a projection of this document
-void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt, 
-                                                             std::unique_ptr<ExecutionPlan> plan, 
-                                                             OptimizerRule const* rule) {
+void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
+    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan, OptimizerRule const* rule) {
   // These are all the nodes where we start traversing (including all
   // subqueries)
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
-  
+
   plan->findNodesOfType(nodes, ::reduceExtractionToProjectionTypes, true);
 
   bool modified = false;
@@ -78,7 +80,8 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt,
     attributes.clear();
     DocumentProducingNode* e = dynamic_cast<DocumentProducingNode*>(n);
     if (e == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot convert node to DocumentProducingNode");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL, "cannot convert node to DocumentProducingNode");
     }
     Variable const* v = e->outVariable();
 
@@ -88,7 +91,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt,
 
       if (current->getType() == EN::REMOVE) {
         RemoveNode const* removeNode = ExecutionNode::castTo<RemoveNode const*>(current);
-        if (removeNode->inVariable() == v) { 
+        if (removeNode->inVariable() == v) {
           // FOR doc IN collection REMOVE doc IN ...
           attributes.emplace(StaticStrings::KeyString);
           optimize = true;
@@ -96,9 +99,10 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt,
           doRegularCheck = true;
         }
       } else if (current->getType() == EN::UPDATE || current->getType() == EN::REPLACE) {
-        UpdateReplaceNode const* modificationNode = ExecutionNode::castTo<UpdateReplaceNode const*>(current);
+        UpdateReplaceNode const* modificationNode =
+            ExecutionNode::castTo<UpdateReplaceNode const*>(current);
 
-        if (modificationNode->inKeyVariable() == v && 
+        if (modificationNode->inKeyVariable() == v &&
             modificationNode->inDocVariable() != v) {
           // FOR doc IN collection UPDATE/REPLACE doc IN ...
           attributes.emplace(StaticStrings::KeyString);
@@ -113,7 +117,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt,
           AstNode const* node = exp->node();
           vars.clear();
           current->getVariablesUsedHere(vars);
-            
+
           if (vars.find(v) != vars.end()) {
             if (!Ast::getReferencedAttributes(node, v, attributes)) {
               stop = true;
@@ -135,7 +139,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt,
             }
             // insert 0th level of attribute name into the set of attributes
             // that we need for our projection
-            attributes.emplace(it.attributePath[0]); 
+            attributes.emplace(it.attributePath[0]);
           }
         }
       } else {
@@ -174,23 +178,24 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt,
         // need to update _indexCoversProjections value in an IndexNode
         ExecutionNode::castTo<IndexNode*>(n)->initIndexCoversProjections();
       }
-      
+
       modified = true;
     }
   }
-    
+
   opt->addPlan(std::move(plan), rule, modified);
 }
 
 /// @brief remove SORT RAND() if appropriate
-void RocksDBOptimizerRules::removeSortRandRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+void RocksDBOptimizerRules::removeSortRandRule(Optimizer* opt,
+                                               std::unique_ptr<ExecutionPlan> plan,
                                                OptimizerRule const* rule) {
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::SORT, true);
-  
+
   bool modified = false;
-  
+
   for (auto const& n : nodes) {
     auto node = ExecutionNode::castTo<SortNode*>(n);
     auto const& elements = node->elements();
@@ -198,46 +203,46 @@ void RocksDBOptimizerRules::removeSortRandRule(Optimizer* opt, std::unique_ptr<E
       // we're looking for "SORT RAND()", which has just one sort criterion
       continue;
     }
-    
+
     auto const variable = elements[0].var;
     TRI_ASSERT(variable != nullptr);
-    
+
     auto setter = plan->getVarSetBy(variable->id);
-    
+
     if (setter == nullptr || setter->getType() != EN::CALCULATION) {
       continue;
     }
-    
+
     auto cn = ExecutionNode::castTo<CalculationNode*>(setter);
     auto const expression = cn->expression();
-    
+
     if (expression == nullptr || expression->node() == nullptr ||
         expression->node()->type != NODE_TYPE_FCALL) {
       // not the right type of node
       continue;
     }
-    
+
     auto funcNode = expression->node();
     auto func = static_cast<Function const*>(funcNode->getData());
-    
+
     // we're looking for "RAND()", which is a function call
     // with an empty parameters array
     if (func->name != "RAND" || funcNode->numMembers() != 1 ||
         funcNode->getMember(0)->numMembers() != 0) {
       continue;
     }
-    
+
     // now we're sure we got SORT RAND() !
-    
+
     // we found what we were looking for!
     // now check if the dependencies qualify
     if (!n->hasDependency()) {
       break;
     }
-    
+
     auto current = n->getFirstDependency();
     ExecutionNode* collectionNode = nullptr;
-    
+
     while (current != nullptr) {
       switch (current->getType()) {
         case EN::SORT:
@@ -259,7 +264,7 @@ void RocksDBOptimizerRules::removeSortRandRule(Optimizer* opt, std::unique_ptr<E
           current = nullptr;
           continue;  // this will exit the while loop
         }
-          
+
         case EN::ENUMERATE_COLLECTION: {
           if (collectionNode == nullptr) {
             // note this node
@@ -275,23 +280,23 @@ void RocksDBOptimizerRules::removeSortRandRule(Optimizer* opt, std::unique_ptr<E
           // cannot get here
           TRI_ASSERT(false);
         }
-          
+
         default: {
           // ignore all other nodes
         }
       }
-      
+
       if (!current->hasDependency()) {
         break;
       }
-      
+
       current = current->getFirstDependency();
     }
-    
+
     if (collectionNode == nullptr || !node->hasParent()) {
-      continue; // skip
+      continue;  // skip
     }
-    
+
     current = node->getFirstParent();
     bool valid = false;
     if (current->getType() == EN::LIMIT) {
@@ -300,19 +305,19 @@ void RocksDBOptimizerRules::removeSortRandRule(Optimizer* opt, std::unique_ptr<E
         valid = true;
       }
     }
-    
+
     if (valid) {
       // we found a node to modify!
       TRI_ASSERT(collectionNode->getType() == EN::ENUMERATE_COLLECTION);
       // set the random iteration flag for the EnumerateCollectionNode
       ExecutionNode::castTo<EnumerateCollectionNode*>(collectionNode)->setRandom();
-      
+
       // remove the SortNode and the CalculationNode
       plan->unlinkNode(n);
       plan->unlinkNode(setter);
       modified = true;
     }
   }
-  
+
   opt->addPlan(std::move(plan), rule, modified);
 }

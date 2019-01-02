@@ -184,9 +184,9 @@ class MappedFileBuffer : public TypedBuffer<T> {
       // remove empty file
       TRI_UnlinkFile(filename.c_str());
 
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot memory map file '"
-                                              << filename << "': '"
-                                              << TRI_errno_string(res) << "'";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "cannot memory map file '" << filename << "': '"
+          << TRI_errno_string(res) << "'";
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
           << "The database directory might reside on a shared folder "
              "(VirtualBox, VMWare) or an NFS-mounted volume which does not "
@@ -238,8 +238,7 @@ class MappedFileBuffer : public TypedBuffer<T> {
       int res = TRI_TRACKED_CLOSE_FILE(_fd);
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-            << "unable to close pregel mapped file '" << _filename
-            << "': " << res;
+            << "unable to close pregel mapped file '" << _filename << "': " << res;
       }
     }
 
@@ -268,8 +267,7 @@ class MappedFileBuffer : public TypedBuffer<T> {
 
 #ifdef __linux__
     size_t newMappedSize = sizeof(T) * newSize;
-    void* newPtr =
-        mremap((void*)this->_ptr, _mappedSize, newMappedSize, MREMAP_MAYMOVE);
+    void* newPtr = mremap((void*)this->_ptr, _mappedSize, newMappedSize, MREMAP_MAYMOVE);
     if (newPtr != MAP_FAILED) {  // success
       TRI_ASSERT(this->_ptr != nullptr);
       this->_ptr = (T*)newPtr;
@@ -318,7 +316,7 @@ class MappedFileBuffer : public TypedBuffer<T> {
   size_t _size = 0;
   size_t _mappedSize;
 };
-}
-}
+}  // namespace pregel
+}  // namespace arangodb
 
 #endif

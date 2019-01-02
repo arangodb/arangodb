@@ -25,13 +25,13 @@
 #ifndef ARANGOD_AQL_COLLECT_BLOCK_H
 #define ARANGOD_AQL_COLLECT_BLOCK_H 1
 
-#include "Basics/Common.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
 #include "Aql/AqlValueGroup.h"
 #include "Aql/CollectNode.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
+#include "Basics/Common.h"
 #include "Basics/Result.h"
 
 #include <velocypack/Builder.h>
@@ -44,7 +44,7 @@ class Methods;
 namespace aql {
 struct Aggregator;
 class ExecutionEngine;
-  
+
 typedef std::vector<std::unique_ptr<Aggregator>> AggregateValuesType;
 
 class SortedCollectBlock final : public ExecutionBlock {
@@ -102,7 +102,7 @@ class SortedCollectBlock final : public ExecutionBlock {
 
   /// @brief writes the current group data into the result
   void emitGroup(AqlItemBlock const* cur, AqlItemBlock* res, size_t row, bool skipping);
-  
+
   /// @brief skips the current group
   void skipGroup();
 
@@ -142,8 +142,7 @@ class HashedCollectBlock final : public ExecutionBlock {
   HashedCollectBlock(ExecutionEngine*, CollectNode const*);
   ~HashedCollectBlock() final;
 
-  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items,
-                                                     size_t pos) override;
+  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
  private:
   std::pair<ExecutionState, Result> getOrSkipSome(size_t atMost, bool skipping,
@@ -167,10 +166,7 @@ class HashedCollectBlock final : public ExecutionBlock {
   AqlItemBlock* _lastBlock;
 
   /// @brief hashmap of all encountered groups
-  std::unordered_map<std::vector<AqlValue>,
-                     std::unique_ptr<AggregateValuesType>, AqlValueGroupHash,
-                     AqlValueGroupEqual>
-      _allGroups;
+  std::unordered_map<std::vector<AqlValue>, std::unique_ptr<AggregateValuesType>, AqlValueGroupHash, AqlValueGroupEqual> _allGroups;
 
   void _destroyAllGroupsAqlValues();
 };
@@ -193,7 +189,7 @@ class DistinctCollectBlock final : public ExecutionBlock {
  private:
   /// @brief pairs, consisting of out register and in register
   std::vector<std::pair<RegisterId, RegisterId>> _groupRegisters;
-  
+
   std::unique_ptr<std::unordered_set<std::vector<AqlValue>, AqlValueGroupHash, AqlValueGroupEqual>> _seen;
   std::unique_ptr<AqlItemBlock> _res;
 };
@@ -203,9 +199,10 @@ class CountCollectBlock final : public ExecutionBlock {
   CountCollectBlock(ExecutionEngine*, CollectNode const*);
 
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
-  
+
   std::pair<ExecutionState, Result> getOrSkipSome(size_t atMost, bool skipping,
-                                                  AqlItemBlock*& result, size_t& skipped) override;
+                                                  AqlItemBlock*& result,
+                                                  size_t& skipped) override;
 
  private:
   RegisterId _collectRegister;
@@ -213,7 +210,7 @@ class CountCollectBlock final : public ExecutionBlock {
   size_t _count;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

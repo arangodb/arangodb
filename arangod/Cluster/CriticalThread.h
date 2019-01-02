@@ -29,14 +29,13 @@
 namespace arangodb {
 
 class CriticalThread : public Thread {
-
-public:
+ public:
   // copy constructor and assignment duplicate base class
   CriticalThread(CriticalThread const&) = delete;
   CriticalThread& operator=(CriticalThread const&) = delete;
 
   CriticalThread(std::string const& name, bool deleteOnExit = false)
-    : Thread(name, deleteOnExit) {}
+      : Thread(name, deleteOnExit) {}
 
   virtual ~CriticalThread() {}
 
@@ -47,8 +46,8 @@ public:
 
   virtual void crashNotification(std::exception const& ex) override;
 
-};//class CriticalThread
+};  // class CriticalThread
 
-}
+}  // namespace arangodb
 
 #endif  // ARANGOD_CLUSTER_CRITICAL_THREAD_H

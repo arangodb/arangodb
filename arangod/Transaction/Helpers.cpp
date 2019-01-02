@@ -26,9 +26,9 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/encoding.h"
+#include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Transaction/Context.h"
 
 #include <velocypack/Builder.h>
 
@@ -74,7 +74,7 @@ StringRef transaction::helpers::extractKeyPart(VPackSlice slice) {
   if (slice.isObject()) {
     VPackSlice k = slice.get(StaticStrings::KeyString);
     if (!k.isString()) {
-      return StringRef(); // fail
+      return StringRef();  // fail
     }
     return StringRef(k);
   }
@@ -263,9 +263,8 @@ VPackSlice transaction::helpers::extractToFromDocument(VPackSlice slice) {
 /// @brief extract _key and _rev from a document, in one go
 /// this is an optimized version used when loading collections, WAL
 /// collection and compaction
-void transaction::helpers::extractKeyAndRevFromDocument(VPackSlice slice,
-                                               VPackSlice& keySlice,
-                                               TRI_voc_rid_t& revisionId) {
+void transaction::helpers::extractKeyAndRevFromDocument(VPackSlice slice, VPackSlice& keySlice,
+                                                        TRI_voc_rid_t& revisionId) {
   if (slice.isExternal()) {
     slice = slice.resolveExternal();
   }
@@ -369,8 +368,9 @@ VPackSlice transaction::helpers::extractRevSliceFromDocument(VPackSlice slice) {
   return slice.get(StaticStrings::RevString);
 }
 
-OperationResult transaction::helpers::buildCountResult(std::vector<std::pair<std::string, uint64_t>> const& count, 
-                                                       transaction::CountType type, int64_t& total) {
+OperationResult transaction::helpers::buildCountResult(
+    std::vector<std::pair<std::string, uint64_t>> const& count,
+    transaction::CountType type, int64_t& total) {
   total = 0;
   VPackBuilder resultBuilder;
 
@@ -394,8 +394,8 @@ OperationResult transaction::helpers::buildCountResult(std::vector<std::pair<std
 
 /// @brief creates an id string from a custom _id value and the _key string
 std::string transaction::helpers::makeIdFromCustom(CollectionNameResolver const* resolver,
-                                          VPackSlice const& id,
-                                          VPackSlice const& key) {
+                                                   VPackSlice const& id,
+                                                   VPackSlice const& key) {
   TRI_ASSERT(id.isCustom() && id.head() == 0xf3);
   TRI_ASSERT(key.isString());
 
@@ -408,7 +408,7 @@ std::string transaction::helpers::makeIdFromCustom(CollectionNameResolver const*
   } else if (resolved.compare(0, 6, "_from_") == 0) {
     resolved.erase(0, 6);
   } else if (resolved.compare(0, 4, "_to_") == 0) {
-    resolved.erase(0,4);
+    resolved.erase(0, 4);
   }
 #endif
   VPackValueLength keyLength;
@@ -424,15 +424,13 @@ std::string transaction::helpers::makeIdFromCustom(CollectionNameResolver const*
 
 /// @brief constructor, leases a StringBuffer
 transaction::StringBufferLeaser::StringBufferLeaser(transaction::Methods* trx)
-      : _transactionContext(trx->transactionContextPtr()),
-        _stringBuffer(_transactionContext->leaseStringBuffer(32)) {
-}
+    : _transactionContext(trx->transactionContextPtr()),
+      _stringBuffer(_transactionContext->leaseStringBuffer(32)) {}
 
 /// @brief constructor, leases a StringBuffer
 transaction::StringBufferLeaser::StringBufferLeaser(transaction::Context* transactionContext)
-      : _transactionContext(transactionContext),
-        _stringBuffer(_transactionContext->leaseStringBuffer(32)) {
-}
+    : _transactionContext(transactionContext),
+      _stringBuffer(_transactionContext->leaseStringBuffer(32)) {}
 
 /// @brief destructor
 transaction::StringBufferLeaser::~StringBufferLeaser() {
@@ -441,15 +439,15 @@ transaction::StringBufferLeaser::~StringBufferLeaser() {
 
 /// @brief constructor, leases a builder
 transaction::BuilderLeaser::BuilderLeaser(transaction::Methods* trx)
-      : _transactionContext(trx->transactionContextPtr()),
-        _builder(_transactionContext->leaseBuilder()) {
+    : _transactionContext(trx->transactionContextPtr()),
+      _builder(_transactionContext->leaseBuilder()) {
   TRI_ASSERT(_builder != nullptr);
 }
 
 /// @brief constructor, leases a builder
 transaction::BuilderLeaser::BuilderLeaser(transaction::Context* transactionContext)
-      : _transactionContext(transactionContext),
-        _builder(_transactionContext->leaseBuilder()) {
+    : _transactionContext(transactionContext),
+      _builder(_transactionContext->leaseBuilder()) {
   TRI_ASSERT(_builder != nullptr);
 }
 
@@ -459,4 +457,3 @@ transaction::BuilderLeaser::~BuilderLeaser() {
     _transactionContext->returnBuilder(_builder);
   }
 }
-

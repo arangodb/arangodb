@@ -125,7 +125,7 @@ quantifiers:
 - `x?` – matches one or zero occurrences of *x*
 - `x{y}` – matches exactly *y* occurrences of *x*
 - `x{y,z}` – matches between *y* and *z* occurrences of *x*
-- `x{y,}` – matches at least *y* occurences of *x*
+- `x{y,}` – matches at least *y* occurrences of *x*
 
 #### Enclosing identifiers in forward ticks
 
@@ -523,7 +523,7 @@ Build system
 ArangoDB now uses the cross-platform build system CMake for all its builds.
 Previous versions used two different build systems, making development and
 contributions harder than necessary. Now the build system is unified, and
-all targets (Linux, Windows, MacOS) are built from the same set of build
+all targets (Linux, Windows, macOS) are built from the same set of build
 instructions.
 
 Documentation

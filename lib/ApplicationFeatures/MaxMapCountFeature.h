@@ -44,13 +44,13 @@ class MaxMapCountFeature final : public application_features::ApplicationFeature
   }
 
   static uint64_t minimumExpectedMaxMappings();
-  static uint64_t actualMaxMappings(); 
+  static uint64_t actualMaxMappings();
   static bool isNearMaxMappings();
 
  private:
   static bool isNearMaxMappingsInternal(double& suggestedCacheTime) noexcept;
 };
 
-}
+}  // namespace arangodb
 
 #endif

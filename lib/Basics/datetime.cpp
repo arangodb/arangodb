@@ -20,8 +20,8 @@
 /// @author Manuel Baesler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <date/date.h>
 #include "Basics/datetime.h"
+#include <date/date.h>
 #include "Basics/NumberUtils.h"
 #include "Logger/Logger.h"
 
@@ -29,26 +29,25 @@
 
 #include <regex>
 #include <vector>
-  
+
 namespace {
 std::regex const iso8601Regex(
-                          "(\\+|\\-)?\\d+(\\-\\d{1,2}(\\-\\d{1,2})?)?" // YY[YY]-MM-DD
-                          "("
-                          "("
-                          // Time is optional
-                            "(\\ |T)" // T or blank separates date and time
-                            "\\d\\d\\:\\d\\d" // time: hh:mm
-                            "(\\:\\d\\d(\\.\\d{1,3})?)?" // Optional: :ss.mmms
-                            "("
-                              "z|Z|" // trailing Z or start of timezone
-                              "(\\+|\\-)" 
-                              "\\d\\d\\:\\d\\d" // timezone hh:mm
-                            ")?"
-                          ")|"  
-                          "(z|Z)" // Z
-                          ")?"
-                          );
-    
+    "(\\+|\\-)?\\d+(\\-\\d{1,2}(\\-\\d{1,2})?)?"  // YY[YY]-MM-DD
+    "("
+    "("
+    // Time is optional
+    "(\\ |T)"                     // T or blank separates date and time
+    "\\d\\d\\:\\d\\d"             // time: hh:mm
+    "(\\:\\d\\d(\\.\\d{1,3})?)?"  // Optional: :ss.mmms
+    "("
+    "z|Z|"  // trailing Z or start of timezone
+    "(\\+|\\-)"
+    "\\d\\d\\:\\d\\d"  // timezone hh:mm
+    ")?"
+    ")|"
+    "(z|Z)"  // Z
+    ")?");
+
 /* REGEX GROUPS
 12:34:56.789-12:34
 submatch 0: '12:34:56.789-12:34'
@@ -67,7 +66,7 @@ submatch 10: '34'
 std::regex const timeRegex(
     "(\\d\\d)\\:(\\d\\d)(\\:(\\d\\d)(\\.(\\d{1,3}))?)?((\\+|\\-)(\\d\\d)\\:"
     "(\\d\\d))?");
-    
+
 /* REGEX GROUPS
 P1Y2M3W4DT5H6M7.891S
   submatch 0: P1Y2M3W4DT5H6M7.891S
@@ -89,14 +88,13 @@ P1Y2M3W4DT5H6M7.891S
   submatch 16: .891
   submatch 17: 891
 */
-std::regex const durationRegex("P((\\d+)Y)?((\\d+)M)?((\\d+)W)?((\\d+)D)?(T((\\d+)H)?((\\d+)M)?((\\d+)(\\.(\\d{1,3}))?S)?)?");
+std::regex const durationRegex(
+    "P((\\d+)Y)?((\\d+)M)?((\\d+)W)?((\\d+)D)?(T((\\d+)H)?((\\d+)M)?((\\d+)(\\."
+    "(\\d{1,3}))?S)?)?");
 
-} // namespace
+}  // namespace
 
-
-bool arangodb::basics::parse_dateTime(
-    std::string const& dateTimeIn,
-    tp_sys_clock_ms& date_tp) {
+bool arangodb::basics::parse_dateTime(std::string const& dateTimeIn, tp_sys_clock_ms& date_tp) {
   using namespace date;
   using namespace std::chrono;
 
@@ -117,11 +115,9 @@ bool arangodb::basics::parse_dateTime(
     strDate.pop_back();
   }
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
-      << "parse datetime '" << strDate << "'";
+  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "parse datetime '" << strDate << "'";
 
-  if (strDate.find("T") != std::string::npos ||
-      strDate.find(" ") != std::string::npos) {  // split into ymd / time
+  if (strDate.find("T") != std::string::npos || strDate.find(" ") != std::string::npos) {  // split into ymd / time
     std::vector<std::string> strs;
     boost::split(strs, strDate, boost::is_any_of("T "));
 
@@ -132,7 +128,7 @@ bool arangodb::basics::parse_dateTime(
   // parse date component, moves pointer "p" forward
   // returns true if "p" pointed to a valid number, and false otherwise
   auto parseDateComponent = [](char const*& p, char const* e, int& result) -> bool {
-    char const* s = p; // remember initial start
+    char const* s = p;  // remember initial start
     if (p < e && *p == '-') {
       // skip over initial '-'
       ++p;
@@ -144,24 +140,24 @@ bool arangodb::basics::parse_dateTime(
       // did not find any valid character
       return false;
     }
-    result = NumberUtils::atoi_unchecked<int>(s, p); 
-    if (p < e && *p == '-') { 
-      ++p; 
+    result = NumberUtils::atoi_unchecked<int>(s, p);
+    if (p < e && *p == '-') {
+      ++p;
     }
     return true;
   };
-  
+
   char const* p = strDate.data();
   char const* e = p + strDate.size();
 
   // month and day are optional, so they intentionally default to 1
-  int parsedYear, parsedMonth = 1, parsedDay = 1; 
-  
+  int parsedYear, parsedMonth = 1, parsedDay = 1;
+
   // at least year must be valid
   if (!parseDateComponent(p, e, parsedYear)) {
     return false;
   }
-  
+
   parseDateComponent(p, e, parsedMonth);
   parseDateComponent(p, e, parsedDay);
 
@@ -180,8 +176,7 @@ bool arangodb::basics::parse_dateTime(
     std::smatch time_parts;
 
     if (!std::regex_match(strTime, time_parts, ::timeRegex)) {
-      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
-          << "regex failed for time " << strTime;
+      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "regex failed for time " << strTime;
       return false;
     }
 
@@ -210,8 +205,7 @@ bool arangodb::basics::parse_dateTime(
     date_tp += parsedSeconds;
 
     // milliseconds .9 -> 900ms
-    date_tp +=
-        milliseconds{atoi((time_parts[6].str() + "00").substr(0, 3).c_str())};
+    date_tp += milliseconds{atoi((time_parts[6].str() + "00").substr(0, 3).c_str())};
 
     // time offset
     if (time_parts[8].str().size()) {
@@ -239,7 +233,8 @@ bool arangodb::basics::parse_dateTime(
   return true;
 }
 
-bool arangodb::basics::regex_isoDuration(std::string const& isoDuration, std::smatch& durationParts) {
+bool arangodb::basics::regex_isoDuration(std::string const& isoDuration,
+                                         std::smatch& durationParts) {
   if (isoDuration.length() <= 1) {
     return false;
   }

@@ -28,12 +28,12 @@
 #include "Basics/FixedSizeAllocator.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "MMFiles/MMFilesIndexLookupContext.h"
 #include "Indexes/IndexResult.h"
 #include "Indexes/PersistentIndexAttributeMatcher.h"
 #include "Indexes/SkiplistIndexAttributeMatcher.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesIndexElement.h"
+#include "MMFiles/MMFilesIndexLookupContext.h"
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "MMFiles/MMFilesPersistentIndexKeyComparator.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
@@ -72,30 +72,27 @@ using namespace arangodb;
 MMFilesPersistentIndexIterator::MMFilesPersistentIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     arangodb::MMFilesPersistentIndex const* index,
-    arangodb::MMFilesPrimaryIndex* primaryIndex,
-    rocksdb::OptimisticTransactionDB* db, bool reverse, VPackSlice const& left,
-    VPackSlice const& right)
+    arangodb::MMFilesPrimaryIndex* primaryIndex, rocksdb::OptimisticTransactionDB* db,
+    bool reverse, VPackSlice const& left, VPackSlice const& right)
     : IndexIterator(collection, trx),
       _primaryIndex(primaryIndex),
       _db(db),
       _reverse(reverse),
       _probe(false) {
   TRI_idx_iid_t const id = index->id();
-  std::string const prefix = MMFilesPersistentIndex::buildPrefix(
-    trx->vocbase().id(), _primaryIndex->collection()->id(), id
-  );
+  std::string const prefix =
+      MMFilesPersistentIndex::buildPrefix(trx->vocbase().id(),
+                                          _primaryIndex->collection()->id(), id);
 
   TRI_ASSERT(prefix.size() == MMFilesPersistentIndex::keyPrefixSize());
 
   _leftEndpoint.reset(new arangodb::velocypack::Buffer<char>());
-  _leftEndpoint->reserve(MMFilesPersistentIndex::keyPrefixSize() +
-                         left.byteSize());
+  _leftEndpoint->reserve(MMFilesPersistentIndex::keyPrefixSize() + left.byteSize());
   _leftEndpoint->append(prefix.c_str(), prefix.size());
   _leftEndpoint->append(left.startAs<char const>(), left.byteSize());
 
   _rightEndpoint.reset(new arangodb::velocypack::Buffer<char>());
-  _rightEndpoint->reserve(MMFilesPersistentIndex::keyPrefixSize() +
-                          right.byteSize());
+  _rightEndpoint->reserve(MMFilesPersistentIndex::keyPrefixSize() + right.byteSize());
   _rightEndpoint->append(prefix.c_str(), prefix.size());
   _rightEndpoint->append(right.startAs<char const>(), right.byteSize());
 
@@ -118,8 +115,7 @@ MMFilesPersistentIndexIterator::MMFilesPersistentIndexIterator(
 void MMFilesPersistentIndexIterator::reset() {
   if (_reverse) {
     _probe = true;
-    _cursor->Seek(
-        rocksdb::Slice(_rightEndpoint->data(), _rightEndpoint->size()));
+    _cursor->Seek(rocksdb::Slice(_rightEndpoint->data(), _rightEndpoint->size()));
     if (!_cursor->Valid()) {
       _cursor->SeekToLast();
     }
@@ -128,8 +124,7 @@ void MMFilesPersistentIndexIterator::reset() {
   }
 }
 
-bool MMFilesPersistentIndexIterator::next(LocalDocumentIdCallback const& cb,
-                                          size_t limit) {
+bool MMFilesPersistentIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   auto comparator = MMFilesPersistentIndexFeature::instance()->comparator();
   while (limit > 0) {
     if (!_cursor->Valid()) {
@@ -142,8 +137,8 @@ bool MMFilesPersistentIndexIterator::next(LocalDocumentIdCallback const& cb,
     // VPackSlice(key.data() +
     // MMFilesPersistentIndex::keyPrefixSize()).toJson();
 
-    int res = comparator->Compare(
-        key, rocksdb::Slice(_leftEndpoint->data(), _leftEndpoint->size()));
+    int res = comparator->Compare(key, rocksdb::Slice(_leftEndpoint->data(),
+                                                      _leftEndpoint->size()));
     // LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "comparing: " <<
     // VPackSlice(key.data() + MMFilesPersistentIndex::keyPrefixSize()).toJson()
     // << " with " << VPackSlice((char const*) _leftEndpoint->data() +
@@ -159,8 +154,8 @@ bool MMFilesPersistentIndexIterator::next(LocalDocumentIdCallback const& cb,
       continue;
     }
 
-    res = comparator->Compare(
-        key, rocksdb::Slice(_rightEndpoint->data(), _rightEndpoint->size()));
+    res = comparator->Compare(key, rocksdb::Slice(_rightEndpoint->data(),
+                                                  _rightEndpoint->size()));
     // LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "comparing: " <<
     // VPackSlice(key.data() + MMFilesPersistentIndex::keyPrefixSize()).toJson()
     // << " with " << VPackSlice((char const*) _rightEndpoint->data() +
@@ -206,8 +201,7 @@ bool MMFilesPersistentIndexIterator::next(LocalDocumentIdCallback const& cb,
   return true;
 }
 
-bool MMFilesPersistentIndexIterator::nextDocument(DocumentCallback const& cb,
-                                                  size_t limit) {
+bool MMFilesPersistentIndexIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
   _documentIds.clear();
   _documentIds.reserve(limit);
 
@@ -225,8 +219,8 @@ bool MMFilesPersistentIndexIterator::nextDocument(DocumentCallback const& cb,
     // VPackSlice(key.data() +
     // MMFilesPersistentIndex::keyPrefixSize()).toJson();
 
-    int res = comparator->Compare(
-        key, rocksdb::Slice(_leftEndpoint->data(), _leftEndpoint->size()));
+    int res = comparator->Compare(key, rocksdb::Slice(_leftEndpoint->data(),
+                                                      _leftEndpoint->size()));
     // LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "comparing: " <<
     // VPackSlice(key.data() + MMFilesPersistentIndex::keyPrefixSize()).toJson()
     // << " with " << VPackSlice((char const*) _leftEndpoint->data() +
@@ -243,8 +237,8 @@ bool MMFilesPersistentIndexIterator::nextDocument(DocumentCallback const& cb,
       continue;
     }
 
-    res = comparator->Compare(
-        key, rocksdb::Slice(_rightEndpoint->data(), _rightEndpoint->size()));
+    res = comparator->Compare(key, rocksdb::Slice(_rightEndpoint->data(),
+                                                  _rightEndpoint->size()));
     // LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "comparing: " <<
     // VPackSlice(key.data() + MMFilesPersistentIndex::keyPrefixSize()).toJson()
     // << " with " << VPackSlice((char const*) _rightEndpoint->data() +
@@ -296,13 +290,10 @@ bool MMFilesPersistentIndexIterator::nextDocument(DocumentCallback const& cb,
 }
 
 /// @brief create the index
-MMFilesPersistentIndex::MMFilesPersistentIndex(
-    TRI_idx_iid_t iid,
-    arangodb::LogicalCollection& collection,
-    arangodb::velocypack::Slice const& info
-)
-    : MMFilesPathBasedIndex(iid, collection, info, sizeof(LocalDocumentId),
-                            true) {}
+MMFilesPersistentIndex::MMFilesPersistentIndex(TRI_idx_iid_t iid,
+                                               arangodb::LogicalCollection& collection,
+                                               arangodb::velocypack::Slice const& info)
+    : MMFilesPathBasedIndex(iid, collection, info, sizeof(LocalDocumentId), true) {}
 
 /// @brief destroy the index
 MMFilesPersistentIndex::~MMFilesPersistentIndex() {}
@@ -314,8 +305,7 @@ size_t MMFilesPersistentIndex::memory() const {
 /// @brief inserts a document into the index
 Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
                                       LocalDocumentId const& documentId,
-                                      VPackSlice const& doc,
-                                      OperationMode mode) {
+                                      VPackSlice const& doc, OperationMode mode) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
   int res;
@@ -431,9 +421,9 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
         iterator->Seek(rocksdb::Slice(bound.first.c_str(), bound.first.size()));
 
         if (iterator->Valid()) {
-          int res = comparator->Compare(
-              iterator->key(),
-              rocksdb::Slice(bound.second.c_str(), bound.second.size()));
+          int res = comparator->Compare(iterator->key(),
+                                        rocksdb::Slice(bound.second.c_str(),
+                                                       bound.second.size()));
 
           if (res <= 0) {
             uniqueConstraintViolated = true;
@@ -450,8 +440,7 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
       if (uniqueConstraintViolated) {
         // duplicate key
         res = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
-        auto physical =
-            static_cast<MMFilesCollection*>(_collection.getPhysical());
+        auto physical = static_cast<MMFilesCollection*>(_collection.getPhysical());
         TRI_ASSERT(physical != nullptr);
 
         if (!physical->useSecondaryIndexes()) {
@@ -495,8 +484,7 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
 /// @brief removes a document from the index
 Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
                                       LocalDocumentId const& documentId,
-                                      VPackSlice const& doc,
-                                      OperationMode mode) {
+                                      VPackSlice const& doc, OperationMode mode) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
   int res;
@@ -573,16 +561,15 @@ Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
 /// @brief called when the index is dropped
 int MMFilesPersistentIndex::drop() {
   return MMFilesPersistentIndexFeature::instance()->dropIndex(
-    _collection.vocbase().id(), _collection.id(), _iid
-  );
+      _collection.vocbase().id(), _collection.id(), _iid);
 }
 
 /// @brief attempts to locate an entry in the index
 /// Warning: who ever calls this function is responsible for destroying
 /// the MMFilesPersistentIndexIterator* results
-MMFilesPersistentIndexIterator* MMFilesPersistentIndex::lookup(
-    transaction::Methods* trx,
-    VPackSlice const searchValues, bool reverse) const {
+MMFilesPersistentIndexIterator* MMFilesPersistentIndex::lookup(transaction::Methods* trx,
+                                                               VPackSlice const searchValues,
+                                                               bool reverse) const {
   TRI_ASSERT(searchValues.isArray());
   TRI_ASSERT(searchValues.length() <= _fields.size());
 
@@ -679,39 +666,38 @@ MMFilesPersistentIndexIterator* MMFilesPersistentIndex::lookup(
   auto physical = static_cast<MMFilesCollection*>(_collection.getPhysical());
   auto idx = physical->primaryIndex();
   auto db = MMFilesPersistentIndexFeature::instance()->db();
-  return new MMFilesPersistentIndexIterator(
-    &_collection, trx, this, idx, db, reverse, leftBorder, rightBorder
-  );
+  return new MMFilesPersistentIndexIterator(&_collection, trx, this, idx, db,
+                                            reverse, leftBorder, rightBorder);
 }
 
 bool MMFilesPersistentIndex::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-    arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, size_t itemsInIndex,
-    size_t& estimatedItems, double& estimatedCost) const {
-  return SkiplistIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference,
-                                                                itemsInIndex, estimatedItems, estimatedCost);
+    arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
+    size_t itemsInIndex, size_t& estimatedItems, double& estimatedCost) const {
+  return SkiplistIndexAttributeMatcher::supportsFilterCondition(allIndexes, this,
+                                                                node, reference,
+                                                                itemsInIndex, estimatedItems,
+                                                                estimatedCost);
 }
 
-bool MMFilesPersistentIndex::supportsSortCondition(
-    arangodb::aql::SortCondition const* sortCondition,
-    arangodb::aql::Variable const* reference, size_t itemsInIndex,
-    double& estimatedCost, size_t& coveredAttributes) const {
-  return PersistentIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference, itemsInIndex,
-                                                                estimatedCost, coveredAttributes);
+bool MMFilesPersistentIndex::supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
+                                                   arangodb::aql::Variable const* reference,
+                                                   size_t itemsInIndex, double& estimatedCost,
+                                                   size_t& coveredAttributes) const {
+  return PersistentIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference,
+                                                                itemsInIndex, estimatedCost,
+                                                                coveredAttributes);
 }
 
 /// @brief specializes the condition for use with the index
-arangodb::aql::AstNode* MMFilesPersistentIndex::specializeCondition(arangodb::aql::AstNode* node,
-                                                                    arangodb::aql::Variable const* reference) const {
+arangodb::aql::AstNode* MMFilesPersistentIndex::specializeCondition(
+    arangodb::aql::AstNode* node, arangodb::aql::Variable const* reference) const {
   return SkiplistIndexAttributeMatcher::specializeCondition(this, node, reference);
 }
 
 IndexIterator* MMFilesPersistentIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult*,
-    arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference,
-    IndexIteratorOptions const& opts) {
+    transaction::Methods* trx, ManagedDocumentResult*, arangodb::aql::AstNode const* node,
+    arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
   VPackBuilder searchValues;
   searchValues.openArray();
@@ -727,12 +713,11 @@ IndexIterator* MMFilesPersistentIndex::iteratorForCondition(
     // Create the search Values for the lookup
     VPackArrayBuilder guard(&searchValues);
 
-    std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>
-        found;
+    std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
     std::unordered_set<std::string> nonNullAttributes;
     size_t unused = 0;
-    SkiplistIndexAttributeMatcher::matchAttributes(this, node, reference, found, unused,
-                                                   nonNullAttributes, true);
+    SkiplistIndexAttributeMatcher::matchAttributes(this, node, reference, found,
+                                                   unused, nonNullAttributes, true);
 
     // found contains all attributes that are relevant for this node.
     // It might be less than fields().
@@ -745,15 +730,11 @@ IndexIterator* MMFilesPersistentIndex::iteratorForCondition(
                               arangodb::aql::AstNode const*& value) -> bool {
       access = comp->getMember(0);
       value = comp->getMember(1);
-      std::pair<arangodb::aql::Variable const*,
-                std::vector<arangodb::basics::AttributeName>>
-          paramPair;
-      if (!(access->isAttributeAccessForVariable(paramPair) &&
-            paramPair.first == reference)) {
+      std::pair<arangodb::aql::Variable const*, std::vector<arangodb::basics::AttributeName>> paramPair;
+      if (!(access->isAttributeAccessForVariable(paramPair) && paramPair.first == reference)) {
         access = comp->getMember(1);
         value = comp->getMember(0);
-        if (!(access->isAttributeAccessForVariable(paramPair) &&
-              paramPair.first == reference)) {
+        if (!(access->isAttributeAccessForVariable(paramPair) && paramPair.first == reference)) {
           // Both side do not have a correct AttributeAccess, this should not
           // happen and indicates
           // an error in the optimizer

@@ -39,14 +39,13 @@ using namespace arangodb::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 GeneralListenTask::GeneralListenTask(Scheduler* scheduler, GeneralServer* server,
-                                     Endpoint* endpoint,
-                                     ProtocolType connectionType)
+                                     Endpoint* endpoint, ProtocolType connectionType)
     : Task(scheduler, "GeneralListenTask"),
       ListenTask(scheduler, endpoint),
       _server(server),
       _connectionType(connectionType) {
   _keepAliveTimeout = GeneralServerFeature::keepAliveTimeout();
-  
+
   TRI_ASSERT(_connectionType == ProtocolType::HTTP || _connectionType == ProtocolType::HTTPS);
 }
 
@@ -56,5 +55,6 @@ void GeneralListenTask::handleConnected(std::unique_ptr<Socket> socket,
                                                  std::move(info), _keepAliveTimeout);
   bool res = commTask->start();
   LOG_TOPIC_IF(DEBUG, Logger::COMMUNICATION, res) << "Started comm task";
-  LOG_TOPIC_IF(DEBUG, Logger::COMMUNICATION, !res) << "Failed to start comm task";
+  LOG_TOPIC_IF(DEBUG, Logger::COMMUNICATION, !res)
+      << "Failed to start comm task";
 }

@@ -41,6 +41,7 @@ class MMFilesWalMarker {
   MMFilesWalMarker& operator=(MMFilesWalMarker const&) = delete;
   MMFilesWalMarker(MMFilesWalMarker&&) = delete;
   MMFilesWalMarker(MMFilesWalMarker const&) = delete;
+
  protected:
   MMFilesWalMarker() = default;
 
@@ -82,9 +83,7 @@ class MMFilesWalMarker {
 class MMFilesMarkerEnvelope : public MMFilesWalMarker {
  public:
   MMFilesMarkerEnvelope(MMFilesMarker const* other, TRI_voc_fid_t fid)
-      : _other(other),
-        _fid(fid),
-        _size(other->getSize()) {
+      : _other(other), _fid(fid), _size(other->getSize()) {
     // we must always have a datafile id, and a reasonable marker size
     TRI_ASSERT(_fid > 0);
     TRI_ASSERT(_size >= sizeof(MMFilesMarker));
@@ -103,13 +102,12 @@ class MMFilesMarkerEnvelope : public MMFilesWalMarker {
 
   /// @brief a pointer the beginning of the VPack payload
   uint8_t* vpack() const override final {
-    return const_cast<uint8_t*>(reinterpret_cast<uint8_t const*>(_other) + MMFilesDatafileHelper::VPackOffset(type()));
+    return const_cast<uint8_t*>(reinterpret_cast<uint8_t const*>(_other) +
+                                MMFilesDatafileHelper::VPackOffset(type()));
   }
 
   /// @brief a pointer to the beginning of the wrapped marker
-  void const* mem() const {
-    return static_cast<void const*>(_other);
-  }
+  void const* mem() const { return static_cast<void const*>(_other); }
 
   /// @brief return the size of the wrapped marker
   uint32_t size() const override final { return _size; }
@@ -123,20 +121,17 @@ class MMFilesMarkerEnvelope : public MMFilesWalMarker {
   }
 
   bool hasLocalDocumentId() const override {
-    if (type() != TRI_DF_MARKER_VPACK_DOCUMENT &&
-        type() != TRI_DF_MARKER_VPACK_REMOVE) {
+    if (type() != TRI_DF_MARKER_VPACK_DOCUMENT && type() != TRI_DF_MARKER_VPACK_REMOVE) {
       return false;
     }
 
-    TRI_IF_FAILURE("MMFilesCompatibility33") {
-      return false;
-    }
+    TRI_IF_FAILURE("MMFilesCompatibility33") { return false; }
 
     // size is header size + vpack size + LocalDocumentId size -> LocalDocumentId contained!
     // size is not header size + vpack size + LocalDocumentId size -> no LocalDocumentId contained!
     return (size() == MMFilesDatafileHelper::VPackOffset(type()) +
-                      arangodb::velocypack::Slice(vpack()).byteSize() +
-                      sizeof(LocalDocumentId::BaseType));
+                          arangodb::velocypack::Slice(vpack()).byteSize() +
+                          sizeof(LocalDocumentId::BaseType));
   }
 
   LocalDocumentId getLocalDocumentId() const override {
@@ -144,7 +139,8 @@ class MMFilesMarkerEnvelope : public MMFilesWalMarker {
     uint8_t const* ptr = reinterpret_cast<uint8_t const*>(mem()) +
                          MMFilesDatafileHelper::VPackOffset(type()) +
                          arangodb::velocypack::Slice(vpack()).byteSize();
-    return LocalDocumentId(encoding::readNumber<LocalDocumentId::BaseType>(ptr, sizeof(LocalDocumentId::BaseType)));
+    return LocalDocumentId(
+        encoding::readNumber<LocalDocumentId::BaseType>(ptr, sizeof(LocalDocumentId::BaseType)));
   }
 
  private:
@@ -157,14 +153,12 @@ class MMFilesMarkerEnvelope : public MMFilesWalMarker {
 /// updating/replacing or removing documents
 class MMFilesCrudMarker : public MMFilesWalMarker {
  public:
-  MMFilesCrudMarker(MMFilesMarkerType type,
-                    TRI_voc_tid_t transactionId,
-                    LocalDocumentId localDocumentId,
-                    arangodb::velocypack::Slice const& data)
-    : _transactionId(transactionId),
-      _localDocumentId(localDocumentId),
-      _data(data),
-      _type(type) {}
+  MMFilesCrudMarker(MMFilesMarkerType type, TRI_voc_tid_t transactionId,
+                    LocalDocumentId localDocumentId, arangodb::velocypack::Slice const& data)
+      : _transactionId(transactionId),
+        _localDocumentId(localDocumentId),
+        _data(data),
+        _type(type) {}
 
   ~MMFilesCrudMarker() = default;
 
@@ -178,35 +172,45 @@ class MMFilesCrudMarker : public MMFilesWalMarker {
 
   /// @brief returns the marker size
   uint32_t size() const override final {
-    TRI_IF_FAILURE("MMFilesCompatibility33") { // don't store local id
-      return static_cast<uint32_t>(MMFilesDatafileHelper::VPackOffset(_type) + _data.byteSize());
+    TRI_IF_FAILURE("MMFilesCompatibility33") {  // don't store local id
+      return static_cast<uint32_t>(MMFilesDatafileHelper::VPackOffset(_type) +
+                                   _data.byteSize());
     }
     if (_localDocumentId.isSet()) {
       // we have to take localDocumentId into account
-      return static_cast<uint32_t>(MMFilesDatafileHelper::VPackOffset(_type) + _data.byteSize()) + sizeof(LocalDocumentId::BaseType);
+      return static_cast<uint32_t>(MMFilesDatafileHelper::VPackOffset(_type) +
+                                   _data.byteSize()) +
+             sizeof(LocalDocumentId::BaseType);
     }
-    return static_cast<uint32_t>(MMFilesDatafileHelper::VPackOffset(_type) + _data.byteSize());
+    return static_cast<uint32_t>(MMFilesDatafileHelper::VPackOffset(_type) +
+                                 _data.byteSize());
   }
 
   /// @brief store the marker in the memory region starting at mem
   void store(char* mem) const override final {
     // store transaction id
-    encoding::storeNumber<decltype(_transactionId)>(reinterpret_cast<uint8_t*>(mem) + MMFilesDatafileHelper::TransactionIdOffset(_type), _transactionId, sizeof(decltype(_transactionId)));
+    encoding::storeNumber<decltype(_transactionId)>(
+        reinterpret_cast<uint8_t*>(mem) + MMFilesDatafileHelper::TransactionIdOffset(_type),
+        _transactionId, sizeof(decltype(_transactionId)));
     // store VPack (and optionally the local document id)
     size_t const vpackOffset = MMFilesDatafileHelper::VPackOffset(_type);
     size_t const vpackLength = static_cast<size_t>(_data.byteSize());
     memcpy(mem + vpackOffset, _data.begin(), vpackLength);
-    TRI_IF_FAILURE("MMFilesCompatibility33") { // don't store local id
+    TRI_IF_FAILURE("MMFilesCompatibility33") {  // don't store local id
       return;
     }
     if (_localDocumentId.isSet()) {
       // also store localDocumentId - this is new as of 3.4
-      encoding::storeNumber<LocalDocumentId::BaseType>(reinterpret_cast<uint8_t*>(mem) + vpackOffset + vpackLength, _localDocumentId.id(), sizeof(LocalDocumentId::BaseType));
+      encoding::storeNumber<LocalDocumentId::BaseType>(
+          reinterpret_cast<uint8_t*>(mem) + vpackOffset + vpackLength,
+          _localDocumentId.id(), sizeof(LocalDocumentId::BaseType));
     }
   }
 
   /// @brief a pointer the beginning of the VPack payload
-  uint8_t* vpack() const override final { return const_cast<uint8_t*>(_data.begin()); }
+  uint8_t* vpack() const override final {
+    return const_cast<uint8_t*>(_data.begin());
+  }
 
  private:
   TRI_voc_tid_t _transactionId;
@@ -218,12 +222,9 @@ class MMFilesCrudMarker : public MMFilesWalMarker {
 /// @brief a marker used for database-related operations
 class MMFilesDatabaseMarker : public MMFilesWalMarker {
  public:
-  MMFilesDatabaseMarker(MMFilesMarkerType type,
-                 TRI_voc_tick_t databaseId,
-                 arangodb::velocypack::Slice const& data)
-    : _databaseId(databaseId),
-      _data(data),
-      _type(type) {
+  MMFilesDatabaseMarker(MMFilesMarkerType type, TRI_voc_tick_t databaseId,
+                        arangodb::velocypack::Slice const& data)
+      : _databaseId(databaseId), _data(data), _type(type) {
     TRI_ASSERT(databaseId > 0);
   }
 
@@ -239,15 +240,19 @@ class MMFilesDatabaseMarker : public MMFilesWalMarker {
 
   /// @brief returns the marker size
   uint32_t size() const override final {
-    return static_cast<uint32_t>(MMFilesDatafileHelper::VPackOffset(_type) + _data.byteSize());
+    return static_cast<uint32_t>(MMFilesDatafileHelper::VPackOffset(_type) +
+                                 _data.byteSize());
   }
 
   /// @brief store the marker in the memory region starting at mem
   void store(char* mem) const override final {
     // store database id
-    encoding::storeNumber<decltype(_databaseId)>(reinterpret_cast<uint8_t*>(mem) + MMFilesDatafileHelper::DatabaseIdOffset(_type), _databaseId, sizeof(decltype(_databaseId)));
+    encoding::storeNumber<decltype(_databaseId)>(
+        reinterpret_cast<uint8_t*>(mem) + MMFilesDatafileHelper::DatabaseIdOffset(_type),
+        _databaseId, sizeof(decltype(_databaseId)));
     // store VPack
-    memcpy(mem + MMFilesDatafileHelper::VPackOffset(_type), _data.begin(), static_cast<size_t>(_data.byteSize()));
+    memcpy(mem + MMFilesDatafileHelper::VPackOffset(_type), _data.begin(),
+           static_cast<size_t>(_data.byteSize()));
   }
 
  private:
@@ -259,15 +264,10 @@ class MMFilesDatabaseMarker : public MMFilesWalMarker {
 /// @brief a marker used for collection-related operations
 class MMFilesCollectionMarker : public MMFilesWalMarker {
  public:
-  MMFilesCollectionMarker(MMFilesMarkerType type,
-                   TRI_voc_tick_t databaseId,
-                   TRI_voc_cid_t collectionId,
-                   arangodb::velocypack::Slice const& data)
-    : _databaseId(databaseId),
-      _collectionId(collectionId),
-      _data(data.begin()),
-      _type(type) {
-
+  MMFilesCollectionMarker(MMFilesMarkerType type, TRI_voc_tick_t databaseId,
+                          TRI_voc_cid_t collectionId,
+                          arangodb::velocypack::Slice const& data)
+      : _databaseId(databaseId), _collectionId(collectionId), _data(data.begin()), _type(type) {
     TRI_ASSERT(databaseId > 0);
     TRI_ASSERT(collectionId > 0);
   }
@@ -284,17 +284,23 @@ class MMFilesCollectionMarker : public MMFilesWalMarker {
 
   /// @brief returns the marker size
   uint32_t size() const override final {
-    return static_cast<uint32_t>(MMFilesDatafileHelper::VPackOffset(_type) + _data.byteSize());
+    return static_cast<uint32_t>(MMFilesDatafileHelper::VPackOffset(_type) +
+                                 _data.byteSize());
   }
 
   /// @brief store the marker in the memory region starting at mem
   void store(char* mem) const override final {
     // store database id
-    encoding::storeNumber<decltype(_databaseId)>(reinterpret_cast<uint8_t*>(mem) + MMFilesDatafileHelper::DatabaseIdOffset(_type), _databaseId, sizeof(decltype(_databaseId)));
+    encoding::storeNumber<decltype(_databaseId)>(
+        reinterpret_cast<uint8_t*>(mem) + MMFilesDatafileHelper::DatabaseIdOffset(_type),
+        _databaseId, sizeof(decltype(_databaseId)));
     // store collection id
-    encoding::storeNumber<decltype(_collectionId)>(reinterpret_cast<uint8_t*>(mem) + MMFilesDatafileHelper::CollectionIdOffset(_type), _collectionId, sizeof(decltype(_collectionId)));
+    encoding::storeNumber<decltype(_collectionId)>(
+        reinterpret_cast<uint8_t*>(mem) + MMFilesDatafileHelper::CollectionIdOffset(_type),
+        _collectionId, sizeof(decltype(_collectionId)));
     // store VPack
-    memcpy(mem + MMFilesDatafileHelper::VPackOffset(_type), _data.begin(), static_cast<size_t>(_data.byteSize()));
+    memcpy(mem + MMFilesDatafileHelper::VPackOffset(_type), _data.begin(),
+           static_cast<size_t>(_data.byteSize()));
   }
 
  private:
@@ -307,15 +313,9 @@ class MMFilesCollectionMarker : public MMFilesWalMarker {
 /// @brief a marker used for view-related operations
 class MMFilesViewMarker : public MMFilesWalMarker {
  public:
-  MMFilesViewMarker(MMFilesMarkerType type,
-                    TRI_voc_tick_t databaseId,
-                    TRI_voc_cid_t viewId,
-                   arangodb::velocypack::Slice const& data)
-    : _databaseId(databaseId),
-      _viewId(viewId),
-      _data(data.begin()),
-      _type(type) {
-
+  MMFilesViewMarker(MMFilesMarkerType type, TRI_voc_tick_t databaseId,
+                    TRI_voc_cid_t viewId, arangodb::velocypack::Slice const& data)
+      : _databaseId(databaseId), _viewId(viewId), _data(data.begin()), _type(type) {
     TRI_ASSERT(databaseId > 0);
     TRI_ASSERT(viewId > 0);
   }
@@ -332,17 +332,23 @@ class MMFilesViewMarker : public MMFilesWalMarker {
 
   /// @brief returns the marker size
   uint32_t size() const override final {
-    return static_cast<uint32_t>(MMFilesDatafileHelper::VPackOffset(_type) + _data.byteSize());
+    return static_cast<uint32_t>(MMFilesDatafileHelper::VPackOffset(_type) +
+                                 _data.byteSize());
   }
 
   /// @brief store the marker in the memory region starting at mem
   void store(char* mem) const override final {
     // store database id
-    encoding::storeNumber<decltype(_databaseId)>(reinterpret_cast<uint8_t*>(mem) + MMFilesDatafileHelper::DatabaseIdOffset(_type), _databaseId, sizeof(decltype(_databaseId)));
+    encoding::storeNumber<decltype(_databaseId)>(
+        reinterpret_cast<uint8_t*>(mem) + MMFilesDatafileHelper::DatabaseIdOffset(_type),
+        _databaseId, sizeof(decltype(_databaseId)));
     // store view id
-    encoding::storeNumber<decltype(_viewId)>(reinterpret_cast<uint8_t*>(mem) + MMFilesDatafileHelper::ViewIdOffset(_type), _viewId, sizeof(decltype(_viewId)));
+    encoding::storeNumber<decltype(_viewId)>(reinterpret_cast<uint8_t*>(mem) +
+                                                 MMFilesDatafileHelper::ViewIdOffset(_type),
+                                             _viewId, sizeof(decltype(_viewId)));
     // store VPack
-    memcpy(mem + MMFilesDatafileHelper::VPackOffset(_type), _data.begin(), static_cast<size_t>(_data.byteSize()));
+    memcpy(mem + MMFilesDatafileHelper::VPackOffset(_type), _data.begin(),
+           static_cast<size_t>(_data.byteSize()));
   }
 
  private:
@@ -355,12 +361,9 @@ class MMFilesViewMarker : public MMFilesWalMarker {
 /// @brief a marker used for transaction-related operations
 class MMFilesTransactionMarker : public MMFilesWalMarker {
  public:
-  MMFilesTransactionMarker(MMFilesMarkerType type,
-                    TRI_voc_tick_t databaseId,
-                    TRI_voc_tid_t transactionId)
-    : _databaseId(databaseId),
-      _transactionId(transactionId),
-      _type(type) {
+  MMFilesTransactionMarker(MMFilesMarkerType type, TRI_voc_tick_t databaseId,
+                           TRI_voc_tid_t transactionId)
+      : _databaseId(databaseId), _transactionId(transactionId), _type(type) {
     TRI_ASSERT(databaseId > 0);
     TRI_ASSERT(transactionId > 0);
   }
@@ -384,9 +387,13 @@ class MMFilesTransactionMarker : public MMFilesWalMarker {
   /// @brief store the marker in the memory region starting at mem
   void store(char* mem) const override final {
     // store database id
-    encoding::storeNumber<decltype(_databaseId)>(reinterpret_cast<uint8_t*>(mem) + MMFilesDatafileHelper::DatabaseIdOffset(_type), _databaseId, sizeof(decltype(_databaseId)));
+    encoding::storeNumber<decltype(_databaseId)>(
+        reinterpret_cast<uint8_t*>(mem) + MMFilesDatafileHelper::DatabaseIdOffset(_type),
+        _databaseId, sizeof(decltype(_databaseId)));
     // store transaction id
-    encoding::storeNumber<decltype(_transactionId)>(reinterpret_cast<uint8_t*>(mem) + MMFilesDatafileHelper::TransactionIdOffset(_type), _transactionId, sizeof(decltype(_transactionId)));
+    encoding::storeNumber<decltype(_transactionId)>(
+        reinterpret_cast<uint8_t*>(mem) + MMFilesDatafileHelper::TransactionIdOffset(_type),
+        _transactionId, sizeof(decltype(_transactionId)));
   }
 
  private:
@@ -395,6 +402,6 @@ class MMFilesTransactionMarker : public MMFilesWalMarker {
   MMFilesMarkerType _type;
 };
 
-}
+}  // namespace arangodb
 
 #endif

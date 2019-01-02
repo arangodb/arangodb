@@ -66,7 +66,8 @@ ConditionLocker::~ConditionLocker() {
 
 #ifdef TRI_SHOW_LOCK_TIME
   if (_time > TRI_SHOW_LOCK_THRESHOLD) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "ConditionLocker " << _file << ":" << _line << " took " << _time << " s";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "ConditionLocker " << _file << ":" << _line << " took " << _time << " s";
   }
 #endif
 }

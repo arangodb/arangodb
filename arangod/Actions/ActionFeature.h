@@ -43,6 +43,6 @@ class ActionFeature final : public application_features::ApplicationFeature {
   bool _allowUseDatabase;
 };
 
-}
+}  // namespace arangodb
 
 #endif
