@@ -65,7 +65,7 @@ class ShortStringStorage {
   /// @brief end of current block
   char* _end;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

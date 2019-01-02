@@ -30,9 +30,7 @@
 #include "Logger/Logger.h"
 
 namespace arangodb {
-typedef std::function<void(const asio_ns::error_code& ec,
-                           std::size_t transferred)>
-    AsyncHandler;
+typedef std::function<void(const asio_ns::error_code& ec, std::size_t transferred)> AsyncHandler;
 
 class Socket {
  public:
@@ -57,8 +55,7 @@ class Socket {
     return false;
   }
 
-  void shutdown(asio_ns::error_code& ec, bool mustCloseSend,
-                bool mustCloseReceive) {
+  void shutdown(asio_ns::error_code& ec, bool mustCloseSend, bool mustCloseReceive) {
     if (mustCloseSend) {
       this->shutdownSend(ec);
       if (ec && ec != asio_ns::error::not_connected) {
@@ -80,8 +77,7 @@ class Socket {
   virtual std::string peerAddress() const = 0;
   virtual int peerPort() const = 0;
   virtual void setNonBlocking(bool) = 0;
-  virtual size_t writeSome(basics::StringBuffer* buffer,
-                           asio_ns::error_code& ec) = 0;
+  virtual size_t writeSome(basics::StringBuffer* buffer, asio_ns::error_code& ec) = 0;
   virtual void asyncWrite(asio_ns::mutable_buffers_1 const& buffer,
                           AsyncHandler const& handler) = 0;
   virtual size_t readSome(asio_ns::mutable_buffers_1 const& buffer,
@@ -104,6 +100,6 @@ class Socket {
   // strand to ensure the connection's handlers are not called concurrently.
   asio_ns::io_context::strand strand;
 };
-}
+}  // namespace arangodb
 
 #endif

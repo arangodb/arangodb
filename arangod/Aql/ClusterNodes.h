@@ -24,11 +24,11 @@
 #ifndef ARANGOD_AQL_CLUSTER_NODES_H
 #define ARANGOD_AQL_CLUSTER_NODES_H 1
 
-#include "Basics/Common.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
+#include "Basics/Common.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -76,14 +76,12 @@ class RemoteNode : public ExecutionNode {
   NodeType getType() const override final { return REMOTE; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, bool) const override final;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    auto c = new RemoteNode(plan, _id, _vocbase, _collection, _server, _ownName,
-                            _queryId);
+    auto c = new RemoteNode(plan, _id, _vocbase, _collection, _server, _ownName, _queryId);
 
     cloneHelper(c, withDependencies, withProperties);
 
@@ -151,8 +149,7 @@ class ScatterNode : public ExecutionNode {
 
   /// @brief constructor with an id
  public:
-  ScatterNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-              Collection const* collection)
+  ScatterNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase, Collection const* collection)
       : ExecutionNode(plan, id), _vocbase(vocbase), _collection(collection) {}
 
   ScatterNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
@@ -161,8 +158,7 @@ class ScatterNode : public ExecutionNode {
   NodeType getType() const override final { return SCATTER; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, bool) const override final;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -221,27 +217,24 @@ class DistributeNode : public ExecutionNode {
   NodeType getType() const override final { return DISTRIBUTE; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, bool) const override final;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    auto c = new DistributeNode(plan, _id, _vocbase, _collection, _variable,
-                                _alternativeVariable, _createKeys,
-                                _allowKeyConversionToObject);
+    auto c = new DistributeNode(plan, _id, _vocbase, _collection, _variable, _alternativeVariable,
+                                _createKeys, _allowKeyConversionToObject);
 
     cloneHelper(c, withDependencies, withProperties);
 
     return static_cast<ExecutionNode*>(c);
   }
-  
+
   /// @brief getVariablesUsedHere, returning a vector
   std::vector<Variable const*> getVariablesUsedHere() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(
-      std::unordered_set<Variable const*>& vars) const override final;
+  void getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const override final;
 
   /// @brief estimateCost
   double estimateCost(size_t&) const override final;
@@ -260,12 +253,14 @@ class DistributeNode : public ExecutionNode {
   void alternativeVariable(Variable const* variable) {
     _alternativeVariable = variable;
   }
-  
+
   /// @brief set createKeys
   void setCreateKeys(bool b) { _createKeys = b; }
 
   /// @brief set allowKeyConversionToObject
-  void setAllowKeyConversionToObject(bool b) { _allowKeyConversionToObject = b; }
+  void setAllowKeyConversionToObject(bool b) {
+    _allowKeyConversionToObject = b;
+  }
 
   /// @brief set _allowSpecifiedKeys
   void setAllowSpecifiedKeys(bool b) { _allowSpecifiedKeys = b; }
@@ -306,14 +301,14 @@ class GatherNode : public ExecutionNode {
              Collection const* collection, std::size_t shardsRequiredForHeapMerge = 5);
 
   GatherNode(ExecutionPlan*, arangodb::velocypack::Slice const& base,
-             SortElementVector const& elements, std::size_t shardsRequiredForHeapMerge = 5);
+             SortElementVector const& elements,
+             std::size_t shardsRequiredForHeapMerge = 5);
 
   /// @brief return the type of the node
   NodeType getType() const override final { return GATHER; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, bool) const override final;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -340,8 +335,7 @@ class GatherNode : public ExecutionNode {
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(
-      std::unordered_set<Variable const*>& vars) const override final {
+  void getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const override final {
     for (auto const& p : _elements) {
       vars.emplace(p.var);
     }
@@ -352,7 +346,7 @@ class GatherNode : public ExecutionNode {
   SortElementVector& elements() { return _elements; }
 
   void elements(SortElementVector const& src) { _elements = src; }
-  
+
   void clearElements() { _elements.clear(); }
 
   /// @brief return the database
@@ -371,10 +365,12 @@ class GatherNode : public ExecutionNode {
     _auxiliaryCollections.emplace(auxiliaryCollection);
   }
 
-  bool hasAuxiliaryCollections() const { return !_auxiliaryCollections.empty(); }
+  bool hasAuxiliaryCollections() const {
+    return !_auxiliaryCollections.empty();
+  }
 
-  void forceSortHeap(){ _sortmode='h'; }
-  void forceSortMinElement(){ _sortmode='m'; }
+  void forceSortHeap() { _sortmode = 'h'; }
+  void forceSortMinElement() { _sortmode = 'm'; }
 
  private:
   /// @brief sort elements, variable, ascending flags and possible attribute
@@ -389,10 +385,10 @@ class GatherNode : public ExecutionNode {
 
   /// @brief (optional) auxiliary collections (satellites)
   std::unordered_set<Collection const*> _auxiliaryCollections;
-  char _sortmode; // u - unset, m - min element, h - heap
+  char _sortmode;  // u - unset, m - min element, h - heap
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

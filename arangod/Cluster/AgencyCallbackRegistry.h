@@ -24,25 +24,25 @@
 #ifndef CLUSTER_AGENCYCALLACKREGISTRY_H
 #define CLUSTER_AGENCYCALLACKREGISTRY_H 1
 
-#include "Cluster/AgencyCallback.h"
 #include "Basics/ReadWriteLock.h"
+#include "Cluster/AgencyCallback.h"
 
 namespace arangodb {
 
 class AgencyCallbackRegistry {
-public:
+ public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ctor
   //////////////////////////////////////////////////////////////////////////////
   explicit AgencyCallbackRegistry(std::string const&);
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief dtor
   //////////////////////////////////////////////////////////////////////////////
   ~AgencyCallbackRegistry();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief register a callback 
+  /// @brief register a callback
   //////////////////////////////////////////////////////////////////////////////
   bool registerCallback(std::shared_ptr<AgencyCallback>);
 
@@ -56,7 +56,7 @@ public:
   //////////////////////////////////////////////////////////////////////////////
   std::shared_ptr<AgencyCallback> getCallback(uint32_t);
 
-private:
+ private:
   std::string getEndpointUrl(uint32_t);
 
   AgencyComm _agency;
@@ -68,6 +68,6 @@ private:
   std::unordered_map<uint32_t, std::shared_ptr<AgencyCallback>> _endpoints;
 };
 
-}
+}  // namespace arangodb
 
 #endif

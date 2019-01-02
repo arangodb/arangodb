@@ -37,12 +37,13 @@ using namespace arangodb;
 
 /// @brief server-global replication applier for all databases
 GlobalReplicationApplier::GlobalReplicationApplier(ReplicationApplierConfiguration const& configuration)
-      : ReplicationApplier(configuration, "global database") {}
+    : ReplicationApplier(configuration, "global database") {}
 
 GlobalReplicationApplier::~GlobalReplicationApplier() {
   try {
     stop();
-  } catch (...) {}
+  } catch (...) {
+  }
 }
 
 /// @brief stop the applier and "forget" everything
@@ -55,7 +56,7 @@ void GlobalReplicationApplier::forget() {
   engine->removeReplicationApplierConfiguration();
   _configuration.reset();
 }
-  
+
 /// @brief store the configuration for the applier
 void GlobalReplicationApplier::storeConfiguration(bool doSync) {
   VPackBuilder builder;
@@ -63,11 +64,13 @@ void GlobalReplicationApplier::storeConfiguration(bool doSync) {
   _configuration.toVelocyPack(builder, true, true);
   builder.close();
 
-  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "storing applier configuration " << builder.slice().toJson() << " for " << _databaseName;
+  LOG_TOPIC(DEBUG, Logger::REPLICATION)
+      << "storing applier configuration " << builder.slice().toJson() << " for "
+      << _databaseName;
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   int res = engine->saveReplicationApplierConfiguration(builder.slice(), doSync);
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -94,15 +97,19 @@ std::unique_ptr<InitialSyncer> GlobalReplicationApplier::buildInitialSyncer() co
   return std::make_unique<arangodb::GlobalInitialSyncer>(_configuration);
 }
 
-std::unique_ptr<TailingSyncer> GlobalReplicationApplier::buildTailingSyncer(TRI_voc_tick_t initialTick,
-                                                                            bool useTick,
-                                                                            TRI_voc_tick_t barrierId) const {
-  return std::make_unique<arangodb::GlobalTailingSyncer>(_configuration, initialTick, useTick, barrierId);
+std::unique_ptr<TailingSyncer> GlobalReplicationApplier::buildTailingSyncer(
+    TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) const {
+  return std::make_unique<arangodb::GlobalTailingSyncer>(_configuration, initialTick,
+                                                         useTick, barrierId);
 }
 
 std::string GlobalReplicationApplier::getStateFilename() const {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_vocbase_t* vocbase = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->systemDatabase();
+  TRI_vocbase_t* vocbase =
+      application_features::ApplicationServer::getFeature<DatabaseFeature>(
+          "Database")
+          ->systemDatabase();
 
-  return arangodb::basics::FileUtils::buildFilename(engine->databasePath(vocbase), "GLOBAL-REPLICATION-APPLIER-STATE");
+  return arangodb::basics::FileUtils::buildFilename(
+      engine->databasePath(vocbase), "GLOBAL-REPLICATION-APPLIER-STATE");
 }

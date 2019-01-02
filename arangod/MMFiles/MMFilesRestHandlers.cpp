@@ -30,16 +30,13 @@
 
 using namespace arangodb;
 
-void MMFilesRestHandlers::registerResources(
-    rest::RestHandlerFactory* handlerFactory) {
-  handlerFactory->addPrefixHandler(
-      "/_admin/wal", RestHandlerCreator<MMFilesRestWalHandler>::createNoData);
+void MMFilesRestHandlers::registerResources(rest::RestHandlerFactory* handlerFactory) {
+  handlerFactory->addPrefixHandler("/_admin/wal",
+                                   RestHandlerCreator<MMFilesRestWalHandler>::createNoData);
 
-  handlerFactory->addPrefixHandler(
-      "/_api/export",
-      RestHandlerCreator<MMFilesRestExportHandler>::createNoData);
+  handlerFactory->addPrefixHandler("/_api/export",
+                                   RestHandlerCreator<MMFilesRestExportHandler>::createNoData);
 
-  handlerFactory->addPrefixHandler(
-      "/_api/replication",
-      RestHandlerCreator<MMFilesRestReplicationHandler>::createNoData);
+  handlerFactory->addPrefixHandler("/_api/replication",
+                                   RestHandlerCreator<MMFilesRestReplicationHandler>::createNoData);
 }

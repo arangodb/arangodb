@@ -21,21 +21,20 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "v8-collection.h"
-#include "Basics/conversions.h"
 #include "Basics/StringUtils.h"
-#include "VocBase/LogicalCollection.h"
-#include "VocBase/vocbase.h"
+#include "Basics/conversions.h"
 #include "V8/v8-conv.h"
 #include "V8Server/v8-externals.h"
 #include "V8Server/v8-vocbaseprivate.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/vocbase.h"
+#include "v8-collection.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 
 /// @brief check if a name belongs to a collection
-bool EqualCollection(CollectionNameResolver const* resolver,
-                     std::string const& collectionName,
+bool EqualCollection(CollectionNameResolver const* resolver, std::string const& collectionName,
                      LogicalCollection const* collection) {
   if (collectionName == collection->name()) {
     return true;
@@ -45,11 +44,10 @@ bool EqualCollection(CollectionNameResolver const* resolver,
     return true;
   }
 
-  // Shouldn't it just be: If we are on DBServer we also have to check for global ID
-  // name and cid should be the shard.
+  // Shouldn't it just be: If we are on DBServer we also have to check for
+  // global ID name and cid should be the shard.
   if (ServerState::instance()->isCoordinator()) {
-    if (collectionName ==
-        resolver->getCollectionNameCluster(collection->cid())) {
+    if (collectionName == resolver->getCollectionNameCluster(collection->cid())) {
       return true;
     }
     return false;
@@ -66,8 +64,7 @@ bool EqualCollection(CollectionNameResolver const* resolver,
 /// @brief weak reference callback for collections
 ////////////////////////////////////////////////////////////////////////////////
 
-static void WeakCollectionCallback(const v8::WeakCallbackInfo<
-                                   v8::Persistent<v8::External>>& data) {
+static void WeakCollectionCallback(const v8::WeakCallbackInfo<v8::Persistent<v8::External>>& data) {
   auto isolate = data.GetIsolate();
   auto persistent = data.GetParameter();
   auto myCollection = v8::Local<v8::External>::New(isolate, *persistent);
@@ -88,7 +85,7 @@ static void WeakCollectionCallback(const v8::WeakCallbackInfo<
   // dispose and clear the persistent handle
   v8g->JSCollections[collection].Reset();
   v8g->JSCollections.erase(collection);
-  
+
   if (!collection->isLocal()) {
     collection->vocbase()->release();
     delete collection;
@@ -113,13 +110,10 @@ v8::Handle<v8::Object> WrapCollection(v8::Isolate* isolate,
   v8::Handle<v8::Object> result = VocbaseColTempl->NewInstance();
 
   if (!result.IsEmpty()) {
-    LogicalCollection* nonconstCollection =
-        const_cast<LogicalCollection*>(collection);
+    LogicalCollection* nonconstCollection = const_cast<LogicalCollection*>(collection);
 
-    result->SetInternalField(SLOT_CLASS_TYPE,
-                             v8::Integer::New(isolate, WRP_VOCBASE_COL_TYPE));
-    result->SetInternalField(SLOT_CLASS,
-                             v8::External::New(isolate, nonconstCollection));
+    result->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(isolate, WRP_VOCBASE_COL_TYPE));
+    result->SetInternalField(SLOT_CLASS, v8::External::New(isolate, nonconstCollection));
 
     auto const& it = v8g->JSCollections.find(nonconstCollection);
 
@@ -149,13 +143,11 @@ v8::Handle<v8::Object> WrapCollection(v8::Isolate* isolate,
     TRI_GET_GLOBAL_STRING(_IdKey);
     TRI_GET_GLOBAL_STRING(_DbNameKey);
     TRI_GET_GLOBAL_STRING(VersionKeyHidden);
-    result->ForceSet(_IdKey, TRI_V8UInt64String<TRI_voc_cid_t>(isolate, collection->cid()),
+    result->ForceSet(_IdKey,
+                     TRI_V8UInt64String<TRI_voc_cid_t>(isolate, collection->cid()),
                      v8::ReadOnly);
     result->Set(_DbNameKey, TRI_V8_STD_STRING(isolate, collection->vocbase()->name()));
-    result->ForceSet(
-        VersionKeyHidden,
-        v8::Integer::NewFromUnsigned(isolate, 5),
-        v8::DontEnum);
+    result->ForceSet(VersionKeyHidden, v8::Integer::NewFromUnsigned(isolate, 5), v8::DontEnum);
   }
 
   return scope.Escape<v8::Object>(result);

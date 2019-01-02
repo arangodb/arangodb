@@ -56,6 +56,6 @@ class RestQueryCacheHandler : public RestVocbaseBaseHandler {
 
   bool clearCache();
 };
-}
+}  // namespace arangodb
 
 #endif

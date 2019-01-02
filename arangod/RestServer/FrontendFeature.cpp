@@ -31,8 +31,7 @@ using namespace arangodb::application_features;
 using namespace arangodb::options;
 
 FrontendFeature::FrontendFeature(application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "Frontend"),
-      _versionCheck(true) {
+    : ApplicationFeature(server, "Frontend"), _versionCheck(true) {
   startsAfter("Logger");
 }
 
@@ -45,8 +44,8 @@ void FrontendFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void FrontendFeature::prepare() {
-  V8DealerFeature* dealer = 
+  V8DealerFeature* dealer =
       ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-  
+
   dealer->defineBoolean("FE_VERSION_CHECK", _versionCheck);
 }

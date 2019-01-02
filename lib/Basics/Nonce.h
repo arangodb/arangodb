@@ -80,7 +80,7 @@ bool checkAndMark(uint32_t timestamp, uint64_t random);
 ////////////////////////////////////////////////////////////////////////////////
 
 std::vector<Statistics> statistics();
-}
-}
-}
+}  // namespace Nonce
+}  // namespace basics
+}  // namespace arangodb
 #endif

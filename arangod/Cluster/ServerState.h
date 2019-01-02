@@ -64,7 +64,7 @@ class ServerState {
     REDIRECT = 3,
     /// redirect to lead server if possible
     READ_ONLY = 4,
-    INVALID = 255, // this mode is used to indicate shutdown
+    INVALID = 255,  // this mode is used to indicate shutdown
   };
 
  public:
@@ -110,9 +110,7 @@ class ServerState {
   static Mode serverMode();
 
   /// @brief checks maintenance mode
-  static bool isMaintenance() {
-    return serverMode() == Mode::MAINTENANCE;
-  }
+  static bool isMaintenance() { return serverMode() == Mode::MAINTENANCE; }
 
   /// @brief should not allow DDL operations / transactions
   static bool writeOpsEnabled() {
@@ -153,12 +151,11 @@ class ServerState {
 
   /// @brief whether or not the role is a cluster-related role
   static bool isClusterRole(ServerState::RoleEnum role) {
-    return (role == ServerState::ROLE_PRIMARY ||
-            role == ServerState::ROLE_COORDINATOR);
+    return (role == ServerState::ROLE_PRIMARY || role == ServerState::ROLE_COORDINATOR);
   }
 
   /// @brief whether or not the role is a cluster-related role
-  bool isClusterRole() {return (isClusterRole(loadRole()));};
+  bool isClusterRole() { return (isClusterRole(loadRole())); };
 
   /// @brief check whether the server is an agent
   bool isAgent() { return isAgent(loadRole()); }
@@ -215,9 +212,7 @@ class ServerState {
   void findHost(std::string const& fallback);
 
   /// @brief get a string to identify the host we are running on
-  std::string getHost() {
-    return _host;
-  }
+  std::string getHost() { return _host; }
 
   /// @brief get the current state
   StateEnum getState();
@@ -252,7 +247,7 @@ class ServerState {
   /// @brief sets server mode and propagates new mode to agency
   Result propagateClusterServerMode(Mode);
 
-private:
+ private:
   /// @brief atomically fetches the server role
   RoleEnum loadRole() {
     return static_cast<RoleEnum>(_role.load(std::memory_order_consume));
@@ -301,7 +296,7 @@ private:
 
   bool _foxxmasterQueueupdate;
 };
-}
+}  // namespace arangodb
 
 std::ostream& operator<<(std::ostream&, arangodb::ServerState::RoleEnum);
 

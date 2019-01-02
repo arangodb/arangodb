@@ -114,7 +114,6 @@ std::string const RestVocbaseBaseHandler::IMPORT_PATH = "/_api/import";
 
 std::string const RestVocbaseBaseHandler::INDEX_PATH = "/_api/index";
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replication path
 ////////////////////////////////////////////////////////////////////////////////
@@ -180,8 +179,7 @@ std::string const RestVocbaseBaseHandler::VIEW_PATH = "/_api/view";
 std::string const RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH =
     "/_internal/traverser";
 
-RestVocbaseBaseHandler::RestVocbaseBaseHandler(GeneralRequest* request,
-                                               GeneralResponse* response)
+RestVocbaseBaseHandler::RestVocbaseBaseHandler(GeneralRequest* request, GeneralResponse* response)
     : RestBaseHandler(request, response),
       _context(static_cast<VocbaseContext*>(request->requestContext())),
       _vocbase(_context->vocbase()),
@@ -194,11 +192,11 @@ RestVocbaseBaseHandler::~RestVocbaseBaseHandler() {}
 /// optionally url-encodes
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string RestVocbaseBaseHandler::assembleDocumentId(
-    std::string const& collectionName, std::string const& key, bool urlEncode) {
+std::string RestVocbaseBaseHandler::assembleDocumentId(std::string const& collectionName,
+                                                       std::string const& key,
+                                                       bool urlEncode) {
   if (urlEncode) {
-    return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR +
-           StringUtils::urlEncode(key);
+    return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + StringUtils::urlEncode(key);
   }
   return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + key;
 }
@@ -207,33 +205,32 @@ std::string RestVocbaseBaseHandler::assembleDocumentId(
 /// @brief Generate a result for successful save
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateSaved(
-    arangodb::OperationResult const& result, std::string const& collectionName,
-    TRI_col_type_e type, VPackOptions const* options, bool isMultiple) {
-  generate20x(result, collectionName, type, options, isMultiple,
-              rest::ResponseCode::CREATED);
+void RestVocbaseBaseHandler::generateSaved(arangodb::OperationResult const& result,
+                                           std::string const& collectionName,
+                                           TRI_col_type_e type,
+                                           VPackOptions const* options, bool isMultiple) {
+  generate20x(result, collectionName, type, options, isMultiple, rest::ResponseCode::CREATED);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Generate a result for successful delete
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateDeleted(
-    arangodb::OperationResult const& result, std::string const& collectionName,
-    TRI_col_type_e type, VPackOptions const* options, bool isMultiple) {
-  generate20x(result, collectionName, type, options, isMultiple,
-              rest::ResponseCode::OK);
+void RestVocbaseBaseHandler::generateDeleted(arangodb::OperationResult const& result,
+                                             std::string const& collectionName,
+                                             TRI_col_type_e type,
+                                             VPackOptions const* options, bool isMultiple) {
+  generate20x(result, collectionName, type, options, isMultiple, rest::ResponseCode::OK);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a HTTP 20x response
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generate20x(
-    arangodb::OperationResult const& result, std::string const& collectionName,
-    TRI_col_type_e type, VPackOptions const* options, bool isMultiple,
-    rest::ResponseCode waitForSyncResponseCode) {
-
+void RestVocbaseBaseHandler::generate20x(arangodb::OperationResult const& result,
+                                         std::string const& collectionName, TRI_col_type_e type,
+                                         VPackOptions const* options, bool isMultiple,
+                                         rest::ResponseCode waitForSyncResponseCode) {
   if (result.wasSynchronous) {
     resetResponse(waitForSyncResponseCode);
   } else {
@@ -244,8 +241,7 @@ void RestVocbaseBaseHandler::generate20x(
     VPackBuilder errorBuilder;
     errorBuilder.openObject();
     for (auto const& it : result.countErrorCodes) {
-      errorBuilder.add(basics::StringUtils::itoa(it.first),
-                       VPackValue(it.second));
+      errorBuilder.add(basics::StringUtils::itoa(it.first), VPackValue(it.second));
     }
     errorBuilder.close();
     _response->setHeaderNC(StaticStrings::ErrorCodes, errorBuilder.toJson());
@@ -258,13 +254,13 @@ void RestVocbaseBaseHandler::generate20x(
   } else {
     TRI_ASSERT(slice.isObject() || slice.isArray());
     if (slice.isObject()) {
-      _response->setHeaderNC(
-          StaticStrings::Etag,
-          "\"" + slice.get(StaticStrings::RevString).copyString() + "\"");
+      _response->setHeaderNC(StaticStrings::Etag,
+                             "\"" + slice.get(StaticStrings::RevString).copyString() +
+                                 "\"");
       // pre 1.4 location headers withdrawn for >= 3.0
-      std::string escapedHandle(assembleDocumentId(
-          collectionName, slice.get(StaticStrings::KeyString).copyString(),
-          true));
+      std::string escapedHandle(
+          assembleDocumentId(collectionName,
+                             slice.get(StaticStrings::KeyString).copyString(), true));
       _response->setHeaderNC(StaticStrings::Location,
                              std::string("/_db/" + _request->databaseName() +
                                          DOCUMENT_PATH + "/" + escapedHandle));
@@ -296,8 +292,7 @@ void RestVocbaseBaseHandler::generateForbidden() {
 /// @brief generates precondition failed
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generatePreconditionFailed(
-    VPackSlice const& slice) {
+void RestVocbaseBaseHandler::generatePreconditionFailed(VPackSlice const& slice) {
   resetResponse(rest::ResponseCode::PRECONDITION_FAILED);
 
   if (slice.isObject()) {  // single document case
@@ -309,16 +304,14 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
   {
     VPackObjectBuilder guard(&builder);
     builder.add(StaticStrings::Error, VPackValue(true));
-    builder.add(StaticStrings::Code, VPackValue(static_cast<int32_t>(
-                            rest::ResponseCode::PRECONDITION_FAILED)));
+    builder.add(StaticStrings::Code,
+                VPackValue(static_cast<int32_t>(rest::ResponseCode::PRECONDITION_FAILED)));
     builder.add(StaticStrings::ErrorNum, VPackValue(TRI_ERROR_ARANGO_CONFLICT));
     builder.add(StaticStrings::ErrorMessage, VPackValue("precondition failed"));
     if (slice.isObject()) {
       builder.add(StaticStrings::IdString, slice.get(StaticStrings::IdString));
-      builder.add(StaticStrings::KeyString,
-                  slice.get(StaticStrings::KeyString));
-      builder.add(StaticStrings::RevString,
-                  slice.get(StaticStrings::RevString));
+      builder.add(StaticStrings::KeyString, slice.get(StaticStrings::KeyString));
+      builder.add(StaticStrings::RevString, slice.get(StaticStrings::RevString));
     } else {
       builder.add("result", slice);
     }
@@ -332,9 +325,9 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
 /// @brief generates precondition failed
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generatePreconditionFailed(
-    std::string const& collectionName, std::string const& key,
-    TRI_voc_rid_t rev) {
+void RestVocbaseBaseHandler::generatePreconditionFailed(std::string const& collectionName,
+                                                        std::string const& key,
+                                                        TRI_voc_rid_t rev) {
   VPackBuilder builder;
   builder.openObject();
   builder.add(StaticStrings::IdString,
@@ -360,15 +353,14 @@ void RestVocbaseBaseHandler::generateNotModified(TRI_voc_rid_t rid) {
 /// @brief generates next entry from a result set
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input,
-                                              bool generateBody,
+void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input, bool generateBody,
                                               VPackOptions const* options) {
   VPackSlice document = input.resolveExternal();
 
   std::string rev;
   if (document.isObject()) {
-    rev = VelocyPackHelper::getStringValue(document, StaticStrings::RevString,
-                                           "");
+    rev =
+        VelocyPackHelper::getStringValue(document, StaticStrings::RevString, "");
   }
 
   // and generate a response
@@ -393,10 +385,10 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input,
 /// used by the others.
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateTransactionError(
-    std::string const& collectionName, OperationResult const& result,
-    std::string const& key, TRI_voc_rid_t rev) {
-
+void RestVocbaseBaseHandler::generateTransactionError(std::string const& collectionName,
+                                                      OperationResult const& result,
+                                                      std::string const& key,
+                                                      TRI_voc_rid_t rev) {
   int code = result.errorNumber();
   switch (code) {
     case TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND:
@@ -428,8 +420,7 @@ void RestVocbaseBaseHandler::generateTransactionError(
       } else {
         // This case happens if we call this method directly with a dummy
         // OperationResult:
-        generatePreconditionFailed(collectionName, key.empty() ? "unknown" : key,
-                                   rev);
+        generatePreconditionFailed(collectionName, key.empty() ? "unknown" : key, rev);
       }
       return;
 
@@ -442,8 +433,7 @@ void RestVocbaseBaseHandler::generateTransactionError(
 /// @brief extracts the revision
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header,
-                                                      bool& isValid) {
+TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header, bool& isValid) {
   isValid = true;
   bool found;
   std::string const& etag = _request->header(header, found);
@@ -484,8 +474,7 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header,
 /// @brief extracts a boolean parameter value
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestVocbaseBaseHandler::extractBooleanParameter(std::string const& name,
-                                                     bool def) const {
+bool RestVocbaseBaseHandler::extractBooleanParameter(std::string const& name, bool def) const {
   bool found;
   std::string const& value = _request->value(name, found);
 
@@ -500,8 +489,8 @@ bool RestVocbaseBaseHandler::extractBooleanParameter(std::string const& name,
 /// @brief extracts a string parameter value
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::extractStringParameter(
-    std::string const& name, std::string& ret) const {
+void RestVocbaseBaseHandler::extractStringParameter(std::string const& name,
+                                                    std::string& ret) const {
   bool found;
   std::string const& value = _request->value(name, found);
 

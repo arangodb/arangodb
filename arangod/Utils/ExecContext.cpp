@@ -40,8 +40,7 @@ bool ExecContext::isAuthEnabled() {
 ///        a singleton instance, deleting is an error
 ExecContext const* ExecContext::superuser() { return &ExecContext::SUPERUSER; }
 
-ExecContext* ExecContext::create(std::string const& user,
-                                 std::string const& dbname) {
+ExecContext* ExecContext::create(std::string const& user, std::string const& dbname) {
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
   auth::Level dbLvl = auth::Level::RW;
@@ -57,13 +56,12 @@ ExecContext* ExecContext::create(std::string const& user,
   return new ExecContext(false, user, dbname, sysLvl, dbLvl);
 }
 
-bool ExecContext::canUseDatabase(std::string const& db,
-                                 auth::Level requested) const {
+bool ExecContext::canUseDatabase(std::string const& db, auth::Level requested) const {
   if (_internal || _database == db) {
     // should be RW for superuser, RO for read-only
     return requested <= _databaseAuthLevel;
   }
-  
+
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
   if (af->isActive()) {
@@ -80,7 +78,7 @@ auth::Level ExecContext::collectionAuthLevel(std::string const& dbname,
     // should be RW for superuser, RO for read-only
     return _databaseAuthLevel;
   }
-  
+
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
   if (!af->isActive()) {
@@ -96,7 +94,7 @@ auth::Level ExecContext::collectionAuthLevel(std::string const& dbname,
   } else if (coll == "_frontend") {
     return auth::Level::RW;
   }  // intentional fall through
-  
+
   auth::UserManager* um = af->userManager();
   TRI_ASSERT(um != nullptr);
   return um->collectionAuthLevel(_user, dbname, coll);

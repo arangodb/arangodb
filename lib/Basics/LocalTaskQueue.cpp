@@ -36,7 +36,8 @@ using namespace arangodb::basics;
 /// @brief create a task tied to the specified queue
 ////////////////////////////////////////////////////////////////////////////////
 
-LocalTask::LocalTask(std::shared_ptr<LocalTaskQueue> const& queue) : _queue(queue) {}
+LocalTask::LocalTask(std::shared_ptr<LocalTaskQueue> const& queue)
+    : _queue(queue) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dispatch this task to the scheduler
@@ -174,9 +175,7 @@ void LocalTaskQueue::dispatchAndWait() {
         break;
       }
 
-      if (_missing > 0 &&
-          _started == 0 &&
-          SchedulerFeature::SCHEDULER->isStopping()) {
+      if (_missing > 0 && _started == 0 && SchedulerFeature::SCHEDULER->isStopping()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
       }
 
@@ -204,9 +203,7 @@ void LocalTaskQueue::dispatchAndWait() {
         break;
       }
 
-      if (_missing > 0 &&
-          _started == 0 &&
-          SchedulerFeature::SCHEDULER->isStopping()) {
+      if (_missing > 0 && _started == 0 && SchedulerFeature::SCHEDULER->isStopping()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
       }
 

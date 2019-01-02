@@ -40,16 +40,14 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 RestTransactionHandler::RestTransactionHandler(GeneralRequest* request, GeneralResponse* response)
-  : RestVocbaseBaseHandler(request, response)
-  , _v8Context(nullptr)
-  , _lock() {}
+    : RestVocbaseBaseHandler(request, response), _v8Context(nullptr), _lock() {}
 
 // returns the queue name
-size_t RestTransactionHandler::queue() const { 
+size_t RestTransactionHandler::queue() const {
   if (ServerState::instance()->isCoordinator()) {
-    return JobQueue::BACKGROUND_QUEUE; 
+    return JobQueue::BACKGROUND_QUEUE;
   }
-  return JobQueue::STANDARD_QUEUE; 
+  return JobQueue::STANDARD_QUEUE;
 }
 
 void RestTransactionHandler::returnContext() {
@@ -66,7 +64,8 @@ RestStatus RestTransactionHandler::execute() {
 
   auto slice = _request->payload();
   if (!slice.isObject()) {
-    generateError(Result(TRI_ERROR_BAD_PARAMETER, "could not acquire v8 context"));
+    generateError(
+        Result(TRI_ERROR_BAD_PARAMETER, "could not acquire v8 context"));
     return RestStatus::DONE;
   }
 
@@ -90,7 +89,8 @@ RestStatus RestTransactionHandler::execute() {
       }
     }
 
-    Result res = executeTransaction(_v8Context->_isolate, _lock, _canceled, slice , portType, result);
+    Result res = executeTransaction(_v8Context->_isolate, _lock, _canceled,
+                                    slice, portType, result);
     if (res.ok()) {
       VPackSlice slice = result.slice();
       if (slice.isNone()) {
@@ -113,7 +113,7 @@ RestStatus RestTransactionHandler::execute() {
 }
 
 bool RestTransactionHandler::cancel() {
-  //cancel v8 transaction
+  // cancel v8 transaction
   WRITE_LOCKER(writeLock, _lock);
   _canceled.store(true);
   auto isolate = _v8Context->_isolate;

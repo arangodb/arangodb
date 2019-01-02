@@ -81,19 +81,11 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
 #ifdef USE_ENTERPRISE
     if (ep->isSmart()) {
       _traverser.reset(new arangodb::traverser::SmartGraphTraverser(
-          _opts,
-          _mmdr.get(),
-          ep->engines(),
-          _trx->vocbase()->name(),
-          _trx));
+          _opts, _mmdr.get(), ep->engines(), _trx->vocbase()->name(), _trx));
     } else {
 #endif
       _traverser.reset(new arangodb::traverser::ClusterTraverser(
-          _opts,
-          _mmdr.get(),
-          ep->engines(),
-          _trx->vocbase()->name(),
-          _trx));
+          _opts, _mmdr.get(), ep->engines(), _trx->vocbase()->name(), _trx));
 #ifdef USE_ENTERPRISE
     }
 #endif
@@ -101,10 +93,8 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
     _traverser.reset(
         new arangodb::traverser::SingleServerTraverser(_opts, _trx, _mmdr.get()));
   }
-  if (!ep->usesEdgeOutVariable() && !ep->usesPathOutVariable() &&
-      _opts->useBreadthFirst &&
-      _opts->uniqueVertices ==
-          traverser::TraverserOptions::UniquenessLevel::GLOBAL) {
+  if (!ep->usesEdgeOutVariable() && !ep->usesPathOutVariable() && _opts->useBreadthFirst &&
+      _opts->uniqueVertices == traverser::TraverserOptions::UniquenessLevel::GLOBAL) {
     _traverser->allowOptimizedNeighbors();
   }
   if (!ep->usesInVariable()) {
@@ -132,9 +122,7 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
   }
 }
 
-TraversalBlock::~TraversalBlock() {
-  freeCaches();
-}
+TraversalBlock::~TraversalBlock() { freeCaches(); }
 
 void TraversalBlock::freeCaches() {
   for (auto& v : _vertices) {
@@ -207,10 +195,10 @@ int TraversalBlock::shutdown(int errorCode) {
       for (auto const& it : *_engines) {
         arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();
         std::unordered_map<std::string, std::string> headers;
-        auto res = cc->syncRequest(
-            "", coordTransactionID, "server:" + it.first, RequestType::DELETE_REQ,
-            url + arangodb::basics::StringUtils::itoa(it.second), "", headers,
-            30.0);
+        auto res = cc->syncRequest("", coordTransactionID, "server:" + it.first,
+                                   RequestType::DELETE_REQ,
+                                   url + arangodb::basics::StringUtils::itoa(it.second),
+                                   "", headers, 30.0);
         if (res->status != CL_COMM_SENT) {
           // Note If there was an error on server side we do not have CL_COMM_SENT
           std::string message("Could not destroy all traversal engines");
@@ -232,7 +220,7 @@ int TraversalBlock::shutdown(int errorCode) {
 /// @brief read more paths
 bool TraversalBlock::morePaths(size_t hint) {
   DEBUG_BEGIN_BLOCK();
-  
+
   freeCaches();
   _posInPaths = 0;
   if (!_traverser->hasMore()) {
@@ -240,7 +228,7 @@ bool TraversalBlock::morePaths(size_t hint) {
     _engine->_stats.filtered += _traverser->getAndResetFilteredPaths();
     return false;
   }
-  
+
   if (usesVertexOutput()) {
     _vertices.reserve(hint);
   }
@@ -311,7 +299,7 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items, size_t pos) {
     // No Initialization required.
     return;
   }
-        
+
   initializeExpressions(items, pos);
 
   if (!_useRegister) {
@@ -319,10 +307,10 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items, size_t pos) {
       _usedConstant = true;
       auto pos = _vertexId.find('/');
       if (pos == std::string::npos) {
-        _engine->getQuery()->registerWarning(
-            TRI_ERROR_BAD_PARAMETER, "Invalid input for traversal: "
-                                         "Only id strings or objects with "
-                                         "_id are allowed");
+        _engine->getQuery()->registerWarning(TRI_ERROR_BAD_PARAMETER,
+                                             "Invalid input for traversal: "
+                                             "Only id strings or objects with "
+                                             "_id are allowed");
       } else {
         _traverser->setStartVertex(_vertexId);
       }
@@ -332,18 +320,17 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items, size_t pos) {
     if (in.isObject()) {
       try {
         _traverser->setStartVertex(_trx->extractIdString(in.slice()));
-      }
-      catch (...) {
+      } catch (...) {
         // _id or _key not present... ignore this error and fall through
       }
     } else if (in.isString()) {
       _vertexId = in.slice().copyString();
       _traverser->setStartVertex(_vertexId);
     } else {
-      _engine->getQuery()->registerWarning(
-          TRI_ERROR_BAD_PARAMETER, "Invalid input for traversal: Only "
-                                       "id strings or objects with _id are "
-                                       "allowed");
+      _engine->getQuery()->registerWarning(TRI_ERROR_BAD_PARAMETER,
+                                           "Invalid input for traversal: Only "
+                                           "id strings or objects with _id are "
+                                           "allowed");
     }
   }
 
@@ -386,7 +373,7 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
       if (!morePaths(atMost)) {
         // This input does not have any more paths. maybe the next one has.
         // we can only return nullptr iff the buffer is empty.
-        _usedConstant = false; // must reset this variable because otherwise the traverser's start vertex may not be reset properly
+        _usedConstant = false;  // must reset this variable because otherwise the traverser's start vertex may not be reset properly
         if (++_pos >= cur->size()) {
           _buffer.pop_front();  // does not throw
           returnBlock(cur);
@@ -434,7 +421,7 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
       if (!morePaths(atMost)) {
         // nothing more to read, re-initialize fetching of paths
 
-        _usedConstant = false; // must reset this variable because otherwise the traverser's start vertex may not be reset properly
+        _usedConstant = false;  // must reset this variable because otherwise the traverser's start vertex may not be reset properly
         if (++_pos >= cur->size()) {
           _buffer.pop_front();  // does not throw
           returnBlock(cur);
@@ -482,11 +469,11 @@ size_t TraversalBlock::skipSome(size_t atLeast, size_t atMost) {
     // If we get here, we do have _buffer.front()
     AqlItemBlock* cur = _buffer.front();
     initializePaths(cur, _pos);
-  
+
     while (atMost > skipped) {
       TRI_ASSERT(atMost >= skipped);
       skipped += skipPaths(atMost - skipped);
-  
+
       if (_traverser->hasMore()) {
         continue;
       }
@@ -497,11 +484,11 @@ size_t TraversalBlock::skipSome(size_t atLeast, size_t atMost) {
         _pos = 0;
         break;
       }
-    
+
       initializePaths(cur, _pos);
     }
   }
-  
+
   return skipped;
 
   // cppcheck-suppress style

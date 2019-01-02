@@ -61,12 +61,12 @@ bool RocksDBHashIndex::matchesDefinition(VPackSlice const& info) const {
   if (n != _fields.size()) {
     return false;
   }
-  if (_unique != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                     info, "unique", false)) {
+  if (_unique !=
+      arangodb::basics::VelocyPackHelper::getBooleanValue(info, "unique", false)) {
     return false;
   }
-  if (_sparse != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                     info, "sparse", false)) {
+  if (_sparse !=
+      arangodb::basics::VelocyPackHelper::getBooleanValue(info, "sparse", false)) {
     return false;
   }
 
@@ -83,8 +83,7 @@ bool RocksDBHashIndex::matchesDefinition(VPackSlice const& info) const {
     TRI_ParseAttributeString(in, translate, true);
 
     for (size_t i = 0; i < n; ++i) {
-      if (arangodb::basics::AttributeName::isIdentical(_fields[i], translate,
-                                                       false)) {
+      if (arangodb::basics::AttributeName::isIdentical(_fields[i], translate, false)) {
         found = true;
         break;
       }
@@ -95,4 +94,3 @@ bool RocksDBHashIndex::matchesDefinition(VPackSlice const& info) const {
   }
   return true;
 }
-

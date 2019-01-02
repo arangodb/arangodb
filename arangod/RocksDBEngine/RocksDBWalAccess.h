@@ -36,8 +36,7 @@ class RocksDBWalAccess : public WalAccess {
   virtual ~RocksDBWalAccess() {}
 
   /// {"tickMin":"123", "tickMax":"456", "version":"3.2", "serverId":"abc"}
-  Result tickRange(
-      std::pair<TRI_voc_tick_t, TRI_voc_tick_t>& minMax) const override;
+  Result tickRange(std::pair<TRI_voc_tick_t, TRI_voc_tick_t>& minMax) const override;
 
   /// {"lastTick":"123",
   ///  "version":"3.2",
@@ -56,10 +55,9 @@ class RocksDBWalAccess : public WalAccess {
 
   /// Tails the wall, this will already sanitize the
   WalAccessResult tail(uint64_t tickStart, uint64_t tickEnd, size_t chunkSize,
-                       TRI_voc_tick_t barrierId,
-                       WalAccess::Filter const& filter,
+                       TRI_voc_tick_t barrierId, WalAccess::Filter const& filter,
                        MarkerCallback const&) const override;
 };
-}
+}  // namespace arangodb
 
 #endif

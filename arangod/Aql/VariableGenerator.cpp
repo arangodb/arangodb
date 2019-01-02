@@ -29,15 +29,13 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-
 using namespace arangodb::aql;
 
 /// @brief create the generator
-VariableGenerator::VariableGenerator() 
-    : _variables(), _id(0) {
+VariableGenerator::VariableGenerator() : _variables(), _id(0) {
   _variables.reserve(8);
 }
-  
+
 /// @brief destroy the generator
 VariableGenerator::~VariableGenerator() {
   // free all variables
@@ -47,8 +45,7 @@ VariableGenerator::~VariableGenerator() {
 }
 
 /// @brief return a map of all variable ids with their names
-std::unordered_map<VariableId, std::string const> VariableGenerator::variables(
-    bool includeTemporaries) const {
+std::unordered_map<VariableId, std::string const> VariableGenerator::variables(bool includeTemporaries) const {
   std::unordered_map<VariableId, std::string const> result;
 
   for (auto const& it : _variables) {
@@ -64,8 +61,7 @@ std::unordered_map<VariableId, std::string const> VariableGenerator::variables(
 }
 
 /// @brief generate a variable
-Variable* VariableGenerator::createVariable(char const* name, size_t length,
-                                            bool isUserDefined) {
+Variable* VariableGenerator::createVariable(char const* name, size_t length, bool isUserDefined) {
   TRI_ASSERT(name != nullptr);
 
   auto variable = std::make_unique<Variable>(std::string(name, length), nextId());
@@ -79,8 +75,7 @@ Variable* VariableGenerator::createVariable(char const* name, size_t length,
 }
 
 /// @brief generate a variable
-Variable* VariableGenerator::createVariable(std::string const& name,
-                                            bool isUserDefined) {
+Variable* VariableGenerator::createVariable(std::string const& name, bool isUserDefined) {
   auto variable = std::make_unique<Variable>(name, nextId());
 
   if (isUserDefined) {
@@ -104,7 +99,7 @@ Variable* VariableGenerator::createVariable(VPackSlice const slice) {
   auto variable = std::make_unique<Variable>(slice);
 
   auto existing = getVariable(variable->id);
-  
+
   if (existing != nullptr) {
     // variable already existed.
     return existing;
@@ -118,7 +113,7 @@ Variable* VariableGenerator::createVariable(VPackSlice const slice) {
 Variable* VariableGenerator::createTemporaryVariable() {
   return createVariable(nextName(), false);
 }
-  
+
 /// @brief renames a variable (assigns a temporary name)
 Variable* VariableGenerator::renameVariable(VariableId id) {
   return renameVariable(id, nextName());
@@ -179,4 +174,3 @@ void VariableGenerator::fromVelocyPack(VPackSlice const& query) {
     createVariable(var);
   }
 }
-

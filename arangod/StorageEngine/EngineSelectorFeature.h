@@ -48,14 +48,14 @@ class EngineSelectorFeature final : public application_features::ApplicationFeat
   static char const* engineName();
 
  public:
-  // selected storage engine. this will contain a pointer to the storage engine after
-  // prepare() and before unprepare()
+  // selected storage engine. this will contain a pointer to the storage engine
+  // after prepare() and before unprepare()
   static StorageEngine* ENGINE;
 
  private:
   std::string _engine;
   std::string _engineFilePath;
 };
-}
+}  // namespace arangodb
 
 #endif

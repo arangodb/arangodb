@@ -36,12 +36,10 @@ class StoreCallback : public arangodb::ClusterCommCallback {
   bool operator()(arangodb::ClusterCommResult*) override final;
 
  private:
-
   std::string _path;
   std::string _body;
-  
 };
-}
-}  // namespace
+}  // namespace consensus
+}  // namespace arangodb
 
 #endif

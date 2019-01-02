@@ -34,8 +34,8 @@ class MMFilesCollectionExport;
 
 class MMFilesExportCursor final : public Cursor {
  public:
-  MMFilesExportCursor(TRI_vocbase_t*, CursorId, arangodb::MMFilesCollectionExport*, size_t,
-               double, bool);
+  MMFilesExportCursor(TRI_vocbase_t*, CursorId,
+                      arangodb::MMFilesCollectionExport*, size_t, double, bool);
 
   ~MMFilesExportCursor();
 
@@ -55,6 +55,6 @@ class MMFilesExportCursor final : public Cursor {
   arangodb::MMFilesCollectionExport* _ex;
   size_t const _size;
 };
-}
+}  // namespace arangodb
 
 #endif

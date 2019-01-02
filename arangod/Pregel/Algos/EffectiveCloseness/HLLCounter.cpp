@@ -21,22 +21,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <cmath>
+#include "Basics/fasthash.h"
 #include "Pregel/CommonFormats.h"
 #include "Pregel/Graph.h"
-#include "Basics/fasthash.h"
 
 using namespace arangodb::pregel;
 
 // leading zeros of an integer
 #if defined(__has_builtin) && (defined(__GNUC__) || defined(__clang__))
 
-#define _GET_CLZ(x, b) (uint8_t)std::min(b, ::__builtin_clz(x)) + 1
+#define _GET_CLZ(x, b) (uint8_t) std::min(b, ::__builtin_clz(x)) + 1
 
 #else
 
 inline uint8_t _get_leading_zero_count(uint32_t x, uint8_t b) {
-  
-#if defined (_MSC_VER)
+
+#if defined(_MSC_VER)
   unsigned long leading_zero_len = 32;
   ::BitScanReverse(&leading_zero_len, x);
   --leading_zero_len;
@@ -49,7 +49,6 @@ inline uint8_t _get_leading_zero_count(uint32_t x, uint8_t b) {
   }
   return v;
 #endif
-  
 }
 #define _GET_CLZ(x, b) _get_leading_zero_count(x, b)
 #endif /* defined(__GNUC__) */
@@ -71,16 +70,15 @@ void HLLCounter::addNode(PregelID const& pregelId) {
   }
 }
 
-static const double pow_2_32 = 4294967296.0; ///< 2^32
-static const double neg_pow_2_32 = -4294967296.0; ///< -(2^32)
+static const double pow_2_32 = 4294967296.0;       ///< 2^32
+static const double neg_pow_2_32 = -4294967296.0;  ///< -(2^32)
 uint32_t HLLCounter::getCount() {
-  
   double alphaMM = ALPHA * NUM_BUCKETS * NUM_BUCKETS;
   double sum = 0.0;
   for (uint32_t i = 0; i < NUM_BUCKETS; i++) {
     sum += 1.0 / (1 << _buckets[i]);
   }
-  double estimate = alphaMM / sum; // E in the original paper
+  double estimate = alphaMM / sum;  // E in the original paper
   if (estimate <= 2.5 * NUM_BUCKETS) {
     uint32_t zeros = 0;
     for (uint32_t i = 0; i < NUM_BUCKETS; i++) {
@@ -94,7 +92,7 @@ uint32_t HLLCounter::getCount() {
   } else if (estimate > (1.0 / 30.0) * pow_2_32) {
     estimate = neg_pow_2_32 * log(1.0 - (estimate / pow_2_32));
   }
-  return (uint32_t) estimate;
+  return (uint32_t)estimate;
 }
 
 void HLLCounter::merge(HLLCounter const& other) {

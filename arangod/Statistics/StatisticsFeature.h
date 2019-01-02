@@ -44,12 +44,11 @@ extern StatisticsVector TRI_BytesSentDistributionVectorStatistics;
 extern StatisticsVector TRI_ConnectionTimeDistributionVectorStatistics;
 extern StatisticsVector TRI_RequestTimeDistributionVectorStatistics;
 extern std::vector<StatisticsCounter> TRI_MethodRequestsStatistics;
-}
+}  // namespace basics
 
 class StatisticsThread;
 
-class StatisticsFeature final
-    : public application_features::ApplicationFeature {
+class StatisticsFeature final : public application_features::ApplicationFeature {
  public:
   static bool enabled() {
     return STATISTICS != nullptr && STATISTICS->_statistics;
@@ -77,6 +76,6 @@ class StatisticsFeature final
 
   std::unique_ptr<StatisticsThread> _statisticsThread;
 };
-}
+}  // namespace arangodb
 
 #endif

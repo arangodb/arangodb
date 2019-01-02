@@ -33,7 +33,7 @@ namespace arangodb {
 
 namespace import {
 
-  class ImportHelper;
+class ImportHelper;
 
 class AutoTuneThread final : public arangodb::Thread {
  private:
@@ -41,7 +41,7 @@ class AutoTuneThread final : public arangodb::Thread {
   AutoTuneThread& operator=(AutoTuneThread const&) = delete;
 
  public:
-  explicit AutoTuneThread(ImportHelper & importHelper);
+  explicit AutoTuneThread(ImportHelper& importHelper);
 
   ~AutoTuneThread();
 
@@ -49,15 +49,14 @@ class AutoTuneThread final : public arangodb::Thread {
 
   void paceSends();
 
-protected:
+ protected:
   void run() override;
 
-
-  ImportHelper & _importHelper;
+  ImportHelper& _importHelper;
   basics::ConditionVariable _condition;
   std::chrono::steady_clock::time_point _nextSend;
   std::chrono::microseconds _pace;
 };
-}
-}
+}  // namespace import
+}  // namespace arangodb
 #endif

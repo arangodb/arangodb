@@ -35,8 +35,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-LanguageFeature::LanguageFeature(
-    application_features::ApplicationServer* server)
+LanguageFeature::LanguageFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Language"),
       _binaryPath(server->getBinaryPath()),
       _icuDataPtr(nullptr) {
@@ -51,16 +50,14 @@ LanguageFeature::~LanguageFeature() {
   }
 }
 
-void LanguageFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
+void LanguageFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
   options->addHiddenOption("--default-language", "ISO-639 language code",
                            new StringParameter(&_language));
 }
 
 void* LanguageFeature::prepareIcu(std::string const& binaryPath,
                                   std::string const& binaryExecutionPath,
-                                  std::string& path,
-                                  std::string const& binaryName) {
+                                  std::string& path, std::string const& binaryName) {
   char const* icuDataEnv = getenv("ICU_DATA");
   std::string fn("icudtl.dat");
 
@@ -117,9 +114,8 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath,
   void* icuDataPtr = TRI_SlurpFile(path.c_str(), nullptr);
 
   if (icuDataPtr == nullptr) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-        << "failed to load '" << fn << "' at '" << path << "' - "
-        << TRI_last_error();
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "failed to load '" << fn << "' at '"
+                                              << path << "' - " << TRI_last_error();
     FATAL_ERROR_EXIT();
   }
   return icuDataPtr;
@@ -130,11 +126,9 @@ void LanguageFeature::prepare() {
   auto context = ArangoGlobalContext::CONTEXT;
   std::string binaryExecutionPath = context->getBinaryPath();
   std::string binaryName = context->binaryName();
-  _icuDataPtr = LanguageFeature::prepareIcu(_binaryPath, binaryExecutionPath, p,
-                                            binaryName);
+  _icuDataPtr = LanguageFeature::prepareIcu(_binaryPath, binaryExecutionPath, p, binaryName);
 
-  if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(_language,
-                                                         _icuDataPtr)) {
+  if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(_language, _icuDataPtr)) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "error initializing ICU with the contents of '" << p << "'";
     FATAL_ERROR_EXIT();

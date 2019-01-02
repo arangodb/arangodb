@@ -37,7 +37,7 @@ typedef unsigned int RegisterId;
 
 /// @brief type of a query id
 typedef uint64_t QueryId;
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

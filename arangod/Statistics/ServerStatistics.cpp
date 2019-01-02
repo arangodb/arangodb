@@ -46,9 +46,6 @@ ServerStatistics ServerStatistics::statistics() {
   return server;
 }
 
-void ServerStatistics::initialize() {
-  START_TIME = StatisticsFeature::time();
-}
+void ServerStatistics::initialize() { START_TIME = StatisticsFeature::time(); }
 
-void ServerStatistics::shutdown() {
-}
+void ServerStatistics::shutdown() {}

@@ -38,7 +38,9 @@ class ExecutionEngine;
 class SingletonBlock final : public ExecutionBlock {
  public:
   SingletonBlock(ExecutionEngine* engine, SingletonNode const* ep)
-      : ExecutionBlock(engine, ep), _inputRegisterValues(nullptr), _whitelistBuilt(false) {}
+      : ExecutionBlock(engine, ep),
+        _inputRegisterValues(nullptr),
+        _whitelistBuilt(false) {}
 
   ~SingletonBlock() { deleteInputVariables(); }
 
@@ -190,7 +192,7 @@ class NoResultsBlock final : public ExecutionBlock {
                     AqlItemBlock*& result, size_t& skipped) override;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

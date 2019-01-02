@@ -37,8 +37,7 @@
 
 v8::Handle<v8::Value> TRI_VPackToV8(
     v8::Isolate* isolate, arangodb::velocypack::Slice const&,
-    arangodb::velocypack::Options const* options =
-        &arangodb::velocypack::Options::Defaults,
+    arangodb::velocypack::Options const* options = &arangodb::velocypack::Options::Defaults,
     arangodb::velocypack::Slice const* base = nullptr);
 
 ////////////////////////////////////////////////////////////////////////////////

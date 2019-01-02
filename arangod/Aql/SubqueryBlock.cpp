@@ -66,7 +66,7 @@ AqlItemBlock* SubqueryBlock::getSome(size_t atLeast, size_t atMost) {
 
   bool const subqueryReturnsData =
       (_subquery->getPlanNode()->getType() == ExecutionNode::RETURN);
-  
+
   std::vector<AqlItemBlock*>* subqueryResults = nullptr;
 
   for (size_t i = 0; i < res->size(); i++) {
@@ -163,8 +163,7 @@ std::vector<AqlItemBlock*>* SubqueryBlock::executeSubquery() {
 }
 
 /// @brief destroy the results of a subquery
-void SubqueryBlock::destroySubqueryResults(
-    std::vector<AqlItemBlock*>* results) {
+void SubqueryBlock::destroySubqueryResults(std::vector<AqlItemBlock*>* results) {
   for (auto& x : *results) {
     delete x;
   }

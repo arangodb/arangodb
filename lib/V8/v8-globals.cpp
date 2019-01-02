@@ -136,18 +136,21 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
   PutConstant.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "PUT"));
 
   AddressKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "address"));
-  AllowUseDatabaseKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "allowUseDatabase"));
+  AllowUseDatabaseKey.Reset(isolate,
+                            TRI_V8_ASCII_STRING(isolate, "allowUseDatabase"));
   AuthorizedKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "authorized"));
   BodyFromFileKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "bodyFromFile"));
   BodyKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "body"));
   ClientKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "client"));
   ClientTransactionIDKey.Reset(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "clientTransactionID"));
+                               TRI_V8_ASCII_STRING(isolate,
+                                                   "clientTransactionID"));
   CodeKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "code"));
   ContentTypeKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "contentType"));
   CookiesKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "cookies"));
   CoordTransactionIDKey.Reset(isolate,
-                              TRI_V8_ASCII_STRING(isolate, "coordTransactionID"));
+                              TRI_V8_ASCII_STRING(isolate,
+                                                  "coordTransactionID"));
   DatabaseKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "database"));
   DomainKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "domain"));
   EndpointKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "endpoint"));
@@ -159,8 +162,8 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
   IdKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "id"));
   InitTimeoutKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "initTimeout"));
   IsRestoreKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "isRestore"));
-  IsSynchronousReplicationKey.Reset(isolate,
-      TRI_V8_ASCII_STRING(isolate, "isSynchronousReplication"));
+  IsSynchronousReplicationKey.Reset(
+      isolate, TRI_V8_ASCII_STRING(isolate, "isSynchronousReplication"));
   IsSystemKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "isSystem"));
   KeepNullKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "keepNull"));
   KeyOptionsKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "keyOptions"));
@@ -186,12 +189,14 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
   ServerKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "server"));
   ShardIDKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "shardID"));
   SilentKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "silent"));
-  SingleRequestKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "singleRequest"));
+  SingleRequestKey.Reset(isolate,
+                         TRI_V8_ASCII_STRING(isolate, "singleRequest"));
   StatusKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "status"));
   SuffixKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "suffix"));
   TimeoutKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "timeout"));
   ToJsonKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "toJSON"));
-  TransformationsKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "transformations"));
+  TransformationsKey.Reset(isolate,
+                           TRI_V8_ASCII_STRING(isolate, "transformations"));
   UrlKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "url"));
   UserKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "user"));
   ValueKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "value"));
@@ -206,7 +211,7 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
   _FromKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "_from"));
   _ToKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "_to"));
 }
-      
+
 TRI_v8_global_t::~TRI_v8_global_t() {}
 
 /// @brief creates a global context
@@ -233,10 +238,10 @@ TRI_v8_global_t* TRI_GetV8Globals(v8::Isolate* isolate) {
 }
 
 /// @brief adds a method to an object
-void TRI_AddMethodVocbase(
-    v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> tpl,
-    v8::Handle<v8::String> name,
-    void (*func)(v8::FunctionCallbackInfo<v8::Value> const&), bool isHidden) {
+void TRI_AddMethodVocbase(v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> tpl,
+                          v8::Handle<v8::String> name,
+                          void (*func)(v8::FunctionCallbackInfo<v8::Value> const&),
+                          bool isHidden) {
   if (isHidden) {
     // hidden method
     tpl->Set(name, v8::FunctionTemplate::New(isolate, func), v8::DontEnum);
@@ -247,10 +252,9 @@ void TRI_AddMethodVocbase(
 }
 
 /// @brief adds a global function to the given context
-void TRI_AddGlobalFunctionVocbase(
-    v8::Isolate* isolate, 
-    v8::Handle<v8::String> name,
-    void (*func)(v8::FunctionCallbackInfo<v8::Value> const&), bool isHidden) {
+void TRI_AddGlobalFunctionVocbase(v8::Isolate* isolate, v8::Handle<v8::String> name,
+                                  void (*func)(v8::FunctionCallbackInfo<v8::Value> const&),
+                                  bool isHidden) {
   // all global functions are read-only
   if (isHidden) {
     isolate->GetCurrentContext()->Global()->ForceSet(
@@ -258,28 +262,24 @@ void TRI_AddGlobalFunctionVocbase(
         static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum));
   } else {
     isolate->GetCurrentContext()->Global()->ForceSet(
-        name, v8::FunctionTemplate::New(isolate, func)->GetFunction(),
-        v8::ReadOnly);
+        name, v8::FunctionTemplate::New(isolate, func)->GetFunction(), v8::ReadOnly);
   }
 }
 
 /// @brief adds a global function to the given context
-void TRI_AddGlobalFunctionVocbase(v8::Isolate* isolate,
-                                  v8::Handle<v8::String> name,
-                                  v8::Handle<v8::Function> func,
-                                  bool isHidden) {
+void TRI_AddGlobalFunctionVocbase(v8::Isolate* isolate, v8::Handle<v8::String> name,
+                                  v8::Handle<v8::Function> func, bool isHidden) {
   // all global functions are read-only
   if (isHidden) {
-    isolate->GetCurrentContext()->Global()->ForceSet(name, func, static_cast<v8::PropertyAttribute>(
-                                                v8::ReadOnly | v8::DontEnum));
+    isolate->GetCurrentContext()->Global()->ForceSet(
+        name, func, static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum));
   } else {
     isolate->GetCurrentContext()->Global()->ForceSet(name, func, v8::ReadOnly);
   }
 }
 
 /// @brief adds a global read-only variable to the given context
-void TRI_AddGlobalVariableVocbase(v8::Isolate* isolate,
-                                  v8::Handle<v8::String> name,
+void TRI_AddGlobalVariableVocbase(v8::Isolate* isolate, v8::Handle<v8::String> name,
                                   v8::Handle<v8::Value> value) {
   // all global variables are read-only
   isolate->GetCurrentContext()->Global()->ForceSet(name, value, v8::ReadOnly);

@@ -80,6 +80,6 @@ class RestBatchHandler : public RestVocbaseBaseHandler {
   // extract the next part from a multipart message
   bool extractPart(SearchHelper*);
 };
-}
+}  // namespace arangodb
 
 #endif

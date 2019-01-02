@@ -34,7 +34,7 @@ class PerformanceLogScope {
   PerformanceLogScope(PerformanceLogScope const&) = delete;
   PerformanceLogScope& operator=(PerformanceLogScope const&) = delete;
 
-  explicit PerformanceLogScope(std::string const& message, double minElapsedTime = 0.0) 
+  explicit PerformanceLogScope(std::string const& message, double minElapsedTime = 0.0)
       : _message(message), _start(TRI_microtime()), _minElapsedTime(minElapsedTime) {
     LOG_TOPIC(TRACE, Logger::PERFORMANCE) << _message;
   }
@@ -43,7 +43,8 @@ class PerformanceLogScope {
     double const elapsed = TRI_microtime() - _start;
 
     if (elapsed >= _minElapsedTime) {
-      LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::FIXED(elapsed) << " s, " << _message;
+      LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+          << "[timer] " << Logger::FIXED(elapsed) << " s, " << _message;
     }
   }
 
@@ -53,6 +54,6 @@ class PerformanceLogScope {
   double const _minElapsedTime;
 };
 
-}
+}  // namespace arangodb
 
 #endif

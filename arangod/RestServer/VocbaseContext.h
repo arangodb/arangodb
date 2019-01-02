@@ -48,11 +48,10 @@ class VocbaseContext final : public arangodb::ExecContext {
   ~VocbaseContext();
 
  public:
-  
   static VocbaseContext* create(GeneralRequest*, TRI_vocbase_t*);
-  
+
   TRI_vocbase_t* vocbase() const { return _vocbase; }
-  
+
   /// @brief upgrade to internal superuser
   void forceSuperuser();
   /// @brief upgrade to internal read-only user
@@ -61,6 +60,6 @@ class VocbaseContext final : public arangodb::ExecContext {
  private:
   TRI_vocbase_t* _vocbase;
 };
-}
+}  // namespace arangodb
 
 #endif

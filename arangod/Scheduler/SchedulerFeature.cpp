@@ -50,8 +50,7 @@ using namespace arangodb::rest;
 
 Scheduler* SchedulerFeature::SCHEDULER = nullptr;
 
-SchedulerFeature::SchedulerFeature(
-    application_features::ApplicationServer* server)
+SchedulerFeature::SchedulerFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Scheduler"), _scheduler(nullptr) {
   setOptional(true);
   startsAfter("FileDescriptors");
@@ -61,8 +60,7 @@ SchedulerFeature::SchedulerFeature(
 
 SchedulerFeature::~SchedulerFeature() {}
 
-void SchedulerFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
+void SchedulerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("scheduler", "Configure the I/O scheduler");
 
   options->addOption("--server.threads", "number of threads",
@@ -84,8 +82,7 @@ void SchedulerFeature::collectOptions(
   options->addOldOption("scheduler.threads", "server.threads");
 }
 
-void SchedulerFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions>) {
+void SchedulerFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
   if (_nrServerThreads == 0) {
     _nrServerThreads = TRI_numberProcessors();
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
@@ -172,8 +169,7 @@ void SchedulerFeature::stop() {
   // shut-down scheduler
   _scheduler->beginShutdown();
 
-  for (size_t count = 0; count < MAX_TRIES && _scheduler->isRunning();
-       ++count) {
+  for (size_t count = 0; count < MAX_TRIES && _scheduler->isRunning(); ++count) {
     LOG_TOPIC(TRACE, Logger::STARTUP) << "waiting for scheduler to stop";
     std::this_thread::sleep_for(std::chrono::microseconds(100000));
   }
@@ -252,8 +248,7 @@ bool CtrlHandler(DWORD eventType) {
   // user is desperate to kill the server!
   // ........................................................................
 
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << shutdownMessage
-                                           << ", terminating";
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << shutdownMessage << ", terminating";
   _exit(EXIT_FAILURE);  // quick exit for windows
   return true;
 }
@@ -290,8 +285,8 @@ void SchedulerFeature::buildControlCHandler() {
   pthread_sigmask(SIG_SETMASK, &all, nullptr);
 
   auto ioService = _scheduler->managerService();
-  _exitSignals = std::make_shared<asio_ns::signal_set>(*ioService, SIGINT,
-                                                       SIGTERM, SIGQUIT);
+  _exitSignals =
+      std::make_shared<asio_ns::signal_set>(*ioService, SIGINT, SIGTERM, SIGQUIT);
 
   _signalHandler = [this](const asio_ns::error_code& error, int number) {
     if (error) {

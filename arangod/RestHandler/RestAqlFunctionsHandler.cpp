@@ -36,7 +36,9 @@ RestAqlFunctionsHandler::RestAqlFunctionsHandler(GeneralRequest* request,
     : RestVocbaseBaseHandler(request, response) {}
 
 // returns the queue name
-size_t RestAqlFunctionsHandler::queue() const { return JobQueue::BACKGROUND_QUEUE; }
+size_t RestAqlFunctionsHandler::queue() const {
+  return JobQueue::BACKGROUND_QUEUE;
+}
 
 RestStatus RestAqlFunctionsHandler::execute() {
   // extract the sub-request type
@@ -56,7 +58,6 @@ RestStatus RestAqlFunctionsHandler::execute() {
     return RestStatus::DONE;
   }
 
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }

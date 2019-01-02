@@ -24,10 +24,10 @@
 #include "ScriptLoader.h"
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/files.h"
-#include "Logger/Logger.h"
-#include "Basics/tri-strings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/files.h"
+#include "Basics/tri-strings.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -80,8 +80,7 @@ std::string ScriptLoader::buildScript(char const** script) {
 /// @brief defines a new named script
 ////////////////////////////////////////////////////////////////////////////////
 
-void ScriptLoader::defineScript(std::string const& name,
-                                std::string const& script) {
+void ScriptLoader::defineScript(std::string const& name, std::string const& script) {
   MUTEX_LOCKER(mutexLocker, _lock);
 
   _scripts[name] = script;
@@ -122,7 +121,9 @@ std::string const& ScriptLoader::findScript(std::string const& name) {
       char* result = TRI_SlurpFile(filename.c_str(), nullptr);
 
       if (result == nullptr && (i == parts.size() - 1)) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot locate file '" << StringUtils::correctPath(name) << "': " << TRI_last_error();
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+            << "cannot locate file '" << StringUtils::correctPath(name)
+            << "': " << TRI_last_error();
       }
 
       if (result != nullptr) {
@@ -144,10 +145,10 @@ std::vector<std::string> ScriptLoader::getDirectoryParts() {
   std::vector<std::string> directories;
 
   if (!_directory.empty()) {
-// .........................................................................
-// for backwards compatibility allow ":" as a delimiter for POSIX like
-// implementations, otherwise we will only allow ";"
-// .........................................................................
+    // .........................................................................
+    // for backwards compatibility allow ":" as a delimiter for POSIX like
+    // implementations, otherwise we will only allow ";"
+    // .........................................................................
 
 #ifdef _WIN32
     std::vector<std::string> parts = basics::StringUtils::split(_directory, ';', '\0');

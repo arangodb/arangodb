@@ -38,6 +38,6 @@ class LockfileFeature final : public application_features::ApplicationFeature {
  private:
   std::string _lockFilename;
 };
-}
+}  // namespace arangodb
 
 #endif

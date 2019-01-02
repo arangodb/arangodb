@@ -93,13 +93,9 @@ void ReadWriteLockCPP11::unlock() {
     }
   }
 }
-  
+
 /// @brief releases the read-lock
-void ReadWriteLockCPP11::unlockRead() {
-  unlock();
-}
-  
+void ReadWriteLockCPP11::unlockRead() { unlock(); }
+
 /// @brief releases the write-lock
-void ReadWriteLockCPP11::unlockWrite() {
-  unlock();
-}
+void ReadWriteLockCPP11::unlockWrite() { unlock(); }

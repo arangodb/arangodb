@@ -40,8 +40,8 @@ namespace options {
 
 // convert a string into a number, base version for signed integer types
 template <typename T>
-inline typename std::enable_if<std::is_signed<T>::value, T>::type toNumber(
-    std::string value, T base) {
+inline typename std::enable_if<std::is_signed<T>::value, T>::type toNumber(std::string value,
+                                                                           T base) {
   auto n = value.size();
   int64_t m = 1;
   int64_t d = 1;
@@ -108,8 +108,8 @@ inline typename std::enable_if<std::is_signed<T>::value, T>::type toNumber(
 
 // convert a string into a number, base version for unsigned integer types
 template <typename T>
-inline typename std::enable_if<std::is_unsigned<T>::value, T>::type toNumber(
-    std::string value, T base) {
+inline typename std::enable_if<std::is_unsigned<T>::value, T>::type toNumber(std::string value,
+                                                                             T base) {
   auto n = value.size();
   uint64_t m = 1;
   uint64_t d = 1;
@@ -182,15 +182,13 @@ inline double toNumber<double>(std::string value, double base) {
 
 // convert a string into another type, specialized version for numbers
 template <typename T>
-typename std::enable_if<std::is_arithmetic<T>::value, T>::type fromString(
-    std::string value) {
+typename std::enable_if<std::is_arithmetic<T>::value, T>::type fromString(std::string value) {
   return toNumber<T>(value, static_cast<T>(1));
 }
 
 // convert a string into another type, specialized version for string -> string
 template <typename T>
-typename std::enable_if<std::is_same<T, std::string>::value, T>::type
-fromString(std::string const& value) {
+typename std::enable_if<std::is_same<T, std::string>::value, T>::type fromString(std::string const& value) {
   return value;
 }
 
@@ -256,9 +254,8 @@ struct BooleanParameter : public Parameter {
       *ptr = true;
       return "";
     }
-    if (value == "true" || value == "false" || value == "on" ||
-        value == "off" || value == "1" || value == "0" || value == "yes" ||
-        value == "no") {
+    if (value == "true" || value == "false" || value == "on" || value == "off" ||
+        value == "1" || value == "0" || value == "yes" || value == "no") {
       *ptr =
           (value == "true" || value == "on" || value == "1" || value == "yes");
       return "";
@@ -421,7 +418,8 @@ struct BoundedParameter : public T {
 
   std::string set(std::string const& value) override {
     try {
-      typename T::ValueType v = toNumber<typename T::ValueType>(value, static_cast<typename T::ValueType>(1));
+      typename T::ValueType v =
+          toNumber<typename T::ValueType>(value, static_cast<typename T::ValueType>(1));
       if (v >= minValue && v <= maxValue) {
         *this->ptr = v;
         return "";
@@ -429,8 +427,8 @@ struct BoundedParameter : public T {
     } catch (...) {
       return "invalid numeric value '" + value + "'";
     }
-    return "number '" + value + "' out of allowed range (" + std::to_string(minValue) + " - " +
-           std::to_string(maxValue) + ")";
+    return "number '" + value + "' out of allowed range (" +
+           std::to_string(minValue) + " - " + std::to_string(maxValue) + ")";
   }
 
   typename T::ValueType minValue;
@@ -471,9 +469,8 @@ struct StringParameter : public Parameter {
 // this templated type needs a concrete value type
 template <typename T>
 struct DiscreteValuesParameter : public T {
-  DiscreteValuesParameter(
-      typename T::ValueType* ptr,
-      std::unordered_set<typename T::ValueType> const& allowed)
+  DiscreteValuesParameter(typename T::ValueType* ptr,
+                          std::unordered_set<typename T::ValueType> const& allowed)
       : T(ptr), allowed(allowed) {
     if (allowed.find(*ptr) == allowed.end()) {
       // default value is not in list of allowed values
@@ -579,7 +576,7 @@ struct ObsoleteParameter : public Parameter {
 
   bool required;
 };
-}
-}
+}  // namespace options
+}  // namespace arangodb
 
 #endif

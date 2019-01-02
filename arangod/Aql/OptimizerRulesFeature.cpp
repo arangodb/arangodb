@@ -43,8 +43,7 @@ constexpr bool DoesNotCreateAdditionalPlans = false;
 constexpr bool CanBeDisabled = true;
 constexpr bool CanNotBeDisabled = false;
 
-OptimizerRulesFeature::OptimizerRulesFeature(
-    application_features::ApplicationServer* server)
+OptimizerRulesFeature::OptimizerRulesFeature(application_features::ApplicationServer* server)
     : application_features::ApplicationFeature(server, "OptimizerRules") {
   setOptional(false);
   startsAfter("EngineSelector");
@@ -52,13 +51,12 @@ OptimizerRulesFeature::OptimizerRulesFeature(
   startsAfter("Cluster");
 }
 
-void OptimizerRulesFeature::prepare() {
-  addRules();
-}
+void OptimizerRulesFeature::prepare() { addRules(); }
 
 /// @brief register a rule
 void OptimizerRulesFeature::registerRule(std::string const& name, RuleFunction func,
-                                         OptimizerRule::RuleLevel level, bool canCreateAdditionalPlans,
+                                         OptimizerRule::RuleLevel level,
+                                         bool canCreateAdditionalPlans,
                                          bool canBeDisabled, bool isHidden) {
   if (_ruleLookup.find(name) != _ruleLookup.end()) {
     // duplicate rule names are not allowed
@@ -70,10 +68,11 @@ void OptimizerRulesFeature::registerRule(std::string const& name, RuleFunction f
 
   if (_rules.find(level) != _rules.end()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                    "duplicate optimizer rule level");
+                                   "duplicate optimizer rule level");
   }
 
-  _rules.emplace(level, OptimizerRule(name, func, level, canCreateAdditionalPlans, canBeDisabled, isHidden));
+  _rules.emplace(level, OptimizerRule(name, func, level, canCreateAdditionalPlans,
+                                      canBeDisabled, isHidden));
 }
 
 /// @brief set up the optimizer rules once and forever
@@ -97,16 +96,18 @@ void OptimizerRulesFeature::addRules() {
   // this rule cannot be turned off (otherwise, the query result might be
   // wrong!)
   registerHiddenRule("specialize-collect", specializeCollectRule,
-                     OptimizerRule::specializeCollectRule_pass1, CreatesAdditionalPlans, CanNotBeDisabled);
+                     OptimizerRule::specializeCollectRule_pass1,
+                     CreatesAdditionalPlans, CanNotBeDisabled);
 
   // inline subqueries one level higher
-  registerRule("inline-subqueries", inlineSubqueriesRule,
-               OptimizerRule::inlineSubqueriesRule_pass1, DoesNotCreateAdditionalPlans, CanBeDisabled);
+  registerRule("inline-subqueries", inlineSubqueriesRule, OptimizerRule::inlineSubqueriesRule_pass1,
+               DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   // move calculations up the dependency chain (to pull them out of
   // inner loops etc.)
   registerRule("move-calculations-up", moveCalculationsUpRule,
-               OptimizerRule::moveCalculationsUpRule_pass1, DoesNotCreateAdditionalPlans, CanBeDisabled);
+               OptimizerRule::moveCalculationsUpRule_pass1,
+               DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   // move filters up the dependency chain (to make result sets as small
   // as possible as early as possible)
@@ -115,36 +116,40 @@ void OptimizerRulesFeature::addRules() {
 
   // remove redundant calculations
   registerRule("remove-redundant-calculations", removeRedundantCalculationsRule,
-               OptimizerRule::removeRedundantCalculationsRule_pass1, DoesNotCreateAdditionalPlans, CanBeDisabled);
+               OptimizerRule::removeRedundantCalculationsRule_pass1,
+               DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   /// "Pass 2": try to remove redundant or unnecessary nodes
   // remove filters from the query that are not necessary at all
   // filters that are always true will be removed entirely
   // filters that are always false will be replaced with a NoResults node
   registerRule("remove-unnecessary-filters", removeUnnecessaryFiltersRule,
-               OptimizerRule::removeUnnecessaryFiltersRule_pass2, DoesNotCreateAdditionalPlans, CanBeDisabled);
+               OptimizerRule::removeUnnecessaryFiltersRule_pass2,
+               DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   // remove calculations that are never necessary
-  registerRule("remove-unnecessary-calculations",
-               removeUnnecessaryCalculationsRule,
-               OptimizerRule::removeUnnecessaryCalculationsRule_pass2, DoesNotCreateAdditionalPlans, CanBeDisabled);
+  registerRule("remove-unnecessary-calculations", removeUnnecessaryCalculationsRule,
+               OptimizerRule::removeUnnecessaryCalculationsRule_pass2,
+               DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   // remove redundant sort blocks
   registerRule("remove-redundant-sorts", removeRedundantSortsRule,
-               OptimizerRule::removeRedundantSortsRule_pass2, DoesNotCreateAdditionalPlans, CanBeDisabled);
+               OptimizerRule::removeRedundantSortsRule_pass2,
+               DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   /// "Pass 3": interchange EnumerateCollection nodes in all possible ways
   ///           this is level 500, please never let new plans from higher
   ///           levels go back to this or lower levels!
-  registerRule("interchange-adjacent-enumerations",
-               interchangeAdjacentEnumerationsRule,
-               OptimizerRule::interchangeAdjacentEnumerationsRule_pass3, CreatesAdditionalPlans, CanBeDisabled);
+  registerRule("interchange-adjacent-enumerations", interchangeAdjacentEnumerationsRule,
+               OptimizerRule::interchangeAdjacentEnumerationsRule_pass3,
+               CreatesAdditionalPlans, CanBeDisabled);
 
   // "Pass 4": moving nodes "up" (potentially outside loops) (second try):
   // move calculations up the dependency chain (to pull them out of
   // inner loops etc.)
   registerRule("move-calculations-up-2", moveCalculationsUpRule,
-               OptimizerRule::moveCalculationsUpRule_pass4, DoesNotCreateAdditionalPlans, CanBeDisabled);
+               OptimizerRule::moveCalculationsUpRule_pass4,
+               DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   // move filters up the dependency chain (to make result sets as small
   // as possible as early as possible)
@@ -153,91 +158,105 @@ void OptimizerRulesFeature::addRules() {
 
   // merge filters into traversals
   registerRule("optimize-traversals", optimizeTraversalsRule,
-               OptimizerRule::optimizeTraversalsRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
-  
+               OptimizerRule::optimizeTraversalsRule_pass6,
+               DoesNotCreateAdditionalPlans, CanBeDisabled);
+
   // optimize unneccessary filters already applied by the traversal
   registerRule("remove-filter-covered-by-traversal", removeFiltersCoveredByTraversal,
-               OptimizerRule::removeFiltersCoveredByTraversal_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
-  
-  // optimize unneccessary filters already applied by the traversal. Only ever does something if previous
-  // rule remove all filters using the path variable
+               OptimizerRule::removeFiltersCoveredByTraversal_pass6,
+               DoesNotCreateAdditionalPlans, CanBeDisabled);
+
+  // optimize unneccessary filters already applied by the traversal. Only ever
+  // does something if previous rule remove all filters using the path variable
   registerRule("remove-redundant-path-var", removeTraversalPathVariable,
-               OptimizerRule::removeTraversalPathVariable_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
+               OptimizerRule::removeTraversalPathVariable_pass6,
+               DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   // prepare traversal info
   registerHiddenRule("prepare-traversals", prepareTraversalsRule,
-                     OptimizerRule::prepareTraversalsRule_pass6, DoesNotCreateAdditionalPlans, CanNotBeDisabled);
+                     OptimizerRule::prepareTraversalsRule_pass6,
+                     DoesNotCreateAdditionalPlans, CanNotBeDisabled);
 
   /// "Pass 5": try to remove redundant or unnecessary nodes (second try)
   // remove filters from the query that are not necessary at all
   // filters that are always true will be removed entirely
   // filters that are always false will be replaced with a NoResults node
   registerRule("remove-unnecessary-filters-2", removeUnnecessaryFiltersRule,
-               OptimizerRule::removeUnnecessaryFiltersRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
+               OptimizerRule::removeUnnecessaryFiltersRule_pass6,
+               DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   // remove redundant sort node
   registerRule("remove-redundant-sorts-2", removeRedundantSortsRule,
-               OptimizerRule::removeRedundantSortsRule_pass5, DoesNotCreateAdditionalPlans, CanBeDisabled);
+               OptimizerRule::removeRedundantSortsRule_pass5,
+               DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   // remove unused INTO variable from COLLECT, or unused aggregates
   registerRule("remove-collect-variables", removeCollectVariablesRule,
-               OptimizerRule::removeCollectVariablesRule_pass5, DoesNotCreateAdditionalPlans, CanBeDisabled);
+               OptimizerRule::removeCollectVariablesRule_pass5,
+               DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   // remove unused out variables for data-modification queries
-  registerRule("remove-data-modification-out-variables",
-               removeDataModificationOutVariablesRule,
-               OptimizerRule::removeDataModificationOutVariablesRule_pass5, DoesNotCreateAdditionalPlans, CanBeDisabled);
+  registerRule("remove-data-modification-out-variables", removeDataModificationOutVariablesRule,
+               OptimizerRule::removeDataModificationOutVariablesRule_pass5,
+               DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   // propagate constant attributes in FILTERs
   registerRule("propagate-constant-attributes", propagateConstantAttributesRule,
-               OptimizerRule::propagateConstantAttributesRule_pass5, DoesNotCreateAdditionalPlans, CanBeDisabled);
+               OptimizerRule::propagateConstantAttributesRule_pass5,
+               DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   /// "Pass 6": use indexes if possible for FILTER and/or SORT nodes
   // try to replace simple OR conditions with IN
-  registerRule("replace-or-with-in", replaceOrWithInRule,
-               OptimizerRule::replaceOrWithInRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
+  registerRule("replace-or-with-in", replaceOrWithInRule, OptimizerRule::replaceOrWithInRule_pass6,
+               DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   // try to remove redundant OR conditions
   registerRule("remove-redundant-or", removeRedundantOrRule,
-               OptimizerRule::removeRedundantOrRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
+               OptimizerRule::removeRedundantOrRule_pass6,
+               DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   // try to find a filter after an enumerate collection and find indexes
-  registerRule("use-indexes", useIndexesRule, OptimizerRule::useIndexesRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
+  registerRule("use-indexes", useIndexesRule, OptimizerRule::useIndexesRule_pass6,
+               DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   // try to remove filters which are covered by index ranges
-  registerRule("remove-filter-covered-by-index",
-               removeFiltersCoveredByIndexRule,
-               OptimizerRule::removeFiltersCoveredByIndexRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
+  registerRule("remove-filter-covered-by-index", removeFiltersCoveredByIndexRule,
+               OptimizerRule::removeFiltersCoveredByIndexRule_pass6,
+               DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   // try to find sort blocks which are superseeded by indexes
-  registerRule("use-index-for-sort", useIndexForSortRule,
-               OptimizerRule::useIndexForSortRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
-  
+  registerRule("use-index-for-sort", useIndexForSortRule, OptimizerRule::useIndexForSortRule_pass6,
+               DoesNotCreateAdditionalPlans, CanBeDisabled);
+
   // sort in-values in filters (note: must come after
   // remove-filter-covered-by-index rule)
   registerRule("sort-in-values", sortInValuesRule, OptimizerRule::sortInValuesRule_pass6,
                DoesNotCreateAdditionalPlans, CanBeDisabled);
-  
+
   // remove calculations that are never necessary
-  registerRule("remove-unnecessary-calculations-2",
-               removeUnnecessaryCalculationsRule,
-               OptimizerRule::removeUnnecessaryCalculationsRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
+  registerRule("remove-unnecessary-calculations-2", removeUnnecessaryCalculationsRule,
+               OptimizerRule::removeUnnecessaryCalculationsRule_pass6,
+               DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   // finally, push calculations as far down as possible
   registerRule("move-calculations-down", moveCalculationsDownRule,
-               OptimizerRule::moveCalculationsDownRule_pass9, DoesNotCreateAdditionalPlans, CanBeDisabled);
+               OptimizerRule::moveCalculationsDownRule_pass9,
+               DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   // patch update statements
   registerRule("patch-update-statements", patchUpdateStatementsRule,
-               OptimizerRule::patchUpdateStatementsRule_pass9, DoesNotCreateAdditionalPlans, CanBeDisabled);
-  
+               OptimizerRule::patchUpdateStatementsRule_pass9,
+               DoesNotCreateAdditionalPlans, CanBeDisabled);
+
   // remove FILTER DISTANCE(...) and SORT DISTANCE(...)
   OptimizerRulesFeature::registerRule("geo-index-optimizer", geoIndexRule,
-                                      OptimizerRule::applyGeoIndexRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
-  
+                                      OptimizerRule::applyGeoIndexRule_pass6,
+                                      DoesNotCreateAdditionalPlans, CanBeDisabled);
+
   // replace FOR v IN FULLTEXT(...) with an IndexNode and Limit
   OptimizerRulesFeature::registerRule("fulltext-index-optimizer", fulltextIndexRule,
-                                      OptimizerRule::applyFulltextIndexRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
+                                      OptimizerRule::applyFulltextIndexRule_pass6,
+                                      DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
 #if 0
@@ -250,54 +269,57 @@ void OptimizerRulesFeature::addRules() {
 
     // distribute operations in cluster
     registerRule("scatter-in-cluster", scatterInClusterRule,
-                 OptimizerRule::scatterInClusterRule_pass10, DoesNotCreateAdditionalPlans, CanNotBeDisabled);
+                 OptimizerRule::scatterInClusterRule_pass10,
+                 DoesNotCreateAdditionalPlans, CanNotBeDisabled);
 
     registerRule("distribute-in-cluster", distributeInClusterRule,
-                 OptimizerRule::distributeInClusterRule_pass10, DoesNotCreateAdditionalPlans, CanNotBeDisabled);
-    
+                 OptimizerRule::distributeInClusterRule_pass10,
+                 DoesNotCreateAdditionalPlans, CanNotBeDisabled);
+
     registerRule("collect-in-cluster", collectInClusterRule,
-                 OptimizerRule::collectInClusterRule_pass10, DoesNotCreateAdditionalPlans, CanBeDisabled);
+                 OptimizerRule::collectInClusterRule_pass10,
+                 DoesNotCreateAdditionalPlans, CanBeDisabled);
 
     // distribute operations in cluster
-    registerRule("distribute-filtercalc-to-cluster",
-                 distributeFilternCalcToClusterRule,
-                 OptimizerRule::distributeFilternCalcToClusterRule_pass10, DoesNotCreateAdditionalPlans, CanBeDisabled);
+    registerRule("distribute-filtercalc-to-cluster", distributeFilternCalcToClusterRule,
+                 OptimizerRule::distributeFilternCalcToClusterRule_pass10,
+                 DoesNotCreateAdditionalPlans, CanBeDisabled);
 
     registerRule("distribute-sort-to-cluster", distributeSortToClusterRule,
-                 OptimizerRule::distributeSortToClusterRule_pass10, DoesNotCreateAdditionalPlans, CanBeDisabled);
+                 OptimizerRule::distributeSortToClusterRule_pass10,
+                 DoesNotCreateAdditionalPlans, CanBeDisabled);
 
-    registerRule("remove-unnecessary-remote-scatter",
-                 removeUnnecessaryRemoteScatterRule,
-                 OptimizerRule::removeUnnecessaryRemoteScatterRule_pass10, DoesNotCreateAdditionalPlans, CanBeDisabled);
+    registerRule("remove-unnecessary-remote-scatter", removeUnnecessaryRemoteScatterRule,
+                 OptimizerRule::removeUnnecessaryRemoteScatterRule_pass10,
+                 DoesNotCreateAdditionalPlans, CanBeDisabled);
 
-    registerRule("undistribute-remove-after-enum-coll",
-                 undistributeRemoveAfterEnumCollRule,
-                 OptimizerRule::undistributeRemoveAfterEnumCollRule_pass10, DoesNotCreateAdditionalPlans, CanBeDisabled);
-    
+    registerRule("undistribute-remove-after-enum-coll", undistributeRemoveAfterEnumCollRule,
+                 OptimizerRule::undistributeRemoveAfterEnumCollRule_pass10,
+                 DoesNotCreateAdditionalPlans, CanBeDisabled);
+
 #ifdef USE_ENTERPRISE
-    registerRule("remove-satellite-joins",
-                 removeSatelliteJoinsRule,
-                 OptimizerRule::removeSatelliteJoinsRule_pass10, DoesNotCreateAdditionalPlans, CanBeDisabled);
+    registerRule("remove-satellite-joins", removeSatelliteJoinsRule,
+                 OptimizerRule::removeSatelliteJoinsRule_pass10,
+                 DoesNotCreateAdditionalPlans, CanBeDisabled);
 #endif
-    
-    registerRule("restrict-to-single-shard",
-                 restrictToSingleShardRule,
-                 OptimizerRule::restrictToSingleShardRule_pass10, DoesNotCreateAdditionalPlans, CanBeDisabled);
+
+    registerRule("restrict-to-single-shard", restrictToSingleShardRule,
+                 OptimizerRule::restrictToSingleShardRule_pass10,
+                 DoesNotCreateAdditionalPlans, CanBeDisabled);
   }
-  
+
   // finally add the storage-engine specific rules
   addStorageEngineRules();
 }
 
 void OptimizerRulesFeature::addStorageEngineRules() {
-  StorageEngine* engine = EngineSelectorFeature::ENGINE; 
-  TRI_ASSERT(engine != nullptr); // Engine not loaded. Startup broken
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine != nullptr);  // Engine not loaded. Startup broken
   engine->addOptimizerRules();
 }
 
 /// @brief translate a list of rule ids into rule names
-std::vector<std::string> OptimizerRulesFeature::translateRules(
-    std::vector<int> const& rules) {
+std::vector<std::string> OptimizerRulesFeature::translateRules(std::vector<int> const& rules) {
   std::vector<std::string> names;
   names.reserve(rules.size());
 
@@ -323,10 +345,9 @@ char const* OptimizerRulesFeature::translateRule(int rule) {
 }
 
 /// @brief look up the ids of all disabled rules
-std::unordered_set<int> OptimizerRulesFeature::getDisabledRuleIds(
-    std::vector<std::string> const& names) {
+std::unordered_set<int> OptimizerRulesFeature::getDisabledRuleIds(std::vector<std::string> const& names) {
   std::unordered_set<int> disabled;
-                 
+
   // lookup ids of all disabled rules
   for (auto const& name : names) {
     if (name.empty()) {

@@ -31,12 +31,12 @@ namespace arangodb {
 namespace aql {
 class ExecutionPlan;
 class Query;
-}
+}  // namespace aql
 
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 namespace graph {
 
 struct ShortestPathOptions : public BaseOptions {
@@ -53,12 +53,10 @@ struct ShortestPathOptions : public BaseOptions {
 
   explicit ShortestPathOptions(aql::Query* query);
 
-  ShortestPathOptions(aql::Query* query,
-                      arangodb::velocypack::Slice const& info);
+  ShortestPathOptions(aql::Query* query, arangodb::velocypack::Slice const& info);
 
   // @brief DBServer-constructor used by TraverserEngines
-  ShortestPathOptions(aql::Query* query,
-                      arangodb::velocypack::Slice info,
+  ShortestPathOptions(aql::Query* query, arangodb::velocypack::Slice info,
                       arangodb::velocypack::Slice collections);
   ~ShortestPathOptions();
 
@@ -88,8 +86,7 @@ struct ShortestPathOptions : public BaseOptions {
   // Creates a complete Object containing all EngineInfo
   // in the given builder.
   void addReverseLookupInfo(aql::ExecutionPlan* plan, std::string const& collectionName,
-                            std::string const& attributeName,
-                            aql::AstNode* condition);
+                            std::string const& attributeName, aql::AstNode* condition);
 
   // Compute the weight of the given edge
   double weightEdge(arangodb::velocypack::Slice const);

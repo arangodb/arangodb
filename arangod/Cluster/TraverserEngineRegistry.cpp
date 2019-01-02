@@ -36,8 +36,7 @@
 using namespace arangodb::traverser;
 
 #ifndef USE_ENTERPRISE
-std::unique_ptr<BaseEngine> BaseEngine::BuildEngine(TRI_vocbase_t* vocbase,
-                                                    VPackSlice info) {
+std::unique_ptr<BaseEngine> BaseEngine::BuildEngine(TRI_vocbase_t* vocbase, VPackSlice info) {
   VPackSlice type = info.get(std::vector<std::string>({"options", "type"}));
   if (!type.isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -49,14 +48,13 @@ std::unique_ptr<BaseEngine> BaseEngine::BuildEngine(TRI_vocbase_t* vocbase,
   } else if (type.isEqualString("shortestPath")) {
     return std::make_unique<ShortestPathEngine>(vocbase, info);
   }
-  THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_BAD_PARAMETER,
-      "The 'options.type' attribute either has to be traversal or shortestPath");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                 "The 'options.type' attribute either has to "
+                                 "be traversal or shortestPath");
 }
 #endif
 
-TraverserEngineRegistry::EngineInfo::EngineInfo(TRI_vocbase_t* vocbase,
-                                                VPackSlice info)
+TraverserEngineRegistry::EngineInfo::EngineInfo(TRI_vocbase_t* vocbase, VPackSlice info)
     : _isInUse(false),
       _toBeDeleted(false),
       _engine(BaseEngine::BuildEngine(vocbase, info)),
@@ -74,8 +72,7 @@ TraverserEngineRegistry::~TraverserEngineRegistry() {
 
 /// @brief Create a new Engine and return it's id
 TraverserEngineID TraverserEngineRegistry::createNew(TRI_vocbase_t* vocbase,
-                                                     VPackSlice engineInfo,
-                                                     double ttl) {
+                                                     VPackSlice engineInfo, double ttl) {
   TraverserEngineID id = TRI_NewTickServer();
   TRI_ASSERT(id != 0);
   auto info = std::make_unique<EngineInfo>(vocbase, engineInfo);

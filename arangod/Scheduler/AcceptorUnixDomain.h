@@ -39,6 +39,6 @@ class AcceptorUnixDomain final : public Acceptor {
  private:
   asio_ns::local::stream_protocol::acceptor _acceptor;
 };
-}
+}  // namespace arangodb
 
 #endif

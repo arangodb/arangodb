@@ -37,7 +37,8 @@ void ManagedDocumentResult::clone(ManagedDocumentResult& cloned) const {
     cloned._useString = true;
     cloned._string = _string;
     cloned._localDocumentId = _localDocumentId;
-    cloned._vpack = reinterpret_cast<uint8_t*>(const_cast<char*>(cloned._string.data()));
+    cloned._vpack =
+        reinterpret_cast<uint8_t*>(const_cast<char*>(cloned._string.data()));
   } else if (_managed) {
     cloned.setManaged(_vpack, _localDocumentId);
   } else {
@@ -45,9 +46,10 @@ void ManagedDocumentResult::clone(ManagedDocumentResult& cloned) const {
   }
 }
 
-//add unmanaged vpack 
-void ManagedDocumentResult::setUnmanaged(uint8_t const* vpack, LocalDocumentId const& documentId) {
-  if(_managed || _useString) {
+// add unmanaged vpack
+void ManagedDocumentResult::setUnmanaged(uint8_t const* vpack,
+                                         LocalDocumentId const& documentId) {
+  if (_managed || _useString) {
     reset();
   }
   TRI_ASSERT(_length == 0);
@@ -58,13 +60,13 @@ void ManagedDocumentResult::setUnmanaged(uint8_t const* vpack, LocalDocumentId c
 void ManagedDocumentResult::setManaged(uint8_t const* vpack, LocalDocumentId const& documentId) {
   VPackSlice slice(vpack);
   auto newLen = slice.byteSize();
-  if (_length >= newLen && _managed){
+  if (_length >= newLen && _managed) {
     std::memcpy(_vpack, vpack, newLen);
   } else {
     reset();
     _vpack = new uint8_t[newLen];
     std::memcpy(_vpack, vpack, newLen);
-    _length=newLen;
+    _length = newLen;
   }
   _localDocumentId = documentId;
   _managed = true;
@@ -73,7 +75,7 @@ void ManagedDocumentResult::setManaged(uint8_t const* vpack, LocalDocumentId con
 void ManagedDocumentResult::setManagedAfterStringUsage(LocalDocumentId const& documentId) {
   TRI_ASSERT(!_string.empty());
   TRI_ASSERT(_useString);
-  
+
   _vpack = reinterpret_cast<uint8_t*>(const_cast<char*>(_string.data()));
   _localDocumentId = documentId;
   _useString = true;
@@ -103,7 +105,8 @@ void ManagedDocumentResult::reset() noexcept {
   _vpack = nullptr;
 }
 
-void ManagedDocumentResult::addToBuilder(velocypack::Builder& builder, bool allowExternals) const {
+void ManagedDocumentResult::addToBuilder(velocypack::Builder& builder,
+                                         bool allowExternals) const {
   TRI_ASSERT(!empty());
   auto slice = velocypack::Slice(_vpack);
   TRI_ASSERT(!slice.isExternal());

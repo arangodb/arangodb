@@ -218,7 +218,7 @@ void operator delete(void* pointer) noexcept {
 }
 
 /// @brief overloaded operator delete
-void operator delete(void* pointer, std::nothrow_t const&) noexcept {
+void operator delete(void* pointer, std::nothrow_t const&)noexcept {
   if (pointer) {
     free(pointer);
   }
@@ -286,15 +286,11 @@ void TRI_Free(void* m) {
 }
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-void TRI_AllowMemoryFailures() {
-  AllowMemoryFailures = 1;
-}
+void TRI_AllowMemoryFailures() { AllowMemoryFailures = 1; }
 #endif
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-void TRI_DisallowMemoryFailures() {
-  AllowMemoryFailures = 0;
-}
+void TRI_DisallowMemoryFailures() { AllowMemoryFailures = 0; }
 #endif
 
 /// @brief securely zero memory

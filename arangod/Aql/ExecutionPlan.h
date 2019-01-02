@@ -24,18 +24,18 @@
 #ifndef ARANGOD_AQL_EXECUTION_PLAN_H
 #define ARANGOD_AQL_EXECUTION_PLAN_H 1
 
-#include "Basics/Common.h"
 #include "Aql/CollectOptions.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ModificationOptions.h"
 #include "Aql/types.h"
+#include "Basics/Common.h"
 #include "Basics/SmallVector.h"
 
 namespace arangodb {
 namespace velocypack {
-  class Slice;
+class Slice;
 }
-  
+
 namespace aql {
 class Ast;
 struct AstNode;
@@ -57,13 +57,11 @@ class ExecutionPlan {
   static ExecutionPlan* instantiateFromAst(Ast*);
 
   /// @brief process the list of collections in a VelocyPack
-  static void getCollectionsFromVelocyPack(Ast* ast,
-                                           arangodb::velocypack::Slice const);
+  static void getCollectionsFromVelocyPack(Ast* ast, arangodb::velocypack::Slice const);
 
   /// @brief create an execution plan from VelocyPack
-  static ExecutionPlan* instantiateFromVelocyPack(
-      Ast* ast, arangodb::velocypack::Slice const);
-  
+  static ExecutionPlan* instantiateFromVelocyPack(Ast* ast, arangodb::velocypack::Slice const);
+
   ExecutionPlan* clone(Ast*);
 
   /// @brief clone the plan by recursively cloning starting from the root
@@ -72,16 +70,18 @@ class ExecutionPlan {
   /// @brief create an execution plan identical to this one
   ///   keep the memory of the plan on the query object specified.
   ExecutionPlan* clone(Query const&);
-  
+
   /// @brief export to VelocyPack
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(Ast*, bool verbose) const;
-  
+
   void toVelocyPack(arangodb::velocypack::Builder&, Ast*, bool verbose) const;
 
   /// @brief check if the plan is empty
   inline bool empty() const { return (_root == nullptr); }
-  
-  bool isResponsibleForInitialize() const { return _isResponsibleForInitialize; }
+
+  bool isResponsibleForInitialize() const {
+    return _isResponsibleForInitialize;
+  }
 
   /// @brief note that an optimizer rule was applied
   inline void addAppliedRule(int level) { _appliedRules.emplace_back(level); }
@@ -138,7 +138,7 @@ class ExecutionPlan {
   void excludeFromScatterGather(ExecutionNode const* node) {
     _excludeFromScatterGather.emplace(node);
   }
-  
+
   bool shouldExcludeFromScatterGather(ExecutionNode const* node) const {
     return (_excludeFromScatterGather.find(node) != _excludeFromScatterGather.end());
   }
@@ -155,16 +155,14 @@ class ExecutionPlan {
 
   /// @brief find nodes of a certain type
   void findNodesOfType(SmallVector<ExecutionNode*>& result,
-                       ExecutionNode::NodeType,
-                       bool enterSubqueries);
+                       ExecutionNode::NodeType, bool enterSubqueries);
 
   /// @brief find nodes of a certain types
   void findNodesOfType(SmallVector<ExecutionNode*>& result,
-      std::vector<ExecutionNode::NodeType> const&, bool enterSubqueries);
+                       std::vector<ExecutionNode::NodeType> const&, bool enterSubqueries);
 
   /// @brief find all end nodes in a plan
-  void findEndNodes(SmallVector<ExecutionNode*>& result,
-                    bool enterSubqueries) const;
+  void findEndNodes(SmallVector<ExecutionNode*>& result, bool enterSubqueries) const;
 
 /// @brief check linkage
 #if 0
@@ -219,8 +217,7 @@ class ExecutionPlan {
 
  private:
   /// @brief creates a calculation node
-  ExecutionNode* createCalculation(Variable*, Variable const*, AstNode const*,
-                                   ExecutionNode*);
+  ExecutionNode* createCalculation(Variable*, Variable const*, AstNode const*, ExecutionNode*);
 
   /// @brief get the subquery node from an expression
   /// this will return a nullptr if the expression does not refer to a subquery
@@ -329,11 +326,11 @@ class ExecutionPlan {
 
   /// @brief a lookup map for all subqueries created
   std::unordered_map<VariableId, ExecutionNode*> _subqueries;
-    
+
   /// @brief these nodes will be excluded from building scatter/gather "diamonds" later
   std::unordered_set<ExecutionNode const*> _excludeFromScatterGather;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

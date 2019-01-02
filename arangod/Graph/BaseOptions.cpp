@@ -22,8 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "BaseOptions.h"
-#include "Aql/Ast.h"
 #include "Aql/AqlTransaction.h"
+#include "Aql/Ast.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
@@ -60,16 +60,14 @@ BaseOptions::LookupInfo::~LookupInfo() {
 }
 
 BaseOptions::LookupInfo::LookupInfo(arangodb::aql::Query* query,
-                                    VPackSlice const& info,
-                                    VPackSlice const& shards) {
+                                    VPackSlice const& info, VPackSlice const& shards) {
   TRI_ASSERT(shards.isArray());
   idxHandles.reserve(shards.length());
 
-  conditionNeedUpdate = arangodb::basics::VelocyPackHelper::getBooleanValue(
-      info, "condNeedUpdate", false);
-  conditionMemberToUpdate =
-      arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
-          info, "condMemberToUpdate", 0);
+  conditionNeedUpdate =
+      arangodb::basics::VelocyPackHelper::getBooleanValue(info, "condNeedUpdate", false);
+  conditionMemberToUpdate = arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
+      info, "condMemberToUpdate", 0);
 
   VPackSlice read = info.get("handle");
   if (!read.isObject()) {
@@ -99,7 +97,6 @@ BaseOptions::LookupInfo::LookupInfo(arangodb::aql::Query* query,
   } else {
     expression = nullptr;
   }
-
 
   read = info.get("condition");
   if (!read.isObject()) {
@@ -159,8 +156,8 @@ double BaseOptions::LookupInfo::estimateCost(size_t& nrItems) const {
   return 1000.0;
 }
 
-std::unique_ptr<BaseOptions> BaseOptions::createOptionsFromSlice(
-    arangodb::aql::Query* query, VPackSlice const& definition) {
+std::unique_ptr<BaseOptions> BaseOptions::createOptionsFromSlice(arangodb::aql::Query* query,
+                                                                 VPackSlice const& definition) {
   VPackSlice type = definition.get("type");
   if (type.isString() && type.isEqualString("shortestPath")) {
     return std::make_unique<ShortestPathOptions>(query, definition);
@@ -187,8 +184,7 @@ BaseOptions::BaseOptions(BaseOptions const& other)
   TRI_ASSERT(other._tmpVar == nullptr);
 }
 
-BaseOptions::BaseOptions(arangodb::aql::Query* query, VPackSlice info,
-                         VPackSlice collections)
+BaseOptions::BaseOptions(arangodb::aql::Query* query, VPackSlice info, VPackSlice collections)
     : _ctx(new aql::FixedVarExpressionContext()),
       _query(query),
       _trx(query->trx()),
@@ -234,12 +230,9 @@ void BaseOptions::setVariable(aql::Variable const* variable) {
   _tmpVar = variable;
 }
 
-void BaseOptions::addLookupInfo(aql::ExecutionPlan* plan,
-                                std::string const& collectionName,
-                                std::string const& attributeName,
-                                aql::AstNode* condition) {
-  injectLookupInfoInList(_baseLookupInfos, plan, collectionName, attributeName,
-                         condition);
+void BaseOptions::addLookupInfo(aql::ExecutionPlan* plan, std::string const& collectionName,
+                                std::string const& attributeName, aql::AstNode* condition) {
+  injectLookupInfoInList(_baseLookupInfos, plan, collectionName, attributeName, condition);
 }
 
 void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
@@ -249,8 +242,9 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
                                          aql::AstNode* condition) {
   LookupInfo info;
   info.indexCondition = condition->clone(plan->getAst());
-  bool res = _trx->getBestIndexHandleForFilterCondition(
-      collectionName, info.indexCondition, _tmpVar, 1000, info.idxHandles[0]);
+  bool res = _trx->getBestIndexHandleForFilterCondition(collectionName,
+                                                        info.indexCondition, _tmpVar,
+                                                        1000, info.idxHandles[0]);
   // Right now we have an enforced edge index which should always fit.
   if (!res) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -262,8 +256,7 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
   // it is used in. Such that the traverser can update the respective string
   // value in-place
 
-  std::pair<arangodb::aql::Variable const*, std::vector<basics::AttributeName>>
-      pathCmp;
+  std::pair<arangodb::aql::Variable const*, std::vector<basics::AttributeName>> pathCmp;
   for (size_t i = 0; i < info.indexCondition->numMembers(); ++i) {
     // We search through the nary-and and look for EQ - _from/_to
     auto eq = info.indexCondition->getMemberUnchecked(i);
@@ -279,8 +272,7 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
       if (pathCmp.first != _tmpVar) {
         continue;
       }
-      if (pathCmp.second.size() == 1 &&
-          pathCmp.second[0].name == attributeName) {
+      if (pathCmp.second.size() == 1 && pathCmp.second[0].name == attributeName) {
         info.conditionNeedUpdate = true;
         info.conditionMemberToUpdate = i;
         break;
@@ -289,7 +281,8 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
     }
   }
   std::unordered_set<size_t> toRemove;
-  aql::Condition::CollectOverlappingMembers(plan, _tmpVar, condition, info.indexCondition, toRemove, false);
+  aql::Condition::CollectOverlappingMembers(plan, _tmpVar, condition,
+                                            info.indexCondition, toRemove, false);
   size_t n = condition->numMembers();
   if (n == toRemove.size()) {
     // FastPath, all covered.
@@ -310,8 +303,7 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
 
 void BaseOptions::clearVariableValues() { _ctx->clearVariableValues(); }
 
-void BaseOptions::setVariableValue(aql::Variable const* var,
-                                   aql::AqlValue const value) {
+void BaseOptions::setVariableValue(aql::Variable const* var, aql::AqlValue const value) {
   _ctx->setVariableValue(var, value);
 }
 
@@ -354,8 +346,8 @@ void BaseOptions::injectEngineInfo(VPackBuilder& result) const {
   _tmpVar->toVelocyPack(result);
 }
 
-arangodb::aql::Expression* BaseOptions::getEdgeExpression(
-    size_t cursorId, bool& needToInjectVertex) const {
+arangodb::aql::Expression* BaseOptions::getEdgeExpression(size_t cursorId,
+                                                          bool& needToInjectVertex) const {
   TRI_ASSERT(!_baseLookupInfos.empty());
   TRI_ASSERT(_baseLookupInfos.size() > cursorId);
   needToInjectVertex = !_baseLookupInfos[cursorId].conditionNeedUpdate;
@@ -385,9 +377,8 @@ bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression,
   return result;
 }
 
-double BaseOptions::costForLookupInfoList(
-    std::vector<BaseOptions::LookupInfo> const& list,
-    size_t& createItems) const {
+double BaseOptions::costForLookupInfoList(std::vector<BaseOptions::LookupInfo> const& list,
+                                          size_t& createItems) const {
   double cost = 0;
   createItems = 0;
   for (auto const& li : list) {
@@ -396,12 +387,10 @@ double BaseOptions::costForLookupInfoList(
   return cost;
 }
 
-EdgeCursor* BaseOptions::nextCursorLocal(ManagedDocumentResult* mmdr,
-                                         StringRef vid,
+EdgeCursor* BaseOptions::nextCursorLocal(ManagedDocumentResult* mmdr, StringRef vid,
                                          std::vector<LookupInfo>& list) {
   TRI_ASSERT(mmdr != nullptr);
-  auto allCursor =
-      std::make_unique<SingleServerEdgeCursor>(mmdr, this, list.size());
+  auto allCursor = std::make_unique<SingleServerEdgeCursor>(mmdr, this, list.size());
   auto& opCursors = allCursor->getCursors();
   for (auto& info : list) {
     auto& node = info.indexCondition;
@@ -441,9 +430,8 @@ TraverserCache* BaseOptions::cache() {
   return _cache.get();
 }
 
-void BaseOptions::activateCache(
-    bool enableDocumentCache,
-    std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines) {
+void BaseOptions::activateCache(bool enableDocumentCache,
+                                std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines) {
   // Do not call this twice.
   TRI_ASSERT(_cache == nullptr);
   _cache.reset(cacheFactory::CreateCache(_query, enableDocumentCache, engines));

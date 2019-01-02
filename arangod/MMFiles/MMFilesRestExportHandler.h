@@ -71,6 +71,6 @@ class MMFilesRestExportHandler : public RestVocbaseBaseHandler {
 
   CollectionExport::Restrictions _restrictions;
 };
-}
+}  // namespace arangodb
 
 #endif

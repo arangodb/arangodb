@@ -27,15 +27,11 @@
 
 namespace arangodb {
 
-class DatabasePathFeature final
-    : public application_features::ApplicationFeature {
+class DatabasePathFeature final : public application_features::ApplicationFeature {
  public:
-  explicit DatabasePathFeature(
-      application_features::ApplicationServer* server);
-      
-  static constexpr const char* name() {
-    return "DatabasePath";
-  }
+  explicit DatabasePathFeature(application_features::ApplicationServer* server);
+
+  static constexpr const char* name() { return "DatabasePath"; }
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -51,6 +47,6 @@ class DatabasePathFeature final
   std::string _directory;
   std::string _requiredDirectoryState;
 };
-}
+}  // namespace arangodb
 
 #endif

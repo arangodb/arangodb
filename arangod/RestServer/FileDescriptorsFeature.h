@@ -28,7 +28,7 @@
 
 namespace arangodb {
 class FileDescriptorsFeature : public application_features::ApplicationFeature {
-public:
+ public:
   static uint64_t const RECOMMENDED;
 
  public:
@@ -45,6 +45,6 @@ public:
  private:
   void adjustFileDescriptors();
 };
-}
+}  // namespace arangodb
 
 #endif

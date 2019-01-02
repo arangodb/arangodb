@@ -36,6 +36,6 @@ class RestEchoHandler : public arangodb::RestVocbaseBaseHandler {
   bool isDirect() const override { return true; }
   RestStatus execute() override;
 };
-}
+}  // namespace arangodb
 
 #endif

@@ -32,7 +32,10 @@ using namespace arangodb::aql;
 
 SortNode::SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
                    SortElementVector const& elements, bool stable)
-    : ExecutionNode(plan, base), _reinsertInCluster(true),  _elements(elements), _stable(stable){}
+    : ExecutionNode(plan, base),
+      _reinsertInCluster(true),
+      _elements(elements),
+      _stable(stable) {}
 
 /// @brief toVelocyPack, for SortNode
 void SortNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
@@ -128,7 +131,7 @@ bool SortNode::simplify(ExecutionPlan* plan) {
 
   return _elements.empty();
 }
-  
+
 void SortNode::removeConditions(size_t count) {
   TRI_ASSERT(_elements.size() > count);
   TRI_ASSERT(count > 0);
@@ -136,8 +139,8 @@ void SortNode::removeConditions(size_t count) {
 }
 
 /// @brief returns all sort information
-SortInformation SortNode::getSortInformation(
-    ExecutionPlan* plan, arangodb::basics::StringBuffer* buffer) const {
+SortInformation SortNode::getSortInformation(ExecutionPlan* plan,
+                                             arangodb::basics::StringBuffer* buffer) const {
   SortInformation result;
 
   auto const& elms = elements();
@@ -176,14 +179,16 @@ SortInformation SortNode::getSortInformation(
         return result;
       }
       result.criteria.emplace_back(
-          std::make_tuple(const_cast<ExecutionNode const*>(setter), std::string(buffer->c_str(), buffer->length()), (*it).ascending));
+          std::make_tuple(const_cast<ExecutionNode const*>(setter),
+                          std::string(buffer->c_str(), buffer->length()), (*it).ascending));
       buffer->reset();
     } else {
       // use variable only. note that we cannot use the variable's name as it is
       // not
       // necessarily unique in one query (yes, COLLECT, you are to blame!)
       result.criteria.emplace_back(
-          std::make_tuple(const_cast<ExecutionNode const*>(setter), std::to_string(variable->id), (*it).ascending));
+          std::make_tuple(const_cast<ExecutionNode const*>(setter),
+                          std::to_string(variable->id), (*it).ascending));
     }
   }
 

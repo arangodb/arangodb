@@ -74,7 +74,7 @@ class MMFilesSynchronizerThread final : public Thread {
     MMFilesWalLogfile::IdType id;
     int fd;
   } _logfileCache;
-  
+
   /// @brief number of requests waiting
   /// the value stored here consists of two parts:
   /// the lower 32 bits contain the number of waiters that requested
@@ -83,6 +83,6 @@ class MMFilesSynchronizerThread final : public Thread {
   std::atomic<uint64_t> _waiting;
 };
 
-}
+}  // namespace arangodb
 
 #endif

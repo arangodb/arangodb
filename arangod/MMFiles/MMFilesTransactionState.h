@@ -28,12 +28,12 @@
 #include "Basics/Result.h"
 #include "Basics/SmallVector.h"
 #include "StorageEngine/TransactionState.h"
-#include "Transaction/Methods.h"
 #include "Transaction/Hints.h"
+#include "Transaction/Methods.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
-                                
+
 struct TRI_vocbase_t;
 
 namespace rocksdb {
@@ -47,7 +47,7 @@ class MMFilesWalMarker;
 namespace transaction {
 class Methods;
 struct Options;
-}
+}  // namespace transaction
 class TransactionCollection;
 
 /// @brief transaction type
@@ -68,11 +68,11 @@ class MMFilesTransactionState final : public TransactionState {
   bool hasFailedOperations() const override {
     return (_hasOperations && _status == transaction::Status::ABORTED);
   }
-  
+
   /// @brief add a WAL operation for a transaction collection
   int addOperation(LocalDocumentId const& documentId, TRI_voc_rid_t revisionId,
                    MMFilesDocumentOperation&, MMFilesWalMarker const* marker, bool&);
-  
+
   /// @brief get the transaction id for usage in a marker
   TRI_voc_tid_t idForMarker() {
     if (isSingleOperation()) {
@@ -80,7 +80,7 @@ class MMFilesTransactionState final : public TransactionState {
     }
     return _id;
   }
-  
+
   /// @brief get (or create) a rocksdb WriteTransaction
   rocksdb::Transaction* rocksTransaction();
 
@@ -91,8 +91,8 @@ class MMFilesTransactionState final : public TransactionState {
       return (!isReadOnlyTransaction() && !isSingleOperation());
     }
 
-    return (_nestingLevel == 0 && _beginWritten &&
-            !isReadOnlyTransaction() && !isSingleOperation());
+    return (_nestingLevel == 0 && _beginWritten && !isReadOnlyTransaction() &&
+            !isSingleOperation());
   }
 
   /// @brief write WAL begin marker
@@ -106,13 +106,13 @@ class MMFilesTransactionState final : public TransactionState {
 
   /// @brief free all operations for a transaction
   void freeOperations(transaction::Methods* activeTrx);
-  
+
  private:
   rocksdb::Transaction* _rocksTransaction;
   bool _beginWritten;
   bool _hasOperations;
 };
 
-}
+}  // namespace arangodb
 
 #endif

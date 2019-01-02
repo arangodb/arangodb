@@ -40,12 +40,10 @@ ModificationOptions::ModificationOptions(VPackSlice const& slice) {
       basics::VelocyPackHelper::getBooleanValue(obj, "ignoreDocumentNotFound", false);
   readCompleteInput =
       basics::VelocyPackHelper::getBooleanValue(obj, "readCompleteInput", true);
-  useIsRestore =
-      basics::VelocyPackHelper::getBooleanValue(obj, "useIsRestore", false);
+  useIsRestore = basics::VelocyPackHelper::getBooleanValue(obj, "useIsRestore", false);
   consultAqlWriteFilter =
       basics::VelocyPackHelper::getBooleanValue(obj, "consultAqlWriteFilter", false);
-  ignoreRevs =
-      basics::VelocyPackHelper::getBooleanValue(obj, "ignoreRevs", true);
+  ignoreRevs = basics::VelocyPackHelper::getBooleanValue(obj, "ignoreRevs", true);
 }
 
 void ModificationOptions::toVelocyPack(VPackBuilder& builder) const {

@@ -173,15 +173,15 @@ void TRI_SetProcessTitle(char const* title);
 /// @brief starts an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CreateExternalProcess(char const* executable, std::vector<std::string> const& arguments,
+void TRI_CreateExternalProcess(char const* executable,
+                               std::vector<std::string> const& arguments,
                                bool usePipes, ExternalId* pid);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the status of an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid,
-                                               bool wait);
+ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether a signal is expected to be terminal
@@ -192,9 +192,7 @@ bool TRI_IsDeadlySignal(int signal);
 /// @brief kills an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-ExternalProcessStatus TRI_KillExternalProcess(ExternalId pid,
-                                              int signal,
-                                              bool isTerminal);
+ExternalProcessStatus TRI_KillExternalProcess(ExternalId pid, int signal, bool isTerminal);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief suspends an external process, only on Unix

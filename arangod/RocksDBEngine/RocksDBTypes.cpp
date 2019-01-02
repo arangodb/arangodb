@@ -29,62 +29,43 @@ namespace {
 
 static RocksDBEntryType database = arangodb::RocksDBEntryType::Database;
 static rocksdb::Slice Database(
-    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&database),
-    1);
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&database), 1);
 
 static RocksDBEntryType collection = RocksDBEntryType::Collection;
 static rocksdb::Slice Collection(
-    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
-        &collection),
-    1);
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&collection), 1);
 
 static RocksDBEntryType counterVal = RocksDBEntryType::CounterValue;
 static rocksdb::Slice CounterValue(
-    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
-        &counterVal),
-    1);
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&counterVal), 1);
 
 static RocksDBEntryType document = RocksDBEntryType::Document;
 static rocksdb::Slice Document(
-    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&document),
-    1);
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&document), 1);
 
 static RocksDBEntryType primaryIndexValue = RocksDBEntryType::PrimaryIndexValue;
 static rocksdb::Slice PrimaryIndexValue(
-    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
-        &primaryIndexValue),
-    1);
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&primaryIndexValue), 1);
 
 static RocksDBEntryType edgeIndexValue = RocksDBEntryType::EdgeIndexValue;
 static rocksdb::Slice EdgeIndexValue(
-    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
-        &edgeIndexValue),
-    1);
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&edgeIndexValue), 1);
 
 static RocksDBEntryType vpackIndexValue = RocksDBEntryType::VPackIndexValue;
 static rocksdb::Slice VPackIndexValue(
-    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
-        &vpackIndexValue),
-    1);
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&vpackIndexValue), 1);
 
 static RocksDBEntryType uniqueVPIndex = RocksDBEntryType::UniqueVPackIndexValue;
 static rocksdb::Slice UniqueVPackIndexValue(
-    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
-        &uniqueVPIndex),
-    1);
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&uniqueVPIndex), 1);
 
-static RocksDBEntryType fulltextIndexValue =
-    RocksDBEntryType::FulltextIndexValue;
+static RocksDBEntryType fulltextIndexValue = RocksDBEntryType::FulltextIndexValue;
 static rocksdb::Slice FulltextIndexValue(
-    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
-        &fulltextIndexValue),
-    1);
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&fulltextIndexValue), 1);
 
 static RocksDBEntryType geoIndexValue = RocksDBEntryType::GeoIndexValue;
 static rocksdb::Slice GeoIndexValue(
-    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
-        &geoIndexValue),
-    1);
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&geoIndexValue), 1);
 
 static RocksDBEntryType view = RocksDBEntryType::View;
 static rocksdb::Slice View(
@@ -92,30 +73,20 @@ static rocksdb::Slice View(
 
 static RocksDBEntryType settingsValue = RocksDBEntryType::SettingsValue;
 static rocksdb::Slice SettingsValue(
-    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
-        &settingsValue),
-    1);
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&settingsValue), 1);
 
-static RocksDBEntryType replicationApplierConfig =
-    RocksDBEntryType::ReplicationApplierConfig;
+static RocksDBEntryType replicationApplierConfig = RocksDBEntryType::ReplicationApplierConfig;
 static rocksdb::Slice ReplicationApplierConfig(
-    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
-        &replicationApplierConfig),
-    1);
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&replicationApplierConfig), 1);
 
-static RocksDBEntryType indexEstimateValue =
-    RocksDBEntryType::IndexEstimateValue;
+static RocksDBEntryType indexEstimateValue = RocksDBEntryType::IndexEstimateValue;
 static rocksdb::Slice IndexEstimateValue(
-    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
-        &indexEstimateValue),
-    1);
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&indexEstimateValue), 1);
 
 static RocksDBEntryType keyGeneratorValue = RocksDBEntryType::KeyGeneratorValue;
 static rocksdb::Slice KeyGeneratorValue(
-    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
-        &keyGeneratorValue),
-    1);
-}
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&keyGeneratorValue), 1);
+}  // namespace
 
 char const* arangodb::rocksDBEntryTypeName(arangodb::RocksDBEntryType type) {
   switch (type) {
@@ -232,7 +203,4 @@ rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
   return Document;  // avoids warning - errorslice instead ?!
 }
 
-
-char arangodb::rocksDBFormatVersion() {
-  return '0';
-}
+char arangodb::rocksDBFormatVersion() { return '0'; }

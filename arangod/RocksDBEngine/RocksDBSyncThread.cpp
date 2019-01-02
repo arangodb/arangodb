@@ -32,21 +32,21 @@
 using namespace arangodb;
 
 RocksDBSyncThread::RocksDBSyncThread(RocksDBEngine* engine, std::chrono::milliseconds interval)
-    : Thread("RocksDBSync"), 
-      _engine(engine), 
+    : Thread("RocksDBSync"),
+      _engine(engine),
       _interval(interval),
       _lastSyncTime(std::chrono::steady_clock::now()),
       _lastSequenceNumber(0) {}
 
 RocksDBSyncThread::~RocksDBSyncThread() { shutdown(); }
- 
-Result RocksDBSyncThread::syncWal() { 
+
+Result RocksDBSyncThread::syncWal() {
   // note the following line in RocksDB documentation (rocksdb/db.h):
   // > Currently only works if allow_mmap_writes = false in Options.
   TRI_ASSERT(!_engine->rocksDBOptions().allow_mmap_writes);
-      
+
   auto db = _engine->db()->GetBaseDB();
-   
+
   // set time of last syncing under the lock
   auto const now = std::chrono::steady_clock::now();
   {
@@ -56,9 +56,9 @@ Result RocksDBSyncThread::syncWal() {
       // update last sync time...
       _lastSyncTime = now;
     }
-        
+
     auto lastSequenceNumber = db->GetLatestSequenceNumber();
-  
+
     if (lastSequenceNumber > _lastSequenceNumber) {
       // update last sequence number
       _lastSequenceNumber = lastSequenceNumber;
@@ -68,7 +68,7 @@ Result RocksDBSyncThread::syncWal() {
   // actual syncing is done without holding the lock
   return sync(db);
 }
-  
+
 Result RocksDBSyncThread::sync(rocksdb::DB* db) {
 #ifndef _WIN32
   // if called on Windows, we would get the following error from RocksDB:
@@ -79,7 +79,7 @@ Result RocksDBSyncThread::sync(rocksdb::DB* db) {
   if (!status.ok()) {
     return rocksutils::convertStatus(status);
   }
-#endif 
+#endif
   return Result();
 }
 
@@ -94,22 +94,25 @@ void RocksDBSyncThread::beginShutdown() {
 void RocksDBSyncThread::run() {
   TRI_ASSERT(_engine != nullptr);
   auto db = _engine->db()->GetBaseDB();
-        
-  LOG_TOPIC(TRACE, Logger::ROCKSDB) << "starting RocksDB sync thread with interval " << _interval.count() << " milliseconds";
+
+  LOG_TOPIC(TRACE, Logger::ROCKSDB)
+      << "starting RocksDB sync thread with interval " << _interval.count()
+      << " milliseconds";
 
   while (!isStopping()) {
     try {
       auto const now = std::chrono::steady_clock::now();
-     
+
       {
-        // wait for time to elapse, and after that update last sync time 
+        // wait for time to elapse, and after that update last sync time
         CONDITION_LOCKER(guard, _condition);
 
         auto const previousLastSequenceNumber = _lastSequenceNumber;
         auto const previousLastSyncTime = _lastSyncTime;
         auto const end = _lastSyncTime + _interval;
         if (end > now) {
-          guard.wait(std::chrono::microseconds(std::chrono::duration_cast<std::chrono::microseconds>(end - now)));
+          guard.wait(std::chrono::microseconds(
+              std::chrono::duration_cast<std::chrono::microseconds>(end - now)));
         }
 
         if (_lastSyncTime > previousLastSyncTime) {
@@ -118,9 +121,9 @@ void RocksDBSyncThread::run() {
         }
 
         _lastSyncTime = std::chrono::steady_clock::now();
-        
+
         auto lastSequenceNumber = db->GetLatestSequenceNumber();
-        
+
         if (lastSequenceNumber == previousLastSequenceNumber) {
           // nothing to sync, so don't cause unnecessary load
           continue;
@@ -128,17 +131,20 @@ void RocksDBSyncThread::run() {
 
         _lastSequenceNumber = lastSequenceNumber;
       }
-   
+
       // will update last sync time, and do the actual sync
       Result res = sync(db);
 
       if (res.fail()) {
-        LOG_TOPIC(WARN, Logger::ROCKSDB) << "could not sync RocksDB WAL: " << res.errorMessage();
-      } 
+        LOG_TOPIC(WARN, Logger::ROCKSDB)
+            << "could not sync RocksDB WAL: " << res.errorMessage();
+      }
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, Logger::ROCKSDB) << "caught exception in RocksDBSyncThread: " << ex.what();
+      LOG_TOPIC(ERR, Logger::ROCKSDB)
+          << "caught exception in RocksDBSyncThread: " << ex.what();
     } catch (...) {
-      LOG_TOPIC(ERR, Logger::ROCKSDB) << "caught unknown exception in RocksDBSyncThread";
+      LOG_TOPIC(ERR, Logger::ROCKSDB)
+          << "caught unknown exception in RocksDBSyncThread";
     }
   }
 }

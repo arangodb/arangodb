@@ -35,14 +35,9 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 AsyncJobResult::AsyncJobResult()
-    : _jobId(0),
-      _response(nullptr),
-      _stamp(0.0),
-      _status(JOB_UNDEFINED),
-      _handler(nullptr) {}
+    : _jobId(0), _response(nullptr), _stamp(0.0), _status(JOB_UNDEFINED), _handler(nullptr) {}
 
-AsyncJobResult::AsyncJobResult(IdType jobId, Status status,
-                               RestHandler* handler)
+AsyncJobResult::AsyncJobResult(IdType jobId, Status status, RestHandler* handler)
     : _jobId(jobId),
       _response(nullptr),
       _stamp(TRI_microtime()),
@@ -51,8 +46,7 @@ AsyncJobResult::AsyncJobResult(IdType jobId, Status status,
 
 AsyncJobResult::~AsyncJobResult() {}
 
-AsyncJobManager::AsyncJobManager()
-    : _lock(), _jobs() {}
+AsyncJobManager::AsyncJobManager() : _lock(), _jobs() {}
 
 AsyncJobManager::~AsyncJobManager() {
   // remove all results that haven't been fetched
@@ -166,9 +160,9 @@ Result AsyncJobManager::cancelJob(AsyncJobResult::IdType jobId) {
   auto it = _jobs.find(jobId);
 
   if (it == _jobs.end()) {
-    rv.reset(TRI_ERROR_HTTP_NOT_FOUND
-            , "could not find job (" + std::to_string(jobId) +
-              ") in AsyncJobManager during cancel operation");
+    rv.reset(TRI_ERROR_HTTP_NOT_FOUND,
+             "could not find job (" + std::to_string(jobId) +
+                 ") in AsyncJobManager during cancel operation");
     return rv;
   }
 
@@ -178,10 +172,10 @@ Result AsyncJobManager::cancelJob(AsyncJobResult::IdType jobId) {
     ok = handler->cancel();
   }
 
-  if(!ok){
+  if (!ok) {
     // if you end up here you might need to implement the cancel method on your handler
-    rv.reset(TRI_ERROR_INTERNAL,"could not cancel job (" +
-             std::to_string(jobId) + ") in handler");
+    rv.reset(TRI_ERROR_INTERNAL,
+             "could not cancel job (" + std::to_string(jobId) + ") in handler");
   }
   return rv;
 }
@@ -190,22 +184,22 @@ Result AsyncJobManager::cancelJob(AsyncJobResult::IdType jobId) {
 Result AsyncJobManager::clearAllJobs() {
   Result rv;
   WRITE_LOCKER(writeLocker, _lock);
-  
+
   for (auto const& it : _jobs) {
     bool ok = true;
     RestHandler* handler = it.second._handler;
     if (handler != nullptr) {
       ok = handler->cancel();
     }
-    
-    if(!ok){
+
+    if (!ok) {
       // if you end up here you might need to implement the cancel method on your handler
-      rv.reset(TRI_ERROR_INTERNAL,"could not cancel job (" +
-               std::to_string(it.first) + ") in handler " + handler->name());
+      rv.reset(TRI_ERROR_INTERNAL, "could not cancel job (" + std::to_string(it.first) +
+                                       ") in handler " + handler->name());
     }
   }
   _jobs.clear();
-  
+
   return rv;
 }
 
@@ -225,8 +219,8 @@ std::vector<AsyncJobResult::IdType> AsyncJobManager::done(size_t maxCount) {
 /// @brief returns the list of jobs by status
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<AsyncJobResult::IdType> AsyncJobManager::byStatus(
-    AsyncJobResult::Status status, size_t maxCount) {
+std::vector<AsyncJobResult::IdType> AsyncJobManager::byStatus(AsyncJobResult::Status status,
+                                                              size_t maxCount) {
   std::vector<AsyncJobResult::IdType> jobs;
 
   {
@@ -281,7 +275,7 @@ void AsyncJobManager::finishAsyncJob(RestHandler* handler) {
     auto it = _jobs.find(jobId);
 
     if (it == _jobs.end()) {
-      return; // job is already canceled
+      return;  // job is already canceled
     }
 
     it->second._response = response.release();

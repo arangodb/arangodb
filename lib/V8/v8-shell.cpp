@@ -24,12 +24,12 @@
 #include "v8-shell.h"
 
 #include "ApplicationFeatures/ShellColorsFeature.h"
-#include "Basics/csv.h"
 #include "Basics/Exceptions.h"
 #include "Basics/OpenFilesTracker.h"
+#include "Basics/csv.h"
 #include "Basics/tri-strings.h"
-#include "V8/v8-globals.h"
 #include "V8/v8-conv.h"
+#include "V8/v8-globals.h"
 #include "V8/v8-json.h"
 #include "V8/v8-utils.h"
 
@@ -86,7 +86,7 @@ static void ProcessCsvEnd(TRI_csv_parser_t* parser, char const* field, size_t,
   (*cb)->Call(*cb, 2, args);
 }
 
-}
+}  // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief processes a CSV file
@@ -132,7 +132,8 @@ static void JS_ProcessCsvFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Handle<v8::Function> cb = v8::Handle<v8::Function>::Cast(args[1]);
 
   // extract the options
-  v8::Handle<v8::String> separatorKey = TRI_V8_ASCII_STRING(isolate, "separator");
+  v8::Handle<v8::String> separatorKey =
+      TRI_V8_ASCII_STRING(isolate, "separator");
   v8::Handle<v8::String> quoteKey = TRI_V8_ASCII_STRING(isolate, "quote");
 
   std::string separator = ",";
@@ -171,8 +172,7 @@ static void JS_ProcessCsvFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_csv_parser_t parser;
 
-  TRI_InitCsvParser(&parser, ProcessCsvBegin,
-                    ProcessCsvAdd, ProcessCsvEnd, isolate);
+  TRI_InitCsvParser(&parser, ProcessCsvBegin, ProcessCsvAdd, ProcessCsvEnd, isolate);
 
   TRI_SetSeparatorCsvParser(&parser, separator[0]);
   if (quote.length() > 0) {
@@ -227,8 +227,7 @@ static void JS_ProcessCsvFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ProcessJsonFile(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_ProcessJsonFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -268,8 +267,7 @@ static void JS_ProcessJsonFile(
       }
 
       char* error = nullptr;
-      v8::Handle<v8::Value> object =
-          TRI_FromJsonString(isolate, line.c_str(), &error);
+      v8::Handle<v8::Value> object = TRI_FromJsonString(isolate, line.c_str(), &error);
 
       if (object->IsUndefined()) {
         if (error != nullptr) {
@@ -313,10 +311,12 @@ void TRI_InitV8Shell(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   // .............................................................................
 
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "SYS_PROCESS_CSV_FILE"),
+                               TRI_V8_ASCII_STRING(isolate,
+                                                   "SYS_PROCESS_CSV_FILE"),
                                JS_ProcessCsvFile);
-  TRI_AddGlobalFunctionVocbase(isolate, 
-                               TRI_V8_ASCII_STRING(isolate, "SYS_PROCESS_JSON_FILE"),
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate,
+                                                   "SYS_PROCESS_JSON_FILE"),
                                JS_ProcessJsonFile);
 
   bool isTty = (isatty(STDOUT_FILENO) != 0);
@@ -426,6 +426,5 @@ void TRI_InitV8Shell(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
-  TRI_AddGlobalVariableVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "COLORS"),
-                               colors);
+  TRI_AddGlobalVariableVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "COLORS"), colors);
 }

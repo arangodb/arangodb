@@ -31,24 +31,17 @@ namespace arangodb {
 namespace consensus {
 
 struct RemoveFollower : public Job {
-  
-  RemoveFollower (Node const& snapshot,
-               AgentInterface* agent,
-               std::string const& jobId,
-               std::string const& creator,
-               std::string const& database,
-               std::string const& collection,
-               std::string const& shard);
+  RemoveFollower(Node const& snapshot, AgentInterface* agent, std::string const& jobId,
+                 std::string const& creator, std::string const& database,
+                 std::string const& collection, std::string const& shard);
 
-  
-  RemoveFollower (Node const& snapshot, AgentInterface* agent,
-               JOB_STATUS status, std::string const& jobId);
-  
-  virtual ~RemoveFollower ();
-  
-  virtual JOB_STATUS status () override final;
-  virtual bool create(std::shared_ptr<VPackBuilder> envelope = nullptr)
-    override final;
+  RemoveFollower(Node const& snapshot, AgentInterface* agent, JOB_STATUS status,
+                 std::string const& jobId);
+
+  virtual ~RemoveFollower();
+
+  virtual JOB_STATUS status() override final;
+  virtual bool create(std::shared_ptr<VPackBuilder> envelope = nullptr) override final;
   virtual void run() override final;
   virtual bool start() override final;
   virtual Result abort() override final;
@@ -58,6 +51,7 @@ struct RemoveFollower : public Job {
   std::string _shard;
 };
 
-}}
+}  // namespace consensus
+}  // namespace arangodb
 
 #endif

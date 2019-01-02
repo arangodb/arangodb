@@ -29,4 +29,3 @@ std::ostream& operator<<(std::ostream& stream, arangodb::StringRef const& ref) {
   stream.write(ref.data(), ref.length());
   return stream;
 }
-
