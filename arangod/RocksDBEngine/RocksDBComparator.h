@@ -46,20 +46,17 @@ class RocksDBVPackComparator final : public rocksdb::Comparator {
   ///          > 0 if lhs > rhs
   ///            0 if lhs == rhs
   //////////////////////////////////////////////////////////////////////////////
-  int Compare(rocksdb::Slice const& lhs,
-              rocksdb::Slice const& rhs) const override {
+  int Compare(rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const override {
     return compareIndexValues(lhs, rhs);
   }
 
-  bool Equal(rocksdb::Slice const& lhs,
-             rocksdb::Slice const& rhs) const override {
+  bool Equal(rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const override {
     return (compareIndexValues(lhs, rhs) == 0);
   }
 
   // SECTION: API compatibility
   char const* Name() const override { return "RocksDBVPackComparator"; }
-  void FindShortestSeparator(std::string*,
-                             rocksdb::Slice const&) const override {}
+  void FindShortestSeparator(std::string*, rocksdb::Slice const&) const override {}
   void FindShortSuccessor(std::string*) const override {}
 
  private:
@@ -67,8 +64,7 @@ class RocksDBVPackComparator final : public rocksdb::Comparator {
   /// @brief Compares two IndexValue keys or two UniqueIndexValue keys
   /// (containing VelocyPack data and more).
   //////////////////////////////////////////////////////////////////////////////
-  int compareIndexValues(rocksdb::Slice const& lhs,
-                         rocksdb::Slice const& rhs) const;
+  int compareIndexValues(rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief A helper function for the actual VelocyPack comparison

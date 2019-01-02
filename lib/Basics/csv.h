@@ -81,11 +81,10 @@ typedef struct TRI_csv_parser_s {
 /// @brief inits a CSV parser
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitCsvParser(
-    TRI_csv_parser_t*, void (*)(TRI_csv_parser_t*, size_t),
-    void (*)(TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool),
-    void (*)(TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool),
-    void* vData);
+void TRI_InitCsvParser(TRI_csv_parser_t*, void (*)(TRI_csv_parser_t*, size_t),
+                       void (*)(TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool),
+                       void (*)(TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool),
+                       void* vData);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a CSV parser

@@ -45,6 +45,6 @@ class UniformCharacter {
   size_t _length;
   std::string const _characters;
 };
-}
+}  // namespace arangodb
 
 #endif

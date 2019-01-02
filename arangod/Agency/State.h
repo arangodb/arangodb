@@ -24,11 +24,11 @@
 #ifndef ARANGOD_CONSENSUS_STATE_H
 #define ARANGOD_CONSENSUS_STATE_H 1
 
-#include "AgencyCommon.h"
 #include "Agency/Store.h"
+#include "AgencyCommon.h"
+#include "Basics/MutexLocker.h"
 #include "Cluster/ClusterComm.h"
 #include "Utils/OperationOptions.h"
-#include "Basics/MutexLocker.h"
 
 #include <velocypack/vpack.h>
 
@@ -65,28 +65,27 @@ class State {
 
   /// @brief Log entries (leader)
   std::vector<index_t> logLeaderMulti(query_t const& query,
-                           std::vector<apply_ret_t> const& indices, term_t term);
+                                      std::vector<apply_ret_t> const& indices, term_t term);
 
   /// @brief Single log entry (leader)
   index_t logLeaderSingle(velocypack::Slice const& slice, term_t term,
-              std::string const& clientId = std::string());
-    
+                          std::string const& clientId = std::string());
+
   /// @brief Log entries (followers)
   arangodb::consensus::index_t logFollower(query_t const&);
-  
+
   /// @brief Find entry at index with term
   bool find(index_t index, term_t term);
 
   /// @brief Get complete log entries bound by lower and upper bounds.
   ///        Default: [first, last]
-  std::vector<log_t> get(
-    index_t = 0, index_t = (std::numeric_limits<uint64_t>::max)()) const;
-  
+  std::vector<log_t> get(index_t = 0, index_t = (std::numeric_limits<uint64_t>::max)()) const;
+
  private:
   /// @brief Get complete log entries bound by lower and upper bounds.
   ///        Default: [first, last]
   log_t at(index_t) const;
-  
+
   /// @brief non-locking version of at
   log_t atNoLock(index_t) const;
 
@@ -96,17 +95,17 @@ class State {
   /// with term `term` and -1, if it does contain one with another term
   /// than `term`:
   int checkLog(index_t index, term_t term) const;
-  
+
   /// @brief Has entry with index und term
   bool has(index_t, term_t) const;
-  
+
   /// @brief Get log entries by client Id
   std::vector<index_t> inquire(query_t const&) const;
 
   /// @brief Get complete logged commands by lower and upper bounds.
   ///        Default: [first, last]
-  arangodb::velocypack::Builder slices(
-      index_t = 0, index_t = (std::numeric_limits<uint64_t>::max)()) const;
+  arangodb::velocypack::Builder slices(index_t = 0,
+                                       index_t = (std::numeric_limits<uint64_t>::max)()) const;
 
   /// @brief log entry at index i
   log_t operator[](index_t) const;
@@ -118,7 +117,7 @@ class State {
   /// @brief index of last log entry
   index_t lastIndex() const;
 
-  /// @brief index of first log entry 
+  /// @brief index of first log entry
   index_t firstIndex() const;
 
   /// @brief Set endpoint
@@ -130,7 +129,8 @@ class State {
   /// @brief Pipe to ostream
   friend std::ostream& operator<<(std::ostream& os, State const& s) {
     VPackBuilder b;
-    { VPackArrayBuilder a(&b);
+    {
+      VPackArrayBuilder a(&b);
       for (auto const& i : s._log) {
         VPackObjectBuilder bb(&b);
         b.add("index", VPackValue(i.index));
@@ -143,8 +143,7 @@ class State {
   }
 
   /// @brief compact state machine
-  bool compact(arangodb::consensus::index_t cind,
-               arangodb::consensus::index_t keep);
+  bool compact(arangodb::consensus::index_t cind, arangodb::consensus::index_t keep);
 
  private:
   /// @brief Remove RAFT conflicts. i.e. All indices, where higher term version
@@ -153,9 +152,8 @@ class State {
   size_t removeConflicts(query_t const&, bool gotSnapshot);
 
  public:
-
   bool ready() const;
-  
+
   /// @brief Persist active agency in pool, throws an exception in case of error
   void persistActiveAgents(query_t const& active, query_t const& pool);
 
@@ -172,22 +170,16 @@ class State {
   index_t lastCompactionAt() const;
 
   /// @brief nextCompactionAfter
-  index_t nextCompactionAfter() const {
-    return _nextCompactionAfter;
-  }
-  
+  index_t nextCompactionAfter() const { return _nextCompactionAfter; }
+
   /// @brief this method is intended for manual recovery only. It only looks
   /// at the persisted data structure and tries to recover the latest state.
   /// The returned builder has the complete state of the agency and index
   /// is set to the index of the last log entry.
-  static std::shared_ptr<VPackBuilder> latestAgencyState(
-    TRI_vocbase_t& vocbase,
-    index_t& index,
-    term_t& term
-  );
+  static std::shared_ptr<VPackBuilder> latestAgencyState(TRI_vocbase_t& vocbase,
+                                                         index_t& index, term_t& term);
 
  private:
-
   /// @brief Persist a compaction snapshot
   bool persistCompactionSnapshot(arangodb::consensus::index_t cind,
                                  arangodb::consensus::term_t term,
@@ -198,18 +190,16 @@ class State {
   /// log is empty and something ought to be appended to it rather quickly.
   /// Therefore, this is only called from logFollower under the _logLock.
   bool storeLogFromSnapshot(arangodb::consensus::Store& snapshot,
-                              arangodb::consensus::index_t index,
-                              arangodb::consensus::term_t term);
+                            arangodb::consensus::index_t index,
+                            arangodb::consensus::term_t term);
 
   /// @brief Log single log entry. Must be guarded by caller.
-  index_t logNonBlocking(
-    index_t idx, velocypack::Slice const& slice, term_t term,
-    std::string const& clientId = std::string(), bool leading = false,
-    bool reconfiguration = false);
-  
+  index_t logNonBlocking(index_t idx, velocypack::Slice const& slice,
+                         term_t term, std::string const& clientId = std::string(),
+                         bool leading = false, bool reconfiguration = false);
+
   /// @brief Save currentTerm, votedFor, log entries
-  bool persist(index_t, term_t, arangodb::velocypack::Slice const&,
-               std::string const&) const;
+  bool persist(index_t, term_t, arangodb::velocypack::Slice const&, std::string const&) const;
 
   /// @brief Save currentTerm, votedFor, log entries for reconfiguration
   bool persistconf(index_t, term_t, arangodb::velocypack::Slice const&,
@@ -236,12 +226,10 @@ class State {
   bool createCollection(std::string const& name);
 
   /// @brief Compact persisted logs
-  bool compactPersisted(arangodb::consensus::index_t cind,
-                        arangodb::consensus::index_t keep);
+  bool compactPersisted(arangodb::consensus::index_t cind, arangodb::consensus::index_t keep);
 
   /// @brief Compact RAM logs
-  bool compactVolatile(arangodb::consensus::index_t cind,
-                       arangodb::consensus::index_t keep);
+  bool compactVolatile(arangodb::consensus::index_t cind, arangodb::consensus::index_t keep);
 
   /// @brief Remove obsolete logs
   bool removeObsolete(arangodb::consensus::index_t cind);
@@ -257,12 +245,12 @@ class State {
   /**< @brief Mutex for modifying
      _log & _cur
   */
-  mutable arangodb::Mutex _logLock; 
-  std::deque<log_t> _log;           /**< @brief  State entries */
-        // Invariant: This has at least one entry at all times!
-  bool _collectionsChecked;         /**< @brief Collections checked */
+  mutable arangodb::Mutex _logLock;
+  std::deque<log_t> _log; /**< @brief  State entries */
+  // Invariant: This has at least one entry at all times!
+  bool _collectionsChecked; /**< @brief Collections checked */
   bool _collectionsLoaded;
-  std::multimap<std::string,arangodb::consensus::index_t> _clientIdLookupTable;
+  std::multimap<std::string, arangodb::consensus::index_t> _clientIdLookupTable;
 
   /// @brief compaction indexes
   std::atomic<index_t> _nextCompactionAfter;
@@ -280,12 +268,12 @@ class State {
 
   /// @brief Empty log entry;
   static log_t emptyLog;
-  
+
   /// @brief Protect writing into configuration collection
   arangodb::Mutex _configurationWriteLock;
 };
 
-}
-}
+}  // namespace consensus
+}  // namespace arangodb
 
 #endif

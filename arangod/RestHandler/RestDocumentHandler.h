@@ -69,6 +69,6 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
   // removes a document
   bool removeDocument();
 };
-}
+}  // namespace arangodb
 
 #endif

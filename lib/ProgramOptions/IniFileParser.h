@@ -28,8 +28,8 @@
 #include <regex>
 #include <sstream>
 
-#include "ProgramOptions/ProgramOptions.h"
 #include <unicode/unistr.h>
+#include "ProgramOptions/ProgramOptions.h"
 
 namespace arangodb {
 namespace options {
@@ -38,27 +38,24 @@ class IniFileParser {
  public:
   explicit IniFileParser(ProgramOptions* options) : _options(options) {
     // a line with just comments, e.g. #... or ;...
-    _matchers.comment = std::regex("^[ \t]*([#;].*)?$",
-                                   std::regex::nosubs | std::regex::ECMAScript);
+    _matchers.comment =
+        std::regex("^[ \t]*([#;].*)?$", std::regex::nosubs | std::regex::ECMAScript);
     // a line that starts a section, e.g. [server]
-    _matchers.section = std::regex("^[ \t]*\\[([-_A-Za-z0-9]*)\\][ \t]*$",
-                                   std::regex::ECMAScript);
+    _matchers.section =
+        std::regex("^[ \t]*\\[([-_A-Za-z0-9]*)\\][ \t]*$", std::regex::ECMAScript);
     // a line that starts a community section, e.g. [server:community]
     _matchers.communitySection =
-        std::regex("^[ \t]*\\[([-_A-Za-z0-9]*):community\\][ \t]*$",
-                   std::regex::ECMAScript);
+        std::regex("^[ \t]*\\[([-_A-Za-z0-9]*):community\\][ \t]*$", std::regex::ECMAScript);
     // a line that starts an enterprise section, e.g. [server:enterprise]
     _matchers.enterpriseSection =
-        std::regex("^[ \t]*\\[([-_A-Za-z0-9]*):enterprise\\][ \t]*$",
-                   std::regex::ECMAScript);
+        std::regex("^[ \t]*\\[([-_A-Za-z0-9]*):enterprise\\][ \t]*$", std::regex::ECMAScript);
     // a line that assigns a value to a named variable
     _matchers.assignment = std::regex(
         "^[ \t]*(([-_A-Za-z0-9]*\\.)?[-_A-Za-z0-9]*)[ \t]*=[ \t]*(.*?)?[ \t]*$",
         std::regex::ECMAScript);
     // an include line
     _matchers.include =
-        std::regex("^[ \t]*@include[ \t]*([-_A-Za-z0-9/\\.]*)[ \t]*$",
-                   std::regex::ECMAScript);
+        std::regex("^[ \t]*@include[ \t]*([-_A-Za-z0-9/\\.]*)[ \t]*$", std::regex::ECMAScript);
   }
 
   // parse a config file. returns true if all is well, false otherwise
@@ -71,8 +68,7 @@ class IniFileParser {
     std::string buf;
     try {
       buf = arangodb::basics::FileUtils::slurp(filename);
-    }
-    catch (arangodb::basics::Exception const& ex) {
+    } catch (arangodb::basics::Exception const& ex) {
       return _options->fail(std::string("Couldn't open configuration file: '") +
                             filename + "' - " + ex.what());
       return true;
@@ -81,9 +77,9 @@ class IniFileParser {
     bool isEnterprise = false;
     std::string currentSection;
     size_t lineNumber = 0;
-    
+
     std::istringstream iss(buf);
-    for (std::string line; std::getline(iss, line); ) {
+    for (std::string line; std::getline(iss, line);) {
       basics::StringUtils::trimInPlace(line);
       ++lineNumber;
 
@@ -120,8 +116,8 @@ class IniFileParser {
           include += ".conf";
         }
         if (_seen.find(include) != _seen.end()) {
-          LOG_TOPIC(FATAL, Logger::CONFIG) << "recursive include of file '"
-                                           << include << "'";
+          LOG_TOPIC(FATAL, Logger::CONFIG)
+              << "recursive include of file '" << include << "'";
           FATAL_ERROR_EXIT();
         }
 
@@ -132,8 +128,7 @@ class IniFileParser {
           include = basics::FileUtils::buildFilename(dn, include);
         }
 
-        LOG_TOPIC(DEBUG, Logger::CONFIG) << "reading include file '" << include
-                                         << "'";
+        LOG_TOPIC(DEBUG, Logger::CONFIG) << "reading include file '" << include << "'";
 
         parse(include, false);
       } else if (std::regex_match(line, match, _matchers.assignment)) {
@@ -190,7 +185,7 @@ class IniFileParser {
     std::regex include;
   } _matchers;
 };
-}
-}
+}  // namespace options
+}  // namespace arangodb
 
 #endif

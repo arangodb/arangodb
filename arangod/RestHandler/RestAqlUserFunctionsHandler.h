@@ -32,10 +32,12 @@ class RestAqlUserFunctionsHandler : public arangodb::RestVocbaseBaseHandler {
   RestAqlUserFunctionsHandler(GeneralRequest*, GeneralResponse*);
 
  public:
-  char const* name() const override final { return "RestAqlUserFunctionsHandler"; }
+  char const* name() const override final {
+    return "RestAqlUserFunctionsHandler";
+  }
   RequestLane lane() const override final { return RequestLane::CLIENT_V8; }
   RestStatus execute() override;
 };
-}
+}  // namespace arangodb
 
 #endif

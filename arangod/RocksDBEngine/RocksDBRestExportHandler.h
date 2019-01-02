@@ -31,9 +31,9 @@
 
 namespace arangodb {
 namespace aql {
-  class QueryRegistry;
+class QueryRegistry;
 }
-  
+
 class RocksDBRestExportHandler : public RestCursorHandler {
  public:
   RocksDBRestExportHandler(GeneralRequest*, GeneralResponse*, aql::QueryRegistry*);
@@ -61,6 +61,6 @@ class RocksDBRestExportHandler : public RestCursorHandler {
 
   CollectionExport::Restrictions _restrictions;
 };
-}
+}  // namespace arangodb
 
 #endif

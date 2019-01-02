@@ -26,22 +26,22 @@
 
 #include "IResearchViewMeta.h"
 #include "Transaction/Status.h"
-#include "VocBase/LogicalView.h"
 #include "Utils/FlushTransaction.h"
+#include "VocBase/LogicalView.h"
 
 namespace arangodb {
 
-struct ViewFactory; // forward declaration
+struct ViewFactory;  // forward declaration
 
-} // arangodb
+}  // namespace arangodb
 
 namespace arangodb {
 namespace transaction {
 
-class Methods; // forward declaration
+class Methods;  // forward declaration
 
-} // transaction
-} // arangodb
+}  // namespace transaction
+}  // namespace arangodb
 
 namespace arangodb {
 namespace iresearch {
@@ -50,9 +50,10 @@ namespace iresearch {
 /// --SECTION--                                            Forward declarations
 ///////////////////////////////////////////////////////////////////////////////
 
-class IResearchFeature; // forward declaration
-class IResearchLink; // forward declaration
-template<typename T> class TypedResourceMutex; // forward declaration
+class IResearchFeature;  // forward declaration
+class IResearchLink;     // forward declaration
+template <typename T>
+class TypedResourceMutex;  // forward declaration
 
 ///////////////////////////////////////////////////////////////////////////////
 /// --SECTION--                                                   IResearchView
@@ -73,16 +74,14 @@ template<typename T> class TypedResourceMutex; // forward declaration
 ///       which may be, but are not explicitly required to be, triggered via
 ///       the IResearchLink or IResearchViewBlock
 ///////////////////////////////////////////////////////////////////////////////
-class IResearchView final
-  : public arangodb::LogicalView,
-    public arangodb::FlushTransaction {
+class IResearchView final : public arangodb::LogicalView, public arangodb::FlushTransaction {
   typedef std::shared_ptr<TypedResourceMutex<IResearchLink>> AsyncLinkPtr;
- public:
 
+ public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief a snapshot representation of the view with ability to query for cid
   //////////////////////////////////////////////////////////////////////////////
-  class Snapshot: public irs::index_reader {
+  class Snapshot : public irs::index_reader {
    public:
     // @return cid of the sub-reader at operator['offset'] or 0 if undefined
     virtual TRI_voc_cid_t cid(size_t offset) const noexcept = 0;
@@ -148,26 +147,22 @@ class IResearchView final
   /// @brief updates properties of an existing view
   //////////////////////////////////////////////////////////////////////////////
   using LogicalDataSource::properties;
-  virtual arangodb::Result properties(
-    arangodb::velocypack::Slice const& properties,
-    bool partialUpdate
-  ) override final;
+  virtual arangodb::Result properties(arangodb::velocypack::Slice const& properties,
+                                      bool partialUpdate) override final;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @param shards the list of shard to restrict the snaphost to
   ///        nullptr == use all registered links
   ///        !nullptr && shard not registred then return nullptr
   ///        if mode == Find && list found doesn't match then return nullptr
-  /// @return pointer to an index reader containing the datastore record snapshot
+  /// @return pointer to an index reader containing the datastore record
+  /// snapshot
   ///         associated with 'state'
   ///         (nullptr == no view snapshot associated with the specified state)
   ///         if force == true && no snapshot -> associate current snapshot
   ////////////////////////////////////////////////////////////////////////////////
-  Snapshot const* snapshot(
-    transaction::Methods& trx,
-    SnapshotMode mode = SnapshotMode::Find,
-    std::unordered_set<TRI_voc_cid_t> const* shards = nullptr
-  ) const;
+  Snapshot const* snapshot(transaction::Methods& trx, SnapshotMode mode = SnapshotMode::Find,
+                           std::unordered_set<TRI_voc_cid_t> const* shards = nullptr) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unlink remove 'cid' from the persisted list of tracked collection
@@ -183,16 +178,13 @@ class IResearchView final
   bool visitCollections(CollectionVisitor const& visitor) const override;
 
  protected:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchView object
   ///        only fields describing the view itself, not 'link' descriptions
   //////////////////////////////////////////////////////////////////////////////
-  virtual arangodb::Result appendVelocyPackImpl(
-    arangodb::velocypack::Builder& builder,
-    bool detailed,
-    bool forPersistence
-  ) const override;
+  virtual arangodb::Result appendVelocyPackImpl(arangodb::velocypack::Builder& builder,
+                                                bool detailed,
+                                                bool forPersistence) const override;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief drop this IResearch View
@@ -207,49 +199,47 @@ class IResearchView final
 
  private:
   typedef std::shared_ptr<TypedResourceMutex<IResearchView>> AsyncViewPtr;
-  struct ViewFactory; // forward declaration
+  struct ViewFactory;  // forward declaration
 
   struct FlushCallbackUnregisterer {
     void operator()(IResearchView* view) const noexcept;
   };
 
   typedef std::unique_ptr<IResearchView, FlushCallbackUnregisterer> FlushCallback;
-  typedef std::unique_ptr<
-    arangodb::FlushTransaction, std::function<void(arangodb::FlushTransaction*)>
-  > FlushTransactionPtr;
+  typedef std::unique_ptr<arangodb::FlushTransaction, std::function<void(arangodb::FlushTransaction*)>> FlushTransactionPtr;
 
-  IResearchView(
-    TRI_vocbase_t& vocbase,
-    arangodb::velocypack::Slice const& info,
-    uint64_t planVersion
-  );
+  IResearchView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& info,
+                uint64_t planVersion);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Called in post-recovery to remove any dangling documents old links
   //////////////////////////////////////////////////////////////////////////////
   void verifyKnownCollections();
 
-  IResearchFeature* _asyncFeature; // the feature where async jobs were registered (nullptr == no jobs registered)
-  AsyncViewPtr _asyncSelf; // 'this' for the lifetime of the view (for use with asynchronous calls)
-  std::unordered_map<TRI_voc_cid_t, AsyncLinkPtr> _links; // registered links (value may be nullptr on single-server if link did not come up yet) FIXME TODO maybe this should be asyncSelf?
-  IResearchViewMeta _meta; // the view configuration
-  mutable irs::async_utils::read_write_mutex _mutex; // for use with member '_meta', '_links'
-  std::mutex _updateLinksLock; // prevents simultaneous 'updateLinks'
-  FlushCallback _flushCallback; // responsible for flush callback unregistration
-  std::function<void(arangodb::transaction::Methods& trx, arangodb::transaction::Status status)> _trxCallback; // for snapshot(...)
-  std::atomic<bool> _asyncTerminate; // trigger termination of long-running async jobs
+  IResearchFeature* _asyncFeature;  // the feature where async jobs were registered (nullptr
+                                    // == no jobs registered)
+  AsyncViewPtr _asyncSelf;  // 'this' for the lifetime of the view (for use with
+                            // asynchronous calls)
+  std::unordered_map<TRI_voc_cid_t, AsyncLinkPtr> _links;  // registered links (value may be nullptr on single-server if
+                                                           // link did not come up yet) FIXME TODO maybe this should be
+                                                           // asyncSelf?
+  IResearchViewMeta _meta;                            // the view configuration
+  mutable irs::async_utils::read_write_mutex _mutex;  // for use with member '_meta', '_links'
+  std::mutex _updateLinksLock;   // prevents simultaneous 'updateLinks'
+  FlushCallback _flushCallback;  // responsible for flush callback unregistration
+  std::function<void(arangodb::transaction::Methods& trx,
+                     arangodb::transaction::Status status)>
+      _trxCallback;                   // for snapshot(...)
+  std::atomic<bool> _asyncTerminate;  // trigger termination of long-running async jobs
   std::atomic<bool> _inRecovery;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief called when a view's properties are updated (i.e. delta-modified)
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result updateProperties(
-    arangodb::velocypack::Slice const& slice,
-    bool partialUpdate
-  );
+  arangodb::Result updateProperties(arangodb::velocypack::Slice const& slice, bool partialUpdate);
 };
 
-} // iresearch
-} // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
 #endif

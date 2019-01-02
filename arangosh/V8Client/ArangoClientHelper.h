@@ -30,7 +30,7 @@ namespace httpclient {
 class GeneralClientConnection;
 class SimpleHttpClient;
 class SimpleHttpResult;
-}
+}  // namespace httpclient
 
 class ArangoClientHelper {
  public:
@@ -46,6 +46,6 @@ class ArangoClientHelper {
  protected:
   std::unique_ptr<httpclient::SimpleHttpClient> _httpClient;
 };
-}
+}  // namespace arangodb
 
 #endif

@@ -32,7 +32,7 @@ remaining result list.
 **Examples**
 
 ```js
-const cursor = await db._query('FOR x IN 1..5 RETURN x');
+const cursor = await db.query('FOR x IN 1..5 RETURN x');
 const result = await cursor.all()
 // result is an array containing the entire query result
 assert.deepEqual(result, [1, 2, 3, 4, 5]);

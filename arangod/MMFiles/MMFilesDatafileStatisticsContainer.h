@@ -45,6 +45,6 @@ struct MMFilesDatafileStatisticsContainer {
   int64_t numberUncollected;
 };
 
-}
+}  // namespace arangodb
 
 #endif

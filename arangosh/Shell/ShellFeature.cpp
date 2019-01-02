@@ -33,10 +33,7 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-ShellFeature::ShellFeature(
-    application_features::ApplicationServer& server,
-    int* result
-)
+ShellFeature::ShellFeature(application_features::ApplicationServer& server, int* result)
     : ApplicationFeature(server, "Shell"),
       _jslint(),
       _result(result),
@@ -47,15 +44,13 @@ ShellFeature::ShellFeature(
   startsAfter("V8ShellPhase");
 }
 
-void ShellFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
+void ShellFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
   options->addOption("--jslint", "do not start as shell, run jslint instead",
                      new VectorParameter<StringParameter>(&_jslint));
 
   options->addSection("javascript", "Configure the Javascript engine");
 
-  options->addOption("--javascript.execute",
-                     "execute Javascript code from file",
+  options->addOption("--javascript.execute", "execute Javascript code from file",
                      new VectorParameter<StringParameter>(&_executeScripts));
 
   options->addOption("--javascript.execute-string",
@@ -71,12 +66,10 @@ void ShellFeature::collectOptions(
                      new VectorParameter<StringParameter>(&_unitTests));
 
   options->addOption("--javascript.unit-test-filter",
-                     "filter testcases in suite",
-                     new StringParameter(&_unitTestFilter));
+                     "filter testcases in suite", new StringParameter(&_unitTestFilter));
 }
 
-void ShellFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
+void ShellFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
   _positionals = options->processingResult()._positionals;
 
   ClientFeature* client =
@@ -180,4 +173,4 @@ void ShellFeature::start() {
   *_result = ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
-} // arangodb
+}  // namespace arangodb

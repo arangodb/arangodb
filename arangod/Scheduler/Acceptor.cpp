@@ -31,12 +31,12 @@
 
 using namespace arangodb;
 
-Acceptor::Acceptor(rest::GeneralServer &server,
-                   rest::GeneralServer::IoContext &context, Endpoint* endpoint)
+Acceptor::Acceptor(rest::GeneralServer& server,
+                   rest::GeneralServer::IoContext& context, Endpoint* endpoint)
     : _server(server), _context(context), _endpoint(endpoint) {}
 
-std::unique_ptr<Acceptor> Acceptor::factory(rest::GeneralServer &server,
-                                            rest::GeneralServer::IoContext &context,
+std::unique_ptr<Acceptor> Acceptor::factory(rest::GeneralServer& server,
+                                            rest::GeneralServer::IoContext& context,
                                             Endpoint* endpoint) {
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
   if (endpoint->domainType() == Endpoint::DomainType::UNIX) {

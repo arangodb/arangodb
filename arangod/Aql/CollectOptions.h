@@ -35,17 +35,11 @@ namespace aql {
 /// @brief CollectOptions
 struct CollectOptions {
   /// @brief selected aggregation method
-  enum class CollectMethod {
-    UNDEFINED,
-    HASH,
-    SORTED,
-    DISTINCT,
-    COUNT
-  };
+  enum class CollectMethod { UNDEFINED, HASH, SORTED, DISTINCT, COUNT };
 
   /// @brief constructor, using default values
   CollectOptions() : method(CollectMethod::UNDEFINED) {}
-  
+
   CollectOptions(CollectOptions const& other) : method(other.method) {}
 
   CollectOptions& operator=(CollectOptions const& other) {
@@ -58,7 +52,7 @@ struct CollectOptions {
 
   /// @brief whether or not the method can be used
   bool canUseMethod(CollectMethod method) const;
-  
+
   /// @brief whether or not the method should be used
   bool shouldUseMethod(CollectMethod method) const;
 
@@ -74,7 +68,7 @@ struct CollectOptions {
   CollectMethod method;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

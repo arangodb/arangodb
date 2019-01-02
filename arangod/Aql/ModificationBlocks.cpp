@@ -41,15 +41,13 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-ModificationBlock::ModificationBlock(ExecutionEngine* engine,
-                                     ModificationNode const* ep)
+ModificationBlock::ModificationBlock(ExecutionEngine* engine, ModificationNode const* ep)
     : ExecutionBlock(engine, ep),
       _outRegOld(ExecutionNode::MaxRegisterId),
       _outRegNew(ExecutionNode::MaxRegisterId),
       _collection(ep->_collection),
       _countStats(ep->countStats()),
       _readCompleteInput(ep->_options.readCompleteInput) {
-
   _trx->pinData(_collection->id());
 
   auto const& registerPlan = ep->getRegisterPlan()->varInfo;
@@ -70,24 +68,22 @@ ModificationBlock::~ModificationBlock() {}
 
 /// @brief skips over the taken rows if the input value is no
 /// array or empty. updates dstRow in this case and returns true!
-bool ModificationBlock::skipEmptyValues(VPackSlice const& values,
-                                        size_t n, 
-                                        AqlItemBlock const* src, 
-                                        AqlItemBlock* dst, 
-                                        size_t& dstRow) {
+bool ModificationBlock::skipEmptyValues(VPackSlice const& values, size_t n,
+                                        AqlItemBlock const* src,
+                                        AqlItemBlock* dst, size_t& dstRow) {
   TRI_ASSERT(src != nullptr);
   TRI_ASSERT(_operations.size() == n);
-    
+
   if (values.isArray() && values.length() > 0) {
     return false;
   }
-  
+
   if (dst == nullptr) {
     // fast-track exit. we don't have any output to write, so we
     // better try not to copy any of the register values from src to dst
     return true;
   }
-  
+
   for (size_t i = 0; i < n; ++i) {
     if (_operations[i] != IGNORE_SKIP) {
       inheritRegisters(src, dst, i, dstRow);
@@ -131,8 +127,7 @@ ExecutionState ModificationBlock::getHasMoreState() {
 }
 
 /// @brief get some - this accumulates all input and calls the work() method
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
-ModificationBlock::getSome(size_t atMost) {
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ModificationBlock::getSome(size_t atMost) {
   // for UPSERT operations, we read and write data in the same collection
   // we cannot use any batching here because if the search document is not
   // found, the UPSERTs INSERT operation may create it. after that, the
@@ -196,15 +191,15 @@ ModificationBlock::getSome(size_t atMost) {
   }
 
   traceGetSomeEnd(replyBlocks.get(), getHasMoreState());
-  
+
   return {getHasMoreState(), std::move(replyBlocks)};
 }
 
 std::pair<ExecutionState, size_t> ModificationBlock::skipSome(size_t atMost) {
   traceSkipSomeBegin(atMost);
   size_t skipped = 0;
-    
-  // we need to tell getSome that we don't have to read the entire input, 
+
+  // we need to tell getSome that we don't have to read the entire input,
   // no matter what
   bool saved = _readCompleteInput;
   _readCompleteInput = false;
@@ -233,8 +228,7 @@ std::pair<ExecutionState, arangodb::Result> ModificationBlock::initializeCursor(
 }
 
 /// @brief extract a key from the AqlValue passed
-int ModificationBlock::extractKey(AqlValue const& value,
-                                  std::string& key) {
+int ModificationBlock::extractKey(AqlValue const& value, std::string& key) {
   if (value.isObject()) {
     bool mustDestroy;
     AqlValue sub = value.get(_trx, StaticStrings::KeyString, mustDestroy, false);
@@ -252,9 +246,8 @@ int ModificationBlock::extractKey(AqlValue const& value,
   return TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING;
 }
 
-int ModificationBlock::extractKeyAndRev(AqlValue const& value,
-                                         std::string& key,
-                                         std::string& rev) {
+int ModificationBlock::extractKeyAndRev(AqlValue const& value, std::string& key,
+                                        std::string& rev) {
   if (value.isObject()) {
     bool mustDestroy;
     AqlValue sub = value.get(_trx, StaticStrings::KeyString, mustDestroy, false);
@@ -308,8 +301,7 @@ void ModificationBlock::handleResult(int code, bool ignoreErrors,
 
 /// @brief process the result of a data-modification operation
 void ModificationBlock::handleBabyResult(std::unordered_map<int, size_t> const& errorCounter,
-                                         size_t numBabies,
-                                         bool ignoreAllErrors,
+                                         size_t numBabies, bool ignoreAllErrors,
                                          bool ignoreDocumentNotFound) {
   if (errorCounter.empty()) {
     // update the success counter
@@ -386,12 +378,12 @@ std::unique_ptr<AqlItemBlock> RemoveBlock::work() {
   options.ignoreRevs = ep->_options.ignoreRevs;
   options.returnOld = producesOutput;
   options.isRestore = ep->_options.useIsRestore;
- 
+
   std::unique_ptr<AqlItemBlock> result;
   if (producesOutput || ep->producesResults()) {
     result.reset(requestBlock(count, getNrOutputRegisters()));
   }
-  
+
   // loop over all blocks
   size_t dstRow = 0;
 
@@ -402,21 +394,21 @@ std::unique_ptr<AqlItemBlock> RemoveBlock::work() {
 
     std::string key;
     std::string rev;
-    
+
     _tempBuilder.clear();
     _tempBuilder.openArray();
-    
+
     // loop over the complete block
     size_t const n = res->size();
-    
+
     _operations.clear();
     _operations.reserve(n);
 
     for (size_t i = 0; i < n; ++i) {
       AqlValue const& a = res->getValueReference(i, registerId);
-      
+
       int errorCode = TRI_ERROR_NO_ERROR;
-        
+
       if (!ep->_options.consultAqlWriteFilter ||
           !_collection->getCollection()->skipForAqlWrite(a.slice(), StaticStrings::Empty)) {
         if (a.isObject()) {
@@ -460,7 +452,7 @@ std::unique_ptr<AqlItemBlock> RemoveBlock::work() {
     _tempBuilder.close();
 
     VPackSlice toRemove = _tempBuilder.slice();
-    
+
     if (skipEmptyValues(toRemove, n, res, result.get(), dstRow)) {
       it->release();
       returnBlock(res);
@@ -468,16 +460,14 @@ std::unique_ptr<AqlItemBlock> RemoveBlock::work() {
     }
 
     OperationResult opRes = _trx->remove(_collection->name(), toRemove, options);
-      
-    handleBabyResult(opRes.countErrorCodes,
-                     static_cast<size_t>(toRemove.length()),
-                     ep->_options.ignoreErrors,
-                     ignoreDocumentNotFound);
-    
+
+    handleBabyResult(opRes.countErrorCodes, static_cast<size_t>(toRemove.length()),
+                     ep->_options.ignoreErrors, ignoreDocumentNotFound);
+
     if (opRes.fail()) {
       THROW_ARANGO_EXCEPTION(opRes.result);
     }
-    
+
     VPackSlice resultList = opRes.slice();
 
     if (skipEmptyValues(resultList, n, res, result.get(), dstRow)) {
@@ -493,8 +483,9 @@ std::unique_ptr<AqlItemBlock> RemoveBlock::work() {
       if (_operations[i] == APPLY_RETURN && result != nullptr) {
         TRI_ASSERT(iter.valid());
         auto elm = iter.value();
-        bool wasError = arangodb::basics::VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
-  
+        bool wasError =
+            arangodb::basics::VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
+
         if (!wasError) {
           inheritRegisters(res, result.get(), i, dstRow);
 
@@ -505,7 +496,7 @@ std::unique_ptr<AqlItemBlock> RemoveBlock::work() {
           ++dstRow;
         }
         ++iter;
-      } else if (_operations[i] == IGNORE_RETURN) { 
+      } else if (_operations[i] == IGNORE_RETURN) {
         TRI_ASSERT(result != nullptr);
         inheritRegisters(res, result.get(), i, dstRow);
         ++dstRow;
@@ -516,8 +507,8 @@ std::unique_ptr<AqlItemBlock> RemoveBlock::work() {
     it->release();
     returnBlock(res);
   }
- 
-  trimResult(result, dstRow); 
+
+  trimResult(result, dstRow);
   return result;
 }
 
@@ -549,12 +540,12 @@ std::unique_ptr<AqlItemBlock> InsertBlock::work() {
   options.isRestore = ep->_options.useIsRestore;
   options.waitForSync = ep->_options.waitForSync;
   options.overwrite = ep->_options.overwrite;
-  
+
   std::unique_ptr<AqlItemBlock> result;
   if (producesOutput || ep->producesResults()) {
     result.reset(requestBlock(count, getNrOutputRegisters()));
-  } 
-  
+  }
+
   // loop over all blocks
   size_t dstRow = 0;
 
@@ -565,9 +556,9 @@ std::unique_ptr<AqlItemBlock> InsertBlock::work() {
 
     _tempBuilder.clear();
     _tempBuilder.openArray();
-    
+
     size_t const n = res->size();
-    
+
     _operations.clear();
     _operations.reserve(n);
 
@@ -596,17 +587,16 @@ std::unique_ptr<AqlItemBlock> InsertBlock::work() {
     }
 
     OperationResult opRes = _trx->insert(_collection->name(), toInsert, options);
-      
-    handleBabyResult(opRes.countErrorCodes,
-                     static_cast<size_t>(toInsert.length()),
+
+    handleBabyResult(opRes.countErrorCodes, static_cast<size_t>(toInsert.length()),
                      ep->_options.ignoreErrors);
-    
+
     if (opRes.fail()) {
       THROW_ARANGO_EXCEPTION(opRes.result);
     }
-    
+
     VPackSlice resultList = opRes.slice();
-    
+
     if (skipEmptyValues(resultList, n, res, result.get(), dstRow)) {
       it->release();
       returnBlock(res);
@@ -620,7 +610,8 @@ std::unique_ptr<AqlItemBlock> InsertBlock::work() {
       if (_operations[i] == APPLY_RETURN && result != nullptr) {
         TRI_ASSERT(iter.valid());
         auto elm = iter.value();
-        bool wasError = arangodb::basics::VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
+        bool wasError =
+            arangodb::basics::VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
 
         if (!wasError) {
           inheritRegisters(res, result.get(), i, dstRow);
@@ -653,7 +644,7 @@ std::unique_ptr<AqlItemBlock> InsertBlock::work() {
     returnBlock(res);
   }
 
-  trimResult(result, dstRow); 
+  trimResult(result, dstRow);
   return result;
 }
 
@@ -676,7 +667,7 @@ std::unique_ptr<AqlItemBlock> UpdateReplaceBlock::work() {
 
   bool const ignoreDocumentNotFound = ep->_options.ignoreDocumentNotFound;
   bool producesOutput = (ep->_outVariableOld != nullptr || ep->_outVariableNew != nullptr);
-  
+
   // check if we're a DB server in a cluster
   bool const isDBServer = ServerState::instance()->isDBServer();
 
@@ -704,12 +695,12 @@ std::unique_ptr<AqlItemBlock> UpdateReplaceBlock::work() {
   options.returnNew = (producesOutput && ep->_outVariableNew != nullptr);
   options.ignoreRevs = ep->_options.ignoreRevs;
   options.isRestore = ep->_options.useIsRestore;
-  
+
   std::unique_ptr<AqlItemBlock> result;
   if (producesOutput || ep->producesResults()) {
     result.reset(requestBlock(count, getNrOutputRegisters()));
   }
-    
+
   std::string errorMessage;
 
   // loop over all blocks
@@ -727,11 +718,11 @@ std::unique_ptr<AqlItemBlock> UpdateReplaceBlock::work() {
     std::string rev;
 
     size_t const n = res->size();
-    
+
     // loop over the complete block
     _operations.clear();
     _operations.reserve(n);
-    
+
     for (size_t i = 0; i < n; ++i) {
       AqlValue const& a = res->getValueReference(i, docRegisterId);
 
@@ -755,11 +746,10 @@ std::unique_ptr<AqlItemBlock> UpdateReplaceBlock::work() {
         }
       } else {
         errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
-        errorMessage = std::string("expecting 'Object', got: ") +
-                       a.slice().typeName() + std::string(" while handling: ") +
-                       _exeNode->getTypeString();
+        errorMessage = std::string("expecting 'Object', got: ") + a.slice().typeName() +
+                       std::string(" while handling: ") + _exeNode->getTypeString();
       }
-         
+
       if (errorCode == TRI_ERROR_NO_ERROR) {
         if (!ep->_options.consultAqlWriteFilter ||
             !_collection->getCollection()->skipForAqlWrite(a.slice(), key)) {
@@ -774,13 +764,11 @@ std::unique_ptr<AqlItemBlock> UpdateReplaceBlock::work() {
             } else {
               // we must never take _rev from the document if there is a key
               // expression.
-              _tempBuilder.add(StaticStrings::RevString,
-                                VPackValue(VPackValueType::Null));
+              _tempBuilder.add(StaticStrings::RevString, VPackValue(VPackValueType::Null));
             }
             _tempBuilder.close();
 
-            VPackCollection::merge(object, a.slice(), _tempBuilder.slice(),
-                                    false, true);
+            VPackCollection::merge(object, a.slice(), _tempBuilder.slice(), false, true);
           } else {
             // use original slice for updating
             object.add(a.slice());
@@ -796,9 +784,9 @@ std::unique_ptr<AqlItemBlock> UpdateReplaceBlock::work() {
     }
 
     object.close();
-    
+
     VPackSlice toUpdate = object.slice();
-    
+
     if (skipEmptyValues(toUpdate, n, res, result.get(), dstRow)) {
       it->release();
       returnBlock(res);
@@ -808,14 +796,13 @@ std::unique_ptr<AqlItemBlock> UpdateReplaceBlock::work() {
     // perform update/replace
     OperationResult opRes = apply(toUpdate, options);
 
-    handleBabyResult(opRes.countErrorCodes,
-                     static_cast<size_t>(toUpdate.length()),
+    handleBabyResult(opRes.countErrorCodes, static_cast<size_t>(toUpdate.length()),
                      ep->_options.ignoreErrors, ignoreDocumentNotFound);
 
     if (opRes.fail()) {
       THROW_ARANGO_EXCEPTION(opRes.result);
     }
-    
+
     VPackSlice resultList = opRes.slice();
 
     if (skipEmptyValues(resultList, n, res, result.get(), dstRow)) {
@@ -831,8 +818,9 @@ std::unique_ptr<AqlItemBlock> UpdateReplaceBlock::work() {
       if (_operations[i] == APPLY_RETURN && result != nullptr) {
         TRI_ASSERT(iter.valid());
         auto elm = iter.value();
-        bool wasError = arangodb::basics::VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
-        
+        bool wasError =
+            arangodb::basics::VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
+
         if (!wasError) {
           inheritRegisters(res, result.get(), i, dstRow);
 
@@ -859,21 +847,23 @@ std::unique_ptr<AqlItemBlock> UpdateReplaceBlock::work() {
     returnBlock(res);
   }
 
-  trimResult(result, dstRow); 
+  trimResult(result, dstRow);
   return result;
 }
 
 UpdateBlock::UpdateBlock(ExecutionEngine* engine, UpdateNode const* ep)
     : UpdateReplaceBlock(engine, ep) {}
 
-OperationResult UpdateBlock::apply(arangodb::velocypack::Slice values, OperationOptions const& options) {
+OperationResult UpdateBlock::apply(arangodb::velocypack::Slice values,
+                                   OperationOptions const& options) {
   return _trx->update(_collection->name(), values, options);
 }
 
 ReplaceBlock::ReplaceBlock(ExecutionEngine* engine, ReplaceNode const* ep)
     : UpdateReplaceBlock(engine, ep) {}
-    
-OperationResult ReplaceBlock::apply(arangodb::velocypack::Slice values, OperationOptions const& options) {
+
+OperationResult ReplaceBlock::apply(arangodb::velocypack::Slice values,
+                                    OperationOptions const& options) {
   return _trx->replace(_collection->name(), values, options);
 }
 
@@ -913,12 +903,12 @@ std::unique_ptr<AqlItemBlock> UpsertBlock::work() {
   options.returnNew = producesOutput;
   options.ignoreRevs = ep->_options.ignoreRevs;
   options.isRestore = ep->_options.useIsRestore;
-  
+
   std::unique_ptr<AqlItemBlock> result;
   if (producesOutput || ep->producesResults()) {
     result.reset(requestBlock(count, getNrOutputRegisters()));
   }
-  
+
   std::string errorMessage;
 
   VPackBuilder insertBuilder;
@@ -970,14 +960,16 @@ std::unique_ptr<AqlItemBlock> UpsertBlock::work() {
               _tempBuilder.openObject();
               _tempBuilder.add(StaticStrings::KeyString, VPackValue(key));
               _tempBuilder.close();
-                
-              VPackBuilder tmp = VPackCollection::merge(toUpdate, _tempBuilder.slice(), false, false);
+
+              VPackBuilder tmp =
+                  VPackCollection::merge(toUpdate, _tempBuilder.slice(), false, false);
               updateBuilder.add(tmp.slice());
               _operations.push_back(APPLY_UPDATE);
             } else {
               errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
               errorMessage = std::string("expecting 'Object', got: ") +
-                             updateDoc.slice().typeName() + std::string(" while handling: ") +
+                             updateDoc.slice().typeName() +
+                             std::string(" while handling: ") +
                              _exeNode->getTypeString();
             }
           }
@@ -1000,9 +992,9 @@ std::unique_ptr<AqlItemBlock> UpsertBlock::work() {
           }
         } else {
           errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
-          errorMessage = std::string("expecting 'Object', got: ") +
-                         toInsert.typeName() + std::string(" while handling: ") +
-                         _exeNode->getTypeString();
+          errorMessage =
+              std::string("expecting 'Object', got: ") + toInsert.typeName() +
+              std::string(" while handling: ") + _exeNode->getTypeString();
         }
       }
 
@@ -1020,7 +1012,7 @@ std::unique_ptr<AqlItemBlock> UpsertBlock::work() {
     VPackSlice toUpdate = updateBuilder.slice();
 
     if (toInsert.length() == 0 && toUpdate.length() == 0) {
-      // nothing to do 
+      // nothing to do
       if (skipEmptyValues(toInsert, n, res, result.get(), dstRow)) {
         it->release();
         returnBlock(res);
@@ -1033,39 +1025,37 @@ std::unique_ptr<AqlItemBlock> UpsertBlock::work() {
 
     if (toInsert.isArray() && toInsert.length() > 0) {
       opResInsert = _trx->insert(_collection->name(), toInsert, options);
-    
+
       if (opResInsert.fail()) {
         THROW_ARANGO_EXCEPTION(opResInsert.result);
       }
-      
+
       handleBabyResult(opResInsert.countErrorCodes,
-                       static_cast<size_t>(toInsert.length()),
-                       ep->_options.ignoreErrors);
+                       static_cast<size_t>(toInsert.length()), ep->_options.ignoreErrors);
 
       resultListInsert = opResInsert.slice();
       if (!resultListInsert.isArray()) {
         resultListInsert = VPackSlice::emptyArraySlice();
       }
     }
-    
+
     OperationResult opResUpdate;
     VPackSlice resultListUpdate = VPackSlice::emptyArraySlice();
-    
+
     if (toUpdate.isArray() && toUpdate.length() > 0) {
       if (ep->_isReplace) {
         opResUpdate = _trx->replace(_collection->name(), toUpdate, options);
       } else {
         opResUpdate = _trx->update(_collection->name(), toUpdate, options);
       }
-      
+
       if (opResUpdate.fail()) {
         THROW_ARANGO_EXCEPTION(opResUpdate.result);
       }
-      
+
       handleBabyResult(opResUpdate.countErrorCodes,
-                       static_cast<size_t>(toUpdate.length()),
-                       ep->_options.ignoreErrors);
-    
+                       static_cast<size_t>(toUpdate.length()), ep->_options.ignoreErrors);
+
       resultListUpdate = opResUpdate.slice();
       if (!resultListUpdate.isArray()) {
         resultListUpdate = VPackSlice::emptyArraySlice();
@@ -1074,22 +1064,23 @@ std::unique_ptr<AqlItemBlock> UpsertBlock::work() {
 
     TRI_ASSERT(resultListInsert.isArray());
     TRI_ASSERT(resultListUpdate.isArray());
-    
+
     if (resultListInsert.length() == 0 && resultListUpdate.length() == 0) {
-      // nothing to do 
+      // nothing to do
       if (skipEmptyValues(resultListInsert, n, res, result.get(), dstRow)) {
         it->release();
         returnBlock(res);
         continue;
       }
     }
-   
+
     auto iterInsert = VPackArrayIterator(resultListInsert);
     auto iterUpdate = VPackArrayIterator(resultListUpdate);
 
     for (size_t i = 0; i < n; ++i) {
       TRI_ASSERT(i < _operations.size());
-      if ((_operations[i] == APPLY_UPDATE || _operations[i] == APPLY_INSERT) && result != nullptr) {
+      if ((_operations[i] == APPLY_UPDATE || _operations[i] == APPLY_INSERT) &&
+          result != nullptr) {
         // fetch operation type (insert or update/replace)
         VPackArrayIterator* iter;
         if (_operations[i] == APPLY_INSERT) {
@@ -1100,8 +1091,9 @@ std::unique_ptr<AqlItemBlock> UpsertBlock::work() {
 
         TRI_ASSERT(iter->valid());
         auto elm = iter->value();
-        bool wasError = arangodb::basics::VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
-        
+        bool wasError =
+            arangodb::basics::VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
+
         if (!wasError) {
           TRI_ASSERT(result != nullptr);
           inheritRegisters(res, result.get(), i, dstRow);
@@ -1123,8 +1115,8 @@ std::unique_ptr<AqlItemBlock> UpsertBlock::work() {
     it->release();
     returnBlock(res);
   }
-  
-  trimResult(result, dstRow); 
+
+  trimResult(result, dstRow);
 
   return result;
 }

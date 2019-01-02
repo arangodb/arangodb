@@ -36,8 +36,8 @@ static std::string const FEATURE_NAME("LanguageCheck");
 /// @brief reads previous default langauge from file
 arangodb::Result readLanguage(std::string& language) {
   auto databasePath =
-      arangodb::application_features::ApplicationServer::getFeature<
-          arangodb::DatabasePathFeature>("DatabasePath");
+      arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>(
+          "DatabasePath");
   std::string filename = databasePath->subdirectoryName("LANGUAGE");
 
   if (!TRI_ExistsFile(filename.c_str())) {
@@ -46,8 +46,7 @@ arangodb::Result readLanguage(std::string& language) {
 
   std::string found;
   try {
-    VPackBuilder builder =
-        arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
+    VPackBuilder builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
     VPackSlice content = builder.slice();
     if (!content.isObject()) {
       return TRI_ERROR_INTERNAL;
@@ -63,8 +62,7 @@ arangodb::Result readLanguage(std::string& language) {
   }
 
   language = found;
-  LOG_TOPIC(TRACE, arangodb::Logger::CONFIG)
-      << "using default language: " << found;
+  LOG_TOPIC(TRACE, arangodb::Logger::CONFIG) << "using default language: " << found;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -72,8 +70,8 @@ arangodb::Result readLanguage(std::string& language) {
 /// @brief writes the default language to file
 int writeLanguage(std::string const& language) {
   auto databasePath =
-      arangodb::application_features::ApplicationServer::getFeature<
-          arangodb::DatabasePathFeature>("DatabasePath");
+      arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>(
+          "DatabasePath");
   std::string filename = databasePath->subdirectoryName("LANGUAGE");
 
   // generate json
@@ -85,16 +83,15 @@ int writeLanguage(std::string const& language) {
   } catch (...) {
     // out of memory
     LOG_TOPIC(ERR, arangodb::Logger::CONFIG)
-        << "cannot save default language in file '" << filename
-        << "': out of memory";
+        << "cannot save default language in file '" << filename << "': out of memory";
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   // save json info to file
   LOG_TOPIC(DEBUG, arangodb::Logger::CONFIG)
       << "Writing default language to file '" << filename << "'";
-  bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(
-      filename, builder.slice(), true);
+  bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(filename,
+                                                                 builder.slice(), true);
   if (!ok) {
     LOG_TOPIC(ERR, arangodb::Logger::CONFIG)
         << "could not save default language in file '" << filename
@@ -122,8 +119,7 @@ std::string getOrSetPreviousLanguage(std::string const& input) {
 
 namespace arangodb {
 
-LanguageCheckFeature::LanguageCheckFeature(
-    application_features::ApplicationServer& server)
+LanguageCheckFeature::LanguageCheckFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, ::FEATURE_NAME) {
   setOptional(false);
   startsAfter("Language");
@@ -133,8 +129,8 @@ LanguageCheckFeature::LanguageCheckFeature(
 LanguageCheckFeature::~LanguageCheckFeature() {}
 
 void LanguageCheckFeature::start() {
-  auto feature = arangodb::application_features::ApplicationServer::getFeature<
-      LanguageFeature>("Language");
+  auto feature = arangodb::application_features::ApplicationServer::getFeature<LanguageFeature>(
+      "Language");
   auto defaultLang = feature->getDefaultLanguage();
   auto language = feature->getCollatorLanguage();
   auto previous = ::getOrSetPreviousLanguage(language);

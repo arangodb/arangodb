@@ -36,8 +36,7 @@ struct LogBuffer {
   static uint64_t _ringBufferId;
   static LogBuffer _ringBuffer[];
 
-  static std::vector<LogBuffer> entries(LogLevel, uint64_t start,
-                                        bool upToLevel);
+  static std::vector<LogBuffer> entries(LogLevel, uint64_t start, bool upToLevel);
   static void initialize();
 
   uint64_t _id;
@@ -46,6 +45,6 @@ struct LogBuffer {
   char _message[256];
   size_t _topicId;
 };
-}
+}  // namespace arangodb
 
 #endif

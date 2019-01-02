@@ -32,7 +32,7 @@ struct TRI_vocbase_t;
 namespace arangodb {
 class GeneralRequest;
 class GeneralResponse;
-}
+}  // namespace arangodb
 
 /// @brief action result
 class TRI_action_result_t {
@@ -46,20 +46,15 @@ class TRI_action_result_t {
 /// @brief action descriptor
 class TRI_action_t {
  public:
-  TRI_action_t()
-      : _urlParts(0),
-        _isPrefix(false),
-        _allowUseDatabase(false) {}
+  TRI_action_t() : _urlParts(0), _isPrefix(false), _allowUseDatabase(false) {}
 
   virtual ~TRI_action_t() {}
 
   virtual void visit(void*) = 0;
 
-  virtual TRI_action_result_t execute(TRI_vocbase_t*,
-                                      arangodb::GeneralRequest*,
+  virtual TRI_action_result_t execute(TRI_vocbase_t*, arangodb::GeneralRequest*,
                                       arangodb::GeneralResponse*,
-                                      arangodb::Mutex* dataLock,
-                                      void** data) = 0;
+                                      arangodb::Mutex* dataLock, void** data) = 0;
 
   virtual bool cancel(arangodb::Mutex* dataLock, void** data) = 0;
 

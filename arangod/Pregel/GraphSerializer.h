@@ -39,22 +39,20 @@ template <typename V>
 struct VertexSerializer {
   virtual ~VertexSerializer() {}
 
-  virtual void serialize(VPackBuilder const& builder,
-                         V const* targetPtr) const = 0;
+  virtual void serialize(VPackBuilder const& builder, V const* targetPtr) const = 0;
 
   virtual bool deserialize(VPackSlice const& data, V* targetPtr) const = 0;
 };
 
 template <>
 struct VertexSerializer<int64_t> {
-  virtual void serialize(VPackBuilder const& builder,
-                         int64_t const* targetPtr) const {
+  virtual void serialize(VPackBuilder const& builder, int64_t const* targetPtr) const {
     builder.add(VPackValue(*targetPtr));
   };
   virtual bool deserialize(VPackSlice const& data, int64_t* targetPtr) const {
     *targetPtr = data.getInt();
   };
 };
-}
-}
+}  // namespace pregel
+}  // namespace arangodb
 #endif

@@ -29,7 +29,7 @@
 
 namespace arangodb {
 namespace pregel {
-  
+
 class Conductor;
 
 class MasterContext {
@@ -64,7 +64,7 @@ class MasterContext {
   inline const T* getAggregatedValue(std::string const& name) {
     return (const T*)_aggregators->getAggregatedValue(name);
   }
-  
+
   template <typename T>
   inline void setAggregatedValue(std::string const& name, T const& value) {
     // FIXME refactor the aggregators, this whole API is horrible
@@ -105,6 +105,6 @@ class MasterContext {
   /// otherwise workers will be called again with the aggregated values
   virtual bool postCompensation() { return false; }
 };
-}
-}
+}  // namespace pregel
+}  // namespace arangodb
 #endif

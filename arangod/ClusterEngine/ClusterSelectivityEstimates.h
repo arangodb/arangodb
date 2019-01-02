@@ -43,10 +43,10 @@ class ClusterSelectivityEstimates {
   mutable basics::ReadWriteLock _lock;
   mutable std::unordered_map<std::string, double> _estimates;
   mutable double _expireStamp;
-  
+
   static constexpr double defaultTtl = 60.0;
 };
 
-}
+}  // namespace arangodb
 
 #endif

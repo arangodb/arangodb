@@ -42,12 +42,11 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-ConstantWeightShortestPathFinder::PathSnippet::PathSnippet(
-    StringRef& pred, EdgeDocumentToken&& path)
+ConstantWeightShortestPathFinder::PathSnippet::PathSnippet(StringRef& pred,
+                                                           EdgeDocumentToken&& path)
     : _pred(pred), _path(std::move(path)) {}
 
-ConstantWeightShortestPathFinder::ConstantWeightShortestPathFinder(
-    ShortestPathOptions* options)
+ConstantWeightShortestPathFinder::ConstantWeightShortestPathFinder(ShortestPathOptions* options)
     : _options(options), _mmdr(new ManagedDocumentResult{}) {}
 
 ConstantWeightShortestPathFinder::~ConstantWeightShortestPathFinder() {
@@ -56,8 +55,7 @@ ConstantWeightShortestPathFinder::~ConstantWeightShortestPathFinder() {
 
 bool ConstantWeightShortestPathFinder::shortestPath(
     arangodb::velocypack::Slice const& s, arangodb::velocypack::Slice const& e,
-    arangodb::graph::ShortestPathResult& result,
-    std::function<void()> const& callback) {
+    arangodb::graph::ShortestPathResult& result, std::function<void()> const& callback) {
   result.clear();
   TRI_ASSERT(s.isString());
   TRI_ASSERT(e.isString());
@@ -104,8 +102,7 @@ bool ConstantWeightShortestPathFinder::shortestPath(
 bool ConstantWeightShortestPathFinder::expandClosure(Closure& sourceClosure,
                                                      Snippets& sourceSnippets,
                                                      Snippets& targetSnippets,
-                                                     bool isBackward,
-                                                     StringRef& result) {
+                                                     bool isBackward, StringRef& result) {
   _nextClosure.clear();
   for (auto& v : sourceClosure) {
     _edges.clear();
@@ -121,8 +118,7 @@ bool ConstantWeightShortestPathFinder::expandClosure(Closure& sourceClosure,
         // and is reset to a nullptr. So if we crash
         // here no mem-leaks. or undefined behavior
         // Just make sure _edges is not used after
-        sourceSnippets.emplace(
-            n, new PathSnippet(v, std::move(_edges[i])));
+        sourceSnippets.emplace(n, new PathSnippet(v, std::move(_edges[i])));
         auto targetFoundIt = targetSnippets.find(n);
         if (targetFoundIt != targetSnippets.end()) {
           result = n;
@@ -139,8 +135,8 @@ bool ConstantWeightShortestPathFinder::expandClosure(Closure& sourceClosure,
   return false;
 }
 
-void ConstantWeightShortestPathFinder::fillResult(
-    StringRef& n, arangodb::graph::ShortestPathResult& result) {
+void ConstantWeightShortestPathFinder::fillResult(StringRef& n,
+                                                  arangodb::graph::ShortestPathResult& result) {
   result._vertices.emplace_back(n);
   auto it = _leftFound.find(n);
   TRI_ASSERT(it != _leftFound.end());
@@ -167,8 +163,7 @@ void ConstantWeightShortestPathFinder::fillResult(
   clearVisited();
 }
 
-void ConstantWeightShortestPathFinder::expandVertex(bool backward,
-                                                    StringRef vertex) {
+void ConstantWeightShortestPathFinder::expandVertex(bool backward, StringRef vertex) {
   std::unique_ptr<EdgeCursor> edgeCursor;
   if (backward) {
     edgeCursor.reset(_options->nextReverseCursor(_mmdr.get(), vertex));
@@ -176,8 +171,7 @@ void ConstantWeightShortestPathFinder::expandVertex(bool backward,
     edgeCursor.reset(_options->nextCursor(_mmdr.get(), vertex));
   }
 
-  auto callback = [&](EdgeDocumentToken&& eid, VPackSlice edge,
-                      size_t cursorIdx) -> void {
+  auto callback = [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorIdx) -> void {
     if (edge.isString()) {
       if (edge.compareString(vertex.data(), vertex.length()) != 0) {
         StringRef id = _options->cache()->persistString(StringRef(edge));
