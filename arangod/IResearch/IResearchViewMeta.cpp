@@ -91,23 +91,6 @@ arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy createConsolidationP
 
   {
     // optional size_t
-    static const std::string fieldName("lookahead");
-
-    if (slice.hasKey(fieldName)) {
-      auto field = slice.get(fieldName);
-
-      if (!field.isNumber<size_t>()) {
-        errorField = fieldName;
-
-        return arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy();
-      }
-
-      options.lookahead = field.getNumber<size_t>();
-    }
-  }
-
-  {
-    // optional size_t
     static const std::string fieldName("segmentsBytesFloor");
 
     if (slice.hasKey(fieldName)) {
@@ -176,7 +159,7 @@ arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy createConsolidationP
 
   properties.openObject();
   properties.add("type", arangodb::iresearch::toValuePair(POLICY_TIER));
-  properties.add("lookahead", arangodb::velocypack::Value(options.lookahead));
+  properties.add("lookahead", arangodb::velocypack::Value(size_t(1)));  // FIXME remove in 3.5
   properties.add("segmentsBytesFloor",
                  arangodb::velocypack::Value(options.floor_segment_bytes));
   properties.add("segmentsBytesMax", arangodb::velocypack::Value(options.max_segments_bytes));
@@ -742,7 +725,3 @@ size_t IResearchViewMetaState::memory() const {
 
 NS_END      // iresearch
     NS_END  // arangodb
-
-    // -----------------------------------------------------------------------------
-    // --SECTION-- END-OF-FILE
-    // -----------------------------------------------------------------------------

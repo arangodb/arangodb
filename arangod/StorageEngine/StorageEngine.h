@@ -54,7 +54,6 @@ class WalAccess;
 namespace rest {
 
 class RestHandlerFactory;
-
 }
 
 namespace transaction {

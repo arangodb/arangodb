@@ -27,11 +27,13 @@
 #include "Logger/Logger.h"
 
 #include <velocypack/AttributeTranslator.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
+#include <velocypack/velocypack-common.h>
+
 #include <velocypack/velocypack-aliases.h>
 #include <velocypack/velocypack-common.h>
-#include "velocypack/Iterator.h"
 
 using namespace arangodb::basics;
 

@@ -51,7 +51,6 @@ namespace arangodb {
 namespace cache {
 
 struct Transaction;
-
 }
 
 class LogicalCollection;

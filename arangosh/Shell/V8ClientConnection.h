@@ -43,9 +43,7 @@ class SimpleHttpResult;
 }  // namespace httpclient
 
 namespace fuerte {
-inline namespace v1 {
-class Connection;
-}
+inline namespace v1 { class Connection; }
 }  // namespace fuerte
 
 ////////////////////////////////////////////////////////////////////////////////

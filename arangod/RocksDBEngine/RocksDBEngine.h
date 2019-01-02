@@ -42,7 +42,6 @@
 namespace rocksdb {
 
 class TransactionDB;
-
 }
 
 namespace arangodb {
@@ -65,7 +64,6 @@ class TransactionState;
 namespace rest {
 
 class RestHandlerFactory;
-
 }
 
 namespace transaction {

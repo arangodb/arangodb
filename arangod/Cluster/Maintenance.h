@@ -50,6 +50,7 @@ arangodb::Result diffPlanLocalForDatabases(VPackSlice const&,
  * @param local    Snapshot of local state
  * @param serverId This server's UUID
  * @param errors   Copy of last maintenance feature errors
+ * @param feature   The feature itself
  * @param actions  Resulting actions from difference are packed in here
  *
  * @return         Result
@@ -57,6 +58,7 @@ arangodb::Result diffPlanLocalForDatabases(VPackSlice const&,
 arangodb::Result diffPlanLocal(VPackSlice const& plan, VPackSlice const& local,
                                std::string const& serverId,
                                MaintenanceFeature::errors_t& errors,
+                               MaintenanceFeature& feature,
                                std::vector<ActionDescription>& actions);
 
 /**
@@ -152,6 +154,7 @@ arangodb::Result syncReplicatedShardsWithLeaders(VPackSlice const& plan,
                                                  VPackSlice const& current,
                                                  VPackSlice const& local,
                                                  std::string const& serverId,
+                                                 MaintenanceFeature& feature,
                                                  std::vector<ActionDescription>& actions);
 
 }  // namespace maintenance

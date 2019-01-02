@@ -36,7 +36,6 @@ namespace arangodb {
 namespace httpclient {
 
 class SimpleHttpResult;
-
 }
 
 class ManagedDirectory;

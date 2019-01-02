@@ -268,7 +268,7 @@ bool DatabaseTailingSyncer::skipMarker(VPackSlice const& slice) {
     return false;
   }
 
-  if (_queriedTranslations) {
+  if (!_queriedTranslations) {
     // no translations yet... query master inventory to find names of all
     // collections
     try {

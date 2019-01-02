@@ -33,7 +33,6 @@ namespace arangodb {
 namespace rest {
 
 class Scheduler;
-
 }
 
 class SchedulerFeature final : public application_features::ApplicationFeature {

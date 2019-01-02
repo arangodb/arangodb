@@ -30,7 +30,6 @@ namespace arangodb {
 namespace aql {
 
 class QueryRegistry;
-
 }
 
 class QueryRegistryFeature final : public application_features::ApplicationFeature {

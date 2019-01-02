@@ -44,6 +44,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/ValueType.h>
 #include <velocypack/velocypack-aliases.h>
 #include <array>
@@ -979,10 +980,20 @@ void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
 
   if (type == NODE_TYPE_OBJECT) {
     builder.openObject();
+    
+    std::unordered_set<VPackStringRef> keys;
     size_t const n = numMembers();
+
     for (size_t i = 0; i < n; ++i) {
       auto member = getMemberUnchecked(i);
       if (member != nullptr) {
+        VPackStringRef key(member->getStringValue(), member->getStringLength());
+
+        if (n > 1 && !keys.emplace(key).second) {
+          // duplicate key, skip it
+          continue;
+        }
+
         builder.add(VPackValuePair(member->getStringValue(),
                                    member->getStringLength(), VPackValueType::String));
         member->getMember(0)->toVelocyPackValue(builder);

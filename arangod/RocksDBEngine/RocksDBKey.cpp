@@ -309,8 +309,7 @@ LocalDocumentId RocksDBKey::indexDocumentId(RocksDBEntryType type,
           uint64FromPersistent(data + size - sizeof(uint64_t) - sizeof(char)));
     }
 
-    default: {
-    }
+    default: {}
   }
 
   THROW_ARANGO_EXCEPTION(TRI_ERROR_TYPE_ERROR);

@@ -34,7 +34,6 @@ namespace arangodb {
 namespace transaction {
 
 class Context;
-
 }
 
 class SingleCollectionTransaction final : public transaction::Methods {

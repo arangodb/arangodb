@@ -152,6 +152,7 @@ bool CreateCollection::first() {
     _result =
         Collections::create(vocbase, shard, type, docket.slice(), waitForRepl, enforceReplFact,
                             [=](std::shared_ptr<LogicalCollection> const& col) -> void {
+                              TRI_ASSERT(col);
                               LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
                                   << "local collection " << database << "/"
                                   << shard << " successfully created";
@@ -173,6 +174,7 @@ bool CreateCollection::first() {
 
   } catch (std::exception const& e) {
     std::stringstream error;
+
     error << "action " << _description << " failed with exception " << e.what();
     LOG_TOPIC(WARN, Logger::MAINTENANCE) << error.str();
     _result.reset(TRI_ERROR_FAILED, error.str());
@@ -184,5 +186,15 @@ bool CreateCollection::first() {
   }
 
   notify();
+
   return false;
+}
+
+void CreateCollection::setState(ActionState state) {
+  if ((COMPLETE == state || FAILED == state) && _state != state) {
+    TRI_ASSERT(_description.has("shard"));
+    _feature.incShardVersion(_description.get("shard"));
+  }
+
+  ActionBase::setState(state);
 }

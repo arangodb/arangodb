@@ -43,7 +43,6 @@ arangodb::aql::AstNodeType const CmpMap[]{
     arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT,  // NODE_TYPE_OPERATOR_BINARY_GT: 3 > a  <==> a < 3
     arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE  // NODE_TYPE_OPERATOR_BINARY_GE: 3 >= a <==> a <= 3
 };
-
 }
 
 namespace arangodb {

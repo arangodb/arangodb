@@ -32,6 +32,8 @@
 #include <velocypack/Slice.h>
 
 namespace arangodb {
+class Index;
+
 namespace aql {
 
 class Ast;
@@ -175,10 +177,11 @@ class Condition {
   ~Condition();
 
  public:
+  /// @brief: note: index may be a nullptr
   static void collectOverlappingMembers(ExecutionPlan const* plan, Variable const* variable,
-                                        AstNode* andNode, AstNode* otherAndNode,
+                                        AstNode const* andNode, AstNode const* otherAndNode,
                                         std::unordered_set<size_t>& toRemove,
-                                        bool isSparse, bool isFromTraverser);
+                                        Index const* index, bool isFromTraverser);
 
   /// @brief return the condition root
   inline AstNode* root() const { return _root; }
@@ -220,8 +223,8 @@ class Condition {
   void normalize();
 
   /// @brief removes condition parts from another
-  AstNode* removeIndexCondition(ExecutionPlan const*, Variable const*,
-                                AstNode const*, bool isSparse);
+  AstNode* removeIndexCondition(ExecutionPlan const* plan, Variable const* variable,
+                                AstNode const* condition, Index const* index);
 
   /// @brief removes condition parts from another
   AstNode* removeTraversalCondition(ExecutionPlan const*, Variable const*, AstNode*);
@@ -238,7 +241,8 @@ class Condition {
 
   /// @brief get the attributes for a sub-condition that are const
   /// (i.e. compared with equality)
-  std::vector<std::vector<arangodb::basics::AttributeName>> getConstAttributes(Variable const*, bool);
+  std::vector<std::vector<arangodb::basics::AttributeName>> getConstAttributes(
+      Variable const*, bool includeNull) const;
 
  private:
   /// @brief sort ORs for the same attribute so they are in ascending value
@@ -260,7 +264,7 @@ class Condition {
 #endif
 
   /// @brief checks if the current condition covers the other
-  static bool CanRemove(ExecutionPlan const*, ConditionPart const&,
+  static bool canRemove(ExecutionPlan const*, ConditionPart const&,
                         AstNode const*, bool isFromTraverser);
 
   /// @brief deduplicate IN condition values

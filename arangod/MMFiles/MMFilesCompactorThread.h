@@ -41,7 +41,6 @@ class LogicalCollection;
 namespace transaction {
 
 class Methods;
-
 }
 
 class MMFilesCompactorThread final : public Thread {

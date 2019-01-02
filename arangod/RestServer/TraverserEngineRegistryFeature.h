@@ -30,7 +30,6 @@ namespace arangodb {
 namespace traverser {
 
 class TraverserEngineRegistry;
-
 }
 
 class TraverserEngineRegistryFeature final : public application_features::ApplicationFeature {

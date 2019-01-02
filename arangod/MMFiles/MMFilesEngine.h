@@ -47,7 +47,6 @@ class TransactionState;
 namespace rest {
 
 class RestHandlerFactory;
-
 }
 
 namespace transaction {

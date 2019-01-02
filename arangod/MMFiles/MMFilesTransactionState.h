@@ -39,7 +39,6 @@ struct TRI_vocbase_t;
 namespace rocksdb {
 
 class Transaction;
-
 }
 
 namespace arangodb {

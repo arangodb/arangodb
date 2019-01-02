@@ -36,8 +36,6 @@ namespace arangodb {
 
 class LogicalCollection;
 
-class MaintenanceAction;
-
 namespace maintenance {
 
 class SynchronizeShard : public ActionBase {
@@ -46,7 +44,9 @@ class SynchronizeShard : public ActionBase {
 
   virtual ~SynchronizeShard();
 
-  virtual bool first() override;
+  virtual bool first() override final;
+
+  virtual void setState(ActionState state) override final;
 
  private:
   arangodb::Result getReadLock(std::string const& endpoint, std::string const& database,

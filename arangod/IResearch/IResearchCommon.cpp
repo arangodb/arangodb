@@ -27,7 +27,6 @@
 namespace {
 
 static const char* TYPE = "arangosearch";
-
 }
 
 namespace arangodb {

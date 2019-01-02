@@ -30,7 +30,6 @@ namespace arangodb {
 namespace consensus {
 
 class Agent;
-
 }
 
 class AgencyFeature : virtual public application_features::ApplicationFeature {

@@ -52,11 +52,12 @@ class ModificationBlock : public ExecutionBlock {
 
   virtual ~ModificationBlock();
 
-  /// @brief getSome
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override final;
-
   std::pair<ExecutionState, arangodb::Result> initializeCursor(AqlItemBlock* items,
                                                                size_t pos) override final;
+
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override final;
+
+  std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final;
 
  protected:
   /// @brief the actual work horse
@@ -106,6 +107,9 @@ class ModificationBlock : public ExecutionBlock {
   /// @brief whether this block contributes to statistics.
   ///        Will only be disabled in SmartGraphCase.
   bool _countStats;
+
+  /// @brief whether or not input needs to be read completely
+  bool _readCompleteInput;
 
   /// @brief A list of AQL Itemblocks fetched from upstream
   std::vector<std::unique_ptr<AqlItemBlock>> _blocks;

@@ -284,6 +284,22 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// @brief Highest limit for worker threads
   static uint32_t const maxThreadLimit;
 
+  /**
+   * @brief get volatile shard version
+   */
+  uint64_t shardVersion(std::string const& shardId) const;
+
+  /**
+   * @brief increment volatile local shard version
+   */
+  uint64_t incShardVersion(std::string const& shardId);
+
+  /**
+   * @brief clean up after shard has been dropped locally
+   * @param  shard  Shard name
+   */
+  void delShardVersion(std::string const& shardId);
+
  protected:
   /// @brief common code used by multiple constructors
   void init();
@@ -364,6 +380,12 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   mutable arangodb::Mutex _dbeLock;
   /// @brief pending errors raised by CreateDatabase
   std::unordered_map<std::string, std::shared_ptr<VPackBuffer<uint8_t>>> _dbErrors;
+
+  /// @brief lock for shard version map
+  mutable arangodb::Mutex _versionLock;
+  /// @brief shards have versions in order to be able to distinguish between
+  /// independant actions
+  std::unordered_map<std::string, size_t> _shardVersion;
 };
 
 }  // namespace arangodb

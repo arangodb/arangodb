@@ -31,7 +31,6 @@ namespace arangodb {
 namespace options {
 
 class ProgramOptions;
-
 }
 
 class MMFilesWalRecoveryFeature final : public application_features::ApplicationFeature {

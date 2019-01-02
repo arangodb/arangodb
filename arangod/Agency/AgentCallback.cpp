@@ -24,7 +24,9 @@
 #include "AgentCallback.h"
 
 #include "Agency/Agent.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 
+using namespace arangodb::application_features;
 using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
 
@@ -88,7 +90,7 @@ bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
         << "comm_status(" << res->status << "), last(" << _last << "), follower("
         << _slaveID << "), time(" << TRI_microtime() - _startTime << ")";
   } else {
-    if (_agent == nullptr || !_agent->isStopping()) {
+    if (!ApplicationServer::isStopping() && (_agent == nullptr || !_agent->isStopping())) {
       // Do not warn if we are already shutting down:
       LOG_TOPIC(WARN, Logger::AGENCY)
           << "Got bad callback from AppendEntriesRPC: "

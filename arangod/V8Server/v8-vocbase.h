@@ -34,7 +34,6 @@ namespace arangodb {
 namespace aql {
 
 class QueryRegistry;
-
 }
 
 class CollectionNameResolver;

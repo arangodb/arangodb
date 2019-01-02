@@ -34,7 +34,6 @@ namespace arangodb {
 namespace options {
 
 class ProgramOptions;
-
 }
 
 namespace application_features {

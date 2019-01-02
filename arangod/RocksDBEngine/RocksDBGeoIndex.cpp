@@ -146,7 +146,12 @@ class RDBNearIterator final : public IndexIterator {
         limit);
   }
 
-  void reset() override { _near.reset(); }
+  void reset() override {
+    _near.reset();
+    if (!_near.params().fullRange) {
+      estimateDensity();
+    }
+  }
 
  private:
   // we need to get intervals representing areas in a ring (annulus)

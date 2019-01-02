@@ -309,19 +309,6 @@ void HeartbeatThread::runDBServer() {
     return true;
   };
 
-  auto planAgencyCallback =
-      std::make_shared<AgencyCallback>(_agency, "Plan/Version", updatePlan, true);
-
-  bool registered = false;
-  while (!registered) {
-    registered = _agencyCallbackRegistry->registerCallback(planAgencyCallback);
-    if (!registered) {
-      LOG_TOPIC(ERR, Logger::HEARTBEAT)
-          << "Couldn't register plan change in agency!";
-      std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
-  }
-
   std::function<bool(VPackSlice const& result)> updateCurrent = [=](VPackSlice const& result) {
     if (!result.isNumber()) {
       LOG_TOPIC(ERR, Logger::HEARTBEAT)
@@ -349,11 +336,24 @@ void HeartbeatThread::runDBServer() {
     return true;
   };
 
+  auto planAgencyCallback =
+      std::make_shared<AgencyCallback>(_agency, "Plan/Version", updatePlan, true);
+
   auto currentAgencyCallback =
       std::make_shared<AgencyCallback>(_agency, "Current/Version", updateCurrent, true);
 
+  bool registered = false;
+  while (!registered && !isStopping()) {
+    registered = _agencyCallbackRegistry->registerCallback(planAgencyCallback);
+    if (!registered) {
+      LOG_TOPIC(ERR, Logger::HEARTBEAT)
+          << "Couldn't register plan change in agency!";
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+  }
+
   registered = false;
-  while (!registered) {
+  while (!registered && !isStopping()) {
     registered = _agencyCallbackRegistry->registerCallback(currentAgencyCallback);
     if (!registered) {
       LOG_TOPIC(ERR, Logger::HEARTBEAT)
@@ -498,6 +498,7 @@ void HeartbeatThread::runDBServer() {
     }
   }
 
+  // TODO should these be defered?
   _agencyCallbackRegistry->unregisterCallback(currentAgencyCallback);
   _agencyCallbackRegistry->unregisterCallback(planAgencyCallback);
 }

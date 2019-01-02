@@ -497,9 +497,7 @@ void RocksDBTransactionState::rollbackOperation(TRI_voc_document_operation_e ope
         --_numLogdata;
 #endif
         break;
-      default: {
-        break;
-      }
+      default: { break; }
     }
   } else {
     if (operationType == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {

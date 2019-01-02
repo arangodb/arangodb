@@ -198,6 +198,10 @@ VPackBuilder ActionBase::toVelocyPack() const {
   return builder;
 }
 
+ActionState ActionBase::getState() const { return _state; }
+
+void ActionBase::setState(ActionState state) { _state = state; }
+
 /**
  * kill() operation is an expected future feature.  Not supported in the
  *  original ActionBase derivatives

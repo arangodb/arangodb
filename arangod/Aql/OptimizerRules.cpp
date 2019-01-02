@@ -3195,7 +3195,7 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(Optimizer* opt,
             auto newNode =
                 condition.removeIndexCondition(plan.get(), indexNode->outVariable(),
                                                indexCondition->root(),
-                                               indexesUsed[0].getIndex()->sparse());
+                                               indexesUsed[0].getIndex().get());
 
             if (newNode == nullptr) {
               // no condition left...

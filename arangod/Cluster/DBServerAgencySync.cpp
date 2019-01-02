@@ -165,6 +165,14 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   auto plan = clusterInfo->getPlan();
   auto serverId = arangodb::ServerState::instance()->getId();
 
+  if (plan == nullptr) {
+    // TODO increase log level, except during shutdown?
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+        << "DBServerAgencySync::execute no plan";
+    result.errorMessage = "DBServerAgencySync::execute no plan";
+    return result;
+  }
+
   VPackBuilder local;
   Result glc = getLocalCollections(local);
   if (!glc.ok()) {
@@ -203,6 +211,13 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     }
 
     auto current = clusterInfo->getCurrent();
+    if (current == nullptr) {
+      // TODO increase log level, except during shutdown?
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+          << "DBServerAgencySync::execute no current";
+      result.errorMessage = "DBServerAgencySync::execute no current";
+      return result;
+    }
     LOG_TOPIC(TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo - current state: " << current->toJson();
 
@@ -217,21 +232,18 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   }
 
   if (rb.isClosed()) {
-    // FIXMEMAINTENANCE: when would rb not be closed? and if "catch"
-    // just happened, would you want to be doing this anyway?
-
     auto report = rb.slice();
     if (report.isObject()) {
-      std::vector<std::string> agency = {maintenance::PHASE_TWO, "agency"};
-      if (report.hasKey(agency) && report.get(agency).isObject()) {
-        auto phaseTwo = report.get(agency);
+      std::vector<std::string> path = {maintenance::PHASE_TWO, "agency"};
+      if (report.hasKey(path) && report.get(path).isObject()) {
+        auto agency = report.get(path);
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-            << "DBServerAgencySync reporting to Current: " << phaseTwo.toJson();
+            << "DBServerAgencySync reporting to Current: " << agency.toJson();
 
         // Report to current
-        if (!phaseTwo.isEmptyObject()) {
+        if (!agency.isEmptyObject()) {
           std::vector<AgencyOperation> operations;
-          for (auto const& ao : VPackObjectIterator(phaseTwo)) {
+          for (auto const& ao : VPackObjectIterator(agency)) {
             auto const key = ao.key.copyString();
             auto const op = ao.value.get("op").copyString();
             if (op == "set") {

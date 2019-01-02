@@ -413,8 +413,6 @@ std::string ReplicationApplierConfiguration::restrictTypeToString(
     case RestrictType::Exclude:
       return "exclude";
     case RestrictType::None:
-    default: {
-      return "";
-    }
+    default: { return ""; }
   }
 }

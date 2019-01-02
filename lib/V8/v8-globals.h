@@ -31,9 +31,7 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-
 class LogicalDataSource;  // forward declaration
-
 }
 
 /// @brief shortcut for fetching the isolate from the thread context
