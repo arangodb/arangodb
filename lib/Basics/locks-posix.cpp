@@ -21,9 +21,9 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "locks.h"
-#include <thread>
 #include <chrono>
+#include <thread>
+#include "locks.h"
 
 #ifdef TRI_HAVE_POSIX_THREADS
 
@@ -48,7 +48,8 @@ void TRI_SignalCondition(TRI_condition_t* cond) {
   int rc = pthread_cond_signal(&cond->_cond);
 
   if (rc != 0) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not signal the condition: " << strerror(rc); 
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "could not signal the condition: " << strerror(rc);
     FATAL_ERROR_ABORT();
   }
 }
@@ -60,7 +61,8 @@ void TRI_BroadcastCondition(TRI_condition_t* cond) {
   int rc = pthread_cond_broadcast(&cond->_cond);
 
   if (rc != 0) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not broadcast the condition: " << strerror(rc); 
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "could not broadcast the condition: " << strerror(rc);
     FATAL_ERROR_ABORT();
   }
 }
@@ -72,13 +74,14 @@ void TRI_WaitCondition(TRI_condition_t* cond) {
   int rc = pthread_cond_wait(&cond->_cond, &cond->_mutex);
 
   if (rc != 0) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not wait for the condition: " << strerror(rc); 
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "could not wait for the condition: " << strerror(rc);
     FATAL_ERROR_ABORT();
   }
 }
 
 /// @brief waits for a signal with a timeout in micro-seconds
-/// returns true when the condition was signaled, false on timeout 
+/// returns true when the condition was signaled, false on timeout
 /// Note that you must hold the lock.
 bool TRI_TimedWaitCondition(TRI_condition_t* cond, uint64_t delay) {
   struct timespec ts;
@@ -86,7 +89,7 @@ bool TRI_TimedWaitCondition(TRI_condition_t* cond, uint64_t delay) {
   uint64_t x, y;
 
   if (gettimeofday(&tp, nullptr) != 0) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not get time of day"; 
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not get time of day";
     FATAL_ERROR_ABORT();
   }
 
@@ -105,7 +108,8 @@ bool TRI_TimedWaitCondition(TRI_condition_t* cond, uint64_t delay) {
       return false;
     }
 
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not wait for the condition: " << strerror(rc); 
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "could not wait for the condition: " << strerror(rc);
     FATAL_ERROR_ABORT();
   }
 
@@ -117,7 +121,8 @@ void TRI_LockCondition(TRI_condition_t* cond) {
   int rc = pthread_mutex_lock(&cond->_mutex);
 
   if (rc != 0) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not lock the condition: " << strerror(rc); 
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "could not lock the condition: " << strerror(rc);
     FATAL_ERROR_ABORT();
   }
 }
@@ -127,7 +132,8 @@ void TRI_UnlockCondition(TRI_condition_t* cond) {
   int rc = pthread_mutex_unlock(&cond->_mutex);
 
   if (rc != 0) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not unlock the condition: " << strerror(rc); 
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "could not unlock the condition: " << strerror(rc);
     FATAL_ERROR_ABORT();
   }
 }

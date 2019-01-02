@@ -25,9 +25,9 @@
 
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
+#include "MMFiles/MMFilesLogfileManager.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "MMFiles/MMFilesLogfileManager.h"
 #include "RestServer/DatabaseFeature.h"
 
 using namespace arangodb::application_features;
@@ -36,11 +36,8 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-MMFilesWalRecoveryFeature::MMFilesWalRecoveryFeature(
-    application_features::ApplicationServer& server
-)
+MMFilesWalRecoveryFeature::MMFilesWalRecoveryFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "MMFilesWalRecovery") {
-
   setOptional(true);
   startsAfter("BasicsPhase");
 
@@ -59,7 +56,9 @@ MMFilesWalRecoveryFeature::MMFilesWalRecoveryFeature(
 /// recovery state has been build. additionally, all databases have been
 /// opened already so we can use collections
 void MMFilesWalRecoveryFeature::start() {
-  MMFilesLogfileManager* logfileManager = ApplicationServer::getFeature<MMFilesLogfileManager>("MMFilesLogfileManager");
+  MMFilesLogfileManager* logfileManager =
+      ApplicationServer::getFeature<MMFilesLogfileManager>(
+          "MMFilesLogfileManager");
 
   TRI_ASSERT(!logfileManager->allowWrites());
 
@@ -77,11 +76,12 @@ void MMFilesWalRecoveryFeature::start() {
   }
 
   // notify everyone that recovery is now done
-  auto databaseFeature = ApplicationServer::getFeature<DatabaseFeature>("Database");
+  auto databaseFeature =
+      ApplicationServer::getFeature<DatabaseFeature>("Database");
   databaseFeature->recoveryDone();
 
   LOG_TOPIC(INFO, arangodb::Logger::ENGINES)
-    << "DB recovery finished successfully";
+      << "DB recovery finished successfully";
 }
 
-} // arangodb
+}  // namespace arangodb

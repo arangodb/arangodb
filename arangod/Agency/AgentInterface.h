@@ -31,17 +31,17 @@ namespace consensus {
 class AgentInterface {
  public:
   /// @brief Possible outcome of write process
-  enum raft_commit_t {OK, UNKNOWN, TIMEOUT};
- 
+  enum raft_commit_t { OK, UNKNOWN, TIMEOUT };
+
   struct WriteMode {
     bool _discardStartup;
     bool _privileged;
-    WriteMode(bool d = false, bool p = false) :
-      _discardStartup(d), _privileged(p) {};
+    WriteMode(bool d = false, bool p = false)
+        : _discardStartup(d), _privileged(p){};
     bool privileged() const { return _privileged; }
     bool discardStartup() const { return _discardStartup; }
   };
-  
+
   /// @brief Attempt write
   virtual write_ret_t write(query_t const&, WriteMode const& mode = WriteMode()) = 0;
 
@@ -60,6 +60,6 @@ class AgentInterface {
   // Suffice warnings
   virtual ~AgentInterface() {}
 };
-}
-}
+}  // namespace consensus
+}  // namespace arangodb
 #endif

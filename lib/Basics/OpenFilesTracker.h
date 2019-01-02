@@ -25,9 +25,11 @@
 #define ARANGODB_BASICS_OPEN_FILES_TRACKER_H 1
 
 #include "Basics/Common.h"
-  
-#define TRI_TRACKED_CREATE_FILE(a, b, c) arangodb::OpenFilesTracker::instance()->create((a), (b), (c))
-#define TRI_TRACKED_OPEN_FILE(a, b) arangodb::OpenFilesTracker::instance()->open((a), (b))
+
+#define TRI_TRACKED_CREATE_FILE(a, b, c) \
+  arangodb::OpenFilesTracker::instance()->create((a), (b), (c))
+#define TRI_TRACKED_OPEN_FILE(a, b) \
+  arangodb::OpenFilesTracker::instance()->open((a), (b))
 #define TRI_TRACKED_CLOSE_FILE arangodb::OpenFilesTracker::instance()->close
 
 namespace arangodb {
@@ -42,9 +44,9 @@ class OpenFilesTracker {
   int close(int fd) noexcept;
 
   uint64_t numOpenFiles() const { return _numOpenFiles.load(); }
- 
-  void warnThreshold(uint64_t threshold) { 
-    _warnThreshold = threshold; 
+
+  void warnThreshold(uint64_t threshold) {
+    _warnThreshold = threshold;
     _lastWarning = 0.0;
   }
 
@@ -55,11 +57,11 @@ class OpenFilesTracker {
   void decrease() noexcept;
 
  private:
-  std::atomic<uint64_t> _numOpenFiles; 
-  uint64_t _warnThreshold; // configured threshold
-  double _lastWarning; // timestamp of last warning
+  std::atomic<uint64_t> _numOpenFiles;
+  uint64_t _warnThreshold;  // configured threshold
+  double _lastWarning;      // timestamp of last warning
 };
 
-}
+}  // namespace arangodb
 
 #endif

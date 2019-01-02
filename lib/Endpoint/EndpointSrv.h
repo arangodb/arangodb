@@ -46,6 +46,6 @@ class EndpointSrv final : public Endpoint {
  private:
   std::unique_ptr<Endpoint> _endpoint;
 };
-}
+}  // namespace arangodb
 
 #endif

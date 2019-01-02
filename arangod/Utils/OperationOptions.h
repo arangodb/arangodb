@@ -31,9 +31,16 @@ namespace arangodb {
 // a struct for keeping document modification operations in transactions
 struct OperationOptions {
   OperationOptions()
-      : recoveryData(nullptr), waitForSync(false), keepNull(true),
-        mergeObjects(true), silent(false), ignoreRevs(true),
-        returnOld(false), returnNew(false), isRestore(false), overwrite(false),
+      : recoveryData(nullptr),
+        waitForSync(false),
+        keepNull(true),
+        mergeObjects(true),
+        silent(false),
+        ignoreRevs(true),
+        returnOld(false),
+        returnNew(false),
+        isRestore(false),
+        overwrite(false),
         indexOperationMode(Index::OperationMode::normal) {}
 
   // original marker, set by an engine's recovery procedure only!
@@ -76,6 +83,6 @@ struct OperationOptions {
   Index::OperationMode indexOperationMode;
 };
 
-}
+}  // namespace arangodb
 
 #endif

@@ -24,7 +24,6 @@
 #ifndef ARANGOD_AQL_QUERY_H
 #define ARANGOD_AQL_QUERY_H 1
 
-#include "Basics/Common.h"
 #include "Aql/BindParameters.h"
 #include "Aql/Collections.h"
 #include "Aql/ExecutionState.h"
@@ -38,6 +37,7 @@
 #include "Aql/ResourceUsage.h"
 #include "Aql/SharedQueryState.h"
 #include "Aql/types.h"
+#include "Basics/Common.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
 #include "V8Server/V8Context.h"
@@ -53,7 +53,7 @@ class CollectionNameResolver;
 namespace transaction {
 class Context;
 class Methods;
-}
+}  // namespace transaction
 
 namespace velocypack {
 class Builder;
@@ -88,23 +88,14 @@ class Query {
 
  public:
   /// Used to construct a full query
-  Query(
-    bool contextOwnedByExterior,
-    TRI_vocbase_t& vocbase,
-    QueryString const& queryString,
-    std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
-    std::shared_ptr<arangodb::velocypack::Builder> const& options,
-    QueryPart part
-  );
+  Query(bool contextOwnedByExterior, TRI_vocbase_t& vocbase, QueryString const& queryString,
+        std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
+        std::shared_ptr<arangodb::velocypack::Builder> const& options, QueryPart part);
 
   /// Used to put together query snippets in RestAqlHandler
-  Query(
-    bool contextOwnedByExterior,
-    TRI_vocbase_t& vocbase,
-    std::shared_ptr<arangodb::velocypack::Builder> const& queryStruct,
-    std::shared_ptr<arangodb::velocypack::Builder> const& options,
-    QueryPart
-  );
+  Query(bool contextOwnedByExterior, TRI_vocbase_t& vocbase,
+        std::shared_ptr<arangodb::velocypack::Builder> const& queryStruct,
+        std::shared_ptr<arangodb::velocypack::Builder> const& options, QueryPart);
 
   virtual ~Query();
 
@@ -115,8 +106,8 @@ class Query {
 
  public:
   constexpr static uint64_t DontCache = 0;
-  
-/// @brief whether or not the query is killed
+
+  /// @brief whether or not the query is killed
   bool killed() const;
 
   /// @brief set the query to killed
@@ -131,22 +122,26 @@ class Query {
     _trx = trx;
     init();
   }
-  
+
   /// @brief inject a transaction context to use
   void setTransactionContext(std::shared_ptr<transaction::Context> const& ctx) {
     _transactionContext = ctx;
   }
 
-  QueryProfile* profile() const {
-    return _profile.get();
-  }
+  QueryProfile* profile() const { return _profile.get(); }
 
   velocypack::Slice optionsSlice() const { return _options->slice(); }
-  TEST_VIRTUAL QueryOptions const& queryOptions() const { return _queryOptions; }
+  TEST_VIRTUAL QueryOptions const& queryOptions() const {
+    return _queryOptions;
+  }
   TEST_VIRTUAL QueryOptions& queryOptions() { return _queryOptions; }
 
-  void increaseMemoryUsage(size_t value) { _resourceMonitor.increaseMemoryUsage(value); }
-  void decreaseMemoryUsage(size_t value) { _resourceMonitor.decreaseMemoryUsage(value); }
+  void increaseMemoryUsage(size_t value) {
+    _resourceMonitor.increaseMemoryUsage(value);
+  }
+  void decreaseMemoryUsage(size_t value) {
+    _resourceMonitor.decreaseMemoryUsage(value);
+  }
 
   ResourceMonitor* resourceMonitor() { return &_resourceMonitor; }
 
@@ -186,25 +181,27 @@ class Query {
   TRI_voc_tick_t id() const { return _id; }
 
   /// @brief getter for _ast
-  Ast* ast() const { 
-    return _ast.get(); 
-  }
+  Ast* ast() const { return _ast.get(); }
 
   /// @brief add a node to the list of nodes
   void addNode(AstNode* node) { _resources.addNode(node); }
 
   /// @brief register a string
   /// the string is freed when the query is destroyed
-  char* registerString(char const* p, size_t length) { return _resources.registerString(p, length); }
+  char* registerString(char const* p, size_t length) {
+    return _resources.registerString(p, length);
+  }
 
   /// @brief register a string
   /// the string is freed when the query is destroyed
-  char* registerString(std::string const& value) { return _resources.registerString(value); }
+  char* registerString(std::string const& value) {
+    return _resources.registerString(value);
+  }
 
   /// @brief register a potentially UTF-8-escaped string
   /// the string is freed when the query is destroyed
-  char* registerEscapedString(char const* p, size_t length, size_t& outLength) { 
-    return _resources.registerEscapedString(p, length, outLength); 
+  char* registerEscapedString(char const* p, size_t length, size_t& outLength) {
+    return _resources.registerEscapedString(p, length, outLength);
   }
 
   /// @brief register an error, with an optional parameter inserted into printf
@@ -280,9 +277,7 @@ class Query {
   }
 
   // @brief resets the contexts load-state of the AQL functions.
-  void unPrepareV8Context() {
-    _preparedV8Context = false;
-  }
+  void unPrepareV8Context() { _preparedV8Context = false; }
 
   /// @brief returns statistics for current query.
   void getStats(arangodb::velocypack::Builder&);
@@ -305,31 +300,29 @@ class Query {
   graph::Graph const* lookupGraphByName(std::string const& name);
 
   /// @brief return the bind parameters as passed by the user
-  std::shared_ptr<arangodb::velocypack::Builder> bindParameters() const { 
-    return _bindParameters.builder(); 
+  std::shared_ptr<arangodb::velocypack::Builder> bindParameters() const {
+    return _bindParameters.builder();
   }
 
   QueryExecutionState::ValueType state() const { return _state; }
 
   /// @brief return the query's shared state
-  std::shared_ptr<SharedQueryState> sharedState() const { 
-    return _sharedState;
-  }
-  
+  std::shared_ptr<SharedQueryState> sharedState() const { return _sharedState; }
+
   /// @brief pass-thru a resolver object from the transaction context
   CollectionNameResolver const& resolver();
-  
+
  private:
   /// @brief initializes the query
   void init();
-  
+
   /// @brief calculate a hash for the query, once
   uint64_t hash() const;
 
   /// @brief prepare an AQL query, this is a preparation for execute, but
   /// execute calls it internally. The purpose of this separate method is
-  /// to be able to only prepare a query from VelocyPack and then store it in the
-  /// QueryRegistry.
+  /// to be able to only prepare a query from VelocyPack and then store it in
+  /// the QueryRegistry.
   ExecutionPlan* preparePlan();
 
   /// @brief log a query
@@ -356,7 +349,7 @@ class Query {
 
   /// @brief create a transaction::Context
   std::shared_ptr<transaction::Context> createTransactionContext();
-  
+
   /// @brief returns the next query id
   static TRI_voc_tick_t nextId();
 
@@ -372,7 +365,7 @@ class Query {
 
   /// @brief pointer to vocbase the query runs in
   TRI_vocbase_t& _vocbase;
-  
+
   /// @brief transaction context to use for this query
   std::shared_ptr<transaction::Context> _transactionContext;
 
@@ -459,25 +452,25 @@ class Query {
   /// Track in which phase of execution we are, in order to implement repeatability.
   ExecutionPhase _executionPhase;
 
-  /// @brief shared state 
+  /// @brief shared state
   std::shared_ptr<SharedQueryState> _sharedState;
 
   /// @brief names of views used by the query. needed for the query cache
   std::unordered_set<std::string> _views;
-  
+
   /// @brief query cache entry built by the query
-  /// only populated when the query has generated its result(s) and before storing
-  /// the cache entry in the query cache
+  /// only populated when the query has generated its result(s) and before
+  /// storing the cache entry in the query cache
   std::unique_ptr<QueryCacheResultEntry> _cacheEntry;
 
   /// @brief hash for this query. will be calculated only once when needed
   mutable uint64_t _queryHash = DontCache;
-  
+
   /// @brief whether or not the hash was already calculated
   mutable bool _queryHashCalculated = false;
 };
 
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

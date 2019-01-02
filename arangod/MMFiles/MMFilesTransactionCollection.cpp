@@ -24,18 +24,19 @@
 #include "MMFilesTransactionCollection.h"
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
-#include "MMFiles/MMFilesDocumentOperation.h"
 #include "MMFiles/MMFilesCollection.h"
+#include "MMFiles/MMFilesDocumentOperation.h"
 #include "StorageEngine/TransactionState.h"
-#include "Transaction/Methods.h"
 #include "Transaction/Hints.h"
+#include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
 
-MMFilesTransactionCollection::MMFilesTransactionCollection(
-    TransactionState* trx, TRI_voc_cid_t cid, AccessMode::Type accessType,
-    int nestingLevel)
+MMFilesTransactionCollection::MMFilesTransactionCollection(TransactionState* trx,
+                                                           TRI_voc_cid_t cid,
+                                                           AccessMode::Type accessType,
+                                                           int nestingLevel)
     : TransactionCollection(trx, cid, accessType),
       _operations{_arena},
       _originalRevision(0),
@@ -54,12 +55,14 @@ void MMFilesTransactionCollection::addOperation(MMFilesDocumentOperation* operat
   _operations.push_back(operation);
 }
 
-void MMFilesTransactionCollection::freeOperations(transaction::Methods* activeTrx, bool mustRollback) {
+void MMFilesTransactionCollection::freeOperations(transaction::Methods* activeTrx,
+                                                  bool mustRollback) {
   if (!hasOperations()) {
     return;
   }
 
-  bool const isSingleOperationTransaction = _transaction->hasHint(transaction::Hints::Hint::SINGLE_OPERATION);
+  bool const isSingleOperationTransaction =
+      _transaction->hasHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   // revert all operations
   for (auto it = _operations.rbegin(); it != _operations.rend(); ++it) {
@@ -144,13 +147,12 @@ int MMFilesTransactionCollection::use(int nestingLevel) {
       TRI_vocbase_col_status_e status;
 
       LOG_TRX(_transaction, nestingLevel) << "using collection " << _cid;
-      TRI_set_errno(TRI_ERROR_NO_ERROR); // clear error state so can get valid error below
+      TRI_set_errno(TRI_ERROR_NO_ERROR);  // clear error state so can get valid error below
       _collection = _transaction->vocbase().useCollection(_cid, status);
 
       if (!_collection) {
         // must return an error
-        return TRI_ERROR_NO_ERROR == TRI_errno()
-          ? TRI_ERROR_INTERNAL : TRI_errno();
+        return TRI_ERROR_NO_ERROR == TRI_errno() ? TRI_ERROR_INTERNAL : TRI_errno();
       }
     } else {
       // use without usage-lock (lock already set externally)
@@ -169,8 +171,7 @@ int MMFilesTransactionCollection::use(int nestingLevel) {
   auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
   TRI_ASSERT(physical != nullptr);
 
-  if (nestingLevel == 0 &&
-      AccessMode::isWriteOrExclusive(_accessType)) {
+  if (nestingLevel == 0 && AccessMode::isWriteOrExclusive(_accessType)) {
     // read-lock the compaction lock
     if (!_transaction->hasHint(transaction::Hints::Hint::NO_COMPACTION_LOCK)) {
       if (!_compactionLocked) {
@@ -183,7 +184,8 @@ int MMFilesTransactionCollection::use(int nestingLevel) {
   bool shouldLock = _transaction->hasHint(transaction::Hints::Hint::LOCK_ENTIRELY);
 
   if (!shouldLock) {
-    shouldLock = (!AccessMode::isNone(_accessType) && !_transaction->hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
+    shouldLock = (!AccessMode::isNone(_accessType) &&
+                  !_transaction->hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
   }
 
   if (shouldLock && !isLocked()) {
@@ -208,8 +210,7 @@ int MMFilesTransactionCollection::use(int nestingLevel) {
 }
 
 void MMFilesTransactionCollection::unuse(int nestingLevel) {
-  if (isLocked() &&
-      (nestingLevel == 0 || _nestingLevel == nestingLevel)) {
+  if (isLocked() && (nestingLevel == 0 || _nestingLevel == nestingLevel)) {
     // unlock our own r/w locks
     doUnlock(_accessType, nestingLevel);
   }
@@ -246,8 +247,8 @@ void MMFilesTransactionCollection::release() {
 
 /// @brief lock a collection
 /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
-/// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
-/// returns any other error code otherwise
+/// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and
+/// no other error occurred returns any other error code otherwise
 int MMFilesTransactionCollection::doLock(AccessMode::Type type, int nestingLevel) {
   if (_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER)) {
     // never lock
@@ -263,7 +264,7 @@ int MMFilesTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
 
   TRI_ASSERT(!isLocked());
   TRI_ASSERT(_collection);
-  
+
   auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
   TRI_ASSERT(physical != nullptr);
 
@@ -273,14 +274,15 @@ int MMFilesTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
     timeout = 0.00000001;
   }
 
-  bool const useDeadlockDetector = (!_transaction->hasHint(transaction::Hints::Hint::SINGLE_OPERATION) &&
-                                    !_transaction->hasHint(transaction::Hints::Hint::NO_DLD));
+  bool const useDeadlockDetector =
+      (!_transaction->hasHint(transaction::Hints::Hint::SINGLE_OPERATION) &&
+       !_transaction->hasHint(transaction::Hints::Hint::NO_DLD));
 
   int res;
   if (!AccessMode::isWriteOrExclusive(type)) {
     LOG_TRX(_transaction, nestingLevel) << "read-locking collection " << _cid;
     res = physical->lockRead(useDeadlockDetector, _transaction, timeout);
-  } else { // WRITE or EXCLUSIVE
+  } else {  // WRITE or EXCLUSIVE
     LOG_TRX(_transaction, nestingLevel) << "write-locking collection " << _cid;
     res = physical->lockWrite(useDeadlockDetector, _transaction, timeout);
   }
@@ -292,9 +294,14 @@ int MMFilesTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
   }
 
   if (res == TRI_ERROR_LOCK_TIMEOUT && timeout >= 0.1) {
-    LOG_TOPIC(WARN, Logger::QUERIES) << "timed out after " << timeout << " s waiting for " << AccessMode::typeString(type) << "-lock on collection '" << _collection->name() << "'";
+    LOG_TOPIC(WARN, Logger::QUERIES)
+        << "timed out after " << timeout << " s waiting for "
+        << AccessMode::typeString(type) << "-lock on collection '"
+        << _collection->name() << "'";
   } else if (res == TRI_ERROR_DEADLOCK) {
-    LOG_TOPIC(WARN, Logger::QUERIES) << "deadlock detected while trying to acquire " << AccessMode::typeString(type) << "-lock on collection '" << _collection->name() << "'";
+    LOG_TOPIC(WARN, Logger::QUERIES)
+        << "deadlock detected while trying to acquire " << AccessMode::typeString(type)
+        << "-lock on collection '" << _collection->name() << "'";
   }
 
   return res;
@@ -334,8 +341,9 @@ int MMFilesTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
     return TRI_ERROR_INTERNAL;
   }
 
-  bool const useDeadlockDetector = (!_transaction->hasHint(transaction::Hints::Hint::SINGLE_OPERATION) &&
-                                    !_transaction->hasHint(transaction::Hints::Hint::NO_DLD));
+  bool const useDeadlockDetector =
+      (!_transaction->hasHint(transaction::Hints::Hint::SINGLE_OPERATION) &&
+       !_transaction->hasHint(transaction::Hints::Hint::NO_DLD));
 
   TRI_ASSERT(_collection);
   auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
@@ -344,7 +352,7 @@ int MMFilesTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
   if (!AccessMode::isWriteOrExclusive(_lockType)) {
     LOG_TRX(_transaction, nestingLevel) << "read-unlocking collection " << _cid;
     physical->unlockRead(useDeadlockDetector, _transaction);
-  } else { // WRITE or EXCLUSIVE
+  } else {  // WRITE or EXCLUSIVE
     LOG_TRX(_transaction, nestingLevel) << "write-unlocking collection " << _cid;
     physical->unlockWrite(useDeadlockDetector, _transaction);
   }

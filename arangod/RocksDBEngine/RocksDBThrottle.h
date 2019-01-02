@@ -32,7 +32,6 @@
 //   http://www.apache.org/licenses/LICENSE-2.0
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #ifndef ARANGO_ROCKSDB_ROCKSDB_THROTTLE_H
 #define ARANGO_ROCKSDB_ROCKSDB_THROTTLE_H 1
 
@@ -68,35 +67,29 @@ namespace arangodb {
 /// RocksDBPrefixExtractor as well.
 ////////////////////////////////////////////////////////////////////////////////
 class RocksDBThrottle : public rocksdb::EventListener {
-public:
+ public:
   RocksDBThrottle();
   virtual ~RocksDBThrottle();
 
-  void OnFlushBegin(rocksdb::DB* db,
-                    const rocksdb::FlushJobInfo& flush_job_info) override;
+  void OnFlushBegin(rocksdb::DB* db, const rocksdb::FlushJobInfo& flush_job_info) override;
 
-  void OnFlushCompleted(rocksdb::DB* db,
-                        const rocksdb::FlushJobInfo& flush_job_info) override;
+  void OnFlushCompleted(rocksdb::DB* db, const rocksdb::FlushJobInfo& flush_job_info) override;
 
-  void OnCompactionCompleted(rocksdb::DB* db,
-                             const rocksdb::CompactionJobInfo& ci) override;
+  void OnCompactionCompleted(rocksdb::DB* db, const rocksdb::CompactionJobInfo& ci) override;
 
-
-
-  void SetFamilies(std::vector<rocksdb::ColumnFamilyHandle *> & Families) {
-    _families=Families;
+  void SetFamilies(std::vector<rocksdb::ColumnFamilyHandle*>& Families) {
+    _families = Families;
   }
 
   static void AdjustThreadPriority(int Adjustment);
 
   void StopThread();
 
-protected:
-  void Startup(rocksdb::DB * db);
+ protected:
+  void Startup(rocksdb::DB* db);
 
-  void SetThrottleWriteRate(std::chrono::microseconds Micros,
-                            uint64_t Keys, uint64_t Bytes, bool IsLevel0);
-
+  void SetThrottleWriteRate(std::chrono::microseconds Micros, uint64_t Keys,
+                            uint64_t Bytes, bool IsLevel0);
 
   void ThreadLoop();
 
@@ -105,7 +98,6 @@ protected:
   int64_t ComputeBacklog();
 
   void RecalculateThrottle();
-
 
   // I am unable to figure out static initialization of std::chrono::seconds,
   //  using old school unsigned.
@@ -122,15 +114,14 @@ protected:
   //  (from original Google leveldb db/dbformat.h)
   static constexpr int64_t kL0_SlowdownWritesTrigger = 8;
 
-  struct ThrottleData_t
-  {
+  struct ThrottleData_t {
     std::chrono::microseconds _micros;
     uint64_t _keys;
     uint64_t _bytes;
     uint64_t _compactions;
   };
 
-  rocksdb::DBImpl * _internalRocksDB;
+  rocksdb::DBImpl* _internalRocksDB;
   std::once_flag _initFlag;
   std::atomic<bool> _threadRunning;
   std::future<void> _threadFuture;
@@ -150,10 +141,10 @@ protected:
   bool _firstThrottle;
 
   std::unique_ptr<WriteControllerToken> _delayToken;
-  std::vector<rocksdb::ColumnFamilyHandle *> _families;
+  std::vector<rocksdb::ColumnFamilyHandle*> _families;
 
-};// class RocksDBThrottle
+};  // class RocksDBThrottle
 
-} // namespace arangodb
+}  // namespace arangodb
 
 #endif

@@ -93,7 +93,8 @@ AqlItemBlock::AqlItemBlock(ResourceMonitor* resourceMonitor, VPackSlice const sl
   VPackArrayIterator dataIterator(data);
   VPackArrayIterator rawIterator(raw);
 
-  auto storeSingleValue = [this](size_t row, RegisterId column, VPackArrayIterator& it, std::vector<AqlValue>& madeHere) {
+  auto storeSingleValue = [this](size_t row, RegisterId column, VPackArrayIterator& it,
+                                 std::vector<AqlValue>& madeHere) {
     AqlValue a(it.value());
     it.next();
     try {
@@ -105,22 +106,17 @@ AqlItemBlock::AqlItemBlock(ResourceMonitor* resourceMonitor, VPackSlice const sl
     madeHere.emplace_back(a);
   };
 
-  enum RunType {
-    NoRun = 0,
-    EmptyRun,
-    NextRun,
-    PositionalRun
-  };
-    
+  enum RunType { NoRun = 0, EmptyRun, NextRun, PositionalRun };
+
   int64_t runLength = 0;
   size_t tablePos = 0;
   RunType runType = NoRun;
-  
+
   try {
     // skip the first two records
     rawIterator.next();
     rawIterator.next();
-    
+
     for (RegisterId column = 0; column < _nrRegs; column++) {
       for (size_t i = 0; i < _nrItems; i++) {
         if (runLength > 0) {
@@ -128,12 +124,12 @@ AqlItemBlock::AqlItemBlock(ResourceMonitor* resourceMonitor, VPackSlice const sl
             case EmptyRun:
               // nothing to do
               break;
-            
-            case NextRun: 
+
+            case NextRun:
               storeSingleValue(i, column, rawIterator, madeHere);
               break;
 
-            case PositionalRun: 
+            case PositionalRun:
               TRI_ASSERT(tablePos < madeHere.size());
               setValue(i, column, madeHere[tablePos]);
               break;
@@ -176,12 +172,12 @@ AqlItemBlock::AqlItemBlock(ResourceMonitor* resourceMonitor, VPackSlice const sl
             case -1:
               runType = EmptyRun;
               break;
-            
-            case -3: 
+
+            case -3:
               runType = NextRun;
               storeSingleValue(i, column, rawIterator, madeHere);
               break;
-            
+
             case -4: {
               runType = PositionalRun;
               VPackSlice v = dataIterator.value();
@@ -203,11 +199,9 @@ AqlItemBlock::AqlItemBlock(ResourceMonitor* resourceMonitor, VPackSlice const sl
           dataIterator.next();
           VPackSlice highBound = dataIterator.value();
           dataIterator.next();
-            
-          int64_t low =
-              VelocyPackHelper::getNumericValue<int64_t>(lowBound, 0);
-          int64_t high =
-              VelocyPackHelper::getNumericValue<int64_t>(highBound, 0);
+
+          int64_t low = VelocyPackHelper::getNumericValue<int64_t>(lowBound, 0);
+          int64_t high = VelocyPackHelper::getNumericValue<int64_t>(highBound, 0);
           emplaceValue(i, column, low, high);
         } else if (n >= 2) {
           if (static_cast<size_t>(n) >= madeHere.size()) {
@@ -324,9 +318,7 @@ void AqlItemBlock::rescale(size_t nrItems, RegisterId nrRegs) {
 
 /// @brief clears out some columns (registers), this deletes the values if
 /// necessary, using the reference count.
-void AqlItemBlock::clearRegisters(
-    std::unordered_set<RegisterId> const& toClear) {
-
+void AqlItemBlock::clearRegisters(std::unordered_set<RegisterId> const& toClear) {
   for (size_t i = 0; i < _nrItems; i++) {
     for (auto const& reg : toClear) {
       AqlValue& a(_data[_nrRegs * i + reg]);
@@ -385,7 +377,7 @@ AqlItemBlock* AqlItemBlock::slice(size_t from, size_t to) const {
         } else {
           // simple copying of values
           res->setValue(row - from, col, a);
-        } 
+        }
       }
     }
   }
@@ -394,8 +386,7 @@ AqlItemBlock* AqlItemBlock::slice(size_t from, size_t to) const {
 }
 
 /// @brief slice/clone, this does a deep copy of all entries
-AqlItemBlock* AqlItemBlock::slice(
-    size_t row, std::unordered_set<RegisterId> const& registers) const {
+AqlItemBlock* AqlItemBlock::slice(size_t row, std::unordered_set<RegisterId> const& registers) const {
   std::unordered_set<AqlValue> cache;
 
   auto res = std::make_unique<AqlItemBlock>(_resourceMonitor, 1, _nrRegs);
@@ -434,8 +425,8 @@ AqlItemBlock* AqlItemBlock::slice(
 
 /// @brief slice/clone chosen rows for a subset, this does a deep copy
 /// of all entries
-AqlItemBlock* AqlItemBlock::slice(std::vector<size_t> const& chosen, size_t from,
-                                  size_t to) const {
+AqlItemBlock* AqlItemBlock::slice(std::vector<size_t> const& chosen,
+                                  size_t from, size_t to) const {
   TRI_ASSERT(from < to && to <= chosen.size());
 
   std::unordered_set<AqlValue> cache;
@@ -479,8 +470,7 @@ AqlItemBlock* AqlItemBlock::slice(std::vector<size_t> const& chosen, size_t from
 /// operation, because it is unclear, when the values to which our
 /// AqlValues point will vanish! In particular, do not use setValue
 /// any more.
-AqlItemBlock* AqlItemBlock::steal(std::vector<size_t> const& chosen, size_t from,
-                                  size_t to) {
+AqlItemBlock* AqlItemBlock::steal(std::vector<size_t> const& chosen, size_t from, size_t to) {
   TRI_ASSERT(from < to && to <= chosen.size());
 
   auto res = std::make_unique<AqlItemBlock>(_resourceMonitor, to - from, _nrRegs);
@@ -506,17 +496,17 @@ AqlItemBlock* AqlItemBlock::steal(std::vector<size_t> const& chosen, size_t from
 
 /// @brief concatenate multiple blocks
 AqlItemBlock* AqlItemBlock::concatenate(ResourceMonitor* resourceMonitor,
-    BlockCollector* collector) {
-  return concatenate(resourceMonitor, collector->_blocks); 
+                                        BlockCollector* collector) {
+  return concatenate(resourceMonitor, collector->_blocks);
 }
 
 /// @brief concatenate multiple blocks, note that the new block now owns all
 /// AqlValue pointers in the old blocks, therefore, the latter are all
 /// set to nullptr, just to be sure.
 AqlItemBlock* AqlItemBlock::concatenate(ResourceMonitor* resourceMonitor,
-    std::vector<AqlItemBlock*> const& blocks) {
+                                        std::vector<AqlItemBlock*> const& blocks) {
   TRI_ASSERT(!blocks.empty());
-  
+
   size_t totalSize = 0;
   RegisterId nrRegs = 0;
   for (auto& it : blocks) {
@@ -585,8 +575,7 @@ AqlItemBlock* AqlItemBlock::concatenate(ResourceMonitor* resourceMonitor,
 ///                  corresponding position
 ///  "raw":     List of actual values, positions 0 and 1 are always null
 ///                  such that actual indices start at 2
-void AqlItemBlock::toVelocyPack(transaction::Methods* trx,
-                                VPackBuilder& result) const {
+void AqlItemBlock::toVelocyPack(transaction::Methods* trx, VPackBuilder& result) const {
   VPackOptions options(VPackOptions::Defaults);
   options.buildUnindexedArrays = true;
   options.buildUnindexedObjects = true;
@@ -596,7 +585,7 @@ void AqlItemBlock::toVelocyPack(transaction::Methods* trx,
   // Two nulls in the beginning such that indices start with 2
   raw.add(VPackValue(VPackValueType::Null));
   raw.add(VPackValue(VPackValueType::Null));
-  
+
   result.add("nrItems", VPackValue(_nrItems));
   result.add("nrRegs", VPackValue(_nrRegs));
   result.add("error", VPackValue(false));
@@ -604,24 +593,25 @@ void AqlItemBlock::toVelocyPack(transaction::Methods* trx,
   result.add("exhausted", VPackValue(false));
 
   enum State {
-    Empty,      // saw an empty value
-    Range,      // saw a range value
-    Next,       // saw a previously unknown value
-    Positional, // saw a value previously encountered
+    Empty,       // saw an empty value
+    Range,       // saw a range value
+    Next,        // saw a previously unknown value
+    Positional,  // saw a value previously encountered
   };
 
   std::unordered_map<AqlValue, size_t> table;  // remember duplicates
   size_t lastTablePos = 0;
   State lastState = Positional;
-  
+
   State currentState = Positional;
   size_t runLength = 0;
   size_t tablePos = 0;
-  
+
   result.add("data", VPackValue(VPackValueType::Array));
-  
-  // write out data buffered for repeated "empty" or "next" values      
-  auto writeBuffered = [](State lastState, size_t lastTablePos, VPackBuilder& result, size_t runLength) {
+
+  // write out data buffered for repeated "empty" or "next" values
+  auto writeBuffered = [](State lastState, size_t lastTablePos,
+                          VPackBuilder& result, size_t runLength) {
     if (lastState == Range) {
       return;
     }
@@ -645,8 +635,8 @@ void AqlItemBlock::toVelocyPack(transaction::Methods* trx,
         // saw multiple values
         result.add(VPackValue(lastState == Empty ? -1 : -3));
         result.add(VPackValue(runLength));
-      
-    }}
+      }
+    }
   };
 
   size_t pos = 2;  // write position in raw
@@ -677,11 +667,11 @@ void AqlItemBlock::toVelocyPack(transaction::Methods* trx,
       }
 
       // handle state change
-      if (currentState != lastState || 
+      if (currentState != lastState ||
           (currentState == Positional && tablePos != lastTablePos)) {
         // write out remaining buffered data in case of a state change
         writeBuffered(lastState, lastTablePos, result, runLength);
-        
+
         lastTablePos = 0;
         lastState = currentState;
         runLength = 0;
@@ -694,8 +684,8 @@ void AqlItemBlock::toVelocyPack(transaction::Methods* trx,
           ++runLength;
           lastTablePos = tablePos;
           break;
-           
-        case Range: 
+
+        case Range:
           result.add(VPackValue(-2));
           result.add(VPackValue(a.range()->_low));
           result.add(VPackValue(a.range()->_high));
@@ -703,11 +693,11 @@ void AqlItemBlock::toVelocyPack(transaction::Methods* trx,
       }
     }
   }
-        
+
   // write out any remaining buffered data
   writeBuffered(lastState, lastTablePos, result, runLength);
-  
-  result.close(); // closes "data"
+
+  result.close();  // closes "data"
 
   raw.close();
   result.add("raw", raw.slice());

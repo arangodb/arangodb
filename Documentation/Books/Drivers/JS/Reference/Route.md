@@ -13,11 +13,11 @@ route) that can be used to perform arbitrary HTTP requests.
 
 **Arguments**
 
-* **path**: `string` (optional)
+- **path**: `string` (optional)
 
   The relative URL of the route.
 
-* **headers**: `Object` (optional)
+- **headers**: `Object` (optional)
 
   Default headers that should be sent with each request to the route.
 
@@ -40,12 +40,12 @@ Performs a GET request to the given URL and returns the server response.
 
 **Arguments**
 
-* **path**: `string` (optional)
+- **path**: `string` (optional)
 
   The route-relative URL for the request. If omitted, the request will be made
   to the base URL of the route.
 
-* **qs**: `string` (optional)
+- **qs**: `string` (optional)
 
   The query string for the request. If _qs_ is an object, it will be translated
   to a query string.
@@ -54,20 +54,20 @@ Performs a GET request to the given URL and returns the server response.
 
 ```js
 const db = new Database();
-const route = db.route('my-foxx-service');
+const route = db.route("my-foxx-service");
 const response = await route.get();
 // response.body is the response body of calling
 // GET _db/_system/my-foxx-service
 
 // -- or --
 
-const response = await route.get('users');
+const response = await route.get("users");
 // response.body is the response body of calling
 // GET _db/_system/my-foxx-service/users
 
 // -- or --
 
-const response = await route.get('users', {group: 'admin'});
+const response = await route.get("users", { group: "admin" });
 // response.body is the response body of calling
 // GET _db/_system/my-foxx-service/users?group=admin
 ```
@@ -80,16 +80,16 @@ Performs a POST request to the given URL and returns the server response.
 
 **Arguments**
 
-* **path**: `string` (optional)
+- **path**: `string` (optional)
 
   The route-relative URL for the request. If omitted, the request will be made
   to the base URL of the route.
 
-* **body**: `string` (optional)
+- **body**: `string` (optional)
 
   The response body. If _body_ is an object, it will be encoded as JSON.
 
-* **qs**: `string` (optional)
+- **qs**: `string` (optional)
 
   The query string for the request. If _qs_ is an object, it will be translated
   to a query string.
@@ -98,22 +98,22 @@ Performs a POST request to the given URL and returns the server response.
 
 ```js
 const db = new Database();
-const route = db.route('my-foxx-service');
-const response = await route.post()
+const route = db.route("my-foxx-service");
+const response = await route.post();
 // response.body is the response body of calling
 // POST _db/_system/my-foxx-service
 
 // -- or --
 
-const response = await route.post('users')
+const response = await route.post("users");
 // response.body is the response body of calling
 // POST _db/_system/my-foxx-service/users
 
 // -- or --
 
-const response = await route.post('users', {
-  username: 'admin',
-  password: 'hunter2'
+const response = await route.post("users", {
+  username: "admin",
+  password: "hunter2"
 });
 // response.body is the response body of calling
 // POST _db/_system/my-foxx-service/users
@@ -121,10 +121,14 @@ const response = await route.post('users', {
 
 // -- or --
 
-const response = await route.post('users', {
-  username: 'admin',
-  password: 'hunter2'
-}, {admin: true});
+const response = await route.post(
+  "users",
+  {
+    username: "admin",
+    password: "hunter2"
+  },
+  { admin: true }
+);
 // response.body is the response body of calling
 // POST _db/_system/my-foxx-service/users?admin=true
 // with JSON request body {"username": "admin", "password": "hunter2"}
@@ -138,16 +142,16 @@ Performs a PUT request to the given URL and returns the server response.
 
 **Arguments**
 
-* **path**: `string` (optional)
+- **path**: `string` (optional)
 
   The route-relative URL for the request. If omitted, the request will be made
   to the base URL of the route.
 
-* **body**: `string` (optional)
+- **body**: `string` (optional)
 
   The response body. If _body_ is an object, it will be encoded as JSON.
 
-* **qs**: `string` (optional)
+- **qs**: `string` (optional)
 
   The query string for the request. If _qs_ is an object, it will be translated
   to a query string.
@@ -156,22 +160,22 @@ Performs a PUT request to the given URL and returns the server response.
 
 ```js
 const db = new Database();
-const route = db.route('my-foxx-service');
+const route = db.route("my-foxx-service");
 const response = await route.put();
 // response.body is the response body of calling
 // PUT _db/_system/my-foxx-service
 
 // -- or --
 
-const response = await route.put('users/admin');
+const response = await route.put("users/admin");
 // response.body is the response body of calling
 // PUT _db/_system/my-foxx-service/users
 
 // -- or --
 
-const response = await route.put('users/admin', {
-  username: 'admin',
-  password: 'hunter2'
+const response = await route.put("users/admin", {
+  username: "admin",
+  password: "hunter2"
 });
 // response.body is the response body of calling
 // PUT _db/_system/my-foxx-service/users/admin
@@ -179,10 +183,14 @@ const response = await route.put('users/admin', {
 
 // -- or --
 
-const response = await route.put('users/admin', {
-  username: 'admin',
-  password: 'hunter2'
-}, {admin: true});
+const response = await route.put(
+  "users/admin",
+  {
+    username: "admin",
+    password: "hunter2"
+  },
+  { admin: true }
+);
 // response.body is the response body of calling
 // PUT _db/_system/my-foxx-service/users/admin?admin=true
 // with JSON request body {"username": "admin", "password": "hunter2"}
@@ -196,16 +204,16 @@ Performs a PATCH request to the given URL and returns the server response.
 
 **Arguments**
 
-* **path**: `string` (optional)
+- **path**: `string` (optional)
 
   The route-relative URL for the request. If omitted, the request will be made
   to the base URL of the route.
 
-* **body**: `string` (optional)
+- **body**: `string` (optional)
 
   The response body. If _body_ is an object, it will be encoded as JSON.
 
-* **qs**: `string` (optional)
+- **qs**: `string` (optional)
 
   The query string for the request. If _qs_ is an object, it will be translated
   to a query string.
@@ -214,21 +222,21 @@ Performs a PATCH request to the given URL and returns the server response.
 
 ```js
 const db = new Database();
-const route = db.route('my-foxx-service');
+const route = db.route("my-foxx-service");
 const response = await route.patch();
 // response.body is the response body of calling
 // PATCH _db/_system/my-foxx-service
 
 // -- or --
 
-const response = await route.patch('users/admin');
+const response = await route.patch("users/admin");
 // response.body is the response body of calling
 // PATCH _db/_system/my-foxx-service/users
 
 // -- or --
 
-const response = await route.patch('users/admin', {
-  password: 'hunter2'
+const response = await route.patch("users/admin", {
+  password: "hunter2"
 });
 // response.body is the response body of calling
 // PATCH _db/_system/my-foxx-service/users/admin
@@ -236,9 +244,13 @@ const response = await route.patch('users/admin', {
 
 // -- or --
 
-const response = await route.patch('users/admin', {
-  password: 'hunter2'
-}, {admin: true});
+const response = await route.patch(
+  "users/admin",
+  {
+    password: "hunter2"
+  },
+  { admin: true }
+);
 // response.body is the response body of calling
 // PATCH _db/_system/my-foxx-service/users/admin?admin=true
 // with JSON request body {"password": "hunter2"}
@@ -252,12 +264,12 @@ Performs a DELETE request to the given URL and returns the server response.
 
 **Arguments**
 
-* **path**: `string` (optional)
+- **path**: `string` (optional)
 
   The route-relative URL for the request. If omitted, the request will be made
   to the base URL of the route.
 
-* **qs**: `string` (optional)
+- **qs**: `string` (optional)
 
   The query string for the request. If _qs_ is an object, it will be translated
   to a query string.
@@ -266,20 +278,20 @@ Performs a DELETE request to the given URL and returns the server response.
 
 ```js
 const db = new Database();
-const route = db.route('my-foxx-service');
-const response = await route.delete()
+const route = db.route("my-foxx-service");
+const response = await route.delete();
 // response.body is the response body of calling
 // DELETE _db/_system/my-foxx-service
 
 // -- or --
 
-const response = await route.delete('users/admin')
+const response = await route.delete("users/admin");
 // response.body is the response body of calling
 // DELETE _db/_system/my-foxx-service/users/admin
 
 // -- or --
 
-const response = await route.delete('users/admin', {permanent: true})
+const response = await route.delete("users/admin", { permanent: true });
 // response.body is the response body of calling
 // DELETE _db/_system/my-foxx-service/users/admin?permanent=true
 ```
@@ -292,12 +304,12 @@ Performs a HEAD request to the given URL and returns the server response.
 
 **Arguments**
 
-* **path**: `string` (optional)
+- **path**: `string` (optional)
 
   The route-relative URL for the request. If omitted, the request will be made
   to the base URL of the route.
 
-* **qs**: `string` (optional)
+- **qs**: `string` (optional)
 
   The query string for the request. If _qs_ is an object, it will be translated
   to a query string.
@@ -306,7 +318,7 @@ Performs a HEAD request to the given URL and returns the server response.
 
 ```js
 const db = new Database();
-const route = db.route('my-foxx-service');
+const route = db.route("my-foxx-service");
 const response = await route.head();
 // response is the response object for
 // HEAD _db/_system/my-foxx-service
@@ -320,47 +332,53 @@ Performs an arbitrary request to the given URL and returns the server response.
 
 **Arguments**
 
-* **opts**: `Object` (optional)
+- **opts**: `Object` (optional)
 
   An object with any of the following properties:
 
-  * **path**: `string` (optional)
+  - **path**: `string` (optional)
 
     The route-relative URL for the request. If omitted, the request will be made
     to the base URL of the route.
 
-  * **absolutePath**: `boolean` (Default: `false`)
+  - **absolutePath**: `boolean` (Default: `false`)
 
     Whether the _path_ is relative to the connection's base URL instead of the
     route.
 
-  * **body**: `string` (optional)
+  - **body**: `string` (optional)
 
     The response body. If _body_ is an object, it will be encoded as JSON.
 
-  * **qs**: `string` (optional)
+  - **qs**: `string` (optional)
 
     The query string for the request. If _qs_ is an object, it will be
     translated to a query string.
 
-  * **headers**: `Object` (optional)
+  - **headers**: `Object` (optional)
 
     An object containing additional HTTP headers to be sent with the request.
 
-  * **method**: `string` (Default: `"GET"`)
+  - **method**: `string` (Default: `"GET"`)
 
     HTTP method of this request.
+
+  - **timeout**: `number` (optional)
+
+    A non-negative amount of milliseconds after which the request will be
+    aborted. Note that ArangoDB may continue processing the request even
+    after it has timed out.
 
 **Examples**
 
 ```js
 const db = new Database();
-const route = db.route('my-foxx-service');
+const route = db.route("my-foxx-service");
 const response = await route.request({
-  path: 'hello-world',
-  method: 'POST',
-  body: {hello: 'world'},
-  qs: {admin: true}
+  path: "hello-world",
+  method: "POST",
+  body: { hello: "world" },
+  qs: { admin: true }
 });
 // response.body is the response body of calling
 // POST _db/_system/my-foxx-service/hello-world?admin=true

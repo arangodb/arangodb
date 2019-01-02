@@ -59,8 +59,7 @@ void FlushFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
-void FlushFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
+void FlushFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
   if (_flushInterval < 1000) {
     // do not go below 1000 microseconds
     _flushInterval = 1000;
@@ -118,8 +117,7 @@ void FlushFeature::unprepare() {
   _callbacks.clear();
 }
 
-void FlushFeature::registerCallback(void* ptr,
-                                    FlushFeature::FlushCallback const& cb) {
+void FlushFeature::registerCallback(void* ptr, FlushFeature::FlushCallback const& cb) {
   WRITE_LOCKER(locker, _callbacksLock);
   _callbacks.emplace(ptr, std::move(cb));
   LOG_TOPIC(TRACE, arangodb::Logger::FLUSH) << "registered new flush callback";
@@ -147,7 +145,7 @@ void FlushFeature::executeCallbacks() {
 
     // execute all callbacks. this will create as many transactions as
     // there are callbacks
-    for (auto const& cb: _callbacks) {
+    for (auto const& cb : _callbacks) {
       // copy elision, std::move(..) not required
       LOG_TOPIC(TRACE, arangodb::Logger::FLUSH) << "executing flush callback";
       transactions.emplace_back(cb.second());
@@ -164,9 +162,8 @@ void FlushFeature::executeCallbacks() {
     Result res = trx->commit();
 
     if (!res.ok()) {
-      LOG_TOPIC(ERR, Logger::FLUSH)
-          << "could not commit flush transaction '" << trx->name()
-          << "': " << res.errorMessage();
+      LOG_TOPIC(ERR, Logger::FLUSH) << "could not commit flush transaction '"
+                                    << trx->name() << "': " << res.errorMessage();
     }
     // TODO: honor the commit results here
   }

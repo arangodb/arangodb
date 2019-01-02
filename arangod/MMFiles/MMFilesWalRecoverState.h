@@ -26,11 +26,11 @@
 
 #include "Basics/Common.h"
 #include "MMFiles/MMFilesDatafile.h"
+#include "MMFiles/MMFilesWalLogfile.h"
 #include "MMFiles/MMFilesWalMarker.h"
 #include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
-#include "MMFiles/MMFilesWalLogfile.h"
 
 namespace arangodb {
 class DatabaseFeature;
@@ -52,12 +52,14 @@ struct MMFilesWalRecoverState {
     if (totalDroppedDatabases.find(databaseId) != totalDroppedDatabases.end()) {
       return true;
     }
-    return (totalDroppedCollections.find(collectionId) != totalDroppedCollections.end());
+    return (totalDroppedCollections.find(collectionId) !=
+            totalDroppedCollections.end());
   }
 
   /// @brief checks if there will be a drop marker for the collection
   bool willBeDropped(TRI_voc_cid_t collectionId) const {
-    return (totalDroppedCollections.find(collectionId) != totalDroppedCollections.end());
+    return (totalDroppedCollections.find(collectionId) !=
+            totalDroppedCollections.end());
   }
 
   /// @brief checks if there will be a drop marker for the view
@@ -105,9 +107,7 @@ struct MMFilesWalRecoverState {
             failedTransactions.find(transactionId) != failedTransactions.end());
   }
 
-  void resetCollection() {
-    resetCollection(0, 0);
-  }
+  void resetCollection() { resetCollection(0, 0); }
 
   void resetCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) {
     lastDatabaseId = databaseId;
@@ -139,9 +139,8 @@ struct MMFilesWalRecoverState {
   arangodb::LogicalCollection* getCollection(TRI_voc_tick_t, TRI_voc_cid_t);
 
   /// @brief executes a single operation inside a transaction
-  int executeSingleOperation(
-      TRI_voc_tick_t, TRI_voc_cid_t, MMFilesMarker const*, TRI_voc_fid_t,
-      std::function<int(SingleCollectionTransaction*, MMFilesMarkerEnvelope*)>);
+  int executeSingleOperation(TRI_voc_tick_t, TRI_voc_cid_t, MMFilesMarker const*, TRI_voc_fid_t,
+                             std::function<int(SingleCollectionTransaction*, MMFilesMarkerEnvelope*)>);
 
   /// @brief callback to handle one marker during recovery
   /// this function modifies indexes etc.
@@ -167,8 +166,7 @@ struct MMFilesWalRecoverState {
   int fillIndexes();
 
   DatabaseFeature* databaseFeature;
-  std::unordered_map<TRI_voc_tid_t, std::pair<TRI_voc_tick_t, bool>>
-      failedTransactions;
+  std::unordered_map<TRI_voc_tid_t, std::pair<TRI_voc_tick_t, bool>> failedTransactions;
   std::unordered_set<TRI_voc_cid_t> droppedCollections;
   std::unordered_set<TRI_voc_cid_t> droppedViews;
   std::unordered_set<TRI_voc_tick_t> droppedDatabases;
@@ -178,8 +176,7 @@ struct MMFilesWalRecoverState {
 
   TRI_voc_tick_t lastTick;
   std::vector<MMFilesWalLogfile*> logfilesToProcess;
-  std::unordered_map<TRI_voc_cid_t,
-    std::shared_ptr<arangodb::LogicalCollection>> openedCollections;
+  std::unordered_map<TRI_voc_cid_t, std::shared_ptr<arangodb::LogicalCollection>> openedCollections;
   std::unordered_map<TRI_voc_tick_t, TRI_vocbase_t*> openedDatabases;
   std::vector<std::string> emptyLogfiles;
 
@@ -191,9 +188,8 @@ struct MMFilesWalRecoverState {
  private:
   TRI_voc_tick_t lastDatabaseId;
   TRI_voc_cid_t lastCollectionId;
-
 };
 
-}
+}  // namespace arangodb
 
 #endif

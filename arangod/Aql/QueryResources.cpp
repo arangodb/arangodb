@@ -33,14 +33,15 @@ using namespace arangodb::aql;
 namespace {
 /// @brief empty string singleton
 static char const* EmptyString = "";
-}
+}  // namespace
 
 QueryResources::QueryResources(ResourceMonitor* resourceMonitor)
     : _resourceMonitor(resourceMonitor),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _stringsLength(0),
 #endif
-      _shortStringStorage(_resourceMonitor, 1024) {}
+      _shortStringStorage(_resourceMonitor, 1024) {
+}
 
 QueryResources::~QueryResources() {
   // free strings
@@ -54,17 +55,18 @@ QueryResources::~QueryResources() {
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  // we are in the destructor here already. decreasing the memory usage counters will only
-  // provide a benefit (in terms of assertions) if we are in maintainer mode, so we can
-  // save all these operations in non-maintainer mode
+  // we are in the destructor here already. decreasing the memory usage counters
+  // will only provide a benefit (in terms of assertions) if we are in
+  // maintainer mode, so we can save all these operations in non-maintainer mode
   _resourceMonitor->decreaseMemoryUsage(_strings.capacity() * sizeof(char*) + _stringsLength);
-  _resourceMonitor->decreaseMemoryUsage(_nodes.size() * sizeof(AstNode) + _nodes.capacity() * sizeof(AstNode*));
+  _resourceMonitor->decreaseMemoryUsage(_nodes.size() * sizeof(AstNode) +
+                                        _nodes.capacity() * sizeof(AstNode*));
 #endif
 }
 
 /// @brief add a node to the list of nodes
 void QueryResources::addNode(AstNode* node) {
-  auto guard = scopeGuard([node] () {
+  auto guard = scopeGuard([node]() {
     // in case something goes wrong, we must free the node we got to prevent memleaks
     delete node;
   });
@@ -90,7 +92,8 @@ void QueryResources::addNode(AstNode* node) {
       _nodes.reserve(capacity);
     } catch (...) {
       // revert change in memory increase
-      _resourceMonitor->decreaseMemoryUsage((capacity - _nodes.capacity()) * sizeof(AstNode*));
+      _resourceMonitor->decreaseMemoryUsage((capacity - _nodes.capacity()) *
+                                            sizeof(AstNode*));
       throw;
     }
   }
@@ -127,8 +130,7 @@ char* QueryResources::registerString(char const* p, size_t length) {
 
 /// @brief register a potentially UTF-8-escaped string
 /// the string is freed when the query is destroyed
-char* QueryResources::registerEscapedString(char const* p, size_t length,
-                                            size_t& outLength) {
+char* QueryResources::registerEscapedString(char const* p, size_t length, size_t& outLength) {
   if (p == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -138,7 +140,7 @@ char* QueryResources::registerEscapedString(char const* p, size_t length,
     outLength = 0;
     return const_cast<char*>(EmptyString);
   }
-  
+
   if (length < ShortStringStorage::maxStringLength) {
     return _shortStringStorage.unescape(p, length, &outLength);
   }
@@ -153,7 +155,7 @@ char* QueryResources::registerLongString(char* copy, size_t length) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  auto guard = scopeGuard([copy] () {
+  auto guard = scopeGuard([copy]() {
     // in case something goes wrong, we must free the string we got to prevent memleaks
     TRI_FreeString(copy);
   });
@@ -175,12 +177,14 @@ char* QueryResources::registerLongString(char* copy, size_t length) {
   // reserve space
   if (capacity > _strings.capacity()) {
     // not enough capacity...
-    _resourceMonitor->increaseMemoryUsage(((capacity - _strings.size()) * sizeof(char*)) + length);
+    _resourceMonitor->increaseMemoryUsage(
+        ((capacity - _strings.size()) * sizeof(char*)) + length);
     try {
       _strings.reserve(capacity);
     } catch (...) {
       // revert change in memory increase
-      _resourceMonitor->decreaseMemoryUsage(((capacity - _strings.size()) * sizeof(char*)) + length);
+      _resourceMonitor->decreaseMemoryUsage(
+          ((capacity - _strings.size()) * sizeof(char*)) + length);
       throw;
     }
   } else {
