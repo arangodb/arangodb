@@ -23,29 +23,27 @@
 #ifndef ARANGODB_FUTURES_EXCEPTIONS_H
 #define ARANGODB_FUTURES_EXCEPTIONS_H 1
 
-#include <exception>
 #include <cstdint>
+#include <exception>
 
 namespace arangodb {
 namespace futures {
-  
+
 enum class ErrorCode : uint8_t {
-  BrokenPromise             = 1,
-  FutureAlreadyRetrieved    = 2,
-  FutureNotReady            = 3,
-  PromiseAlreadySatisfied   = 4,
-  NoState                   = 5
+  BrokenPromise = 1,
+  FutureAlreadyRetrieved = 2,
+  FutureNotReady = 3,
+  PromiseAlreadySatisfied = 4,
+  NoState = 5
 };
-  
-  
+
 struct FutureException : public std::exception {
-  
   FutureException(ErrorCode code) : _code(code) {}
-  
+
   ErrorCode code() const noexcept { return _code; }
-  
+
   char const* what() const noexcept override {
-    switch(_code) {
+    switch (_code) {
       case ErrorCode::BrokenPromise:
         return "Promise abandoned the shared state";
       case ErrorCode::FutureAlreadyRetrieved:
@@ -60,11 +58,12 @@ struct FutureException : public std::exception {
         return "invalid future exception";
     }
   }
-  
-private:
+
+ private:
   ErrorCode _code;
 };
 
-}}
+}  // namespace futures
+}  // namespace arangodb
 
 #endif

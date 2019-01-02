@@ -27,7 +27,7 @@
 #include "Aql/ExecutionNode.h"
 #include "types.h"
 
-#if 0 // #ifdef USE_IRESEARCH
+#if 0  // #ifdef USE_IRESEARCH
 #include "search/sort.hpp"
 #endif
 
@@ -37,7 +37,7 @@ namespace aql {
 /// @brief sort element for block, consisting of register, sort direction,
 /// and a possible attribute path to dig into the document
 struct SortRegister {
-#if 0 // #ifdef USE_IRESEARCH
+#if 0  // #ifdef USE_IRESEARCH
   typedef int(*CompareFunc)(
     irs::sort::prepared const* scorer,
     transaction::Methods* trx,
@@ -52,12 +52,9 @@ struct SortRegister {
   RegisterId reg;
   bool asc;
 
-  SortRegister(
-    RegisterId reg,
-    SortElement const& element
-  ) noexcept;
+  SortRegister(RegisterId reg, SortElement const& element) noexcept;
 
-#if 0 // #ifdef USE_IRESEARCH
+#if 0  // #ifdef USE_IRESEARCH
   SortRegister(
       RegisterId reg,
       SortElement const& element,
@@ -67,15 +64,13 @@ struct SortRegister {
   }
 #endif
 
-  static void fill(
-    ExecutionPlan const& /*execPlan*/,
-    ExecutionNode::RegisterPlan const& regPlan,
-    std::vector<SortElement> const& elements,
-    std::vector<SortRegister>& sortRegisters
-  );
-}; // SortRegister
+  static void fill(ExecutionPlan const& /*execPlan*/,
+                   ExecutionNode::RegisterPlan const& regPlan,
+                   std::vector<SortElement> const& elements,
+                   std::vector<SortRegister>& sortRegisters);
+};  // SortRegister
 
-} // aql
-} // arangodb
+}  // namespace aql
+}  // namespace arangodb
 
-#endif // ARANGOD_AQL_SORT_REGISTER_H
+#endif  // ARANGOD_AQL_SORT_REGISTER_H

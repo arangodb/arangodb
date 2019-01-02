@@ -35,10 +35,7 @@ using namespace arangodb::basics;
 
 std::unique_ptr<ConnectionStatistics[]> ConnectionStatistics::_statisticsBuffer;
 
-boost::lockfree::queue<
-    ConnectionStatistics*,
-    boost::lockfree::capacity<ConnectionStatistics::QUEUE_SIZE>>
-    ConnectionStatistics::_freeList;
+boost::lockfree::queue<ConnectionStatistics*, boost::lockfree::capacity<ConnectionStatistics::QUEUE_SIZE>> ConnectionStatistics::_freeList;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static public methods
@@ -72,11 +69,10 @@ ConnectionStatistics* ConnectionStatistics::acquire() {
   return nullptr;
 }
 
-void ConnectionStatistics::fill(StatisticsCounter& httpConnections,
-                                StatisticsCounter& totalRequests,
-                                std::array<StatisticsCounter, MethodRequestsStatisticsSize>& methodRequests,
-                                StatisticsCounter& asyncRequests,
-                                StatisticsDistribution& connectionTime) {
+void ConnectionStatistics::fill(
+    StatisticsCounter& httpConnections, StatisticsCounter& totalRequests,
+    std::array<StatisticsCounter, MethodRequestsStatisticsSize>& methodRequests,
+    StatisticsCounter& asyncRequests, StatisticsDistribution& connectionTime) {
   if (!StatisticsFeature::enabled()) {
     // all the below objects may be deleted if we don't have statistics enabled
     return;

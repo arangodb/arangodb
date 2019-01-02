@@ -36,8 +36,7 @@ namespace arangodb {
 ActionFeature* ActionFeature::ACTION = nullptr;
 
 ActionFeature::ActionFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Action"),
-      _allowUseDatabase(false) {
+    : ApplicationFeature(server, "Action"), _allowUseDatabase(false) {
   setOptional(true);
   startsAfter("ClusterPhase");
 }
@@ -56,14 +55,12 @@ void ActionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 void ActionFeature::start() {
   ACTION = this;
 
-  V8DealerFeature* dealer = 
+  V8DealerFeature* dealer =
       ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
 
-  dealer->defineContextUpdate(
-      [](v8::Isolate* isolate, v8::Handle<v8::Context> context, size_t) {
-        TRI_InitV8Actions(isolate, context);
-      },
-      nullptr);
+  dealer->defineContextUpdate([](v8::Isolate* isolate, v8::Handle<v8::Context> context,
+                                 size_t) { TRI_InitV8Actions(isolate, context); },
+                              nullptr);
 }
 
 void ActionFeature::unprepare() {
@@ -72,4 +69,4 @@ void ActionFeature::unprepare() {
   ACTION = nullptr;
 }
 
-} // arangodb
+}  // namespace arangodb

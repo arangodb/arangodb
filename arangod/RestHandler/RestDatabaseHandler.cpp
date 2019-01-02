@@ -34,8 +34,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestDatabaseHandler::RestDatabaseHandler(GeneralRequest* request,
-                                         GeneralResponse* response)
+RestDatabaseHandler::RestDatabaseHandler(GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
 RestStatus RestDatabaseHandler::execute() {
@@ -48,8 +47,7 @@ RestStatus RestDatabaseHandler::execute() {
   } else if (type == rest::RequestType::DELETE_REQ) {
     return deleteDatabase();
   } else {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 
     return RestStatus::DONE;
   }
@@ -91,7 +89,7 @@ RestStatus RestDatabaseHandler::getDatabases() {
   } else if (suffixes[0] == "current") {
     res = methods::Databases::info(&_vocbase, builder);
   }
-  
+
   if (res.fail()) {
     generateError(res);
   } else if (builder.isEmpty()) {
@@ -109,10 +107,10 @@ RestStatus RestDatabaseHandler::createDatabase() {
   if (!_vocbase.isSystem()) {
     generateError(GeneralResponse::responseCode(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE),
                   TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
-    
+
     return RestStatus::DONE;
   }
-  
+
   std::vector<std::string> const& suffixes = _request->suffixes();
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
@@ -122,8 +120,7 @@ RestStatus RestDatabaseHandler::createDatabase() {
   }
   VPackSlice nameVal = body.get("name");
   if (!nameVal.isString()) {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
     return RestStatus::DONE;
   }
   std::string dbName = nameVal.copyString();
@@ -138,7 +135,7 @@ RestStatus RestDatabaseHandler::createDatabase() {
     if (res.errorNumber() == TRI_ERROR_FORBIDDEN ||
         res.errorNumber() == TRI_ERROR_ARANGO_DUPLICATE_NAME) {
       generateError(res);
-    } else {// http_server compatibility
+    } else {  // http_server compatibility
       generateError(rest::ResponseCode::BAD, res.errorNumber(), res.errorMessage());
     }
   }

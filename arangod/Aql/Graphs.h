@@ -32,7 +32,7 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 namespace aql {
 struct AstNode;
@@ -45,7 +45,6 @@ struct AstNode;
 // has to free them.
 // In AQL the AST is responsible to free all nodes.
 class EdgeConditionBuilder {
-
  protected:
   /// @brief a condition checking for _from
   /// not used directly

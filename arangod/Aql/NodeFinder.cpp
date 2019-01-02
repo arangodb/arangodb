@@ -28,9 +28,9 @@ namespace aql {
 
 /// @brief node finder for one node type
 template <>
-NodeFinder<ExecutionNode::NodeType>::NodeFinder(
-    ExecutionNode::NodeType lookingFor, SmallVector<ExecutionNode*>& out,
-    bool enterSubqueries)
+NodeFinder<ExecutionNode::NodeType>::NodeFinder(ExecutionNode::NodeType lookingFor,
+                                                SmallVector<ExecutionNode*>& out,
+                                                bool enterSubqueries)
     : _lookingFor(lookingFor), _out(out), _enterSubqueries(enterSubqueries) {}
 
 /// @brief node finder for multiple types
@@ -52,8 +52,7 @@ bool NodeFinder<ExecutionNode::NodeType>::before(ExecutionNode* en) {
 
 /// @brief before method for multiple node types
 template <>
-bool NodeFinder<std::vector<ExecutionNode::NodeType>>::before(
-    ExecutionNode* en) {
+bool NodeFinder<std::vector<ExecutionNode::NodeType>>::before(ExecutionNode* en) {
   auto const nodeType = en->getType();
 
   for (auto& type : _lookingFor) {
@@ -66,8 +65,7 @@ bool NodeFinder<std::vector<ExecutionNode::NodeType>>::before(
 }
 
 /// @brief node finder for one node type
-EndNodeFinder::EndNodeFinder(SmallVector<ExecutionNode*>& out,
-                             bool enterSubqueries)
+EndNodeFinder::EndNodeFinder(SmallVector<ExecutionNode*>& out, bool enterSubqueries)
     : _out(out), _found({false}), _enterSubqueries(enterSubqueries) {}
 
 /// @brief before method for one node type
@@ -84,5 +82,5 @@ bool EndNodeFinder::before(ExecutionNode* en) {
   return (!_enterSubqueries);
 }
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb

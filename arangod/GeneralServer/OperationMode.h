@@ -27,11 +27,7 @@
 #include "Basics/Common.h"
 
 namespace arangodb {
-enum class OperationMode {
-  MODE_CONSOLE,
-  MODE_SCRIPT,
-  MODE_SERVER
-};
+enum class OperationMode { MODE_CONSOLE, MODE_SCRIPT, MODE_SERVER };
 }
 
 #endif

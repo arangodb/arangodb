@@ -36,6 +36,6 @@ class RestDebugHandler : public arangodb::RestVocbaseBaseHandler {
   RequestLane lane() const override final { return RequestLane::CLUSTER_ADMIN; }
   RestStatus execute() override;
 };
-}
+}  // namespace arangodb
 
 #endif

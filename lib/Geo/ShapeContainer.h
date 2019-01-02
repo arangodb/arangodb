@@ -79,8 +79,7 @@ class ShapeContainer final {
   inline bool empty() const { return _type == Type::EMPTY; }
 
   bool isAreaType() const noexcept {
-    return _type == Type::S2_POLYGON ||
-           _type == Type::S2_LATLNGRECT;
+    return _type == Type::S2_POLYGON || _type == Type::S2_LATLNGRECT;
   }
 
   /// @brief centroid of this shape
@@ -108,7 +107,7 @@ class ShapeContainer final {
   /// intersects this region the coordinate
   bool intersects(Coordinate const*) const;
   bool intersects(S2Point const& p) const {
-    return contains(p); // same thing
+    return contains(p);  // same thing
   }
   bool intersects(S2Polyline const*) const;
   bool intersects(S2LatLngRect const*) const;

@@ -43,8 +43,7 @@ class ExecutionEngine;
 
 class EnumerateCollectionBlock final : public ExecutionBlock, public DocumentProducingBlock {
  public:
-  EnumerateCollectionBlock(ExecutionEngine* engine,
-                           EnumerateCollectionNode const* ep);
+  EnumerateCollectionBlock(ExecutionEngine* engine, EnumerateCollectionNode const* ep);
 
   /// @brief initializeCursor
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
@@ -58,7 +57,7 @@ class EnumerateCollectionBlock final : public ExecutionBlock, public DocumentPro
  private:
   /// @brief collection
   Collection const* _collection;
-  
+
   /// @brief cursor
   std::unique_ptr<OperationCursor> _cursor;
 
@@ -67,7 +66,7 @@ class EnumerateCollectionBlock final : public ExecutionBlock, public DocumentPro
   size_t _inflight;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

@@ -25,8 +25,8 @@
 #ifndef ARANGODB_BASICS_UTF8HELPER_H
 #define ARANGODB_BASICS_UTF8HELPER_H 1
 
-#include "Basics/Common.h"
 #include <velocypack/StringRef.h>
+#include "Basics/Common.h"
 
 #include <unicode/coll.h>
 #include <unicode/regex.h>
@@ -53,9 +53,9 @@ class Utf8Helper {
   ///     This parameter can instead be an ICU style C locale (e.g. "en_US")
   //////////////////////////////////////////////////////////////////////////////
 
-  Utf8Helper(std::string const& lang, void *icuDataPtr);
+  Utf8Helper(std::string const& lang, void* icuDataPtr);
 
-  explicit Utf8Helper(void *icuDataPtr);
+  explicit Utf8Helper(void* icuDataPtr);
 
   ~Utf8Helper();
 
@@ -115,8 +115,7 @@ class Utf8Helper {
   /// @brief Lowercase the characters in a UTF-8 string.
   //////////////////////////////////////////////////////////////////////////////
 
-  char* tolower(char const* src, int32_t srcLength,
-                int32_t& dstLength);
+  char* tolower(char const* src, int32_t srcLength, int32_t& dstLength);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Uppercase the characters in a UTF-8 string.
@@ -128,16 +127,14 @@ class Utf8Helper {
   /// @brief Uppercase the characters in a UTF-8 string.
   //////////////////////////////////////////////////////////////////////////////
 
-  char* toupper(char const* src, int32_t srcLength,
-                int32_t& dstLength);
+  char* toupper(char const* src, int32_t srcLength, int32_t& dstLength);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the words of a UTF-8 string.
   //////////////////////////////////////////////////////////////////////////////
 
   bool tokenize(std::set<std::string>& words, arangodb::velocypack::StringRef const& text,
-                size_t minimalWordLength, size_t maximalWordLength,
-                bool lowerCase);
+                size_t minimalWordLength, size_t maximalWordLength, bool lowerCase);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief builds a regex matcher for the specified pattern
@@ -149,7 +146,7 @@ class Utf8Helper {
   /// @brief whether or not value matches a regex
   //////////////////////////////////////////////////////////////////////////////
 
-  bool matches(RegexMatcher*, char const* pattern, size_t patternLength, 
+  bool matches(RegexMatcher*, char const* pattern, size_t patternLength,
                bool partial, bool& error);
 
   std::string replace(RegexMatcher*, char const* pattern, size_t patternLength,
@@ -159,44 +156,40 @@ class Utf8Helper {
  private:
   Collator* _coll;
 };
-}
-}
+}  // namespace basics
+}  // namespace arangodb
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a utf-8 string to a uchar (utf-16)
 ////////////////////////////////////////////////////////////////////////////////
 
-UChar* TRI_Utf8ToUChar(char const* utf8,
-                       size_t inLength, size_t* outLength);
+UChar* TRI_Utf8ToUChar(char const* utf8, size_t inLength, size_t* outLength);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a uchar (utf-16) to a utf-8 string
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_UCharToUtf8(UChar const* uchar,
-                      size_t inLength, size_t* outLength);
+char* TRI_UCharToUtf8(UChar const* uchar, size_t inLength, size_t* outLength);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize an utf8 string (NFC)
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_normalize_utf8_to_NFC(char const* utf8,
-                                size_t inLength, size_t* outLength);
+char* TRI_normalize_utf8_to_NFC(char const* utf8, size_t inLength, size_t* outLength);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize an utf16 string (NFC) and export it to utf8
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_normalize_utf16_to_NFC(uint16_t const* utf16,
-                                 size_t inLength, size_t* outLength);
+char* TRI_normalize_utf16_to_NFC(uint16_t const* utf16, size_t inLength, size_t* outLength);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two utf8 strings
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline int TRI_compare_utf8(char const* left, size_t leftLength, 
+static inline int TRI_compare_utf8(char const* left, size_t leftLength,
                                    char const* right, size_t rightLength) {
-  return arangodb::basics::Utf8Helper::DefaultUtf8Helper.compareUtf8(left, leftLength, 
+  return arangodb::basics::Utf8Helper::DefaultUtf8Helper.compareUtf8(left, leftLength,
                                                                      right, rightLength);
 }
 
@@ -204,7 +197,6 @@ static inline int TRI_compare_utf8(char const* left, size_t leftLength,
 /// @brief Lowercase the characters in a UTF-8 string
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_tolower_utf8(char const* src,
-                       int32_t srcLength, int32_t* dstLength);
+char* TRI_tolower_utf8(char const* src, int32_t srcLength, int32_t* dstLength);
 
 #endif

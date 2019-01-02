@@ -46,7 +46,8 @@ class SingletonBlock final : public ExecutionBlock {
 
  private:
   std::pair<ExecutionState, arangodb::Result> getOrSkipSome(size_t atMost, bool skipping,
-                                                            AqlItemBlock*& result, size_t& skipped) override;
+                                                            AqlItemBlock*& result,
+                                                            size_t& skipped) override;
 
   /// @brief _inputRegisterValues
   std::unique_ptr<AqlItemBlock> _inputRegisterValues;
@@ -60,8 +61,8 @@ class FilterBlock final : public ExecutionBlock {
 
   ~FilterBlock();
 
-  std::pair<ExecutionState, arangodb::Result> initializeCursor(
-      AqlItemBlock* items, size_t pos) override final;
+  std::pair<ExecutionState, arangodb::Result> initializeCursor(AqlItemBlock* items,
+                                                               size_t pos) override final;
 
  private:
   /// @brief internal function to actually decide if the document should be used
@@ -70,9 +71,9 @@ class FilterBlock final : public ExecutionBlock {
   /// @brief internal function to get another block
   std::pair<ExecutionState, bool> getBlock(size_t atMost);
 
-  std::pair<ExecutionState, arangodb::Result> getOrSkipSome(
-      size_t atMost, bool skipping, AqlItemBlock*& result,
-      size_t& skipped) override;
+  std::pair<ExecutionState, arangodb::Result> getOrSkipSome(size_t atMost, bool skipping,
+                                                            AqlItemBlock*& result,
+                                                            size_t& skipped) override;
 
  private:
   /// @brief input register
@@ -90,8 +91,7 @@ class FilterBlock final : public ExecutionBlock {
 
 class LimitBlock final : public ExecutionBlock {
  private:
-
-   enum class State { INITFULLCOUNT, SKIPPING, RETURNING, DONE };
+  enum class State { INITFULLCOUNT, SKIPPING, RETURNING, DONE };
 
  public:
   LimitBlock(ExecutionEngine* engine, LimitNode const* ep)
@@ -105,14 +105,14 @@ class LimitBlock final : public ExecutionBlock {
         _limitSkipped(0),
         _result(nullptr) {}
 
-  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) final override;
+  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items,
+                                                     size_t pos) final override;
 
   std::pair<ExecutionState, Result> getOrSkipSome(size_t atMost, bool skipping,
                                                   AqlItemBlock*& result_,
                                                   size_t& skipped) override;
 
  protected:
-
   ExecutionState getHasMoreState() override;
 
  private:
@@ -174,12 +174,12 @@ class NoResultsBlock final : public ExecutionBlock {
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
  private:
-  std::pair<ExecutionState, arangodb::Result> getOrSkipSome(
-      size_t atMost, bool skipping, AqlItemBlock*& result,
-      size_t& skipped) override;
+  std::pair<ExecutionState, arangodb::Result> getOrSkipSome(size_t atMost, bool skipping,
+                                                            AqlItemBlock*& result,
+                                                            size_t& skipped) override;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

@@ -37,12 +37,11 @@ using namespace arangodb::graph;
 SingleServerTraverser::SingleServerTraverser(TraverserOptions* opts,
                                              transaction::Methods* trx,
                                              ManagedDocumentResult* mmdr)
-  : Traverser(opts, trx, mmdr) {}
+    : Traverser(opts, trx, mmdr) {}
 
 SingleServerTraverser::~SingleServerTraverser() {}
 
-void SingleServerTraverser::addVertexToVelocyPack(StringRef vid,
-                                                  VPackBuilder& result) {
+void SingleServerTraverser::addVertexToVelocyPack(StringRef vid, VPackBuilder& result) {
   _opts->cache()->insertVertexIntoResult(vid, result);
 }
 
@@ -76,8 +75,7 @@ void SingleServerTraverser::setStartVertex(std::string const& vid) {
   _done = false;
 }
 
-bool SingleServerTraverser::getVertex(VPackSlice edge,
-                                      std::vector<StringRef>& result) {
+bool SingleServerTraverser::getVertex(VPackSlice edge, std::vector<StringRef>& result) {
   return _vertexGetter->getVertex(edge, result);
 }
 

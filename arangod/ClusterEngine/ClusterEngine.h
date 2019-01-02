@@ -46,7 +46,7 @@ class RestHandlerFactory;
 namespace transaction {
 class ContextData;
 struct Options;
-}
+}  // namespace transaction
 
 class ClusterEngine final : public StorageEngine {
  public:
@@ -84,22 +84,15 @@ class ClusterEngine final : public StorageEngine {
 
   std::unique_ptr<TransactionManager> createTransactionManager() override;
   std::unique_ptr<transaction::ContextData> createTransactionContextData() override;
-  std::unique_ptr<TransactionState> createTransactionState(
-    TRI_vocbase_t& vocbase,
-    transaction::Options const& options
-  ) override;
+  std::unique_ptr<TransactionState> createTransactionState(TRI_vocbase_t& vocbase,
+                                                           transaction::Options const& options) override;
   std::unique_ptr<TransactionCollection> createTransactionCollection(
-    TransactionState& state,
-    TRI_voc_cid_t cid,
-    AccessMode::Type accessType,
-    int nestingLevel
-  ) override;
+      TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType,
+      int nestingLevel) override;
 
   // create storage-engine specific collection
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(
-    LogicalCollection& collection,
-    velocypack::Slice const& info
-  ) override;
+      LogicalCollection& collection, velocypack::Slice const& info) override;
 
   void getStatistics(velocypack::Builder& builder) const override;
 
@@ -108,25 +101,14 @@ class ClusterEngine final : public StorageEngine {
 
   void getDatabases(arangodb::velocypack::Builder& result) override;
 
-  void getCollectionInfo(
-    TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t cid,
-    arangodb::velocypack::Builder& result,
-    bool includeIndexes,
-    TRI_voc_tick_t maxTick
-  ) override;
+  void getCollectionInfo(TRI_vocbase_t& vocbase, TRI_voc_cid_t cid,
+                         arangodb::velocypack::Builder& result,
+                         bool includeIndexes, TRI_voc_tick_t maxTick) override;
 
-  int getCollectionsAndIndexes(
-    TRI_vocbase_t& vocbase,
-    arangodb::velocypack::Builder& result,
-    bool wasCleanShutdown,
-    bool isUpgrade
-  ) override;
+  int getCollectionsAndIndexes(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result,
+                               bool wasCleanShutdown, bool isUpgrade) override;
 
-  int getViews(
-    TRI_vocbase_t& vocbase,
-    arangodb::velocypack::Builder& result
-  ) override;
+  int getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) override;
 
   std::string versionFilename(TRI_voc_tick_t id) const override {
     // the cluster engine does not have any versioning information
@@ -136,17 +118,12 @@ class ClusterEngine final : public StorageEngine {
     // the cluster engine does not have any database path
     return std::string();
   }
-  std::string collectionPath(
-      TRI_vocbase_t const& vocbase,
-      TRI_voc_cid_t id
-  ) const override {
-    return std::string(); // no path to be returned here
+  std::string collectionPath(TRI_vocbase_t const& vocbase, TRI_voc_cid_t id) const override {
+    return std::string();  // no path to be returned here
   }
 
-  velocypack::Builder getReplicationApplierConfiguration(
-    TRI_vocbase_t& vocbase,
-    int& status
-  ) override;
+  velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
+                                                         int& status) override;
   velocypack::Builder getReplicationApplierConfiguration(int& status) override;
   int removeReplicationApplierConfiguration(TRI_vocbase_t& vocbase) override {
     return TRI_ERROR_NOT_IMPLEMENTED;
@@ -154,26 +131,18 @@ class ClusterEngine final : public StorageEngine {
   int removeReplicationApplierConfiguration() override {
     return TRI_ERROR_NOT_IMPLEMENTED;
   }
-  int saveReplicationApplierConfiguration(
-      TRI_vocbase_t& vocbase,
-      velocypack::Slice slice,
-      bool doSync
-  ) override {
+  int saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
+                                          velocypack::Slice slice, bool doSync) override {
     return TRI_ERROR_NOT_IMPLEMENTED;
   }
-  int saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice,
-                                          bool doSync) override {
+  int saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice, bool doSync) override {
     return TRI_ERROR_NOT_IMPLEMENTED;
   }
-  Result handleSyncKeys(
-      DatabaseInitialSyncer& syncer,
-      LogicalCollection& col,
-      std::string const& keysId
-  ) override {
+  Result handleSyncKeys(DatabaseInitialSyncer& syncer, LogicalCollection& col,
+                        std::string const& keysId) override {
     return TRI_ERROR_NOT_IMPLEMENTED;
   }
-  Result createLoggerState(TRI_vocbase_t* vocbase,
-                           velocypack::Builder& builder) override {
+  Result createLoggerState(TRI_vocbase_t* vocbase, velocypack::Builder& builder) override {
     return TRI_ERROR_NOT_IMPLEMENTED;
   }
   Result createTickRanges(velocypack::Builder& builder) override {
@@ -182,13 +151,10 @@ class ClusterEngine final : public StorageEngine {
   Result firstTick(uint64_t& tick) override {
     return TRI_ERROR_NOT_IMPLEMENTED;
   }
-  Result lastLogger(
-      TRI_vocbase_t& vocbase,
-      std::shared_ptr<transaction::Context> transactionContext,
-      uint64_t tickStart,
-      uint64_t tickEnd,
-      std::shared_ptr<velocypack::Builder>& builderSPtr
-  ) override {
+  Result lastLogger(TRI_vocbase_t& vocbase,
+                    std::shared_ptr<transaction::Context> transactionContext,
+                    uint64_t tickStart, uint64_t tickEnd,
+                    std::shared_ptr<velocypack::Builder>& builderSPtr) override {
     return TRI_ERROR_NOT_IMPLEMENTED;
   }
   WalAccess const* walAccess() const override {
@@ -201,33 +167,24 @@ class ClusterEngine final : public StorageEngine {
 
   // intentionally empty, not useful for this type of engine
   void waitForSyncTick(TRI_voc_tick_t) override {}
-  
-  /// @brief return a list of the currently open WAL files
-  std::vector<std::string> currentWalFiles() const override { return std::vector<std::string>(); }
 
-  Result flushWal(bool waitForSync, bool waitForCollector,
-                  bool writeShutdownFile) override {
+  /// @brief return a list of the currently open WAL files
+  std::vector<std::string> currentWalFiles() const override {
+    return std::vector<std::string>();
+  }
+
+  Result flushWal(bool waitForSync, bool waitForCollector, bool writeShutdownFile) override {
     return TRI_ERROR_NO_ERROR;
   }
   void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
 
-  virtual std::unique_ptr<TRI_vocbase_t> openDatabase(
-    velocypack::Slice const& parameters,
-    bool isUpgrade,
-    int& status
-  ) override;
-  std::unique_ptr<TRI_vocbase_t> createDatabase(
-    TRI_voc_tick_t id,
-    velocypack::Slice const& args,
-    int& status
-  ) override;
-  int writeCreateDatabaseMarker(TRI_voc_tick_t id,
-                                velocypack::Slice const& slice) override;
-  void prepareDropDatabase(
-    TRI_vocbase_t& vocbase,
-    bool useWriteMarker,
-    int& status
-  ) override;
+  virtual std::unique_ptr<TRI_vocbase_t> openDatabase(velocypack::Slice const& parameters,
+                                                      bool isUpgrade, int& status) override;
+  std::unique_ptr<TRI_vocbase_t> createDatabase(TRI_voc_tick_t id,
+                                                velocypack::Slice const& args,
+                                                int& status) override;
+  int writeCreateDatabaseMarker(TRI_voc_tick_t id, velocypack::Slice const& slice) override;
+  void prepareDropDatabase(TRI_vocbase_t& vocbase, bool useWriteMarker, int& status) override;
   Result dropDatabase(TRI_vocbase_t& database) override;
   void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) override;
 
@@ -237,72 +194,39 @@ class ClusterEngine final : public StorageEngine {
   void recoveryDone(TRI_vocbase_t& vocbase) override;
 
  public:
-  std::string createCollection(
-    TRI_vocbase_t& vocbase,
-    LogicalCollection const& collection
-  ) override;
+  std::string createCollection(TRI_vocbase_t& vocbase,
+                               LogicalCollection const& collection) override;
 
-  arangodb::Result persistCollection(
-    TRI_vocbase_t& vocbase,
-    LogicalCollection const& collection
-  ) override;
+  arangodb::Result persistCollection(TRI_vocbase_t& vocbase,
+                                     LogicalCollection const& collection) override;
 
-  arangodb::Result dropCollection(
-    TRI_vocbase_t& vocbase,
-    LogicalCollection& collection
-  ) override;
+  arangodb::Result dropCollection(TRI_vocbase_t& vocbase, LogicalCollection& collection) override;
 
-  void destroyCollection(
-    TRI_vocbase_t& vocbase,
-    LogicalCollection& collection
-  ) override;
+  void destroyCollection(TRI_vocbase_t& vocbase, LogicalCollection& collection) override;
 
-  void changeCollection(
-    TRI_vocbase_t& vocbase,
-    LogicalCollection const& collection,
-    bool doSync
-  ) override;
+  void changeCollection(TRI_vocbase_t& vocbase,
+                        LogicalCollection const& collection, bool doSync) override;
 
-  arangodb::Result renameCollection(
-    TRI_vocbase_t& vocbase,
-    LogicalCollection const& collection,
-    std::string const& oldName
-  ) override;
+  arangodb::Result renameCollection(TRI_vocbase_t& vocbase, LogicalCollection const& collection,
+                                    std::string const& oldName) override;
 
-  void unloadCollection(
-    TRI_vocbase_t& vocbase,
-    LogicalCollection& collection
-  ) override;
+  void unloadCollection(TRI_vocbase_t& vocbase, LogicalCollection& collection) override;
 
-  arangodb::Result changeView(
-    TRI_vocbase_t& vocbase,
-    arangodb::LogicalView const& view,
-    bool doSync
-  ) override;
+  arangodb::Result changeView(TRI_vocbase_t& vocbase,
+                              arangodb::LogicalView const& view, bool doSync) override;
 
-  arangodb::Result createView(
-    TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t id,
-    arangodb::LogicalView const& view
-  ) override;
+  arangodb::Result createView(TRI_vocbase_t& vocbase, TRI_voc_cid_t id,
+                              arangodb::LogicalView const& view) override;
 
-  virtual void getViewProperties(
-     TRI_vocbase_t& /*vocbase*/,
-     LogicalView const& /*view*/,
-     VPackBuilder& /*builder*/
-  ) override {
+  virtual void getViewProperties(TRI_vocbase_t& /*vocbase*/,
+                                 LogicalView const& /*view*/, VPackBuilder& /*builder*/
+                                 ) override {
     // does nothing
   }
 
-  arangodb::Result dropView(
-    TRI_vocbase_t const& vocbase,
-    LogicalView const& view
-  ) override;
+  arangodb::Result dropView(TRI_vocbase_t const& vocbase, LogicalView const& view) override;
 
-  void destroyView(
-    TRI_vocbase_t const& vocbase,
-    LogicalView const& view
-  ) noexcept override;
+  void destroyView(TRI_vocbase_t const& vocbase, LogicalView const& view) noexcept override;
 
   void signalCleanup(TRI_vocbase_t& vocbase) override;
 
@@ -321,25 +245,17 @@ class ClusterEngine final : public StorageEngine {
                                      arangodb::velocypack::Slice info) override;
 
   // management methods for synchronizing with external persistent stores
-  TRI_voc_tick_t currentTick() const override {
-    return 0;
-  }
-  TRI_voc_tick_t releasedTick() const override {
-    return 0;
-  }
+  TRI_voc_tick_t currentTick() const override { return 0; }
+  TRI_voc_tick_t releasedTick() const override { return 0; }
   void releaseTick(TRI_voc_tick_t) override {
     // noop
   }
 
  private:
-
   /// @brief open an existing database. internal function
-  std::unique_ptr<TRI_vocbase_t> openExistingDatabase(
-    TRI_voc_tick_t id,
-    std::string const& name,
-    bool wasCleanShutdown,
-    bool isUpgrade
-  );
+  std::unique_ptr<TRI_vocbase_t> openExistingDatabase(TRI_voc_tick_t id,
+                                                      std::string const& name,
+                                                      bool wasCleanShutdown, bool isUpgrade);
 
  public:
   static std::string const EngineName;

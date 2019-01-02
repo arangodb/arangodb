@@ -26,10 +26,10 @@
 
 #include "Basics/Common.h"
 
-#include <functional>
-#include <memory>
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
+#include <functional>
+#include <memory>
 
 #include "Agency/AgencyComm.h"
 #include "Basics/ConditionVariable.h"
@@ -43,7 +43,7 @@ namespace arangodb {
 /// This class encapsulates an agency observer that has been registered
 /// with the agency. One specifies a callback function that is called
 /// for every incoming HTTP request from the agency. A mutex ensures that
-/// this callback function is only executed in one thread at a time (see 
+/// this callback function is only executed in one thread at a time (see
 /// below for more details).
 ///
 /// Furthermore, if needsValue == true, the latest value of the key
@@ -58,7 +58,7 @@ namespace arangodb {
 ///
 /// Usually, with needsValue == true one would like to wait until a certain
 /// condition is met with respect to the value. The callback is only called
-/// for new values, such that one can check this condition in the callback 
+/// for new values, such that one can check this condition in the callback
 /// function.
 ///
 /// To assist code that wants to wait for something which is discovered
@@ -78,7 +78,7 @@ namespace arangodb {
 ///     check if a callback has produced the termination event: if so: OK
 ///     if overall patience lost: leave with error
 ///     wait for condition variable with a timeout
-/// } 
+/// }
 ///
 /// In this way, the mutex of the condition variable can at the same time
 /// organize mutual exclusion of the callback function and the checking of
@@ -87,21 +87,20 @@ namespace arangodb {
 /// method executeByCallbackOrTimeout below.
 
 class AgencyCallback {
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ctor
   //////////////////////////////////////////////////////////////////////////////
 
-public:
-  AgencyCallback(AgencyComm&, std::string const&, 
+ public:
+  AgencyCallback(AgencyComm&, std::string const&,
                  std::function<bool(VPackSlice const&)> const&, bool needsValue,
                  bool needsInitialValue = true);
 
   std::string const key;
   arangodb::basics::ConditionVariable _cv;
-  
+
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief refetch the value, and call the callback function with it, 
+  /// @brief refetch the value, and call the callback function with it,
   /// this is called whenever an HTTP request is received from the agency
   /// (see RestAgencyCallbacksHandler and AgencyCallbackRegistry). If the
   /// forceCheck flag is set, a check is initiated even if the value has
@@ -116,12 +115,12 @@ public:
   //////////////////////////////////////////////////////////////////////////////
 
   void executeByCallbackOrTimeout(double);
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief private members
   //////////////////////////////////////////////////////////////////////////////
 
-private:
+ private:
   AgencyComm& _agency;
   std::function<bool(VPackSlice const&)> const _cb;
   std::shared_ptr<VPackBuilder> _lastData;
@@ -130,13 +129,13 @@ private:
   // execute callback with current value data:
   bool execute(std::shared_ptr<VPackBuilder>);
   // execute callback without any data:
-  bool executeEmpty(); 
+  bool executeEmpty();
 
   // Compare last value and newly read one and call execute if the are
   // different:
   void checkValue(std::shared_ptr<VPackBuilder>, bool forceCheck);
 };
 
-}
+}  // namespace arangodb
 
 #endif

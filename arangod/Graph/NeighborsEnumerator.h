@@ -40,21 +40,19 @@ class NeighborsEnumerator final : public arangodb::traverser::PathEnumerator {
   std::unordered_set<arangodb::StringRef>::iterator _iterator;
 
   uint64_t _searchDepth;
- 
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Vector storing the position at current search depth
   //////////////////////////////////////////////////////////////////////////////
 
-   std::unordered_set<arangodb::velocypack::Slice> _tmpEdges;
-
+  std::unordered_set<arangodb::velocypack::Slice> _tmpEdges;
 
  public:
-   NeighborsEnumerator(arangodb::traverser::Traverser* traverser,
-                       arangodb::velocypack::Slice const& startVertex,
-                       arangodb::traverser::TraverserOptions* opts);
+  NeighborsEnumerator(arangodb::traverser::Traverser* traverser,
+                      arangodb::velocypack::Slice const& startVertex,
+                      arangodb::traverser::TraverserOptions* opts);
 
-   ~NeighborsEnumerator() {
-   }
+  ~NeighborsEnumerator() {}
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Get the next Path element from the traversal.
@@ -67,10 +65,9 @@ class NeighborsEnumerator final : public arangodb::traverser::PathEnumerator {
   aql::AqlValue lastEdgeToAqlValue() override;
 
   aql::AqlValue pathToAqlValue(arangodb::velocypack::Builder& result) override;
-
 };
 
-} // namespace graph
-} // namespace arangodb
+}  // namespace graph
+}  // namespace arangodb
 
 #endif

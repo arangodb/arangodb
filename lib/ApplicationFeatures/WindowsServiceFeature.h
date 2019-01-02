@@ -36,24 +36,22 @@ namespace arangodb {
 
 class WindowsServiceFeature final : public application_features::ApplicationFeature {
  public:
-  explicit WindowsServiceFeature(
-    application_features::ApplicationServer& server
-  );
+  explicit WindowsServiceFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
  private:
   void installService();
-  void StartArangoService (bool WaitForRunning);
-  void StopArangoService (bool WaitForShutdown);
-  void startupProgress ();
+  void StartArangoService(bool WaitForRunning);
+  void StopArangoService(bool WaitForShutdown);
+  void startupProgress();
 
-  void startupFinished ();
+  void startupFinished();
 
-  void shutDownBegins ();
-  void shutDownComplete ();
-  void shutDownFailure ();
+  void shutDownBegins();
+  void shutDownComplete();
+  void shutDownFailure();
   void abortFailure(uint16_t exitCode);
   static void abortService(uint16_t exitCode);
 
@@ -73,6 +71,6 @@ class WindowsServiceFeature final : public application_features::ApplicationFeat
   uint16_t _progress;
 };
 
-} // arangodb
+}  // namespace arangodb
 
 #endif

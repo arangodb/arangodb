@@ -37,27 +37,27 @@ void QueryExpressionContext::registerWarning(int errorCode, char const* msg) {
 void QueryExpressionContext::registerError(int errorCode, char const* msg) {
   _query->registerError(errorCode, msg);
 }
-  
-icu::RegexMatcher* QueryExpressionContext::buildRegexMatcher(char const* ptr, size_t length, bool caseInsensitive) {
+
+icu::RegexMatcher* QueryExpressionContext::buildRegexMatcher(char const* ptr, size_t length,
+                                                             bool caseInsensitive) {
   return _query->regexCache()->buildRegexMatcher(ptr, length, caseInsensitive);
 }
 
-icu::RegexMatcher* QueryExpressionContext::buildLikeMatcher(char const* ptr, size_t length, bool caseInsensitive) {
+icu::RegexMatcher* QueryExpressionContext::buildLikeMatcher(char const* ptr, size_t length,
+                                                            bool caseInsensitive) {
   return _query->regexCache()->buildLikeMatcher(ptr, length, caseInsensitive);
 }
 
-icu::RegexMatcher* QueryExpressionContext::buildSplitMatcher(AqlValue splitExpression, transaction::Methods* trx, bool& isEmptyExpression) {
+icu::RegexMatcher* QueryExpressionContext::buildSplitMatcher(AqlValue splitExpression,
+                                                             transaction::Methods* trx,
+                                                             bool& isEmptyExpression) {
   return _query->regexCache()->buildSplitMatcher(splitExpression, trx, isEmptyExpression);
 }
 
-bool QueryExpressionContext::killed() const {
-  return _query->killed();
-}
+bool QueryExpressionContext::killed() const { return _query->killed(); }
 
 TRI_vocbase_t& QueryExpressionContext::vocbase() const {
   return _query->vocbase();
 }
 
-Query* QueryExpressionContext::query() const {
-  return _query;
-}
+Query* QueryExpressionContext::query() const { return _query; }

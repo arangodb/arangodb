@@ -29,9 +29,9 @@
 #include "Basics/fasthash.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
-#include "MMFiles/MMFilesIndexLookupContext.h"
 #include "MMFiles/MMFilesIndex.h"
 #include "MMFiles/MMFilesIndexElement.h"
+#include "MMFiles/MMFilesIndexLookupContext.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -56,8 +56,7 @@ struct MMFilesEdgeIndexHelper {
   }
 
   /// @brief hashes an edge
-  static inline uint64_t HashElement(MMFilesSimpleIndexElement const& element,
-                                     bool byKey) {
+  static inline uint64_t HashElement(MMFilesSimpleIndexElement const& element, bool byKey) {
     if (byKey) {
       return element.hash();
     }
@@ -107,15 +106,12 @@ struct MMFilesEdgeIndexHelper {
   }
 };
 
-typedef arangodb::basics::AssocMulti<arangodb::velocypack::Slice,
-                                     MMFilesSimpleIndexElement, uint32_t, false, MMFilesEdgeIndexHelper>
-    TRI_MMFilesEdgeIndexHash_t;
+typedef arangodb::basics::AssocMulti<arangodb::velocypack::Slice, MMFilesSimpleIndexElement, uint32_t, false, MMFilesEdgeIndexHelper> TRI_MMFilesEdgeIndexHash_t;
 
 class MMFilesEdgeIndexIterator final : public IndexIterator {
  public:
   MMFilesEdgeIndexIterator(LogicalCollection* collection,
-                           transaction::Methods* trx,
-                           ManagedDocumentResult* mmdr,
+                           transaction::Methods* trx, ManagedDocumentResult* mmdr,
                            arangodb::MMFilesEdgeIndex const* index,
                            TRI_MMFilesEdgeIndexHash_t const* indexImpl,
                            std::unique_ptr<VPackBuilder> keys);
@@ -162,30 +158,19 @@ class MMFilesEdgeIndex final : public MMFilesIndex {
 
   size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&,
-                    std::underlying_type<Index::Serialize>::type) const override;
+  void toVelocyPack(VPackBuilder&, std::underlying_type<Index::Serialize>::type) const override;
 
   void toVelocyPackFigures(VPackBuilder&) const override;
 
-  void batchInsert(
-    transaction::Methods & trx,
-    std::vector<std::pair<LocalDocumentId, velocypack::Slice>> const& docs,
-    std::shared_ptr<arangodb::basics::LocalTaskQueue> queue
-  ) override;
+  void batchInsert(transaction::Methods& trx,
+                   std::vector<std::pair<LocalDocumentId, velocypack::Slice>> const& docs,
+                   std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) override;
 
-  Result insert(
-    transaction::Methods& trx,
-    LocalDocumentId const& documentId,
-    velocypack::Slice const& doc,
-    Index::OperationMode mode
-  ) override;
+  Result insert(transaction::Methods& trx, LocalDocumentId const& documentId,
+                velocypack::Slice const& doc, Index::OperationMode mode) override;
 
-  Result remove(
-    transaction::Methods& trx,
-    LocalDocumentId const& documentId,
-    velocypack::Slice const& doc,
-    Index::OperationMode mode
-  ) override;
+  Result remove(transaction::Methods& trx, LocalDocumentId const& documentId,
+                velocypack::Slice const& doc, Index::OperationMode mode) override;
 
   void load() override {}
   void unload() override;
@@ -203,14 +188,13 @@ class MMFilesEdgeIndex final : public MMFilesIndex {
                                arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
 
-  IndexIterator* iteratorForCondition(transaction::Methods*,
-                                      ManagedDocumentResult*,
+  IndexIterator* iteratorForCondition(transaction::Methods*, ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
                                       IndexIteratorOptions const&) override;
 
-  arangodb::aql::AstNode* specializeCondition(
-      arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
+  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode*,
+                                              arangodb::aql::Variable const*) const override;
 
  private:
   /// @brief create the iterator
@@ -223,13 +207,12 @@ class MMFilesEdgeIndex final : public MMFilesIndex {
                                   arangodb::aql::AstNode const*) const;
 
   /// @brief add a single value node to the iterator's keys
-  void handleValNode(VPackBuilder* keys,
-                     arangodb::aql::AstNode const* valNode) const;
+  void handleValNode(VPackBuilder* keys, arangodb::aql::AstNode const* valNode) const;
 
-  MMFilesSimpleIndexElement buildFromElement(
-      LocalDocumentId const& documentId, arangodb::velocypack::Slice const& doc) const;
-  MMFilesSimpleIndexElement buildToElement(
-      LocalDocumentId const& documentId, arangodb::velocypack::Slice const& doc) const;
+  MMFilesSimpleIndexElement buildFromElement(LocalDocumentId const& documentId,
+                                             arangodb::velocypack::Slice const& doc) const;
+  MMFilesSimpleIndexElement buildToElement(LocalDocumentId const& documentId,
+                                           arangodb::velocypack::Slice const& doc) const;
 
  private:
   /// @brief the hash table for _from
@@ -238,6 +221,6 @@ class MMFilesEdgeIndex final : public MMFilesIndex {
   /// @brief the hash table for _to
   std::unique_ptr<TRI_MMFilesEdgeIndexHash_t> _edgesTo;
 };
-}
+}  // namespace arangodb
 
 #endif

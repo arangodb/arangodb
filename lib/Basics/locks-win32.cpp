@@ -52,8 +52,7 @@ void TRI_BroadcastCondition(TRI_condition_t* cond) {
 ///
 /// Note that you must hold the lock.
 void TRI_WaitCondition(TRI_condition_t* cond) {
-  SleepConditionVariableCS(&cond->_conditionVariable, &cond->_lockWaiters,
-                           INFINITE);
+  SleepConditionVariableCS(&cond->_conditionVariable, &cond->_lockWaiters, INFINITE);
 }
 
 /// @brief waits for a signal with a timeout in micro-seconds
