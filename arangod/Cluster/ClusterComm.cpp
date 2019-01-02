@@ -597,20 +597,30 @@ ClusterCommResult const ClusterComm::enquire(communicator::Ticket const ticketId
   ResponseIterator i;
   AsyncResponse response;
 
+  LOG_TOPIC(ERR, Logger::CLUSTER) << __FILE__ << __LINE__;
   {
     CONDITION_LOCKER(locker, somethingReceived);
 
+  LOG_TOPIC(ERR, Logger::CLUSTER) << __FILE__ << __LINE__;
     i = responses.find(ticketId);
+  LOG_TOPIC(ERR, Logger::CLUSTER) << __FILE__ << __LINE__;
     if (i != responses.end()) {
+  LOG_TOPIC(ERR, Logger::CLUSTER) << __FILE__ << __LINE__;
       response = i->second;
+  LOG_TOPIC(ERR, Logger::CLUSTER) << __FILE__ << __LINE__;
       return *response.result.get();
     }
+  LOG_TOPIC(ERR, Logger::CLUSTER) << __FILE__ << __LINE__;
   }
+  LOG_TOPIC(ERR, Logger::CLUSTER) << __FILE__ << __LINE__;
 
   ClusterCommResult res;
+  LOG_TOPIC(ERR, Logger::CLUSTER) << __FILE__ << __LINE__;
   res.operationID = ticketId;
+  LOG_TOPIC(ERR, Logger::CLUSTER) << __FILE__ << __LINE__;
   // does res.coordTransactionID need to be set here too?
   res.status = CL_COMM_DROPPED;
+  LOG_TOPIC(ERR, Logger::CLUSTER) << __FILE__ << __LINE__;
   return res;
 }
 

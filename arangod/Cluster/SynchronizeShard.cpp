@@ -429,6 +429,10 @@ arangodb::Result SynchronizeShard::getReadLock(
       return arangodb::Result();
     }
     
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "startReadLockOnLeader: couldn't POST lock body, "
+      << postres->result->getHttpReturnMessage() << ", giving up.";
+  
     // We MUSTN'T exit without trying to clean up a lock that was maybe acquired   
     if (postres->status == CL_COMM_SENT) {
       return arangodb::Result(
@@ -436,10 +440,10 @@ arangodb::Result SynchronizeShard::getReadLock(
         "startReadLockOnLeader: couldn't POST lock body, giving up.");
     }
     
+  } else {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "startReadLockOnLeader: couldn't POST lock body, giving up.";
   }
-
-  LOG_TOPIC(ERR, Logger::MAINTENANCE)
-    << "startReadLockOnLeader: couldn't POST lock body, giving up.";
   
   auto const expired = duration_cast<seconds>(steady_clock::now()-start).count();
   // Ambiguous POST, we'll try to DELETE a potentially acquired lock
