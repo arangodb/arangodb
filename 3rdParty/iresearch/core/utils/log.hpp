@@ -86,7 +86,8 @@ NS_END
 
 #if defined(_MSC_VER)
   #define IR_LOG_FORMATED(level, prefix, format, ...) \
-    std::fprintf(::iresearch::logger::output(level), "%s: %s:%u " format "\n", prefix, __FILE__, __LINE__, __VA_ARGS__)
+    if (::iresearch::logger::enabled(level)) \
+      std::fprintf(::iresearch::logger::output(level), "%s: %s:%u " format "\n", prefix, __FILE__, __LINE__, __VA_ARGS__)
 
   #define IR_FRMT_FATAL(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_FATAL, "FATAL", format, __VA_ARGS__)
   #define IR_FRMT_ERROR(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_ERROR, "ERROR", format, __VA_ARGS__)
@@ -96,7 +97,8 @@ NS_END
   #define IR_FRMT_TRACE(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_TRACE, "TRACE", format, __VA_ARGS__)
 #else // use a GNU extension for ignoring the trailing comma: ', ##__VA_ARGS__'
   #define IR_LOG_FORMATED(level, prefix, format, ...) \
-    std::fprintf(::iresearch::logger::output(level), "%s: %s:%u " format "\n", prefix, __FILE__, __LINE__, ##__VA_ARGS__)
+    if (::iresearch::logger::enabled(level)) \
+      std::fprintf(::iresearch::logger::output(level), "%s: %s:%u " format "\n", prefix, __FILE__, __LINE__, ##__VA_ARGS__)
 
   #define IR_FRMT_FATAL(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_FATAL, "FATAL", format, ##__VA_ARGS__)
   #define IR_FRMT_ERROR(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_ERROR, "ERROR", format, ##__VA_ARGS__)
@@ -106,21 +108,15 @@ NS_END
   #define IR_FRMT_TRACE(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_TRACE, "TRACE", format, ##__VA_ARGS__)
 #endif
 
-#define IR_LOG_STREAM(level, prefix) \
-  ::iresearch::logger::stream(level) << prefix << " " << __FILE__ << ":" << __LINE__ << " "
-
-#define IR_STRM_FATAL() IR_LOG_STREAM(::iresearch::logger::IRL_FATAL, "FATAL")
-#define IR_STRM_ERROR() IR_LOG_STREAM(::iresearch::logger::IRL_ERROR, "ERROR")
-#define IR_STRM_WARN() IR_LOG_STREAM(::iresearch::logger::IRL_WARN, "WARN")
-#define IR_STRM_INFO() IR_LOG_STREAM(::iresearch::logger::IRL_INFO, "INFO")
-#define IR_STRM_DEBUG() IR_LOG_STREAM(::iresearch::logger::IRL_DEBUG, "DEBUG")
-#define IR_STRM_TRACE() IR_LOG_STREAM(::iresearch::logger::IRL_TRACE, "TRACE")
-
 #define IR_LOG_EXCEPTION() \
-  IR_LOG_FORMATED(::iresearch::logger::stack_trace_level(), "EXCEPTION", "@%s\nstack trace:", __FUNCTION__); \
-  ::iresearch::logger::stack_trace(::iresearch::logger::stack_trace_level(), std::current_exception());
+  if (::iresearch::logger::enabled(::iresearch::logger::stack_trace_level())) { \
+    IR_LOG_FORMATED(::iresearch::logger::stack_trace_level(), "EXCEPTION", "@%s\nstack trace:", __FUNCTION__); \
+    ::iresearch::logger::stack_trace(::iresearch::logger::stack_trace_level(), std::current_exception()); \
+  }
 #define IR_LOG_STACK_TRACE() \
-  IR_LOG_FORMATED(::iresearch::logger::stack_trace_level(), "STACK_TRACE", "@%s\nstack trace:", __FUNCTION__); \
-  ::iresearch::logger::stack_trace(::iresearch::logger::stack_trace_level());
+  if (::iresearch::logger::enabled(::iresearch::logger::stack_trace_level())) { \
+    IR_LOG_FORMATED(::iresearch::logger::stack_trace_level(), "STACK_TRACE", "@%s\nstack trace:", __FUNCTION__); \
+    ::iresearch::logger::stack_trace(::iresearch::logger::stack_trace_level()); \
+  }
 
 #endif

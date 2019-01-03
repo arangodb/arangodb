@@ -299,6 +299,8 @@ class bitvector final {
 
   void unset(size_t i) { reset(i, false); }
 
+  size_t words() const NOEXCEPT { return set_.words(); }
+
  private:
   bitset set_;
   size_t size_{}; // number of bits requested in a bitset

@@ -37,27 +37,6 @@
 
 NS_LOCAL
 
-class iterator_impl final : public iresearch::index_reader::reader_iterator_impl {
- public:
-  explicit iterator_impl(const iresearch::sub_reader* rdr = nullptr) NOEXCEPT
-    : rdr_(rdr) {
-  }
-
-  virtual void operator++() override { rdr_ = nullptr; }
-  virtual reference operator*() override {
-    return *const_cast<iresearch::sub_reader*>(rdr_);
-  }
-  virtual const_reference operator*() const override { return *rdr_; }
-  virtual bool operator==(
-    const iresearch::index_reader::reader_iterator_impl& rhs
-  ) override {
-    return rdr_ == static_cast<const iterator_impl&>(rhs).rdr_;
-  }
-
- private:
-  const iresearch::sub_reader* rdr_;
-};
-
 class all_iterator final : public irs::doc_iterator {
  public:
   explicit all_iterator(irs::doc_id_t docs_count) NOEXCEPT
@@ -135,15 +114,15 @@ class mask_doc_iterator final : public irs::doc_iterator {
 }; // mask_doc_iterator
 
 class masked_docs_iterator 
-    : public iresearch::doc_iterator,
-      private iresearch::util::noncopyable {
+    : public irs::doc_iterator,
+      private irs::util::noncopyable {
  public:
   masked_docs_iterator(
-    iresearch::doc_id_t begin,
-    iresearch::doc_id_t end,
-    const iresearch::document_mask& docs_mask
+    irs::doc_id_t begin,
+    irs::doc_id_t end,
+    const irs::document_mask& docs_mask
   ) :
-    current_(iresearch::type_limits<iresearch::type_t::doc_id_t>::invalid()),
+    current_(irs::type_limits<irs::type_t::doc_id_t>::invalid()),
     docs_mask_(docs_mask),
     end_(end),
     next_(begin) {
@@ -160,7 +139,7 @@ class masked_docs_iterator
       }
     }
 
-    current_ = iresearch::type_limits<iresearch::type_t::doc_id_t>::eof();
+    current_ = irs::type_limits<irs::type_t::doc_id_t>::eof();
 
     return false;
   }
@@ -176,31 +155,31 @@ class masked_docs_iterator
     return irs::attribute_view::empty_instance();
   }
 
-  virtual iresearch::doc_id_t value() const override {
+  virtual irs::doc_id_t value() const override {
     return current_;
   }
 
  private:
-  iresearch::doc_id_t current_;
-  const iresearch::document_mask& docs_mask_;
-  const iresearch::doc_id_t end_; // past last valid doc_id
-  iresearch::doc_id_t next_;
+  irs::doc_id_t current_;
+  const irs::document_mask& docs_mask_;
+  const irs::doc_id_t end_; // past last valid doc_id
+  irs::doc_id_t next_;
 };
 
 bool read_columns_meta(
-    const iresearch::format& codec,
-    const iresearch::directory& dir,
+    const irs::format& codec,
+    const irs::directory& dir,
     const irs::segment_meta& meta,
-    std::vector<iresearch::column_meta>& columns,
-    std::vector<iresearch::column_meta*>& id_to_column,
-    std::unordered_map<iresearch::hashed_string_ref, iresearch::column_meta*>& name_to_column
+    std::vector<irs::column_meta>& columns,
+    std::vector<irs::column_meta*>& id_to_column,
+    std::unordered_map<irs::hashed_string_ref, irs::column_meta*>& name_to_column
 ) {
   size_t count = 0;
   irs::field_id max_id;
   auto reader = codec.get_column_meta_reader();
 
-  if (!reader->prepare(dir, meta, count, max_id)
-      || max_id >= irs::integer_traits<size_t>::const_max) {
+  if (!reader->prepare(dir, meta, count, max_id)) {
+    // no column meta found in a segment
     return false;
   }
 
@@ -213,31 +192,44 @@ bool read_columns_meta(
 
     auto& column = columns.back();
     const auto res = name_to_column.emplace(
-      irs::make_hashed_ref(iresearch::string_ref(column.name), std::hash<irs::string_ref>()),
+      irs::make_hashed_ref(irs::string_ref(column.name), std::hash<irs::string_ref>()),
       &column
     );
 
     assert(column.id < id_to_column.size());
 
     if (!res.second || id_to_column[column.id]) {
-      // duplicate field
-      return false;
+      throw irs::index_error(irs::string_utils::to_string(
+        "duplicate column '%s' in segment '%s'",
+        column.name.c_str(),
+        meta.name.c_str()
+      ));
     }
 
     id_to_column[column.id] = &column;
   }
 
-  if (!std::is_sorted(
-    columns.begin(), columns.end(),
-    [] (const iresearch::column_meta& lhs, const iresearch::column_meta& rhs) {
-        return lhs.name < rhs.name; })) {
+  // check column meta order
+
+  auto less = [] (
+      const irs::column_meta& lhs,
+      const irs::column_meta& rhs
+  ) NOEXCEPT {
+    return lhs.name < rhs.name;
+  };
+
+  if (!std::is_sorted(columns.begin(), columns.end(), less)) {
     columns.clear();
     id_to_column.clear();
     name_to_column.clear();
-    // TODO: log
-    return false;
+
+    throw irs::index_error(irs::string_utils::to_string(
+      "invalid column order in segment '%s'",
+      meta.name.c_str()
+    ));
   }
 
+  // column meta exists
   return true;
 }
 
@@ -259,9 +251,6 @@ class segment_reader_impl : public sub_reader {
   const directory& dir() const NOEXCEPT { 
     return dir_;
   }
-
-  virtual index_reader::reader_iterator begin() const override;
-  virtual index_reader::reader_iterator end() const override;
 
   virtual const column_meta* column(const string_ref& name) const override;
 
@@ -298,6 +287,11 @@ class segment_reader_impl : public sub_reader {
 
   uint64_t meta_version() const NOEXCEPT {
     return meta_version_;
+  }
+
+  virtual const sub_reader& operator[](size_t i) const NOEXCEPT override {
+    assert(!i);
+    return *this;
   }
 
   virtual size_t size() const NOEXCEPT override {
@@ -345,10 +339,6 @@ segment_reader& segment_reader::operator=(
   }
 
   return *this;
-}
-
-index_reader::reader_iterator segment_reader::begin() const {
-  return index_reader::reader_iterator(new iterator_impl(this));
 }
 
 template<>
@@ -399,14 +389,6 @@ segment_reader_impl::segment_reader_impl(
     meta_version_(meta_version) {
 }
 
-index_reader::reader_iterator segment_reader_impl::begin() const {
-  return index_reader::reader_iterator(new iterator_impl(this));
-}
-
-index_reader::reader_iterator segment_reader_impl::end() const {
-  return index_reader::reader_iterator(new iterator_impl());
-}
-
 const column_meta* segment_reader_impl::column(
     const string_ref& name) const {
   auto it = name_to_column_.find(make_hashed_ref(name, std::hash<irs::string_ref>()));
@@ -448,29 +430,32 @@ doc_iterator::ptr segment_reader_impl::docs_iterator() const {
 
 /*static*/ sub_reader::ptr segment_reader_impl::open(
     const directory& dir, const segment_meta& meta) {
+  auto& codec = *meta.codec;
+
   PTR_NAMED(segment_reader_impl, reader, dir, meta.version, meta.docs_count);
 
+  // read document mask
   index_utils::read_document_mask(reader->docs_mask_, dir, meta);
 
-  auto& codec = *meta.codec;
-  auto field_reader = codec.get_field_reader();
+  // initialize mandatory field reader
+  auto& field_reader = reader->field_reader_;
+  field_reader = codec.get_field_reader();
+  field_reader->prepare(dir, meta, reader->docs_mask_);
 
-  // initialize field reader
-  if (!field_reader->prepare(dir, meta, reader->docs_mask_)) {
-    return nullptr; // i.e. nullptr, field reader required
+  // initialize optional columnstore
+  if (segment_reader::has<irs::columnstore_reader>(meta)) {
+    auto& columnstore_reader = reader->columnstore_reader_;
+    columnstore_reader  = codec.get_columnstore_reader();
+
+    if (!columnstore_reader->prepare(dir, meta)) {
+      throw index_error(string_utils::to_string(
+        "failed to find existing (according to meta) columnstore in segment '%s'",
+        meta.name.c_str()
+      ));
+    }
   }
 
-  reader->field_reader_ = std::move(field_reader);
-
-  auto columnstore_reader = codec.get_columnstore_reader();
-
-  // initialize column reader (if available)
-  if (segment_reader::has<irs::columnstore_reader>(meta)
-      && columnstore_reader->prepare(dir, meta)) {
-    reader->columnstore_reader_ = std::move(columnstore_reader);
-  }
-
-  // initialize columns meta
+  // initialize optional columns meta
   read_columns_meta(
     codec,
     dir,

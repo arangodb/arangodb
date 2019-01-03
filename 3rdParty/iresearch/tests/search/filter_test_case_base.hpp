@@ -464,56 +464,6 @@ class filter_test_case_base : public index_test_base {
   }
 };
 
-struct empty_index_reader : iresearch::singleton<empty_index_reader>, iresearch::index_reader {
-  virtual uint64_t live_docs_count() const { return 0; }
-
-  virtual uint64_t docs_count(const iresearch::string_ref& field) const { return 0; }
-
-  virtual uint64_t docs_count() const { return 0; }
-
-  virtual reader_iterator begin() const { return reader_iterator(); }
-
-  virtual reader_iterator end() const { return reader_iterator(); }
-
-  virtual size_t size() const { return 0; }
-}; // index_reader
-
-struct empty_sub_reader : iresearch::singleton<empty_sub_reader>, iresearch::sub_reader {
-  virtual iresearch::column_iterator::ptr columns() const override {
-    return iresearch::column_iterator::empty();
-  }
-
-  virtual iresearch::column_meta* column(const iresearch::string_ref& name) const override {
-    return nullptr;
-  }
-
-  virtual uint64_t live_docs_count() const override { return 0; }
-
-  virtual irs::doc_iterator::ptr docs_iterator() const override {
-    return irs::doc_iterator::empty();
-  }
-
-  virtual uint64_t docs_count() const override { return 0; }
-
-  virtual reader_iterator begin() const override { return reader_iterator(); }
-
-  virtual reader_iterator end() const override { return reader_iterator(); }
-
-  virtual const iresearch::term_reader* field(const iresearch::string_ref&) const override {
-    return nullptr;
-  }
-
-  virtual const irs::columnstore_reader::column_reader* column_reader(irs::field_id field) const override {
-    return nullptr;
-  }
-
-  virtual size_t size() const override { return 0; }
-
-  virtual iresearch::field_iterator::ptr fields() const override {
-    return iresearch::field_iterator::empty();
-  }
-}; // empty_sub_reader
-
 struct empty_term_reader : iresearch::singleton<empty_term_reader>, iresearch::term_reader {
   virtual iresearch::seek_term_iterator::ptr iterator() const { return nullptr; }
   virtual const iresearch::field_meta& meta() const { 

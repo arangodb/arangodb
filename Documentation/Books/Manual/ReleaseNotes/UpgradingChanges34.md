@@ -20,7 +20,7 @@ The release packages are intended to be reasonably portable (see minimum support
 architectures below) and should run on a variety of different Linux distributions and
 versions.
 
-Release packages are provided for Windows and MacOS as well.
+Release packages are provided for Windows and macOS as well.
 
 
 Supported architectures
@@ -188,6 +188,20 @@ The syncing interval can be configured by adjusting the configuration option
 
 Note: this option is not supported on Windows platforms. Setting the sync interval to
 to a value greater than 0 will produce a startup warning on Windows.
+
+
+RocksDB write buffer size
+-------------------------
+
+The total amount of data to build up in all in-memory write buffers (backed by log
+files) is now by default restricted to a certain fraction of the available physical 
+RAM. This helps restricting memory usage for the arangod process, but may have an 
+effect on the RocksDB storage engine's write performance. 
+
+In ArangoDB 3.3 the governing configuration option `--rocksdb.total-write-buffer-size`
+had a default value of `0`, which meant that the memory usage was not limited. ArangoDB
+3.4 now changes the default value to about 40% of available physical RAM, and 512MiB
+for setups with less than 4GiB of RAM.
 
 
 Threading and request handling
@@ -365,8 +379,8 @@ The following APIs have been added or augmented:
   The old/new revisions can be accessed by passing the URL parameters `returnOld` and
   `returnNew` to the following endpoints:
 
-  * /_api/gharial/<graph>/vertex/<collection>
-  * /_api/gharial/<graph>/edge/<collection>
+  * `/_api/gharial/<graph>/vertex/<collection>`
+  * `/_api/gharial/<graph>/edge/<collection>`
 
   The exception from this is that the HTTP DELETE verb for these APIs does not
   support `returnOld` because that would make the existing API incompatible.
@@ -456,7 +470,7 @@ instead of error 1582 (`ERROR_QUERY_FUNCTION_NOT_FOUND`) in some situations.
   now always produce the same result, whereas in previous versions of ArangoDB the
   function may have generated different results.
   
-  Each AQL query that is run will still evalute the result value of the `DATE_NOW` 
+  Each AQL query that is run will still evaluate the result value of the `DATE_NOW` 
   function independently, but only once at the beginning of the query. This is most
   often what is desired anyway, but the change makes `DATE_NOW` useless to measure
   time differences inside a single query.
@@ -597,6 +611,11 @@ For arangod, the following startup options have changed:
 
   The default value for this option is *false*.
 
+  As mentioned above, ArangoDB 3.4 changes the default value of the configuration option 
+  `--rocksdb.total-write-buffer-size` to about 40% of available physical RAM, and 512MiB
+  for setups with less than 4GiB of RAM. In ArangoDB 3.3 this option had a default value
+  of `0`, which meant that the memory usage for write buffers was not limited.
+
 
 Permissions
 -----------
@@ -634,6 +653,25 @@ As it is not safe at all to use this protocol, the support for it has also
 been stopped in ArangoDB. End users that use SSLv2 for connecting to ArangoDB
 should change the protocol from SSLv2 to TLSv12 if possible, by adjusting
 the value of the `--ssl.protocol` startup option.
+
+
+Replication
+-----------
+
+By default, database-specific and global replication appliers use a slightly
+different configuration in 3.4 than in 3.3. In 3.4 the default value for the
+configuration option `requireFromPresent` is now `true`, meaning the follower
+will abort the replication when it detects gaps in the leader's stream of 
+events. Such gaps can happen if the leader has pruned WAL log files with 
+events that have not been fetched by a follower yet, which may happen for 
+example if the network connectivity between follower and leader is bad.
+
+Previous versions of ArangoDB 3.3 used a default value of `false` for 
+`requireFromPresent`, meaning that any such gaps in the replication data 
+exchange will not cause the replication to stop. 3.4 now stops replication by
+default and writes according errors to the log. Replication can automatically
+be restarted in this case by setting the `autoResync` replication configuration
+option to `true`.
 
 
 Mixed-engine clusters
@@ -686,6 +724,9 @@ removed, so it cannot be use from Foxx applications anymore The module only
 provided the current version of the database, so any client-side invocations
 can easily be replaced by using the `db._version()` instead.
 
+The `ShapedJson` JavaScript object prototype, a remainder from ArangoDB 2.8 
+for encapsulating database documents, has been removed in ArangoDB 3.4.
+
 
 Miscellaneous changes
 ---------------------
@@ -695,6 +736,8 @@ to "MMFilesCompactor".
 
 This change will be visible only on systems which allow assigning names to
 threads.
+
+
 
 
 Deprecated features
@@ -720,7 +763,7 @@ removed in future versions of ArangoDB:
   using the simple query API, because that is more flexible and allows greater 
   control of how the queries are executed.
 
-* the REST API for querying endpoints at `/_api/endpoints`:
+* the REST API for querying endpoints at `/_api/endpoint`:
 
   The API `/_api/endpoint` is deprecated since ArangoDB version 3.1. 
   For cluster mode there is `/_api/cluster/endpoints` to find all current 
@@ -758,6 +801,12 @@ removed in future versions of ArangoDB:
 
   The types `geo1` and `geo2` will still work in ArangoDB 3.4, but may be removed
   in future versions.
+
+* the persistent index type is marked for removal in 4.0.0 and is thus deprecated.
+
+  This index type was added when there was only the MMFiles storage engine as
+  kind of a stop gap. We recommend to switch to RocksDB engine, which persists
+  all index types with no difference between skiplist and persistent indexes.
 
 * the legacy mode for Foxx applications from ArangoDB 2.8 or earlier:
 

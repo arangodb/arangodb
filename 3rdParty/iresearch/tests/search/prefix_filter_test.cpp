@@ -255,7 +255,7 @@ TEST(by_prefix_test, boost) {
     irs::by_prefix q;
     q.field("field").term("term");
 
-    auto prepared = q.prepare(tests::empty_index_reader::instance());
+    auto prepared = q.prepare(irs::sub_reader::empty());
     ASSERT_EQ(irs::boost::no_boost(), irs::boost::extract(prepared->attributes()));
   }
 
@@ -266,7 +266,7 @@ TEST(by_prefix_test, boost) {
     q.field("field").term("term");
     q.boost(boost);
 
-    auto prepared = q.prepare(tests::empty_index_reader::instance());
+    auto prepared = q.prepare(irs::sub_reader::empty());
     ASSERT_EQ(boost, irs::boost::extract(prepared->attributes()));
   }
 }

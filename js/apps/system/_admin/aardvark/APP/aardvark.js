@@ -87,7 +87,8 @@ router.get('/config.js', function (req, res) {
       authenticationEnabled: internal.authenticationEnabled(),
       ldapEnabled: ldapEnabled,
       isCluster: cluster.isCluster(),
-      engine: db._engine().name
+      engine: db._engine().name,
+      statisticsEnabled: internal.enabledStatistics()
     })}`
   );
 })

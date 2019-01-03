@@ -27,6 +27,7 @@
 #include "index_meta.hpp"
 #include "analysis/token_stream.hpp"
 #include "analysis/token_attributes.hpp"
+#include "utils/index_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/map_utils.hpp"
 #include "utils/timer_utils.hpp"
@@ -73,12 +74,23 @@ segment_writer::ptr segment_writer::make(directory& dir) {
   return memory::maker<segment_writer>::make(dir);
 }
 
-size_t segment_writer::memory() const NOEXCEPT {
+size_t segment_writer::memory_active() const NOEXCEPT {
+  const auto docs_mask_extra = docs_mask_.size() % sizeof(bitvector::word_t)
+      ? sizeof(bitvector::word_t) : 0;
+
+  return (docs_context_.size() * sizeof(update_contexts::value_type))
+    + (docs_mask_.size() / 8 + docs_mask_extra) // FIXME too rough
+    + fields_.memory_active();
+}
+
+size_t segment_writer::memory_reserved() const NOEXCEPT {
+  const auto docs_mask_extra = docs_mask_.size() % sizeof(bitvector::word_t)
+      ? sizeof(bitvector::word_t) : 0;
+
   return sizeof(segment_writer)
     + (sizeof(update_contexts::value_type) * docs_context_.size())
-    + (sizeof(bitvector) + docs_mask_.count() * sizeof(bitvector::word_t))
-    + fields_.memory()
-    ;
+    + (sizeof(bitvector) + docs_mask_.size() / 8 + docs_mask_extra)
+    + fields_.memory_reserved();
 }
 
 bool segment_writer::remove(doc_id_t doc_id) {
@@ -158,109 +170,117 @@ void segment_writer::finish() {
   }
 }
 
-bool segment_writer::flush(std::string& filename, segment_meta& meta) {
-  REGISTER_TIMER_DETAILED();
-
-  // flush columnstore and columns indices
-  if (col_writer_->flush() && !columns_.empty()) {
-    struct less_t {
-      bool operator()(
-          const column* lhs,
-          const column* rhs
-      ) const NOEXCEPT {
-        return lhs->name < rhs->name;
-      };
+void segment_writer::flush_column_meta(const segment_meta& meta) {
+  struct less_t {
+    bool operator()(
+        const column* lhs,
+        const column* rhs
+    ) const NOEXCEPT {
+      return lhs->name < rhs->name;
     };
+  };
 
-    std::set<const column*, less_t> columns;
+  std::set<const column*, less_t> columns;
 
-    // ensure columns are sorted
-    for (auto& entry : columns_) {
-      columns.emplace(&entry.second);
-    }
+  // ensure columns are sorted
+  for (auto& entry : columns_) {
+    columns.emplace(&entry.second);
+  }
 
-    // flush columns meta
+  // flush columns meta
+  try {
     col_meta_writer_->prepare(dir_, meta);
-
     for (auto& column: columns) {
       col_meta_writer_->write(column->name, column->handle.first);
     }
-
     col_meta_writer_->flush();
-    columns_.clear();
+  } catch (...) {
+    col_meta_writer_.reset(); // invalidate column meta writer
+
+    throw;
+  }
+}
+
+void segment_writer::flush_fields() {
+  flush_state state;
+  state.dir = &dir_;
+  state.doc_count = docs_cached();
+  state.name = seg_name_;
+
+  try {
+    fields_.flush(*field_writer_, state);
+  } catch (...) {
+    field_writer_.reset(); // invalidate field writer
+
+    throw;
+  }
+}
+
+size_t segment_writer::flush_doc_mask(const segment_meta &meta) {
+  document_mask docs_mask;
+  docs_mask.reserve(docs_mask_.size());
+
+  for (size_t doc_id = 0, doc_id_end = docs_mask_.size();
+       doc_id < doc_id_end;
+       ++doc_id) {
+    if (docs_mask_.test(doc_id)) {
+      assert(size_t(integer_traits<doc_id_t>::const_max) >= doc_id + type_limits<type_t::doc_id_t>::min());
+      docs_mask.emplace(
+        doc_id_t(doc_id + type_limits<type_t::doc_id_t>::min())
+      );
+    }
+  }
+
+  auto writer = meta.codec->get_document_mask_writer();
+  writer->write(dir_, meta, docs_mask);
+
+  return docs_mask.size();
+}
+
+void segment_writer::flush(index_meta::index_segment_t& segment) {
+  REGISTER_TIMER_DETAILED();
+
+  auto& meta = segment.meta;
+
+  // flush columnstore and columns indices
+  if (col_writer_->commit() && !columns_.empty()) {
+    flush_column_meta(meta);
     meta.column_store = true;
   }
 
   // flush fields metadata & inverted data
   if (docs_cached()) {
-    flush_state state;
-    state.dir = &dir_;
-    state.doc_count = docs_cached();
-    state.name = seg_name_;
-    state.ver = IRESEARCH_VERSION;
-
-    fields_.flush(*field_writer_, state);
+    flush_fields();
   }
-
-  size_t docs_mask_count = 0;
 
   // write non-empty document mask
+  size_t docs_mask_count = 0;
   if (docs_mask_.any()) {
-    document_mask docs_mask;
-    auto writer = meta.codec->get_document_mask_writer();
-
-    docs_mask.reserve(docs_mask_.size());
-
-    for (size_t doc_id = 0, doc_id_end = docs_mask_.size();
-         doc_id < doc_id_end;
-         ++doc_id) {
-      if (docs_mask_.test(doc_id)) {
-        assert(size_t(integer_traits<doc_id_t>::const_max) >= doc_id + type_limits<type_t::doc_id_t>::min());
-        docs_mask.emplace(
-          doc_id_t(doc_id + type_limits<type_t::doc_id_t>::min())
-        );
-      }
-    }
-
-    writer->write(dir_, meta, docs_mask);
-    docs_mask_count = docs_mask.size();
+    docs_mask_count = flush_doc_mask(meta);
   }
 
+  // update segment metadata
   assert(docs_cached() >= docs_mask_count);
   meta.docs_count = docs_cached();
   meta.live_docs_count = meta.docs_count - docs_mask_count;
   meta.files.clear(); // prepare empy set to be swaped into dir_
-
-  if (!dir_.swap_tracked(meta.files)) {
-    IR_FRMT_ERROR("Failed to swap list of tracked files in: %s", __FUNCTION__);
-
-    return false;
-  }
+  dir_.flush_tracked(meta.files);
 
   // flush segment metadata
-  {
-    segment_meta_writer::ptr writer = meta.codec->get_segment_meta_writer();
-    writer->write(dir_, meta);
-
-    filename = writer->filename(meta);
-  }
-
-  return true;
+  index_utils::flush_index_segment(dir_, segment);
 }
 
-void segment_writer::reset() {
+void segment_writer::reset() NOEXCEPT {
   initialized_ = false;
-
-  tracking_directory::file_set empty;
-
-  if (!dir_.swap_tracked(empty)) {
-    // on failre next segment might have extra files which will fail to get refs
-    IR_FRMT_ERROR("Failed to swap list of tracked files in: %s", __FUNCTION__);
-  }
-
+  dir_.clear_tracked();
   docs_context_.clear();
   docs_mask_.clear();
   fields_.reset();
+  columns_.clear();
+
+  if (col_writer_) {
+    col_writer_->rollback();
+  }
 }
 
 void segment_writer::reset(const segment_meta& meta) {
@@ -270,17 +290,21 @@ void segment_writer::reset(const segment_meta& meta) {
 
   if (!field_writer_) {
     field_writer_ = meta.codec->get_field_writer(false);
+    assert(field_writer_);
   }
 
   if (!col_meta_writer_) {
     col_meta_writer_ = meta.codec->get_column_meta_writer();
+    assert(col_meta_writer_);
   }
 
   if (!col_writer_) {
     col_writer_ = meta.codec->get_columnstore_writer();
+    assert(col_writer_);
   }
 
   col_writer_->prepare(dir_, meta);
+
   initialized_ = true;
 }
 

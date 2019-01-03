@@ -148,10 +148,9 @@ Crash analysis of: ` + JSON.stringify(instanceInfo) + '\n';
 
 function analyzeCoreDumpWindows (instanceInfo) {
   let cdbOutputFile = fs.getTempFile();
-  const coreFN = instanceInfo.rootDir + '\\' + 'core.dmp';
 
-  if (!fs.exists(coreFN)) {
-    print('core file ' + coreFN + ' not found?');
+  if (!fs.exists(instanceInfo.coreFilePattern)) {
+    print('core file ' + instanceInfo.coreFilePattern + ' not found?');
     return;
   }
 
@@ -167,7 +166,7 @@ function analyzeCoreDumpWindows (instanceInfo) {
 
   const args = [
     '-z',
-    coreFN,
+    instanceInfo.coreFilePattern,
     '-lines',
     '-logo',
     cdbOutputFile,
@@ -193,9 +192,9 @@ function checkMonitorAlive (binary, arangod, options, res) {
       let rc = statusExternal(arangod.monitor.pid, false);
       if (rc.status !== 'RUNNING') {
         arangod.monitor = rc;
-        if (arangod.monitor.exit !== 0) {
-          // ok, procdump exited with a failure,
-          // this means it wrote an exception dump.
+        // procdump doesn't set propper exit codes, check for
+        // dumps that may exist:
+        if (fs.exists(arangod.coreFilePattern)) {
           print("checkMonitorAlive: marking crashy");
           arangod.monitor.monitorExited = true;
           arangod.monitor.pid = null;
@@ -218,7 +217,22 @@ function checkMonitorAlive (binary, arangod, options, res) {
 // /        information about the incident.
 // //////////////////////////////////////////////////////////////////////////////
 function analyzeCrash (binary, instanceInfo, options, checkStr) {
-  if (!options.coreCheck || instanceInfo.exitStatus.hasOwnProperty('gdbHint')) {
+  if (instanceInfo.exitStatus.hasOwnProperty('gdbHint')) {
+    print(RESET);
+    return;
+  }
+  let message = 'during: ' + checkStr + ': Core dump written; ' +
+        /*
+        'copying ' + binary + ' to ' +
+        storeArangodPath + ' for later analysis.\n' +
+        */
+        'Process facts :\n' +
+        yaml.safeDump(instanceInfo) +
+      'marking build as crashy.';
+  pu.serverFailMessages = pu.serverFailMessages + '\n' + message;
+
+  if (!options.coreCheck) {
+    instanceInfo.exitStatus['gdbHint'] = message;
     print(RESET);
     return;
   }
@@ -253,15 +267,7 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
   }
   const storeArangodPath = instanceInfo.rootDir + '/' + bareBinary + '_' + instanceInfo.pid;
 
-  print(RED +
-        'during: ' + checkStr + ': Core dump written; ' +
-        /*
-        'copying ' + binary + ' to ' +
-        storeArangodPath + ' for later analysis.\n' +
-        */
-        'Process facts :\n' +
-        yaml.safeDump(instanceInfo) +
-        'marking build as crashy.' + RESET);
+  print(RED + message + RESET);
 
   sleep(5);
 
@@ -272,9 +278,7 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
       instanceInfo.exitStatus['gdbHint'] = "coredump unavailable";
       return;
     }
-    if (instanceInfo.monitor.pid !== null) {
-      instanceInfo.monitor = statusExternal(instanceInfo.monitor.pid, true);
-    }
+    pu.stopProcdump(options, instanceInfo);
     hint = analyzeCoreDumpWindows(instanceInfo);
   } else if (platform === 'darwin') {
     // fs.copyFile(binary, storeArangodPath);

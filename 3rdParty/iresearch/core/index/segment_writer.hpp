@@ -204,8 +204,11 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     }
   }
 
-  // @return aproximate amount of memory used by this writer
-  size_t memory() const NOEXCEPT;
+  // @return approximate amount of memory actively in-use by this instance
+  size_t memory_active() const NOEXCEPT;
+
+  // @return approximate amount of memory reserved by this instance
+  size_t memory_reserved() const NOEXCEPT;
 
   // @param doc_id the document id as returned by begin(...)
   // @return success
@@ -220,13 +223,13 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     valid_ = false;
   }
 
-  bool flush(std::string& filename, segment_meta& meta);
+  void flush(index_meta::index_segment_t& segment);
 
   const std::string& name() const NOEXCEPT { return seg_name_; }
   size_t docs_cached() const NOEXCEPT { return docs_context_.size(); }
   bool initialized() const NOEXCEPT { return initialized_; }
   bool valid() const NOEXCEPT { return valid_; }
-  void reset();
+  void reset() NOEXCEPT;
   void reset(const segment_meta& meta);
 
  private:
@@ -328,6 +331,10 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   );
 
   void finish(); // finishes document
+
+  size_t flush_doc_mask(const segment_meta& meta); // flushes document mask to directory, returns number of masked documens
+  void flush_column_meta(const segment_meta& meta); // flushes column meta to directory
+  void flush_fields(); // flushes indexed fields to directory
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   update_contexts docs_context_;

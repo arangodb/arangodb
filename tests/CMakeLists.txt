@@ -8,6 +8,7 @@ endforeach()
 
 if (USE_IRESEARCH)
   set(IRESEARCH_TESTS_SOURCES
+    Cluster/ClusterInfo-test.cpp
     IResearch/common.cpp
     IResearch/AgencyMock.cpp
     IResearch/AgencyCommManagerMock.cpp
@@ -148,9 +149,15 @@ set(ARANGODB_TESTS_SOURCES
 
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags
-  # this speeds up the compilation with newer g++ versions and prevents the
-  # "variable tracking size limit exceeded warnings"
-  set_source_files_properties(${ARANGODB_TESTS_SOURCES} PROPERTIES COMPILE_FLAGS -fno-var-tracking)
+  # this speeds up the compilation with optimizations and newer g++ versions 
+  # and prevents the "variable tracking size limit exceeded warnings" from
+  # occurring
+  if (CMAKE_COMPILER_IS_GNUCC)
+    # also turn off super-expensive global common subexpression elimination for tests
+    set_source_files_properties(${ARANGODB_TESTS_SOURCES} PROPERTIES COMPILE_FLAGS "-fno-var-tracking -fno-gcse")
+  else ()
+    set_source_files_properties(${ARANGODB_TESTS_SOURCES} PROPERTIES COMPILE_FLAGS -fno-var-tracking)
+  endif ()
 endif ()
 
 add_executable(

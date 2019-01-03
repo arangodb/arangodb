@@ -43,18 +43,14 @@ template<typename Iterator, typename Pred>
 inline void pop_heap(Iterator first, Iterator last, Pred comp) {
   assert(first != last); // pop requires non-empty range
 
-  #ifdef _MSC_VER
-    #if _MSC_FULL_VER < 190024000
-      std::_Pop_heap(std::_Unchecked(first), std::_Unchecked(last), comp);
-    #else
-      #if _MSC_FULL_VER >= 191526726
-        std::_Pop_heap_unchecked(&*first, &*last, comp);
-      #else
-        std::_Pop_heap_unchecked(std::_Unchecked(first), std::_Unchecked(last), comp);
-      #endif
-    #endif
-  #else
+  #ifndef _MSC_VER
     std::pop_heap(first, last, comp);
+  #elif _MSC_FULL_VER < 190024000 // < MSVC2015.3
+    std::_Pop_heap(std::_Unchecked(first), std::_Unchecked(last), comp);
+  #elif _MSC_FULL_VER < 191526726 // < MSVC2017.8
+    std::_Pop_heap_unchecked(std::_Unchecked(first), std::_Unchecked(last), comp);
+  #else
+    std::_Pop_heap_unchecked(first._Unwrapped(), last._Unwrapped(), comp);
   #endif
 }
 

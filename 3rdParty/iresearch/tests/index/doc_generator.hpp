@@ -339,6 +339,7 @@ class csv_doc_generator: public doc_generator_base {
   csv_doc_generator(const irs::utf8_path& file, doc_template& doc);
   virtual const tests::document* next() override;
   virtual void reset() override;
+  bool skip(); // skip a single document, return if anything was skiped, false == EOF
 
  private:
   doc_template& doc_;

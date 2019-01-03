@@ -37,7 +37,6 @@ thread_local ErrorContainer LastError;
 static std::unordered_map<int, char const*> ErrorMessages;
 static std::unordered_map<int, char const*> ExitMessages;
 
-
 /// @brief returns the last error
 int TRI_errno() { return LastError._number; }
 
@@ -71,8 +70,7 @@ void TRI_set_exitno_string(int code, char const* msg) {
 
   if (!ExitMessages.emplace(code, msg).second) {
     // logic error, error number is redeclared
-    printf("Error: duplicate declaration of exit code %i in %s:%i\n", code,
-           __FILE__, __LINE__);
+    printf("Error: duplicate declaration of exit code %i in %s:%i\n", code, __FILE__, __LINE__);
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 }

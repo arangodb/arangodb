@@ -225,6 +225,78 @@ function GeneralGraphCreationSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rename with module function renameCollection
+////////////////////////////////////////////////////////////////////////////////
+    
+    test_collectionRenameCollectionsWithModule1: function() {
+      // tests edge collection name from vertex and to vertex collections
+      if ((cluster && cluster.isCluster && cluster.isCluster()) || (! cluster || ! cluster.isCluster)) {
+        return;
+      }
+
+      graph._create(
+        gN1,
+        graph._edgeDefinitions(
+          graph._relation(rn1, [vn2, vn1], [vn4, vn3])
+        )
+      );
+
+      graph._renameCollection("UnitTestRelationName1", "UnitTestsGraphRenamed1");
+      graph._renameCollection("UnitTestVertices1", "UnitTestsGraphRenamed2");
+      graph._renameCollection("UnitTestVertices4", "UnitTestsGraphRenamed3");
+      
+      var doc = db._graphs.document(gN1);
+      assertEqual(1, doc.edgeDefinitions.length);
+      assertEqual("UnitTestsGraphRenamed1", doc.edgeDefinitions[0].collection);
+      assertEqual(2, doc.edgeDefinitions[0].from.length);
+      assertEqual([ "UnitTestsGraphRenamed2", vn2 ].sort(), doc.edgeDefinitions[0].from.sort());
+      assertEqual(2, doc.edgeDefinitions[0].to.length);
+      assertEqual([ vn3, "UnitTestsGraphRenamed3" ].sort(), doc.edgeDefinitions[0].to.sort());
+      assertEqual([ ], doc.orphanCollections);
+    },
+
+    test_collectionRenameCollectionsWithModule2: function() {
+      // tests orpahns rename in one graph
+      if ((cluster && cluster.isCluster && cluster.isCluster()) || (! cluster || ! cluster.isCluster)) {
+        return;
+      }
+
+      graph._create(
+        gN1,
+        graph._edgeDefinitions(
+          graph._relation(rn1, [vn2, vn1], [vn4, vn3])
+        )
+      );
+      graph._create(
+        gN2,
+        graph._edgeDefinitions(
+          graph._relation(rn1, [vn2, vn1], [vn4, vn3])
+        )
+      );
+
+      var g1 = graph._graph(gN1);
+      g1._addVertexCollection("mj7");
+      var g2 = graph._graph(gN2);
+      g2._addVertexCollection("mj7");
+
+      graph._renameCollection("mj7", "MarcelJansen");
+      
+      var doc = db._graphs.document(gN1);
+      assertEqual(1, doc.orphanCollections.length);
+      assertEqual("MarcelJansen", doc.orphanCollections[0]);
+      graph._drop(gN1, true);
+
+      // should also be renamend in a different graph
+      var docx = db._graphs.document(gN2);
+      assertEqual(1, docx.orphanCollections.length);
+      assertEqual("MarcelJansen", docx.orphanCollections[0]);
+      graph._drop(gN2, true);
+
+      // drop renamed gone connection
+      db._drop("mj7");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test: Graph Creation
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -584,7 +656,7 @@ function GeneralGraphCreationSuite() {
         fail();
       } catch (e) {
         assertEqual(e.errorNum, ERRORS.ERROR_GRAPH_NOT_FOUND.code);
-        assertEqual(e.errorMessage, ERRORS.ERROR_GRAPH_NOT_FOUND.message);
+        assertEqual(e.errorMessage, "graph 'UnitTestGraphUnknownExtension' not found");
       }
     },
 

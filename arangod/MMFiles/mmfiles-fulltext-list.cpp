@@ -45,8 +45,7 @@ static inline bool IsSorted(TRI_fulltext_list_t const* list) {
 }
 
 /// @brief return whether the list is sorted
-static inline void SetIsSorted(TRI_fulltext_list_t* const list,
-                               bool const value) {
+static inline void SetIsSorted(TRI_fulltext_list_t* const list, bool const value) {
   uint32_t* head = (uint32_t*)list;
 
   // yes, we could also do this without branching and with more bit twiddling
@@ -59,8 +58,7 @@ static inline void SetIsSorted(TRI_fulltext_list_t* const list,
 }
 
 /// @brief return the pointer to the start of the list entries
-static inline TRI_fulltext_list_entry_t* GetStart(
-    const TRI_fulltext_list_t* const list) {
+static inline TRI_fulltext_list_entry_t* GetStart(const TRI_fulltext_list_t* const list) {
   uint32_t* head = (uint32_t*)list;
   ++head;  // numAllocated
   ++head;  // numEntries
@@ -75,8 +73,7 @@ static inline uint32_t GetNumEntries(const TRI_fulltext_list_t* const list) {
 }
 
 /// @brief set the number of entries
-static inline void SetNumEntries(TRI_fulltext_list_t* const list,
-                                 uint32_t value) {
+static inline void SetNumEntries(TRI_fulltext_list_t* const list, uint32_t value) {
   uint32_t* head = (uint32_t*)list;
 
   *(++head) = value;
@@ -89,15 +86,13 @@ static inline uint32_t GetNumAllocated(TRI_fulltext_list_t const* list) {
   return (*head & ~SORTED_BIT);
 }
 
-static uint32_t FindListEntry(TRI_fulltext_list_t* list,
-                              TRI_fulltext_list_entry_t* listEntries,
-                              uint32_t numEntries, 
-                              TRI_fulltext_list_entry_t entry) {
+static uint32_t FindListEntry(TRI_fulltext_list_t* list, TRI_fulltext_list_entry_t* listEntries,
+                              uint32_t numEntries, TRI_fulltext_list_entry_t entry) {
   if (numEntries >= 10 && IsSorted(list)) {
     // binary search
     uint32_t l = 0;
     uint32_t r = numEntries - 1;
-  
+
     while (true) {
       // determine midpoint
       uint32_t m = l + ((r - l) / 2);
@@ -150,10 +145,8 @@ static inline size_t MemoryList(uint32_t size) {
 }
 
 /// @brief increase an existing list
-static TRI_fulltext_list_t* IncreaseList(TRI_fulltext_list_t* list,
-                                         uint32_t size) {
-  TRI_fulltext_list_t* copy =
-      TRI_Reallocate(list, MemoryList(size));
+static TRI_fulltext_list_t* IncreaseList(TRI_fulltext_list_t* list, uint32_t size) {
+  TRI_fulltext_list_t* copy = TRI_Reallocate(list, MemoryList(size));
 
   if (copy != nullptr) {
     InitList(copy, size);
@@ -167,7 +160,7 @@ void TRI_CloneListMMFilesFulltextIndex(TRI_fulltext_list_t const* source,
   if (source == nullptr) {
     return;
   }
-  
+
   uint32_t numEntries = GetNumEntries(source);
   if (numEntries > 0) {
     TRI_fulltext_list_entry_t* entries = GetStart(source);
@@ -178,8 +171,7 @@ void TRI_CloneListMMFilesFulltextIndex(TRI_fulltext_list_t const* source,
 }
 
 /// @brief clone a list by copying an existing one
-TRI_fulltext_list_t* TRI_CloneListMMFilesFulltextIndex(
-    TRI_fulltext_list_t const* source) {
+TRI_fulltext_list_t* TRI_CloneListMMFilesFulltextIndex(TRI_fulltext_list_t const* source) {
   uint32_t numEntries;
 
   if (source == nullptr) {
@@ -192,8 +184,7 @@ TRI_fulltext_list_t* TRI_CloneListMMFilesFulltextIndex(
 
   if (list != nullptr) {
     if (numEntries > 0) {
-      memcpy(GetStart(list), GetStart(source),
-             numEntries * sizeof(TRI_fulltext_list_entry_t));
+      memcpy(GetStart(list), GetStart(source), numEntries * sizeof(TRI_fulltext_list_entry_t));
       SetNumEntries(list, numEntries);
     }
   }
@@ -203,8 +194,7 @@ TRI_fulltext_list_t* TRI_CloneListMMFilesFulltextIndex(
 
 /// @brief create a new list
 TRI_fulltext_list_t* TRI_CreateListMMFilesFulltextIndex(uint32_t size) {
-  TRI_fulltext_list_t* list =
-      TRI_Allocate(MemoryList(size));
+  TRI_fulltext_list_t* list = TRI_Allocate(MemoryList(size));
 
   if (list == nullptr) {
     // out of memory
@@ -229,8 +219,8 @@ size_t TRI_MemoryListMMFilesFulltextIndex(TRI_fulltext_list_t const* list) {
 
 /// @brief insert an element into a list
 /// this might free the old list and allocate a new, bigger one
-TRI_fulltext_list_t* TRI_InsertListMMFilesFulltextIndex(
-    TRI_fulltext_list_t* list, TRI_fulltext_list_entry_t entry) {
+TRI_fulltext_list_t* TRI_InsertListMMFilesFulltextIndex(TRI_fulltext_list_t* list,
+                                                        TRI_fulltext_list_entry_t entry) {
   TRI_fulltext_list_entry_t* listEntries;
   uint32_t numAllocated;
   uint32_t numEntries;
@@ -296,8 +286,8 @@ TRI_fulltext_list_t* TRI_InsertListMMFilesFulltextIndex(
 
 /// @brief remove an element from a list
 /// this might free the old list and allocate a new, smaller one
-TRI_fulltext_list_t* TRI_RemoveListMMFilesFulltextIndex(
-    TRI_fulltext_list_t* list, TRI_fulltext_list_entry_t entry) {
+TRI_fulltext_list_t* TRI_RemoveListMMFilesFulltextIndex(TRI_fulltext_list_t* list,
+                                                        TRI_fulltext_list_entry_t entry) {
   if (list == nullptr) {
     return nullptr;
   }
@@ -308,17 +298,17 @@ TRI_fulltext_list_t* TRI_RemoveListMMFilesFulltextIndex(
     // definitely not contained...
     return list;
   }
-  
+
   TRI_fulltext_list_entry_t* listEntries = GetStart(list);
   uint32_t i = FindListEntry(list, listEntries, numEntries, entry);
-  
+
   if (i == UINT32_MAX) {
     // not found
     return list;
   }
-   
-  // found! 
-  --numEntries; 
+
+  // found!
+  --numEntries;
 
   if (numEntries == 0) {
     // free all memory
@@ -332,7 +322,7 @@ TRI_fulltext_list_t* TRI_RemoveListMMFilesFulltextIndex(
   }
 
   SetNumEntries(list, numEntries);
-    
+
   uint32_t numAllocated = GetNumAllocated(list);
 
   if (numAllocated > 4 && numEntries < numAllocated / 2) {
@@ -354,7 +344,6 @@ uint32_t TRI_NumEntriesListMMFilesFulltextIndex(TRI_fulltext_list_t const* list)
 }
 
 /// @brief return a pointer to the first list entry
-TRI_fulltext_list_entry_t* TRI_StartListMMFilesFulltextIndex(
-    TRI_fulltext_list_t const* list) {
+TRI_fulltext_list_entry_t* TRI_StartListMMFilesFulltextIndex(TRI_fulltext_list_t const* list) {
   return GetStart(list);
 }

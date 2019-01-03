@@ -31,6 +31,7 @@
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
 var ERRORS = require("@arangodb").errors;
+var deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -523,19 +524,96 @@ function IResearchAqlTestSuite(args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(function IResearchAqlTestSuite_s1_r1() {
-  return IResearchAqlTestSuite({ numberOfShards: 1, replicationFactor: 1 });
+  let suite = {};
+
+  deriveTestSuite(
+    IResearchAqlTestSuite({ numberOfShards: 1, replicationFactor: 1 }),
+    suite,
+    "_OneShard"
+  );
+
+  // same order as for single-server (valid only for 1 shard case)
+  suite.testInTokensFilterSortTFIDF_OneShard = function () {
+    var result = db._query(
+      "FOR doc IN UnitTestsView SEARCH ANALYZER(doc.text IN TOKENS('the quick brown', 'text_en'), 'text_en') OPTIONS { waitForSync : true } SORT TFIDF(doc) LIMIT 4 RETURN doc"
+    ).toArray();
+
+    assertEqual(result.length, 4);
+    assertEqual(result[0].name, 'half');
+    assertEqual(result[1].name, 'quarter');
+    assertEqual(result[2].name, 'other half');
+    assertEqual(result[3].name, 'full');
+  };
+
+  return suite;
 });
 
 jsunity.run(function IResearchAqlTestSuite_s4_r1() {
-  return IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 1 });
+  let suite = {};
+
+  deriveTestSuite(
+    IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 1 }),
+    suite,
+    "_FourShards"
+  );
+
+  // order for multiple shards is nondeterministic
+  suite.testInTokensFilterSortTFIDF_FourShards = function () {
+    var result = db._query(
+      "FOR doc IN UnitTestsView SEARCH ANALYZER(doc.text IN TOKENS('the quick brown', 'text_en'), 'text_en') OPTIONS { waitForSync : true } SORT TFIDF(doc) LIMIT 4 RETURN doc"
+    ).toArray();
+
+    assertEqual(result.length, 4);
+  };
+
+  return suite;
 });
 
 jsunity.run(function IResearchAqlTestSuite_s1_r2() {
-  return IResearchAqlTestSuite({ numberOfShards: 1, replicationFactor: 2 });
+  let suite = {};
+
+  deriveTestSuite(
+    IResearchAqlTestSuite({ numberOfShards: 1, replicationFactor: 2 }),
+    suite,
+    "_ReplTwo"
+  );
+
+  // same order as for single-server (valid only for 1 shard case)
+  suite.testInTokensFilterSortTFIDF_ReplTwo = function () {
+    var result = db._query(
+      "FOR doc IN UnitTestsView SEARCH ANALYZER(doc.text IN TOKENS('the quick brown', 'text_en'), 'text_en') OPTIONS { waitForSync : true } SORT TFIDF(doc) LIMIT 4 RETURN doc"
+    ).toArray();
+
+    assertEqual(result.length, 4);
+    assertEqual(result[0].name, 'half');
+    assertEqual(result[1].name, 'quarter');
+    assertEqual(result[2].name, 'other half');
+    assertEqual(result[3].name, 'full');
+  };
+
+  return suite;
 });
 
 jsunity.run(function IResearchAqlTestSuite_s4_r3() {
-  return IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 2 });
+  let suite = {
+  };
+
+  deriveTestSuite(
+    IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 2 }),
+    suite,
+    "_FourShardsReplTwo"
+  );
+
+  // order for multiple shards is nondeterministic
+  suite.testInTokensFilterSortTFIDF_FourShardsReplTwo = function () {
+    var result = db._query(
+      "FOR doc IN UnitTestsView SEARCH ANALYZER(doc.text IN TOKENS('the quick brown', 'text_en'), 'text_en') OPTIONS { waitForSync : true } SORT TFIDF(doc) LIMIT 4 RETURN doc"
+    ).toArray();
+
+    assertEqual(result.length, 4);
+  };
+
+  return suite;
 });
 
 return jsunity.done();

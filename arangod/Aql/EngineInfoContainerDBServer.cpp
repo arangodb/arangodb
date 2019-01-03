@@ -50,26 +50,26 @@ using namespace arangodb::aql;
 
 namespace {
 
-const double SETUP_TIMEOUT = 25.0;
+const double SETUP_TIMEOUT = 90.0;
 
 Result ExtractRemoteAndShard(VPackSlice keySlice, size_t& remoteId, std::string& shardId) {
-  TRI_ASSERT(keySlice.isString()); // used as  a key in Json
+  TRI_ASSERT(keySlice.isString());  // used as  a key in Json
   StringRef key(keySlice);
   size_t p = key.find(':');
   if (p == std::string::npos) {
     return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
-      "Unexpected response from DBServer during setup"};
+            "Unexpected response from DBServer during setup"};
   }
   StringRef remId = key.substr(0, p);
   remoteId = basics::StringUtils::uint64(remId.begin(), remId.length());
   if (remoteId == 0) {
     return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
-      "Unexpected response from DBServer during setup"};
+            "Unexpected response from DBServer during setup"};
   }
   shardId = key.substr(p + 1).toString();
   if (shardId.empty()) {
     return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
-      "Unexpected response from DBServer during setup"};
+            "Unexpected response from DBServer during setup"};
   }
   return {TRI_ERROR_NO_ERROR};
 }
@@ -85,8 +85,8 @@ ScatterNode* findFirstScatter(ExecutionNode const& root) {
         if (node == nullptr) {
           return nullptr;
         }
-        if (node->getType() != ExecutionNode::SCATTER
-            && node->getType() != ExecutionNode::DISTRIBUTE) {
+        if (node->getType() != ExecutionNode::SCATTER &&
+            node->getType() != ExecutionNode::DISTRIBUTE) {
           return nullptr;
         }
 
@@ -100,13 +100,10 @@ ScatterNode* findFirstScatter(ExecutionNode const& root) {
   return nullptr;
 }
 
-}
+}  // namespace
 
 EngineInfoContainerDBServer::EngineInfo::EngineInfo(size_t idOfRemoteNode) noexcept
-    : _idOfRemoteNode(idOfRemoteNode),
-      _otherId(0),
-      _collection(nullptr) {
-}
+    : _idOfRemoteNode(idOfRemoteNode), _otherId(0), _collection(nullptr) {}
 
 EngineInfoContainerDBServer::EngineInfo::~EngineInfo() {
   // This container is not responsible for nodes
@@ -156,7 +153,7 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
       break;
     }
 #ifdef USE_IRESEARCH
-    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:{
+    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
       TRI_ASSERT(_type == ExecutionNode::MAX_NODE_TYPE_VALUE);
       auto& viewNode = *ExecutionNode::castTo<iresearch::IResearchViewNode*>(node);
 
@@ -206,11 +203,8 @@ LogicalView const* EngineInfoContainerDBServer::EngineInfo::view() const noexcep
 #endif
 
 void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
-    ServerID const& serverId,
-    Query& query,
-    std::vector<ShardID> const& shards,
-    VPackBuilder& infoBuilder
-) const {
+    ServerID const& serverId, Query& query, std::vector<ShardID> const& shards,
+    VPackBuilder& infoBuilder) const {
   // The Key is required to build up the queryId mapping later
   // We're using serverId as queryId for the snippet since currently
   // it's impossible to have more than one view per engine
@@ -232,8 +226,8 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
     auto* clone = current->clone(&plan, false, false);
     auto const nodeType = clone->getType();
 
-    // we need to count nodes by type ourselves, as we will set the "varUsageComputed"
-    // flag below (which will handle the counting)
+    // we need to count nodes by type ourselves, as we will set the
+    // "varUsageComputed" flag below (which will handle the counting)
     plan.increaseCounter(nodeType);
 
 #ifdef USE_IRESEARCH
@@ -242,7 +236,7 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
       viewNode->shards() = shards;
     } else
 #endif
-    if (ExecutionNode::REMOTE == nodeType) {
+        if (ExecutionNode::REMOTE == nodeType) {
       auto rem = ExecutionNode::castTo<RemoteNode*>(clone);
       // update the remote node with the information about the query
       rem->server("server:" + arangodb::ServerState::instance()->getId());
@@ -270,15 +264,11 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
   plan.setVarUsageComputed();
   // Always Verbose
   const unsigned flags = ExecutionNode::SERIALIZE_DETAILS;
-  plan.root()->toVelocyPack(infoBuilder, flags, /*keepTopLevelOpen*/false);
+  plan.root()->toVelocyPack(infoBuilder, flags, /*keepTopLevelOpen*/ false);
 }
 
 void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
-    Query& query,
-    ShardID id,
-    VPackBuilder& infoBuilder,
-    bool isResponsibleForInit
-) const {
+    Query& query, ShardID id, VPackBuilder& infoBuilder, bool isResponsibleForInit) const {
   if (!_restrictedShard.empty()) {
     if (id != _restrictedShard) {
       return;
@@ -287,8 +277,7 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
     isResponsibleForInit = true;
   }
   // The Key is required to build up the queryId mapping later
-  infoBuilder.add(VPackValue(
-      arangodb::basics::StringUtils::itoa(_idOfRemoteNode) + ":" + id));
+  infoBuilder.add(VPackValue(arangodb::basics::StringUtils::itoa(_idOfRemoteNode) + ":" + id));
 
   TRI_ASSERT(!_nodes.empty());
   // copy the relevant fragment of the plan for each shard
@@ -308,8 +297,8 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
     auto clone = current->clone(&plan, false, false);
     auto const nodeType = clone->getType();
 
-    // we need to count nodes by type ourselves, as we will set the "varUsageComputed"
-    // flag below (which will handle the counting)
+    // we need to count nodes by type ourselves, as we will set the
+    // "varUsageComputed" flag below (which will handle the counting)
     plan.increaseCounter(nodeType);
 
     if (ExecutionNode::REMOTE == nodeType) {
@@ -339,55 +328,53 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
   plan.root(previous);
   plan.setVarUsageComputed();
   const unsigned flags = ExecutionNode::SERIALIZE_DETAILS;
-  plan.root()->toVelocyPack(infoBuilder, flags, /*keepTopLevelOpen*/false);
+  plan.root()->toVelocyPack(infoBuilder, flags, /*keepTopLevelOpen*/ false);
   _collection->resetCurrentShard();
 }
 
-void EngineInfoContainerDBServer::CollectionInfo::mergeShards(std::shared_ptr<std::vector<ShardID>> const& shards) {
+void EngineInfoContainerDBServer::CollectionInfo::mergeShards(
+    std::shared_ptr<std::vector<ShardID>> const& shards) {
   for (auto const& s : *shards) {
     usedShards.emplace(s);
   }
 }
 
 EngineInfoContainerDBServer::EngineInfoContainerDBServer(Query* query) noexcept
-  : _query(query) {
-}
+    : _query(query) {}
 
 void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
   TRI_ASSERT(node);
   TRI_ASSERT(!_engineStack.empty());
   _engineStack.top()->addNode(node);
   switch (node->getType()) {
-    case ExecutionNode::ENUMERATE_COLLECTION:
-      {
-        auto* scatter = findFirstScatter(*node);
-        auto const& colNode = *ExecutionNode::castTo<EnumerateCollectionNode const*>(node);
-        auto const* col = colNode.collection();
+    case ExecutionNode::ENUMERATE_COLLECTION: {
+      auto* scatter = findFirstScatter(*node);
+      auto const& colNode = *ExecutionNode::castTo<EnumerateCollectionNode const*>(node);
+      auto const* col = colNode.collection();
 
-        std::unordered_set<std::string> restrictedShard;
-        if (colNode.isRestricted()) {
-          restrictedShard.emplace(colNode.restrictedShard());
-        }
-
-        handleCollection(col, AccessMode::Type::READ, scatter, restrictedShard);
-        updateCollection(col);
-        break;
+      std::unordered_set<std::string> restrictedShard;
+      if (colNode.isRestricted()) {
+        restrictedShard.emplace(colNode.restrictedShard());
       }
-    case ExecutionNode::INDEX:
-      {
-        auto* scatter = findFirstScatter(*node);
-        auto const& idxNode = *ExecutionNode::castTo<IndexNode const*>(node);
-        auto const* col = idxNode.collection();
 
-        std::unordered_set<std::string> restrictedShard;
-        if (idxNode.isRestricted()) {
-          restrictedShard.emplace(idxNode.restrictedShard());
-        }
+      handleCollection(col, AccessMode::Type::READ, scatter, restrictedShard);
+      updateCollection(col);
+      break;
+    }
+    case ExecutionNode::INDEX: {
+      auto* scatter = findFirstScatter(*node);
+      auto const& idxNode = *ExecutionNode::castTo<IndexNode const*>(node);
+      auto const* col = idxNode.collection();
 
-        handleCollection(col, AccessMode::Type::READ, scatter, restrictedShard);
-        updateCollection(col);
-        break;
+      std::unordered_set<std::string> restrictedShard;
+      if (idxNode.isRestricted()) {
+        restrictedShard.emplace(idxNode.restrictedShard());
       }
+
+      handleCollection(col, AccessMode::Type::READ, scatter, restrictedShard);
+      updateCollection(col);
+      break;
+    }
 #ifdef USE_IRESEARCH
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
       auto& viewNode = *ExecutionNode::castTo<iresearch::IResearchViewNode*>(node);
@@ -412,21 +399,23 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
     case ExecutionNode::UPDATE:
     case ExecutionNode::REMOVE:
     case ExecutionNode::REPLACE:
-    case ExecutionNode::UPSERT:
-      {
-        auto* scatter = findFirstScatter(*node);
-        auto const& modNode = *ExecutionNode::castTo<ModificationNode const*>(node);
-        auto const* col = modNode.collection();
+    case ExecutionNode::UPSERT: {
+      auto* scatter = findFirstScatter(*node);
+      auto const& modNode = *ExecutionNode::castTo<ModificationNode const*>(node);
+      auto const* col = modNode.collection();
 
-        std::unordered_set<std::string> restrictedShard;
-        if (modNode.isRestricted()) {
-          restrictedShard.emplace(modNode.restrictedShard());
-        }
-
-        handleCollection(col, modNode.getOptions().exclusive ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::WRITE, scatter, restrictedShard);
-        updateCollection(col);
-        break;
+      std::unordered_set<std::string> restrictedShard;
+      if (modNode.isRestricted()) {
+        restrictedShard.emplace(modNode.restrictedShard());
       }
+
+      handleCollection(col,
+                       modNode.getOptions().exclusive ? AccessMode::Type::EXCLUSIVE
+                                                      : AccessMode::Type::WRITE,
+                       scatter, restrictedShard);
+      updateCollection(col);
+      break;
+    }
     default:
       // Do nothing
       break;
@@ -462,9 +451,9 @@ void EngineInfoContainerDBServer::closeSnippet(QueryId coordinatorEngineId) {
     TRI_ASSERT(it != _collectionInfos.end());
     if (it == _collectionInfos.end()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "Created a DBServer QuerySnippet without a Collection. This should not happen. Please report this query to ArangoDB"
-      );
+          TRI_ERROR_INTERNAL,
+          "Created a DBServer QuerySnippet without a Collection. This should "
+          "not happen. Please report this query to ArangoDB");
     }
     it->second.engines.emplace_back(std::move(e));
   }
@@ -476,25 +465,23 @@ void EngineInfoContainerDBServer::closeSnippet(QueryId coordinatorEngineId) {
  *
  * @param col The collection that should be used
  * @param accessType The lock-type of this collection
- * @param restrictedShards The list of shards that can be relevant in this query (a subset of the collection shards).
- *        Empty set means no restriction
+ * @param restrictedShards The list of shards that can be relevant in this query
+ * (a subset of the collection shards). Empty set means no restriction
  */
 EngineInfoContainerDBServer::CollectionInfo& EngineInfoContainerDBServer::handleCollection(
-    Collection const* col,
-    AccessMode::Type const& accessType,
+    Collection const* col, AccessMode::Type const& accessType,
     ScatterNode* scatter /* = nullptr */,
     std::unordered_set<std::string> const& restrictedShards /*= {}*/
 ) {
   auto const shards = col->shardIds(
-    restrictedShards.empty()
-      ? _query->queryOptions().shardIds
-      : restrictedShards
-  );
+      restrictedShards.empty() ? _query->queryOptions().shardIds : restrictedShards);
 
   // What if we have an empty shard list here?
   if (shards->empty()) {
     // TODO FIXME
-    LOG_TOPIC(WARN, arangodb::Logger::AQL) << "TEMPORARY: A collection access of a query has no result in any shard";
+    LOG_TOPIC(WARN, arangodb::Logger::AQL)
+        << "TEMPORARY: A collection access of a query has no result in any "
+           "shard";
   }
 
   auto& info = _collectionInfos[col];
@@ -522,22 +509,19 @@ void EngineInfoContainerDBServer::updateCollection(Collection const* col) {
 }
 #endif
 
-void EngineInfoContainerDBServer::DBServerInfo::addShardLock(
-    AccessMode::Type const& lock, ShardID const& id) {
+void EngineInfoContainerDBServer::DBServerInfo::addShardLock(AccessMode::Type const& lock,
+                                                             ShardID const& id) {
   _shardLocking[lock].emplace_back(id);
 }
 
 void EngineInfoContainerDBServer::DBServerInfo::addEngine(
-    std::shared_ptr<EngineInfoContainerDBServer::EngineInfo> info,
-    ShardID const& id) {
+    std::shared_ptr<EngineInfoContainerDBServer::EngineInfo> info, ShardID const& id) {
   _engineInfos[info].emplace_back(id);
 }
 
 void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
-    ServerID const& serverId,
-    EngineInfoContainerDBServer const& context,
-    Query& query,
-    VPackBuilder& infoBuilder) const {
+    ServerID const& serverId, EngineInfoContainerDBServer const& context,
+    Query& query, VPackBuilder& infoBuilder) const {
   TRI_ASSERT(infoBuilder.isEmpty());
 
   infoBuilder.openObject();
@@ -557,7 +541,6 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
   // toVelocyPack will open & close the "options" object
 #ifdef USE_ENTERPRISE
   if (query.trx()->state()->options().skipInaccessibleCollections) {
-
     aql::QueryOptions opts = query.queryOptions();
     TRI_ASSERT(opts.transactionOptions.skipInaccessibleCollections);
     for (auto const& it : _engineInfos) {
@@ -615,13 +598,12 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
       isResponsibleForInit = false;
     }
   }
-  infoBuilder.close(); // snippets
+  infoBuilder.close();  // snippets
   injectTraverserEngines(infoBuilder);
-  infoBuilder.close(); // Object
+  infoBuilder.close();  // Object
 }
 
-void EngineInfoContainerDBServer::DBServerInfo::injectTraverserEngines(
-    VPackBuilder& infoBuilder) const {
+void EngineInfoContainerDBServer::DBServerInfo::injectTraverserEngines(VPackBuilder& infoBuilder) const {
   if (_traverserEngineInfos.empty()) {
     return;
   }
@@ -684,7 +666,7 @@ void EngineInfoContainerDBServer::DBServerInfo::injectTraverserEngines(
       for (ShardID const& shard : list.inaccessibleShards) {
         infoBuilder.add(VPackValue(shard));
       }
-      infoBuilder.close(); // inaccessible
+      infoBuilder.close();  // inaccessible
     }
 #endif
     infoBuilder.close();  // shards
@@ -697,8 +679,8 @@ void EngineInfoContainerDBServer::DBServerInfo::injectTraverserEngines(
   infoBuilder.close();  // traverserEngines
 }
 
-void EngineInfoContainerDBServer::DBServerInfo::combineTraverserEngines(
-    ServerID const& serverID, VPackSlice const ids) {
+void EngineInfoContainerDBServer::DBServerInfo::combineTraverserEngines(ServerID const& serverID,
+                                                                        VPackSlice const ids) {
   if (ids.length() != _traverserEngineInfos.size()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
                                    "The DBServer was not able to create enough "
@@ -711,19 +693,17 @@ void EngineInfoContainerDBServer::DBServerInfo::combineTraverserEngines(
   // the traverserEngineInfos to wire the correct GraphNodes
   // to the correct engine ids
   for (auto const& it : _traverserEngineInfos) {
-    it.first->addEngine(
-        idIter.value().getNumber<traverser::TraverserEngineID>(), serverID);
+    it.first->addEngine(idIter.value().getNumber<traverser::TraverserEngineID>(), serverID);
     idIter.next();
   }
 }
 
-void EngineInfoContainerDBServer::DBServerInfo::addTraverserEngine(
-    GraphNode* node, TraverserEngineShardLists&& shards) {
+void EngineInfoContainerDBServer::DBServerInfo::addTraverserEngine(GraphNode* node,
+                                                                   TraverserEngineShardLists&& shards) {
   _traverserEngineInfos.push_back(std::make_pair(node, std::move(shards)));
 }
 
-std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo>
-EngineInfoContainerDBServer::createDBServerMapping(
+std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo> EngineInfoContainerDBServer::createDBServerMapping(
     std::unordered_set<ShardID>& lockedShards) const {
   auto* ci = ClusterInfo::instance();
   TRI_ASSERT(ci);
@@ -734,7 +714,8 @@ EngineInfoContainerDBServer::createDBServerMapping(
     // it.first => Collection const*
     // it.second.lockType => Lock Type
     // it.second.engines => All Engines using this collection
-    // it.second.usedShards => All shards of this collection releveant for this query
+    // it.second.usedShards => All shards of this collection releveant for this
+    // query
     auto const& colInfo = it.second;
 
     for (auto const& s : colInfo.usedShards) {
@@ -744,9 +725,8 @@ EngineInfoContainerDBServer::createDBServerMapping(
 
       if (!servers || servers->empty()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
-          "Could not find responsible server for shard " + s
-        );
+            TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
+            "Could not find responsible server for shard " + s);
       }
 
       auto& responsible = (*servers)[0];
@@ -780,8 +760,7 @@ EngineInfoContainerDBServer::createDBServerMapping(
 }
 
 void EngineInfoContainerDBServer::injectGraphNodesToMapping(
-    std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo>&
-        dbServerMapping) const {
+    std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo>& dbServerMapping) const {
   if (_graphNodes.empty()) {
     return;
   }
@@ -794,9 +773,7 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
   auto clusterInfo = arangodb::ClusterInfo::instance();
 
   /// Typedef for a complicated mapping used in TraverserEngines.
-  typedef std::unordered_map<
-      ServerID, EngineInfoContainerDBServer::TraverserEngineShardLists>
-      Serv2ColMap;
+  typedef std::unordered_map<ServerID, EngineInfoContainerDBServer::TraverserEngineShardLists> Serv2ColMap;
 
   for (GraphNode* en : _graphNodes) {
     // Every node needs it's own Serv2ColMap
@@ -825,8 +802,7 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
       auto& leader = (*serverList)[0];
       auto pair = mappingServerToCollections.find(leader);
       if (pair == mappingServerToCollections.end()) {
-        mappingServerToCollections.emplace(leader,
-                                           TraverserEngineShardLists{length});
+        mappingServerToCollections.emplace(leader, TraverserEngineShardLists{length});
         pair = mappingServerToCollections.find(leader);
       }
       return pair;
@@ -855,8 +831,7 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
 
       // This case indicates we do not have a named graph. We simply use
       // ALL collections known to this query.
-      std::map<std::string, Collection*> const* cs =
-          _query->collections()->collections();
+      std::map<std::string, Collection*> const* cs = _query->collections()->collections();
       for (auto const& collection : (*cs)) {
         if (!resolver.getCollection(collection.first)) {
           // not a collection, filter out
@@ -869,13 +844,10 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
           auto shardIds = collection.second->shardIds(restrictToShards);
           for (ShardID const& shard : *shardIds) {
             auto pair = findServerLists(shard);
-            pair->second.vertexCollections[collection.second->name()]
-                .emplace_back(shard);
+            pair->second.vertexCollections[collection.second->name()].emplace_back(shard);
 #ifdef USE_ENTERPRISE
-            if (trx->isInaccessibleCollectionId(
-                    collection.second->getPlanId())) {
-              TRI_ASSERT(
-                  ServerState::instance()->isSingleServerOrCoordinator());
+            if (trx->isInaccessibleCollectionId(collection.second->getPlanId())) {
+              TRI_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());
               TRI_ASSERT(trxOps.skipInaccessibleCollections);
               pair->second.inaccessibleShards.insert(shard);
               pair->second.inaccessibleShards.insert(
@@ -890,12 +862,8 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
       // Thanks to fanout...
       for (auto const& collection : (*cs)) {
         for (auto& entry : mappingServerToCollections) {
-          auto it =
-              entry.second.vertexCollections.find(collection.second->name());
-          if (it == entry.second.vertexCollections.end()) {
-            entry.second.vertexCollections.emplace(collection.second->name(),
-                                                   std::vector<ShardID>());
-          }
+          // implicity creates the map entry in case it does not exist
+          entry.second.vertexCollections[collection.second->name()];
         }
       }
     } else {
@@ -921,11 +889,8 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
       // Thanks to fanout...
       for (auto const& it : vertices) {
         for (auto& entry : mappingServerToCollections) {
-          auto vIt = entry.second.vertexCollections.find(it->name());
-          if (vIt == entry.second.vertexCollections.end()) {
-            entry.second.vertexCollections.emplace(it->name(),
-                                                   std::vector<ShardID>());
-          }
+          // implicitly creates the map entry in case it does not exist.
+          entry.second.vertexCollections[it->name()];
         }
       }
     }
@@ -941,15 +906,13 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
       // This condition is guaranteed because all shards have been prepared
       // for locking in the EngineInfos
       TRI_ASSERT(dbServerMapping.find(it.first) != dbServerMapping.end());
-      dbServerMapping.find(it.first)->second.addTraverserEngine(
-          en, std::move(it.second));
+      dbServerMapping.find(it.first)->second.addTraverserEngine(en, std::move(it.second));
     }
   }
 }
 
-Result EngineInfoContainerDBServer::buildEngines(
-    MapRemoteToSnippet& queryIds,
-    std::unordered_set<ShardID>& lockedShards) const {
+Result EngineInfoContainerDBServer::buildEngines(MapRemoteToSnippet& queryIds,
+                                                 std::unordered_set<ShardID>& lockedShards) const {
   TRI_ASSERT(_engineStack.empty());
 
   // We create a map for DBServer => All Query snippets executed there
@@ -966,23 +929,18 @@ Result EngineInfoContainerDBServer::buildEngines(
   }
 
   double ttl = QueryRegistryFeature::DefaultQueryTTL;
-  auto registry = QueryRegistryFeature::QUERY_REGISTRY.load();
+  auto* registry = QueryRegistryFeature::registry();
   if (registry != nullptr) {
     ttl = registry->defaultTTL();
   }
   TRI_ASSERT(ttl > 0);
 
   std::string const url(
-    "/_db/"
-    + arangodb::basics::StringUtils::urlEncode(_query->vocbase().name())
-    + "/_api/aql/setup?ttl="
-    + std::to_string(ttl)
-  );
+      "/_db/" + arangodb::basics::StringUtils::urlEncode(_query->vocbase().name()) +
+      "/_api/aql/setup?ttl=" + std::to_string(ttl));
 
   auto cleanupGuard = scopeGuard([this, &cc, &queryIds]() {
-    cleanupEngines(
-      cc, TRI_ERROR_INTERNAL, _query->vocbase().name(), queryIds
-    );
+    cleanupEngines(cc, TRI_ERROR_INTERNAL, _query->vocbase().name(), queryIds);
   });
 
   std::unordered_map<std::string, std::string> headers;
@@ -993,26 +951,24 @@ Result EngineInfoContainerDBServer::buildEngines(
   for (auto& it : dbServerMapping) {
     std::string const serverDest = "server:" + it.first;
 
-    LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Building Engine Info for "
-                                            << it.first;
+    LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Building Engine Info for " << it.first;
     infoBuilder.clear();
     it.second.buildMessage(it.first, *this, *_query, infoBuilder);
-    LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Sending the Engine info: "
-                                            << infoBuilder.toJson();
+    LOG_TOPIC(DEBUG, arangodb::Logger::AQL)
+        << "Sending the Engine info: " << infoBuilder.toJson();
 
     // Now we send to DBServers.
     // We expect a body with {snippets: {id => engineId}, traverserEngines:
     // [engineId]}}
 
     CoordTransactionID coordTransactionID = TRI_NewTickServer();
-    auto res = cc->syncRequest(coordTransactionID, serverDest,
-                               RequestType::POST, url, infoBuilder.toJson(),
-                               headers, SETUP_TIMEOUT);
+    auto res = cc->syncRequest(coordTransactionID, serverDest, RequestType::POST,
+                               url, infoBuilder.toJson(), headers, SETUP_TIMEOUT);
 
     if (res->getErrorCode() != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(DEBUG, Logger::AQL) << it.first << " responded with "
-                                    << res->getErrorCode() << " -> "
-                                    << res->stringifyErrorMessage();
+      LOG_TOPIC(DEBUG, Logger::AQL)
+          << it.first << " responded with " << res->getErrorCode() << " -> "
+          << res->stringifyErrorMessage();
       LOG_TOPIC(TRACE, Logger::AQL) << infoBuilder.toJson();
       return {res->getErrorCode(), res->stringifyErrorMessage()};
     }
@@ -1091,8 +1047,7 @@ void EngineInfoContainerDBServer::addGraphNode(GraphNode* node) {
 
     // This case indicates we do not have a named graph. We simply use
     // ALL collections known to this query.
-    std::map<std::string, Collection*> const* cs =
-        _query->collections()->collections();
+    std::map<std::string, Collection*> const* cs = _query->collections()->collections();
     for (auto const& col : *cs) {
       if (!resolver.getCollection(col.first)) {
         // not a collection, filter out
@@ -1124,30 +1079,29 @@ void EngineInfoContainerDBServer::addGraphNode(GraphNode* node) {
  * @param queryIds A map of QueryIds of the format: (remoteNodeId:shardId) ->
  * queryid.
  */
-void EngineInfoContainerDBServer::cleanupEngines(
-    std::shared_ptr<ClusterComm> cc, int errorCode,
-    std::string const& dbname, MapRemoteToSnippet& queryIds) const {
+void EngineInfoContainerDBServer::cleanupEngines(std::shared_ptr<ClusterComm> cc,
+                                                 int errorCode, std::string const& dbname,
+                                                 MapRemoteToSnippet& queryIds) const {
   // Shutdown query snippets
   std::string url("/_db/" + arangodb::basics::StringUtils::urlEncode(dbname) +
                   "/_api/aql/shutdown/");
   std::vector<ClusterCommRequest> requests;
-  auto body = std::make_shared<std::string>("{\"code\":" +
-                                            std::to_string(errorCode) + "}");
+  auto body = std::make_shared<std::string>(
+      "{\"code\":" + std::to_string(errorCode) + "}");
   for (auto const& it : queryIds) {
     // it.first == RemoteNodeId, we don't need this
     // it.second server -> [snippets]
     for (auto const& serToSnippets : it.second) {
       auto server = serToSnippets.first;
       for (auto const& shardId : serToSnippets.second) {
-        requests.emplace_back(server, rest::RequestType::PUT, url + shardId,
-                              body);
+        requests.emplace_back(server, rest::RequestType::PUT, url + shardId, body);
       }
     }
   }
 
   // Shutdown traverser engines
   url = "/_db/" + arangodb::basics::StringUtils::urlEncode(dbname) +
-                  "/_internal/traverser/";
+        "/_internal/traverser/";
   std::shared_ptr<std::string> noBody;
   for (auto const& gn : _graphNodes) {
     auto allEngines = gn->engines();

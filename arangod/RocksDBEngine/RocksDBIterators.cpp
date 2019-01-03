@@ -23,10 +23,10 @@
 #include "RocksDBIterators.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
-#include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -35,15 +35,17 @@ using namespace arangodb;
 namespace {
 constexpr bool AllIteratorFillBlockCache = true;
 constexpr bool AnyIteratorFillBlockCache = false;
-}
+}  // namespace
 
 // ================ All Iterator ==================
 
-RocksDBAllIndexIterator::RocksDBAllIndexIterator(
-    LogicalCollection* col, transaction::Methods* trx, RocksDBPrimaryIndex const* index)
+RocksDBAllIndexIterator::RocksDBAllIndexIterator(LogicalCollection* col,
+                                                 transaction::Methods* trx,
+                                                 RocksDBPrimaryIndex const* index)
     : IndexIterator(col, trx),
       _bounds(RocksDBKeyBounds::CollectionDocuments(
           static_cast<RocksDBCollection*>(col->getPhysical())->objectId())),
+      _upperBound(_bounds.end()),
       _cmp(RocksDBColumnFamily::documents()->GetComparator()) {
   // acquire rocksdb transaction
   auto* mthds = RocksDBTransactionState::toMethods(trx);
@@ -54,6 +56,7 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(
   TRI_ASSERT(options.prefix_same_as_start);
   options.fill_cache = AllIteratorFillBlockCache;
   options.verify_checksums = false;  // TODO evaluate
+  options.iterate_upper_bound = &_upperBound;
   // options.readahead_size = 4 * 1024 * 1024;
   _iterator = mthds->NewIterator(options, cf);
   TRI_ASSERT(_iterator);
@@ -98,8 +101,8 @@ bool RocksDBAllIndexIterator::next(LocalDocumentIdCallback const& cb, size_t lim
   return true;
 }
 
-bool RocksDBAllIndexIterator::nextDocument(
-    IndexIterator::DocumentCallback const& cb, size_t limit) {
+bool RocksDBAllIndexIterator::nextDocument(IndexIterator::DocumentCallback const& cb,
+                                           size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 
   if (limit == 0 || !_iterator->Valid() || outOfRange()) {
@@ -110,8 +113,7 @@ bool RocksDBAllIndexIterator::nextDocument(
   }
 
   while (limit > 0) {
-    cb(RocksDBKey::documentId(_iterator->key()),
-       VPackSlice(_iterator->value().data()));
+    cb(RocksDBKey::documentId(_iterator->key()), VPackSlice(_iterator->value().data()));
     --limit;
     _iterator->Next();
 
@@ -140,9 +142,9 @@ void RocksDBAllIndexIterator::reset() {
 }
 
 // ================ Any Iterator ================
-RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
-    LogicalCollection* col, transaction::Methods* trx,
-    RocksDBPrimaryIndex const* index)
+RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(LogicalCollection* col,
+                                                 transaction::Methods* trx,
+                                                 RocksDBPrimaryIndex const* index)
     : IndexIterator(col, trx),
       _cmp(RocksDBColumnFamily::documents()->GetComparator()),
       _objectId(static_cast<RocksDBCollection*>(col->getPhysical())->objectId()),
@@ -160,21 +162,22 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
 
   _total = col->numberDocuments(trx, transaction::CountType::Normal);
   _forward = RandomGenerator::interval(uint16_t(1)) ? true : false;
-   reset();   //initial seek
+  reset();  // initial seek
 }
 
 bool RocksDBAnyIndexIterator::checkIter() {
-  if ( /* not  valid */            !_iterator->Valid() ||
-       /* out of range forward */  ( _forward && _cmp->Compare(_iterator->key(), _bounds.end())   > 0) ||
-       /* out of range backward */ (!_forward && _cmp->Compare(_iterator->key(), _bounds.start()) < 0)  ) {
-
+  if (/* not  valid */ !_iterator->Valid() ||
+      /* out of range forward */
+      (_forward && _cmp->Compare(_iterator->key(), _bounds.end()) > 0) ||
+      /* out of range backward */
+      (!_forward && _cmp->Compare(_iterator->key(), _bounds.start()) < 0)) {
     if (_forward) {
       _iterator->Seek(_bounds.start());
     } else {
       _iterator->SeekForPrev(_bounds.end());
     }
 
-    if(!_iterator->Valid()) {
+    if (!_iterator->Valid()) {
       return false;
     }
   }
@@ -207,8 +210,8 @@ bool RocksDBAnyIndexIterator::next(LocalDocumentIdCallback const& cb, size_t lim
   return true;
 }
 
-bool RocksDBAnyIndexIterator::nextDocument(
-    IndexIterator::DocumentCallback const& cb, size_t limit) {
+bool RocksDBAnyIndexIterator::nextDocument(IndexIterator::DocumentCallback const& cb,
+                                           size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 
   if (limit == 0 || !_iterator->Valid() || outOfRange()) {
@@ -219,8 +222,7 @@ bool RocksDBAnyIndexIterator::nextDocument(
   }
 
   while (limit > 0) {
-    cb(RocksDBKey::documentId(_iterator->key()),
-       VPackSlice(_iterator->value().data()));
+    cb(RocksDBKey::documentId(_iterator->key()), VPackSlice(_iterator->value().data()));
     --limit;
     _returned++;
     _iterator->Next();
@@ -243,21 +245,25 @@ void RocksDBAnyIndexIterator::reset() {
   }
   uint64_t steps = RandomGenerator::interval(_total - 1) % 500;
   auto initialKey = RocksDBKey();
-  
+
   initialKey.constructDocument(_objectId,
                                LocalDocumentId(RandomGenerator::interval(UINT64_MAX)));
   _iterator->Seek(initialKey.string());
-  
+
   if (checkIter()) {
     if (_forward) {
       while (steps-- > 0) {
         _iterator->Next();
-        if(!checkIter()) { break; }
+        if (!checkIter()) {
+          break;
+        }
       }
     } else {
       while (steps-- > 0) {
         _iterator->Prev();
-        if(!checkIter()) { break; }
+        if (!checkIter()) {
+          break;
+        }
       }
     }
   }
@@ -268,13 +274,13 @@ bool RocksDBAnyIndexIterator::outOfRange() const {
 }
 
 RocksDBGenericIterator::RocksDBGenericIterator(rocksdb::ReadOptions& options,
-                                               RocksDBKeyBounds const& bounds,
-                                               bool reverse)
-    : _reverse(reverse)
-    , _bounds(bounds)
-    , _options(options)
-    , _iterator(arangodb::rocksutils::globalRocksDB()->NewIterator(_options, _bounds.columnFamily()))
-    , _cmp(_bounds.columnFamily()->GetComparator()) {
+                                               RocksDBKeyBounds const& bounds, bool reverse)
+    : _reverse(reverse),
+      _bounds(bounds),
+      _options(options),
+      _iterator(arangodb::rocksutils::globalRocksDB()->NewIterator(_options,
+                                                                   _bounds.columnFamily())),
+      _cmp(_bounds.columnFamily()->GetComparator()) {
   reset();
 }
 
@@ -301,11 +307,13 @@ bool RocksDBGenericIterator::reset() {
 bool RocksDBGenericIterator::skip(uint64_t count, uint64_t& skipped) {
   bool hasMore = _iterator->Valid();
   while (count > 0 && hasMore) {
-    hasMore = next([&count, &skipped](rocksdb::Slice const&, rocksdb::Slice const&) { 
-      --count; 
-      ++skipped;
-      return true;
-    }, count /*gets copied*/);
+    hasMore = next(
+        [&count, &skipped](rocksdb::Slice const&, rocksdb::Slice const&) {
+          --count;
+          ++skipped;
+          return true;
+        },
+        count /*gets copied*/);
   }
   return hasMore;
 }
@@ -358,12 +366,12 @@ RocksDBGenericIterator arangodb::createPrimaryIndexIterator(transaction::Methods
   auto* mthds = RocksDBTransactionState::toMethods(trx);
 
   rocksdb::ReadOptions options = mthds->iteratorReadOptions();
-  TRI_ASSERT(options.snapshot != nullptr); // trx must contain a valid snapshot
+  TRI_ASSERT(options.snapshot != nullptr);  // trx must contain a valid snapshot
   TRI_ASSERT(options.prefix_same_as_start);
   options.fill_cache = false;
   options.verify_checksums = false;
 
-  auto index = col->lookupIndex(0); //RocksDBCollection->primaryIndex() is private
+  auto index = col->lookupIndex(0);  // RocksDBCollection->primaryIndex() is private
   TRI_ASSERT(index->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
   auto primaryIndex = static_cast<RocksDBPrimaryIndex*>(index.get());
 
@@ -372,27 +380,5 @@ RocksDBGenericIterator arangodb::createPrimaryIndexIterator(transaction::Methods
 
   TRI_ASSERT(iterator.bounds().objectId() == primaryIndex->objectId());
   TRI_ASSERT(iterator.bounds().columnFamily() == RocksDBColumnFamily::primary());
-  return iterator;
-}
-
-RocksDBGenericIterator arangodb::createDocumentIterator(transaction::Methods* trx,
-                                                        LogicalCollection* col) {
-  TRI_ASSERT(col != nullptr);
-  TRI_ASSERT(trx != nullptr);
-
-  auto* mthds = RocksDBTransactionState::toMethods(trx);
-
-  rocksdb::ReadOptions options = mthds->iteratorReadOptions();
-  TRI_ASSERT(options.snapshot != nullptr); // trx must contain a valid snapshot
-  TRI_ASSERT(options.prefix_same_as_start);
-  options.fill_cache = true;
-  options.verify_checksums = false;
-
-  auto rocksColObjectId = static_cast<RocksDBCollection*>(col->getPhysical())->objectId();
-  auto bounds(RocksDBKeyBounds::CollectionDocuments(rocksColObjectId));
-  auto iterator = RocksDBGenericIterator(options, bounds);
-
-  TRI_ASSERT(iterator.bounds().objectId() == rocksColObjectId);
-  TRI_ASSERT(iterator.bounds().columnFamily() == RocksDBColumnFamily::documents());
   return iterator;
 }

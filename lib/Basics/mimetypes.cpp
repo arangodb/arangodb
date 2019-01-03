@@ -31,8 +31,7 @@ static bool Initialized = false;
 static std::unordered_map<std::string, std::string> Mimetypes;
 
 /// @brief register a mimetype for an extension
-bool TRI_RegisterMimetype(char const* extension, char const* mimetype,
-                          bool appendCharset) {
+bool TRI_RegisterMimetype(char const* extension, char const* mimetype, bool appendCharset) {
   std::string full(mimetype);
   if (appendCharset) {
     full.append("; charset=utf-8");
@@ -63,6 +62,4 @@ void TRI_InitializeMimetypes() {
 }
 
 /// @brief shuts down the mimetypes
-void TRI_ShutdownMimetypes() {
-  Initialized = false;
-}
+void TRI_ShutdownMimetypes() { Initialized = false; }

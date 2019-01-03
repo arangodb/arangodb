@@ -393,7 +393,7 @@ TEST_F(memory_pool_allocator_test, profile_std_map) {
 
   std::ofstream out(path.native());
 
-  flush_timers(out);
+  irs::timer_utils::flush_stats(out);
   out.close();
   std::cout << "Path to timing log: " << path.utf8_absolute() << std::endl;
 }
@@ -596,7 +596,7 @@ TEST_F(memory_pool_allocator_test, profile_std_multimap) {
 
   std::ofstream out(path.native());
 
-  flush_timers(out);
+  irs::timer_utils::flush_stats(out);
   out.close();
   std::cout << "Path to timing log: " << path.utf8_absolute() << std::endl;
 }
@@ -743,7 +743,7 @@ TEST_F(memory_pool_allocator_test, profile_std_list) {
 
   std::ofstream out(path.native());
 
-  flush_timers(out);
+  irs::timer_utils::flush_stats(out);
   out.close();
   std::cout << "Path to timing log: " << path.utf8_absolute() << std::endl;
 }
@@ -916,7 +916,7 @@ TEST_F(memory_pool_allocator_test, profile_std_set) {
 
   std::ofstream out(path.native());
 
-  flush_timers(out);
+  irs::timer_utils::flush_stats(out);
   out.close();
   std::cout << "Path to timing log: " << path.utf8_absolute() << std::endl;
 }

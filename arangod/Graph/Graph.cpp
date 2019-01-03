@@ -51,8 +51,7 @@ using VelocyPackHelper = basics::VelocyPackHelper;
 
 #ifndef USE_ENTERPRISE
 // Factory methods
-std::unique_ptr<Graph> Graph::fromPersistence(VPackSlice document,
-                                              TRI_vocbase_t& vocbase) {
+std::unique_ptr<Graph> Graph::fromPersistence(VPackSlice document, TRI_vocbase_t& vocbase) {
   if (document.isExternal()) {
     document = document.resolveExternal();
   }
@@ -60,8 +59,7 @@ std::unique_ptr<Graph> Graph::fromPersistence(VPackSlice document,
   return result;
 }
 
-std::unique_ptr<Graph> Graph::fromUserInput(std::string&& name,
-                                            VPackSlice document,
+std::unique_ptr<Graph> Graph::fromUserInput(std::string&& name, VPackSlice document,
                                             VPackSlice options) {
   if (document.isExternal()) {
     document = document.resolveExternal();
@@ -72,23 +70,22 @@ std::unique_ptr<Graph> Graph::fromUserInput(std::string&& name,
 #endif
 
 std::unique_ptr<Graph> Graph::fromUserInput(std::string const& name,
-                                            VPackSlice document,
-                                            VPackSlice options) {
+                                            VPackSlice document, VPackSlice options) {
   return Graph::fromUserInput(std::string{name}, document, options);
 }
 
 // From persistence
 Graph::Graph(velocypack::Slice const& slice)
-    : _graphName(VelocyPackHelper::getStringValue(
-          slice, StaticStrings::KeyString, "")),
+    : _graphName(
+          VelocyPackHelper::getStringValue(slice, StaticStrings::KeyString, "")),
       _vertexColls(),
       _edgeColls(),
-      _numberOfShards(basics::VelocyPackHelper::readNumericValue<uint64_t>(
-          slice, StaticStrings::NumberOfShards, 1)),
+      _numberOfShards(basics::VelocyPackHelper::readNumericValue<uint64_t>(slice, StaticStrings::NumberOfShards,
+                                                                           1)),
       _replicationFactor(basics::VelocyPackHelper::readNumericValue<uint64_t>(
           slice, StaticStrings::ReplicationFactor, 1)),
-      _rev(basics::VelocyPackHelper::getStringValue(
-          slice, StaticStrings::RevString, "")) {
+      _rev(basics::VelocyPackHelper::getStringValue(slice, StaticStrings::RevString,
+                                                    "")) {
   // If this happens we have a document without an _key Attribute.
   TRI_ASSERT(!_graphName.empty());
   if (_graphName.empty()) {
@@ -114,8 +111,7 @@ Graph::Graph(velocypack::Slice const& slice)
 }
 
 // From user input
-Graph::Graph(std::string&& graphName, VPackSlice const& info,
-             VPackSlice const& options)
+Graph::Graph(std::string&& graphName, VPackSlice const& info, VPackSlice const& options)
     : _graphName(graphName),
       _vertexColls(),
       _edgeColls(),
@@ -134,10 +130,10 @@ Graph::Graph(std::string&& graphName, VPackSlice const& info,
     insertOrphanCollections(info.get(StaticStrings::GraphOrphans));
   }
   if (options.isObject()) {
-    _numberOfShards = VelocyPackHelper::readNumericValue<uint64_t>(
-        options, StaticStrings::NumberOfShards, 1);
-    _replicationFactor = VelocyPackHelper::readNumericValue<uint64_t>(
-        options, StaticStrings::ReplicationFactor, 1);
+    _numberOfShards =
+        VelocyPackHelper::readNumericValue<uint64_t>(options, StaticStrings::NumberOfShards, 1);
+    _replicationFactor =
+        VelocyPackHelper::readNumericValue<uint64_t>(options, StaticStrings::ReplicationFactor, 1);
   }
 }
 
@@ -179,6 +175,10 @@ std::set<std::string> const& Graph::edgeCollections() const {
 }
 
 std::map<std::string, EdgeDefinition> const& Graph::edgeDefinitions() const {
+  return _edgeDefs;
+}
+
+std::map<std::string, EdgeDefinition>& Graph::edgeDefinitions() {
   return _edgeDefs;
 }
 
@@ -238,12 +238,11 @@ Result Graph::removeOrphanCollection(std::string&& name) {
 }
 
 Result Graph::addOrphanCollection(std::string&& name) {
-  if (_vertexColls.find(name) != _vertexColls.end()) {
+  if (!_vertexColls.insert(name).second) {
     return TRI_ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF;
   }
   TRI_ASSERT(_orphanColls.find(name) == _orphanColls.end());
-  _vertexColls.emplace(name);
-  _orphanColls.emplace(std::move(name));
+  _orphanColls.insert(std::move(name));
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -309,8 +308,7 @@ void Graph::enhanceEngineInfo(VPackBuilder&) const {}
 
 // validates the type:
 // edgeDefinition : { collection : string, from : [string], to : [string] }
-Result EdgeDefinition::validateEdgeDefinition(
-    VPackSlice const& edgeDefinition) {
+Result EdgeDefinition::validateEdgeDefinition(VPackSlice const& edgeDefinition) {
   if (!edgeDefinition.isObject()) {
     return Result(TRI_ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION);
   }
@@ -328,8 +326,8 @@ Result EdgeDefinition::validateEdgeDefinition(
                   "edge definition is not a string!");
   }
 
-  for (auto const& key : std::array<std::string, 2>{
-           {StaticStrings::GraphFrom, StaticStrings::GraphTo}}) {
+  for (auto const& key :
+       std::array<std::string, 2>{{StaticStrings::GraphFrom, StaticStrings::GraphTo}}) {
     if (!edgeDefinition.get(key).isArray()) {
       return Result(TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT,
                     "Edge definition '" + key + "' is not an array!");
@@ -363,8 +361,7 @@ void EdgeDefinition::toVelocyPack(VPackBuilder& builder) const {
   builder.close();  // array
 }
 
-ResultT<EdgeDefinition> EdgeDefinition::createFromVelocypack(
-    VPackSlice edgeDefinition) {
+ResultT<EdgeDefinition> EdgeDefinition::createFromVelocypack(VPackSlice edgeDefinition) {
   Result res = EdgeDefinition::validateEdgeDefinition(edgeDefinition);
   if (res.fail()) {
     return res;
@@ -397,13 +394,51 @@ bool EdgeDefinition::operator!=(EdgeDefinition const& other) const {
          getTo() != other.getTo();
 }
 
-bool EdgeDefinition::isVertexCollectionUsed(
-    std::string const& collectionName) const {
+bool EdgeDefinition::renameCollection(std::string const& oldName, std::string const& newName) {
+  bool renamed = false;
+
+  // from
+  if (isFromVertexCollectionUsed(oldName)) {
+    _from.erase(oldName);
+    _from.insert(newName);
+    renamed = true;
+  }
+
+  // to
+  if (isToVertexCollectionUsed(oldName)) {
+    _to.erase(oldName);
+    _to.insert(newName);
+    renamed = true;
+  }
+
+  // edge collection
+  if (getName() == oldName) {
+    setName(newName);
+    renamed = true;
+  }
+
+  return renamed;
+}
+
+bool EdgeDefinition::isFromVertexCollectionUsed(std::string const& collectionName) const {
+  if (getFrom().find(collectionName) != getFrom().end()) {
+    return true;
+  }
+  return false;
+}
+
+bool EdgeDefinition::isToVertexCollectionUsed(std::string const& collectionName) const {
+  if (getTo().find(collectionName) != getTo().end()) {
+    return true;
+  }
+  return false;
+}
+
+bool EdgeDefinition::isVertexCollectionUsed(std::string const& collectionName) const {
   if (getFrom().find(collectionName) != getFrom().end() ||
       getTo().find(collectionName) != getTo().end()) {
     return true;
   }
-
   return false;
 }
 
@@ -467,14 +502,12 @@ Result Graph::replaceEdgeDefinition(EdgeDefinition const& edgeDefinition) {
   return TRI_ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST;
 }
 
-ResultT<EdgeDefinition const*> Graph::addEdgeDefinition(
-    EdgeDefinition const& edgeDefinition) {
+ResultT<EdgeDefinition const*> Graph::addEdgeDefinition(EdgeDefinition const& edgeDefinition) {
   std::string const& collection = edgeDefinition.getName();
   if (hasEdgeCollection(collection)) {
     return {Result(TRI_ERROR_GRAPH_COLLECTION_MULTI_USE,
                    collection + " " +
-                       std::string{TRI_errno_string(
-                           TRI_ERROR_GRAPH_COLLECTION_MULTI_USE)})};
+                       std::string{TRI_errno_string(TRI_ERROR_GRAPH_COLLECTION_MULTI_USE)})};
   }
 
   _edgeColls.emplace(collection);
@@ -490,8 +523,7 @@ ResultT<EdgeDefinition const*> Graph::addEdgeDefinition(
   return &_edgeDefs.find(collection)->second;
 }
 
-ResultT<EdgeDefinition const*> Graph::addEdgeDefinition(
-    VPackSlice const& edgeDefinitionSlice) {
+ResultT<EdgeDefinition const*> Graph::addEdgeDefinition(VPackSlice const& edgeDefinitionSlice) {
   auto res = EdgeDefinition::createFromVelocypack(edgeDefinitionSlice);
 
   if (res.fail()) {
@@ -535,9 +567,8 @@ std::ostream& Graph::operator<<(std::ostream& ostream) {
 }
 
 bool Graph::hasEdgeCollection(std::string const& collectionName) const {
-  TRI_ASSERT(
-      (edgeDefinitions().find(collectionName) != edgeDefinitions().end()) ==
-      (edgeCollections().find(collectionName) != edgeCollections().end()));
+  TRI_ASSERT((edgeDefinitions().find(collectionName) != edgeDefinitions().end()) ==
+             (edgeCollections().find(collectionName) != edgeCollections().end()));
   return edgeCollections().find(collectionName) != edgeCollections().end();
 }
 
@@ -547,6 +578,33 @@ bool Graph::hasVertexCollection(std::string const& collectionName) const {
 
 bool Graph::hasOrphanCollection(std::string const& collectionName) const {
   return orphanCollections().find(collectionName) != orphanCollections().end();
+}
+
+bool Graph::renameCollections(std::string const& oldName, std::string const& newName) {
+  // rename not allowed in a smart collection
+  if (isSmart()) {
+    return false;
+  }
+
+  bool renamed = false;
+
+  // rename collections found in edgeDefinitions
+  for (auto& it : edgeDefinitions()) {
+    if (!renamed) {
+      renamed = it.second.renameCollection(oldName, newName);
+    } else {
+      it.second.renameCollection(oldName, newName);
+    }
+  }
+
+  // orphans
+  if (hasOrphanCollection(oldName)) {
+    _orphanColls.erase(oldName);
+    _orphanColls.insert(newName);
+    renamed = true;
+  }
+
+  return renamed;
 }
 
 void Graph::graphForClient(VPackBuilder& builder) const {
@@ -592,18 +650,15 @@ void Graph::verticesToVpack(VPackBuilder& builder) const {
 
 bool Graph::isSmart() const { return false; }
 
-void Graph::createCollectionOptions(VPackBuilder& builder,
-                                    bool waitForSync) const {
+void Graph::createCollectionOptions(VPackBuilder& builder, bool waitForSync) const {
   TRI_ASSERT(builder.isOpenObject());
 
   builder.add(StaticStrings::WaitForSyncString, VPackValue(waitForSync));
   builder.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards()));
-  builder.add(StaticStrings::ReplicationFactor,
-              VPackValue(replicationFactor()));
+  builder.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor()));
 }
 
-boost::optional<const EdgeDefinition&> Graph::getEdgeDefinition(
-    std::string const& collectionName) const {
+boost::optional<const EdgeDefinition&> Graph::getEdgeDefinition(std::string const& collectionName) const {
   auto it = edgeDefinitions().find(collectionName);
   if (it == edgeDefinitions().end()) {
     TRI_ASSERT(!hasEdgeCollection(collectionName));

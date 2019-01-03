@@ -10,6 +10,7 @@ const internalMembers = UnitTest.internalMembers;
 const fs = require('fs');
 const internal = require('internal'); // js/common/bootstrap/modules/internal.js
 const inspect = internal.inspect;
+const abortSignal = 6;
 
 let testOutputDirectory;
 
@@ -220,6 +221,13 @@ function main (argv) {
   try {
     fs.write(testOutputDirectory + '/UNITTEST_RESULT_EXECUTIVE_SUMMARY.json', "false", true);
     fs.write(testOutputDirectory + '/UNITTEST_RESULT_CRASHED.json', "true", true);
+    let testFailureText = 'testfailures.txt';
+    if (options.hasOwnProperty('testFailureText')) {
+      testFailureText = options.testFailureText;
+    }
+    fs.write(fs.join(testOutputDirectory, testFailureText),
+             "Incomplete testrun with these testsuites: '" + testSuits +
+             "'\nand these options: " + JSON.stringify(options) + "\n");
   } catch (x) {
     print('failed to write default test result: ' + x.message);
     throw(x);
@@ -228,6 +236,10 @@ function main (argv) {
   if (options.hasOwnProperty('cluster') && options.cluster) {
     // cluster beats resilient single server
     options.singleresilient = false;
+  }
+
+  if (options.hasOwnProperty('blacklist')) {
+    UnitTest.loadBlacklist(options.blacklist);
   }
 
   // run the test and store the result
@@ -255,6 +267,20 @@ function main (argv) {
     status: false,
     crashed: true
   });
+
+  let running = require("internal").getExternalSpawned();
+  let i = 0;
+  for (i = 0; i < running.length; i++) {
+    let status = require("internal").statusExternal(running[i].pid, false);
+    if (status.status === "TERMINATED") {
+      print("process exited without us joining it (marking crashy): " + JSON.stringify(running[i]) + JSON.stringify(status));
+    }
+    else {
+      print("Killing remaining process & marking crashy: " + JSON.stringify(running[i]));
+      print(require("internal").killExternal(running[i].pid, abortSignal));
+    }
+    res.crashed = true;
+  };
 
   // whether or not there was an error
   try {
@@ -301,7 +327,7 @@ function main (argv) {
   // creates yaml like dump at the end
   UnitTest.unitTestPrettyPrintResults(res, testOutputDirectory, options);
 
-  return res.status;
+  return res.status && running.length === 0;
 }
 
 let result = main(ARGUMENTS);

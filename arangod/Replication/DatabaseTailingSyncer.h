@@ -24,24 +24,22 @@
 #ifndef ARANGOD_REPLICATION_DATABASE_TAILING_SYNCER_H
 #define ARANGOD_REPLICATION_DATABASE_TAILING_SYNCER_H 1
 
-#include "TailingSyncer.h"
-#include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/DatabaseReplicationApplier.h"
+#include "Replication/ReplicationApplierConfiguration.h"
+#include "TailingSyncer.h"
 
 namespace arangodb {
 class DatabaseReplicationApplier;
 
 class DatabaseTailingSyncer final : public TailingSyncer {
  public:
-  DatabaseTailingSyncer(
-    TRI_vocbase_t& vocbase,
-    ReplicationApplierConfiguration const& configuration,
-    TRI_voc_tick_t initialTick,
-    bool useTick,
-    TRI_voc_tick_t barrierId
-  );
+  DatabaseTailingSyncer(TRI_vocbase_t& vocbase,
+                        ReplicationApplierConfiguration const& configuration,
+                        TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId);
 
-  TRI_vocbase_t* resolveVocbase(velocypack::Slice const&) override { return _vocbase; }
+  TRI_vocbase_t* resolveVocbase(velocypack::Slice const&) override {
+    return _vocbase;
+  }
 
   /// @brief return the syncer's replication applier
   DatabaseReplicationApplier* applier() const {
@@ -50,10 +48,33 @@ class DatabaseTailingSyncer final : public TailingSyncer {
 
   /// @brief finalize the synchronization of a collection by tailing the WAL
   /// and filtering on the collection name until no more data is available
-  Result syncCollectionFinalize(std::string const& collectionName);
+  Result syncCollectionFinalize(std::string const& collectionName) {
+    TRI_voc_tick_t dummy = 0;
+    bool dummyDidTimeout = false;
+    double dummyTimeout = 300.0;
+    return syncCollectionCatchupInternal(collectionName, dummyTimeout, true,
+                                         dummy, dummyDidTimeout);
+  }
+
+  /// @brief catch up with changes in a leader shard by doing the same
+  /// as in syncCollectionFinalize, but potentially stopping earlier.
+  /// This function will use some heuristics to stop early, when most
+  /// of the catching up is already done. In this case, the replication
+  /// will end and store the tick to which it got in the argument `until`.
+  /// The idea is that one can use `syncCollectionCatchup` without stopping
+  /// writes on the leader to catch up mostly. Then one can stop writes
+  /// by getting an exclusive lock on the leader and use
+  /// `syncCollectionFinalize` to finish off the rest.
+  /// Internally, both use `syncCollectionCatchupInternal`.
+  Result syncCollectionCatchup(std::string const& collectionName, double timeout,
+                               TRI_voc_tick_t& until, bool& didTimeout) {
+    return syncCollectionCatchupInternal(collectionName, timeout, false, until, didTimeout);
+  }
 
  protected:
-
+  Result syncCollectionCatchupInternal(std::string const& collectionName,
+                                       double timeout, bool hard,
+                                       TRI_voc_tick_t& until, bool& didTimeout);
   /// @brief save the current applier state
   Result saveApplierState() override;
 
@@ -66,7 +87,6 @@ class DatabaseTailingSyncer final : public TailingSyncer {
   bool skipMarker(arangodb::velocypack::Slice const& slice) override;
 
  private:
-
   /// @brief vocbase to use for this run
   TRI_vocbase_t* _vocbase;
 
@@ -75,6 +95,6 @@ class DatabaseTailingSyncer final : public TailingSyncer {
 
   bool _queriedTranslations;
 };
-}
+}  // namespace arangodb
 
 #endif

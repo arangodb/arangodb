@@ -20,14 +20,14 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 #include "S2MultiPointRegion.h"
-#include <s2/util/coding/coder.h>
 #include <s2/s2cap.h>
 #include <s2/s2cell.h>
 #include <s2/s2latlng_rect.h>
 #include <s2/s2latlng_rect_bounder.h>
+#include <s2/util/coding/coder.h>
 
 S2MultiPointRegion::S2MultiPointRegion(std::vector<S2Point>* points)
-  : num_points_(points->size()), points_(nullptr) {
+    : num_points_(points->size()), points_(nullptr) {
   if (num_points_ > 0) {
     points_ = new S2Point[num_points_];
     memcpy(points_, points->data(), num_points_ * sizeof(S2Point));
@@ -35,7 +35,7 @@ S2MultiPointRegion::S2MultiPointRegion(std::vector<S2Point>* points)
 }
 
 S2MultiPointRegion::S2MultiPointRegion(S2MultiPointRegion const* other)
-  : num_points_(other->num_points_), points_(nullptr) {
+    : num_points_(other->num_points_), points_(nullptr) {
   if (num_points_ > 0) {
     points_ = new S2Point[num_points_];
     memcpy(points_, other->points_, num_points_ * sizeof(S2Point));
@@ -77,7 +77,7 @@ bool S2MultiPointRegion::MayIntersect(S2Cell const& cell) const {
 }
 /*
 static const unsigned char kCurrentEncodingVersionNumber = 1;
- 
+
 void S2MultiPointRegion::Encode(Encoder* encoder) const {
   encoder->Ensure(10 + 30 * num_points_);  // sufficient
 
@@ -93,8 +93,8 @@ void S2MultiPointRegion::Encode(Encoder* encoder) const {
 
 bool S2MultiPointRegion::Decode(Decoder* decoder) {
   unsigned char version = decoder->get8();
-  if (version > kCurrentEncodingVersionNumber) return false; 
-  
+  if (version > kCurrentEncodingVersionNumber) return false;
+
   num_points_ = decoder->get32();
   delete[] points_;
   points_ = new S2Point[num_points_];
@@ -103,7 +103,7 @@ bool S2MultiPointRegion::Decode(Decoder* decoder) {
       points_[k][i] = decoder->getdouble();
     }
   }
-  
+
   assert(S2::IsUnitLength(point_));
 
   return decoder->avail() >= 0;

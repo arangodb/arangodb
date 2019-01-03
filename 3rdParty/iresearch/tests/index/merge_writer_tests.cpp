@@ -137,17 +137,17 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
     field.name(iresearch::string_ref("doc_int"));
     field.value(42 * 2);
   }
-  
+
   doc3.insert(std::make_shared<tests::templates::string_field>("doc_string", string3));
   doc3.insert(std::make_shared<tests::int_field>()); {
     auto& field = doc3.indexed.back<tests::int_field>();
     field.name(iresearch::string_ref("doc_int"));
     field.value(42 * 3);
   }
-  
+
   doc4.insert(std::make_shared<tests::templates::string_field>("doc_string", string4));
   doc4.insert(std::make_shared<tests::templates::string_field>("another_column", "another_value"));
-  
+
   auto codec_ptr = irs::formats::get("1_0");
   irs::memory_directory dir;
 
@@ -163,11 +163,10 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
     writer->commit();
     writer->documents().remove(std::move(query_doc4.filter));
     writer->commit();
-    writer->close();
   }
-  
+
   auto reader = iresearch::directory_reader::open(dir, codec_ptr);
-  irs::merge_writer writer(dir, "merged");
+  irs::merge_writer writer(dir);
 
   ASSERT_EQ(2, reader.size());
   ASSERT_EQ(2, reader[0].docs_count());
@@ -249,7 +248,6 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
 
         return true;
       };
-
 
       // read values for 'doc_string'
       auto* meta = segment.column("doc_string");
@@ -399,7 +397,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       ASSERT_EQ(nullptr, segment.column_reader("invalid_column"));
     }
   }
-  
+
   writer.add(reader[0]);
   writer.add(reader[1]);
 
@@ -420,7 +418,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
     ASSERT_EQ("doc_string", columns->value().name);
     ASSERT_EQ(1, columns->value().id);
     ASSERT_FALSE(columns->next());
-    
+
     // check 'doc_int' column
     {
       std::unordered_map<int, iresearch::doc_id_t> expected_values{
@@ -566,11 +564,10 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
     ASSERT_TRUE(insert(*writer, doc2.indexed.end(), doc2.indexed.end(), doc2.stored.begin(), doc2.stored.end()));
     ASSERT_TRUE(insert(*writer, doc4.indexed.end(), doc4.indexed.end(), doc4.stored.begin(), doc4.stored.end()));
     writer->commit();
-    writer->close();
   }
 
   auto reader = iresearch::directory_reader::open(dir, codec_ptr);
-  irs::merge_writer writer(dir, "merged");
+  irs::merge_writer writer(dir);
 
   ASSERT_EQ(2, reader.size());
   ASSERT_EQ(2, reader[0].docs_count());
@@ -1052,7 +1049,6 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     writer->commit();
     writer->documents().remove(std::move(query_doc4.filter));
     writer->commit();
-    writer->close();
   }
 
   auto docs_count = [](const irs::sub_reader& segment, const irs::string_ref& field) {
@@ -1061,7 +1057,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
   };
 
   auto reader = iresearch::directory_reader::open(dir, codec_ptr);
-  irs::merge_writer writer(dir, "merged");
+  irs::merge_writer writer(dir);
 
   ASSERT_EQ(2, reader.size());
   ASSERT_EQ(2, reader[0].docs_count());
@@ -2174,6 +2170,199 @@ TEST_F(merge_writer_tests, test_merge_writer) {
   ASSERT_TRUE(expected_string.empty());
 }
 
+TEST_F(merge_writer_tests, test_merge_writer_add_segments) {
+  auto codec_ptr = irs::formats::get("1_0");
+  ASSERT_NE(nullptr, codec_ptr);
+  irs::memory_directory data_dir;
+
+  // populate directory
+  {
+    tests::json_doc_generator gen(
+      test_base::resource("simple_sequential_33.json"),
+      &tests::generic_json_field_factory
+    );
+    std::vector<const tests::document*> docs;
+    docs.reserve(33);
+
+    for (size_t i = 0; i < 33; ++i) {
+      docs.emplace_back(gen.next());
+    }
+
+    auto writer = irs::index_writer::make(data_dir, codec_ptr, irs::OM_CREATE);
+
+    for (auto* doc: docs) {
+      ASSERT_NE(nullptr, doc);
+      ASSERT_TRUE(insert(
+        *writer,
+        doc->indexed.begin(), doc->indexed.end(),
+        doc->stored.begin(), doc->stored.end()
+      ));
+      writer->commit(); // create segmentN
+    }
+  }
+
+  auto reader = irs::directory_reader::open(data_dir, codec_ptr);
+
+  ASSERT_EQ(33, reader.size());
+
+  // merge 33 segments to writer (segments > 32 to trigger GCC 8.2.0 optimizer bug)
+  {
+    irs::memory_directory dir;
+    irs::index_meta::index_segment_t index_segment;
+    irs::merge_writer writer(dir);
+
+    for (auto& sub_reader: reader) {
+      writer.add(sub_reader);
+    }
+
+    index_segment.meta.codec = codec_ptr;
+    ASSERT_TRUE(writer.flush(index_segment));
+
+    auto segment = irs::segment_reader::open(dir, index_segment.meta);
+    ASSERT_EQ(33, segment.docs_count());
+    ASSERT_EQ(33, segment.field("name")->docs_count());
+    ASSERT_EQ(33, segment.field("seq")->docs_count());
+    ASSERT_EQ(33, segment.field("same")->docs_count());
+    ASSERT_EQ(13, segment.field("duplicated")->docs_count());
+  }
+}
+
+TEST_F(merge_writer_tests, test_merge_writer_flush_progress) {
+  auto codec_ptr = irs::formats::get("1_0");
+  ASSERT_NE(nullptr, codec_ptr);
+  irs::memory_directory data_dir;
+
+  // populate directory
+  {
+    tests::json_doc_generator gen(
+      test_base::resource("simple_sequential.json"),
+      &tests::generic_json_field_factory
+    );
+    auto* doc1 = gen.next();
+    auto* doc2 = gen.next();
+    auto writer = irs::index_writer::make(data_dir, codec_ptr, irs::OM_CREATE);
+    ASSERT_TRUE(insert(
+      *writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    writer->commit(); // create segment0
+    ASSERT_TRUE(insert(
+      *writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    writer->commit(); // create segment1
+  }
+
+  auto reader = irs::directory_reader::open(data_dir, codec_ptr);
+
+  ASSERT_EQ(2, reader.size());
+  ASSERT_EQ(1, reader[0].docs_count());
+  ASSERT_EQ(1, reader[1].docs_count());
+
+  // test default progress (false)
+  {
+    irs::memory_directory dir;
+    irs::index_meta::index_segment_t index_segment;
+    irs::merge_writer::flush_progress_t progress;
+    irs::merge_writer writer(dir);
+
+    index_segment.meta.codec = codec_ptr;
+    writer.add(reader[0]);
+    writer.add(reader[1]);
+    ASSERT_TRUE(writer.flush(index_segment, progress));
+
+    ASSERT_FALSE(index_segment.meta.files.empty());
+    ASSERT_EQ(2, index_segment.meta.docs_count);
+    ASSERT_EQ(2, index_segment.meta.live_docs_count);
+    ASSERT_EQ(0, index_segment.meta.version);
+    ASSERT_EQ(true, index_segment.meta.column_store);
+
+    auto segment = irs::segment_reader::open(dir, index_segment.meta);
+    ASSERT_EQ(2, segment.docs_count());
+  }
+
+  // test always-false progress
+  {
+    irs::memory_directory dir;
+    irs::index_meta::index_segment_t index_segment;
+    irs::merge_writer::flush_progress_t progress = []()->bool { return false; };
+    irs::merge_writer writer(dir);
+
+    index_segment.meta.codec = codec_ptr;
+    writer.add(reader[0]);
+    writer.add(reader[1]);
+    ASSERT_FALSE(writer.flush(index_segment, progress));
+
+    ASSERT_TRUE(index_segment.filename.empty());
+    ASSERT_TRUE(index_segment.meta.name.empty());
+    ASSERT_TRUE(index_segment.meta.files.empty());
+    ASSERT_FALSE(index_segment.meta.column_store);
+    ASSERT_EQ(0, index_segment.meta.version);
+    ASSERT_EQ(0, index_segment.meta.docs_count);
+    ASSERT_EQ(0, index_segment.meta.live_docs_count);
+    ASSERT_EQ(0, index_segment.meta.size);
+
+    ASSERT_ANY_THROW(irs::segment_reader::open(dir, index_segment.meta));
+  }
+
+  size_t progress_call_count = 0;
+
+  // test always-true progress
+  {
+    irs::memory_directory dir;
+    irs::index_meta::index_segment_t index_segment;
+    irs::merge_writer::flush_progress_t progress =
+      [&progress_call_count]()->bool { ++progress_call_count; return true; };
+    irs::merge_writer writer(dir);
+
+    index_segment.meta.codec = codec_ptr;
+    writer.add(reader[0]);
+    writer.add(reader[1]);
+    ASSERT_TRUE(writer.flush(index_segment, progress));
+
+    ASSERT_FALSE(index_segment.meta.files.empty());
+    ASSERT_EQ(2, index_segment.meta.docs_count);
+    ASSERT_EQ(2, index_segment.meta.live_docs_count);
+    ASSERT_EQ(0, index_segment.meta.version);
+    ASSERT_EQ(true, index_segment.meta.column_store);
+
+    auto segment = irs::segment_reader::open(dir, index_segment.meta);
+    ASSERT_EQ(2, segment.docs_count());
+  }
+
+  ASSERT_TRUE(progress_call_count); // there should have been at least some calls
+
+  // test limited-true progress
+  for (size_t i = 1; i < progress_call_count; ++i) { // +1 for pre-decrement in 'progress'
+    size_t call_count = i;
+    irs::memory_directory dir;
+    irs::index_meta::index_segment_t index_segment;
+    irs::merge_writer::flush_progress_t progress =
+      [&call_count]()->bool { return --call_count; };
+    irs::merge_writer writer(dir);
+
+    index_segment.meta.codec = codec_ptr;
+    index_segment.meta.name = "merged";
+    writer.add(reader[0]);
+    writer.add(reader[1]);
+    ASSERT_FALSE(writer.flush(index_segment, progress));
+    ASSERT_EQ(0, call_count);
+
+    ASSERT_TRUE(index_segment.filename.empty());
+    ASSERT_TRUE(index_segment.meta.name.empty());
+    ASSERT_TRUE(index_segment.meta.files.empty());
+    ASSERT_FALSE(index_segment.meta.column_store);
+    ASSERT_EQ(0, index_segment.meta.version);
+    ASSERT_EQ(0, index_segment.meta.docs_count);
+    ASSERT_EQ(0, index_segment.meta.live_docs_count);
+    ASSERT_EQ(0, index_segment.meta.size);
+
+    ASSERT_ANY_THROW(irs::segment_reader::open(dir, index_segment.meta));
+  }
+}
+
 TEST_F(merge_writer_tests, test_merge_writer_field_features) {
   //iresearch::flags STRING_FIELD_FEATURES{ iresearch::frequency::type(), iresearch::position::type() };
   //iresearch::flags TEXT_FIELD_FEATURES{ iresearch::frequency::type(), iresearch::position::type(), iresearch::offset::type(), iresearch::payload::type() };
@@ -2206,7 +2395,6 @@ TEST_F(merge_writer_tests, test_merge_writer_field_features) {
       doc2.stored.begin(), doc2.stored.end()
     ));
     writer->commit();
-    writer->close();
   }
 
   auto reader = iresearch::directory_reader::open(dir, codec_ptr);
@@ -2217,7 +2405,7 @@ TEST_F(merge_writer_tests, test_merge_writer_field_features) {
 
   // test merge existing with feature subset (success)
   {
-    irs::merge_writer writer(dir, "merged_subset");
+    irs::merge_writer writer(dir);
     writer.add(reader[1]); // assume 1 is segment with text field
     writer.add(reader[0]); // assume 0 is segment with string field
 
@@ -2229,7 +2417,7 @@ TEST_F(merge_writer_tests, test_merge_writer_field_features) {
 
   // test merge existing with feature superset (fail)
   {
-    irs::merge_writer writer(dir, "merged_superset");
+    irs::merge_writer writer(dir);
     writer.add(reader[0]); // assume 0 is segment with text field
     writer.add(reader[1]); // assume 1 is segment with string field
 

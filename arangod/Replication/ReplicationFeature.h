@@ -33,13 +33,11 @@ namespace arangodb {
 class GlobalReplicationApplier;
 class GeneralResponse;
 
-class ReplicationFeature final
-    : public application_features::ApplicationFeature {
+class ReplicationFeature final : public application_features::ApplicationFeature {
  public:
   explicit ReplicationFeature(application_features::ApplicationServer& server);
 
-  void collectOptions(
-      std::shared_ptr<options::ProgramOptions> options) override final;
+  void collectOptions(std::shared_ptr<options::ProgramOptions> options) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
@@ -54,9 +52,7 @@ class ReplicationFeature final
   }
 
   /// @brief disable replication appliers
-  void disableReplicationApplier() {
-    _replicationApplierAutoStart = false;
-  }
+  void disableReplicationApplier() { _replicationApplierAutoStart = false; }
 
   /// @brief start the replication applier for a single database
   void startApplier(TRI_vocbase_t* vocbase);
@@ -65,16 +61,13 @@ class ReplicationFeature final
   void stopApplier(TRI_vocbase_t* vocbase);
 
   /// @brief automatic failover of replication using the agency
-  bool isActiveFailoverEnabled() const {
-    return _enableActiveFailover;
-  }
+  bool isActiveFailoverEnabled() const { return _enableActiveFailover; }
 
   /// @brief set the x-arango-endpoint header
   static void setEndpointHeader(GeneralResponse*, arangodb::ServerState::Mode);
 
   /// @brief fill a response object with correct response for a follower
-  static void prepareFollowerResponse(GeneralResponse*,
-                                      arangodb::ServerState::Mode);
+  static void prepareFollowerResponse(GeneralResponse*, arangodb::ServerState::Mode);
 
   static ReplicationFeature* INSTANCE;
 
@@ -87,6 +80,6 @@ class ReplicationFeature final
   std::unique_ptr<GlobalReplicationApplier> _globalReplicationApplier;
 };
 
-}
+}  // namespace arangodb
 
 #endif

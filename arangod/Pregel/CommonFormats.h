@@ -33,7 +33,7 @@
 
 namespace arangodb {
 namespace pregel {
-  
+
 // Speaker-listerner Label propagation
 struct SLPAValue {
   // our own initialized id
@@ -126,12 +126,11 @@ struct SenderMessageFormat : public MessageFormat<SenderMessage<T>> {
   SenderMessageFormat() {}
   void unwrapValue(VPackSlice s, SenderMessage<T>& senderVal) const override {
     VPackArrayIterator array(s);
-    senderVal.senderId.shard = (PregelShard) ((*array).getUInt());
+    senderVal.senderId.shard = (PregelShard)((*array).getUInt());
     senderVal.senderId.key = (*(++array)).copyString();
     senderVal.value = (*(++array)).getNumber<T>();
   }
-  void addValue(VPackBuilder& arrayBuilder,
-                SenderMessage<T> const& senderVal) const override {
+  void addValue(VPackBuilder& arrayBuilder, SenderMessage<T> const& senderVal) const override {
     arrayBuilder.openArray();
     arrayBuilder.add(VPackValue(senderVal.senderId.shard));
     arrayBuilder.add(VPackValue(senderVal.senderId.key));
@@ -139,6 +138,6 @@ struct SenderMessageFormat : public MessageFormat<SenderMessage<T>> {
     arrayBuilder.close();
   }
 };
-}
-}
+}  // namespace pregel
+}  // namespace arangodb
 #endif

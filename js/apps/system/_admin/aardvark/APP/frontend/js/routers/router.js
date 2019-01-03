@@ -269,18 +269,19 @@
 
         this.arangoCollectionsStore = new window.ArangoCollections();
         this.arangoDocumentStore = new window.ArangoDocument();
+        this.arangoViewsStore = new window.ArangoViews();
 
         // Cluster
         this.coordinatorCollection = new window.ClusterCoordinators();
+
+        window.spotlightView = new window.SpotlightView({
+          collection: this.arangoCollectionsStore
+        });
 
         arangoHelper.setDocumentStore(this.arangoDocumentStore);
 
         this.arangoCollectionsStore.fetch({
           cache: false
-        });
-
-        window.spotlightView = new window.SpotlightView({
-          collection: this.arangoCollectionsStore
         });
 
         this.footerView = new window.FooterView({
@@ -965,7 +966,7 @@
             collection: new window.GraphCollection(),
             collectionCollection: this.arangoCollectionsStore
           }
-      );
+        );
       this.graphManagementView.render();
     },
 
@@ -982,7 +983,7 @@
               collection: new window.GraphCollection(),
               collectionCollection: this.arangoCollectionsStore
             }
-        );
+          );
         this.graphManagementView.render(name, true);
       } else {
         this.graphManagementView.loadGraphViewer(name);
@@ -1180,6 +1181,7 @@
     },
 
     view: function (name, initialized) {
+      var self = this;
       this.checkUser();
       if (!initialized) {
         this.waitForInit(this.view.bind(this), name);
@@ -1189,10 +1191,15 @@
         this.viewView.remove();
       }
 
-      this.viewView = new window.ViewView({
-        name: name
+      this.arangoViewsStore.fetch({
+        success: function () {
+          self.viewView = new window.ViewView({
+            model: self.arangoViewsStore.get(name),
+            name: name
+          });
+          self.viewView.render();
+        }
       });
-      this.viewView.render();
     },
 
     views: function (initialized) {
@@ -1205,7 +1212,9 @@
         this.viewsView.remove();
       }
 
-      this.viewsView = new window.ViewsView({});
+      this.viewsView = new window.ViewsView({
+        collection: this.arangoViewsStore
+      });
       this.viewsView.render();
     },
 

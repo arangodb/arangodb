@@ -42,7 +42,7 @@ class ClusterCommTester : public ClusterComm {
 public:
   ClusterCommTester()
     : ClusterComm(false),
-      _oldSched(nullptr), _testerSched(1, 2, 3, 4, 5)
+      _oldSched(nullptr), _testerSched(1, 2, 3, 4)
   {
     // fake a scheduler object
     _oldSched = SchedulerFeature::SCHEDULER;

@@ -36,7 +36,7 @@ namespace arangodb {
 struct WalAccessResult : public Result {
   WalAccessResult() : WalAccessResult(TRI_ERROR_NO_ERROR, false, 0, 0, 0) {}
 
-  WalAccessResult(int code, bool ft, TRI_voc_tick_t included, 
+  WalAccessResult(int code, bool ft, TRI_voc_tick_t included,
                   TRI_voc_tick_t lastScannedTick, TRI_voc_tick_t latest)
       : Result(code),
         _fromTickIncluded(ft),
@@ -44,26 +44,27 @@ struct WalAccessResult : public Result {
         _lastScannedTick(lastScannedTick),
         _latestTick(latest) {}
 
-/*
-  WalAccessResult(WalAccessResult const& other) = default;
-  WalAccessResult& operator=(WalAccessResult const& other)  = default;
-*/
+  /*
+    WalAccessResult(WalAccessResult const& other) = default;
+    WalAccessResult& operator=(WalAccessResult const& other)  = default;
+  */
+  using Result::reset;
   bool fromTickIncluded() const { return _fromTickIncluded; }
   TRI_voc_tick_t lastIncludedTick() const { return _lastIncludedTick; }
   TRI_voc_tick_t lastScannedTick() const { return _lastScannedTick; }
   void lastScannedTick(TRI_voc_tick_t tick) { _lastScannedTick = tick; }
   TRI_voc_tick_t latestTick() const { return _latestTick; }
 
-  Result& reset(int errorNumber, bool ft, TRI_voc_tick_t included, TRI_voc_tick_t lastScannedTick,
-                TRI_voc_tick_t latest) {
-    _errorNumber = errorNumber;
+  Result& reset(int errorNumber, bool ft, TRI_voc_tick_t included,
+                TRI_voc_tick_t lastScannedTick, TRI_voc_tick_t latest) {
+    reset(errorNumber);
     _fromTickIncluded = ft;
     _lastIncludedTick = included;
     _lastScannedTick = lastScannedTick;
     _latestTick = latest;
     return *this;
   }
- 
+
  private:
   bool _fromTickIncluded;
   TRI_voc_tick_t _lastIncludedTick;
@@ -84,14 +85,14 @@ class WalAccess {
  public:
   struct Filter {
     Filter() {}
-    
+
     /// tick last scanned by the last iteration
     /// is used to find batches in rocksdb
     uint64_t tickLastScanned = 0;
-    
+
     /// first tick to use
     uint64_t tickStart = 0;
-    
+
     /// last tick to include
     uint64_t tickEnd = UINT64_MAX;
 
@@ -111,14 +112,12 @@ class WalAccess {
     TRI_voc_tick_t firstRegularTick = 0;
   };
 
-  typedef std::function<void(TRI_vocbase_t*, velocypack::Slice const&)>
-      MarkerCallback;
+  typedef std::function<void(TRI_vocbase_t*, velocypack::Slice const&)> MarkerCallback;
   typedef std::function<void(TRI_voc_tid_t, TRI_voc_tid_t)> TransactionCallback;
 
   /// {"tickMin":"123", "tickMax":"456",
   ///  "server":{"version":"3.2", "serverId":"abc"}}
-  virtual Result tickRange(
-      std::pair<TRI_voc_tick_t, TRI_voc_tick_t>& minMax) const = 0;
+  virtual Result tickRange(std::pair<TRI_voc_tick_t, TRI_voc_tick_t>& minMax) const = 0;
 
   /// {"lastTick":"123",
   ///  "server":{"version":"3.2",
@@ -132,29 +131,25 @@ class WalAccess {
   /// should return the list of transactions started, but not committed in that
   /// range (range can be adjusted)
   virtual WalAccessResult openTransactions(Filter const& filter,
-      TransactionCallback const&) const = 0;
+                                           TransactionCallback const&) const = 0;
 
-  virtual WalAccessResult tail(Filter const& filter,
-                               size_t chunkSize, TRI_voc_tid_t barrierId,
-                               MarkerCallback const&) const = 0;
+  virtual WalAccessResult tail(Filter const& filter, size_t chunkSize,
+                               TRI_voc_tid_t barrierId, MarkerCallback const&) const = 0;
 };
 
 /// @brief helper class used to resolve vocbases
 ///        and collections from wal markers in an efficient way
 struct WalAccessContext {
-  WalAccessContext(WalAccess::Filter const& filter,
-                   WalAccess::MarkerCallback const& c)
+  WalAccessContext(WalAccess::Filter const& filter, WalAccess::MarkerCallback const& c)
       : _filter(filter), _callback(c), _responseSize(0) {}
 
   ~WalAccessContext() {}
 
-  
   /// @brief check if db should be handled, might already be deleted
   bool shouldHandleDB(TRI_voc_tick_t dbid) const;
-  
+
   /// @brief check if view should be handled, might already be deleted
-  bool shouldHandleView(TRI_voc_tick_t dbid,
-                        TRI_voc_cid_t vid) const;
+  bool shouldHandleView(TRI_voc_tick_t dbid, TRI_voc_cid_t vid) const;
 
   /// @brief Check if collection is in filter, will load collection
   /// and prevent deletion

@@ -44,9 +44,12 @@ set(INSTALL_ICU_DT_DEST "${CMAKE_INSTALL_DATAROOTDIR}/${CMAKE_PROJECT_NAME}")
 set(CMAKE_TEST_DIRECTORY "tests")
 
 include(InstallMacros)
+
 # install ----------------------------------------------------------------------
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/Documentation/man/
-  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/man)
+if(UNIX)
+install(DIRECTORY ${ARANGO_MAN_DIR}
+  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR})
+endif()
 
 install_readme(README README.txt)
 install_readme(README.md README.md)
@@ -81,6 +84,13 @@ install(
   REGEX       "^.*/aardvark/APP/frontend/js/lib"           EXCLUDE
   REGEX       "^.*/js/server/assets/swagger/*.map$"        EXCLUDE
   REGEX       "^.*/.bin"                                   EXCLUDE
+)
+
+install(
+  FILES
+    ${ARANGODB_SOURCE_DIR}/js/JS_SHA1SUM.txt
+  DESTINATION
+    ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}
 )
 
 if (USE_ENTERPRISE)

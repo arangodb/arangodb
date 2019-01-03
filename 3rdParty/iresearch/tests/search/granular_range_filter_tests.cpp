@@ -143,7 +143,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
        .include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>("A")
        .include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>("M");
 
-      auto prepared = q.prepare(tests::empty_index_reader::instance());
+      auto prepared = q.prepare(irs::sub_reader::empty());
       ASSERT_EQ(irs::boost::no_boost(), irs::boost::extract(prepared->attributes()));
     }
 
@@ -1578,7 +1578,7 @@ TEST(by_granular_range_test, boost) {
      .include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>("min_term")
      .include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>("max_term");
 
-    auto prepared = q.prepare(tests::empty_index_reader::instance());
+    auto prepared = q.prepare(irs::sub_reader::empty());
     ASSERT_EQ(irs::boost::no_boost(), irs::boost::extract(prepared->attributes()));
   }
 
@@ -1591,7 +1591,7 @@ TEST(by_granular_range_test, boost) {
       .include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>("max_term");
     q.boost(boost);
 
-    auto prepared = q.prepare(tests::empty_index_reader::instance());
+    auto prepared = q.prepare(irs::sub_reader::empty());
     ASSERT_EQ(irs::boost::no_boost(), irs::boost::extract(prepared->attributes()));
   }
 }

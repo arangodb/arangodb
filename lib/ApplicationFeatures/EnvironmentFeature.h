@@ -32,9 +32,8 @@ class EnvironmentFeature final : public application_features::ApplicationFeature
   explicit EnvironmentFeature(application_features::ApplicationServer& server);
 
   void prepare() override final;
-  void start() override final;
 };
 
-}
+}  // namespace arangodb
 
 #endif

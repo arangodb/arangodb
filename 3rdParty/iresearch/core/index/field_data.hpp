@@ -125,9 +125,18 @@ class IRESEARCH_API fields_data: util::noncopyable {
   field_data& get(const hashed_string_ref& name);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @return approximate amount of memory size occupied by this instance
+  /// @return approximate amount of memory actively in-use by this instance
   //////////////////////////////////////////////////////////////////////////////
-  size_t memory() const NOEXCEPT {
+  size_t memory_active() const NOEXCEPT {
+    return byte_writer_.pool_offset()
+      + int_writer_.pool_offset() * sizeof(int_block_pool::value_type)
+      + fields_.size() * sizeof(fields_map::value_type);
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return approximate amount of memory reserved by this instance
+  //////////////////////////////////////////////////////////////////////////////
+  size_t memory_reserved() const NOEXCEPT {
     return sizeof(fields_data) + byte_pool_.size() + int_pool_.size();
   }
 
@@ -138,7 +147,7 @@ class IRESEARCH_API fields_data: util::noncopyable {
   }
   const flags& features() { return features_; }
   void flush(field_writer& fw, flush_state& state);
-  void reset();
+  void reset() NOEXCEPT;
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN

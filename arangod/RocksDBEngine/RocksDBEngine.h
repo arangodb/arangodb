@@ -42,7 +42,6 @@
 namespace rocksdb {
 
 class TransactionDB;
-
 }
 
 namespace arangodb {
@@ -56,7 +55,7 @@ class RocksDBRecoveryHelper;
 class RocksDBReplicationManager;
 class RocksDBSettingsManager;
 class RocksDBSyncThread;
-class RocksDBThrottle;    // breaks tons if RocksDBThrottle.h included here
+class RocksDBThrottle;  // breaks tons if RocksDBThrottle.h included here
 class RocksDBVPackComparator;
 class RocksDBWalAccess;
 class TransactionCollection;
@@ -65,7 +64,6 @@ class TransactionState;
 namespace rest {
 
 class RestHandlerFactory;
-
 }
 
 namespace transaction {
@@ -73,7 +71,7 @@ namespace transaction {
 class ContextData;
 struct Options;
 
-}
+}  // namespace transaction
 
 class RocksDBEngine final : public StorageEngine {
  public:
@@ -105,22 +103,15 @@ class RocksDBEngine final : public StorageEngine {
 
   std::unique_ptr<TransactionManager> createTransactionManager() override;
   std::unique_ptr<transaction::ContextData> createTransactionContextData() override;
-  std::unique_ptr<TransactionState> createTransactionState(
-    TRI_vocbase_t& vocbase,
-    transaction::Options const& options
-  ) override;
+  std::unique_ptr<TransactionState> createTransactionState(TRI_vocbase_t& vocbase,
+                                                           transaction::Options const& options) override;
   std::unique_ptr<TransactionCollection> createTransactionCollection(
-    TransactionState& state,
-    TRI_voc_cid_t cid,
-    AccessMode::Type accessType,
-    int nestingLevel
-  ) override;
+      TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType,
+      int nestingLevel) override;
 
   // create storage-engine specific collection
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(
-    LogicalCollection& collection,
-    velocypack::Slice const& info
-  ) override;
+      LogicalCollection& collection, velocypack::Slice const& info) override;
 
   void getStatistics(velocypack::Builder& builder) const override;
 
@@ -129,68 +120,42 @@ class RocksDBEngine final : public StorageEngine {
 
   void getDatabases(arangodb::velocypack::Builder& result) override;
 
-  void getCollectionInfo(
-    TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t cid,
-    arangodb::velocypack::Builder& result,
-    bool includeIndexes,
-    TRI_voc_tick_t maxTick
-  ) override;
+  void getCollectionInfo(TRI_vocbase_t& vocbase, TRI_voc_cid_t cid,
+                         arangodb::velocypack::Builder& result,
+                         bool includeIndexes, TRI_voc_tick_t maxTick) override;
 
-  int getCollectionsAndIndexes(
-    TRI_vocbase_t& vocbase,
-    arangodb::velocypack::Builder& result,
-    bool wasCleanShutdown,
-    bool isUpgrade
-  ) override;
+  int getCollectionsAndIndexes(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result,
+                               bool wasCleanShutdown, bool isUpgrade) override;
 
-  int getViews(
-    TRI_vocbase_t& vocbase,
-    arangodb::velocypack::Builder& result
-  ) override;
+  int getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) override;
 
   std::string versionFilename(TRI_voc_tick_t id) const override;
   std::string databasePath(TRI_vocbase_t const* /*vocbase*/) const override {
     return _basePath;
   }
-  std::string collectionPath(
-      TRI_vocbase_t const& /*vocbase*/,
-      TRI_voc_cid_t /*id*/
-  ) const override {
-    return std::string(); // no path to be returned here
+  std::string collectionPath(TRI_vocbase_t const& /*vocbase*/, TRI_voc_cid_t /*id*/
+                             ) const override {
+    return std::string();  // no path to be returned here
   }
 
-  velocypack::Builder getReplicationApplierConfiguration(
-    TRI_vocbase_t& vocbase,
-    int& status
-  ) override;
+  velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
+                                                         int& status) override;
   velocypack::Builder getReplicationApplierConfiguration(int& status) override;
   int removeReplicationApplierConfiguration(TRI_vocbase_t& vocbase) override;
   int removeReplicationApplierConfiguration() override;
-  int saveReplicationApplierConfiguration(
-    TRI_vocbase_t& vocbase,
-    velocypack::Slice slice,
-    bool doSync
-  ) override;
-  int saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice,
-                                          bool doSync) override;
+  int saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
+                                          velocypack::Slice slice, bool doSync) override;
+  int saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice, bool doSync) override;
   // TODO worker-safety
-  Result handleSyncKeys(
-    DatabaseInitialSyncer& syncer,
-    LogicalCollection& col,
-    std::string const& keysId
-  ) override;
-  Result createLoggerState(TRI_vocbase_t* vocbase,
-                           velocypack::Builder& builder) override;
+  Result handleSyncKeys(DatabaseInitialSyncer& syncer, LogicalCollection& col,
+                        std::string const& keysId) override;
+  Result createLoggerState(TRI_vocbase_t* vocbase, velocypack::Builder& builder) override;
   Result createTickRanges(velocypack::Builder& builder) override;
   Result firstTick(uint64_t& tick) override;
-  Result lastLogger(
-    TRI_vocbase_t& vocbase,
-    std::shared_ptr<transaction::Context> transactionContext,
-    uint64_t tickStart,
-    uint64_t tickEnd,
-    std::shared_ptr<velocypack::Builder>& builderSPtr
-  ) override;
+  Result lastLogger(TRI_vocbase_t& vocbase,
+                    std::shared_ptr<transaction::Context> transactionContext,
+                    uint64_t tickStart, uint64_t tickEnd,
+                    std::shared_ptr<velocypack::Builder>& builderSPtr) override;
   WalAccess const* walAccess() const override;
 
   // database, collection and index management
@@ -198,31 +163,20 @@ class RocksDBEngine final : public StorageEngine {
 
   // intentionally empty, not useful for this type of engine
   void waitForSyncTick(TRI_voc_tick_t) override {}
-  
+
   /// @brief return a list of the currently open WAL files
   std::vector<std::string> currentWalFiles() const override;
-  
-  Result flushWal(bool waitForSync, bool waitForCollector,
-                  bool writeShutdownFile) override;
+
+  Result flushWal(bool waitForSync, bool waitForCollector, bool writeShutdownFile) override;
   void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
 
-  virtual std::unique_ptr<TRI_vocbase_t> openDatabase(
-    velocypack::Slice const& args,
-    bool isUpgrade,
-    int& status
-  ) override;
-  std::unique_ptr<TRI_vocbase_t> createDatabase(
-    TRI_voc_tick_t id,
-    velocypack::Slice const& args,
-    int& status
-  ) override;
-  int writeCreateDatabaseMarker(TRI_voc_tick_t id,
-                                velocypack::Slice const& slice) override;
-  void prepareDropDatabase(
-    TRI_vocbase_t& vocbase,
-    bool useWriteMarker,
-    int& status
-  ) override;
+  virtual std::unique_ptr<TRI_vocbase_t> openDatabase(velocypack::Slice const& args,
+                                                      bool isUpgrade, int& status) override;
+  std::unique_ptr<TRI_vocbase_t> createDatabase(TRI_voc_tick_t id,
+                                                velocypack::Slice const& args,
+                                                int& status) override;
+  int writeCreateDatabaseMarker(TRI_voc_tick_t id, velocypack::Slice const& slice) override;
+  void prepareDropDatabase(TRI_vocbase_t& vocbase, bool useWriteMarker, int& status) override;
   Result dropDatabase(TRI_vocbase_t& database) override;
   void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) override;
 
@@ -233,74 +187,39 @@ class RocksDBEngine final : public StorageEngine {
   void recoveryDone(TRI_vocbase_t& vocbase) override;
 
  public:
-  std::string createCollection(
-    TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t id,
-    LogicalCollection const& collection
-  ) override;
+  std::string createCollection(TRI_vocbase_t& vocbase,
+                               LogicalCollection const& collection) override;
 
-  arangodb::Result persistCollection(
-    TRI_vocbase_t& vocbase,
-    LogicalCollection const& collection
-  ) override;
+  arangodb::Result persistCollection(TRI_vocbase_t& vocbase,
+                                     LogicalCollection const& collection) override;
 
-  arangodb::Result dropCollection(
-    TRI_vocbase_t& vocbase,
-    LogicalCollection& collection
-  ) override;
+  arangodb::Result dropCollection(TRI_vocbase_t& vocbase, LogicalCollection& collection) override;
 
-  void destroyCollection(
-    TRI_vocbase_t& vocbase,
-    LogicalCollection& collection
-  ) override;
+  void destroyCollection(TRI_vocbase_t& vocbase, LogicalCollection& collection) override;
 
-  void changeCollection(
-    TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t id,
-    LogicalCollection const& collection,
-    bool doSync
-  ) override;
+  void changeCollection(TRI_vocbase_t& vocbase,
+                        LogicalCollection const& collection, bool doSync) override;
 
-  arangodb::Result renameCollection(
-    TRI_vocbase_t& vocbase,
-    LogicalCollection const& collection,
-    std::string const& oldName
-  ) override;
+  arangodb::Result renameCollection(TRI_vocbase_t& vocbase, LogicalCollection const& collection,
+                                    std::string const& oldName) override;
 
-  void unloadCollection(
-    TRI_vocbase_t& vocbase,
-    LogicalCollection& collection
-  ) override;
+  void unloadCollection(TRI_vocbase_t& vocbase, LogicalCollection& collection) override;
 
-  arangodb::Result changeView(
-    TRI_vocbase_t& vocbase,
-    arangodb::LogicalView const& view,
-    bool doSync
-  ) override;
+  arangodb::Result changeView(TRI_vocbase_t& vocbase,
+                              arangodb::LogicalView const& view, bool doSync) override;
 
-  arangodb::Result createView(
-    TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t id,
-    arangodb::LogicalView const& view
-  ) override;
+  arangodb::Result createView(TRI_vocbase_t& vocbase, TRI_voc_cid_t id,
+                              arangodb::LogicalView const& view) override;
 
-  virtual void getViewProperties(
-      TRI_vocbase_t& /*vocbase*/,
-      LogicalView const& /*view*/,
-      velocypack::Builder& /*builder*/
-  ) override {
+  virtual void getViewProperties(TRI_vocbase_t& /*vocbase*/,
+                                 LogicalView const& /*view*/, velocypack::Builder& /*builder*/
+                                 ) override {
     // does nothing
   }
 
-  arangodb::Result dropView(
-    TRI_vocbase_t& vocbase,
-    LogicalView& view
-  ) override;
+  arangodb::Result dropView(TRI_vocbase_t const& vocbase, LogicalView const& view) override;
 
-  void destroyView(
-    TRI_vocbase_t& vocbase,
-    LogicalView& view
-  ) noexcept override;
+  void destroyView(TRI_vocbase_t const& vocbase, LogicalView const& view) noexcept override;
 
   void signalCleanup(TRI_vocbase_t& vocbase) override;
 
@@ -327,13 +246,13 @@ class RocksDBEngine final : public StorageEngine {
                                   RocksDBLogValue&& logValue);
 
   void addCollectionMapping(uint64_t, TRI_voc_tick_t, TRI_voc_cid_t);
-  void addIndexMapping(uint64_t objectId, TRI_voc_tick_t,
-                       TRI_voc_cid_t, TRI_idx_iid_t);
+  std::vector<std::pair<TRI_voc_tick_t, TRI_voc_cid_t>> collectionMappings() const;
+  void addIndexMapping(uint64_t objectId, TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t);
   void removeIndexMapping(uint64_t);
 
   // Identifies a collection
   typedef std::pair<TRI_voc_tick_t, TRI_voc_cid_t> CollectionPair;
-  typedef  std::tuple<TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t> IndexTriple;
+  typedef std::tuple<TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t> IndexTriple;
   CollectionPair mapObjectToCollection(uint64_t) const;
   IndexTriple mapObjectToIndex(uint64_t) const;
 
@@ -351,17 +270,15 @@ class RocksDBEngine final : public StorageEngine {
   void shutdownRocksDBInstance() noexcept;
   velocypack::Builder getReplicationApplierConfiguration(RocksDBKey const& key, int& status);
   int removeReplicationApplierConfiguration(RocksDBKey const& key);
-  int saveReplicationApplierConfiguration(RocksDBKey const& key, arangodb::velocypack::Slice slice, bool doSync);
+  int saveReplicationApplierConfiguration(RocksDBKey const& key,
+                                          arangodb::velocypack::Slice slice, bool doSync);
   Result dropDatabase(TRI_voc_tick_t);
   bool systemDatabaseExists();
   void addSystemDatabase();
   /// @brief open an existing database. internal function
-  std::unique_ptr<TRI_vocbase_t> openExistingDatabase(
-    TRI_voc_tick_t id,
-    std::string const& name,
-    bool wasCleanShutdown,
-    bool isUpgrade
-  );
+  std::unique_ptr<TRI_vocbase_t> openExistingDatabase(TRI_voc_tick_t id,
+                                                      std::string const& name,
+                                                      bool wasCleanShutdown, bool isUpgrade);
 
   std::string getCompressionSupport() const;
 
@@ -381,9 +298,7 @@ class RocksDBEngine final : public StorageEngine {
 
   bool canUseRangeDeleteInWal() const;
 
-  rocksdb::Options const& rocksDBOptions() const {
-    return _options;
-  }
+  rocksdb::Options const& rocksDBOptions() const { return _options; }
 
   /// @brief recovery manager
   RocksDBSettingsManager* settingsManager() const {
@@ -399,14 +314,10 @@ class RocksDBEngine final : public StorageEngine {
 
   /// @brief returns a pointer to the sync thread
   /// note: returns a nullptr if automatic syncing is turned off!
-  RocksDBSyncThread* syncThread() const {
-    return _syncThread.get();
-  }
+  RocksDBSyncThread* syncThread() const { return _syncThread.get(); }
 
-  static arangodb::Result registerRecoveryHelper(
-      std::shared_ptr<RocksDBRecoveryHelper> helper);
-  static std::vector<std::shared_ptr<RocksDBRecoveryHelper>> const&
-      recoveryHelpers();
+  static arangodb::Result registerRecoveryHelper(std::shared_ptr<RocksDBRecoveryHelper> helper);
+  static std::vector<std::shared_ptr<RocksDBRecoveryHelper>> const& recoveryHelpers();
 
  private:
   /// single rocksdb database used in this storage engine
@@ -450,8 +361,8 @@ class RocksDBEngine final : public StorageEngine {
   // number of seconds to wait before an obsolete WAL file is actually pruned
   double _pruneWaitTime;
 
-  // number of seconds to wait initially after server start before WAL file deletion
-  // kicks in
+  // number of seconds to wait initially after server start before WAL file
+  // deletion kicks in
   double _pruneWaitTimeInitial;
 
   // do not release walfiles containing writes later than this
@@ -461,7 +372,8 @@ class RocksDBEngine final : public StorageEngine {
   /// note: this is a nullptr if automatic syncing is turned off!
   std::unique_ptr<RocksDBSyncThread> _syncThread;
 
-  // WAL sync interval, specified in milliseconds by end user, but uses microseconds internally
+  // WAL sync interval, specified in milliseconds by end user, but uses
+  // microseconds internally
   uint64_t _syncInterval;
 
   // use write-throttling

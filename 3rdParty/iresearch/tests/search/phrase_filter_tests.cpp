@@ -179,7 +179,7 @@ class phrase_filter_test_case : public filter_test_case_base {
       auto prepared = q.prepare(rdr);
 #ifndef IRESEARCH_DLL
       // check single word phrase optimization
-      ASSERT_NE(nullptr, dynamic_cast<irs::term_query*>(prepared.get()));
+      ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
 #endif
       irs::bytes_ref actual_value;
       auto sub = rdr.begin();
@@ -215,7 +215,7 @@ class phrase_filter_test_case : public filter_test_case_base {
       auto prepared = q.prepare(rdr);
 #ifndef IRESEARCH_DLL
       // check single word phrase optimization
-      ASSERT_NE(nullptr, dynamic_cast<irs::term_query*>(prepared.get()));
+      ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
 #endif
       auto sub = rdr.begin();
       auto column = sub->column_reader("name");
@@ -714,7 +714,7 @@ TEST(by_phrase_test, boost) {
       irs::by_phrase q;
       q.field("field");
 
-      auto prepared = q.prepare(tests::empty_index_reader::instance());
+      auto prepared = q.prepare(irs::sub_reader::empty());
       ASSERT_EQ(irs::boost::no_boost(), irs::boost::extract(prepared->attributes()));
     }
 
@@ -723,7 +723,7 @@ TEST(by_phrase_test, boost) {
       irs::by_phrase q;
       q.field("field").push_back("quick");
 
-      auto prepared = q.prepare(tests::empty_index_reader::instance());
+      auto prepared = q.prepare(irs::sub_reader::empty());
       ASSERT_EQ(irs::boost::no_boost(), irs::boost::extract(prepared->attributes()));
     }
 
@@ -732,7 +732,7 @@ TEST(by_phrase_test, boost) {
       irs::by_phrase q;
       q.field("field").push_back("quick").push_back("brown");
 
-      auto prepared = q.prepare(tests::empty_index_reader::instance());
+      auto prepared = q.prepare(irs::sub_reader::empty());
       ASSERT_EQ(irs::boost::no_boost(), irs::boost::extract(prepared->attributes()));
     }
   }
@@ -747,7 +747,7 @@ TEST(by_phrase_test, boost) {
       q.field("field");
       q.boost(boost);
 
-      auto prepared = q.prepare(tests::empty_index_reader::instance());
+      auto prepared = q.prepare(irs::sub_reader::empty());
       ASSERT_EQ(irs::boost::no_boost(), irs::boost::extract(prepared->attributes()));
     }
 
@@ -757,7 +757,7 @@ TEST(by_phrase_test, boost) {
       q.field("field").push_back("quick");
       q.boost(boost);
 
-      auto prepared = q.prepare(tests::empty_index_reader::instance());
+      auto prepared = q.prepare(irs::sub_reader::empty());
       ASSERT_EQ(boost, irs::boost::extract(prepared->attributes()));
     }
     
@@ -767,7 +767,7 @@ TEST(by_phrase_test, boost) {
       q.field("field").push_back("quick").push_back("brown");
       q.boost(boost);
 
-      auto prepared = q.prepare(tests::empty_index_reader::instance());
+      auto prepared = q.prepare(irs::sub_reader::empty());
       ASSERT_EQ(boost, irs::boost::extract(prepared->attributes()));
     }
   }

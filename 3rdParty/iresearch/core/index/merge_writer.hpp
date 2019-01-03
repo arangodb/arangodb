@@ -39,6 +39,7 @@ struct sub_reader;
 class IRESEARCH_API merge_writer: public util::noncopyable {
  public:
   typedef std::shared_ptr<const irs::sub_reader> sub_reader_ptr;
+  typedef std::function<bool()> flush_progress_t;
 
   struct reader_ctx {
     explicit reader_ctx(sub_reader_ptr reader) NOEXCEPT;
@@ -50,13 +51,12 @@ class IRESEARCH_API merge_writer: public util::noncopyable {
 
   merge_writer() NOEXCEPT;
 
-  merge_writer(directory& dir, const string_ref& seg_name) NOEXCEPT
-    : dir_(dir), name_(seg_name) {
+  explicit merge_writer(directory& dir) NOEXCEPT
+    : dir_(dir) {
   }
 
   merge_writer(merge_writer&& rhs) NOEXCEPT
     : dir_(rhs.dir_),
-      name_(rhs.name_),
       readers_(std::move(rhs.readers_)) {
   }
 
@@ -76,10 +76,15 @@ class IRESEARCH_API merge_writer: public util::noncopyable {
     readers_.emplace_back(reader);
   }
 
-  // return merge successful
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief flush all of the added readers into a single segment
+  /// @param segment the segment that was flushed
+  /// @param progress report flush progress (abort if 'progress' returns false)
+  /// @return merge successful
+  //////////////////////////////////////////////////////////////////////////////
   bool flush(
     index_meta::index_segment_t& segment,
-    bool persist_segment_meta = true
+    const flush_progress_t& progress = {}
   );
 
   const reader_ctx& operator[](size_t i) const NOEXCEPT {
@@ -95,7 +100,6 @@ class IRESEARCH_API merge_writer: public util::noncopyable {
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   directory& dir_;
-  string_ref name_;
   std::vector<reader_ctx> readers_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // merge_writer

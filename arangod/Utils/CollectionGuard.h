@@ -47,31 +47,27 @@ class CollectionGuard {
   }
 
   /// @brief create the guard, using a collection id
-  CollectionGuard(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                  bool restoreOriginalStatus = false)
+  CollectionGuard(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid, bool restoreOriginalStatus = false)
       : _vocbase(vocbase),
         _collection(nullptr),
         _originalStatus(TRI_VOC_COL_STATUS_CORRUPTED),
         _restoreOriginalStatus(restoreOriginalStatus) {
-    _collection = _vocbase->useCollection(id, _originalStatus);
+    _collection = _vocbase->useCollection(cid, _originalStatus);
 
     if (_collection == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
   }
 
-  CollectionGuard(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                  std::string const& name)
+  CollectionGuard(TRI_vocbase_t* vocbase, TRI_voc_cid_t id, std::string const& name)
       : _vocbase(vocbase),
         _collection(nullptr),
         _originalStatus(TRI_VOC_COL_STATUS_CORRUPTED),
         _restoreOriginalStatus(false) {
     _collection = _vocbase->useCollection(id, _originalStatus);
-
-    if (_collection == nullptr && !name.empty()) {
+    if (!_collection && !name.empty()) {
       _collection = _vocbase->useCollection(name, _originalStatus);
     }
-
     if (_collection == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
@@ -85,7 +81,8 @@ class CollectionGuard {
         _originalStatus(TRI_VOC_COL_STATUS_CORRUPTED),
         _restoreOriginalStatus(restoreOriginalStatus) {
     if (!name.empty() && name[0] >= '0' && name[0] <= '9') {
-      TRI_voc_cid_t id = NumberUtils::atoi_zero<TRI_voc_cid_t>(name.data(), name.data() + name.size());
+      TRI_voc_cid_t id =
+          NumberUtils::atoi_zero<TRI_voc_cid_t>(name.data(), name.data() + name.size());
       _collection = _vocbase->useCollection(id, _originalStatus);
     } else {
       _collection = _vocbase->useCollection(name, _originalStatus);
@@ -96,12 +93,12 @@ class CollectionGuard {
     }
   }
 
-  CollectionGuard(TRI_vocbase_t* vocbase, LogicalCollection* collection)
+  CollectionGuard(TRI_vocbase_t* vocbase, std::shared_ptr<LogicalCollection> const& collection)
       : _vocbase(vocbase),
         _collection(collection),
         _originalStatus(TRI_VOC_COL_STATUS_CORRUPTED),
         _restoreOriginalStatus(false) {
-    int res = _vocbase->useCollection(collection, _originalStatus);
+    int res = _vocbase->useCollection(collection.get(), _originalStatus);
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
@@ -110,13 +107,12 @@ class CollectionGuard {
   /// @brief destroy the guard
   ~CollectionGuard() {
     if (_collection != nullptr) {
-      _vocbase->releaseCollection(_collection);
+      _vocbase->releaseCollection(_collection.get());
 
-      if (_restoreOriginalStatus &&
-          (_originalStatus == TRI_VOC_COL_STATUS_UNLOADING ||
-           _originalStatus == TRI_VOC_COL_STATUS_UNLOADED)) {
+      if (_restoreOriginalStatus && (_originalStatus == TRI_VOC_COL_STATUS_UNLOADING ||
+                                     _originalStatus == TRI_VOC_COL_STATUS_UNLOADED)) {
         // re-unload the collection
-        _vocbase->unloadCollection(_collection, false);
+        _vocbase->unloadCollection(_collection.get(), false);
       }
     }
   }
@@ -125,13 +121,15 @@ class CollectionGuard {
   /// @brief prematurely release the usage lock
   void release() {
     if (_collection != nullptr) {
-      _vocbase->releaseCollection(_collection);
+      _vocbase->releaseCollection(_collection.get());
       _collection = nullptr;
     }
   }
 
   /// @brief return the collection pointer
-  inline arangodb::LogicalCollection* collection() const { return _collection; }
+  inline arangodb::LogicalCollection* collection() const {
+    return _collection.get();
+  }
 
   /// @brief return the status of the collection at the time of using the guard
   inline TRI_vocbase_col_status_e originalStatus() const {
@@ -143,7 +141,7 @@ class CollectionGuard {
   TRI_vocbase_t* _vocbase;
 
   /// @brief pointer to collection
-  arangodb::LogicalCollection* _collection;
+  std::shared_ptr<arangodb::LogicalCollection> _collection;
 
   /// @brief status of collection when invoking the guard
   TRI_vocbase_col_status_e _originalStatus;
@@ -151,6 +149,6 @@ class CollectionGuard {
   /// @brief whether or not to restore the original collection status
   bool _restoreOriginalStatus;
 };
-}
+}  // namespace arangodb
 
 #endif

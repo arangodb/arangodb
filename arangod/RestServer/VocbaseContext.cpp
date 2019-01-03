@@ -31,14 +31,11 @@ using namespace arangodb::rest;
 
 namespace arangodb {
 
-VocbaseContext::VocbaseContext(
-    GeneralRequest& req,
-    TRI_vocbase_t& vocbase,
-    ExecContext::Type type,
-    auth::Level systemLevel,
-    auth::Level dbLevel
-): ExecContext(type, req.user(), req.databaseName(), systemLevel, dbLevel),
-   _vocbase(vocbase) {
+VocbaseContext::VocbaseContext(GeneralRequest& req, TRI_vocbase_t& vocbase,
+                               ExecContext::Type type, auth::Level systemLevel,
+                               auth::Level dbLevel)
+    : ExecContext(type, req.user(), req.databaseName(), systemLevel, dbLevel),
+      _vocbase(vocbase) {
   // _vocbase has already been refcounted for us
   TRI_ASSERT(!_vocbase.isDangling());
 }
@@ -51,7 +48,7 @@ VocbaseContext::~VocbaseContext() {
 VocbaseContext* VocbaseContext::create(GeneralRequest& req, TRI_vocbase_t& vocbase) {
   // _vocbase has already been refcounted for us
   TRI_ASSERT(!vocbase.isDangling());
-  
+
   // superusers will have an empty username. This MUST be invalid
   // for users authenticating with name / password
   const bool isSuperUser = req.authenticated() && req.user().empty() &&
@@ -61,7 +58,7 @@ VocbaseContext* VocbaseContext::create(GeneralRequest& req, TRI_vocbase_t& vocba
                               /*sysLevel*/ auth::Level::RW,
                               /*dbLevel*/ auth::Level::RW);
   }
-  
+
   AuthenticationFeature* auth = AuthenticationFeature::instance();
   TRI_ASSERT(auth != nullptr);
   if (!auth->isActive()) {
@@ -85,19 +82,20 @@ VocbaseContext* VocbaseContext::create(GeneralRequest& req, TRI_vocbase_t& vocba
     LOG_TOPIC(WARN, Logger::AUTHENTICATION) << msg;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
   }
-  
+
   auth::UserManager* um = auth->userManager();
   if (um == nullptr) {
-    LOG_TOPIC(WARN, Logger::AUTHENTICATION) << "users are not supported on this server";
+    LOG_TOPIC(WARN, Logger::AUTHENTICATION)
+        << "users are not supported on this server";
     return nullptr;
   }
-  
+
   auth::Level dbLvl = um->databaseAuthLevel(req.user(), req.databaseName());
   auth::Level sysLvl = dbLvl;
   if (req.databaseName() != TRI_VOC_SYSTEM_DATABASE) {
     sysLvl = um->databaseAuthLevel(req.user(), TRI_VOC_SYSTEM_DATABASE);
   }
-  
+
   return new VocbaseContext(req, vocbase, ExecContext::Type::Default,
                             /*sysLevel*/ sysLvl,
                             /*dbLevel*/ dbLvl);
@@ -122,4 +120,4 @@ void VocbaseContext::forceReadOnly() {
   _databaseAuthLevel = auth::Level::RO;
 }
 
-} // arangodb
+}  // namespace arangodb

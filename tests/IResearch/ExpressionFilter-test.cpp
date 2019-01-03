@@ -67,6 +67,7 @@
 #include "ExpressionContextMock.h"
 
 #include "IResearch/ExpressionFilter.h"
+#include "index/directory_reader.hpp"
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
 #include "search/all_filter.hpp"
@@ -371,7 +372,8 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     for (auto data : arangodb::velocypack::ArrayIterator(testDataRoot)) {
       storedField.str = arangodb::iresearch::getStringRef(data.get("name"));
 
-      auto doc = writer->documents().insert();
+      auto ctx = writer->documents();
+      auto doc = ctx.insert();
       CHECK(doc.insert(irs::action::store, storedField));
       CHECK(doc);
     }
@@ -1239,7 +1241,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     auto prepared = filter.prepare(*reader, preparedOrder, queryCtx);
     auto const& boost = prepared->attributes().get<irs::boost>();
     CHECK(boost);
-    CHECK(1.5f == boost->get()->value);
+    CHECK(1.5f == boost->value);
 
     auto column = segment.column_reader("name");
     REQUIRE(column);

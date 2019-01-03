@@ -58,8 +58,7 @@ void ArrayOutCache<M>::_removeContainedMessages() {
 }
 
 template <typename M>
-void ArrayOutCache<M>::appendMessage(PregelShard shard, PregelKey const& key,
-                                     M const& data) {
+void ArrayOutCache<M>::appendMessage(PregelShard shard, PregelKey const& key, M const& data) {
   if (this->_config->isLocalVertexShard(shard)) {
     if (this->_sendToNextGSS) {  // I use the global cache, we need locking
       this->_localCacheNextGSS->storeMessage(shard, key, data);
@@ -95,8 +94,7 @@ void ArrayOutCache<M>::flushMessages() {
   std::vector<ClusterCommRequest> requests;
   for (auto const& it : _shardMap) {
     PregelShard shard = it.first;
-    std::unordered_map<PregelKey, std::vector<M>> const& vertexMessageMap =
-        it.second;
+    std::unordered_map<PregelKey, std::vector<M>> const& vertexMessageMap = it.second;
     if (vertexMessageMap.size() == 0) {
       continue;
     }
@@ -104,8 +102,7 @@ void ArrayOutCache<M>::flushMessages() {
     VPackBuilder data(&options);
     data.openObject();
     data.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-    data.add(Utils::executionNumberKey,
-             VPackValue(this->_config->executionNumber()));
+    data.add(Utils::executionNumberKey, VPackValue(this->_config->executionNumber()));
     data.add(Utils::globalSuperstepKey, VPackValue(gss));
     data.add(Utils::shardIdKey, VPackValue(shard));
     data.add(Utils::messagesKey, VPackValue(VPackValueType::Array, true));
@@ -132,8 +129,7 @@ void ArrayOutCache<M>::flushMessages() {
   }
   size_t nrDone = 0;
   ClusterComm::instance()->performRequests(requests, 120, nrDone,
-                                           LogTopic("Pregel message transfer"),
-                                           false);
+                                           LogTopic("Pregel message transfer"), false);
   Utils::printResponses(requests);
   this->_removeContainedMessages();
 }
@@ -141,8 +137,7 @@ void ArrayOutCache<M>::flushMessages() {
 // ================= CombiningOutCache ==================
 
 template <typename M>
-CombiningOutCache<M>::CombiningOutCache(WorkerConfig* state,
-                                        MessageFormat<M> const* format,
+CombiningOutCache<M>::CombiningOutCache(WorkerConfig* state, MessageFormat<M> const* format,
                                         MessageCombiner<M> const* combiner)
     : OutCache<M>(state, format), _combiner(combiner) {}
 
@@ -209,8 +204,7 @@ void CombiningOutCache<M>::flushMessages() {
     VPackBuilder data(&options);
     data.openObject();
     data.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-    data.add(Utils::executionNumberKey,
-             VPackValue(this->_config->executionNumber()));
+    data.add(Utils::executionNumberKey, VPackValue(this->_config->executionNumber()));
     data.add(Utils::globalSuperstepKey, VPackValue(gss));
     data.add(Utils::shardIdKey, VPackValue(shard));
     data.add(Utils::messagesKey, VPackValue(VPackValueType::Array, true));
@@ -233,8 +227,7 @@ void CombiningOutCache<M>::flushMessages() {
                           this->_baseUrl + Utils::messagesPath, body);
   }
   size_t nrDone = 0;
-  ClusterComm::instance()->performRequests(requests, 180, nrDone,
-                                           LogTopic("Pregel"), false);
+  ClusterComm::instance()->performRequests(requests, 180, nrDone, LogTopic("Pregel"), false);
   Utils::printResponses(requests);
   _removeContainedMessages();
 }

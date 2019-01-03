@@ -97,7 +97,7 @@ filter::prepared::ptr by_prefix::prepare(
   // apply boost
   irs::boost::apply(q->attributes(), this->boost() * boost);
 
-  return IMPLICIT_MOVE_WORKAROUND(q);
+  return q;
 }
 
 DEFINE_FILTER_TYPE(by_prefix)

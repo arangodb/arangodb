@@ -367,7 +367,7 @@ describe ArangoDB do
             doc = drop_graph(sync, graph_name)
             doc.code.should eq(404)
             doc.parsed_response['error'].should eq(true)
-            doc.parsed_response['errorMessage'].should eq("graph not found")
+            doc.parsed_response['errorMessage'].should eq("graph 'UnitTestGraph' not found")
             doc.parsed_response['code'].should eq(404)
           end
 
@@ -1081,7 +1081,7 @@ describe ArangoDB do
               doc.parsed_response['error'].should eq(true)
               doc.parsed_response['code'].should eq(404)
               doc.parsed_response['errorNum'].should eq(1924)
-              doc.parsed_response['errorMessage'].should eq("graph not found")
+              doc.parsed_response['errorMessage'].should eq("graph 'UnitTestUnknown' not found")
             end
 
             it "get graph" do

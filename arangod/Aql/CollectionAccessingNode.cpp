@@ -29,8 +29,8 @@
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
-#include "VocBase/vocbase.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/velocypack-aliases.h>
 
@@ -42,27 +42,29 @@ CollectionAccessingNode::CollectionAccessingNode(aql::Collection const* collecti
   TRI_ASSERT(_collection != nullptr);
 }
 
-CollectionAccessingNode::CollectionAccessingNode(ExecutionPlan* plan, 
+CollectionAccessingNode::CollectionAccessingNode(ExecutionPlan* plan,
                                                  arangodb::velocypack::Slice slice)
     : _collection(plan->getAst()->query()->collections()->get(
           slice.get("collection").copyString())) {
   TRI_ASSERT(_collection != nullptr);
-  
+
   if (_collection == nullptr) {
     std::string msg("collection '");
     msg.append(slice.get("collection").copyString());
     msg.append("' not found");
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
   }
-  
+
   VPackSlice restrictedTo = slice.get("restrictedTo");
 
   if (restrictedTo.isString()) {
     _restrictedTo = restrictedTo.copyString();
   }
 }
-   
-TRI_vocbase_t* CollectionAccessingNode::vocbase() const { return _collection->vocbase(); }
+
+TRI_vocbase_t* CollectionAccessingNode::vocbase() const {
+  return _collection->vocbase();
+}
 
 /// @brief modify collection after cloning
 /// should be used only in smart-graph context!
@@ -70,16 +72,16 @@ void CollectionAccessingNode::collection(aql::Collection const* collection) {
   TRI_ASSERT(collection != nullptr);
   _collection = collection;
 }
-  
+
 void CollectionAccessingNode::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   builder.add("database", VPackValue(_collection->vocbase()->name()));
   builder.add("collection", VPackValue(_collection->name()));
   builder.add("satellite", VPackValue(_collection->isSatellite()));
-  
+
   if (ServerState::instance()->isCoordinator()) {
-    builder.add("numberOfShards", VPackValue(_collection->numberOfShards()));
+    builder.add(StaticStrings::NumberOfShards, VPackValue(_collection->numberOfShards()));
   }
-  
+
   if (!_restrictedTo.empty()) {
     builder.add("restrictedTo", VPackValue(_restrictedTo));
   }
@@ -88,7 +90,8 @@ void CollectionAccessingNode::toVelocyPack(arangodb::velocypack::Builder& builde
 void CollectionAccessingNode::toVelocyPackHelperPrimaryIndex(arangodb::velocypack::Builder& builder) const {
   auto col = _collection->getCollection();
   builder.add(VPackValue("indexes"));
-  col->getIndexesVPack(builder, Index::makeFlags(Index::Serialize::Basics), [](arangodb::Index const* idx) {
-      return (idx->type() == arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX);
-    });
+  col->getIndexesVPack(builder, Index::makeFlags(Index::Serialize::Basics),
+                       [](arangodb::Index const* idx) {
+                         return (idx->type() == arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX);
+                       });
 }

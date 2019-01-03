@@ -24,22 +24,21 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "velocypack/velocypack-common.h"
 #include "velocypack/AttributeTranslator.h"
 #include "velocypack/Builder.h"
-#include "velocypack/Exception.h"
 #include "velocypack/Iterator.h"
 #include "velocypack/Value.h"
 
 using namespace arangodb::velocypack;
 
-AttributeTranslator::~AttributeTranslator() {
-  delete _builder;
-}
+AttributeTranslator::AttributeTranslator()
+    : _count(0) {}
+
+AttributeTranslator::~AttributeTranslator() {}
 
 void AttributeTranslator::add(std::string const& key, uint64_t id) {
   if (_builder == nullptr) {
-    _builder = new Builder;
+    _builder.reset(new Builder());
     _builder->add(Value(ValueType::Object));
   }
 
@@ -62,48 +61,10 @@ void AttributeTranslator::seal() {
     Slice const key(it.key(false));
     VELOCYPACK_ASSERT(key.isString());
 
-    // extract key value
-    ValueLength len;
-    char const* p = key.getString(len);
     // insert into string and char lookup maps
-    _keyToIdString.emplace(key.copyString(), it.value().begin());
-    _keyToIdStringRef.emplace(StringRef(p, len), it.value().begin());
+    _keyToId.emplace(key.stringRef(), it.value().begin());
     // insert into id to slice lookup map
     _idToKey.emplace(it.value().getUInt(), key.begin());
     it.next();
   }
-}
-
-// translate from string to id
-uint8_t const* AttributeTranslator::translate(std::string const& key) const noexcept {
-  auto it = _keyToIdString.find(key);
-
-  if (it == _keyToIdString.end()) {
-    return nullptr;
-  }
-
-  return (*it).second;
-}
-
-// translate from string to id
-uint8_t const* AttributeTranslator::translate(char const* key,
-                                              ValueLength length) const noexcept {
-  auto it = _keyToIdStringRef.find(StringRef(key, length));
-
-  if (it == _keyToIdStringRef.end()) {
-    return nullptr;
-  }
-
-  return (*it).second;
-}
-
-// translate from id to string
-uint8_t const* AttributeTranslator::translate(uint64_t id) const noexcept {
-  auto it = _idToKey.find(id);
-
-  if (it == _idToKey.end()) {
-    return nullptr;
-  }
-
-  return (*it).second;
 }

@@ -41,9 +41,6 @@ if (NOT CMAKE_OSX_DEPLOYMENT_TARGET)
   set(CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE STRING "deployment target for MacOSX; adjust to your sysem")
 endif ()
 
-# required for clang completion in editors
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
 # where to find CMAKE modules
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
@@ -119,15 +116,13 @@ set(ARANGODB_PLAIN_VERSION "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.
 if (DEFINED ARANGODB_VERSION_RELEASE_TYPE)
   if (DEFINED ARANGODB_VERSION_RELEASE_NUMBER)
     set(ARANGODB_VERSION "${ARANGODB_PLAIN_VERSION}-${ARANGODB_VERSION_RELEASE_TYPE}.${ARANGODB_VERSION_RELEASE_NUMBER}")
-    set(ARANGODB_JS_VERSION "js/${ARANGODB_PLAIN_VERSION}")
   else()
     set(ARANGODB_VERSION "${ARANGODB_PLAIN_VERSION}-${ARANGODB_VERSION_RELEASE_TYPE}")
-    set(ARANGODB_JS_VERSION "js/${ARANGODB_PLAIN_VERSION}")
   endif()
 else()
   set(ARANGODB_VERSION "${ARANGODB_PLAIN_VERSION}")
-  set(ARANGODB_JS_VERSION "js/${ARANGODB_PLAIN_VERSION}")
 endif()
+set(ARANGODB_JS_VERSION "js")
 
 message(STATUS "ARANGODB PLAIN VERSION: ${ARANGODB_PLAIN_VERSION}")
 message(STATUS "ARANGODB VERSION: ${ARANGODB_VERSION}")
@@ -264,6 +259,9 @@ if (WIN32)
 else ()
   project(arangodb3 LANGUAGES CXX C ASM VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
 endif ()
+
+# required for clang completion in editors - must be set after creating project
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Static executables:
 option(STATIC_EXECUTABLES "produce static executables" OFF)
@@ -556,7 +554,11 @@ if (CMAKE_COMPILER_IS_GNUCC)
 endif ()
 
 if (CMAKE_COMPILER_IS_GNUCC OR APPLE)
-  set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std=c++14")
+  if (CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 6)
+    set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std=c++11")
+  else()
+    set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std=c++14")
+  endif()
 endif ()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
@@ -1116,6 +1118,7 @@ if (MSVC)
   include(generate_product_version)
 endif()
 
+add_subdirectory(Documentation)
 include(ArangoDBInstall)
 include(frontend/aardvark)
 if (NOT(SKIP_PACKAGING))
@@ -1232,7 +1235,6 @@ add_subdirectory(lib)
 add_subdirectory(arangosh)
 add_subdirectory(arangod)
 
-add_subdirectory(Documentation)
 
 if (USE_CATCH_TESTS)
   add_subdirectory(tests)
@@ -1245,6 +1247,16 @@ add_dependencies(arangoexport  zlibstatic)
 add_dependencies(arangoimport  zlibstatic)
 add_dependencies(arangorestore zlibstatic)
 add_dependencies(arangosh      zlibstatic)
+
+if(UNIX)
+  add_dependencies(arangobench   man)
+  add_dependencies(arangod       man)
+  add_dependencies(arangodump    man)
+  add_dependencies(arangoexport  man)
+  add_dependencies(arangoimport  man)
+  add_dependencies(arangorestore man)
+  add_dependencies(arangosh      man)
+endif()
 
 if (NOT USE_PRECOMPILED_V8)
   # all binaries depend on v8_build because it contains ICU as well
@@ -1259,21 +1271,6 @@ if (NOT USE_PRECOMPILED_V8)
     add_dependencies(arangodbtests v8_build)
   endif()
 endif ()
-
-# This copies the compile commands to the source dir.
-# There they can be used to repeat parts of compile
-# steps generating an AST. This AST can in turn be used
-# for meaningful auto-completion in editors without
-# heuristics, dice rolling and other guessing.
-
-if( EXISTS "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" )
-  message(STATUS "copy compile_commands.json")
-
-  execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
-      ${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json
-      ${CMAKE_CURRENT_SOURCE_DIR}/compile_commands.json
-  )
-endif()
 
 add_custom_target(packages
   DEPENDS ${PACKAGES_LIST}

@@ -56,6 +56,6 @@ struct MMFilesWalSyncRegion {
   bool canSeal;
 };
 
-}
+}  // namespace arangodb
 
 #endif

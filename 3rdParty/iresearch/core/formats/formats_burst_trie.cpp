@@ -121,7 +121,7 @@ struct block_meta {
 // --SECTION--                                                           Helpers
 // -----------------------------------------------------------------------------
 
-bool read_segment_features(
+void read_segment_features(
     data_input& in, 
     detail::feature_map_t& feature_map, 
     flags& features) {
@@ -134,19 +134,19 @@ bool read_segment_features(
     const auto name = read_string<std::string>(in); // read feature name
     const attribute::type_id* feature = attribute::type_id::get(name);
 
-    if (feature) {
-      feature_map.emplace_back(feature);
-      features.add(*feature);
-    } else {
-      IR_FRMT_ERROR("unknown feature name '%s'", name.c_str());
-      return false;
+    if (!feature) {
+      throw irs::index_error(irs::string_utils::to_string(
+        "unknown feature name '%s'",
+        name.c_str()
+      ));
     }
-  }
 
-  return true;
+    feature_map.emplace_back(feature);
+    features.add(*feature);
+  }
 }
 
-bool read_field_features(
+void read_field_features(
     data_input& in, 
     const detail::feature_map_t& feature_map, 
     flags& features) {
@@ -156,12 +156,11 @@ bool read_field_features(
     if (id < feature_map.size()) {
       features.add(*feature_map[id]);
     } else {
-      IR_FRMT_ERROR("unknown feature id '" IR_SIZE_T_SPECIFIER "'", id);
-      return false;
+      throw irs::index_error(irs::string_utils::to_string(
+        "unknown feature id '" IR_SIZE_T_SPECIFIER "'", id
+      ));
     }
   }
-
-  return true;
 }
 
 inline void prepare_output(
@@ -171,17 +170,16 @@ inline void prepare_output(
     const string_ref& ext,
     const string_ref& format,
     const int32_t version ) {
-  assert( !out );
+  assert(!out);
 
   file_name(str, state.name, ext);
   out = state.dir->create(str);
 
   if (!out) {
-    std::stringstream ss;
-
-    ss << "Failed to create file, path: " << str;
-
-    throw detailed_io_error(ss.str());
+    throw io_error(string_utils::to_string(
+      "failed to create file, path: %s",
+      str.c_str()
+    ));
   }
 
   format_utils::write_header(*out, format, version);
@@ -203,11 +201,10 @@ inline void prepare_input(
   in = state.dir->open(str, advice);
 
   if (!in) {
-    std::stringstream ss;
-
-    ss << "Failed to open file, path: " << str;
-
-    throw detailed_io_error(ss.str());
+    throw io_error(string_utils::to_string(
+      "failed to open file, path: %s",
+      str.c_str()
+    ));
   }
 
   if (checksum) {
@@ -362,7 +359,7 @@ class block_iterator : util::noncopyable {
   void scan_to_block(uint64_t ptr);
 
   /* read attributes */
-  void load_data(const field_meta& meta, iresearch::postings_reader& pr);
+  void load_data(const field_meta& meta, irs::postings_reader& pr);
 
  private:
   inline void refresh_term(uint64_t suffix);
@@ -419,7 +416,7 @@ struct cookie : irs::seek_term_iterator::seek_cookie {
 ///////////////////////////////////////////////////////////////////////////////
 /// @class term_iterator
 ///////////////////////////////////////////////////////////////////////////////
-class term_iterator : public iresearch::seek_term_iterator {
+class term_iterator : public irs::seek_term_iterator {
  public:
   explicit term_iterator(const term_reader* owner);
 
@@ -827,7 +824,7 @@ void block_iterator::scan_to_block(uint64_t start) {
   assert(false);
 }
 
-void block_iterator::load_data(const field_meta& meta, iresearch::postings_reader& pr) {
+void block_iterator::load_data(const field_meta& meta, irs::postings_reader& pr) {
   assert(ET_TERM == cur_type_);
 
   if (cur_stats_ent_ >= term_count_) {
@@ -1127,14 +1124,16 @@ doc_iterator::ptr term_iterator::postings(const flags& features) const {
 
 index_input& term_iterator::terms_input() const {
   if (!terms_in_) {
-    terms_in_ = owner_->owner_->terms_in_->reopen();
+    terms_in_ = owner_->owner_->terms_in_->reopen(); // reopen thread-safe stream
 
     if (!terms_in_) {
-      IR_FRMT_FATAL("Failed to reopen terms input in: %s", __FUNCTION__);
+      // implementation returned wrong pointer
+      IR_FRMT_ERROR("Failed to reopen terms input in: %s", __FUNCTION__);
 
-      throw detailed_io_error("Failed to reopen terms input");
+      throw io_error("failed to reopen terms input");
     }
   }
+
   return *terms_in_;
 }
 
@@ -1172,17 +1171,16 @@ seek_term_iterator::ptr term_reader::iterator() const {
   return seek_term_iterator::make<detail::term_iterator>( this );
 }
   
-bool term_reader::prepare(
+void term_reader::prepare(
     std::istream& in, 
     const feature_map_t& feature_map,
-    field_reader& owner) {
+    field_reader& owner
+) {
   // read field metadata
   index_input& meta_in = *static_cast<input_buf*>(in.rdbuf());
   field_.name = read_string<std::string>(meta_in);
 
-  if (!read_field_features(meta_in, feature_map, field_.features)) {
-    return false;
-  }
+  read_field_features(meta_in, feature_map, field_.features);
 
   field_.norm = static_cast<field_id>(read_zvlong(meta_in));
   terms_count_ = meta_in.read_vlong();
@@ -1203,7 +1201,6 @@ bool term_reader::prepare(
   assert(fst_);
 
   owner_ = &owner;
-  return true;
 }
 
 NS_END // detail
@@ -1447,7 +1444,7 @@ void field_writer::push( const bytes_ref& term ) {
 }
 
 field_writer::field_writer(
-    iresearch::postings_writer::ptr&& pw,
+    irs::postings_writer::ptr&& pw,
     bool volatile_state,
     uint32_t min_block_size,
     uint32_t max_block_size)
@@ -1467,7 +1464,7 @@ field_writer::field_writer(
   min_term.first = false;
 }
 
-void field_writer::prepare(const iresearch::flush_state& state) {
+void field_writer::prepare(const irs::flush_state& state) {
   assert(state.dir);
 
   // reset writer state
@@ -1499,9 +1496,9 @@ void field_writer::prepare(const iresearch::flush_state& state) {
 
 void field_writer::write(
     const std::string& name,
-    iresearch::field_id norm,
-    const iresearch::flags& features,
-    iresearch::term_iterator& terms) {
+    irs::field_id norm,
+    const irs::flags& features,
+    irs::term_iterator& terms) {
   REGISTER_TIMER_DETAILED();
   begin_field(features);
 
@@ -1552,7 +1549,7 @@ void field_writer::write(
   end_field(name, norm, features, sum_dfreq, sum_tfreq, docs->value.count());
 }
 
-void field_writer::begin_field(const iresearch::flags& field) {
+void field_writer::begin_field(const irs::flags& field) {
   assert(terms_out);
   assert(index_out);
 
@@ -1592,7 +1589,7 @@ void field_writer::write_field_features(data_output& out, const flags& features)
 void field_writer::end_field(
     const std::string& name,
     field_id norm,
-    const iresearch::flags& features,
+    const irs::flags& features,
     uint64_t total_doc_freq,
     uint64_t total_term_freq,
     size_t doc_count) {
@@ -1658,12 +1655,12 @@ void field_writer::end() {
 // --SECTION--                                       field_reader implementation
 // -----------------------------------------------------------------------------
 
-field_reader::field_reader(iresearch::postings_reader::ptr&& pr)
+field_reader::field_reader(irs::postings_reader::ptr&& pr)
   : pr_(std::move(pr)) {
   assert(pr_);
 }
 
-bool field_reader::prepare(
+void field_reader::prepare(
     const directory& dir,
     const segment_meta& meta,
     const document_mask& /*mask*/
@@ -1696,9 +1693,7 @@ bool field_reader::prepare(
     &checksum
   );
 
-  if (!detail::read_segment_features(*index_in, feature_map, features)) {
-    return false;
-  }
+  detail::read_segment_features(*index_in, feature_map, features);
 
   // read total number of indexed fields
   size_t fields_count{ 0 };
@@ -1727,10 +1722,7 @@ bool field_reader::prepare(
     fields_.emplace_back();
     auto& field = fields_.back();
 
-    if (!field.prepare(input, feature_map, *this)) {
-      fields_.pop_back(); // remove inconsistent field
-      return false;
-    }
+    field.prepare(input, feature_map, *this);
 
     const auto& name = field.meta().name;
     const auto res = name_to_field_.emplace(
@@ -1739,19 +1731,27 @@ bool field_reader::prepare(
     );
 
     if (!res.second) {
-      IR_FRMT_ERROR("duplicated field: '%s' found in segment: %s", name.c_str(), state.meta->name.c_str());
-      return false;
+      throw irs::index_error(string_utils::to_string(
+        "duplicated field: '%s' found in segment: %s",
+        name.c_str(),
+        meta.name.c_str()
+      ));
     }
 
     --fields_count;
   }
 
   // ensure that fields are sorted properly
-  assert(std::is_sorted(
-    fields_.begin(), fields_.end(),
-    [] (const term_reader& lhs, const term_reader& rhs) {
+  auto less = [] (const term_reader& lhs, const term_reader& rhs) NOEXCEPT {
       return lhs.meta().name < rhs.meta().name;
-  }));
+  };
+
+  if (!std::is_sorted(fields_.begin(), fields_.end(), less)) {
+    throw index_error(string_utils::to_string(
+      "invalid field order in segment '%s'",
+      meta.name.c_str()
+    ));
+  }
 
   //-----------------------------------------------------------------
   // prepare terms input
@@ -1767,9 +1767,7 @@ bool field_reader::prepare(
   );
 
   // prepare postings reader
-  if (!pr_->prepare(*terms_in_, state, features)) {
-    return false;
-  }
+  pr_->prepare(*terms_in_, state, features);
 
   // Since terms dictionary are too large
   // it is too expensive to verify checksum of
@@ -1777,8 +1775,6 @@ bool field_reader::prepare(
   // error detection which could recognize
   // some forms of corruption.
   format_utils::read_checksum(*terms_in_);
-
-  return true;
 }
 
 const irs::term_reader* field_reader::field(const string_ref& field) const {

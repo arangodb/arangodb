@@ -34,8 +34,8 @@
 #ifdef _WIN32
 #include <DbgHelp.h>
 #else
-#include <execinfo.h>
 #include <cxxabi.h>
+#include <execinfo.h>
 #endif
 #endif
 #endif
@@ -45,12 +45,12 @@ using namespace arangodb;
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 
 namespace {
-/// @brief a global set containing the currently registered failure points
-std::unordered_set<std::string> failurePoints;
-
 /// @brief a read-write lock for thread-safe access to the failure points set
 arangodb::basics::ReadWriteLock failurePointsLock;
-}
+
+/// @brief a global set containing the currently registered failure points
+std::set<std::string> failurePoints;
+}  // namespace
 
 /// @brief cause a segmentation violation
 /// this is used for crash and recovery tests
@@ -81,7 +81,9 @@ void TRI_AddFailurePointDebugging(char const* value) {
   WRITE_LOCKER(writeLocker, ::failurePointsLock);
 
   if (::failurePoints.emplace(value).second) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "activating intentional failure point '" << value << "'. the server will misbehave!";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "activating intentional failure point '" << value
+        << "'. the server will misbehave!";
   }
 }
 
@@ -112,7 +114,8 @@ void TRI_GetBacktrace(std::string& btstr) {
   SymInitialize(process, nullptr, true);
 
   unsigned short frames = CaptureStackBackTrace(0, 100, stack, nullptr);
-  SYMBOL_INFO* symbol = (SYMBOL_INFO*)calloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char), 1);
+  SYMBOL_INFO* symbol =
+      (SYMBOL_INFO*)calloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char), 1);
 
   if (symbol == nullptr) {
     // cannot allocate memory
@@ -121,14 +124,33 @@ void TRI_GetBacktrace(std::string& btstr) {
 
   symbol->MaxNameLen = 255;
   symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
-
+  IMAGEHLP_LINE64 line;
+  line.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
+  char address[64];
+  std::string fn;
+  std::string err;
+  DWORD dwDisplacement;
   for (unsigned int i = 0; i < frames; i++) {
-    char address[64];
-    SymFromAddr(process, (DWORD64)stack[i], 0, symbol);
-
+    DWORD lineNumber;
+    fn.clear();
+    SymFromAddr(process, (DWORD64)stack[i], nullptr, symbol);
+    if (SymGetLineFromAddr64(process, (DWORD64)stack[i], &dwDisplacement, &line)) {
+      // SymGetLineFromAddr64 returned success
+      if (line.FileName != nullptr) {
+        fn = line.FileName;
+      }
+      lineNumber = line.LineNumber;
+      err.clear();
+    } else {
+      lineNumber = -1;
+      DWORD error = GetLastError();
+      err = std::string("SymGetLineFromAddr64 returned error: ") + std::to_string(error);
+    }
     snprintf(address, sizeof(address), "0x%0X", (unsigned int)symbol->Address);
     btstr += std::to_string(frames - i - 1) + std::string(": ") + symbol->Name +
-             std::string(" [") + address + std::string("]\n");
+             std::string(" [") + address + std::string("] ") + fn +
+             std::string(":") + std::to_string(lineNumber) + err +
+             std::string("\n");
   }
 
   TRI_Free(symbol);
@@ -142,8 +164,7 @@ void TRI_GetBacktrace(std::string& btstr) {
   for (size_t i = 0; i < size; i++) {
     std::stringstream ss;
     if (strings != nullptr) {
-      char* mangled_name = nullptr, * offset_begin = nullptr,
-            * offset_end = nullptr;
+      char *mangled_name = nullptr, *offset_begin = nullptr, *offset_end = nullptr;
 
       // find parentheses and +address offset surrounding mangled name
       for (char* p = strings[i]; *p; ++p) {
@@ -156,8 +177,7 @@ void TRI_GetBacktrace(std::string& btstr) {
           break;
         }
       }
-      if (mangled_name && offset_begin && offset_end &&
-          mangled_name < offset_begin) {
+      if (mangled_name && offset_begin && offset_end && mangled_name < offset_begin) {
         *mangled_name++ = '\0';
         *offset_begin++ = '\0';
         *offset_end++ = '\0';
@@ -204,7 +224,7 @@ void TRI_PrintBacktrace() {
 #endif
 #if TRI_HAVE_PSTACK
   char buf[64];
-  snprintf(buf, 64, "/usr/bin/pstack %i", getpid());
+  snprintf(buf, sizeof(buf), "/usr/bin/pstack %i", getpid());
   system(buf);
 #endif
 #endif
@@ -216,7 +236,7 @@ void TRI_LogBacktrace() {
 #if ARANGODB_ENABLE_BACKTRACE
   std::string bt;
   TRI_GetBacktrace(bt);
-  if (!bt.empty()) {  
+  if (!bt.empty()) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << bt;
   }
 #endif
@@ -231,7 +251,8 @@ void TRI_FlushDebugging() {
 
 /// @brief flushes the logger and shuts it down
 void TRI_FlushDebugging(char const* file, int line, char const* message) {
-  LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "assertion failed in " << file << ":" << line << ": " << message;
+  LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+      << "assertion failed in " << file << ":" << line << ": " << message;
   Logger::flush();
   Logger::shutdown();
 }

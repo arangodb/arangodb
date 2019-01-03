@@ -230,7 +230,7 @@
     runTests: function (event) {
       event.preventDefault();
       var warning = (
-      '<p><strong>WARNING:</strong> Running tests may result in destructive side-effects including data loss.' +
+        '<p><strong>WARNING:</strong> Running tests may result in destructive side-effects including data loss.' +
         ' Please make sure not to run tests on a production database.</p>'
       );
       if (this.model.isDevelopment()) {
@@ -431,7 +431,6 @@
           cfg[key] = val && JSON.stringify(JSON.parse(val));
         } else {
           cfg[key] = val;
-          return;
         }
       });
       this.model.setConfiguration(cfg, function () {

@@ -186,7 +186,7 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
       arangodb::aql::PART_MAIN
     );
 
-    query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
+    query.prepare(arangodb::QueryRegistryFeature::registry());
 
     arangodb::aql::AqlItemBlock data(&resMon, 100, 4);
 
@@ -237,7 +237,7 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
       arangodb::aql::PART_MAIN
     );
 
-    query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
+    query.prepare(arangodb::QueryRegistryFeature::registry());
 
     arangodb::aql::AqlItemBlock data(&resMon, 100, 4);
 
@@ -285,7 +285,7 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
       arangodb::aql::PART_MAIN
     );
 
-    query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
+    query.prepare(arangodb::QueryRegistryFeature::registry());
 
     arangodb::aql::AqlItemBlock data(&resMon, 100, 4);
 
@@ -342,7 +342,7 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
       arangodb::aql::PART_MAIN
     );
 
-    query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
+    query.prepare(arangodb::QueryRegistryFeature::registry());
 
     // build chain:
     // Singleton <- MockBlock0 <- MockBlock1
@@ -406,7 +406,7 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
       arangodb::aql::PART_MAIN
     );
 
-    query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
+    query.prepare(arangodb::QueryRegistryFeature::registry());
 
     // build chain:
     // Singleton <- MockBlock0 <- MockBlock1
@@ -468,7 +468,7 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
       arangodb::aql::PART_MAIN
     );
 
-    query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
+    query.prepare(arangodb::QueryRegistryFeature::registry());
 
     // build chain:
     // Singleton <- MockBlock0 <- MockBlock1

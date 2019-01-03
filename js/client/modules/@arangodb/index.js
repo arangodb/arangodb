@@ -96,7 +96,9 @@ if (typeof internal.arango !== 'undefined') {
       get(target, name) {
         if (!target.hasOwnProperty(name) && target[name] === undefined && typeof name === 'string') {
           // unknown collection, try re-populating the cache
-          db._collections();
+          try {
+            db._collections();
+          } catch (err) {}
         }
         return target[name];
       },

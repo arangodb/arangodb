@@ -23,9 +23,9 @@
 
 #include "MMFilesRemoverThread.h"
 
-#include "Logger/Logger.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
+#include "Logger/Logger.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 
 using namespace arangodb;
@@ -61,8 +61,7 @@ void MMFilesRemoverThread::run() {
     } catch (arangodb::basics::Exception const& ex) {
       int res = ex.code();
       LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
-          << "got unexpected error in removerThread::run: "
-          << TRI_errno_string(res);
+          << "got unexpected error in removerThread::run: " << TRI_errno_string(res);
     } catch (...) {
       LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
           << "got unspecific error in removerThread::run";

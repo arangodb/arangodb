@@ -538,15 +538,15 @@
           url: 'statistics/coordshort',
           json: true
         })
-        .success(function (data) {
-          this.coordshortTimestamp = Date.now();
-          this.coordshortSuccess = true;
-          this.statsEnabled = data.enabled;
-          callback(data.data);
-        }.bind(this)).error(function (data) {
-          this.coordshortTimestamp = Date.now();
-          this.coordshortSuccess = false;
-        }.bind(this));
+          .success(function (data) {
+            this.coordshortTimestamp = Date.now();
+            this.coordshortSuccess = true;
+            this.statsEnabled = data.enabled;
+            callback(data.data);
+          }.bind(this)).error(function (data) {
+            this.coordshortTimestamp = Date.now();
+            this.coordshortSuccess = false;
+          }.bind(this));
       }
     }
 

@@ -24,6 +24,9 @@
 #ifndef ARANGOD_CLUSTER_CLUSTER_COMM_H
 #define ARANGOD_CLUSTER_CLUSTER_COMM_H 1
 
+#include <atomic>
+#include <vector>
+
 #include "Basics/Common.h"
 
 #include "Agency/AgencyComm.h"
@@ -264,20 +267,22 @@ struct ClusterCommResult {
     // :snake: OPST_CIRCUS
     auto httpResponse = dynamic_cast<HttpResponse*>(response.get());
     if (httpResponse == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response type");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "invalid response type");
     }
     answer_code = httpResponse->responseCode();
-    HttpRequest* request = HttpRequest::createHttpRequest(
-        ContentType::JSON,
-        httpResponse->body().c_str(),
-        httpResponse->body().length(), std::unordered_map<std::string, std::string>());
+    HttpRequest* request =
+        HttpRequest::createHttpRequest(ContentType::JSON, httpResponse->body().c_str(),
+                                       httpResponse->body().length(),
+                                       std::unordered_map<std::string, std::string>());
 
     auto const& headers = response->headers();
     auto errorCodes = headers.find(StaticStrings::ErrorCodes);
     if (errorCodes != headers.end()) {
       request->setHeader(StaticStrings::ErrorCodes, errorCodes->second);
     }
-    request->setHeader(StaticStrings::ResponseCode, GeneralResponse::responseString(answer_code));
+    request->setHeader(StaticStrings::ResponseCode,
+                       GeneralResponse::responseString(answer_code));
     answer.reset(request);
     TRI_ASSERT(response != nullptr);
     result = std::make_shared<httpclient::SimpleHttpCommunicatorResult>(
@@ -289,11 +294,13 @@ struct ClusterCommResult {
       if (status == CL_COMM_ERROR) {
         try {
           auto body = result->getBodyVelocyPack(VPackOptions());
-          if (body->slice().isObject() && body->slice().hasKey("errorMessage")) {
+          if (body->slice().isObject() &&
+              body->slice().hasKey("errorMessage")) {
             errorMessage = body->slice().get("errorMessage").copyString();
             errorCode = body->slice().get("errorNum").getNumber<int>();
           }
-        } catch (...) {}
+        } catch (...) {
+        }
       }
     } else {
       // mop: actually it will never be an ERROR here...this is and was a dirty
@@ -370,17 +377,11 @@ struct ClusterCommRequest {
   ClusterCommRequest() : done(false) {}
 
   ClusterCommRequest(std::string const& dest, rest::RequestType type,
-                     std::string const& path,
-                     std::shared_ptr<std::string const> const& body)
-      : destination(dest),
-        requestType(type),
-        path(path),
-        body(body),
-        done(false) {}
+                     std::string const& path, std::shared_ptr<std::string const> const& body)
+      : destination(dest), requestType(type), path(path), body(body), done(false) {}
 
   ClusterCommRequest(std::string const& dest, rest::RequestType type,
-                     std::string const& path,
-                     std::shared_ptr<std::string const> const& body,
+                     std::string const& path, std::shared_ptr<std::string const> const& body,
                      std::unique_ptr<std::unordered_map<std::string, std::string>> headers)
       : destination(dest),
         requestType(type),
@@ -396,21 +397,20 @@ struct ClusterCommRequest {
     }
     return *headerFields;
   }
-  
-  void setHeaders(
-      std::unique_ptr<std::unordered_map<std::string, std::string>> headers) {
+
+  void setHeaders(std::unique_ptr<std::unordered_map<std::string, std::string>> headers) {
     headerFields = std::move(headers);
   }
- 
-  /// @brief "safe" accessor for body 
+
+  /// @brief "safe" accessor for body
   std::string const& getBody() const {
     if (body == nullptr) {
       return noBody;
     }
     return *body;
   }
-  
-  /// @brief "safe" accessor for body 
+
+  /// @brief "safe" accessor for body
   std::shared_ptr<std::string const> getBodyShared() const {
     if (body == nullptr) {
       return sharedNoBody;
@@ -442,7 +442,6 @@ class ClusterComm {
   //////////////////////////////////////////////////////////////////////////////
 
  public:
-
   virtual ~ClusterComm();
 
   //////////////////////////////////////////////////////////////////////////////
@@ -486,7 +485,8 @@ class ClusterComm {
   /// @brief start the communication background thread
   //////////////////////////////////////////////////////////////////////////////
 
-  void startBackgroundThread();
+  void startBackgroundThreads();
+  void stopBackgroundThreads();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief submit an HTTP request to a shard asynchronously.
@@ -498,16 +498,15 @@ class ClusterComm {
       std::string const& path, std::shared_ptr<std::string const> body,
       std::unordered_map<std::string, std::string> const& headerFields,
       std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
-      bool singleRequest = false, ClusterCommTimeout connectTimeout = -1.0);
+      bool singleRequest = false, ClusterCommTimeout initTimeout = -1.0);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief submit a single HTTP request to a shard synchronously.
   //////////////////////////////////////////////////////////////////////////////
 
   std::unique_ptr<ClusterCommResult> syncRequest(
-      CoordTransactionID const coordTransactionID,
-      std::string const& destination, rest::RequestType reqtype,
-      std::string const& path, std::string const& body,
+      CoordTransactionID const coordTransactionID, std::string const& destination,
+      rest::RequestType reqtype, std::string const& path, std::string const& body,
       std::unordered_map<std::string, std::string> const& headerFields,
       ClusterCommTimeout timeout);
 
@@ -522,9 +521,9 @@ class ClusterComm {
   //////////////////////////////////////////////////////////////////////////////
 
   TEST_VIRTUAL ClusterCommResult const wait(CoordTransactionID const coordTransactionID,
-                                       OperationID const operationID,
-                                       ShardID const& shardID,
-                                       ClusterCommTimeout timeout = 0.0);
+                                            OperationID const operationID,
+                                            ShardID const& shardID,
+                                            ClusterCommTimeout timeout = 0.0);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ignore and drop current and future answers matching
@@ -558,12 +557,11 @@ class ClusterComm {
 
   size_t performRequests(std::vector<ClusterCommRequest>& requests,
                          ClusterCommTimeout timeout, size_t& nrDone,
-                         arangodb::LogTopic const& logTopic,
-                         bool retryOnCollNotFound);
+                         arangodb::LogTopic const& logTopic, bool retryOnCollNotFound);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief this method performs the given requests described by the vector
-  /// of ClusterCommRequest structs in the following way: 
+  /// of ClusterCommRequest structs in the following way:
   /// Each request is done with asyncRequest.
   /// After each request is successfully send out we drop all requests.
   /// Hence it is guaranteed that all requests are send, but
@@ -574,14 +572,10 @@ class ClusterComm {
   /// instead.
   ////////////////////////////////////////////////////////////////////////////////
   void fireAndForgetRequests(std::vector<ClusterCommRequest> const& requests);
-  
+
   typedef std::function<void(std::vector<ClusterCommRequest> const&, size_t, size_t)> AsyncCallback;
   void performAsyncRequests(std::vector<ClusterCommRequest>&&, ClusterCommTimeout timeout,
                             bool retryOnCollNotFound, AsyncCallback const&);
- 
-  std::shared_ptr<communicator::Communicator> communicator() {
-    return _communicator;
-  }
 
   void addAuthorization(std::unordered_map<std::string, std::string>* headers);
 
@@ -591,13 +585,19 @@ class ClusterComm {
 
   void disable();
 
- protected:  // protected members are for unit test purposes
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief push all libcurl callback work to Scheduler threads.  It is a
+  ///  public static function that any object can use.
+  //////////////////////////////////////////////////////////////////////////////
 
+  static void scheduleMe(std::function<void()> task);
+
+ protected:  // protected members are for unit test purposes
   /// @brief Constructor for test cases.
   explicit ClusterComm(bool);
 
-  communicator::Destination createCommunicatorDestination(
-      std::string const& destination, std::string const& path);
+  communicator::Destination createCommunicatorDestination(std::string const& destination,
+                                                          std::string const& path);
   std::pair<ClusterCommResult*, HttpRequest*> prepareRequest(
       std::string const& destination, arangodb::rest::RequestType reqtype,
       std::string const* body,
@@ -616,7 +616,7 @@ class ClusterComm {
   /// a nullptr, which means no new ClusterComm operations can be started.
   //////////////////////////////////////////////////////////////////////////////
 
-  static std::atomic<int>             _theInstanceInit;
+  static std::atomic<int> _theInstanceInit;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief produces an operation ID which is unique in this process
@@ -629,8 +629,7 @@ class ClusterComm {
   //////////////////////////////////////////////////////////////////////////////
 
   std::list<ClusterCommOperation*> toSend;
-  std::map<OperationID, std::list<ClusterCommOperation*>::iterator>
-      toSendByOpID;
+  std::map<OperationID, std::list<ClusterCommOperation*>::iterator> toSendByOpID;
   arangodb::basics::ConditionVariable somethingToSend;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -647,8 +646,7 @@ class ClusterComm {
 
   // Receiving answers:
   std::list<ClusterCommOperation*> received;
-  std::map<OperationID, std::list<ClusterCommOperation*>::iterator>
-      receivedByOpID;
+  std::map<OperationID, std::list<ClusterCommOperation*>::iterator> receivedByOpID;
   arangodb::basics::ConditionVariable somethingReceived;
 
   // Note: If you really have to lock both `somethingToSend`
@@ -691,13 +689,17 @@ class ClusterComm {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief logs a connection error (backend unavailable)
   //////////////////////////////////////////////////////////////////////////////
-  static void logConnectionError(bool useErrorLogLevel, ClusterCommResult const* result, double timeout, int line);
+  static void logConnectionError(bool useErrorLogLevel, ClusterCommResult const* result,
+                                 double timeout, int line);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief our background communications thread
   //////////////////////////////////////////////////////////////////////////////
 
-  ClusterCommThread* _backgroundThread;
+  std::atomic_uint _roundRobin;
+  std::vector<ClusterCommThread*> _backgroundThreads;
+
+  std::shared_ptr<communicator::Communicator> communicator();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not connection errors should be logged as errors
@@ -705,10 +707,8 @@ class ClusterComm {
 
   bool _logConnectionErrors;
 
-  std::shared_ptr<communicator::Communicator> _communicator;
   bool _authenticationEnabled;
   std::string _jwtAuthorization;
-
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -728,15 +728,20 @@ class ClusterCommThread : public Thread {
   void beginShutdown() override;
   bool isSystem() override final { return true; }
 
+  std::shared_ptr<communicator::Communicator> communicator() {
+    return _communicator;
+  }
+
  private:
   void abortRequestsToFailedServers();
 
  protected:
   void run() override final;
+  std::shared_ptr<communicator::Communicator> _communicator;
 
  private:
   ClusterComm* _cc;
 };
-}
+}  // namespace arangodb
 
 #endif

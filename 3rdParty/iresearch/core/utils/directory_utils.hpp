@@ -104,39 +104,74 @@ NS_END
 /// @class tracking_directory
 /// @brief track files created/opened via file names
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API tracking_directory: public directory {
+struct IRESEARCH_API tracking_directory final : public directory {
   typedef std::unordered_set<std::string> file_set;
 
   // @param track_open - track file refs for calls to open(...)
-  tracking_directory(directory& impl, bool track_open = false);
+  explicit tracking_directory(
+    directory& impl,
+    bool track_open = false
+  ) NOEXCEPT;
+
   virtual ~tracking_directory();
-  directory& operator*() NOEXCEPT;
+
+  directory& operator*() NOEXCEPT {
+    return impl_;
+  }
+
   using directory::attributes;
-  virtual attribute_store& attributes() NOEXCEPT override;
-  virtual void close() NOEXCEPT override;
+  virtual attribute_store& attributes() NOEXCEPT override {
+    return impl_.attributes();
+  }
+
   virtual index_output::ptr create(const std::string& name) NOEXCEPT override;
+
+  void clear_tracked() NOEXCEPT;
+
   virtual bool exists(
-    bool& result, const std::string& name
-  ) const NOEXCEPT override;
+      bool& result, const std::string& name
+  ) const NOEXCEPT override {
+    return impl_.exists(result, name);
+  }
+
+  void flush_tracked(file_set& other) NOEXCEPT;
+
   virtual bool length(
-    uint64_t& result, const std::string& name
-  ) const NOEXCEPT override;
-  virtual index_lock::ptr make_lock(const std::string& name) NOEXCEPT override;
+      uint64_t& result, const std::string& name
+  ) const NOEXCEPT override {
+    return impl_.length(result, name);
+  }
+
+  virtual index_lock::ptr make_lock(
+      const std::string& name
+  ) NOEXCEPT override {
+    return impl_.make_lock(name);
+  }
+
   virtual bool mtime(
-    std::time_t& result, const std::string& name
-  ) const NOEXCEPT override;
+      std::time_t& result, const std::string& name
+  ) const NOEXCEPT override {
+    return impl_.mtime(result, name);
+  }
+
   virtual index_input::ptr open(
     const std::string& name,
     IOAdvice advice
   ) const NOEXCEPT override;
+
   virtual bool remove(const std::string& name) NOEXCEPT override;
+
   virtual bool rename(
     const std::string& src, const std::string& dst
   ) NOEXCEPT override;
-  bool swap_tracked(file_set& other) NOEXCEPT;
-  bool swap_tracked(tracking_directory& other) NOEXCEPT;
-  virtual bool sync(const std::string& name) NOEXCEPT override;
-  virtual bool visit(const visitor_f& visitor) const override;
+
+  virtual bool sync(const std::string& name) NOEXCEPT override {
+    return impl_.sync(name);
+  }
+
+  virtual bool visit(const visitor_f& visitor) const override {
+    return impl_.visit(visitor);
+  }
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
@@ -144,55 +179,89 @@ struct IRESEARCH_API tracking_directory: public directory {
   directory& impl_;
   bool track_open_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
-};
+}; // tracking_directory
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class ref_tracking_directory
 /// @brief track files created/opened via file refs instead of file names
 //////////////////////////////////////////////////////////////////////////////
-
 struct IRESEARCH_API ref_tracking_directory: public directory {
  public:
   DECLARE_UNIQUE_PTR(ref_tracking_directory);
   // @param track_open - track file refs for calls to open(...)
-  ref_tracking_directory(directory& impl, bool track_open = false);
+  explicit ref_tracking_directory(directory& impl, bool track_open = false);
   ref_tracking_directory(ref_tracking_directory&& other) NOEXCEPT;
   virtual ~ref_tracking_directory();
-  directory& operator*() NOEXCEPT;
+
+  directory& operator*() NOEXCEPT {
+    return impl_;
+  }
+
   using directory::attributes;
-  virtual attribute_store& attributes() NOEXCEPT override;
+  virtual attribute_store& attributes() NOEXCEPT override {
+    return impl_.attributes();
+  }
+
   void clear_refs() const NOEXCEPT;
-  virtual void close() NOEXCEPT override;
+
   virtual index_output::ptr create(const std::string &name) NOEXCEPT override;
+
   virtual bool exists(
-    bool& result, const std::string& name
-  ) const NOEXCEPT override;
+      bool& result, const std::string& name
+  ) const NOEXCEPT override {
+    return impl_.exists(result, name);
+  }
+
   virtual bool length(
-    uint64_t& result, const std::string& name
-  ) const NOEXCEPT override;
-  virtual index_lock::ptr make_lock(const std::string& name) NOEXCEPT override;
+      uint64_t& result, const std::string& name
+  ) const NOEXCEPT override {
+    return impl_.length(result, name);
+  }
+
+  virtual index_lock::ptr make_lock(const std::string& name) NOEXCEPT override {
+    return impl_.make_lock(name);
+  }
+
   virtual bool mtime(
-    std::time_t& result, const std::string& name
-  ) const NOEXCEPT override;
+      std::time_t& result, const std::string& name
+  ) const NOEXCEPT override {
+    return impl_.mtime(result, name);
+  }
+
   virtual index_input::ptr open(
     const std::string& name,
     IOAdvice advice
   ) const NOEXCEPT override;
+
   virtual bool remove(const std::string& name) NOEXCEPT override;
+
   virtual bool rename(const std::string& src, const std::string& dst) NOEXCEPT override;
-  virtual bool sync(const std::string& name) NOEXCEPT override;
-  virtual bool visit(const visitor_f& visitor) const override;
+
+  virtual bool sync(const std::string& name) NOEXCEPT override {
+    return impl_.sync(name);
+  }
+
+  virtual bool visit(const visitor_f& visitor) const override {
+    return impl_.visit(visitor);
+  }
+
   bool visit_refs(const std::function<bool(const index_file_refs::ref_t& ref)>& visitor) const;
 
  private:
+  typedef std::unordered_set<
+    index_file_refs::ref_t,
+    index_file_refs::counter_t::hash,
+    index_file_refs::counter_t::equal_to
+  > refs_t;
+
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   index_file_refs::attribute_t& attribute_;
   directory& impl_;
   mutable std::mutex mutex_; // for use with refs_
-  mutable std::unordered_map<string_ref, index_file_refs::ref_t> refs_;
+  mutable refs_t refs_;
   bool track_open_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
-};
+}; // ref_tracking_directory
 
 NS_END
 

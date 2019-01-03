@@ -37,6 +37,6 @@ class FortuneFeature final : public application_features::ApplicationFeature {
  private:
   bool _fortune;
 };
-}
+}  // namespace arangodb
 
 #endif

@@ -77,8 +77,8 @@ class RocksDBValue {
   ///
   /// May be called only on PrimaryIndexValue values. Other types will throw.
   //////////////////////////////////////////////////////////////////////////////
-  static TRI_voc_rid_t revisionId(RocksDBValue const&); // throwing
-  static TRI_voc_rid_t revisionId(rocksdb::Slice const&); // throwing
+  static TRI_voc_rid_t revisionId(RocksDBValue const&);    // throwing
+  static TRI_voc_rid_t revisionId(rocksdb::Slice const&);  // throwing
   static bool revisionId(rocksdb::Slice const&, TRI_voc_rid_t& id);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -100,12 +100,8 @@ class RocksDBValue {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the numeric value from the key field of a VPackSlice
-  ///
-  /// May be called only on values of the following types: KeyGeneratorValue.
   //////////////////////////////////////////////////////////////////////////////
-  static uint64_t keyValue(RocksDBValue const&);
   static uint64_t keyValue(rocksdb::Slice const&);
-  static uint64_t keyValue(std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Centroid of shape or point on the sphere surface in degrees
@@ -117,7 +113,7 @@ class RocksDBValue {
   /// @brief Returns a reference to the underlying string buffer.
   //////////////////////////////////////////////////////////////////////////////
   std::string const& string() const { return _buffer; }  // to be used with put
-  std::string* buffer() { return &_buffer; }       // to be used with get
+  std::string* buffer() { return &_buffer; }             // to be used with get
   VPackSlice slice() const {
     return VPackSlice(reinterpret_cast<uint8_t const*>(_buffer.data()));
   }  // return a slice
