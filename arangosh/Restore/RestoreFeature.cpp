@@ -161,11 +161,11 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
                      new BooleanParameter(&_overwrite));
   
   options->addOption("--number-of-shards",
-                     "value for numberOfShards (can be specified multiple times, e.g. --numberOfShards 2 --numberOfShards myCollection=3)",
+                     "value for numberOfShards (from v3.3.22 and v3.4.2; can be specified multiple times, e.g. --numberOfShards 2 --numberOfShards myCollection=3)",
                      new VectorParameter<StringParameter>(&_numberOfShards));
   
   options->addOption("--replication-factor",
-                     "value for replicationFactor (can be specified multiple times, e.g. --replicationFactor 2 --replicationFactor myCollection=3)",
+                     "value for replicationFactor (from v3.3.22 and v3.4.2; can be specified multiple times, e.g. --replicationFactor 2 --replicationFactor myCollection=3)",
                      new VectorParameter<StringParameter>(&_replicationFactor));
 
   options->addOption(
@@ -179,11 +179,11 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
   
   // deprecated options
   options->addHiddenOption("--default-number-of-shards",
-                           "default value for numberOfShards if not specified (deprecated)",
+                           "default value for numberOfShards if not specified (deprecated from v3.3.22 and v3.4.2)",
                            new UInt64Parameter(&_defaultNumberOfShards));
 
   options->addHiddenOption("--default-replication-factor",
-                           "default value for replicationFactor if not specified (deprecated)",
+                           "default value for replicationFactor if not specified (deprecated from v3.3.22 and v3.4.2)",
                            new UInt64Parameter(&_defaultReplicationFactor));
 
 }
