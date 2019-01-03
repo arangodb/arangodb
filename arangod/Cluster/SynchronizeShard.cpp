@@ -446,10 +446,16 @@ arangodb::Result SynchronizeShard::getReadLock(
   }
   
   auto const expired = duration_cast<seconds>(steady_clock::now()-start).count();
+  double timeLeft = double(timeout) -
+    duration_cast<seconds,double>(steady_clock::now()-start).count() ;
+  if (timeleft < 60.0) {
+    timeleft = 60.0;
+  }
+
   // Ambiguous POST, we'll try to DELETE a potentially acquired lock
   auto r = cc->syncRequest(
     TRI_NewTickServer(), endpoint, rest::RequestType::DELETE_REQ, url,
-    body.toJson(), std::unordered_map<std::string, std::string>(), timeout-expired);
+    body.toJson(), std::unordered_map<std::string, std::string>(), timeleft);
   if (r->result == nullptr || r->result->getHttpReturnCode() != 200) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "startReadLockOnLeader: cancelation error for shard - " << collection
