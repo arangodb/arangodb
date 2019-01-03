@@ -699,9 +699,8 @@ AqlValue Expression::executeSimpleExpressionObject(AstNode const* node,
     return AqlValue(VelocyPackHelper::EmptyObjectValue());
   }
 
-  // unordered map to make object keys unique afterwards
-  std::unordered_map<std::string, size_t> uniqueKeyValues;
-  bool isUnique = true;
+  // unordered set for tracking unique object keys
+  std::unordered_set<std::string> keys;
   bool const mustCheckUniqueness = node->mustCheckUniqueness();
 
   transaction::BuilderLeaser builder(trx);
@@ -710,7 +709,7 @@ AqlValue Expression::executeSimpleExpressionObject(AstNode const* node,
   for (size_t i = 0; i < n; ++i) {
     auto member = node->getMemberUnchecked(i);
 
-    // key
+    // process attribute key, taking into account duplicates
     if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
       bool localMustDestroy;
       AqlValue result =
@@ -725,23 +724,26 @@ AqlValue Expression::executeSimpleExpressionObject(AstNode const* node,
       VPackSlice slice = materializer.slice(result, false);
 
       Functions::Stringify(trx, adapter, slice);
-
-      builder->add(VPackValuePair(buffer->begin(), buffer->length(), VPackValueType::String));
-
+      
       if (mustCheckUniqueness) {
         std::string key(buffer->begin(), buffer->length());
 
-        // note each individual object key name with latest value position
-        auto it = uniqueKeyValues.find(key);
+        // prevent duplicate keys from being used
+        auto it = keys.find(key);
 
-        if (it == uniqueKeyValues.end()) {
-          // unique key
-          uniqueKeyValues.emplace(std::move(key), i);
-        } else {
+        if (it != keys.end()) {
           // duplicate key
-          (*it).second = i;
-          isUnique = false;
+          continue;
         }
+
+        // unique key
+        builder->add(VPackValue(key));
+        if (i != n - 1) {
+          // track usage of key
+          keys.emplace(std::move(key));
+        }
+      } else {
+        builder->add(VPackValuePair(buffer->begin(), buffer->length(), VPackValueType::String));
       }
 
       // value
@@ -749,29 +751,32 @@ AqlValue Expression::executeSimpleExpressionObject(AstNode const* node,
     } else {
       TRI_ASSERT(member->type == NODE_TYPE_OBJECT_ELEMENT);
 
-      builder->add(VPackValuePair(member->getStringValue(),
-                                  member->getStringLength(), VPackValueType::String));
-
       if (mustCheckUniqueness) {
         std::string key(member->getString());
 
-        // note each individual object key name with latest value position
-        auto it = uniqueKeyValues.find(key);
+        // track each individual object key 
+        auto it = keys.find(key);
 
-        if (it == uniqueKeyValues.end()) {
-          // unique key
-          uniqueKeyValues.emplace(std::move(key), i);
-        } else {
+        if (it != keys.end()) {
           // duplicate key
-          (*it).second = i;
-          isUnique = false;
+          continue;
         }
+
+        // unique key
+        builder->add(VPackValue(key));
+        if (i != n - 1) {
+          // track usage of key
+          keys.emplace(std::move(key));
+        }
+      } else {
+        builder->add(VPackValuePair(member->getStringValue(), member->getStringLength(), VPackValueType::String));
       }
 
       // value
       member = member->getMember(0);
     }
 
+    // add the attribute value
     bool localMustDestroy;
     AqlValue result = executeSimpleExpression(member, trx, localMustDestroy, false);
     AqlValueGuard guard(result, localMustDestroy);
@@ -781,44 +786,6 @@ AqlValue Expression::executeSimpleExpressionObject(AstNode const* node,
   builder->close();
 
   mustDestroy = true;  // AqlValue contains builder contains dynamic data
-
-  if (!isUnique) {
-    // must make the object keys unique now
-
-    // we must have at least two members...
-    TRI_ASSERT(n > 1);
-
-    VPackSlice nonUnique = builder->slice();
-
-    transaction::BuilderLeaser unique(trx);
-    unique->openObject();
-
-    size_t pos = 0;
-    // iterate over all attributes of the non-unique object
-    VPackObjectIterator it(nonUnique, true);
-    while (it.valid()) {
-      // key should be a string. ignore it if not
-      VPackSlice key = it.key();
-      if (key.isString()) {
-        // check if this instance of the key is the one we need to hand out
-        auto it2 = uniqueKeyValues.find(key.copyString());
-        if (it2 != uniqueKeyValues.end()) {
-          // key is in map. this is always expected
-          if (pos == (*it2).second) {
-            // this is the correct occurrence of the key
-            unique->add((*it2).first, it.value());
-          }
-        }
-      }
-      // advance iterator and position
-      it.next();
-      ++pos;
-    }
-
-    unique->close();
-
-    return AqlValue(*unique.get());
-  }
 
   return AqlValue(*builder.get());
 }

@@ -86,9 +86,7 @@ function ahuacatlModifySuite () {
     tearDown : function () {
       db._drop(cn);
     },
-
-    // use default shard key (_key)
-    
+      
     testUpdateSingle : function () {
       if (!isCluster) {
         return;
