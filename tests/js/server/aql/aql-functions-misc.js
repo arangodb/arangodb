@@ -264,6 +264,40 @@ function ahuacatlMiscFunctionsTestSuite () { return {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test check_document function
+////////////////////////////////////////////////////////////////////////////////
+
+    testCheckDocument : function () {
+      var cn = "UnitTestsAhuacatlFunctions";
+
+      internal.db._drop(cn);
+      let c = internal.db._create(cn);
+
+      c.insert({ _key: "test1", a: 1, b: 2, c: 3 });
+      c.insert({ _key: "test2", a: 1, b: 2, c: 3, sub: { a: 1, b: 2, c: 3 }});
+      c.insert({ _key: "test3", a: 1, b: 2, c: 3, sub: [{ a: 1 }, { b: 2 }, { c: 3 }, { a: 1 }]});
+      
+      assertEqual([ true, true, true ], getQueryResults("FOR doc IN " + cn + " RETURN CHECK_DOCUMENT(doc)"));
+
+      assertEqual([ false ], getQueryResults("RETURN CHECK_DOCUMENT(null)"));
+      assertEqual([ false ], getQueryResults("RETURN CHECK_DOCUMENT(true)"));
+      assertEqual([ false ], getQueryResults("RETURN CHECK_DOCUMENT(false)"));
+      assertEqual([ false ], getQueryResults("RETURN CHECK_DOCUMENT(-1)"));
+      assertEqual([ false ], getQueryResults("RETURN CHECK_DOCUMENT(0)"));
+      assertEqual([ false ], getQueryResults("RETURN CHECK_DOCUMENT(1)"));
+      assertEqual([ false ], getQueryResults("RETURN CHECK_DOCUMENT('foo')"));
+      assertEqual([ false ], getQueryResults("RETURN CHECK_DOCUMENT([])"));
+      assertEqual([ false ], getQueryResults("RETURN CHECK_DOCUMENT([1, 2, 3])"));
+      assertEqual([ true ], getQueryResults("RETURN CHECK_DOCUMENT({})"));
+      assertEqual([ true ], getQueryResults("RETURN CHECK_DOCUMENT({a: 1})"));
+      assertEqual([ true ], getQueryResults("RETURN CHECK_DOCUMENT({a: 1, b: 2})"));
+      assertEqual([ true ], getQueryResults("RETURN CHECK_DOCUMENT({a: 1, sub: [1, 2, 3]})"));
+      assertEqual([ true ], getQueryResults("RETURN CHECK_DOCUMENT({a: 1, sub: {a: 1, b: 2 }})"));
+
+      internal.db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test document function
 ////////////////////////////////////////////////////////////////////////////////
 

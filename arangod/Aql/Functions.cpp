@@ -216,23 +216,21 @@ bool isValidDocument(VPackSlice slice) {
   }
 
   if (slice.isObject()) {
-    std::unordered_set<std::string> keys;
+    std::unordered_set<VPackStringRef> keys;
   
     auto it = VPackObjectIterator(slice, true);
     
-    if (it.size() > 1) {
-      while (it.valid()) {
-        if (!keys.emplace(it.key().copyString()).second) {
-          // duplicate key
-          return false;
-        }
-
-        // recurse into object values
-        if (!isValidDocument(it.value())) {
-          return false;
-        }
-        it.next();
+    while (it.valid()) {
+      if (!keys.emplace(it.key().stringRef()).second) {
+        // duplicate key
+        return false;
       }
+
+      // recurse into object values
+      if (!isValidDocument(it.value())) {
+        return false;
+      }
+      it.next();
     }
   } else if (slice.isArray()) {
     auto it = VPackArrayIterator(slice);
@@ -6774,16 +6772,14 @@ AqlValue Functions::CollectionCount(ExpressionContext*, transaction::Methods* tr
 AqlValue Functions::CheckDocument(ExpressionContext*,
                                   transaction::Methods* trx,
                                   VPackFunctionParameters const& parameters) {
-  AqlValue const& value = extractFunctionParameterValue(parameters, 1);
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   if (!value.isObject()) {
     // no document at all
     return AqlValue(AqlValueHintBool(false));
   }
 
   AqlValueMaterializer materializer(trx);
-  VPackSlice slice = materializer.slice(value, true);
-  
-  TRI_ASSERT(slice.isObject());
+  VPackSlice slice = materializer.slice(value, false);
 
   return AqlValue(AqlValueHintBool(::isValidDocument(slice)));
 }
