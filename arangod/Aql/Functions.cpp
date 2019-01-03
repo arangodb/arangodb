@@ -3676,12 +3676,12 @@ static bool isValidDocument(VPackSlice slice) {
   }
 
   if (slice.isObject()) {
-    std::unordered_set<VPackStringRef> keys;
+    std::unordered_set<std::string> keys;
   
     auto it = VPackObjectIterator(slice, true);
     
     while (it.valid()) {
-      if (!keys.emplace(it.key().stringRef()).second) {
+      if (!keys.emplace(it.key().copyString()).second) {
         // duplicate key
         return false;
       }
