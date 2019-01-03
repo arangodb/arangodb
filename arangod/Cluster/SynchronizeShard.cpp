@@ -478,15 +478,15 @@ arangodb::Result SynchronizeShard::getReadLock(
   LOG_TOPIC(ERR, Logger::MAINTENANCE)
     << "startReadLockOnLeader: couldn't obtain lock on shard leader giving up";
 
-  double timeLeft = double(timeout) -
-    duration_cast<seconds,double>(steady_clock::now()-start).count() ;
-  if (timeleft < 60.0) {
-    timeleft = 60.0;
+  double timeLeft =
+    double(timeout) - duration<double>(steady_clock::now()-start).count() ;
+  if (timeLeft < 60.0) {
+    timeLeft = 60.0;
   }
 
   auto r = cc->syncRequest(
     clientId, 1, endpoint, rest::RequestType::DELETE_REQ, url, body.toJson(),
-    std::unordered_map<std::string, std::string>(), timeleft);
+    std::unordered_map<std::string, std::string>(), timeLeft);
   if (r->result == nullptr || r->result->getHttpReturnCode() != 200) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "startReadLockOnLeader: cancelation error for shard - " << collection
