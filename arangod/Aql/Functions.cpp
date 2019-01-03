@@ -205,29 +205,42 @@ std::string executeDateFormatRegex(std::string const& search, tp_sys_clock_ms co
   return s;
 }
 
+/// @brief validates documents for duplicate attribute names
 bool isValidDocument(VPackSlice slice) {
-  std::unordered_set<std::string> keys;
- 
-  TRI_ASSERT(slice.isObject()); 
-  auto it = VPackObjectIterator(slice, true);
+  if (slice.isExternal()) {
+    slice = slice.resolveExternals();
+  }
+
+  if (slice.isObject()) {
+    std::unordered_set<VPackStringRef> keys;
   
-  if (it.size() > 1) {
+    auto it = VPackObjectIterator(slice, true);
+    
     while (it.valid()) {
-      if (!keys.emplace(it.key().copyString()).second) {
+      if (!keys.emplace(it.key().stringRef()).second) {
         // duplicate key
         return false;
       }
 
-      VPackSlice value = it.value().resolveExternals();
-      if (value.isObject()) {
-        if (!isValidDocument(value)) {
-          // recurse into sub-objects
-          return false;
-        }
+      // recurse into object values
+      if (!isValidDocument(it.value())) {
+        return false;
+      }
+      it.next();
+    }
+  } else if (slice.isArray()) {
+    auto it = VPackArrayIterator(slice);
+
+    while (it.valid()) {
+      // recursively validate array values
+      if (!isValidDocument(it.value())) {
+        return false;
       }
       it.next();
     }
   }
+
+  // all other types are considered valid
   return true;
 }
 
@@ -6649,18 +6662,14 @@ AqlValue Functions::CollectionCount(arangodb::aql::Query*, transaction::Methods*
 AqlValue Functions::CheckDocument(arangodb::aql::Query*,
                                   transaction::Methods* trx,
                                   VPackFunctionParameters const& parameters) {
-  static char const* AFN = "CHECK_DOCUMENT";
-
-  AqlValue const& value = extractFunctionParameterValue(parameters, 1);
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   if (!value.isObject()) {
     // no document at all
     return AqlValue(AqlValueHintBool(false));
   }
 
   AqlValueMaterializer materializer(trx);
-  VPackSlice slice = materializer.slice(value, true);
-  
-  TRI_ASSERT(slice.isObject());
+  VPackSlice slice = materializer.slice(value, false);
 
   return AqlValue(AqlValueHintBool(::isValidDocument(slice)));
 }
