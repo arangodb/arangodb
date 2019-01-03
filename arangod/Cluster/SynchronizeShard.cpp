@@ -408,6 +408,10 @@ arangodb::Result SynchronizeShard::getReadLock(
   auto url = DB + database + REPL_HOLD_READ_LOCK;
   
   auto const transactionId = TRI_NewTickServer();
+
+  // We deviate from 3.5 implementation, as we would like to be able to handle
+  // 3.3 servers, where the POST request is kept open until the lock is deleted.
+  
   auto postres = cc->asyncRequest(
     "", transactionId, endpoint, rest::RequestType::POST, url,
     std::make_shared<std::string>(body.toJson()),
@@ -416,31 +420,31 @@ arangodb::Result SynchronizeShard::getReadLock(
   
   // Intentionally do not look at the outcome, even in case of an error
   // we must make sure that the read lock on the leader is not active!
-  // This is done automatically below. But we at least make sure that we could
-  // deliver the async request
+  // This is done automatically below. 
 
   while (true) {  // wait for some time until read lock established:
 
-    // Shutdown s
+    // Exit immediately on shutdown 
     if (isStopping()) {
       return arangodb::Result(TRI_ERROR_SHUTTING_DOWN);
     }
 
-    // Timeout
+    // Timeout. Just to make sure that we are not holding the lock accidentally,
+    // we cannot exit the function here.
     if (duration_cast<seconds>(steady_clock::now() - start).count() > timeout) {
       break;
     }
 
-    // See if above POST has been returned (>= 3.4)
+    // See if above POST has been returned (>= 3.4 only)
     auto enqres = cc->enquire(postres);
     if (enqres.status == CL_COMM_SENT) {
       if (enqres.result != nullptr && enqres.result->getHttpReturnCode() == 200) {
-        // Habemus clausum
+        // Habemus clausum 
         return arangodb::Result();
       }
     }
 
-    // Now check that we hold the read lock:
+    // Now check that we have acquired the read lock:
     auto putres = cc->syncRequest(
       clientId, 1, endpoint, rest::RequestType::PUT, url, body.toJson(),
       std::unordered_map<std::string, std::string>(), 15.0);
@@ -457,7 +461,7 @@ arangodb::Result SynchronizeShard::getReadLock(
         }
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
           << "startReadLockOnLeader: Lock not yet acquired, retrying... ";
-      } else if (enqres.status == CL_COMM_SENT) { // POST sent in meantime: Error
+      } else if (enqres.status == CL_COMM_SENT) { // POST sent in meantime: Error (>=3.4)
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
           << "startReadLockOnLeader: Failed to acquire read lock: "
           << putres->stringifyErrorMessage();
@@ -466,7 +470,7 @@ arangodb::Result SynchronizeShard::getReadLock(
           << "startReadLockOnLeader: Lock not yet acquired, retrying... "
           << putres->stringifyErrorMessage();
       }
-      std::this_thread::sleep_for(seconds(1));
+      std::this_thread::sleep_for(milliseconds(500));
     }
     
   }
@@ -474,22 +478,23 @@ arangodb::Result SynchronizeShard::getReadLock(
   LOG_TOPIC(ERR, Logger::MAINTENANCE)
     << "startReadLockOnLeader: couldn't obtain lock on shard leader giving up";
 
-  try {
-    auto r = cc->syncRequest(clientId, 1, endpoint,
-                             rest::RequestType::DELETE_REQ, url, body.toJson(),
-                             std::unordered_map<std::string, std::string>(), timeout);
-    if (r->result == nullptr || r->result->getHttpReturnCode() != 200) {
-      LOG_TOPIC(ERR, Logger::MAINTENANCE)
-          << "startReadLockOnLeader: cancelation error for shard - " << collection
-          << " " << r->getErrorCode() << ": " << r->stringifyErrorMessage();
-    }
-  } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
-        << "startReadLockOnLeader: expection in cancel: " << e.what();
+  double timeLeft = double(timeout) -
+    duration_cast<seconds,double>(steady_clock::now()-start).count() ;
+  if (timeleft < 60.0) {
+    timeleft = 60.0;
   }
 
-  return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT,
-                          "startReadLockOnLeader: giving up");
+  auto r = cc->syncRequest(
+    clientId, 1, endpoint, rest::RequestType::DELETE_REQ, url, body.toJson(),
+    std::unordered_map<std::string, std::string>(), timeleft);
+  if (r->result == nullptr || r->result->getHttpReturnCode() != 200) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "startReadLockOnLeader: cancelation error for shard - " << collection
+      << " " << r->getErrorCode() << ": " << r->stringifyErrorMessage();
+  }
+  
+  return arangodb::Result(
+    TRI_ERROR_CLUSTER_TIMEOUT, "startReadLockOnLeader: giving up");
 }
 
 arangodb::Result SynchronizeShard::startReadLockOnLeader(
