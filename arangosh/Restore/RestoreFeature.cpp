@@ -450,11 +450,11 @@ int RestoreFeature::sendRestoreIndexes(VPackSlice const& slice, std::string& err
   return TRI_ERROR_NO_ERROR;
 }
 
-int RestoreFeature::sendRestoreData(std::string const& cname, char const* buffer,
-                                    size_t bufferSize, std::string& errorMsg) {
+Result RestoreFeature::sendRestoreData(std::string const& cname, char const* buffer,
+                                       size_t bufferSize) {
   // the following two structs are needed for cleaning up duplicate attributes 
   arangodb::velocypack::Builder result;
-  arangodb::basics::StringBuffer cleaned;
+  arangodb::basics::StringBuffer cleaned(false);
 
   if (_cleanupDuplicateAttributes) {
     int res = cleaned.reserve(bufferSize);
@@ -529,23 +529,23 @@ int RestoreFeature::sendRestoreData(std::string const& cname, char const* buffer
       _httpClient->request(rest::RequestType::PUT, url, buffer, bufferSize));
 
   if (response == nullptr || !response->isComplete()) {
-    errorMsg = "got invalid response from server: " + _httpClient->getErrorMessage();
+    std::string errorMsg = "got invalid response from server: " + _httpClient->getErrorMessage();
 
-    return TRI_ERROR_INTERNAL;
+    return {TRI_ERROR_INTERNAL, errorMsg};
   }
 
   if (response->wasHttpError()) {
     int err;
-    errorMsg = getHttpErrorMessage(response.get(), &err);
+    std::string errorMsg = getHttpErrorMessage(response.get(), &err);
 
     if (err != TRI_ERROR_NO_ERROR) {
-      return err;
+      return {err, errorMsg};
     }
 
-    return TRI_ERROR_INTERNAL;
+    return {TRI_ERROR_INTERNAL, errorMsg};
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return {};
 }
 
 static bool SortCollections(VPackBuilder const& l, VPackBuilder const& r) {
@@ -900,7 +900,9 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
 
               _stats._totalBatches++;
 
-              int res = sendRestoreData(cname, buffer.begin(), length, errorMsg);
+              Result r = sendRestoreData(cname, buffer.begin(), length);
+              int res = r.errorNumber();
+              errorMsg = r.errorMessage(); 
 
               _stats._totalSent += length;
 

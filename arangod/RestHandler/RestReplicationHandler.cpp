@@ -98,11 +98,11 @@ static Result restoreDataParser(char const* ptr, char const* pos,
   } catch (VPackException const& ex) {
     // Could not parse the given string
     return Result{TRI_ERROR_HTTP_CORRUPTED_JSON,
-                  "received invalid JSON data for collection " + collectionName};
-  } catch (std::exception const&) {
+                  "received invalid JSON data for collection '" + collectionName + "': " + ex.what()};
+  } catch (std::exception const& ex) {
     // Could not even build the string
     return Result{TRI_ERROR_HTTP_CORRUPTED_JSON,
-                  "received invalid JSON data for collection " + collectionName};
+                  "received invalid JSON data for collection '" + collectionName + "': " + ex.what()};
   } catch (...) {
     return Result{TRI_ERROR_INTERNAL};
   }
