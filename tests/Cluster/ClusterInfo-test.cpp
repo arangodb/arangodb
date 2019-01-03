@@ -23,7 +23,7 @@
 
 #include "catch.hpp"
 #include "../IResearch/AgencyMock.h"
-#include "../IResearch/StorageEngineMock.h"
+#include "../Mocks/StorageEngineMock.h"
 #include "Agency/Store.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationPhase.h"

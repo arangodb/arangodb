@@ -43,8 +43,8 @@ class SingleRowFetcher;
 
 class TraversalExecutorInfos : public ExecutorInfos {
   public:
-  TraversalExecutorInfos(std::unordered_set<RegisterId> inputRegisters,
-                         std::unordered_set<RegisterId> outputRegisters,
+  TraversalExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
+                         std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
                          RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                          std::unordered_set<RegisterId> registersToClear,
                          std::unique_ptr<traverser::Traverser>&& traverser);

@@ -31,9 +31,9 @@ using namespace arangodb::aql;
 using namespace arangodb::traverser;
 
 TraversalExecutorInfos::TraversalExecutorInfos(
-    std::unordered_set<RegisterId> inputRegisters,
-    std::unordered_set<RegisterId> outputRegisters, RegisterId nrInputRegisters,
-    RegisterId nrOutputRegisters,
+    std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
+    std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
+    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     std::unordered_set<RegisterId> registersToClear,
     std::unique_ptr<Traverser>&& traverser)
     : ExecutorInfos(inputRegisters, outputRegisters, nrInputRegisters,
@@ -74,13 +74,13 @@ std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRow(OutputAq
 
       // Now reset the traverser
       auto inReg = _infos.getInputRegisters();
-      if (inReg.empty()) {
+      if (inReg->empty()) {
         // TODO Implement me!!
         TRI_ASSERT(false);
       } else {
         // Only one input possible
-        TRI_ASSERT(inReg.size() == 1);
-        AqlValue const& in = _input.getValue(*inReg.begin());
+        TRI_ASSERT(inReg->size() == 1);
+        AqlValue const& in = _input.getValue(*(inReg->begin()));
         if (in.isObject()) {
           try {
             _traverser.setStartVertex(_traverser.options()->trx()->extractIdString(in.slice()));
