@@ -60,6 +60,7 @@ class RestoreFeature final : public application_features::ApplicationFeature,
   bool _importStructure;
   bool _progress;
   bool _overwrite;
+  bool _cleanupDuplicateAttributes;
   bool _force;
   bool _ignoreDistributeShardsLikeErrors;
   bool _clusterMode;

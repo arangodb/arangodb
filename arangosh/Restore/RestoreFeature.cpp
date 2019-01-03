@@ -25,6 +25,7 @@
 #include <iostream>
 
 #include <velocypack/Collection.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -56,6 +57,46 @@ using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::options;
 using namespace arangodb::rest;
+
+static void makeAttributesUnique(arangodb::velocypack::Builder& builder, arangodb::velocypack::Slice slice) {
+  if (slice.isObject()) {
+    std::unordered_set<std::string> keys;
+
+    builder.openObject();
+
+    auto it = arangodb::velocypack::ObjectIterator(slice, true);
+    
+    while (it.valid()) {
+      if (!keys.emplace(it.key().copyString()).second) {
+        // duplicate key
+        it.next();
+        continue;
+      }
+
+      // process attributes recursively
+      builder.add(it.key());
+      makeAttributesUnique(builder, it.value());
+      it.next();
+    }
+
+    builder.close();
+  } else if (slice.isArray()) {
+    builder.openArray();
+
+    auto it = arangodb::velocypack::ArrayIterator(slice);
+    
+    while (it.valid()) {
+      // recurse into array
+      makeAttributesUnique(builder, it.value());
+      it.next();
+    }
+
+    builder.close();
+  } else {
+    // non-compound value!
+    builder.add(slice);
+  }
+}
 
 /// @brief check whether HTTP response is valid, complete, and not an error
 arangodb::Result checkHttpResponse(arangodb::httpclient::SimpleHttpClient& client,
@@ -97,6 +138,7 @@ RestoreFeature::RestoreFeature(application_features::ApplicationServer* server, 
       _importStructure(true),
       _progress(true),
       _overwrite(true),
+      _cleanupDuplicateAttributes(false),
       _force(false),
       _ignoreDistributeShardsLikeErrors(false),
       _clusterMode(false),
@@ -148,6 +190,9 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
 
   options->addOption("--input-directory", "input directory",
                      new StringParameter(&_inputDirectory));
+
+  options->addHiddenOption("--cleanup-duplicate-attributes", "clean up duplicate attributes in input documents instead of making the restore operation fail (since v3.3.22 and v3.4.2)",
+                     new BooleanParameter(&_cleanupDuplicateAttributes));
 
   options->addOption("--import-data", "import data into collection",
                      new BooleanParameter(&_importData));
@@ -407,6 +452,75 @@ int RestoreFeature::sendRestoreIndexes(VPackSlice const& slice, std::string& err
 
 int RestoreFeature::sendRestoreData(std::string const& cname, char const* buffer,
                                     size_t bufferSize, std::string& errorMsg) {
+  // the following two structs are needed for cleaning up duplicate attributes 
+  arangodb::velocypack::Builder result;
+  arangodb::basics::StringBuffer cleaned;
+
+  if (_cleanupDuplicateAttributes) {
+    int res = cleaned.reserve(bufferSize);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      // out of memory
+      THROW_ARANGO_EXCEPTION(res);
+    }
+    
+    arangodb::velocypack::Options options = arangodb::velocypack::Options::Defaults;
+    // do *not* check duplicate attributes here (because that would throw)
+    options.checkAttributeUniqueness = false;
+    arangodb::velocypack::Builder builder(&options);
+
+    // instead, we need to manually check for duplicate attributes...
+    char const* p = buffer;
+    char const* e = p + bufferSize;
+      
+    while (p < e) {
+      while (p < e && (*p == ' ' || *p == '\r' || *p == '\n' || *p == '\t')) {
+        ++p;
+      }
+
+      // detect line ending
+      size_t length;
+      char const* nl = static_cast<char const*>(memchr(p, '\n', e - p)); 
+      if (nl == nullptr) {
+        length = e - p;
+      } else {
+        length = nl - p;
+      }
+      
+      builder.clear();
+      try {
+        VPackParser parser(builder, builder.options);
+        parser.parse(p, length);
+      } catch (arangodb::velocypack::Exception const& ex) {
+        return {TRI_ERROR_HTTP_CORRUPTED_JSON, ex.what()};
+      } catch (std::bad_alloc const& ex) {
+        return {TRI_ERROR_OUT_OF_MEMORY};
+      } catch (std::exception const& ex) {
+        return {TRI_ERROR_INTERNAL, ex.what()};
+      }
+
+      // recursively clean up duplicate attributes in the document
+      result.clear();
+      makeAttributesUnique(result, builder.slice());
+      
+      std::string const json = result.toJson();
+      cleaned.appendText(json.data(), json.size());
+
+      if (nl == nullptr) {
+        // done
+        break;
+      }
+      
+      cleaned.appendChar('\n');
+      // advance behind newline
+      p = nl + 1;
+    }
+  
+    // now point to the cleaned up data  
+    buffer = cleaned.c_str();
+    bufferSize = cleaned.length(); 
+  }
+ 
   std::string const url =
       "/_api/replication/restore-data?collection=" + StringUtils::urlEncode(cname) +
       "&force=" + (_force ? "true" : "false");

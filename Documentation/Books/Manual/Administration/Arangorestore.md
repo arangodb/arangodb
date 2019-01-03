@@ -121,24 +121,12 @@ data into edge collections will have the document collections linked in edges (*
 
 See [arangodump](Arangodump.md) for details.
 
-### Restoring Revision Ids and Collection Ids
- 
-_arangorestore_ will reload document and edges data with the exact same *_key*, *_from* and 
-*_to* values found in the input directory. However, when loading document data, it will assign
-its own values for the *_rev* attribute of the reloaded documents. Though this difference is 
-intentional (normally, every server should create its own *_rev* values) there might be 
-situations when it is required to re-use the exact same *_rev* values for the reloaded data.
-This can be achieved by setting the *--recycle-ids* parameter to *true*:
-
-    unix> arangorestore --collection myusers --collection myvalues --input-directory "dump"
-
-Note that setting *--recycle-ids* to *true* will also cause collections to be (re-)created in
-the target database with the exact same collection id as in the input directory. Any potentially
-existing collection in the target database with the same collection id will then be dropped.
-
 ### Reloading Data into a different Collection
 
-With some creativity you can use _arangodump_ and _arangorestore_ to transfer data from one
+_arangorestore_ will restore document and edges data with the exact same *_key*, *_rev*, *_from* 
+and *_to* values as found in the input directory. 
+
+With some creativity you can also use _arangodump_ and _arangorestore_ to transfer data from one
 collection into another (either on the same server or not). For example, to copy data from
 a collection *myvalues* in database *mydb* into a collection *mycopyvalues* in database *mycopy*,
 you can start with the following command:
