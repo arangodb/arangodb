@@ -1119,8 +1119,9 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
                      new UInt64Parameter(&_options.chunkSize));
 
   options->addOption("--threads",
-                     "maximum number of collections to process in parallel. From v3.4.0",
-                     new UInt32Parameter(&_options.threadCount));
+                     "maximum number of collections to process in parallel",
+                     new UInt32Parameter(&_options.threadCount))
+                     .setIntroducedIn(30400);
 
   options->addOption("--include-system-collections",
                      "include system collections",
@@ -1155,12 +1156,14 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
                      new BooleanParameter(&_options.overwrite));
 
   options->addOption("--number-of-shards",
-                     "override value for numberOfShards (from v3.3.22 and v3.4.2; can be specified multiple times, e.g. --numberOfShards 2 --numberOfShards myCollection=3)",
-                     new VectorParameter<StringParameter>(&_options.numberOfShards));
+                     "override value for numberOfShards (can be specified multiple times, e.g. --numberOfShards 2 --numberOfShards myCollection=3)",
+                     new VectorParameter<StringParameter>(&_options.numberOfShards))
+                     .setIntroducedIn(30322).setIntroducedIn(30402);
   
   options->addOption("--replication-factor",
-                     "override value for replicationFactor (from v3.3.22 and v3.4.2; can be specified multiple times, e.g. --replicationFactor 2 --replicationFactor myCollection=3)",
-                     new VectorParameter<StringParameter>(&_options.replicationFactor));
+                     "override value for replicationFactor (can be specified multiple times, e.g. --replicationFactor 2 --replicationFactor myCollection=3)",
+                     new VectorParameter<StringParameter>(&_options.replicationFactor))
+                     .setIntroducedIn(30322).setIntroducedIn(30402);
 
   options->addOption(
       "--ignore-distribute-shards-like-errors",
@@ -1173,14 +1176,16 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
   
   // deprecated options
   options->addOption("--default-number-of-shards",
-                     "default value for numberOfShards if not specified in dump (deprecated since v3.3.22 and v3.4.2)",
+                     "default value for numberOfShards if not specified in dump",
                      new UInt64Parameter(&_options.defaultNumberOfShards),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+                     .setDeprecatedIn(30322).setDeprecatedIn(30402);
 
   options->addOption("--default-replication-factor",
-                     "default value for replicationFactor if not specified in dump (deprecated since v3.3.22 and v3.4.2)",
+                     "default value for replicationFactor if not specified in dump",
                      new UInt64Parameter(&_options.defaultReplicationFactor),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+                     .setDeprecatedIn(30322).setDeprecatedIn(30402);
 }
 
 void RestoreFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
