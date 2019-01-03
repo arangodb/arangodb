@@ -124,11 +124,8 @@ class AqlItemBlock {
   /// @brief emplaceValue, set the current value of a register, constructing
   /// it in place
   template <typename... Args>
-  /* 
-   * Sorry this does not compile
-   * std::enable_if_t<!std::is_same<AqlValue,std::decay_t<Args>...>::value, void>
-   */
-  void emplaceValue(size_t index, RegisterId varNr, Args&&... args) {
+  std::enable_if_t<!(std::is_same<AqlValue,std::decay_t<Args>>::value || ...), void>
+  emplaceValue(size_t index, RegisterId varNr, Args&&... args) {
     TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
     TRI_ASSERT(_data[index * _nrRegs + varNr].isEmpty());
 
