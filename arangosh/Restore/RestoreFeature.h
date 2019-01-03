@@ -63,8 +63,10 @@ class RestoreFeature final : public application_features::ApplicationFeature,
   bool _force;
   bool _ignoreDistributeShardsLikeErrors;
   bool _clusterMode;
-  uint64_t _defaultNumberOfShards;
-  uint64_t _defaultReplicationFactor;
+  uint64_t _defaultNumberOfShards; // deprecated
+  uint64_t _defaultReplicationFactor; // deprecated
+  std::vector<std::string> _numberOfShards;
+  std::vector<std::string> _replicationFactor;
 
  private:
   int tryCreateDatabase(ClientFeature*, std::string const& name);
@@ -79,6 +81,8 @@ class RestoreFeature final : public application_features::ApplicationFeature,
   ssize_t readData(int fd, char* data, size_t len);
   void beginDecryption(int fd);
   void endDecryption(int fd);
+  uint64_t getReplicationFactor(VPackSlice const& slice, bool& isSatellite) const;
+  uint64_t getNumberOfShards(VPackSlice const& slice) const;
 
  private:
   int* _result;
