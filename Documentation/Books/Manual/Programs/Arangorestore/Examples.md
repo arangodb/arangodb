@@ -169,30 +169,44 @@ As of Version 2.1 the *arangorestore* tool supports sharding. Simply
 point it to one of the coordinators in your cluster and it will
 work as usual but on sharded collections in the cluster.
 
-If *arangorestore* is asked to drop and re-create a collection, it
-will use the same number of shards and the same shard keys as when
-the collection was dumped. The distribution of the shards to the
-servers will also be the same as at the time of the dump. This means 
-in particular that DBservers with the same IDs as before must be present in the
-cluster at time of the restore. 
+If *arangorestore* is asked to restore a collection, it will use the same number of 
+shards, replication factor and shard keys as when the collection was dumped. 
+The distribution of the shards to the servers will also be the same as at the time of the dump,
+provided that the number of DBServers in the cluster dumped from is identical to the
+number of DBServers in the to-be-restored-to cluster.
 
-If a collection was dumped from a single instance, one can manually
-add the structural description for the shard keys and the number and
-distribution of the shards and then the restore into a cluster will
-work.
+To modify the number of shards or the replication factor for all or just some collections,
+*arangorestore* provides the options `--number-of-shards` and `--replication-factor`.
+These options can be specified multiple times as well, in order to override the settings
+for dedicated collections, e.g.
+
+    unix> arangorestore --number-of-shards 2 --number-of-shards mycollection=3 --number-of-shards test=4
+
+The above will restore all collections except "mycollection" and "test" with 2 shards. "mycollection"
+will have 3 shards when restored, and "test" will have 4. It is possible to omit the default value
+and only use collection-specific overrides. In this case, the number of shards for any collections not
+overridden will be determined by looking into the "numberOfShards" values contained in the dump.
+
+The `--replication-factor` options works in the same way, e.g.
+    
+    unix> arangorestore --replication-factor 2 --replication-factor mycollection=1
+
+will set the replication factor to 2 for all collections but "mycollection", which will get a
+replication factor of just 1.    
+
+If a collection was dumped from a single instance and is then restored into
+a cluster, the sharding will be done by the `_key` attribute by default. One can
+manually edit the structural description for the shard keys in the dump files if
+required.
 
 If you restore a collection that was dumped from a cluster into a single
-ArangoDB instance, the number of shards and the shard keys will silently
+ArangoDB instance, the number of shards, replication factor and shard keys will silently
 be ignored.
-
-Note that in a cluster, every newly created collection will have a new
-ID, it is not possible to reuse the ID from the originally dumped
-collection. This is for safety reasons to ensure consistency of IDs.
 
 ### Restoring collections with sharding prototypes
 
-*arangorestore* will yield an error, while trying to restore a
-collection, whose shard distribution follows a collection, which does
+*arangorestore* will yield an error when trying to restore a
+collection whose shard distribution follows a collection which does
 not exist in the cluster and which was not dumped along:
 
     arangorestore --collection clonedCollection --server.database mydb --input-directory "dump"
@@ -205,10 +219,10 @@ follows:
 
     arangorestore --collection clonedCollection --server.database mydb --input-directory "dump" --ignore-distribute-shards-like-errors
 
-Restore into an authentication enabled ArangoDB
+Restore into an authentication-enabled ArangoDB
 -----------------------------------------------
 
-Of course you can restore data into a password protected ArangoDB as well.
+Of course you can restore data into a password-protected ArangoDB as well.
 However this requires certain user rights for the user used in the restore process.
 The rights are described in detail in the [Managing Users](../../Administration/ManagingUsers/README.md) chapter.
 For restore this short overview is sufficient:
