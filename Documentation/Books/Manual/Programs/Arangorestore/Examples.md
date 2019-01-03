@@ -175,8 +175,8 @@ The distribution of the shards to the servers will also be the same as at the ti
 provided that the number of DBServers in the cluster dumped from is identical to the
 number of DBServers in the to-be-restored-to cluster.
 
-To modify the number of shards or the replication factor for all or just some collections,
-*arangorestore* provides the options `--number-of-shards` and `--replication-factor`.
+To modify the number of _shards_ or the _replication factor_ for all or just some collections,
+*arangorestore*, starting from v3.3.22 and v3.4.2,  provides the options `--number-of-shards` and `--replication-factor`.
 These options can be specified multiple times as well, in order to override the settings
 for dedicated collections, e.g.
 
