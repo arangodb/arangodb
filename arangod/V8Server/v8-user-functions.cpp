@@ -21,11 +21,11 @@
 /// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "v8-vocbaseprivate.h"
 #include <v8.h>
+#include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
-#include "V8/v8-conv.h"
+#include "v8-vocbaseprivate.h"
 
 #include "v8-user-functions.h"
 
@@ -58,7 +58,8 @@ static void JS_UnregisterAQLUserFunctionsGroup(v8::FunctionCallbackInfo<v8::Valu
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("UNREGISTER_AQL_USER_FUNCTION_GROUP(<group string>)");
+    TRI_V8_THROW_EXCEPTION_USAGE(
+        "UNREGISTER_AQL_USER_FUNCTION_GROUP(<group string>)");
   }
 
   int deleteCount;
@@ -79,7 +80,9 @@ static void JS_RegisterAqlUserFunction(v8::FunctionCallbackInfo<v8::Value> const
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("REGISTER_AQL_USER_FUNCTION(<name>, <functionbody> [, <isDeterministic>])");
+    TRI_V8_THROW_EXCEPTION_USAGE(
+        "REGISTER_AQL_USER_FUNCTION(<name>, <functionbody> [, "
+        "<isDeterministic>])");
   }
 
   TRI_normalize_V8_Obj(args, args[0]);
@@ -105,7 +108,8 @@ static void JS_GetAqlUserFunctions(v8::FunctionCallbackInfo<v8::Value> const& ar
   v8::HandleScope scope(isolate);
 
   if (args.Length() > 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("GET_AQL_USER_FUNCTIONS([<group-filter-string>])");
+    TRI_V8_THROW_EXCEPTION_USAGE(
+        "GET_AQL_USER_FUNCTIONS([<group-filter-string>])");
   }
 
   auto& vocbase = GetContextVocBase(isolate);
@@ -128,23 +132,22 @@ static void JS_GetAqlUserFunctions(v8::FunctionCallbackInfo<v8::Value> const& ar
   TRI_V8_TRY_CATCH_END;
 }
 
-void TRI_InitV8UserFunctions(v8::Isolate* isolate,
-                             v8::Handle<v8::Context>) {
+void TRI_InitV8UserFunctions(v8::Isolate* isolate, v8::Handle<v8::Context>) {
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "UNREGISTER_AQL_USER_FUNCTION"),
+      JS_UnregisterAQLUserFunction, true);
+
+  TRI_AddGlobalFunctionVocbase(
+      isolate,
+      TRI_V8_ASCII_STRING(isolate, "UNREGISTER_AQL_USER_FUNCTION_GROUP"),
+      JS_UnregisterAQLUserFunctionsGroup, true);
+
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "REGISTER_AQL_USER_FUNCTION"),
+      JS_RegisterAqlUserFunction, true);
 
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "UNREGISTER_AQL_USER_FUNCTION"),
-                               JS_UnregisterAQLUserFunction, true);
-
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "UNREGISTER_AQL_USER_FUNCTION_GROUP"),
-                               JS_UnregisterAQLUserFunctionsGroup, true);
-
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "REGISTER_AQL_USER_FUNCTION"),
-                               JS_RegisterAqlUserFunction, true);
-
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "GET_AQL_USER_FUNCTIONS"),
+                               TRI_V8_ASCII_STRING(isolate,
+                                                   "GET_AQL_USER_FUNCTIONS"),
                                JS_GetAqlUserFunctions, true);
-
 }

@@ -100,11 +100,11 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void handleCommandRestoreData();
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handle a restore of all views for this collection
   //////////////////////////////////////////////////////////////////////////////
-  
+
   void handleCommandRestoreView();
 
   //////////////////////////////////////////////////////////////////////////////
@@ -258,8 +258,9 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief restores the structure of a collection, coordinator case
   //////////////////////////////////////////////////////////////////////////////
 
-  Result processRestoreCollectionCoordinator(VPackSlice const&, bool overwrite, bool force,
-                                             uint64_t numberOfShards, uint64_t replicationFactor,
+  Result processRestoreCollectionCoordinator(VPackSlice const&, bool overwrite,
+                                             bool force, uint64_t numberOfShards,
+                                             uint64_t replicationFactor,
                                              bool ignoreDistributeShardsLikeErrors);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -272,8 +273,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief restores the data of a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  Result processRestoreDataBatch(transaction::Methods& trx,
-                                 std::string const& colName);
+  Result processRestoreDataBatch(transaction::Methods& trx, std::string const& colName);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the indexes of a collection
@@ -343,7 +343,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   static std::unordered_map<std::string, std::chrono::time_point<std::chrono::steady_clock>> _tombstones;
 
  protected:
-
   //////////////////////////////////////////////////////////////////////////////
   /// SECTION:
   /// Functions to be implemented by specialization
@@ -411,7 +410,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   virtual void handleCommandDump() = 0;
 
  private:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Cleanup tombstones that have expired
   //////////////////////////////////////////////////////////////////////////////
@@ -426,10 +424,8 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   ///        It will be registered with the given id, and it will have
   ///        the given time to live.
   //////////////////////////////////////////////////////////////////////////////
-  Result createBlockingTransaction(aql::QueryId id,
-                                   LogicalCollection& col,
-                                   double ttl,
-                                   AccessMode::Type access) const;
+  Result createBlockingTransaction(aql::QueryId id, LogicalCollection& col,
+                                   double ttl, AccessMode::Type access) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Test if we already have the read-lock
@@ -444,7 +440,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief compute a local checksum for the given collection
   ///        Will return error if the lock has expired.
   //////////////////////////////////////////////////////////////////////////////
-  
+
   ResultT<std::string> computeCollectionChecksum(aql::QueryId readLockId,
                                                  LogicalCollection* col) const;
 
@@ -457,5 +453,5 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
 
   ResultT<bool> cancelBlockingTransaction(aql::QueryId id) const;
 };
-}
+}  // namespace arangodb
 #endif

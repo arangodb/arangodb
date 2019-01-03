@@ -25,8 +25,8 @@
 #define ARANGODB_CACHE_CACHE_H
 
 #include "Basics/Common.h"
-#include "Basics/Result.h"
 #include "Basics/ReadWriteSpinLock.h"
+#include "Basics/Result.h"
 #include "Basics/SharedCounter.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
@@ -72,10 +72,9 @@ class Cache : public std::enable_shared_from_this<Cache> {
   static const uint64_t minLogSize;
 
  public:
-  Cache(ConstructionGuard guard, Manager* manager, uint64_t id, Metadata&& metadata,
-        std::shared_ptr<Table> table, bool enableWindowedStats,
-        std::function<Table::BucketClearer(Metadata*)> bucketClearer,
-        size_t slotsPerBucket);
+  Cache(ConstructionGuard guard, Manager* manager, uint64_t id,
+        Metadata&& metadata, std::shared_ptr<Table> table, bool enableWindowedStats,
+        std::function<Table::BucketClearer(Metadata*)> bucketClearer, size_t slotsPerBucket);
   virtual ~Cache() = default;
 
   // primary functionality; documented in derived classes
@@ -87,9 +86,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the ID for this cache.
   //////////////////////////////////////////////////////////////////////////////
-  uint64_t id() const {
-    return _id;
-  }
+  uint64_t id() const { return _id; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the total memory usage for this cache in bytes.
@@ -142,9 +139,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Check whether the cache has begun the process of shutting down.
   //////////////////////////////////////////////////////////////////////////////
-  inline bool isShutdown() const {
-    return _shutdown.load();
-  }
+  inline bool isShutdown() const { return _shutdown.load(); }
 
  protected:
   static constexpr uint64_t triesFast = 200;
@@ -170,17 +165,17 @@ class Cache : public std::enable_shared_from_this<Cache> {
   std::shared_ptr<Table> _tableShrdPtr;
   /// keep a pointer to the current table, which can be atomically set
   std::atomic<Table*> _table;
-  
+
   Table::BucketClearer _bucketClearer;
   size_t _slotsPerBucket;
 
   // manage eviction rate
   basics::SharedCounter<64> _insertsTotal;
   basics::SharedCounter<64> _insertEvictions;
-  static constexpr uint64_t _evictionMask = 4095; // check roughly every 4096 insertions
-  static constexpr double _evictionRateThreshold = 0.01; // if more than 1%
-                                                         // evictions in past 4096
-                                                         // inserts, migrate
+  static constexpr uint64_t _evictionMask = 4095;  // check roughly every 4096 insertions
+  static constexpr double _evictionRateThreshold = 0.01;  // if more than 1%
+                                                          // evictions in past 4096
+                                                          // inserts, migrate
 
   // times to wait until requesting is allowed again
   std::atomic<Manager::time_point::rep> _migrateRequestTime;
@@ -216,8 +211,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
   bool migrate(std::shared_ptr<Table> newTable);
 
   virtual uint64_t freeMemoryFrom(uint32_t hash) = 0;
-  virtual void migrateBucket(void* sourcePtr,
-                             std::unique_ptr<Table::Subtable> targets,
+  virtual void migrateBucket(void* sourcePtr, std::unique_ptr<Table::Subtable> targets,
                              std::shared_ptr<Table> newTable) = 0;
 };
 

@@ -31,32 +31,34 @@ namespace arangodb {
 
 class FixedSizeAllocator {
  private:
-
   class MemoryBlock {
    public:
     MemoryBlock(MemoryBlock const&) = delete;
     MemoryBlock& operator=(MemoryBlock const&) = delete;
 
-    MemoryBlock(size_t itemSize, size_t nrItems) 
+    MemoryBlock(size_t itemSize, size_t nrItems)
         : _itemSize(itemSize), _nrAlloc(nrItems), _nrUsed(0), _alloc(nullptr), _data(nullptr) {
-          
       _alloc = new char[(itemSize * nrItems) + 64];
-    
-      // adjust to cache line offset (assumed to be 64 bytes) 
-      _data = reinterpret_cast<char*>(
-          (reinterpret_cast<uintptr_t>(_alloc) + 63) & ~((uintptr_t)0x3fu));
 
-      TRI_ASSERT(reinterpret_cast<uintptr_t>(_data) % sizeof(void*) == 0); 
+      // adjust to cache line offset (assumed to be 64 bytes)
+      _data = reinterpret_cast<char*>((reinterpret_cast<uintptr_t>(_alloc) + 63) &
+                                      ~((uintptr_t)0x3fu));
+
+      TRI_ASSERT(reinterpret_cast<uintptr_t>(_data) % sizeof(void*) == 0);
     }
 
     MemoryBlock(MemoryBlock&& other) noexcept
-        : _itemSize(other._itemSize), _nrAlloc(other._nrAlloc), _nrUsed(other._nrUsed), _alloc(other._alloc), _data(other._data) {
+        : _itemSize(other._itemSize),
+          _nrAlloc(other._nrAlloc),
+          _nrUsed(other._nrUsed),
+          _alloc(other._alloc),
+          _data(other._data) {
       other._nrAlloc = 0;
       other._nrUsed = 0;
       other._alloc = nullptr;
       other._data = nullptr;
     }
-    
+
     MemoryBlock& operator=(MemoryBlock&& other) noexcept {
       if (this != &other) {
         TRI_ASSERT(_itemSize == other._itemSize);
@@ -66,7 +68,7 @@ class FixedSizeAllocator {
         _nrUsed = other._nrUsed;
         _alloc = other._alloc;
         _data = other._data;
-        
+
         other._nrAlloc = 0;
         other._nrUsed = 0;
         other._alloc = nullptr;
@@ -76,18 +78,14 @@ class FixedSizeAllocator {
       return *this;
     }
 
-    ~MemoryBlock() {
-      delete[] _alloc;
-    }
+    ~MemoryBlock() { delete[] _alloc; }
 
     void* next() {
       TRI_ASSERT(_nrUsed < _nrAlloc);
       return static_cast<void*>(_data + (_itemSize * _nrUsed++));
     }
 
-    inline bool full() const {
-      return _nrUsed == _nrAlloc;
-    }
+    inline bool full() const { return _nrUsed == _nrAlloc; }
 
     size_t memoryUsage() const {
       return (_data - _alloc) + _itemSize * _nrAlloc;
@@ -97,21 +95,22 @@ class FixedSizeAllocator {
     size_t const _itemSize;
     size_t _nrAlloc;
     size_t _nrUsed;
-    char* _alloc;  
-    char* _data; 
+    char* _alloc;
+    char* _data;
   };
 
  public:
   FixedSizeAllocator(FixedSizeAllocator const&) = delete;
   FixedSizeAllocator& operator=(FixedSizeAllocator const&) = delete;
 
-  explicit FixedSizeAllocator(size_t itemSize) 
+  explicit FixedSizeAllocator(size_t itemSize)
       : _itemSize(itemSize), _freelist(nullptr) {
     _blocks.reserve(4);
 
 #ifndef TRI_UNALIGNED_ACCESS
     // align _itemSize to a multiple of sizeof(void*) on system that require it
-    _itemSize += (_itemSize % sizeof(void*) == 0 ? 0 : sizeof(void*) - _itemSize % sizeof(void*));
+    _itemSize +=
+        (_itemSize % sizeof(void*) == 0 ? 0 : sizeof(void*) - _itemSize % sizeof(void*));
 #endif
   }
 
@@ -132,7 +131,7 @@ class FixedSizeAllocator {
 
     return _blocks.back()->next();
   }
-  
+
   void deallocateAll() {
     _blocks.clear();
     _freelist = nullptr;
@@ -163,6 +162,6 @@ class FixedSizeAllocator {
   void* _freelist;
 };
 
-}
+}  // namespace arangodb
 
 #endif

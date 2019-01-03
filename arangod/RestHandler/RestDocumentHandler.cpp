@@ -40,8 +40,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestDocumentHandler::RestDocumentHandler(GeneralRequest* request,
-                                         GeneralResponse* response)
+RestDocumentHandler::RestDocumentHandler(GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
 RestStatus RestDocumentHandler::execute() {
@@ -99,8 +98,7 @@ bool RestDocumentHandler::insertDocument() {
   }
 
   if (!found || collectionName.empty()) {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting " + DOCUMENT_PATH +
                       "/<collectionname> or query parameter 'collection'");
     return false;
@@ -118,7 +116,8 @@ bool RestDocumentHandler::insertDocument() {
   opOptions.returnNew = _request->parsedValue(StaticStrings::ReturnNewString, false);
   opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
   opOptions.overwrite = _request->parsedValue(StaticStrings::OverWrite, false);
-  opOptions.returnOld = _request->parsedValue(StaticStrings::ReturnOldString, false) && opOptions.overwrite;
+  opOptions.returnOld = _request->parsedValue(StaticStrings::ReturnOldString, false) &&
+                        opOptions.overwrite;
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 
@@ -136,8 +135,7 @@ bool RestDocumentHandler::insertDocument() {
     return false;
   }
 
-  arangodb::OperationResult result =
-      trx->insert(collectionName, body, opOptions);
+  arangodb::OperationResult result = trx->insert(collectionName, body, opOptions);
 
   // Will commit if no error occured.
   // or abort if an error occured.
@@ -171,16 +169,14 @@ bool RestDocumentHandler::readDocument() {
   switch (len) {
     case 0:
     case 1:
-      generateError(rest::ResponseCode::NOT_FOUND,
-                    TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                     "expecting GET /_api/document/<document-handle>");
       return false;
     case 2:
       return readSingleDocument(true);
 
     default:
-      generateError(rest::ResponseCode::BAD,
-                    TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                     "expecting GET /_api/document/<document-handle>");
       return false;
   }
@@ -201,8 +197,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   bool isValidRevision;
   TRI_voc_rid_t ifNoneRid = extractRevision("if-none-match", isValidRevision);
   if (!isValidRevision) {
-    ifNoneRid =
-        UINT64_MAX;  // an impossible rev, so precondition failed will happen
+    ifNoneRid = UINT64_MAX;  // an impossible rev, so precondition failed will happen
   }
 
   OperationOptions options;
@@ -271,7 +266,8 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   }
 
   // use default options
-  generateDocument(result.slice(), generateBody, trx->transactionContextPtr()->getVPackOptionsForDump());
+  generateDocument(result.slice(), generateBody,
+                   trx->transactionContextPtr()->getVPackOptionsForDump());
   return true;
 }
 
@@ -362,7 +358,8 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
 
   if ((!isArrayCase && !body.isObject()) || (isArrayCase && !body.isArray())) {
     generateTransactionError(collectionName,
-        OperationResult(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID), "");
+                             OperationResult(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID),
+                             "");
     return false;
   }
 
@@ -387,12 +384,11 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     if (headerRev != 0) {
       opOptions.ignoreRevs = false;
     }
-    
+
     VPackSlice keyInBody = body.get(StaticStrings::KeyString);
     TRI_voc_rid_t revInBody = TRI_ExtractRevisionId(body);
-    if ((headerRev != 0 && revInBody != headerRev) ||
-        keyInBody.isNone() || keyInBody.isNull() ||
-        (keyInBody.isString() && keyInBody.copyString() != key)) {
+    if ((headerRev != 0 && revInBody != headerRev) || keyInBody.isNone() ||
+        keyInBody.isNull() || (keyInBody.isString() && keyInBody.copyString() != key)) {
       // We need to rewrite the document with the given revision and key:
       builder = std::make_shared<VPackBuilder>();
       {
@@ -400,18 +396,14 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
         TRI_SanitizeObject(body, *builder);
         builder->add(StaticStrings::KeyString, VPackValue(key));
         if (headerRev != 0) {
-          builder->add(StaticStrings::RevString,
-                       VPackValue(TRI_RidToString(headerRev)));
+          builder->add(StaticStrings::RevString, VPackValue(TRI_RidToString(headerRev)));
         } else if (!opOptions.ignoreRevs && revInBody != 0) {
-          builder->add(StaticStrings::RevString,
-                       VPackValue(TRI_RidToString(headerRev)));
+          builder->add(StaticStrings::RevString, VPackValue(TRI_RidToString(headerRev)));
         }
       }
 
       body = builder->slice();
     }
-
-
   }
 
   // find and load collection given by name or identifier
@@ -434,8 +426,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   OperationResult result(TRI_ERROR_NO_ERROR);
   if (isPatch) {
     // patching an existing document
-    opOptions.keepNull =
-        _request->parsedValue(StaticStrings::KeepNullString, true);
+    opOptions.keepNull = _request->parsedValue(StaticStrings::KeepNullString, true);
     opOptions.mergeObjects =
         _request->parsedValue(StaticStrings::MergeObjectsString, true);
     result = trx->update(collectionName, body, opOptions);
@@ -498,14 +489,10 @@ bool RestDocumentHandler::removeDocument() {
   }
 
   OperationOptions opOptions;
-  opOptions.returnOld =
-      _request->parsedValue(StaticStrings::ReturnOldString, false);
-  opOptions.ignoreRevs =
-      _request->parsedValue(StaticStrings::IgnoreRevsString, true);
-  opOptions.waitForSync =
-      _request->parsedValue(StaticStrings::WaitForSyncString, false);
-  opOptions.silent =
-      _request->parsedValue(StaticStrings::SilentString, false);
+  opOptions.returnOld = _request->parsedValue(StaticStrings::ReturnOldString, false);
+  opOptions.ignoreRevs = _request->parsedValue(StaticStrings::IgnoreRevsString, true);
+  opOptions.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
+  opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 
@@ -521,8 +508,7 @@ bool RestDocumentHandler::removeDocument() {
 
       if (revision != 0) {
         opOptions.ignoreRevs = false;
-        builder.add(StaticStrings::RevString,
-                    VPackValue(TRI_RidToString(revision)));
+        builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(revision)));
       }
     }
 
@@ -576,8 +562,7 @@ bool RestDocumentHandler::removeDocument() {
 
   generateDeleted(result, collectionName,
                   TRI_col_type_e(trx->getCollectionType(collectionName)),
-                  trx->transactionContextPtr()->getVPackOptionsForDump(),
-                  isMultiple);
+                  trx->transactionContextPtr()->getVPackOptionsForDump(), isMultiple);
   return true;
 }
 
@@ -630,6 +615,7 @@ bool RestDocumentHandler::readManyDocuments() {
     return false;
   }
 
-  generateDocument(result.slice(), true, trx->transactionContextPtr()->getVPackOptionsForDump());
+  generateDocument(result.slice(), true,
+                   trx->transactionContextPtr()->getVPackOptionsForDump());
   return true;
 }

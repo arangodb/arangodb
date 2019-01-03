@@ -47,21 +47,18 @@ void* memrchr(void const* block, int c, size_t size) {
 #ifdef _WIN32
 void* memmem(void const* haystack, size_t haystackLength, void const* needle,
              size_t needleLength) {
-  if (haystackLength == 0 || needleLength == 0 ||
-      haystackLength < needleLength) {
+  if (haystackLength == 0 || needleLength == 0 || haystackLength < needleLength) {
     return nullptr;
   }
 
   char const* n = static_cast<char const*>(needle);
 
   if (needleLength == 1) {
-    return memchr(const_cast<void*>(haystack), static_cast<int>(*n),
-                  haystackLength);
+    return memchr(const_cast<void*>(haystack), static_cast<int>(*n), haystackLength);
   }
 
   char const* current = static_cast<char const*>(haystack);
-  char const* end =
-      static_cast<char const*>(haystack) + haystackLength - needleLength;
+  char const* end = static_cast<char const*>(haystack) + haystackLength - needleLength;
 
   for (; current <= end; ++current) {
     if (*current == *n && memcmp(needle, current, needleLength) == 0) {
@@ -124,14 +121,14 @@ void TRI_gmtime(time_t tt, struct tm* tb) {
 time_t TRI_timegm(struct tm* tm) {
 #ifdef _WIN32
   return _mkgmtime(tm);
-#else 
+#else
 #ifdef __sun
   // This should work, but who knows? ti is any valid time_t value, since
   // it is produced by mktime. Therefore gmtime_r and localtime_r compute
   // two different split up time values gm and lo, which differ by the
   // currently configured offset of local time and UTC. Note that DST
   // will be factored into the lo result but not into gm, including the
-  // lo.tm_isdst field! Then we apply mktime to both gm and lo, and, 
+  // lo.tm_isdst field! Then we apply mktime to both gm and lo, and,
   // whatever the currently configured offset of local time and UTC is,
   // it will be expressed in time_t units by (mktime(&gm) - mktime(&lo)).
   // Therefore, this is the correct fix for the result of mktime(tm)
@@ -139,8 +136,10 @@ time_t TRI_timegm(struct tm* tm) {
   // to 0 to make mktime behave exactly as for gm.
   tm.isdst = 0;
   time_t ti = mktime(tm);
-  struct tm gm; gmtime_r(&ti, &gm);
-  struct tm lo; localtime_r(&ti, &lo);
+  struct tm gm;
+  gmtime_r(&ti, &gm);
+  struct tm lo;
+  localtime_r(&ti, &lo);
   return ti - (mktime(&gm) - mktime(&lo));
 #else
   // Linux, OSX and BSD variants:
@@ -150,8 +149,9 @@ time_t TRI_timegm(struct tm* tm) {
 }
 
 double TRI_microtime() {
-  return std::chrono::duration<double>( // time since epoch in seconds
-    std::chrono::system_clock::now().time_since_epoch()).count();
+  return std::chrono::duration<double>(  // time since epoch in seconds
+             std::chrono::system_clock::now().time_since_epoch())
+      .count();
 }
 
 size_t TRI_numberProcessors() {

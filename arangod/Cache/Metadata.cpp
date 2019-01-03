@@ -45,8 +45,7 @@ Metadata::Metadata()
       _migrating(0),
       _resizing(0) {}
 
-Metadata::Metadata(uint64_t usageLimit, uint64_t fixed, uint64_t table,
-                   uint64_t max)
+Metadata::Metadata(uint64_t usageLimit, uint64_t fixed, uint64_t table, uint64_t max)
     : fixedSize(fixed),
       tableSize(table),
       maxSize(max),
@@ -104,8 +103,7 @@ bool Metadata::adjustUsageIfAllowed(int64_t usageChange) noexcept {
       return false;
     }
 
-    bool success = usage.compare_exchange_weak(expected, desired,
-                                               std::memory_order_acq_rel,
+    bool success = usage.compare_exchange_weak(expected, desired, std::memory_order_acq_rel,
                                                std::memory_order_relaxed);
     if (success) {
       break;
@@ -133,8 +131,7 @@ bool Metadata::adjustLimits(uint64_t softLimit, uint64_t hardLimit) noexcept {
   }
 
   // special case: finalize shrinking case above
-  if ((softLimit == Cache::minSize) && (hardLimit == Cache::minSize) &&
-      (usage <= hardLimit)) {
+  if ((softLimit == Cache::minSize) && (hardLimit == Cache::minSize) && (usage <= hardLimit)) {
     return approve();
   }
 
@@ -145,8 +142,7 @@ bool Metadata::adjustLimits(uint64_t softLimit, uint64_t hardLimit) noexcept {
   }
 
   // general case: finish shrinking
-  if ((softLimit == softUsageLimit) && (softLimit == hardLimit) &&
-      (usage <= hardLimit)) {
+  if ((softLimit == softUsageLimit) && (softLimit == hardLimit) && (usage <= hardLimit)) {
     return approve();
   }
 
@@ -175,14 +171,12 @@ uint64_t Metadata::newLimit() const noexcept {
 
 bool Metadata::migrationAllowed(uint64_t newTableSize) noexcept {
   TRI_ASSERT(isLocked());
-  return (hardUsageLimit + fixedSize + newTableSize +
-              Manager::cacheRecordOverhead <=
+  return (hardUsageLimit + fixedSize + newTableSize + Manager::cacheRecordOverhead <=
           std::min(deservedSize, maxSize));
 }
 
 void Metadata::changeTable(uint64_t newTableSize) noexcept {
   TRI_ASSERT(isWriteLocked());
   tableSize = newTableSize;
-  allocatedSize =
-      hardUsageLimit + fixedSize + tableSize + Manager::cacheRecordOverhead;
+  allocatedSize = hardUsageLimit + fixedSize + tableSize + Manager::cacheRecordOverhead;
 }

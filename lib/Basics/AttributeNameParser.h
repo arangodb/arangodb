@@ -24,8 +24,8 @@
 #ifndef ARANGODB_BASICS_ATTRIBUTE_NAME_PARSER_H
 #define ARANGODB_BASICS_ATTRIBUTE_NAME_PARSER_H 1
 
-#include "Common.h"
 #include <iosfwd>
+#include "Common.h"
 
 namespace arangodb {
 
@@ -42,12 +42,12 @@ namespace basics {
 struct AttributeName {
   std::string name;
   bool shouldExpand;
-  
+
   explicit AttributeName(arangodb::StringRef const& name);
 
   AttributeName(std::string const& name, bool expand)
       : name(name), shouldExpand(expand) {}
-  
+
   AttributeName(std::string&& name, bool expand)
       : name(std::move(name)), shouldExpand(expand) {}
 
@@ -55,7 +55,7 @@ struct AttributeName {
 
   AttributeName(AttributeName const& other) = default;
   AttributeName& operator=(AttributeName const& other) = default;
-  
+
   AttributeName(AttributeName&& other) = default;
   AttributeName& operator=(AttributeName&& other) = default;
 
@@ -79,7 +79,7 @@ struct AttributeName {
   //////////////////////////////////////////////////////////////////////////////
 
   static bool isIdentical(std::vector<std::vector<AttributeName>> const& lhs,
-                          std::vector<std::vector<AttributeName>> const& rhs, 
+                          std::vector<std::vector<AttributeName>> const& rhs,
                           bool ignoreExpansionInLast);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -96,24 +96,21 @@ struct AttributeName {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ParseAttributeString(arangodb::StringRef const& input,
-                              std::vector<AttributeName>& result,
-                              bool allowExpansion);
+                              std::vector<AttributeName>& result, bool allowExpansion);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Parse an input string into attribute names and expansion flags
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ParseAttributeString(std::string const& input,
-                              std::vector<AttributeName>& result,
-                              bool allowExpansion);
+                              std::vector<AttributeName>& result, bool allowExpansion);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Transform a vector of AttributeNames back into a string
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AttributeNamesToString(std::vector<AttributeName> const& input,
-                                std::string& result,
-                                bool excludeExpansion = false);
+                                std::string& result, bool excludeExpansion = false);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Transform a vector of AttributeNames into joined nested strings
@@ -122,19 +119,17 @@ void TRI_AttributeNamesToString(std::vector<AttributeName> const& input,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AttributeNamesJoinNested(std::vector<AttributeName> const& input,
-                                  std::vector<std::string>& result,
-                                  bool onlyFirst);
+                                  std::vector<std::string>& result, bool onlyFirst);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Tests if this AttributeName uses an expansion operator
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_AttributeNamesHaveExpansion(std::vector<AttributeName> const& input);
-}
-}
+}  // namespace basics
+}  // namespace arangodb
 
 std::ostream& operator<<(std::ostream&, arangodb::basics::AttributeName const&);
-std::ostream& operator<<(std::ostream&,
-                         std::vector<arangodb::basics::AttributeName> const&);
+std::ostream& operator<<(std::ostream&, std::vector<arangodb::basics::AttributeName> const&);
 
 #endif

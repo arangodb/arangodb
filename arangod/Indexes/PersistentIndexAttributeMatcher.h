@@ -31,7 +31,7 @@ class Ast;
 struct AstNode;
 class SortCondition;
 struct Variable;
-}
+}  // namespace aql
 
 class Index;
 
@@ -42,11 +42,9 @@ namespace PersistentIndexAttributeMatcher {
 
 bool supportsSortCondition(arangodb::Index const*,
                            arangodb::aql::SortCondition const* sortCondition,
-                           arangodb::aql::Variable const* reference,
-                           size_t itemsInIndex, double& estimatedCost,
-                           size_t& coveredAttributes);
-
+                           arangodb::aql::Variable const* reference, size_t itemsInIndex,
+                           double& estimatedCost, size_t& coveredAttributes);
 };
-}
+}  // namespace arangodb
 
 #endif

@@ -32,18 +32,16 @@ class MaxMapCountFeature final : public application_features::ApplicationFeature
   explicit MaxMapCountFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  
-  static bool needsChecking() {
-    return _doCheck;
-  }
+
+  static bool needsChecking() { return _doCheck; }
 
   static uint64_t actualMaxMappings();
   static uint64_t minimumExpectedMaxMappings();
-  
+
  private:
   static bool _doCheck;
 };
 
-}
+}  // namespace arangodb
 
 #endif

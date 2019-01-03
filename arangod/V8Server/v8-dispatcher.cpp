@@ -45,8 +45,8 @@
 #include "V8/v8-vpack.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
-#include "VocBase/Methods/Tasks.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/Methods/Tasks.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
@@ -190,9 +190,8 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto parameters = std::make_shared<VPackBuilder>();
 
   if (obj->HasOwnProperty(TRI_V8_ASCII_STRING(isolate, "params"))) {
-    int res =
-        TRI_V8ToVPack(isolate, *parameters,
-                      obj->Get(TRI_V8_ASCII_STRING(isolate, "params")), false);
+    int res = TRI_V8ToVPack(isolate, *parameters,
+                            obj->Get(TRI_V8_ASCII_STRING(isolate, "params")), false);
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
@@ -321,8 +320,7 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string key = TRI_ObjectToString(args[0]);
-  uint64_t maxWorkers =
-      std::min(TRI_ObjectToUInt64(args[1], false), (uint64_t)64);
+  uint64_t maxWorkers = std::min(TRI_ObjectToUInt64(args[1], false), (uint64_t)64);
 
   VPackBuilder doc;
 
@@ -376,8 +374,7 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string key = TRI_ObjectToString(args[0]);
   VPackBuilder doc;
-  doc(VPackValue(VPackValueType::Object))(StaticStrings::KeyString,
-                                          VPackValue(key))();
+  doc(VPackValue(VPackValueType::Object))(StaticStrings::KeyString, VPackValue(key))();
 
   ExecContext const* exec = ExecContext::CURRENT;
 
@@ -414,8 +411,7 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
 // --SECTION--                                             module initialization
 // -----------------------------------------------------------------------------
 
-void TRI_InitV8Dispatcher(v8::Isolate* isolate,
-                          v8::Handle<v8::Context> context) {
+void TRI_InitV8Dispatcher(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   v8::HandleScope scope(isolate);
 
   // _queues is a RO collection and can only be written in C++, as superroot
@@ -429,15 +425,13 @@ void TRI_InitV8Dispatcher(v8::Isolate* isolate,
 
   // we need a scheduler and a dispatcher to define periodic tasks
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_REGISTER_TASK"),
-      JS_RegisterTask);
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_REGISTER_TASK"), JS_RegisterTask);
 
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_UNREGISTER_TASK"),
-      JS_UnregisterTask);
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_UNREGISTER_TASK"), JS_UnregisterTask);
 
-  TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_GET_TASK"), JS_GetTask);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYS_GET_TASK"), JS_GetTask);
 }
 
 void TRI_ShutdownV8Dispatcher() { Task::shutdownTasks(); }

@@ -30,14 +30,14 @@ namespace arangodb {
 
 struct LdapUrlParseResultComponent {
   LdapUrlParseResultComponent() : set(false) {}
-  explicit LdapUrlParseResultComponent(std::string const& defaultValue) 
+  explicit LdapUrlParseResultComponent(std::string const& defaultValue)
       : value(defaultValue), set(false) {}
-  
+
   void populate(std::string const& newValue) {
     value = newValue;
     set = true;
   }
-  
+
   void populate(std::string&& newValue) {
     value = std::move(newValue);
     set = true;
@@ -68,6 +68,6 @@ class LdapUrlParser {
   static void parse(std::string const& url, LdapUrlParseResult& result);
 };
 
-}
+}  // namespace arangodb
 
 #endif

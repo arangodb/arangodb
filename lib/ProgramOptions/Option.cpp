@@ -33,13 +33,8 @@ using namespace arangodb::options;
 
 // create an option, consisting of single string
 Option::Option(std::string const& value, std::string const& description,
-         Parameter* parameter, std::underlying_type<Flags>::type flags)
-    : section(),
-      name(),
-      description(description),
-      shorthand(),
-      parameter(parameter),
-      flags(flags) {
+               Parameter* parameter, std::underlying_type<Flags>::type flags)
+    : section(), name(), description(description), shorthand(), parameter(parameter), flags(flags) {
   auto parts = splitName(value);
   section = parts.first;
   name = parts.second;
@@ -130,8 +125,7 @@ std::pair<std::string, std::string> Option::splitName(std::string name) {
   return std::make_pair(section, name);
 }
 
-std::vector<std::string> Option::wordwrap(std::string const& value,
-                                          size_t size) {
+std::vector<std::string> Option::wordwrap(std::string const& value, size_t size) {
   std::vector<std::string> result;
   std::string next = value;
 

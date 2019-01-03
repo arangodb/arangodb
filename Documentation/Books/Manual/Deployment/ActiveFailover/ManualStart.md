@@ -40,31 +40,31 @@ So in summary these are the commands to start an _Agency_ of size 3:
 
 ```
 arangod --server.endpoint tcp://0.0.0.0:5001 \
-	--agency.my-address=tcp://127.0.0.1:5001 \
-	--server.authentication false \
-	--agency.activate true \
-	--agency.size 3 \
-	--agency.endpoint tcp://127.0.0.1:5001 \
-	--agency.supervision true \
-	--database.directory agent1 &
+  --agency.my-address=tcp://127.0.0.1:5001 \
+  --server.authentication false \
+  --agency.activate true \
+  --agency.size 3 \
+  --agency.endpoint tcp://127.0.0.1:5001 \
+  --agency.supervision true \
+  --database.directory agent1 &
    
 arangod --server.endpoint tcp://0.0.0.0:5002 \
-	--agency.my-address=tcp://127.0.0.1:5002 \
-	--server.authentication false \
-	--agency.activate true \
-	--agency.size 3 \
-	--agency.endpoint tcp://127.0.0.1:5001 \
-	--agency.supervision true \
-	--database.directory agent2 &
+  --agency.my-address=tcp://127.0.0.1:5002 \
+  --server.authentication false \
+  --agency.activate true \
+  --agency.size 3 \
+  --agency.endpoint tcp://127.0.0.1:5001 \
+  --agency.supervision true \
+  --database.directory agent2 &
 
 arangod --server.endpoint tcp://0.0.0.0:5003 \
-	--agency.my-address=tcp://127.0.0.1:5003 \
-	--server.authentication false \
-	--agency.activate true \
-	--agency.size 3 \
-	--agency.endpoint tcp://127.0.0.1:5001 \
-	--agency.supervision true \
-	--database.directory agent3 &
+  --agency.my-address=tcp://127.0.0.1:5003 \
+  --server.authentication false \
+  --agency.activate true \
+  --agency.size 3 \
+  --agency.endpoint tcp://127.0.0.1:5001 \
+  --agency.supervision true \
+  --database.directory agent3 &
 ```
 
 ### Single Server Test Instances
@@ -73,25 +73,25 @@ To start the two single server instances, you can use the following commands:
 
 ```
 arangod --server.authentication false \
-	--server.endpoint tcp://127.0.0.1:6001 \
-	--cluster.my-address tcp://127.0.0.1:6001 \
-	--cluster.my-role SINGLE \
-	--cluster.agency-endpoint tcp://127.0.0.1:5001 \
-	--cluster.agency-endpoint tcp://127.0.0.1:5002 \
-	--cluster.agency-endpoint tcp://127.0.0.1:5003 \ 
-	--replication.automatic-failover true \
-	--database.directory singleserver6001 &
+  --server.endpoint tcp://127.0.0.1:6001 \
+  --cluster.my-address tcp://127.0.0.1:6001 \
+  --cluster.my-role SINGLE \
+  --cluster.agency-endpoint tcp://127.0.0.1:5001 \
+  --cluster.agency-endpoint tcp://127.0.0.1:5002 \
+  --cluster.agency-endpoint tcp://127.0.0.1:5003 \ 
+  --replication.automatic-failover true \
+  --database.directory singleserver6001 &
  
 arangod --server.authentication false \
-	--server.endpoint tcp://127.0.0.1:6002 \
-	--cluster.my-address tcp://127.0.0.1:6002 \
-	--cluster.my-role SINGLE \
-	--cluster.agency-endpoint tcp://127.0.0.1:5001 \
-	--cluster.agency-endpoint tcp://127.0.0.1:5002 \
-	--cluster.agency-endpoint tcp://127.0.0.1:5003 \
-	--replication.automatic-failover true \
-	--database.directory singleserver6002 &
-```	
+  --server.endpoint tcp://127.0.0.1:6002 \
+  --cluster.my-address tcp://127.0.0.1:6002 \
+  --cluster.my-role SINGLE \
+  --cluster.agency-endpoint tcp://127.0.0.1:5001 \
+  --cluster.agency-endpoint tcp://127.0.0.1:5002 \
+  --cluster.agency-endpoint tcp://127.0.0.1:5003 \
+  --replication.automatic-failover true \
+  --database.directory singleserver6002 &
+```
 
 Multiple Machines
 -----------------
@@ -127,39 +127,39 @@ On 192.168.1.1:
 
 ```
 arangod --server.endpoint tcp://0.0.0.0:8531 \
-	--agency.my-address tcp://192.168.1.1:8531 \
-	--server.authentication false \
-	--agency.activate true \
-	--agency.size 3 \
-	--agency.supervision true \
-	--database.directory agent 
+  --agency.my-address tcp://192.168.1.1:8531 \
+  --server.authentication false \
+  --agency.activate true \
+  --agency.size 3 \
+  --agency.supervision true \
+  --database.directory agent 
 ```
 
 On 192.168.1.2:
 
 ```
 arangod --server.endpoint tcp://0.0.0.0:8531 \
-	--agency.my-address tcp://192.168.1.2:8531 \
-	--server.authentication false \
-	--agency.activate true \
-	--agency.size 3 \
-	--agency.supervision true \
-	--database.directory agent
+  --agency.my-address tcp://192.168.1.2:8531 \
+  --server.authentication false \
+  --agency.activate true \
+  --agency.size 3 \
+  --agency.supervision true \
+  --database.directory agent
 ```
 
 On 192.168.1.3:
 
 ```
 arangod --server.endpoint tcp://0.0.0.0:8531 \
-	--agency.my-address tcp://192.168.1.3:8531 \
-	--server.authentication false \
-	--agency.activate true \
-	--agency.size 3 \
-	--agency.endpoint tcp://192.168.1.1:8531 \
-	--agency.endpoint tcp://192.168.1.2:8531 \ 
-	--agency.endpoint tcp://192.168.1.3:8531 \
-	--agency.supervision true \
-	--database.directory agent
+  --agency.my-address tcp://192.168.1.3:8531 \
+  --server.authentication false \
+  --agency.activate true \
+  --agency.size 3 \
+  --agency.endpoint tcp://192.168.1.1:8531 \
+  --agency.endpoint tcp://192.168.1.2:8531 \ 
+  --agency.endpoint tcp://192.168.1.3:8531 \
+  --agency.supervision true \
+  --database.directory agent
 ```
 
 ### Single Server Instances
@@ -168,14 +168,14 @@ On 192.168.1.1:
 
 ```
 arangod --server.authentication=false \
-	--server.endpoint tcp://0.0.0.0:8529 \
-	--cluster.my-address tcp://192.168.1.1:8529 \
-	--cluster.my-role SINGLE \
-	--cluster.agency-endpoint tcp://192.168.1.1:8531 \
-	--cluster.agency-endpoint tcp://192.168.1.2:8531 \
-	--cluster.agency-endpoint tcp://192.168.1.3:8531 \
-	--replication.automatic-failover true \
-	--database.directory singleserver &
+  --server.endpoint tcp://0.0.0.0:8529 \
+  --cluster.my-address tcp://192.168.1.1:8529 \
+  --cluster.my-role SINGLE \
+  --cluster.agency-endpoint tcp://192.168.1.1:8531 \
+  --cluster.agency-endpoint tcp://192.168.1.2:8531 \
+  --cluster.agency-endpoint tcp://192.168.1.3:8531 \
+  --replication.automatic-failover true \
+  --database.directory singleserver &
 ```
 
 On 192.168.1.2:
@@ -185,14 +185,14 @@ instance:
 
 ```
 arangod --server.authentication=false \
-	--server.endpoint tcp://0.0.0.0:8529 \
-	--cluster.my-address tcp://192.168.1.2:8529 \
-	--cluster.my-role SINGLE \
-	--cluster.agency-endpoint tcp://192.168.1.1:8531 \
-	--cluster.agency-endpoint tcp://192.168.1.2:8531 \
-	--cluster.agency-endpoint tcp://192.168.1.3:8531 \
-	--replication.automatic-failover true \
-	--database.directory singleserver &
+  --server.endpoint tcp://0.0.0.0:8529 \
+  --cluster.my-address tcp://192.168.1.2:8529 \
+  --cluster.my-role SINGLE \
+  --cluster.agency-endpoint tcp://192.168.1.1:8531 \
+  --cluster.agency-endpoint tcp://192.168.1.2:8531 \
+  --cluster.agency-endpoint tcp://192.168.1.3:8531 \
+  --replication.automatic-failover true \
+  --database.directory singleserver &
 ```
 
 **Note:** in the above commands, you can use host names, if they can be resolved,
@@ -220,13 +220,13 @@ An example configuration might look like this:
 
 ```
 docker run -e ARANGO_NO_AUTH=1 -p 192.168.1.1:10000:8529 arangodb/arangodb arangod \
-	--server.endpoint tcp://0.0.0.0:8529\
-	--cluster.my-address tcp://192.168.1.1:10000 \
-	--cluster.my-role SINGLE \
-	--cluster.agency-endpoint tcp://192.168.1.1:9001 \
-	--cluster.agency-endpoint tcp://192.168.1.2:9001 \
-	--cluster.agency-endpoint tcp://192.168.1.3:9001 \
-	--replication.automatic-failover true 
+  --server.endpoint tcp://0.0.0.0:8529\
+  --cluster.my-address tcp://192.168.1.1:10000 \
+  --cluster.my-role SINGLE \
+  --cluster.agency-endpoint tcp://192.168.1.1:9001 \
+  --cluster.agency-endpoint tcp://192.168.1.2:9001 \
+  --cluster.agency-endpoint tcp://192.168.1.3:9001 \
+  --replication.automatic-failover true 
 ```
 
 This will start a single server within a Docker container with an isolated network. 

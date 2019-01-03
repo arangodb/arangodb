@@ -378,7 +378,7 @@
   },
   "threads" : {
     "default" : 2,
-    "description" : "maximum number of collections to process in parallel",
+    "description" : "maximum number of collections to process in parallel. From v3.4.0",
     "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "",

@@ -49,8 +49,8 @@ void mangleNumeric(std::string& name);
 void mangleStringField(std::string& name, AnalyzerPool const& pool);
 void demangleStringField(std::string& name, AnalyzerPool const& pool);
 
-NS_END // kludge
-NS_END // iresearch
-NS_END // arangodb
+NS_END          // kludge
+    NS_END      // iresearch
+        NS_END  // arangodb
 
 #endif
