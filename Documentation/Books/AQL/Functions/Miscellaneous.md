@@ -41,6 +41,37 @@ For conditional evaluation, check out the
 Database functions
 ------------------
 
+CHECK_DOCUMENT()
+----------------
+
+`CHECK_DOCUMENT(document) → checkResult`
+
+Returns true if *document* is a valid document object, i.e. a document without any
+duplicate attribute names. Will return *false* for any non-objects/non-documents,
+and *true* for any objects/documents without duplicate attribute names.
+
+Please note that this is an internal function for validating database objects and
+is not supposed to be any useful for anything else. The primary use case for this 
+function is to apply it on all documents in a given collection as follows:
+
+```js
+FOR doc IN collection
+  FILTER !CHECK_DOCUMENT(doc)
+  RETURN JSON_STRINGIFY(doc)
+```
+
+This query will return all documents in the given collection with redundant attribute
+names and export them. This output can be used for subsequent cleanup operations.
+
+Please note that when using object literals in AQL, there will be an automatic 
+removal/cleanup of duplicate attribute names, so the function will be effective only 
+for already stored database documents.
+
+- **document** (object): an arbitrary document / object
+- returns **checkResult** (bool): *true* for any valid objects/documents without
+  duplicate attribute names, and *false* for any non-objects/non-documents or 
+  objects/documents with duplicate attribute names
+
 ### COLLECTION_COUNT()
 
 `COLLECTION_COUNT(coll) → count`
