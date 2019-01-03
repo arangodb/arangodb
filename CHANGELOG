@@ -1,6 +1,8 @@
 v3.4.2 (XXXX-XX-XX)
 -------------------
 
+* added AQL function `CHECK_DOCUMENT` for document validity checks
+
 * the arangorestore options `--default-number-of-shards` and `--default-replication-factor`
   are now deprecated in favor of the much more powerful options `--number-of-shards`
   and `--replication-factor`
