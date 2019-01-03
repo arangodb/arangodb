@@ -113,16 +113,16 @@ static Result restoreDataParser(char const* ptr, char const* pos,
   builder.clear();
 
   try {
-    VPackParser parser(builder);
+    VPackParser parser(builder, builder.options);
     parser.parse(ptr, static_cast<size_t>(pos - ptr));
-  } catch (VPackException const&) {
+  } catch (VPackException const& ex) {
     // Could not parse the given string
     return Result{TRI_ERROR_HTTP_CORRUPTED_JSON,
-                  "received invalid JSON data for collection " + collectionName};
-  } catch (std::exception const&) {
+                  "received invalid JSON data for collection '" + collectionName + "': " + ex.what()};
+  } catch (std::exception const& ex) {
     // Could not even build the string
     return Result{TRI_ERROR_HTTP_CORRUPTED_JSON,
-                  "received invalid JSON data for collection " + collectionName};
+                  "received invalid JSON data for collection '" + collectionName + "': " + ex.what()};
   } catch (...) {
     return Result{TRI_ERROR_INTERNAL};
   }
@@ -131,7 +131,7 @@ static Result restoreDataParser(char const* ptr, char const* pos,
 
   if (!slice.isObject()) {
     return Result{TRI_ERROR_HTTP_CORRUPTED_JSON,
-                  "received invalid JSON data for collection " + collectionName};
+                  "received invalid JSON data for collection '" + collectionName + "': data is no object"};
   }
 
   type = REPLICATION_INVALID;
@@ -139,7 +139,7 @@ static Result restoreDataParser(char const* ptr, char const* pos,
   for (auto const& pair : VPackObjectIterator(slice, true)) {
     if (!pair.key.isString()) {
       return Result{TRI_ERROR_HTTP_CORRUPTED_JSON,
-                    "received invalid JSON data for collection " + collectionName};
+                    "received invalid JSON data for collection '" + collectionName + "': got a non-string key"};
     }
 
     if (pair.key.isEqualString(::typeString)) {
@@ -175,7 +175,7 @@ static Result restoreDataParser(char const* ptr, char const* pos,
 
   if (key.empty()) {
     return Result{TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "received invalid JSON data for collection " + collectionName};
+                  "received invalid JSON data for collection '" + collectionName + "': empty key"};
   }
 
   return Result{TRI_ERROR_NO_ERROR};
@@ -1180,7 +1180,10 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
 Result RestReplicationHandler::parseBatch(std::string const& collectionName,
                                           std::unordered_map<std::string, VPackValueLength>& latest,
                                           VPackBuilder& allMarkers) {
-  VPackBuilder builder;
+  VPackOptions options = VPackOptions::Defaults;
+  options.checkAttributeUniqueness = true;
+  VPackBuilder builder(&options);
+  
   allMarkers.clear();
 
   HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request.get());
@@ -1245,7 +1248,10 @@ Result RestReplicationHandler::processRestoreUsersBatch(std::string const& colle
   std::unordered_map<std::string, VPackValueLength> latest;
   VPackBuilder allMarkers;
 
-  parseBatch(collectionName, latest, allMarkers);
+  Result res = parseBatch(collectionName, latest, allMarkers);
+  if (res.fail()) {
+    return res;
+  }
 
   VPackSlice allMarkersSlice = allMarkers.slice();
 

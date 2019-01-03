@@ -24,6 +24,7 @@
 #include "RestoreFeature.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Collection.h>
 #include <velocypack/velocypack-aliases.h>
 #include <boost/algorithm/clamp.hpp>
 
@@ -52,6 +53,97 @@ namespace {
 
 /// @brief name of the feature to report to application server
 constexpr auto FeatureName = "Restore";
+
+/// @brief return the target replication factor for the specified collection
+uint64_t getReplicationFactor(arangodb::RestoreFeature::Options const& options,
+                              arangodb::velocypack::Slice const& slice, bool& isSatellite) {
+  uint64_t result = options.defaultReplicationFactor;
+  isSatellite = false;
+
+  arangodb::velocypack::Slice s = slice.get("replicationFactor");
+  if (s.isInteger()) {
+    result = s.getNumericValue<uint64_t>();
+  } else if (s.isString()) {
+    if (s.copyString() == "satellite") {
+      isSatellite = true;
+    }
+  }
+
+  s = slice.get("name");
+  if (!s.isString()) {
+    // should not happen, but anyway, let's be safe here
+    return result;
+  }
+
+  if (!options.replicationFactor.empty()) {
+    std::string const name = s.copyString();
+
+    for (auto const& it : options.replicationFactor) {
+      auto parts = arangodb::basics::StringUtils::split(it, '=');
+      if (parts.size() == 1) {
+        // this is the default value, e.g. `--replicationFactor 2`
+        if (parts[0] == "satellite") {
+          isSatellite = true;
+        } else { 
+          result = arangodb::basics::StringUtils::uint64(parts[0]);
+        }
+      }
+
+      // look if we have a more specific value, e.g. `--replicationFactor myCollection=3`
+      if (parts.size() != 2 || parts[0] != name) {
+        // somehow invalid or different collection
+        continue;
+      }
+      if (parts[1] == "satellite") {
+        isSatellite = true;
+      } else {
+        result = arangodb::basics::StringUtils::uint64(parts[1]);
+      }
+      break;
+    }
+  }
+
+  return result;
+}
+
+/// @brief return the target number of shards for the specified collection
+uint64_t getNumberOfShards(arangodb::RestoreFeature::Options const& options,
+                           arangodb::velocypack::Slice const& slice) {
+  uint64_t result = options.defaultNumberOfShards;
+
+  arangodb::velocypack::Slice s = slice.get("numberOfShards");
+  if (s.isInteger()) {
+    result = s.getNumericValue<uint64_t>();
+  }
+
+  s = slice.get("name");
+  if (!s.isString()) {
+    // should not happen, but anyway, let's be safe here
+    return result;
+  }
+
+  if (!options.numberOfShards.empty()) {
+    std::string const name = s.copyString();
+
+    for (auto const& it : options.numberOfShards) {
+      auto parts = arangodb::basics::StringUtils::split(it, '=');
+      if (parts.size() == 1) {
+        // this is the default value, e.g. `--numberOfShards 2`
+        result = arangodb::basics::StringUtils::uint64(parts[0]);
+      }
+
+      // look if we have a more specific value, e.g. `--numberOfShards myCollection=3`
+      if (parts.size() != 2 || parts[0] != name) {
+        // somehow invalid or different collection
+        continue;
+      }
+      result = arangodb::basics::StringUtils::uint64(parts[1]);
+      break;
+    }
+  }
+
+  return result;
+}
 
 /// @brief check whether HTTP response is valid, complete, and not an error
 arangodb::Result checkHttpResponse(arangodb::httpclient::SimpleHttpClient& client,
@@ -255,29 +347,29 @@ arangodb::Result sendRestoreCollection(arangodb::httpclient::SimpleHttpClient& h
       "&ignoreDistributeShardsLikeErrors=" +
       std::string(options.ignoreDistributeShardsLikeErrors ? "true" : "false");
 
-  if (options.clusterMode) {
-    // check for cluster-specific parameters
-    if (!slice.hasKey(std::vector<std::string>({"parameters", "shards"})) &&
-        !slice.hasKey(
-            std::vector<std::string>({"parameters", "numberOfShards"}))) {
-      // no "shards" and no "numberOfShards" attribute present. now assume
-      // default value from --default-number-of-shards
-      LOG_TOPIC(WARN, Logger::RESTORE)
-          << "# no sharding information specified for collection '" << name
-          << "', using default number of shards " << options.defaultNumberOfShards;
-      url += "&numberOfShards=" + std::to_string(options.defaultNumberOfShards);
-    }
-    if (!slice.hasKey(
-            std::vector<std::string>({"parameters", "replicationFactor"}))) {
-      // No replication factor given, so take the default:
-      LOG_TOPIC(INFO, Logger::RESTORE)
-          << "# no replication information specified for collection '" << name
-          << "', using default replication factor " << options.defaultReplicationFactor;
-      url += "&replicationFactor=" + std::to_string(options.defaultReplicationFactor);
-    }
-  }
+  VPackSlice const parameters = slice.get("parameters");
 
-  std::string const body = slice.toJson();
+  // build cluster options using command-line parameter values
+  VPackBuilder newOptions;
+  newOptions.openObject();
+  bool isSatellite = false;
+  uint64_t replicationFactor = getReplicationFactor(options, parameters, isSatellite);
+  if (isSatellite) {
+    newOptions.add("replicationFactor", VPackValue("satellite"));
+  } else {
+    newOptions.add("replicationFactor", VPackValue(replicationFactor));
+  }
+  newOptions.add("numberOfShards", VPackValue(getNumberOfShards(options, parameters)));
+  newOptions.close();
+
+  VPackBuilder b;
+  b.openObject();
+  b.add("indexes", slice.get("indexes"));
+  b.add(VPackValue("parameters"));
+  VPackCollection::merge(b, parameters, newOptions.slice(), true, false);
+  b.close();
+
+  std::string const body = b.slice().toJson();
 
   std::unique_ptr<SimpleHttpResult> response(
       httpClient.request(arangodb::rest::RequestType::PUT, url, body.c_str(), body.size()));
@@ -914,13 +1006,13 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
   options->addOption("--overwrite", "overwrite collections if they exist",
                      new BooleanParameter(&_options.overwrite));
 
-  options->addOption("--default-number-of-shards",
-                     "default value for numberOfShards if not specified",
-                     new UInt64Parameter(&_options.defaultNumberOfShards));
-
-  options->addOption("--default-replication-factor",
-                     "default value for replicationFactor if not specified",
-                     new UInt64Parameter(&_options.defaultReplicationFactor));
+  options->addOption("--number-of-shards",
+                     "override value for numberOfShards (from v3.3.22 and v3.4.2; can be specified multiple times, e.g. --numberOfShards 2 --numberOfShards myCollection=3)",
+                     new VectorParameter<StringParameter>(&_options.numberOfShards));
+  
+  options->addOption("--replication-factor",
+                     "override value for replicationFactor (from v3.3.22 and v3.4.2; can be specified multiple times, e.g. --replicationFactor 2 --replicationFactor myCollection=3)",
+                     new VectorParameter<StringParameter>(&_options.replicationFactor));
 
   options->addOption(
       "--ignore-distribute-shards-like-errors",
@@ -930,6 +1022,17 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
   options->addOption(
       "--force", "continue restore even in the face of some server-side errors",
       new BooleanParameter(&_options.force));
+  
+  // deprecated options
+  options->addOption("--default-number-of-shards",
+                     "default value for numberOfShards if not specified in dump (deprecated since v3.3.22 and v3.4.2)",
+                     new UInt64Parameter(&_options.defaultNumberOfShards),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+
+  options->addOption("--default-replication-factor",
+                     "default value for replicationFactor if not specified in dump (deprecated since v3.3.22 and v3.4.2)",
+                     new UInt64Parameter(&_options.defaultReplicationFactor),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
 void RestoreFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -956,6 +1059,53 @@ void RestoreFeature::validateOptions(std::shared_ptr<options::ProgramOptions> op
   if (_options.threadCount != clamped) {
     LOG_TOPIC(WARN, Logger::RESTORE) << "capping --threads value to " << clamped;
     _options.threadCount = clamped;
+  }
+
+  // validate shards and replication factor
+  if (_options.defaultNumberOfShards == 0) {
+    LOG_TOPIC(FATAL, arangodb::Logger::RESTORE)
+        << "invalid value for `--default-number-of-shards`, expecting at least 1";
+    FATAL_ERROR_EXIT();
+  }
+  
+  if (_options.defaultReplicationFactor == 0) {
+    LOG_TOPIC(FATAL, arangodb::Logger::RESTORE)
+        << "invalid value for `--default-replication-factor, expecting at least 1";
+    FATAL_ERROR_EXIT();
+  }
+  
+  for (auto& it : _options.numberOfShards) {
+    auto parts = basics::StringUtils::split(it, '=');
+    if (parts.size() == 1 && basics::StringUtils::uint64(parts[0]) > 0) {
+      // valid
+      continue;
+    } else if (parts.size() == 2 && basics::StringUtils::uint64(parts[1]) > 0) {
+      // valid
+      continue;
+    }
+    // invalid!
+    LOG_TOPIC(FATAL, arangodb::Logger::RESTORE)
+        << "got invalid value '" << it << "' for `--number-of-shards";
+    FATAL_ERROR_EXIT();
+  }
+
+  for (auto& it : _options.replicationFactor) {
+    auto parts = basics::StringUtils::split(it, '=');
+    if (parts.size() == 1) {
+      if (parts[0] == "satellite" || basics::StringUtils::uint64(parts[0]) > 0) {
+        // valid
+        continue;
+      }
+    } else if (parts.size() == 2) {
+      if (parts[1] == "satellite" || basics::StringUtils::uint64(parts[1]) > 0) {
+        // valid
+        continue;
+      }
+    }
+    // invalid!
+    LOG_TOPIC(FATAL, arangodb::Logger::RESTORE)
+        << "got invalid value '" << it << "' for `--replication-factor";
+    FATAL_ERROR_EXIT();
   }
 }
 
