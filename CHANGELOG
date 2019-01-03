@@ -1,6 +1,34 @@
 v3.4.2 (XXXX-XX-XX)
 -------------------
 
+* the arangorestore options `--default-number-of-shards` and `--default-replication-factor`
+  are now deprecated in favor of the much more powerful options `--number-of-shards`
+  and `--replication-factor`
+
+  The new options `--number-of-shards` and `--replication-factor` allow specifying
+  default values for the number of shards and the replication factor, resp. for all
+  restored collections. If specified, these default values will be used regardless
+  of whether the number of shards or the replication factor values are already present
+  in the metadata of the dumped collections. 
+
+  It is also possible to override the values on a per-collection level by specifying
+  the options multiple times, e.g.
+
+      --number-of-shards 2 --number-of-shards mycollection=3 --number-of-shards test=4
+
+  The above will create all collections with 2 shards, except the collection "mycollection"
+  (3 shards) and "test" (4 shards).
+
+  By omitting the default value, it is also possible to use the number of shards/replication
+  factor values from the dump for all collections but the explicitly specified ones, e.g.
+
+      --number-of-shards mycollection=3 --number-of-shards test=4
+
+  This will use the number of shards as specified in the dump, except for the collections
+  "mycollection" and "test". 
+
+  The `--replication-factor` option works similarly.
+
 * fixed issue #7834: AQL Query crashes instance
 
 * Added --server.jwt-secret-keyfile option.
