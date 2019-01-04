@@ -3,6 +3,13 @@ v3.3.22 (XXXX-XX-XX)
 
 * added AQL function `CHECK_DOCUMENT` for document validity checks
 
+* added arangorestore option `--cleanup-duplicate-attributes` to clean up input documents
+  with redundant attribute names
+
+  Importing such documents without the option set will make arangorestore fail with an
+  error, and setting the option will make the restore process clean up the input by using
+  just the first specified value for each redundant attribute.
+
 * the arangorestore options `--default-number-of-shards` and `--default-replication-factor`
   are now deprecated in favor of the much more powerful options `--number-of-shards`
   and `--replication-factor`
