@@ -1,6 +1,8 @@
 v3.3.22 (XXXX-XX-XX)
 --------------------
 
+* added AQL function `CHECK_DOCUMENT` for document validity checks
+
 * added arangorestore option `--cleanup-duplicate-attributes` to clean up input documents
   with redundant attribute names
 

@@ -388,6 +388,7 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"CURRENT_USER", "", false, false, false, true});
   add({"CURRENT_DATABASE", "", false, false, false, true, &Functions::CurrentDatabase});
   add({"COLLECTION_COUNT", ".h", false, true, false, true, &Functions::CollectionCount});
+  add({"CHECK_DOCUMENT", ".", false, false, true, true, &Functions::CheckDocument});
 }
 
 void AqlFunctionFeature::addStorageEngineFunctions() {

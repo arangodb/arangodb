@@ -3669,6 +3669,63 @@ AqlValue Functions::IsSameCollection(arangodb::aql::Query* query, transaction::M
   return AqlValue(AqlValueHintNull());
 }
 
+/// @brief validates documents for duplicate attribute names
+static bool isValidDocument(VPackSlice slice) {
+  if (slice.isExternal()) {
+    slice = slice.resolveExternals();
+  }
+
+  if (slice.isObject()) {
+    std::unordered_set<std::string> keys;
+  
+    auto it = VPackObjectIterator(slice, true);
+    
+    while (it.valid()) {
+      if (!keys.emplace(it.key().copyString()).second) {
+        // duplicate key
+        return false;
+      }
+
+      // recurse into object values
+      if (!isValidDocument(it.value())) {
+        return false;
+      }
+      it.next();
+    }
+  } else if (slice.isArray()) {
+    auto it = VPackArrayIterator(slice);
+
+    while (it.valid()) {
+      // recursively validate array values
+      if (!isValidDocument(it.value())) {
+        return false;
+      }
+      it.next();
+    }
+  }
+
+  // all other types are considered valid
+  return true;
+}
+
+/// @brief function CHECK_DOCUMENT
+AqlValue Functions::CheckDocument(arangodb::aql::Query* query,
+                                  transaction::Methods* trx,
+                                  VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "CHECK_DOCUMENT", 1, 1);
+
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  if (!value.isObject()) {
+    // no document at all
+    return AqlValue(AqlValueHintBool(false));
+  }
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value, false);
+  
+  return AqlValue(AqlValueHintBool(isValidDocument(slice)));
+}
+
 AqlValue Functions::PregelResult(arangodb::aql::Query* query, transaction::Methods* trx,
                                  VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "PREGEL_RESULT", 1, 1);
