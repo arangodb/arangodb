@@ -7,6 +7,9 @@ v3.4.2 (XXXX-XX-XX)
   abort with a proper error containing the problem description instead of aborting
   but hiding there was a problem.
 
+* do not respond with an internal error in case of JSON parse errors detected
+  in incoming HTTP requests 
+
 * added arangorestore option `--cleanup-duplicate-attributes` to clean up input documents
   with redundant attribute names
 
