@@ -51,7 +51,8 @@ documents with duplicate attribute names.
 
 Please note that this is an internal function for validating database objects and
 is not supposed to be any useful for anything else. The primary use case for this 
-function is to apply it on all documents in a given collection as follows:
+function, which is included starting from v3.3.22 and v3.4.2, is to apply it on all
+documents in a given collection as follows:
 
 ```js
 FOR doc IN collection
