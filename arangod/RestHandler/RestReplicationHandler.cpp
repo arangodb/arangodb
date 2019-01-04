@@ -1324,7 +1324,11 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
                                                        std::string const& collectionName) {
   std::unordered_map<std::string, VPackValueLength> latest;
   VPackBuilder allMarkers;
-  parseBatch(collectionName, latest, allMarkers);
+
+  Result res = parseBatch(collectionName, latest, allMarkers);
+  if (res.fail()) {
+    return res;
+  }
 
   // First remove all keys of which the last marker we saw was a deletion
   // marker:
@@ -1753,6 +1757,7 @@ void RestReplicationHandler::handleCommandRestoreView() {
   auto nameSlice = slice.get(StaticStrings::DataSourceName);
   auto typeSlice = slice.get(StaticStrings::DataSourceType);
 
+
   if (!nameSlice.isString() || !typeSlice.isString()) {
     generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
     return;
@@ -1762,7 +1767,7 @@ void RestReplicationHandler::handleCommandRestoreView() {
 
   try {
     CollectionNameResolver resolver(_vocbase);
-    auto view = resolver.getView(nameSlice.toString());
+    auto view = resolver.getView(nameSlice.copyString());
 
     if (view) {
       if (!overwrite) {
