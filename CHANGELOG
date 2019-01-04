@@ -3,6 +3,10 @@ v3.4.2 (XXXX-XX-XX)
 
 * added AQL function `CHECK_DOCUMENT` for document validity checks
 
+* when detecting parse errors in the JSON input sent to the restore API, now
+  abort with a proper error containing the problem description instead of aborting
+  but hiding there was a problem.
+
 * added arangorestore option `--cleanup-duplicate-attributes` to clean up input documents
   with redundant attribute names
 
