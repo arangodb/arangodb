@@ -1106,9 +1106,10 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
   options->addOption("--input-directory", "input directory",
                      new StringParameter(&_options.inputPath));
   
-  options->addOption("--cleanup-duplicate-attributes", "clean up duplicate attributes in input documents instead of making the restore operation fail (since v3.3.22 and v3.4.2)",
+  options->addOption("--cleanup-duplicate-attributes", "clean up duplicate attributes in input documents instead of making the restore operation fail",
                      new BooleanParameter(&_options.cleanupDuplicateAttributes),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30322).setIntroducedIn(30402);
 
   options->addOption("--import-data", "import data into collection",
                      new BooleanParameter(&_options.importData));
