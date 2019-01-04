@@ -41,14 +41,13 @@ For conditional evaluation, check out the
 Database functions
 ------------------
 
-CHECK_DOCUMENT()
-----------------
+### CHECK_DOCUMENT()
 
 `CHECK_DOCUMENT(document) → checkResult`
 
-Returns true if *document* is a valid document object, i.e. a document without any
-duplicate attribute names. Will return *false* for any non-objects/non-documents,
-and *true* for any objects/documents without duplicate attribute names.
+Returns *true* if *document* is a valid document object, i.e. a document without any
+duplicate attribute names. Will return *false* for any non-objects/non-documents or
+documents with duplicate attribute names.
 
 Please note that this is an internal function for validating database objects and
 is not supposed to be any useful for anything else. The primary use case for this 
