@@ -779,17 +779,17 @@ def loadProgramOptionBlocks():
                 if option.setdefault("enterpriseOnly", False):
                     enterprise = "<em>Enterprise Edition only</em><br/>"
 
-                # Some Boolean options can be used like flags
-                isFlag = ""
-                requiresValue = option.setdefault("requiresValue", True)
-                if not requiresValue:
-                    isFlag = '<br/>This option can be specified without a value to enable it.'
-
                 # Beside option there are also flag-like commands (like --version)
                 isCommand = ""
                 category = option.setdefault("category", "option")
                 if category == "command":
                     isCommand = '<br/>This is a command, thus no value can be specified and it can not be used in a configuration file.'
+
+                # Some Boolean options can be used like flags (also true for commands)
+                isFlag = ""
+                requiresValue = option.setdefault("requiresValue", True)
+                if not requiresValue and category != "command":
+                    isFlag = '<br/>This option can be specified without value to enable it.'
 
                 # Versions since the option is available or when it was marked as deprecated
                 versionInfo = ""
