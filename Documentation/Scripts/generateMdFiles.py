@@ -796,11 +796,9 @@ def loadProgramOptionBlocks():
                 introducedIn = option.setdefault("introducedIn", None)
                 deprecatedIn = option.setdefault("deprecatedIn", None)
                 if introducedIn:
-                    versionInfo += '<br/>Introduced in: {}'.format(", ".join(introducedIn))
+                    versionInfo += '<br/><small>Introduced in: {}</small>'.format(", ".join(introducedIn))
                 if deprecatedIn:
-                    versionInfo += '<br/>Deprecated in: {}'.format(", ".join(deprecatedIn))
-                if versionInfo:
-                    versionInfo = '<small>{}</small>'.format(versionInfo)
+                    versionInfo += '<br/><small>Deprecated in: {}</small>'.format(", ".join(deprecatedIn))
 
                 # Upper-case first letter, period at the end, HTML entities
                 description = option["description"].strip()
