@@ -685,7 +685,7 @@ def loadProgramOptionBlocks():
 
     global dokuBlocks
 
-    # Allows to test if a group will be empty with hidden options ignored
+    # Allows to test if a group will be empty with obsolete options ignored
     def peekIterator(iterable, condition):
         try:
             while True:
@@ -731,10 +731,10 @@ def loadProgramOptionBlocks():
                 sorted(optionsRaw.items(), key=sortBySection),
                 key=groupBySection):
 
-            # Use some trickery to skip hidden options without consuming items from iterator
-            groupPeek = peekIterator(group, lambda elem: elem[1]["hidden"] is False)
+            # Use some trickery to skip obsolete options without consuming items from iterator
+            groupPeek = peekIterator(group, lambda elem: elem[1]["obsolete"] is False)
             if groupPeek is None:
-                # Skip empty section to avoid useless headline (all options are hidden)
+                # Skip empty section to avoid useless headline (all options are obsolete)
                 continue
 
             # Output table header with column labels (one table per section)
@@ -748,9 +748,8 @@ def loadProgramOptionBlocks():
             # Sort options by name and output table rows
             for optionName, option in sorted(groupPeek[1], key=lambda elem: elem[0]):
 
-                # TODO: unhide hidden options, hide obsolete (although they are not even dumped at the moment)
-                # Skip options marked as hidden
-                if option["hidden"]:
+                # Skip options marked as obsolete, eventhough they are not dumped at the moment
+                if option["obsolete"]:
                     continue
 
                 # Recover JSON syntax, because the Python representation uses [u'this format']
