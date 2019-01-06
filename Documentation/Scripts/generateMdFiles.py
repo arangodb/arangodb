@@ -732,7 +732,7 @@ def loadProgramOptionBlocks():
                 key=groupBySection):
 
             # Use some trickery to skip obsolete options without consuming items from iterator
-            groupPeek = peekIterator(group, lambda elem: elem[1]["obsolete"] is False)
+            groupPeek = peekIterator(group, lambda elem: elem[1].setdefault("obsolete", False) is False)
             if groupPeek is None:
                 # Skip empty section to avoid useless headline (all options are obsolete)
                 continue
@@ -749,7 +749,7 @@ def loadProgramOptionBlocks():
             for optionName, option in sorted(groupPeek[1], key=lambda elem: elem[0]):
 
                 # Skip options marked as obsolete, eventhough they are not dumped at the moment
-                if option["obsolete"]:
+                if option.setdefault("obsolete", False):
                     continue
 
                 # Recover JSON syntax, because the Python representation uses [u'this format']
