@@ -35,15 +35,11 @@ const wait = require("internal").wait;
 const supervisionState = require("@arangodb/cluster").supervisionState;
 
 function getDBServers() {
-  var tmp, servers = [];
-  while (servers.length < 5) {
-    tmp = global.ArangoClusterInfo.getDBServers();
-    servers = [];
-    for (var i = 0; i < tmp.length; ++i) {
-      servers[i] = tmp[i].serverId;
-    }
+  var tmp = global.ArangoClusterInfo.getDBServers();
+  var servers = [];
+  for (var i = 0; i < tmp.length; ++i) {
+    servers[i] = tmp[i].serverId;
   }
-  
   return servers;
 }
 
