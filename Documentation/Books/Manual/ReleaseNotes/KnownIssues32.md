@@ -92,11 +92,13 @@ System Integration
   user needs to check `/var/log/arangodb3` for further information about the
   failed startup.
 
-Mac OS X
---------
+macOS
+-----
 
- * Storage engine is not changeable on an existing database. Currently only the initial selection of the storage engine is supported.
-   In order to use another storage engine, you have to delete your ArangoDB application (Mac Application Folder)
+ * Storage engine is not changeable on an existing database. Currently only the
+   initial selection of the storage engine is supported.
+   In order to use another storage engine, you have to delete your ArangoDB
+   application (macOS Application Folder)
    and `/Users/<your_user_name>/Library/ArangoDB` folder.
 
 OpenSSL 1.1

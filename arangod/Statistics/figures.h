@@ -98,8 +98,8 @@ struct StatisticsDistribution {
   std::vector<double> _cuts;
   std::vector<uint64_t> _counts;
 
-  private:
-    Mutex _mutex;
+ private:
+  Mutex _mutex;
 };
 }  // namespace basics
 }  // namespace arangodb

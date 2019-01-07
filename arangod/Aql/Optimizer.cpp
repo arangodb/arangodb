@@ -33,34 +33,33 @@ using namespace arangodb::aql;
 
 // @brief constructor, this will initialize the rules database
 Optimizer::Optimizer(size_t maxNumberOfPlans)
-    : _maxNumberOfPlans(maxNumberOfPlans),
-      _runOnlyRequiredRules(false) {
+    : _maxNumberOfPlans(maxNumberOfPlans), _runOnlyRequiredRules(false) {
   for (auto& r : OptimizerRulesFeature::_rules) {
     _rules.emplace(r.first, Rule{r.second, true});
   }
 }
-  
+
 void Optimizer::disableRule(int rule) {
   auto it = _rules.find(rule);
   TRI_ASSERT(it != _rules.end());
   it->second.enabled = false;
 }
-   
+
 bool Optimizer::runOnlyRequiredRules(size_t extraPlans) const {
   return (_runOnlyRequiredRules ||
           (_newPlans.size() + _plans.size() + extraPlans >= _maxNumberOfPlans));
 }
 
 // @brief add a plan to the optimizer
-void Optimizer::addPlan(std::unique_ptr<ExecutionPlan> plan, OptimizerRule const* rule, bool wasModified,
-                        int newLevel) {
+void Optimizer::addPlan(std::unique_ptr<ExecutionPlan> plan,
+                        OptimizerRule const* rule, bool wasModified, int newLevel) {
   TRI_ASSERT(plan != nullptr);
   TRI_ASSERT(&_currentRule->second.rule == rule);
 
   auto it = _currentRule;
 
   if (newLevel <= 0) {
-    ++it; // move it to the next rule to be processed in the next iteration
+    ++it;  // move it to the next rule to be processed in the next iteration
   } else {
     it = _rules.upper_bound(newLevel);
   }
@@ -75,10 +74,10 @@ void Optimizer::addPlan(std::unique_ptr<ExecutionPlan> plan, OptimizerRule const
     plan->clearVarUsageComputed();
     plan->findVarUsage();
   }
-  
+
   // hand over ownership
   _newPlans.push_back(std::move(plan), it);
-  
+
   // stop adding new plans in case we already have enough
   if (_newPlans.size() + _plans.size() >= _maxNumberOfPlans) {
     _runOnlyRequiredRules = true;
@@ -87,18 +86,16 @@ void Optimizer::addPlan(std::unique_ptr<ExecutionPlan> plan, OptimizerRule const
 
 // @brief the actual optimization
 int Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
-                           QueryOptions const& queryOptions,
-                           bool estimateAllPlans) {
+                           QueryOptions const& queryOptions, bool estimateAllPlans) {
   _runOnlyRequiredRules = false;
   ExecutionPlan* initialPlan = plan.get();
 
   // _plans contains the previous optimization result
   _plans.clear();
   _plans.push_back(std::move(plan), _rules.begin());
-    
+
   if (!queryOptions.inspectSimplePlans &&
-      !arangodb::ServerState::instance()->isCoordinator() &&
-      initialPlan->isDeadSimple()) {
+      !arangodb::ServerState::instance()->isCoordinator() && initialPlan->isDeadSimple()) {
     // the plan is so simple that any further optimizations would probably cost
     // more than simply executing the plan
     initialPlan->findVarUsage();
@@ -136,8 +133,9 @@ int Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
       std::tie(p, _currentRule) = _plans.pop_front();
 
       if (_currentRule == _rules.end()) {
-        _newPlans.push_back(std::move(p), _currentRule);  // nothing to do, just keep it
-      } else {                                // find next rule
+        _newPlans.push_back(std::move(p),
+                            _currentRule);  // nothing to do, just keep it
+      } else {                              // find next rule
         auto it = _currentRule;
         TRI_ASSERT(it != _rules.end());
 
@@ -146,16 +144,18 @@ int Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
         // skip over rules if we should
         // however, we don't want to skip those rules that will not create
         // additional plans
-        if (!it->second.enabled || (_runOnlyRequiredRules && rule.canCreateAdditionalPlans && rule.canBeDisabled)) {
+        if (!it->second.enabled ||
+            (_runOnlyRequiredRules && rule.canCreateAdditionalPlans && rule.canBeDisabled)) {
           // we picked a disabled rule or we have reached the max number of
           // plans and just skip this rule
-          ++it; // move it to the next rule to be processed in the next iteration
+          ++it;  // move it to the next rule to be processed in the next
+                 // iteration
           _newPlans.push_back(std::move(p), it);  // nothing to do, just keep it
 
           if (!rule.isHidden) {
             ++_stats.rulesSkipped;
           }
-          
+
           // now try next
           continue;
         }
@@ -168,8 +168,10 @@ int Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
 
         // all optimizer rule functions must obey the following guidelines:
         // - the original plan passed to the rule function must be deleted if
-        //   and only if it has not been added (back) to the optimizer (using addPlan).
-        // - if the rule throws, then the original plan will be deleted by the optimizer.
+        //   and only if it has not been added (back) to the optimizer (using
+        //   addPlan).
+        // - if the rule throws, then the original plan will be deleted by the
+        // optimizer.
         //   thus the rule must not have deleted the plan itself or add it
         //   back to the optimizer
         rule.func(this, std::move(p), &rule);
@@ -183,13 +185,15 @@ int Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
       // a good-enough plan is probably every plan with costs below some
       // defined threshold. this requires plan costs to be calculated here
     }
-    
+
     TRI_ASSERT(_plans.empty());
     // we use swap here to keep the allocated buffers of both lists so we can
     // reuse them in the next iteration
     _plans.swap(_newPlans);
 
-    auto fully_optimized = [this](auto const& v){ return v.second == _rules.end(); };
+    auto fully_optimized = [this](auto const& v) {
+      return v.second == _rules.end();
+    };
     if (std::all_of(_plans.list.begin(), _plans.list.end(), fully_optimized)) {
       break;
     }
@@ -199,7 +203,7 @@ int Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
 
   TRI_ASSERT(_plans.size() >= 1);
 
-  // finalize plans  
+  // finalize plans
   for (auto& plan : _plans.list) {
     plan.first->findVarUsage();
   }
@@ -215,13 +219,14 @@ int Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
       // this value is cached in the plan, so formally this step is
       // unnecessary, but for the sake of cleanliness...
     }
-  
+
     if (_plans.size() > 1) {
       // only sort plans when necessary
       std::sort(_plans.list.begin(), _plans.list.end(),
-                [](PlanList::Entry const& a, PlanList::Entry const& b)
-                    -> bool { return a.first->getCost().estimatedCost < b.first->getCost().estimatedCost; });
-    } 
+                [](PlanList::Entry const& a, PlanList::Entry const& b) -> bool {
+                  return a.first->getCost().estimatedCost < b.first->getCost().estimatedCost;
+                });
+    }
   }
 
   LOG_TOPIC(TRACE, Logger::FIXME) << "optimization ends with " << _plans.size() << " plans";

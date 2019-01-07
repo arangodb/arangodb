@@ -69,5 +69,5 @@ void ShutdownRest() {
   TRI_ShutdownMimetypes();
   TRI_ShutdownFiles();
 }
-}
-}
+}  // namespace rest
+}  // namespace arangodb

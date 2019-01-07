@@ -21,41 +21,40 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/AstNode.h"
 #include "Aql/AqlValue.h"
+#include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "VelocyPackHelper.h"
 
 #include "search/sort.hpp"
-#include "utils/string.hpp"
 #include "utils/noncopyable.hpp"
-
+#include "utils/string.hpp"
 
 #ifndef ARANGOD_IRESEARCH__AQL_HELPER_H
 #define ARANGOD_IRESEARCH__AQL_HELPER_H 1
 
-#if defined (__GNUC__)
-  #pragma GCC diagnostic push
-  #if (__GNUC__ >= 7)
-    #pragma GCC diagnostic ignored "-Wimplicit-fallthrough=0"
-  #endif
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#if (__GNUC__ >= 7)
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough=0"
+#endif
 #endif
 
 namespace arangodb {
 namespace aql {
 
-struct Variable; // forward declaration
-class ExecutionPlan; // forward declaration
-class ExpressionContext; // forward declaration
-class Ast; // forward declaration
+struct Variable;          // forward declaration
+class ExecutionPlan;      // forward declaration
+class ExpressionContext;  // forward declaration
+class Ast;                // forward declaration
 
-} // aql
+}  // namespace aql
 
 namespace transaction {
 
-class Methods; // forward declaration
+class Methods;  // forward declaration
 
-} // transaction
+}  // namespace transaction
 
 namespace iresearch {
 
@@ -95,11 +94,8 @@ inline bool parseValue(size_t& value, aql::AstNode const& node) {
 ///         specified AstNode 'node'
 /// @returns true on success, false otherwise
 ////////////////////////////////////////////////////////////////////////////////
-template<typename String>
-inline bool parseValue(
-    String& value,
-    aql::AstNode const& node
-) {
+template <typename String>
+inline bool parseValue(String& value, aql::AstNode const& node) {
   typedef typename String::traits_type traits_t;
 
   switch (node.value.type) {
@@ -109,17 +105,15 @@ inline bool parseValue(
     case aql::VALUE_TYPE_DOUBLE:
       return false;
     case aql::VALUE_TYPE_STRING:
-      value = String(
-        reinterpret_cast<typename traits_t::char_type const*>(node.getStringValue()),
-        node.getStringLength()
-      );
+      value = String(reinterpret_cast<typename traits_t::char_type const*>(node.getStringValue()),
+                     node.getStringLength());
       return true;
   }
 
   return false;
 }
 
-template<typename Visitor>
+template <typename Visitor>
 bool visit(aql::SortCondition const& sort, Visitor const& visitor) {
   for (size_t i = 0, size = sort.numAttributes(); i < size; ++i) {
     auto entry = sort.field(i);
@@ -136,7 +130,7 @@ bool visit(aql::SortCondition const& sort, Visitor const& visitor) {
 /// @brief visits the specified node using the provided 'visitor' according
 ///        to the specified visiting strategy (preorder/postorder)
 ////////////////////////////////////////////////////////////////////////////////
-template<bool Preorder, typename Visitor>
+template <bool Preorder, typename Visitor>
 bool visit(aql::AstNode const& root, Visitor visitor) {
   if (Preorder && !visitor(root)) {
     return false;
@@ -174,26 +168,18 @@ enum ScopedValueType {
 /// @struct AqlValueTraits
 ////////////////////////////////////////////////////////////////////////////////
 struct AqlValueTraits {
-  static ScopedValueType type(
-      aql::AqlValue const& value
-  ) noexcept {
-    typedef typename std::underlying_type<
-      ScopedValueType
-    >::type underlying_t;
+  static ScopedValueType type(aql::AqlValue const& value) noexcept {
+    typedef typename std::underlying_type<ScopedValueType>::type underlying_t;
 
-    underlying_t const typeIndex = value.isNull(false)
-      + 2*value.isBoolean()
-      + 3*value.isNumber()
-      + 4*value.isString()
-      + 5*value.isArray()
-      + value.isRange(); // isArray() returns `true` in case of range too
+    underlying_t const typeIndex =
+        value.isNull(false) + 2 * value.isBoolean() + 3 * value.isNumber() +
+        4 * value.isString() + 5 * value.isArray() +
+        value.isRange();  // isArray() returns `true` in case of range too
 
     return static_cast<ScopedValueType>(typeIndex);
   }
 
-  static ScopedValueType type(
-      aql::AstNode const& node
-  ) noexcept {
+  static ScopedValueType type(aql::AstNode const& node) noexcept {
     switch (node.type) {
       case aql::NODE_TYPE_VALUE:
         switch (node.value.type) {
@@ -201,7 +187,7 @@ struct AqlValueTraits {
             return SCOPED_VALUE_TYPE_NULL;
           case aql::VALUE_TYPE_BOOL:
             return SCOPED_VALUE_TYPE_BOOL;
-          case aql::VALUE_TYPE_INT: // all numerics are doubles here
+          case aql::VALUE_TYPE_INT:  // all numerics are doubles here
           case aql::VALUE_TYPE_DOUBLE:
             return SCOPED_VALUE_TYPE_DOUBLE;
           case aql::VALUE_TYPE_STRING:
@@ -217,7 +203,7 @@ struct AqlValueTraits {
         return SCOPED_VALUE_TYPE_INVALID;
     }
   }
-}; // AqlValueTraits
+};  // AqlValueTraits
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct QueryContext
@@ -228,7 +214,7 @@ struct QueryContext {
   aql::Ast* ast;
   aql::ExpressionContext* ctx;
   aql::Variable const* ref;
-}; // QueryContext
+};  // QueryContext
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class ScopedAqlValue
@@ -238,16 +224,12 @@ class ScopedAqlValue : private irs::util::noncopyable {
  public:
   static aql::AstNode const INVALID_NODE;
 
-  explicit ScopedAqlValue(
-      aql::AstNode const& node = INVALID_NODE
-  ) noexcept {
+  explicit ScopedAqlValue(aql::AstNode const& node = INVALID_NODE) noexcept {
     reset(node);
   }
 
   ScopedAqlValue(ScopedAqlValue&& rhs) noexcept
-    : _value(rhs._value),
-      _node(rhs._node),
-      _type(rhs._type) {
+      : _value(rhs._value), _node(rhs._node), _type(rhs._type) {
     rhs._node = &INVALID_NODE;
     rhs._type = SCOPED_VALUE_TYPE_INVALID;
     rhs._destroy = false;
@@ -260,13 +242,9 @@ class ScopedAqlValue : private irs::util::noncopyable {
     _executed = node.isConstant();
   }
 
-  ~ScopedAqlValue() noexcept {
-    destroy();
-  }
+  ~ScopedAqlValue() noexcept { destroy(); }
 
-  bool isConstant() const noexcept {
-    return _node->isConstant();
-  }
+  bool isConstant() const noexcept { return _node->isConstant(); }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief executes expression specified in the given `node`
@@ -277,33 +255,25 @@ class ScopedAqlValue : private irs::util::noncopyable {
   ScopedAqlValue at(size_t i) const {
     TRI_ASSERT(!_node->isConstant() || _node->getMemberUnchecked(i));
 
-    return _node->isConstant()
-      ? ScopedAqlValue(*_node->getMemberUnchecked(i))
-      : ScopedAqlValue(_value, i, false);
+    return _node->isConstant() ? ScopedAqlValue(*_node->getMemberUnchecked(i))
+                               : ScopedAqlValue(_value, i, false);
   }
 
-  ScopedValueType type() const noexcept {
-    return _type;
-  }
+  ScopedValueType type() const noexcept { return _type; }
 
   bool getBoolean() const {
-    return _node->isConstant()
-      ? _node->getBoolValue()
-      : _value.toBoolean();
+    return _node->isConstant() ? _node->getBoolValue() : _value.toBoolean();
   }
 
   bool getDouble(double_t& value) const {
     bool failed = false;
-    value = _node->isConstant()
-      ? _node->getDoubleValue()
-      : _value.toDouble(nullptr, failed);
+    value = _node->isConstant() ? _node->getDoubleValue()
+                                : _value.toDouble(nullptr, failed);
     return !failed;
   }
 
   int64_t getInt64() const {
-    return _node->isConstant()
-      ? _node->getIntValue()
-      : _value.toInt64(nullptr);
+    return _node->isConstant() ? _node->getIntValue() : _value.toInt64(nullptr);
   }
 
   bool getString(irs::string_ref& value) const {
@@ -323,21 +293,16 @@ class ScopedAqlValue : private irs::util::noncopyable {
   }
 
   aql::Range const* getRange() const {
-    return _node->isConstant()
-      ? nullptr
-      : _value.range();
+    return _node->isConstant() ? nullptr : _value.range();
   }
 
   size_t size() const {
-    return _node->isConstant()
-      ? _node->numMembers()
-      : _value.length();
+    return _node->isConstant() ? _node->numMembers() : _value.length();
   }
 
   void toVelocyPack(velocypack::Builder& builder) const {
-    _node->isConstant()
-      ? _node->toVelocyPackValue(builder)
-      : _value.toVelocyPack(nullptr, builder, false);
+    _node->isConstant() ? _node->toVelocyPackValue(builder)
+                        : _value.toVelocyPack(nullptr, builder, false);
   }
 
  private:
@@ -357,9 +322,9 @@ class ScopedAqlValue : private irs::util::noncopyable {
   aql::AqlValue _value;
   aql::AstNode const* _node;
   ScopedValueType _type;
-  bool _destroy{ false };
+  bool _destroy{false};
   bool _executed;
-}; // ScopedAqlValue
+};  // ScopedAqlValue
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief interprets the specified node as an attribute path description and
@@ -370,22 +335,18 @@ class ScopedAqlValue : private irs::util::noncopyable {
 ///          bool expansion(AstNode const&)       - expansion
 /// @return success and set head the the starting node of path (reference)
 ////////////////////////////////////////////////////////////////////////////////
-template<typename T>
-bool visitAttributeAccess(
-    aql::AstNode const*& head,
-    aql::AstNode const* node,
-    T& visitor
-) {
+template <typename T>
+bool visitAttributeAccess(aql::AstNode const*& head, aql::AstNode const* node, T& visitor) {
   if (!node) {
     return false;
   }
 
   switch (node->type) {
-    case aql::NODE_TYPE_ATTRIBUTE_ACCESS: // .
-      return node->numMembers() >= 1
-        && visitAttributeAccess(head, node->getMemberUnchecked(0), visitor)
-        && visitor.attributeAccess(*node);
-    case aql::NODE_TYPE_INDEXED_ACCESS: { // [<something>]
+    case aql::NODE_TYPE_ATTRIBUTE_ACCESS:  // .
+      return node->numMembers() >= 1 &&
+             visitAttributeAccess(head, node->getMemberUnchecked(0), visitor) &&
+             visitor.attributeAccess(*node);
+    case aql::NODE_TYPE_INDEXED_ACCESS: {  // [<something>]
       if (node->numMembers() < 2) {
         // malformed node
         return false;
@@ -393,11 +354,10 @@ bool visitAttributeAccess(
 
       auto* offset = node->getMemberUnchecked(1);
 
-      return offset
-        && visitAttributeAccess(head, node->getMemberUnchecked(0), visitor)
-        && visitor.indexAccess(*offset);
+      return offset && visitAttributeAccess(head, node->getMemberUnchecked(0), visitor) &&
+             visitor.indexAccess(*offset);
     }
-    case aql::NODE_TYPE_EXPANSION: { // [*]
+    case aql::NODE_TYPE_EXPANSION: {  // [*]
       if (node->numMembers() < 2) {
         // malformed node
         return false;
@@ -410,12 +370,11 @@ bool visitAttributeAccess(
         auto* root = itr->getMemberUnchecked(1);
         auto* var = itr->getMemberUnchecked(0);
 
-        return ref
-            && aql::NODE_TYPE_ITERATOR == itr->type
-            && aql::NODE_TYPE_REFERENCE == ref->type
-            && var && aql::NODE_TYPE_VARIABLE == var->type
-            && visitAttributeAccess(head, root, visitor) // 1st visit root
-            && visitor.expansion(*node); // 2nd visit current node
+        return ref && aql::NODE_TYPE_ITERATOR == itr->type &&
+               aql::NODE_TYPE_REFERENCE == ref->type && var &&
+               aql::NODE_TYPE_VARIABLE == var->type &&
+               visitAttributeAccess(head, root, visitor)  // 1st visit root
+               && visitor.expansion(*node);  // 2nd visit current node
       }
     }
     case aql::NODE_TYPE_REFERENCE: {
@@ -436,14 +395,9 @@ bool visitAttributeAccess(
 ///          bool operator()()                - any string key or numeric offset
 /// @return success and set head the the starting node of path (reference/value)
 ////////////////////////////////////////////////////////////////////////////////
-template<typename T>
-bool visitAttributePath(
-  aql::AstNode const*& head,
-  aql::AstNode const& node,
-  T& visitor
-) {
-  if (node.numMembers() >= 2
-      && aql::NODE_TYPE_EXPANSION == node.type) { // [*]
+template <typename T>
+bool visitAttributePath(aql::AstNode const*& head, aql::AstNode const& node, T& visitor) {
+  if (node.numMembers() >= 2 && aql::NODE_TYPE_EXPANSION == node.type) {  // [*]
     auto* itr = node.getMemberUnchecked(0);
     auto* ref = node.getMemberUnchecked(1);
 
@@ -451,45 +405,38 @@ bool visitAttributePath(
       auto* root = itr->getMemberUnchecked(1);
       auto* var = itr->getMemberUnchecked(0);
 
-      return ref
-        && aql::NODE_TYPE_ITERATOR == itr->type
-        && aql::NODE_TYPE_REFERENCE == ref->type
-        && root && var
-        && aql::NODE_TYPE_VARIABLE == var->type
-        && visitAttributePath(head, *root, visitor) // 1st visit root
-        && visitor(); // 2nd visit current node
+      return ref && aql::NODE_TYPE_ITERATOR == itr->type &&
+             aql::NODE_TYPE_REFERENCE == ref->type && root && var &&
+             aql::NODE_TYPE_VARIABLE == var->type &&
+             visitAttributePath(head, *root, visitor)  // 1st visit root
+             && visitor();                             // 2nd visit current node
     }
-  } else if (node.numMembers() == 2
-             && aql::NODE_TYPE_INDEXED_ACCESS == node.type) { // [<something>]
+  } else if (node.numMembers() == 2 && aql::NODE_TYPE_INDEXED_ACCESS == node.type) {  // [<something>]
     auto* root = node.getMemberUnchecked(0);
     auto* offset = node.getMemberUnchecked(1);
 
     if (offset && offset->isIntValue()) {
-      return root
-        && offset->getIntValue() >= 0
-        && visitAttributePath(head, *root, visitor) // 1st visit root
-        && visitor(offset->getIntValue()); // 2nd visit current node
+      return root && offset->getIntValue() >= 0 &&
+             visitAttributePath(head, *root, visitor)  // 1st visit root
+             && visitor(offset->getIntValue());        // 2nd visit current node
     }
 
-    return root && offset && offset->isStringValue()
-      && visitAttributePath(head, *root, visitor) // 1st visit root
-      && visitor(iresearch::getStringRef(*offset)); // 2nd visit current node
-  } else if (node.numMembers() == 1
-             && aql::NODE_TYPE_ATTRIBUTE_ACCESS == node.type) {
+    return root && offset && offset->isStringValue() &&
+           visitAttributePath(head, *root, visitor)       // 1st visit root
+           && visitor(iresearch::getStringRef(*offset));  // 2nd visit current node
+  } else if (node.numMembers() == 1 && aql::NODE_TYPE_ATTRIBUTE_ACCESS == node.type) {
     auto* root = node.getMemberUnchecked(0);
 
-    return root
-      && aql::VALUE_TYPE_STRING == node.value.type
-      && visitAttributePath(head, *root, visitor) // 1st visit root
-      && visitor(iresearch::getStringRef(node)); // 2nd visit current node
-  } else if (!node.numMembers()) { // end of attribute path (base case)
+    return root && aql::VALUE_TYPE_STRING == node.value.type &&
+           visitAttributePath(head, *root, visitor)    // 1st visit root
+           && visitor(iresearch::getStringRef(node));  // 2nd visit current node
+  } else if (!node.numMembers()) {  // end of attribute path (base case)
     head = &node;
 
-    return aql::NODE_TYPE_REFERENCE == node.type
-      || (aql::NODE_TYPE_VALUE == node.type
-          && aql::VALUE_TYPE_STRING == node.value.type
-          && visitor(iresearch::getStringRef(node))
-         );
+    return aql::NODE_TYPE_REFERENCE == node.type ||
+           (aql::NODE_TYPE_VALUE == node.type &&
+            aql::VALUE_TYPE_STRING == node.value.type &&
+            visitor(iresearch::getStringRef(node)));
   }
 
   return false;
@@ -502,12 +449,10 @@ struct NormalizedCmpNode {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @returns pointer to type name for the specified value if it's present in 
+/// @returns pointer to type name for the specified value if it's present in
 ///          TypeMap, nullptr otherwise
 ////////////////////////////////////////////////////////////////////////////////
-inline std::string const* getNodeTypeName(
-    aql::AstNodeType type
-) noexcept {
+inline std::string const* getNodeTypeName(aql::AstNodeType type) noexcept {
   auto const it = aql::AstNode::TypeNames.find(type);
 
   if (aql::AstNode::TypeNames.end() == it) {
@@ -520,11 +465,8 @@ inline std::string const* getNodeTypeName(
 ////////////////////////////////////////////////////////////////////////////////
 /// @returns pointer to 'idx'th member of type 'expectedType', or nullptr
 ////////////////////////////////////////////////////////////////////////////////
-inline aql::AstNode const* getNode(
-    aql::AstNode const& node,
-    size_t idx,
-    aql::AstNodeType expectedType
-) {
+inline aql::AstNode const* getNode(aql::AstNode const& node, size_t idx,
+                                   aql::AstNodeType expectedType) {
   TRI_ASSERT(idx < node.numMembers());
 
   auto const* subNode = node.getMemberUnchecked(idx);
@@ -538,16 +480,13 @@ inline aql::AstNode const* getNode(
 ///        at any level of the hierarchy
 /// @returns true if the specified node contains variable, false otherwise
 ////////////////////////////////////////////////////////////////////////////////
-inline bool findReference(
-    aql::AstNode const& root,
-    aql::Variable const& ref
-) noexcept {
+inline bool findReference(aql::AstNode const& root, aql::Variable const& ref) noexcept {
   auto visitor = [&ref](aql::AstNode const& node) noexcept {
-    return aql::NODE_TYPE_REFERENCE != node.type
-      || reinterpret_cast<void const*>(&ref) != node.getData();
+    return aql::NODE_TYPE_REFERENCE != node.type ||
+           reinterpret_cast<void const*>(&ref) != node.getData();
   };
 
-  return !visit<true>(root, visitor); // preorder walk
+  return !visit<true>(root, visitor);  // preorder walk
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -556,49 +495,38 @@ inline bool findReference(
 /// @returns true if the specified 'in' nodes has been successfully normalized,
 ///          false otherwise
 ////////////////////////////////////////////////////////////////////////////////
-bool normalizeCmpNode(
-  aql::AstNode const& in,
-  aql::Variable const& ref,
-  NormalizedCmpNode& out
-);
+bool normalizeCmpNode(aql::AstNode const& in, aql::Variable const& ref,
+                      NormalizedCmpNode& out);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks 2 nodes of type NODE_TYPE_ATTRIBUTE_ACCESS for equality
 /// @returns true if the specified nodes are equal, false otherwise
 ////////////////////////////////////////////////////////////////////////////////
-bool attributeAccessEqual(
-  aql::AstNode const* lhs,
-  aql::AstNode const* rhs,
-  QueryContext const* ctx
-);
+bool attributeAccessEqual(aql::AstNode const* lhs, aql::AstNode const* rhs,
+                          QueryContext const* ctx);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates field name from the specified 'node'
 /// @returns true on success, false otherwise
 ////////////////////////////////////////////////////////////////////////////////
-bool nameFromAttributeAccess(
-  std::string& name,
-  aql::AstNode const& node,
-  QueryContext const& ctx
-);
+bool nameFromAttributeAccess(std::string& name, aql::AstNode const& node,
+                             QueryContext const& ctx);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether the specified node is correct attribute access node,
 ///        treats node of type NODE_TYPE_REFERENCE as invalid
 /// @returns the specified node on success, nullptr otherwise
 ////////////////////////////////////////////////////////////////////////////////
-aql::AstNode const* checkAttributeAccess(
-  aql::AstNode const* node,
-  aql::Variable const& ref
-) noexcept;
+aql::AstNode const* checkAttributeAccess(aql::AstNode const* node,
+                                         aql::Variable const& ref) noexcept;
 
-} // iresearch
-} // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
-#endif // ARANGOD_IRESEARCH__AQL_HELPER_H
+#endif  // ARANGOD_IRESEARCH__AQL_HELPER_H
 
-#if defined (__GNUC__)
-  #pragma GCC diagnostic pop
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
 #endif
 
 // -----------------------------------------------------------------------------

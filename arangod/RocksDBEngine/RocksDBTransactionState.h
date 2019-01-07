@@ -51,7 +51,6 @@ namespace arangodb {
 namespace cache {
 
 struct Transaction;
-
 }
 
 class LogicalCollection;
@@ -62,7 +61,7 @@ namespace transaction {
 class Methods;
 struct Options;
 
-}
+}  // namespace transaction
 
 class RocksDBMethods;
 
@@ -76,11 +75,8 @@ class RocksDBTransactionState final : public TransactionState {
   friend class RocksDBBatchedWithIndexMethods;
 
  public:
-  RocksDBTransactionState(
-    TRI_vocbase_t& vocbase,
-    TRI_voc_tid_t tid,
-    transaction::Options const& options
-  );
+  RocksDBTransactionState(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+                          transaction::Options const& options);
   ~RocksDBTransactionState();
 
   /// @brief begin a transaction
@@ -114,11 +110,12 @@ class RocksDBTransactionState final : public TransactionState {
   void rollbackOperation(TRI_voc_document_operation_e operationType);
 
   /// @brief add an operation for a transaction collection
-  /// sets hasPerformedIntermediateCommit to true if an intermediate commit was performed
-  Result addOperation(TRI_voc_cid_t collectionId,
-      TRI_voc_rid_t revisionId, TRI_voc_document_operation_e opType,
-      bool& hasPerformedIntermediateCommit);
-  
+  /// sets hasPerformedIntermediateCommit to true if an intermediate commit was
+  /// performed
+  Result addOperation(TRI_voc_cid_t collectionId, TRI_voc_rid_t revisionId,
+                      TRI_voc_document_operation_e opType,
+                      bool& hasPerformedIntermediateCommit);
+
   /// @brief return wrapper around rocksdb transaction
   RocksDBMethods* rocksdbMethods() {
     TRI_ASSERT(_rocksMethods);
@@ -172,12 +169,13 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief Trigger an intermediate commit.
   /// Handle with care if failing after this commit it will only
   /// be rolled back until this point of time.
-  /// sets hasPerformedIntermediateCommit to true if an intermediate commit was performed
-  /// Not thread safe
+  /// sets hasPerformedIntermediateCommit to true if an intermediate commit was
+  /// performed Not thread safe
   Result triggerIntermediateCommit(bool& hasPerformedIntermediateCommit);
-  
+
   /// @brief check sizes and call internalCommit if too big
-  /// sets hasPerformedIntermediateCommit to true if an intermediate commit was performed
+  /// sets hasPerformedIntermediateCommit to true if an intermediate commit was
+  /// performed
   Result checkIntermediateCommit(uint64_t newSize, bool& hasPerformedIntermediateCommit);
 
   /// @brief rocksdb transaction may be null for read only transactions
@@ -188,7 +186,7 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief shared read options which can be used by operations
   /// For intermediate commits iterators MUST use the _readSnapshot
   rocksdb::ReadOptions _rocksReadOptions;
-  
+
   /// @brief cache transaction to unblock blacklisted keys
   cache::Transaction* _cacheTx;
   /// @brief wrapper to use outside this class to access rocksdb
@@ -218,7 +216,8 @@ class RocksDBKeyLeaser {
   inline RocksDBKey* builder() const { return _key; }
   inline RocksDBKey* operator->() const { return _key; }
   inline RocksDBKey* get() const { return _key; }
-  inline RocksDBKey& ref() const {return *_key; }
+  inline RocksDBKey& ref() const { return *_key; }
+
  private:
   RocksDBTransactionState* _rtrx;
   bool _parallel;

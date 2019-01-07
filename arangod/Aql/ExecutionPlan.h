@@ -24,11 +24,11 @@
 #ifndef ARANGOD_AQL_EXECUTION_PLAN_H
 #define ARANGOD_AQL_EXECUTION_PLAN_H 1
 
-#include "Basics/Common.h"
 #include "Aql/CollectOptions.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ModificationOptions.h"
 #include "Aql/types.h"
+#include "Basics/Common.h"
 #include "Basics/SmallVector.h"
 
 #include <array>
@@ -59,12 +59,10 @@ class ExecutionPlan {
   static std::unique_ptr<ExecutionPlan> instantiateFromAst(Ast*);
 
   /// @brief process the list of collections in a VelocyPack
-  static void getCollectionsFromVelocyPack(Ast* ast,
-                                           arangodb::velocypack::Slice const);
+  static void getCollectionsFromVelocyPack(Ast* ast, arangodb::velocypack::Slice const);
 
   /// @brief create an execution plan from VelocyPack
-  static ExecutionPlan* instantiateFromVelocyPack(
-      Ast* ast, arangodb::velocypack::Slice const);
+  static ExecutionPlan* instantiateFromVelocyPack(Ast* ast, arangodb::velocypack::Slice const);
 
   /// @brief whether or not the exclusive flag is set in the write options
   static bool hasExclusiveAccessOption(AstNode const* node);
@@ -86,7 +84,9 @@ class ExecutionPlan {
   /// @brief check if the plan is empty
   inline bool empty() const { return (_root == nullptr); }
 
-  bool isResponsibleForInitialize() const { return _isResponsibleForInitialize; }
+  bool isResponsibleForInitialize() const {
+    return _isResponsibleForInitialize;
+  }
 
   /// @brief note that an optimizer rule was applied
   inline void addAppliedRule(int level) { _appliedRules.emplace_back(level); }
@@ -138,7 +138,8 @@ class ExecutionPlan {
   void show();
 #endif
 
-  /// @brief note this node for being excluded from producing scatter/gather nodes
+  /// @brief note this node for being excluded from producing scatter/gather
+  /// nodes
   void excludeFromScatterGather(ExecutionNode const* node) {
     _excludeFromScatterGather.emplace(node);
   }
@@ -159,16 +160,14 @@ class ExecutionPlan {
 
   /// @brief find nodes of a certain type
   void findNodesOfType(SmallVector<ExecutionNode*>& result,
-                       ExecutionNode::NodeType,
-                       bool enterSubqueries);
+                       ExecutionNode::NodeType, bool enterSubqueries);
 
   /// @brief find nodes of a certain types
   void findNodesOfType(SmallVector<ExecutionNode*>& result,
-      std::vector<ExecutionNode::NodeType> const&, bool enterSubqueries);
+                       std::vector<ExecutionNode::NodeType> const&, bool enterSubqueries);
 
   /// @brief find all end nodes in a plan
-  void findEndNodes(SmallVector<ExecutionNode*>& result,
-                    bool enterSubqueries) const;
+  void findEndNodes(SmallVector<ExecutionNode*>& result, bool enterSubqueries) const;
 
   /// @brief determine and set _varsUsedLater and _valid and _varSetBy
   void findVarUsage();
@@ -243,8 +242,7 @@ class ExecutionPlan {
 
  private:
   /// @brief creates a calculation node
-  ExecutionNode* createCalculation(Variable*, Variable const*, AstNode const*,
-                                   ExecutionNode*);
+  ExecutionNode* createCalculation(Variable*, Variable const*, AstNode const*, ExecutionNode*);
 
   /// @brief get the subquery node from an expression
   /// this will return a nullptr if the expression does not refer to a subquery
@@ -273,7 +271,7 @@ class ExecutionPlan {
 
   /// @brief create an execution plan element from an AST FOR (non-view) node
   ExecutionNode* fromNodeFor(ExecutionNode*, AstNode const*);
-  
+
   /// @brief create an execution plan element from an AST FOR (view) node
   ExecutionNode* fromNodeForView(ExecutionNode*, AstNode const*);
 
@@ -359,13 +357,14 @@ class ExecutionPlan {
   /// @brief a lookup map for all subqueries created
   std::unordered_map<VariableId, ExecutionNode*> _subqueries;
 
-  /// @brief these nodes will be excluded from building scatter/gather "diamonds" later
+  /// @brief these nodes will be excluded from building scatter/gather
+  /// "diamonds" later
   std::unordered_set<ExecutionNode const*> _excludeFromScatterGather;
 
   /// @brief number of nodes used in the plan, by type
   std::array<uint32_t, ExecutionNode::MAX_NODE_TYPE_VALUE> _typeCounts;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

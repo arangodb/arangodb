@@ -56,23 +56,17 @@ static int HexHashFromData(std::string const& hashMethod,
 
   try {
     if (hashMethod == "sha1") {
-      arangodb::rest::SslInterface::sslSHA1(str.data(), str.size(), crypted,
-                                            cryptedLength);
+      arangodb::rest::SslInterface::sslSHA1(str.data(), str.size(), crypted, cryptedLength);
     } else if (hashMethod == "sha512") {
-      arangodb::rest::SslInterface::sslSHA512(str.data(), str.size(), crypted,
-                                              cryptedLength);
+      arangodb::rest::SslInterface::sslSHA512(str.data(), str.size(), crypted, cryptedLength);
     } else if (hashMethod == "sha384") {
-      arangodb::rest::SslInterface::sslSHA384(str.data(), str.size(), crypted,
-                                              cryptedLength);
+      arangodb::rest::SslInterface::sslSHA384(str.data(), str.size(), crypted, cryptedLength);
     } else if (hashMethod == "sha256") {
-      arangodb::rest::SslInterface::sslSHA256(str.data(), str.size(), crypted,
-                                              cryptedLength);
+      arangodb::rest::SslInterface::sslSHA256(str.data(), str.size(), crypted, cryptedLength);
     } else if (hashMethod == "sha224") {
-      arangodb::rest::SslInterface::sslSHA224(str.data(), str.size(), crypted,
-                                              cryptedLength);
+      arangodb::rest::SslInterface::sslSHA224(str.data(), str.size(), crypted, cryptedLength);
     } else if (hashMethod == "md5") {  // WFT?!!!
-      arangodb::rest::SslInterface::sslMD5(str.data(), str.size(), crypted,
-                                           cryptedLength);
+      arangodb::rest::SslInterface::sslMD5(str.data(), str.size(), crypted, cryptedLength);
     } else {
       // invalid algorithm...
       LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION)
@@ -98,7 +92,7 @@ static int HexHashFromData(std::string const& hashMethod,
 
 static void AddSource(VPackBuilder& builder, auth::Source source) {
   switch (source) {
-    case auth::Source::Local: // used to be collection
+    case auth::Source::Local:  // used to be collection
       builder.add("source", VPackValue("LOCAL"));
       break;
     case auth::Source::LDAP:
@@ -144,8 +138,7 @@ static auth::Level AuthLevelFromSlice(VPackSlice const& slice) {
 // ============= static ==================
 
 auth::User auth::User::newUser(std::string const& user,
-                               std::string const& password,
-                               auth::Source source) {
+                               std::string const& password, auth::Source source) {
   auth::User entry("", 0);
   entry._active = true;
   entry._source = source;
@@ -168,8 +161,7 @@ auth::User auth::User::newUser(std::string const& user,
   return entry;
 }
 
-void auth::User::fromDocumentDatabases(auth::User& entry,
-                                       VPackSlice const& databasesSlice,
+void auth::User::fromDocumentDatabases(auth::User& entry, VPackSlice const& databasesSlice,
                                        VPackSlice const& userSlice) {
   for (auto const& obj : VPackObjectIterator(databasesSlice)) {
     std::string const dbName = obj.key.copyString();
@@ -198,8 +190,7 @@ void auth::User::fromDocumentDatabases(auth::User& entry,
 
           if (permissionsSlice.isObject()) {
             try {
-              entry.grantCollection(dbName, cName,
-                                    AuthLevelFromSlice(permissionsSlice));
+              entry.grantCollection(dbName, cName, AuthLevelFromSlice(permissionsSlice));
             } catch (arangodb::basics::Exception const& e) {
               LOG_TOPIC(DEBUG, Logger::AUTHENTICATION) << e.message();
             }
@@ -229,8 +220,7 @@ auth::User auth::User::fromDocument(VPackSlice const& slice) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
 
-  VPackSlice const keySlice =
-      transaction::helpers::extractKeyFromDocument(slice);
+  VPackSlice const keySlice = transaction::helpers::extractKeyFromDocument(slice);
   if (!keySlice.isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "cannot extract _key");
@@ -268,8 +258,7 @@ auth::User auth::User::fromDocument(VPackSlice const& slice) {
   VPackSlice const saltSlice = simpleSlice.get("salt");
   VPackSlice const hashSlice = simpleSlice.get("hash");
 
-  if (!methodSlice.isString() || !saltSlice.isString() ||
-      !hashSlice.isString()) {
+  if (!methodSlice.isString() || !saltSlice.isString() || !hashSlice.isString()) {
     LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION)
         << "cannot extract password internals";
     return auth::User("", 0);
@@ -328,8 +317,7 @@ auth::User::User(std::string&& key, TRI_voc_rid_t rid)
 
 // ======================= Methods ==========================
 
-void auth::User::touch() {
-  _loaded = TRI_microtime();}
+void auth::User::touch() { _loaded = TRI_microtime(); }
 
 bool auth::User::checkPassword(std::string const& password) const {
   std::string hash;
@@ -405,13 +393,11 @@ VPackBuilder auth::User::toVPackBuilder() const {
       }
     }
 
-    if (!_userData.isEmpty() && _userData.isClosed() &&
-        _userData.slice().isObject()) {
+    if (!_userData.isEmpty() && _userData.isClosed() && _userData.slice().isObject()) {
       builder.add("userData", _userData.slice());
     }
 
-    if (!_configData.isEmpty() && _configData.isClosed() &&
-        _configData.slice().isObject()) {
+    if (!_configData.isEmpty() && _configData.isClosed() && _configData.slice().isObject()) {
       builder.add("configData", _configData.slice());
     }
   }
@@ -429,8 +415,8 @@ void auth::User::grantDatabase(std::string const& dbname, auth::Level level) {
         TRI_ERROR_FORBIDDEN, "Cannot lower access level of 'root' to _system");
   }
   LOG_TOPIC(DEBUG, Logger::AUTHENTICATION)
-      << _username << ": Granting "
-      << auth::convertFromAuthLevel(level) << " on " << dbname;
+      << _username << ": Granting " << auth::convertFromAuthLevel(level)
+      << " on " << dbname;
 
   auto it = _dbAccess.find(dbname);
   if (it != _dbAccess.end()) {
@@ -457,11 +443,11 @@ bool auth::User::removeDatabase(std::string const& dbname) {
   return _dbAccess.erase(dbname) > 0;
 }
 
-void auth::User::grantCollection(std::string const& dbname,
-                                 std::string const& cname,
+void auth::User::grantCollection(std::string const& dbname, std::string const& cname,
                                  auth::Level const level) {
   if (dbname.empty() || cname.empty() || level == auth::Level::UNDEFINED) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
         "Cannot set rights for empty db / collection name");
   } else if (cname[0] == '_') {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -476,8 +462,8 @@ void auth::User::grantCollection(std::string const& dbname,
                                    "Invalid database / collection pair");
   }
   LOG_TOPIC(DEBUG, Logger::AUTHENTICATION)
-      << _username << ": Granting "
-      << auth::convertFromAuthLevel(level) << " on " << dbname << "/" << cname;
+      << _username << ": Granting " << auth::convertFromAuthLevel(level)
+      << " on " << dbname << "/" << cname;
 
   auto it = _dbAccess.find(dbname);
   if (it != _dbAccess.end()) {
@@ -491,21 +477,19 @@ void auth::User::grantCollection(std::string const& dbname,
 }
 
 /// Removes the collection right, returns true if entry existed
-bool auth::User::removeCollection(std::string const& dbname,
-                                  std::string const& cname) {
+bool auth::User::removeCollection(std::string const& dbname, std::string const& cname) {
   if (dbname.empty() || cname.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
         "Cannot set rights for empty db / collection name");
   }
-  if (_username == "root" && dbname == StaticStrings::SystemDatabase &&
-      (cname == "*")) {
+  if (_username == "root" && dbname == StaticStrings::SystemDatabase && (cname == "*")) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "Cannot lower access level of 'root' to "
                                    " a collection in _system");
   }
-  LOG_TOPIC(DEBUG, Logger::AUTHENTICATION) << _username << ": Removing grant on "
-    << dbname << "/" << cname;
+  LOG_TOPIC(DEBUG, Logger::AUTHENTICATION)
+      << _username << ": Removing grant on " << dbname << "/" << cname;
   auto const& it = _dbAccess.find(dbname);
   if (it != _dbAccess.end()) {
     return it->second._collectionAccess.erase(cname) > 0;
@@ -516,7 +500,7 @@ bool auth::User::removeCollection(std::string const& dbname,
 // Resolve the access level for this database.
 auth::Level auth::User::configuredDBAuthLevel(std::string const& dbname) const {
   auto it = _dbAccess.find(dbname);
-  if (it != _dbAccess.end()) { // found specific grant
+  if (it != _dbAccess.end()) {  // found specific grant
     return it->second._databaseAuthLevel;
   }
   return auth::Level::UNDEFINED;
@@ -530,14 +514,13 @@ auth::Level auth::User::configuredCollectionAuthLevel(std::string const& dbname,
     // Second try to find a specific grant
     CollLevelMap::const_iterator pair = it->second._collectionAccess.find(cname);
     if (pair != it->second._collectionAccess.end()) {
-      return pair->second; // found specific collection grant
+      return pair->second;  // found specific collection grant
     }
   }
   return auth::Level::UNDEFINED;
 }
 
 auth::Level auth::User::databaseAuthLevel(std::string const& dbname) const {
-
   auth::Level lvl = configuredDBAuthLevel(dbname);
   if (lvl == auth::Level::UNDEFINED && dbname != "*") {
     // take best from wildcard or _system
@@ -560,7 +543,7 @@ auth::Level auth::User::databaseAuthLevel(std::string const& dbname) const {
 auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
                                             std::string const& cname) const {
   if (cname.empty() || (dbname == "*" && cname != "*")) {
-    return auth::Level::NONE; // invalid collection names
+    return auth::Level::NONE;  // invalid collection names
   }
   // we must have got a non-empty collection name when we get here
   TRI_ASSERT(!isdigit(cname[0]));
@@ -579,14 +562,14 @@ auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
   }
 
   auth::Level lvl = auth::Level::NONE;
-  if (dbname != "*") { // skip special rules for wildcard
+  if (dbname != "*") {  // skip special rules for wildcard
     auto it = _dbAccess.find(dbname);
     if (it != _dbAccess.end()) {
       // Second try to find a specific grant
       CollLevelMap::const_iterator pair = it->second._collectionAccess.find(cname);
       if (pair != it->second._collectionAccess.end()) {
-        return pair->second; // found specific collection grant
-      } else if (cname == "*") { // skip special rules for wildcard
+        return pair->second;      // found specific collection grant
+      } else if (cname == "*") {  // skip special rules for wildcard
         return auth::Level::NONE;
       }
 
@@ -613,7 +596,8 @@ auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
   if (it != _dbAccess.end()) {
     lvl = std::max(it->second._databaseAuthLevel, lvl);
     if (!isSystem) {
-      CollLevelMap::const_iterator pair = it->second._collectionAccess.find("*");
+      CollLevelMap::const_iterator pair =
+          it->second._collectionAccess.find("*");
       if (pair != it->second._collectionAccess.end()) {
         // found wildcard collection grant, take better default
         lvl = std::max(pair->second, lvl);

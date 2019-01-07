@@ -36,6 +36,6 @@ class RestAdminDatabaseHandler : public arangodb::RestBaseHandler {
   RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
   RestStatus execute() override;
 };
-}
+}  // namespace arangodb
 
 #endif

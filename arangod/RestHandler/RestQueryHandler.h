@@ -95,6 +95,6 @@ class RestQueryHandler : public RestVocbaseBaseHandler {
 
   bool parseQuery();
 };
-}
+}  // namespace arangodb
 
 #endif

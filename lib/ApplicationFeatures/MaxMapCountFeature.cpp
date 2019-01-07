@@ -22,10 +22,10 @@
 
 #include "MaxMapCountFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/process-utils.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
+#include "Basics/process-utils.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
@@ -37,15 +37,13 @@ using namespace arangodb::options;
 
 #ifdef __linux__
 // the option is only meaningful on Linux
-bool MaxMapCountFeature::_doCheck = true; 
+bool MaxMapCountFeature::_doCheck = true;
 #else
 // and turned off elsewhere
-bool MaxMapCountFeature::_doCheck = false; 
+bool MaxMapCountFeature::_doCheck = false;
 #endif
 
-MaxMapCountFeature::MaxMapCountFeature(
-    application_features::ApplicationServer& server
-)
+MaxMapCountFeature::MaxMapCountFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "MaxMapCount") {
   setOptional(false);
   startsAfter("GreetingsPhase");
@@ -53,21 +51,24 @@ MaxMapCountFeature::MaxMapCountFeature(
 
 void MaxMapCountFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("server", "Server Options");
-  
+
   if (_doCheck) {
-    options->addOption("--server.check-max-memory-mappings, mappings", "check the maximum number of memory mappings at runtime",
+    options->addOption("--server.check-max-memory-mappings, mappings",
+                       "check the maximum number of memory mappings at runtime",
                        new BooleanParameter(&_doCheck),
                        arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
   } else {
-    options->addObsoleteOption("--server.check-max-memory-mappings", "check the maximum number of memory mappings at runtime", true);
+    options->addObsoleteOption(
+        "--server.check-max-memory-mappings",
+        "check the maximum number of memory mappings at runtime", true);
   }
 }
 
 uint64_t MaxMapCountFeature::actualMaxMappings() {
   uint64_t maxMappings = UINT64_MAX;
-   
+
   // in case we cannot determine the number of max_map_count, we will
-  // assume an effectively unlimited number of mappings 
+  // assume an effectively unlimited number of mappings
   if (needsChecking()) {
 #ifdef __linux__
     // test max_map_count value in /proc/sys/vm
@@ -81,20 +82,20 @@ uint64_t MaxMapCountFeature::actualMaxMappings() {
     }
 #endif
   }
- 
+
   return maxMappings;
-} 
-  
+}
+
 uint64_t MaxMapCountFeature::minimumExpectedMaxMappings() {
   uint64_t expected = 0;
-  
+
   if (needsChecking()) {
-    expected = 65530; // Linux kernel default
+    expected = 65530;  // Linux kernel default
 
     uint64_t nproc = TRI_numberProcessors();
 
-    // we expect at most 8 times the number of cores as the effective number of threads,
-    // and we want to allow at least 8000 mmaps per thread
+    // we expect at most 8 times the number of cores as the effective number of
+    // threads, and we want to allow at least 8000 mmaps per thread
     if (nproc * 8 * 8000 > expected) {
       expected = nproc * 8 * 8000;
     }

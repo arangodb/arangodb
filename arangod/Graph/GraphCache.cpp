@@ -62,14 +62,14 @@ struct Success {
 struct Outdated {};
 struct NotFound {};
 struct Exception {};
-}
+}  // namespace getGraphFromCacheResult
 
-using GetGraphFromCacheResult = boost::variant<
-    getGraphFromCacheResult::Success, getGraphFromCacheResult::Outdated,
-    getGraphFromCacheResult::NotFound, getGraphFromCacheResult::Exception>;
+using GetGraphFromCacheResult =
+    boost::variant<getGraphFromCacheResult::Success, getGraphFromCacheResult::Outdated,
+                   getGraphFromCacheResult::NotFound, getGraphFromCacheResult::Exception>;
 
-GetGraphFromCacheResult getGraphFromCache(GraphCache::CacheType const &_cache,
-                                          std::string const &name,
+GetGraphFromCacheResult getGraphFromCache(GraphCache::CacheType const& _cache,
+                                          std::string const& name,
                                           std::chrono::seconds maxAge) {
   using namespace getGraphFromCacheResult;
 
@@ -98,9 +98,9 @@ GetGraphFromCacheResult getGraphFromCache(GraphCache::CacheType const &_cache,
   return Success{entry.second};
 }
 
-const std::shared_ptr<const Graph> GraphCache::getGraph(
-    std::shared_ptr<transaction::Context> ctx, std::string const& name,
-    std::chrono::seconds maxAge) {
+const std::shared_ptr<const Graph> GraphCache::getGraph(std::shared_ptr<transaction::Context> ctx,
+                                                        std::string const& name,
+                                                        std::chrono::seconds maxAge) {
   using namespace getGraphFromCacheResult;
 
   GetGraphFromCacheResult cacheResult = Exception{};
@@ -144,8 +144,7 @@ const std::shared_ptr<const Graph> GraphCache::getGraph(
   try {
     WRITE_LOCKER(guard, _lock);
 
-    std::chrono::steady_clock::time_point now =
-        std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
 
     GraphManager gmngr{ctx->vocbase(), true};
     auto result = gmngr.lookupGraphByName(name);
@@ -164,8 +163,7 @@ const std::shared_ptr<const Graph> GraphCache::getGraph(
 
     CacheType::iterator it;
     bool insertSuccess;
-    std::tie(it, insertSuccess) =
-        _cache.insert({name, std::make_pair(now, graph)});
+    std::tie(it, insertSuccess) = _cache.insert({name, std::make_pair(now, graph)});
 
     if (!insertSuccess) {
       it->second.first = now;

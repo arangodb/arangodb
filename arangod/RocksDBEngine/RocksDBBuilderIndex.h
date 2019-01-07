@@ -34,73 +34,54 @@ namespace arangodb {
 /// without an exclusive lock. It wraps the actual index implementation
 /// and adds some required synchronization logic on top
 class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
-
  public:
   /// @brief return a VelocyPack representation of the index
   void toVelocyPack(velocypack::Builder& builder,
                     std::underlying_type<Index::Serialize>::type) const override;
-  
-  char const* typeName() const override {
-    return _wrapped->typeName();
-  }
-  
-  IndexType type() const override {
-    return _wrapped->type();
-  }
-  
+
+  char const* typeName() const override { return _wrapped->typeName(); }
+
+  IndexType type() const override { return _wrapped->type(); }
+
   bool canBeDropped() const override {
-    return false; // TODO ?!
+    return false;  // TODO ?!
   }
 
   /// @brief whether or not the index is sorted
-  bool isSorted() const override {
-    return _wrapped->isSorted();
-  }
-  
+  bool isSorted() const override { return _wrapped->isSorted(); }
+
   /// @brief if true this index should not be shown externally
   bool isHidden() const override {
-    return true; // do not show building indexes
+    return true;  // do not show building indexes
   }
-  
-  size_t memory() const override {
-    return _wrapped->memory();
-  }
-  
-  Result drop() override {
-    return _wrapped->drop();
-  }
-  
+
+  size_t memory() const override { return _wrapped->memory(); }
+
+  Result drop() override { return _wrapped->drop(); }
+
   void afterTruncate(TRI_voc_tick_t tick) override {
     _wrapped->afterTruncate(tick);
   }
-  
-  void load() override {
-    _wrapped->load();
-  }
-  
-  void unload() override {
-    _wrapped->unload();
-  }
-  
+
+  void load() override { _wrapped->load(); }
+
+  void unload() override { _wrapped->unload(); }
+
   /// @brief whether or not the index has a selectivity estimate
-  bool hasSelectivityEstimate() const override {
-    return false;
-  }
+  bool hasSelectivityEstimate() const override { return false; }
 
   /// insert index elements into the specified write batch.
   Result insertInternal(transaction::Methods& trx, RocksDBMethods*,
                         LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice const&,
-                        OperationMode mode) override;
+                        arangodb::velocypack::Slice const&, OperationMode mode) override;
 
   /// remove index elements and put it in the specified write batch.
   Result removeInternal(transaction::Methods& trx, RocksDBMethods*,
                         LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice const&,
-                        OperationMode mode) override;
+                        arangodb::velocypack::Slice const&, OperationMode mode) override;
 
   RocksDBBuilderIndex(std::shared_ptr<arangodb::RocksDBIndex> const&);
-  
+
   /// @brief get index estimator, optional
   RocksDBCuckooIndexEstimator<uint64_t>* estimator() override {
     return _wrapped->estimator();
@@ -108,38 +89,34 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
   void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>) override {
     TRI_ASSERT(false);
   }
-  void recalculateEstimates() override {
-    _wrapped->recalculateEstimates();
-  }
-  
+  void recalculateEstimates() override { _wrapped->recalculateEstimates(); }
+
   /// @brief fill index, will exclusively lock the collection
   Result fillIndexFast();
-  
+
   /// @brief fill the index, assume already locked exclusively
   /// @param unlock called when collection lock can be released
   Result fillIndexBackground(std::function<void()> const& unlock);
-  
-  virtual IndexIterator* iteratorForCondition(
-    transaction::Methods* trx,
-    ManagedDocumentResult* result,
-    aql::AstNode const* condNode,
-    aql::Variable const* var,
-    IndexIteratorOptions const& opts
-  ) override { 
+
+  virtual IndexIterator* iteratorForCondition(transaction::Methods* trx,
+                                              ManagedDocumentResult* result,
+                                              aql::AstNode const* condNode,
+                                              aql::Variable const* var,
+                                              IndexIteratorOptions const& opts) override {
     TRI_ASSERT(false);
     return nullptr;
   }
-  
+
  private:
   std::shared_ptr<arangodb::RocksDBIndex> _wrapped;
-  
+
   std::atomic<bool> _hasError;
   std::mutex _errorMutex;
   Result _errorResult;
-  
+
   std::mutex _removedDocsMutex;
   std::unordered_set<LocalDocumentId::BaseType> _removedDocs;
-  
+
   std::mutex _lockedDocsMutex;
   std::condition_variable _lockedDocsCond;
   std::unordered_set<LocalDocumentId::BaseType> _lockedDocs;

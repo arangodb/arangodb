@@ -54,7 +54,7 @@ Upgrade Paths
     - Examples: 
       - To upgrade from 3.2 to 3.3, first upgrade your 3.2 installation to 3.2.latest.
       - To upgrade from 3.3 to 3.4, first upgrade your 3.3 installation to 3.3.latest.
-	  
+
 ### Additional Notes Regarding Rolling Upgrades
 
 In addition to the paragraph above, rolling upgrades via the tool _Starter_ are supported,

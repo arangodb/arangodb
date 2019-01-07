@@ -30,5 +30,5 @@ CommunicationFeaturePhase::CommunicationFeaturePhase(ApplicationServer& server)
   setOptional(false);
 }
 
-} // application_features
-} // arangodb
+}  // namespace application_features
+}  // namespace arangodb

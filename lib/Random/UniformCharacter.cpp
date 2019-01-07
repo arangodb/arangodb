@@ -33,12 +33,10 @@ UniformCharacter::UniformCharacter(size_t length)
           "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789") {}
 
 UniformCharacter::UniformCharacter(std::string const& characters)
-    : _length(1),
-      _characters(characters) {}
+    : _length(1), _characters(characters) {}
 
 UniformCharacter::UniformCharacter(size_t length, std::string const& characters)
-    : _length(length),
-      _characters(characters) {}
+    : _length(length), _characters(characters) {}
 
 std::string UniformCharacter::random() { return random(_length); }
 

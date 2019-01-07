@@ -56,6 +56,6 @@ class EndpointFeature final : public application_features::ApplicationFeature,
   EndpointList _endpointList;
 };
 
-}
+}  // namespace arangodb
 
 #endif

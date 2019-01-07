@@ -277,7 +277,7 @@ the vertex IDs:
     @startDocuBlockInline GRAPHTRAV_02_traverse_all_a
     @EXAMPLE_AQL{GRAPHTRAV_02_traverse_all_a}
     @DATASET{traversalGraph}
-	FOR v IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
+    FOR v IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
       RETURN v._key
     @END_EXAMPLE_AQL
     @endDocuBlock GRAPHTRAV_02_traverse_all_a

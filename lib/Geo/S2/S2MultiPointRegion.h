@@ -20,7 +20,6 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #ifndef UTIL_GEOMETRY_S2MULTIPOINTREGION_H__
 #define UTIL_GEOMETRY_S2MULTIPOINTREGION_H__
 
@@ -47,14 +46,13 @@ class S2MultiPointRegion final : public S2Region {
   bool Contains(S2Cell const& cell) const override { return false; }
   bool MayIntersect(S2Cell const& cell) const override;
   bool Contains(S2Point const& p) const override;
-  //void Encode(Encoder* const encoder) const override;
-  //bool Decode(Decoder* const decoder) override;
+  // void Encode(Encoder* const encoder) const override;
+  // bool Decode(Decoder* const decoder) override;
 
  private:
-  
   // private constructor for clone
   explicit S2MultiPointRegion(S2MultiPointRegion const*);
-  
+
   int num_points_;
   S2Point* points_;
 };

@@ -27,23 +27,19 @@ using namespace arangodb::application_features;
 
 namespace arangodb {
 
-std::atomic<traverser::TraverserEngineRegistry*>
-  TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY{nullptr};
+std::atomic<traverser::TraverserEngineRegistry*> TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY{
+    nullptr};
 
-TraverserEngineRegistryFeature::TraverserEngineRegistryFeature(
-    application_features::ApplicationServer& server
-)
+TraverserEngineRegistryFeature::TraverserEngineRegistryFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "TraverserEngineRegistry") {
   setOptional(false);
   startsAfter("V8Phase");
 }
 
-void TraverserEngineRegistryFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
+void TraverserEngineRegistryFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
 }
 
-void TraverserEngineRegistryFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
+void TraverserEngineRegistryFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
 }
 
 void TraverserEngineRegistryFeature::prepare() {
@@ -51,11 +47,10 @@ void TraverserEngineRegistryFeature::prepare() {
   _engineRegistry.reset(new traverser::TraverserEngineRegistry());
   TRAVERSER_ENGINE_REGISTRY.store(_engineRegistry.get(), std::memory_order_release);
 }
-void TraverserEngineRegistryFeature::start() {
-}
+void TraverserEngineRegistryFeature::start() {}
 
 void TraverserEngineRegistryFeature::unprepare() {
   TRAVERSER_ENGINE_REGISTRY.store(nullptr, std::memory_order_release);
 }
 
-} // arangodb
+}  // namespace arangodb
