@@ -129,26 +129,13 @@ Encryption
 
 See [Arangodump](../Arangodump/Examples.md#encryption) for details.
 
-Restoring Revision IDs and Collection IDs
------------------------------------------
- 
-_arangorestore_ will reload document and edges data with the exact same *_key*, *_from* and 
-*_to* values found in the input directory. However, when loading document data, it will assign
-its own values for the *_rev* attribute of the reloaded documents. Though this difference is 
-intentional (normally, every server should create its own *_rev* values) there might be 
-situations when it is required to re-use the exact same *_rev* values for the reloaded data.
-This can be achieved by setting the *--recycle-ids* parameter to *true*:
-
-    arangorestore --collection myusers --collection myvalues --input-directory "dump"
-
-Note that setting *--recycle-ids* to *true* will also cause collections to be (re-)created in
-the target database with the exact same collection id as in the input directory. Any potentially
-existing collection in the target database with the same collection id will then be dropped.
-
 Reloading Data into a different Collection
 ------------------------------------------
 
-With some creativity you can use _arangodump_ and _arangorestore_ to transfer data from one
+_arangorestore_ will restore document and edges data with the exact same *_key*, *_rev*, *_from* 
+and *_to* values as found in the input directory. 
+
+With some creativity you can also use _arangodump_ and _arangorestore_ to transfer data from one
 collection into another (either on the same server or not). For example, to copy data from
 a collection *myvalues* in database *mydb* into a collection *mycopyvalues* in database *mycopy*,
 you can start with the following command:
@@ -229,6 +216,6 @@ For restore this short overview is sufficient:
 
 - When importing into an existing database, the given user needs `Administrate`
   access on this database.
-- When creating a new Database during restore, the given user needs `Administrate`
+- When creating a new database during restore, the given user needs `Administrate`
   access on `_system`. The user will be promoted with `Administrate` access on the
   newly created database.
