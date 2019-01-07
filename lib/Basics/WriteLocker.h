@@ -34,6 +34,7 @@
 #endif
 
 #include <thread>
+#include "ApplicationFeatures/ApplicationServer.h"  /// temporary for debugging
 
 /// @brief construct locker with file and line information
 #define WRITE_LOCKER(obj, lock) \
@@ -64,7 +65,7 @@ class WriteLocker {
   /// @brief acquires a write-lock
   /// The constructors acquire a write lock, the destructor unlocks the lock.
   WriteLocker(LockType* readWriteLock, LockerType type, bool condition, char const* file, int line)
-      : _readWriteLock(readWriteLock), _file(file), _line(line), 
+      : _readWriteLock(readWriteLock), _file(file), _line(line),
 #ifdef TRI_SHOW_LOCK_TIME
         _isLocked(false), _time(0.0) {
 #else
@@ -82,7 +83,7 @@ class WriteLocker {
         TRI_ASSERT(_isLocked);
       } else if (type == LockerType::EVENTUAL) {
         lockEventual();
-        TRI_ASSERT(_isLocked);
+// removed for debugging        TRI_ASSERT(_isLocked);
       } else if (type == LockerType::TRY) {
         _isLocked = tryLock();
       }
@@ -93,7 +94,7 @@ class WriteLocker {
     _time = TRI_microtime() - t;
 #endif
   }
-  
+
   /// @brief releases the write-lock
   ~WriteLocker() {
     if (_isLocked) {
@@ -106,30 +107,30 @@ class WriteLocker {
     }
 #endif
   }
-  
+
   /// @brief whether or not we acquired the lock
   bool isLocked() const noexcept { return _isLocked; }
 
   /// @brief eventually acquire the write lock
   void lockEventual() {
-    while (!tryLock()) {
+    while (!tryLock() && !application_features::ApplicationServer::isRetryOK()) { // temporary, debug only!!!
       std::this_thread::yield();
     }
-    TRI_ASSERT(_isLocked);
+// removed for debugging    TRI_ASSERT(_isLocked);
   }
-  
+
   bool tryLock() {
     TRI_ASSERT(!_isLocked);
     if (_readWriteLock->tryWriteLock()) {
-      _isLocked = true;
+       _isLocked = true;
     }
-    return _isLocked; 
+    return _isLocked;
   }
 
   /// @brief acquire the write lock, blocking
   void lock() {
     TRI_ASSERT(!_isLocked);
-    _readWriteLock->writeLock(); 
+    _readWriteLock->writeLock();
     _isLocked = true;
   }
 
@@ -142,7 +143,7 @@ class WriteLocker {
     }
     return false;
   }
-  
+
   /// @brief steals the lock, but does not unlock it
   bool steal() {
     if (_isLocked) {

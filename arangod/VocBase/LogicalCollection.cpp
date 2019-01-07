@@ -364,6 +364,11 @@ TRI_vocbase_col_status_e LogicalCollection::getStatusLocked() {
 void LogicalCollection::executeWhileStatusWriteLocked(
     std::function<void()> const& callback) {
   WRITE_LOCKER_EVENTUAL(locker, _lock);
+  if (!application_features::ApplicationServer::isRetryOK()) { // temporary, debug only!!!
+    LOG_TOPIC(ERR, arangodb::Logger::PERFORMANCE) << "collection likely locked on shutdown: " << name() << ", " << guid();
+
+    TRI_ASSERT(false); // we lied to get here.  stop now.
+  }
   callback();
 }
 
