@@ -208,7 +208,8 @@ if(ENABLE_IPV6 AND NOT WIN32)
   endif()
 endif()
 
-curl_nroff_check()
+# no need to build documentation locally
+#curl_nroff_check()
 find_package(Perl)
 
 cmake_dependent_option(ENABLE_MANUAL "to provide the built-in manual"
@@ -1319,21 +1320,21 @@ write_basic_package_version_file(
 # Use:
 # * TARGETS_EXPORT_NAME
 # * PROJECT_NAME
-configure_package_config_file(CMake/curl-config.cmake.in
-        "${project_config}"
-        INSTALL_DESTINATION ${CURL_INSTALL_CMAKE_DIR}
-)
+#configure_package_config_file(CMake/curl-config.cmake.in
+#        "${project_config}"
+#        INSTALL_DESTINATION ${CURL_INSTALL_CMAKE_DIR}
+#)
 
-install(
-        EXPORT "${TARGETS_EXPORT_NAME}"
-        NAMESPACE "${PROJECT_NAME}::"
-        DESTINATION ${CURL_INSTALL_CMAKE_DIR}
-)
+#install(
+#        EXPORT "${TARGETS_EXPORT_NAME}"
+#        NAMESPACE "${PROJECT_NAME}::"
+#        DESTINATION ${CURL_INSTALL_CMAKE_DIR}
+#)
 
-install(
-        FILES ${version_config} ${project_config}
-        DESTINATION ${CURL_INSTALL_CMAKE_DIR}
-)
+#install(
+#        FILES ${version_config} ${project_config}
+#        DESTINATION ${CURL_INSTALL_CMAKE_DIR}
+#)
 
 # Workaround for MSVS10 to avoid the Dialog Hell
 # FIXME: This could be removed with future version of CMake.
