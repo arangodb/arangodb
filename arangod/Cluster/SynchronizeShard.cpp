@@ -441,6 +441,11 @@ arangodb::Result SynchronizeShard::getReadLock(
       if (enqres.result != nullptr && enqres.result->getHttpReturnCode() == 200) {
         // Habemus clausum 
         return arangodb::Result();
+      } else {
+        LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+          << "startReadLockOnLeader: Failed to acquire read lock: "
+          << putres->stringifyErrorMessage();
+        break;
       }
     }
 
@@ -461,10 +466,6 @@ arangodb::Result SynchronizeShard::getReadLock(
         }
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
           << "startReadLockOnLeader: Lock not yet acquired, retrying... ";
-      } else if (enqres.status == CL_COMM_SENT) { // POST sent in meantime: Error (>=3.4)
-        LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-          << "startReadLockOnLeader: Failed to acquire read lock: "
-          << putres->stringifyErrorMessage();
       } else {                                    // No news
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
           << "startReadLockOnLeader: Lock not yet acquired, retrying... "
