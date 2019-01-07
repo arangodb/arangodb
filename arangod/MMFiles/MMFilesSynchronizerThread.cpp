@@ -27,26 +27,26 @@
 #include "Basics/Exceptions.h"
 #include "Basics/memory-map.h"
 #include "Logger/Logger.h"
+#include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesWalSlots.h"
 #include "MMFiles/MMFilesWalSyncRegion.h"
 #include "VocBase/ticks.h"
-#include "MMFiles/MMFilesLogfileManager.h"
 
 using namespace arangodb;
-  
+
 /// @brief returns the bitmask for the synchronous waiters
 /// for use in _waiters only
 static constexpr inline uint64_t syncWaitersMask() {
-  return static_cast<uint64_t>(0xffffffffULL); 
+  return static_cast<uint64_t>(0xffffffffULL);
 }
-  
+
 /// @brief returns the numbers of bits to shift to get the
-/// number of asynchronous waiters 
+/// number of asynchronous waiters
 /// for use in _waiters only
 static constexpr inline int asyncWaitersBits() { return 32; }
 
 MMFilesSynchronizerThread::MMFilesSynchronizerThread(MMFilesLogfileManager* logfileManager,
-                                       uint64_t syncInterval)
+                                                     uint64_t syncInterval)
     : Thread("WalSynchronizer"),
       _logfileManager(logfileManager),
       _condition(),
@@ -102,10 +102,11 @@ void MMFilesSynchronizerThread::run() {
         }
       } catch (arangodb::basics::Exception const& ex) {
         int res = ex.code();
-        LOG_TOPIC(ERR, arangodb::Logger::DATAFILES) << "got unexpected error in synchronizerThread: "
-                 << TRI_errno_string(res);
+        LOG_TOPIC(ERR, arangodb::Logger::DATAFILES)
+            << "got unexpected error in synchronizerThread: " << TRI_errno_string(res);
       } catch (...) {
-        LOG_TOPIC(ERR, arangodb::Logger::DATAFILES) << "got unspecific error in synchronizerThread";
+        LOG_TOPIC(ERR, arangodb::Logger::DATAFILES)
+            << "got unspecific error in synchronizerThread";
       }
     }
 
@@ -115,7 +116,7 @@ void MMFilesSynchronizerThread::run() {
     if (updateValue > 0) {
       // subtract and fetch previous value in one atomic operation
       waitingValue = _waiting.fetch_sub(updateValue);
-      waitingValue -= updateValue; // subtract from previous value
+      waitingValue -= updateValue;  // subtract from previous value
     } else {
       // re-fetch current value
       waitingValue = _waiting;
@@ -164,16 +165,19 @@ int MMFilesSynchronizerThread::doSync(bool& checkMore) {
   double startTime = TRI_microtime();
   int result = TRI_MSync(fd, region.mem, region.mem + region.size);
   if (TRI_microtime() - startTime > 1.0) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::DATAFILES) << "Long sync logfile " << id << ", region "
-      << (void*) region.mem << ", size " << region.size;
+    LOG_TOPIC(DEBUG, arangodb::Logger::DATAFILES)
+        << "Long sync logfile " << id << ", region " << (void*)region.mem
+        << ", size " << region.size;
   }
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::DATAFILES) << "syncing logfile " << id << ", region " << (void*) region.mem << " - "
-             << (void*)(region.mem + region.size) << ", length: " << region.size
-             << ", wfs: " << (region.waitForSync ? "true" : "false");
+  LOG_TOPIC(DEBUG, arangodb::Logger::DATAFILES)
+      << "syncing logfile " << id << ", region " << (void*)region.mem << " - "
+      << (void*)(region.mem + region.size) << ", length: " << region.size
+      << ", wfs: " << (region.waitForSync ? "true" : "false");
 
   if (result != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(ERR, arangodb::Logger::DATAFILES) << "unable to sync wal logfile region";
+    LOG_TOPIC(ERR, arangodb::Logger::DATAFILES)
+        << "unable to sync wal logfile region";
 
     return TRI_ERROR_ARANGO_MSYNC_FAILED;
   }

@@ -28,21 +28,19 @@
 
 namespace arangodb {
 namespace futures {
-    
+
 template <class T>
 Future<T> makeFuture(Try<T>&& t) {
   return Future<T>(detail::SharedState<T>::make(std::move(t)));
 }
 
-Future<Unit> makeFuture() {
-  return Future<Unit>(unit);
-}
+Future<Unit> makeFuture() { return Future<Unit>(unit); }
 
 template <class T>
 Future<typename std::decay<T>::type> makeFuture(T&& t) {
   return makeFuture(Try<typename std::decay<T>::type>(std::forward<T>(t)));
 }
-  
+
 /// Make a failed Future from an std::exception_ptr.
 template <class T>
 Future<T> makeFuture(std::exception_ptr const& e) {
@@ -52,15 +50,13 @@ Future<T> makeFuture(std::exception_ptr const& e) {
 /// Make a Future from an exception type E that can be passed to
 /// std::make_exception_ptr().
 template <class T, class E>
-typename std::enable_if<std::is_base_of<std::exception, E>::value, Future<T>>::type
-makeFuture(E const& e) {
+typename std::enable_if<std::is_base_of<std::exception, E>::value, Future<T>>::type makeFuture(E const& e) {
   return makeFuture(Try<T>(std::make_exception_ptr<E>(e)));
 }
-  
+
 // makeFutureWith(Future<T>()) -> Future<T>
 template <typename F, typename R = std::result_of_t<F()>>
-typename std::enable_if<isFuture<R>::value, R>::type
-makeFutureWith(F&& func) {
+typename std::enable_if<isFuture<R>::value, R>::type makeFutureWith(F&& func) {
   using InnerType = typename isFuture<R>::inner;
   try {
     return std::forward<F>(func)();
@@ -68,14 +64,15 @@ makeFutureWith(F&& func) {
     return makeFuture<InnerType>(std::current_exception());
   }
 }
-  
+
 // makeFutureWith(T()) -> Future<T>
 // makeFutureWith(void()) -> Future<Unit>
 template <typename F, typename R = std::result_of_t<F()>>
-typename std::enable_if<!isFuture<R>::value, Future<R>>::type
-makeFutureWith(F&& func) {
-  return makeFuture<R>(makeTryWith([&func]() mutable { return std::forward<F>(func)(); }));
+typename std::enable_if<!isFuture<R>::value, Future<R>>::type makeFutureWith(F&& func) {
+  return makeFuture<R>(
+      makeTryWith([&func]() mutable { return std::forward<F>(func)(); }));
 }
-    
-}}
-#endif // ARANGOD_FUTURES_UTILITIES_H
+
+}  // namespace futures
+}  // namespace arangodb
+#endif  // ARANGOD_FUTURES_UTILITIES_H

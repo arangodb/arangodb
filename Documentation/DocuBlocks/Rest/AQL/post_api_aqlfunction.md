@@ -74,7 +74,7 @@ a descriptive error message
   var body = {
     name: "myfunctions::temperature::celsiustofahrenheit",
     code : "function (celsius) { return celsius * 1.8 + 32; }",
-	isDeterministic: true
+    isDeterministic: true
   };
 
   var response = logCurlRequest('POST', url, body);

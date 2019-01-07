@@ -44,7 +44,6 @@ void SharedQueryState::waitForAsyncResponse() {
   _wasNotified = false;
 }
 
-
 /// @brief setter for the continue callback:
 ///        We can either have a handler or a callback
 void SharedQueryState::setContinueCallback() noexcept {

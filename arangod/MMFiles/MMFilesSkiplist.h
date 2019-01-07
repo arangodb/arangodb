@@ -113,8 +113,7 @@ class MMFilesSkiplist {
   /// to the key and the third is a pointer to an element.
   //////////////////////////////////////////////////////////////////////////////
 
-  typedef std::function<int(void*, Element const*, Element const*, MMFilesSkiplistCmpType)>
-      CmpElmElmFuncType;
+  typedef std::function<int(void*, Element const*, Element const*, MMFilesSkiplistCmpType)> CmpElmElmFuncType;
   typedef std::function<int(void*, Key const*, Element const*)> CmpKeyElmFuncType;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -146,7 +145,7 @@ class MMFilesSkiplist {
   //////////////////////////////////////////////////////////////////////////////
 
   MMFilesSkiplist(CmpElmElmFuncType cmp_elm_elm, CmpKeyElmFuncType cmp_key_elm,
-           FreeElementFuncType freefunc, bool unique, bool isArray)
+                  FreeElementFuncType freefunc, bool unique, bool isArray)
       : _cmp_elm_elm(cmp_elm_elm),
         _cmp_key_elm(cmp_key_elm),
         _free(freefunc),
@@ -191,7 +190,7 @@ class MMFilesSkiplist {
       p = next;
     }
     freeNode(_start);
-    
+
     _memoryUsed = sizeof(MMFilesSkiplist);
     _nrUsed = 0;
 
@@ -268,8 +267,7 @@ class MMFilesSkiplist {
 
     // Uniqueness test if wanted:
     if (_unique) {
-      if ((pos[0] != _start &&
-           0 == _cmp_elm_elm(userData, doc, pos[0]->_doc, SKIPLIST_CMP_PREORDER)) ||
+      if ((pos[0] != _start && 0 == _cmp_elm_elm(userData, doc, pos[0]->_doc, SKIPLIST_CMP_PREORDER)) ||
           (nullptr != next &&
            0 == _cmp_elm_elm(userData, doc, next->_doc, SKIPLIST_CMP_PREORDER))) {
         return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
@@ -500,8 +498,8 @@ class MMFilesSkiplist {
 
  private:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief allocate a new MMFilesSkiplistNode of a certain height. If height is 0,
-  /// then a random height is taken.
+  /// @brief allocate a new MMFilesSkiplistNode of a certain height. If height
+  /// is 0, then a random height is taken.
   //////////////////////////////////////////////////////////////////////////////
 
   Node* allocNode(int height) {
@@ -511,7 +509,7 @@ class MMFilesSkiplist {
 
     // allocate enough memory for skiplist node plus all the next nodes in one
     // go
-    void* ptr = TRI_Allocate(                             sizeof(Node) + sizeof(Node*) * height);
+    void* ptr = TRI_Allocate(sizeof(Node) + sizeof(Node*) * height);
 
     if (ptr == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -563,8 +561,7 @@ class MMFilesSkiplist {
   /// lev.
   //////////////////////////////////////////////////////////////////////////////
 
-  int lookupLess(void* userData,
-                 Element const* doc, Node* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
+  int lookupLess(void* userData, Element const* doc, Node* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
                  Node** next, MMFilesSkiplistCmpType cmptype) const {
     int lev;
     int cmp = 0;  // just in case to avoid undefined values
@@ -604,9 +601,9 @@ class MMFilesSkiplist {
   /// that have height > lev.
   //////////////////////////////////////////////////////////////////////////////
 
-  int lookupLessOrEq(void* userData,
-                     Element const* doc, Node* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
-                     Node** next, MMFilesSkiplistCmpType cmptype) const {
+  int lookupLessOrEq(void* userData, Element const* doc,
+                     Node* (*pos)[TRI_SKIPLIST_MAX_HEIGHT], Node** next,
+                     MMFilesSkiplistCmpType cmptype) const {
     int lev;
     int cmp = 0;  // just in case to avoid undefined values
 
@@ -639,9 +636,8 @@ class MMFilesSkiplist {
   /// as the two previous ones.
   //////////////////////////////////////////////////////////////////////////////
 
-  int lookupKeyLess(void* userData,
-                    Key const* key, Node* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
-                    Node** next) const {
+  int lookupKeyLess(void* userData, Key const* key,
+                    Node* (*pos)[TRI_SKIPLIST_MAX_HEIGHT], Node** next) const {
     int lev;
     int cmp = 0;  // just in case to avoid undefined values
 
@@ -670,9 +666,8 @@ class MMFilesSkiplist {
   /// @brief lookupKeyLessOrEq
   //////////////////////////////////////////////////////////////////////////////
 
-  int lookupKeyLessOrEq(void* userData,
-                        Key const* key, Node* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
-                        Node** next) const {
+  int lookupKeyLessOrEq(void* userData, Key const* key,
+                        Node* (*pos)[TRI_SKIPLIST_MAX_HEIGHT], Node** next) const {
     int lev;
     int cmp = 0;  // just in case to avoid undefined values
 

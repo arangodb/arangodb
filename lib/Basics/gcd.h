@@ -68,7 +68,7 @@ static T binaryGcd(T u, T v) {
 
   return u << shift;
 }
-}
-}
+}  // namespace basics
+}  // namespace arangodb
 
 #endif

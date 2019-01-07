@@ -28,7 +28,7 @@
 
 namespace {
 
-template<typename T>
+template <typename T>
 TRI_vocbase_t& vocbase(T& id) {
   auto* databaseFeature = arangodb::DatabaseFeature::DATABASE;
 
@@ -45,18 +45,19 @@ TRI_vocbase_t& vocbase(T& id) {
   return *vocbase;
 }
 
-} // namespace
+}  // namespace
 
 namespace arangodb {
 
 /// @brief create the guard, using a database id
-DatabaseGuard::DatabaseGuard(TRI_voc_tick_t id): _vocbase(vocbase(id)) {
+DatabaseGuard::DatabaseGuard(TRI_voc_tick_t id) : _vocbase(vocbase(id)) {
   TRI_ASSERT(!_vocbase.isDangling());
 }
 
 /// @brief create the guard, using a database name
-DatabaseGuard::DatabaseGuard(std::string const& name): _vocbase(vocbase(name)) {
+DatabaseGuard::DatabaseGuard(std::string const& name)
+    : _vocbase(vocbase(name)) {
   TRI_ASSERT(!_vocbase.isDangling());
 }
 
-} // arangodb
+}  // namespace arangodb

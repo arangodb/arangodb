@@ -36,8 +36,8 @@ class Acceptor {
   typedef std::function<void(asio_ns::error_code const&)> AcceptHandler;
 
  public:
-  Acceptor(rest::GeneralServer &server,
-    rest::GeneralServer::IoContext &context, Endpoint* endpoint);
+  Acceptor(rest::GeneralServer& server, rest::GeneralServer::IoContext& context,
+           Endpoint* endpoint);
   virtual ~Acceptor() {}
 
  public:
@@ -47,15 +47,15 @@ class Acceptor {
   std::unique_ptr<Socket> movePeer() { return std::move(_peer); };
 
  public:
-  static std::unique_ptr<Acceptor> factory(rest::GeneralServer &server,
-    rest::GeneralServer::IoContext &context, Endpoint*);
+  static std::unique_ptr<Acceptor> factory(rest::GeneralServer& server,
+                                           rest::GeneralServer::IoContext& context,
+                                           Endpoint*);
 
  protected:
-
-  rest::GeneralServer &_server;
-  rest::GeneralServer::IoContext &_context;
+  rest::GeneralServer& _server;
+  rest::GeneralServer::IoContext& _context;
   Endpoint* _endpoint;
   std::unique_ptr<Socket> _peer;
 };
-}
+}  // namespace arangodb
 #endif

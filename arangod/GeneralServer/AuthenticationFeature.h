@@ -29,19 +29,14 @@
 
 namespace arangodb {
 
-class AuthenticationFeature final
-    : public application_features::ApplicationFeature {
+class AuthenticationFeature final : public application_features::ApplicationFeature {
  private:
   const size_t _maxSecretLength = 64;
 
  public:
-  explicit AuthenticationFeature(
-    application_features::ApplicationServer& server
-  );
+  explicit AuthenticationFeature(application_features::ApplicationServer& server);
 
-  static inline AuthenticationFeature* instance() {
-    return INSTANCE;
-  }
+  static inline AuthenticationFeature* instance() { return INSTANCE; }
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -56,7 +51,9 @@ class AuthenticationFeature final
   std::string jwtSecret() const { return _authCache->jwtSecret(); }
   bool hasUserdefinedJwt() const { return !_jwtSecretProgramOption.empty(); }
 
-  double authenticationTimeout() const noexcept { return _authenticationTimeout; }
+  double authenticationTimeout() const noexcept {
+    return _authenticationTimeout;
+  }
   /// Enable or disable standalone authentication
   bool localAuthentication() const noexcept { return _localAuthentication; }
 
@@ -82,11 +79,11 @@ class AuthenticationFeature final
   double _authenticationTimeout;
 
   std::string _jwtSecretProgramOption;
+  std::string _jwtSecretKeyfileProgramOption;
 
   static AuthenticationFeature* INSTANCE;
-
 };
 
-} // arangodb
+}  // namespace arangodb
 
 #endif

@@ -32,7 +32,6 @@
 //   http://www.apache.org/licenses/LICENSE-2.0
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #ifndef ARANGO_ROCKSDB_ROCKSDB_THROTTLE_H
 #define ARANGO_ROCKSDB_ROCKSDB_THROTTLE_H 1
 
@@ -48,8 +47,10 @@
 #include <rocksdb/listener.h>
 
 // NOT public rocksdb headers
-// ugliness starts here ... this will go away if rocksdb adds pluggable write_controller.
-//  need either ROCKSDB_PLATFORM_POSIX or OS_WIN set before the <db/...> includes
+// ugliness starts here ... this will go away if rocksdb adds pluggable
+// write_controller.
+//  need either ROCKSDB_PLATFORM_POSIX or OS_WIN set before the <db/...>
+//  includes
 using namespace rocksdb;
 #ifndef _WIN32
 #define ROCKSDB_PLATFORM_POSIX 1
@@ -68,35 +69,29 @@ namespace arangodb {
 /// RocksDBPrefixExtractor as well.
 ////////////////////////////////////////////////////////////////////////////////
 class RocksDBThrottle : public rocksdb::EventListener {
-public:
+ public:
   RocksDBThrottle();
   virtual ~RocksDBThrottle();
 
-  void OnFlushBegin(rocksdb::DB* db,
-                    const rocksdb::FlushJobInfo& flush_job_info) override;
+  void OnFlushBegin(rocksdb::DB* db, const rocksdb::FlushJobInfo& flush_job_info) override;
 
-  void OnFlushCompleted(rocksdb::DB* db,
-                        const rocksdb::FlushJobInfo& flush_job_info) override;
+  void OnFlushCompleted(rocksdb::DB* db, const rocksdb::FlushJobInfo& flush_job_info) override;
 
-  void OnCompactionCompleted(rocksdb::DB* db,
-                             const rocksdb::CompactionJobInfo& ci) override;
+  void OnCompactionCompleted(rocksdb::DB* db, const rocksdb::CompactionJobInfo& ci) override;
 
-
-
-  void SetFamilies(std::vector<rocksdb::ColumnFamilyHandle *> & Families) {
-    _families=Families;
+  void SetFamilies(std::vector<rocksdb::ColumnFamilyHandle*>& Families) {
+    _families = Families;
   }
 
   static void AdjustThreadPriority(int Adjustment);
 
   void StopThread();
 
-protected:
-  void Startup(rocksdb::DB * db);
+ protected:
+  void Startup(rocksdb::DB* db);
 
-  void SetThrottleWriteRate(std::chrono::microseconds Micros,
-                            uint64_t Keys, uint64_t Bytes, bool IsLevel0);
-
+  void SetThrottleWriteRate(std::chrono::microseconds Micros, uint64_t Keys,
+                            uint64_t Bytes, bool IsLevel0);
 
   void ThreadLoop();
 
@@ -105,7 +100,6 @@ protected:
   int64_t ComputeBacklog();
 
   void RecalculateThrottle();
-
 
   // I am unable to figure out static initialization of std::chrono::seconds,
   //  using old school unsigned.
@@ -122,15 +116,14 @@ protected:
   //  (from original Google leveldb db/dbformat.h)
   static constexpr int64_t kL0_SlowdownWritesTrigger = 8;
 
-  struct ThrottleData_t
-  {
+  struct ThrottleData_t {
     std::chrono::microseconds _micros;
     uint64_t _keys;
     uint64_t _bytes;
     uint64_t _compactions;
   };
 
-  rocksdb::DBImpl * _internalRocksDB;
+  rocksdb::DBImpl* _internalRocksDB;
   std::once_flag _initFlag;
   std::atomic<bool> _threadRunning;
   std::future<void> _threadFuture;
@@ -139,8 +132,8 @@ protected:
   basics::ConditionVariable _threadCondvar;
 
   // this array stores compaction statistics used in throttle calculation.
-  //  Index 0 of this array accumulates the current minute's compaction data for level 0.
-  //  Index 1 accumulates accumulates current minute's compaction
+  //  Index 0 of this array accumulates the current minute's compaction data for
+  //  level 0. Index 1 accumulates accumulates current minute's compaction
   //  statistics for all other levels.  Remaining intervals contain
   //  most recent interval statistics for last hour.
   ThrottleData_t _throttleData[THROTTLE_INTERVALS];
@@ -150,10 +143,10 @@ protected:
   bool _firstThrottle;
 
   std::unique_ptr<WriteControllerToken> _delayToken;
-  std::vector<rocksdb::ColumnFamilyHandle *> _families;
+  std::vector<rocksdb::ColumnFamilyHandle*> _families;
 
-};// class RocksDBThrottle
+};  // class RocksDBThrottle
 
-} // namespace arangodb
+}  // namespace arangodb
 
 #endif

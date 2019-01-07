@@ -24,8 +24,8 @@
 #include "ClusterBlocks.h"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/AqlValue.h"
 #include "Aql/AqlTransaction.h"
+#include "Aql/AqlValue.h"
 #include "Aql/BlockCollector.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionEngine.h"
@@ -41,13 +41,13 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Transaction/Methods.h"
+#include "Transaction/StandaloneContext.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
-#include "Transaction/Methods.h"
-#include "Transaction/StandaloneContext.h"
-#include "Utils/SingleCollectionTransaction.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -61,36 +61,27 @@ using namespace arangodb::aql;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 using StringBuffer = arangodb::basics::StringBuffer;
 
-
 namespace {
 
 /// @brief OurLessThan: comparison method for elements of SortingGatherBlock
 class OurLessThan {
  public:
-  OurLessThan(
-      arangodb::transaction::Methods* trx,
-      std::vector<std::deque<AqlItemBlock*>> const& gatherBlockBuffer,
-      std::vector<SortRegister>& sortRegisters) noexcept
-    : _trx(trx),
-      _gatherBlockBuffer(gatherBlockBuffer),
-      _sortRegisters(sortRegisters) {
-  }
+  OurLessThan(arangodb::transaction::Methods* trx,
+              std::vector<std::deque<AqlItemBlock*>> const& gatherBlockBuffer,
+              std::vector<SortRegister>& sortRegisters) noexcept
+      : _trx(trx), _gatherBlockBuffer(gatherBlockBuffer), _sortRegisters(sortRegisters) {}
 
-  bool operator()(
-    std::pair<size_t, size_t> const& a,
-    std::pair<size_t, size_t> const& b
-  ) const;
+  bool operator()(std::pair<size_t, size_t> const& a,
+                  std::pair<size_t, size_t> const& b) const;
 
  private:
   arangodb::transaction::Methods* _trx;
   std::vector<std::deque<AqlItemBlock*>> const& _gatherBlockBuffer;
   std::vector<SortRegister>& _sortRegisters;
-}; // OurLessThan
+};  // OurLessThan
 
-bool OurLessThan::operator()(
-    std::pair<size_t, size_t> const& a,
-    std::pair<size_t, size_t> const& b
-) const {
+bool OurLessThan::operator()(std::pair<size_t, size_t> const& a,
+                             std::pair<size_t, size_t> const& b) const {
   // nothing in the buffer is maximum!
   if (_gatherBlockBuffer[a.first].empty()) {
     return false;
@@ -104,19 +95,21 @@ bool OurLessThan::operator()(
   TRI_ASSERT(!_gatherBlockBuffer[b.first].empty());
 
   for (auto const& reg : _sortRegisters) {
-    auto const& lhs = _gatherBlockBuffer[a.first].front()->getValueReference(a.second, reg.reg);
-    auto const& rhs = _gatherBlockBuffer[b.first].front()->getValueReference(b.second, reg.reg);
+    auto const& lhs =
+        _gatherBlockBuffer[a.first].front()->getValueReference(a.second, reg.reg);
+    auto const& rhs =
+        _gatherBlockBuffer[b.first].front()->getValueReference(b.second, reg.reg);
     auto const& attributePath = reg.attributePath;
 
     // Fast path if there is no attributePath:
     int cmp;
 
     if (attributePath.empty()) {
-#if 0 // #ifdef USE_IRESEARCH
+#if 0  // #ifdef USE_IRESEARCH
       TRI_ASSERT(reg.comparator);
       cmp = (*reg.comparator)(reg.scorer.get(), _trx, lhs, rhs);
 #else
-    cmp = AqlValue::Compare(_trx, lhs, rhs, true);
+      cmp = AqlValue::Compare(_trx, lhs, rhs, true);
 #endif
     } else {
       // Take attributePath into consideration:
@@ -143,19 +136,18 @@ bool OurLessThan::operator()(
 /// @class HeapSorting
 /// @brief "Heap" sorting strategy
 ////////////////////////////////////////////////////////////////////////////////
-class HeapSorting final : public SortingStrategy, private OurLessThan  {
+class HeapSorting final : public SortingStrategy, private OurLessThan {
  public:
-  HeapSorting(
-      arangodb::transaction::Methods* trx,
-      std::vector<std::deque<AqlItemBlock*>> const& gatherBlockBuffer,
-      std::vector<SortRegister>& sortRegisters) noexcept
-    : OurLessThan(trx, gatherBlockBuffer, sortRegisters) {
-  }
+  HeapSorting(arangodb::transaction::Methods* trx,
+              std::vector<std::deque<AqlItemBlock*>> const& gatherBlockBuffer,
+              std::vector<SortRegister>& sortRegisters) noexcept
+      : OurLessThan(trx, gatherBlockBuffer, sortRegisters) {}
 
   virtual ValueType nextValue() override {
     TRI_ASSERT(!_heap.empty());
-    std::push_heap(_heap.begin(), _heap.end(), *this); // re-insert element
-    std::pop_heap(_heap.begin(), _heap.end(), *this); // remove element from _heap but not from vector
+    std::push_heap(_heap.begin(), _heap.end(), *this);  // re-insert element
+    std::pop_heap(_heap.begin(), _heap.end(),
+                  *this);  // remove element from _heap but not from vector
     return _heap.back();
   }
 
@@ -168,24 +160,21 @@ class HeapSorting final : public SortingStrategy, private OurLessThan  {
 
     _heap.clear();
     std::copy(blockPos.begin(), blockPos.end(), std::back_inserter(_heap));
-    std::make_heap(_heap.begin(), _heap.end()-1, *this); // remain last element out of heap to maintain invariant
+    std::make_heap(_heap.begin(), _heap.end() - 1,
+                   *this);  // remain last element out of heap to maintain invariant
     TRI_ASSERT(!_heap.empty());
   }
 
-  virtual void reset() noexcept override {
-    _heap.clear();
-  }
+  virtual void reset() noexcept override { _heap.clear(); }
 
-  bool operator()(
-      std::pair<size_t, size_t> const& lhs,
-      std::pair<size_t, size_t> const& rhs
-  ) const {
+  bool operator()(std::pair<size_t, size_t> const& lhs,
+                  std::pair<size_t, size_t> const& rhs) const {
     return OurLessThan::operator()(rhs, lhs);
   }
 
  private:
   std::vector<std::reference_wrapper<ValueType>> _heap;
-}; // HeapSorting
+};  // HeapSorting
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class MinElementSorting
@@ -193,13 +182,10 @@ class HeapSorting final : public SortingStrategy, private OurLessThan  {
 ////////////////////////////////////////////////////////////////////////////////
 class MinElementSorting final : public SortingStrategy, public OurLessThan {
  public:
-  MinElementSorting(
-      arangodb::transaction::Methods* trx,
-      std::vector<std::deque<AqlItemBlock*>> const& gatherBlockBuffer,
-      std::vector<SortRegister>& sortRegisters) noexcept
-    : OurLessThan(trx, gatherBlockBuffer, sortRegisters),
-      _blockPos(nullptr) {
-  }
+  MinElementSorting(arangodb::transaction::Methods* trx,
+                    std::vector<std::deque<AqlItemBlock*>> const& gatherBlockBuffer,
+                    std::vector<SortRegister>& sortRegisters) noexcept
+      : OurLessThan(trx, gatherBlockBuffer, sortRegisters), _blockPos(nullptr) {}
 
   virtual ValueType nextValue() override {
     TRI_ASSERT(_blockPos);
@@ -210,18 +196,15 @@ class MinElementSorting final : public SortingStrategy, public OurLessThan {
     _blockPos = &blockPos;
   }
 
-  virtual void reset() noexcept override {
-    _blockPos = nullptr;
-  }
+  virtual void reset() noexcept override { _blockPos = nullptr; }
 
  private:
   std::vector<ValueType> const* _blockPos;
 };
 
-}
+}  // namespace
 
-BlockWithClients::BlockWithClients(ExecutionEngine* engine,
-                                   ExecutionNode const* ep,
+BlockWithClients::BlockWithClients(ExecutionEngine* engine, ExecutionNode const* ep,
                                    std::vector<std::string> const& shardIds)
     : ExecutionBlock(engine, ep), _nrClients(shardIds.size()), _wasShutdown(false) {
   _shardIdMap.reserve(_nrClients);
@@ -230,12 +213,11 @@ BlockWithClients::BlockWithClients(ExecutionEngine* engine,
   }
 }
 
-std::pair<ExecutionState, Result> BlockWithClients::initializeCursor(
-    AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, Result> BlockWithClients::initializeCursor(AqlItemBlock* items,
+                                                                     size_t pos) {
   auto res = ExecutionBlock::initializeCursor(items, pos);
 
-  if (res.first == ExecutionState::WAITING ||
-      !res.second.ok()) {
+  if (res.first == ExecutionState::WAITING || !res.second.ok()) {
     // If we need to wait or get an error we return as is.
     return res;
   }
@@ -257,8 +239,8 @@ std::pair<ExecutionState, Result> BlockWithClients::shutdown(int errorCode) {
 }
 
 /// @brief getSomeForShard
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
-BlockWithClients::getSomeForShard(size_t atMost, std::string const& shardId) {
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> BlockWithClients::getSomeForShard(
+    size_t atMost, std::string const& shardId) {
   traceGetSomeBegin(atMost);
 
   // NOTE: We do not need to retain these, the getOrSkipSome is required to!
@@ -277,8 +259,8 @@ BlockWithClients::getSomeForShard(size_t atMost, std::string const& shardId) {
 }
 
 /// @brief skipSomeForShard
-std::pair<ExecutionState, size_t> BlockWithClients::skipSomeForShard(
-    size_t atMost, std::string const& shardId) {
+std::pair<ExecutionState, size_t> BlockWithClients::skipSomeForShard(size_t atMost,
+                                                                     std::string const& shardId) {
   // NOTE: We do not need to retain these, the getOrSkipSome is required to!
   size_t skipped = 0;
   std::unique_ptr<AqlItemBlock> result = nullptr;
@@ -310,8 +292,8 @@ size_t BlockWithClients::getClientId(std::string const& shardId) {
 }
 
 /// @brief initializeCursor
-std::pair<ExecutionState, Result> ScatterBlock::initializeCursor(
-    AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, Result> ScatterBlock::initializeCursor(AqlItemBlock* items,
+                                                                 size_t pos) {
   // local clean up
   _posForClient.clear();
 
@@ -348,15 +330,14 @@ bool ScatterBlock::hasMoreForShard(std::string const& shardId) {
   return hasMoreForClientId(getClientId(shardId));
 }
 
-ExecutionState ScatterBlock::getHasMoreStateForShard(
-    std::string const& shardId) {
+ExecutionState ScatterBlock::getHasMoreStateForShard(std::string const& shardId) {
   return getHasMoreStateForClientId(getClientId(shardId));
 }
 
 /// @brief getOrSkipSomeForShard
 std::pair<ExecutionState, arangodb::Result> ScatterBlock::getOrSkipSomeForShard(
-    size_t atMost, bool skipping, std::unique_ptr<AqlItemBlock>& result, size_t& skipped,
-    std::string const& shardId) {
+    size_t atMost, bool skipping, std::unique_ptr<AqlItemBlock>& result,
+    size_t& skipped, std::string const& shardId) {
   TRI_ASSERT(result == nullptr && skipped == 0);
   TRI_ASSERT(atMost > 0);
 
@@ -397,8 +378,8 @@ std::pair<ExecutionState, arangodb::Result> ScatterBlock::getOrSkipSomeForShard(
 
   // check if we're done at current block in buffer . . .
   if (pos.second == blockForClient->size()) {
-    pos.first++; // next block
-    pos.second = 0; // reset the position within a block
+    pos.first++;     // next block
+    pos.second = 0;  // reset the position within a block
 
     // check if we can pop the front of the buffer . . .
     bool popit = true;
@@ -421,8 +402,7 @@ std::pair<ExecutionState, arangodb::Result> ScatterBlock::getOrSkipSomeForShard(
   return {getHasMoreStateForClientId(clientId), TRI_ERROR_NO_ERROR};
 }
 
-DistributeBlock::DistributeBlock(ExecutionEngine* engine,
-                                 DistributeNode const* ep,
+DistributeBlock::DistributeBlock(ExecutionEngine* engine, DistributeNode const* ep,
                                  std::vector<std::string> const& shardIds,
                                  Collection const* collection)
     : BlockWithClients(engine, ep, shardIds),
@@ -455,8 +435,8 @@ DistributeBlock::DistributeBlock(ExecutionEngine* engine,
 }
 
 /// @brief initializeCursor
-std::pair<ExecutionState, Result> DistributeBlock::initializeCursor(
-    AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, Result> DistributeBlock::initializeCursor(AqlItemBlock* items,
+                                                                    size_t pos) {
   // local clean up
   _distBuffer.clear();
   _distBuffer.reserve(_nrClients);
@@ -492,17 +472,14 @@ bool DistributeBlock::hasMoreForShard(std::string const& shardId) {
   return hasMoreForClientId(getClientId(shardId));
 }
 
-ExecutionState DistributeBlock::getHasMoreStateForShard(
-    std::string const& shardId) {
+ExecutionState DistributeBlock::getHasMoreStateForShard(std::string const& shardId) {
   return getHasMoreStateForClientId(getClientId(shardId));
 }
 
 /// @brief getOrSkipSomeForShard
-std::pair<ExecutionState, arangodb::Result>
-DistributeBlock::getOrSkipSomeForShard(size_t atMost, bool skipping,
-                                       std::unique_ptr<AqlItemBlock>& result,
-                                       size_t& skipped,
-                                       std::string const& shardId) {
+std::pair<ExecutionState, arangodb::Result> DistributeBlock::getOrSkipSomeForShard(
+    size_t atMost, bool skipping, std::unique_ptr<AqlItemBlock>& result,
+    size_t& skipped, std::string const& shardId) {
   TRI_ASSERT(result == nullptr && skipped == 0);
   TRI_ASSERT(atMost > 0);
 
@@ -572,8 +549,7 @@ DistributeBlock::getOrSkipSomeForShard(size_t atMost, bool skipping,
 /// incoming blocks until they run out or we find enough rows for clientId. We
 /// also keep track of blocks which should be sent to other clients than the
 /// current one.
-std::pair<ExecutionState, bool> DistributeBlock::getBlockForClient(
-    size_t atMost, size_t clientId) {
+std::pair<ExecutionState, bool> DistributeBlock::getBlockForClient(size_t atMost, size_t clientId) {
   if (_buffer.empty()) {
     _index = 0;  // position in _buffer
     _pos = 0;    // position in _buffer.at(_index)
@@ -644,8 +620,7 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
   bool hasCreatedKeyAttribute = false;
 
   if (input.isString() &&
-      ExecutionNode::castTo<DistributeNode const*>(_exeNode)
-          ->_allowKeyConversionToObject) {
+      ExecutionNode::castTo<DistributeNode const*>(_exeNode)->_allowKeyConversionToObject) {
     _keyBuilder.clear();
     _keyBuilder.openObject(true);
     _keyBuilder.add(StaticStrings::KeyString, input);
@@ -729,26 +704,25 @@ std::string DistributeBlock::createKey(VPackSlice input) const {
 }
 
 arangodb::Result RemoteBlock::handleCommErrors(ClusterCommResult* res) const {
-  if (res->status == CL_COMM_TIMEOUT ||
-      res->status == CL_COMM_BACKEND_UNAVAILABLE) {
-    return { res->getErrorCode(), res->stringifyErrorMessage() };
+  if (res->status == CL_COMM_TIMEOUT || res->status == CL_COMM_BACKEND_UNAVAILABLE) {
+    return {res->getErrorCode(), res->stringifyErrorMessage()};
   }
   if (res->status == CL_COMM_ERROR) {
-    std::string errorMessage = std::string("Error message received from shard '") +
-                     std::string(res->shardID) +
-                     std::string("' on cluster node '") +
-                     std::string(res->serverID) + std::string("': ");
-
+    std::string errorMessage =
+        std::string("Error message received from shard '") +
+        std::string(res->shardID) + std::string("' on cluster node '") +
+        std::string(res->serverID) + std::string("': ");
 
     int errorNum = TRI_ERROR_INTERNAL;
     if (res->result != nullptr) {
       errorNum = TRI_ERROR_NO_ERROR;
       arangodb::basics::StringBuffer const& responseBodyBuf(res->result->getBody());
-      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(
-          responseBodyBuf.c_str(), responseBodyBuf.length());
+      std::shared_ptr<VPackBuilder> builder =
+          VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
       VPackSlice slice = builder->slice();
 
-      if (!slice.hasKey(StaticStrings::Error) || slice.get(StaticStrings::Error).getBoolean()) {
+      if (!slice.hasKey(StaticStrings::Error) ||
+          slice.get(StaticStrings::Error).getBoolean()) {
         errorNum = TRI_ERROR_INTERNAL;
       }
 
@@ -815,20 +789,17 @@ RemoteBlock::RemoteBlock(ExecutionEngine* engine, RemoteNode const* en,
       _server(server),
       _ownName(ownName),
       _queryId(queryId),
-      _isResponsibleForInitializeCursor(
-          en->isResponsibleForInitializeCursor()),
+      _isResponsibleForInitializeCursor(en->isResponsibleForInitializeCursor()),
       _lastResponse(nullptr),
       _lastError(TRI_ERROR_NO_ERROR) {
   TRI_ASSERT(!queryId.empty());
-  TRI_ASSERT(
-      (arangodb::ServerState::instance()->isCoordinator() && ownName.empty()) ||
-      (!arangodb::ServerState::instance()->isCoordinator() &&
-       !ownName.empty()));
+  TRI_ASSERT((arangodb::ServerState::instance()->isCoordinator() && ownName.empty()) ||
+             (!arangodb::ServerState::instance()->isCoordinator() && !ownName.empty()));
 }
 
-Result RemoteBlock::sendAsyncRequest(
-    arangodb::rest::RequestType type, std::string const& urlPart,
-    std::shared_ptr<std::string const> body) {
+Result RemoteBlock::sendAsyncRequest(arangodb::rest::RequestType type,
+                                     std::string const& urlPart,
+                                     std::shared_ptr<std::string const> body) {
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr only happens on controlled shutdown
@@ -843,24 +814,24 @@ Result RemoteBlock::sendAsyncRequest(
   }
 
   std::string url = std::string("/_db/") +
-    arangodb::basics::StringUtils::urlEncode(_engine->getQuery()->trx()->vocbase().name()) +
-    urlPart + _queryId;
+                    arangodb::basics::StringUtils::urlEncode(
+                        _engine->getQuery()->trx()->vocbase().name()) +
+                    urlPart + _queryId;
 
   ++_engine->_stats.requests;
   std::shared_ptr<ClusterCommCallback> callback =
       std::make_shared<WakeupQueryCallback>(this, _engine->getQuery());
 
   // TODO Returns OperationID do we need it in any way?
-  cc->asyncRequest(coordTransactionId, _server, type,
-                   std::move(url), body, headers, callback, defaultTimeOut,
-                   true);
+  cc->asyncRequest(coordTransactionId, _server, type, std::move(url), body,
+                   headers, callback, defaultTimeOut, true);
 
   return {TRI_ERROR_NO_ERROR};
 }
 
 /// @brief initializeCursor, could be called multiple times
-std::pair<ExecutionState, Result> RemoteBlock::initializeCursor(
-    AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, Result> RemoteBlock::initializeCursor(AqlItemBlock* items,
+                                                                size_t pos) {
   // For every call we simply forward via HTTP
 
   if (!_isResponsibleForInitializeCursor) {
@@ -908,8 +879,8 @@ std::pair<ExecutionState, Result> RemoteBlock::initializeCursor(
 
   auto bodyString = std::make_shared<std::string const>(builder.slice().toJson());
 
-  auto res = sendAsyncRequest(
-      rest::RequestType::PUT, "/_api/aql/initializeCursor/", bodyString);
+  auto res = sendAsyncRequest(rest::RequestType::PUT,
+                              "/_api/aql/initializeCursor/", bodyString);
 
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
@@ -990,11 +961,9 @@ std::pair<ExecutionState, Result> RemoteBlock::shutdown(int errorCode) {
   bodyBuilder.add("code", VPackValue(errorCode));
   bodyBuilder.close();
 
-  auto bodyString =
-      std::make_shared<std::string const>(bodyBuilder.slice().toJson());
+  auto bodyString = std::make_shared<std::string const>(bodyBuilder.slice().toJson());
 
-  auto res = sendAsyncRequest(rest::RequestType::PUT, "/_api/aql/shutdown/",
-                              bodyString);
+  auto res = sendAsyncRequest(rest::RequestType::PUT, "/_api/aql/shutdown/", bodyString);
 
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
@@ -1033,8 +1002,8 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> RemoteBlock::getSome(si
       state = ExecutionState::DONE;
     }
     if (responseBody.hasKey("data")) {
-      auto r = std::make_unique<AqlItemBlock>(
-          _engine->getQuery()->resourceMonitor(), responseBody);
+      auto r = std::make_unique<AqlItemBlock>(_engine->getQuery()->resourceMonitor(),
+                                              responseBody);
       traceGetSomeEnd(r.get(), state);
       return {state, std::move(r)};
     }
@@ -1050,8 +1019,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> RemoteBlock::getSome(si
 
   auto bodyString = std::make_shared<std::string const>(builder.slice().toJson());
 
-  auto res = sendAsyncRequest(rest::RequestType::PUT, "/_api/aql/getSome/",
-                              bodyString);
+  auto res = sendAsyncRequest(rest::RequestType::PUT, "/_api/aql/getSome/", bodyString);
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -1069,9 +1037,9 @@ std::pair<ExecutionState, size_t> RemoteBlock::skipSome(size_t atMost) {
     // we were called with an error need to throw it.
     THROW_ARANGO_EXCEPTION(res);
   }
-  
+
   traceSkipSomeBegin(atMost);
-  
+
   if (_lastResponse != nullptr) {
     TRI_ASSERT(_lastError.ok());
 
@@ -1084,8 +1052,7 @@ std::pair<ExecutionState, size_t> RemoteBlock::skipSome(size_t atMost) {
 
     VPackSlice slice = responseBodyBuilder->slice();
 
-    if (!slice.hasKey(StaticStrings::Error) ||
-        slice.get(StaticStrings::Error).getBoolean()) {
+    if (!slice.hasKey(StaticStrings::Error) || slice.get(StaticStrings::Error).getBoolean()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
     }
     size_t skipped = 0;
@@ -1093,7 +1060,8 @@ std::pair<ExecutionState, size_t> RemoteBlock::skipSome(size_t atMost) {
     if (s.isNumber()) {
       int64_t value = s.getNumericValue<int64_t>();
       if (value < 0) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "skipped cannot be negative");
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                       "skipped cannot be negative");
       }
       skipped = s.getNumericValue<size_t>();
     }
@@ -1116,8 +1084,7 @@ std::pair<ExecutionState, size_t> RemoteBlock::skipSome(size_t atMost) {
 
   auto bodyString = std::make_shared<std::string const>(builder.slice().toJson());
 
-  auto res = sendAsyncRequest(rest::RequestType::PUT, "/_api/aql/skipSome/",
-                              bodyString);
+  auto res = sendAsyncRequest(rest::RequestType::PUT, "/_api/aql/skipSome/", bodyString);
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -1131,7 +1098,8 @@ std::pair<ExecutionState, size_t> RemoteBlock::skipSome(size_t atMost) {
 // -----------------------------------------------------------------------------
 
 /// @brief initializeCursor
-std::pair<ExecutionState, arangodb::Result> UnsortingGatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, arangodb::Result> UnsortingGatherBlock::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
   auto res = ExecutionBlock::initializeCursor(items, pos);
 
   if (res.first == ExecutionState::WAITING || !res.second.ok()) {
@@ -1213,23 +1181,16 @@ std::pair<ExecutionState, size_t> UnsortingGatherBlock::skipSome(size_t atMost) 
 // -- SECTION --                                              SortingGatherBlock
 // -----------------------------------------------------------------------------
 
-
-SortingGatherBlock::SortingGatherBlock(
-    ExecutionEngine& engine,
-    GatherNode const& en)
-  : ExecutionBlock(&engine, &en) {
+SortingGatherBlock::SortingGatherBlock(ExecutionEngine& engine, GatherNode const& en)
+    : ExecutionBlock(&engine, &en) {
   TRI_ASSERT(!en.elements().empty());
 
   switch (en.sortMode()) {
     case GatherNode::SortMode::Heap:
-      _strategy = std::make_unique<HeapSorting>(
-        _trx, _gatherBlockBuffer, _sortRegisters
-      );
+      _strategy = std::make_unique<HeapSorting>(_trx, _gatherBlockBuffer, _sortRegisters);
       break;
     case GatherNode::SortMode::MinElement:
-      _strategy = std::make_unique<MinElementSorting>(
-        _trx, _gatherBlockBuffer, _sortRegisters
-      );
+      _strategy = std::make_unique<MinElementSorting>(_trx, _gatherBlockBuffer, _sortRegisters);
       break;
     default:
       TRI_ASSERT(false);
@@ -1239,17 +1200,10 @@ SortingGatherBlock::SortingGatherBlock(
 
   // We know that planRegisters has been run, so
   // getPlanNode()->_registerPlan is set up
-  SortRegister::fill(
-    *en.plan(),
-    *en.getRegisterPlan(),
-    en.elements(),
-    _sortRegisters
-  );
+  SortRegister::fill(*en.plan(), *en.getRegisterPlan(), en.elements(), _sortRegisters);
 }
 
-SortingGatherBlock::~SortingGatherBlock() {
-  clearBuffers();
-}
+SortingGatherBlock::~SortingGatherBlock() { clearBuffers(); }
 
 void SortingGatherBlock::clearBuffers() noexcept {
   for (std::deque<AqlItemBlock*>& it : _gatherBlockBuffer) {
@@ -1261,8 +1215,8 @@ void SortingGatherBlock::clearBuffers() noexcept {
 }
 
 /// @brief initializeCursor
-std::pair<ExecutionState, arangodb::Result>
-SortingGatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, arangodb::Result> SortingGatherBlock::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
   auto res = ExecutionBlock::initializeCursor(items, pos);
 
   if (res.first == ExecutionState::WAITING || !res.second.ok()) {
@@ -1291,7 +1245,7 @@ SortingGatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
       _gatherBlockPosDone[i] = false;
     }
   }
-  
+
   TRI_ASSERT(_gatherBlockBuffer.size() == _dependencies.size());
   TRI_ASSERT(_gatherBlockPos.size() == _dependencies.size());
   TRI_ASSERT(_gatherBlockPosDone.size() == _dependencies.size());
@@ -1315,10 +1269,9 @@ SortingGatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
  *         least "atMost" rows, or the upstream block is DONE.
  *         Will return {DONE, SUM(_gatherBlockBuffer)} on success.
  */
-std::pair<ExecutionState, size_t> SortingGatherBlock::fillBuffers(
-    size_t atMost) {
+std::pair<ExecutionState, size_t> SortingGatherBlock::fillBuffers(size_t atMost) {
   size_t available = 0;
-  
+
   TRI_ASSERT(_gatherBlockBuffer.size() == _dependencies.size());
   TRI_ASSERT(_gatherBlockPos.size() == _dependencies.size());
 
@@ -1369,8 +1322,7 @@ size_t SortingGatherBlock::availableRows(size_t i) const {
 }
 
 /// @brief getSome
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
-SortingGatherBlock::getSome(size_t atMost) {
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> SortingGatherBlock::getSome(size_t atMost) {
   traceGetSomeBegin(atMost);
 
   if (_dependencies.empty()) {
@@ -1519,7 +1471,7 @@ void SortingGatherBlock::nextRow(size_t i) {
     AqlItemBlock* cur = blocks.front();
     returnBlock(cur);
     blocks.pop_front();
-    blocksPos.second = 0; // reset position within a dependency
+    blocksPos.second = 0;  // reset position within a dependency
   }
 }
 
@@ -1527,8 +1479,7 @@ void SortingGatherBlock::nextRow(size_t i) {
 /// non-simple case only
 /// Assures that either atMost rows are actually available in buffer i, or
 /// the dependency is DONE.
-std::pair<ExecutionState, bool> SortingGatherBlock::getBlocks(size_t i,
-                                                              size_t atMost) {
+std::pair<ExecutionState, bool> SortingGatherBlock::getBlocks(size_t i, size_t atMost) {
   TRI_ASSERT(i < _dependencies.size());
   TRI_ASSERT(_gatherBlockBuffer.size() == _dependencies.size());
   TRI_ASSERT(_gatherBlockPos.size() == _dependencies.size());
@@ -1576,29 +1527,25 @@ double const SingleRemoteOperationBlock::defaultTimeOut = 3600.0;
 
 /// @brief creates a remote block
 SingleRemoteOperationBlock::SingleRemoteOperationBlock(ExecutionEngine* engine,
-                                                       SingleRemoteOperationNode const* en
-                                                       )
+                                                       SingleRemoteOperationNode const* en)
     : ExecutionBlock(engine, static_cast<ExecutionNode const*>(en)),
       _collection(en->collection()),
-      _key(en->key())
-{
+      _key(en->key()) {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
 }
 
 namespace {
-std::unique_ptr<VPackBuilder>
-merge(VPackSlice document, std::string const& key, TRI_voc_rid_t revision){
-  auto builder = std::make_unique<VPackBuilder>() ;
+std::unique_ptr<VPackBuilder> merge(VPackSlice document, std::string const& key,
+                                    TRI_voc_rid_t revision) {
+  auto builder = std::make_unique<VPackBuilder>();
   {
     VPackObjectBuilder guard(builder.get());
     TRI_SanitizeObject(document, *builder);
     VPackSlice keyInBody = document.get(StaticStrings::KeyString);
 
-    if (keyInBody.isNone() ||
-        keyInBody.isNull() ||
+    if (keyInBody.isNone() || keyInBody.isNull() ||
         (keyInBody.isString() && keyInBody.copyString() != key) ||
-        ((revision != 0) && (TRI_ExtractRevisionId(document) != revision))
-        ) {
+        ((revision != 0) && (TRI_ExtractRevisionId(document) != revision))) {
       // We need to rewrite the document with the given revision and key:
       builder->add(StaticStrings::KeyString, VPackValue(key));
       if (revision != 0) {
@@ -1608,18 +1555,18 @@ merge(VPackSlice document, std::string const& key, TRI_voc_rid_t revision){
   }
   return builder;
 }
-}
+}  // namespace
 
 bool SingleRemoteOperationBlock::getOne(arangodb::aql::AqlItemBlock* aqlres,
                                         size_t outputCounter) {
-  int possibleWrites = 0; // TODO - get real statistic values!
+  int possibleWrites = 0;  // TODO - get real statistic values!
   auto node = ExecutionNode::castTo<SingleRemoteOperationNode const*>(getPlanNode());
   auto out = node->_outVariable;
   auto in = node->_inVariable;
   auto OLD = node->_outVariableOld;
   auto NEW = node->_outVariableNew;
 
-  RegisterId inRegId  = ExecutionNode::MaxRegisterId;
+  RegisterId inRegId = ExecutionNode::MaxRegisterId;
   RegisterId outRegId = ExecutionNode::MaxRegisterId;
   RegisterId oldRegId = ExecutionNode::MaxRegisterId;
   RegisterId newRegId = ExecutionNode::MaxRegisterId;
@@ -1632,7 +1579,8 @@ bool SingleRemoteOperationBlock::getOne(arangodb::aql::AqlItemBlock* aqlres,
   }
 
   if (_key.empty() && in == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, "missing document reference");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
+                                   "missing document reference");
   }
 
   if (out != nullptr) {
@@ -1658,9 +1606,10 @@ bool SingleRemoteOperationBlock::getOne(arangodb::aql::AqlItemBlock* aqlres,
 
   VPackBuilder inBuilder;
   VPackSlice inSlice = VPackSlice::emptyObjectSlice();
-  if (in) {// IF NOT REMOVE OR SELECT
+  if (in) {  // IF NOT REMOVE OR SELECT
     if (_buffer.size() < 1) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, "missing document reference in Register");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
+                                     "missing document reference in Register");
     }
     AqlValue const& inDocument = _buffer.front()->getValueReference(_pos, inRegId);
     inBuilder.add(inDocument.slice());
@@ -1690,13 +1639,14 @@ bool SingleRemoteOperationBlock::getOne(arangodb::aql::AqlItemBlock* aqlres,
     result = _trx->document(_collection->name(), inSlice, opOptions);
   } else if (node->_mode == ExecutionNode::NodeType::INSERT) {
     if (opOptions.returnOld && !opOptions.overwrite) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN,
-                                     "OLD is only available when using INSERT with the overwrite option");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN,
+          "OLD is only available when using INSERT with the overwrite option");
     }
     result = _trx->insert(_collection->name(), inSlice, opOptions);
     possibleWrites = 1;
   } else if (node->_mode == ExecutionNode::NodeType::REMOVE) {
-    result = _trx->remove(_collection->name(), inSlice , opOptions);
+    result = _trx->remove(_collection->name(), inSlice, opOptions);
     possibleWrites = 1;
   } else if (node->_mode == ExecutionNode::NodeType::REPLACE) {
     if (node->_replaceIndexNode && in == nullptr) {
@@ -1715,15 +1665,15 @@ bool SingleRemoteOperationBlock::getOne(arangodb::aql::AqlItemBlock* aqlres,
   // check operation result
   if (!result.ok()) {
     if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
-        (( node->_mode == ExecutionNode::NodeType::INDEX) ||
-         ( node->_mode == ExecutionNode::NodeType::UPDATE && node->_replaceIndexNode) ||
-         ( node->_mode == ExecutionNode::NodeType::REMOVE && node->_replaceIndexNode) ||
-         ( node->_mode == ExecutionNode::NodeType::REPLACE && node->_replaceIndexNode) ))
-      {
-        // document not there is not an error in this situation.
-        // FOR ... FILTER ... REMOVE wouldn't invoke REMOVE in first place, so don't throw an excetpion.
-        return false;
-      } else if (!nodeOps.ignoreErrors) { // TODO remove if
+        ((node->_mode == ExecutionNode::NodeType::INDEX) ||
+         (node->_mode == ExecutionNode::NodeType::UPDATE && node->_replaceIndexNode) ||
+         (node->_mode == ExecutionNode::NodeType::REMOVE && node->_replaceIndexNode) ||
+         (node->_mode == ExecutionNode::NodeType::REPLACE && node->_replaceIndexNode))) {
+      // document not there is not an error in this situation.
+      // FOR ... FILTER ... REMOVE wouldn't invoke REMOVE in first place, so
+      // don't throw an excetpion.
+      return false;
+    } else if (!nodeOps.ignoreErrors) {  // TODO remove if
       THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
     }
 
@@ -1740,8 +1690,8 @@ bool SingleRemoteOperationBlock::getOne(arangodb::aql::AqlItemBlock* aqlres,
   }
 
   // Fill itemblock
-  // create block that can hold a result with one entry and a number of variables
-  // corresponding to the amount of out variables
+  // create block that can hold a result with one entry and a number of
+  // variables corresponding to the amount of out variables
 
   // only copy 1st row of registers inherited from previous frame(s)
   TRI_ASSERT(result.ok());
@@ -1763,22 +1713,25 @@ bool SingleRemoteOperationBlock::getOne(arangodb::aql::AqlItemBlock* aqlres,
       }
     }
   }
-  
+
   TRI_ASSERT(out || OLD || NEW);
 
   // place documents as in the out variable slots of the result
   if (out) {
-    aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(outRegId), outDocument);
+    aqlres->emplaceValue(outputCounter,
+                         static_cast<arangodb::aql::RegisterId>(outRegId), outDocument);
   }
 
   if (OLD) {
     TRI_ASSERT(opOptions.returnOld);
-    aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(oldRegId), oldDocument);
+    aqlres->emplaceValue(outputCounter,
+                         static_cast<arangodb::aql::RegisterId>(oldRegId), oldDocument);
   }
 
   if (NEW) {
     TRI_ASSERT(opOptions.returnNew);
-    aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(newRegId), newDocument);
+    aqlres->emplaceValue(outputCounter,
+                         static_cast<arangodb::aql::RegisterId>(newRegId), newDocument);
   }
 
   throwIfKilled();  // check if we were aborted
@@ -1796,10 +1749,11 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> SingleRemoteOperationBl
 
   if (_done) {
     traceGetSomeEnd(nullptr, ExecutionState::DONE);
-    return { ExecutionState::DONE, nullptr};
+    return {ExecutionState::DONE, nullptr};
   }
 
-  RegisterId nrRegs = getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
+  RegisterId nrRegs =
+      getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
   std::unique_ptr<AqlItemBlock> aqlres(requestBlock(atMost, nrRegs));
 
   int outputCounter = 0;
@@ -1809,14 +1763,14 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> SingleRemoteOperationBl
     bool blockAppended = false;
 
     std::tie(state, blockAppended) = ExecutionBlock::getBlock(toFetch);
-    if(state == ExecutionState::WAITING) {
+    if (state == ExecutionState::WAITING) {
       traceGetSomeEnd(nullptr, ExecutionState::WAITING);
       return {state, nullptr};
     }
     if (!blockAppended) {
       _done = true;
       traceGetSomeEnd(nullptr, ExecutionState::DONE);
-      return { ExecutionState::DONE, nullptr};
+      return {ExecutionState::DONE, nullptr};
     }
     _pos = 0;  // this is in the first block
   }
@@ -1838,18 +1792,18 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> SingleRemoteOperationBl
   _pos = 0;
   if (outputCounter == 0) {
     traceGetSomeEnd(nullptr, ExecutionState::DONE);
-    return { ExecutionState::DONE, nullptr};
+    return {ExecutionState::DONE, nullptr};
   }
   aqlres->shrink(outputCounter);
 
   // Clear out registers no longer needed later:
   clearRegisters(aqlres.get());
   traceGetSomeEnd(aqlres.get(), ExecutionState::DONE);
-  return { ExecutionState::DONE, std::move(aqlres) };
+  return {ExecutionState::DONE, std::move(aqlres)};
 }
 
 /// @brief skipSome
 std::pair<ExecutionState, size_t> SingleRemoteOperationBlock::skipSome(size_t atMost) {
-  TRI_ASSERT(false); // as soon as we need to support LIMIT change me.
-  return { ExecutionState::DONE, 0};
+  TRI_ASSERT(false);  // as soon as we need to support LIMIT change me.
+  return {ExecutionState::DONE, 0};
 }

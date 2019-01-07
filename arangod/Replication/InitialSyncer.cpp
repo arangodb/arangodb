@@ -35,11 +35,13 @@ InitialSyncer::InitialSyncer(
 
 InitialSyncer::~InitialSyncer() {
   _batchPingTimer.reset();
+
   try {
     if (!_state.isChildSyncer) {
       _batch.finish(_state.connection, _progress);
     }
-  } catch (...) {}
+  } catch (...) {
+  }
 }
 
 /// @brief start a recurring task to extend the batch

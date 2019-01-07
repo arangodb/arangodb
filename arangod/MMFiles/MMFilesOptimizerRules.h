@@ -31,14 +31,16 @@ namespace aql {
 class ExecutionPlan;
 class Optimizer;
 struct OptimizerRule;
-}
+}  // namespace aql
 
 struct MMFilesOptimizerRules {
   static void registerResources();
-  
-  static void removeSortRandRule(aql::Optimizer* opt, std::unique_ptr<aql::ExecutionPlan> plan, aql::OptimizerRule const* rule);
+
+  static void removeSortRandRule(aql::Optimizer* opt,
+                                 std::unique_ptr<aql::ExecutionPlan> plan,
+                                 aql::OptimizerRule const* rule);
 };
 
-} // namespace arangodb
+}  // namespace arangodb
 
 #endif

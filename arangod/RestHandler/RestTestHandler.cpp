@@ -22,43 +22,34 @@
 
 #include "RestTestHandler.h"
 
+#include "Cluster/ResultT.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
-#include "Utils/ExecContext.h"
-#include "Cluster/ResultT.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Utils/ExecContext.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestTestHandler::RestTestHandler(GeneralRequest* request,
-                                   GeneralResponse* response)
+RestTestHandler::RestTestHandler(GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
 RestTestHandler::~RestTestHandler() {}
 
 namespace {
-#define LANE_ENTRY(s) {#s, RequestLane:: s},
+#define LANE_ENTRY(s) {#s, RequestLane::s},
 const std::map<std::string, RequestLane> lanes = {
-  LANE_ENTRY(CLIENT_FAST)
-  LANE_ENTRY(CLIENT_AQL)
-  LANE_ENTRY(CLIENT_V8)
-  LANE_ENTRY(CLIENT_SLOW)
-  LANE_ENTRY(AGENCY_INTERNAL)
-  LANE_ENTRY(AGENCY_CLUSTER)
-  LANE_ENTRY(CLUSTER_INTERNAL)
-  LANE_ENTRY(CLUSTER_V8)
-  LANE_ENTRY(CLUSTER_ADMIN)
-  LANE_ENTRY(SERVER_REPLICATION)
-  LANE_ENTRY(TASK_V8)
-};
-}
+    LANE_ENTRY(CLIENT_FAST) LANE_ENTRY(CLIENT_AQL) LANE_ENTRY(CLIENT_V8)
+        LANE_ENTRY(CLIENT_SLOW) LANE_ENTRY(AGENCY_INTERNAL) LANE_ENTRY(AGENCY_CLUSTER)
+            LANE_ENTRY(CLUSTER_INTERNAL) LANE_ENTRY(CLUSTER_V8) LANE_ENTRY(CLUSTER_ADMIN)
+                LANE_ENTRY(SERVER_REPLICATION) LANE_ENTRY(TASK_V8)};
+}  // namespace
 
-ResultT<RequestLane> RestTestHandler::requestLaneFromString(const std::string &str) {
+ResultT<RequestLane> RestTestHandler::requestLaneFromString(const std::string& str) {
   auto entry = lanes.find(str);
 
   if (entry != lanes.end()) {
@@ -66,17 +57,15 @@ ResultT<RequestLane> RestTestHandler::requestLaneFromString(const std::string &s
   }
 
   return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
-    "Expected request-lane, found `" + str + "`");
+                "Expected request-lane, found `" + str + "`");
 }
-
 
 RestStatus RestTestHandler::execute() {
   // extract the request type
   auto const type = _request->requestType();
 
   if (type != rest::RequestType::POST) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
 
@@ -84,12 +73,11 @@ RestStatus RestTestHandler::execute() {
   // then optionally get the duration to work
   // then check if we should be a waiting rest handler
 
-  auto const &suffixes = _request->suffixes();
+  auto const& suffixes = _request->suffixes();
 
   if (suffixes.size() != 1) {
-    generateError(rest::ResponseCode::NOT_FOUND,
-            TRI_ERROR_HTTP_NOT_FOUND,
-            "expecting GET /_api/test/<request-lane>");
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
+                  "expecting GET /_api/test/<request-lane>");
     return RestStatus::DONE;
   }
 
@@ -118,46 +106,45 @@ RestStatus RestTestHandler::execute() {
     }
 
     if (body.hasKey("workload")) {
-
       auto workload = body.get("workload");
 
       if (workload.isNumber()) {
         duration = std::chrono::milliseconds(workload.getInt());
       } else {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
-                    "expecting int for `workload`");
+                      "expecting int for `workload`");
         return RestStatus::DONE;
       }
     }
   }
 
   auto self(shared_from_this());
-
   bool ok = SchedulerFeature::SCHEDULER->queue(
     res.get(),
     [this, self, duration]() {
       auto stop = clock::now() + duration;
 
-      uint64_t count = 0;
 
-      // Please think of a better method to generate work.
-      //  Do we actually need work or is a sleep ok?
-      while (clock::now() < stop) {
-        for (int i = 0; i < 10000; i++) {
-          count += i * i;
-        }
+    uint64_t count = 0;
+
+    // Please think of a better method to generate work.
+    //  Do we actually need work or is a sleep ok?
+    while (clock::now() < stop) {
+      for (int i = 0; i < 10000; i++) {
+        count += i * i;
       }
+    }
 
-      VPackBuffer<uint8_t> buffer;
-      VPackBuilder builder(buffer);
-      builder.openObject();
-      builder.add("count", VPackValue(count));
-      builder.close();
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder builder(buffer);
+    builder.openObject();
+    builder.add("count", VPackValue(count));
+    builder.close();
 
-      resetResponse(rest::ResponseCode::OK);
-      _response->setPayload(std::move(buffer), true);
-      continueHandlerExecution();
-    });
+    resetResponse(rest::ResponseCode::OK);
+    _response->setPayload(std::move(buffer), true);
+    continueHandlerExecution();
+  });
 
   if (ok) {
     return RestStatus::WAITING;

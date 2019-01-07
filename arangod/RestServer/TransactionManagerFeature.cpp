@@ -35,9 +35,7 @@ namespace arangodb {
 
 std::unique_ptr<TransactionManager> TransactionManagerFeature::MANAGER;
 
-TransactionManagerFeature::TransactionManagerFeature(
-    application_features::ApplicationServer& server
-)
+TransactionManagerFeature::TransactionManagerFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "TransactionManager") {
   setOptional(false);
   startsAfter("BasicsPhase");
@@ -51,8 +49,6 @@ void TransactionManagerFeature::prepare() {
   MANAGER = EngineSelectorFeature::ENGINE->createTransactionManager();
 }
 
-void TransactionManagerFeature::unprepare() {
-  MANAGER.reset();
-}
+void TransactionManagerFeature::unprepare() { MANAGER.reset(); }
 
-} // arangodb
+}  // namespace arangodb

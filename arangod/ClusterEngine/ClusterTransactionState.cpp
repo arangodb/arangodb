@@ -38,24 +38,21 @@ using namespace arangodb;
 struct ClusterTransactionData final : public TransactionData {};
 
 /// @brief transaction type
-ClusterTransactionState::ClusterTransactionState(
-    TRI_vocbase_t& vocbase,
-    TRI_voc_tid_t tid,
-    transaction::Options const& options)
+ClusterTransactionState::ClusterTransactionState(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+                                                 transaction::Options const& options)
     : TransactionState(vocbase, tid, options) {}
 
 /// @brief free a transaction container
-ClusterTransactionState::~ClusterTransactionState() {
-}
+ClusterTransactionState::~ClusterTransactionState() {}
 
 /// @brief start a transaction
 Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
   LOG_TRX(this, _nestingLevel)
       << "beginning " << AccessMode::typeString(_type) << " transaction";
 
+  TRI_ASSERT(!hasHint(transaction::Hints::Hint::NO_USAGE_LOCK) ||
+             !AccessMode::isWriteOrExclusive(_type));
 
-  TRI_ASSERT(!hasHint(transaction::Hints::Hint::NO_USAGE_LOCK) || !AccessMode::isWriteOrExclusive(_type));
-  
   if (_nestingLevel == 0) {
     // set hints
     _hints = hints;
@@ -81,7 +78,8 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
 
   if (_nestingLevel == 0) {
     // register a protector (intentionally empty)
-    TransactionManagerFeature::manager()->registerTransaction(_id, std::unique_ptr<ClusterTransactionData>());
+    TransactionManagerFeature::manager()->registerTransaction(
+        _id, std::unique_ptr<ClusterTransactionData>());
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }
@@ -90,8 +88,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
 }
 
 /// @brief commit a transaction
-Result ClusterTransactionState::commitTransaction(
-    transaction::Methods* activeTrx) {
+Result ClusterTransactionState::commitTransaction(transaction::Methods* activeTrx) {
   LOG_TRX(this, _nestingLevel)
       << "committing " << AccessMode::typeString(_type) << " transaction";
 
@@ -104,7 +101,7 @@ Result ClusterTransactionState::commitTransaction(
   if (_nestingLevel == 0) {
     if (true) {
       updateStatus(transaction::Status::COMMITTED);
-      //cleanupTransaction();  // deletes trx
+      // cleanupTransaction();  // deletes trx
     } else {
       abortTransaction(activeTrx);  // deletes trx
     }
@@ -115,10 +112,8 @@ Result ClusterTransactionState::commitTransaction(
 }
 
 /// @brief abort and rollback a transaction
-Result ClusterTransactionState::abortTransaction(
-    transaction::Methods* activeTrx) {
-  LOG_TRX(this, _nestingLevel)
-      << "aborting " << AccessMode::typeString(_type) << " transaction";
+Result ClusterTransactionState::abortTransaction(transaction::Methods* activeTrx) {
+  LOG_TRX(this, _nestingLevel) << "aborting " << AccessMode::typeString(_type) << " transaction";
   TRI_ASSERT(_status == transaction::Status::RUNNING);
   Result result;
   if (_nestingLevel == 0) {

@@ -46,6 +46,6 @@ class PrivilegeFeature final : public application_features::ApplicationFeature {
   TRI_gid_t _numericGid;
 };
 
-}
+}  // namespace arangodb
 
 #endif

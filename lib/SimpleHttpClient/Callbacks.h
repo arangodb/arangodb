@@ -31,29 +31,26 @@ class GeneralResponse;
 
 namespace communicator {
 class Callbacks {
-  public:
-    typedef std::function<void(int, std::unique_ptr<GeneralResponse>)>
-      OnErrorCallback;
+ public:
+  typedef std::function<void(int, std::unique_ptr<GeneralResponse>)> OnErrorCallback;
 
-    typedef std::function<void(std::unique_ptr<GeneralResponse>)>
-      OnSuccessCallback;
+  typedef std::function<void(std::unique_ptr<GeneralResponse>)> OnSuccessCallback;
 
-    typedef std::function<void(std::function<void()>)> ScheduleMeCallback;
+  typedef std::function<void(std::function<void()>)> ScheduleMeCallback;
 
-    Callbacks() {}
-    Callbacks(OnSuccessCallback onSuccess, OnErrorCallback onError)
-      : _onSuccess(onSuccess), _onError(onError), _scheduleMe(defaultScheduleMe)  {
-      }
+  Callbacks() {}
+  Callbacks(OnSuccessCallback onSuccess, OnErrorCallback onError)
+      : _onSuccess(onSuccess), _onError(onError), _scheduleMe(defaultScheduleMe) {}
 
-  public:
-    OnSuccessCallback _onSuccess;
-    OnErrorCallback _onError;
-    ScheduleMeCallback _scheduleMe;
+ public:
+  OnSuccessCallback _onSuccess;
+  OnErrorCallback _onError;
+  ScheduleMeCallback _scheduleMe;
 
-  protected:
-    static void defaultScheduleMe(std::function<void()> task) {task();}
+ protected:
+  static void defaultScheduleMe(std::function<void()> task) { task(); }
 };
-}
-}
+}  // namespace communicator
+}  // namespace arangodb
 
 #endif

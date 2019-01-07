@@ -24,8 +24,8 @@
 #ifndef ARANGOD_AQL_REST_AQL_HANDLER_H
 #define ARANGOD_AQL_REST_AQL_HANDLER_H 1
 
-#include "Basics/Common.h"
 #include "Aql/types.h"
+#include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "RestServer/VocbaseContext.h"
 
@@ -49,7 +49,9 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
 
  public:
   char const* name() const override final { return "RestAqlHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLUSTER_INTERNAL; }
+  RequestLane lane() const override final {
+    return RequestLane::CLUSTER_INTERNAL;
+  }
   RestStatus execute() override;
   RestStatus continueExecute() override;
 
@@ -72,12 +74,12 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   //   "number": must be a positive integer, the cursor skips as many items,
   //             possibly exhausting the cursor.
   //             The result is a JSON with the attributes "error" (boolean),
-  //             "errorMessage" (if applicable) and "exhausted" (boolean) [3.3 and earlier]
-  //             "done" (boolean) [3.4.0 and later] to indicate whether or not the cursor is exhausted.
+  //             "errorMessage" (if applicable) and "exhausted" (boolean) [3.3
+  //             and earlier] "done" (boolean) [3.4.0 and later] to indicate
+  //             whether or not the cursor is exhausted.
   RestStatus useQuery(std::string const& operation, std::string const& idString);
 
  private:
-
   // POST method for /_api/aql/setup (internal)
   // Only available on DBServers in the Cluster.
   // This route sets-up all the query engines required
@@ -107,26 +109,22 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
                         arangodb::velocypack::Slice const collections,
                         arangodb::velocypack::Slice const variables,
                         std::shared_ptr<arangodb::velocypack::Builder> options,
-                        std::shared_ptr<transaction::Context> const& ctx,
-                        double const ttl,
-                        bool& needToLock,
-                        arangodb::velocypack::Builder& answer);
+                        std::shared_ptr<transaction::Context> const& ctx, double const ttl,
+                        bool& needToLock, arangodb::velocypack::Builder& answer);
 
   bool registerTraverserEngines(arangodb::velocypack::Slice const traversers,
                                 std::shared_ptr<transaction::Context> const& ctx,
-                                double const ttl,
-                                bool& needToLock,
+                                double const ttl, bool& needToLock,
                                 arangodb::velocypack::Builder& answer);
 
   // Send slice as result with the given response type.
-  void sendResponse(rest::ResponseCode,
-                    arangodb::velocypack::Slice const, transaction::Context*);
+  void sendResponse(rest::ResponseCode, arangodb::velocypack::Slice const,
+                    transaction::Context*);
   // Send slice as result with the given response type.
   void sendResponse(rest::ResponseCode, arangodb::velocypack::Slice const);
 
   // handle for useQuery
-  RestStatus handleUseQuery(std::string const&, Query*,
-                            arangodb::velocypack::Slice const);
+  RestStatus handleUseQuery(std::string const&, Query*, arangodb::velocypack::Slice const);
 
   // parseVelocyPackBody, returns a nullptr and produces an error
   // response if
@@ -146,7 +144,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   // id of current query
   QueryId _qId;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

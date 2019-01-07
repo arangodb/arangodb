@@ -31,8 +31,7 @@
 
 using namespace arangodb;
 
-RocksDBBackgroundThread::RocksDBBackgroundThread(RocksDBEngine* eng,
-                                                 double interval)
+RocksDBBackgroundThread::RocksDBBackgroundThread(RocksDBEngine* eng, double interval)
     : Thread("RocksDBThread"), _engine(eng), _interval(interval) {}
 
 RocksDBBackgroundThread::~RocksDBBackgroundThread() { shutdown(); }
@@ -57,7 +56,7 @@ void RocksDBBackgroundThread::run() {
     if (_engine->inRecovery()) {
       continue;
     }
-    
+
     TRI_IF_FAILURE("RocksDBBackgroundThread::run") { continue; }
 
     try {
@@ -66,13 +65,14 @@ void RocksDBBackgroundThread::run() {
         Result res = _engine->settingsManager()->sync(false);
         if (res.fail()) {
           LOG_TOPIC(WARN, Logger::ENGINES)
-            << "background settings sync failed: " << res.errorMessage();
+              << "background settings sync failed: " << res.errorMessage();
         }
 
         double end = TRI_microtime();
         if ((end - start) > 0.75) {
           LOG_TOPIC(WARN, Logger::ENGINES)
-            << "slow background settings sync: " << Logger::FIXED(end - start, 6) << " s";
+              << "slow background settings sync: " << Logger::FIXED(end - start, 6)
+              << " s";
         }
       }
 
@@ -87,16 +87,14 @@ void RocksDBBackgroundThread::run() {
       }
 
       if (DatabaseFeature::DATABASE != nullptr) {
-        DatabaseFeature::DATABASE->enumerateDatabases(
-          [&minTick](TRI_vocbase_t& vocbase)->void {
-              auto clients = vocbase.getReplicationClients();
-              for (auto c : clients) {
-                if (std::get<3>(c) < minTick) {
-                  minTick = std::get<3>(c);
-                }
-              }
+        DatabaseFeature::DATABASE->enumerateDatabases([&minTick](TRI_vocbase_t& vocbase) -> void {
+          auto clients = vocbase.getReplicationClients();
+          for (auto c : clients) {
+            if (std::get<3>(c) < minTick) {
+              minTick = std::get<3>(c);
+            }
           }
-        );
+        });
       }
 
       // only start pruning of obsolete WAL files a few minutes after

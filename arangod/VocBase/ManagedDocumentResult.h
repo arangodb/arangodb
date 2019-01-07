@@ -35,10 +35,8 @@ class Builder;
 
 class ManagedDocumentResult {
  public:
-  ManagedDocumentResult() :
-    _vpack(nullptr),
-    _managed(false) {}
-  
+  ManagedDocumentResult() : _vpack(nullptr), _managed(false) {}
+
   ManagedDocumentResult(ManagedDocumentResult const& other) = default;
   ManagedDocumentResult& operator=(ManagedDocumentResult const& other) = default;
 
@@ -52,35 +50,35 @@ class ManagedDocumentResult {
     return *this;
   }
 
-  ManagedDocumentResult(ManagedDocumentResult&& other) noexcept 
-    : _string(std::move(other._string)),
-      _vpack(other._vpack),
-      _localDocumentId(other._localDocumentId),
-      _managed(other._managed) {
+  ManagedDocumentResult(ManagedDocumentResult&& other) noexcept
+      : _string(std::move(other._string)),
+        _vpack(other._vpack),
+        _localDocumentId(other._localDocumentId),
+        _managed(other._managed) {
     other.clear();
   }
 
   void setUnmanaged(uint8_t const* vpack, LocalDocumentId const& documentId);
 
   void setManaged(uint8_t const* vpack, LocalDocumentId const& documentId);
-  
+
   std::string* setManaged(LocalDocumentId const& documentId) {
     _string.clear();
     _vpack = nullptr;
     _localDocumentId = documentId;
     _managed = true;
-    return &_string; 
+    return &_string;
   }
-  
+
   inline LocalDocumentId localDocumentId() const { return _localDocumentId; }
-  
+
   void clear() noexcept {
     _string.clear();
     _vpack = nullptr;
     _localDocumentId.clear();
     _managed = false;
   }
-  
+
   inline uint8_t const* vpack() const {
     if (_managed) {
       return reinterpret_cast<uint8_t const*>(_string.data());
@@ -89,14 +87,10 @@ class ManagedDocumentResult {
     return _vpack;
   }
 
-  inline bool empty() const {
-    return (!_managed && _vpack == nullptr);
-  }
-   
-  inline bool canUseInExternal() const {
-    return !_managed;
-  }
-  
+  inline bool empty() const { return (!_managed && _vpack == nullptr); }
+
+  inline bool canUseInExternal() const { return !_managed; }
+
   void addToBuilder(velocypack::Builder& builder, bool allowExternals) const;
 
  private:
@@ -106,6 +100,6 @@ class ManagedDocumentResult {
   bool _managed;
 };
 
-}
+}  // namespace arangodb
 
 #endif

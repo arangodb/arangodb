@@ -26,7 +26,6 @@
 
 #include "Aql/BlockCollector.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/Variable.h"
 
@@ -68,16 +67,16 @@ class ExecutionBlock {
   void throwIfKilled();
 
   /// @brief add a dependency
-  TEST_VIRTUAL void addDependency(ExecutionBlock* ep) { 
+  TEST_VIRTUAL void addDependency(ExecutionBlock* ep) {
     TRI_ASSERT(ep != nullptr);
-    _dependencies.emplace_back(ep); 
+    _dependencies.emplace_back(ep);
     _dependencyPos = _dependencies.end();
   }
 
   /// @brief remove a dependency, returns true if the pointer was found and
   /// removed, please note that this does not delete ep!
   bool removeDependency(ExecutionBlock* ep);
-  
+
   /// @brief Methods for execution
   /// Lifecycle is:
   ///    CONSTRUCTOR
@@ -103,15 +102,14 @@ class ExecutionBlock {
   /// if it returns an actual block, it must contain at least one item.
   /// getSome() also takes care of tracing and clearing registers; don't do it
   /// in getOrSkipSome() implementations.
-  virtual std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(
-      size_t atMost);
+  virtual std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost);
 
   void traceGetSomeBegin(size_t atMost);
   void traceGetSomeEnd(AqlItemBlock const*, ExecutionState state);
-  
+
   void traceSkipSomeBegin(size_t atMost);
   void traceSkipSomeEnd(size_t skipped, ExecutionState state);
- 
+
   /// @brief skipSome, skips some more items, semantic is as follows: not
   /// more than atMost items may be skipped. The method tries to
   /// skip a block of at most atMost items, however, it may skip
@@ -120,13 +118,13 @@ class ExecutionBlock {
   virtual std::pair<ExecutionState, size_t> skipSome(size_t atMost);
 
   ExecutionNode const* getPlanNode() const { return _exeNode; }
-  
+
   transaction::Methods* transaction() const { return _trx; }
 
   // @brief Will be called on the querywakeup callback with the
   // result collected over the network. Needs to be implemented
   // on all nodes that use this mechanism.
-  virtual bool handleAsyncResult(ClusterCommResult* result) { 
+  virtual bool handleAsyncResult(ClusterCommResult* result) {
     // This indicates that a node uses async functionality
     // but does not react to the response.
     TRI_ASSERT(false);
@@ -150,11 +148,11 @@ class ExecutionBlock {
   /// @brief copy register data from one block (src) into another (dst)
   /// register values are cloned
   void inheritRegisters(AqlItemBlock const* src, AqlItemBlock* dst, size_t row) {
-    return inheritRegisters(src, dst, row, 0); 
+    return inheritRegisters(src, dst, row, 0);
   }
 
-  void inheritRegisters(AqlItemBlock const* src, AqlItemBlock* dst, size_t srcRow,
-                        size_t dstRow);
+  void inheritRegisters(AqlItemBlock const* src, AqlItemBlock* dst,
+                        size_t srcRow, size_t dstRow);
 
   /// @brief the following is internal to pull one more block and append it to
   /// our _buffer deque. Returns true if a new block was appended and false if
@@ -166,21 +164,18 @@ class ExecutionBlock {
   /// the idea is that somebody who wants to call the generic functionality
   /// in a derived class but wants to modify the results before the register
   /// cleanup can use this method, internal use only
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
-  getSomeWithoutRegisterClearout(size_t atMost);
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeWithoutRegisterClearout(size_t atMost);
 
   /// @brief clearRegisters, clears out registers holding values that are no
   /// longer needed by later nodes
   void clearRegisters(AqlItemBlock* result);
-  
 
   /// @brief generic method to get or skip some
   /// Does neither do tracing (traceGetSomeBegin/~End), nor call
   /// clearRegisters() - both is done in getSome(), which calls this via
   /// getSomeWithoutRegisterClearout(). The same must hold for all overriding
   /// implementations.
-  virtual std::pair<ExecutionState, Result> getOrSkipSome(size_t atMost,
-                                                          bool skipping,
+  virtual std::pair<ExecutionState, Result> getOrSkipSome(size_t atMost, bool skipping,
                                                           AqlItemBlock*& result,
                                                           size_t& skipped);
 
@@ -188,8 +183,8 @@ class ExecutionBlock {
   ///        Can either be HASMORE or DONE.
   ///        Guarantee is that if DONE is returned every subsequent call
   ///        to get/skipSome will NOT find mor documents.
-  ///        HASMORE is allowed to lie, so a next call to get/skipSome could return
-  ///        no more results.
+  ///        HASMORE is allowed to lie, so a next call to get/skipSome could
+  ///        return no more results.
   virtual ExecutionState getHasMoreState();
 
   /// @brief If the buffer is empty, calls getBlock(atMost). The return values
@@ -205,8 +200,7 @@ class ExecutionBlock {
   /// buffer if necessary. If a block was removed it is returned, and nullptr
   /// otherwise. The caller then owns the block (and therefore is responsible
   /// for calling returnBlock()).
-  AqlItemBlock* advanceCursor(size_t numInputRowsConsumed,
-                              size_t numOutputRowsCreated);
+  AqlItemBlock* advanceCursor(size_t numInputRowsConsumed, size_t numOutputRowsCreated);
 
  protected:
   /// @brief the execution engine
@@ -243,13 +237,13 @@ class ExecutionBlock {
 
   /// @brief current working position in the first entry of _buffer
   size_t _pos;
-  
+
   /// @brief if this is set, we are done, this is reset to false by execute()
   bool _done;
 
   /// @brief profiling level
   uint32_t _profile;
-  
+
   /// @brief getSome begin point in time
   double _getSomeBegin;
 
@@ -267,11 +261,9 @@ class ExecutionBlock {
   /// @brief Collects result blocks during ExecutionBlock::getOrSkipSome. Must
   /// be a member variable due to possible WAITING interruptions.
   aql::BlockCollector _collector;
-
-
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

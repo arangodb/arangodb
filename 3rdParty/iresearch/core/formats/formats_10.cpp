@@ -993,9 +993,7 @@ FORCE_INLINE void skip_offsets(index_input& in) {
 ///////////////////////////////////////////////////////////////////////////////
 class doc_iterator : public irs::doc_iterator {
  public:
-  DECLARE_UNIQUE_PTR(doc_iterator);
-
-  DEFINE_FACTORY_INLINE(doc_iterator);
+  DECLARE_SHARED_PTR(doc_iterator);
 
   doc_iterator() NOEXCEPT
     : skip_levels_(1),
@@ -1047,6 +1045,8 @@ class doc_iterator : public irs::doc_iterator {
     }
 
     seek_to_block(target);
+
+    // FIXME binary search instead of linear
     irs::seek(*this, target);
     return value();
   }
@@ -1458,7 +1458,7 @@ class pos_iterator: public position {
     }
 
     if (count < left) {
-      buf_pos_ += uint32_t(count);
+      buf_pos_ += count;
     }
     clear();
     value_ = 0;
@@ -5087,7 +5087,8 @@ void postings_reader::decode(
 irs::doc_iterator::ptr postings_reader::iterator(
     const flags& field,
     const attribute_view& attrs,
-    const flags& req) {
+    const flags& req
+) {
   // compile field features
   const auto features = ::features(field);
   // get enabled features:
@@ -5099,19 +5100,19 @@ irs::doc_iterator::ptr postings_reader::iterator(
   // 'operator|' in the following switch statement
   switch (enabled) {
    case features::FREQ_POS_OFFS_PAY:
-    it = doc_iterator::make<pos_doc_iterator<offs_pay_iterator>>();
+    it = std::make_shared<pos_doc_iterator<offs_pay_iterator>>();
     break;
    case features::FREQ_POS_OFFS:
-    it = doc_iterator::make<pos_doc_iterator<offs_iterator>>();
+    it = std::make_shared<pos_doc_iterator<offs_iterator>>();
     break;
    case features::FREQ_POS_PAY:
-    it = doc_iterator::make<pos_doc_iterator<pay_iterator>>();
+    it = std::make_shared<pos_doc_iterator<pay_iterator>>();
     break;
    case features::FREQ_POS:
-    it = doc_iterator::make<pos_doc_iterator<pos_iterator>>();
+    it = std::make_shared<pos_doc_iterator<pos_iterator>>();
     break;
    default:
-    it = doc_iterator::make<doc_iterator>();
+    it = std::make_shared<doc_iterator>();
   }
 
   it->prepare(
@@ -5119,7 +5120,7 @@ irs::doc_iterator::ptr postings_reader::iterator(
     doc_in_.get(), pos_in_.get(), pay_in_.get()
   );
 
-  return IMPLICIT_MOVE_WORKAROUND(it);
+  return it;
 }
 
 #if defined(_MSC_VER)

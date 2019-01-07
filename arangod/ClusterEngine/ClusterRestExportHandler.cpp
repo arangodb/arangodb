@@ -32,8 +32,7 @@ ClusterRestExportHandler::ClusterRestExportHandler(GeneralRequest* request,
     : RestVocbaseBaseHandler(request, response) {}
 
 RestStatus ClusterRestExportHandler::execute() {
-    generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                  TRI_ERROR_CLUSTER_UNSUPPORTED,
-                  "'/_api/export' is not supported in a cluster");
-    return RestStatus::DONE;
+  generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_CLUSTER_UNSUPPORTED,
+                "'/_api/export' is not supported in a cluster");
+  return RestStatus::DONE;
 }

@@ -95,14 +95,10 @@ enum class RocksDBSettingsType : char {
   ServerTick = 'S',
   Endianness = 'E'
 };
-  
+
 /// @brief endianess value
-enum class RocksDBEndianness : char {
-  Invalid = 0,
-  Little = 'L',
-  Big = 'B'
-};
-  
+enum class RocksDBEndianness : char { Invalid = 0, Little = 'L', Big = 'B' };
+
 /// @brief rocksdb format version
 char rocksDBFormatVersion();
 

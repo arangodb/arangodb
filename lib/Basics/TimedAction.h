@@ -35,13 +35,11 @@ class TimedAction {
 
   TimedAction(std::function<void(double)> const& callback, double threshold)
       : _callback(callback), _threshold(threshold), _start(TRI_microtime()), _done(false) {}
-  
+
   ~TimedAction() {}
 
  public:
-  double elapsed() const {
-    return (TRI_microtime() - _start);
-  }
+  double elapsed() const { return (TRI_microtime() - _start); }
   bool tick() {
     if (!_done) {
       if (elapsed() >= _threshold) {
@@ -60,6 +58,6 @@ class TimedAction {
   bool _done;
 };
 
-}
+}  // namespace arangodb
 
 #endif

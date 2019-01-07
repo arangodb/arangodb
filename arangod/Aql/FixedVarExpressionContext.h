@@ -24,8 +24,8 @@
 #ifndef ARANGOD_AQL_FIXED_VAR_EXPRESSION_CONTEXT_H
 #define ARANGOD_AQL_FIXED_VAR_EXPRESSION_CONTEXT_H 1
 
-#include "QueryExpressionContext.h"
 #include "Aql/AqlValue.h"
+#include "QueryExpressionContext.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -37,7 +37,7 @@ class AqlItemBlock;
 
 class FixedVarExpressionContext final : public QueryExpressionContext {
  public:
-  explicit FixedVarExpressionContext(Query* query) 
+  explicit FixedVarExpressionContext(Query* query)
       : QueryExpressionContext(query) {}
 
   ~FixedVarExpressionContext() {}
@@ -55,14 +55,12 @@ class FixedVarExpressionContext final : public QueryExpressionContext {
 
   void setVariableValue(Variable const*, AqlValue const&);
 
-  void serializeAllVariables(transaction::Methods*,
-                             arangodb::velocypack::Builder&) const;
+  void serializeAllVariables(transaction::Methods*, arangodb::velocypack::Builder&) const;
 
  private:
   /// @brief temporary storage for expression data context
   std::unordered_map<Variable const*, AqlValue> _vars;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 #endif
-

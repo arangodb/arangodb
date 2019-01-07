@@ -26,8 +26,8 @@
 
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Graph/ShortestPathFinder.h"
 #include "Graph/EdgeDocumentToken.h"
+#include "Graph/ShortestPathFinder.h"
 
 namespace arangodb {
 
@@ -52,8 +52,7 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
     arangodb::StringRef const _pred;
     graph::EdgeDocumentToken _path;
 
-    PathSnippet(arangodb::StringRef& pred,
-                graph::EdgeDocumentToken&& path);
+    PathSnippet(arangodb::StringRef& pred, graph::EdgeDocumentToken&& path);
   };
 
   typedef std::deque<arangodb::StringRef> Closure;
@@ -75,11 +74,9 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
   void clearVisited();
 
   bool expandClosure(Closure& sourceClosure, Snippets& sourceSnippets,
-                     Snippets& targetSnippets, bool direction,
-                     StringRef& result);
+                     Snippets& targetSnippets, bool direction, StringRef& result);
 
-  void fillResult(arangodb::StringRef& n,
-                  arangodb::graph::ShortestPathResult& result);
+  void fillResult(arangodb::StringRef& n, arangodb::graph::ShortestPathResult& result);
 
  private:
   Snippets _leftFound;

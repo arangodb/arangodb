@@ -48,9 +48,7 @@ class EdgeDefinition {
         _to(std::move(to_)) {}
 
   std::string const& getName() const { return _edgeCollection; }
-  void setName(std::string const& newName) {
-    _edgeCollection = newName;
-  }
+  void setName(std::string const& newName) { _edgeCollection = newName; }
   std::set<std::string> const& getFrom() const { return _from; }
   std::set<std::string> const& getTo() const { return _to; }
 
@@ -66,8 +64,7 @@ class EdgeDefinition {
   /// types of values.
   static Result validateEdgeDefinition(const velocypack::Slice& edgeDefinition);
 
-  static ResultT<EdgeDefinition> createFromVelocypack(
-      velocypack::Slice edgeDefinition);
+  static ResultT<EdgeDefinition> createFromVelocypack(velocypack::Slice edgeDefinition);
 
   void toVelocyPack(velocypack::Builder&) const;
 
@@ -108,14 +105,14 @@ class Graph {
    *
    * @return A graph object corresponding to the user input
    */
-  static std::unique_ptr<Graph> fromUserInput(
-      std::string&& name, velocypack::Slice collectionInformation,
-      velocypack::Slice options);
+  static std::unique_ptr<Graph> fromUserInput(std::string&& name,
+                                              velocypack::Slice collectionInformation,
+                                              velocypack::Slice options);
 
   // Wrapper for Move constructor
-  static std::unique_ptr<Graph> fromUserInput(
-      std::string const& name, velocypack::Slice collectionInformation,
-      velocypack::Slice options);
+  static std::unique_ptr<Graph> fromUserInput(std::string const& name,
+                                              velocypack::Slice collectionInformation,
+                                              velocypack::Slice options);
 
  protected:
   /**
@@ -138,11 +135,9 @@ class Graph {
  public:
   virtual ~Graph() = default;
 
-  static Result validateOrphanCollection(
-      const velocypack::Slice& orphanDefinition);
+  static Result validateOrphanCollection(const velocypack::Slice& orphanDefinition);
 
-  virtual void createCollectionOptions(VPackBuilder& builder,
-                                       bool waitForSync) const;
+  virtual void createCollectionOptions(VPackBuilder& builder, bool waitForSync) const;
 
  public:
   /// @brief get the cids of all vertexCollections
@@ -158,7 +153,7 @@ class Graph {
   std::map<std::string, EdgeDefinition> const& edgeDefinitions() const;
 
   /// @brief get the cids of all edgeCollections as reference
-  std::map<std::string, EdgeDefinition> & edgeDefinitions();
+  std::map<std::string, EdgeDefinition>& edgeDefinitions();
 
   bool hasEdgeCollection(std::string const& collectionName) const;
   bool hasVertexCollection(std::string const& collectionName) const;
@@ -166,8 +161,7 @@ class Graph {
 
   bool renameCollections(std::string const& oldName, std::string const& newName);
 
-  boost::optional<EdgeDefinition const&> getEdgeDefinition(
-      std::string const& collectionName) const;
+  boost::optional<EdgeDefinition const&> getEdgeDefinition(std::string const& collectionName) const;
 
   virtual bool isSmart() const;
 
@@ -216,13 +210,11 @@ class Graph {
 
   /// @brief adds one edge definition. Returns an error if the edgeDefinition
   ///        is already added to this graph.
-  ResultT<EdgeDefinition const*> addEdgeDefinition(
-      velocypack::Slice const& edgeDefinitionSlice);
+  ResultT<EdgeDefinition const*> addEdgeDefinition(velocypack::Slice const& edgeDefinitionSlice);
 
   /// @brief adds one edge definition. Returns an error if the edgeDefinition
   ///        is already added to this graph.
-  ResultT<EdgeDefinition const*> addEdgeDefinition(
-      EdgeDefinition const& edgeDefinition);
+  ResultT<EdgeDefinition const*> addEdgeDefinition(EdgeDefinition const& edgeDefinition);
 
   /// @brief removes one edge definition. Returns an error if the edgeDefinition
   ///        is not included in this graph.

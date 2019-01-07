@@ -36,7 +36,8 @@ using namespace arangodb::rest;
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-ListenTask::ListenTask(GeneralServer &server, GeneralServer::IoContext& context, Endpoint* endpoint)
+ListenTask::ListenTask(GeneralServer& server, GeneralServer::IoContext& context,
+                       Endpoint* endpoint)
     : IoTask(server, context, "ListenTask"),
       _endpoint(endpoint),
       _bound(false),
@@ -65,36 +66,30 @@ bool ListenTask::start() {
     return false;
   }
 
-
   _bound = true;
   this->accept();
   return true;
 }
 
 void ListenTask::accept() {
-
   auto self(shared_from_this());
 
   auto handler = [this, self](asio_ns::error_code const& ec) {
-
 
     TRI_ASSERT(_acceptor != nullptr);
 
     if (ec) {
       if (ec == asio_ns::error::operation_aborted) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "accept failed: "
-                                                 << ec.message();
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "accept failed: " << ec.message();
         return;
       }
 
       ++_acceptFailures;
 
       if (_acceptFailures < MAX_ACCEPT_ERRORS) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "accept failed: "
-                                                 << ec.message();
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "accept failed: " << ec.message();
       } else if (_acceptFailures == MAX_ACCEPT_ERRORS) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "accept failed: "
-                                                 << ec.message();
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "accept failed: " << ec.message();
         LOG_TOPIC(WARN, arangodb::Logger::FIXME)
             << "too many accept failures, stopping to report";
       }
@@ -122,7 +117,6 @@ void ListenTask::accept() {
 }
 
 void ListenTask::stop() {
-
   if (!_bound) {
     return;
   }

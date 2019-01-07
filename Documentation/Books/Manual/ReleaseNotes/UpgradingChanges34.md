@@ -20,7 +20,7 @@ The release packages are intended to be reasonably portable (see minimum support
 architectures below) and should run on a variety of different Linux distributions and
 versions.
 
-Release packages are provided for Windows and MacOS as well.
+Release packages are provided for Windows and macOS as well.
 
 
 Supported architectures

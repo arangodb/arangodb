@@ -37,7 +37,9 @@ LogicalCollection* OperationCursor::collection() const {
 
 bool OperationCursor::hasExtra() const { return indexIterator()->hasExtra(); }
 
-bool OperationCursor::hasCovering() const { return indexIterator()->hasCovering(); }
+bool OperationCursor::hasCovering() const {
+  return indexIterator()->hasCovering();
+}
 
 void OperationCursor::reset() {
   code = TRI_ERROR_NO_ERROR;
@@ -48,9 +50,10 @@ void OperationCursor::reset() {
   }
 }
 
-/// @brief Calls cb for the next batchSize many elements 
+/// @brief Calls cb for the next batchSize many elements
 ///        NOTE: This will throw on OUT_OF_MEMORY
-bool OperationCursor::next(IndexIterator::LocalDocumentIdCallback const& callback, uint64_t batchSize) {
+bool OperationCursor::next(IndexIterator::LocalDocumentIdCallback const& callback,
+                           uint64_t batchSize) {
   if (!hasMore()) {
     return false;
   }
@@ -59,7 +62,7 @@ bool OperationCursor::next(IndexIterator::LocalDocumentIdCallback const& callbac
     batchSize = _batchSize;
   }
 
-  size_t atMost = static_cast<size_t>(batchSize); 
+  size_t atMost = static_cast<size_t>(batchSize);
   _hasMore = _indexIterator->next(callback, atMost);
   return _hasMore;
 }
@@ -69,11 +72,11 @@ bool OperationCursor::nextDocument(IndexIterator::DocumentCallback const& callba
   if (!hasMore()) {
     return false;
   }
-  
+
   if (batchSize == UINT64_MAX) {
     batchSize = _batchSize;
   }
-  
+
   size_t atMost = static_cast<size_t>(batchSize);
   _hasMore = _indexIterator->nextDocument(callback, atMost);
   return _hasMore;
@@ -86,7 +89,8 @@ bool OperationCursor::nextDocument(IndexIterator::DocumentCallback const& callba
 ///        NOTE: This will throw on OUT_OF_MEMORY
 //////////////////////////////////////////////////////////////////////////////
 
-bool OperationCursor::nextWithExtra(IndexIterator::ExtraCallback const& callback, uint64_t batchSize) {
+bool OperationCursor::nextWithExtra(IndexIterator::ExtraCallback const& callback,
+                                    uint64_t batchSize) {
   TRI_ASSERT(hasExtra());
 
   if (!hasMore()) {
@@ -96,7 +100,7 @@ bool OperationCursor::nextWithExtra(IndexIterator::ExtraCallback const& callback
   if (batchSize == UINT64_MAX) {
     batchSize = _batchSize;
   }
-  
+
   size_t atMost = static_cast<size_t>(batchSize);
   _hasMore = _indexIterator->nextExtra(callback, atMost);
   return _hasMore;
@@ -109,7 +113,7 @@ bool OperationCursor::nextCovering(IndexIterator::DocumentCallback const& callba
   if (!hasMore()) {
     return false;
   }
-  
+
   if (batchSize == UINT64_MAX) {
     batchSize = _batchSize;
   }
@@ -120,9 +124,9 @@ bool OperationCursor::nextCovering(IndexIterator::DocumentCallback const& callba
 }
 
 /// @brief Skip the next toSkip many elements.
-///        skipped will be increased by the amount of skipped elements afterwards
-///        Check hasMore()==true before using this
-///        NOTE: This will throw on OUT_OF_MEMORY
+///        skipped will be increased by the amount of skipped elements
+///        afterwards Check hasMore()==true before using this NOTE: This will
+///        throw on OUT_OF_MEMORY
 void OperationCursor::skip(uint64_t toSkip, uint64_t& skipped) {
   if (!hasMore()) {
     TRI_ASSERT(false);

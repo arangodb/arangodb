@@ -33,8 +33,7 @@
 
 using namespace arangodb;
 
-CacheRebalancerThread::CacheRebalancerThread(cache::Manager* manager,
-                                             uint64_t interval)
+CacheRebalancerThread::CacheRebalancerThread(cache::Manager* manager, uint64_t interval)
     : Thread("CacheRebalancerThread"),
       _manager(manager),
       _rebalancer(_manager),
@@ -53,8 +52,7 @@ void CacheRebalancerThread::beginShutdown() {
 void CacheRebalancerThread::run() {
   while (!isStopping()) {
     int result = _rebalancer.rebalance();
-    uint64_t interval = (result != TRI_ERROR_ARANGO_BUSY) ? _fullInterval
-                                                          : _shortInterval;
+    uint64_t interval = (result != TRI_ERROR_ARANGO_BUSY) ? _fullInterval : _shortInterval;
 
     CONDITION_LOCKER(guard, _condition);
     guard.wait(interval);

@@ -33,13 +33,8 @@ using namespace arangodb::options;
 
 // create an option, consisting of single string
 Option::Option(std::string const& value, std::string const& description,
-         Parameter* parameter, std::underlying_type<Flags>::type flags)
-    : section(),
-      name(),
-      description(description),
-      shorthand(),
-      parameter(parameter),
-      flags(flags) {
+               Parameter* parameter, std::underlying_type<Flags>::type flags)
+    : section(), name(), description(description), shorthand(), parameter(parameter), flags(flags) {
   auto parts = splitName(value);
   section = parts.first;
   name = parts.second;
@@ -53,6 +48,46 @@ Option::Option(std::string const& value, std::string const& description,
 
 void Option::toVPack(VPackBuilder& builder) const {
   parameter->toVPack(builder);
+}
+
+// format a version string
+std::string Option::toVersionString(uint32_t version) const {
+  if (version == 0) {
+    return "-";
+  }
+
+  std::string result("v");
+  // intentionally using integer division here...
+  result += std::to_string(version / 10000) + ".";
+  version -= (version / 10000) * 10000;
+  result += std::to_string(version / 100) + ".";
+  version -= (version / 100) * 100;
+  result += std::to_string(version);
+  return result;
+}
+
+// format multiple version strings
+std::string Option::toVersionString(std::vector<uint32_t> const& versions) const {
+  std::string result;
+  for (auto const& it : versions) {
+    if (!result.empty()) {
+      result += ", ";
+    }
+    result += toVersionString(it);
+  }
+  return result;
+}
+  
+// returns the version in which the option was introduced as a proper
+// version string - if the version is unknown this will return "-"
+std::string Option::introducedInString() const {
+  return toVersionString(introducedInVersions);
+}
+
+// returns the version in which the option was deprecated as a proper
+// version string - if the version is unknown this will return "-"
+std::string Option::deprecatedInString() const {
+  return toVersionString(deprecatedInVersions);
 }
 
 // print help for an option
@@ -71,6 +106,12 @@ void Option::printHelp(std::string const& search, size_t tw, size_t ow, bool) co
         value.append(description);
       }
       value += " (default: " + parameter->valueString() + ")";
+      if (hasIntroducedIn()) {
+        value += " (introduced in " + introducedInString() + ")";
+      }
+      if (hasDeprecatedIn()) {
+        value += " (deprecated in " + deprecatedInString() + ")";
+      }
     }
     auto parts = wordwrap(value, tw - ow - 6);
     size_t const n = parts.size();
@@ -130,8 +171,7 @@ std::pair<std::string, std::string> Option::splitName(std::string name) {
   return std::make_pair(section, name);
 }
 
-std::vector<std::string> Option::wordwrap(std::string const& value,
-                                          size_t size) {
+std::vector<std::string> Option::wordwrap(std::string const& value, size_t size) {
   std::vector<std::string> result;
   std::string next = value;
 
