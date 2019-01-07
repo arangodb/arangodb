@@ -24,8 +24,8 @@
 #ifndef ARANGOD_AQL_OPTIMIZER_H
 #define ARANGOD_AQL_OPTIMIZER_H 1
 
-#include "Basics/Common.h"
 #include "Aql/ExecutionPlan.h"
+#include "Basics/Common.h"
 #include "Basics/RollingVector.h"
 
 #include <velocypack/Builder.h>
@@ -66,12 +66,12 @@ class Optimizer {
 
     RollingVector<Entry> list;
 
-    PlanList() {
-      list.reserve(8);
-    }
+    PlanList() { list.reserve(8); }
 
     /// @brief constructor with a plan
-    PlanList(std::unique_ptr<ExecutionPlan> p, RuleMap::iterator rule) { push_back(std::move(p), rule); }
+    PlanList(std::unique_ptr<ExecutionPlan> p, RuleMap::iterator rule) {
+      push_back(std::move(p), rule);
+    }
 
     /// @brief destructor, deleting contents
     ~PlanList() = default;
@@ -95,9 +95,7 @@ class Optimizer {
     }
 
     /// @brief swaps the two lists
-    void swap(PlanList& b) {
-      list.swap(b.list);
-    }
+    void swap(PlanList& b) { list.swap(b.list); }
 
     /// @brief appends all the plans to the target and clears *this at the same
     /// time
@@ -110,9 +108,7 @@ class Optimizer {
     }
 
     /// @brief clear, deletes all plans contained
-    void clear() {
-      list.clear();
-    }
+    void clear() { list.clear(); }
   };
 
  public:
@@ -131,7 +127,8 @@ class Optimizer {
   /// newly created plans it recalls and will automatically delete them.
   /// If you need to extract the plans from the optimizer use stealBest or
   /// stealPlans.
-  int createPlans(std::unique_ptr<ExecutionPlan> p, QueryOptions const& queryOptions, bool estimateAllPlans);
+  int createPlans(std::unique_ptr<ExecutionPlan> p,
+                  QueryOptions const& queryOptions, bool estimateAllPlans);
 
   /// @brief add a plan to the optimizer
   void addPlan(std::unique_ptr<ExecutionPlan>, OptimizerRule const*, bool, int newLevel = 0);
@@ -169,17 +166,17 @@ class Optimizer {
 
   /// @brief current list of plans (while applying optimizer rules)
   PlanList _newPlans;
-  
+
   /// @brief the rule that is currently getting applied
   /// (while applying optimizer rules in createPlans)
   RuleMap::iterator _currentRule;
-  
+
   /// @brief list of optimizer rules to be applied
   RuleMap _rules;
 
   /// @brief maximal number of plans to produce
   size_t const _maxNumberOfPlans;
-  
+
   /// @brief run only the required optimizer rules
   bool _runOnlyRequiredRules;
 };

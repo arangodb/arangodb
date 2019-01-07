@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "Transaction/ContextData.h"
 #include "VocBase/voc-types.h"
-                                
+
 namespace arangodb {
 class LogicalCollection;
 class MMFilesDocumentDitch;
@@ -37,19 +37,19 @@ class MMFilesTransactionContextData final : public transaction::ContextData {
  public:
   MMFilesTransactionContextData();
   ~MMFilesTransactionContextData();
-  
+
   /// @brief pin data for the collection
   void pinData(arangodb::LogicalCollection*) override;
 
   /// @brief whether or not the data for the collection is pinned
   bool isPinned(TRI_voc_cid_t) const override;
-  
+
  private:
   std::unordered_map<TRI_voc_cid_t, MMFilesDocumentDitch*> _ditches;
 
   TRI_voc_cid_t _lastPinnedCid;
 };
 
-}
+}  // namespace arangodb
 
 #endif

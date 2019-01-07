@@ -50,8 +50,7 @@ void LogAppenderSyslog::close() {
 }
 
 LogAppenderSyslog::LogAppenderSyslog(std::string const& facility,
-                                     std::string const& name,
-                                     std::string const& filter)
+                                     std::string const& name, std::string const& filter)
     : LogAppender(filter) {
   // no logging
   std::string sysname = name.empty() ? "[arangod]" : name;
@@ -79,8 +78,7 @@ LogAppenderSyslog::LogAppenderSyslog(std::string const& facility,
   _opened = true;
 }
 
-void LogAppenderSyslog::logMessage(LogLevel level, std::string const& message,
-                                   size_t offset) {
+void LogAppenderSyslog::logMessage(LogLevel level, std::string const& message, size_t offset) {
   int priority = LOG_ERR;
 
   switch (level) {
@@ -117,8 +115,7 @@ std::string LogAppenderSyslog::details() {
 #else
 
 LogAppenderSyslog::LogAppenderSyslog(std::string const& facility,
-                                     std::string const& name,
-                                     std::string const& filter)
+                                     std::string const& name, std::string const& filter)
     : LogAppender(filter) {
   std::abort();
 }

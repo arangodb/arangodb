@@ -33,8 +33,7 @@
 /// @brief initializes a vector
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitVector(TRI_vector_t* vector,
-                    size_t elementSize) {
+void TRI_InitVector(TRI_vector_t* vector, size_t elementSize) {
   vector->_buffer = nullptr;
   vector->_lengthX = 0;
   vector->_capacityX = 0;
@@ -45,14 +44,13 @@ void TRI_InitVector(TRI_vector_t* vector,
 /// @brief initializes a vector, with user-definable settings
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InitVector2(TRI_vector_t* vector,
-                    size_t elementSize, size_t initialCapacity) {
+int TRI_InitVector2(TRI_vector_t* vector, size_t elementSize, size_t initialCapacity) {
   // init vector as usual
   TRI_InitVector(vector, elementSize);
 
   if (initialCapacity != 0) {
     vector->_buffer = static_cast<char*>(TRI_Allocate(
-                (initialCapacity * static_cast<size_t>(vector->_elementSizeX))));
+        (initialCapacity * static_cast<size_t>(vector->_elementSizeX))));
 
     if (vector->_buffer == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
@@ -92,8 +90,7 @@ int TRI_ReserveVector(TRI_vector_t* vector, size_t extraCapacity) {
   }
 
   auto newBuffer = static_cast<char*>(
-      TRI_Reallocate(vector->_buffer,
-                     newSize * static_cast<size_t>(vector->_elementSizeX)));
+      TRI_Reallocate(vector->_buffer, newSize * static_cast<size_t>(vector->_elementSizeX)));
 
   if (newBuffer == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -125,8 +122,7 @@ int TRI_ResizeVector(TRI_vector_t* vector, size_t n) {
   if (static_cast<size_t>(vector->_capacityX) < n) {
     size_t newSize = n;
     auto newBuffer = static_cast<char*>(
-        TRI_Reallocate(vector->_buffer,
-                       newSize * static_cast<size_t>(vector->_elementSizeX)));
+        TRI_Reallocate(vector->_buffer, newSize * static_cast<size_t>(vector->_elementSizeX)));
 
     if (newBuffer == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
@@ -151,9 +147,8 @@ int TRI_PushBackVector(TRI_vector_t* vector, void const* element) {
     size_t newSize =
         (size_t)(1 + (GROW_FACTOR * static_cast<size_t>(vector->_capacityX)));
 
-    auto newBuffer = static_cast<char*>(
-        TRI_Reallocate(vector->_buffer,
-                       newSize * elementSize));
+    auto newBuffer =
+        static_cast<char*>(TRI_Reallocate(vector->_buffer, newSize * elementSize));
 
     if (newBuffer == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
@@ -180,8 +175,7 @@ void TRI_RemoveVector(TRI_vector_t* vector, size_t n) {
     if (n + 1 < static_cast<size_t>(vector->_lengthX)) {
       size_t const elementSize = static_cast<size_t>(vector->_elementSizeX);
 
-      memmove(vector->_buffer + n * elementSize,
-              vector->_buffer + (n + 1) * elementSize,
+      memmove(vector->_buffer + n * elementSize, vector->_buffer + (n + 1) * elementSize,
               (static_cast<size_t>(vector->_lengthX) - n - 1) * elementSize);
     }
 
@@ -228,13 +222,11 @@ void* TRI_NextVector(TRI_vector_t* vector) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_AtVector(TRI_vector_t const* vector, size_t pos) {
-  if (vector->_buffer == nullptr ||
-      pos >= static_cast<size_t>(vector->_lengthX)) {
+  if (vector->_buffer == nullptr || pos >= static_cast<size_t>(vector->_lengthX)) {
     return nullptr;
   }
 
-  return static_cast<void*>(vector->_buffer +
-                            pos * static_cast<size_t>(vector->_elementSizeX));
+  return static_cast<void*>(vector->_buffer + pos * static_cast<size_t>(vector->_elementSizeX));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -248,8 +240,7 @@ int TRI_InsertVector(TRI_vector_t* vector, void const* element, size_t n) {
   // Check and see if we need to extend the vector
   // ...........................................................................
 
-  if (vector->_lengthX >= vector->_capacityX ||
-      n >= static_cast<size_t>(vector->_capacityX)) {
+  if (vector->_lengthX >= vector->_capacityX || n >= static_cast<size_t>(vector->_capacityX)) {
     size_t newSize =
         (size_t)(1 + (GROW_FACTOR * static_cast<size_t>(vector->_capacityX)));
 
@@ -259,8 +250,7 @@ int TRI_InsertVector(TRI_vector_t* vector, void const* element, size_t n) {
 
     TRI_ASSERT(newSize > n);
 
-    auto newBuffer = static_cast<char*>(TRI_Allocate(
-        newSize * elementSize));
+    auto newBuffer = static_cast<char*>(TRI_Allocate(newSize * elementSize));
 
     if (newBuffer == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
@@ -269,8 +259,7 @@ int TRI_InsertVector(TRI_vector_t* vector, void const* element, size_t n) {
     vector->_capacityX = static_cast<uint32_t>(newSize);
 
     if (vector->_buffer != nullptr) {
-      memcpy(newBuffer, vector->_buffer,
-             static_cast<size_t>(vector->_lengthX) * elementSize);
+      memcpy(newBuffer, vector->_buffer, static_cast<size_t>(vector->_lengthX) * elementSize);
       TRI_Free(vector->_buffer);
     }
 

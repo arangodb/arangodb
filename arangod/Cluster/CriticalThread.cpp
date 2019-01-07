@@ -27,12 +27,12 @@ using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief static object to record thread crashes.  it is static so that
-///        it can contain information about threads that crash before HeartbeatThread
-///        starts (i.e. HeartbeatThread starts late).  this list is intentionally
-///        NEVER PURGED so that it can be reposted to logs regularly
+///        it can contain information about threads that crash before
+///        HeartbeatThread starts (i.e. HeartbeatThread starts late).  this list
+///        is intentionally NEVER PURGED so that it can be reposted to logs
+///        regularly
 ////////////////////////////////////////////////////////////////////////////////
 
-void CriticalThread::crashNotification(std::exception const& ex)
-{
+void CriticalThread::crashNotification(std::exception const& ex) {
   HeartbeatThread::recordThreadDeath(name());
 }

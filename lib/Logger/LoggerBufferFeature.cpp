@@ -31,16 +31,12 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-LoggerBufferFeature::LoggerBufferFeature(
-    application_features::ApplicationServer& server
-)
+LoggerBufferFeature::LoggerBufferFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "LoggerBuffer") {
   setOptional(true);
   startsAfter("Logger");
 }
 
-void LoggerBufferFeature::prepare() {
-  LogBuffer::initialize();
-}
+void LoggerBufferFeature::prepare() { LogBuffer::initialize(); }
 
-} // arangodb
+}  // namespace arangodb

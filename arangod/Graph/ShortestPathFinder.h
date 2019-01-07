@@ -46,7 +46,6 @@ class ShortestPathFinder {
                             arangodb::velocypack::Slice const& target,
                             arangodb::graph::ShortestPathResult& result,
                             std::function<void()> const& callback) = 0;
-
 };
 
 }  // namespace graph

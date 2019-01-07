@@ -239,8 +239,8 @@ TEST_F(bm25_test, test_phrase) {
     std::multimap<irs::bstring, std::string, decltype(comparer)> sorted(comparer);
 
     std::vector<std::string> expected{
-      "P", // jumps high jumps left jumps right jumps down jumps back
       "O", // jumps high jumps high hotdog
+      "P", // jumps high jumps left jumps right jumps down jumps back
       "Q", // jumps high jumps left jumps right jumps down walks back
       "R"  // jumps high jumps left jumps right walks down walks back
     };

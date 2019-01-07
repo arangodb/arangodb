@@ -32,20 +32,15 @@
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
-  
+
 MMFilesDocumentOperation::MMFilesDocumentOperation(LogicalCollection* collection,
                                                    TRI_voc_document_operation_e type)
-      : _collection(collection),
-        _tick(0),
-        _type(type),
-        _status(StatusType::CREATED) {
-}
+    : _collection(collection), _tick(0), _type(type), _status(StatusType::CREATED) {}
 
 MMFilesDocumentOperation::~MMFilesDocumentOperation() {}
-  
+
 MMFilesDocumentOperation* MMFilesDocumentOperation::clone() {
-  MMFilesDocumentOperation* copy =
-      new MMFilesDocumentOperation(_collection, _type);
+  MMFilesDocumentOperation* copy = new MMFilesDocumentOperation(_collection, _type);
   copy->_tick = _tick;
   copy->_oldRevision = _oldRevision;
   copy->_newRevision = _newRevision;
@@ -66,7 +61,7 @@ void MMFilesDocumentOperation::setVPack(uint8_t const* vpack) {
 }
 
 void MMFilesDocumentOperation::setDocumentIds(MMFilesDocumentDescriptor const& oldRevision,
-                                            MMFilesDocumentDescriptor const& newRevision) {
+                                              MMFilesDocumentDescriptor const& newRevision) {
   TRI_ASSERT(_oldRevision.empty());
   TRI_ASSERT(_newRevision.empty());
 
@@ -91,7 +86,7 @@ void MMFilesDocumentOperation::setDocumentIds(MMFilesDocumentDescriptor const& o
 
 void MMFilesDocumentOperation::revert(transaction::Methods* trx) {
   TRI_ASSERT(trx != nullptr);
-  
+
   if (_status == StatusType::SWAPPED || _status == StatusType::REVERTED) {
     return;
   }
@@ -122,13 +117,11 @@ void MMFilesDocumentOperation::revert(transaction::Methods* trx) {
   if (_type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
     TRI_ASSERT(_oldRevision.empty());
     TRI_ASSERT(!_newRevision.empty());
-    
-    if (status != StatusType::CREATED) { 
+
+    if (status != StatusType::CREATED) {
       // remove document from indexes
       try {
-        physical->rollbackOperation(
-          *trx, _type, oldDocumentId, oldDoc, newDocumentId, newDoc
-        );
+        physical->rollbackOperation(*trx, _type, oldDocumentId, oldDoc, newDocumentId, newDoc);
       } catch (...) {
       }
     }
@@ -143,23 +136,22 @@ void MMFilesDocumentOperation::revert(transaction::Methods* trx) {
              _type == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
     TRI_ASSERT(!_oldRevision.empty());
     TRI_ASSERT(!_newRevision.empty());
-    
+
     try {
       // re-insert the old document
-      physical->insertLocalDocumentId(_oldRevision._localDocumentId, _oldRevision._vpack, 0, true, true);
+      physical->insertLocalDocumentId(_oldRevision._localDocumentId,
+                                      _oldRevision._vpack, 0, true, true);
     } catch (...) {
     }
 
-    if (status != StatusType::CREATED) { 
+    if (status != StatusType::CREATED) {
       try {
         // restore the old index state
-        physical->rollbackOperation(
-          *trx, _type, oldDocumentId, oldDoc, newDocumentId, newDoc
-        );
+        physical->rollbackOperation(*trx, _type, oldDocumentId, oldDoc, newDocumentId, newDoc);
       } catch (...) {
       }
     }
-   
+
     // let the primary index entry point to the correct document
     MMFilesSimpleIndexElement* element = physical->primaryIndex()->lookupKeyRef(
         trx, transaction::helpers::extractKeyFromDocument(newDoc));
@@ -167,13 +159,15 @@ void MMFilesDocumentOperation::revert(transaction::Methods* trx) {
     if (element != nullptr && element->isSet()) {
       VPackSlice keySlice(transaction::helpers::extractKeyFromDocument(oldDoc));
 
-      element->updateLocalDocumentId(oldDocumentId, static_cast<uint32_t>(keySlice.begin() - oldDoc.begin()));
+      element->updateLocalDocumentId(oldDocumentId,
+                                     static_cast<uint32_t>(keySlice.begin() -
+                                                           oldDoc.begin()));
     }
 
     physical->updateLocalDocumentId(oldDocumentId, oldDoc.begin(), 0, false);
 
     // remove now obsolete new document
-    if (oldDocumentId != newDocumentId) { 
+    if (oldDocumentId != newDocumentId) {
       // we need to check for the same document id here
       try {
         physical->removeLocalDocumentId(newDocumentId, true);
@@ -185,16 +179,15 @@ void MMFilesDocumentOperation::revert(transaction::Methods* trx) {
     TRI_ASSERT(_newRevision.empty());
 
     try {
-      physical->insertLocalDocumentId(_oldRevision._localDocumentId, _oldRevision._vpack, 0, true, true);
+      physical->insertLocalDocumentId(_oldRevision._localDocumentId,
+                                      _oldRevision._vpack, 0, true, true);
     } catch (...) {
     }
 
-    if (status != StatusType::CREATED) { 
+    if (status != StatusType::CREATED) {
       try {
         // remove from indexes again
-        physical->rollbackOperation(
-          *trx, _type, oldDocumentId, oldDoc, newDocumentId, newDoc
-        );
+        physical->rollbackOperation(*trx, _type, oldDocumentId, oldDoc, newDocumentId, newDoc);
       } catch (...) {
       }
     }

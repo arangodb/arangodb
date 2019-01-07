@@ -22,8 +22,8 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ActionBase.h"
 #include "CreateDatabase.h"
+#include "ActionBase.h"
 #include "MaintenanceFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -37,12 +37,10 @@ using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 
-CreateDatabase::CreateDatabase(
-  MaintenanceFeature& feature, ActionDescription const& desc)
-  : ActionBase(feature, desc) {
-
+CreateDatabase::CreateDatabase(MaintenanceFeature& feature, ActionDescription const& desc)
+    : ActionBase(feature, desc) {
   std::stringstream error;
-  
+
   _labels.emplace(FAST_TRACK);
 
   if (!desc.has(DATABASE)) {
@@ -55,33 +53,29 @@ CreateDatabase::CreateDatabase(
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
-
 }
 
-CreateDatabase::~CreateDatabase() {};
+CreateDatabase::~CreateDatabase(){};
 
 bool CreateDatabase::first() {
-
   VPackSlice users;
   auto database = _description.get(DATABASE);
 
-  LOG_TOPIC(INFO, Logger::MAINTENANCE)
-    << "CreateDatabase: creating database " << database;
+  LOG_TOPIC(INFO, Logger::MAINTENANCE) << "CreateDatabase: creating database " << database;
 
   try {
-
     DatabaseGuard guard("_system");
 
     // Assertion in constructor makes sure that we have DATABASE.
     _result = Databases::create(_description.get(DATABASE), users, properties());
     if (!_result.ok()) {
       LOG_TOPIC(ERR, Logger::MAINTENANCE)
-        << "CreateDatabase: failed to create database " << database << ": " << _result;
+          << "CreateDatabase: failed to create database " << database << ": " << _result;
 
       _feature.storeDBError(database, _result);
     } else {
       LOG_TOPIC(INFO, Logger::MAINTENANCE)
-        << "CreateDatabase: database  " << database << " created";
+          << "CreateDatabase: database  " << database << " created";
     }
   } catch (std::exception const& e) {
     std::stringstream error;
@@ -94,5 +88,4 @@ bool CreateDatabase::first() {
   // notify always, either error or success
   notify();
   return false;
-
 }

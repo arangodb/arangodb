@@ -168,6 +168,8 @@ class EdgeIndexMock final : public arangodb::Index {
 
   bool canBeDropped() const override { return false; }
 
+  bool isHidden() const override { return false; }
+  
   bool isSorted() const override { return false; }
 
   bool hasSelectivityEstimate() const override { return false; }
@@ -529,7 +531,8 @@ int PhysicalCollectionMock::close() {
   return TRI_ERROR_NO_ERROR; // assume close successful
 }
 
-std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::velocypack::Slice const& info, bool restore, bool& created) {
+std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::velocypack::Slice const& info,
+                                                                     bool restore, bool& created) {
   before();
 
   std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> docs;
@@ -704,12 +707,6 @@ void PhysicalCollectionMock::invokeOnAllElements(arangodb::transaction::Methods*
       return;
     }
   }
-}
-
-std::shared_ptr<arangodb::Index> PhysicalCollectionMock::lookupIndex(arangodb::velocypack::Slice const&) const {
-  before();
-  TRI_ASSERT(false);
-  return nullptr;
 }
 
 arangodb::LocalDocumentId PhysicalCollectionMock::lookupKey(arangodb::transaction::Methods*, arangodb::velocypack::Slice const&) const {
@@ -1041,7 +1038,6 @@ void StorageEngineMock::addV8Functions() {
 
 void StorageEngineMock::changeCollection(
     TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t id,
     arangodb::LogicalCollection const& collection,
     bool doSync
 ) {
@@ -1074,7 +1070,6 @@ std::string StorageEngineMock::collectionPath(
 
 std::string StorageEngineMock::createCollection(
     TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t id,
     arangodb::LogicalCollection const& collection
 ) {
   return "<invalid>"; // physical path of the new collection

@@ -55,15 +55,15 @@ class MMFilesWalSlot {
   inline MMFilesWalSlot::TickType tick() const { return _tick; }
 
   /// @brief return the logfile id assigned to the slot
-  inline MMFilesWalLogfile::IdType logfileId() const { 
+  inline MMFilesWalLogfile::IdType logfileId() const {
     if (_logfile != nullptr) {
-      return _logfile->id(); 
+      return _logfile->id();
     }
     return 0;
   }
-  
+
   /// @brief return the logfile assigned to the slot
-  inline MMFilesWalLogfile* logfile() const { return _logfile; } 
+  inline MMFilesWalLogfile* logfile() const { return _logfile; }
 
   /// @brief return the raw memory pointer assigned to the slot
   inline void* mem() const { return _mem; }
@@ -77,7 +77,7 @@ class MMFilesWalSlot {
   /// @brief calculate the CRC and length values for the slot and
   /// store them in the marker
   void finalize(MMFilesWalMarker const*);
-  
+
   /// @brief calculate the CRC value for the source region (this will modify
   /// the source region) and copy the calculated marker data into the slot
   void fill(void*, size_t);
@@ -91,8 +91,7 @@ class MMFilesWalSlot {
 
   /// @brief whether or not the slot is returned
   inline bool isReturned() const {
-    return (_status == StatusType::RETURNED ||
-            _status == StatusType::RETURNED_WFS);
+    return (_status == StatusType::RETURNED || _status == StatusType::RETURNED_WFS);
   }
 
   /// @brief whether or not a sync was requested for the slot
@@ -127,10 +126,10 @@ class MMFilesWalSlot {
   uint32_t _size;
 
   /// @brief slot status
-  StatusType _status; 
+  StatusType _status;
 };
 
 static_assert(sizeof(MMFilesWalSlot) == 32, "invalid slot size");
-}
+}  // namespace arangodb
 
 #endif

@@ -23,9 +23,9 @@
 #ifndef UTIL_GEOMETRY_S2MULTIPOLYLINE_H__
 #define UTIL_GEOMETRY_S2MULTIPOLYLINE_H__
 
-#include <vector>
-#include <s2/s2region.h>
 #include <s2/s2polyline.h>
+#include <s2/s2region.h>
+#include <vector>
 
 /// Represents a range of multiple independent polylines
 /// Added to complete the GeoJson support
@@ -44,14 +44,14 @@ class S2MultiPolyline : public S2Region {
   void Init(std::vector<S2Polyline>&& lines);
 
   ~S2MultiPolyline() {}
-  
+
   size_t num_lines() const { return lines_.size(); }
   S2Polyline const& line(size_t k) const {
     assert(k < lines_.size());
-    //DCHECK_LT(k, lines_.size());
+    // DCHECK_LT(k, lines_.size());
     return lines_[k];
   }
-  
+
   ////////////////////////////////////////////////////////////////////////
   // S2Region interface (see s2region.h for details):
 

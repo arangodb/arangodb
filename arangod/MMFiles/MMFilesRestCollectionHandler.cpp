@@ -29,23 +29,21 @@
 using namespace arangodb;
 
 MMFilesRestCollectionHandler::MMFilesRestCollectionHandler(GeneralRequest* request,
-                                             GeneralResponse* response)
+                                                           GeneralResponse* response)
     : RestCollectionHandler(request, response) {}
 
 Result MMFilesRestCollectionHandler::handleExtraCommandPut(LogicalCollection& coll,
                                                            std::string const& command,
                                                            velocypack::Builder& builder) {
-  
   if (command == "rotate") {
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
     SingleCollectionTransaction trx(ctx, coll, AccessMode::Type::WRITE);
-    
+
     Result res = trx.begin();
-    
+
     if (res.ok()) {
-    
       MMFilesCollection* mcoll = static_cast<MMFilesCollection*>(coll.getPhysical());
-      
+
       try {
         res = mcoll->rotateActiveJournal();
       } catch (basics::Exception const& ex) {
@@ -53,10 +51,10 @@ Result MMFilesRestCollectionHandler::handleExtraCommandPut(LogicalCollection& co
       } catch (std::exception const& ex) {
         res.reset(TRI_ERROR_INTERNAL, ex.what());
       }
-      
+
       res = trx.finish(res);
     }
-    
+
     if (res.ok()) {
       builder.openObject();
       builder.add("result", VPackValue(true));
@@ -64,6 +62,6 @@ Result MMFilesRestCollectionHandler::handleExtraCommandPut(LogicalCollection& co
     }
     return res;
   }
-  
+
   return TRI_ERROR_NOT_IMPLEMENTED;
 }

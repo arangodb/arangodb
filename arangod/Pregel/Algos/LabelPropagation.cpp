@@ -104,8 +104,8 @@ struct LPComputation : public VertexComputation<LPValue, int8_t, uint64_t> {
   }
 };
 
-VertexComputation<LPValue, int8_t, uint64_t>*
-LabelPropagation::createComputation(WorkerConfig const* config) const {
+VertexComputation<LPValue, int8_t, uint64_t>* LabelPropagation::createComputation(
+    WorkerConfig const* config) const {
   return new LPComputation();
 }
 
@@ -129,9 +129,8 @@ struct LPGraphFormat : public GraphFormat<LPValue, int8_t> {
     }
   }
 
-  size_t copyVertexData(std::string const& documentId,
-                        arangodb::velocypack::Slice document, LPValue* value,
-                        size_t maxSize) override {
+  size_t copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
+                        LPValue* value, size_t maxSize) override {
     value->currentCommunity = vertexIdRange++;
     return sizeof(LPValue);
   }
@@ -144,7 +143,7 @@ struct LPGraphFormat : public GraphFormat<LPValue, int8_t> {
   bool buildVertexDocument(arangodb::velocypack::Builder& b, const LPValue* ptr,
                            size_t size) const override {
     b.add(_resultField, VPackValue(ptr->currentCommunity));
-    //b.add("stabilizationRounds", VPackValue(ptr->stabilizationRounds));
+    // b.add("stabilizationRounds", VPackValue(ptr->stabilizationRounds));
     return true;
   }
 

@@ -42,7 +42,7 @@ extern std::string const NO_LEADER;
 
 enum role_t { FOLLOWER, CANDIDATE, LEADER };
 
-enum apply_ret_t {APPLIED, PRECONDITION_FAILED, FORBIDDEN, UNKNOWN_ERROR};
+enum apply_ret_t { APPLIED, PRECONDITION_FAILED, FORBIDDEN, UNKNOWN_ERROR };
 
 typedef std::chrono::duration<long, std::ratio<1, 1000>> duration_t;
 typedef uint64_t index_t;
@@ -56,10 +56,9 @@ struct read_ret_t {
   std::string redirect;       // If not accepted redirect id
   std::vector<bool> success;  // Query's precond OK
   query_t result;             // Query result
-  read_ret_t(
-    bool a, std::string const& id,
-    std::vector<bool> const& suc = std::vector<bool>(), query_t res = nullptr)
-    : accepted(a), redirect(id), success(suc), result(res) {}
+  read_ret_t(bool a, std::string const& id,
+             std::vector<bool> const& suc = std::vector<bool>(), query_t res = nullptr)
+      : accepted(a), redirect(id), success(suc), result(res) {}
 };
 
 struct write_ret_t {
@@ -71,14 +70,14 @@ struct write_ret_t {
   write_ret_t(bool a, std::string const& id) : accepted(a), redirect(id) {}
   write_ret_t(bool a, std::string const& id, std::vector<apply_ret_t> const& app,
               std::vector<index_t> const& idx)
-    : accepted(a), redirect(id), applied(app), indices(idx) {}
+      : accepted(a), redirect(id), applied(app), indices(idx) {}
   bool successful() const {
     return !indices.empty() &&
-      std::find(indices.begin(), indices.end(), 0) == indices.end();
+           std::find(indices.begin(), indices.end(), 0) == indices.end();
   }
 };
 
-inline std::ostream& operator<< (std::ostream& o, write_ret_t const& w) {
+inline std::ostream& operator<<(std::ostream& o, write_ret_t const& w) {
   o << "accepted: " << w.accepted << ", redirect: " << w.redirect << ", indices: [";
   for (const auto& i : w.indices) {
     o << i << ", ";
@@ -94,10 +93,10 @@ struct trans_ret_t {
   size_t failed;
   query_t result;
   trans_ret_t() : accepted(false), redirect(""), maxind(0), failed(0) {}
-  trans_ret_t(bool a, std::string const& id) : accepted(a), redirect(id), maxind(0), failed(0) {}
-  trans_ret_t(bool a, std::string const& id, index_t mi, size_t f,
-              query_t const& res) : accepted(a), redirect(id), maxind(mi),
-                                    failed(f), result(res) {}
+  trans_ret_t(bool a, std::string const& id)
+      : accepted(a), redirect(id), maxind(0), failed(0) {}
+  trans_ret_t(bool a, std::string const& id, index_t mi, size_t f, query_t const& res)
+      : accepted(a), redirect(id), maxind(mi), failed(f), result(res) {}
 };
 
 struct inquire_ret_t {
@@ -105,9 +104,9 @@ struct inquire_ret_t {
   std::string redirect;  // If not accepted redirect id
   query_t result;
   inquire_ret_t() : accepted(false), redirect("") {}
-  inquire_ret_t(bool a, std::string const& id) : accepted(a), redirect(id){}
-  inquire_ret_t(bool a, std::string const& id, query_t const& res) :
-    accepted(a), redirect(id), result(res) {}
+  inquire_ret_t(bool a, std::string const& id) : accepted(a), redirect(id) {}
+  inquire_ret_t(bool a, std::string const& id, query_t const& res)
+      : accepted(a), redirect(id), result(res) {}
 };
 
 struct log_t {
@@ -124,16 +123,13 @@ struct log_t {
         entry(std::make_shared<arangodb::velocypack::Buffer<uint8_t>>(*e.get())),
         clientId(clientId),
         timestamp(std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::system_clock::now().time_since_epoch())) {
-    
-  }
+            std::chrono::system_clock::now().time_since_epoch())) {}
 
   friend std::ostream& operator<<(std::ostream& o, log_t const& l) {
-    o << l.index << " " << l.term << " " << VPackSlice(l.entry->data()).toJson()
-      << " " << " " << l.clientId << " "<< l.timestamp.count();
+    o << l.index << " " << l.term << " " << VPackSlice(l.entry->data()).toJson() << " "
+      << " " << l.clientId << " " << l.timestamp.count();
     return o;
   }
-  
 };
 
 struct priv_rpc_ret_t {
@@ -142,15 +138,13 @@ struct priv_rpc_ret_t {
   priv_rpc_ret_t(bool s, term_t t) : success(s), term(t) {}
 };
 
-}
-}
+}  // namespace consensus
+}  // namespace arangodb
 
 inline std::ostream& operator<<(std::ostream& o, arangodb::consensus::log_t const& l) {
-  o << l.index << " " << l.term << " " << VPackSlice(l.entry->data()).toJson()
-    << " " << " " << l.clientId << " "<< l.timestamp.count();
+  o << l.index << " " << l.term << " " << VPackSlice(l.entry->data()).toJson() << " "
+    << " " << l.clientId << " " << l.timestamp.count();
   return o;
 }
-  
-
 
 #endif

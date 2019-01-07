@@ -42,13 +42,11 @@ RocksDBKeyBounds RocksDBKeyBounds::Databases() {
   return RocksDBKeyBounds(RocksDBEntryType::Database);
 }
 
-RocksDBKeyBounds RocksDBKeyBounds::DatabaseCollections(
-    TRI_voc_tick_t databaseId) {
+RocksDBKeyBounds RocksDBKeyBounds::DatabaseCollections(TRI_voc_tick_t databaseId) {
   return RocksDBKeyBounds(RocksDBEntryType::Collection, databaseId);
 }
 
-RocksDBKeyBounds RocksDBKeyBounds::CollectionDocuments(
-    uint64_t collectionObjectId) {
+RocksDBKeyBounds RocksDBKeyBounds::CollectionDocuments(uint64_t collectionObjectId) {
   return RocksDBKeyBounds(RocksDBEntryType::Document, collectionObjectId);
 }
 
@@ -60,8 +58,8 @@ RocksDBKeyBounds RocksDBKeyBounds::EdgeIndex(uint64_t indexId) {
   return RocksDBKeyBounds(RocksDBEntryType::EdgeIndexValue, indexId);
 }
 
-RocksDBKeyBounds RocksDBKeyBounds::EdgeIndexVertex(
-    uint64_t indexId, arangodb::StringRef const& vertexId) {
+RocksDBKeyBounds RocksDBKeyBounds::EdgeIndexVertex(uint64_t indexId,
+                                                   arangodb::StringRef const& vertexId) {
   return RocksDBKeyBounds(RocksDBEntryType::EdgeIndexValue, indexId, vertexId);
 }
 
@@ -87,30 +85,23 @@ RocksDBKeyBounds RocksDBKeyBounds::GeoIndex(uint64_t indexId) {
 
 RocksDBKeyBounds RocksDBKeyBounds::GeoIndex(uint64_t indexId, uint64_t minCell,
                                             uint64_t maxCell) {
-  return RocksDBKeyBounds(RocksDBEntryType::GeoIndexValue, indexId, minCell,
-                          maxCell);
+  return RocksDBKeyBounds(RocksDBEntryType::GeoIndexValue, indexId, minCell, maxCell);
 }
 
-RocksDBKeyBounds RocksDBKeyBounds::VPackIndex(uint64_t indexId,
-                                              VPackSlice const& left,
+RocksDBKeyBounds RocksDBKeyBounds::VPackIndex(uint64_t indexId, VPackSlice const& left,
                                               VPackSlice const& right) {
-  return RocksDBKeyBounds(RocksDBEntryType::VPackIndexValue, indexId, left,
-                          right);
+  return RocksDBKeyBounds(RocksDBEntryType::VPackIndexValue, indexId, left, right);
 }
 
 /// used for seeking lookups
-RocksDBKeyBounds RocksDBKeyBounds::UniqueVPackIndex(uint64_t indexId,
-                                                    VPackSlice const& left,
+RocksDBKeyBounds RocksDBKeyBounds::UniqueVPackIndex(uint64_t indexId, VPackSlice const& left,
                                                     VPackSlice const& right) {
-  return RocksDBKeyBounds(RocksDBEntryType::UniqueVPackIndexValue, indexId,
-                          left, right);
+  return RocksDBKeyBounds(RocksDBEntryType::UniqueVPackIndexValue, indexId, left, right);
 }
 
 /// used for point lookups
-RocksDBKeyBounds RocksDBKeyBounds::UniqueVPackIndex(uint64_t indexId,
-                                                    VPackSlice const& left) {
-  return RocksDBKeyBounds(RocksDBEntryType::UniqueVPackIndexValue, indexId,
-                          left);
+RocksDBKeyBounds RocksDBKeyBounds::UniqueVPackIndex(uint64_t indexId, VPackSlice const& left) {
+  return RocksDBKeyBounds(RocksDBEntryType::UniqueVPackIndexValue, indexId, left);
 }
 
 RocksDBKeyBounds RocksDBKeyBounds::DatabaseViews(TRI_voc_tick_t databaseId) {
@@ -129,8 +120,8 @@ RocksDBKeyBounds RocksDBKeyBounds::KeyGenerators() {
   return RocksDBKeyBounds(RocksDBEntryType::KeyGeneratorValue);
 }
 
-RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexPrefix(
-    uint64_t objectId, arangodb::StringRef const& word) {
+RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexPrefix(uint64_t objectId,
+                                                       arangodb::StringRef const& word) {
   // I did not want to pass a bool to the constructor for this
   RocksDBKeyBounds b(RocksDBEntryType::FulltextIndexValue);
 
@@ -149,8 +140,8 @@ RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexPrefix(
   return b;
 }
 
-RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexComplete(
-    uint64_t indexId, arangodb::StringRef const& word) {
+RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexComplete(uint64_t indexId,
+                                                         arangodb::StringRef const& word) {
   return RocksDBKeyBounds(RocksDBEntryType::FulltextIndexValue, indexId, word);
 }
 
@@ -283,8 +274,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
       // static slices with an array with one entry
       VPackSlice min("\x02\x03\x1e");  // [minSlice]
       VPackSlice max("\x02\x03\x1f");  // [maxSlice]
-      _internals.reserve(2 * sizeof(uint64_t) + min.byteSize() +
-                         max.byteSize());
+      _internals.reserve(2 * sizeof(uint64_t) + min.byteSize() + max.byteSize());
 
       uint64ToPersistent(_internals.buffer(), first);
       _internals.buffer().append((char*)(min.begin()), min.byteSize());
@@ -366,7 +356,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
       _internals.push_back(_stringSeparator);
       uint64ToPersistent(_internals.buffer(), UINT64_MAX);
       if (type == RocksDBEntryType::EdgeIndexValue) {
-        _internals.push_back(0xFFU); // high-byte for prefix extractor
+        _internals.push_back(0xFFU);  // high-byte for prefix extractor
       }
       break;
     }
@@ -382,8 +372,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
     : _type(type) {
   switch (_type) {
     case RocksDBEntryType::UniqueVPackIndexValue: {
-      size_t startLength =
-          sizeof(uint64_t) + static_cast<size_t>(second.byteSize());
+      size_t startLength = sizeof(uint64_t) + static_cast<size_t>(second.byteSize());
 
       _internals.reserve(startLength);
       uint64ToPersistent(_internals.buffer(), first);
@@ -402,16 +391,13 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
 
 /// iterate over the specified bounds of the velocypack index
 RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
-                                   VPackSlice const& second,
-                                   VPackSlice const& third)
+                                   VPackSlice const& second, VPackSlice const& third)
     : _type(type) {
   switch (_type) {
     case RocksDBEntryType::VPackIndexValue:
     case RocksDBEntryType::UniqueVPackIndexValue: {
-      size_t startLength =
-          sizeof(uint64_t) + static_cast<size_t>(second.byteSize());
-      size_t endLength =
-          2 * sizeof(uint64_t) + static_cast<size_t>(third.byteSize());
+      size_t startLength = sizeof(uint64_t) + static_cast<size_t>(second.byteSize());
+      size_t endLength = 2 * sizeof(uint64_t) + static_cast<size_t>(third.byteSize());
 
       _internals.reserve(startLength + endLength);
       uint64ToPersistent(_internals.buffer(), first);
@@ -455,8 +441,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
 namespace arangodb {
 
 std::ostream& operator<<(std::ostream& stream, RocksDBKeyBounds const& bounds) {
-  stream << "[bounds cf: "
-         << RocksDBColumnFamily::columnFamilyName(bounds.columnFamily())
+  stream << "[bounds cf: " << RocksDBColumnFamily::columnFamilyName(bounds.columnFamily())
          << " type: " << arangodb::rocksDBEntryTypeName(bounds.type()) << " ";
 
   auto dump = [&stream](rocksdb::Slice const& slice) {

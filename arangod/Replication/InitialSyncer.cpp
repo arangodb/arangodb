@@ -26,12 +26,10 @@
 #include "Scheduler/SchedulerFeature.h"
 
 namespace arangodb {
-  
-InitialSyncer::InitialSyncer(
-    ReplicationApplierConfiguration const& configuration,
-    replutils::ProgressInfo::Setter setter)
-    : Syncer(configuration),
-      _progress{setter} {}
+
+InitialSyncer::InitialSyncer(ReplicationApplierConfiguration const& configuration,
+                             replutils::ProgressInfo::Setter setter)
+    : Syncer(configuration), _progress{setter} {}
 
 InitialSyncer::~InitialSyncer() {
   if (_batchPingTimer) {
@@ -41,25 +39,26 @@ InitialSyncer::~InitialSyncer() {
       // cancel may throw
     }
   }
-  
+
   try {
     if (!_state.isChildSyncer) {
       _batch.finish(_state.connection, _progress);
     }
-  } catch (...) {}
+  } catch (...) {
+  }
 }
-  
+
 /// @brief start a recurring task to extend the batch
 void InitialSyncer::startRecurringBatchExtension() {
   TRI_ASSERT(!_state.isChildSyncer);
   if (isAborted()) {
     return;
   }
-  
+
   if (!_batchPingTimer) {
     _batchPingTimer.reset(SchedulerFeature::SCHEDULER->newSteadyTimer());
   }
-  
+
   int secs = _batch.ttl / 2;
   if (secs < 30) {
     secs = 30;

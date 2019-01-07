@@ -35,10 +35,8 @@ using namespace arangodb::methods;
 using namespace arangodb::maintenance;
 using namespace arangodb;
 
-DropDatabase::DropDatabase(
-  MaintenanceFeature& feature, ActionDescription const& desc)
-  : ActionBase(feature, desc) {
-
+DropDatabase::DropDatabase(MaintenanceFeature& feature, ActionDescription const& desc)
+    : ActionBase(feature, desc) {
   std::stringstream error;
 
   _labels.emplace(FAST_TRACK);
@@ -53,13 +51,11 @@ DropDatabase::DropDatabase(
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
-
 }
 
-DropDatabase::~DropDatabase() {};
+DropDatabase::~DropDatabase(){};
 
 bool DropDatabase::first() {
-
   std::string const database = _description.get(DATABASE);
   LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "DropDatabase: dropping " << database;
 
@@ -69,9 +65,8 @@ bool DropDatabase::first() {
 
     _result = Databases::drop(vocbase, database);
     if (!_result.ok()) {
-      LOG_TOPIC(ERR, Logger::AGENCY)
-        << "DropDatabase: dropping database " << database << " failed: "
-        << _result.errorMessage();
+      LOG_TOPIC(ERR, Logger::AGENCY) << "DropDatabase: dropping database " << database
+                                     << " failed: " << _result.errorMessage();
       return false;
     }
   } catch (std::exception const& e) {
@@ -83,5 +78,4 @@ bool DropDatabase::first() {
 
   notify();
   return false;
-
 }

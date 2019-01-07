@@ -69,17 +69,15 @@ struct BenchmarkOperation {
   /// @brief return the HTTP method of the operation to execute
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual arangodb::rest::RequestType type(int const, size_t const,
-                                                     size_t const) = 0;
+  virtual arangodb::rest::RequestType type(int const, size_t const, size_t const) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the payload (body) of the HTTP request to execute
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual char const* payload(size_t*, int const, size_t const, size_t const,
-                              bool*) = 0;
+  virtual char const* payload(size_t*, int const, size_t const, size_t const, bool*) = 0;
 };
-}
-}
+}  // namespace arangobench
+}  // namespace arangodb
 
 #endif

@@ -56,6 +56,6 @@ class MMFilesRemoverThread final : public Thread {
   static uint64_t const Interval;
 };
 
-}
+}  // namespace arangodb
 
 #endif

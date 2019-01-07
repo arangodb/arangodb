@@ -63,7 +63,7 @@ filter::prepared::ptr filter::prepared::empty() {
   );
 }
 
-filter::prepared::prepared(attribute_store&& attrs)
+filter::prepared::prepared(attribute_store&& attrs) NOEXCEPT
   : attrs_(std::move(attrs)) {
 }
 
