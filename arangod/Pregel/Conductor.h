@@ -32,8 +32,8 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/Statistics.h"
-#include "Utils/DatabaseGuard.h"
 #include "Scheduler/Scheduler.h"
+#include "Utils/DatabaseGuard.h"
 
 namespace arangodb {
 namespace pregel {

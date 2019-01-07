@@ -27,8 +27,8 @@
 
 #include "Basics/StringBuffer.h"
 #include "Basics/asio_ns.h"
-#include "Logger/Logger.h"
 #include "GeneralServer/GeneralServer.h"
+#include "Logger/Logger.h"
 
 namespace arangodb {
 

@@ -25,9 +25,9 @@
 #include "ListenTask.h"
 
 #include "Basics/MutexLocker.h"
+#include "GeneralServer/Acceptor.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
-#include "GeneralServer/Acceptor.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;
@@ -75,7 +75,6 @@ void ListenTask::accept() {
   auto self(shared_from_this());
 
   auto handler = [this, self](asio_ns::error_code const& ec) {
-
     TRI_ASSERT(_acceptor != nullptr);
 
     if (ec) {

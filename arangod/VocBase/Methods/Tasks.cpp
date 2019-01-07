@@ -107,7 +107,6 @@ std::shared_ptr<Task> Task::createTask(std::string const& id, std::string const&
 }
 
 int Task::unregisterTask(std::string const& id, bool cancel) {
-
   if (id.empty()) {
     return TRI_ERROR_TASK_INVALID_ID;
   }
@@ -182,7 +181,7 @@ void Task::shutdownTasks() {
       LOG_TOPIC(INFO, Logger::FIXME) << "Waiting for " << size << " Tasks to complete.";
       std::this_thread::sleep_for(std::chrono::seconds(1));
     } else {
-      break ;
+      break;
     }
   }
 }
@@ -291,21 +290,20 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
     }
 
     // now do the work:
-    SchedulerFeature::SCHEDULER->queue(
-      RequestLane::INTERNAL_LOW, [self, this, execContext] {
-          ExecContextScope scope(_user.empty() ? ExecContext::superuser()
-                                               : execContext.get());
-          work(execContext.get());
+    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [self, this, execContext] {
+      ExecContextScope scope(_user.empty() ? ExecContext::superuser()
+                                           : execContext.get());
+      work(execContext.get());
 
-          if (_periodic.load() && !application_features::ApplicationServer::isStopping()) {
-            // requeue the task
-            queue(_interval);
-          } else {
-            // in case of one-off tasks or in case of a shutdown, simply
-            // remove the task from the list
-            Task::unregisterTask(_id, true);
-          }
-        });
+      if (_periodic.load() && !application_features::ApplicationServer::isStopping()) {
+        // requeue the task
+        queue(_interval);
+      } else {
+        // in case of one-off tasks or in case of a shutdown, simply
+        // remove the task from the list
+        Task::unregisterTask(_id, true);
+      }
+    });
   };
 }
 
@@ -328,7 +326,8 @@ void Task::start() {
 
 void Task::queue(std::chrono::microseconds offset) {
   MUTEX_LOCKER(lock, _taskHandleMutex);
-  _taskHandle = SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW, offset, callbackFunction());
+  _taskHandle = SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW,
+                                                        offset, callbackFunction());
 }
 
 void Task::cancel() {

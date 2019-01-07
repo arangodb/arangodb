@@ -25,8 +25,8 @@
 #define ARANGOD_SCHEDULER_SCHEDULER_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "GeneralServer/Socket.h"  // This is required for asio_ns::signal_set
 #include "Scheduler/Scheduler.h"
-#include "GeneralServer/Socket.h" // This is required for asio_ns::signal_set
 
 namespace arangodb {
 
@@ -44,7 +44,6 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   void stop() override final;
   void unprepare() override final;
 
-
  private:
   uint64_t _nrMinimalThreads = 2;
   uint64_t _nrMaximalThreads = 0;
@@ -53,7 +52,6 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   uint64_t _fifo2Size = 4096;
 
   std::unique_ptr<Scheduler> _scheduler;
-
 
   // -------------------------------------------------------------------------
   // UNRELATED SECTION STARS HERE: Singals and other things creeped into Sched
@@ -64,7 +62,7 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   void buildControlCHandler();
   void buildHangupHandler();
 
-private:
+ private:
   void initV8Stuff();
   void deinitV8Stuff();
   void signalStuffInit();
@@ -78,6 +76,6 @@ private:
   std::shared_ptr<asio_ns::signal_set> _hangupSignals;
 };
 
-}
+}  // namespace arangodb
 
 #endif

@@ -28,9 +28,9 @@
 #include "Basics/Result.h"
 #include "Basics/asio_ns.h"
 #include "Replication/ReplicationApplierConfiguration.h"
-#include "Scheduler/Scheduler.h"
 #include "Replication/Syncer.h"
 #include "Replication/utilities.h"
+#include "Scheduler/Scheduler.h"
 
 #include <velocypack/Slice.h>
 

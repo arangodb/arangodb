@@ -219,21 +219,19 @@ bool RestBatchHandler::executeNextHandler() {
   }
 
   // now scheduler the real handler
-  bool ok = SchedulerFeature::SCHEDULER->queue(
-    handler->getRequestLane(), [this, self, handler]() {
-
-      // start to work for this handler
-      // ignore any errors here, will be handled later by inspecting the response
-      try {
-        ExecContextScope scope(nullptr);// workaround because of assertions
-        handler->runHandler([this, self](RestHandler *handler) {
-          processSubHandlerResult(*handler);
-
-        });
-      } catch (...) {
-        processSubHandlerResult(*handler.get());
-      }
-  });
+  bool ok =
+      SchedulerFeature::SCHEDULER->queue(handler->getRequestLane(), [this, self, handler]() {
+        // start to work for this handler
+        // ignore any errors here, will be handled later by inspecting the response
+        try {
+          ExecContextScope scope(nullptr);  // workaround because of assertions
+          handler->runHandler([this, self](RestHandler* handler) {
+            processSubHandlerResult(*handler);
+          });
+        } catch (...) {
+          processSubHandlerResult(*handler.get());
+        }
+      });
 
   if (!ok) {
     generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_QUEUE_FULL);

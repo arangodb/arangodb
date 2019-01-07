@@ -25,11 +25,10 @@
 #ifndef ARANGOD_SUPERIVSED_SCHEDULER_SCHEDULER_H
 #define ARANGOD_SUPERIVSED_SCHEDULER_SCHEDULER_H 1
 
-
 #include <boost/lockfree/queue.hpp>
+#include <condition_variable>
 #include <list>
 #include <mutex>
-#include <condition_variable>
 #include <queue>
 
 #include "Scheduler/Scheduler.h"
@@ -40,23 +39,21 @@ class SupervisedSchedulerWorkerThread;
 class SupervisedSchedulerManagerThread;
 
 class SupervisedScheduler : public Scheduler {
-
  public:
   SupervisedScheduler(uint64_t minThreads, uint64_t maxThreads, uint64_t maxQueueSize,
-            uint64_t fifo1Size, uint64_t fifo2Size);
+                      uint64_t fifo1Size, uint64_t fifo2Size);
   virtual ~SupervisedScheduler();
 
   bool queue(RequestLane lane, std::function<void()>) override;
 
-private:
+ private:
   std::atomic<size_t> _numWorker;
   std::atomic<bool> _stopping;
 
-protected:
+ protected:
   bool isStopping() override { return _stopping; }
 
-public:
-
+ public:
   bool start() override;
   void shutdown() override;
 
@@ -72,10 +69,10 @@ public:
     std::function<void()> _handler;
 
     WorkItem(std::function<void()> const& handler) : _handler(handler) {}
-    WorkItem(std::function<void()> && handler) : _handler(std::move(handler)) {}
+    WorkItem(std::function<void()>&& handler) : _handler(std::move(handler)) {}
     virtual ~WorkItem() {}
 
-    virtual void operator() () { _handler(); }
+    virtual void operator()() { _handler(); }
   };
 
   // Since the lockfree queue can only handle PODs, one has to wrap lambdas
@@ -100,7 +97,6 @@ public:
   std::atomic<uint64_t> _wakeupQueueLength;                        // q1
   std::atomic<uint64_t> _wakeupTime_ns, _definitiveWakeupTime_ns;  // t3, t4
 
-
   // each worker thread has a state block which contains configuration values.
   // _queueRetryCount is the number of spins this particular thread should perform
   // before going to sleep.
@@ -116,16 +112,16 @@ public:
   //    Hence if you want to know, if the thread has a long running job, test for
   //    _working && (now - _lastJobStarted) > eps
   struct WorkerState {
-    uint64_t _queueRetryCount;     // t1
-    uint64_t _sleepTimeout_ms;    // t2
+    uint64_t _queueRetryCount;  // t1
+    uint64_t _sleepTimeout_ms;  // t2
     std::atomic<bool> _stop, _working;
     clock::time_point _lastJobStarted;
     std::unique_ptr<SupervisedSchedulerWorkerThread> _thread;
     char padding[40];
 
     // initialize with harmless defaults: spin once, sleep forever
-    WorkerState(SupervisedScheduler &scheduler);
-    WorkerState(WorkerState &&that);
+    WorkerState(SupervisedScheduler& scheduler);
+    WorkerState(WorkerState&& that);
 
     bool start();
   };
@@ -145,15 +141,14 @@ public:
   std::condition_variable _conditionSupervisor;
   std::unique_ptr<SupervisedSchedulerManagerThread> _manager;
 
-  std::unique_ptr<WorkItem> getWork (std::shared_ptr<WorkerState> &state);
+  std::unique_ptr<WorkItem> getWork(std::shared_ptr<WorkerState>& state);
 
   void startOneThread();
   void stopOneThread();
 
   void cleanupAbandonedThreads();
   void sortoutLongRunningThreads();
-
 };
-}
+}  // namespace arangodb
 
 #endif

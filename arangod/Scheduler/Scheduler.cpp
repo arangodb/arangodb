@@ -33,12 +33,12 @@
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/cpu-relax.h"
+#include "GeneralServer/Acceptor.h"
 #include "GeneralServer/RestHandler.h"
+#include "GeneralServer/Task.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/GeneralResponse.h"
-#include "GeneralServer/Acceptor.h"
-#include "GeneralServer/Task.h"
 #include "Statistics/RequestStatistics.h"
 
 using namespace arangodb;
@@ -46,36 +46,32 @@ using namespace arangodb::basics;
 
 namespace arangodb {
 
-  class SchedulerThread : virtual public Thread {
-  public:
-    SchedulerThread(Scheduler &scheduler) : Thread("Scheduler"), _scheduler(scheduler) {}
-    ~SchedulerThread() { shutdown(); }
-  protected:
-    Scheduler &_scheduler;
-  };
+class SchedulerThread : virtual public Thread {
+ public:
+  SchedulerThread(Scheduler& scheduler)
+      : Thread("Scheduler"), _scheduler(scheduler) {}
+  ~SchedulerThread() { shutdown(); }
 
+ protected:
+  Scheduler& _scheduler;
+};
 
-  class SchedulerCronThread : public SchedulerThread {
-  public:
-    SchedulerCronThread(Scheduler &scheduler) :
-      Thread("SchedCron"), SchedulerThread(scheduler) {}
+class SchedulerCronThread : public SchedulerThread {
+ public:
+  SchedulerCronThread(Scheduler& scheduler)
+      : Thread("SchedCron"), SchedulerThread(scheduler) {}
 
-    void run() {
-      _scheduler.runCronThread();
-    }
-  };
+  void run() { _scheduler.runCronThread(); }
+};
 
-}
-
+}  // namespace arangodb
 
 Scheduler::Scheduler() /*: _stopping(false)*/
 {
   // Move this into the Feature and then move it else where
-
 }
 
 Scheduler::~Scheduler() {}
-
 
 bool Scheduler::start() {
   _cronThread.reset(new SchedulerCronThread(*this));
@@ -106,12 +102,10 @@ void Scheduler::shutdown() {
 #endif
 }
 
-void Scheduler::runCronThread()
-{
+void Scheduler::runCronThread() {
   std::unique_lock<std::mutex> guard(_cronQueueMutex);
 
   while (!isStopping()) {
-
     auto now = clock::now();
     clock::duration sleepTime = std::chrono::milliseconds(50);
 
@@ -131,26 +125,21 @@ void Scheduler::runCronThread()
         auto then = (top.first - now);
 
         sleepTime = (sleepTime > then ? then : sleepTime);
-        break ;
+        break;
       }
     }
 
     _croncv.wait_for(guard, sleepTime);
-
   }
 }
 
-Scheduler::WorkHandle Scheduler::queueDelay(
-    RequestLane lane,
-    clock::duration delay,
-    std::function<void(bool cancelled)> handler
-) {
-
+Scheduler::WorkHandle Scheduler::queueDelay(RequestLane lane, clock::duration delay,
+                                            std::function<void(bool cancelled)> handler) {
   TRI_ASSERT(!isStopping());
 
   if (delay < std::chrono::milliseconds(1)) {
     // execute directly
-    queue(lane, [handler](){ handler(false); });
+    queue(lane, [handler]() { handler(false); });
     return nullptr;
   }
 

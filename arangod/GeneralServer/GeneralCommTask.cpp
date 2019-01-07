@@ -36,6 +36,7 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
 #include "GeneralServer/RestHandlerFactory.h"
+#include "GeneralServer/Socket.h"
 #include "Logger/Logger.h"
 #include "Meta/conversion.h"
 #include "Replication/ReplicationFeature.h"
@@ -43,7 +44,6 @@
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "GeneralServer/Socket.h"
 #include "Utils/Events.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -437,8 +437,7 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   auto self = shared_from_this();
 
   bool ok = SchedulerFeature::SCHEDULER->queue(lane, [self, this, handler]() {
-    handleRequestDirectly(basics::ConditionalLocking::DoLock,
-                          std::move(handler));
+    handleRequestDirectly(basics::ConditionalLocking::DoLock, std::move(handler));
   });
 
   if (!ok) {
@@ -474,17 +473,16 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
     *jobId = handler->handlerId();
 
     // callback will persist the response with the AsyncJobManager
-    return SchedulerFeature::SCHEDULER->queue(
-          handler->getRequestLane(), [self, handler] {
-          handler->runHandler([](RestHandler* h) {
-            GeneralServerFeature::JOB_MANAGER->finishAsyncJob(h);
-          });
-        });
+    return SchedulerFeature::SCHEDULER->queue(handler->getRequestLane(), [self, handler] {
+      handler->runHandler([](RestHandler* h) {
+        GeneralServerFeature::JOB_MANAGER->finishAsyncJob(h);
+      });
+    });
   } else {
     // here the response will just be ignored
-    return SchedulerFeature::SCHEDULER->queue(
-        handler->getRequestLane(),
-        [self, handler] { handler->runHandler([](RestHandler*) {}); });
+    return SchedulerFeature::SCHEDULER->queue(handler->getRequestLane(), [self, handler] {
+      handler->runHandler([](RestHandler*) {});
+    });
   }
 }
 

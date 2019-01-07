@@ -1103,13 +1103,14 @@ class SharedRequestsState : public ClusterCommCallback,
     auto self = shared_from_this();
     auto duration = std::chrono::duration<double>(actionNeeded);
 
-    _handle = SchedulerFeature::SCHEDULER->queueDelay(RequestLane::CLUSTER_INTERNAL,
-      std::chrono::duration_cast<std::chrono::nanoseconds>(duration),
-      [self, this] (bool cancelled) {
-      if (!cancelled) {
-        this->performTasks(true);
-      }
-    });
+    _handle = SchedulerFeature::SCHEDULER->queueDelay(
+        RequestLane::CLUSTER_INTERNAL,
+        std::chrono::duration_cast<std::chrono::nanoseconds>(duration),
+        [self, this](bool cancelled) {
+          if (!cancelled) {
+            this->performTasks(true);
+          }
+        });
   }
 
  private:

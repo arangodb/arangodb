@@ -27,11 +27,9 @@
 
 namespace arangodb {
 
-InitialSyncer::InitialSyncer(
-    ReplicationApplierConfiguration const& configuration,
-    replutils::ProgressInfo::Setter setter)
-    : Syncer(configuration),
-      _progress{setter} {}
+InitialSyncer::InitialSyncer(ReplicationApplierConfiguration const& configuration,
+                             replutils::ProgressInfo::Setter setter)
+    : Syncer(configuration), _progress{setter} {}
 
 InitialSyncer::~InitialSyncer() {
   _batchPingTimer.reset();
@@ -55,13 +53,13 @@ void InitialSyncer::startRecurringBatchExtension() {
   if (secs < 30) {
     secs = 30;
   }
-  _batchPingTimer = SchedulerFeature::SCHEDULER->queueDelay(RequestLane::SERVER_REPLICATION, std::chrono::seconds(secs),
-    [this](bool cancelled) {
-    if (!cancelled && _batch.id != 0 && !isAborted()) {
-      _batch.extend(_state.connection, _progress);
-      startRecurringBatchExtension();
-    }
-  });
+  _batchPingTimer = SchedulerFeature::SCHEDULER->queueDelay(
+      RequestLane::SERVER_REPLICATION, std::chrono::seconds(secs), [this](bool cancelled) {
+        if (!cancelled && _batch.id != 0 && !isAborted()) {
+          _batch.extend(_state.connection, _progress);
+          startRecurringBatchExtension();
+        }
+      });
 }
 
 }  // namespace arangodb

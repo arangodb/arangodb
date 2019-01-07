@@ -50,26 +50,25 @@ using namespace arangodb::options;
 using namespace arangodb::rest;
 
 namespace {
-  /// @brief return the default number of threads to use (upper bound)
-  size_t defaultNumberOfThreads() {
-    // use two times the number of hardware threads as the default
-    size_t result = TRI_numberProcessors() * 2;
-    // but only if higher than 64. otherwise use a default minimum value of 64
-    if (result < 64) {
-      result = 64;
-    }
-    return result;
+/// @brief return the default number of threads to use (upper bound)
+size_t defaultNumberOfThreads() {
+  // use two times the number of hardware threads as the default
+  size_t result = TRI_numberProcessors() * 2;
+  // but only if higher than 64. otherwise use a default minimum value of 64
+  if (result < 64) {
+    result = 64;
   }
-
+  return result;
 }
+
+}  // namespace
 
 namespace arangodb {
 
 Scheduler* SchedulerFeature::SCHEDULER = nullptr;
 
-SchedulerFeature::SchedulerFeature(
-    application_features::ApplicationServer& server
-) : ApplicationFeature(server, "Scheduler"), _scheduler(nullptr) {
+SchedulerFeature::SchedulerFeature(application_features::ApplicationServer& server)
+    : ApplicationFeature(server, "Scheduler"), _scheduler(nullptr) {
   setOptional(false);
   startsAfter("GreetingsPhase");
   startsAfter("FileDescriptors");
@@ -77,17 +76,18 @@ SchedulerFeature::SchedulerFeature(
 
 SchedulerFeature::~SchedulerFeature() {}
 
-void SchedulerFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options
-) {
-
+void SchedulerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
   // Different implementations of the Scheduler may require different
   // options to be set. This requires a solution here.
 
   options->addSection("server", "Server features");
 
   // max / min number of threads
-  options->addOption("--server.maximal-threads", std::string("maximum number of request handling threads to run (0 = use system-specific default of ") + std::to_string(defaultNumberOfThreads()) + ")",
+  options->addOption("--server.maximal-threads",
+                     std::string(
+                         "maximum number of request handling threads to run (0 "
+                         "= use system-specific default of ") +
+                         std::to_string(defaultNumberOfThreads()) + ")",
                      new UInt64Parameter(&_nrMaximalThreads),
                      arangodb::options::makeFlags(arangodb::options::Flags::Dynamic));
 
@@ -96,8 +96,8 @@ void SchedulerFeature::collectOptions(
                      new UInt64Parameter(&_nrMinimalThreads),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addOption("--server.maximal-queue-size", "size of the priority 2 fifo",
-                     new UInt64Parameter(&_fifo2Size));
+  options->addOption("--server.maximal-queue-size",
+                     "size of the priority 2 fifo", new UInt64Parameter(&_fifo2Size));
 
   options->addOption(
       "--server.scheduler-queue-size",
@@ -116,9 +116,7 @@ void SchedulerFeature::collectOptions(
   options->addOldOption("scheduler.threads", "server.maximal-threads");
 }
 
-void SchedulerFeature::validateOptions(
-  std::shared_ptr<options::ProgramOptions>
-) {
+void SchedulerFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
   if (_nrMaximalThreads == 0) {
     _nrMaximalThreads = defaultNumberOfThreads();
   }
@@ -140,8 +138,9 @@ void SchedulerFeature::validateOptions(
 }
 
 void SchedulerFeature::prepare() {
-  _scheduler = std::make_unique<SupervisedScheduler>(_nrMinimalThreads, _nrMaximalThreads,
-                                           _queueSize, _fifo1Size, _fifo2Size);
+  _scheduler =
+      std::make_unique<SupervisedScheduler>(_nrMinimalThreads, _nrMaximalThreads,
+                                            _queueSize, _fifo1Size, _fifo2Size);
   SCHEDULER = _scheduler.get();
 }
 
@@ -159,22 +158,20 @@ void SchedulerFeature::start() {
   }
 
   if (_nrMinimalThreads < 2) {
-    LOG_TOPIC(WARN, arangodb::Logger::THREADS) << "--server.minimal-threads ("
-                                               << _nrMinimalThreads
-                                               << ") should be at least 2";
+    LOG_TOPIC(WARN, arangodb::Logger::THREADS)
+        << "--server.minimal-threads (" << _nrMinimalThreads << ") should be at least 2";
     _nrMinimalThreads = 2;
   }
 
   if (_nrMinimalThreads >= _nrMaximalThreads) {
     LOG_TOPIC(WARN, arangodb::Logger::THREADS)
-        << "--server.maximal-threads (" << _nrMaximalThreads << ") should be at least "
-        << (_nrMinimalThreads + 1) << ", raising it";
+        << "--server.maximal-threads (" << _nrMaximalThreads
+        << ") should be at least " << (_nrMinimalThreads + 1) << ", raising it";
     _nrMaximalThreads = _nrMinimalThreads;
   }
 
   TRI_ASSERT(2 <= _nrMinimalThreads);
   TRI_ASSERT(_nrMinimalThreads < _nrMaximalThreads);
-
 
   signalStuffInit();
 
@@ -190,7 +187,6 @@ void SchedulerFeature::start() {
 }
 
 void SchedulerFeature::stop() {
-
   signalStuffDeinit();
   deinitV8Stuff();
 
@@ -207,7 +203,7 @@ void SchedulerFeature::unprepare() {
 // ---------------------------------------------------------------------------
 
 void SchedulerFeature::initV8Stuff() {
-    // THIS CODE IS TOTALLY UNRELATED TO THE SCHEDULER!?!
+  // THIS CODE IS TOTALLY UNRELATED TO THE SCHEDULER!?!
   try {
     auto* dealer = ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
     if (dealer->isEnabled()) {
@@ -217,7 +213,8 @@ void SchedulerFeature::initV8Stuff() {
           },
           nullptr);
     }
-  } catch(...) {}
+  } catch (...) {
+  }
 }
 
 void SchedulerFeature::deinitV8Stuff() {
@@ -264,12 +261,12 @@ void SchedulerFeature::signalStuffDeinit() {
       exitSignals->cancel();
     }
 
-  #ifndef _WIN32
+#ifndef _WIN32
     if (_hangupSignals != nullptr) {
       _hangupSignals->cancel();
       _hangupSignals.reset();
     }
-  #endif
+#endif
   }
 }
 
@@ -339,8 +336,7 @@ bool CtrlHandler(DWORD eventType) {
   // user is desperate to kill the server!
   // ........................................................................
 
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << shutdownMessage
-                                           << ", terminating";
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << shutdownMessage << ", terminating";
   _exit(EXIT_FAILURE);  // quick exit for windows
   return true;
 }
@@ -353,7 +349,7 @@ extern "C" void c_exit_handler(int signal) {
   if (signal == SIGQUIT || signal == SIGTERM || signal == SIGINT) {
     if (!seen) {
       LOG_TOPIC(INFO, arangodb::Logger::FIXME)
-        << "control-c received, beginning shut down sequence";
+          << "control-c received, beginning shut down sequence";
 
       if (application_features::ApplicationServer::server != nullptr) {
         application_features::ApplicationServer::server->beginShutdown();
@@ -414,4 +410,4 @@ void SchedulerFeature::buildControlCHandler() {
 #endif
 }
 
-} // arangodb
+}  // namespace arangodb

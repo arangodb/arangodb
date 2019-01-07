@@ -126,6 +126,6 @@ inline RequestPriority PriorityRequestLane(RequestLane lane) {
   return RequestPriority::LOW;
 }
 
-}
+}  // namespace arangodb
 
 #endif

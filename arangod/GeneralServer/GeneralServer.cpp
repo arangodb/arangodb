@@ -39,11 +39,8 @@ using namespace arangodb::rest;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-GeneralServer::GeneralServer(uint64_t numIoThreads) :
-  _numIoThreads(numIoThreads),
-  _contexts(numIoThreads)
-{}
-
+GeneralServer::GeneralServer(uint64_t numIoThreads)
+    : _numIoThreads(numIoThreads), _contexts(numIoThreads) {}
 
 void GeneralServer::setEndpointList(EndpointList const* list) {
   _endpointList = list;
@@ -123,7 +120,7 @@ GeneralServer::IoContext::~IoContext() { stop(); }
 
 void GeneralServer::IoContext::stop() { _asioIoContext.stop(); }
 
-GeneralServer::IoContext &GeneralServer::selectIoContext() {
+GeneralServer::IoContext& GeneralServer::selectIoContext() {
   uint32_t low = _contexts[0]._clients.load();
   size_t lowpos = 0;
 

@@ -45,8 +45,7 @@ RestRepairHandler::RestRepairHandler(GeneralRequest* request, GeneralResponse* r
 
 RestStatus RestRepairHandler::execute() {
   if (application_features::ApplicationServer::isStopping()) {
-    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
-                  TRI_ERROR_SHUTTING_DOWN);
+    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_SHUTTING_DOWN);
     return RestStatus::DONE;
   }
 

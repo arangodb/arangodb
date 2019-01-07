@@ -292,8 +292,8 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header, uint64_t messageId)
   if (_authorized || !_auth->isActive()) {
     _authenticatedUser = std::move(entry._username);
     // simon: drivers expect a response for their auth request
-    addErrorResponse(ResponseCode::OK, rest::ContentType::VPACK, messageId, TRI_ERROR_NO_ERROR,
-                     "auth successful");
+    addErrorResponse(ResponseCode::OK, rest::ContentType::VPACK, messageId,
+                     TRI_ERROR_NO_ERROR, "auth successful");
   } else {
     _authenticatedUser.clear();
     addErrorResponse(rest::ResponseCode::UNAUTHORIZED, rest::ContentType::VPACK,
@@ -371,8 +371,7 @@ bool VstCommTask::processRead(double startTime) {
     // handle request types
     if (type == 1000) {  // auth
       handleAuthHeader(header, chunkHeader._messageID);
-    } else if (type == 1) { // request
-
+    } else if (type == 1) {  // request
 
       // the handler will take ownership of this pointer
       auto req = std::make_unique<VstRequest>(_connectionInfo, std::move(message),

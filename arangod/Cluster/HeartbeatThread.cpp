@@ -46,8 +46,6 @@
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/StorageEngine.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -78,7 +76,7 @@ static arangodb::Mutex deadThreadsMutex;
 namespace arangodb {
 
 class HeartbeatBackgroundJobThread : public Thread {
-public:
+ public:
   explicit HeartbeatBackgroundJobThread(HeartbeatThread* heartbeatThread)
       : Thread("Maintenance"),
         _heartbeatThread(heartbeatThread),
