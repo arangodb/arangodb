@@ -32,7 +32,8 @@ Since choco currently fails to alter the environment for
 we suggest to download and install Visual Studio by hand.
 Currently Visual Studio 2017 is the only supported option.
 
-**You need to make sure that it installs the option "Desktop development with C++", else cmake will fail to dectect it later on.**
+**You need to make sure that it installs the "Desktop development with C++" preset, else cmake will fail to dectect it later on.**
+**Also "Windows 8.1 SDK and UCRT SDK" optional component is required to be selected during Visual Studio installation, else V8 will fail to compile later on.**
 
 After it successfully installed, start it once, so it can finish its setup.
 
@@ -57,7 +58,7 @@ Close and reopen the Administrator command window in order to continue with the 
 And manually install the requirements via the `Gemfile` fetched from the ArangoDB Git repository *(needs to be run with Administrator privileges)*:
 
     wget https://raw.githubusercontent.com/arangodb/arangodb/3.4/tests/rb/HttpInterface/Gemfile
-    set PATH=%PATH%;C:\tools\DevKit2\bin;C:\tools\DevKit2\mingw\bin
+    setx PATH %PATH%;C:\tools\DevKit2\bin;C:\tools\DevKit2\mingw\bin /m
     gem install bundler
     bundler
 
@@ -145,7 +146,7 @@ Making the ICU database publically available
 
 If you intend to use the machine for development purposes, it may be more practical to copy it to a common place:
 
-    cp 3rdParty/V8/V8-5.0.71.39/third_party/icu/source/data/in/icudtl.dat /cygdrive/c/Windows/icudt54l.dat
+    cp 3rdParty/V8/v5.7.492.77/third_party/icu/source/data/in/icudtl58l.dat /cygdrive/c/Windows/
 
 And configure your environment (yes this instruction remembers to the hitchhikers guide to the galaxy...) so that
 `ICU_DATA` points to `c:\\Windows`. You do that by opening the explorer,
@@ -158,20 +159,21 @@ And variable name: `ICU_DATA` to the value: `c:\\Windows`
 Running Unit tests (Optional)
 ---------------------------
 
-You can then run the unit tests in the cygwin shell like that:
+You can then run the integration tests in the cygwin shell like that:
 
-    build64/bin/RelWithDebInfo/arangosh.exe \
+    Build64/bin/RelWithDebInfo/arangosh.exe \
     -c etc/relative/arangosh.conf \
     --log.level warning \
     --server.endpoint tcp://127.0.0.1:1024 \
     --javascript.execute UnitTests/unittest.js \
       -- \
       all \
-      --ruby c:/tools/ruby22/bin/ruby \
-      --rspec c:/tools/ruby22/bin/rspec \
+      --ruby c:/tools/ruby25/bin/ruby \
+      --rspec c:/tools/ruby25/bin/rspec \
+      --build Build64 \
       --buildType RelWithDebInfo \
       --skipNondeterministic true \
-      --skipTimeCritical true
+      --skipTimeCritical true \
       --skipBoost true \
       --skipGeo true
 
