@@ -426,6 +426,8 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"CURRENT_DATABASE", "", Function::makeFlags(FF::Deterministic),
        &Functions::CurrentDatabase});  // deterministic, but not cacheable
   add({"COLLECTION_COUNT", ".h", Function::makeFlags(), &Functions::CollectionCount});  // not deterministic and not cacheable
+  add({"CHECK_DOCUMENT", ".", Function::makeFlags(FF::CanRunOnDBServer), 
+       &Functions::CheckDocument}); // not deterministic and not cacheable
   add({"PREGEL_RESULT", ".", Function::makeFlags(FF::CanRunOnDBServer),
        &Functions::PregelResult});  // not deterministic and not cacheable
   add({"ASSERT", ".,.", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Assert});  // not deterministic and not cacheable
