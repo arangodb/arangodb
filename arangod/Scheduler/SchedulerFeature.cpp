@@ -377,7 +377,17 @@ extern "C" void c_hangup_handler(int signal) {
 
 void SchedulerFeature::buildHangupHandler() {
 #ifndef _WIN32
-  std::signal(SIGHUP, c_hangup_handler);
+  struct sigaction action;
+  memset(&action, 0, sizeof(action));
+  sigfillset(&action.sa_mask);
+  action.sa_handler = c_hangup_handler;
+
+  int res = sigaction(SIGHUP, &action, nullptr);
+
+  if (res < 0) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "cannot initialize signal handlers for hang up";
+  }
 #endif
 }
 
@@ -403,10 +413,29 @@ void SchedulerFeature::buildControlCHandler() {
   sigemptyset(&all);
   pthread_sigmask(SIG_SETMASK, &all, nullptr);
 
-  std::signal(SIGINT, c_exit_handler);
-  std::signal(SIGQUIT, c_exit_handler);
-  std::signal(SIGTERM, c_exit_handler);
+  struct sigaction action;
+  memset(&action, 0, sizeof(action));
+  sigfillset(&action.sa_mask);
+  action.sa_handler = c_exit_handler;
 
+  int res;
+  res = sigaction(SIGINT, &action, nullptr);
+  if (res < 0) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "cannot initialize signal handlers for hang up";
+  }
+
+  res = sigaction(SIGQUIT, &action, nullptr);
+  if (res < 0) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "cannot initialize signal handlers for hang up";
+  }
+
+  res = sigaction(SIGTERM, &action, nullptr);
+  if (res < 0) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "cannot initialize signal handlers for hang up";
+  }
 #endif
 }
 

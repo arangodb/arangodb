@@ -726,7 +726,7 @@ int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& 
     } else {
       TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
       Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-      scheduler->queue(RequestLane::CLUSTER_INTERNAL, [this, path, message] {
+      scheduler->queue(RequestLane::INTERNAL_LOW, [this, path, message] {
         VPackBuilder response;
 
         PregelFeature::handleWorkerRequest(_vocbaseGuard.database(), path,
