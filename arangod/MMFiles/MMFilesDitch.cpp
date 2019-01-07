@@ -137,7 +137,8 @@ void MMFilesDitches::destroy() {
       delete ptr;
     } else if (type == MMFilesDitch::TRI_DITCH_DOCUMENT) {
       LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
-          << "logic error. shouldn't have document ditches on unload";
+          << "logic error. shouldn't have document ditches on unload"
+          << " (file " << ptr->filename() << ", line " << ptr->line() << ")";
       TRI_ASSERT(false);
     } else {
       LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << "unknown ditch type";

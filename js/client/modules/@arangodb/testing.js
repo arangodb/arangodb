@@ -705,7 +705,7 @@ function iterateTests(cases, options, jsonReply) {
 
   if (options.server === undefined) {
     if (cleanup && globalStatus && !pu.serverCrashed) {
-      pu.cleanupDBDirectories(options);
+      //pu.cleanupDBDirectories(options);
     } else {
       print('not cleaning up as some tests weren\'t successful:\n' +
             pu.getCleanupDBDirectories() + " " +
