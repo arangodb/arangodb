@@ -444,7 +444,7 @@ arangodb::Result SynchronizeShard::getReadLock(
       } else {
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
           << "startReadLockOnLeader: Failed to acquire read lock: "
-          << putres->stringifyErrorMessage();
+          << enqres.stringifyErrorMessage();
         break;
       }
     }
