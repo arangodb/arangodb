@@ -361,8 +361,12 @@ if(CMAKE_USE_OPENSSL)
   # version of CMake.  This allows our dependents to get our dependencies
   # transitively.
 #  if(NOT CMAKE_VERSION VERSION_LESS 3.4)
+# commented out, as this will try to link against libssl.so even when we
+# build statically
 #    list(APPEND CURL_LIBS OpenSSL::SSL OpenSSL::Crypto)
 #  else()
+# instead we always use the following command, which was also the way to
+# add libssl in previous versions of curl
     list(APPEND CURL_LIBS ${OPENSSL_LIBRARIES})
     include_directories(${OPENSSL_INCLUDE_DIR})
 #  endif()
@@ -1317,6 +1321,8 @@ write_basic_package_version_file(
     COMPATIBILITY SameMajorVersion
 )
 
+# the following install commands have been commented out, as we are
+# not interested in installing any curl artifacts on the system
 # Use:
 # * TARGETS_EXPORT_NAME
 # * PROJECT_NAME
