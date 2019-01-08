@@ -1806,7 +1806,27 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     CHECK(expectedDoc == expectedDocs.end());
   }
 
-  // FIXME
+  // x.seq is used before being assigned
+  {
+    std::string const query =
+     "FOR d IN testView SEARCH d.name >= 'E' && d.seq < 10 "
+     "  SORT customscorer(d) DESC "
+     "  LIMIT 3 "
+     "  FOR x IN collection_1 FILTER x.seq == d.seq "
+     "    SORT customscorer(d, x.seq) "
+     "RETURN x";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+      }
+    ));
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_BAD_PARAMETER == queryResult.code);
+  }
+
+  // x.seq is used before being assigned
   {
     std::string const query =
      "FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 SORT customscorer(c) DESC LIMIT 3 RETURN c) "
@@ -1821,7 +1841,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     ));
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NOT_IMPLEMENTED == queryResult.code);
+    REQUIRE(TRI_ERROR_BAD_PARAMETER == queryResult.code);
   }
 }
 
