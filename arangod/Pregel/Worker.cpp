@@ -165,8 +165,8 @@ void Worker<V, E, M>::setupWorker() {
     // initialization of the graphstore might take an undefined amount
     // of time. Therefore this is performed asynchronous
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-    rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-    scheduler->queue(RequestPriority::LOW, [this, callback] {
+    Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+    scheduler->queue(RequestLane::INTERNAL_LOW, [this, callback] {
       _graphStore->loadShards(&_config, callback);
     });
   }
@@ -312,7 +312,7 @@ void Worker<V, E, M>::_startProcessing() {
   _state = WorkerState::COMPUTING;
   _activeCount = 0;  // active count is only valid after the run
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
 
   size_t total = _graphStore->localVertexCount();
   size_t delta = total / _config.parallelism();
@@ -325,7 +325,7 @@ void Worker<V, E, M>::_startProcessing() {
   }
   size_t i = 0;
   do {
-    scheduler->queue(RequestPriority::LOW, [this, start, end, i] {
+    scheduler->queue(RequestLane::INTERNAL_LOW, [this, start, end, i] {
       if (_state != WorkerState::COMPUTING) {
         LOG_TOPIC(WARN, Logger::PREGEL) << "Execution aborted prematurely.";
         return;
@@ -564,26 +564,24 @@ void Worker<V, E, M>::_continueAsync() {
   // wait for new messages before beginning to process
   int64_t milli = _writeCache->containedMessageCount() < _messageBatchSize ? 50 : 5;
   // start next iteration in $milli mseconds.
-  _steady_timer.reset(SchedulerFeature::SCHEDULER->newSteadyTimer());
-  _steady_timer->expires_after(std::chrono::milliseconds(milli));
-  _steady_timer->async_wait([this](const asio::error_code& error) {
-    if (error != asio::error::operation_aborted) {
-      {  // swap these pointers atomically
-        MY_WRITE_LOCKER(guard, _cacheRWLock);
-        std::swap(_readCache, _writeCache);
-        if (_writeCacheNextGSS->containedMessageCount() > 0) {
-          _requestedNextGSS = true;
+  _workHandle = SchedulerFeature::SCHEDULER->queueDelay(
+      RequestLane::INTERNAL_LOW, std::chrono::milliseconds(milli), [this](bool cancelled) {
+        if (!cancelled) {
+          {  // swap these pointers atomically
+            MY_WRITE_LOCKER(guard, _cacheRWLock);
+            std::swap(_readCache, _writeCache);
+            if (_writeCacheNextGSS->containedMessageCount() > 0) {
+              _requestedNextGSS = true;
+            }
+          }
+          MUTEX_LOCKER(guard, _commandMutex);
+          // overwrite conductor values with local values
+          _conductorAggregators->resetValues();
+          _conductorAggregators->aggregateValues(*_workerAggregators.get());
+          _workerAggregators->resetValues();
+          _startProcessing();
         }
-      }
-      MUTEX_LOCKER(guard, _commandMutex);
-      // overwrite conductor values with local values
-      _conductorAggregators->resetValues();
-      _conductorAggregators->aggregateValues(*_workerAggregators.get());
-      _workerAggregators->resetValues();
-      _startProcessing();
-      _steady_timer.reset();
-    }
-  });
+      });
 }
 
 template <typename V, typename E, typename M>
@@ -666,8 +664,8 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
   _conductorAggregators->setAggregatedValues(data);
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  scheduler->queue(RequestPriority::LOW, [this] {
+  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+  scheduler->queue(RequestLane::INTERNAL_LOW, [this] {
     if (_state != WorkerState::RECOVERING) {
       LOG_TOPIC(WARN, Logger::PREGEL) << "Compensation aborted prematurely.";
       return;
@@ -723,8 +721,8 @@ template <typename V, typename E, typename M>
 void Worker<V, E, M>::_callConductor(std::string const& path, VPackBuilder const& message) {
   if (ServerState::instance()->isRunningInCluster() == false) {
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-    rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-    scheduler->queue(RequestPriority::LOW, [path, message] {
+    Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+    scheduler->queue(RequestLane::INTERNAL_LOW, [path, message] {
       VPackBuilder response;
       PregelFeature::handleConductorRequest(path, message.slice(), response);
     });

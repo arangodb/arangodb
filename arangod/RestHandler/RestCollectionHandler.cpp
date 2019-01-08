@@ -294,13 +294,13 @@ void RestCollectionHandler::handleCommandPost() {
   // for some "security" a white-list of allowed parameters
   VPackBuilder filtered = VPackCollection::keep(
       body, std::unordered_set<std::string>{
-                "doCompact", StaticStrings::DataSourceSystem, StaticStrings::DataSourceId, 
-                "isVolatile", "journalSize", "indexBuckets", "keyOptions", 
-                StaticStrings::WaitForSyncString, "cacheEnabled",
-                StaticStrings::ShardKeys, StaticStrings::NumberOfShards,
+                "doCompact", StaticStrings::DataSourceSystem,
+                StaticStrings::DataSourceId, "isVolatile", "journalSize",
+                "indexBuckets", "keyOptions", StaticStrings::WaitForSyncString,
+                "cacheEnabled", StaticStrings::ShardKeys, StaticStrings::NumberOfShards,
                 StaticStrings::DistributeShardsLike, "avoidServers", StaticStrings::IsSmart,
-                "shardingStrategy", StaticStrings::GraphSmartGraphAttribute, StaticStrings::ReplicationFactor,
-                "servers"});
+                "shardingStrategy", StaticStrings::GraphSmartGraphAttribute,
+                StaticStrings::ReplicationFactor, "servers"});
   VPackSlice const parameters = filtered.slice();
 
   // now we can create the collection

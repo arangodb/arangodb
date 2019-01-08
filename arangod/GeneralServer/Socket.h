@@ -27,15 +27,10 @@
 
 #include "Basics/StringBuffer.h"
 #include "Basics/asio_ns.h"
-#include "Logger/Logger.h"
-#include "Scheduler/JobGuard.h"
-
 #include "GeneralServer/GeneralServer.h"
+#include "Logger/Logger.h"
 
 namespace arangodb {
-namespace rest {
-class Scheduler;
-}
 
 typedef std::function<void(const asio_ns::error_code& ec, std::size_t transferred)> AsyncHandler;
 
@@ -85,7 +80,7 @@ class Socket {
     _context.post(std::move(handler));
   }
 
-  bool runningInThisThread() { return _context.runningInThisThread(); }
+  bool runningInThisThread() { return true; }
 
  public:
   virtual std::string peerAddress() const = 0;

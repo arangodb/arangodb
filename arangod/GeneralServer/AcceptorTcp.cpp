@@ -20,13 +20,13 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Scheduler/AcceptorTcp.h"
+#include "GeneralServer/AcceptorTcp.h"
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Endpoint/EndpointIp.h"
-#include "Scheduler/SocketSslTcp.h"
-#include "Scheduler/SocketTcp.h"
+#include "GeneralServer/SocketSslTcp.h"
+#include "GeneralServer/SocketTcp.h"
 
 using namespace arangodb;
 

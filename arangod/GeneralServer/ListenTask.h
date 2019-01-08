@@ -27,14 +27,13 @@
 
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/IoTask.h"
-
-#include "Scheduler/Task.h"
+#include "GeneralServer/Task.h"
 
 #include "Basics/Mutex.h"
 #include "Endpoint/ConnectionInfo.h"
 #include "Endpoint/Endpoint.h"
-#include "Scheduler/Acceptor.h"
-#include "Scheduler/Socket.h"
+#include "GeneralServer/Acceptor.h"
+#include "GeneralServer/Socket.h"
 
 namespace arangodb {
 
@@ -57,14 +56,12 @@ class ListenTask : virtual public rest::IoTask {
 
  private:
   void accept();
-
   Endpoint* _endpoint;
   size_t _acceptFailures = 0;
 
   bool _bound;
 
   std::unique_ptr<Acceptor> _acceptor;
-  std::function<void(asio_ns::error_code const&)> _handler;
 };
 }  // namespace arangodb
 

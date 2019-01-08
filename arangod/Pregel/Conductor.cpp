@@ -295,10 +295,10 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   _globalSuperstep++;
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   // don't block the response for workers waiting on this callback
   // this should allow workers to go into the IDLE state
-  scheduler->queue(RequestPriority::LOW, [this] {
+  scheduler->queue(RequestLane::INTERNAL_LOW, [this] {
     MUTEX_LOCKER(guard, _callbackMutex);
 
     if (_state == ExecutionState::RUNNING) {
@@ -406,56 +406,53 @@ void Conductor::startRecovery() {
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
 
   // let's wait for a final state in the cluster
-  _steady_timer.reset(SchedulerFeature::SCHEDULER->newSteadyTimer());
-  _steady_timer->expires_after(std::chrono::seconds(2));
-  _steady_timer->async_wait([this](const asio::error_code& error) {
-    _steady_timer.reset();
+  _workHandle = SchedulerFeature::SCHEDULER->queueDelay(
+      RequestLane::CLUSTER_INTERNAL, std::chrono::seconds(2), [this](bool cancelled) {
+        if (cancelled || _state != ExecutionState::RECOVERING) {
+          return;  // seems like we are canceled
+        }
+        std::vector<ServerID> goodServers;
+        int res = PregelFeature::instance()->recoveryManager()->filterGoodServers(_dbServers, goodServers);
+        if (res != TRI_ERROR_NO_ERROR) {
+          LOG_TOPIC(ERR, Logger::PREGEL) << "Recovery proceedings failed";
+          cancelNoLock();
+          return;
+        }
+        _dbServers = goodServers;
 
-    if (error == asio::error::operation_aborted || _state != ExecutionState::RECOVERING) {
-      return;  // seems like we are canceled
-    }
-    std::vector<ServerID> goodServers;
-    int res = PregelFeature::instance()->recoveryManager()->filterGoodServers(_dbServers, goodServers);
-    if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, Logger::PREGEL) << "Recovery proceedings failed";
-      cancelNoLock();
-      return;
-    }
-    _dbServers = goodServers;
+        VPackBuilder b;
+        b.openObject();
+        b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
+        b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
+        b.close();
+        _sendToAllDBServers(Utils::cancelGSSPath, b);
+        if (_state != ExecutionState::RECOVERING) {
+          return;  // seems like we are canceled
+        }
 
-    VPackBuilder b;
-    b.openObject();
-    b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
-    b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
-    b.close();
-    _sendToAllDBServers(Utils::cancelGSSPath, b);
-    if (_state != ExecutionState::RECOVERING) {
-      return;  // seems like we are canceled
-    }
+        // Let's try recovery
+        if (_masterContext) {
+          bool proceed = _masterContext->preCompensation();
+          if (!proceed) {
+            cancelNoLock();
+          }
+        }
 
-    // Let's try recovery
-    if (_masterContext) {
-      bool proceed = _masterContext->preCompensation();
-      if (!proceed) {
-        cancelNoLock();
-      }
-    }
+        VPackBuilder additionalKeys;
+        additionalKeys.openObject();
+        additionalKeys.add(Utils::recoveryMethodKey, VPackValue(Utils::compensate));
+        _aggregators->serializeValues(b);
+        additionalKeys.close();
+        _aggregators->resetValues();
 
-    VPackBuilder additionalKeys;
-    additionalKeys.openObject();
-    additionalKeys.add(Utils::recoveryMethodKey, VPackValue(Utils::compensate));
-    _aggregators->serializeValues(b);
-    additionalKeys.close();
-    _aggregators->resetValues();
-
-    // initialize workers will reconfigure the workers and set the
-    // _dbServers list to the new primary DBServers
-    res = _initializeWorkers(Utils::startRecoveryPath, additionalKeys.slice());
-    if (res != TRI_ERROR_NO_ERROR) {
-      cancelNoLock();
-      LOG_TOPIC(ERR, Logger::PREGEL) << "Compensation failed";
-    }
-  });
+        // initialize workers will reconfigure the workers and set the
+        // _dbServers list to the new primary DBServers
+        res = _initializeWorkers(Utils::startRecoveryPath, additionalKeys.slice());
+        if (res != TRI_ERROR_NO_ERROR) {
+          cancelNoLock();
+          LOG_TOPIC(ERR, Logger::PREGEL) << "Compensation failed";
+        }
+      });
 }
 
 // resolves into an ordered list of shards for each collection on each server
@@ -728,8 +725,8 @@ int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& 
       handle(response.slice());
     } else {
       TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-      rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-      scheduler->queue(RequestPriority::LOW, [this, path, message] {
+      Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+      scheduler->queue(RequestLane::INTERNAL_LOW, [this, path, message] {
         VPackBuilder response;
 
         PregelFeature::handleWorkerRequest(_vocbaseGuard.database(), path,

@@ -29,8 +29,7 @@
 
 #include "GeneralServer/GeneralDefinitions.h"
 #include "GeneralServer/GeneralServer.h"
-
-#include "Scheduler/ListenTask.h"
+#include "GeneralServer/ListenTask.h"
 
 namespace arangodb {
 class Endpoint;

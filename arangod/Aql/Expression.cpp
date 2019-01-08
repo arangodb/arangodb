@@ -672,7 +672,7 @@ AqlValue Expression::executeSimpleExpressionObject(AstNode const* node,
       if (mustCheckUniqueness) {
         std::string key(member->getString());
 
-        // track each individual object key 
+        // track each individual object key
         auto it = keys.find(key);
 
         if (it != keys.end()) {
@@ -687,7 +687,8 @@ AqlValue Expression::executeSimpleExpressionObject(AstNode const* node,
           keys.emplace(std::move(key));
         }
       } else {
-        builder->add(VPackValuePair(member->getStringValue(), member->getStringLength(), VPackValueType::String));
+        builder->add(VPackValuePair(member->getStringValue(),
+                                    member->getStringLength(), VPackValueType::String));
       }
 
       // value

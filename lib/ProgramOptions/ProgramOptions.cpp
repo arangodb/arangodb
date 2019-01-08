@@ -310,7 +310,7 @@ bool ProgramOptions::requiresValue(std::string const& name) const {
 
   return (*it2).second.parameter->requiresValue();
 }
-  
+
 // returns the option by name. will throw if the option cannot be found
 Option& ProgramOptions::getOption(std::string const& name) {
   std::string stripped = name;
@@ -323,15 +323,13 @@ Option& ProgramOptions::getOption(std::string const& name) {
   auto it = _sections.find(parts.first);
 
   if (it == _sections.end()) {
-    throw std::logic_error(
-        std::string("option '") + stripped + "' not found");
+    throw std::logic_error(std::string("option '") + stripped + "' not found");
   }
 
   auto it2 = (*it).second.options.find(parts.second);
 
   if (it2 == (*it).second.options.end()) {
-    throw std::logic_error(
-        std::string("option '") + stripped + "' not found");
+    throw std::logic_error(std::string("option '") + stripped + "' not found");
   }
 
   return (*it2).second;

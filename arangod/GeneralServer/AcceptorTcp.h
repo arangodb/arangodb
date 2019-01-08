@@ -17,11 +17,35 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "JobGuard.h"
+#ifndef ARANGOD_SCHEDULER_ACCEPTORTCP_H
+#define ARANGOD_SCHEDULER_ACCEPTORTCP_H 1
 
-using namespace arangodb;
+#include "GeneralServer/Acceptor.h"
 
-thread_local size_t JobGuard::_isWorking = 0;
+namespace arangodb {
+class AcceptorTcp final : public Acceptor {
+ public:
+  AcceptorTcp(rest::GeneralServer& server,
+              rest::GeneralServer::IoContext& context, Endpoint* endpoint)
+      : Acceptor(server, context, endpoint), _acceptor(context.newAcceptor()) {}
+
+ public:
+  void open() override;
+  void close() override {
+    _acceptor->close();
+    if (_peer) {
+      asio_ns::error_code ec;
+      _peer->close(ec);
+    }
+  };
+  void asyncAccept(Acceptor::AcceptHandler const& handler) override;
+
+ private:
+  std::unique_ptr<asio_ns::ip::tcp::acceptor> _acceptor;
+};
+}  // namespace arangodb
+
+#endif
