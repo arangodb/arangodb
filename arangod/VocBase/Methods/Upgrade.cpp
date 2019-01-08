@@ -286,6 +286,11 @@ void methods::Upgrade::registerTasks() {
           /*system*/ Flags::DATABASE_ALL,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
           /*database*/ DATABASE_UPGRADE, &UpgradeTasks::persistLocalDocumentIds);
+  addTask("renameReplicationApplierStateFiles", "rename replication applier state files",
+          /*system*/ Flags::DATABASE_ALL,
+          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
+          /*database*/ DATABASE_UPGRADE | DATABASE_EXISTING, 
+          &UpgradeTasks::renameReplicationApplierStateFiles);
 }
 
 UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t& vocbase, VersionResult& vinfo,
@@ -339,7 +344,7 @@ UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t& vocbase, VersionResult& 
           << "Upgrade: db flag mismatch, skipping " << t.name;
       continue;
     }
-
+    
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: Executing " << t.name;
     try {
       bool ranTask = t.action(vocbase, params);

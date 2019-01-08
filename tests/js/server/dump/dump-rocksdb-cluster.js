@@ -628,17 +628,25 @@ function dumpTestEnterpriseSuite () {
       assertEqual("9", res[1].value);
       assertEqual("11", res[2].value);
       assertEqual("12", res[3].value);
-    }
+    },
+
+    testReplicationFactor : function () {
+      let c = db._collection("UnitTestsDumpReplicationFactor1");
+      let p = c.properties();
+
+      assertEqual(1, p.replicationFactor);
+      assertEqual(7, p.numberOfShards);
+      
+      c = db._collection("UnitTestsDumpReplicationFactor2");
+      p = c.properties();
+
+      assertEqual(2, p.replicationFactor);
+      assertEqual(6, p.numberOfShards);
+    },
 
   };
 
 }
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(dumpTestSuite);
 

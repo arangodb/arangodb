@@ -205,6 +205,45 @@ std::string executeDateFormatRegex(std::string const& search, tp_sys_clock_ms co
   return s;
 }
 
+/// @brief validates documents for duplicate attribute names
+bool isValidDocument(VPackSlice slice) {
+  if (slice.isExternal()) {
+    slice = slice.resolveExternals();
+  }
+
+  if (slice.isObject()) {
+    std::unordered_set<VPackStringRef> keys;
+  
+    auto it = VPackObjectIterator(slice, true);
+    
+    while (it.valid()) {
+      if (!keys.emplace(it.key().stringRef()).second) {
+        // duplicate key
+        return false;
+      }
+
+      // recurse into object values
+      if (!isValidDocument(it.value())) {
+        return false;
+      }
+      it.next();
+    }
+  } else if (slice.isArray()) {
+    auto it = VPackArrayIterator(slice);
+
+    while (it.valid()) {
+      // recursively validate array values
+      if (!isValidDocument(it.value())) {
+        return false;
+      }
+      it.next();
+    }
+  }
+
+  // all other types are considered valid
+  return true;
+}
+
 std::string tail(std::string const& source, size_t const length) {
   if (length >= source.size()) {
     return source;
@@ -6617,6 +6656,22 @@ AqlValue Functions::CollectionCount(arangodb::aql::Query*, transaction::Methods*
   }
 
   return AqlValue(res.slice());
+}
+
+/// @brief function CHECK_DOCUMENT
+AqlValue Functions::CheckDocument(arangodb::aql::Query*,
+                                  transaction::Methods* trx,
+                                  VPackFunctionParameters const& parameters) {
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+  if (!value.isObject()) {
+    // no document at all
+    return AqlValue(AqlValueHintBool(false));
+  }
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value, false);
+
+  return AqlValue(AqlValueHintBool(::isValidDocument(slice)));
 }
 
 /// @brief function VARIANCE_SAMPLE

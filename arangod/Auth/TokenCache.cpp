@@ -252,7 +252,7 @@ std::shared_ptr<VPackBuilder> auth::TokenCache::parseJson(std::string const& str
 
 bool auth::TokenCache::validateJwtHeader(std::string const& header) {
   std::shared_ptr<VPackBuilder> headerBuilder =
-      parseJson(StringUtils::decodeBase64(header), "jwt header");
+      parseJson(StringUtils::decodeBase64U(header), "jwt header");
   if (headerBuilder.get() == nullptr) {
     return false;
   }
@@ -287,7 +287,7 @@ bool auth::TokenCache::validateJwtHeader(std::string const& header) {
 
 auth::TokenCache::Entry auth::TokenCache::validateJwtBody(std::string const& body) {
   std::shared_ptr<VPackBuilder> bodyBuilder =
-      parseJson(StringUtils::decodeBase64(body), "jwt body");
+      parseJson(StringUtils::decodeBase64U(body), "jwt body");
   if (bodyBuilder.get() == nullptr) {
     LOG_TOPIC(TRACE, Logger::AUTHENTICATION) << "invalid JWT body";
     return auth::TokenCache::Entry::Unauthenticated();
@@ -369,8 +369,8 @@ std::string auth::TokenCache::generateRawJwt(VPackSlice const& body) const {
     headerBuilder.add("typ", VPackValue("JWT"));
   }
 
-  std::string fullMessage(StringUtils::encodeBase64(headerBuilder.toJson()) +
-                          "." + StringUtils::encodeBase64(body.toJson()));
+  std::string fullMessage(StringUtils::encodeBase64U(headerBuilder.toJson()) +
+                          "." + StringUtils::encodeBase64U(body.toJson()));
   if (_jwtSecret.empty()) {
     LOG_TOPIC(INFO, Logger::AUTHENTICATION)
         << "Using cluster without JWT Token";
