@@ -36,7 +36,7 @@ class Callbacks {
 
   typedef std::function<void(std::unique_ptr<GeneralResponse>)> OnSuccessCallback;
 
-  typedef std::function<void(std::function<void()>)> ScheduleMeCallback;
+  typedef std::function<void(std::function<void(bool)>)> ScheduleMeCallback;
 
   Callbacks() {}
   Callbacks(OnSuccessCallback onSuccess, OnErrorCallback onError)
@@ -48,7 +48,7 @@ class Callbacks {
   ScheduleMeCallback _scheduleMe;
 
  protected:
-  static void defaultScheduleMe(std::function<void()> task) { task(); }
+  static void defaultScheduleMe(std::function<void(bool)> task) { task(false); }
 };
 }  // namespace communicator
 }  // namespace arangodb

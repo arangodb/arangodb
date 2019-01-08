@@ -668,7 +668,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
 
   auto self = shared_from_this();
   std::shared_ptr<SharedQueryState> ss = query->sharedState();
-  ss->setContinueHandler([this, self, ss]() { continueHandlerExecution(); });
+  ss->setContinueHandler([this, self, ss](bool) { continueHandlerExecution(); });
 
   bool found;
   std::string const& shardId = _request->header("shard-id", found);

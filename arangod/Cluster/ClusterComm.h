@@ -595,7 +595,7 @@ class ClusterComm {
   ///  public static function that any object can use.
   //////////////////////////////////////////////////////////////////////////////
 
-  static void scheduleMe(std::function<void()> task);
+  static void scheduleMe(std::function<void(bool)> task);
 
  protected:  // protected members are for unit test purposes
   /// @brief Constructor for test cases.

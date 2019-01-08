@@ -1821,7 +1821,7 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
     mustFetchBatch = false;
     auto self = shared_from_this();
     sharedStatus->request([this, self, sharedStatus, fetchTick, lastScannedTick,
-                           firstRegularTick]() {
+                           firstRegularTick](bool) {
       fetchMasterLog(sharedStatus, fetchTick, lastScannedTick, firstRegularTick);
     });
   }

@@ -139,7 +139,7 @@ void Worker<V, E, M>::_initializeMessageCaches() {
 // @brief load the initial worker data, call conductor eventually
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::setupWorker() {
-  std::function<void()> callback = [this] {
+  std::function<void(bool)> callback = [this](bool) {
     VPackBuilder package;
     package.openObject();
     package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
@@ -160,13 +160,13 @@ void Worker<V, E, M>::setupWorker() {
     for (std::string const& documentID : activeSet) {
       _graphStore->loadDocument(&_config, documentID);
     }
-    callback();
+    callback(false);
   } else {
     // initialization of the graphstore might take an undefined amount
     // of time. Therefore this is performed asynchronous
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-    scheduler->queue(RequestPriority::LOW, [this, callback] {
+    scheduler->queue(RequestPriority::LOW, [this, callback](bool) {
       _graphStore->loadShards(&_config, callback);
     });
   }
@@ -325,7 +325,7 @@ void Worker<V, E, M>::_startProcessing() {
   }
   size_t i = 0;
   do {
-    scheduler->queue(RequestPriority::LOW, [this, start, end, i] {
+    scheduler->queue(RequestPriority::LOW, [this, start, end, i](bool) {
       if (_state != WorkerState::COMPUTING) {
         LOG_TOPIC(WARN, Logger::PREGEL) << "Execution aborted prematurely.";
         return;
@@ -588,7 +588,7 @@ void Worker<V, E, M>::_continueAsync() {
 
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
-                                        std::function<void(void)> callback) {
+                                        std::function<void(bool)> callback) {
   // Only expect serial calls from the conductor.
   // Lock to prevent malicous activity
   MUTEX_LOCKER(guard, _commandMutex);
@@ -652,7 +652,7 @@ void Worker<V, E, M>::startRecovery(VPackSlice const& data) {
   _preRecoveryTotal = _graphStore->localVertexCount();
   WorkerConfig nextState(_config);
   nextState.updateConfig(data);
-  _graphStore->loadShards(&nextState, [this, nextState, copy] {
+  _graphStore->loadShards(&nextState, [this, nextState, copy](bool) {
     _config = nextState;
     compensateStep(copy.slice());
   });
@@ -667,7 +667,7 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  scheduler->queue(RequestPriority::LOW, [this] {
+  scheduler->queue(RequestPriority::LOW, [this](bool) {
     if (_state != WorkerState::RECOVERING) {
       LOG_TOPIC(WARN, Logger::PREGEL) << "Compensation aborted prematurely.";
       return;
@@ -724,7 +724,7 @@ void Worker<V, E, M>::_callConductor(std::string const& path, VPackBuilder const
   if (ServerState::instance()->isRunningInCluster() == false) {
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-    scheduler->queue(RequestPriority::LOW, [path, message] {
+    scheduler->queue(RequestPriority::LOW, [path, message](bool) {
       VPackBuilder response;
       PregelFeature::handleConductorRequest(path, message.slice(), response);
     });

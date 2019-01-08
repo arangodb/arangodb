@@ -80,13 +80,13 @@
   "\xe1\x83\xa8\xe1\x83\x94\xe1\x83\xae\xe1\x83\x95\xe1\x83\x94\xe1\x83\x93" \
   "\xe1\x83\xa0\xe1\x83\x90\xe1\x83\x9b\xe1\x83\x93\xe1\x83\x94"
 
-#define TRI_BYE_MESSAGE                                                     \
-  TRI_BYE_MESSAGE_CH                                                        \
-      " " TRI_BYE_MESSAGE_CN " " TRI_BYE_MESSAGE_CZ " " TRI_BYE_MESSAGE_DE  \
-      " " TRI_BYE_MESSAGE_EN " " TRI_BYE_MESSAGE_EO " " TRI_BYE_MESSAGE_ES  \
-      " " TRI_BYE_MESSAGE_GR "\n" TRI_BYE_MESSAGE_IL " " TRI_BYE_MESSAGE_IT \
-      " " TRI_BYE_MESSAGE_NL " " TRI_BYE_MESSAGE_SV " " TRI_BYE_MESSAGE_FR  \
-      " " TRI_BYE_MESSAGE_JP " " TRI_BYE_MESSAGE_RU " " TRI_BYE_MESSAGE_PT  \
-      " " TRI_BYE_MESSAGE_FA " " TRI_BYE_MESSAGE_LV " " TRI_BYE_MESSAGE_GE  \
-      " " TRI_BYE_MESSAGE_KR
+#define TRI_BYE_MESSAGE                                                 \
+  TRI_BYE_MESSAGE_CH                                                    \
+  " " TRI_BYE_MESSAGE_CN " " TRI_BYE_MESSAGE_CZ " " TRI_BYE_MESSAGE_DE  \
+  " " TRI_BYE_MESSAGE_EN " " TRI_BYE_MESSAGE_EO " " TRI_BYE_MESSAGE_ES  \
+  " " TRI_BYE_MESSAGE_GR "\n" TRI_BYE_MESSAGE_IL " " TRI_BYE_MESSAGE_IT \
+  " " TRI_BYE_MESSAGE_NL " " TRI_BYE_MESSAGE_SV " " TRI_BYE_MESSAGE_FR  \
+  " " TRI_BYE_MESSAGE_JP " " TRI_BYE_MESSAGE_RU " " TRI_BYE_MESSAGE_PT  \
+  " " TRI_BYE_MESSAGE_FA " " TRI_BYE_MESSAGE_LV " " TRI_BYE_MESSAGE_GE  \
+  " " TRI_BYE_MESSAGE_KR
 #endif

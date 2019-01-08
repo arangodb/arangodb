@@ -76,6 +76,8 @@ v3.4.2 (XXXX-XX-XX)
 
 * Added --server.jwt-secret-keyfile option.
 
+* Improve single threaded performance by scheduler optimization.
+
 v3.4.1 (2018-12-19)
 -------------------
 

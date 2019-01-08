@@ -33,6 +33,7 @@
 #include <velocypack/velocypack-common.h>
 
 #include <velocypack/velocypack-aliases.h>
+#include <velocypack/velocypack-common.h>
 
 using namespace arangodb::basics;
 

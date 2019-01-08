@@ -978,7 +978,7 @@ void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
 
   if (type == NODE_TYPE_OBJECT) {
     builder.openObject();
-    
+
     std::unordered_set<VPackStringRef> keys;
     size_t const n = numMembers();
 

@@ -120,7 +120,7 @@ RestStatus RestTestHandler::execute() {
 
   auto self(shared_from_this());
 
-  bool ok = SchedulerFeature::SCHEDULER->queue(priority(res.get()), [this, self, duration]() {
+  bool ok = SchedulerFeature::SCHEDULER->queue(priority(res.get()), [this, self, duration](bool) {
     auto stop = clock::now() + duration;
 
     uint64_t count = 0;

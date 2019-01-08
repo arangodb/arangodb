@@ -31,7 +31,6 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-
 class LogicalDataSource;  // forward declaration
 }
 

@@ -298,7 +298,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   // don't block the response for workers waiting on this callback
   // this should allow workers to go into the IDLE state
-  scheduler->queue(RequestPriority::LOW, [this] {
+  scheduler->queue(RequestPriority::LOW, [this](bool) {
     MUTEX_LOCKER(guard, _callbackMutex);
 
     if (_state == ExecutionState::RUNNING) {
@@ -729,7 +729,7 @@ int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& 
     } else {
       TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
       rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-      scheduler->queue(RequestPriority::LOW, [this, path, message] {
+      scheduler->queue(RequestPriority::LOW, [this, path, message](bool) {
         VPackBuilder response;
 
         PregelFeature::handleWorkerRequest(_vocbaseGuard.database(), path,
