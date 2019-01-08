@@ -783,7 +783,7 @@ def loadProgramOptionBlocks():
                 isCommand = ""
                 category = option.setdefault("category", "option")
                 if category == "command":
-                    isCommand = '<br/>This is a command, thus no value can be specified and it can not be used in a configuration file.'
+                    isCommand = '<br/>This is a command, no value needs to be specified. The process terminates after executing the command.'
 
                 # Some Boolean options can be used like flags (also true for commands)
                 isFlag = ""
