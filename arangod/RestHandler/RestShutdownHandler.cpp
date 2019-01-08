@@ -49,7 +49,7 @@ RestStatus RestShutdownHandler::execute() {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
     return RestStatus::DONE;
   }
-  
+
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (af->isActive() && !_request->user().empty()) {
     auth::Level lvl = auth::Level::NONE;
@@ -64,7 +64,10 @@ RestStatus RestShutdownHandler::execute() {
       return RestStatus::DONE;
     }
   }
-  
+
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+    << "/_admin/shutdown message received" << ", beginning shut down sequence";
+
   bool removeFromCluster;
   std::string const& remove =
       _request->value("remove_from_cluster", removeFromCluster);
@@ -92,7 +95,7 @@ RestStatus RestShutdownHandler::execute() {
   }
 
   ApplicationServer::server->beginShutdown();
-  
+
   try {
     VPackBuilder result;
     result.add(VPackValue("OK"));

@@ -34,7 +34,6 @@
 #endif
 
 #include <thread>
-#include "ApplicationFeatures/ApplicationServer.h"  /// temporary for debugging
 
 /// @brief construct locker with file and line information
 #define WRITE_LOCKER(obj, lock) \
@@ -83,7 +82,7 @@ class WriteLocker {
         TRI_ASSERT(_isLocked);
       } else if (type == LockerType::EVENTUAL) {
         lockEventual();
-// removed for debugging        TRI_ASSERT(_isLocked);
+        TRI_ASSERT(_isLocked);
       } else if (type == LockerType::TRY) {
         _isLocked = tryLock();
       }
@@ -113,16 +112,16 @@ class WriteLocker {
 
   /// @brief eventually acquire the write lock
   void lockEventual() {
-    while (!tryLock() && !application_features::ApplicationServer::isRetryOK()) { // temporary, debug only!!!
+    while (!tryLock()) {
       std::this_thread::yield();
     }
-// removed for debugging    TRI_ASSERT(_isLocked);
+    TRI_ASSERT(_isLocked);
   }
 
   bool tryLock() {
     TRI_ASSERT(!_isLocked);
     if (_readWriteLock->tryWriteLock()) {
-       _isLocked = true;
+      _isLocked = true;
     }
     return _isLocked;
   }
