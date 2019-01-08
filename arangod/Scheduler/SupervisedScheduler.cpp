@@ -65,14 +65,14 @@ class SupervisedSchedulerManagerThread final : public SupervisedSchedulerThread 
  public:
   SupervisedSchedulerManagerThread(SupervisedScheduler& scheduler)
       : Thread("SchedMan"), SupervisedSchedulerThread(scheduler) {}
-  void run() { _scheduler.runSupervisor(); };
+  void run() override { _scheduler.runSupervisor(); };
 };
 
 class SupervisedSchedulerWorkerThread final : public SupervisedSchedulerThread {
  public:
   SupervisedSchedulerWorkerThread(SupervisedScheduler& scheduler)
       : Thread("SchedWorker"), SupervisedSchedulerThread(scheduler) {}
-  void run() { _scheduler.runWorker(); };
+  void run() override { _scheduler.runWorker(); };
 };
 
 }  // namespace arangodb

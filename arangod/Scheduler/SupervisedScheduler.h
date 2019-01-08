@@ -57,9 +57,9 @@ class SupervisedScheduler : public Scheduler {
   bool start() override;
   void shutdown() override;
 
-  void addQueueStatistics(velocypack::Builder&) const;
-  Scheduler::QueueStatistics queueStatistics() const;
-  std::string infoStatus() const;
+  void addQueueStatistics(velocypack::Builder&) const override;
+  Scheduler::QueueStatistics queueStatistics() const override;
+  std::string infoStatus() const override;
 
  private:
   friend class SupervisedSchedulerManagerThread;
