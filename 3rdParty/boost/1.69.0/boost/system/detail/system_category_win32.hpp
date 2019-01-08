@@ -26,7 +26,7 @@ namespace system
 namespace detail
 {
 
-#if ( defined(_MSC_VER) && _MSC_VER < 1900 ) || ( defined(__MINGW32__) && !defined(__MINGW64_VERSION_MAJOR) )
+#if ( defined(_MSC_VER) && _MSC_VER < 2000 ) || ( defined(__MINGW32__) && !defined(__MINGW64_VERSION_MAJOR) )
 
 inline char const * unknown_message_win32( int ev, char * buffer, std::size_t len )
 {
