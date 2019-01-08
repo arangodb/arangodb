@@ -77,7 +77,7 @@ std::string Option::toVersionString(std::vector<uint32_t> const& versions) const
   }
   return result;
 }
-  
+
 // returns the version in which the option was introduced as a proper
 // version string - if the version is unknown this will return "-"
 std::string Option::introducedInString() const {

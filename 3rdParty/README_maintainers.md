@@ -26,6 +26,23 @@ HTTP client library https://curl.haxx.se/
 
 We apply several build system patches to avoid unneccessary recompiles, bugfixes.
 
+For example, we commented out curl's check for nroff to avoid documentation
+building (and complaining about it on Windows).
+
+We also deactivated some of curl's install CMake commands, as we don't need
+anything installed (apart from that the vanilla curl install commands don't work
+when compiled as part of ArangoDB).
+
+We also disabled adding the OpenSSL libraries via the following command:
+
+   list(APPEND CURL_LIBS OpenSSL::SSL OpenSSL::Crypto)
+
+and instead are using the command
+ 
+   list(APPEND CURL_LIBS ${OPENSSL_LIBRARIES})
+
+from the previous version of curl's CMake file. When not applying this change,
+the static builds try to look for libssl.so, which will not work.
 
 ## date
 

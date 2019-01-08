@@ -306,7 +306,7 @@ void Syncer::JobSynchronizer::request(std::function<void()> const& cb) {
 
   try {
     auto self = shared_from_this();
-    SchedulerFeature::SCHEDULER->queue(RequestPriority::LOW, [this, self, cb]() {
+    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [this, self, cb]() {
       // whatever happens next, when we leave this here, we need to indicate
       // that there is no more posted job.
       // otherwise the calling thread may block forever waiting on the

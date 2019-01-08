@@ -73,10 +73,10 @@ struct Option {
 
   // format a version string
   std::string toVersionString(uint32_t version) const;
-  
+
   // format multiple version strings, comma-separated
   std::string toVersionString(std::vector<uint32_t> const& version) const;
-  
+
   // specifies in which version the option was introduced. version numbers
   // should be specified such as 30402 (version 3.4.2)
   // a version number of 0 means "unknown"
@@ -84,7 +84,7 @@ struct Option {
     introducedInVersions.push_back(version);
     return *this;
   }
-  
+
   // specifies in which version the option was deprecated. version numbers
   // should be specified such as 30402 (version 3.4.2)
   // a version number of 0 means "unknown"
@@ -94,14 +94,10 @@ struct Option {
   }
 
   // returns whether or not we know in which version(s) an option was added
-  bool hasIntroducedIn() const {
-    return !introducedInVersions.empty();
-  }
-  
+  bool hasIntroducedIn() const { return !introducedInVersions.empty(); }
+
   // returns whether or not we know in which version(s) an option was added
-  bool hasDeprecatedIn() const {
-    return !deprecatedInVersions.empty();
-  }
+  bool hasDeprecatedIn() const { return !deprecatedInVersions.empty(); }
 
   // returns the version in which the option was introduced as a proper
   // version string - if the version is unknown this will return "-"
@@ -158,7 +154,7 @@ struct Option {
 
   /// @brief option flags
   std::underlying_type<Flags>::type const flags;
-  
+
   std::vector<uint32_t> introducedInVersions;
   std::vector<uint32_t> deprecatedInVersions;
 };

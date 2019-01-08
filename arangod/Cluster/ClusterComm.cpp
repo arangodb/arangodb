@@ -32,7 +32,6 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
-#include "Scheduler/JobGuard.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "SimpleHttpClient/SimpleHttpCommunicatorResult.h"
 #include "Transaction/Methods.h"
@@ -1050,7 +1049,7 @@ class SharedRequestsState : public ClusterCommCallback,
   CoordTransactionID _coordTransactionID;
   ClusterComm::AsyncCallback _callback;
 
-  std::unique_ptr<asio_ns::steady_timer> _timer;
+  Scheduler::WorkHandle _handle;
   std::unordered_map<OperationID, size_t> opIDtoIndex;
   std::vector<ClusterCommTimeout> dueTime;
   size_t nrDone = 0;
@@ -1099,21 +1098,19 @@ class SharedRequestsState : public ClusterCommCallback,
     }
 
     TRI_ASSERT(actionNeeded >= now);
-    if (!_timer) {
-      _timer.reset(SchedulerFeature::SCHEDULER->newSteadyTimer());
-    }
 
     // TODO what about a shutdown, this will leak ??
     auto self = shared_from_this();
     auto duration = std::chrono::duration<double>(actionNeeded);
-    std::chrono::steady_clock::time_point tp(
-        std::chrono::duration_cast<std::chrono::nanoseconds>(duration));
-    _timer->expires_at(tp);
-    _timer->async_wait([self, this](asio_ns::error_code ec) {
-      if (!ec) {
-        this->performTasks(true);
-      }
-    });
+
+    _handle = SchedulerFeature::SCHEDULER->queueDelay(
+        RequestLane::CLUSTER_INTERNAL,
+        std::chrono::duration_cast<std::chrono::nanoseconds>(duration),
+        [self, this](bool cancelled) {
+          if (!cancelled) {
+            this->performTasks(true);
+          }
+        });
   }
 
  private:
@@ -1123,8 +1120,7 @@ class SharedRequestsState : public ClusterCommCallback,
       // requests are marked by done!
       ClusterComm::instance()->drop(_coordTransactionID, 0, "");
     }
-    _timer->cancel();
-    _timer.reset();
+    _handle.reset();
     TRI_ASSERT(_callback);
     _callback(_requests, nrDone, nrGood);
   }
@@ -1307,7 +1303,7 @@ void ClusterComm::disable() {
 }
 
 void ClusterComm::scheduleMe(std::function<void()> task) {
-  arangodb::SchedulerFeature::SCHEDULER->queue(RequestPriority::HIGH, task);
+  arangodb::SchedulerFeature::SCHEDULER->queue(RequestLane::CLUSTER_INTERNAL, task);
 }
 
 ClusterCommThread::ClusterCommThread() : Thread("ClusterComm"), _cc(nullptr) {

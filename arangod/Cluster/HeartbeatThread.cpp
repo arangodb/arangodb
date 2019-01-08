@@ -46,7 +46,6 @@
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "Scheduler/JobGuard.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -206,7 +205,6 @@ HeartbeatThread::HeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a heartbeat thread
 ////////////////////////////////////////////////////////////////////////////////
-
 HeartbeatThread::~HeartbeatThread() {
   if (_maintenanceThread) {
     _maintenanceThread->stop();
