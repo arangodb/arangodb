@@ -3306,6 +3306,8 @@ char* MMFilesEngine::nextFreeMarkerPosition(LogicalCollection* collection,
 
     // we only need the ditches when we are outside the recovery
     // the compactor will not run during recovery
+    LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << "creating DocumentDitch"; // temporary, debug build only
+
     auto ditch = arangodb::MMFilesCollection::toMMFilesCollection(collection)
                      ->ditches()
                      ->createMMFilesDocumentDitch(false, __FILE__, __LINE__);
