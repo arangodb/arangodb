@@ -1298,7 +1298,7 @@ AstNode* Ast::createNodeTraversal(AstNode const* outVars, AstNode const* graphIn
   AstNode* node = createNode(NODE_TYPE_TRAVERSAL);
   node->reserve(outVars->numMembers() + graphInfo->numMembers());
 
-  TRI_ASSERT(graphInfo->numMembers() == 4);
+  TRI_ASSERT(graphInfo->numMembers() == 5);
   TRI_ASSERT(outVars->numMembers() > 0);
   TRI_ASSERT(outVars->numMembers() < 4);
 

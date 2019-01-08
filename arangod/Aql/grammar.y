@@ -512,8 +512,66 @@ for_output_variables:
     }
   ;
 
+prune_and_options:
+    /* empty no prune, no options, add two NOPS */ {
+      auto node = static_cast<AstNode*>(parser->peekStack());
+      // Prune
+      node->addMember(parser->ast()->createNodeNop());
+      // Options
+      node->addMember(parser->ast()->createNodeNop());
+    }
+    | T_STRING expression {
+      auto node = static_cast<AstNode*>(parser->peekStack());
+      if (TRI_CaseEqualString($1.value, "PRUNE")) {
+        /* Only Prune */
+        if ($2 == nullptr) {
+          ABORT_OOM
+        }
+        // Prune
+        node->addMember($2);
+        // Options
+        node->addMember(parser->ast()->createNodeNop());
+      } else if (TRI_CaseEqualString($1.value, "OPTIONS")) {
+        /* Only Options */
+        if ($2 == nullptr) {
+          ABORT_OOM
+        }
+        if (!$2->isObject()) {
+          parser->registerParseError(TRI_ERROR_QUERY_PARSE, "traversal 'OPTIONS' have to be an object", $1.value, yylloc.first_line, yylloc.first_column);
+        }
+        // Prune
+        node->addMember(parser->ast()->createNodeNop());
+        // Options
+        node->addMember($2);
+      } else {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'PRUNE' or 'OPTIONS'", $1.value, yylloc.first_line, yylloc.first_column);
+      }
+    }
+    | T_STRING expression T_STRING object {
+      /* prune and options */
+      auto node = static_cast<AstNode*>(parser->peekStack());
+      if (!TRI_CaseEqualString($1.value, "PRUNE")) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'PRUNE'", $1.value, yylloc.first_line, yylloc.first_column);
+      }
+      if ($2 == nullptr) {
+        ABORT_OOM
+      }
+      if (!TRI_CaseEqualString($3.value, "OPTIONS")) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'OPTIONS'", $3.value, yylloc.first_line, yylloc.first_column);
+      }
+      if ($4 == nullptr) {
+        ABORT_OOM
+      }
+      // Prune
+      node->addMember($2);
+      // Options
+      node->addMember($4);
+
+    }
+  ;
+
 traversal_graph_info:
-    graph_direction_steps expression graph_subject options {
+    graph_direction_steps expression graph_subject {
       auto infoNode = parser->ast()->createNodeArray();
       // Direction
       infoNode->addMember($1);
@@ -521,10 +579,9 @@ traversal_graph_info:
       infoNode->addMember($2);
       // Graph
       infoNode->addMember($3);
-      auto opts = parser->ast()->createNodeOptions($4);
-      TRI_ASSERT(opts != nullptr);
-      infoNode->addMember(opts);
-      $$ = infoNode;
+      parser->pushStack(infoNode);
+    } prune_and_options {
+      $$ = static_cast<AstNode*>(parser->popStack());
     }
   ;
 
