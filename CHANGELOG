@@ -1,7 +1,9 @@
 devel
 -----
 
-* updated bundled curl library to version 7.63
+* upgraded bundled boost library to version 1.69.0
+
+* upgraded bundled curl library to version 7.63
 
 * Added --server.jwt-secret-keyfile option.
 

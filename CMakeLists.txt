@@ -49,9 +49,10 @@ option(SKIP_PACKAGING "" OFF)
 # be verbose about flags used
 option(VERBOSE "be verbose about flags used" OFF)
 
-# use standalone boost asio
-add_definitions("-DARANGODB_STANDALONE_ASIO=1")
-add_definitions("-DFUERTE_STANDALONE_ASIO=1")
+# don't use standalone boost asio
+# use this when asio is included outside of Boost
+# add_definitions("-DARANGODB_STANDALONE_ASIO=0")
+# add_definitions("-DFUERTE_STANDALONE_ASIO=0")
 
 # ------------------------------------------------------------------------------
 # VERSION information
@@ -1062,8 +1063,6 @@ add_dependencies(rocksdb ${SNAPPY_LIB})
 if (USE_JEMALLOC)
   add_dependencies(rocksdb jemalloc)
 endif ()
-
-include_directories(SYSTEM ${ASIO_INCLUDES})
 
 ################################################################################
 ## VELOCYPACK
