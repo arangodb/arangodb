@@ -151,7 +151,8 @@ class ProgramOptions {
   }
 
   // adds an option to the program options
-  Option& addOption(std::string const& name, std::string const& description, Parameter* parameter,
+  Option& addOption(std::string const& name, std::string const& description,
+                    Parameter* parameter,
                     std::underlying_type<Flags>::type flags = makeFlags(Flags::Normal)) {
     addOption(Option(name, description, parameter, flags));
     return getOption(name);
@@ -199,7 +200,7 @@ class ProgramOptions {
 
   // check whether or not an option requires a value
   bool requiresValue(std::string const& name) const;
-  
+
   // returns the option by name. will throw if the option cannot be found
   Option& getOption(std::string const& name);
 

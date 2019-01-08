@@ -172,7 +172,7 @@ void Scopes::addVariable(Variable* variable) {
 void Scopes::replaceVariable(Variable* variable) {
   TRI_ASSERT(!_activeScopes.empty());
   TRI_ASSERT(variable != nullptr);
-      
+
   _activeScopes.back()->addVariable(variable);
 }
 

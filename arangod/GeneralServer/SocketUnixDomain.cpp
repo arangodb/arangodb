@@ -20,7 +20,7 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Scheduler/SocketUnixDomain.h"
+#include "GeneralServer/SocketUnixDomain.h"
 
 #include "Basics/StringBuffer.h"
 

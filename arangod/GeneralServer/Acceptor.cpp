@@ -20,13 +20,13 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Scheduler/Acceptor.h"
+#include "GeneralServer/Acceptor.h"
 
 #include "Basics/operating-system.h"
-#include "Scheduler/AcceptorTcp.h"
+#include "GeneralServer/AcceptorTcp.h"
 
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
-#include "Scheduler/AcceptorUnixDomain.h"
+#include "GeneralServer/AcceptorUnixDomain.h"
 #endif
 
 using namespace arangodb;

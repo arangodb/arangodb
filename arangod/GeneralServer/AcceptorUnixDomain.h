@@ -23,7 +23,7 @@
 #ifndef ARANGOD_SCHEDULER_ACCEPTORUNIXDOMAIN_H
 #define ARANGOD_SCHEDULER_ACCEPTORUNIXDOMAIN_H 1
 
-#include "Scheduler/Acceptor.h"
+#include "GeneralServer/Acceptor.h"
 
 namespace arangodb {
 class AcceptorUnixDomain final : public Acceptor {

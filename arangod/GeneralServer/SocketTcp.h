@@ -24,7 +24,7 @@
 #ifndef ARANGOD_SCHEDULER_SOCKET_TCP_H
 #define ARANGOD_SCHEDULER_SOCKET_TCP_H 1
 
-#include "Scheduler/Socket.h"
+#include "GeneralServer/Socket.h"
 
 #include "Logger/Logger.h"
 
