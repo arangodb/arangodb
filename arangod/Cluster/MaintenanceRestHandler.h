@@ -24,8 +24,8 @@
 #ifndef ARANGOD_CLUSTER_MAINTENANCE_REST_HANDLER
 #define ARANGOD_CLUSTER_MAINTENANCE_REST_HANDLER 1
 
-#include <velocypack/vpack.h>
 #include <velocypack/velocypack-aliases.h>
+#include <velocypack/vpack.h>
 
 #include "Cluster/Action.h"
 #include "RestHandler/RestBaseHandler.h"
@@ -43,7 +43,9 @@ class MaintenanceRestHandler : public RestBaseHandler {
  public:
   char const* name() const override { return "MaintenanceRestHandler"; }
 
-  RequestLane lane() const override final { return RequestLane::CLUSTER_INTERNAL; }
+  RequestLane lane() const override final {
+    return RequestLane::CLUSTER_INTERNAL;
+  }
 
   /// @brief Performs routing of request to appropriate subroutines
   RestStatus execute() override;
@@ -52,13 +54,18 @@ class MaintenanceRestHandler : public RestBaseHandler {
   // Accessors
   //
   /// @brief retrieve parsed action description
-  maintenance::ActionDescription const & getActionDesc() const {return *_actionDesc;};
+  maintenance::ActionDescription const& getActionDesc() const {
+    return *_actionDesc;
+  };
 
   /// @brief retrieve unparsed action properties
-  VPackBuilder const & getActionProp() const {return *(_actionDesc->properties());};
+  VPackBuilder const& getActionProp() const {
+    return *(_actionDesc->properties());
+  };
 
-protected:
-  /// @brief PUT method adds an Action to the worklist (or executes action directly)
+ protected:
+  /// @brief PUT method adds an Action to the worklist (or executes action
+  /// directly)
   void putAction();
 
   /// @brief GET method returns worklist
@@ -68,16 +75,13 @@ protected:
   ///  (finished actions are untouched)
   void deleteAction();
 
+  /// @brief internal routine to convert PUT body into _actionDesc and
+  /// _actionProp
+  bool parsePutBody(VPackSlice const& parameters);
 
-  /// @brief internal routine to convert PUT body into _actionDesc and _actionProp
-  bool parsePutBody(VPackSlice const & parameters);
-
-
-protected:
+ protected:
   std::shared_ptr<maintenance::ActionDescription> _actionDesc;
-
-
 };
-}
+}  // namespace arangodb
 
 #endif

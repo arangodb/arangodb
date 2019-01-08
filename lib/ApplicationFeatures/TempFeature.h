@@ -29,10 +29,7 @@ namespace arangodb {
 
 class TempFeature final : public application_features::ApplicationFeature {
  public:
-  TempFeature(
-    application_features::ApplicationServer& server,
-    std::string const& appname
-  );
+  TempFeature(application_features::ApplicationServer& server, std::string const& appname);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -43,6 +40,6 @@ class TempFeature final : public application_features::ApplicationFeature {
   std::string _appname;
 };
 
-}
+}  // namespace arangodb
 
 #endif

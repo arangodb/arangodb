@@ -44,20 +44,20 @@ EndpointUnixDomain::~EndpointUnixDomain() {
   }
 }
 
-TRI_socket_t EndpointUnixDomain::connect(double connectTimeout,
-                                         double requestTimeout) {
+TRI_socket_t EndpointUnixDomain::connect(double connectTimeout, double requestTimeout) {
   TRI_socket_t listenSocket;
   TRI_invalidatesocket(&listenSocket);
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "connecting to unix endpoint '" << _specification << "'";
+  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+      << "connecting to unix endpoint '" << _specification << "'";
 
   TRI_ASSERT(!TRI_isvalidsocket(_socket));
   TRI_ASSERT(!_connected);
 
   listenSocket = TRI_socket(AF_UNIX, SOCK_STREAM, 0);
   if (!TRI_isvalidsocket(listenSocket)) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "socket() failed with " << errno << " (" << strerror(errno)
-             << ")";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "socket() failed with " << errno << " (" << strerror(errno) << ")";
     return listenSocket;
   }
 
@@ -69,11 +69,11 @@ TRI_socket_t EndpointUnixDomain::connect(double connectTimeout,
 
   if (_type == EndpointType::SERVER) {
     int result =
-        TRI_bind(listenSocket, (struct sockaddr*)&address, (int) SUN_LEN(&address));
+        TRI_bind(listenSocket, (struct sockaddr*)&address, (int)SUN_LEN(&address));
     if (result != 0) {
       // bind error
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "bind() failed with " << errno << " (" << strerror(errno)
-               << ")";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "bind() failed with " << errno << " (" << strerror(errno) << ")";
       TRI_CLOSE_SOCKET(listenSocket);
       TRI_invalidatesocket(&listenSocket);
       return listenSocket;
@@ -84,8 +84,8 @@ TRI_socket_t EndpointUnixDomain::connect(double connectTimeout,
     result = TRI_listen(listenSocket, _listenBacklog);
 
     if (result < 0) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "listen() failed with " << errno << " (" << strerror(errno)
-               << ")";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "listen() failed with " << errno << " (" << strerror(errno) << ")";
       TRI_CLOSE_SOCKET(listenSocket);
       TRI_invalidatesocket(&listenSocket);
       return listenSocket;
@@ -98,8 +98,7 @@ TRI_socket_t EndpointUnixDomain::connect(double connectTimeout,
     // set timeout
     setTimeout(listenSocket, connectTimeout);
 
-    if (TRI_connect(listenSocket, (const struct sockaddr*)&address,
-                    SUN_LEN(&address)) != 0) {
+    if (TRI_connect(listenSocket, (const struct sockaddr*)&address, SUN_LEN(&address)) != 0) {
       TRI_CLOSE_SOCKET(listenSocket);
       TRI_invalidatesocket(&listenSocket);
       return listenSocket;
@@ -134,7 +133,8 @@ void EndpointUnixDomain::disconnect() {
     if (_type == EndpointType::SERVER) {
       int error = 0;
       if (!FileUtils::remove(_path, &error)) {
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "unable to remove socket file '" << _path << "'";
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+            << "unable to remove socket file '" << _path << "'";
       }
     }
   }

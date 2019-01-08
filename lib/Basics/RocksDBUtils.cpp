@@ -35,8 +35,7 @@ namespace rocksutils {
 static bool hasObjectIds(VPackSlice const& inputSlice) {
   bool rv = false;
   if (inputSlice.isObject()) {
-    for (auto const& objectPair :
-         arangodb::velocypack::ObjectIterator(inputSlice)) {
+    for (auto const& objectPair : arangodb::velocypack::ObjectIterator(inputSlice)) {
       if (arangodb::StringRef(objectPair.key) == "objectId") {
         return true;
       }
@@ -59,8 +58,7 @@ static bool hasObjectIds(VPackSlice const& inputSlice) {
 static VPackBuilder& stripObjectIdsImpl(VPackBuilder& builder, VPackSlice const& inputSlice) {
   if (inputSlice.isObject()) {
     builder.openObject();
-    for (auto const& objectPair :
-         arangodb::velocypack::ObjectIterator(inputSlice)) {
+    for (auto const& objectPair : arangodb::velocypack::ObjectIterator(inputSlice)) {
       if (arangodb::StringRef(objectPair.key) == "objectId") {
         continue;
       }
@@ -80,7 +78,8 @@ static VPackBuilder& stripObjectIdsImpl(VPackBuilder& builder, VPackSlice const&
   return builder;
 }
 
-arangodb::Result convertStatus(rocksdb::Status const& status, StatusHint hint, std::string const& prefix, std::string const& postfix) {
+arangodb::Result convertStatus(rocksdb::Status const& status, StatusHint hint,
+                               std::string const& prefix, std::string const& postfix) {
   std::string message = prefix + status.ToString() + postfix;
   switch (status.code()) {
     case rocksdb::Status::Code::kOk:
@@ -98,7 +97,8 @@ arangodb::Result convertStatus(rocksdb::Status const& status, StatusHint hint, s
         case StatusHint::view:
           return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, std::move(message)};
         case StatusHint::wal:
-          // suppress this error if the WAL is queried for changes that are not available
+          // suppress this error if the WAL is queried for changes that are not
+          // available
           return {TRI_ERROR_NO_ERROR};
         default:
           return {TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, std::move(message)};
@@ -117,7 +117,8 @@ arangodb::Result convertStatus(rocksdb::Status const& status, StatusHint hint, s
     case rocksdb::Status::Code::kMergeInProgress:
       return {TRI_ERROR_ARANGO_MERGE_IN_PROGRESS, std::move(message)};
     case rocksdb::Status::Code::kIncomplete:
-      return {TRI_ERROR_INTERNAL, prefix + "'incomplete' error in storage engine" + postfix};
+      return {TRI_ERROR_INTERNAL,
+              prefix + "'incomplete' error in storage engine" + postfix};
     case rocksdb::Status::Code::kShutdownInProgress:
       return {TRI_ERROR_SHUTTING_DOWN, std::move(message)};
     case rocksdb::Status::Code::kTimedOut:
@@ -125,7 +126,8 @@ arangodb::Result convertStatus(rocksdb::Status const& status, StatusHint hint, s
         return {TRI_ERROR_LOCK_TIMEOUT, std::move(message)};
       }
       if (status.subcode() == rocksdb::Status::SubCode::kLockTimeout) {
-        return {TRI_ERROR_ARANGO_CONFLICT, prefix + "timeout waiting to lock key" + postfix };
+        return {TRI_ERROR_ARANGO_CONFLICT,
+                prefix + "timeout waiting to lock key" + postfix};
       }
       return {TRI_ERROR_LOCK_TIMEOUT, std::move(message)};
     case rocksdb::Status::Code::kAborted:
@@ -136,11 +138,12 @@ arangodb::Result convertStatus(rocksdb::Status const& status, StatusHint hint, s
       }
       if (status.subcode() == rocksdb::Status::SubCode::kLockLimit) {
         // should actually not occur with our RocksDB configuration
-        return {TRI_ERROR_RESOURCE_LIMIT, prefix + "failed to acquire lock due to lock number limit"+ postfix };
+        return {TRI_ERROR_RESOURCE_LIMIT,
+                prefix + "failed to acquire lock due to lock number limit" + postfix};
       }
       return {TRI_ERROR_ARANGO_CONFLICT, "write-write conflict"};
     case rocksdb::Status::Code::kExpired:
-      return {TRI_ERROR_INTERNAL, prefix + "key expired; TTL was set in error"+ postfix};
+      return {TRI_ERROR_INTERNAL, prefix + "key expired; TTL was set in error" + postfix};
     case rocksdb::Status::Code::kTryAgain:
       return {TRI_ERROR_ARANGO_TRY_AGAIN, std::move(message)};
     default:
@@ -162,5 +165,5 @@ std::pair<VPackSlice, std::unique_ptr<VPackBuffer<uint8_t>>> stripObjectIds(
   return {VPackSlice(buffer->data()), std::move(buffer)};
 }
 
-}
-}
+}  // namespace rocksutils
+}  // namespace arangodb

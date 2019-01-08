@@ -39,30 +39,32 @@ class MMFilesTransactionManager final : public TransactionManager {
   ~MMFilesTransactionManager() {}
 
   // register a list of failed transactions
-  void registerFailedTransactions(
-      std::unordered_set<TRI_voc_tid_t> const& failedTransactions) override;
+  void registerFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions) override;
 
   // unregister a list of failed transactions
-  void unregisterFailedTransactions(
-      std::unordered_set<TRI_voc_tid_t> const& failedTransactions) override;
-  
+  void unregisterFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions) override;
+
   // return the set of failed transactions
-  std::unordered_set<TRI_voc_tid_t> getFailedTransactions() override; 
+  std::unordered_set<TRI_voc_tid_t> getFailedTransactions() override;
 
   // register a transaction
-  void registerTransaction(TRI_voc_tid_t transactionId, std::unique_ptr<TransactionData> data) override; 
+  void registerTransaction(TRI_voc_tid_t transactionId,
+                           std::unique_ptr<TransactionData> data) override;
 
   // unregister a transaction
   void unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed) override;
 
   // iterate all the active transactions
-  void iterateActiveTransactions(std::function<void(TRI_voc_tid_t, TransactionData const*)> const& callback) override;
-  
+  void iterateActiveTransactions(
+      std::function<void(TRI_voc_tid_t, TransactionData const*)> const& callback) override;
+
   uint64_t getActiveTransactionCount() override;
 
  private:
   // hashes the transaction id into a bucket
-  inline size_t getBucket(TRI_voc_tid_t id) const { return std::hash<TRI_voc_cid_t>()(id) % numBuckets; }
+  inline size_t getBucket(TRI_voc_tid_t id) const {
+    return std::hash<TRI_voc_cid_t>()(id) % numBuckets;
+  }
 
   // a lock protecting ALL buckets in _transactions
   basics::ReadWriteLock _allTransactionsLock;
@@ -79,6 +81,6 @@ class MMFilesTransactionManager final : public TransactionManager {
   } _transactions[numBuckets];
 };
 
-}
+}  // namespace arangodb
 
 #endif

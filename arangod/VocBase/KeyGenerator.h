@@ -33,14 +33,14 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 /// generic key generator interface
 ///
 /// please note that coordinator-based key generators are frequently
 /// created and discarded, so ctor & dtor need to be very efficient.
 /// additionally, do not put any state into this object, as for the
-/// same logical collection the ClusterInfo may create many different 
+/// same logical collection the ClusterInfo may create many different
 /// temporary LogicalCollection objects one after the other, which
 /// will also discard the collection's particular KeyGenerator object!
 class KeyGenerator {
@@ -57,7 +57,7 @@ class KeyGenerator {
 
   /// @brief create a key generator based on the options specified
   static KeyGenerator* factory(arangodb::velocypack::Slice);
-  
+
   /// @brief whether or not the key generator has dynamic state
   /// that needs to be stored and recovered
   virtual bool hasDynamicState() const { return true; }
@@ -81,19 +81,19 @@ class KeyGenerator {
 
   /// @brief validate a document id (collection name + / + document key)
   static bool validateId(char const* key, size_t len, size_t* split = nullptr);
- 
+
   /// @brief maximum length of a key in a collection
   static constexpr size_t maxKeyLength = 254;
 
  protected:
   /// @brief check global key attributes
   int globalCheck(char const* p, size_t length, bool isRestore);
-  
+
  protected:
   /// @brief whether or not the users can specify their own keys
   bool const _allowUserKeys;
 };
 
-}
+}  // namespace arangodb
 
 #endif

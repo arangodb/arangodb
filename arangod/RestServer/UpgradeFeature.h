@@ -29,11 +29,8 @@ namespace arangodb {
 
 class UpgradeFeature final : public application_features::ApplicationFeature {
  public:
-  UpgradeFeature(
-    application_features::ApplicationServer& server,
-    int* result,
-    std::vector<std::string> const& nonServerFeatures
-  );
+  UpgradeFeature(application_features::ApplicationServer& server, int* result,
+                 std::vector<std::string> const& nonServerFeatures);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -50,6 +47,6 @@ class UpgradeFeature final : public application_features::ApplicationFeature {
   std::vector<std::string> _nonServerFeatures;
 };
 
-}
+}  // namespace arangodb
 
 #endif

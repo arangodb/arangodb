@@ -30,16 +30,14 @@
 namespace arangodb {
 class LogicalCollection;
 
-Result syncChunkRocksDB(
-    DatabaseInitialSyncer& syncer, SingleCollectionTransaction* trx,
-    InitialSyncerIncrementalSyncStats& stats,
-    std::string const& keysId, uint64_t chunkId, std::string const& lowString,
-    std::string const& highString,
-    std::vector<std::string> const& markers);
+Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransaction* trx,
+                        InitialSyncerIncrementalSyncStats& stats,
+                        std::string const& keysId, uint64_t chunkId,
+                        std::string const& lowString, std::string const& highString,
+                        std::vector<std::string> const& markers);
 
 Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
-                             arangodb::LogicalCollection* col,
-                             std::string const& keysId);
-}
+                             arangodb::LogicalCollection* col, std::string const& keysId);
+}  // namespace arangodb
 
 #endif

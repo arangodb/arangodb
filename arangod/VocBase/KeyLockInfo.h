@@ -29,18 +29,18 @@
 #include <functional>
 
 namespace arangodb {
- 
+
 struct KeyLockInfo {
-  KeyLockInfo(KeyLockInfo const&) = delete; 
+  KeyLockInfo(KeyLockInfo const&) = delete;
   KeyLockInfo& operator=(KeyLockInfo const&) = delete;
 
   KeyLockInfo() : shouldLock(false) {}
   ~KeyLockInfo();
-  
+
   std::string key;
   std::function<void(KeyLockInfo&)> unlocker;
   bool shouldLock;
 };
 
-}
+}  // namespace arangodb
 #endif

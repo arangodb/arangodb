@@ -31,9 +31,8 @@
 
 using namespace arangodb;
 
-ClusterSelectivityEstimates::ClusterSelectivityEstimates(LogicalCollection& collection) 
-    : _collection(collection), 
-      _expireStamp(0.0) {}
+ClusterSelectivityEstimates::ClusterSelectivityEstimates(LogicalCollection& collection)
+    : _collection(collection), _expireStamp(0.0) {}
 
 void ClusterSelectivityEstimates::flush() {
   WRITE_LOCKER(lock, _lock);
@@ -68,13 +67,14 @@ std::unordered_map<std::string, double> ClusterSelectivityEstimates::get(bool al
     decltype(_estimates) estimates;
 
     WRITE_LOCKER(writeLock, _lock);
-    
+
     if (!_estimates.empty() && _expireStamp > now) {
       // some other thread has updated the estimates for us... just use them
       return _estimates;
     }
 
-    int res = selectivityEstimatesOnCoordinator(_collection.vocbase().name(), _collection.name(), estimates);
+    int res = selectivityEstimatesOnCoordinator(_collection.vocbase().name(),
+                                                _collection.name(), estimates);
 
     if (res == TRI_ERROR_NO_ERROR) {
       _estimates = estimates;
@@ -83,7 +83,7 @@ std::unordered_map<std::string, double> ClusterSelectivityEstimates::get(bool al
 
       // give up the lock, and then update the selectivity values for each index
       writeLock.unlock();
-  
+
       // push new selectivity values into indexes' cache
       auto indexes = _collection.getIndexes();
 
@@ -106,7 +106,7 @@ std::unordered_map<std::string, double> ClusterSelectivityEstimates::get(bool al
 
 void ClusterSelectivityEstimates::set(std::unordered_map<std::string, double>&& estimates) {
   double const now = TRI_microtime();
-  
+
   // push new selectivity values into indexes' cache
   auto indexes = _collection.getIndexes();
 
@@ -118,7 +118,7 @@ void ClusterSelectivityEstimates::set(std::unordered_map<std::string, double>&& 
     }
   }
 
-  // finally update the cache  
+  // finally update the cache
   {
     WRITE_LOCKER(writelock, _lock);
 

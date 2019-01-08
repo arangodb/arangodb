@@ -35,8 +35,7 @@ class MMFilesWalAccess final : public WalAccess {
   MMFilesWalAccess() {}
 
   /// {"tickMin":"123", "tickMax":"456", "version":"3.2", "serverId":"abc"}
-  Result tickRange(
-      std::pair<TRI_voc_tick_t, TRI_voc_tick_t>& minMax) const override;
+  Result tickRange(std::pair<TRI_voc_tick_t, TRI_voc_tick_t>& minMax) const override;
 
   /// {"lastTick":"123",
   ///  "version":"3.2",
@@ -56,6 +55,6 @@ class MMFilesWalAccess final : public WalAccess {
   WalAccessResult tail(WalAccess::Filter const& filter, size_t chunkSize,
                        TRI_voc_tid_t barrierId, MarkerCallback const&) const override;
 };
-}
+}  // namespace arangodb
 
 #endif

@@ -23,8 +23,8 @@
 #ifndef ARANGOD_GEO_INDEX_H
 #define ARANGOD_GEO_INDEX_H 1
 
-#include <s2/s2latlng.h>
 #include <s2/s2cell_id.h>
+#include <s2/s2latlng.h>
 
 #include "Basics/Result.h"
 #include "Geo/GeoParams.h"
@@ -66,8 +66,7 @@ struct Index {
 
  protected:
   /// @brief Initialize coverParams
-  Index(velocypack::Slice const&,
-        std::vector<std::vector<basics::AttributeName>> const&);
+  Index(velocypack::Slice const&, std::vector<std::vector<basics::AttributeName>> const&);
 
  public:
   /// @brief Parse document and return cells for indexing
@@ -78,18 +77,15 @@ struct Index {
 
   /// @brief Parse AQL condition into query parameters
   /// Public to allow usage by legacy geo indexes
-  static void parseCondition(aql::AstNode const* node,
-                             aql::Variable const* reference,
+  static void parseCondition(aql::AstNode const* node, aql::Variable const* reference,
                              geo::QueryParams& params);
 
   Variant variant() const { return _variant; }
 
  private:
-  static S2LatLng parseGeoDistance(aql::AstNode const* node,
-                                   aql::Variable const* ref);
+  static S2LatLng parseGeoDistance(aql::AstNode const* node, aql::Variable const* ref);
 
-  static S2LatLng parseDistFCall(aql::AstNode const* node,
-                                 aql::Variable const* ref);
+  static S2LatLng parseDistFCall(aql::AstNode const* node, aql::Variable const* ref);
   static void handleNode(aql::AstNode const* node, aql::Variable const* ref,
                          geo::QueryParams& params);
 

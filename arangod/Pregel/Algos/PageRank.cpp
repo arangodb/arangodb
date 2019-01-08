@@ -49,17 +49,14 @@ struct PRWorkerContext : public WorkerContext {
 };
 
 PageRank::PageRank(VPackSlice const& params)
-    : SimpleAlgorithm("PageRank", params), _useSource(params.hasKey("sourceField")) {
-}
+    : SimpleAlgorithm("PageRank", params), _useSource(params.hasKey("sourceField")) {}
 
 /// will use a seed value for pagerank if available
 struct SeededPRGraphFormat final : public NumberGraphFormat<float, float> {
-  SeededPRGraphFormat(std::string const& source, std::string const& result,
-                      float vertexNull)
+  SeededPRGraphFormat(std::string const& source, std::string const& result, float vertexNull)
       : NumberGraphFormat(source, result, vertexNull, 0.0f) {}
 
-  size_t copyEdgeData(arangodb::velocypack::Slice document, float*,
-                      size_t maxSize) override {
+  size_t copyEdgeData(arangodb::velocypack::Slice document, float*, size_t maxSize) override {
     return 0;
   }
   bool buildEdgeDocument(arangodb::velocypack::Builder& b, float const*,
@@ -103,8 +100,7 @@ struct PRComputation : public VertexComputation<float, float, float> {
   }
 };
 
-VertexComputation<float, float, float>* PageRank::createComputation(
-    WorkerConfig const* config) const {
+VertexComputation<float, float, float>* PageRank::createComputation(WorkerConfig const* config) const {
   return new PRComputation();
 }
 

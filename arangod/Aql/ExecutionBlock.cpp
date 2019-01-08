@@ -54,7 +54,7 @@ static std::string const& stateToString(ExecutionState state) {
   return unknownString;
 }
 
-} // namespace
+}  // namespace
 
 ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
     : _engine(engine),
@@ -70,8 +70,8 @@ ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
       _skipped(0),
       _collector(&engine->_itemBlockManager) {
   TRI_ASSERT(_trx != nullptr);
-   
-  // already insert ourselves into the statistics results 
+
+  // already insert ourselves into the statistics results
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
     _engine->_stats.nodes.emplace(ep->id(), ExecutionStats::Node());
   }
@@ -122,16 +122,15 @@ void ExecutionBlock::throwIfKilled() {
   }
 }
 
-std::pair<ExecutionState, arangodb::Result> ExecutionBlock::initializeCursor(
-    AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, arangodb::Result> ExecutionBlock::initializeCursor(AqlItemBlock* items,
+                                                                             size_t pos) {
   if (_dependencyPos == _dependencies.end()) {
     // We need to start again.
     _dependencyPos = _dependencies.begin();
   }
   for (; _dependencyPos != _dependencies.end(); ++_dependencyPos) {
     auto res = (*_dependencyPos)->initializeCursor(items, pos);
-    if (res.first == ExecutionState::WAITING ||
-        !res.second.ok()) {
+    if (res.first == ExecutionState::WAITING || !res.second.ok()) {
       // If we need to wait or get an error we return as is.
       return res;
     }
@@ -196,9 +195,8 @@ void ExecutionBlock::traceGetSomeBegin(size_t atMost) {
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
       auto node = getPlanNode();
       LOG_TOPIC(INFO, Logger::QUERIES)
-      << "getSome type=" << node->getTypeString()
-      << " atMost = " << atMost
-      << " this=" << (uintptr_t) this << " id=" << node->id();
+          << "getSome type=" << node->getTypeString() << " atMost = " << atMost
+          << " this=" << (uintptr_t)this << " id=" << node->id();
     }
   }
 }
@@ -215,33 +213,32 @@ void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result, ExecutionState 
       stats.runtime = TRI_microtime() - _getSomeBegin;
       _getSomeBegin = 0.0;
     }
-    
+
     auto it = _engine->_stats.nodes.find(en->id());
     if (it != _engine->_stats.nodes.end()) {
       it->second += stats;
     } else {
       _engine->_stats.nodes.emplace(en->id(), stats);
     }
-    
+
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
       ExecutionNode const* node = getPlanNode();
-      LOG_TOPIC(INFO, Logger::QUERIES) << "getSome done type="
-      << node->getTypeString() << " this=" << (uintptr_t) this
-      << " id=" << node->id() << " state=" << ::stateToString(state);
-      
+      LOG_TOPIC(INFO, Logger::QUERIES)
+          << "getSome done type=" << node->getTypeString() << " this=" << (uintptr_t)this
+          << " id=" << node->id() << " state=" << ::stateToString(state);
+
       if (_profile >= PROFILE_LEVEL_TRACE_2) {
         if (result == nullptr) {
           LOG_TOPIC(INFO, Logger::QUERIES)
-          << "getSome type=" << node->getTypeString() << " result: nullptr";
+              << "getSome type=" << node->getTypeString() << " result: nullptr";
         } else {
           VPackBuilder builder;
           {
             VPackObjectBuilder guard(&builder);
             result->toVelocyPack(_trx, builder);
           }
-          LOG_TOPIC(INFO, Logger::QUERIES)
-          << "getSome type=" << node->getTypeString()
-          << " result: " << builder.toJson();
+          LOG_TOPIC(INFO, Logger::QUERIES) << "getSome type=" << node->getTypeString()
+                                           << " result: " << builder.toJson();
         }
       }
     }
@@ -256,9 +253,8 @@ void ExecutionBlock::traceSkipSomeBegin(size_t atMost) {
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
       auto node = getPlanNode();
       LOG_TOPIC(INFO, Logger::QUERIES)
-      << "skipSome type=" << node->getTypeString()
-      << " atMost = " << atMost
-      << " this=" << (uintptr_t) this << " id=" << node->id();
+          << "skipSome type=" << node->getTypeString() << " atMost = " << atMost
+          << " this=" << (uintptr_t)this << " id=" << node->id();
     }
   }
 }
@@ -273,19 +269,19 @@ void ExecutionBlock::traceSkipSomeEnd(size_t skipped, ExecutionState state) {
       stats.runtime = TRI_microtime() - _getSomeBegin;
       _getSomeBegin = 0.0;
     }
-    
+
     auto it = _engine->_stats.nodes.find(en->id());
     if (it != _engine->_stats.nodes.end()) {
       it->second += stats;
     } else {
       _engine->_stats.nodes.emplace(en->id(), stats);
     }
-    
+
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
       ExecutionNode const* node = getPlanNode();
-      LOG_TOPIC(INFO, Logger::QUERIES) << "skipSome done type="
-      << node->getTypeString() << " this=" << (uintptr_t) this
-      << " id=" << node->id() << " state=" << ::stateToString(state);
+      LOG_TOPIC(INFO, Logger::QUERIES)
+          << "skipSome done type=" << node->getTypeString() << " this=" << (uintptr_t)this
+          << " id=" << node->id() << " state=" << ::stateToString(state);
     }
   }
 }
@@ -303,10 +299,9 @@ void ExecutionBlock::traceSkipSomeEnd(size_t skipped, ExecutionState state) {
 //      method _getSome(), which by default only calls
 //      getSomeWithoutRegisterClearout() and which can be overridden instead.
 //      Or maybe overriding getSomeWithoutRegisterClearout() instead is better.
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
-ExecutionBlock::getSome(size_t atMost) {
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlock::getSome(size_t atMost) {
   traceGetSomeBegin(atMost);
-    
+
   auto res = getSomeWithoutRegisterClearout(atMost);
   if (res.first == ExecutionState::WAITING) {
     traceGetSomeEnd(nullptr, res.first);
@@ -337,9 +332,8 @@ void ExecutionBlock::returnBlockUnlessNull(AqlItemBlock*& block) {
 
 /// @brief copy register data from one block (src) into another (dst)
 /// register values are cloned
-void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
-                                      AqlItemBlock* dst, size_t srcRow,
-                                      size_t dstRow) {
+void ExecutionBlock::inheritRegisters(AqlItemBlock const* src, AqlItemBlock* dst,
+                                      size_t srcRow, size_t dstRow) {
   TRI_ASSERT(src != nullptr);
   RegisterId const n = src->getNrRegs();
   auto planNode = getPlanNode();
@@ -396,8 +390,7 @@ std::pair<ExecutionState, bool> ExecutionBlock::getBlock(size_t atMost) {
 /// the idea is that somebody who wants to call the generic functionality
 /// in a derived class but wants to modify the results before the register
 /// cleanup can use this method, internal use only
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
-ExecutionBlock::getSomeWithoutRegisterClearout(size_t atMost) {
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlock::getSomeWithoutRegisterClearout(size_t atMost) {
   TRI_ASSERT(atMost > 0);
 
   std::unique_ptr<AqlItemBlock> result;
@@ -509,8 +502,7 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::getOrSkipSome(
 
   // if _buffer.size() is > 0 then _pos points to a valid place . . .
 
-  auto processRows = [this](size_t atMost, bool skipping)
-    -> std::pair<size_t, bool> {
+  auto processRows = [this](size_t atMost, bool skipping) -> std::pair<size_t, bool> {
     AqlItemBlock* cur = _buffer.front();
     TRI_ASSERT(cur != nullptr);
 
@@ -561,9 +553,7 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::getOrSkipSome(
     return {rowsProcessed, keepFrontBlock};
   };
 
-  while (ExecutionBlock::getHasMoreState() != ExecutionState::DONE &&
-         _skipped < atMost) {
-
+  while (ExecutionBlock::getHasMoreState() != ExecutionState::DONE && _skipped < atMost) {
     if (skipping && _buffer.empty()) {
       // Skip upstream directly if possible
       ExecutionState state;
@@ -595,8 +585,7 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::getOrSkipSome(
 
     size_t rowsProcessed;
     bool keepFrontBlock;
-    std::tie(rowsProcessed, keepFrontBlock) =
-        processRows(atMost - _skipped, skipping);
+    std::tie(rowsProcessed, keepFrontBlock) = processRows(atMost - _skipped, skipping);
     // number of input rows consumed and output rows created is equal here
     AqlItemBlock* removedBlock = advanceCursor(rowsProcessed, rowsProcessed);
     if (!keepFrontBlock) {
@@ -630,7 +619,7 @@ RegisterId ExecutionBlock::getNrInputRegisters() const {
   ExecutionNode const* previousNode = getPlanNode()->getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
   RegisterId const inputNrRegs =
-    previousNode->getRegisterPlan()->nrRegs[previousNode->getDepth()];
+      previousNode->getRegisterPlan()->nrRegs[previousNode->getDepth()];
 
   return inputNrRegs;
 }
@@ -639,7 +628,7 @@ RegisterId ExecutionBlock::getNrOutputRegisters() const {
   ExecutionNode const* planNode = getPlanNode();
   TRI_ASSERT(planNode != nullptr);
   RegisterId const outputNrRegs =
-    planNode->getRegisterPlan()->nrRegs[planNode->getDepth()];
+      planNode->getRegisterPlan()->nrRegs[planNode->getDepth()];
 
   return outputNrRegs;
 }

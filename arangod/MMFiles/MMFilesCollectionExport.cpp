@@ -28,22 +28,20 @@
 #include "MMFiles/MMFilesEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
+#include "Transaction/Hints.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Transaction/StandaloneContext.h"
-#include "Transaction/Hints.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
 
-MMFilesCollectionExport::MMFilesCollectionExport(
-    TRI_vocbase_t& vocbase,
-    std::string const& name,
-    CollectionExport::Restrictions const& restrictions
-)
+MMFilesCollectionExport::MMFilesCollectionExport(TRI_vocbase_t& vocbase,
+                                                 std::string const& name,
+                                                 CollectionExport::Restrictions const& restrictions)
     : _collection(nullptr),
       _ditch(nullptr),
       _name(name),
@@ -67,9 +65,7 @@ void MMFilesCollectionExport::run(uint64_t maxWaitTime, size_t limit) {
   MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
 
   // try to acquire the exclusive lock on the compaction
-  engine->preventCompaction(
-    &(_collection->vocbase()),
-    [this](TRI_vocbase_t* vocbase) {
+  engine->preventCompaction(&(_collection->vocbase()), [this](TRI_vocbase_t* vocbase) {
     // create a ditch under the compaction lock
     _ditch = arangodb::MMFilesCollection::toMMFilesCollection(_collection)
                  ->ditches()
@@ -109,7 +105,8 @@ void MMFilesCollectionExport::run(uint64_t maxWaitTime, size_t limit) {
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    size_t maxDocuments = _collection->numberDocuments(&trx, transaction::CountType::Normal);
+    size_t maxDocuments =
+        _collection->numberDocuments(&trx, transaction::CountType::Normal);
 
     if (limit > 0 && limit < maxDocuments) {
       maxDocuments = limit;
@@ -121,7 +118,8 @@ void MMFilesCollectionExport::run(uint64_t maxWaitTime, size_t limit) {
 
     MMFilesCollection* mmColl = MMFilesCollection::toMMFilesCollection(_collection);
     ManagedDocumentResult mmdr;
-    trx.invokeOnAllElements(_collection->name(), [this, &limit, &trx, &mmdr, mmColl](LocalDocumentId const& token) {
+    trx.invokeOnAllElements(_collection->name(), [this, &limit, &trx, &mmdr,
+                                                  mmColl](LocalDocumentId const& token) {
       if (limit == 0) {
         return false;
       }
@@ -140,7 +138,7 @@ void MMFilesCollectionExport::run(uint64_t maxWaitTime, size_t limit) {
   // and the export object gets later freed in a different thread, then all
   // would be lost. so we'll release the lock here and rely on the cleanup
   // thread not unloading the collection (as we've acquired a document ditch
-  // for the collection already - this will prevent unloading of the collection's
-  // datafiles etc.)
+  // for the collection already - this will prevent unloading of the
+  // collection's datafiles etc.)
   _guard.reset();
 }

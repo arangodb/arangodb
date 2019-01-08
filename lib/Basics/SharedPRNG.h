@@ -65,8 +65,7 @@ struct SharedPRNG {
   uint64_t _mask;
 
   inline uint64_t id() {
-    return fasthash64_uint64(Thread::currentThreadNumber(),
-                             0xdeadbeefdeadbeefULL);
+    return fasthash64_uint64(Thread::currentThreadNumber(), 0xdeadbeefdeadbeefULL);
   }
 
   inline uint64_t next() { return _prng[id() & _mask].next(); }

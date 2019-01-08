@@ -24,8 +24,8 @@
 #ifndef ARANGOD_TRANSACTION_V8_CONTEXT_H
 #define ARANGOD_TRANSACTION_V8_CONTEXT_H 1
 
-#include "Context.h"
 #include "Basics/Common.h"
+#include "Context.h"
 
 struct TRI_vocbase_t;
 
@@ -37,7 +37,6 @@ namespace transaction {
 
 class V8Context final : public Context {
  public:
-
   /// @brief create the context
   V8Context(TRI_vocbase_t& vocbase, bool embeddable);
 
@@ -45,8 +44,7 @@ class V8Context final : public Context {
   ~V8Context() = default;
 
   /// @brief order a custom type handler
-  std::shared_ptr<arangodb::velocypack::CustomTypeHandler>
-  orderCustomTypeHandler() override final;
+  std::shared_ptr<arangodb::velocypack::CustomTypeHandler> orderCustomTypeHandler() override final;
 
   /// @brief get parent transaction (if any)
   TransactionState* getParentTransaction() const override;
@@ -76,18 +74,14 @@ class V8Context final : public Context {
   static bool isEmbedded();
 
   /// @brief create a context
-  static std::shared_ptr<transaction::V8Context> Create(
-    TRI_vocbase_t& vocbase, bool embeddable
-  );
+  static std::shared_ptr<transaction::V8Context> Create(TRI_vocbase_t& vocbase, bool embeddable);
 
-  /// @brief create a V8 transaction context if we are in a V8 isolate, and a standlone
-  /// transaction context otherwise
-  static std::shared_ptr<transaction::Context> CreateWhenRequired(
-    TRI_vocbase_t& vocbase, bool embeddable
-  );
+  /// @brief create a V8 transaction context if we are in a V8 isolate, and a
+  /// standlone transaction context otherwise
+  static std::shared_ptr<transaction::Context> CreateWhenRequired(TRI_vocbase_t& vocbase,
+                                                                  bool embeddable);
 
  private:
-
   /// @brief the v8 thread-local "global" transaction context
   transaction::V8Context* _sharedTransactionContext;
 
@@ -100,7 +94,7 @@ class V8Context final : public Context {
   bool const _embeddable;
 };
 
-}
-}
+}  // namespace transaction
+}  // namespace arangodb
 
 #endif

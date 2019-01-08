@@ -207,7 +207,7 @@ with all LDAP servers reliably:
   - `--ldap.restart`: whether or not the LDAP library should implicitly restart connections
   - `--ldap.referrals`: whether or not the LDAP library should implicitly chase referrals
 
-The following options can be used to adjust the LDAP configuration on Linux and MacOS 
+The following options can be used to adjust the LDAP configuration on Linux and macOS 
 platforms only, but will not work on Windows:
 
   - `--ldap.debug`: turn on internal OpenLDAP library output (warning: will print to stdout).

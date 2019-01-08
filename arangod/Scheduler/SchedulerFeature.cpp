@@ -39,6 +39,8 @@
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-dispatcher.h"
 
+#include "Scheduler/SupervisedScheduler.h"
+
 #include <chrono>
 #include <thread>
 
@@ -47,28 +49,45 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
+namespace {
+/// @brief return the default number of threads to use (upper bound)
+size_t defaultNumberOfThreads() {
+  // use two times the number of hardware threads as the default
+  size_t result = TRI_numberProcessors() * 2;
+  // but only if higher than 64. otherwise use a default minimum value of 64
+  if (result < 64) {
+    result = 64;
+  }
+  return result;
+}
+
+}  // namespace
+
 namespace arangodb {
 
 Scheduler* SchedulerFeature::SCHEDULER = nullptr;
 
-SchedulerFeature::SchedulerFeature(
-    application_features::ApplicationServer& server
-)
+SchedulerFeature::SchedulerFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Scheduler"), _scheduler(nullptr) {
-  setOptional(true);
+  setOptional(false);
   startsAfter("GreetingsPhase");
-
   startsAfter("FileDescriptors");
 }
 
 SchedulerFeature::~SchedulerFeature() {}
 
-void SchedulerFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
+void SchedulerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
+  // Different implementations of the Scheduler may require different
+  // options to be set. This requires a solution here.
+
   options->addSection("server", "Server features");
 
   // max / min number of threads
-  options->addOption("--server.maximal-threads", std::string("maximum number of request handling threads to run (0 = use system-specific default of ") + std::to_string(defaultNumberOfThreads()) + ")",
+  options->addOption("--server.maximal-threads",
+                     std::string(
+                         "maximum number of request handling threads to run (0 "
+                         "= use system-specific default of ") +
+                         std::to_string(defaultNumberOfThreads()) + ")",
                      new UInt64Parameter(&_nrMaximalThreads),
                      arangodb::options::makeFlags(arangodb::options::Flags::Dynamic));
 
@@ -77,8 +96,8 @@ void SchedulerFeature::collectOptions(
                      new UInt64Parameter(&_nrMinimalThreads),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addOption("--server.maximal-queue-size", "size of the priority 2 fifo",
-                     new UInt64Parameter(&_fifo2Size));
+  options->addOption("--server.maximal-queue-size",
+                     "size of the priority 2 fifo", new UInt64Parameter(&_fifo2Size));
 
   options->addOption(
       "--server.scheduler-queue-size",
@@ -97,8 +116,7 @@ void SchedulerFeature::collectOptions(
   options->addOldOption("scheduler.threads", "server.maximal-threads");
 }
 
-void SchedulerFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions>) {
+void SchedulerFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
   if (_nrMaximalThreads == 0) {
     _nrMaximalThreads = defaultNumberOfThreads();
   }
@@ -119,6 +137,13 @@ void SchedulerFeature::validateOptions(
   }
 }
 
+void SchedulerFeature::prepare() {
+  _scheduler =
+      std::make_unique<SupervisedScheduler>(_nrMinimalThreads, _nrMaximalThreads,
+                                            _queueSize, _fifo1Size, _fifo2Size);
+  SCHEDULER = _scheduler.get();
+}
+
 void SchedulerFeature::start() {
   auto const N = TRI_numberProcessors();
 
@@ -133,37 +158,52 @@ void SchedulerFeature::start() {
   }
 
   if (_nrMinimalThreads < 2) {
-    LOG_TOPIC(WARN, arangodb::Logger::THREADS) << "--server.minimal-threads ("
-                                               << _nrMinimalThreads
-                                               << ") should be at least 2";
+    LOG_TOPIC(WARN, arangodb::Logger::THREADS)
+        << "--server.minimal-threads (" << _nrMinimalThreads << ") should be at least 2";
     _nrMinimalThreads = 2;
   }
 
   if (_nrMinimalThreads >= _nrMaximalThreads) {
     LOG_TOPIC(WARN, arangodb::Logger::THREADS)
-        << "--server.maximal-threads (" << _nrMaximalThreads << ") should be at least "
-        << (_nrMinimalThreads + 1) << ", raising it";
+        << "--server.maximal-threads (" << _nrMaximalThreads
+        << ") should be at least " << (_nrMinimalThreads + 1) << ", raising it";
     _nrMaximalThreads = _nrMinimalThreads;
   }
 
   TRI_ASSERT(2 <= _nrMinimalThreads);
   TRI_ASSERT(_nrMinimalThreads < _nrMaximalThreads);
 
-  ArangoGlobalContext::CONTEXT->maskAllSignals();
-  buildScheduler();
+  signalStuffInit();
 
   bool ok = _scheduler->start();
-
   if (!ok) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "the scheduler cannot be started";
     FATAL_ERROR_EXIT();
   }
-
-  buildHangupHandler();
-
   LOG_TOPIC(DEBUG, Logger::STARTUP) << "scheduler has started";
 
+  initV8Stuff();
+}
+
+void SchedulerFeature::stop() {
+  signalStuffDeinit();
+  deinitV8Stuff();
+
+  _scheduler->shutdown();
+}
+
+void SchedulerFeature::unprepare() {
+  SCHEDULER = nullptr;
+  _scheduler.reset();
+}
+
+// ---------------------------------------------------------------------------
+// Unrelated V8 Stuff - no body knows what this has to do with scheduling
+// ---------------------------------------------------------------------------
+
+void SchedulerFeature::initV8Stuff() {
+  // THIS CODE IS TOTALLY UNRELATED TO THE SCHEDULER!?!
   try {
     auto* dealer = ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
     if (dealer->isEnabled()) {
@@ -173,62 +213,61 @@ void SchedulerFeature::start() {
           },
           nullptr);
     }
-  } catch(...) {}
-}
-
-void SchedulerFeature::beginShutdown() {
-  // shut-down scheduler
-  if (_scheduler != nullptr) {
-    _scheduler->stopRebalancer();
+  } catch (...) {
   }
 }
 
-void SchedulerFeature::stop() {
-  static size_t const MAX_TRIES = 100;
-
-  // shutdown user jobs (needs the scheduler)
+void SchedulerFeature::deinitV8Stuff() {
+  // This was once called twice on shutdown
+  // shutdown user jobs again, in case new ones appear
   TRI_ShutdownV8Dispatcher();
+}
 
-  // cancel signals
-  if (_exitSignals != nullptr) {
-    auto exitSignals = _exitSignals;
-    _exitSignals.reset();
-    exitSignals->cancel();
-  }
+// ---------------------------------------------------------------------------
+// Signal Handler stuff - no body knows what this has to do with scheduling
+// ---------------------------------------------------------------------------
 
-#ifndef _WIN32
-  if (_hangupSignals != nullptr) {
-    _hangupSignals->cancel();
-    _hangupSignals.reset();
+void SchedulerFeature::signalStuffInit() {
+  ArangoGlobalContext::CONTEXT->maskAllSignals();
+
+#ifdef _WIN32
+// Windows does not support POSIX signal handling
+#else
+  struct sigaction action;
+  memset(&action, 0, sizeof(action));
+  sigfillset(&action.sa_mask);
+
+  // ignore broken pipes
+  action.sa_handler = SIG_IGN;
+
+  int res = sigaction(SIGPIPE, &action, nullptr);
+
+  if (res < 0) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "cannot initialize signal handlers for pipe";
   }
 #endif
 
-  // shut-down scheduler
-  _scheduler->beginShutdown();
-
-  for (size_t count = 0; count < MAX_TRIES && _scheduler->isRunning();
-       ++count) {
-    LOG_TOPIC(TRACE, Logger::STARTUP) << "waiting for scheduler to stop";
-    std::this_thread::sleep_for(std::chrono::microseconds(100000));
-  }
-
-  // shutdown user jobs again, in case new ones appear
-  TRI_ShutdownV8Dispatcher();
-
-  _scheduler->shutdown();
+  buildHangupHandler();
 }
 
-void SchedulerFeature::unprepare() { SCHEDULER = nullptr; }
+void SchedulerFeature::signalStuffDeinit() {
+  // MORE COMPLETELY UNRELATED SCHEDULER CODE!?!?!?
+  {
+    // cancel signals
+    if (_exitSignals != nullptr) {
+      auto exitSignals = _exitSignals;
+      _exitSignals.reset();
+      exitSignals->cancel();
+    }
 
-/// @brief return the default number of threads to use (upper bound)
-size_t SchedulerFeature::defaultNumberOfThreads() const {
-  // use two times the number of hardware threads as the default
-  size_t result = TRI_numberProcessors() * 2;
-  // but only if higher than 64. otherwise use a default minimum value of 64
-  if (result < 64) {
-    result = 64;
+#ifndef _WIN32
+    if (_hangupSignals != nullptr) {
+      _hangupSignals->cancel();
+      _hangupSignals.reset();
+    }
+#endif
   }
-  return result;
 }
 
 #ifdef _WIN32
@@ -297,19 +336,59 @@ bool CtrlHandler(DWORD eventType) {
   // user is desperate to kill the server!
   // ........................................................................
 
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << shutdownMessage
-                                           << ", terminating";
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << shutdownMessage << ", terminating";
   _exit(EXIT_FAILURE);  // quick exit for windows
   return true;
 }
 
+#else
+
+extern "C" void c_exit_handler(int signal) {
+  static bool seen = false;
+
+  if (signal == SIGQUIT || signal == SIGTERM || signal == SIGINT) {
+    if (!seen) {
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+          << "control-c received, beginning shut down sequence";
+
+      if (application_features::ApplicationServer::server != nullptr) {
+        application_features::ApplicationServer::server->beginShutdown();
+      }
+
+      seen = true;
+    } else {
+      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER)
+          << "control-c received (again!), terminating";
+      FATAL_ERROR_EXIT();
+    }
+  }
+}
+
+extern "C" void c_hangup_handler(int signal) {
+  if (signal == SIGHUP) {
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+        << "hangup received, about to reopen logfile";
+    LogAppender::reopen();
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+        << "hangup received, reopened logfile";
+  }
+}
 #endif
 
-void SchedulerFeature::buildScheduler() {
-  _scheduler = std::make_shared<Scheduler>(_nrMinimalThreads, _nrMaximalThreads,
-                                           _fifo1Size, _fifo2Size);
+void SchedulerFeature::buildHangupHandler() {
+#ifndef _WIN32
+  struct sigaction action;
+  memset(&action, 0, sizeof(action));
+  sigfillset(&action.sa_mask);
+  action.sa_handler = c_hangup_handler;
 
-  SCHEDULER = _scheduler.get();
+  int res = sigaction(SIGHUP, &action, nullptr);
+
+  if (res < 0) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "cannot initialize signal handlers for hang up";
+  }
+#endif
 }
 
 void SchedulerFeature::buildControlCHandler() {
@@ -334,62 +413,30 @@ void SchedulerFeature::buildControlCHandler() {
   sigemptyset(&all);
   pthread_sigmask(SIG_SETMASK, &all, nullptr);
 
-  _exitSignals.reset(_scheduler->newSignalSet());
-  _exitSignals->add(SIGINT);
-  _exitSignals->add(SIGTERM);
-  _exitSignals->add(SIGQUIT);
+  struct sigaction action;
+  memset(&action, 0, sizeof(action));
+  sigfillset(&action.sa_mask);
+  action.sa_handler = c_exit_handler;
 
-  _signalHandler = [this](const asio_ns::error_code& error, int number) {
-    if (error) {
-      return;
-    }
+  int res;
+  res = sigaction(SIGINT, &action, nullptr);
+  if (res < 0) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "cannot initialize signal handlers for hang up";
+  }
 
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME)
-        << "control-c received, beginning shut down sequence";
-    server()->beginShutdown();
+  res = sigaction(SIGQUIT, &action, nullptr);
+  if (res < 0) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "cannot initialize signal handlers for hang up";
+  }
 
-    auto exitSignals = _exitSignals;
-
-    if (exitSignals.get() != nullptr) {
-      exitSignals->async_wait(_exitHandler);
-    }
-  };
-
-  _exitHandler = [](const asio_ns::error_code& error, int number) {
-    if (error) {
-      return;
-    }
-
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-        << "control-c received (again!), terminating";
-    FATAL_ERROR_EXIT();
-  };
-
-  _exitSignals->async_wait(_signalHandler);
+  res = sigaction(SIGTERM, &action, nullptr);
+  if (res < 0) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "cannot initialize signal handlers for hang up";
+  }
 #endif
 }
 
-void SchedulerFeature::buildHangupHandler() {
-#ifndef _WIN32
-  _hangupSignals.reset(_scheduler->newSignalSet());
-  _hangupSignals->add(SIGHUP);
-
-  _hangupHandler = [this](const asio_ns::error_code& error, int number) {
-    if (error) {
-      return;
-    }
-
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME)
-        << "hangup received, about to reopen logfile";
-    LogAppender::reopen();
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME)
-        << "hangup received, reopened logfile";
-
-    _hangupSignals->async_wait(_hangupHandler);
-  };
-
-  _hangupSignals->async_wait(_hangupHandler);
-#endif
-}
-
-} // arangodb
+}  // namespace arangodb

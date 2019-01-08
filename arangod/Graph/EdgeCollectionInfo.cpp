@@ -31,8 +31,7 @@ using namespace arangodb::traverser;
 EdgeCollectionInfo::EdgeCollectionInfo(transaction::Methods* trx,
                                        std::string const& collectionName,
                                        TRI_edge_direction_e const direction,
-                                       std::string const& weightAttribute,
-                                       double defaultWeight) 
+                                       std::string const& weightAttribute, double defaultWeight)
     : _trx(trx),
       _collectionName(collectionName),
       _searchBuilder(),
@@ -48,23 +47,22 @@ EdgeCollectionInfo::EdgeCollectionInfo(transaction::Methods* trx,
   auto var = _searchBuilder.getVariable();
   if (_dir == TRI_EDGE_OUT) {
     auto cond = _searchBuilder.getOutboundCondition();
-    bool worked = _trx->getBestIndexHandleForFilterCondition(
-        _collectionName, cond, var, 1000, _forwardIndexId);
-    TRI_ASSERT(worked); // We always have an edge Index
+    bool worked = _trx->getBestIndexHandleForFilterCondition(_collectionName, cond,
+                                                             var, 1000, _forwardIndexId);
+    TRI_ASSERT(worked);  // We always have an edge Index
     cond = _searchBuilder.getInboundCondition();
-    worked = _trx->getBestIndexHandleForFilterCondition(
-        _collectionName, cond, var, 1000,
-        _backwardIndexId);
-    TRI_ASSERT(worked); // We always have an edge Index
+    worked = _trx->getBestIndexHandleForFilterCondition(_collectionName, cond, var,
+                                                        1000, _backwardIndexId);
+    TRI_ASSERT(worked);  // We always have an edge Index
   } else {
     auto cond = _searchBuilder.getInboundCondition();
-    bool worked = _trx->getBestIndexHandleForFilterCondition(
-        _collectionName, cond, var, 1000, _forwardIndexId);
-    TRI_ASSERT(worked); // We always have an edge Index
+    bool worked = _trx->getBestIndexHandleForFilterCondition(_collectionName, cond,
+                                                             var, 1000, _forwardIndexId);
+    TRI_ASSERT(worked);  // We always have an edge Index
     cond = _searchBuilder.getOutboundCondition();
-    worked = _trx->getBestIndexHandleForFilterCondition(
-        _collectionName, cond, var, 1000, _backwardIndexId);
-    TRI_ASSERT(worked); // We always have an edge Index
+    worked = _trx->getBestIndexHandleForFilterCondition(_collectionName, cond, var,
+                                                        1000, _backwardIndexId);
+    TRI_ASSERT(worked);  // We always have an edge Index
   }
 }
 
@@ -73,19 +71,17 @@ EdgeCollectionInfo::EdgeCollectionInfo(transaction::Methods* trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getEdges(
-    std::string const& vertexId,
-    arangodb::ManagedDocumentResult* mmdr) {
+    std::string const& vertexId, arangodb::ManagedDocumentResult* mmdr) {
   _searchBuilder.setVertexId(vertexId);
   std::unique_ptr<arangodb::OperationCursor> res;
   IndexIteratorOptions opts;
   if (_dir == TRI_EDGE_OUT) {
-    res.reset(_trx->indexScanForCondition(
-        _forwardIndexId, _searchBuilder.getOutboundCondition(),
-        _searchBuilder.getVariable(), mmdr, opts));
+    res.reset(_trx->indexScanForCondition(_forwardIndexId,
+                                          _searchBuilder.getOutboundCondition(),
+                                          _searchBuilder.getVariable(), mmdr, opts));
   } else {
-    res.reset(_trx->indexScanForCondition(
-        _forwardIndexId, _searchBuilder.getInboundCondition(),
-        _searchBuilder.getVariable(), mmdr, opts));
+    res.reset(_trx->indexScanForCondition(_forwardIndexId, _searchBuilder.getInboundCondition(),
+                                          _searchBuilder.getVariable(), mmdr, opts));
   }
   return res;
 }
@@ -94,22 +90,15 @@ std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getEdges(
 /// @brief Get edges for the given direction and start vertex. On Coordinator.
 ////////////////////////////////////////////////////////////////////////////////
 
-int EdgeCollectionInfo::getEdgesCoordinator(VPackSlice const& vertexId,
-                                            VPackBuilder& result) {
+int EdgeCollectionInfo::getEdgesCoordinator(VPackSlice const& vertexId, VPackBuilder& result) {
   TRI_ASSERT(result.isEmpty());
   arangodb::rest::ResponseCode responseCode;
 
   result.openObject();
 
-  int res = getFilteredEdgesOnCoordinator(
-    _trx->vocbase().name(),
-    _collectionName,
-    *_trx,
-    vertexId.copyString(),
-    _dir,
-    responseCode,
-    result
-  );
+  int res = getFilteredEdgesOnCoordinator(_trx->vocbase().name(), _collectionName,
+                                          *_trx, vertexId.copyString(), _dir,
+                                          responseCode, result);
 
   result.close();
 
@@ -121,25 +110,25 @@ int EdgeCollectionInfo::getEdgesCoordinator(VPackSlice const& vertexId,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getReverseEdges(
-    std::string const& vertexId,
-    arangodb::ManagedDocumentResult* mmdr) {
+    std::string const& vertexId, arangodb::ManagedDocumentResult* mmdr) {
   _searchBuilder.setVertexId(vertexId);
   std::unique_ptr<arangodb::OperationCursor> res;
   IndexIteratorOptions opts;
   if (_dir == TRI_EDGE_OUT) {
-    res.reset(_trx->indexScanForCondition(
-        _backwardIndexId, _searchBuilder.getInboundCondition(),
-        _searchBuilder.getVariable(), mmdr, opts));
+    res.reset(_trx->indexScanForCondition(_backwardIndexId,
+                                          _searchBuilder.getInboundCondition(),
+                                          _searchBuilder.getVariable(), mmdr, opts));
   } else {
-    res.reset(_trx->indexScanForCondition(
-        _backwardIndexId, _searchBuilder.getOutboundCondition(),
-        _searchBuilder.getVariable(), mmdr, opts));
+    res.reset(_trx->indexScanForCondition(_backwardIndexId,
+                                          _searchBuilder.getOutboundCondition(),
+                                          _searchBuilder.getVariable(), mmdr, opts));
   }
   return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Get edges for the given direction and start vertex. Reverse version on Coordinator.
+/// @brief Get edges for the given direction and start vertex. Reverse version
+/// on Coordinator.
 ////////////////////////////////////////////////////////////////////////////////
 
 int EdgeCollectionInfo::getReverseEdgesCoordinator(VPackSlice const& vertexId,
@@ -155,15 +144,9 @@ int EdgeCollectionInfo::getReverseEdgesCoordinator(VPackSlice const& vertexId,
     dir = TRI_EDGE_IN;
   }
 
-  int res = getFilteredEdgesOnCoordinator(
-    _trx->vocbase().name(),
-    _collectionName,
-    *_trx,
-    vertexId.copyString(),
-    dir,
-    responseCode,
-    result
-  );
+  int res = getFilteredEdgesOnCoordinator(_trx->vocbase().name(), _collectionName,
+                                          *_trx, vertexId.copyString(), dir,
+                                          responseCode, result);
 
   result.close();
 
@@ -187,4 +170,3 @@ double EdgeCollectionInfo::weightEdge(VPackSlice const edge) {
 std::string const& EdgeCollectionInfo::getName() const {
   return _collectionName;
 }
-

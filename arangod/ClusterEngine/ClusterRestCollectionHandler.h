@@ -30,11 +30,12 @@ namespace arangodb {
 class ClusterRestCollectionHandler : public arangodb::RestCollectionHandler {
  public:
   ClusterRestCollectionHandler(GeneralRequest*, GeneralResponse*);
-protected:
+
+ protected:
   Result handleExtraCommandPut(LogicalCollection& coll, std::string const& command,
                                velocypack::Builder& builder) override final;
 };
 
-}
+}  // namespace arangodb
 
 #endif

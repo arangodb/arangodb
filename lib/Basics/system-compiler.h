@@ -31,7 +31,7 @@
 // warn if return value is unused
 #if defined(__GNUC__) || defined(__GNUG__)
 #define ADB_WARN_UNUSED_RESULT __attribute__((warn_unused_result))
-#elif defined(__clang__) 
+#elif defined(__clang__)
 #define ADB_WARN_UNUSED_RESULT __attribute__((warn_unused_result))
 #else
 #define ADB_WARN_UNUSED_RESULT /* unused */
@@ -52,15 +52,17 @@
 #elif defined(__clang__)
 #define ADB_UNREACHABLE __builtin_unreachable()
 #else
-#define ADB_UNREACHABLE TRI_ASSERT(false); std::abort()
+#define ADB_UNREACHABLE \
+  TRI_ASSERT(false);    \
+  std::abort()
 #endif
 
 // likely/unlikely branch indicator
 // macro definitions similar to the ones at
 // https://kernelnewbies.org/FAQ/LikelyUnlikely
 #if defined(__GNUC__) || defined(__GNUG__)
-#define ADB_LIKELY(v) __builtin_expect (!!(v), 1)
-#define ADB_UNLIKELY(v) __builtin_expect (!!(v), 0)
+#define ADB_LIKELY(v) __builtin_expect(!!(v), 1)
+#define ADB_UNLIKELY(v) __builtin_expect(!!(v), 0)
 #else
 #define ADB_LIKELY(v) v
 #define ADB_UNLIKELY(v) v

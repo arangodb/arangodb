@@ -24,8 +24,8 @@
 #ifndef ARANGODB_LOGGER_LOGGER_STREAM_H
 #define ARANGODB_LOGGER_LOGGER_STREAM_H 1
 
-#include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
+#include "Logger/Logger.h"
 
 #include <sstream>
 
@@ -55,9 +55,9 @@ class LoggerStream {
     _out << topic.displayName();
     return *this;
   }
-  
+
   LoggerStream& operator<<(Logger::BINARY const& binary);
-  
+
   LoggerStream& operator<<(Logger::CHARS const& chars);
 
   LoggerStream& operator<<(Logger::RANGE const& range);
@@ -88,7 +88,7 @@ class LoggerStream {
     }
     return *this;
   }
-  
+
  private:
   std::stringstream _out;
   size_t _topicId;
@@ -97,6 +97,6 @@ class LoggerStream {
   char const* _file;
   char const* _function;
 };
-}
+}  // namespace arangodb
 
 #endif

@@ -31,7 +31,6 @@ namespace aql {
 struct AstNode;
 
 struct Quantifier {
-
   static int64_t const NONE;
   static int64_t const ALL;
   static int64_t const ANY;
@@ -43,12 +42,11 @@ struct Quantifier {
   static std::string Stringify(int64_t value);
 
   static bool IsAllOrNone(AstNode const* quantifier);
-  
+
   /// @brief determine the min/max number of matches for an array comparison
   static std::pair<size_t, size_t> RequiredMatches(size_t inputSize, AstNode const* quantifier);
-
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif
