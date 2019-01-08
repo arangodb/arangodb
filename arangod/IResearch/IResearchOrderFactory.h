@@ -39,47 +39,41 @@ class CalculationNode;
 struct Expression;
 struct Variable;
 
-NS_END // aql
+NS_END  // aql
+
+    NS_BEGIN(iresearch)
+
+        struct QueryContext;
+
+NS_END  // iresearch
+
+    NS_BEGIN(transaction)
+
+        class Methods;  // forward declaration
+
+NS_END  // transaction
 
 NS_BEGIN(iresearch)
 
-struct QueryContext;
-
-NS_END // iresearch
-
-NS_BEGIN(transaction)
-
-class Methods; // forward declaration
-
-NS_END // transaction
-
-NS_BEGIN(iresearch)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @struct OrderFactory
-////////////////////////////////////////////////////////////////////////////////
-struct OrderFactory {
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @struct OrderFactory
+    ////////////////////////////////////////////////////////////////////////////////
+    struct OrderFactory {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief determine if the 'node' can be converted into an iresearch scorer
   ///        if 'scorer' != nullptr then also append build iresearch scorer there
   ////////////////////////////////////////////////////////////////////////////////
-  static bool scorer(
-    irs::sort::ptr* scorer,
-    aql::AstNode const& node,
-    iresearch::QueryContext const& ctx
-  );
+  static bool scorer(irs::sort::ptr* scorer, aql::AstNode const& node,
+                     iresearch::QueryContext const& ctx);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief determine if the 'node' can be converted into an iresearch scorer
   ///        if 'scorer' != nullptr then also append build iresearch comparer there
   ////////////////////////////////////////////////////////////////////////////////
-  static bool comparer(
-    irs::sort::ptr* scorer,
-    aql::AstNode const& node
-  );
+  static bool comparer(irs::sort::ptr* scorer, aql::AstNode const& node);
 
   OrderFactory() = delete;
-}; // OrderFactory
+};  // OrderFactory
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct Scorer
@@ -88,12 +82,8 @@ struct OrderFactory {
 struct Scorer {
   Scorer() = default;
 
-  constexpr Scorer(
-      aql::Variable const* var,
-      aql::AstNode const* node
-  ) noexcept
-    : var(var), node(node) {
-  }
+  constexpr Scorer(aql::Variable const* var, aql::AstNode const* node) noexcept
+      : var(var), node(node) {}
 
   constexpr bool operator==(Scorer const& rhs) const noexcept {
     return var == rhs.var && node == rhs.node;
@@ -103,9 +93,9 @@ struct Scorer {
     return !(*this == rhs);
   }
 
-  aql::Variable const* var{}; // scorer variable
-  aql::AstNode const* node{}; // scorer node
-}; // Scorer
+  aql::Variable const* var{};  // scorer variable
+  aql::AstNode const* node{};  // scorer node
+};                             // Scorer
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class ScorerReplacer
@@ -130,14 +120,12 @@ class ScorerReplacer {
   ////////////////////////////////////////////////////////////////////////////////
   /// @returns true if no scorers were replaced
   ////////////////////////////////////////////////////////////////////////////////
-  bool empty() const noexcept {
-    return _dedup.empty();
-  }
+  bool empty() const noexcept { return _dedup.empty(); }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief visits all replaced scorer entries
   ////////////////////////////////////////////////////////////////////////////////
-  template<typename Visitor>
+  template <typename Visitor>
   bool visit(Visitor visitor) const {
     for (auto& entry : _dedup) {
       if (!visitor(entry.first)) {
@@ -149,36 +137,30 @@ class ScorerReplacer {
 
  private:
   struct HashedScorer : Scorer {
-    HashedScorer(
-      aql::Variable const* var,
-      aql::AstNode const* node
-    ) : Scorer(var, node),
-        hash(iresearch::hash(node)) {
-    }
+    HashedScorer(aql::Variable const* var, aql::AstNode const* node)
+        : Scorer(var, node), hash(iresearch::hash(node)) {}
 
     size_t hash;
-  }; // HashedScorer
+  };  // HashedScorer
 
   struct ScorerHash {
     size_t operator()(HashedScorer const& key) const noexcept {
       return key.hash;
     }
-  }; // ScorerHash
+  };  // ScorerHash
 
   struct ScorerEqualTo {
     bool operator()(HashedScorer const& lhs, HashedScorer const& rhs) const {
       return iresearch::equalTo(lhs.node, rhs.node);
     }
-  }; // ScorerEqualTo
+  };  // ScorerEqualTo
 
-  typedef std::unordered_map<
-    HashedScorer, aql::Variable const*, ScorerHash, ScorerEqualTo
-  > DedupScorers;
+  typedef std::unordered_map<HashedScorer, aql::Variable const*, ScorerHash, ScorerEqualTo> DedupScorers;
 
   DedupScorers _dedup;
-}; // ScorerReplacer
+};  // ScorerReplacer
 
-NS_END // iresearch
-NS_END // arangodb
+NS_END      // iresearch
+    NS_END  // arangodb
 
-#endif // ARANGOD_IRESEARCH__IRESEARCH_ORDER_FACTORY_H
+#endif  // ARANGOD_IRESEARCH__IRESEARCH_ORDER_FACTORY_H

@@ -21,24 +21,24 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearchCommon.h"
-#include "IResearchViewCoordinator.h"
 #include "IResearchViewNode.h"
-#include "IResearchViewBlock.h"
-#include "IResearchView.h"
-#include "AqlHelper.h"
 #include "Aql/Ast.h"
 #include "Aql/BasicBlocks.h"
 #include "Aql/Condition.h"
-#include "Aql/ExecutionPlan.h"
-#include "Aql/SortCondition.h"
-#include "Aql/Query.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionPlan.h"
+#include "Aql/Query.h"
+#include "Aql/SortCondition.h"
+#include "AqlHelper.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
+#include "IResearchCommon.h"
+#include "IResearchView.h"
+#include "IResearchViewBlock.h"
+#include "IResearchViewCoordinator.h"
 #include "StorageEngine/TransactionState.h"
-#include "velocypack/Iterator.h"
 #include "VocBase/LogicalCollection.h"
+#include "velocypack/Iterator.h"
 
 namespace {
 
@@ -57,28 +57,24 @@ inline bool filterConditionIsEmpty(aql::AstNode const* filterCondition) {
 // --SECTION--       helpers for std::vector<arangodb::iresearch::IResearchSort>
 // -----------------------------------------------------------------------------
 
-void toVelocyPack(
-    velocypack::Builder& builder,
-    std::vector<arangodb::iresearch::Scorer> const& scorers,
-    bool verbose
-) {
+void toVelocyPack(velocypack::Builder& builder,
+                  std::vector<arangodb::iresearch::Scorer> const& scorers, bool verbose) {
   VPackArrayBuilder arrayScope(&builder);
-  for (auto const& scorer: scorers) {
+  for (auto const& scorer : scorers) {
     VPackObjectBuilder objectScope(&builder);
     builder.add("id", VPackValue(scorer.var->id));
-    builder.add("name", VPackValue(scorer.var->name)); // for explainer.js
+    builder.add("name", VPackValue(scorer.var->name));  // for explainer.js
     builder.add(VPackValue("node"));
     scorer.node->toVelocyPack(builder, verbose);
   }
 }
 
 std::vector<arangodb::iresearch::Scorer> fromVelocyPack(
-    arangodb::aql::ExecutionPlan& plan,
-    arangodb::velocypack::Slice const& slice
-) {
+    arangodb::aql::ExecutionPlan& plan, arangodb::velocypack::Slice const& slice) {
   if (!slice.isArray()) {
     LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-      << "invalid json format detected while building IResearchViewNode sorting from velocy pack, array expected";
+        << "invalid json format detected while building IResearchViewNode "
+           "sorting from velocy pack, array expected";
     return {};
   }
 
@@ -95,7 +91,7 @@ std::vector<arangodb::iresearch::Scorer> fromVelocyPack(
 
     if (!varIdSlice.isNumber()) {
       LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "malformed variable identifier at line '" << i << "', number expected";
+          << "malformed variable identifier at line '" << i << "', number expected";
       return {};
     }
 
@@ -104,8 +100,8 @@ std::vector<arangodb::iresearch::Scorer> fromVelocyPack(
 
     if (!var) {
       LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "unable to find variable '" << varId << "' at line '" << i
-        << "' while building IResearchViewNode sorting from velocy pack";
+          << "unable to find variable '" << varId << "' at line '" << i
+          << "' while building IResearchViewNode sorting from velocy pack";
       return {};
     }
 
@@ -123,18 +119,14 @@ std::vector<arangodb::iresearch::Scorer> fromVelocyPack(
 // --SECTION--                            helpers for IResearchViewNode::Options
 // -----------------------------------------------------------------------------
 
-void toVelocyPack(
-    velocypack::Builder& builder,
-    arangodb::iresearch::IResearchViewNode::Options const& options
-) {
+void toVelocyPack(velocypack::Builder& builder,
+                  arangodb::iresearch::IResearchViewNode::Options const& options) {
   VPackObjectBuilder objectScope(&builder);
   builder.add("waitForSync", VPackValue(options.forceSync));
 }
 
-bool fromVelocyPack(
-    velocypack::Slice optionsSlice,
-    arangodb::iresearch::IResearchViewNode::Options& options
-) {
+bool fromVelocyPack(velocypack::Slice optionsSlice,
+                    arangodb::iresearch::IResearchViewNode::Options& options) {
   if (!optionsSlice.isObject()) {
     return false;
   }
@@ -153,33 +145,25 @@ bool fromVelocyPack(
   return true;
 }
 
-bool parseOptions(
-    aql::AstNode const* optionsNode,
-    arangodb::iresearch::IResearchViewNode::Options& options,
-    std::string& error
-) {
-  typedef bool(*OptionHandler)(
-    aql::AstNode const&,
-    arangodb::iresearch::IResearchViewNode::Options&,
-    std::string&
-  );
+bool parseOptions(aql::AstNode const* optionsNode,
+                  arangodb::iresearch::IResearchViewNode::Options& options,
+                  std::string& error) {
+  typedef bool (*OptionHandler)(aql::AstNode const&,
+                                arangodb::iresearch::IResearchViewNode::Options&,
+                                std::string&);
 
-  static std::map<irs::string_ref, OptionHandler> const Handlers {
-    {
-      "waitForSync", [](
-        aql::AstNode const& value,
-        arangodb::iresearch::IResearchViewNode::Options& options,
-        std::string& error
-      ) {
-        if (!value.isValueType(aql::VALUE_TYPE_BOOL)) {
-          error = "boolean value expected for 'waitForSync'";
-          return false;
-        }
+  static std::map<irs::string_ref, OptionHandler> const Handlers{
+      {"waitForSync", [](aql::AstNode const& value,
+                         arangodb::iresearch::IResearchViewNode::Options& options,
+                         std::string& error) {
+         if (!value.isValueType(aql::VALUE_TYPE_BOOL)) {
+           error = "boolean value expected for 'waitForSync'";
+           return false;
+         }
 
-        options.forceSync = value.getBoolValue();
-        return true;
-    }}
-  };
+         options.forceSync = value.getBoolValue();
+         return true;
+       }}};
 
   if (!optionsNode) {
     // nothing to parse
@@ -196,17 +180,14 @@ bool parseOptions(
   for (size_t i = 0; i < n; ++i) {
     auto const* attribute = optionsNode->getMemberUnchecked(i);
 
-    if (!attribute
-        || attribute->type != aql::NODE_TYPE_OBJECT_ELEMENT
-        || !attribute->isValueType(aql::VALUE_TYPE_STRING)
-        || !attribute->numMembers()) {
+    if (!attribute || attribute->type != aql::NODE_TYPE_OBJECT_ELEMENT ||
+        !attribute->isValueType(aql::VALUE_TYPE_STRING) || !attribute->numMembers()) {
       // invalid or malformed node detected
       return false;
     }
 
-    irs::string_ref const attributeName(
-      attribute->getStringValue(), attribute->getStringLength()
-    );
+    irs::string_ref const attributeName(attribute->getStringValue(),
+                                        attribute->getStringLength());
 
     auto const handler = Handlers.find(attributeName);
 
@@ -217,9 +198,7 @@ bool parseOptions(
 
     auto const* value = attribute->getMemberUnchecked(0);
 
-    if (!value
-        || !value->isConstant()
-        || !handler->second(*value, options, error)) {
+    if (!value || !value->isConstant() || !handler->second(*value, options, error)) {
       // can't handle attribute
       return false;
     }
@@ -233,19 +212,16 @@ bool parseOptions(
 // -----------------------------------------------------------------------------
 
 // in loop or non-deterministic
-bool hasDependecies(
-    aql::ExecutionPlan const& plan,
-    aql::AstNode const& node,
-    aql::Variable const& ref,
-    std::unordered_set<aql::Variable const*>& vars
-) {
+bool hasDependecies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
+                    aql::Variable const& ref,
+                    std::unordered_set<aql::Variable const*>& vars) {
   if (!node.isDeterministic()) {
     return false;
   }
 
   vars.clear();
   aql::Ast::getReferencedVariables(&node, vars);
-  vars.erase(&ref); // remove "our" variable
+  vars.erase(&ref);  // remove "our" variable
 
   for (auto const* var : vars) {
     auto* setter = plan.getVarSetBy(var->id);
@@ -301,7 +277,7 @@ int evaluateVolatility(arangodb::iresearch::IResearchViewNode const& node) {
   if (!scorers.empty() && inInnerLoop) {
     vars.clear();
 
-    for (auto const& scorer: scorers) {
+    for (auto const& scorer : scorers) {
       if (::hasDependecies(plan, *scorer.node, outVariable, vars)) {
         irs::set_bit<1>(mask);
         break;
@@ -316,7 +292,7 @@ std::function<bool(TRI_voc_cid_t)> const viewIsEmpty = [](TRI_voc_cid_t) {
   return false;
 };
 
-}
+}  // namespace
 
 namespace arangodb {
 namespace iresearch {
@@ -325,23 +301,20 @@ namespace iresearch {
 // --SECTION--                                  IResearchViewNode implementation
 // -----------------------------------------------------------------------------
 
-IResearchViewNode::IResearchViewNode(
-    aql::ExecutionPlan& plan,
-    size_t id,
-    TRI_vocbase_t& vocbase,
-    std::shared_ptr<const LogicalView> const& view,
-    aql::Variable const& outVariable,
-    aql::AstNode* filterCondition,
-    aql::AstNode* options,
-    std::vector<Scorer>&& scorers)
-  : aql::ExecutionNode(&plan, id),
-    _vocbase(vocbase),
-    _view(view),
-    _outVariable(&outVariable),
-    // in case if filter is not specified
-    // set it to surrogate 'RETURN ALL' node
-    _filterCondition(filterCondition ? filterCondition : &ALL),
-    _scorers(std::move(scorers)) {
+IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, size_t id,
+                                     TRI_vocbase_t& vocbase,
+                                     std::shared_ptr<const LogicalView> const& view,
+                                     aql::Variable const& outVariable,
+                                     aql::AstNode* filterCondition,
+                                     aql::AstNode* options, std::vector<Scorer>&& scorers)
+    : aql::ExecutionNode(&plan, id),
+      _vocbase(vocbase),
+      _view(view),
+      _outVariable(&outVariable),
+      // in case if filter is not specified
+      // set it to surrogate 'RETURN ALL' node
+      _filterCondition(filterCondition ? filterCondition : &ALL),
+      _scorers(std::move(scorers)) {
   TRI_ASSERT(_view);
   TRI_ASSERT(iresearch::DATA_SOURCE_TYPE == _view->type());
   TRI_ASSERT(LogicalView::category() == _view->category());
@@ -349,31 +322,27 @@ IResearchViewNode::IResearchViewNode(
   // FIXME any other way to validate options before object creation???
   std::string error;
   if (!parseOptions(options, _options, error)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_BAD_PARAMETER,
-      "invalid ArangoSearch options provided: " + error
-    );
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "invalid ArangoSearch options provided: " + error);
   }
 }
 
-IResearchViewNode::IResearchViewNode(
-    aql::ExecutionPlan& plan,
-    velocypack::Slice const& base)
-  : aql::ExecutionNode(&plan, base),
-    _vocbase(plan.getAst()->query()->vocbase()),
-    _outVariable(aql::Variable::varFromVPack(plan.getAst(), base, "outVariable")),
-    // in case if filter is not specified
-    // set it to surrogate 'RETURN ALL' node
-    _filterCondition(&ALL),
-    _scorers(fromVelocyPack(plan, base.get("scorers"))) {
+IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice const& base)
+    : aql::ExecutionNode(&plan, base),
+      _vocbase(plan.getAst()->query()->vocbase()),
+      _outVariable(
+          aql::Variable::varFromVPack(plan.getAst(), base, "outVariable")),
+      // in case if filter is not specified
+      // set it to surrogate 'RETURN ALL' node
+      _filterCondition(&ALL),
+      _scorers(fromVelocyPack(plan, base.get("scorers"))) {
   // view
   auto const viewIdSlice = base.get("viewId");
 
   if (!viewIdSlice.isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_BAD_PARAMETER,
-      "invalid vpack format, 'viewId' attribute is intended to be a string"
-    );
+        TRI_ERROR_BAD_PARAMETER,
+        "invalid vpack format, 'viewId' attribute is intended to be a string");
   }
 
   auto const viewId = viewIdSlice.copyString();
@@ -388,9 +357,8 @@ IResearchViewNode::IResearchViewNode(
 
   if (!_view || iresearch::DATA_SOURCE_TYPE != _view->type()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-      "unable to find ArangoSearch view with id '" + viewId + "'"
-    );
+        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+        "unable to find ArangoSearch view with id '" + viewId + "'");
   }
 
   // filter condition
@@ -398,9 +366,7 @@ IResearchViewNode::IResearchViewNode(
 
   if (filterSlice.isObject() && !filterSlice.isEmptyObject()) {
     // AST will own the node
-    _filterCondition = new aql::AstNode(
-      plan.getAst(), filterSlice
-    );
+    _filterCondition = new aql::AstNode(plan.getAst(), filterSlice);
   }
 
   // shards
@@ -412,12 +378,13 @@ IResearchViewNode::IResearchViewNode(
     TRI_ASSERT(collections);
 
     for (auto const shardSlice : velocypack::ArrayIterator(shardsSlice)) {
-      auto const shardId = shardSlice.copyString(); // shardID is collection name on db server
+      auto const shardId = shardSlice.copyString();  // shardID is collection name on db server
       auto const* shard = collections->get(shardId);
 
       if (!shard) {
         LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-            << "unable to lookup shard '" << shardId << "' for the view '" << _view->name() << "'";
+            << "unable to lookup shard '" << shardId << "' for the view '"
+            << _view->name() << "'";
         continue;
       }
 
@@ -425,13 +392,14 @@ IResearchViewNode::IResearchViewNode(
     }
   } else {
     LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-      << "invalid 'IResearchViewNode' json format: unable to find 'shards' array";
+        << "invalid 'IResearchViewNode' json format: unable to find 'shards' "
+           "array";
   }
 
   // options
   if (!::fromVelocyPack(base.get("options"), _options)) {
     LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-      << "failed to parse 'IResearchViewNode' options";
+        << "failed to parse 'IResearchViewNode' options";
   }
 
   // volatility mask
@@ -442,13 +410,11 @@ IResearchViewNode::IResearchViewNode(
   }
 }
 
-void IResearchViewNode::planNodeRegisters(
-    std::vector<aql::RegisterId>& nrRegsHere,
-    std::vector<aql::RegisterId>& nrRegs,
-    std::unordered_map<aql::VariableId, VarInfo>& varInfo,
-    unsigned int& totalNrRegs,
-    unsigned int depth
-) const {
+void IResearchViewNode::planNodeRegisters(std::vector<aql::RegisterId>& nrRegsHere,
+                                          std::vector<aql::RegisterId>& nrRegs,
+                                          std::unordered_map<aql::VariableId, VarInfo>& varInfo,
+                                          unsigned int& totalNrRegs,
+                                          unsigned int depth) const {
   nrRegsHere.emplace_back(1);
   // create a copy of the last value here
   // this is requried because back returns a reference and emplace/push_back
@@ -458,12 +424,12 @@ void IResearchViewNode::planNodeRegisters(
 
   varInfo.emplace(_outVariable->id, VarInfo(depth, totalNrRegs++));
 
-//  if (isInInnerLoop()) {
-//    return;
-//  }
+  //  if (isInInnerLoop()) {
+  //    return;
+  //  }
 
   // plan registers for output scores
-  for (auto const& scorer: _scorers) {
+  for (auto const& scorer : _scorers) {
     ++nrRegsHere[depth];
     ++nrRegs[depth];
     varInfo.emplace(scorer.var->id, VarInfo(depth, totalNrRegs++));
@@ -475,17 +441,13 @@ std::pair<bool, bool> IResearchViewNode::volatility(bool force /*=false*/) const
     _volatilityMask = evaluateVolatility(*this);
   }
 
-  return std::make_pair(
-    irs::check_bit<0>(_volatilityMask), // filter
-    irs::check_bit<1>(_volatilityMask)  // sort
+  return std::make_pair(irs::check_bit<0>(_volatilityMask),  // filter
+                        irs::check_bit<1>(_volatilityMask)   // sort
   );
 }
 
 /// @brief toVelocyPack, for EnumerateViewNode
-void IResearchViewNode::toVelocyPackHelper(
-    VPackBuilder& nodes,
-    unsigned flags
-) const {
+void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
   // call base class method
   aql::ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
 
@@ -515,7 +477,7 @@ void IResearchViewNode::toVelocyPackHelper(
   // shards
   {
     VPackArrayBuilder arrayScope(&nodes, "shards");
-    for (auto& shard: _shards) {
+    for (auto& shard : _shards) {
       nodes.add(VPackValue(shard));
     }
   }
@@ -537,7 +499,7 @@ std::vector<std::reference_wrapper<aql::Collection const>> IResearchViewNode::co
 
   std::vector<std::reference_wrapper<aql::Collection const>> viewCollections;
 
-  auto visitor = [&viewCollections, collections](TRI_voc_cid_t cid)->bool{
+  auto visitor = [&viewCollections, collections](TRI_voc_cid_t cid) -> bool {
     auto const id = basics::StringUtils::itoa(cid);
     auto const* collection = collections->get(id);
 
@@ -557,11 +519,8 @@ std::vector<std::reference_wrapper<aql::Collection const>> IResearchViewNode::co
 }
 
 /// @brief clone ExecutionNode recursively
-aql::ExecutionNode* IResearchViewNode::clone(
-    aql::ExecutionPlan* plan,
-    bool withDependencies,
-    bool withProperties
-) const {
+aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan, bool withDependencies,
+                                             bool withProperties) const {
   TRI_ASSERT(plan);
 
   auto* outVariable = _outVariable;
@@ -570,16 +529,10 @@ aql::ExecutionNode* IResearchViewNode::clone(
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
   }
 
-  auto node = std::make_unique<IResearchViewNode>(
-    *plan,
-    _id,
-    _vocbase,
-    _view,
-    *outVariable,
-    const_cast<aql::AstNode*>(_filterCondition),
-    nullptr,
-    decltype(_scorers)(_scorers)
-  );
+  auto node =
+      std::make_unique<IResearchViewNode>(*plan, _id, _vocbase, _view, *outVariable,
+                                          const_cast<aql::AstNode*>(_filterCondition),
+                                          nullptr, decltype(_scorers)(_scorers));
   node->_shards = _shards;
   node->_options = _options;
   node->_volatilityMask = _volatilityMask;
@@ -599,19 +552,17 @@ aql::CostEstimate IResearchViewNode::estimateCost() const {
   // TODO: get a better guess from view
   aql::CostEstimate estimate = _dependencies[0]->getCost();
   estimate.estimatedCost += estimate.estimatedNrItems;
-  return estimate; 
+  return estimate;
 }
 
 std::vector<aql::Variable const*> IResearchViewNode::getVariablesUsedHere() const {
   std::unordered_set<aql::Variable const*> vars;
   getVariablesUsedHere(vars);
-  return { vars.begin(), vars.end() };
+  return {vars.begin(), vars.end()};
 }
 
 /// @brief getVariablesUsedHere, modifying the set in-place
-void IResearchViewNode::getVariablesUsedHere(
-    std::unordered_set<aql::Variable const*>& vars
-) const {
+void IResearchViewNode::getVariablesUsedHere(std::unordered_set<aql::Variable const*>& vars) const {
   if (!::filterConditionIsEmpty(_filterCondition)) {
     aql::Ast::getReferencedVariables(_filterCondition, vars);
   }
@@ -627,8 +578,7 @@ bool IResearchViewNode::filterConditionIsEmpty() const noexcept {
 
 std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     aql::ExecutionEngine& engine,
-    std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&
-) const {
+    std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&) const {
   if (ServerState::instance()->isCoordinator()) {
     // coordinator in a cluster: empty view case
 
@@ -643,69 +593,64 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
   if (!trx) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed to get transaction while creating IResearchView ExecutionBlock";
+        << "failed to get transaction while creating IResearchView "
+           "ExecutionBlock";
 
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL,
-      "failed to get transaction while creating IResearchView ExecutionBlock"
-    );
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "failed to get transaction while creating "
+                                   "IResearchView ExecutionBlock");
   }
 
   auto& view = *this->view();
   IResearchView::Snapshot const* reader;
 
   LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-    << "Start getting snapshot for view '" << view.name() << "'";
+      << "Start getting snapshot for view '" << view.name() << "'";
 
   if (ServerState::instance()->isDBServer()) {
     // there are no cluster-wide transactions,
     // no place to store snapshot
-    static IResearchView::SnapshotMode const SNAPSHOT[] {
-      IResearchView::SnapshotMode::FindOrCreate,
-      IResearchView::SnapshotMode::SyncAndReplace
-    };
+    static IResearchView::SnapshotMode const SNAPSHOT[]{IResearchView::SnapshotMode::FindOrCreate,
+                                                        IResearchView::SnapshotMode::SyncAndReplace};
     std::unordered_set<TRI_voc_cid_t> collections;
     auto& resolver = engine.getQuery()->resolver();
 
-    for (auto& shard: _shards) {
+    for (auto& shard : _shards) {
       auto collection = resolver.getCollection(shard);
 
       if (!collection) {
-        THROW_ARANGO_EXCEPTION(arangodb::Result(
-          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-          std::string("failed to find shard by id '") + shard + "'"
-        ));
+        THROW_ARANGO_EXCEPTION(
+            arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                             std::string("failed to find shard by id '") + shard + "'"));
       }
 
       collections.emplace(collection->id());
     }
 
     reader = LogicalView::cast<IResearchView>(view).snapshot(
-      *trx, SNAPSHOT[size_t(_options.forceSync)], &collections
-    );
+        *trx, SNAPSHOT[size_t(_options.forceSync)], &collections);
   } else {
-    static IResearchView::SnapshotMode const SNAPSHOT[] {
-      IResearchView::SnapshotMode::Find,
-      IResearchView::SnapshotMode::SyncAndReplace
-    };
+    static IResearchView::SnapshotMode const SNAPSHOT[]{IResearchView::SnapshotMode::Find,
+                                                        IResearchView::SnapshotMode::SyncAndReplace};
 
-    reader = LogicalView::cast<IResearchView>(view).snapshot(
-      *trx, SNAPSHOT[size_t(_options.forceSync)]
-    );
+    reader =
+        LogicalView::cast<IResearchView>(view).snapshot(*trx,
+                                                        SNAPSHOT[size_t(_options.forceSync)]);
   }
 
   if (!reader) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed to get snapshot while creating arangosearch view ExecutionBlock for view '" << view.name() << "'";
+        << "failed to get snapshot while creating arangosearch view "
+           "ExecutionBlock for view '"
+        << view.name() << "'";
 
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL,
-      "failed to get snapshot while creating arangosearch view ExecutionBlock"
-    );
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "failed to get snapshot while creating "
+                                   "arangosearch view ExecutionBlock");
   }
 
   LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-    << "Finish getting snapshot for view '" << view.name() << "'";
+      << "Finish getting snapshot for view '" << view.name() << "'";
 
   if (_scorers.empty()) {
     // unordered case
@@ -716,5 +661,5 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   return std::make_unique<IResearchViewBlock>(*reader, engine, *this);
 }
 
-} // iresearch
-} // arangodb
+}  // namespace iresearch
+}  // namespace arangodb

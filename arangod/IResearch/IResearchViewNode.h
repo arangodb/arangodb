@@ -26,15 +26,15 @@
 
 #include "IResearchOrderFactory.h"
 
-#include "Aql/ExecutionNode.h"
 #include "Aql/Collection.h"
+#include "Aql/ExecutionNode.h"
 
 namespace arangodb {
 
 namespace aql {
 class ExecutionBlock;
 class ExecutionEngine;
-}
+}  // namespace aql
 
 namespace iresearch {
 
@@ -46,42 +46,25 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @brief node options
   struct Options {
     /// @brief sync view before querying to get the latest index snapshot
-    bool forceSync{ false };
-  }; // Options
+    bool forceSync{false};
+  };  // Options
 
-  IResearchViewNode(
-    aql::ExecutionPlan& plan,
-    size_t id,
-    TRI_vocbase_t& vocbase,
-    std::shared_ptr<const arangodb::LogicalView> const& view,
-    aql::Variable const& outVariable,
-    aql::AstNode* filterCondition,
-    aql::AstNode* options,
-    std::vector<Scorer>&& scorers
-  );
+  IResearchViewNode(aql::ExecutionPlan& plan, size_t id, TRI_vocbase_t& vocbase,
+                    std::shared_ptr<const arangodb::LogicalView> const& view,
+                    aql::Variable const& outVariable, aql::AstNode* filterCondition,
+                    aql::AstNode* options, std::vector<Scorer>&& scorers);
 
-  IResearchViewNode(
-    aql::ExecutionPlan&,
-    velocypack::Slice const& base
-  );
+  IResearchViewNode(aql::ExecutionPlan&, velocypack::Slice const& base);
 
   /// @brief return the type of the node
-  NodeType getType() const override final {
-    return ENUMERATE_IRESEARCH_VIEW;
-  }
+  NodeType getType() const override final { return ENUMERATE_IRESEARCH_VIEW; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(
-    arangodb::velocypack::Builder&,
-    unsigned
-  ) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned) const override final;
 
   /// @brief clone ExecutionNode recursively
-  aql::ExecutionNode* clone(
-    aql::ExecutionPlan* plan,
-    bool withDependencies,
-    bool withProperties
-  ) const override final;
+  aql::ExecutionNode* clone(aql::ExecutionPlan* plan, bool withDependencies,
+                            bool withProperties) const override final;
 
   /// @returns the list of the linked collections + view itself
   std::vector<std::reference_wrapper<aql::Collection const>> collections() const;
@@ -96,11 +79,8 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   std::vector<arangodb::aql::Variable const*> getVariablesSetHere() const override final {
     std::vector<arangodb::aql::Variable const*> vars(1 + _scorers.size());
 
-    *std::transform(
-      _scorers.begin(), _scorers.end(), vars.begin(),
-      [](auto const& scorer) {
-        return scorer.var;
-    }) = _outVariable;
+    *std::transform(_scorers.begin(), _scorers.end(), vars.begin(),
+                    [](auto const& scorer) { return scorer.var; }) = _outVariable;
 
     return vars;
   }
@@ -111,9 +91,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   }
 
   /// @brief return the database
-  TRI_vocbase_t& vocbase() const noexcept {
-    return _vocbase;
-  }
+  TRI_vocbase_t& vocbase() const noexcept { return _vocbase; }
 
   /// @brief return the view
   std::shared_ptr<const arangodb::LogicalView> const& view() const noexcept {
@@ -133,19 +111,13 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   bool filterConditionIsEmpty() const noexcept;
 
   /// @brief return list of shards related to the view (cluster only)
-  std::vector<std::string> const& shards() const noexcept {
-    return _shards;
-  }
+  std::vector<std::string> const& shards() const noexcept { return _shards; }
 
   /// @brief return list of shards related to the view (cluster only)
-  std::vector<std::string>& shards() noexcept {
-    return _shards;
-  }
+  std::vector<std::string>& shards() noexcept { return _shards; }
 
   /// @brief return the condition to pass to the view
-  std::vector<Scorer> const& scorers() const noexcept {
-    return _scorers;
-  }
+  std::vector<Scorer> const& scorers() const noexcept { return _scorers; }
 
   /// @brief set the sort condition to pass to the view
   void scorers(std::vector<Scorer>&& scorers) noexcept {
@@ -156,14 +128,10 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   std::vector<aql::Variable const*> getVariablesUsedHere() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(
-    std::unordered_set<aql::Variable const*>& vars
-  ) const override final;
+  void getVariablesUsedHere(std::unordered_set<aql::Variable const*>& vars) const override final;
 
   /// @brief returns IResearchViewNode options
-  Options const& options() const noexcept {
-    return _options;
-  }
+  Options const& options() const noexcept { return _options; }
 
   /// @brief node volatility, determines how often query has
   ///        to be rebuilt during the execution
@@ -173,19 +141,15 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   ///       sort condition
   std::pair<bool, bool> volatility(bool force = false) const;
 
-  void planNodeRegisters(
-    std::vector<aql::RegisterId>& nrRegsHere,
-    std::vector<aql::RegisterId>& nrRegs,
-    std::unordered_map<aql::VariableId, VarInfo>& varInfo,
-    unsigned int& totalNrRegs,
-    unsigned int depth
-  ) const;
+  void planNodeRegisters(std::vector<aql::RegisterId>& nrRegsHere,
+                         std::vector<aql::RegisterId>& nrRegs,
+                         std::unordered_map<aql::VariableId, VarInfo>& varInfo,
+                         unsigned int& totalNrRegs, unsigned int depth) const;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<aql::ExecutionBlock> createBlock(
-    aql::ExecutionEngine& engine,
-    std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&
-  ) const override;
+      aql::ExecutionEngine& engine,
+      std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&) const override;
 
  private:
   /// @brief the database
@@ -200,7 +164,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   /// @brief filter node to pass to view
   aql::AstNode const* _filterCondition;
-  
+
   /// @brief scorers related to the view
   std::vector<Scorer> _scorers;
 
@@ -208,13 +172,13 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   std::vector<std::string> _shards;
 
   /// @brief volatility mask
-  mutable int _volatilityMask{ -1 };
+  mutable int _volatilityMask{-1};
 
   /// @brief IResearchViewNode options
   Options _options;
-}; // IResearchViewNode
+};  // IResearchViewNode
 
-} // iresearch
-} // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
-#endif // ARANGOD_IRESEARCH__ENUMERATE_VIEW_NODE_H
+#endif  // ARANGOD_IRESEARCH__ENUMERATE_VIEW_NODE_H

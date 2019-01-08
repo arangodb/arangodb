@@ -22,20 +22,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchViewOptimizerRules.h"
-#include "IResearchViewNode.h"
-#include "IResearchFilterFactory.h"
-#include "IResearchOrderFactory.h"
-#include "AqlHelper.h"
-#include "Aql/ExecutionNode.h"
-#include "Aql/ExecutionPlan.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/Condition.h"
+#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionPlan.h"
 #include "Aql/Function.h"
+#include "Aql/Optimizer.h"
 #include "Aql/Query.h"
 #include "Aql/SortNode.h"
-#include "Aql/Optimizer.h"
 #include "Aql/WalkerWorker.h"
+#include "AqlHelper.h"
 #include "Cluster/ServerState.h"
+#include "IResearchFilterFactory.h"
+#include "IResearchOrderFactory.h"
+#include "IResearchViewNode.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -47,15 +47,11 @@ using EN = arangodb::aql::ExecutionNode;
 
 namespace {
 
-size_t numberOfShards(
-    arangodb::CollectionNameResolver const& resolver,
-    arangodb::LogicalView const& view
-) {
+size_t numberOfShards(arangodb::CollectionNameResolver const& resolver,
+                      arangodb::LogicalView const& view) {
   size_t numberOfShards = 0;
 
-  auto visitor = [&numberOfShards](
-      arangodb::LogicalCollection const& collection
-  ) noexcept {
+  auto visitor = [&numberOfShards](arangodb::LogicalCollection const& collection) noexcept {
     numberOfShards += collection.numberOfShards();
     return true;
   };
@@ -65,10 +61,7 @@ size_t numberOfShards(
   return numberOfShards;
 }
 
-bool addView(
-    arangodb::LogicalView const& view,
-    arangodb::aql::Query& query
-) {
+bool addView(arangodb::LogicalView const& view, arangodb::aql::Query& query) {
   auto* collections = query.collections();
 
   if (!collections) {
@@ -77,29 +70,23 @@ bool addView(
 
   // linked collections
   auto visitor = [&query](TRI_voc_cid_t cid) {
-    query.addCollection(
-      arangodb::basics::StringUtils::itoa(cid),
-      arangodb::AccessMode::Type::READ
-    );
+    query.addCollection(arangodb::basics::StringUtils::itoa(cid),
+                        arangodb::AccessMode::Type::READ);
     return true;
   };
 
   return view.visitCollections(visitor);
 }
 
-bool optimizeSearchCondition(
-    IResearchViewNode& viewNode,
-    Query& query,
-    ExecutionPlan& plan
-) {
+bool optimizeSearchCondition(IResearchViewNode& viewNode, Query& query, ExecutionPlan& plan) {
   auto view = viewNode.view();
 
   // add view and linked collections to the query
   if (!addView(*view, query)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_QUERY_PARSE,
-      "failed to process all collections linked with the view '" + view->name() + "'"
-    );
+        TRI_ERROR_QUERY_PARSE,
+        "failed to process all collections linked with the view '" +
+            view->name() + "'");
   }
 
   // build search condition
@@ -107,15 +94,13 @@ bool optimizeSearchCondition(
 
   if (!viewNode.filterConditionIsEmpty()) {
     searchCondition.andCombine(&viewNode.filterCondition());
-    searchCondition.normalize(&plan); // normalize the condition
+    searchCondition.normalize(&plan);  // normalize the condition
 
     if (searchCondition.isEmpty()) {
       // condition is always false
       for (auto const& x : viewNode.getParents()) {
-        plan.insertDependency(
-          x,
-          plan.registerNode(std::make_unique<NoResultsNode>(&plan, plan.nextId()))
-        );
+        plan.insertDependency(x, plan.registerNode(
+                                     std::make_unique<NoResultsNode>(&plan, plan.nextId())));
       }
       return false;
     }
@@ -131,17 +116,15 @@ bool optimizeSearchCondition(
   }
 
   // check filter condition
-  auto const conditionValid = !searchCondition.root() || FilterFactory::filter(
-    nullptr,
-    { nullptr, nullptr, nullptr, nullptr, &viewNode.outVariable() },
-    *searchCondition.root()
-  );
+  auto const conditionValid =
+      !searchCondition.root() ||
+      FilterFactory::filter(nullptr,
+                            {nullptr, nullptr, nullptr, nullptr, &viewNode.outVariable()},
+                            *searchCondition.root());
 
   if (!conditionValid) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_QUERY_PARSE,
-      "unsupported SEARCH condition"
-    );
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
+                                   "unsupported SEARCH condition");
   }
 
   if (!searchCondition.isEmpty()) {
@@ -151,23 +134,21 @@ bool optimizeSearchCondition(
   return true;
 }
 
-}
+}  // namespace
 
 namespace arangodb {
 namespace iresearch {
 
 /// @brief move filters and sort conditions into views
-void handleViewsRule(
-    arangodb::aql::Optimizer* opt,
-    std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
-    arangodb::aql::OptimizerRule const* rule
-) {
+void handleViewsRule(arangodb::aql::Optimizer* opt,
+                     std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
+                     arangodb::aql::OptimizerRule const* rule) {
   TRI_ASSERT(plan && plan->getAst() && plan->getAst()->query());
   auto& query = *plan->getAst()->query();
 
   // ensure 'Optimizer::addPlan' will be called
   bool modified = false;
-  auto addPlan = irs::make_finally([opt, &plan, rule, &modified](){
+  auto addPlan = irs::make_finally([opt, &plan, rule, &modified]() {
     opt->addPlan(std::move(plan), rule, modified);
   });
 
@@ -217,19 +198,15 @@ void handleViewsRule(
     auto const funcName = iresearch::getFuncName(*scorer.node);
 
     THROW_ARANGO_EXCEPTION_FORMAT(
-      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-      "Non ArangoSearch view variable '%s' is used in scorer function '%s'",
-      scorer.var->name.c_str(),
-      funcName.c_str()
-    );
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+        "Non ArangoSearch view variable '%s' is used in scorer function '%s'",
+        scorer.var->name.c_str(), funcName.c_str());
   });
 }
 
-void scatterViewInClusterRule(
-    arangodb::aql::Optimizer* opt,
-    std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
-    arangodb::aql::OptimizerRule const* rule
-) {
+void scatterViewInClusterRule(arangodb::aql::Optimizer* opt,
+                              std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
+                              arangodb::aql::OptimizerRule const* rule) {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
   bool wasModified = false;
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
@@ -240,9 +217,7 @@ void scatterViewInClusterRule(
   plan->findNodesOfType(nodes, ExecutionNode::SUBQUERY, true);
 
   for (auto& it : nodes) {
-    subqueries.emplace(
-      EN::castTo<SubqueryNode const*>(it)->getSubquery(), it
-    );
+    subqueries.emplace(EN::castTo<SubqueryNode const*>(it)->getSubquery(), it);
   }
 
   // we are a coordinator. now look in the plan for nodes of type
@@ -250,11 +225,8 @@ void scatterViewInClusterRule(
   nodes.clear();
   plan->findNodesOfType(nodes, ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
 
-  TRI_ASSERT(
-    plan->getAst()
-      && plan->getAst()->query()
-      && plan->getAst()->query()->trx()
-  );
+  TRI_ASSERT(plan->getAst() && plan->getAst()->query() &&
+             plan->getAst()->query()->trx());
   auto* resolver = plan->getAst()->query()->trx()->resolver();
   TRI_ASSERT(resolver);
 
@@ -271,7 +243,7 @@ void scatterViewInClusterRule(
     }
 
     auto const& parents = node->getParents();
-    // intentional copy of the dependencies, as we will be modifying 
+    // intentional copy of the dependencies, as we will be modifying
     // dependencies later on
     auto const deps = node->getDependencies();
     TRI_ASSERT(deps.size() == 1);
@@ -295,46 +267,30 @@ void scatterViewInClusterRule(
     plan->unlinkNode(node, true);
 
     // insert a scatter node
-    auto scatterNode = plan->registerNode(
-      std::make_unique<ScatterNode>(
-        plan.get(), plan->nextId()
-    ));
+    auto scatterNode =
+        plan->registerNode(std::make_unique<ScatterNode>(plan.get(), plan->nextId()));
     TRI_ASSERT(!deps.empty());
     scatterNode->addDependency(deps[0]);
 
     // insert a remote node
-    auto* remoteNode = plan->registerNode(
-      std::make_unique<RemoteNode>(
-        plan.get(),
-        plan->nextId(),
-        &vocbase,
-        "", "", ""
-    ));
+    auto* remoteNode =
+        plan->registerNode(std::make_unique<RemoteNode>(plan.get(), plan->nextId(),
+                                                        &vocbase, "", "", ""));
     TRI_ASSERT(scatterNode);
     remoteNode->addDependency(scatterNode);
-    node->addDependency(remoteNode); // re-link with the remote node
+    node->addDependency(remoteNode);  // re-link with the remote node
 
     // insert another remote node
-    remoteNode = plan->registerNode(
-      std::make_unique<RemoteNode>(
-        plan.get(),
-        plan->nextId(),
-        &vocbase,
-        "", "", ""
-    ));
+    remoteNode =
+        plan->registerNode(std::make_unique<RemoteNode>(plan.get(), plan->nextId(),
+                                                        &vocbase, "", "", ""));
     TRI_ASSERT(node);
     remoteNode->addDependency(node);
 
     // insert gather node
-    auto const sortMode = GatherNode::evaluateSortMode(
-      numberOfShards(*resolver, view)
-    );
+    auto const sortMode = GatherNode::evaluateSortMode(numberOfShards(*resolver, view));
     auto* gatherNode = plan->registerNode(
-      std::make_unique<GatherNode>(
-        plan.get(),
-        plan->nextId(),
-        sortMode
-    ));
+        std::make_unique<GatherNode>(plan.get(), plan->nextId(), sortMode));
     TRI_ASSERT(remoteNode);
     gatherNode->addDependency(remoteNode);
 
@@ -362,8 +318,8 @@ void scatterViewInClusterRule(
   opt->addPlan(std::move(plan), rule, wasModified);
 }
 
-} // iresearch
-} // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
