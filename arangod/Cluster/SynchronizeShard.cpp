@@ -439,12 +439,14 @@ arangodb::Result SynchronizeShard::getReadLock(
     auto enqres = cc->enquire(postres);
     if (enqres.status == CL_COMM_SENT) {
       if (enqres.result != nullptr && enqres.result->getHttpReturnCode() == 200) {
-        // Habemus clausum 
+        // Habemus clausum
+        cc->drop("", transactionId, postres, "");
         return arangodb::Result();
       } else {
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
           << "startReadLockOnLeader: Failed to acquire read lock: "
           << enqres.stringifyErrorMessage();
+        cc->drop("", transactionId, postres, "");
         break;
       }
     }
