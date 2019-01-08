@@ -29,8 +29,8 @@
 
 #include <sstream>
 
-#include <openssl/ssl.h>
 #include <curl/curl.h>
+#include <openssl/ssl.h>
 
 #include <rocksdb/convenience.h>
 #include <rocksdb/version.h>

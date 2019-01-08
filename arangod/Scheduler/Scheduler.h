@@ -74,7 +74,8 @@ class Scheduler {
     // Runs the WorkItem immediately
     void run() { executeWithCancel(false); }
 
-    WorkItem(std::function<void(bool canceled)>&& handler, RequestLane lane, Scheduler* scheduler)
+    explicit WorkItem(std::function<void(bool canceled)>&& handler,
+                      RequestLane lane, Scheduler* scheduler)
         : _handler(std::move(handler)), _lane(lane), _disable(false), _scheduler(scheduler){};
 
    private:
