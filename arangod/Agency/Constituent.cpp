@@ -497,10 +497,9 @@ void Constituent::callElection() {
     }
 
     if (!isStopping() && cc != nullptr) {
-      auto res = ClusterComm::instance()->wait(
-          "", coordinatorTransactionID, 0, "",
-          duration<double>(timeout - steady_clock::now()).count());
-
+      auto res = cc->wait("", coordinatorTransactionID, 0, "",
+        duration<double>(timeout - steady_clock::now()).count());
+      
       if (res.status == CL_COMM_SENT) {
         auto body = res.result->getBodyVelocyPack();
         VPackSlice slc = body->slice();
