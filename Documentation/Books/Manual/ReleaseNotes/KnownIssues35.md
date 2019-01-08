@@ -4,9 +4,7 @@ Known Issues in ArangoDB 3.5
 This page lists important issues affecting the 3.5.x versions of the ArangoDB suite of products.
 It is not a list of all open issues.
 
-ArangoDB Customers can access the
-[_Technical & Security Alerts_](https://arangodb.atlassian.net/wiki/spaces/DEVSUP/pages/223903745)
-page after login into the Support Portal.
+Critical issues (ArangoDB Technical & Security Alerts) are also included at [https://www.arangodb.com/alerts/](https://www.arangodb.com/alerts/).
 
 ArangoSearch
 ------------
