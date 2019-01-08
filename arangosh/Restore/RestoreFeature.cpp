@@ -25,6 +25,8 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 #include <boost/algorithm/clamp.hpp>
 
@@ -84,7 +86,7 @@ uint64_t getReplicationFactor(arangodb::RestoreFeature::Options const& options,
         // this is the default value, e.g. `--replicationFactor 2`
         if (parts[0] == "satellite") {
           isSatellite = true;
-        } else { 
+        } else {
           result = arangodb::basics::StringUtils::uint64(parts[0]);
         }
       }
@@ -154,8 +156,8 @@ arangodb::Result checkHttpResponse(arangodb::httpclient::SimpleHttpClient& clien
   if (response == nullptr || !response->isComplete()) {
     return {TRI_ERROR_INTERNAL,
             "got invalid response from server: '" + client.getErrorMessage() +
-                "' while executing '" + requestAction +
-                "' with this payload: '" + originalRequest + "'"};
+                "' while executing " + requestAction + " with this payload: '" +
+                originalRequest + "'"};
   }
   if (response->wasHttpError()) {
     int errorNum = TRI_ERROR_INTERNAL;
@@ -208,6 +210,47 @@ bool sortCollections(VPackBuilder const& l, VPackBuilder const& r) {
       arangodb::basics::VelocyPackHelper::getStringValue(right, "name", "");
 
   return strcasecmp(leftName.c_str(), rightName.c_str()) < 0;
+}
+
+void makeAttributesUnique(arangodb::velocypack::Builder& builder,
+                          arangodb::velocypack::Slice slice) {
+  if (slice.isObject()) {
+    std::unordered_set<arangodb::velocypack::StringRef> keys;
+
+    builder.openObject();
+
+    auto it = arangodb::velocypack::ObjectIterator(slice, true);
+
+    while (it.valid()) {
+      if (!keys.emplace(it.key().stringRef()).second) {
+        // duplicate key
+        it.next();
+        continue;
+      }
+
+      // process attributes recursively
+      builder.add(it.key());
+      makeAttributesUnique(builder, it.value());
+      it.next();
+    }
+
+    builder.close();
+  } else if (slice.isArray()) {
+    builder.openArray();
+
+    auto it = arangodb::velocypack::ArrayIterator(slice);
+
+    while (it.valid()) {
+      // recurse into array
+      makeAttributesUnique(builder, it.value());
+      it.next();
+    }
+
+    builder.close();
+  } else {
+    // non-compound value!
+    builder.add(slice);
+  }
 }
 
 /// @brief Create the database to restore to, connecting manually
@@ -398,6 +441,75 @@ arangodb::Result sendRestoreData(arangodb::httpclient::SimpleHttpClient& httpCli
                                  size_t bufferSize) {
   using arangodb::basics::StringUtils::urlEncode;
   using arangodb::httpclient::SimpleHttpResult;
+
+  // the following two structs are needed for cleaning up duplicate attributes
+  arangodb::velocypack::Builder result;
+  arangodb::basics::StringBuffer cleaned;
+
+  if (options.cleanupDuplicateAttributes) {
+    int res = cleaned.reserve(bufferSize);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      // out of memory
+      THROW_ARANGO_EXCEPTION(res);
+    }
+
+    arangodb::velocypack::Options options = arangodb::velocypack::Options::Defaults;
+    // do *not* check duplicate attributes here (because that would throw)
+    options.checkAttributeUniqueness = false;
+    arangodb::velocypack::Builder builder(&options);
+
+    // instead, we need to manually check for duplicate attributes...
+    char const* p = buffer;
+    char const* e = p + bufferSize;
+
+    while (p < e) {
+      while (p < e && (*p == ' ' || *p == '\r' || *p == '\n' || *p == '\t')) {
+        ++p;
+      }
+
+      // detect line ending
+      size_t length;
+      char const* nl = static_cast<char const*>(memchr(p, '\n', e - p));
+      if (nl == nullptr) {
+        length = e - p;
+      } else {
+        length = nl - p;
+      }
+
+      builder.clear();
+      try {
+        VPackParser parser(builder, builder.options);
+        parser.parse(p, length);
+      } catch (arangodb::velocypack::Exception const& ex) {
+        return {TRI_ERROR_HTTP_CORRUPTED_JSON, ex.what()};
+      } catch (std::bad_alloc const& ex) {
+        return {TRI_ERROR_OUT_OF_MEMORY};
+      } catch (std::exception const& ex) {
+        return {TRI_ERROR_INTERNAL, ex.what()};
+      }
+
+      // recursively clean up duplicate attributes in the document
+      result.clear();
+      makeAttributesUnique(result, builder.slice());
+
+      std::string const json = result.toJson();
+      cleaned.appendText(json.data(), json.size());
+
+      if (nl == nullptr) {
+        // done
+        break;
+      }
+
+      cleaned.appendChar('\n');
+      // advance behind newline
+      p = nl + 1;
+    }
+
+    // now point to the cleaned up data
+    buffer = cleaned.c_str();
+    bufferSize = cleaned.length();
+  }
 
   std::string const url = "/_api/replication/restore-data?collection=" + urlEncode(cname) +
                           "&force=" + (options.force ? "true" : "false");
@@ -974,9 +1086,11 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
                      "maximum size for individual data batches (in bytes)",
                      new UInt64Parameter(&_options.chunkSize));
 
-  options->addOption("--threads",
-                     "maximum number of collections to process in parallel. From v3.4.0",
-                     new UInt32Parameter(&_options.threadCount));
+  options
+      ->addOption("--threads",
+                  "maximum number of collections to process in parallel",
+                  new UInt32Parameter(&_options.threadCount))
+      .setIntroducedIn(30400);
 
   options->addOption("--include-system-collections",
                      "include system collections",
@@ -994,6 +1108,16 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
   options->addOption("--input-directory", "input directory",
                      new StringParameter(&_options.inputPath));
 
+  options
+      ->addOption(
+          "--cleanup-duplicate-attributes",
+          "clean up duplicate attributes (use first specified value) in input "
+          "documents instead of making the restore operation fail",
+          new BooleanParameter(&_options.cleanupDuplicateAttributes),
+          arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+      .setIntroducedIn(30322)
+      .setIntroducedIn(30402);
+
   options->addOption("--import-data", "import data into collection",
                      new BooleanParameter(&_options.importData));
 
@@ -1006,13 +1130,23 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
   options->addOption("--overwrite", "overwrite collections if they exist",
                      new BooleanParameter(&_options.overwrite));
 
-  options->addOption("--number-of-shards",
-                     "override value for numberOfShards (from v3.3.22 and v3.4.2; can be specified multiple times, e.g. --numberOfShards 2 --numberOfShards myCollection=3)",
-                     new VectorParameter<StringParameter>(&_options.numberOfShards));
-  
-  options->addOption("--replication-factor",
-                     "override value for replicationFactor (from v3.3.22 and v3.4.2; can be specified multiple times, e.g. --replicationFactor 2 --replicationFactor myCollection=3)",
-                     new VectorParameter<StringParameter>(&_options.replicationFactor));
+  options
+      ->addOption(
+          "--number-of-shards",
+          "override value for numberOfShards (can be specified multiple times, "
+          "e.g. --numberOfShards 2 --numberOfShards myCollection=3)",
+          new VectorParameter<StringParameter>(&_options.numberOfShards))
+      .setIntroducedIn(30322)
+      .setIntroducedIn(30402);
+
+  options
+      ->addOption("--replication-factor",
+                  "override value for replicationFactor (can be specified "
+                  "multiple times, e.g. --replicationFactor 2 "
+                  "--replicationFactor myCollection=3)",
+                  new VectorParameter<StringParameter>(&_options.replicationFactor))
+      .setIntroducedIn(30322)
+      .setIntroducedIn(30402);
 
   options->addOption(
       "--ignore-distribute-shards-like-errors",
@@ -1022,17 +1156,24 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
   options->addOption(
       "--force", "continue restore even in the face of some server-side errors",
       new BooleanParameter(&_options.force));
-  
-  // deprecated options
-  options->addOption("--default-number-of-shards",
-                     "default value for numberOfShards if not specified in dump (deprecated since v3.3.22 and v3.4.2)",
-                     new UInt64Parameter(&_options.defaultNumberOfShards),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addOption("--default-replication-factor",
-                     "default value for replicationFactor if not specified in dump (deprecated since v3.3.22 and v3.4.2)",
-                     new UInt64Parameter(&_options.defaultReplicationFactor),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+  // deprecated options
+  options
+      ->addOption("--default-number-of-shards",
+                  "default value for numberOfShards if not specified in dump",
+                  new UInt64Parameter(&_options.defaultNumberOfShards),
+                  arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+      .setDeprecatedIn(30322)
+      .setDeprecatedIn(30402);
+
+  options
+      ->addOption(
+          "--default-replication-factor",
+          "default value for replicationFactor if not specified in dump",
+          new UInt64Parameter(&_options.defaultReplicationFactor),
+          arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+      .setDeprecatedIn(30322)
+      .setDeprecatedIn(30402);
 }
 
 void RestoreFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -1064,16 +1205,18 @@ void RestoreFeature::validateOptions(std::shared_ptr<options::ProgramOptions> op
   // validate shards and replication factor
   if (_options.defaultNumberOfShards == 0) {
     LOG_TOPIC(FATAL, arangodb::Logger::RESTORE)
-        << "invalid value for `--default-number-of-shards`, expecting at least 1";
+        << "invalid value for `--default-number-of-shards`, expecting at least "
+           "1";
     FATAL_ERROR_EXIT();
   }
-  
+
   if (_options.defaultReplicationFactor == 0) {
     LOG_TOPIC(FATAL, arangodb::Logger::RESTORE)
-        << "invalid value for `--default-replication-factor, expecting at least 1";
+        << "invalid value for `--default-replication-factor, expecting at "
+           "least 1";
     FATAL_ERROR_EXIT();
   }
-  
+
   for (auto& it : _options.numberOfShards) {
     auto parts = basics::StringUtils::split(it, '=');
     if (parts.size() == 1 && basics::StringUtils::uint64(parts[0]) > 0) {

@@ -36,15 +36,14 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
 #include "GeneralServer/RestHandlerFactory.h"
+#include "GeneralServer/Socket.h"
 #include "Logger/Logger.h"
 #include "Meta/conversion.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/VocbaseContext.h"
-#include "Scheduler/JobGuard.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Scheduler/Socket.h"
 #include "Utils/Events.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -434,10 +433,10 @@ void GeneralCommTask::addErrorResponse(rest::ResponseCode code, rest::ContentTyp
 // thread. Depending on the number of running threads requests may be queued
 // and scheduled later when the number of used threads decreases
 bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
-  auto const prio = handler->priority();
+  auto const lane = handler->getRequestLane();
   auto self = shared_from_this();
 
-  bool ok = SchedulerFeature::SCHEDULER->queue(prio, [self, this, handler]() {
+  bool ok = SchedulerFeature::SCHEDULER->queue(lane, [self, this, handler]() {
     handleRequestDirectly(basics::ConditionalLocking::DoLock, std::move(handler));
   });
 
@@ -474,14 +473,14 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
     *jobId = handler->handlerId();
 
     // callback will persist the response with the AsyncJobManager
-    return SchedulerFeature::SCHEDULER->queue(handler->priority(), [self, handler] {
+    return SchedulerFeature::SCHEDULER->queue(handler->getRequestLane(), [self, handler] {
       handler->runHandler([](RestHandler* h) {
         GeneralServerFeature::JOB_MANAGER->finishAsyncJob(h);
       });
     });
   } else {
     // here the response will just be ignored
-    return SchedulerFeature::SCHEDULER->queue(handler->priority(), [self, handler] {
+    return SchedulerFeature::SCHEDULER->queue(handler->getRequestLane(), [self, handler] {
       handler->runHandler([](RestHandler*) {});
     });
   }

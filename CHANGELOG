@@ -1,6 +1,10 @@
 devel
 -----
 
+* Use base64url to encode and decode JWT parts.
+
+* updated bundled curl library to version 7.63
+
 * Added --server.jwt-secret-keyfile option.
 
 * speed up data-modification operations in exclusive transactions in the RocksDB
