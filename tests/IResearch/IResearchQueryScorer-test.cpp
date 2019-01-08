@@ -442,7 +442,56 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
   }
 
   {
-    // Let x= 5  LET arr = [0,1] FOR i in 1..2 LET zz = RAND() FOR d IN aro_1_search  SEARCH d._nlp.words == 'volt' LIMIT 10 RETURN BM25(d, arr[zz > 0.5])
+    std::string const query =
+      "LET x = 5 "
+      "LET arr = [0,1] "
+      "FOR i in 0..1 "
+      "  LET rnd = _NONDETERM_(i) "
+      "  FOR d IN testView SEARCH d.name >= 'A' AND d.name <= 'C' "
+      "LIMIT 10 "
+      "RETURN { d, score: d.seq + 3*customscorer(d, arr[TO_NUMBER(rnd != 0)]) }";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+      }
+    ));
+
+    std::map<size_t, arangodb::velocypack::Slice> expectedDocs {
+      { 0, arangodb::velocypack::Slice(insertedDocsView[0].vpack()) },
+      { 1, arangodb::velocypack::Slice(insertedDocsView[1].vpack()) },
+      { 2, arangodb::velocypack::Slice(insertedDocsView[2].vpack()) },
+      { 3, arangodb::velocypack::Slice(insertedDocsView[0].vpack()) },
+      { 4, arangodb::velocypack::Slice(insertedDocsView[1].vpack()) },
+      { 5, arangodb::velocypack::Slice(insertedDocsView[2].vpack()) },
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    for (;resultIt.valid(); resultIt.next()) {
+      auto const actualValue = resultIt.value();
+
+      auto actualScoreSlice = actualValue.get("score");
+      REQUIRE(actualScoreSlice.isNumber());
+      auto const actualScore = actualScoreSlice.getNumber<size_t>();
+      auto expectedValue = expectedDocs.find(actualScore);
+      REQUIRE(expectedValue != expectedDocs.end());
+
+      auto const actualDoc = actualValue.get("d");
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedValue->second), resolved, true)));
+      expectedDocs.erase(expectedValue);
+    }
+    CHECK(expectedDocs.empty());
   }
 }
 
