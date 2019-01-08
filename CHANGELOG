@@ -1,6 +1,8 @@
 v3.3.22 (XXXX-XX-XX)
 --------------------
 
+* Use base64url to encode and decode JWT parts.
+
 * added AQL function `CHECK_DOCUMENT` for document validity checks
 
 * added arangorestore option `--cleanup-duplicate-attributes` to clean up input documents
@@ -18,7 +20,7 @@ v3.3.22 (XXXX-XX-XX)
   default values for the number of shards and the replication factor, resp. for all
   restored collections. If specified, these default values will be used regardless
   of whether the number of shards or the replication factor values are already present
-  in the metadata of the dumped collections. 
+  in the metadata of the dumped collections.
 
   It is also possible to override the values on a per-collection level by specifying
   the options multiple times, e.g.
@@ -34,7 +36,7 @@ v3.3.22 (XXXX-XX-XX)
       --number-of-shards mycollection=3 --number-of-shards test=4
 
   This will use the number of shards as specified in the dump, except for the collections
-  "mycollection" and "test". 
+  "mycollection" and "test".
 
   The `--replication-factor` option works similarly.
 
@@ -49,9 +51,9 @@ v3.3.22 (XXXX-XX-XX)
 
   This resulted in a document having two "a" attributes, which is obviously
   undesired. Now, when an attribute value is used multiple times, only the first
-  assigned value will be used for that attribute in AQL. It is not possible to 
+  assigned value will be used for that attribute in AQL. It is not possible to
   specify the same attribute multiple times and overwrite the attribute's value
-  with by that. That means in the above example, the value of "a" will be 1, 
+  with by that. That means in the above example, the value of "a" will be 1,
   and not 2.
   This changes the behavior for overriding attribute values in AQL compared to
   previous versions of ArangoDB, as previous versions in some cases allowed
@@ -60,7 +62,7 @@ v3.3.22 (XXXX-XX-XX)
   value. In order to explicitly override a value in an existing object, use the
   AQL MERGE function.
 
-  To avoid all these issues, users are encouraged to use unambiguous attribute 
+  To avoid all these issues, users are encouraged to use unambiguous attribute
   names in objects/documents in AQL. Outside of AQL, specifying the same attribute
   multiple times may even result in a parse error, e.g. when sending such data
   to ArangoDB's HTTP REST API.
@@ -69,10 +71,10 @@ v3.3.22 (XXXX-XX-XX)
   abort with a proper error containing the problem description instead of aborting
   but hiding there was a problem.
 
-* remove Swagger map files from the build to reduce package sizes 
+* remove Swagger map files from the build to reduce package sizes
 
 * do not respond with an internal error in case of JSON parse errors detected
-  in incoming HTTP requests 
+  in incoming HTTP requests
 
 * fixed issue #7834: AQL Query crashes instance
 
