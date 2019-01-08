@@ -392,11 +392,11 @@ arangodb::Result SynchronizeShard::getReadLock(
   uint64_t rlid, bool soft, double timeout) {
 
   // This function can be implemented in a more robust manner for server
-  // versions > 3.3. Starting with 3.4 the POST requests to the read lock API
+  // versions > 3.4. Starting with 3.4 the POST requests to the read lock API
   // terminates the server side thread as soon as the lock request comes in.
   // The POST request thus is answered immediately back to the caller.
-  // The servers with lower versions hold the POST request for as long as the
-  // corresponding DELETE_REQ has not been successfully submitted.
+  // The servers (<=3.3) with lower versions hold the POST request for as long
+  // as the corresponding DELETE_REQ has not been successfully submitted.
   
   using namespace std::chrono;
   auto const start = steady_clock::now();
