@@ -4,7 +4,7 @@ Known Issues in ArangoDB 3.3
 This page lists important issues affecting the 3.3.x versions of the ArangoDB suite of products.
 It is not a list of all open issues.
 
-Critical issues (ArangoDB Technical & Security Alerts) are also included at [https://www.arangodb.com/alerts/](https://www.arangodb.com/alerts/).
+Critical issues (ArangoDB Technical & Security Alerts) are also found at [arangodb.com/alerts](https://www.arangodb.com/alerts/).
 
 | # | Issue      |
 |---|------------|
