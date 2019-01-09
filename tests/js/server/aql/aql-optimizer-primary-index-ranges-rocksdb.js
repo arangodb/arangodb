@@ -355,13 +355,13 @@ function optimizerIndexesRangesTestSuite () {
         });
 
         // ensure an index is used
-        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
+        assertTrue(nodeTypes.indexOf("IndexNode") !== -1 || 
+                   nodeTypes.indexOf("SingleRemoteOperationNode") !== -1, query);
         
         // must never have a SortNode, as we use the index for sorting
         assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
 
-db._explain(query[0]);
-        var results = AQL_EXECUTE(query[0]);
+        let results = AQL_EXECUTE(query[0]);
 
         assertEqual(query[1].length , results.json.length, query);
         assertEqual(query[1], results.json, query);

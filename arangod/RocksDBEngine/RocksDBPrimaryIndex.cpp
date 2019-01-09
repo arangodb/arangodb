@@ -263,21 +263,18 @@ bool RocksDBPrimaryIndexInIterator::next(LocalDocumentIdCallback const& cb, size
     return false;
   }
 
-  do {
+  while (limit > 0) {
     LocalDocumentId documentId = _index->lookupKey(_trx, StringRef(*_iterator));
     if (documentId.isSet()) {
       cb(documentId);
       --limit;
-      if (limit == 0) {
-        return false;
-      }
     }
 
     _iterator.next();
     if (!_iterator.valid()) {
       return false;
     }
-  } while (true);
+  } 
   return true;
 }
 
@@ -290,15 +287,12 @@ bool RocksDBPrimaryIndexInIterator::nextCovering(DocumentCallback const& cb, siz
     return false;
   }
 
-  do {
+  while (limit > 0) {
     // TODO: prevent copying of the value into result, as we don't need it here!
     LocalDocumentId documentId = _index->lookupKey(_trx, StringRef(*_iterator));
     if (documentId.isSet()) {
       cb(documentId, *_iterator);
       --limit;
-      if (limit == 0) {
-        break;
-      }
     }
 
     _iterator.next();
@@ -600,7 +594,7 @@ IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
   }
   
   auto removeCollectionFromString =
-      [this, &trx](bool isId, std::string& value) -> bool {
+      [this, &trx](bool isId, std::string& value) -> int {
     if (isId) {
       char const* key = nullptr;
       size_t outLength = 0;
@@ -608,29 +602,32 @@ IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
       Result res = trx->resolveId(value.data(), value.length(), collection, key, outLength);
 
       if (!res.ok()) {
-        return false;
+        // using the name of an unknown collection
+        if (_isRunningInCluster) {
+          // translate from our own shard name to "real" collection name
+          return value.compare(trx->resolver()->getCollectionName(_collection.id()));
+        } 
+        return value.compare(_collection.name());
       }
 
       TRI_ASSERT(key);
       TRI_ASSERT(collection);
 
       if (!_isRunningInCluster && collection->id() != _collection.id()) {
-        // only continue lookup if the id value is syntactically correct and
-        // refers to "our" collection, using local collection id
-        return false;
+        // using the name of a different collection...
+        return value.compare(_collection.name());
+      } else if (_isRunningInCluster && collection->planId() != _collection.planId()) {
+        // using a different collection
+        // translate from our own shard name to "real" collection name
+        return value.compare(trx->resolver()->getCollectionName(_collection.id())); 
       }
 
-      if (_isRunningInCluster) {
-        if (collection->planId() != _collection.planId()) {
-          // only continue lookup if the id value is syntactically correct and
-          // refers to "our" collection, using cluster collection id
-          return false;
-        }
-      }
-
+      // strip collection name prefix
       value = std::string(key, outLength);
     }
-    return true;
+
+    // usage of _key or same collection name
+    return 0;
   };
 
   std::string lower;
@@ -678,18 +675,17 @@ IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
       // any null, bool or numeric value is lower than any potential key
       // keep lower bound
     } else {
-      LOG_TOPIC(ERR, Logger::AQL) << "unhandled type for valNode: " << valNode->getTypeString();
-      TRI_ASSERT(false);
-      break;
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("unhandled type for valNode: ") + valNode->getTypeString());
     }
 
     // strip collection name prefix from comparison value
-    if (!removeCollectionFromString(isId, value)) {
-      // value belongs to a different collection.
-      continue;
-    }
+    int const cmpResult = removeCollectionFromString(isId, value);
 
     if (type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+      if (cmpResult != 0) {
+        // doc._id == different collection
+        return new EmptyIndexIterator(&_collection, trx);
+      }
       if (!upperFound || value < upper) {
         upper = value;
         upperFound = true;
@@ -700,22 +696,39 @@ IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
       }
     } else if (type == aql::NODE_TYPE_OPERATOR_BINARY_LE || type == aql::NODE_TYPE_OPERATOR_BINARY_LT) {
       // a.b < value
-      if (type == aql::NODE_TYPE_OPERATOR_BINARY_LT && !value.empty()) {
-        value.back() -= 0x01U;  // modify upper bound so that it is not included
+      if (cmpResult > 0) {
+        // doc._id < collection with "bigger" name
+        upper = ::highest;
+      } else if (cmpResult < 0) {
+        // doc._id < collection with "lower" name
+        return new EmptyIndexIterator(&_collection, trx);
+      } else {
+        if (type == aql::NODE_TYPE_OPERATOR_BINARY_LT && !value.empty()) {
+          value.back() -= 0x01U;  // modify upper bound so that it is not included
+        }
+        if (!upperFound || value < upper) {
+          upper = std::move(value);
+        }
       }
-      if (!upperFound || value < upper) {
-        upper = std::move(value);
-        upperFound = true;
-      }
+      upperFound = true;
     } else if (type == aql::NODE_TYPE_OPERATOR_BINARY_GE || type == aql::NODE_TYPE_OPERATOR_BINARY_GT) {
       // a.b > value
-      if (type == aql::NODE_TYPE_OPERATOR_BINARY_GE && !value.empty()) {
-        value.back() -= 0x01U;  // modify lower bound so it is included
+      if (cmpResult < 0) {
+        // doc._id > collection with "smaller" name
+        lower = ::lowest;
+      } else if (cmpResult > 0) {
+        // doc._id > collection with "bigger" name
+        return new EmptyIndexIterator(&_collection, trx);
+      } else {
+        if (type == aql::NODE_TYPE_OPERATOR_BINARY_GE && !value.empty()) {
+          value.back() -= 0x01U;  // modify lower bound so it is included
+        }
+        if (!lowerFound || value > lower) {
+          lower = std::move(value);
+        }
       }
-      lower = std::move(value);
       lowerFound = true;
     }
-
   }  // for nodes
 
   // if only one bound is given select the other (lowest or highest) accordingly
@@ -785,8 +798,6 @@ IndexIterator* RocksDBPrimaryIndex::createInIterator(transaction::Methods* trx,
 
   keys->close();
         
-  LOG_TOPIC(ERR, Logger::FIXME) << "THE IN-ITERATOR: " << valNode;
-
   return new RocksDBPrimaryIndexInIterator(&_collection, trx, this, std::move(keys), !isId);
 }
 

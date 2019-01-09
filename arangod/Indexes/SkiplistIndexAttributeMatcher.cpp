@@ -104,11 +104,12 @@ bool SkiplistIndexAttributeMatcher::accessFitsIndex(
 
     // make exception for primary index as we do not need to match "_key, _id"
     // but can go directly for "_id"
-    if (!match && isPrimaryIndex) {
-      if (i == 0 && fieldNames[i].name == StaticStrings::IdString) {
-        match = true;
-      }
-    };
+    if (!match && 
+        isPrimaryIndex && 
+        i == 0 &&
+        fieldNames[i].name == StaticStrings::IdString) {
+      match = true;
+    }
 
     if (match) {
       // mark ith attribute as being covered
