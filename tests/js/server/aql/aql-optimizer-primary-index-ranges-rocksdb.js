@@ -36,19 +36,19 @@ var db = require("@arangodb").db;
 ////////////////////////////////////////////////////////////////////////////////
 
 function optimizerIndexesRangesTestSuite () {
-  var c;
+  let c;
 
   return {
-    setUp : function () {
+    setUpAll : function () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
 
-      for (var i = 0; i < 2000; ++i) {
-        c.save({ _key: "test" + String(i).padStart(4,'0'), value1: (i % 100), value2: i });
+      for (let i = 0; i < 2000; ++i) {
+        c.save({ _key: "test" + String(i).padStart(4, '0') });
       }
     },
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop("UnitTestsCollection");
     },
 
@@ -57,7 +57,7 @@ function optimizerIndexesRangesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testPrimaryIndexRanges : function () {
-      var queries = [ // queries[0] - query -- queries[1] - expected result
+      let queries = [ // queries[0] - query -- queries[1] - expected result
         // _key and _id mixed
         [
           "FOR i IN " + c.name() + " FILTER (i._key >= 'test1990' && i._id <= '" + c.name() + "/test2') RETURN i._key",
@@ -349,8 +349,8 @@ function optimizerIndexesRangesTestSuite () {
       ]; //end of array
 
       queries.forEach(function(query) {
-        var plan = AQL_EXPLAIN(query[0]).plan;
-        var nodeTypes = plan.nodes.map(function(node) {
+        let plan = AQL_EXPLAIN(query[0]).plan;
+        let nodeTypes = plan.nodes.map(function(node) {
           return node.type;
         });
 
@@ -370,7 +370,7 @@ function optimizerIndexesRangesTestSuite () {
     },
 
     testPrimaryIndexRangesEdgeCases : function () {
-      var queries = [ // queries[0] - query -- queries[1] - expected result
+      let queries = [ // queries[0] - query -- queries[1] - expected result
         [
           // upper is greater than lower
           "FOR i IN " + c.name() + " FILTER (i._key <= 'test1997' && i._key >= 'test1998') RETURN i._key",
@@ -388,26 +388,125 @@ function optimizerIndexesRangesTestSuite () {
       ]; //end of array
 
       queries.forEach(function(query) {
-        var plan = AQL_EXPLAIN(query[0]).plan;
-        var nodeTypes = plan.nodes.map(function(node) {
+        let plan = AQL_EXPLAIN(query[0]).plan;
+        let nodeTypes = plan.nodes.map(function(node) {
           return node.type;
         });
 
-        var results = AQL_EXECUTE(query[0]);
+        let results = AQL_EXECUTE(query[0]);
 
         assertEqual(query[1].length , results.json.length, query);
-        var last = query[1][0];
         results.json.forEach(function(value) {
           assertNotEqual(-1, query[1].indexOf(value));
         });
 
         assertEqual(0, results.stats.scannedFull);
       });
-    }
-
+    },
+  
   };
 }
+
+function optimizerIndexesRangesCollectionsTestSuite () {
+  return {
+    setUp : function () {
+      db._drop("UnitTestsCollection1");
+      db._drop("UnitTestsCollection2");
+      db._drop("UnitTestsCollection3");
+
+      for (let i = 1; i <= 3; ++i) {
+        let c = db._create("UnitTestsCollection" + i);
+
+        for (let j = 0; j < 2000; ++j) {
+          c.save({ _key: "test" + String(j).padStart(4, '0') });
+        }
+      }
+    },
+
+    tearDown : function () {
+      db._drop("UnitTestsCollection1");
+      db._drop("UnitTestsCollection2");
+      db._drop("UnitTestsCollection3");
+    },
+
+    testPrimaryIndexRangesIdWithDifferentCollections : function () {
+      let all = [];
+      for (let i = 0; i < 2000; ++i) {
+        all.push("test" + String(i).padStart(4, '0'));
+      }
+
+      let queries = [ 
+        [
+          "FOR i IN UnitTestsCollection1 FILTER i._id == 'UnitTestsCollection1/test1996' RETURN i._key",
+          [ "test1996" ]
+        ],[
+          "FOR i IN UnitTestsCollection1 FILTER i._id >= 'UnitTestsCollection1/test1996' RETURN i._key",
+          [ "test1996", "test1997", "test1998", "test1999" ]
+        ],[
+          "FOR i IN UnitTestsCollection1 FILTER i._id > 'UnitTestsCollection1/test1996' RETURN i._key",
+          [ "test1997", "test1998", "test1999" ]
+        ],[
+          "FOR i IN UnitTestsCollection1 FILTER i._id <= 'UnitTestsCollection1/test0003' RETURN i._key",
+          [ "test0000", "test0001", "test0002", "test0003" ]
+        ],[
+          "FOR i IN UnitTestsCollection1 FILTER i._id < 'UnitTestsCollection1/test0003' RETURN i._key",
+          [ "test0000", "test0001", "test0002" ]
+        ],[
+          "FOR i IN UnitTestsCollection1 FILTER i._id == 'UnitTestsCollection3/test0003' RETURN i._key",
+          [ ]
+        ],[
+          "FOR i IN UnitTestsCollection3 FILTER i._id < 'UnitTestsCollection1/test0003' RETURN i._key",
+          [ ]
+        ],[
+          "FOR i IN UnitTestsCollection3 FILTER i._id <= 'UnitTestsCollection1/test0003' RETURN i._key",
+          [ ]
+        ],[
+          "FOR i IN UnitTestsCollection3 FILTER i._id > 'UnitTestsCollection1/test0003' RETURN i._key",
+          all
+        ],[
+          "FOR i IN UnitTestsCollection3 FILTER i._id >= 'UnitTestsCollection1/test0003' RETURN i._key",
+          all
+        ],[
+          "FOR i IN UnitTestsCollection1 FILTER i._id < 'UnitTestsCollection3/test0003' RETURN i._key",
+          all
+        ],[
+          "FOR i IN UnitTestsCollection1 FILTER i._id <= 'UnitTestsCollection3/test0003' RETURN i._key",
+          all
+        ],[
+          "FOR i IN UnitTestsCollection1 FILTER i._id > 'UnitTestsCollection3/test0003' RETURN i._key",
+          [ ]
+        ],[
+          "FOR i IN UnitTestsCollection1 FILTER i._id >= 'UnitTestsCollection3/test0003' RETURN i._key",
+          [ ]
+        ]
+      ];
+
+      queries.forEach(function(query) {
+        let plan = AQL_EXPLAIN(query[0]).plan;
+        let nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        // ensure an index is used
+        assertTrue(nodeTypes.indexOf("IndexNode") !== -1 || 
+                   nodeTypes.indexOf("SingleRemoteOperationNode") !== -1, query);
+        
+        // must never have a SortNode, as we use the index for sorting
+        assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
+
+        let results = AQL_EXECUTE(query[0]);
+
+        assertEqual(query[1].length , results.json.length, query);
+        assertEqual(query[1], results.json, query);
+        assertEqual(0, results.stats.scannedFull);
+      });
+    },
+
+  };
+
+}
+
 jsunity.run(optimizerIndexesRangesTestSuite);
+jsunity.run(optimizerIndexesRangesCollectionsTestSuite);
 
 return jsunity.done();
-
