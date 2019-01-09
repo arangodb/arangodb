@@ -35,8 +35,7 @@ struct Variable;
 /// @brief condition finder
 class ConditionFinder : public WalkerWorker<ExecutionNode> {
  public:
-  ConditionFinder(ExecutionPlan* plan,
-                  std::unordered_map<size_t, ExecutionNode*>* changes,
+  ConditionFinder(ExecutionPlan* plan, std::unordered_map<size_t, ExecutionNode*>* changes,
                   bool* hasEmptyResult, bool viewMode)
       : _plan(plan),
         _variableDefinitions(),
@@ -52,8 +51,7 @@ class ConditionFinder : public WalkerWorker<ExecutionNode> {
   bool enterSubquery(ExecutionNode*, ExecutionNode*) override final;
 
  protected:
-  bool handleFilterCondition(ExecutionNode* en,
-                             std::unique_ptr<Condition> const& condition);
+  bool handleFilterCondition(ExecutionNode* en, std::unique_ptr<Condition> const& condition);
   void handleSortCondition(ExecutionNode* en, Variable const* outVar,
                            std::unique_ptr<Condition> const& condition,
                            std::unique_ptr<SortCondition>& sortCondition);

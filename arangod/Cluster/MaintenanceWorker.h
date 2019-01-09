@@ -35,14 +35,10 @@ namespace maintenance {
 
 class MaintenanceWorker : public Thread {
  public:
-  
-  MaintenanceWorker(
-    MaintenanceFeature& feature,
-    std::unordered_set<std::string> const& labels =
-    std::unordered_set<std::string>());
-  
-  MaintenanceWorker(
-    MaintenanceFeature& feature, std::shared_ptr<Action>& directAction);
+  MaintenanceWorker(MaintenanceFeature& feature,
+                    std::unordered_set<std::string> const& labels = std::unordered_set<std::string>());
+
+  MaintenanceWorker(MaintenanceFeature& feature, std::shared_ptr<Action>& directAction);
 
   virtual ~MaintenanceWorker() { shutdown(); }
 
@@ -55,9 +51,9 @@ class MaintenanceWorker : public Thread {
 
   /// @brief Share internal result state, likely derived from most recent action
   /// @returns Result object
-  Result result() const {return _lastResult;}
+  Result result() const { return _lastResult; }
 
-protected:
+ protected:
   enum WorkerState {
     eSTOP = 1,
     eFIND_ACTION = 2,
@@ -73,7 +69,7 @@ protected:
   /// @brief Find an action that is ready to process within feature's deque
   /// @return action to process, or nullptr
 
-  arangodb::MaintenanceFeature & _feature;
+  arangodb::MaintenanceFeature& _feature;
 
   std::shared_ptr<Action> _curAction;
 
@@ -85,12 +81,12 @@ protected:
 
   const std::unordered_set<std::string> _labels;
 
-private:
-  MaintenanceWorker(MaintenanceWorker const &) = delete;
+ private:
+  MaintenanceWorker(MaintenanceWorker const&) = delete;
 
-};// class MaintenanceWorker
+};  // class MaintenanceWorker
 
-} // namespace maintenance
-} // namespace arangodb
+}  // namespace maintenance
+}  // namespace arangodb
 
 #endif

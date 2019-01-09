@@ -199,28 +199,28 @@ struct stats final : stored_attribute {
   stats() = default;
 
   virtual void clear() { 
-    idf = 1.f;
+    idf = 0.f;
     norm_const = 1.f;
     norm_length = 0.f;
   }
   
-  float_t idf; // precomputed idf value
-  float_t norm_const; // precomputed k*(1-b)
-  float_t norm_length; // precomputed k*b/avgD
+  float_t idf{ 0.f }; // precomputed idf value
+  float_t norm_const{ 1.f }; // precomputed k*(1-b)
+  float_t norm_length{ 0.f }; // precomputed k*b/avgD
 }; // stats
 
-DEFINE_ATTRIBUTE_TYPE(iresearch::bm25::stats);
+DEFINE_ATTRIBUTE_TYPE(irs::bm25::stats);
 DEFINE_FACTORY_DEFAULT(stats);
 
 typedef bm25_sort::score_t score_t;
 
-class scorer : public iresearch::sort::scorer_base<bm25::score_t> {
+class scorer : public irs::sort::scorer_base<bm25::score_t> {
  public:
   DEFINE_FACTORY_INLINE(scorer);
 
   scorer(
       float_t k, 
-      iresearch::boost::boost_t boost,
+      irs::boost::boost_t boost,
       const bm25::stats* stats,
       const frequency* freq) NOEXCEPT
     : freq_(freq ? freq : &EMPTY_FREQ),
@@ -237,7 +237,7 @@ class scorer : public iresearch::sort::scorer_base<bm25::score_t> {
  protected:
   FORCE_INLINE float_t tf() const NOEXCEPT {
     return float_t(std::sqrt(freq_->value));
-  };
+  }
 
   const frequency* freq_; // document frequency
   float_t num_; // partially precomputed numerator : boost * (k + 1) * idf
@@ -250,10 +250,10 @@ class norm_scorer final : public scorer {
 
   norm_scorer(
       float_t k, 
-      iresearch::boost::boost_t boost,
+      irs::boost::boost_t boost,
       const bm25::stats* stats,
       const frequency* freq,
-      const iresearch::norm* norm) NOEXCEPT
+      const irs::norm* norm) NOEXCEPT
     : scorer(k, boost, stats, freq),
       norm_(norm) {
     assert(norm_);
@@ -271,11 +271,11 @@ class norm_scorer final : public scorer {
   }
 
  private:
-  const iresearch::norm* norm_;
+  const irs::norm* norm_;
   float_t norm_length_{ 0.f }; // precomputed 'k*b/avgD' if norms presetn, '0' otherwise
 }; // norm_scorer
 
-class collector final : public iresearch::sort::collector {
+class collector final : public irs::sort::collector {
  public:
   collector(float_t k, float_t b) NOEXCEPT
     : k_(k), b_(b) {
@@ -304,15 +304,17 @@ class collector final : public iresearch::sort::collector {
       attribute_store& filter_attrs,
       const index_reader& /*index*/
   ) override {
-    auto& bm25stats = filter_attrs.emplace<stats>();
+    bool is_new; // stats weren't already initialized
+    auto& bm25stats = filter_attrs.try_emplace<stats>(is_new);
 
     // precomputed idf value
-    bm25stats->idf =
+    bm25stats->idf +=
       float_t(std::log(1 + ((docs_with_field - docs_with_term + 0.5)/(docs_with_term + 0.5))));
     assert(bm25stats->idf >= 0);
 
-    if (b_ == 0.f) {
-      // BM11 without norms
+    // - stats were already initialized
+    // - BM15 without norms
+    if (!is_new || b_ == 0.f) {
       return;
     }
 
@@ -337,7 +339,7 @@ class collector final : public iresearch::sort::collector {
   float_t b_;
 }; // collector
 
-class sort final : iresearch::sort::prepared_basic<bm25::score_t> {
+class sort final : irs::sort::prepared_basic<bm25::score_t> {
  public:
   DEFINE_FACTORY_INLINE(prepared);
 
@@ -354,7 +356,7 @@ class sort final : iresearch::sort::prepared_basic<bm25::score_t> {
     return FEATURES[b_ != 0.f];
   }
 
-  virtual iresearch::sort::collector::ptr prepare_collector() const override {
+  virtual irs::sort::collector::ptr prepare_collector() const override {
     return irs::sort::collector::make<bm25::collector>(k_, b_);
   }
 
@@ -369,7 +371,7 @@ class sort final : iresearch::sort::prepared_basic<bm25::score_t> {
     }
 
     if (b_ != 0.f) {
-      auto& norm = query_attrs.get<iresearch::norm>();
+      auto& norm = query_attrs.get<irs::norm>();
 
       if (norm && norm->reset(segment, field.meta().norm, *doc_attrs.get<document>())) {
         return bm25::scorer::make<bm25::norm_scorer>(
@@ -398,13 +400,16 @@ class sort final : iresearch::sort::prepared_basic<bm25::score_t> {
 
 NS_END // bm25
 
-DEFINE_SORT_TYPE_NAMED(iresearch::bm25_sort, "bm25");
+DEFINE_SORT_TYPE_NAMED(irs::bm25_sort, "bm25");
 DEFINE_FACTORY_DEFAULT(irs::bm25_sort);
 
 bm25_sort::bm25_sort(
     float_t k /*= 1.2f*/,
     float_t b /*= 0.75f*/
-): sort(bm25_sort::type()), k_(k), b_(b) {
+) NOEXCEPT
+  : sort(bm25_sort::type()),
+    k_(k),
+    b_(b) {
 }
 
 /*static*/ void bm25_sort::init() {

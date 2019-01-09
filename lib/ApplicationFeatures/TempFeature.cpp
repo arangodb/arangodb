@@ -23,8 +23,8 @@
 #include "ApplicationFeatures/TempFeature.h"
 
 #include "Basics/ArangoGlobalContext.h"
-#include "Basics/files.h"
 #include "Basics/FileUtils.h"
+#include "Basics/files.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -33,10 +33,8 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-TempFeature::TempFeature(
-    application_features::ApplicationServer& server,
-    std::string const& appname
-)
+TempFeature::TempFeature(application_features::ApplicationServer& server,
+                         std::string const& appname)
     : ApplicationFeature(server, "Temp"), _path(), _appname(appname) {
   setOptional(false);
   startsAfter("GreetingsPhase");
@@ -73,4 +71,4 @@ void TempFeature::start() {
   }
 }
 
-} // arangodb
+}  // namespace arangodb

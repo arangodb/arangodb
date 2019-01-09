@@ -37,7 +37,7 @@ namespace velocypack {
 class Builder;
 struct Options;
 class Slice;
-}
+}  // namespace velocypack
 
 class RestBaseHandler : public rest::RestHandler {
  public:
@@ -80,6 +80,6 @@ class RestBaseHandler : public rest::RestHandler {
   template <typename Payload>
   void writeResult(Payload&&, arangodb::velocypack::Options const& options);
 };
-}
+}  // namespace arangodb
 
 #endif

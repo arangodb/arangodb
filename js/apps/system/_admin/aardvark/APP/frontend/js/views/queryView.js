@@ -1154,6 +1154,8 @@
       _.each(foundBindParams, function (word) {
         if (self.bindParamTableObj[word]) {
           newObject[word] = self.bindParamTableObj[word];
+        } else if (self.bindParamTableObj[word] === null) {
+          newObject[word] = null;
         } else {
           newObject[word] = '';
         }
@@ -1885,7 +1887,13 @@
       var self = this;
       var result;
 
-      if (window.location.hash === '#queries') {
+      var activeSubView = 'query';
+      try {
+        activeSubView = window.App.naviView.activeSubMenu.route;
+      } catch (ignore) {
+      }
+
+      if (window.location.hash === '#queries' && activeSubView === 'query') {
         var outputEditor = ace.edit('outputEditor' + counter);
 
         var maxHeight = $('.centralRow').height() - 250;

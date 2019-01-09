@@ -24,10 +24,10 @@
 #ifndef ARANGOD_AQL_SORT_BLOCK_H
 #define ARANGOD_AQL_SORT_BLOCK_H 1
 
-#include "Basics/Common.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/SortNode.h"
 #include "Aql/SortRegister.h"
+#include "Basics/Common.h"
 
 namespace arangodb {
 namespace aql {
@@ -45,9 +45,9 @@ class SortBlock final : public ExecutionBlock {
   /// @brief initializeCursor, could be called multiple times
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
-  std::pair<ExecutionState, Result> getOrSkipSome(
-      size_t atMost, bool skipping, AqlItemBlock*&,
-      size_t& skipped) override final;
+  std::pair<ExecutionState, Result> getOrSkipSome(size_t atMost, bool skipping,
+                                                  AqlItemBlock*&,
+                                                  size_t& skipped) override final;
 
   /// @brief dosorting
  private:
@@ -63,7 +63,7 @@ class SortBlock final : public ExecutionBlock {
   bool _mustFetchAll;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

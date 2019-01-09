@@ -72,7 +72,8 @@ Result RocksDBSyncThread::syncWal() {
 Result RocksDBSyncThread::sync(rocksdb::DB* db) {
 #ifndef _WIN32
   // if called on Windows, we would get the following error from RocksDB:
-  // > Not implemented: SyncWAL() is not supported for this implementation of WAL file
+  // > Not implemented: SyncWAL() is not supported for this implementation of
+  // WAL file
   LOG_TOPIC(TRACE, Logger::ENGINES) << "syncing RocksDB WAL";
 
   rocksdb::Status status = db->SyncWAL();
@@ -111,7 +112,8 @@ void RocksDBSyncThread::run() {
         auto const previousLastSyncTime = _lastSyncTime;
         auto const end = _lastSyncTime + _interval;
         if (end > now) {
-          guard.wait(std::chrono::microseconds(std::chrono::duration_cast<std::chrono::microseconds>(end - now)));
+          guard.wait(std::chrono::microseconds(
+              std::chrono::duration_cast<std::chrono::microseconds>(end - now)));
         }
 
         if (_lastSyncTime > previousLastSyncTime) {

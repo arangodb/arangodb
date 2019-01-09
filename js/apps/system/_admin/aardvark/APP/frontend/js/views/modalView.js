@@ -242,6 +242,11 @@
       };
     },
 
+    renameDangerButton: function (buttonID) {
+      var buttonText = $(buttonID).text();
+      $('#modal-delete-confirmation strong').html('Really ' + buttonText.toLowerCase() + '?');
+    },
+
     show: function (templateName, title, buttons, tableContent, advancedContent,
       extraInfo, events, noConfirm, tabBar, divID) {
       var self = this;
@@ -316,10 +321,12 @@
               $('#' + divID + ' ' + self.confirm.yes).unbind('click');
               $('#' + divID + ' ' + self.confirm.yes).bind('click', b.callback);
               $('#' + divID + ' ' + self.confirm.list).css('display', 'block');
+              self.renameDangerButton(string);
             } else {
               $(self.confirm.yes).unbind('click');
               $(self.confirm.yes).bind('click', b.callback);
               $(self.confirm.list).css('display', 'block');
+              self.renameDangerButton(string);
             }
           });
           return;

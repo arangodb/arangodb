@@ -117,8 +117,7 @@ struct StatsManager {
       send += pair.second.sendCount;
       received += pair.second.receivedCount;
     }
-    LOG_TOPIC(TRACE, Logger::PREGEL) << send << " - " << received << " : "
-                                     << send - received;
+    LOG_TOPIC(TRACE, Logger::PREGEL) << send << " - " << received << " : " << send - received;
   }
 
   /// tests if active count is greater 0
@@ -145,6 +144,6 @@ struct StatsManager {
   std::map<std::string, uint64_t> _activeStats;
   std::map<std::string, MessageStats> _serverStats;
 };
-}
-}
+}  // namespace pregel
+}  // namespace arangodb
 #endif

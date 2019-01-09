@@ -59,9 +59,8 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
     arangodb::graph::EdgeDocumentToken _edge;
     bool _done;
 
-    Step(arangodb::StringRef const& vert,
-         arangodb::StringRef const& pred, double weig,
-         EdgeDocumentToken&& edge);
+    Step(arangodb::StringRef const& vert, arangodb::StringRef const& pred,
+         double weig, EdgeDocumentToken&& edge);
 
     double weight() const { return _weight; }
 
@@ -80,9 +79,7 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
   /// @brief our specialization of the priority queue
   //////////////////////////////////////////////////////////////////////////////
 
-  typedef arangodb::graph::ShortestPathPriorityQueue<
-      arangodb::StringRef, Step, double>
-      PQueue;
+  typedef arangodb::graph::ShortestPathPriorityQueue<arangodb::StringRef, Step, double> PQueue;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief information for each thread
@@ -156,8 +153,7 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
   class Searcher {
    public:
     Searcher(AttributeWeightShortestPathFinder* pathFinder, ThreadInfo& myInfo,
-             ThreadInfo& peerInfo, arangodb::StringRef const& start,
-             bool isBackward);
+             ThreadInfo& peerInfo, arangodb::StringRef const& start, bool isBackward);
 
    public:
     //////////////////////////////////////////////////////////////////////////////
@@ -185,16 +181,13 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
     ThreadInfo& _peerInfo;
     arangodb::StringRef _start;
     bool _isBackward;
-
   };
 
   // -----------------------------------------------------------------------------
 
-  AttributeWeightShortestPathFinder(AttributeWeightShortestPathFinder const&) =
-      delete;
+  AttributeWeightShortestPathFinder(AttributeWeightShortestPathFinder const&) = delete;
 
-  AttributeWeightShortestPathFinder& operator=(
-      AttributeWeightShortestPathFinder const&) = delete;
+  AttributeWeightShortestPathFinder& operator=(AttributeWeightShortestPathFinder const&) = delete;
   AttributeWeightShortestPathFinder() = delete;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -288,7 +281,6 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
   //////////////////////////////////////////////////////////////////////////////
 
  private:
-
   std::unique_ptr<ManagedDocumentResult> _mmdr;
 
   ShortestPathOptions* _options;

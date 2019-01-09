@@ -44,6 +44,6 @@ class ClusterTransactionContextData final : public transaction::ContextData {
   /// note that this is always true in RocksDB
   bool isPinned(TRI_voc_cid_t) const override { return true; }
 };
-}
+}  // namespace arangodb
 
 #endif

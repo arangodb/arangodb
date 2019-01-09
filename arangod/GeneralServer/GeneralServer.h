@@ -27,8 +27,8 @@
 #define ARANGOD_HTTP_SERVER_HTTP_SERVER_H 1
 
 #include "Basics/Common.h"
-#include "Basics/asio_ns.h"
 #include "Basics/Thread.h"
+#include "Basics/asio_ns.h"
 #include "Endpoint/Endpoint.h"
 
 namespace arangodb {
@@ -37,7 +37,6 @@ class EndpointList;
 namespace rest {
 
 class GeneralServer {
-
   GeneralServer(GeneralServer const&) = delete;
   GeneralServer const& operator=(GeneralServer const&) = delete;
 
@@ -51,29 +50,32 @@ class GeneralServer {
 
   class IoContext;
 
-private:
+ private:
   class IoThread final : public Thread {
-  public:
+   public:
     explicit IoThread(IoContext& iocontext);
     ~IoThread();
     void run() override;
-  private:
-    IoContext &_iocontext;
+
+   private:
+    IoContext& _iocontext;
   };
 
-public:
+ public:
   class IoContext {
     friend class IoThread;
     friend class GeneralServer;
-  public:
+
+   public:
     std::atomic<uint64_t> _clients;
-  private:
+
+   private:
     IoThread _thread;
     asio_ns::io_context _asioIoContext;
     asio_ns::io_context::work _asioWork;
     std::atomic<bool> _stopped;
 
-  public:
+   public:
     IoContext();
     ~IoContext();
 
@@ -94,32 +96,29 @@ public:
       return new asio_ns::ip::tcp::acceptor(_asioIoContext);
     }
 
-  #ifndef _WIN32
+#ifndef _WIN32
     asio_ns::local::stream_protocol::acceptor* newDomainAcceptor() {
       return new asio_ns::local::stream_protocol::acceptor(_asioIoContext);
     }
-  #endif
+#endif
 
     asio_ns::ip::tcp::socket* newSocket() {
       return new asio_ns::ip::tcp::socket(_asioIoContext);
     }
 
-  #ifndef _WIN32
+#ifndef _WIN32
     asio_ns::local::stream_protocol::socket* newDomainSocket() {
       return new asio_ns::local::stream_protocol::socket(_asioIoContext);
     }
-  #endif
+#endif
 
-    asio_ns::ssl::stream<asio_ns::ip::tcp::socket>* newSslSocket(
-        asio_ns::ssl::context& sslContext) {
-      return new asio_ns::ssl::stream<asio_ns::ip::tcp::socket>(_asioIoContext,
-                                                                sslContext);
+    asio_ns::ssl::stream<asio_ns::ip::tcp::socket>* newSslSocket(asio_ns::ssl::context& sslContext) {
+      return new asio_ns::ssl::stream<asio_ns::ip::tcp::socket>(_asioIoContext, sslContext);
     }
 
     asio_ns::ip::tcp::resolver* newResolver() {
       return new asio_ns::ip::tcp::resolver(_asioIoContext);
     }
-
 
     void post(std::function<void()>&& handler) {
       _asioIoContext.post(std::move(handler));
@@ -127,19 +126,15 @@ public:
 
     void start();
     void stop();
-
     bool runningInThisThread() const { return _thread.runningInThisThread(); }
-  private:
-
   };
 
   GeneralServer::IoContext& selectIoContext();
 
  protected:
-  bool openEndpoint(IoContext &ioContext, Endpoint* endpoint);
+  bool openEndpoint(IoContext& ioContext, Endpoint* endpoint);
 
  private:
-
   friend class IoThread;
   friend class IoContext;
 
@@ -147,7 +142,7 @@ public:
   std::vector<IoContext> _contexts;
   EndpointList const* _endpointList = nullptr;
 };
-}
-}
+}  // namespace rest
+}  // namespace arangodb
 
 #endif

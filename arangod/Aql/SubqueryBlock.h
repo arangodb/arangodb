@@ -40,8 +40,7 @@ class SubqueryBlock final : public ExecutionBlock {
   ~SubqueryBlock() = default;
 
   /// @brief getSome
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(
-      size_t atMost) override final;
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override final;
 
   /// @brief shutdown, tell dependency and the subquery
   std::pair<ExecutionState, Result> shutdown(int errorCode) override final;
@@ -71,15 +70,14 @@ class SubqueryBlock final : public ExecutionBlock {
   ExecutionState getSomeNonConstSubquery(size_t atMost);
 
  private:
-
   /// @brief output register
   RegisterId _outReg;
 
   /// @brief we need to have an executionblock and where to write the result
   ExecutionBlock* _subquery;
 
-  /// @brief whether the subquery is const and will always return the same values
-  /// when invoked multiple times
+  /// @brief whether the subquery is const and will always return the same
+  /// values when invoked multiple times
   bool const _subqueryIsConst;
 
   /// @brief whether the subquery returns data
@@ -90,10 +88,12 @@ class SubqueryBlock final : public ExecutionBlock {
   std::unique_ptr<AqlItemBlock> _result;
 
   /// @brief the list of results from a single subquery
-  ///        NOTE: Responsibilty here is a bit tricky, it is handed over to the result
+  ///        NOTE: Responsibilty here is a bit tricky, it is handed over to the
+  ///        result
   std::unique_ptr<std::vector<std::unique_ptr<AqlItemBlock>>> _subqueryResults;
 
-  /// @brief the current subquery in process, used if this thread gets suspended.
+  /// @brief the current subquery in process, used if this thread gets
+  /// suspended.
   size_t _subqueryPos;
 
   /// @brief track if we have already initialized this subquery.
@@ -105,11 +105,12 @@ class SubqueryBlock final : public ExecutionBlock {
   /// @brief track if we have completely shutdown the main query.
   bool _hasShutdownMainQuery;
 
-  /// @brief result of the main query shutdown. is only valid if _hasShutdownMainQuery == true.
+  /// @brief result of the main query shutdown. is only valid if
+  /// _hasShutdownMainQuery == true.
   Result _mainQueryShutdownResult;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

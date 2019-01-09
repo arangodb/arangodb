@@ -34,13 +34,8 @@ class LogicalCollection;
 
 class ClusterIndex : public Index {
  public:
-  ClusterIndex(
-    TRI_idx_iid_t id,
-    LogicalCollection& collection,
-    ClusterEngineType engineType,
-    Index::IndexType type,
-    arangodb::velocypack::Slice const& info
-  );
+  ClusterIndex(TRI_idx_iid_t id, LogicalCollection& collection, ClusterEngineType engineType,
+               Index::IndexType type, arangodb::velocypack::Slice const& info);
 
   ~ClusterIndex();
 
@@ -50,25 +45,28 @@ class ClusterIndex : public Index {
   void toVelocyPack(velocypack::Builder& builder,
                     std::underlying_type<Index::Serialize>::type) const override;
 
+  /// @brief if true this index should not be shown externally
+  bool isHidden() const override {
+    return false;  // do not generally hide indexes
+  }
+
   IndexType type() const override { return _indexType; }
 
   char const* typeName() const override {
     return Index::oldtypeName(_indexType);
   }
 
-  bool isPersistent() const override;
-
   bool canBeDropped() const override {
     return _indexType != Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
            _indexType != Index::TRI_IDX_TYPE_EDGE_INDEX;
   }
-  
+
   bool isSorted() const override;
 
   bool hasSelectivityEstimate() const override;
 
   double selectivityEstimate(arangodb::StringRef const& = arangodb::StringRef()) const override;
-  
+
   /// @brief update the cluster selectivity estimate
   void updateClusterSelectivityEstimate(double estimate) override;
 
@@ -76,7 +74,17 @@ class ClusterIndex : public Index {
   void unload() override {}
   size_t memory() const override { return 0; }
 
-  int drop() override { return TRI_ERROR_NOT_IMPLEMENTED; }
+  Result insert(transaction::Methods& trx, LocalDocumentId const& documentId,
+                velocypack::Slice const& doc, Index::OperationMode mode) override {
+    return Result(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  Result remove(transaction::Methods& trx, LocalDocumentId const& documentId,
+                arangodb::velocypack::Slice const& doc, Index::OperationMode mode) override {
+    return Result(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  Result drop() override { return Result(TRI_ERROR_NOT_IMPLEMENTED); }
 
   bool hasCoveringIterator() const override;
 
@@ -93,33 +101,35 @@ class ClusterIndex : public Index {
                              size_t&) const override;
 
   /// @brief specializes the condition for use with the index
-  arangodb::aql::AstNode* specializeCondition(
-      arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
+  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode*,
+                                              arangodb::aql::Variable const*) const override;
+
+  virtual arangodb::IndexIterator* iteratorForCondition(
+      arangodb::transaction::Methods* trx, arangodb::ManagedDocumentResult* result,
+      arangodb::aql::AstNode const* condNode, arangodb::aql::Variable const* var,
+      arangodb::IndexIteratorOptions const& opts) override {
+    TRI_ASSERT(false);  // should not be called
+    return nullptr;
+  }
 
   /// @brief provides a size hint for the index
-  int sizeHint(transaction::Methods* /*trx*/, size_t /*size*/) override final {
-    // nothing to do here
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  Result insert(transaction::Methods* trx, LocalDocumentId const& documentId,
-                velocypack::Slice const& doc, OperationMode mode) override {
-    return TRI_ERROR_NOT_IMPLEMENTED;
-  }
-
-  Result remove(transaction::Methods* trx, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const& doc,
-                OperationMode mode) override {
-    return TRI_ERROR_NOT_IMPLEMENTED;
+  Result sizeHint(transaction::Methods& /*trx*/, size_t /*size*/
+                  ) override final {
+    return Result();  // nothing to do here
   }
 
   void updateProperties(velocypack::Slice const&);
+
+  std::vector<std::vector<arangodb::basics::AttributeName>> const& coveredFields() const override;
 
  protected:
   ClusterEngineType _engineType;
   Index::IndexType _indexType;
   velocypack::Builder _info;
   double _clusterSelectivity;
+
+  // Only used in RocksDB edge index.
+  std::vector<std::vector<arangodb::basics::AttributeName>> _coveredFields;
 };
 }  // namespace arangodb
 

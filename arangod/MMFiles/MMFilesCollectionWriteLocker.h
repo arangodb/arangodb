@@ -37,9 +37,8 @@ class MMFilesCollectionWriteLocker {
   MMFilesCollectionWriteLocker& operator=(MMFilesCollectionWriteLocker const&) = delete;
 
   /// @brief create the locker
-  MMFilesCollectionWriteLocker(arangodb::MMFilesCollection* collection,
-                               bool useDeadlockDetector, TransactionState const* state,
-                               bool doLock)
+  MMFilesCollectionWriteLocker(arangodb::MMFilesCollection* collection, bool useDeadlockDetector,
+                               TransactionState const* state, bool doLock)
       : _collection(collection),
         _useDeadlockDetector(useDeadlockDetector),
         _state(state),
@@ -72,12 +71,12 @@ class MMFilesCollectionWriteLocker {
 
   /// @brief whether or not to use the deadlock detector
   bool const _useDeadlockDetector;
-  
+
   TransactionState const* _state;
 
   /// @brief lock flag
   bool _doLock;
 };
-}
+}  // namespace arangodb
 
 #endif

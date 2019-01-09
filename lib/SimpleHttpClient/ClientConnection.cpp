@@ -24,8 +24,8 @@
 #include "ClientConnection.h"
 
 #ifdef TRI_HAVE_WINSOCK2_H
-#include <WinSock2.h>
 #include <WS2tcpip.h>
+#include <WinSock2.h>
 #endif
 
 #include <sys/types.h>
@@ -40,14 +40,11 @@ using namespace arangodb::httpclient;
 
 ClientConnection::ClientConnection(Endpoint* endpoint, double requestTimeout,
                                    double connectTimeout, size_t connectRetries)
-    : GeneralClientConnection(endpoint, requestTimeout, connectTimeout,
-                              connectRetries) {}
+    : GeneralClientConnection(endpoint, requestTimeout, connectTimeout, connectRetries) {}
 
-ClientConnection::ClientConnection(std::unique_ptr<Endpoint>& endpoint,
-                                   double requestTimeout, double connectTimeout,
-                                   size_t connectRetries)
-    : GeneralClientConnection(endpoint, requestTimeout, connectTimeout,
-                              connectRetries) {}
+ClientConnection::ClientConnection(std::unique_ptr<Endpoint>& endpoint, double requestTimeout,
+                                   double connectTimeout, size_t connectRetries)
+    : GeneralClientConnection(endpoint, requestTimeout, connectTimeout, connectRetries) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a client connection
@@ -132,6 +129,9 @@ bool ClientConnection::writeClientConnection(void const* buffer, size_t length,
     return false;
   }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  _written += (uint64_t)status;
+#endif
   *bytesWritten = (size_t)status;
 
   return true;
@@ -141,13 +141,12 @@ bool ClientConnection::writeClientConnection(void const* buffer, size_t length,
 /// @brief read data from the connection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ClientConnection::readClientConnection(StringBuffer& stringBuffer,
-                                            bool& connectionClosed) {
+bool ClientConnection::readClientConnection(StringBuffer& stringBuffer, bool& connectionClosed) {
   if (!checkSocket()) {
     connectionClosed = true;
     return false;
   }
-  
+
   TRI_ASSERT(TRI_isvalidsocket(_socket));
 
   connectionClosed = false;
@@ -160,8 +159,7 @@ bool ClientConnection::readClientConnection(StringBuffer& stringBuffer,
       return false;
     }
 
-    int lenRead =
-        TRI_READ_SOCKET(_socket, stringBuffer.end(), READBUFFER_SIZE - 1, 0);
+    int lenRead = TRI_READ_SOCKET(_socket, stringBuffer.end(), READBUFFER_SIZE - 1, 0);
 
     if (lenRead == -1) {
       // error occurred
@@ -174,7 +172,9 @@ bool ClientConnection::readClientConnection(StringBuffer& stringBuffer,
       disconnect();
       return true;
     }
-
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    _read += (uint64_t)lenRead;
+#endif
     stringBuffer.increaseLength(lenRead);
   } while (readable());
 

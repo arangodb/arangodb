@@ -31,15 +31,15 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
 
-#include "utils/attributes.hpp"
 #include "IResearch/ExpressionFilter.h"
+#include "IResearch/IResearchDocument.h"
 #include "IResearch/IResearchExpressionContext.h"
 #include "IResearch/IResearchView.h"
-#include "IResearch/IResearchDocument.h"
+#include "utils/attributes.hpp"
 
 namespace iresearch {
 class score;
-} // iresearch
+}  // namespace iresearch
 
 namespace arangodb {
 namespace iresearch {
@@ -51,11 +51,8 @@ class IResearchViewNode;
 ///////////////////////////////////////////////////////////////////////////////
 class IResearchViewBlockBase : public aql::ExecutionBlock {
  public:
-  IResearchViewBlockBase(
-    irs::index_reader const& reader,
-    aql::ExecutionEngine&,
-    IResearchViewNode const&
-  );
+  IResearchViewBlockBase(IResearchView::Snapshot const& reader,
+                         aql::ExecutionEngine&, IResearchViewNode const&);
 
   std::pair<aql::ExecutionState, std::unique_ptr<aql::AqlItemBlock>> getSome(size_t atMost) override final;
 
@@ -63,7 +60,8 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
   std::pair<aql::ExecutionState, size_t> skipSome(size_t atMost) override final;
 
   // here we release our docs from this collection
-  virtual std::pair<aql::ExecutionState, Result> initializeCursor(aql::AqlItemBlock* items, size_t pos) override;
+  virtual std::pair<aql::ExecutionState, Result> initializeCursor(aql::AqlItemBlock* items,
+                                                                  size_t pos) override;
 
  protected:
   class ReadContext {
@@ -72,59 +70,44 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
 
    public:
     explicit ReadContext(aql::RegisterId curRegs)
-      : curRegs(curRegs),
-        callback(copyDocumentCallback(*this)) {
-    }
+        : curRegs(curRegs), callback(copyDocumentCallback(*this)) {}
 
     aql::RegisterId const curRegs;
     size_t pos{};
     std::unique_ptr<aql::AqlItemBlock> res;
     IndexIterator::DocumentCallback const callback;
-  }; // ReadContext
+  };  // ReadContext
 
-  bool readDocument(
-    irs::doc_id_t docId,
-    irs::columnstore_reader::values_reader_f const& pkValues,
-    IndexIterator::DocumentCallback const& callback
-  );
-
-  bool readDocument(
-    DocumentPrimaryKey::type const& key,
-    IndexIterator::DocumentCallback const& callback
-  );
+  bool readDocument(LogicalCollection const& collection, irs::doc_id_t docId,
+                    irs::columnstore_reader::values_reader_f const& pkValues,
+                    IndexIterator::DocumentCallback const& callback);
 
   virtual void reset();
 
-  virtual bool next(
-    ReadContext& ctx,
-    size_t limit
-  ) = 0;
+  virtual bool next(ReadContext& ctx, size_t limit) = 0;
 
   virtual size_t skip(size_t count) = 0;
 
-  std::vector<DocumentPrimaryKey::type> _keys; // buffer for primary keys
-  irs::attribute_view _filterCtx; // filter context
+  std::vector<arangodb::LocalDocumentId> _keys;  // buffer for primary keys
+  irs::attribute_view _filterCtx;                // filter context
   ViewExpressionContext _ctx;
-  irs::index_reader const& _reader;
+  IResearchView::Snapshot const& _reader;
   irs::filter::prepared::ptr _filter;
   irs::order::prepared _order;
-  iresearch::ExpressionExecutionContext _execCtx; // expression execution context
-  size_t _inflight; // The number of documents inflight if we hit a WAITING state.
+  iresearch::ExpressionExecutionContext _execCtx;  // expression execution context
+  size_t _inflight;  // The number of documents inflight if we hit a WAITING state.
   bool _hasMore;
   bool _volatileSort;
   bool _volatileFilter;
-}; // IResearchViewBlockBase
+};  // IResearchViewBlockBase
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class IResearchViewUnorderedBlock
 ///////////////////////////////////////////////////////////////////////////////
 class IResearchViewUnorderedBlock : public IResearchViewBlockBase {
  public:
-  IResearchViewUnorderedBlock(
-    irs::index_reader const& reader,
-    aql::ExecutionEngine& engine,
-    IResearchViewNode const& node
-  );
+  IResearchViewUnorderedBlock(IResearchView::Snapshot const& reader,
+                              aql::ExecutionEngine& engine, IResearchViewNode const& node);
 
  protected:
   virtual void reset() override final {
@@ -135,37 +118,28 @@ class IResearchViewUnorderedBlock : public IResearchViewBlockBase {
     _readerOffset = 0;
   }
 
-  virtual bool next(
-    ReadContext& ctx,
-    size_t limit
-  ) override;
+  virtual bool next(ReadContext& ctx, size_t limit) override;
 
   virtual size_t skip(size_t count) override;
 
   // resets _itr and _pkReader
   virtual bool resetIterator();
 
-  irs::columnstore_reader::values_reader_f _pkReader; // current primary key reader
+  irs::columnstore_reader::values_reader_f _pkReader;  // current primary key reader
   irs::doc_iterator::ptr _itr;
   size_t _readerOffset;
-}; // IResearchViewUnorderedBlock
+};  // IResearchViewUnorderedBlock
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class IResearchViewBlock
 ///////////////////////////////////////////////////////////////////////////////
 class IResearchViewBlock final : public IResearchViewUnorderedBlock {
  public:
-  IResearchViewBlock(
-    irs::index_reader const& reader,
-    aql::ExecutionEngine& engine,
-    IResearchViewNode const& node
-  );
+  IResearchViewBlock(IResearchView::Snapshot const& reader,
+                     aql::ExecutionEngine& engine, IResearchViewNode const& node);
 
  protected:
-  virtual bool next(
-    ReadContext& ctx,
-    size_t limit
-  ) override;
+  virtual bool next(ReadContext& ctx, size_t limit) override;
 
   virtual size_t skip(size_t count) override;
 
@@ -174,9 +148,9 @@ class IResearchViewBlock final : public IResearchViewUnorderedBlock {
 
   irs::score const* _scr;
   irs::bytes_ref _scrVal;
-}; // IResearchViewBlock
+};  // IResearchViewBlock
 
-} // iresearch
-} // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
-#endif // ARANGOD_IRESEARCH__ENUMERATE_VIEW_BLOCK_H 
+#endif  // ARANGOD_IRESEARCH__ENUMERATE_VIEW_BLOCK_H

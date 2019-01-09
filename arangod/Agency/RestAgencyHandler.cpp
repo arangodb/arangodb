@@ -64,26 +64,28 @@ inline RestStatus RestAgencyHandler::reportTooManySuffices() {
 }
 
 inline RestStatus RestAgencyHandler::reportUnknownMethod() {
-  LOG_TOPIC(WARN, Logger::AGENCY) << "Public REST interface has no method "
-                                  << _request->suffixes()[0];
+  LOG_TOPIC(WARN, Logger::AGENCY)
+      << "Public REST interface has no method " << _request->suffixes()[0];
   generateError(rest::ResponseCode::NOT_FOUND, 405);
   return RestStatus::DONE;
 }
 
-inline RestStatus RestAgencyHandler::reportMessage(
-  rest::ResponseCode code, std::string const& message) {
+inline RestStatus RestAgencyHandler::reportMessage(rest::ResponseCode code,
+                                                   std::string const& message) {
   LOG_TOPIC(DEBUG, Logger::AGENCY) << message;
   Builder body;
-  { VPackObjectBuilder b(&body);
-    body.add("message", VPackValue(message)); }
+  {
+    VPackObjectBuilder b(&body);
+    body.add("message", VPackValue(message));
+  }
   generateResult(code, body.slice());
   return RestStatus::DONE;
 }
 
 void RestAgencyHandler::redirectRequest(std::string const& leaderId) {
   try {
-    std::string url = Endpoint::uriForm(_agent->config().poolAt(leaderId))
-      + _request->requestPath();
+    std::string url = Endpoint::uriForm(_agent->config().poolAt(leaderId)) +
+                      _request->requestPath();
     _response->setResponseCode(rest::ResponseCode::TEMPORARY_REDIRECT);
     _response->setHeaderNC(StaticStrings::Location, url);
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending 307 redirect to " << url;
@@ -108,8 +110,8 @@ RestStatus RestAgencyHandler::handleTransient() {
 
   // Need Array input
   if (!query->slice().isArray()) {
-    return reportMessage(
-      rest::ResponseCode::BAD, "Expecting array of arrays as body for writes");
+    return reportMessage(rest::ResponseCode::BAD,
+                         "Expecting array of arrays as body for writes");
   }
 
   // Empty request array
@@ -132,13 +134,12 @@ RestStatus RestAgencyHandler::handleTransient() {
 
   // We're leading and handling the request
   if (ret.accepted) {
-    generateResult(
-      (ret.failed==0) ?
-      rest::ResponseCode::OK : rest::ResponseCode::PRECONDITION_FAILED,
-      ret.result->slice());
-  } else {            // Redirect to leader
+    generateResult((ret.failed == 0) ? rest::ResponseCode::OK : rest::ResponseCode::PRECONDITION_FAILED,
+                   ret.result->slice());
+  } else {  // Redirect to leader
     if (_agent->leaderID() == NO_LEADER) {
-      return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
+      return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                           "No leader");
     } else {
       TRI_ASSERT(ret.redirect != _agent->id());
       redirectRequest(ret.redirect);
@@ -146,7 +147,6 @@ RestStatus RestAgencyHandler::handleTransient() {
   }
 
   return RestStatus::DONE;
-
 }
 
 RestStatus RestAgencyHandler::handleStores() {
@@ -182,9 +182,7 @@ RestStatus RestAgencyHandler::handleStores() {
 }
 
 RestStatus RestAgencyHandler::handleStore() {
-
   if (_request->requestType() == rest::RequestType::POST) {
-
     auto query = _request->toVelocyPackBuilderPtr();
     arangodb::consensus::index_t index = 0;
 
@@ -223,8 +221,8 @@ RestStatus RestAgencyHandler::handleWrite() {
 
   // Need Array input
   if (!query->slice().isArray()) {
-    return reportMessage(
-      rest::ResponseCode::BAD, "Expecting array of arrays as body for writes");
+    return reportMessage(rest::ResponseCode::BAD,
+                         "Expecting array of arrays as body for writes");
   }
 
   // Empty request array
@@ -253,7 +251,7 @@ RestStatus RestAgencyHandler::handleWrite() {
     if (!found) {
       call_mode = "waitForCommitted";
     }
-    
+
     size_t precondition_failed = 0;
     size_t forbidden = 0;
 
@@ -269,10 +267,16 @@ RestStatus RestAgencyHandler::handleWrite() {
       }
       for (auto const& a : ret.applied) {
         switch (a) {
-        case APPLIED: break;
-        case PRECONDITION_FAILED: ++precondition_failed; break;
-        case FORBIDDEN: ++forbidden; break;
-        default: break;
+          case APPLIED:
+            break;
+          case PRECONDITION_FAILED:
+            ++precondition_failed;
+            break;
+          case FORBIDDEN:
+            ++forbidden;
+            break;
+          default:
+            break;
         }
       }
       body.close();
@@ -281,8 +285,7 @@ RestStatus RestAgencyHandler::handleWrite() {
       if (!ret.indices.empty() && call_mode == "waitForCommitted") {
         arangodb::consensus::index_t max_index = 0;
         try {
-          max_index =
-            *std::max_element(ret.indices.begin(), ret.indices.end());
+          max_index = *std::max_element(ret.indices.begin(), ret.indices.end());
         } catch (std::exception const& ex) {
           LOG_TOPIC(WARN, Logger::AGENCY) << ex.what();
         }
@@ -290,7 +293,6 @@ RestStatus RestAgencyHandler::handleWrite() {
         if (max_index > 0) {
           result = _agent->waitFor(max_index);
         }
-
       }
     }
 
@@ -303,16 +305,17 @@ RestStatus RestAgencyHandler::handleWrite() {
     } else {
       if (forbidden > 0) {
         generateResult(rest::ResponseCode::FORBIDDEN, body.slice());
-      } else if (precondition_failed > 0) { // Some/all requests failed
+      } else if (precondition_failed > 0) {  // Some/all requests failed
         generateResult(rest::ResponseCode::PRECONDITION_FAILED, body.slice());
-      } else {          // All good
+      } else {  // All good
         generateResult(rest::ResponseCode::OK, body.slice());
       }
     }
 
-  } else {            // Redirect to leader
+  } else {  // Redirect to leader
     if (_agent->leaderID() == NO_LEADER) {
-      return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
+      return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                           "No leader");
     } else {
       TRI_ASSERT(ret.redirect != _agent->id());
       redirectRequest(ret.redirect);
@@ -338,8 +341,8 @@ RestStatus RestAgencyHandler::handleTransact() {
 
   // Need Array input
   if (!query->slice().isArray()) {
-    return reportMessage(
-      rest::ResponseCode::BAD, "Expecting array of arrays as body for writes");
+    return reportMessage(rest::ResponseCode::BAD,
+                         "Expecting array of arrays as body for writes");
   }
 
   // Empty request array
@@ -362,19 +365,17 @@ RestStatus RestAgencyHandler::handleTransact() {
 
   // We're leading and handling the request
   if (ret.accepted) {
-
     // Wait for commit of highest except if it is 0?
     if (ret.maxind > 0) {
       _agent->waitFor(ret.maxind);
     }
-    generateResult(
-      (ret.failed==0) ?
-        rest::ResponseCode::OK : rest::ResponseCode::PRECONDITION_FAILED,
-      ret.result->slice());
+    generateResult((ret.failed == 0) ? rest::ResponseCode::OK : rest::ResponseCode::PRECONDITION_FAILED,
+                   ret.result->slice());
 
-  } else {            // Redirect to leader
+  } else {  // Redirect to leader
     if (_agent->leaderID() == NO_LEADER) {
-      return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
+      return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                           "No leader");
     } else {
       TRI_ASSERT(ret.redirect != _agent->id());
       redirectRequest(ret.redirect);
@@ -383,7 +384,6 @@ RestStatus RestAgencyHandler::handleTransact() {
 
   return RestStatus::DONE;
 }
-
 
 RestStatus RestAgencyHandler::handleInquire() {
   if (_request->requestType() != rest::RequestType::POST) {
@@ -435,8 +435,7 @@ RestStatus RestAgencyHandler::handleInquire() {
     if (!ret.indices.empty()) {
       arangodb::consensus::index_t max_index = 0;
       try {
-        max_index =
-          *std::max_element(ret.indices.begin(), ret.indices.end());
+        max_index = *std::max_element(ret.indices.begin(), ret.indices.end());
       } catch (std::exception const& ex) {
         LOG_TOPIC(WARN, Logger::AGENCY) << ex.what();
       }
@@ -453,9 +452,11 @@ RestStatus RestAgencyHandler::handleInquire() {
     // We can now prepare the result:
     Builder body;
     bool failed = false;
-    { VPackObjectBuilder b(&body);
+    {
+      VPackObjectBuilder b(&body);
       body.add(VPackValue("results"));
-      { VPackArrayBuilder bb(&body);
+      {
+        VPackArrayBuilder bb(&body);
         for (auto const& index : ret.indices) {
           body.add(VPackValue(index));
           failed = (failed || index == 0);
@@ -472,15 +473,16 @@ RestStatus RestAgencyHandler::handleInquire() {
     } else if (result == Agent::raft_commit_t::TIMEOUT) {
       generateError(rest::ResponseCode::REQUEST_TIMEOUT, 408);
     } else {
-      if (failed) { // Some/all requests failed
+      if (failed) {  // Some/all requests failed
         generateResult(rest::ResponseCode::NOT_FOUND, body.slice());
-      } else {          // All good (or indeed unknown in case 1)
+      } else {  // All good (or indeed unknown in case 1)
         generateResult(rest::ResponseCode::OK, body.slice());
       }
     }
   } else {  // Redirect to leader
     if (_agent->leaderID() == NO_LEADER) {
-      return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
+      return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                           "No leader");
     } else {
       TRI_ASSERT(ret.redirect != _agent->id());
       redirectRequest(ret.redirect);
@@ -500,7 +502,8 @@ RestStatus RestAgencyHandler::handleRead() {
     }
 
     if (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
-      return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
+      return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                           "No leader");
     }
 
     read_ret_t ret = _agent->read(query);
@@ -513,7 +516,8 @@ RestStatus RestAgencyHandler::handleRead() {
       }
     } else {  // Redirect to leader
       if (_agent->leaderID() == NO_LEADER) {
-        return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
+        return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                             "No leader");
       } else {
         TRI_ASSERT(ret.redirect != _agent->id());
         redirectRequest(ret.redirect);
@@ -526,18 +530,16 @@ RestStatus RestAgencyHandler::handleRead() {
 }
 
 RestStatus RestAgencyHandler::handleConfig() {
-
   // Update endpoint of peer
   if (_request->requestType() == rest::RequestType::POST) {
     try {
       _agent->updatePeerEndpoint(_request->toVelocyPackBuilderPtr());
     } catch (std::exception const& e) {
-      generateError(
-        rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, e.what());
+      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, e.what());
       return RestStatus::DONE;
     }
   }
-  
+
   // Respond with configuration
   auto last = _agent->lastCommitted();
   Builder body;

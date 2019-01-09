@@ -27,19 +27,19 @@
 #include "IResearchLink.h"
 #include "IResearchLinkHelper.h"
 
-#include "StorageEngine/TransactionState.h"
-#include "StorageEngine/StorageEngine.h"
+#include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
+#include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
-#include "velocypack/Iterator.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/vocbase.h"
 #include "VocBase/LogicalView.h"
-#include "Logger/LogMacros.h"
+#include "VocBase/vocbase.h"
+#include "velocypack/Iterator.h"
 
 #include "IResearchView.h"
 #include "IResearchViewSingleServer.h"
@@ -48,24 +48,20 @@ namespace arangodb {
 namespace iresearch {
 
 /*static*/ std::shared_ptr<LogicalView> IResearchViewSingleServer::make(
-    TRI_vocbase_t& vocbase,
-    arangodb::velocypack::Slice const& info,
-    bool isNew,
-    uint64_t planVersion,
-    LogicalView::PreCommitCallback const& preCommit /*= {}*/
+    TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& info, bool isNew,
+    uint64_t planVersion, LogicalView::PreCommitCallback const& preCommit /*= {}*/
 ) {
-  auto& properties = info.isObject() ? info : emptyObjectSlice(); // if no 'info' then assume defaults
+  auto& properties = info.isObject() ? info : emptyObjectSlice();  // if no 'info' then assume defaults
   std::string error;
 
   bool hasLinks = properties.hasKey(StaticStrings::LinksField);
 
   if (hasLinks && isNew) {
-
     arangodb::velocypack::ObjectIterator iterator{info.get(StaticStrings::LinksField)};
 
     for (auto itr : iterator) {
       if (!itr.key.isString()) {
-        continue; // not a resolvable collection (invalid jSON)
+        continue;  // not a resolvable collection (invalid jSON)
       }
 
       auto colname = itr.key.copyString();
@@ -73,16 +69,18 @@ namespace iresearch {
       // check if the collection exists
       auto collection = vocbase.lookupCollection(colname);
       if (!collection) {
-
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC) << "Could not create view: "
-          << "Collection not found: " << colname;
+        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+            << "Could not create view: "
+            << "Collection not found: " << colname;
         TRI_set_errno(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
         return nullptr;
       }
 
       // check if the collection can be used
       if (arangodb::ExecContext::CURRENT &&
-        !arangodb::ExecContext::CURRENT->canUseCollection(vocbase.name(), collection->name(), arangodb::auth::Level::RO)) {
+          !arangodb::ExecContext::CURRENT->canUseCollection(vocbase.name(),
+                                                            collection->name(),
+                                                            arangodb::auth::Level::RO)) {
         return nullptr;
       }
     }
@@ -92,21 +90,20 @@ namespace iresearch {
 
   // create links - "on a best-effort basis"
   if (properties.hasKey("links") && isNew) {
+    std::unordered_set<TRI_voc_cid_t> collections;
+    auto result = IResearchLinkHelper::updateLinks(collections, vocbase, *view.get(),
+                                                   properties.get("links"));
 
-      std::unordered_set<TRI_voc_cid_t> collections;
-      auto result = IResearchLinkHelper::updateLinks(
-        collections, vocbase, *view.get(), properties.get("links")
-      );
-
-      if (result.fail()) {
-        TRI_set_errno(result.errorNumber());
-        LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-          << "Failure to construct links on new view in database '" << vocbase.id() << "', error: " << error;
-      }
+    if (result.fail()) {
+      TRI_set_errno(result.errorNumber());
+      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+          << "Failure to construct links on new view in database '"
+          << vocbase.id() << "', error: " << error;
+    }
   }
 
   return view;
 }
 
-}
-}
+}  // namespace iresearch
+}  // namespace arangodb

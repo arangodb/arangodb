@@ -38,5 +38,5 @@ ServerFeaturePhase::ServerFeaturePhase(ApplicationServer& server)
   startsAfter("Upgrade");
 }
 
-} // application_features
-} // arangodb
+}  // namespace application_features
+}  // namespace arangodb

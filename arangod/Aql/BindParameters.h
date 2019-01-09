@@ -39,13 +39,12 @@ class BindParameters {
  public:
   BindParameters(BindParameters const&) = delete;
   BindParameters& operator=(BindParameters const&) = delete;
-  
-  BindParameters() 
-    : _builder(nullptr), _parameters(), _processed(false) {}
+
+  BindParameters() : _builder(nullptr), _parameters(), _processed(false) {}
 
   /// @brief create the parameters
-  explicit BindParameters(std::shared_ptr<arangodb::velocypack::Builder> const& builder) 
-    : _builder(builder), _parameters(), _processed(false) {}
+  explicit BindParameters(std::shared_ptr<arangodb::velocypack::Builder> const& builder)
+      : _builder(builder), _parameters(), _processed(false) {}
 
   /// @brief destroy the parameters
   ~BindParameters() = default;
@@ -58,15 +57,18 @@ class BindParameters {
   }
 
   /// @brief return the bind parameters as passed by the user
-  std::shared_ptr<arangodb::velocypack::Builder> builder() const { return _builder; }
+  std::shared_ptr<arangodb::velocypack::Builder> builder() const {
+    return _builder;
+  }
 
   /// @brief create a hash value for the bind parameters
   uint64_t hash() const;
 
   /// @brief strip collection name prefixes from the parameters
   /// the values must be a VelocyPack array
-  static void stripCollectionNames(arangodb::velocypack::Slice const&, 
-                                   std::string const& collectionName, arangodb::velocypack::Builder& result);
+  static void stripCollectionNames(arangodb::velocypack::Slice const&,
+                                   std::string const& collectionName,
+                                   arangodb::velocypack::Builder& result);
 
  private:
   /// @brief process the parameters
@@ -82,7 +84,7 @@ class BindParameters {
   /// @brief internal state
   bool _processed;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

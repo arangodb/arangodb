@@ -24,8 +24,8 @@
 #ifndef ARANGOD_TRANSACTION_STANDALONE_CONTEXT_H
 #define ARANGOD_TRANSACTION_STANDALONE_CONTEXT_H 1
 
-#include "Context.h"
 #include "Basics/Common.h"
+#include "Context.h"
 #include "VocBase/vocbase.h"
 
 struct TRI_vocbase_t;
@@ -38,7 +38,6 @@ namespace transaction {
 
 class StandaloneContext final : public Context {
  public:
-
   /// @brief create the context
   explicit StandaloneContext(TRI_vocbase_t& vocbase);
 
@@ -46,8 +45,7 @@ class StandaloneContext final : public Context {
   ~StandaloneContext() = default;
 
   /// @brief order a custom type handler
-  std::shared_ptr<arangodb::velocypack::CustomTypeHandler>
-  orderCustomTypeHandler() override final;
+  std::shared_ptr<arangodb::velocypack::CustomTypeHandler> orderCustomTypeHandler() override final;
 
   /// @brief return the parent transaction (none in our case)
   TransactionState* getParentTransaction() const override { return nullptr; }
@@ -65,12 +63,10 @@ class StandaloneContext final : public Context {
   bool isEmbeddable() const override { return false; }
 
   /// @brief create a context, returned in a shared ptr
-  static std::shared_ptr<transaction::Context> Create(
-    TRI_vocbase_t& vocbase
-  );
+  static std::shared_ptr<transaction::Context> Create(TRI_vocbase_t& vocbase);
 };
 
-}
-}
+}  // namespace transaction
+}  // namespace arangodb
 
 #endif

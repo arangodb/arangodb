@@ -29,12 +29,10 @@
 namespace arangodb {
 
 class FileDescriptorsFeature : public application_features::ApplicationFeature {
-public:
+ public:
   static uint64_t const RECOMMENDED;
 
-  explicit FileDescriptorsFeature(
-    application_features::ApplicationServer& server
-  );
+  explicit FileDescriptorsFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
@@ -46,6 +44,6 @@ public:
   void adjustFileDescriptors();
 };
 
-}
+}  // namespace arangodb
 
 #endif

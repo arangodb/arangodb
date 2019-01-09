@@ -30,17 +30,17 @@ namespace arangodb {
 namespace basics {
 
 enum class LockerType {
-  BLOCKING,      // always lock, blocking if the lock cannot be acquired instantly
-  EVENTUAL,      // always lock, sleeping while the lock is not acquired
-  TRY            // try to acquire the lock and give up instantly if it cannot be acquired 
+  BLOCKING,  // always lock, blocking if the lock cannot be acquired instantly
+  EVENTUAL,  // always lock, sleeping while the lock is not acquired
+  TRY  // try to acquire the lock and give up instantly if it cannot be acquired
 };
 
 namespace ConditionalLocking {
-  static constexpr bool DoLock = true;
-  static constexpr bool DoNotLock = false;
-}
+static constexpr bool DoLock = true;
+static constexpr bool DoNotLock = false;
+}  // namespace ConditionalLocking
 
-}
-}
+}  // namespace basics
+}  // namespace arangodb
 
 #endif

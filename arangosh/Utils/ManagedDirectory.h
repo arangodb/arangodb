@@ -46,8 +46,7 @@ namespace arangodb {
 class ManagedDirectory {
  public:
   static constexpr int DefaultReadFlags = O_RDONLY | TRI_O_CLOEXEC;
-  static constexpr int DefaultWriteFlags =
-      O_WRONLY | TRI_O_CLOEXEC | O_CREAT | O_EXCL;
+  static constexpr int DefaultWriteFlags = O_WRONLY | TRI_O_CLOEXEC | O_CREAT | O_EXCL;
 
  public:
   class File {
@@ -62,8 +61,7 @@ class ManagedDirectory {
      * @param filename  The name of the file within the directory
      * @param flags     The flags to pass to the OS to open the file
      */
-    File(ManagedDirectory const& directory, std::string const& filename,
-         int flags);
+    File(ManagedDirectory const& directory, std::string const& filename, int flags);
     /**
      * @brief Closes the file if it is still open
      */
@@ -199,8 +197,7 @@ class ManagedDirectory {
    * @param  flags    Flags (will be XORed with `DefaultReadFlags`
    * @return          Unique pointer to file, if opened
    */
-  std::unique_ptr<File> readableFile(std::string const& filename,
-                                     int flags = 0);
+  std::unique_ptr<File> readableFile(std::string const& filename, int flags = 0);
 
   /**
    * @brief Opens a writable file

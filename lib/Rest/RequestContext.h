@@ -33,6 +33,6 @@ class RequestContext {
   RequestContext() {}
   virtual ~RequestContext() {}
 };
-}
+}  // namespace arangodb
 
 #endif
