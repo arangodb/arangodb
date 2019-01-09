@@ -32,8 +32,6 @@
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "VocBase/vocbase.h"
 
-#include "Logger/Logger.h"
-
 using namespace arangodb;
 
 bool SkiplistIndexAttributeMatcher::accessFitsIndex(
@@ -52,7 +50,8 @@ bool SkiplistIndexAttributeMatcher::accessFitsIndex(
 
   arangodb::aql::AstNode const* what = access;
   std::pair<arangodb::aql::Variable const*, std::vector<arangodb::basics::AttributeName>> attributeData;
-  bool isPrimaryIndex = idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX;
+  bool const isPrimaryIndex = idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX;
+
   if (op->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
     if (!what->isAttributeAccessForVariable(attributeData) || attributeData.first != reference) {
       // this access is not referencing this collection

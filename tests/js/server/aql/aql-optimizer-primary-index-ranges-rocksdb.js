@@ -61,26 +61,62 @@ function optimizerIndexesRangesTestSuite () {
         // _key and _id mixed
         [
           "FOR i IN " + c.name() + " FILTER (i._key >= 'test1990' && i._id <= '" + c.name() + "/test2') RETURN i._key",
-          [ "test1999", "test1998", "test1997", "test1996", "test1995", "test1994", "test1993", "test1992", "test1991", "test1990" ]
+          [ "test1990", "test1991", "test1992", "test1993", "test1994", "test1995", "test1996", "test1997", "test1998", "test1999" ]
         ],[
           "FOR i IN " + c.name() + " FILTER (i._key > 'test1990' && i._id < '" + c.name() + "/test1999') RETURN i._key",
-          [ "test1998", "test1997", "test1996", "test1995", "test1994", "test1993", "test1992", "test1991" ]
+          [ "test1991", "test1992", "test1993", "test1994", "test1995", "test1996", "test1997", "test1998" ]
         ],[
           "FOR i IN " + c.name() + " FILTER (i._key > 'test1990' && i._id < '" + c.name() + "/test1999' && i._key < 'test1996') RETURN i._key",
-          [ "test1995", "test1994", "test1993", "test1992", "test1991" ]
+          [ "test1991", "test1992", "test1993", "test1994", "test1995" ]
         ],
 
         // more than one condition
         [
           "FOR i IN " + c.name() + " FILTER (i._key >= 'test1990' && i._key <= 'test2') RETURN i._key",
-          [ "test1999", "test1998", "test1997", "test1996", "test1995", "test1994", "test1993", "test1992", "test1991", "test1990" ]
+          [ "test1990", "test1991", "test1992", "test1993", "test1994", "test1995", "test1996", "test1997", "test1998", "test1999" ]
         ],[
           "for i in " + c.name() + " filter (i._key > 'test1990' && i._key < 'test1999') return i._key",
-          [ "test1998", "test1997", "test1996", "test1995", "test1994", "test1993", "test1992", "test1991" ]
+          [ "test1991", "test1992", "test1993", "test1994", "test1995", "test1996", "test1997", "test1998" ]
         ],[
           "for i in " + c.name() + " filter (i._key > 'test1990' && i._key < 'test1999' && i._key < 'test1996') return i._key",
-          [ "test1995", "test1994", "test1993", "test1992", "test1991" ]
+          [ "test1991", "test1992", "test1993", "test1994", "test1995" ]
         ],
+        
+        // tests with out-of-bounds compare keys
+        [ "FOR i IN " + c.name() + " FILTER (i._key == null) RETURN i._key", [] ],
+        [ "FOR i IN " + c.name() + " FILTER (i._key == false) RETURN i._key", [] ],
+        [ "FOR i IN " + c.name() + " FILTER (i._key == true) RETURN i._key", [] ],
+        [ "FOR i IN " + c.name() + " FILTER (i._key == 99999) RETURN i._key", [] ],
+        [ "FOR i IN " + c.name() + " FILTER (i._key == '') RETURN i._key", [] ],
+        [ "FOR i IN " + c.name() + " FILTER (i._key == ' ') RETURN i._key", [] ],
+        [ "FOR i IN " + c.name() + " FILTER (i._key == []) RETURN i._key", [] ],
+        [ "FOR i IN " + c.name() + " FILTER (i._key == {}) RETURN i._key", [] ],
+        [ "FOR i IN " + c.name() + " FILTER (i._key IN [null]) RETURN i._key", [] ],
+        [ "FOR i IN " + c.name() + " FILTER (i._key IN [false]) RETURN i._key", [] ],
+        [ "FOR i IN " + c.name() + " FILTER (i._key IN [true]) RETURN i._key", [] ],
+        [ "FOR i IN " + c.name() + " FILTER (i._key IN [99999]) RETURN i._key", [] ],
+        [ "FOR i IN " + c.name() + " FILTER (i._key IN ['']) RETURN i._key", [] ],
+        [ "FOR i IN " + c.name() + " FILTER (i._key IN [' ']) RETURN i._key", [] ],
+        [ "FOR i IN " + c.name() + " FILTER (i._key IN [[]]) RETURN i._key", [] ],
+        [ "FOR i IN " + c.name() + " FILTER (i._key IN [{}]) RETURN i._key", [] ],
+        [ "FOR i IN " + c.name() + " FILTER (i._key < null) RETURN i._key", [] ],
+        [ "FOR i IN " + c.name() + " FILTER (i._key < false) RETURN i._key", [] ],
+        [ "FOR i IN " + c.name() + " FILTER (i._key < true) RETURN i._key", [] ],
+        [ "FOR i IN " + c.name() + " FILTER (i._key < 99999) RETURN i._key", [] ],
+        [ "FOR i IN " + c.name() + " FILTER (i._key < '') RETURN i._key", [] ],
+        [ "FOR i IN " + c.name() + " FILTER (i._key < ' ') RETURN i._key", [] ],
+        [ "FOR i IN " + c.name() + " FILTER (i._key <= null) RETURN i._key", [] ],
+        [ "FOR i IN " + c.name() + " FILTER (i._key <= false) RETURN i._key", [] ],
+        [ "FOR i IN " + c.name() + " FILTER (i._key <= true) RETURN i._key", [] ],
+        [ "FOR i IN " + c.name() + " FILTER (i._key <= 99999) RETURN i._key", [] ],
+        [ "FOR i IN " + c.name() + " FILTER (i._key <= '') RETURN i._key", [] ],
+        [ "FOR i IN " + c.name() + " FILTER (i._key <= ' ') RETURN i._key", [] ],
+        [ "FOR i IN " + c.name() + " FILTER (i._key > 'zzz') RETURN i._key", [] ],
+        [ "FOR i IN " + c.name() + " FILTER (i._key > []) RETURN i._key", [] ],
+        [ "FOR i IN " + c.name() + " FILTER (i._key > {}) RETURN i._key", [] ],
+        [ "FOR i IN " + c.name() + " FILTER (i._key >= 'zzz') RETURN i._key", [] ],
+        [ "FOR i IN " + c.name() + " FILTER (i._key >= []) RETURN i._key", [] ],
+        [ "FOR i IN " + c.name() + " FILTER (i._key >= {}) RETURN i._key", [] ],
 
         // tests for _key
         [
@@ -107,6 +143,144 @@ function optimizerIndexesRangesTestSuite () {
         ],[
           "FOR i IN " + c.name() + " FILTER ('test1997' <= i._key) RETURN i._key",
           [ "test1997", "test1998", "test1999" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key >= 9 && i._key < 'test0003') RETURN i._key",
+          [ "test0000", "test0001", "test0002" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key >= null && i._key < 'test0003') RETURN i._key",
+          [ "test0000", "test0001", "test0002" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key > 9 && i._key < 'test0003') RETURN i._key",
+          [ "test0000", "test0001", "test0002" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key > null && i._key <= 'test0003') RETURN i._key",
+          [ "test0000", "test0001", "test0002", "test0003" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key >= 9 && i._key <= 'test0003') RETURN i._key",
+          [ "test0000", "test0001", "test0002", "test0003" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key >= null && i._key <= 'test0003') RETURN i._key",
+          [ "test0000", "test0001", "test0002", "test0003" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key > 9 && i._key <= 'test0003') RETURN i._key",
+          [ "test0000", "test0001", "test0002", "test0003" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key > null && i._key <= 'test0003') RETURN i._key",
+          [ "test0000", "test0001", "test0002", "test0003" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key > 'test1997' && i._key < []) RETURN i._key",
+          [ "test1998", "test1999" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key > 'test1997' && i._key < {}) RETURN i._key",
+          [ "test1998", "test1999" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key > 'test1997' && i._key <= []) RETURN i._key",
+          [ "test1998", "test1999" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key > 'test1997' && i._key <= {}) RETURN i._key",
+          [ "test1998", "test1999" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key > 'test1997' && i._key < []) RETURN i._key",
+          [ "test1998", "test1999" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key > 'test1997' && i._key < {}) RETURN i._key",
+          [ "test1998", "test1999" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key > 'test1997' && i._key <= []) RETURN i._key",
+          [ "test1998", "test1999" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key > 'test1997' && i._key <= {}) RETURN i._key",
+          [ "test1998", "test1999" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER i._key IN ['test1999', 'test1998', 'test1997'] RETURN i._key",
+          [ "test1997", "test1998", "test1999" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER i._key IN ['test1999', 'test1998', 'test1997'] SORT i._key RETURN i._key",
+          [ "test1997", "test1998", "test1999" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER i._key IN ['test1997', 'test1998', 'test1999'] RETURN i._key",
+          [ "test1997", "test1998", "test1999" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER i._key IN ['test1997', 'test1998', 'test1999'] SORT i._key RETURN i._key",
+          [ "test1997", "test1998", "test1999" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key < 'test0002') SORT i._key DESC RETURN i._key",
+          [ "test0001", "test0000" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER ('test0002' > i._key) SORT i._key DESC RETURN i._key",
+          [ "test0001", "test0000" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key > 'test1997') SORT i._key DESC RETURN i._key",
+          [ "test1999", "test1998" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER ('test1997' < i._key) SORT i._key DESC RETURN i._key",
+          [ "test1999", "test1998" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key <= 'test0002') SORT i._key DESC RETURN i._key",
+          [ "test0002", "test0001", "test0000" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER ('test0002' >= i._key) SORT i._key DESC RETURN i._key",
+          [ "test0002", "test0001", "test0000" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key >= 'test1997') SORT i._key DESC RETURN i._key",
+          [ "test1999", "test1998", "test1997" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER ('test1997' <= i._key) SORT i._key DESC RETURN i._key",
+          [ "test1999", "test1998", "test1997" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key >= 9 && i._key < 'test0003') SORT i._key DESC RETURN i._key",
+          [ "test0002", "test0001", "test0000" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key >= null && i._key < 'test0003') SORT i._key DESC RETURN i._key",
+          [ "test0002", "test0001", "test0000" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key > 9 && i._key < 'test0003') SORT i._key DESC RETURN i._key",
+          [ "test0002", "test0001", "test0000" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key > null && i._key <= 'test0003') SORT i._key DESC RETURN i._key",
+          [ "test0003", "test0002", "test0001", "test0000" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key >= 9 && i._key <= 'test0003') SORT i._key DESC RETURN i._key",
+          [ "test0003", "test0002", "test0001", "test0000" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key >= null && i._key <= 'test0003') SORT i._key DESC RETURN i._key",
+          [ "test0003", "test0002", "test0001", "test0000" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key > 9 && i._key <= 'test0003') SORT i._key DESC RETURN i._key",
+          [ "test0003", "test0002", "test0001", "test0000" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key > null && i._key <= 'test0003') SORT i._key DESC RETURN i._key",
+          [ "test0003", "test0002", "test0001", "test0000" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key > 'test1997' && i._key < []) SORT i._key DESC RETURN i._key",
+          [ "test1999", "test1998" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key > 'test1997' && i._key < {}) SORT i._key DESC RETURN i._key",
+          [ "test1999", "test1998" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key > 'test1997' && i._key <= []) SORT i._key DESC RETURN i._key",
+          [ "test1999", "test1998" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key > 'test1997' && i._key <= {}) SORT i._key DESC RETURN i._key",
+          [ "test1999", "test1998" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key > 'test1997' && i._key < []) SORT i._key DESC RETURN i._key",
+          [ "test1999", "test1998" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key > 'test1997' && i._key < {}) SORT i._key DESC RETURN i._key",
+          [ "test1999", "test1998" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key > 'test1997' && i._key <= []) SORT i._key DESC RETURN i._key",
+          [ "test1999", "test1998" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key > 'test1997' && i._key <= {}) SORT i._key DESC RETURN i._key",
+          [ "test1999", "test1998" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER i._key IN ['test1999', 'test1998', 'test1997'] SORT i._key DESC RETURN i._key",
+          [ "test1999", "test1998", "test1997" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER i._key IN ['test1997', 'test1998', 'test1999'] SORT i._key DESC RETURN i._key",
+          [ "test1999", "test1998", "test1997" ]
         ],
 
         // tests for _id
@@ -136,6 +310,36 @@ function optimizerIndexesRangesTestSuite () {
           [ "test1997", "test1998", "test1999" ]
         ],
 
+        // test with sort
+        [
+          "FOR i IN " + c.name() + " FILTER (i._key > 'test0002' && i._key <= 'test0005') SORT i._key RETURN i._key",
+          [ "test0003", "test0004", "test0005" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key >= 'test0002' && i._key <= 'test0005') SORT i._key RETURN i._key",
+          [ "test0002", "test0003", "test0004", "test0005" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key > 'test0002' && i._key < 'test0005') SORT i._key RETURN i._key",
+          [ "test0003", "test0004" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key >= 'test0002' && i._key < 'test0005') SORT i._key RETURN i._key",
+          [ "test0002", "test0003", "test0004" ]
+        ],
+
+        // test with sort DESC
+        [
+          "FOR i IN " + c.name() + " FILTER (i._key > 'test0002' && i._key <= 'test0005') SORT i._key DESC RETURN i._key",
+          [ "test0005", "test0004", "test0003" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key >= 'test0002' && i._key <= 'test0005') SORT i._key DESC RETURN i._key",
+          [ "test0005", "test0004", "test0003", "test0002" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key > 'test0002' && i._key < 'test0005') SORT i._key DESC RETURN i._key",
+          [ "test0004", "test0003" ]
+        ],[
+          "FOR i IN " + c.name() + " FILTER (i._key >= 'test0002' && i._key < 'test0005') SORT i._key DESC RETURN i._key",
+          [ "test0004", "test0003", "test0002" ]
+        ],
+
         //// edge cases
         [
         // one element in range
@@ -150,24 +354,20 @@ function optimizerIndexesRangesTestSuite () {
           return node.type;
         });
 
-        //db._explain(query[0]);
         // ensure an index is used
         assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
+        
+        // must never have a SortNode, as we use the index for sorting
+        assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
 
+db._explain(query[0]);
         var results = AQL_EXECUTE(query[0]);
 
         assertEqual(query[1].length , results.json.length, query);
-        var last = query[1][0];
-        results.json.forEach(function(value) {
-          assertNotEqual(-1, query[1].indexOf(value));
-        });
-
-        assertTrue(results.stats.scannedIndex > 0);
+        assertEqual(query[1], results.json, query);
         assertEqual(0, results.stats.scannedFull);
       });
     },
-
-
 
     testPrimaryIndexRangesEdgeCases : function () {
       var queries = [ // queries[0] - query -- queries[1] - expected result
@@ -204,8 +404,6 @@ function optimizerIndexesRangesTestSuite () {
         assertEqual(0, results.stats.scannedFull);
       });
     }
-
-///////////////////////////////////////////////////////////////////////////////
 
   };
 }

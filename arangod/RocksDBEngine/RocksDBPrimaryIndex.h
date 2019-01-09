@@ -193,6 +193,10 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
                                arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
+  
+  bool supportsSortCondition(arangodb::aql::SortCondition const*,
+                             arangodb::aql::Variable const*, size_t, double&,
+                             size_t&) const override;
 
   IndexIterator* iteratorForCondition(transaction::Methods*, ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
@@ -223,7 +227,7 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
  private:
   /// @brief create the iterator, for a single attribute, IN operator
   IndexIterator* createInIterator(transaction::Methods*, arangodb::aql::AstNode const*,
-                                  arangodb::aql::AstNode const*);
+                                  arangodb::aql::AstNode const*, bool ascending);
 
   /// @brief create the iterator, for a single attribute, EQ operator
   IndexIterator* createEqIterator(transaction::Methods*, arangodb::aql::AstNode const*,

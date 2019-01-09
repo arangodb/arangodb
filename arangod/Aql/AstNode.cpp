@@ -1,6 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
-///
 /// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
@@ -175,7 +174,7 @@ std::unordered_map<int, std::string const> const AstNode::ValueTypeNames{
 namespace {
 
 /// @brief quick translation array from an AST node value type to a VPack type
-static std::array<VPackValueType, 5> const valueTypes{{
+std::array<VPackValueType, 5> const valueTypes{{
     VPackValueType::Null,    //    VALUE_TYPE_NULL   = 0,
     VPackValueType::Bool,    //    VALUE_TYPE_BOOL   = 1,
     VPackValueType::Int,     //    VALUE_TYPE_INT    = 2,
@@ -195,7 +194,29 @@ static_assert(AstNodeValueType::VALUE_TYPE_STRING == 4,
               "incorrect ast node value types");
 
 /// @brief get the node type for inter-node comparisons
-static VPackValueType getNodeCompareType(AstNode const* node) {
+inline int valueTypeOrder(VPackValueType type) {
+  switch (type) {
+    case VPackValueType::Null:
+      return 0;
+    case VPackValueType::Bool:
+      return 1;
+    case VPackValueType::Int:
+    case VPackValueType::Double:
+      return 2;
+    case VPackValueType::String:
+    case VPackValueType::Custom: // _id
+      return 3;
+    case VPackValueType::Array:
+      return 4;
+    case VPackValueType::Object:
+      return 5;
+    default: 
+      return 0; // null
+  }
+}
+
+/// @brief get the node type for inter-node comparisons
+VPackValueType getNodeCompareType(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
   if (node->type == NODE_TYPE_VALUE) {
@@ -215,7 +236,7 @@ static VPackValueType getNodeCompareType(AstNode const* node) {
   return VPackValueType::Null;
 }
 
-static inline int compareDoubleValues(double lhs, double rhs) {
+inline int compareDoubleValues(double lhs, double rhs) {
   if (arangodb::almostEquals(lhs, rhs)) {
     return 0;
   }
@@ -258,7 +279,7 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs, bool 
                                  static_cast<double>(rhs->getIntValue()));
     }
 
-    int diff = static_cast<int>(lType) - static_cast<int>(rType);
+    int diff = valueTypeOrder(lType) - valueTypeOrder(rType);
 
     TRI_ASSERT(diff != 0);
 
