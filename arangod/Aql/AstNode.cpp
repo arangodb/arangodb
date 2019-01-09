@@ -816,28 +816,31 @@ uint64_t AstNode::hashValue(uint64_t hash) const noexcept {
 
 /// @brief dump the node (for debugging purposes)
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-void AstNode::dump(int level) const {
+std::ostream& AstNode::toStream(std::ostream& os, int level) const {
   for (int i = 0; i < level; ++i) {
-    std::cout << "  ";
+    os << "  ";
   }
-  std::cout << "- " << getTypeString();
+  os << "- " << getTypeString();
 
   if (type == NODE_TYPE_VALUE || type == NODE_TYPE_ARRAY) {
-    std::cout << ": " << toVelocyPackValue().get()->toJson();
+    os << ": " << toVelocyPackValue().get()->toJson();
   } else if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    std::cout << ": " << getString();
+    os << ": " << getString();
   } else if (type == NODE_TYPE_REFERENCE) {
-    std::cout << ": " << static_cast<Variable const*>(getData())->name;
+    os << ": " << static_cast<Variable const*>(getData())->name;
   }
-  std::cout << "\n";
+  os << "\n";
 
   size_t const n = numMembers();
 
   for (size_t i = 0; i < n; ++i) {
     auto sub = getMemberUnchecked(i);
-    sub->dump(level + 1);
+    sub->toStream(os, level + 1);
   }
+  return os;
 }
+
+void AstNode::dump(int indent) const { toStream(std::cout, indent); }
 #endif
 
 /// @brief compute the value for a constant value node

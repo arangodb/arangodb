@@ -26,26 +26,33 @@
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Aql/Variable.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
 #include "Indexes/Index.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "VocBase/vocbase.h"
 
+#include "Logger/Logger.h"
+
 using namespace arangodb;
 
 bool SkiplistIndexAttributeMatcher::accessFitsIndex(
-    arangodb::Index const* idx, arangodb::aql::AstNode const* access,
-    arangodb::aql::AstNode const* other, arangodb::aql::AstNode const* op,
-    arangodb::aql::Variable const* reference,
-    std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>& found,
-    std::unordered_set<std::string>& nonNullAttributes, bool isExecution) {
+    arangodb::Index const* idx,            // index
+    arangodb::aql::AstNode const* access,  // attribute access
+    arangodb::aql::AstNode const* other,   // eg const value
+    arangodb::aql::AstNode const* op,  // binary operation that is parent of access and other
+    arangodb::aql::Variable const* reference,  // variable used in access(es)
+    std::unordered_map<size_t /*offset in idx->fields()*/, std::vector<arangodb::aql::AstNode const*> /*conjunct - operation*/>& found,  // marks operations covered by index-fields
+    std::unordered_set<std::string>& nonNullAttributes,  // set of stringified op-childeren (access other) that may not be null
+    bool isExecution  // skip usage check in execution phase
+) {
   if (!idx->canUseConditionPart(access, other, op, reference, nonNullAttributes, isExecution)) {
     return false;
   }
 
   arangodb::aql::AstNode const* what = access;
   std::pair<arangodb::aql::Variable const*, std::vector<arangodb::basics::AttributeName>> attributeData;
-
+  bool isPrimaryIndex = idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX;
   if (op->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
     if (!what->isAttributeAccessForVariable(attributeData) || attributeData.first != reference) {
       // this access is not referencing this collection
@@ -63,25 +70,19 @@ bool SkiplistIndexAttributeMatcher::accessFitsIndex(
     // ok, we do have an IN here... check if it's something like 'value' IN
     // doc.value[*]
     TRI_ASSERT(op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN);
-    bool canUse = false;
 
     if (what->isAttributeAccessForVariable(attributeData) && attributeData.first == reference &&
         !arangodb::basics::TRI_AttributeNamesHaveExpansion(attributeData.second) &&
-        idx->attributeMatches(attributeData.second)) {
+        idx->attributeMatches(attributeData.second, isPrimaryIndex)) {
       // doc.value IN 'value'
       // can use this index
-      canUse = true;
-    } else {
+    } else if (other->isAttributeAccessForVariable(attributeData) &&
+               attributeData.first == reference &&
+               idx->isAttributeExpanded(attributeData.second) &&
+               idx->attributeMatches(attributeData.second, isPrimaryIndex)) {
       // check for  'value' IN doc.value  AND  'value' IN doc.value[*]
-      what = other;
-      if (what->isAttributeAccessForVariable(attributeData) && attributeData.first == reference &&
-          idx->isAttributeExpanded(attributeData.second) &&
-          idx->attributeMatches(attributeData.second)) {
-        canUse = true;
-      }
-    }
-
-    if (!canUse) {
+      what = other;  // if what should be used later
+    } else {
       return false;
     }
   }
@@ -101,6 +102,14 @@ bool SkiplistIndexAttributeMatcher::accessFitsIndex(
 
     bool match = arangodb::basics::AttributeName::isIdentical(idx->fields()[i],
                                                               fieldNames, true);
+
+    // make exception for primary index as we do not need to match "_key, _id"
+    // but can go directly for "_id"
+    if (!match && isPrimaryIndex) {
+      if (i == 0 && fieldNames[i].name == StaticStrings::IdString) {
+        match = true;
+      }
+    };
 
     if (match) {
       // mark ith attribute as being covered
@@ -127,6 +136,10 @@ void SkiplistIndexAttributeMatcher::matchAttributes(
     arangodb::aql::Variable const* reference,
     std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>& found,
     size_t& values, std::unordered_set<std::string>& nonNullAttributes, bool isExecution) {
+  // assert we have a proper formed conditiona - naray conjunction
+  TRI_ASSERT(node->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND);
+
+  // inspect the the conjuncts - allowed are binary comparisons and a contains check
   for (size_t i = 0; i < node->numMembers(); ++i) {
     auto op = node->getMember(i);
 
@@ -147,7 +160,7 @@ void SkiplistIndexAttributeMatcher::matchAttributes(
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN:
         if (accessFitsIndex(idx, op->getMember(0), op->getMember(1), op,
                             reference, found, nonNullAttributes, isExecution)) {
-          if (op->getMember(1)->isAttributeAccessForVariable(reference, false)) {
+          if (op->getMember(1)->isAttributeAccessForVariable(reference, /*indexed access*/ false)) {
             // 'abc' IN doc.attr[*]
             ++values;
           } else {
@@ -255,8 +268,7 @@ bool SkiplistIndexAttributeMatcher::supportsFilterCondition(
     }
 
     estimatedItems = values;
-    // ALTERNATIVE: estimatedCost = static_cast<double>(estimatedItems *
-    // values);
+    // ALTERNATIVE: estimatedCost = static_cast<double>(estimatedItems * values);
     estimatedCost = (std::max)(static_cast<double>(1),
                                std::log2(static_cast<double>(itemsInIndex)) * values);
 
@@ -453,6 +465,7 @@ arangodb::aql::AstNode* SkiplistIndexAttributeMatcher::specializeCondition(
     TRI_ASSERT(it->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE);
     node->addMember(it);
   }
+
   return node;
 }
 
