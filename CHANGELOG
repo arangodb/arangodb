@@ -1,6 +1,10 @@
 v3.3.22 (XXXX-XX-XX)
 --------------------
 
+* fix issue #7900: Bind values of `null` are not replaced by
+  empty string anymore, when toggling between json and table
+  view in the web-ui.
+
 * Use base64url to encode and decode JWT parts.
 
 * added AQL function `CHECK_DOCUMENT` for document validity checks
