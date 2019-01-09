@@ -209,7 +209,9 @@ class IResearchView final : public arangodb::LogicalView, public arangodb::Flush
   typedef std::unique_ptr<arangodb::FlushTransaction, std::function<void(arangodb::FlushTransaction*)>> FlushTransactionPtr;
 
   IResearchView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& info,
-                uint64_t planVersion);
+    uint64_t planVersion,
+    IResearchViewMeta&& meta
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Called in post-recovery to remove any dangling documents old links

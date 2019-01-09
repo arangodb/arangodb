@@ -1003,6 +1003,7 @@ arangodb::Result PhysicalCollectionMock::updateProperties(arangodb::velocypack::
 
 std::function<void()> StorageEngineMock::before = []()->void {};
 bool StorageEngineMock::inRecoveryResult = false;
+/*static*/ std::string StorageEngineMock::versionFilenameResult;
 
 StorageEngineMock::StorageEngineMock(
     arangodb::application_features::ApplicationServer& server
@@ -1428,8 +1429,7 @@ void StorageEngineMock::unloadCollection(
 }
 
 std::string StorageEngineMock::versionFilename(TRI_voc_tick_t) const {
-  TRI_ASSERT(false);
-  return std::string();
+  return versionFilenameResult;
 }
 
 void StorageEngineMock::waitForEstimatorSync(std::chrono::milliseconds) {

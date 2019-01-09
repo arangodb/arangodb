@@ -333,13 +333,12 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice const& inp
 
   VPackBuilder normalized;
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  int res = engine->indexFactory()
-                .enhanceIndexDefinition(input, normalized, create,
-                                        ServerState::instance()->isCoordinator())
-                .errorNumber();
+  auto res = engine->indexFactory().enhanceIndexDefinition(
+     input, normalized, create, ServerState::instance()->isCoordinator()
+  );
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    return Result(res);
+  if (!res.ok()) {
+    return res;
   }
 
   TRI_ASSERT(collection);

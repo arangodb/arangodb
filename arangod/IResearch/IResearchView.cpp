@@ -243,30 +243,34 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
                                        TRI_vocbase_t& vocbase,
                                        arangodb::velocypack::Slice const& definition,
                                        uint64_t planVersion) const override {
+    auto* databaseFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::DatabaseFeature
+    >("Database");
     std::string error;
-    auto impl = std::shared_ptr<IResearchView>(
-        new IResearchView(vocbase, definition, planVersion));
+    bool inUpgrade = databaseFeature ? databaseFeature->upgrade() : false; // check if DB is currently being upgraded (skip validation checks)
+    IResearchViewMeta meta;
     IResearchViewMetaState metaState;
 
     {
       WriteMutex mutex(impl->_mutex);
       SCOPED_LOCK(mutex);
-      if (!impl->_meta.init(definition, error) ||
-          impl->_meta._version == 0  // version 0 must be upgraded to split
-                                     // data-store on a per-link basis
-          || impl->_meta._version > LATEST_VERSION ||
+    if (!meta.init(definition, error)
+        || (meta._version == 0 && !inUpgrade) // version 0 must be upgraded to split data-store on a per-link basis
+        || meta._version > LATEST_VERSION
+        ||
           (ServerState::instance()->isSingleServer()  // init metaState for SingleServer
            && !metaState.init(definition, error))) {
         return arangodb::Result(
             TRI_ERROR_BAD_PARAMETER,
             error.empty()
-                ? (std::string("failed to initialize arangosearch View '") +
-                   impl->name() + "' from definition: " + definition.toString())
-                : (std::string("failed to initialize arangosearch View '") +
-                   impl->name() + "' from definition, error in attribute '" +
-                   error + "': " + definition.toString()));
+        ? (std::string("failed to initialize arangosearch View from definition: ") + definition.toString())
+        : (std::string("failed to initialize arangosearch View from definition, error in attribute '") + error + "': " + definition.toString())
       }
     }
+
+    auto impl = std::shared_ptr<IResearchView>(
+      new IResearchView(vocbase, definition, planVersion, std::move(meta))
+    );
 
     // NOTE: for single-server must have full list of collections to lock
     //       for cluster the shards to lock come from coordinator and are not in
@@ -290,11 +294,15 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
 };
 
 IResearchView::IResearchView(TRI_vocbase_t& vocbase,
-                             arangodb::velocypack::Slice const& info, uint64_t planVersion)
+    arangodb::velocypack::Slice const& info,
+    uint64_t planVersion,
+    IResearchViewMeta&& meta
+)
     : LogicalView(vocbase, info, planVersion),
       FlushTransaction(toString(*this)),
       _asyncFeature(nullptr),
       _asyncSelf(irs::memory::make_unique<AsyncViewPtr::element_type>(this)),
+   _meta(std::move(meta)),
       _asyncTerminate(false),
       _inRecovery(false) {
   // set up in-recovery insertion hooks
@@ -1108,19 +1116,16 @@ arangodb::Result IResearchView::unlink(TRI_voc_cid_t cid) noexcept {
     }
   } catch (arangodb::basics::Exception const& e) {
     return arangodb::Result(e.code(),
-                            std::string("caught exception while collection '") +
-                                std::to_string(cid) +
-                                "' from arangosearch view '" + name() + "': " + e.what());
+      std::string("caught exception while unlinking collection '") + std::to_string(cid) + "' from arangosearch view '" + name() + "': " + e.what()
+    );
   } catch (std::exception const& e) {
     return arangodb::Result(TRI_ERROR_INTERNAL,
-                            std::string("caught exception while collection '") +
-                                std::to_string(cid) +
-                                "' from arangosearch view '" + name() + "': " + e.what());
+      std::string("caught exception while unlinking collection '") + std::to_string(cid) + "' from arangosearch view '" + name() + "': " + e.what()
+    );
   } catch (...) {
     return arangodb::Result(TRI_ERROR_INTERNAL,
-                            std::string("caught exception while collection '") +
-                                std::to_string(cid) +
-                                "' from arangosearch view '" + name() + "'");
+      std::string("caught exception while unlinking collection '") + std::to_string(cid) + "' from arangosearch view '" + name() + "'"
+    );
   }
 
   return arangodb::Result();
