@@ -262,7 +262,6 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
             error.empty()
         ? (std::string("failed to initialize arangosearch View from definition: ") + definition.toString())
         : (std::string("failed to initialize arangosearch View from definition, error in attribute '") + error + "': " + definition.toString())
-      }
     }
 
     auto impl = std::shared_ptr<IResearchView>(
