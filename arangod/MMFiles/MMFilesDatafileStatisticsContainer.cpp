@@ -35,8 +35,7 @@ MMFilesDatafileStatisticsContainer::MMFilesDatafileStatisticsContainer()
       numberUncollected(0) {}
 
 /// @brief update statistics from another container
-void MMFilesDatafileStatisticsContainer::update(
-    MMFilesDatafileStatisticsContainer const& other) {
+void MMFilesDatafileStatisticsContainer::update(MMFilesDatafileStatisticsContainer const& other) {
   numberAlive += other.numberAlive;
   numberDead += other.numberDead;
   numberDeletions += other.numberDeletions;

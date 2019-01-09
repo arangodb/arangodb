@@ -44,9 +44,8 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestSimpleHandler::RestSimpleHandler(
-    GeneralRequest* request, GeneralResponse* response,
-    arangodb::aql::QueryRegistry* queryRegistry)
+RestSimpleHandler::RestSimpleHandler(GeneralRequest* request, GeneralResponse* response,
+                                     arangodb::aql::QueryRegistry* queryRegistry)
     : RestCursorHandler(request, response, queryRegistry), _silent(true) {}
 
 RestStatus RestSimpleHandler::execute() {
@@ -54,7 +53,6 @@ RestStatus RestSimpleHandler::execute() {
   auto const type = _request->requestType();
 
   if (type == rest::RequestType::PUT) {
-    
     bool parsingSuccess = false;
     VPackSlice const body = this->parseVPackBody(parsingSuccess);
     if (!parsingSuccess) {
@@ -81,8 +79,7 @@ RestStatus RestSimpleHandler::execute() {
     return RestStatus::DONE;
   }
 
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
 
@@ -104,8 +101,7 @@ RestStatus RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
 
     collectionName = value.copyString();
 
-    if (!collectionName.empty() && collectionName[0] >= '0' &&
-        collectionName[0] <= '9') {
+    if (!collectionName.empty() && collectionName[0] >= '0' && collectionName[0] <= '9') {
       // If we have a numeric name we probably have to translate it.
       CollectionNameResolver resolver(_vocbase);
 
@@ -167,14 +163,16 @@ RestStatus RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
 
   return registerQueryOrCursor(data.slice());
 }
-    
+
 RestStatus RestSimpleHandler::handleQueryResult() {
   if (_queryResult.code != TRI_ERROR_NO_ERROR) {
     if (_queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
         (_queryResult.code == TRI_ERROR_QUERY_KILLED && wasCanceled())) {
-      generateError(GeneralResponse::responseCode(TRI_ERROR_REQUEST_CANCELED), TRI_ERROR_REQUEST_CANCELED);
+      generateError(GeneralResponse::responseCode(TRI_ERROR_REQUEST_CANCELED),
+                    TRI_ERROR_REQUEST_CANCELED);
     } else {
-      generateError(GeneralResponse::responseCode(_queryResult.code), _queryResult.code, _queryResult.details);
+      generateError(GeneralResponse::responseCode(_queryResult.code),
+                    _queryResult.code, _queryResult.details);
     }
     return RestStatus::DONE;
   }
@@ -196,8 +194,7 @@ RestStatus RestSimpleHandler::handleQueryResult() {
   // If we get here some checks before have already failed, we are
   // in an invalid state now.
   TRI_ASSERT(false);
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
 
@@ -229,8 +226,7 @@ void RestSimpleHandler::handleQueryResultRemoveByKeys() {
   }
   result.close();
 
-  generateResult(rest::ResponseCode::OK, result.slice(),
-                 _queryResult.context);
+  generateResult(rest::ResponseCode::OK, result.slice(), _queryResult.context);
 }
 
 void RestSimpleHandler::handleQueryResultLookupByKeys() {
@@ -249,8 +245,7 @@ void RestSimpleHandler::handleQueryResultLookupByKeys() {
                VPackValue(static_cast<int>(_response->responseCode())));
   }
 
-  generateResult(rest::ResponseCode::OK, std::move(resultBuffer),
-                 _queryResult.context);
+  generateResult(rest::ResponseCode::OK, std::move(resultBuffer), _queryResult.context);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

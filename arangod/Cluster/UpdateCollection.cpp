@@ -28,22 +28,19 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/FollowerInfo.h"
+#include "Cluster/MaintenanceFeature.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
-#include "Cluster/MaintenanceFeature.h"
-
 
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 
-UpdateCollection::UpdateCollection(
-  MaintenanceFeature& feature, ActionDescription const& desc) :
-  ActionBase(feature, desc) {
-
+UpdateCollection::UpdateCollection(MaintenanceFeature& feature, ActionDescription const& desc)
+    : ActionBase(feature, desc) {
   std::stringstream error;
 
   _labels.emplace(FAST_TRACK);
@@ -83,16 +80,13 @@ UpdateCollection::UpdateCollection(
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
-
 }
 
-void handleLeadership(
-  LogicalCollection& collection, std::string const& localLeader,
-  std::string const& plannedLeader, std::string const& followersToDrop) {
-
+void handleLeadership(LogicalCollection& collection, std::string const& localLeader,
+                      std::string const& plannedLeader, std::string const& followersToDrop) {
   auto& followers = collection.followers();
 
-  if (plannedLeader.empty()) { // Planned to lead
+  if (plannedLeader.empty()) {   // Planned to lead
     if (!localLeader.empty()) {  // We were not leader, assume leadership
       followers->setTheLeader(std::string());
       followers->clear();
@@ -104,14 +98,14 @@ void handleLeadership(
       // from the local list of followers. Will be reported
       // to Current in due course.
       if (!followersToDrop.empty()) {
-        std::vector<std::string> ftd = arangodb::basics::StringUtils::split(
-            followersToDrop, ',');
+        std::vector<std::string> ftd =
+            arangodb::basics::StringUtils::split(followersToDrop, ',');
         for (auto const& s : ftd) {
           followers->remove(s);
         }
       }
     }
-  } else { // Planned to follow
+  } else {  // Planned to follow
     if (localLeader.empty()) {
       // Note that the following does not delete the follower list
       // and that this is crucial, because in the planned leader
@@ -128,19 +122,16 @@ void handleLeadership(
     // synchronized with the new leader and negotiated
     // a leader/follower relationship!
   }
-
 }
 
-
-UpdateCollection::~UpdateCollection() {};
+UpdateCollection::~UpdateCollection(){};
 
 bool UpdateCollection::first() {
-
-  auto const& database      = _description.get(DATABASE);
-  auto const& collection    = _description.get(COLLECTION);
-  auto const& shard         = _description.get(SHARD);
+  auto const& database = _description.get(DATABASE);
+  auto const& collection = _description.get(COLLECTION);
+  auto const& shard = _description.get(SHARD);
   auto const& plannedLeader = _description.get(THE_LEADER);
-  auto const& localLeader   = _description.get(LOCAL_LEADER);
+  auto const& localLeader = _description.get(LOCAL_LEADER);
   auto const& followersToDrop = _description.get(FOLLOWERS_TO_DROP);
   auto const& props = properties();
 
@@ -149,30 +140,29 @@ bool UpdateCollection::first() {
     auto vocbase = &guard.database();
 
     Result found = methods::Collections::lookup(
-      vocbase,
-      shard,
-      [&](std::shared_ptr<LogicalCollection> const& coll)->void {
-        TRI_ASSERT(coll);
-        LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-          << "Updating local collection " + shard;
+        vocbase, shard, [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
+          TRI_ASSERT(coll);
+          LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+              << "Updating local collection " + shard;
 
-        // We adjust local leadership, note that the planned
-        // resignation case is not handled here, since then
-        // ourselves does not appear in shards[shard] but only
-        // "_" + ourselves.
-        handleLeadership(*coll, localLeader, plannedLeader, followersToDrop);
-        _result = Collections::updateProperties(*coll, props, false); // always a full-update
+          // We adjust local leadership, note that the planned
+          // resignation case is not handled here, since then
+          // ourselves does not appear in shards[shard] but only
+          // "_" + ourselves.
+          handleLeadership(*coll, localLeader, plannedLeader, followersToDrop);
+          _result = Collections::updateProperties(*coll, props, false);  // always a full-update
 
-        if (!_result.ok()) {
-          LOG_TOPIC(ERR, Logger::MAINTENANCE) << "failed to update properties"
-            " of collection " << shard << ": " << _result.errorMessage();
-        }
-      });
+          if (!_result.ok()) {
+            LOG_TOPIC(ERR, Logger::MAINTENANCE)
+                << "failed to update properties"
+                   " of collection "
+                << shard << ": " << _result.errorMessage();
+          }
+        });
 
     if (found.fail()) {
       std::stringstream error;
-      error << "failed to lookup local collection " << shard
-            << "in database " + database;
+      error << "failed to lookup local collection " << shard << "in database " + database;
       LOG_TOPIC(ERR, Logger::MAINTENANCE) << error.str();
       _result = actionError(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
     }
@@ -186,7 +176,7 @@ bool UpdateCollection::first() {
 
   if (_result.fail()) {
     _feature.storeShardError(database, collection, shard,
-      _description.get(SERVER_ID), _result);
+                             _description.get(SERVER_ID), _result);
   }
 
   notify();

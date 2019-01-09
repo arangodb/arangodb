@@ -155,6 +155,15 @@ function ahuacatlModifySuite () {
       c1 = null;
       c2 = null;
     },
+    
+    testVariableScope : function () {
+      let query = "INSERT {value: 1} INTO " + cn1 + " LET id1 = (UPDATE 'foo' WITH {value: 2} IN " + cn2 + ")  RETURN NEW";
+      let result = AQL_EXECUTE(query).json;
+      assertEqual(1, result[0].value);
+      assertEqual(2, c1.count()); 
+      assertEqual(1, c2.count()); 
+      assertEqual(2, c2.document("foo").value);
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test subquery

@@ -26,7 +26,6 @@
 
 #include <chrono>
 
-#include "curl/curl.h"
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/StringBuffer.h"
@@ -35,6 +34,7 @@
 #include "SimpleHttpClient/Callbacks.h"
 #include "SimpleHttpClient/Destination.h"
 #include "SimpleHttpClient/Options.h"
+#include "curl/curl.h"
 
 namespace arangodb {
 namespace communicator {
@@ -42,9 +42,8 @@ typedef std::unordered_map<std::string, std::string> HeadersInProgress;
 typedef uint64_t Ticket;
 
 struct RequestInProgress {
-  RequestInProgress(Destination destination, Callbacks callbacks,
-                    Ticket ticketId, Options const& options,
-                    std::unique_ptr<GeneralRequest> request)
+  RequestInProgress(Destination destination, Callbacks callbacks, Ticket ticketId,
+                    Options const& options, std::unique_ptr<GeneralRequest> request)
       : _destination(destination),
         _callbacks(callbacks),
         _request(std::move(request)),
@@ -96,7 +95,7 @@ struct CurlHandle : public std::enable_shared_from_this<CurlHandle> {
     }
   }
 
-  std::shared_ptr<CurlHandle> getSharedPtr() {return shared_from_this();}
+  std::shared_ptr<CurlHandle> getSharedPtr() { return shared_from_this(); }
 
   CurlHandle(CurlHandle& other) = delete;
   CurlHandle& operator=(CurlHandle& other) = delete;
@@ -105,41 +104,41 @@ struct CurlHandle : public std::enable_shared_from_this<CurlHandle> {
   std::unique_ptr<RequestInProgress> _rip;
 };
 
-
 /// @brief ConnectionCount
 ///
 /// libcurl's native connection management has 3 modes based upon how
 ///  curl_multi_setopt(_curl, CURLMOPT_MAXCONNECTS, xx) is set:
 ///
-///  -1: default, close connections above 4 times the number of active connections,
+///  -1: default, close connections above 4 times the number of active
+///  connections,
 ///       open more as needed
 ///   0: never close connections, open more as needed
 /// int: never open more than "int", never close either
 ///
-///  -1 caused bugs with clients using 64 threads.  The number of open connections
-///  would fluctuate wildly, and sometimes the reopening of connections timed out.
-///  This code smooths the rate at which connections get closed.
+///  -1 caused bugs with clients using 64 threads.  The number of open
+///  connections would fluctuate wildly, and sometimes the reopening of
+///  connections timed out. This code smooths the rate at which connections get
+///  closed.
 class ConnectionCount {
-public:
+ public:
   ConnectionCount()
-    : cursorMinute(0),
-    nextMinute(std::chrono::steady_clock::now() + std::chrono::seconds(60))
-  {
-    for (int loop=0; loop<eMinutesTracked; ++loop) {
+      : cursorMinute(0),
+        nextMinute(std::chrono::steady_clock::now() + std::chrono::seconds(60)) {
+    for (int loop = 0; loop < eMinutesTracked; ++loop) {
       maxInMinute[loop] = 0;
-    } //for
+    }  // for
   };
 
-  virtual ~ConnectionCount() {};
+  virtual ~ConnectionCount(){};
 
   int newMaxConnections(int newRequestCount) {
     int ret_val(eMinOpenConnects);
 
-    for (int loop=0; loop<eMinutesTracked; ++loop) {
+    for (int loop = 0; loop < eMinutesTracked; ++loop) {
       if (ret_val < maxInMinute[loop]) {
         ret_val = maxInMinute[loop];
-      } // if
-    } // for
+      }  // if
+    }    // for
     ret_val += newRequestCount;
 
     return ret_val;
@@ -149,44 +148,39 @@ public:
     // move to new minute?
     if (nextMinute < std::chrono::steady_clock::now()) {
       advanceCursor();
-    } // if
+    }  // if
 
     // current have more active that previously measured?
     if (maxInMinute[cursorMinute] < openActions) {
       maxInMinute[cursorMinute] = openActions;
-    } // if
+    }  // if
   };
 
-  enum {
-    eMinutesTracked = 6,
-    eMinOpenConnects = 5
-  };
+  enum { eMinutesTracked = 6, eMinOpenConnects = 5 };
 
-protected:
+ protected:
   void advanceCursor() {
     nextMinute += std::chrono::seconds(60);
     cursorMinute = (cursorMinute + 1) % eMinutesTracked;
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-      << "ConnectionCount::advanceCursor cursorMinute " << cursorMinute
-      << ", retired period " << maxInMinute[cursorMinute]
-      << ", newMaxConnections " << newMaxConnections(0);
+        << "ConnectionCount::advanceCursor cursorMinute " << cursorMinute
+        << ", retired period " << maxInMinute[cursorMinute]
+        << ", newMaxConnections " << newMaxConnections(0);
     maxInMinute[cursorMinute] = 0;
   };
-
 
   int maxInMinute[eMinutesTracked];
   int cursorMinute;
   std::chrono::steady_clock::time_point nextMinute;
 
-private:
-  ConnectionCount(ConnectionCount const &) = delete;
-  ConnectionCount(ConnectionCount &&) = delete;
-  ConnectionCount & operator=(ConnectionCount const &) = delete;
+ private:
+  ConnectionCount(ConnectionCount const&) = delete;
+  ConnectionCount(ConnectionCount&&) = delete;
+  ConnectionCount& operator=(ConnectionCount const&) = delete;
 
-
-}; // class ConnectionCount
-}
-}
+};  // class ConnectionCount
+}  // namespace communicator
+}  // namespace arangodb
 
 namespace arangodb {
 namespace communicator {
@@ -203,15 +197,14 @@ class Communicator {
   ~Communicator();
 
  public:
-  Ticket addRequest(Destination&&, std::unique_ptr<GeneralRequest>, Callbacks,
-                    Options);
+  Ticket addRequest(Destination&&, std::unique_ptr<GeneralRequest>, Callbacks, Options);
 
   int work_once();
   void wait();
   void abortRequest(Ticket ticketId);
   void abortRequests();
   void disable() { _enabled = false; };
-  void enable()  { _enabled = true; };
+  void enable() { _enabled = true; };
 
  private:
   struct NewRequest {
@@ -254,21 +247,22 @@ class Communicator {
   // these function are static because they are called by a lambda function
   //  that could execute after Communicator object destroyed.
   static void transformResult(CURL*, HeadersInProgress&&,
-                       std::unique_ptr<basics::StringBuffer>, HttpResponse*);
+                              std::unique_ptr<basics::StringBuffer>, HttpResponse*);
   static void callErrorFn(RequestInProgress*, int const&, std::unique_ptr<GeneralResponse>);
-  static void callErrorFn(Ticket const&, Destination const&, Callbacks const&, int const&, std::unique_ptr<GeneralResponse>);
-  static void callSuccessFn(Ticket const&, Destination const&, Callbacks const&, std::unique_ptr<GeneralResponse>);
+  static void callErrorFn(Ticket const&, Destination const&, Callbacks const&,
+                          int const&, std::unique_ptr<GeneralResponse>);
+  static void callSuccessFn(Ticket const&, Destination const&, Callbacks const&,
+                            std::unique_ptr<GeneralResponse>);
 
  private:
   static size_t readBody(void*, size_t, size_t, void*);
-  static size_t readHeaders(char* buffer, size_t size, size_t nitems,
-                            void* userdata);
+  static size_t readHeaders(char* buffer, size_t size, size_t nitems, void* userdata);
   static int curlDebug(CURL*, curl_infotype, char*, size_t, void*);
   static int curlProgress(void*, curl_off_t, curl_off_t, curl_off_t, curl_off_t);
   static void logHttpHeaders(std::string const&, std::string const&);
   static void logHttpBody(std::string const&, std::string const&);
 };
-}
-}
+}  // namespace communicator
+}  // namespace arangodb
 
 #endif

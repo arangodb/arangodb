@@ -41,8 +41,7 @@ MaskingsResult Maskings::fromFile(std::string const& filename) {
   try {
     definition = basics::FileUtils::slurp(filename);
   } catch (std::exception const& e) {
-    std::string msg =
-        "cannot read maskings file '" + filename + "': " + e.what();
+    std::string msg = "cannot read maskings file '" + filename + "': " + e.what();
     LOG_TOPIC(DEBUG, Logger::CONFIG) << msg;
 
     return MaskingsResult(MaskingsResult::CANNOT_READ_FILE, msg);
@@ -61,8 +60,7 @@ MaskingsResult Maskings::fromFile(std::string const& filename) {
   maskings.get()->_randomSeed = RandomGenerator::interval(UINT64_MAX);
 
   try {
-    std::shared_ptr<VPackBuilder> parsed =
-        velocypack::Parser::fromJson(definition);
+    std::shared_ptr<VPackBuilder> parsed = velocypack::Parser::fromJson(definition);
 
     ParseResult<Maskings> res = maskings->parse(parsed->slice());
 
@@ -72,8 +70,7 @@ MaskingsResult Maskings::fromFile(std::string const& filename) {
 
     return MaskingsResult(std::move(maskings));
   } catch (velocypack::Exception const& e) {
-    std::string msg =
-        "cannot parse maskings file '" + filename + "': " + e.what();
+    std::string msg = "cannot parse maskings file '" + filename + "': " + e.what();
     LOG_TOPIC(DEBUG, Logger::CONFIG) << msg << ". file content: " << definition;
 
     return MaskingsResult(MaskingsResult::CANNOT_PARSE_FILE, msg);
@@ -98,8 +95,8 @@ ParseResult<Maskings> Maskings::parse(VPackSlice const& def) {
     ParseResult<Collection> c = Collection::parse(this, entry.value);
 
     if (c.status != ParseResult<Collection>::VALID) {
-      return ParseResult<Maskings>(
-          (ParseResult<Maskings>::StatusCode)(int)c.status, c.message);
+      return ParseResult<Maskings>((ParseResult<Maskings>::StatusCode)(int)c.status,
+                                   c.message);
     }
 
     _collections[key] = c.result;
@@ -125,9 +122,9 @@ bool Maskings::shouldDumpStructure(std::string const& name) {
     case CollectionSelection::STRUCTURE:
       return true;
   }
-  
-  // should not get here. however, compiler warns about it 
-  TRI_ASSERT(false);   
+
+  // should not get here. however, compiler warns about it
+  TRI_ASSERT(false);
   return false;
 }
 
@@ -149,13 +146,12 @@ bool Maskings::shouldDumpData(std::string const& name) {
       return false;
   }
 
-  // should not get here. however, compiler warns about it 
-  TRI_ASSERT(false);   
+  // should not get here. however, compiler warns about it
+  TRI_ASSERT(false);
   return false;
 }
 
-VPackValue Maskings::maskedItem(Collection& collection,
-                                std::vector<std::string>& path,
+VPackValue Maskings::maskedItem(Collection& collection, std::vector<std::string>& path,
                                 std::string& buffer, VPackSlice const& data) {
   static std::string xxxx("xxxx");
 
@@ -209,8 +205,7 @@ VPackValue Maskings::maskedItem(Collection& collection,
 }
 
 void Maskings::addMaskedArray(Collection& collection, VPackBuilder& builder,
-                              std::vector<std::string>& path,
-                              VPackSlice const& data) {
+                              std::vector<std::string>& path, VPackSlice const& data) {
   for (auto const& entry : VPackArrayIterator(data)) {
     if (entry.isObject()) {
       VPackObjectBuilder ob(&builder);
@@ -226,8 +221,7 @@ void Maskings::addMaskedArray(Collection& collection, VPackBuilder& builder,
 }
 
 void Maskings::addMaskedObject(Collection& collection, VPackBuilder& builder,
-                               std::vector<std::string>& path,
-                               VPackSlice const& data) {
+                               std::vector<std::string>& path, VPackSlice const& data) {
   for (auto const& entry : VPackObjectIterator(data, false)) {
     std::string key = entry.key.copyString();
     VPackSlice const& value = entry.value;

@@ -152,6 +152,6 @@ class Thread {
 
   std::atomic<ThreadState> _state;
 };
-}
+}  // namespace arangodb
 
 #endif

@@ -29,8 +29,8 @@
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
 
 #include <arpa/inet.h>
-#include <sys/un.h>
 #include <sys/file.h>
+#include <sys/un.h>
 
 namespace arangodb {
 class EndpointUnixDomain final : public Endpoint {
@@ -75,7 +75,7 @@ class EndpointUnixDomain final : public Endpoint {
  private:
   std::string const _path;
 };
-}
+}  // namespace arangodb
 
 #endif
 

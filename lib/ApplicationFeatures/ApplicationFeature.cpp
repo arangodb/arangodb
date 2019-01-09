@@ -31,10 +31,7 @@ using namespace arangodb::options;
 namespace arangodb {
 namespace application_features {
 
-ApplicationFeature::ApplicationFeature(
-    ApplicationServer& server,
-    std::string const& name
-)
+ApplicationFeature::ApplicationFeature(ApplicationServer& server, std::string const& name)
     : _server(server),
       _name(name),
       _state(ApplicationServer::FeatureState::UNINITIALIZED),
@@ -117,7 +114,8 @@ void ApplicationFeature::determineAncestors() {
 
   std::vector<std::string> path;
 
-  std::function<void(std::string const&)> build = [this, &build, &path](std::string const& name) {
+  std::function<void(std::string const&)> build = [this, &build,
+                                                   &path](std::string const& name) {
     // lookup the feature first. it may not exist
     if (!this->server()->exists(name)) {
       // feature not found. no worries
@@ -133,8 +131,9 @@ void ApplicationFeature::determineAncestors() {
           if (ancestor == _name) {
             path.emplace_back(ancestor);
             THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_INTERNAL,
-              "dependencies for feature '" + _name + "' are cyclic: " + arangodb::basics::StringUtils::join(path, " <= "));
+                TRI_ERROR_INTERNAL,
+                "dependencies for feature '" + _name + "' are cyclic: " +
+                    arangodb::basics::StringUtils::join(path, " <= "));
           }
           build(ancestor);
         }
@@ -147,5 +146,5 @@ void ApplicationFeature::determineAncestors() {
   _ancestorsDetermined = true;
 }
 
-} // application_features
-} // arangodb
+}  // namespace application_features
+}  // namespace arangodb

@@ -42,5 +42,5 @@ AQLFeaturePhase::AQLFeaturePhase(ApplicationServer& server)
   startsAfter("TraverserEngineRegistry");
 }
 
-} // application_features
-} // arangodb
+}  // namespace application_features
+}  // namespace arangodb

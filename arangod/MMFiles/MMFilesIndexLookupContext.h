@@ -39,10 +39,8 @@ class Methods;
 class MMFilesIndexLookupContext {
  public:
   MMFilesIndexLookupContext() = delete;
-  MMFilesIndexLookupContext(transaction::Methods* trx, 
-                            LogicalCollection* collection, 
-                            ManagedDocumentResult* result, 
-                            size_t numFields);
+  MMFilesIndexLookupContext(transaction::Methods* trx, LogicalCollection* collection,
+                            ManagedDocumentResult* result, size_t numFields);
 
   ~MMFilesIndexLookupContext() {}
 
@@ -59,6 +57,6 @@ class MMFilesIndexLookupContext {
   size_t const _numFields;
 };
 
-}
+}  // namespace arangodb
 
 #endif

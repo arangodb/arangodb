@@ -36,17 +36,21 @@
 #include <thread>
 
 /// @brief construct locker with file and line information
-#define READ_LOCKER(obj, lock) \
-  arangodb::basics::ReadLocker<typename std::decay<decltype (lock)>::type> obj(&lock, arangodb::basics::LockerType::BLOCKING, true, __FILE__, __LINE__)
+#define READ_LOCKER(obj, lock)                                                 \
+  arangodb::basics::ReadLocker<typename std::decay<decltype(lock)>::type> obj( \
+      &lock, arangodb::basics::LockerType::BLOCKING, true, __FILE__, __LINE__)
 
-#define READ_LOCKER_EVENTUAL(obj, lock) \
-  arangodb::basics::ReadLocker<typename std::decay<decltype (lock)>::type> obj(&lock, arangodb::basics::LockerType::EVENTUAL, true, __FILE__, __LINE__)
+#define READ_LOCKER_EVENTUAL(obj, lock)                                        \
+  arangodb::basics::ReadLocker<typename std::decay<decltype(lock)>::type> obj( \
+      &lock, arangodb::basics::LockerType::EVENTUAL, true, __FILE__, __LINE__)
 
-#define TRY_READ_LOCKER(obj, lock) \
-  arangodb::basics::ReadLocker<typename std::decay<decltype (lock)>::type> obj(&lock, arangodb::basics::LockerType::TRY, true, __FILE__, __LINE__)
+#define TRY_READ_LOCKER(obj, lock)                                             \
+  arangodb::basics::ReadLocker<typename std::decay<decltype(lock)>::type> obj( \
+      &lock, arangodb::basics::LockerType::TRY, true, __FILE__, __LINE__)
 
-#define CONDITIONAL_READ_LOCKER(obj, lock, condition) \
-  arangodb::basics::ReadLocker<typename std::decay<decltype (lock)>::type> obj(&lock, arangodb::basics::LockerType::BLOCKING, (condition), __FILE__, __LINE__)
+#define CONDITIONAL_READ_LOCKER(obj, lock, condition)                          \
+  arangodb::basics::ReadLocker<typename std::decay<decltype(lock)>::type> obj( \
+      &lock, arangodb::basics::LockerType::BLOCKING, (condition), __FILE__, __LINE__)
 
 namespace arangodb {
 namespace basics {
@@ -54,7 +58,7 @@ namespace basics {
 /// @brief read locker
 /// A ReadLocker read-locks a read-write lock during its lifetime and unlocks
 /// the lock when it is destroyed.
-template<class LockType>
+template <class LockType>
 class ReadLocker {
   ReadLocker(ReadLocker const&) = delete;
   ReadLocker& operator=(ReadLocker const&) = delete;
@@ -62,10 +66,14 @@ class ReadLocker {
  public:
   /// @brief acquires a read-lock
   /// The constructor acquires a read lock, the destructor unlocks the lock.
-  ReadLocker(LockType* readWriteLock, LockerType type, bool condition, char const* file, int line)
-      : _readWriteLock(readWriteLock), _file(file), _line(line), 
+  ReadLocker(LockType* readWriteLock, LockerType type, bool condition,
+             char const* file, int line)
+      : _readWriteLock(readWriteLock),
+        _file(file),
+        _line(line),
 #ifdef TRI_SHOW_LOCK_TIME
-        _isLocked(false), _time(0.0) {
+        _isLocked(false),
+        _time(0.0) {
 #else
         _isLocked(false) {
 #endif
@@ -101,14 +109,15 @@ class ReadLocker {
 
 #ifdef TRI_SHOW_LOCK_TIME
     if (_time > TRI_SHOW_LOCK_THRESHOLD) {
-      LOG_TOPIC(INFO, arangodb::Logger::PERFORMANCE) << "ReadLocker " << _file << ":" << _line << " took " << _time << " s";
+      LOG_TOPIC(INFO, arangodb::Logger::PERFORMANCE)
+          << "ReadLocker " << _file << ":" << _line << " took " << _time << " s";
     }
 #endif
   }
-  
+
   /// @brief whether or not we acquired the lock
   bool isLocked() const { return _isLocked; }
-  
+
   /// @brief eventually acquire the read lock
   void lockEventual() {
     while (!tryLock()) {
@@ -116,22 +125,22 @@ class ReadLocker {
     }
     TRI_ASSERT(_isLocked);
   }
-  
+
   bool tryLock() {
     TRI_ASSERT(!_isLocked);
     if (_readWriteLock->tryReadLock()) {
       _isLocked = true;
     }
-    return _isLocked; 
+    return _isLocked;
   }
 
   /// @brief acquire the read lock, blocking
-  void lock() { 
+  void lock() {
     TRI_ASSERT(!_isLocked);
     _readWriteLock->readLock();
     _isLocked = true;
   }
-  
+
   /// @brief unlocks the lock if we own it
   bool unlock() {
     if (_isLocked) {
@@ -170,7 +179,7 @@ class ReadLocker {
 #endif
 };
 
-}
-}
+}  // namespace basics
+}  // namespace arangodb
 
 #endif

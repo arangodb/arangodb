@@ -30,9 +30,9 @@ using namespace arangodb::aql;
 
 /// @brief create a short string storage instance
 ShortStringStorage::ShortStringStorage(ResourceMonitor* resourceMonitor, size_t blockSize)
-    : _resourceMonitor(resourceMonitor), 
-      _blockSize(blockSize), 
-      _current(nullptr), 
+    : _resourceMonitor(resourceMonitor),
+      _blockSize(blockSize),
+      _current(nullptr),
       _end(nullptr) {
   TRI_ASSERT(blockSize >= 64);
 }
@@ -79,7 +79,7 @@ char* ShortStringStorage::unescape(char const* p, size_t length, size_t* outLeng
   TRI_ASSERT(_current != nullptr);
   TRI_ASSERT(_end != nullptr);
   TRI_ASSERT(_current + length + 1 <= _end);
-  
+
   char* position = _current;
   *outLength = TRI_UnescapeUtf8StringInPlace(_current, p, length);
   // add NUL byte at the end

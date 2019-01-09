@@ -23,11 +23,11 @@
 #ifndef ARANGODB_EXPORT_EXPORT_FEATURE_H
 #define ARANGODB_EXPORT_EXPORT_FEATURE_H 1
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "V8Client/ArangoClientHelper.h"
 #include "lib/Rest/CommonDefines.h"
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 
@@ -37,16 +37,15 @@ class GeneralClientConnection;
 class SimpleHttpClient;
 class SimpleHttpResult;
 
-}
+}  // namespace httpclient
 
 class ExportFeature final : public application_features::ApplicationFeature,
-                               public ArangoClientHelper {
+                            public ArangoClientHelper {
  public:
   ExportFeature(application_features::ApplicationServer& server, int* result);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(
-      std::shared_ptr<options::ProgramOptions> options) override;
+  void validateOptions(std::shared_ptr<options::ProgramOptions> options) override;
   void prepare() override final;
   void start() override final;
 
@@ -57,10 +56,13 @@ class ExportFeature final : public application_features::ApplicationFeature,
   void writeBatch(int fd, VPackArrayIterator it, std::string const& fileName);
   void graphExport(httpclient::SimpleHttpClient* httpClient);
   void writeGraphBatch(int fd, VPackArrayIterator it, std::string const& fileName);
-  void xgmmlWriteOneAtt(int fd, std::string const& fileName, VPackSlice const& slice, std::string const& name, int deep = 0);
+  void xgmmlWriteOneAtt(int fd, std::string const& fileName, VPackSlice const& slice,
+                        std::string const& name, int deep = 0);
 
   void writeToFile(int fd, std::string const& string, std::string const& fileName);
-  std::shared_ptr<VPackBuilder> httpCall(httpclient::SimpleHttpClient* httpClient, std::string const& url, arangodb::rest::RequestType, std::string postBody = "");
+  std::shared_ptr<VPackBuilder> httpCall(httpclient::SimpleHttpClient* httpClient,
+                                         std::string const& url, arangodb::rest::RequestType,
+                                         std::string postBody = "");
 
   std::vector<std::string> _collections;
   std::string _query;
@@ -69,7 +71,7 @@ class ExportFeature final : public application_features::ApplicationFeature,
   std::string _typeExport;
   std::string _csvFieldOptions;
   std::vector<std::string> _csvFields;
-  bool        _xgmmlLabelOnly;
+  bool _xgmmlLabelOnly;
 
   std::string _outputDirectory;
   bool _overwrite;
@@ -84,6 +86,6 @@ class ExportFeature final : public application_features::ApplicationFeature,
   int* _result;
 };
 
-}
+}  // namespace arangodb
 
 #endif

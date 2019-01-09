@@ -34,19 +34,14 @@ class RocksDBIndexFactory final : public IndexFactory {
   ~RocksDBIndexFactory() = default;
 
   /// create initial system indexes
-  void fillSystemIndexes(
-    arangodb::LogicalCollection& col,
-    std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes
-  ) const override;
+  void fillSystemIndexes(arangodb::LogicalCollection& col,
+                         std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const override;
 
   /// @brief create indexes from a list of index definitions
-  void prepareIndexes(
-    LogicalCollection& col,
-    arangodb::velocypack::Slice const& indexesSlice,
-    std::vector<std::shared_ptr<arangodb::Index>>& indexes
-  ) const override;
+  void prepareIndexes(LogicalCollection& col, arangodb::velocypack::Slice const& indexesSlice,
+                      std::vector<std::shared_ptr<arangodb::Index>>& indexes) const override;
 };
 
-}
+}  // namespace arangodb
 
 #endif

@@ -33,21 +33,17 @@ namespace aql {
 struct Function;
 class AqlFunctionFeature;
 
-} // aql
+}  // namespace aql
 
 namespace iresearch {
 
-bool addFunction(
-  arangodb::aql::AqlFunctionFeature& functions,
-  arangodb::aql::Function const& function
-);
+bool addFunction(arangodb::aql::AqlFunctionFeature& functions,
+                 arangodb::aql::Function const& function);
 
-arangodb::aql::Function const* getFunction(
-  arangodb::aql::AqlFunctionFeature& functions,
-  std::string const& name
-);
+arangodb::aql::Function const* getFunction(arangodb::aql::AqlFunctionFeature& functions,
+                                           std::string const& name);
 
-} // iresearch
-} // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
 #endif

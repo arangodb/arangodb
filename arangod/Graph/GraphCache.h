@@ -38,8 +38,8 @@ namespace graph {
 class GraphCache {
  public:
   // save now() along with the graph
-  using EntryType = std::pair<std::chrono::steady_clock::time_point,
-                              std::shared_ptr<const Graph>>;
+  using EntryType =
+      std::pair<std::chrono::steady_clock::time_point, std::shared_ptr<const Graph>>;
   using CacheType = std::unordered_map<std::string, EntryType>;
 
   // TODO The cache saves the graph names globally, not per database!

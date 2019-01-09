@@ -55,8 +55,7 @@ static inline v8::Handle<v8::Value> ObjectVPackString(v8::Isolate* isolate,
 /// @brief converts a VelocyValueType::Object into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ObjectVPackObject(v8::Isolate* isolate,
-                                               VPackSlice const& slice,
+static v8::Handle<v8::Value> ObjectVPackObject(v8::Isolate* isolate, VPackSlice const& slice,
                                                VPackOptions const* options,
                                                VPackSlice const* base) {
   TRI_ASSERT(slice.isObject());
@@ -90,32 +89,26 @@ static v8::Handle<v8::Value> ObjectVPackObject(v8::Isolate* isolate,
         sub = TRI_VPackToV8(isolate, v, options, &slice);
       }
 
-      uint8_t which =
-          static_cast<uint8_t>(k.getUInt()) + VelocyPackHelper::AttributeBase;
+      uint8_t which = static_cast<uint8_t>(k.getUInt()) + VelocyPackHelper::AttributeBase;
       switch (which) {
         case VelocyPackHelper::KeyAttribute: {
-          object->ForceSet(v8::Local<v8::String>::New(isolate, v8g->_KeyKey),
-                           sub);
+          object->ForceSet(v8::Local<v8::String>::New(isolate, v8g->_KeyKey), sub);
           break;
         }
         case VelocyPackHelper::RevAttribute: {
-          object->ForceSet(v8::Local<v8::String>::New(isolate, v8g->_RevKey),
-                           sub);
+          object->ForceSet(v8::Local<v8::String>::New(isolate, v8g->_RevKey), sub);
           break;
         }
         case VelocyPackHelper::IdAttribute: {
-          object->ForceSet(v8::Local<v8::String>::New(isolate, v8g->_IdKey),
-                           sub);
+          object->ForceSet(v8::Local<v8::String>::New(isolate, v8g->_IdKey), sub);
           break;
         }
         case VelocyPackHelper::FromAttribute: {
-          object->ForceSet(v8::Local<v8::String>::New(isolate, v8g->_FromKey),
-                           sub);
+          object->ForceSet(v8::Local<v8::String>::New(isolate, v8g->_FromKey), sub);
           break;
         }
         case VelocyPackHelper::ToAttribute: {
-          object->ForceSet(v8::Local<v8::String>::New(isolate, v8g->_ToKey),
-                           sub);
+          object->ForceSet(v8::Local<v8::String>::New(isolate, v8g->_ToKey), sub);
           break;
         }
       }
@@ -135,16 +128,14 @@ static v8::Handle<v8::Value> ObjectVPackObject(v8::Isolate* isolate,
 /// @brief converts a VelocyValueType::Array into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ObjectVPackArray(v8::Isolate* isolate,
-                                              VPackSlice const& slice,
+static v8::Handle<v8::Value> ObjectVPackArray(v8::Isolate* isolate, VPackSlice const& slice,
                                               VPackOptions const* options,
                                               VPackSlice const* base) {
   TRI_ASSERT(slice.isArray());
-  
+
   VPackArrayIterator it(slice);
-  
-  v8::Handle<v8::Array> object =
-      v8::Array::New(isolate, static_cast<int>(it.size()));
+
+  v8::Handle<v8::Array> object = v8::Array::New(isolate, static_cast<int>(it.size()));
 
   if (object.IsEmpty()) {
     return v8::Undefined(isolate);
@@ -152,8 +143,7 @@ static v8::Handle<v8::Value> ObjectVPackArray(v8::Isolate* isolate,
 
   uint32_t j = 0;
   while (it.valid()) {
-    v8::Handle<v8::Value> val =
-        TRI_VPackToV8(isolate, it.value(), options, &slice);
+    v8::Handle<v8::Value> val = TRI_VPackToV8(isolate, it.value(), options, &slice);
     if (!val.IsEmpty()) {
       object->Set(j++, val);
     }
@@ -170,10 +160,8 @@ static v8::Handle<v8::Value> ObjectVPackArray(v8::Isolate* isolate,
 /// @brief converts a VPack value into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_VPackToV8(v8::Isolate* isolate,
-                                    VPackSlice const& slice,
-                                    VPackOptions const* options,
-                                    VPackSlice const* base) {
+v8::Handle<v8::Value> TRI_VPackToV8(v8::Isolate* isolate, VPackSlice const& slice,
+                                    VPackOptions const* options, VPackSlice const* base) {
   switch (slice.type()) {
     case VPackValueType::Null: {
       return v8::Null(isolate);
@@ -198,8 +186,7 @@ v8::Handle<v8::Value> TRI_VPackToV8(v8::Isolate* isolate,
       }
       if (value >= 0 && value <= 4294967295LL) {
         // value is within bounds of a uint32_t
-        return v8::Integer::NewFromUnsigned(isolate,
-                                            static_cast<uint32_t>(value));
+        return v8::Integer::NewFromUnsigned(isolate, static_cast<uint32_t>(value));
       }
       // must use double to avoid truncation
       return v8::Number::New(isolate, static_cast<double>(slice.getInt()));
@@ -208,8 +195,7 @@ v8::Handle<v8::Value> TRI_VPackToV8(v8::Isolate* isolate,
       uint64_t value = slice.getUInt();
       if (value <= 4294967295ULL) {
         // value is within bounds of a uint32_t
-        return v8::Integer::NewFromUnsigned(isolate,
-                                            static_cast<uint32_t>(value));
+        return v8::Integer::NewFromUnsigned(isolate, static_cast<uint32_t>(value));
       }
       // must use double to avoid truncation
       return v8::Number::New(isolate, static_cast<double>(slice.getUInt()));
@@ -228,17 +214,14 @@ v8::Handle<v8::Value> TRI_VPackToV8(v8::Isolate* isolate,
     }
     case VPackValueType::External: {
       // resolve external
-      return TRI_VPackToV8(isolate, VPackSlice(slice.getExternal()), options,
-                           base);
+      return TRI_VPackToV8(isolate, VPackSlice(slice.getExternal()), options, base);
     }
     case VPackValueType::Custom: {
-      if (options == nullptr || options->customTypeHandler == nullptr ||
-          base == nullptr) {
+      if (options == nullptr || options->customTypeHandler == nullptr || base == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "Could not extract custom attribute.");
       }
-      std::string id =
-          options->customTypeHandler->toString(slice, options, *base);
+      std::string id = options->customTypeHandler->toString(slice, options, *base);
       return TRI_V8_STD_STRING(isolate, id);
     }
     case VPackValueType::None:
@@ -247,12 +230,8 @@ v8::Handle<v8::Value> TRI_VPackToV8(v8::Isolate* isolate,
 }
 
 struct BuilderContext {
-  BuilderContext(v8::Isolate* isolate, VPackBuilder& builder,
-                 bool keepTopLevelOpen)
-      : isolate(isolate),
-        builder(builder),
-        level(0),
-        keepTopLevelOpen(keepTopLevelOpen) {}
+  BuilderContext(v8::Isolate* isolate, VPackBuilder& builder, bool keepTopLevelOpen)
+      : isolate(isolate), builder(builder), level(0), keepTopLevelOpen(keepTopLevelOpen) {}
 
   v8::Isolate* isolate;
   v8::Handle<v8::Value> toJsonKey;
@@ -267,8 +246,7 @@ struct BuilderContext {
 
 template <typename T, bool inObject>
 static inline void AddValue(BuilderContext& context,
-                            arangodb::StringRef const& attributeName,
-                            T const& value) {
+                            arangodb::StringRef const& attributeName, T const& value) {
   if (inObject) {
     context.builder.addUnchecked(attributeName.begin(), attributeName.size(), value);
   } else {
@@ -281,14 +259,11 @@ static inline void AddValue(BuilderContext& context,
 ////////////////////////////////////////////////////////////////////////////////
 
 template <bool performAllChecks, bool inObject>
-static int V8ToVPack(BuilderContext& context,
-                     v8::Handle<v8::Value> const parameter,
-                     arangodb::StringRef const& attributeName,
-                     bool convertFunctionsToNull) {
-  if (parameter->IsNullOrUndefined() || 
+static int V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> const parameter,
+                     arangodb::StringRef const& attributeName, bool convertFunctionsToNull) {
+  if (parameter->IsNullOrUndefined() ||
       (convertFunctionsToNull && parameter->IsFunction())) {
-    AddValue<VPackValue, inObject>(context, attributeName,
-                                   VPackValue(VPackValueType::Null));
+    AddValue<VPackValue, inObject>(context, attributeName, VPackValue(VPackValueType::Null));
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -306,8 +281,8 @@ static int V8ToVPack(BuilderContext& context,
     }
 
     if (parameter->IsUint32()) {
-      AddValue<VPackValue, inObject>(
-          context, attributeName, VPackValue(parameter->ToUint32()->Value()));
+      AddValue<VPackValue, inObject>(context, attributeName,
+                                     VPackValue(parameter->ToUint32()->Value()));
       return TRI_ERROR_NO_ERROR;
     }
 
@@ -323,9 +298,9 @@ static int V8ToVPack(BuilderContext& context,
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
-    AddValue<VPackValuePair, inObject>(
-        context, attributeName,
-        VPackValuePair(*str, str.length(), VPackValueType::String));
+    AddValue<VPackValuePair, inObject>(context, attributeName,
+                                       VPackValuePair(*str, str.length(),
+                                                      VPackValueType::String));
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -348,8 +323,8 @@ static int V8ToVPack(BuilderContext& context,
         return TRI_ERROR_BAD_PARAMETER;
       }
 
-      int res = V8ToVPack<performAllChecks, false>(context, value,
-                                                   arangodb::StringRef(), convertFunctionsToNull);
+      int res = V8ToVPack<performAllChecks, false>(context, value, arangodb::StringRef(),
+                                                   convertFunctionsToNull);
 
       --context.level;
 
@@ -369,16 +344,14 @@ static int V8ToVPack(BuilderContext& context,
       if (parameter->IsBooleanObject()) {
         AddValue<VPackValue, inObject>(
             context, attributeName,
-            VPackValue(v8::Handle<v8::BooleanObject>::Cast(parameter)
-                           ->BooleanValue()));
+            VPackValue(v8::Handle<v8::BooleanObject>::Cast(parameter)->BooleanValue()));
         return TRI_ERROR_NO_ERROR;
       }
 
       if (parameter->IsNumberObject()) {
         AddValue<VPackValue, inObject>(
             context, attributeName,
-            VPackValue(
-                v8::Handle<v8::NumberObject>::Cast(parameter)->NumberValue()));
+            VPackValue(v8::Handle<v8::NumberObject>::Cast(parameter)->NumberValue()));
         return TRI_ERROR_NO_ERROR;
       }
 
@@ -389,14 +362,13 @@ static int V8ToVPack(BuilderContext& context,
           return TRI_ERROR_OUT_OF_MEMORY;
         }
 
-        AddValue<VPackValuePair, inObject>(
-            context, attributeName,
-            VPackValuePair(*str, str.length(), VPackValueType::String));
+        AddValue<VPackValuePair, inObject>(context, attributeName,
+                                           VPackValuePair(*str, str.length(),
+                                                          VPackValueType::String));
         return TRI_ERROR_NO_ERROR;
       }
 
-      if (parameter->IsRegExp() || parameter->IsFunction() ||
-          parameter->IsExternal()) {
+      if (parameter->IsRegExp() || parameter->IsFunction() || parameter->IsExternal()) {
         return TRI_ERROR_BAD_PARAMETER;
       }
     }
@@ -409,17 +381,18 @@ static int V8ToVPack(BuilderContext& context,
         // call it if yes
         v8::Handle<v8::Value> func = o->Get(context.toJsonKey);
         if (func->IsFunction()) {
-          v8::Handle<v8::Function> toJson =
-              v8::Handle<v8::Function>::Cast(func);
+          v8::Handle<v8::Function> toJson = v8::Handle<v8::Function>::Cast(func);
 
           // assign a dummy entry to the args array even if we don't need it.
-          // this prevents "error C2466: cannot allocate an array of constant size 0" in MSVC
-          v8::Handle<v8::Value> args[] = { v8::Null(context.isolate) };
+          // this prevents "error C2466: cannot allocate an array of constant
+          // size 0" in MSVC
+          v8::Handle<v8::Value> args[] = {v8::Null(context.isolate)};
           v8::Handle<v8::Value> converted = toJson->Call(o, 0, args);
 
           if (!converted.IsEmpty()) {
             // return whatever toJSON returned
-            return V8ToVPack<performAllChecks, inObject>(context, converted, attributeName, convertFunctionsToNull);
+            return V8ToVPack<performAllChecks, inObject>(context, converted, attributeName,
+                                                         convertFunctionsToNull);
           }
         }
 
@@ -453,8 +426,9 @@ static int V8ToVPack(BuilderContext& context,
         return TRI_ERROR_BAD_PARAMETER;
       }
 
-      int res = V8ToVPack<performAllChecks, true>(
-          context, value, arangodb::StringRef(*str, str.length()), convertFunctionsToNull);
+      int res = V8ToVPack<performAllChecks, true>(context, value,
+                                                  arangodb::StringRef(*str, str.length()),
+                                                  convertFunctionsToNull);
 
       --context.level;
 
@@ -493,8 +467,7 @@ int TRI_V8ToVPack(v8::Isolate* isolate, VPackBuilder& builder,
 /// does not contain types such as Function, Date or RegExp
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_V8ToVPackSimple(v8::Isolate* isolate,
-                        arangodb::velocypack::Builder& builder,
+int TRI_V8ToVPackSimple(v8::Isolate* isolate, arangodb::velocypack::Builder& builder,
                         v8::Handle<v8::Value> const value) {
   // a HandleScope must have been created by the caller already
   BuilderContext context(isolate, builder, false);

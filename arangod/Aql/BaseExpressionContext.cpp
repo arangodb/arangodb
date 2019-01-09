@@ -22,10 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "BaseExpressionContext.h"
-#include "Basics/Exceptions.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Variable.h"
+#include "Basics/Exceptions.h"
 
 using namespace arangodb::aql;
 
@@ -37,7 +37,8 @@ Variable const* BaseExpressionContext::getVariable(size_t i) const {
   return (*_vars)[i];
 }
 
-AqlValue BaseExpressionContext::getVariableValue(Variable const* variable, bool doCopy, bool& mustDestroy) const {
+AqlValue BaseExpressionContext::getVariableValue(Variable const* variable, bool doCopy,
+                                                 bool& mustDestroy) const {
   TRI_ASSERT(_vars != nullptr);
   TRI_ASSERT(_regs != nullptr);
   TRI_ASSERT(_argv != nullptr);

@@ -483,7 +483,7 @@ class Utf32String {
   Utf32String& operator=(const Utf32String& that) {
     if (this != &that) {
       delete[] _data;
-      _data = new char32_t[that._length]();
+      _data = new char32_t[that._length + 1]();
       _length = that._length;
       memcpy(_data, that._data, sizeof(char32_t) * _length);
     }

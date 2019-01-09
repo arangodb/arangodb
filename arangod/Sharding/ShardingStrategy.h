@@ -33,7 +33,7 @@ class ShardingInfo;
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 class ShardingStrategy {
   ShardingStrategy(ShardingStrategy const&) = delete;
@@ -42,8 +42,8 @@ class ShardingStrategy {
  public:
   typedef std::function<std::unique_ptr<ShardingStrategy>(ShardingInfo*)> FactoryFunction;
 
-  ShardingStrategy() = default; 
-  virtual ~ShardingStrategy() = default; 
+  ShardingStrategy() = default;
+  virtual ~ShardingStrategy() = default;
 
   virtual bool isCompatible(ShardingStrategy const* other) const;
 
@@ -70,13 +70,12 @@ class ShardingStrategy {
   /// `usesDefaultShardingAttributes` is used set to `true` if and only if
   /// `_key` is the one and only sharding attribute.
   ////////////////////////////////////////////////////////////////////////////////
-  
-  virtual int getResponsibleShard(arangodb::velocypack::Slice,
-                                  bool docComplete, ShardID& shardID,
-                                  bool& usesDefaultShardKeys,
+
+  virtual int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete,
+                                  ShardID& shardID, bool& usesDefaultShardKeys,
                                   std::string const& key = "") = 0;
 };
 
-}
+}  // namespace arangodb
 
 #endif

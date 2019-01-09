@@ -54,8 +54,7 @@ struct HITSComputation
     : public VertexComputation<HITSValue, int8_t, SenderMessage<double>> {
   HITSComputation() {}
 
-  void compute(
-      MessageIterator<SenderMessage<double>> const& messages) override {
+  void compute(MessageIterator<SenderMessage<double>> const& messages) override {
     double auth = 0.0;
     double hub = 0.0;
     // we don't know our incoming neighbours in step 0, therfore we need step 0
@@ -95,8 +94,8 @@ struct HITSComputation
   }
 };
 
-VertexComputation<HITSValue, int8_t, SenderMessage<double>>*
-HITS::createComputation(WorkerConfig const* config) const {
+VertexComputation<HITSValue, int8_t, SenderMessage<double>>* HITS::createComputation(
+    WorkerConfig const* config) const {
   return new HITSComputation();
 }
 
@@ -107,8 +106,7 @@ struct HITSGraphFormat : public GraphFormat<HITSValue, int8_t> {
 
   size_t estimatedEdgeSize() const override { return 0; };
 
-  size_t copyVertexData(std::string const& documentId,
-                        arangodb::velocypack::Slice document,
+  size_t copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
                         HITSValue* targetPtr, size_t maxSize) override {
     return sizeof(HITSValue);
   }
