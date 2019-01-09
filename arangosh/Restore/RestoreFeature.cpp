@@ -483,7 +483,7 @@ arangodb::Result sendRestoreData(arangodb::httpclient::SimpleHttpClient& httpCli
         parser.parse(p, length);
       } catch (arangodb::velocypack::Exception const& ex) {
         return {TRI_ERROR_HTTP_CORRUPTED_JSON, ex.what()};
-      } catch (std::bad_alloc const& ex) {
+      } catch (std::bad_alloc const&) {
         return {TRI_ERROR_OUT_OF_MEMORY};
       } catch (std::exception const& ex) {
         return {TRI_ERROR_INTERNAL, ex.what()};
