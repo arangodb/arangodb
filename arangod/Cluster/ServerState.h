@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
+#include "VocBase/voc-types.h"
 
 #include <iosfwd>
 
@@ -239,6 +240,8 @@ class ServerState {
 
   bool getFoxxmasterQueueupdate() const noexcept;
 
+  TRI_voc_tick_t getFoxxmasterSince() const noexcept;
+
   std::string getPersistedId();
   bool hasPersistedId();
   bool writePersistedId(std::string const&);
@@ -264,6 +267,8 @@ class ServerState {
 
   /// file where the server persists it's UUID
   std::string getUuidFilename();
+
+  void setFoxxmasterSinceNow();
 
   /// @brief the server's id, can be set just once
   std::string _id;
@@ -295,6 +300,9 @@ class ServerState {
   std::string _foxxmaster;
 
   bool _foxxmasterQueueupdate;
+
+  // @brief point in time since which this server is the Foxxmaster
+  TRI_voc_tick_t _foxxmasterSince;
 };
 }  // namespace arangodb
 
