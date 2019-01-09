@@ -651,10 +651,12 @@ IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
       value = valNode->getString();
     } else if (valNode->isObject() || valNode->isArray()) {
       value = highest;
-    } else if (valNode->isNullValue() || valNode->isBoolValue()) {
+    } else if (valNode->isNullValue() || valNode->isBoolValue() || valNode->isIntValue()) {
       // keep lowest
     } else {
+      LOG_TOPIC(ERR, Logger::AQL) << "unhandled type for valNode: " << valNode->getTypeString();
       TRI_ASSERT(false);
+      break;
     }
 
     if (flip) {
