@@ -158,18 +158,16 @@ irs::utf8_path getPersistedPath(arangodb::DatabasePathFeature const& dbPathFeatu
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts ArangoDB document into an IResearch data store
 ////////////////////////////////////////////////////////////////////////////////
-inline arangodb::Result insertDocument(
-    irs::index_writer::documents_context& ctx,
-    arangodb::iresearch::FieldIterator& body,
-    arangodb::velocypack::Slice const& document,
-    arangodb::LocalDocumentId const& documentId,
-    arangodb::iresearch::IResearchLinkMeta const& meta,
-    TRI_idx_iid_t id
-) {
-  body.reset(document, meta); // reset reusable container to doc
+inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx,
+                                       arangodb::iresearch::FieldIterator& body,
+                                       arangodb::velocypack::Slice const& document,
+                                       arangodb::LocalDocumentId const& documentId,
+                                       arangodb::iresearch::IResearchLinkMeta const& meta,
+                                       TRI_idx_iid_t id) {
+  body.reset(document, meta);  // reset reusable container to doc
 
   if (!body.valid()) {
-    return arangodb::Result(); // no fields to index
+    return arangodb::Result();  // no fields to index
   }
 
   auto doc = ctx.insert();
@@ -192,16 +190,15 @@ inline arangodb::Result insertDocument(
   auto docPk = arangodb::iresearch::DocumentPrimaryKey::encode(documentId);
 
   // reuse the 'Field' instance stored inside the 'FieldIterator'
-  arangodb::iresearch::Field::setPkValue(
-    const_cast<arangodb::iresearch::Field&>(field), docPk
-  );
+  arangodb::iresearch::Field::setPkValue(const_cast<arangodb::iresearch::Field&>(field), docPk);
   doc.insert(irs::action::index_store, field);
 
   if (!doc) {
     return arangodb::Result(
-      TRI_ERROR_INTERNAL,
-      std::string("failed to insert document into arangosearch link '") + std::to_string(id) + "', revision '" + std::to_string(documentId.id()) + "'"
-    );
+        TRI_ERROR_INTERNAL,
+        std::string("failed to insert document into arangosearch link '") +
+            std::to_string(id) + "', revision '" +
+            std::to_string(documentId.id()) + "'");
   }
 
   return arangodb::Result();
@@ -378,9 +375,8 @@ void IResearchLink::batchInsert(
 
   try {
     for (FieldIterator body(trx); begin != end; ++begin) {
-      auto res = insertDocument(
-        ctx->_ctx, body, begin->second, begin->first, _meta, id()
-      );
+      auto res =
+          insertDocument(ctx->_ctx, body, begin->second, begin->first, _meta, id());
 
       if (!res.ok()) {
         LOG_TOPIC(WARN, arangodb::iresearch::TOPIC) << res.errorMessage();
@@ -987,27 +983,29 @@ arangodb::Result IResearchLink::insert(arangodb::transaction::Methods& trx,
   }
 
   auto insertImpl = [this, &trx, &doc, &documentId](
-      irs::index_writer::documents_context& ctx
-  )->arangodb::Result {
+                        irs::index_writer::documents_context& ctx) -> arangodb::Result {
     try {
       FieldIterator body(trx);
 
       return insertDocument(ctx, body, doc, documentId, _meta, id());
     } catch (arangodb::basics::Exception const& e) {
-      return arangodb::Result(
-        e.code(),
-        std::string("caught exception while inserting document into arangosearch link '") + std::to_string(id()) + "', revision '" + std::to_string(documentId.id()) + "': " + e.what()
-      );
+      return arangodb::Result(e.code(),
+                              std::string("caught exception while inserting "
+                                          "document into arangosearch link '") +
+                                  std::to_string(id()) + "', revision '" +
+                                  std::to_string(documentId.id()) + "': " + e.what());
     } catch (std::exception const& e) {
-      return arangodb::Result(
-        TRI_ERROR_INTERNAL,
-        std::string("caught exception while inserting document into arangosearch link '") + std::to_string(id()) + "', revision '" + std::to_string(documentId.id()) + "': " + e.what()
-      );
+      return arangodb::Result(TRI_ERROR_INTERNAL,
+                              std::string("caught exception while inserting "
+                                          "document into arangosearch link '") +
+                                  std::to_string(id()) + "', revision '" +
+                                  std::to_string(documentId.id()) + "': " + e.what());
     } catch (...) {
-      return arangodb::Result(
-        TRI_ERROR_INTERNAL,
-        std::string("caught exception while inserting document into arangosearch link '") + std::to_string(id()) + "', revision '" + std::to_string(documentId.id()) + "'"
-      );
+      return arangodb::Result(TRI_ERROR_INTERNAL,
+                              std::string("caught exception while inserting "
+                                          "document into arangosearch link '") +
+                                  std::to_string(id()) + "', revision '" +
+                                  std::to_string(documentId.id()) + "'");
     }
   };
 
@@ -1133,30 +1131,31 @@ size_t IResearchLink::memory() const {
   return size;
 }
 
-arangodb::Result IResearchLink::properties(
-    irs::index_writer::segment_options const& properties
-) {
-  SCOPED_LOCK(_asyncSelf->mutex()); // '_dataStore' can be asynchronously modified
+arangodb::Result IResearchLink::properties(irs::index_writer::segment_options const& properties) {
+  SCOPED_LOCK(_asyncSelf->mutex());  // '_dataStore' can be asynchronously modified
 
   if (!*_asyncSelf) {
-    return arangodb::Result(
-      TRI_ERROR_ARANGO_INDEX_HANDLE_BAD, // the current link is no longer valid (checked after ReadLock aquisition)
-      std::string("failed to lock arangosearch link while modifying properties of arangosearch link '") + std::to_string(id()) + "'"
-    );
+    return arangodb::Result(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,  // the current link is no longer valid (checked after ReadLock aquisition)
+                            std::string(
+                                "failed to lock arangosearch link while "
+                                "modifying properties of arangosearch link '") +
+                                std::to_string(id()) + "'");
   }
 
-  TRI_ASSERT(_dataStore); // must be valid if _asyncSelf->get() is valid
+  TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->get() is valid
 
   try {
     _dataStore._writer->options(properties);
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-      << "caught exception while modifying properties of arangosearch link '" << id() << "': " << e.what();
+        << "caught exception while modifying properties of arangosearch link '"
+        << id() << "': " << e.what();
     IR_LOG_EXCEPTION();
     throw;
   } catch (...) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while modifying properties of arangosearch link '" << id() << "'";
+        << "caught exception while modifying properties of arangosearch link '"
+        << id() << "'";
     IR_LOG_EXCEPTION();
     throw;
   }

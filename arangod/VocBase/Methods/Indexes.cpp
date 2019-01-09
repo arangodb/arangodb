@@ -333,9 +333,9 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice const& inp
 
   VPackBuilder normalized;
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  auto res = engine->indexFactory().enhanceIndexDefinition(
-     input, normalized, create, ServerState::instance()->isCoordinator()
-  );
+  auto res =
+      engine->indexFactory().enhanceIndexDefinition(input, normalized, create,
+                                                    ServerState::instance()->isCoordinator());
 
   if (!res.ok()) {
     return res;

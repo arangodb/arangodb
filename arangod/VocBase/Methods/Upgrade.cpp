@@ -41,25 +41,18 @@
 
 namespace {
 
-void addTask(
-    std::string&& name,
-    std::string&& desc,
-    uint32_t systemFlag,
-    uint32_t clusterFlag,
-    uint32_t dbFlag,
-    arangodb::methods::Upgrade::TaskFunction&& action
-) {
-  auto* upgradeFeature = arangodb::application_features::ApplicationServer::lookupFeature<
-    arangodb::UpgradeFeature
-  >("Upgrade");
+void addTask(std::string&& name, std::string&& desc, uint32_t systemFlag, uint32_t clusterFlag,
+             uint32_t dbFlag, arangodb::methods::Upgrade::TaskFunction&& action) {
+  auto* upgradeFeature =
+      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::UpgradeFeature>(
+          "Upgrade");
 
   TRI_ASSERT(upgradeFeature);
-  upgradeFeature->addTask(arangodb::methods::Upgrade::Task{
-    name, desc, systemFlag, clusterFlag, dbFlag, action
-  });
+  upgradeFeature->addTask(arangodb::methods::Upgrade::Task{name, desc, systemFlag, clusterFlag,
+                                                           dbFlag, action});
 }
 
-}
+}  // namespace
 
 using namespace arangodb;
 using namespace arangodb::methods;
@@ -213,9 +206,9 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade, bool igno
 
 /// @brief register tasks, only run once on startup
 void methods::Upgrade::registerTasks() {
-  auto* upgradeFeature = arangodb::application_features::ApplicationServer::lookupFeature<
-    arangodb::UpgradeFeature
-  >("Upgrade");
+  auto* upgradeFeature =
+      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::UpgradeFeature>(
+          "Upgrade");
 
   TRI_ASSERT(upgradeFeature);
   auto& _tasks = upgradeFeature->_tasks;
@@ -292,19 +285,20 @@ void methods::Upgrade::registerTasks() {
           /*system*/ Flags::DATABASE_ALL,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
           /*database*/ DATABASE_UPGRADE, &UpgradeTasks::persistLocalDocumentIds);
-  addTask("renameReplicationApplierStateFiles", "rename replication applier state files",
+  addTask("renameReplicationApplierStateFiles",
+          "rename replication applier state files",
           /*system*/ Flags::DATABASE_ALL,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
-          /*database*/ DATABASE_UPGRADE | DATABASE_EXISTING, 
+          /*database*/ DATABASE_UPGRADE | DATABASE_EXISTING,
           &UpgradeTasks::renameReplicationApplierStateFiles);
 }
 
 UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t& vocbase, VersionResult& vinfo,
                                          arangodb::velocypack::Slice const& params,
                                          uint32_t clusterFlag, uint32_t dbFlag) {
-  auto* upgradeFeature = arangodb::application_features::ApplicationServer::lookupFeature<
-    arangodb::UpgradeFeature
-  >("Upgrade");
+  auto* upgradeFeature =
+      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::UpgradeFeature>(
+          "Upgrade");
 
   TRI_ASSERT(upgradeFeature);
   auto& _tasks = upgradeFeature->_tasks;
@@ -357,7 +351,7 @@ UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t& vocbase, VersionResult& 
           << "Upgrade: db flag mismatch, skipping " << t.name;
       continue;
     }
-    
+
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: Executing " << t.name;
     try {
       bool ranTask = t.action(vocbase, params);

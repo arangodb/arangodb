@@ -40,7 +40,7 @@ class UpgradeFeature final : public application_features::ApplicationFeature {
   void start() override final;
 
  private:
-  friend struct methods::Upgrade; // to allow access to '_tasks'
+  friend struct methods::Upgrade;  // to allow access to '_tasks'
 
   bool _upgrade;
   bool _upgradeCheck;
