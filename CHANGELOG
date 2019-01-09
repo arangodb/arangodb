@@ -1,6 +1,10 @@
 devel
 -----
 
+* fix issue #7900: Bind values of `null` are not replaced by
+  empty string anymore, when toggling between json and table
+  view in the web-ui.
+
 * Use base64url to encode and decode JWT parts.
 
 * updated bundled curl library to version 7.63
