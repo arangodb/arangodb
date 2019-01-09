@@ -70,10 +70,12 @@ fully ACID as well.
 With RocksDB storage engine
 ---------------------------
 
+{% hint 'info' %}
 The following restrictions and limitations do not apply to JavaScript
 transactions, since their intended use case is for smaller transactions
 with full transactional guarantees. So the following only applies
 to AQL transactions and transactions created through the document API.
+{% endhint %}
 
 Data of ongoing transactions is stored in RAM. Transactions that get too big 
 (in terms of number of operations involved or the total size of data created or
