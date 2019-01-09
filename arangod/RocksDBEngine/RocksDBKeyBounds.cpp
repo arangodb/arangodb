@@ -234,9 +234,6 @@ rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
 RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t id,
                                    std::string const& lower, std::string const& upper)
     : _type(type) {
-  static_assert(sizeof(id) == sizeof(uint64_t));
-  static_assert(sizeof(_stringSeparator) == 1);
-
   switch (_type) {
     case RocksDBEntryType::PrimaryIndexValue: {
       // format: id lower id upper
