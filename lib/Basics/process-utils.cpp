@@ -1475,8 +1475,8 @@ bool TRI_ContinueExternalProcess(ExternalId pid) {
 #else
   TRI_ERRORBUF;
 
-  HANDLE processHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid._pid);
-  bool rc = pfnNtSuspendProcess(processHandle) == 0;
+  HANDLE processHandle = OpenProcess(PROCESS_SUSPEND_RESUME, FALSE, pid._pid);
+  bool rc = processHandle != NULL && pfnNtResumeProcess(processHandle) == 0;
   if (!rc) {
     TRI_SYSTEM_ERROR();
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) <<
