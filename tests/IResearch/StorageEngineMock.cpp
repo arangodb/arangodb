@@ -23,6 +23,7 @@
 
 #include "StorageEngineMock.h"
 
+#include "Basics/asio_ns.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
@@ -47,7 +48,7 @@
 #include "Transaction/Helpers.h"
 #include "Aql/AstNode.h"
 
-#include <asio/io_context.hpp>
+#include <boost/asio/io_context.hpp>
 
 namespace {
 
@@ -581,7 +582,7 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::v
   }
 
 
-  asio::io_context ioContext;
+  asio_ns::io_context ioContext;
   auto poster = [&ioContext](std::function<void()> fn) -> void {
     ioContext.post(fn);
   };
