@@ -137,7 +137,6 @@ void DatabaseReplicationApplier::storeConfiguration(bool doSync) {
   }
 
   VPackBuilder builder;
-
   builder.openObject();
   _configuration.toVelocyPack(builder, true, true);
   builder.close();
@@ -172,7 +171,7 @@ std::string DatabaseReplicationApplier::getStateFilename() const {
     return std::string();
   }
   return arangodb::basics::FileUtils::buildFilename(
-      path, "REPLICATION-APPLIER-STATE");
+      path, "REPLICATION-APPLIER-STATE-" + std::to_string(_vocbase.id()));
 }
 
 }  // namespace arangodb
