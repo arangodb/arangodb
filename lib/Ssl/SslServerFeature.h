@@ -62,6 +62,6 @@ class SslServerFeature : public application_features::ApplicationFeature {
   std::string _rctx;
 };
 
-}
+}  // namespace arangodb
 
 #endif

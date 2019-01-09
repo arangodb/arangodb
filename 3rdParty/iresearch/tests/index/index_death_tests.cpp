@@ -2374,7 +2374,7 @@ TEST(index_death_test_formats_10, segment_components_creation_fail_implicit_segm
     dir.register_failure(failing_directory::Failure::CREATE, "_8.0.sm"); // segment meta
 
     // write index
-    irs::index_writer::options opts;
+    irs::index_writer::init_options opts;
     opts.segment_docs_max = 1; // flush every 2nd document
 
     auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE, opts);
@@ -2422,7 +2422,7 @@ TEST(index_death_test_formats_10, segment_components_creation_fail_implicit_segm
     dir.register_failure(failing_directory::Failure::CREATE, "_8.0.sm"); // segment meta
 
     // write index
-    irs::index_writer::options opts;
+    irs::index_writer::init_options opts;
     opts.segment_docs_max = 1; // flush every 2nd document
 
     auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE, opts);
@@ -2485,6 +2485,26 @@ TEST(index_death_test_formats_10, segment_components_creation_fail_implicit_segm
     ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
+}
+
+TEST(index_death_test_formats_10, columnstore_creation_fail_implicit_segment_flush) {
+  const auto all_features = irs::flags{
+    irs::document::type(),
+    irs::frequency::type(),
+    irs::position::type(),
+    irs::payload::type(),
+    irs::offset::type()
+  };
+
+  tests::json_doc_generator gen(
+    test_base::resource("simple_sequential.json"),
+    &tests::payloaded_json_field_factory
+  );
+  const auto* doc1 = gen.next();
+  const auto* doc2 = gen.next();
+
+  auto codec = irs::formats::get("1_0");
+  ASSERT_NE(nullptr, codec);
 
   // columnstore creation failure
   {
@@ -2492,7 +2512,7 @@ TEST(index_death_test_formats_10, segment_components_creation_fail_implicit_segm
     failing_directory dir(impl);
 
     // write index
-    irs::index_writer::options opts;
+    irs::index_writer::init_options opts;
     opts.segment_docs_max = 1; // flush every 2nd document
 
     auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE, opts);
@@ -2548,6 +2568,26 @@ TEST(index_death_test_formats_10, segment_components_creation_fail_implicit_segm
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
+}
+
+TEST(index_death_test_formats_10, columnstore_creation_sync_fail_implicit_segment_flush) {
+  const auto all_features = irs::flags{
+    irs::document::type(),
+    irs::frequency::type(),
+    irs::position::type(),
+    irs::payload::type(),
+    irs::offset::type()
+  };
+
+  tests::json_doc_generator gen(
+    test_base::resource("simple_sequential.json"),
+    &tests::payloaded_json_field_factory
+  );
+  const auto* doc1 = gen.next();
+  const auto* doc2 = gen.next();
+
+  auto codec = irs::formats::get("1_0");
+  ASSERT_NE(nullptr, codec);
 
   // columnstore creation + sync failures
   {
@@ -2555,7 +2595,7 @@ TEST(index_death_test_formats_10, segment_components_creation_fail_implicit_segm
     failing_directory dir(impl);
 
     // write index
-    irs::index_writer::options opts;
+    irs::index_writer::init_options opts;
     opts.segment_docs_max = 1; // flush every 2nd document
 
     auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE, opts);
@@ -2943,3 +2983,7 @@ TEST(index_death_test_formats_10, postings_reopen_fail) {
   ASSERT_FALSE(live_docs->next());
   ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), live_docs->value());
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

@@ -28,8 +28,8 @@
 #include "ApplicationFeatures/CommunicationPhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/GreetingsPhase.h"
-#include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
+#include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
@@ -51,8 +51,9 @@ int main(int argc, char* argv[]) {
     ArangoGlobalContext context(argc, argv, BIN_DIRECTORY);
     context.installHup();
 
-    std::shared_ptr<options::ProgramOptions> options(new options::ProgramOptions(
-        argv[0], "Usage: arangobench [<options>]", "For more information use:", BIN_DIRECTORY));
+    std::shared_ptr<options::ProgramOptions> options(
+        new options::ProgramOptions(argv[0], "Usage: arangobench [<options>]",
+                                    "For more information use:", BIN_DIRECTORY));
     ApplicationServer server(options, BIN_DIRECTORY);
     int ret;
 
@@ -78,12 +79,13 @@ int main(int argc, char* argv[]) {
         ret = EXIT_SUCCESS;
       }
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "arangobench terminated because of an unhandled exception: "
-              << ex.what();
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "arangobench terminated because of an unhandled exception: " << ex.what();
       ret = EXIT_FAILURE;
     } catch (...) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "arangobench terminated because of an unhandled exception of "
-                  "unknown type";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "arangobench terminated because of an unhandled exception of "
+             "unknown type";
       ret = EXIT_FAILURE;
     }
 

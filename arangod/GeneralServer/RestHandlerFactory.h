@@ -39,10 +39,9 @@ class RestHandlerFactory {
 
  public:
   // handler creator
-  typedef RestHandler* (*create_fptr)(GeneralRequest*, GeneralResponse*,
-                                      void* data);
-  
-   // cppcheck-suppress *
+  typedef RestHandler* (*create_fptr)(GeneralRequest*, GeneralResponse*, void* data);
+
+  // cppcheck-suppress *
   RestHandlerFactory() {}
 
   // creates a new handler
@@ -53,8 +52,7 @@ class RestHandlerFactory {
   void addHandler(std::string const& path, create_fptr, void* data = nullptr);
 
   // adds a prefix path and constructor to the factory
-  void addPrefixHandler(std::string const& path, create_fptr,
-                        void* data = nullptr);
+  void addPrefixHandler(std::string const& path, create_fptr, void* data = nullptr);
 
  private:
   // list of constructors
@@ -63,7 +61,7 @@ class RestHandlerFactory {
   // list of prefix handlers
   std::vector<std::string> _prefixes;
 };
-}
-}
+}  // namespace rest
+}  // namespace arangodb
 
 #endif

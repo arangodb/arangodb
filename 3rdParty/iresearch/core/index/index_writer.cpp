@@ -599,10 +599,10 @@ index_writer::documents_context::document::~document() NOEXCEPT {
 }
 
 index_writer::documents_context::~documents_context() NOEXCEPT {
-  // FIXME TODO move emplace into active_segment_context destructor
   assert(segment_.ctx().use_count() == segment_use_count_); // failure may indicate a dangling 'document' instance
 
   try {
+    // FIXME TODO move emplace into active_segment_context destructor
     writer_.get_flush_context()->emplace(std::move(segment_)); // commit segment
   } catch (...) {
     reset(); // abort segment
@@ -708,15 +708,15 @@ index_writer::flush_context_ptr index_writer::documents_context::update_segment(
   assert(segment_.ctx());
   assert(segment_.ctx()->writer_);
   auto& segment = *(segment_.ctx());
-  const auto& limits = writer_.segment_limits_;
   auto& writer = *segment.writer_;
 
   if (writer.initialized()) {
+    auto segment_docs_max = writer_.segment_limits_.segment_docs_max.load();
+    auto segment_memory_max = writer_.segment_limits_.segment_memory_max.load();
+
     // if not reached the limit of the current segment then use it
-    if ((!limits.segment_docs_max
-         || limits.segment_docs_max > writer.docs_cached()) // too many docs
-        && (!limits.segment_memory_max
-            || limits.segment_memory_max > writer.memory_active()) // too much memory
+    if ((!segment_docs_max || segment_docs_max > writer.docs_cached()) // too many docs
+        && (!segment_memory_max || segment_memory_max > writer.memory_active()) // too much memory
         && !doc_limits::eof(writer.docs_cached())) { // segment full
       return ctx;
     }
@@ -724,7 +724,7 @@ index_writer::flush_context_ptr index_writer::documents_context::update_segment(
     // force a flush of a full segment
     IR_FRMT_TRACE(
       "Flushing segment '%s', docs=" IR_SIZE_T_SPECIFIER ", memory=" IR_SIZE_T_SPECIFIER ", docs limit=" IR_SIZE_T_SPECIFIER ", memory limit=" IR_SIZE_T_SPECIFIER "",
-      writer.name().c_str(), writer.docs_cached(), writer.memory_active(), limits.segment_docs_max, limits.segment_memory_max
+      writer.name().c_str(), writer.docs_cached(), writer.memory_active(), segment_docs_max, segment_memory_max
     );
 
     try {
@@ -864,6 +864,11 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
   if (!ctx.dirty_) {
     assert(freelist_node);
     assert(segment.ctx_.use_count() == 2); // +1 for 'active_segment_context::ctx_', +1 for 'pending_segment_context::segment_'
+    auto& segments_active = *(segment.segments_active_);
+    auto segments_active_decrement =
+      irs::make_finally([&segments_active]()->void { --segments_active; }); // release hold (delcare before aquisition since operator++() is noexcept)
+
+    ++segments_active; // increment counter to hold reservation while segment_context is being released and added to the freelist
     segment = active_segment_context(); // reset before adding to freelist to garantee proper use_count() in get_segment_context(...)
     pending_segment_contexts_freelist_.push(*freelist_node); // add segment_context to free-list
   }
@@ -1054,7 +1059,7 @@ index_writer::index_writer(
     directory& dir,
     format::ptr codec,
     size_t segment_pool_size,
-    const segment_limits& segment_limits,
+    const segment_options& segment_limits,
     index_meta&& meta,
     committed_state_t&& committed_state
 ) NOEXCEPT:
@@ -1142,7 +1147,7 @@ index_writer::ptr index_writer::make(
     directory& dir,
     format::ptr codec,
     OpenMode mode,
-    const options& opts /*= options()*/
+    const init_options& opts /*= init_options()*/
 ) {
   std::vector<index_file_refs::ref_t> file_refs;
   index_lock::ptr lock;
@@ -1203,7 +1208,7 @@ index_writer::ptr index_writer::make(
     dir,
     codec,
     opts.segment_pool_size,
-    segment_limits(opts),
+    segment_options(opts),
     std::move(meta),
     std::move(comitted_state)
   );
@@ -1212,6 +1217,10 @@ index_writer::ptr index_writer::make(
   directory_utils::remove_all_unreferenced(dir); // remove non-index files from directory
 
   return writer;
+}
+
+void index_writer::options(const segment_options& opts) {
+  segment_limits_ = opts;
 }
 
 index_writer::~index_writer() NOEXCEPT {
@@ -1606,6 +1615,20 @@ index_writer::flush_context_ptr index_writer::get_flush_context(bool shared /*= 
 index_writer::active_segment_context index_writer::get_segment_context(
     flush_context& ctx
 ) {
+  auto segments_active_decrement =
+    irs::make_finally([this]()->void { --segments_active_; }); // release reservation (delcare before aquisition since operator++() is noexcept)
+  auto segments_active = ++segments_active_; // increment counter to aquire reservation, if another thread tries to reserve last context then it'll be over limit
+  auto segment_count_max = segment_limits_.segment_count_max.load();
+
+  // no free segment_context available and maximum number of segments reached
+  // must return to caller so as to unlock/relock flush_context before retrying
+  // to get a new segment so as to avoid a deadlock due to a read-write-read
+  // situation for flush_context::flush_mutex_ with threads trying to lock
+  // flush_context::flush_mutex_ to return their segment_context
+  if (segment_count_max && segment_count_max < segments_active) { // '<' to account for +1 reservation
+    return active_segment_context();
+  }
+
   auto* freelist_node = static_cast<flush_context::pending_segment_context*>(
     ctx.pending_segment_contexts_freelist_.pop()
   ); // only nodes of type 'pending_segment_context' are added to 'pending_segment_contexts_freelist_'
@@ -1619,16 +1642,6 @@ index_writer::active_segment_context index_writer::get_segment_context(
     );
   }
 
-  // no free segment_context available and maximum number of segments reached
-  // must return to caller so as to unlock/relock flush_context before retrying
-  // to get a new segment so as to avoid a deadlock due to a read-write-read
-  // situation for flush_context::flush_mutex_ with threads trying to lock
-  // flush_context::flush_mutex_ to return their segment_context
-  if (segment_limits_.segment_count_max
-      && segments_active_.load() >= segment_limits_.segment_count_max) {
-    return active_segment_context();
-  }
-
   // ...........................................................................
   // should allocate a new segment_context from the pool
   // ...........................................................................
@@ -1638,6 +1651,13 @@ index_writer::active_segment_context index_writer::get_segment_context(
   };
   auto segment_ctx =
     segment_writer_pool_.emplace(dir_, std::move(meta_generator)).release();
+  auto segment_memory_max = segment_limits_.segment_memory_max.load();
+
+  // recreate writer if it reserved more memory than allowed by current limits
+  if (segment_memory_max &&
+      segment_memory_max < segment_ctx->writer_->memory_reserved()) {
+    segment_ctx->writer_ = segment_writer::make(segment_ctx->dir_);
+  }
 
   return active_segment_context(segment_ctx, segments_active_);
 }

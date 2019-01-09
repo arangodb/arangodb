@@ -33,15 +33,17 @@ class Query;
 class QueryExpressionContext : public ExpressionContext {
  public:
   explicit QueryExpressionContext(Query* query)
-      : ExpressionContext(),
-        _query(query) {}
+      : ExpressionContext(), _query(query) {}
 
   void registerWarning(int errorCode, char const* msg) override;
   void registerError(int errorCode, char const* msg) override;
-  
-  icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length, bool caseInsensitive) override;
-  icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length, bool caseInsensitive) override;
-  icu::RegexMatcher* buildSplitMatcher(AqlValue splitExpression, transaction::Methods*, bool& isEmptyExpression) override;
+
+  icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length,
+                                       bool caseInsensitive) override;
+  icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length,
+                                      bool caseInsensitive) override;
+  icu::RegexMatcher* buildSplitMatcher(AqlValue splitExpression, transaction::Methods*,
+                                       bool& isEmptyExpression) override;
 
   bool killed() const override final;
   TRI_vocbase_t& vocbase() const override final;
@@ -50,6 +52,6 @@ class QueryExpressionContext : public ExpressionContext {
  private:
   Query* _query;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 #endif

@@ -212,7 +212,7 @@ target_link_libraries(${IResearchTests_TARGET_NAME}-shared
 
 target_link_libraries(${IResearchTests_TARGET_NAME}-static
   ${GCOV_LIBRARY}
-  ${IResearch_TARGET_NAME}-static
+  ${IResearch_TARGET_NAME}-static-allinone
   ${GTEST_STATIC_LIBS}
   ${PTHREAD_LIBRARY}
 )

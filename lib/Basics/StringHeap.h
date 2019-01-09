@@ -58,6 +58,6 @@ class StringHeap {
   /// @brief end of current block
   char* _end;
 };
-}
+}  // namespace arangodb
 
 #endif

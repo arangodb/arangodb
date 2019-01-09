@@ -32,12 +32,12 @@ namespace arangodb {
 
 class RocksDBLogger final : public rocksdb::Logger {
  public:
-  explicit RocksDBLogger(rocksdb::InfoLogLevel level); 
+  explicit RocksDBLogger(rocksdb::InfoLogLevel level);
   ~RocksDBLogger();
 
   void disable() { _enabled = false; }
   void enable() { _enabled = true; }
-  
+
   // intentionally do not log header information here
   // as this does not seem to honor the log level correctly
   void LogHeader(const char* format, va_list ap) override {}
@@ -45,7 +45,8 @@ class RocksDBLogger final : public rocksdb::Logger {
   void Logv(char const* format, va_list ap) override;
   void Logv(const rocksdb::InfoLogLevel, char const* format, va_list ap) override;
 
-  // nothing to do here, as ArangoDB logger infrastructure takes care of flushing itself
+  // nothing to do here, as ArangoDB logger infrastructure takes care of
+  // flushing itself
   void Flush() override {}
 
  private:

@@ -43,11 +43,10 @@ using namespace arangodb;
 /// @brief common replication applier
 struct ApplierThread : public Thread {
  public:
-  
   ApplierThread(ReplicationApplier* applier, std::shared_ptr<Syncer> syncer)
-   : Thread("ReplicationApplier"), _applier(applier), _syncer(std::move(syncer)) {
-     TRI_ASSERT(_syncer);
-   }
+      : Thread("ReplicationApplier"), _applier(applier), _syncer(std::move(syncer)) {
+    TRI_ASSERT(_syncer);
+  }
 
   ~ApplierThread() {
     {
@@ -56,43 +55,48 @@ struct ApplierThread : public Thread {
     }
     shutdown();
   }
-  
+
   void run() override {
     TRI_ASSERT(_syncer != nullptr);
     TRI_ASSERT(_applier != nullptr);
-    
+
     try {
       setAborted(false);
       Result res = runApplier();
       if (res.fail() && res.isNot(TRI_ERROR_REPLICATION_APPLIER_STOPPED)) {
-        LOG_TOPIC(ERR, Logger::REPLICATION) << "error while running applier thread for "
-        << _applier->databaseName() << ": " << res.errorMessage();
+        LOG_TOPIC(ERR, Logger::REPLICATION)
+            << "error while running applier thread for "
+            << _applier->databaseName() << ": " << res.errorMessage();
       }
     } catch (std::exception const& ex) {
-      LOG_TOPIC(WARN, Logger::REPLICATION) << "caught exception in ApplierThread for " << _applier->databaseName() << ": " << ex.what();
+      LOG_TOPIC(WARN, Logger::REPLICATION)
+          << "caught exception in ApplierThread for "
+          << _applier->databaseName() << ": " << ex.what();
     } catch (...) {
-      LOG_TOPIC(WARN, Logger::REPLICATION) << "caught unknown exception in ApplyThread for " << _applier->databaseName();
+      LOG_TOPIC(WARN, Logger::REPLICATION)
+          << "caught unknown exception in ApplyThread for "
+          << _applier->databaseName();
     }
-    
+
     {
       MUTEX_LOCKER(locker, _syncerMutex);
       // will make the syncer remove its barrier too
       _syncer->setAborted(false);
       _syncer.reset();
     }
-    
+
     _applier->markThreadStopped();
   }
-  
+
   virtual Result runApplier() = 0;
-  
+
   void setAborted(bool value) {
     MUTEX_LOCKER(locker, _syncerMutex);
     if (_syncer) {
       _syncer->setAborted(value);
     }
   }
-  
+
  protected:
   ReplicationApplier* _applier;
   Mutex _syncerMutex;
@@ -101,14 +105,13 @@ struct ApplierThread : public Thread {
 
 /// @brief sync thread class
 struct FullApplierThread final : public ApplierThread {
-  FullApplierThread(ReplicationApplier* applier,
-                    std::shared_ptr<InitialSyncer>&& syncer)
-  : ApplierThread(applier, std::move(syncer)) {}
-  
+  FullApplierThread(ReplicationApplier* applier, std::shared_ptr<InitialSyncer>&& syncer)
+      : ApplierThread(applier, std::move(syncer)) {}
+
   Result runApplier() override {
     TRI_ASSERT(_syncer != nullptr);
     TRI_ASSERT(_applier != nullptr);
-    
+
     InitialSyncer* initSync = static_cast<InitialSyncer*>(_syncer.get());
     // start initial synchronization
     bool allowIncremental = _applier->configuration()._incremental;
@@ -119,16 +122,16 @@ struct FullApplierThread final : public ApplierThread {
     // steal the barrier from the syncer
     TRI_voc_tick_t barrierId = initSync->stealBarrier();
     TRI_voc_tick_t lastLogTick = initSync->getLastLogTick();
-    
+
     {
       MUTEX_LOCKER(locker, _syncerMutex);
       auto tailer = _applier->buildTailingSyncer(lastLogTick, true, barrierId);
       _syncer.reset();
       _syncer = std::move(tailer);
     }
-    
+
     _applier->markThreadTailing();
-    
+
     TRI_ASSERT(_syncer);
     return static_cast<TailingSyncer*>(_syncer.get())->run();
   }
@@ -136,10 +139,9 @@ struct FullApplierThread final : public ApplierThread {
 
 /// @brief applier thread class. run only the tailing code
 struct TailingApplierThread final : public ApplierThread {
-  TailingApplierThread(ReplicationApplier* applier,
-                       std::shared_ptr<TailingSyncer>&& syncer)
+  TailingApplierThread(ReplicationApplier* applier, std::shared_ptr<TailingSyncer>&& syncer)
       : ApplierThread(applier, std::move(syncer)) {}
-  
+
  public:
   Result runApplier() override {
     TRI_ASSERT(dynamic_cast<TailingSyncer*>(_syncer.get()) != nullptr);
@@ -148,10 +150,9 @@ struct TailingApplierThread final : public ApplierThread {
 };
 
 ReplicationApplier::ReplicationApplier(ReplicationApplierConfiguration const& configuration,
-                                       std::string&& databaseName) 
-      : _configuration(configuration),
-        _databaseName(std::move(databaseName)) {
-    setProgress(std::string("applier initially created for ") + _databaseName);
+                                       std::string&& databaseName)
+    : _configuration(configuration), _databaseName(std::move(databaseName)) {
+  setProgress(std::string("applier initially created for ") + _databaseName);
 }
 
 /// @brief test if the replication applier is running
@@ -228,16 +229,16 @@ void ReplicationApplier::markThreadTailing() {
   WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
   _state._phase = ReplicationApplierState::ActivityPhase::TAILING;
   setProgressNoLock("applier started tailing");
-  
-  LOG_TOPIC(INFO, Logger::REPLICATION) << "started tailing in replication applier for "
-  << _databaseName;
+
+  LOG_TOPIC(INFO, Logger::REPLICATION)
+      << "started tailing in replication applier for " << _databaseName;
 }
 
 void ReplicationApplier::markThreadStopped() {
   WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
   _state._phase = ReplicationApplierState::ActivityPhase::INACTIVE;
   setProgressNoLock("applier shut down");
-  
+
   LOG_TOPIC(INFO, Logger::REPLICATION) << "stopped replication applier for " << _databaseName;
 }
 
@@ -245,40 +246,42 @@ void ReplicationApplier::markThreadStopped() {
 void ReplicationApplier::doStart(std::function<void()>&& cb,
                                  ReplicationApplierState::ActivityPhase activity) {
   WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
-  
+
   if (_state._preventStart) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_LOCKED,
-                                   std::string("cannot start replication applier for ") +
-                                   _databaseName + ": " + TRI_errno_string(TRI_ERROR_LOCKED));
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_LOCKED, std::string("cannot start replication applier for ") +
+                              _databaseName + ": " + TRI_errno_string(TRI_ERROR_LOCKED));
   }
-  
+
   if (_state.isActive()) {
     // already started
     return;
   }
-  
+
   while (_state.isShuttingDown()) {
     // another instance is still around
     writeLocker.unlock();
     std::this_thread::sleep_for(std::chrono::microseconds(50 * 1000));
     writeLocker.lock();
   }
-  
+
   TRI_ASSERT(!_state.isTailing() && !_state.isShuttingDown());
-  
+
   if (_configuration._endpoint.empty()) {
-    Result r(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no endpoint configured");
-    setErrorNoLock(r);
-    THROW_ARANGO_EXCEPTION(r);
-  }
-  
-  if (!isGlobal() && _configuration._database.empty()) {
-    Result r(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no database configured");
+    Result r(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION,
+             "no endpoint configured");
     setErrorNoLock(r);
     THROW_ARANGO_EXCEPTION(r);
   }
 
-  { // Debug output
+  if (!isGlobal() && _configuration._database.empty()) {
+    Result r(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION,
+             "no database configured");
+    setErrorNoLock(r);
+    THROW_ARANGO_EXCEPTION(r);
+  }
+
+  {  // Debug output
     VPackBuilder b;
     b.openObject();
     _configuration.toVelocyPack(b, false, false);
@@ -290,75 +293,72 @@ void ReplicationApplier::doStart(std::function<void()>&& cb,
 
   // reset error
   _state._lastError.reset();
-  
+
   cb();
-  
+
   if (!_thread->start()) {
     _thread.reset();
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not start ApplyThread");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "could not start ApplyThread");
   }
-  
+
   while (!_thread->hasStarted()) {
     std::this_thread::sleep_for(std::chrono::microseconds(20000));
   }
-  
+
   TRI_ASSERT(!_state.isActive() && !_state.isShuttingDown());
   _state._phase = activity;
 }
-
 
 /// @brief perform a complete replication dump and then tail continiously
 void ReplicationApplier::startReplication() {
   if (!applies()) {
     return;
   }
-  
-  doStart([&]() {
-    std::shared_ptr<InitialSyncer> syncer = buildInitialSyncer();
-    _thread.reset(new FullApplierThread(this, std::move(syncer)));
-  }, ReplicationApplierState::ActivityPhase::INITIAL);
+
+  doStart(
+      [&]() {
+        std::shared_ptr<InitialSyncer> syncer = buildInitialSyncer();
+        _thread.reset(new FullApplierThread(this, std::move(syncer)));
+      },
+      ReplicationApplierState::ActivityPhase::INITIAL);
 }
-  
+
 /// @brief start the replication applier
 void ReplicationApplier::startTailing(TRI_voc_tick_t initialTick, bool useTick,
                                       TRI_voc_tick_t barrierId) {
   if (!applies()) {
     return;
   }
-  doStart([&]() {
-    LOG_TOPIC(DEBUG, Logger::REPLICATION)
-    << "requesting replication applier start for " << _databaseName << ". initialTick: " << initialTick
-    << ", useTick: " << useTick;
-    std::shared_ptr<TailingSyncer> syncer = buildTailingSyncer(initialTick, useTick, barrierId);
-    _thread.reset(new TailingApplierThread(this, std::move(syncer)));
-  }, ReplicationApplierState::ActivityPhase::TAILING);
-  
+  doStart(
+      [&]() {
+        LOG_TOPIC(DEBUG, Logger::REPLICATION)
+            << "requesting replication applier start for " << _databaseName
+            << ". initialTick: " << initialTick << ", useTick: " << useTick;
+        std::shared_ptr<TailingSyncer> syncer =
+            buildTailingSyncer(initialTick, useTick, barrierId);
+        _thread.reset(new TailingApplierThread(this, std::move(syncer)));
+      },
+      ReplicationApplierState::ActivityPhase::TAILING);
+
   if (useTick) {
     LOG_TOPIC(INFO, Logger::REPLICATION)
-    << "started replication applier for " << _databaseName
-    << ", endpoint '" << _configuration._endpoint << "' from tick "
-    << initialTick;
+        << "started replication applier for " << _databaseName << ", endpoint '"
+        << _configuration._endpoint << "' from tick " << initialTick;
   } else {
     LOG_TOPIC(INFO, Logger::REPLICATION)
-    << "re-started replication applier for "
-    << _databaseName << ", endpoint '" << _configuration._endpoint
-    << "' from previous state";
+        << "re-started replication applier for " << _databaseName
+        << ", endpoint '" << _configuration._endpoint << "' from previous state";
   }
 }
 
 /// @brief stop the replication applier
-void ReplicationApplier::stop(Result const& r) {
-  doStop(r, false);
-}
+void ReplicationApplier::stop(Result const& r) { doStop(r, false); }
 
-void ReplicationApplier::stop() {
-  doStop(Result(), false);
-}
+void ReplicationApplier::stop() { doStop(Result(), false); }
 
 /// @brief stop the replication applier and join the apply thread
-void ReplicationApplier::stopAndJoin() {
-  doStop(Result(), true);
-}
+void ReplicationApplier::stopAndJoin() { doStop(Result(), true); }
 
 /// @brief sleeps for the specific number of microseconds if the
 /// applier is still active, and returns true. if the applier is not
@@ -367,10 +367,10 @@ bool ReplicationApplier::sleepIfStillActive(uint64_t sleepTime) {
   while (sleepTime > 0) {
     if (!isActive()) {
       // already terminated
-      return false; 
+      return false;
     }
-  
-    // now sleep  
+
+    // now sleep
     uint64_t sleepChunk = 250 * 1000;
     if (sleepChunk > sleepTime) {
       sleepChunk = sleepTime;
@@ -378,7 +378,7 @@ bool ReplicationApplier::sleepIfStillActive(uint64_t sleepTime) {
     std::this_thread::sleep_for(std::chrono::microseconds(sleepChunk));
     sleepTime -= sleepChunk;
   }
-  
+
   return isActive();
 }
 
@@ -386,7 +386,7 @@ void ReplicationApplier::removeState() {
   if (!applies()) {
     return;
   }
-  
+
   std::string const filename = getStateFilename();
   if (filename.empty()) {
     // will happen during testing and for coordinator engine
@@ -402,21 +402,24 @@ void ReplicationApplier::removeState() {
     int res = TRI_UnlinkFile(filename.c_str());
 
     if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string("unable to remove replication state file '") + filename + "'");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          res, std::string("unable to remove replication state file '") +
+                   filename + "'");
     }
   }
-} 
-  
+}
+
 void ReplicationApplier::reconfigure(ReplicationApplierConfiguration const& configuration) {
   if (!applies()) {
     return;
   }
 
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  
+
   if (configuration._endpoint.empty()) {
     // no endpoint
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no endpoint configured");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION,
+                                   "no endpoint configured");
   }
 
   WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
@@ -453,18 +456,25 @@ bool ReplicationApplier::loadState() {
     return false;
   }
 
-  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "replication state file '" << filename << "' found for " << _databaseName;
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "replication state file '" << filename
+                                        << "' found for " << _databaseName;
 
   VPackBuilder builder;
   try {
     builder = basics::VelocyPackHelper::velocyPackFromFile(filename);
   } catch (...) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_STATE, std::string("cannot read replication applier state from file '") + filename + "'");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_REPLICATION_INVALID_APPLIER_STATE,
+        std::string("cannot read replication applier state from file '") +
+            filename + "'");
   }
 
   VPackSlice const slice = builder.slice();
   if (!slice.isObject()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_STATE, std::string("invalid replication applier state found in file '") + filename + "'");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_REPLICATION_INVALID_APPLIER_STATE,
+        std::string("invalid replication applier state found in file '") +
+            filename + "'");
   }
 
   _state.reset(false);
@@ -488,14 +498,14 @@ bool ReplicationApplier::loadState() {
 
   return true;
 }
-  
+
 /// @brief store the applier state in persistent storage
 /// must currently be called while holding the write-lock
 void ReplicationApplier::persistState(bool doSync) {
   if (!applies()) {
     return;
   }
-  
+
   std::string const filename = getStateFilename();
   if (filename.empty()) {
     // will happen during testing and for coordinator engine
@@ -506,14 +516,15 @@ void ReplicationApplier::persistState(bool doSync) {
   _state.toVelocyPack(builder, false);
 
   LOG_TOPIC(TRACE, Logger::REPLICATION)
-      << "saving replication applier state to file '" << filename << "' for " << _databaseName;
+      << "saving replication applier state to file '" << filename << "' for "
+      << _databaseName;
 
   if (!basics::VelocyPackHelper::velocyPackToFile(filename, builder.slice(), doSync)) {
     THROW_ARANGO_EXCEPTION(TRI_errno());
   }
 }
-  
-/// @brief store the current applier state in the passed vpack builder 
+
+/// @brief store the current applier state in the passed vpack builder
 void ReplicationApplier::toVelocyPack(arangodb::velocypack::Builder& result) const {
   TRI_ASSERT(!result.isClosed());
 
@@ -536,7 +547,7 @@ void ReplicationApplier::toVelocyPack(arangodb::velocypack::Builder& result) con
   result.add("version", VPackValue(ARANGODB_VERSION));
   result.add("serverId", VPackValue(std::to_string(ServerIdFeature::getId())));
   result.close();  // server
-  
+
   if (!configuration._endpoint.empty()) {
     result.add("endpoint", VPackValue(configuration._endpoint));
   }
@@ -544,7 +555,7 @@ void ReplicationApplier::toVelocyPack(arangodb::velocypack::Builder& result) con
     result.add("database", VPackValue(configuration._database));
   }
 }
-  
+
 /// @brief return the current configuration
 ReplicationApplierConfiguration ReplicationApplier::configuration() const {
   READ_LOCKER_EVENTUAL(readLocker, _statusLock);
@@ -560,8 +571,7 @@ std::string ReplicationApplier::endpoint() const {
 /// @brief return last persisted tick
 TRI_voc_tick_t ReplicationApplier::lastTick() const {
   READ_LOCKER_EVENTUAL(readLocker, _statusLock);
-  return std::max(_state._lastAppliedContinuousTick,
-                  _state._lastProcessedContinuousTick);
+  return std::max(_state._lastAppliedContinuousTick, _state._lastProcessedContinuousTick);
 }
 
 /// @brief register an applier error
@@ -575,7 +585,7 @@ Result ReplicationApplier::lastError() const {
   return Result(_state._lastError.code, _state._lastError.message);
 }
 
-/// @brief set the progress 
+/// @brief set the progress
 void ReplicationApplier::setProgress(char const* msg) {
   return setProgress(std::string(msg));
 }
@@ -589,9 +599,8 @@ void ReplicationApplier::setProgress(std::string const& msg) {
 void ReplicationApplier::setErrorNoLock(arangodb::Result const& rr) {
   // log error message
   if (rr.isNot(TRI_ERROR_REPLICATION_APPLIER_STOPPED)) {
-    LOG_TOPIC(ERR, Logger::REPLICATION)
-        << "replication applier error for " << _databaseName << ": "
-        << rr.errorMessage();
+    LOG_TOPIC(ERR, Logger::REPLICATION) << "replication applier error for " << _databaseName
+                                        << ": " << rr.errorMessage();
   }
 
   _state.setError(rr.errorNumber(), rr.errorMessage());
@@ -614,15 +623,15 @@ void ReplicationApplier::doStop(Result const& r, bool joinThread) {
 
   // always stop initial synchronization
   _state._stopInitialSynchronization = true;
-  
+
   if (!_state.isActive() || _state.isShuttingDown()) {
     // not active or somebody else is shutting us down
     return;
   }
-  
+
   LOG_TOPIC(DEBUG, Logger::REPLICATION)
       << "requesting replication applier stop for " << _databaseName;
-  
+
   _state._phase = ReplicationApplierState::ActivityPhase::SHUTDOWN;
   _state.setError(r.errorNumber(), r.errorMessage());
 
@@ -631,19 +640,20 @@ void ReplicationApplier::doStop(Result const& r, bool joinThread) {
   }
 
   if (joinThread) {
-    
     auto start = std::chrono::steady_clock::now();
     while (_state.isShuttingDown()) {
       writeLocker.unlock();
       std::this_thread::sleep_for(std::chrono::milliseconds(50));
       if (std::chrono::steady_clock::now() - start > std::chrono::minutes(3)) {
-        LOG_TOPIC(ERR, Logger::REPLICATION) << "replication applier is not stopping";
+        LOG_TOPIC(ERR, Logger::REPLICATION)
+            << "replication applier is not stopping";
         TRI_ASSERT(false);
-        start = std::chrono::steady_clock::now();;
+        start = std::chrono::steady_clock::now();
+        ;
       }
       writeLocker.lock();
     }
-    
+
     TRI_ASSERT(!_state.isActive() && !_state.isShuttingDown());
     // wipe aborted flag. this will be passed on to the syncer
     static_cast<ApplierThread*>(_thread.get())->setAborted(false);
@@ -659,7 +669,7 @@ void ReplicationApplier::doStop(Result const& r, bool joinThread) {
     writeLocker.unlock();
   }
 }
-  
+
 /// @brief read a tick value from a VelocyPack struct
 void ReplicationApplier::readTick(VPackSlice const& slice, char const* attributeName,
                                   TRI_voc_tick_t& dst, bool allowNull) {
@@ -669,11 +679,12 @@ void ReplicationApplier::readTick(VPackSlice const& slice, char const* attribute
 
   if ((tick.isNull() || tick.isNone()) && allowNull) {
     dst = 0;
-  } else { 
+  } else {
     if (!tick.isString()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_INVALID_APPLIER_STATE);
     }
 
-    dst = static_cast<TRI_voc_tick_t>(arangodb::basics::StringUtils::uint64(tick.copyString()));
+    dst = static_cast<TRI_voc_tick_t>(
+        arangodb::basics::StringUtils::uint64(tick.copyString()));
   }
 }

@@ -34,17 +34,15 @@ namespace arangodb {
 namespace maintenance {
 
 class EnsureIndex : public ActionBase {
-
-public:
-
+ public:
   EnsureIndex(MaintenanceFeature&, ActionDescription const& d);
 
   virtual ~EnsureIndex();
 
   virtual bool first() override final;
-
 };
 
-}}
+}  // namespace maintenance
+}  // namespace arangodb
 
 #endif

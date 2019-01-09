@@ -34,10 +34,9 @@ using namespace arangodb::rest;
 
 RestAgencyCallbacksHandler::RestAgencyCallbacksHandler(GeneralRequest* request,
                                                        GeneralResponse* response,
-    arangodb::AgencyCallbackRegistry* agencyCallbackRegistry)
-  : RestVocbaseBaseHandler(request, response),
-    _agencyCallbackRegistry(agencyCallbackRegistry) {
-}
+                                                       arangodb::AgencyCallbackRegistry* agencyCallbackRegistry)
+    : RestVocbaseBaseHandler(request, response),
+      _agencyCallbackRegistry(agencyCallbackRegistry) {}
 
 RestStatus RestAgencyCallbacksHandler::execute() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
@@ -51,11 +50,10 @@ RestStatus RestAgencyCallbacksHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
   if (type != rest::RequestType::POST) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
-  
+
   bool parseSuccess = true;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess || body.isNone()) {
@@ -63,7 +61,7 @@ RestStatus RestAgencyCallbacksHandler::execute() {
                   "invalid JSON");
     return RestStatus::DONE;
   }
-  
+
   uint32_t index = basics::StringUtils::uint32(suffixes.at(0));
   auto cb = _agencyCallbackRegistry->getCallback(index);
   if (cb.get() == nullptr) {
@@ -71,18 +69,17 @@ RestStatus RestAgencyCallbacksHandler::execute() {
     resetResponse(arangodb::rest::ResponseCode::NOT_FOUND);
   } else {
     LOG_TOPIC(DEBUG, Logger::CLUSTER)
-    << "Agency callback has been triggered. refetching!";
-    
-    //SchedulerFeature::SCHEDULER->queue(RequestPriority::MED, [cb] {
+        << "Agency callback has been triggered. refetching!";
+
+    // SchedulerFeature::SCHEDULER->queue(RequestPriority::MED, [cb] {
     try {
       cb->refetchAndUpdate(true, false);
-    } catch(arangodb::basics::Exception const& e) {
-      LOG_TOPIC(WARN, Logger::AGENCYCOMM) << "Error executing callback: "
-      << e.message();
+    } catch (arangodb::basics::Exception const& e) {
+      LOG_TOPIC(WARN, Logger::AGENCYCOMM) << "Error executing callback: " << e.message();
     }
     //});
     resetResponse(arangodb::rest::ResponseCode::ACCEPTED);
   }
-  
+
   return RestStatus::DONE;
 }

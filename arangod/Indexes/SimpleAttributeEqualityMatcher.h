@@ -24,15 +24,15 @@
 #ifndef ARANGOD_INDEXES_SIMPLE_ATTRIBUTE_EQUALITY_MATCHER_H
 #define ARANGOD_INDEXES_SIMPLE_ATTRIBUTE_EQUALITY_MATCHER_H 1
 
-#include "Basics/Common.h"
 #include "Basics/AttributeNameParser.h"
+#include "Basics/Common.h"
 
 namespace arangodb {
 namespace aql {
 class Ast;
 struct AstNode;
 struct Variable;
-}
+}  // namespace aql
 
 class Index;
 
@@ -63,36 +63,31 @@ class SimpleAttributeEqualityMatcher {
   /// @brief specialize the condition for the index
   /// this is used for the primary index and the edge index
   /// requires that a previous matchOne() returned true
-  arangodb::aql::AstNode* specializeOne(arangodb::Index const*,
-                                        arangodb::aql::AstNode*,
+  arangodb::aql::AstNode* specializeOne(arangodb::Index const*, arangodb::aql::AstNode*,
                                         arangodb::aql::Variable const*);
 
   /// @brief specialize the condition for the index
   /// this is used for the hash index
   /// requires that a previous matchAll() returned true
-  arangodb::aql::AstNode* specializeAll(arangodb::Index const*,
-                                        arangodb::aql::AstNode*,
+  arangodb::aql::AstNode* specializeAll(arangodb::Index const*, arangodb::aql::AstNode*,
                                         arangodb::aql::Variable const*);
-  
-  static size_t estimateNumberOfArrayMembers(arangodb::aql::AstNode const* value); 
+
+  static size_t estimateNumberOfArrayMembers(arangodb::aql::AstNode const* value);
 
  private:
   /// @brief determine the costs of using this index and the number of items
   /// that will return in average
   /// cost values have no special meaning, except that multiple cost values are
   /// comparable, and lower values mean lower costs
-  void calculateIndexCosts(arangodb::Index const* index, 
-                           arangodb::aql::AstNode const* attribute,
-                           size_t itemsInIndex, size_t& estimatedItems,
-                           double& estimatedCost) const;
+  void calculateIndexCosts(arangodb::Index const* index,
+                           arangodb::aql::AstNode const* attribute, size_t itemsInIndex,
+                           size_t& estimatedItems, double& estimatedCost) const;
 
   /// @brief whether or not the access fits
   bool accessFitsIndex(arangodb::Index const*, arangodb::aql::AstNode const*,
-                       arangodb::aql::AstNode const*,
-                       arangodb::aql::AstNode const*,
-                       arangodb::aql::Variable const*, 
-                       std::unordered_set<std::string>& nonNullAttributes,
-                       bool);
+                       arangodb::aql::AstNode const*, arangodb::aql::AstNode const*,
+                       arangodb::aql::Variable const*,
+                       std::unordered_set<std::string>& nonNullAttributes, bool);
 
  private:
   /// @brief array of attributes used for comparisons
@@ -104,6 +99,6 @@ class SimpleAttributeEqualityMatcher {
 
   static constexpr size_t defaultEstimatedNumberOfArrayMembers = 10;
 };
-}
+}  // namespace arangodb
 
 #endif

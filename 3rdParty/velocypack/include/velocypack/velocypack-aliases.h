@@ -154,7 +154,14 @@ using VPackSlice = arangodb::velocypack::Slice;
 #ifdef VELOCYPACK_SLICE_CONTAINER_H
 #ifndef VELOCYPACK_ALIAS_SLICE_CONTAINER
 #define VELOCYPACK_ALIAS_SLICE_CONTAINER
-using VPackSlimBuffer = arangodb::velocypack::SliceContainer;
+using VPackSliceContainer = arangodb::velocypack::SliceContainer;
+#endif
+#endif
+
+#ifdef VELOCYPACK_STRINGREF_H
+#ifndef VELOCYPACK_ALIAS_STRINGREF
+#define VELOCYPACK_ALIAS_STRINGREF
+using VPackStringRef = arangodb::velocypack::StringRef;
 #endif
 #endif
 

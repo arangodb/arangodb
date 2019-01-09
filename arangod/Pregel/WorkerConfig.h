@@ -66,19 +66,16 @@ class WorkerConfig {
   inline std::string const& database() const { return _vocbase->name(); }
 
   // collection shards on this worker
-  inline std::map<CollectionID, std::vector<ShardID>> const&
-  vertexCollectionShards() const {
+  inline std::map<CollectionID, std::vector<ShardID>> const& vertexCollectionShards() const {
     return _vertexCollectionShards;
   }
 
   // collection shards on this worker
-  inline std::map<CollectionID, std::vector<ShardID>> const&
-  edgeCollectionShards() const {
+  inline std::map<CollectionID, std::vector<ShardID>> const& edgeCollectionShards() const {
     return _edgeCollectionShards;
   }
 
-  inline std::unordered_map<CollectionID, std::string> const&
-  collectionPlanIdMap() const {
+  inline std::unordered_map<CollectionID, std::string> const& collectionPlanIdMap() const {
     return _collectionPlanIdMap;
   };
 
@@ -138,14 +135,13 @@ class WorkerConfig {
 
   std::unordered_map<std::string, std::string> _collectionPlanIdMap;
   // Map from edge collection to their shards, only iterated over keep sorted
-  std::map<CollectionID, std::vector<ShardID>> _vertexCollectionShards,
-      _edgeCollectionShards;
+  std::map<CollectionID, std::vector<ShardID>> _vertexCollectionShards, _edgeCollectionShards;
 
   /// cache these ids as much as possible, since we access them often
   std::unordered_map<std::string, PregelShard> _pregelShardIDs;
   std::set<PregelShard> _localPregelShardIDs;
   std::unordered_set<PregelShard> _localPShardIDs_hash;
 };
-}
-}
+}  // namespace pregel
+}  // namespace arangodb
 #endif

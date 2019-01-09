@@ -44,7 +44,6 @@ void SharedQueryState::waitForAsyncResponse() {
   _wasNotified = false;
 }
 
-
 /// @brief setter for the continue callback:
 ///        We can either have a handler or a callback
 void SharedQueryState::setContinueCallback() noexcept {
@@ -71,6 +70,6 @@ bool SharedQueryState::executeContinueCallback() const {
   }
   // do NOT use scheduler->post(), can have high latency that
   //  then backs up libcurl callbacks to other objects
-  scheduler->queue(RequestPriority::HIGH, _continueCallback);
+  scheduler->queue(RequestLane::CLIENT_AQL, _continueCallback);
   return true;
 }

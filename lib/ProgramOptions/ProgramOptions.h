@@ -84,20 +84,17 @@ class ProgramOptions {
   };
 
   // function type for determining the similarity between two strings
-  typedef std::function<int(std::string const&, std::string const&)>
-      SimilarityFuncType;
+  typedef std::function<int(std::string const&, std::string const&)> SimilarityFuncType;
 
   // no need to copy this
   ProgramOptions(ProgramOptions const&) = delete;
   ProgramOptions& operator=(ProgramOptions const&) = delete;
 
   ProgramOptions(char const* progname, std::string const& usage,
-                 std::string const& more,
-                 char const* binaryPath);
+                 std::string const& more, char const* binaryPath);
 
   // sets a value translator
-  void setTranslator(
-      std::function<std::string(std::string const&, char const*)> const& translator);
+  void setTranslator(std::function<std::string(std::string const&, char const*)> const& translator);
 
   // return a const reference to the processing result
   ProcessingResult const& processingResult() const { return _processingResult; }
@@ -120,11 +117,6 @@ class ProgramOptions {
   // set context for error reporting
   void setContext(std::string const& value) { _context = value; }
 
-  // sets the old options map
-  void setOldOptions(std::unordered_map<std::string, std::string> const& old) {
-    _oldOptions = old;
-  }
-
   // sets a single old option and its replacement name
   void addOldOption(std::string const& old, std::string const& replacement) {
     _oldOptions[Option::stripPrefix(old)] = replacement;
@@ -133,7 +125,7 @@ class ProgramOptions {
   // adds a section to the options
   void addSection(Section const& section) {
     checkIfSealed();
-    
+
     auto it = _sections.find(section.name);
 
     if (it == _sections.end()) {
@@ -152,30 +144,26 @@ class ProgramOptions {
   void addSection(std::string const& name, std::string const& description) {
     addSection(Section(name, description, "", false, false));
   }
-  
+
   // adds an enterprise-only section to the program options
   void addEnterpriseSection(std::string const& name, std::string const& description) {
     addSection(EnterpriseSection(name, description, "", false, false));
   }
 
   // adds an option to the program options
-  void addOption(std::string const& name, 
-                 std::string const& description,
-                 Parameter* parameter,
-                 std::underlying_type<Flags>::type flags = makeFlags(Flags::Normal)) {
+  Option& addOption(std::string const& name, std::string const& description,
+                    Parameter* parameter,
+                    std::underlying_type<Flags>::type flags = makeFlags(Flags::Normal)) {
     addOption(Option(name, description, parameter, flags));
+    return getOption(name);
   }
-  
+
   // adds an obsolete and hidden option to the program options
-  void addObsoleteOption(std::string const& name,
-                         std::string const& description,
-                         bool requiresValue) {
-    addOption(Option(
-        name, 
-        description, 
-        new ObsoleteParameter(requiresValue), 
-        makeFlags(Flags::Hidden, Flags::Obsolete))
-    );
+  Option& addObsoleteOption(std::string const& name,
+                            std::string const& description, bool requiresValue) {
+    addOption(Option(name, description, new ObsoleteParameter(requiresValue),
+                     makeFlags(Flags::Hidden, Flags::Obsolete)));
+    return getOption(name);
   }
 
   // prints usage information
@@ -189,14 +177,14 @@ class ProgramOptions {
 
   // prints the names for all section help options
   void printSectionsHelp() const;
-  
+
   // returns a VPack representation of the option values
   arangodb::velocypack::Builder toVPack(bool onlyTouched, bool detailed,
-                       std::unordered_set<std::string> const& exclude) const;
-  
+                                        std::unordered_set<std::string> const& exclude) const;
+
   // translate a shorthand option
   std::string translateShorthand(std::string const& name) const;
-  
+
   void walk(std::function<void(Section const&, Option const&)> const& callback,
             bool onlyTouched, bool includeObsolete = false) const;
 
@@ -206,13 +194,16 @@ class ProgramOptions {
 
   // sets a value for an option
   bool setValue(std::string const& name, std::string const& value);
-  
+
   // finalizes a pass, copying touched into frozen
   void endPass();
 
   // check whether or not an option requires a value
   bool requiresValue(std::string const& name) const;
-  
+
+  // returns the option by name. will throw if the option cannot be found
+  Option& getOption(std::string const& name);
+
   // returns a pointer to an option value, specified by option name
   // returns a nullptr if the option is unknown
   template <typename T>
@@ -243,7 +234,7 @@ class ProgramOptions {
 
   // report an error (callback from parser)
   bool fail(std::string const& message);
-  
+
   void failNotice(std::string const& message);
 
   // add a positional argument (callback from parser)
@@ -260,8 +251,7 @@ class ProgramOptions {
   void checkIfSealed() const;
 
   // get a list of similar options
-  std::vector<std::string> similar(std::string const& value, int cutOff,
-                                   size_t maxResults);
+  std::vector<std::string> similar(std::string const& value, int cutOff, size_t maxResults);
 
  private:
   // name of binary (i.e. argv[0])
@@ -293,7 +283,7 @@ class ProgramOptions {
   // directory of this binary
   char const* _binaryPath;
 };
-}
-}
+}  // namespace options
+}  // namespace arangodb
 
 #endif

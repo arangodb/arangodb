@@ -31,28 +31,26 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 RocksDBRestCollectionHandler::RocksDBRestCollectionHandler(GeneralRequest* request,
-                                             GeneralResponse* response)
+                                                           GeneralResponse* response)
     : RestCollectionHandler(request, response) {}
 
 Result RocksDBRestCollectionHandler::handleExtraCommandPut(LogicalCollection& coll,
                                                            std::string const& suffix,
                                                            velocypack::Builder& builder) {
-  
   if (suffix == "recalculateCount") {
-    
     if (ExecContext::CURRENT != nullptr) {
       if (!ExecContext::CURRENT->canUseCollection(coll.name(), auth::Level::RW)) {
         return Result(TRI_ERROR_FORBIDDEN);
       }
     }
-    
+
     auto physical = toRocksDBCollection(coll.getPhysical());
-    
+
     Result res;
     uint64_t count = 0;
     try {
       count = physical->recalculateCounts();
-    } catch(basics::Exception const& e) {
+    } catch (basics::Exception const& e) {
       res.reset(e.code(), e.message());
     }
     if (res.ok()) {
@@ -62,6 +60,6 @@ Result RocksDBRestCollectionHandler::handleExtraCommandPut(LogicalCollection& co
     }
     return res;
   }
-  
+
   return TRI_ERROR_NOT_IMPLEMENTED;
 }

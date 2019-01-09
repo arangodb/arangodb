@@ -740,6 +740,30 @@ describe ArangoDB do
 
         ArangoDB.size_collection(@cn).should eq(0)
       end
+      
+      it "creating a new document with duplicate attribute names" do
+        cmd = "/_api/document?collection=#{@cn}"
+        body = "{ \"a\" : 1, \"a\": 2 }"
+        doc = ArangoDB.log_post("#{prefix}-accept", cmd, :body => body, :headers => {})
+
+        doc.code.should eq(400)
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['errorNum'].should eq(600)
+        doc.parsed_response['code'].should eq(400)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+      end
+      
+      it "creating a new document with duplicate attribute names in nested object" do
+        cmd = "/_api/document?collection=#{@cn}"
+        body = "{ \"outer\" : { \"a\" : 1, \"a\": 2 } }"
+        doc = ArangoDB.log_post("#{prefix}-accept", cmd, :body => body, :headers => {})
+        
+        doc.code.should eq(400)
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['errorNum'].should eq(600)
+        doc.parsed_response['code'].should eq(400)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+      end
     end
 
 ################################################################################

@@ -566,7 +566,7 @@ CTRL-C can also be used to reset the current prompt while entering complex neste
 objects which span multiple input lines.
   
 CTRL-C support has been added to the ArangoShell versions built with Readline-support 
-(Linux and MacOS only). The Windows version of ArangoDB uses a different library for 
+(Linux and macOS only). The Windows version of ArangoDB uses a different library for 
 handling input, and support for CTRL-C has not been added there yet. 
 
 

@@ -31,7 +31,7 @@
 
 #include "Basics/ConditionLocker.h"
 #include "Cluster/ClusterComm.h"
-#include "Scheduler/Scheduler.h"
+#include "Scheduler/SupervisedScheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/ticks.h"
 
@@ -42,7 +42,7 @@ class ClusterCommTester : public ClusterComm {
 public:
   ClusterCommTester()
     : ClusterComm(false),
-      _oldSched(nullptr), _testerSched(1, 2, 3, 4)
+      _oldSched(nullptr), _testerSched(1, 2, 3, 4, 5)
   {
     // fake a scheduler object
     _oldSched = SchedulerFeature::SCHEDULER;
@@ -79,7 +79,7 @@ public:
   } // signalResponse
 
   Scheduler * _oldSched;
-  Scheduler _testerSched;
+  SupervisedScheduler _testerSched;
 
 };// class ClusterCommTester
 

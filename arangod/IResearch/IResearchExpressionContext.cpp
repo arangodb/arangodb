@@ -21,25 +21,22 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/AqlItemBlock.h"
 #include "IResearch/IResearchExpressionContext.h"
+#include "Aql/AqlItemBlock.h"
 #include "IResearch/IResearchViewNode.h"
 
 namespace {
 
-inline arangodb::aql::RegisterId getRegister(
-    arangodb::aql::Variable const& var,
-    arangodb::aql::ExecutionNode const& node
-) noexcept {
+inline arangodb::aql::RegisterId getRegister(arangodb::aql::Variable const& var,
+                                             arangodb::aql::ExecutionNode const& node) noexcept {
   auto const& vars = node.getRegisterPlan()->varInfo;
   auto const it = vars.find(var.id);
 
-  return vars.end() == it
-    ? arangodb::aql::ExecutionNode::MaxRegisterId
-    : it->second.registerId;
-  }
-
+  return vars.end() == it ? arangodb::aql::ExecutionNode::MaxRegisterId
+                          : it->second.registerId;
 }
+
+}  // namespace
 
 namespace arangodb {
 namespace iresearch {
@@ -54,9 +51,8 @@ size_t ViewExpressionContext::numRegisters() const {
   return _data->getNrRegs();
 }
 
-AqlValue ViewExpressionContext::getVariableValue(
-    Variable const* var, bool doCopy, bool& mustDestroy
-) const {
+AqlValue ViewExpressionContext::getVariableValue(Variable const* var, bool doCopy,
+                                                 bool& mustDestroy) const {
   TRI_ASSERT(var);
 
   if (var == &_node->outVariable()) {
@@ -66,23 +62,23 @@ AqlValue ViewExpressionContext::getVariableValue(
 
       try {
         expr = _expr->toString();
-      } catch (...) { }
+      } catch (...) {
+      }
 
       if (!expr.empty()) {
         THROW_ARANGO_EXCEPTION_FORMAT(
-          TRI_ERROR_NOT_IMPLEMENTED,
-          "Unable to evaluate loop variable '%s' as a part of ArangoSearch noncompliant expression '%s'",
-          var->name.c_str(),
-          expr.c_str()
-        );
+            TRI_ERROR_NOT_IMPLEMENTED,
+            "Unable to evaluate loop variable '%s' as a part of ArangoSearch "
+            "noncompliant expression '%s'",
+            var->name.c_str(), expr.c_str());
       }
     }
 
     THROW_ARANGO_EXCEPTION_FORMAT(
-      TRI_ERROR_NOT_IMPLEMENTED,
-      "Unable to evaluate loop variable '%s' as a part of ArangoSearch noncompliant expression",
-      var->name.c_str()
-    );
+        TRI_ERROR_NOT_IMPLEMENTED,
+        "Unable to evaluate loop variable '%s' as a part of ArangoSearch "
+        "noncompliant expression",
+        var->name.c_str());
   }
 
   mustDestroy = false;
@@ -102,8 +98,8 @@ AqlValue ViewExpressionContext::getVariableValue(
   return value;
 }
 
-} // iresearch
-} // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

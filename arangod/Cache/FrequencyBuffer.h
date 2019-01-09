@@ -46,12 +46,11 @@ namespace cache {
 /// occurrences of each within a certain time-frame. Will write to randomized
 /// memory location inside the frequency buffer
 ////////////////////////////////////////////////////////////////////////////////
-template <class T, class Comparator = std::equal_to<T>,
-          class Hasher = std::hash<T>>
+template <class T, class Comparator = std::equal_to<T>, class Hasher = std::hash<T>>
 class FrequencyBuffer {
  public:
   typedef std::vector<std::pair<T, uint64_t>> stats_t;
-  
+
   static_assert(sizeof(std::atomic<T>) == sizeof(T), "");
 
  private:
@@ -60,17 +59,17 @@ class FrequencyBuffer {
   std::vector<std::atomic<T>> _buffer;
   Comparator _cmp;
   T _empty;
-  
-private:
-  
+
+ private:
   static size_t powerOf2(size_t capacity) {
-    // TODO maybe use https://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
+    // TODO maybe use
+    // https://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
     size_t i = 0;
     for (; (static_cast<size_t>(1) << i) < capacity; i++) {
     }
     return (static_cast<size_t>(1) << i);
   }
-  
+
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initialize with the given capacity.
@@ -88,9 +87,7 @@ private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Reports the hidden allocation size (not captured by sizeof).
   //////////////////////////////////////////////////////////////////////////////
-  static size_t allocationSize(size_t capacity) {
-    return capacity * sizeof(T);
-  }
+  static size_t allocationSize(size_t capacity) { return capacity * sizeof(T); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Reports the memory usage in bytes.
@@ -104,8 +101,7 @@ private:
   //////////////////////////////////////////////////////////////////////////////
   void insertRecord(T record) {
     // we do not care about the order in which threads insert their values
-    _buffer[basics::SharedPRNG::rand() & _mask].store(
-        record, std::memory_order_relaxed);
+    _buffer[basics::SharedPRNG::rand() & _mask].store(record, std::memory_order_relaxed);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -115,8 +111,7 @@ private:
     for (size_t i = 0; i < _capacity; i++) {
       auto tmp = _buffer[i].load(std::memory_order_relaxed);
       if (_cmp(tmp, record)) {
-        _buffer[i].compare_exchange_strong(tmp, _empty,
-                                           std::memory_order_relaxed);
+        _buffer[i].compare_exchange_strong(tmp, _empty, std::memory_order_relaxed);
       }
     }
   }
@@ -146,7 +141,7 @@ private:
                 return left.second < right.second;
               });
 
-    return data; // RVO moves this out
+    return data;  // RVO moves this out
   }
 
   //////////////////////////////////////////////////////////////////////////////
