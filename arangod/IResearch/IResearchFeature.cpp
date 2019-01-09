@@ -282,7 +282,7 @@ bool iresearchViewUpgradeVersion0_1(TRI_vocbase_t& vocbase,
     // non-recoverable state below here
     // .........................................................................
 
-    // non-version 0 IResearchView implementations no longer drom from vocbase
+    // non-version 0 IResearchView implementations no longer drop from vocbase
     // on db-server, do it explicitly
     if (arangodb::ServerState::instance()->isDBServer()) {
       res = arangodb::LogicalViewHelperStorageEngine::drop(*view);
@@ -1007,6 +1007,6 @@ void IResearchFeature::validateOptions(std::shared_ptr<arangodb::options::Progra
 NS_END      // iresearch
     NS_END  // arangodb
 
-    // -----------------------------------------------------------------------------
-    // --SECTION-- END-OF-FILE
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
