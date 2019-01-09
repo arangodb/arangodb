@@ -71,9 +71,46 @@ bool equalTo(aql::AstNode const* lhs, aql::AstNode const* rhs) {
     return false;
   }
 
+  auto equalMembers = [](aql::AstNode const* lhs, aql::AstNode const* rhs) {
+    TRI_ASSERT(lhs && rhs);
+    TRI_ASSERT(lhs->numMembers() == rhs->numMembers());
+
+    size_t const n = lhs->numMembers();
+
+    for (size_t i = 0; i < n; ++i) {
+      if (!equalTo(lhs->getMemberUnchecked(i), rhs->getMemberUnchecked(i))) {
+        return false;
+      }
+    }
+
+    return true;
+  };
+
   switch (lhs->type) {
     case aql::NODE_TYPE_VARIABLE: {
       return lhs->getData() == rhs->getData();
+    }
+
+    case aql::NODE_TYPE_OPERATOR_UNARY_PLUS:
+    case aql::NODE_TYPE_OPERATOR_UNARY_MINUS:
+    case aql::NODE_TYPE_OPERATOR_UNARY_NOT:
+    case aql::NODE_TYPE_OPERATOR_BINARY_AND:
+    case aql::NODE_TYPE_OPERATOR_BINARY_OR:
+    case aql::NODE_TYPE_OPERATOR_BINARY_PLUS:
+    case aql::NODE_TYPE_OPERATOR_BINARY_MINUS:
+    case aql::NODE_TYPE_OPERATOR_BINARY_TIMES:
+    case aql::NODE_TYPE_OPERATOR_BINARY_DIV:
+    case aql::NODE_TYPE_OPERATOR_BINARY_MOD:
+    case aql::NODE_TYPE_OPERATOR_BINARY_EQ:
+    case aql::NODE_TYPE_OPERATOR_BINARY_NE:
+    case aql::NODE_TYPE_OPERATOR_BINARY_LT:
+    case aql::NODE_TYPE_OPERATOR_BINARY_LE:
+    case aql::NODE_TYPE_OPERATOR_BINARY_GT:
+    case aql::NODE_TYPE_OPERATOR_BINARY_GE:
+    case aql::NODE_TYPE_OPERATOR_BINARY_IN:
+    case aql::NODE_TYPE_OPERATOR_BINARY_NIN:
+    case aql::NODE_TYPE_OPERATOR_TERNARY: {
+      return equalMembers(lhs, rhs);
     }
 
     case aql::NODE_TYPE_ATTRIBUTE_ACCESS: {
@@ -86,12 +123,7 @@ bool equalTo(aql::AstNode const* lhs, aql::AstNode const* rhs) {
     }
 
     case aql::NODE_TYPE_ARRAY: {
-      for (size_t i = 0; i < n; ++i) {
-        if (!equalTo(lhs->getMemberUnchecked(i), rhs->getMemberUnchecked(i))) {
-          return false;
-        }
-      }
-      return true;
+      return equalMembers(lhs, rhs);
     }
 
     case aql::NODE_TYPE_REFERENCE: {
@@ -104,13 +136,7 @@ bool equalTo(aql::AstNode const* lhs, aql::AstNode const* rhs) {
         return false;
       }
 
-      for (size_t i = 0; i < n; ++i) {
-        if (!equalTo(lhs->getMemberUnchecked(i), rhs->getMemberUnchecked(i))) {
-          return false;
-        }
-      }
-
-      return true;
+      return equalMembers(lhs, rhs);
     }
 
     case aql::NODE_TYPE_FCALL_USER: {
@@ -122,26 +148,16 @@ bool equalTo(aql::AstNode const* lhs, aql::AstNode const* rhs) {
         return false;
       }
 
-      for (size_t i = 0; i < n; ++i) {
-        if (!equalTo(lhs->getMemberUnchecked(i), rhs->getMemberUnchecked(i))) {
-          return false;
-        }
-      }
-
-      return true;
+      return equalMembers(lhs, rhs);
     }
 
     case aql::NODE_TYPE_RANGE: {
-      for (size_t i = 0; i < n; ++i) {
-        if (!equalTo(lhs->getMemberUnchecked(i), rhs->getMemberUnchecked(i))) {
-          return false;
-        }
-      }
-
-      return true;
+      return equalMembers(lhs, rhs);
     }
 
-    default: { return lhs == rhs; }
+    default: {
+      return false;
+    }
   }
 }
 
@@ -162,31 +178,51 @@ size_t hash(aql::AstNode const* node, size_t hash /*= 0*/) noexcept {
     return hash;
   };
 
+  auto const& typeString = node->getTypeString();
+  hash = fasthash64(static_cast<const void*>(typeString.c_str()), typeString.size(), hash);
+
   switch (node->type) {
     case aql::NODE_TYPE_VARIABLE: {
-      hash = fasthash64(static_cast<const void*>("variable"), 8, hash);
       return fasthash64(node->getData(), sizeof(void*), hash);
     }
 
+    case aql::NODE_TYPE_OPERATOR_UNARY_PLUS:
+    case aql::NODE_TYPE_OPERATOR_UNARY_MINUS:
+    case aql::NODE_TYPE_OPERATOR_UNARY_NOT:
+    case aql::NODE_TYPE_OPERATOR_BINARY_AND:
+    case aql::NODE_TYPE_OPERATOR_BINARY_OR:
+    case aql::NODE_TYPE_OPERATOR_BINARY_PLUS:
+    case aql::NODE_TYPE_OPERATOR_BINARY_MINUS:
+    case aql::NODE_TYPE_OPERATOR_BINARY_TIMES:
+    case aql::NODE_TYPE_OPERATOR_BINARY_DIV:
+    case aql::NODE_TYPE_OPERATOR_BINARY_MOD:
+    case aql::NODE_TYPE_OPERATOR_BINARY_EQ:
+    case aql::NODE_TYPE_OPERATOR_BINARY_NE:
+    case aql::NODE_TYPE_OPERATOR_BINARY_LT:
+    case aql::NODE_TYPE_OPERATOR_BINARY_LE:
+    case aql::NODE_TYPE_OPERATOR_BINARY_GT:
+    case aql::NODE_TYPE_OPERATOR_BINARY_GE:
+    case aql::NODE_TYPE_OPERATOR_BINARY_IN:
+    case aql::NODE_TYPE_OPERATOR_BINARY_NIN:
+    case aql::NODE_TYPE_OPERATOR_TERNARY: {
+      return hashMembers(*node, hash);
+    }
+
     case aql::NODE_TYPE_ATTRIBUTE_ACCESS: {
-      hash = fasthash64(static_cast<const void*>("attribute access"), 16, hash);
       hash = aql::AstNode(node->value).hashValue(hash);
       return hashMembers(*node, hash);
     }
 
     case aql::NODE_TYPE_INDEXED_ACCESS: {
-      hash = fasthash64(static_cast<const void*>("indexed access"), 14, hash);
       hash = aql::AstNode(node->value).hashValue(hash);
       return hashMembers(*node, hash);
     }
 
     case aql::NODE_TYPE_EXPANSION: {
-      hash = fasthash64(static_cast<const void*>("*"), 1, hash);
       return hashMembers(*node, hash);
     }
 
     case aql::NODE_TYPE_VALUE: {
-      hash = fasthash64(static_cast<const void*>("value"), 5, hash);
       switch (node->value.type) {
         case aql::VALUE_TYPE_NULL:
           return fasthash64(static_cast<const void*>("null"), 4, hash);
@@ -208,12 +244,10 @@ size_t hash(aql::AstNode const* node, size_t hash /*= 0*/) noexcept {
     }
 
     case aql::NODE_TYPE_ARRAY: {
-      hash = fasthash64(static_cast<const void*>("array"), 5, hash);
       return hashMembers(*node, hash);
     }
 
     case aql::NODE_TYPE_OBJECT: {
-      hash = fasthash64(static_cast<const void*>("object"), 6, hash);
       for (size_t i = 0, n = node->numMembers(); i < n; ++i) {
         auto sub = node->getMemberUnchecked(i);
 
@@ -228,7 +262,6 @@ size_t hash(aql::AstNode const* node, size_t hash /*= 0*/) noexcept {
     }
 
     case aql::NODE_TYPE_REFERENCE: {
-      hash = fasthash64(static_cast<const void*>("reference"), 9, hash);
       return fasthash64(node->getData(), sizeof(void*), hash);
     }
 
@@ -236,21 +269,18 @@ size_t hash(aql::AstNode const* node, size_t hash /*= 0*/) noexcept {
       // convert name to lower case
       auto* fn = static_cast<aql::Function*>(node->getData());
 
-      hash = fasthash64(static_cast<const void*>("fcall"), 5, hash);
       hash = fasthash64(node->getData(), sizeof(void*), hash);
       hash = fasthash64(fn->name.c_str(), fn->name.size(), hash);
       return hashMembers(*node, hash);
     }
 
     case aql::NODE_TYPE_FCALL_USER: {
-      hash = fasthash64(static_cast<const void*>("fcalluser"), 9, hash);
       hash = fasthash64(static_cast<const void*>(node->getStringValue()),
                         node->getStringLength(), hash);
       return hashMembers(*node, hash);
     }
 
     case aql::NODE_TYPE_RANGE: {
-      hash = fasthash64(static_cast<const void*>("range"), 5, hash);
       return hashMembers(*node, hash);
     }
 
