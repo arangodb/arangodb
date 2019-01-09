@@ -22,11 +22,17 @@
 // / @author Alan Plum
 // //////////////////////////////////////////////////////////////////////////////
 
-const isCluster = require('@arangodb/cluster').isCluster();
-const coordinatorId = require('@arangodb/cluster').coordinatorId();
+const cluster = require('@arangodb/cluster');
+const isCluster = cluster.isCluster();
 const tasks = require('@arangodb/tasks');
 const db = require('@arangodb').db;
 const foxxManager = require('@arangodb/foxx/manager');
+
+const coordinatorId = (
+  isCluster && cluster.isCoordinator()
+  ? cluster.coordinatorId()
+  : undefined
+);
 
 var runInDatabase = function () {
   var busy = false;
