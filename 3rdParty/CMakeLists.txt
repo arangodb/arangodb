@@ -108,17 +108,24 @@ add_subdirectory(s2geometry)
 set(ARANGO_S2GEOMETRY_VERSION "${ARANGO_S2GEOMETRY_VERSION}" PARENT_SCOPE)
 
 ################################################################################
+## BOOST
+################################################################################
+
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/boost)
+set(BOOST_VERSION ${BOOST_VERSION} PARENT_SCOPE)
+
+################################################################################
 ## IResearch
 ################################################################################
 
 if (USE_IRESEARCH)
   add_library(boost-static IMPORTED STATIC)
   set_target_properties(boost-static PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/boost/1.62.0"
+    INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/boost/${BOOST_VERSION}"
     IMPORTED_LOCATION "boost_locale;boost_system;boost_thread"
   )
 
-  set(Boost_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/boost/1.62.0") # explicitly set since suppressing Boost search
+  set(Boost_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/boost/${BOOST_VERSION}") # explicitly set since suppressing Boost search
 
   # IResearch on MacOS requires a complete build of ICU for encoding conversion
   if(APPLE)
@@ -243,25 +250,12 @@ if (USE_JEMALLOC)
 endif ()
 
 ################################################################################
-## BOOST
-################################################################################
-
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/boost)
-set(BOOST_VERSION ${BOOST_VERSION} PARENT_SCOPE)
-
-################################################################################
 ## ROCKSDB
 ################################################################################
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb)
 include_directories(${ROCKSDB_INCLUDE_DIR})
 set(ARANGO_ROCKSDB_VERSION "${ARANGO_ROCKSDB_VERSION}" PARENT_SCOPE)
-
-################################################################################
-## ASIO
-################################################################################
-
-set(ASIO_INCLUDES "${CMAKE_CURRENT_SOURCE_DIR}/asio/1.12/include" PARENT_SCOPE)
 
 ################################################################################
 ## LINK_DIRECTORIES

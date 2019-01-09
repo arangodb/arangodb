@@ -1,0 +1,136 @@
+# Boost System Library test Jamfile
+
+# Copyright Beman Dawes 2003, 2006
+# Copyright 2017, 2018 Peter Dimov
+
+# Distributed under the Boost Software License, Version 1.0.
+# See accompanying file LICENSE_1_0.txt or http://www.boost.org/LICENSE_1_0.txt
+
+# See library home page at http://www.boost.org/libs/system
+
+import testing ;
+import os ;
+
+project
+    : requirements
+      <library>/boost/system//boost_system
+    ;
+
+   lib throw_test : throw_test.cpp : <link>shared:<define>THROW_DYN_LINK=1 ;
+
+   lib single_instance_lib1 : single_instance_1.cpp : <link>shared:<define>SINGLE_INSTANCE_DYN_LINK ;
+   lib single_instance_lib2 : single_instance_2.cpp : <link>shared:<define>SINGLE_INSTANCE_DYN_LINK ;
+
+   rule cxx03 ( properties * )
+   {
+      local result ;
+
+      if <toolset>gcc in $(properties)
+      {
+         result = <cxxflags>-std=c++98 ; # 4.4 has no 03
+      }
+      else if <toolset>clang in $(properties)
+      {
+         result = <cxxflags>-std=c++03 ;
+      }
+      else
+      {
+         result = <build>no ;
+      }
+
+      return $(result) ;
+   }
+
+   rule cxx11 ( properties * )
+   {
+      local result ;
+
+      if <toolset>gcc in $(properties)
+      {
+         result = <cxxflags>-std=c++0x ; # 4.6 has no 11
+      }
+      else if <toolset>clang in $(properties)
+      {
+         result = <cxxflags>-std=c++11 ;
+      }
+      else
+      {
+         result = <build>no ;
+      }
+
+      return $(result) ;
+   }
+
+   rule system-run- ( sources + )
+   {
+      local result ;
+
+      result += [ run $(sources) : : : <link>static : $(sources[1]:B)_static ] ;
+      result += [ run $(sources) : : : <link>shared : $(sources[1]:B)_shared ] ;
+      result += [ run $(sources) : : : -<library>/boost/system//boost_system <define>BOOST_ERROR_CODE_HEADER_ONLY : $(sources[1]:B)_header ] ;
+
+      return $(result) ;
+   }
+
+if [ os.environ UBSAN ]
+{
+   rule system-run ( sources + )
+   {
+      # The 03/11 tests are ODR violations, no point running them under -fsanitize=undefined
+      return [ system-run- $(sources) ] ;
+   }
+}
+else
+{
+   rule system-run ( sources + )
+   {
+      local result = [ system-run- $(sources) ] ;
+
+      # Test a source file built with -std=c++03 linked with a System library built without -std=c++03
+      result += [ run $(sources) : : : <link>static <conditional>@cxx03 : $(sources[1]:B)_static_03 ] ;
+      result += [ run $(sources) : : : <link>shared <conditional>@cxx03 : $(sources[1]:B)_shared_03 ] ;
+
+      # Test a source file built with -std=c++11 linked with a System library built without -std=c++11
+      result += [ run $(sources) : : : <link>static <conditional>@cxx11 : $(sources[1]:B)_static_11 ] ;
+      result += [ run $(sources) : : : <link>shared <conditional>@cxx11 : $(sources[1]:B)_shared_11 ] ;
+
+      return $(result) ;
+   }
+}
+
+system-run error_code_test.cpp ;
+system-run error_code_user_test.cpp ;
+system-run system_error_test.cpp ;
+
+run dynamic_link_test.cpp throw_test :  :  : <link>shared : throw_test_shared ;
+
+system-run initialization_test.cpp ;
+
+run header_only_test.cpp : : : -<library>/boost/system//boost_system ;
+run header_only_test.cpp : : : -<library>/boost/system//boost_system <define>BOOST_NO_ANSI_APIS : header_only_test_no_ansi ;
+
+run config_test.cpp : : : <test-info>always_show_run_output ;
+
+system-run- std_interop_test.cpp ;
+system-run std_mismatch_test.cpp ;
+
+system-run single_instance_test.cpp single_instance_1.cpp single_instance_2.cpp ;
+run single_instance_test.cpp single_instance_lib1 single_instance_lib2 : : : <link>static : single_instance_lib_static ;
+run single_instance_test.cpp single_instance_lib1 single_instance_lib2 : : : <link>shared : single_instance_lib_shared ;
+
+system-run before_main_test.cpp ;
+run-fail throws_assign_fail.cpp ;
+system-run- constexpr_test.cpp ;
+system-run win32_hresult_test.cpp ;
+
+system-run error_category_test.cpp ;
+system-run generic_category_test.cpp ;
+system-run system_category_test.cpp ;
+system-run after_main_test.cpp ;
+system-run failed_test.cpp ;
+system-run- failed_constexpr_test.cpp ;
+
+# Quick (CI) test
+run quick.cpp ;
+
+run quick.cpp : : : <warnings>all <warnings-as-errors>on : warnings_test ;

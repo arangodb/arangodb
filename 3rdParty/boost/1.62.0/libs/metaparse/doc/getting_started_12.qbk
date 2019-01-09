@@ -1,4 +1,0 @@
-[#getting_started_12]
-
-  using exp_parser9 = build_parser< transform< /* What we had so far */ sequence< int_token, transform< repeated<sequence<plus_token, int_token>>, boost::mpl::lambda< boost::mpl::fold< boost::mpl::_1, boost::mpl::int_<0>, boost::mpl::quote2<sum_items> > >::type > >, boost::mpl::quote1<sum_vector> /* summarise the vector of numbers */ > >;
-

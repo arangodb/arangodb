@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <h3>
+      Quickbook Role Test
+    </h3>
+    <p>
+      <span class="keyword">Keyword</span> <span class="keyword"></span>
+    </p>
+    <p>
+      road <span class="red">Red</span> <span class="red"></span> <span class="three-colours-red">Three
+      Colours Red</span> <span class="red-road">Red Road</span>
+    </p>
+  </body>
+</html>

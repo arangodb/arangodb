@@ -1,0 +1,49 @@
+#|
+Copyright 2017 Rene Rivera
+Copyright 2003, 2004, 2005 Dave Abrahams
+Copyright 2003, 2004, 2005 Douglas Gregor
+Copyright 2005, 2006, 2007 Rene Rivera
+Copyright 2003, 2004, 2005 Vladimir Prus
+Distributed under the Boost Software License, Version 1.0. (See
+accompanying file LICENSE_1_0.txt or copy at
+http://www.boost.org/LICENSE_1_0.txt)
+|#
+
+import scanner ;
+import type ;
+
+type XML : xml ;
+
+# XInclude scanner. Mostly stolen from c-scanner. :)
+# Note that this assumes an "xi" prefix for XIncludes. This is not always the
+# case for XML documents, but we assume it is true for anything we encounter.
+#
+class xinclude-scanner : scanner
+{
+    import scanner ;
+
+    rule __init__ ( includes * )
+    {
+        scanner.__init__ ;
+        self.includes = $(includes) ;
+    }
+
+    rule pattern ( )
+    {
+        return "xi:include[ ]*href=\"([^\"]*)\"" ;
+    }
+
+    rule process ( target : matches * : binding )
+    {
+        local target_path = [ NORMALIZE_PATH $(binding:D) ] ;
+
+        NOCARE $(matches) ;
+        INCLUDES $(target) : $(matches) ;
+        SEARCH on $(matches) = $(target_path) $(self.includes:G=) ;
+
+        scanner.propagate $(__name__) : $(matches) : $(target) ;
+    }
+}
+
+scanner.register xinclude-scanner : "xsl:path" ;
+type.set-scanner XML : xinclude-scanner ;

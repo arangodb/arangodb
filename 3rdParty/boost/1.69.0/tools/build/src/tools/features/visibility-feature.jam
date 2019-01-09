@@ -1,0 +1,14 @@
+# Copyright 2018 Andrey Semashev
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+import feature ;
+
+feature.feature visibility
+    : global protected hidden
+    : optional composite propagated ;
+
+feature.compose <visibility>global : <local-visibility>global ;
+feature.compose <visibility>protected : <local-visibility>protected ;
+feature.compose <visibility>hidden : <local-visibility>hidden ;
