@@ -558,6 +558,13 @@ IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
     transaction::Methods* trx, ManagedDocumentResult*, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
+  if (node == nullptr) {
+    // full range scan
+    return new RocksDBPrimaryIndexRangeIterator(
+        &_collection /*logical collection*/, trx, this, !opts.ascending /*reverse*/,
+        RocksDBKeyBounds::PrimaryIndex(_objectId, ::lowest, ::highest));
+  }
+
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
 
   size_t const n = node->numMembers();
@@ -666,12 +673,14 @@ IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
       value = valNode->getString();
     } else if (valNode->isObject() || valNode->isArray()) {
       // any array or object value is bigger than any potential key
-      value = highest;
+      value = ::highest;
     } else if (valNode->isNullValue() || valNode->isBoolValue() || valNode->isIntValue()) {
       // any null, bool or numeric value is lower than any potential key
       // keep lower bound
     } else {
+      LOG_TOPIC(ERR, Logger::AQL) << "unhandled type for valNode: " << valNode->getTypeString();
       TRI_ASSERT(false);
+      break;
     }
 
     // strip collection name prefix from comparison value
@@ -711,10 +720,10 @@ IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
 
   // if only one bound is given select the other (lowest or highest) accordingly
   if (upperFound && !lowerFound) {
-    lower = lowest;
+    lower = ::lowest;
     lowerFound = true;
   } else if (lowerFound && !upperFound) {
-    upper = highest;
+    upper = ::highest;
     upperFound = true;
   }
 
