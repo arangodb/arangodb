@@ -1,6 +1,9 @@
 devel
 -----
 
+* fixed an issue where a crashed coordinator can lead to some Foxx queue jobs
+  erroneously either left hanging or being restarted
+
 * fix issue #7900: Bind values of `null` are not replaced by
   empty string anymore, when toggling between json and table
   view in the web-ui.
