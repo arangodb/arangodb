@@ -1422,7 +1422,7 @@ void Agent::updatePeerEndpoint(query_t const& message) {
 
   if (!slice.isObject() || slice.length() == 0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_AGENCY_INFORM_MUST_BE_OBJECT,
-                                   std::string("Inproper greeting: ") + slice.toJson());
+                                   std::string("Improper greeting: ") + slice.toJson());
   }
 
   std::string uuid, endpoint;
