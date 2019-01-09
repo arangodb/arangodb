@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlHelper.h"
+#include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/ExpressionContext.h"
@@ -276,6 +277,36 @@ irs::string_ref getFuncName(aql::AstNode const& node) {
   }
 
   return fname;
+}
+
+void visitReferencedVariables(
+    aql::AstNode const& root,
+    std::function<void(aql::Variable const&)> const& visitor) {
+  auto preVisitor = [](aql::AstNode const* node) -> bool {
+    return !node->isConstant();
+  };
+
+  auto postVisitor = [&visitor](aql::AstNode const* node) {
+    if (node == nullptr) {
+      return;
+    }
+
+    // reference to a variable
+    if (node->type == aql::NODE_TYPE_REFERENCE) {
+      auto variable = static_cast<aql::Variable const*>(node->getData());
+
+      if (!variable) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "invalid reference in AST");
+      }
+
+      if (variable->needsRegister()) {
+        visitor(*variable);
+      }
+    }
+  };
+
+  aql::Ast::traverseReadOnly(&root, preVisitor, postVisitor);
 }
 
 // ----------------------------------------------------------------------------

@@ -49,6 +49,7 @@
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchView.h"
+#include "IResearch/IResearchViewNode.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
@@ -62,13 +63,13 @@
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/SmallVector.h"
 #include "3rdParty/iresearch/tests/tests_config.hpp"
 #include "VocBase/ManagedDocumentResult.h"
 
 #include "IResearch/VelocyPackHelper.h"
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
-#include "search/scorers.hpp"
 #include "utils/utf8_path.hpp"
 
 #include <velocypack/Iterator.h>
@@ -76,101 +77,6 @@
 extern const char* ARGV0; // defined in main.cpp
 
 NS_LOCAL
-
-struct CustomScorer : public irs::sort {
-  struct Prepared: public irs::sort::prepared_base<float_t> {
-   public:
-    DECLARE_FACTORY(Prepared);
-
-    Prepared(float_t i)
-      : i(i) {
-    }
-
-    virtual void add(irs::byte_type* dst, const irs::byte_type* src) const override {
-      score_cast(dst) += score_cast(src);
-    }
-
-    virtual irs::flags const& features() const override {
-      return irs::flags::empty_instance();
-    }
-
-    virtual bool less(const irs::byte_type* lhs, const irs::byte_type* rhs) const override {
-      return score_cast(lhs) < score_cast(rhs);
-    }
-
-    virtual irs::sort::collector::ptr prepare_collector() const override {
-      return nullptr;
-    }
-
-    virtual void prepare_score(irs::byte_type* score) const override {
-      score_cast(score) = 0.f;
-    }
-
-    virtual irs::sort::scorer::ptr prepare_scorer(
-      irs::sub_reader const&,
-      irs::term_reader const&,
-      irs::attribute_store const&,
-      irs::attribute_view const&
-    ) const override {
-      struct Scorer : public irs::sort::scorer {
-        Scorer(float_t score): i(score) { }
-
-        virtual void score(irs::byte_type* score_buf) override {
-          *reinterpret_cast<score_t*>(score_buf) = i;
-        }
-
-        float_t i;
-      };
-
-      return irs::sort::scorer::make<Scorer>(i);
-    }
-
-    float_t i;
-  };
-
-  static ::iresearch::sort::type_id const& type() {
-    static ::iresearch::sort::type_id TYPE("customscorer");
-    return TYPE;
-  }
-
-  static irs::sort::ptr make(irs::string_ref const& args) {
-    if (args.null()) {
-      return std::make_shared<CustomScorer>(0.f);
-    }
-
-    // velocypack::Parser::fromJson(...) will throw exception on parse error
-    auto json = arangodb::velocypack::Parser::fromJson(args.c_str(), args.size());
-    auto slice = json ? json->slice() : arangodb::velocypack::Slice();
-
-    if (!slice.isArray()) {
-      return nullptr; // incorrect argument format
-    }
-
-    arangodb::velocypack::ArrayIterator itr(slice);
-
-    if (!itr.valid()) {
-      return nullptr;
-    }
-
-    auto const value = itr.value();
-
-    if (!value.isNumber()) {
-      return nullptr;
-    }
-
-    return std::make_shared<CustomScorer>(itr.value().getNumber<size_t>());
-  }
-
-  CustomScorer(size_t i) : irs::sort(CustomScorer::type()), i(i) {}
-
-  virtual irs::sort::prepared::ptr prepare() const override {
-    return irs::memory::make_unique<Prepared>(static_cast<float_t>(i));
-  }
-
-  size_t i;
-}; // CustomScorer
-
-REGISTER_SCORER_JSON(CustomScorer, CustomScorer::make);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -443,7 +349,6 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
 
   {
     std::string const query =
-      "LET x = 5 "
       "LET arr = [0,1] "
       "FOR i in 0..1 "
       "  LET rnd = _NONDETERM_(i) "
@@ -492,6 +397,253 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
       expectedDocs.erase(expectedValue);
     }
     CHECK(expectedDocs.empty());
+  }
+
+  // ensure subqueries outstide a loop work fine
+  {
+    std::string const query =
+      "LET x = (FOR j IN testView SEARCH j.name == 'A' SORT BM25(j) RETURN j) "
+      "FOR d in testView SEARCH d.name == 'B' "
+      "SORT customscorer(d, x[0].seq) "
+      "RETURN { d, 'score' : customscorer(d, x[0].seq) }";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+      }
+    ));
+
+    std::map<size_t, arangodb::velocypack::Slice> expectedDocs {
+      { 0, arangodb::velocypack::Slice(insertedDocsView[1].vpack()) },
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    for (;resultIt.valid(); resultIt.next()) {
+      auto const actualValue = resultIt.value();
+
+      auto actualScoreSlice = actualValue.get("score");
+      REQUIRE(actualScoreSlice.isNumber());
+      auto const actualScore = actualScoreSlice.getNumber<size_t>();
+      auto expectedValue = expectedDocs.find(actualScore);
+      REQUIRE(expectedValue != expectedDocs.end());
+
+      auto const actualDoc = actualValue.get("d");
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedValue->second), resolved, true)));
+      expectedDocs.erase(expectedValue);
+    }
+    CHECK(expectedDocs.empty());
+  }
+
+  // FIXME
+  // inline subqueries aren't supported, e.g. the query below will be transformed into
+  //
+  // FOR d in testView SEARCH d.name == 'B' LET #1 = customscorer(d, #2[0].seq)
+  // LET #2 = (FOR j IN testView SEARCH j.name == 'A' SORT BM25(j) RETURN j)
+  // RETURN { d, 'score' : #1 ) }
+  {
+    std::string const query =
+      "FOR d in testView SEARCH d.name == 'B' "
+      "RETURN { d, 'score' : customscorer(d, (FOR j IN testView SEARCH j.name == 'A' SORT BM25(j) RETURN j)[0].seq) }";
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_INTERNAL == queryResult.code);
+  }
+
+  // ensure scorers are deduplicated
+  {
+    std::string const queryString =
+      "LET i = 1"
+      "FOR d IN testView SEARCH d.name >= 'A' AND d.name <= 'C' "
+      "RETURN [ customscorer(d, i), customscorer(d, 1) ] ";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, queryString, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+      }
+    ));
+
+    arangodb::aql::Query query(
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      std::shared_ptr<arangodb::velocypack::Builder>(),
+      arangodb::velocypack::Parser::fromJson("{}"),
+      arangodb::aql::PART_MAIN
+    );
+
+    query.prepare(arangodb::QueryRegistryFeature::registry());
+    auto* plan = query.plan();
+    REQUIRE(plan);
+
+    arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+
+    // only one scorer
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+    REQUIRE(1 == nodes.size());
+    auto* viewNode = arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(nodes.front());
+    REQUIRE(viewNode);
+    auto& scorers = viewNode->scorers();
+    REQUIRE(1 == scorers.size());
+    auto* var = scorers.front().var;
+    REQUIRE(var);
+
+    // check scorer
+    {
+      auto* expr = scorers.front().node;
+      REQUIRE(expr);
+      REQUIRE(arangodb::aql::NODE_TYPE_FCALL == expr->type);
+      auto* fn = static_cast<arangodb::aql::Function*>(expr->getData());
+      REQUIRE(fn);
+      REQUIRE(arangodb::iresearch::isScorer(*fn));
+      CHECK("CUSTOMSCORER" == fn->name);
+
+      REQUIRE(1 == expr->numMembers());
+      auto* args = expr->getMember(0);
+      REQUIRE(args);
+      REQUIRE(arangodb::aql::NODE_TYPE_ARRAY == args->type);
+      REQUIRE(2 == args->numMembers());
+      auto* arg0 = args->getMember(0); // reference to d
+      REQUIRE(arg0);
+      REQUIRE(static_cast<void const*>(&viewNode->outVariable()) == arg0->getData());
+      auto* arg1 = args->getMember(1);
+      REQUIRE(arg1);
+      REQUIRE(arangodb::aql::NODE_TYPE_VALUE == arg1->type);
+      REQUIRE(arangodb::aql::VALUE_TYPE_INT == arg1->value.type);
+      REQUIRE(1 == arg1->getIntValue());
+    }
+
+    // and 2 references
+    nodes.clear();
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::CALCULATION, true);
+    REQUIRE(1 == nodes.size());
+    auto* calcNode = arangodb::aql::ExecutionNode::castTo<arangodb::aql::CalculationNode*>(nodes.front());
+    REQUIRE(calcNode);
+    REQUIRE(calcNode->expression());
+    auto* node = calcNode->expression()->node();
+    REQUIRE(node);
+    REQUIRE(arangodb::aql::NODE_TYPE_ARRAY == node->type);
+    REQUIRE(2 == node->numMembers());
+    for (size_t i = 0; i < node->numMembers(); ++i) {
+      auto* sub = node->getMember(i);
+      REQUIRE(arangodb::aql::NODE_TYPE_REFERENCE == sub->type);
+      CHECK(static_cast<const void*>(var) == sub->getData());
+    }
+  }
+
+  // con't deduplicate scorers with default values
+  {
+    std::string const queryString =
+      "FOR d IN testView SEARCH d.name >= 'A' AND d.name <= 'C' "
+      "RETURN [ tfidf(d), tfidf(d, false) ] ";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, queryString, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+      }
+    ));
+
+    arangodb::aql::Query query(
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      std::shared_ptr<arangodb::velocypack::Builder>(),
+      arangodb::velocypack::Parser::fromJson("{}"),
+      arangodb::aql::PART_MAIN
+    );
+
+    query.prepare(arangodb::QueryRegistryFeature::registry());
+    auto* plan = query.plan();
+    REQUIRE(plan);
+
+    arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+
+    // 2 scorers scorer
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+    REQUIRE(1 == nodes.size());
+    auto* viewNode = arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(nodes.front());
+    REQUIRE(viewNode);
+    auto scorers = viewNode->scorers();
+    std::sort(
+      scorers.begin(), scorers.end(),
+      [](auto const& lhs, auto const& rhs) noexcept {
+        return lhs.var->name < rhs.var->name;
+    });
+
+    // check "tfidf(d)" scorer
+    {
+      auto* expr = scorers[0].node;
+      REQUIRE(expr);
+      REQUIRE(arangodb::aql::NODE_TYPE_FCALL == expr->type);
+      auto* fn = static_cast<arangodb::aql::Function*>(expr->getData());
+      REQUIRE(fn);
+      REQUIRE(arangodb::iresearch::isScorer(*fn));
+      CHECK("TFIDF" == fn->name);
+
+      REQUIRE(1 == expr->numMembers());
+      auto* args = expr->getMember(0);
+      REQUIRE(args);
+      REQUIRE(arangodb::aql::NODE_TYPE_ARRAY == args->type);
+      REQUIRE(1 == args->numMembers());
+      auto* arg0 = args->getMember(0); // reference to d
+      REQUIRE(arg0);
+      REQUIRE(static_cast<void const*>(&viewNode->outVariable()) == arg0->getData());
+    }
+
+    // check "tfidf(d, false)" scorer
+    {
+      auto* expr = scorers[1].node;
+      REQUIRE(expr);
+      REQUIRE(arangodb::aql::NODE_TYPE_FCALL == expr->type);
+      auto* fn = static_cast<arangodb::aql::Function*>(expr->getData());
+      REQUIRE(fn);
+      REQUIRE(arangodb::iresearch::isScorer(*fn));
+      CHECK("TFIDF" == fn->name);
+
+      REQUIRE(1 == expr->numMembers());
+      auto* args = expr->getMember(0);
+      REQUIRE(args);
+      REQUIRE(arangodb::aql::NODE_TYPE_ARRAY == args->type);
+      REQUIRE(2 == args->numMembers());
+      auto* arg0 = args->getMember(0); // reference to d
+      REQUIRE(arg0);
+      REQUIRE(static_cast<void const*>(&viewNode->outVariable()) == arg0->getData());
+      auto* arg1 = args->getMember(1);
+      REQUIRE(arg1);
+      REQUIRE(arangodb::aql::NODE_TYPE_VALUE == arg1->type);
+      REQUIRE(arangodb::aql::VALUE_TYPE_BOOL == arg1->value.type);
+      REQUIRE(false == arg1->getBoolValue());
+    }
+
+    // and 2 references
+    nodes.clear();
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::CALCULATION, true);
+    REQUIRE(1 == nodes.size());
+    auto* calcNode = arangodb::aql::ExecutionNode::castTo<arangodb::aql::CalculationNode*>(nodes.front());
+    REQUIRE(calcNode);
+    REQUIRE(calcNode->expression());
+    auto* node = calcNode->expression()->node();
+    REQUIRE(node);
+    REQUIRE(arangodb::aql::NODE_TYPE_ARRAY == node->type);
+    REQUIRE(2 == node->numMembers());
+
+    for (size_t i = 0; i < node->numMembers(); ++i) {
+      auto* sub = node->getMember(i);
+      REQUIRE(arangodb::aql::NODE_TYPE_REFERENCE == sub->type);
+      CHECK(static_cast<const void*>(scorers[i].var) == sub->getData());
+    }
   }
 }
 

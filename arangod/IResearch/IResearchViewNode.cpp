@@ -566,6 +566,10 @@ void IResearchViewNode::getVariablesUsedHere(std::unordered_set<aql::Variable co
   if (!::filterConditionIsEmpty(_filterCondition)) {
     aql::Ast::getReferencedVariables(_filterCondition, vars);
   }
+
+  for (auto& scorer : _scorers) {
+    aql::Ast::getReferencedVariables(scorer.node, vars);
+  }
 }
 
 void IResearchViewNode::filterCondition(aql::AstNode const* node) noexcept {
