@@ -193,8 +193,8 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config, std::function<void()> co
       << "Using " << config->localVertexShardIDs().size() << " threads to load data";
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  scheduler->queue(RequestPriority::LOW, [this, scheduler, callback] {
+  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+  scheduler->queue(RequestLane::INTERNAL_LOW, [this, scheduler, callback] {
     // hold the current position where the ith vertex shard can
     // start to write its data. At the end the offset should equal the
     // sum of the counts of all ith edge shards
@@ -228,7 +228,7 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config, std::function<void()> co
           TRI_ASSERT(vertexOff < _index.size());
           TRI_ASSERT(info.numEdges == 0 || edgeDataOffsets[shardIdx] < _edges->size());
 
-          scheduler->queue(RequestPriority::LOW,
+          scheduler->queue(RequestLane::INTERNAL_LOW,
                            [this, &info, &edgeDataOffsets, vertexOff, shardIdx] {
                              TRI_DEFER(_runningThreads--);  // exception safe
                              _loadVertices(*info.trx, info.vertexShard, info.edgeShards,
@@ -250,7 +250,7 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config, std::function<void()> co
       }
     }
 
-    scheduler->queue(RequestPriority::LOW, callback);
+    scheduler->queue(RequestLane::INTERNAL_LOW, callback);
   });
 }
 
@@ -607,7 +607,7 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config, std::function<void()> 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   do {
     _runningThreads++;
-    SchedulerFeature::SCHEDULER->queue(RequestPriority::LOW, [this, start, end, now, cb] {
+    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [this, start, end, now, cb] {
       try {
         RangeIterator<VertexEntry> it = vertexIterator(start, end);
         _storeVertices(_config->globalShardIDs(), it);

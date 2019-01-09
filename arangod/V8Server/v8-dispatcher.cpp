@@ -31,7 +31,6 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
-#include "Scheduler/JobGuard.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Hints.h"
@@ -238,6 +237,7 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 static void JS_UnregisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  using arangodb::Task;
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -263,6 +263,7 @@ static void JS_UnregisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 static void JS_GetTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  using arangodb::Task;
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -434,8 +435,12 @@ void TRI_InitV8Dispatcher(v8::Isolate* isolate, v8::Handle<v8::Context> context)
                                TRI_V8_ASCII_STRING(isolate, "SYS_GET_TASK"), JS_GetTask);
 }
 
-void TRI_ShutdownV8Dispatcher() { Task::shutdownTasks(); }
+void TRI_ShutdownV8Dispatcher() {
+  using arangodb::Task;
+  Task::shutdownTasks();
+}
 
 void TRI_RemoveDatabaseTasksV8Dispatcher(std::string const& name) {
+  using arangodb::Task;
   Task::removeTasksForDatabase(name);
 }

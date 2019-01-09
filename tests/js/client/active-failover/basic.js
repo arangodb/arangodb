@@ -1,5 +1,5 @@
 /*jshint strict: false, sub: true */
-/*global print, assertTrue, assertEqual */
+/*global print, assertTrue, assertEqual, assertNotEqual */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -310,7 +310,7 @@ function ActiveFailoverSuite() {
       let oldLead = currentLead;
       // await failover and check that follower get in sync
       currentLead = checkForFailover(currentLead);
-      assertTrue(currentLead !== oldLead);
+      assertNotEqual(currentLead, oldLead);
       print("Failover to new leader : ", currentLead);
 
       internal.wait(5); // settle down, heartbeat interval is 1s
@@ -462,7 +462,7 @@ function ActiveFailoverSuite() {
     /*testCleanup: function () {
 
       let res = readAgencyValue("/arango/Plan/AsyncReplication/Leader");
-      assertTrue(res !== null);
+      assertNotEqual(res, null);
       let uuid = res[0].arango.Plan.AsyncReplication.Leader;
       res = readAgencyValue("/arango/Supervision/Health");
       let lead = res[0].arango.Supervision.Health[uuid].Endpoint;
