@@ -26,13 +26,13 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/SingleRowFetcher.h"
 #include "Aql/Query.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
+#include "Cluster/ServerState.h"
 #include "ExecutorExpressionContext.h"
 #include "V8/v8-globals.h"
-#include "Cluster/ServerState.h"
 
 #include <lib/Logger/LogMacros.h>
 
@@ -40,37 +40,31 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 namespace _detail {
-  void doEvaluation(CalculationExecutorInfos& info, InputAqlItemRow& input, OutputAqlItemRow& output);
-  void executeExpression(CalculationExecutorInfos& info, InputAqlItemRow& input, OutputAqlItemRow& output);
-}
+void doEvaluation(CalculationExecutorInfos& info, InputAqlItemRow& input,
+                  OutputAqlItemRow& output);
+void executeExpression(CalculationExecutorInfos& info, InputAqlItemRow& input,
+                       OutputAqlItemRow& output);
+}  // namespace _detail
 
+CalculationExecutorInfos::CalculationExecutorInfos(
+    RegisterId outputRegister, RegisterId nrInputRegisters,
+    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear
 
-CalculationExecutorInfos::CalculationExecutorInfos( RegisterId outputRegister
-                                                  , RegisterId nrInputRegisters
-                                                  , RegisterId nrOutputRegisters
-                                                  , std::unordered_set<RegisterId> registersToClear
+    ,
+    Query* query, Expression* expression, std::vector<Variable const*>&& expInVars,
+    std::vector<RegisterId>&& expInRegs, Variable const* conditionVar)
 
-                                                  , Query* query
-                                                  , Expression* expression
-                                                  , std::vector<Variable const*>&& expInVars
-                                                  , std::vector<RegisterId>&& expInRegs
-                                                  , Variable const* conditionVar
-                                                  )
-
-    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(expInRegs.begin(), expInRegs.end())
-                   , std::make_shared<std::unordered_set<RegisterId>>(std::initializer_list<RegisterId>{outputRegister})
-                   , nrInputRegisters
-                   , nrOutputRegisters
-                   , std::move(registersToClear)
-                   )
-    ,  _outputRegister(outputRegister)
-    ,  _query(query)
-    ,  _expression(expression)
-    ,  _expInVars(std::move(expInVars))
-    ,  _expInRegs(std::move(expInRegs))
-    ,  _conditionVariable(conditionVar)
-{
-
+    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(expInRegs.begin(),
+                                                                     expInRegs.end()),
+                    std::make_shared<std::unordered_set<RegisterId>>(
+                        std::initializer_list<RegisterId>{outputRegister}),
+                    nrInputRegisters, nrOutputRegisters, std::move(registersToClear)),
+      _outputRegister(outputRegister),
+      _query(query),
+      _expression(expression),
+      _expInVars(std::move(expInVars)),
+      _expInRegs(std::move(expInRegs)),
+      _conditionVariable(conditionVar) {
   TRI_ASSERT(_expression != nullptr);
   TRI_ASSERT(_query->trx() != nullptr);
 
@@ -78,17 +72,12 @@ CalculationExecutorInfos::CalculationExecutorInfos( RegisterId outputRegister
   if (_isReference) {
     TRI_ASSERT(_inRegs->size() == 1);
   }
-
 }
 
-
-CalculationExecutor::CalculationExecutor(Fetcher& fetcher ,CalculationExecutorInfos& infos)
-    : _infos(infos)
-    , _fetcher(fetcher)
-    , _rowState(ExecutionState::HASMORE) {};
+CalculationExecutor::CalculationExecutor(Fetcher& fetcher, CalculationExecutorInfos& infos)
+    : _infos(infos), _fetcher(fetcher), _rowState(ExecutionState::HASMORE){};
 
 std::pair<ExecutionState, NoStats> CalculationExecutor::produceRow(OutputAqlItemRow& output) {
-
   ExecutionState state;
   InputAqlItemRow row = InputAqlItemRow{CreateInvalidInputRowHint{}};
   std::tie(state, row) = _fetcher.fetchRow();
@@ -105,13 +94,13 @@ std::pair<ExecutionState, NoStats> CalculationExecutor::produceRow(OutputAqlItem
 
   _detail::doEvaluation(_infos, row, output);
 
-  return  {state, NoStats{}};
+  return {state, NoStats{}};
 }
-
 
 namespace _detail {
 
-void doEvaluation(CalculationExecutorInfos& info, InputAqlItemRow& input, OutputAqlItemRow& output) {
+void doEvaluation(CalculationExecutorInfos& info, InputAqlItemRow& input,
+                  OutputAqlItemRow& output) {
   static const bool isRunningInCluster = ServerState::instance()->isRunningInCluster();
   TRI_ASSERT(info._expression != nullptr);
 
@@ -128,7 +117,7 @@ void doEvaluation(CalculationExecutorInfos& info, InputAqlItemRow& input, Output
 
     output.setValue(info._outputRegister, input, input.getValue(inRegs[0]));
 
-    if (info._query->killed()){
+    if (info._query->killed()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
     }
 
@@ -163,22 +152,22 @@ void doEvaluation(CalculationExecutorInfos& info, InputAqlItemRow& input, Output
   }
 }
 
-void executeExpression(CalculationExecutorInfos& info, InputAqlItemRow& input, OutputAqlItemRow& output) {
-
+void executeExpression(CalculationExecutorInfos& info, InputAqlItemRow& input,
+                       OutputAqlItemRow& output) {
   bool const hasCondition = info._conditionVariable != nullptr;
   TRI_ASSERT(!hasCondition);
   if (hasCondition) {
-    //TODO not implemented -- see old CalcualtionBlock.cpp for details -- below old impl
+    // TODO not implemented -- see old CalcualtionBlock.cpp for details -- below old impl
 
-    //if (hasCondition) {
+    // if (hasCondition) {
     //  AqlValue const& conditionResult = result->getValueReference(i, _conditionReg);
 
     //  if (!conditionResult.toBoolean()) {
     //    TRI_IF_FAILURE("CalculationBlock::executeExpressionWithCondition") {
     //      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     //    }
-    //    result->emplaceValue(i, _outReg, arangodb::velocypack::Slice::nullSlice());
-    //    continue;
+    //    result->emplaceValue(i, _outReg,
+    //    arangodb::velocypack::Slice::nullSlice()); continue;
     //  }
     //}
   }
@@ -186,7 +175,7 @@ void executeExpression(CalculationExecutorInfos& info, InputAqlItemRow& input, O
   // execute the expression
   ExecutorExpressionContext ctx(info._query, input, info._expInVars, info._expInRegs);
 
-  bool mustDestroy; // will get filled by execution
+  bool mustDestroy;  // will get filled by execution
   AqlValue a = info._expression->execute(info._query->trx(), &ctx, mustDestroy);
   AqlValueGuard guard(a, mustDestroy);
 
@@ -194,12 +183,12 @@ void executeExpression(CalculationExecutorInfos& info, InputAqlItemRow& input, O
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  output.setValue(info._outputRegister, input ,a);
-  guard.steal(); // itemblock has taken over now
+  output.setValue(info._outputRegister, input, a);
+  guard.steal();  // itemblock has taken over now
 
-  if (info._query->killed()){
+  if (info._query->killed()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
 }
 
-}
+}  // namespace _detail

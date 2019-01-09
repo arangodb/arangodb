@@ -34,15 +34,10 @@ class InputAqlItemRow;
 
 class ExecutorExpressionContext final : public QueryExpressionContext {
  public:
-  ExecutorExpressionContext( Query* query
-                           , InputAqlItemRow& inputRow
-                           , std::vector<Variable const*> const& vars
-                           , std::vector<RegisterId> const& regs)
-    : QueryExpressionContext(query)
-    , _inputRow(inputRow)
-    , _vars(vars)
-    , _regs(regs)
-  {}
+  ExecutorExpressionContext(Query* query, InputAqlItemRow& inputRow,
+                            std::vector<Variable const*> const& vars,
+                            std::vector<RegisterId> const& regs)
+      : QueryExpressionContext(query), _inputRow(inputRow), _vars(vars), _regs(regs) {}
 
   ~ExecutorExpressionContext() {}
 
@@ -61,6 +56,6 @@ class ExecutorExpressionContext final : public QueryExpressionContext {
   std::vector<Variable const*> const& _vars;
   std::vector<RegisterId> const& _regs;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 #endif

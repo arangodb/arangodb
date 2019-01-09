@@ -22,11 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExecutorExpressionContext.h"
-#include "Basics/Exceptions.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
-#include "Aql/Variable.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/Variable.h"
+#include "Basics/Exceptions.h"
 
 using namespace arangodb::aql;
 
@@ -42,15 +42,16 @@ Variable const* ExecutorExpressionContext::getVariable(size_t i) const {
   return (_vars)[i];
 }
 
-AqlValue ExecutorExpressionContext::getVariableValue(Variable const* variable, bool doCopy, bool& mustDestroy) const {
+AqlValue ExecutorExpressionContext::getVariableValue(Variable const* variable, bool doCopy,
+                                                     bool& mustDestroy) const {
   mustDestroy = false;
 
   auto const searchId = variable->id;
-  size_t i = -1; //size_t is guraranteded to be unsigned so the overflow is ok
+  size_t i = -1;  // size_t is guraranteded to be unsigned so the overflow is ok
   for (auto const* var : _vars) {
     TRI_ASSERT(var != nullptr);
     ++i;
-    if ( var->id == searchId) {
+    if (var->id == searchId) {
       TRI_ASSERT(i < _regs.size());
       if (doCopy) {
         mustDestroy = true;  // as we are copying

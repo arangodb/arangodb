@@ -48,20 +48,15 @@ class Query;
 struct Variable;
 
 struct CalculationExecutorInfos : public ExecutorInfos {
-  CalculationExecutorInfos( RegisterId outputRegister
-                          , RegisterId nrInputRegisters
-                          , RegisterId nrOutputRegisters
-                          , std::unordered_set<RegisterId> registersToClear
+  CalculationExecutorInfos(RegisterId outputRegister, RegisterId nrInputRegisters,
+                           RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear
 
-                          , Query*
-                          , Expression*
-                          , std::vector<Variable const*>&& expInVars
-                          , std::vector<RegisterId>&& expInRegs
-                          , Variable const* conditionVar
-                          );
+                           ,
+                           Query*, Expression*, std::vector<Variable const*>&& expInVars,
+                           std::vector<RegisterId>&& expInRegs, Variable const* conditionVar);
 
   CalculationExecutorInfos() = delete;
-  CalculationExecutorInfos(CalculationExecutorInfos &&) = default;
+  CalculationExecutorInfos(CalculationExecutorInfos&&) = default;
   CalculationExecutorInfos(CalculationExecutorInfos const&) = delete;
   ~CalculationExecutorInfos() = default;
 
@@ -73,7 +68,6 @@ struct CalculationExecutorInfos : public ExecutorInfos {
   std::vector<RegisterId> _expInRegs;
   Variable const* _conditionVariable;
   bool _isReference = false;
-
 };
 
 /**
@@ -109,7 +103,6 @@ class CalculationExecutor {
   ExecutionState _rowState;
   size_t _inputArrayPosition = 0;
   size_t _inputArrayLength = 0;
-
 };
 
 }  // namespace aql
