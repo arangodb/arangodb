@@ -34,10 +34,6 @@ namespace basics {
 class ConditionVariable;
 }
 
-namespace velocypack {
-class Builder;
-}
-
 /// @brief thread
 ///
 /// Each subclass must implement a method run. A thread can be started by
@@ -96,6 +92,10 @@ class Thread {
   /// @brief flags the thread as stopping
   virtual void beginShutdown();
 
+  bool runningInThisThread() const {
+    return currentThreadNumber() == this->threadNumber();
+  }
+
  protected:
   /// @brief called from the destructor
   void shutdown();
@@ -108,9 +108,6 @@ class Thread {
   ///
   /// See currentThreadNumber().
   uint64_t threadNumber() const { return _threadNumber; }
-
-  /// @brief returns the system thread identifier
-  TRI_tid_t threadId() const { return _threadId; }
 
   /// @brief false, if the thread is just created
   bool hasStarted() const { return _state.load() != ThreadState::CREATED; }
@@ -126,13 +123,6 @@ class Thread {
   /// @brief starts the thread
   bool start(basics::ConditionVariable* _finishedCondition = nullptr);
 
-  /// @brief sets the process affinity
-  void setProcessorAffinity(size_t c);
-
-
-  /// @brief generates a description of the thread
-  virtual void addStatus(arangodb::velocypack::Builder* b);
-
   /// @brief optional notification call when thread gets unplanned exception
   virtual void crashNotification(std::exception const&) {}
 
@@ -143,14 +133,13 @@ class Thread {
  private:
   /// @brief static started with access to the private variables
   static void startThread(void* arg);
-
- private:
   void markAsStopped();
   void runMe();
   void cleanupMe();
 
  private:
   bool const _deleteOnExit;
+  bool _threadStructInitialized;
 
   // name of the thread
   std::string const _name;
@@ -158,15 +147,11 @@ class Thread {
   // internal thread information
   thread_t _thread;
   uint64_t _threadNumber;
-  TRI_tid_t _threadId;
 
   basics::ConditionVariable* _finishedCondition;
 
   std::atomic<ThreadState> _state;
-
-  // processor affinity
-  int _affinity;
 };
-}
+}  // namespace arangodb
 
 #endif

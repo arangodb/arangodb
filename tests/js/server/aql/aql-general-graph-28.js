@@ -2139,7 +2139,7 @@ function ahuacatlQueryGeneralCyclesSuite() {
     /// @brief checks GRAPH_SHORTEST_PATH()
     ////////////////////////////////////////////////////////////////////////////////
 
-    testGRAPH_SHORTEST_PATH: function () {
+    testCycleGRAPH_SHORTEST_PATH: function () {
       var actual;
       actual = getQueryResults("FOR e IN arangodb::GRAPH_SHORTEST_PATH('werKenntWen', {}, " +
         "{}, {direction : 'inbound', algorithm : 'Floyd-Warshall'}) SORT e.vertices[0], e.vertices[LENGTH(e.vertices) - 1] " +
@@ -2254,7 +2254,7 @@ function ahuacatlQueryGeneralCyclesSuite() {
       });
   },
 
-  testGRAPH_CLOSENESS: function () {
+  testCycleGRAPH_CLOSENESS: function () {
 
     var actual;
     actual = getQueryResults("RETURN arangodb::GRAPH_ABSOLUTE_CLOSENESS('werKenntWen', {}, {algorithm : 'Floyd-Warshall'})");
@@ -2288,7 +2288,7 @@ function ahuacatlQueryGeneralCyclesSuite() {
     assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 0);
   },
 
-  testGRAPH_CLOSENESS_OUTBOUND: function () {
+  testCycleGRAPH_CLOSENESS_OUTBOUND: function () {
     var actual;
     actual = getQueryResults("RETURN arangodb::GRAPH_ABSOLUTE_CLOSENESS('werKenntWen',{}, {direction : 'outbound', algorithm : 'Floyd-Warshall'})");
     assertEqual(actual[0]["UnitTests_Berliner/Anton"], 4);
@@ -2309,7 +2309,7 @@ function ahuacatlQueryGeneralCyclesSuite() {
     assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(6), (0).toFixed(6));
   },
 
-  testGRAPH_CLOSENESS_INBOUND: function () {
+  testCycleGRAPH_CLOSENESS_INBOUND: function () {
     var actual;
     actual = getQueryResults("RETURN arangodb::GRAPH_ABSOLUTE_CLOSENESS('werKenntWen', {}, {direction : 'inbound', algorithm : 'Floyd-Warshall'})");
 
@@ -2333,7 +2333,7 @@ function ahuacatlQueryGeneralCyclesSuite() {
   },
 
 
-  testGRAPH_ECCENTRICITY: function () {
+  testCycleGRAPH_ECCENTRICITY: function () {
     var actual;
 
     actual = getQueryResults("RETURN arangodb::GRAPH_ABSOLUTE_ECCENTRICITY('werKenntWen',{}, {algorithm : 'Floyd-Warshall'})");
@@ -2383,7 +2383,7 @@ function ahuacatlQueryGeneralCyclesSuite() {
   },
 
 /*
-  testGRAPH_BETWEENNESS: function () {
+  testCycleGRAPH_BETWEENNESS: function () {
     var actual;
 
     actual = getQueryResults("RETURN arangodb::GRAPH_ABSOLUTE_BETWEENNESS('werKenntWen', {algorithm : 'Floyd-Warshall'})");
@@ -2438,7 +2438,7 @@ function ahuacatlQueryGeneralCyclesSuite() {
   },
 */
 
-  testGRAPH_DIAMETER_AND_RADIUS: function () {
+  testCycleGRAPH_DIAMETER_AND_RADIUS: function () {
     var actual;
     actual = getQueryResults("RETURN arangodb::GRAPH_RADIUS('werKenntWen', {algorithm : 'Floyd-Warshall'})");
     assertEqual(actual[0], 2);

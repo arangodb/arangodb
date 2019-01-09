@@ -50,6 +50,6 @@ class RestAdminServerHandler : public RestBaseHandler {
   void handleAvailability();
   void writeModeResult(bool);
 };
-}
+}  // namespace arangodb
 
 #endif

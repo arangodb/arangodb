@@ -50,6 +50,7 @@ private:
 char const* ARGV0 = "";
 
 int main(int argc, char* argv[]) {
+  TRI_GET_ARGV(argc, argv);
   int subargc = 0;
   char **subargv = (char**)malloc(sizeof(char*) * argc);
   bool logLineNumbers = false;

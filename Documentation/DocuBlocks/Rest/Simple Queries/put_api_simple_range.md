@@ -4,6 +4,13 @@
 
 @RESTHEADER{PUT /_api/simple/range, Simple range query}
 
+@HINTS
+{% hint 'warning' %}
+This route should no longer be used.
+All endpoints for Simple Queries are deprecated from version 3.4.0 on.
+They are superseded by AQL queries.
+{% endhint %}
+
 @RESTBODYPARAM{collection,string,required,string}
 The name of the collection to query.
 
@@ -32,13 +39,12 @@ is applied before the *limit* restriction. (optional)
 This will find all documents within a given range. In order to execute a
 range query, a skip-list index on the queried attribute must be present.
 
-Returns a cursor containing the result, see [Http Cursor](../AqlQueryCursor/README.md) for details.
+Returns a cursor containing the result, see [HTTP Cursor](../AqlQueryCursor/README.md) for details.
 
 Note: the *range* simple query is **deprecated** as of ArangoDB 2.6. 
 The function may be removed in future versions of ArangoDB. The preferred
 way for retrieving documents from a collection within a specific range
 is to use an AQL query as follows: 
-
 
     FOR doc IN @@collection 
       FILTER doc.value >= @left && doc.value < @right 

@@ -21,23 +21,13 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#if defined (__GNUC__)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
-
-  #include <boost/locale/generator.hpp>
-
-#if defined (__GNUC__)
-  #pragma GCC diagnostic pop
-#endif
-
 #include "gtest/gtest.h"
 #include "tests_config.hpp"
 #include "tests_shared.hpp"
 #include "analysis/analyzers.hpp"
 #include "analysis/token_streams.hpp"
 #include "formats/formats_10.hpp"
+#include "store/memory_directory.hpp"
 #include "index/doc_generator.hpp"
 #include "index/index_reader.hpp"
 #include "index/index_writer.hpp"
@@ -52,11 +42,11 @@ namespace tests {
   class test_sort: public iresearch::sort {
    public:
     DECLARE_SORT_TYPE();
-    DECLARE_FACTORY_DEFAULT();
+    DECLARE_FACTORY();
 
     class prepared : sort::prepared {
      public:
-      DECLARE_FACTORY(prepared);
+      DEFINE_FACTORY_INLINE(prepared);
       prepared() { }
       virtual collector::ptr prepare_collector() const override { return nullptr; }
       virtual scorer::ptr prepare_scorer(
@@ -81,7 +71,7 @@ namespace tests {
   };
 
   DEFINE_SORT_TYPE(test_sort);
-  DEFINE_FACTORY_SINGLETON(test_sort);
+  DEFINE_FACTORY_DEFAULT(test_sort);
 
   class IqlQueryBuilderTestSuite: public ::testing::Test {
     virtual void SetUp() {
@@ -98,7 +88,7 @@ namespace tests {
 
         iresearch::setenv(text_stopword_path_var, IResearch_test_resource_dir, true);
 
-        auto locale = boost::locale::generator().generate("en");
+        auto locale = irs::locale_utils::locale("en");
         const std::string tmp_str;
 
         irs::analysis::analyzers::get("text", irs::text_format::text, "en"); // stream needed only to load stopwords
@@ -210,10 +200,10 @@ namespace tests {
       }
     };
 
-    iresearch::version10::format codec;
-    iresearch::format::ptr codec_ptr(&codec, [](iresearch::format*)->void{});
+    auto codec_ptr = irs::formats::get("1_0");
+
     auto writer =
-      iresearch::index_writer::make(dir, codec_ptr, iresearch::OPEN_MODE::OM_CREATE);
+      iresearch::index_writer::make(dir, codec_ptr, iresearch::OM_CREATE);
     json_doc_generator generator(
       test_base::resource(json_resource), 
       analyze_text ? analyzed_field_factory : &tests::generic_json_field_factory);
@@ -730,7 +720,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
     auto analyzed_segment_values = column->values();
 
     query_builder::branch_builders builders;
-    auto locale = boost::locale::generator().generate("en"); // a locale that exists in tests
+    auto locale = irs::locale_utils::locale("en"); // a locale that exists in tests
     auto query = query_builder(builders).build("name~=B", locale);
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_EQ(nullptr, query.error);

@@ -33,7 +33,7 @@ NS_ROOT
 ////////////////////////////////////////////////////////////////////////////////
 class exclusion final : public doc_iterator {
  public:
-  exclusion(doc_iterator::ptr&& incl, doc_iterator::ptr&& excl)
+  exclusion(doc_iterator::ptr&& incl, doc_iterator::ptr&& excl) NOEXCEPT
     : incl_(std::move(incl)), excl_(std::move(excl)) {
     assert(incl_);
     assert(excl_);

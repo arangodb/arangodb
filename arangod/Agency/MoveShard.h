@@ -31,25 +31,24 @@ namespace arangodb {
 namespace consensus {
 
 struct MoveShard : public Job {
-  
   MoveShard(Node const& snapshot, AgentInterface* agent, std::string const& jobId,
-            std::string const& creator,
-            std::string const& database,
-            std::string const& collection,
-            std::string const& shard,
-            std::string const& from,
-            std::string const& to,
-            bool isLeader);
+            std::string const& creator, std::string const& database,
+            std::string const& collection, std::string const& shard, std::string const& from,
+            std::string const& to, bool isLeader, bool remainsFollower);
 
-  MoveShard(Node const& snapshot, AgentInterface* agent,
-            JOB_STATUS status, std::string const& jobId);
+  MoveShard(Node const& snapshot, AgentInterface* agent, std::string const& jobId,
+            std::string const& creator, std::string const& database,
+            std::string const& collection, std::string const& shard,
+            std::string const& from, std::string const& to, bool isLeader);
+
+  MoveShard(Node const& snapshot, AgentInterface* agent, JOB_STATUS status,
+            std::string const& jobId);
 
   virtual ~MoveShard();
 
   virtual JOB_STATUS status() override final;
   virtual void run() override final;
-  virtual bool create(std::shared_ptr<VPackBuilder> envelope = nullptr)
-    override final;
+  virtual bool create(std::shared_ptr<VPackBuilder> envelope = nullptr) override final;
   virtual bool start() override final;
   virtual Result abort() override;
   JOB_STATUS pendingLeader();
@@ -60,9 +59,10 @@ struct MoveShard : public Job {
   std::string _shard;
   std::string _from;
   std::string _to;
-  bool        _isLeader;
+  bool _isLeader;
+  bool _remainsFollower;
 };
-}
-}
+}  // namespace consensus
+}  // namespace arangodb
 
 #endif

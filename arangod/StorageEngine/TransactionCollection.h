@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
-                                
+
 namespace arangodb {
 class LogicalCollection;
 namespace transaction {
@@ -43,60 +43,70 @@ class TransactionCollection {
   TransactionCollection& operator=(TransactionCollection const&) = delete;
 
   TransactionCollection(TransactionState* trx, TRI_voc_cid_t cid, AccessMode::Type accessType)
-      : _transaction(trx), _cid(cid), _collection(nullptr), _accessType(accessType) {}
-  
-  virtual ~TransactionCollection() {}
-  
+      : _transaction(trx),
+        _cid(cid),
+        _collection(nullptr),
+        _accessType(accessType),
+        _lockType(AccessMode::Type::NONE) {}
+
+  virtual ~TransactionCollection() = default;
+
   inline TRI_voc_cid_t id() const { return _cid; }
-  
+
   LogicalCollection* collection() const {
-    return _collection;  // vocbase collection pointer
+    return _collection.get();  // vocbase collection pointer
   }
-  
+
   std::string collectionName() const;
-  
+
   AccessMode::Type accessType() const { return _accessType; }
 
   /// @brief request a main-level lock for a collection
   /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
-  /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
-  /// returns any other error code otherwise
-  virtual int lockRecursive() = 0;
- 
+  /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired
+  /// and no other error occurred returns any other error code otherwise
+  int lockRecursive();
+
   /// @brief request a lock for a collection
   /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
-  /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
-  /// returns any other error code otherwise
-  virtual int lockRecursive(AccessMode::Type, int nestingLevel) = 0;
+  /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired
+  /// and no other error occurred returns any other error code otherwise
+  int lockRecursive(AccessMode::Type, int nestingLevel);
 
   /// @brief request an unlock for a collection
-  virtual int unlockRecursive(AccessMode::Type, int nestingLevel) = 0;
+  int unlockRecursive(AccessMode::Type, int nestingLevel);
 
-  /// @brief check whether a collection is locked in a specific mode in a transaction
-  virtual bool isLocked(AccessMode::Type, int nestingLevel) const = 0;
-  
+  /// @brief check whether a collection is locked in a specific mode in a
+  /// transaction
+  bool isLocked(AccessMode::Type, int nestingLevel) const;
+
   /// @brief check whether a collection is locked at all
-  virtual bool isLocked() const = 0;
+  bool isLocked() const;
 
   /// @brief whether or not any write operations for the collection happened
   virtual bool hasOperations() const = 0;
-  
+
   virtual void freeOperations(transaction::Methods* activeTrx, bool mustRollback) = 0;
-  
+
   virtual bool canAccess(AccessMode::Type accessType) const = 0;
-  
+
   virtual int updateUsage(AccessMode::Type accessType, int nestingLevel) = 0;
   virtual int use(int nestingLevel) = 0;
   virtual void unuse(int nestingLevel) = 0;
   virtual void release() = 0;
 
  protected:
-  TransactionState* _transaction;  // the transaction state
-  TRI_voc_cid_t const _cid;        // collection id
-  LogicalCollection* _collection;  // vocbase collection pointer
-  AccessMode::Type _accessType;  // access type (read|write)
+  TransactionState* _transaction;                  // the transaction state
+  TRI_voc_cid_t const _cid;                        // collection id
+  std::shared_ptr<LogicalCollection> _collection;  // vocbase collection pointer
+  AccessMode::Type _accessType;                    // access type (read|write)
+  AccessMode::Type _lockType;                      // lock type
+
+ private:
+  virtual int doLock(AccessMode::Type, int nestingLevel) = 0;
+  virtual int doUnlock(AccessMode::Type, int nestingLevel) = 0;
 };
 
-}
+}  // namespace arangodb
 
 #endif

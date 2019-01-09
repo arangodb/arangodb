@@ -39,11 +39,9 @@ class ServerIdFeature final : public application_features::ApplicationFeature {
     TRI_ASSERT(SERVERID != 0);
     return SERVERID;
   }
-  
+
   // fake the server id from the outside. used for testing only
-  static void setId(TRI_server_id_t serverId) {
-    SERVERID = serverId;
-  }
+  static void setId(TRI_server_id_t serverId) { SERVERID = serverId; }
 
  private:
   /// @brief generates a new server id
@@ -63,6 +61,6 @@ class ServerIdFeature final : public application_features::ApplicationFeature {
   static TRI_server_id_t SERVERID;
 };
 
-}
+}  // namespace arangodb
 
 #endif

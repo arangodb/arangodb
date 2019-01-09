@@ -75,11 +75,15 @@ using namespace arangodb::aql;
 
 SortNode::SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
                    SortElementVector const& elements, bool stable)
-    : ExecutionNode(plan, base), _reinsertInCluster(true),  _elements(elements), _stable(stable){}
+    : ExecutionNode(plan, base),
+      _reinsertInCluster(true),
+      _elements(elements),
+      _stable(stable) {}
 
 /// @brief toVelocyPack, for SortNode
 void SortNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes,
+                                           flags);  // call base class method
 
   nodes.add(VPackValue("elements"));
   {
@@ -178,8 +182,8 @@ void SortNode::removeConditions(size_t count) {
 }
 
 /// @brief returns all sort information
-SortInformation SortNode::getSortInformation(
-    ExecutionPlan* plan, arangodb::basics::StringBuffer* buffer) const {
+SortInformation SortNode::getSortInformation(ExecutionPlan* plan,
+                                             arangodb::basics::StringBuffer* buffer) const {
   SortInformation result;
 
   auto const& elms = elements();
@@ -214,14 +218,16 @@ SortInformation SortNode::getSortInformation(
         return result;
       }
       result.criteria.emplace_back(
-          std::make_tuple(const_cast<ExecutionNode const*>(setter), std::string(buffer->c_str(), buffer->length()), (*it).ascending));
+          std::make_tuple(const_cast<ExecutionNode const*>(setter),
+                          std::string(buffer->c_str(), buffer->length()), (*it).ascending));
       buffer->reset();
     } else {
       // use variable only. note that we cannot use the variable's name as it is
       // not
       // necessarily unique in one query (yes, COLLECT, you are to blame!)
       result.criteria.emplace_back(
-          std::make_tuple(const_cast<ExecutionNode const*>(setter), std::to_string(variable->id), (*it).ascending));
+          std::make_tuple(const_cast<ExecutionNode const*>(setter),
+                          std::to_string(variable->id), (*it).ascending));
     }
   }
 
@@ -246,7 +252,7 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
     auto it = getRegisterPlan()->varInfo.find(element.var->id);
     TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
     RegisterId id = it->second.registerId;
-#ifdef USE_IRESEARCH
+#if 0 // #ifdef USE_IRESEARCH
     sortRegs.push_back(SortRegister{ id, element, &compareAqlValues });
 
     auto varId = element.var->id;
@@ -285,8 +291,8 @@ CostEstimate SortNode::estimateCost() const {
   if (estimate.estimatedNrItems <= 3) {
     estimate.estimatedCost += estimate.estimatedNrItems;
   } else {
-    estimate.estimatedCost += estimate.estimatedNrItems * std::log2(static_cast<double>(estimate.estimatedNrItems));
+    estimate.estimatedCost += estimate.estimatedNrItems *
+                              std::log2(static_cast<double>(estimate.estimatedNrItems));
   }
   return estimate;
 }
-

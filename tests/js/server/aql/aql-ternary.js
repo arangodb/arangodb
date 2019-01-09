@@ -268,7 +268,7 @@ function ahuacatlTernaryCollectionTestSuite () {
       db._drop(cn);
     },
 
-    testTernarySimple : function () {
+    testCollTernarySimple : function () {
       // this mainly tests if stringification of the ternary works...
       var query = "FOR i IN 1..10 LET v = i == 333 ? 2 : 3 FOR j IN " + cn + " FILTER j._id == v RETURN 1"; 
 

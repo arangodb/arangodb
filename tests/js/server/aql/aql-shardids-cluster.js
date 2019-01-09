@@ -123,6 +123,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
   const shardKey = "value";
   const shardKey1 = "value";
   const shardKey2 = "value";
+  const extraKey = "extra";
   const numberOfShards = 9;
 
   const tearDown = () => {
@@ -182,7 +183,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
       let docs = [];
 
       for (let i = 0; i < 100; ++i) {
-        docs.push({ "value" : i % 25, "joinValue" : i % 5 });
+        docs.push({ "value" : i % 25, "joinValue" : i % 5, "extra": true });
       }
 
       collection.save(docs);
@@ -425,6 +426,90 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         `;
 
         validatePlan(query, "EnumerateCollectionNode", collectionByKey);
+      }
+    },
+
+    testMultipleKeysSameFilter: function () {
+      dropIndexes(collectionByKey);
+      collectionByKey.ensureHashIndex(shardKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc IN ${cnKey}
+            FILTER doc.${shardKey} == ${i} && doc.${extraKey} == true
+            RETURN doc
+        `;
+        validatePlan(query, "IndexNode", collectionByKey);
+
+        let res = db._query(query, {}, disableSingleDocOp).toArray();
+        assertEqual(4, res.length);
+        for (let doc of res) {
+          assertTrue(i === doc.value);
+          assertTrue(true === doc.extra);
+        }
+      }
+    },
+
+    testMultipleKeysSameFilterNoIndex: function () {
+      dropIndexes(collectionByKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc IN ${cnKey}
+            FILTER doc.${shardKey} == ${i} && doc.${extraKey} == true
+            RETURN doc
+        `;
+        validatePlan(query, "EnumerateCollectionNode", collectionByKey);
+
+        let res = db._query(query, {}, disableSingleDocOp).toArray();
+        assertEqual(4, res.length);
+        for (let doc of res) {
+          assertTrue(i === doc.value);
+          assertTrue(true === doc.extra);
+        }
+      }
+    },
+
+    testMultipleKeysDifferentFilter: function () {
+      dropIndexes(collectionByKey);
+      collectionByKey.ensureHashIndex(shardKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc IN ${cnKey}
+            FILTER doc.${shardKey} == ${i}
+            FILTER doc.${extraKey} == true
+            RETURN doc
+        `;
+        validatePlan(query, "IndexNode", collectionByKey);
+
+        let res = db._query(query, {}, disableSingleDocOp).toArray();
+        assertEqual(4, res.length);
+        for (let doc of res) {
+          assertTrue(i === doc.value);
+          assertTrue(true === doc.extra);
+        }
+      }
+    },
+
+    testMultipleKeysDifferentFilterNoIndex: function () {
+      dropIndexes(collectionByKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc IN ${cnKey}
+            FILTER doc.${shardKey} == ${i}
+            FILTER doc.${extraKey} == true
+            RETURN doc
+        `;
+        validatePlan(query, "EnumerateCollectionNode", collectionByKey);
+
+        let res = db._query(query, {}, disableSingleDocOp).toArray();
+        assertEqual(4, res.length);
+        for (let doc of res) {
+          assertTrue(i === doc.value);
+          assertTrue(true === doc.extra);
+        }
       }
     },
 

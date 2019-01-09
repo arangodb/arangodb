@@ -4,7 +4,7 @@ project(rocksdb C CXX)
 
 set(FAIL_ON_WARNINGS OFF CACHE BOOL "do not enable -Werror")
 
-set(ARANGO_ROCKSDB_VERSION "v5.16.X")
+set(ARANGO_ROCKSDB_VERSION "v5.18.X")
 set(ARANGO_ROCKSDB_VERSION "${ARANGO_ROCKSDB_VERSION}" PARENT_SCOPE)
 
 # jemalloc settings
@@ -38,6 +38,7 @@ if (MSVC)
   set(SNAPPY_INCLUDE "${SNAPPY_INCLUDE_DIR}" CACHE PATH "where the wintendo should look for the snappy libs")
   set(SNAPPY_LIB_DEBUG "${CMAKE_BINARY_DIR}/bin/Debug/${SNAPPY_LIB}.lib")
   set(SNAPPY_LIB_RELEASE "${CMAKE_BINARY_DIR}/bin/RelWithDebInfo/${SNAPPY_LIB}.lib")
+  set(WITH_WINDOWS_UTF8_FILENAMES ON CACHE BOOL "we want to provide utf8 filenames")
 endif ()
 set(USE_RTTI ON CACHE BOOL "enable RTTI")
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/${ARANGO_ROCKSDB_VERSION} EXCLUDE_FROM_ALL)

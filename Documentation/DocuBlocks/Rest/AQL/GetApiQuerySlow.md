@@ -27,6 +27,8 @@ Each query is a JSON object with the following attributes:
 - *state*: the query's current execution state (will always be "finished"
   for the list of slow queries)
 
+- *stream*: whether or not the query uses a streaming cursor
+
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}

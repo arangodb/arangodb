@@ -37,30 +37,26 @@ uint64_t TRI_FnvHashString(char const*);
 
 /// @brief computes a initial FNV for blocks
 static constexpr uint64_t TRI_FnvHashBlockInitial() {
-  return 0xcbf29ce484222325ULL; 
+  return 0xcbf29ce484222325ULL;
 }
 
 /// @brief initial CRC32 value
-static constexpr uint32_t TRI_InitialCrc32() {
-  return (0xffffffff); 
-}
+static constexpr uint32_t TRI_InitialCrc32() { return (0xffffffff); }
 
 /// @brief final CRC32 value
 static constexpr uint32_t TRI_FinalCrc32(uint32_t value) {
-  return (value ^ 0xffffffff); 
+  return (value ^ 0xffffffff);
 }
 
 /// @brief CRC32 value of data block
 extern "C" {
 
 #if ENABLE_ASM_CRC32 == 1
-  uint32_t TRI_BlockCrc32_SSE42(uint32_t, char const* data, size_t length);
+uint32_t TRI_BlockCrc32_SSE42(uint32_t, char const* data, size_t length);
 #endif
 
-  uint32_t TRI_BlockCrc32_C(uint32_t hash, char const* data, size_t length);
-  extern uint32_t (*TRI_BlockCrc32)(uint32_t hash,
-                                    char const* data,
-                                    size_t length);
+uint32_t TRI_BlockCrc32_C(uint32_t hash, char const* data, size_t length);
+extern uint32_t (*TRI_BlockCrc32)(uint32_t hash, char const* data, size_t length);
 }
 
 /// @brief computes a CRC32 for memory blobs

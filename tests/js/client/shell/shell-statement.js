@@ -183,7 +183,7 @@ function StatementStreamSuite () {
 /// @brief test cursor
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCursor : function () {
+    testStreamCursor : function () {
       var stmt = db._createStatement({ query: "FOR i IN 1..100 RETURN i",
                                        options: { stream: true },
                                        batchSize: 50});
@@ -202,7 +202,7 @@ function StatementStreamSuite () {
 /// @brief test to string
 ////////////////////////////////////////////////////////////////////////////////
 
-    testToString : function () {
+    testStreamToString : function () {
       var stmt = db._createStatement({ query: "FOR i IN 1..11 RETURN i", 
                                        options: { stream: true } });
       var cursor = stmt.execute();

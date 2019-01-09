@@ -79,7 +79,7 @@ namespace iresearch {
     ////////////////////////////////////////////////////////////////////////////////
     class IRESEARCH_API proxy_filter: public proxy_filter_t<iresearch::filter::ptr> {
      public:
-      DECLARE_FACTORY_DEFAULT();
+      DECLARE_FACTORY();
       DECLARE_TYPE_ID(iresearch::type_id);
 
       proxy_filter(): proxy_filter_t(proxy_filter::type()) {}

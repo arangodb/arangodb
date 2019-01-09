@@ -49,8 +49,6 @@ void NonceFeature::prepare() {
   Nonce::setInitialSize(static_cast<size_t>(_size));
 }
 
-void NonceFeature::unprepare() {
-  Nonce::destroy();
-}
+void NonceFeature::unprepare() { Nonce::destroy(); }
 
-} // arangodb
+}  // namespace arangodb

@@ -45,13 +45,6 @@ void ADB_WindowsEntryFunction();
 void ADB_WindowsExitFunction(int exitCode, void* data);
 
 // .............................................................................
-// windows equivalent of ftruncate (the truncation of an open file) is
-// _chsize
-// .............................................................................
-
-int ftruncate(int, long);
-
-// .............................................................................
 // windows does not have a function called getpagesize -- create one here
 // .............................................................................
 
@@ -94,8 +87,7 @@ void TRI_SetWindowsServiceAbortFunction(TRI_serviceAbort_t);
 /// the arango internal logging will handle that usually.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
-                            std::string const&);
+void TRI_LogWindowsEventlog(char const* func, char const* file, int line, std::string const&);
 
 void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
                             char const* fmt, va_list ap);
@@ -109,11 +101,10 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
 void TRI_WindowsEmergencyLog(char const* func, char const* file, int line,
                              char const* fmt, ...);
 
-#define LOG_FATAL_WINDOWS(...)                                          \
+#define LOG_FATAL_WINDOWS(...)                                              \
   do {                                                                      \
     TRI_WindowsEmergencyLog(__FUNCTION__, __FILE__, __LINE__, __VA_ARGS__); \
   } while (0)
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief detects whether an FD is connected to a (cygwin-)tty.

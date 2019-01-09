@@ -213,7 +213,7 @@ void HttpConnection<ST>::tryConnect(unsigned retries) {
       return;
     }
     FUERTE_LOG_DEBUG << "connecting failed: " << ec.message() << "\n";
-    if (retries > 0) {
+    if (retries > 0 && ec != asio_ns::error::operation_aborted) {
       tryConnect(retries - 1);
     } else {
       shutdownConnection(ErrorCondition::CouldNotConnect);
@@ -549,7 +549,6 @@ void HttpConnection<ST>::setTimeout(std::chrono::milliseconds millis) {
     if (!ec) {
       auto s = self.lock();
       if (s) {
-        std::cerr << "sddsd";
         FUERTE_LOG_DEBUG << "HTTP-Request timeout\n";
         restartConnection(ErrorCondition::Timeout);
       }

@@ -73,6 +73,6 @@ struct ConnectionInfo {
   void* sslContext;
 };
 
-}
+}  // namespace arangodb
 
 #endif

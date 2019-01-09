@@ -61,7 +61,9 @@ struct CachedValue {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Size of the value in bytes
   //////////////////////////////////////////////////////////////////////////////
-  inline size_t valueSize() const noexcept { return static_cast<size_t>(_valueSize); }
+  inline size_t valueSize() const noexcept {
+    return static_cast<size_t>(_valueSize);
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns a pointer offset to the key
@@ -74,10 +76,9 @@ struct CachedValue {
   /// @brief Returns a pointer offset to the value
   //////////////////////////////////////////////////////////////////////////////
   inline uint8_t const* value() const noexcept {
-    return (_valueSize == 0)
-      ? nullptr
-      : reinterpret_cast<uint8_t const*>(this) + sizeof(CachedValue) + 
-          keySize();
+    return (_valueSize == 0) ? nullptr
+                             : reinterpret_cast<uint8_t const*>(this) +
+                                   sizeof(CachedValue) + keySize();
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -91,8 +92,7 @@ struct CachedValue {
   /// @brief Utility method to compare underlying key to external key
   //////////////////////////////////////////////////////////////////////////////
   inline bool sameKey(void const* k, size_t kSize) const noexcept {
-    return (keySize() == kSize) &&
-           (0 == memcmp(key(), k, kSize));
+    return (keySize() == kSize) && (0 == memcmp(key(), k, kSize));
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -118,8 +118,7 @@ struct CachedValue {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Construct a CachedValue object from a given key and value
   //////////////////////////////////////////////////////////////////////////////
-  static CachedValue* construct(void const* k, size_t kSize, void const* v,
-                                size_t vSize);
+  static CachedValue* construct(void const* k, size_t kSize, void const* v, size_t vSize);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Custom deleter to handle casting issues
@@ -140,8 +139,7 @@ struct CachedValue {
   uint32_t _valueSize;
 
  private:
-  CachedValue(size_t off, void const* k, size_t kSize,
-              void const* v, size_t vSize) noexcept;
+  CachedValue(size_t off, void const* k, size_t kSize, void const* v, size_t vSize) noexcept;
   CachedValue(CachedValue const& other) noexcept;
 
   inline size_t offset() const {

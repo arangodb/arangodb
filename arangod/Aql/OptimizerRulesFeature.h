@@ -33,9 +33,7 @@ class OptimizerRulesFeature final : public application_features::ApplicationFeat
   friend class Optimizer;
 
  public:
-  explicit OptimizerRulesFeature(
-    application_features::ApplicationServer& server
-  );
+  explicit OptimizerRulesFeature(application_features::ApplicationServer& server);
 
   void prepare() override final;
   void unprepare() override final;
@@ -56,13 +54,17 @@ class OptimizerRulesFeature final : public application_features::ApplicationFeat
 
   /// @brief register a hidden rule
   static void registerHiddenRule(std::string const& name, RuleFunction const& func,
-                                 OptimizerRule::RuleLevel level, bool canCreateAdditionalPlans, bool canBeDisabled) {
+                                 OptimizerRule::RuleLevel level,
+                                 bool canCreateAdditionalPlans, bool canBeDisabled) {
     registerRule(name, func, level, canCreateAdditionalPlans, canBeDisabled, true);
   }
 
  private:
   void addRules();
   void addStorageEngineRules();
+
+  static void disableRule(std::string const& name, std::unordered_set<int>& disabled);
+  static void enableRule(std::string const& name, std::unordered_set<int>& disabled);
 
   /// @brief the rules database
   static std::map<int, OptimizerRule> _rules;
@@ -71,7 +73,7 @@ class OptimizerRulesFeature final : public application_features::ApplicationFeat
   static std::unordered_map<std::string, std::pair<int, bool>> _ruleLookup;
 };
 
-} // namespace aql
-} // namespace arangodb
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

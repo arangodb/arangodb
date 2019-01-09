@@ -34,8 +34,6 @@
 #include "velocypack/Builder.h"
 #include "velocypack/Exception.h"
 #include "velocypack/Options.h"
-#include "velocypack/Value.h"
-#include "velocypack/ValueType.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -94,10 +92,25 @@ class Parser {
   Parser& operator=(Parser const&) = delete;
   Parser& operator=(Parser&&) = delete;
   ~Parser() = default;
+  
+  Parser()
+      : _start(nullptr), 
+        _size(0), 
+        _pos(0), 
+        _nesting(0), 
+        options(&Options::Defaults) {
+    _builder.reset(new Builder());
+    _builderPtr = _builder.get();
+    _builderPtr->options = &Options::Defaults;
+  }
 
-  explicit Parser(Options const* options = &Options::Defaults)
-      : _start(nullptr), _size(0), _pos(0), _nesting(0), options(options) {
-    if (options == nullptr) {
+  explicit Parser(Options const* options) 
+      : _start(nullptr), 
+        _size(0), 
+        _pos(0), 
+        _nesting(0), 
+        options(options) {
+    if (VELOCYPACK_UNLIKELY(options == nullptr)) {
       throw Exception(Exception::InternalError, "Options cannot be a nullptr");
     }
     _builder.reset(new Builder());
@@ -105,11 +118,16 @@ class Parser {
     _builderPtr->options = options;
   }
 
-  explicit Parser(std::shared_ptr<Builder>& builder,
+  explicit Parser(std::shared_ptr<Builder> const& builder,
                   Options const* options = &Options::Defaults)
-      : _builder(builder), _builderPtr(_builder.get()), _start(nullptr), _size(0), _pos(0), _nesting(0),
+      : _builder(builder),
+        _builderPtr(_builder.get()), 
+        _start(nullptr), 
+        _size(0), 
+        _pos(0), 
+        _nesting(0),
          options(options) {
-    if (options == nullptr) {
+    if (VELOCYPACK_UNLIKELY(options == nullptr)) {
       throw Exception(Exception::InternalError, "Options cannot be a nullptr");
     }
   }
@@ -117,9 +135,12 @@ class Parser {
   // This method produces a parser that does not own the builder
   explicit Parser(Builder& builder,
                   Options const* options = &Options::Defaults)
-      : _start(nullptr), _size(0), _pos(0), _nesting(0),
+      : _start(nullptr), 
+        _size(0), 
+        _pos(0), 
+        _nesting(0),
          options(options) {
-    if (options == nullptr) {
+    if (VELOCYPACK_UNLIKELY(options == nullptr)) {
       throw Exception(Exception::InternalError, "Options cannot be a nullptr");
     }
     _builder.reset(&builder, BuilderNonDeleter());

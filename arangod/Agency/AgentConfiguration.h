@@ -47,7 +47,7 @@ struct config_t {
   int64_t _timeoutMult;
   std::string _endpoint;
   std::unordered_map<std::string, std::string> _pool;
-  std::vector<std::string> _gossipPeers;
+  std::unordered_set<std::string> _gossipPeers;
   std::vector<std::string> _active;
   bool _supervision;
   bool _supervisionTouched;
@@ -61,6 +61,9 @@ struct config_t {
   std::string _startup;
   size_t _maxAppendSize;
 
+  mutable arangodb::basics::ReadWriteLock _lock;  // guard member variables
+
+ public:
   static std::string const idStr;
   static std::string const agencySizeStr;
   static std::string const poolSizeStr;
@@ -82,17 +85,15 @@ struct config_t {
   static std::string const versionStr;
   static std::string const startupStr;
 
-  mutable arangodb::basics::ReadWriteLock _lock; // guard member variables
+  using upsert_t = enum { UNCHANGED = 0, CHANGED, WRONG };
 
- public:
   /// @brief default ctor
   config_t();
 
   /// @brief ctor
   config_t(std::string const& rid, size_t as, size_t ps, double minp, double maxp,
-           std::string const& e, std::vector<std::string> const& g, bool s,
-           bool st, bool w, double f, uint64_t c, uint64_t k, double p, bool t,
-           size_t a);
+           std::string const& e, std::vector<std::string> const& g, bool s, bool st,
+           bool w, double f, uint64_t c, uint64_t k, double p, bool t, size_t a);
 
   /// @brief copy constructor
   config_t(config_t const&);
@@ -127,20 +128,25 @@ struct config_t {
   /// @brief wait for sync requested
   bool waitForSync() const;
 
+  /// @brief find id in pool
+  bool findInPool(std::string const&) const;
+
+  /// @brief match id and endpoint with pool
+  bool matchPeer(std::string const& id, std::string const& endpoint) const;
+
   /**
    * @brief           Verify other agent's pool against our own:
    *                  - We only get here, if our pool is not complete yet or the
    *                    id is member of this agency
    *                  - We match their pool to ours and allow only for an update
    *                    of it's own endpoint
-   * 
+   *
    * @param otherPool Other agent's pool
    * @param otherId   Other agent's id
    *
    * @return          Success
    */
-  bool upsertPool(
-    VPackSlice const& otherPool, std::string const& otherId);
+  upsert_t upsertPool(VPackSlice const& otherPool, std::string const& otherId);
 
   /// @brief active agency size
   void activate();
@@ -174,6 +180,9 @@ struct config_t {
   /// @brief vpack representation
   query_t toBuilder() const;
 
+  /// @brief vpack representation
+  void toBuilder(VPackBuilder&) const;
+
   /// @brief set id
   bool setId(std::string const& i);
 
@@ -181,10 +190,13 @@ struct config_t {
   bool merge(VPackSlice const& conf);
 
   /// @brief gossip peers
-  std::vector<std::string> gossipPeers() const;
+  std::unordered_set<std::string> gossipPeers() const;
 
   /// @brief remove endpoint from gossip peers
-  void eraseFromGossipPeers(std::string const& endpoint);
+  size_t eraseGossipPeer(std::string const& endpoint);
+
+  /// @brief remove endpoint from gossip peers
+  bool addGossipPeer(std::string const& endpoint);
 
   /// @brief add active agents
   bool activePushBack(std::string const& id);
@@ -228,8 +240,10 @@ struct config_t {
   /// @brief Update an indivdual uuid's endpoint
   bool updateEndpoint(std::string const&, std::string const&);
 
+  /// @brief Update configuration with an other
+  void updateConfiguration(VPackSlice const& other);
 };
-}
-}
+}  // namespace consensus
+}  // namespace arangodb
 
 #endif

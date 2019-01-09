@@ -15,8 +15,8 @@ window.ClusterStatisticsCollection = Backbone.Collection.extend({
     window.App.registerForUpdate(this);
   }
 
-// The callback has to be invokeable for each result individually
-// TODO RE-ADD Auth
+  // The callback has to be invokeable for each result individually
+  // TODO RE-ADD Auth
 /* fetch: function(callback, errCB) {
   this.forEach(function (m) {
     m.fetch({

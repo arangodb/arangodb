@@ -15,6 +15,7 @@ Properties
     var queries = require("@arangodb/aql/queries");
     queries.properties();
     queries.properties({slowQueryThreshold: 1});
+    queries.properties({slowStreamingQueryThreshold: 1});
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock QUERY_01_properyOfQueries
 

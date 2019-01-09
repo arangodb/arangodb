@@ -61,7 +61,7 @@ class text_token_stream : public analyzer, util::noncopyable {
   DECLARE_ANALYZER_TYPE();
 
   // for use with irs::order::add<T>() and default args (static build)
-  DECLARE_FACTORY_DEFAULT(const std::locale& locale);
+  DECLARE_FACTORY(const std::locale& locale);
 
   text_token_stream(
     const std::locale& locale,

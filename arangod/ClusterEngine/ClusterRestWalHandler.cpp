@@ -36,8 +36,7 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-ClusterRestWalHandler::ClusterRestWalHandler(GeneralRequest* request,
-                                             GeneralResponse* response)
+ClusterRestWalHandler::ClusterRestWalHandler(GeneralRequest* request, GeneralResponse* response)
     : RestBaseHandler(request, response) {}
 
 RestStatus ClusterRestWalHandler::execute() {
@@ -47,7 +46,7 @@ RestStatus ClusterRestWalHandler::execute() {
                   "expecting /_admin/wal/<operation>");
     return RestStatus::DONE;
   }
-  
+
   // extract the sub-request type
   auto const type = _request->requestType();
   std::string const& operation = suffixes[0];
@@ -72,8 +71,7 @@ RestStatus ClusterRestWalHandler::execute() {
     return RestStatus::DONE;
   }
 
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
 
@@ -118,7 +116,7 @@ void ClusterRestWalHandler::flush() {
     } else if (value.isBoolean()) {
       waitForCollector = value.getBoolean();
     }
-    
+
     value = slice.get("maxWaitTime");
     if (value.isNumber()) {
       maxWaitTime = value.getNumericValue<double>();
@@ -150,16 +148,14 @@ void ClusterRestWalHandler::flush() {
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  generateResult(rest::ResponseCode::OK,
-                 arangodb::velocypack::Slice::emptyObjectSlice());
+  generateResult(rest::ResponseCode::OK, arangodb::velocypack::Slice::emptyObjectSlice());
 }
 
 void ClusterRestWalHandler::transactions() {
   TransactionManager* mngr = TransactionManagerFeature::manager();
   VPackBuilder builder;
   builder.openObject();
-  builder.add("runningTransactions",
-              VPackValue(mngr->getActiveTransactionCount()));
+  builder.add("runningTransactions", VPackValue(mngr->getActiveTransactionCount()));
   builder.close();
   generateResult(rest::ResponseCode::NOT_IMPLEMENTED, builder.slice());
 }

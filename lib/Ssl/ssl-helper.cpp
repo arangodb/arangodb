@@ -39,14 +39,17 @@ extern "C" const SSL_METHOD* SSLv3_method(void);
 /// @brief creates an SSL context
 ////////////////////////////////////////////////////////////////////////////////
 
-asio::ssl::context arangodb::sslContext(
-    SslProtocol protocol, std::string const& keyfile) {
+asio::ssl::context arangodb::sslContext(SslProtocol protocol, std::string const& keyfile) {
   // create our context
 
   using asio::ssl::context;
   context::method meth;
 
   switch (protocol) {
+    case SSL_V2:
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                     "support for SSLv2 has been dropped");
+
 #ifndef OPENSSL_NO_SSL3_METHOD
     case SSL_V3:
       meth = context::method::sslv3;
@@ -65,7 +68,8 @@ asio::ssl::context arangodb::sslContext(
       break;
 
     default:
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unknown SSL protocol method");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "unknown SSL protocol method");
   }
 
   asio::ssl::context sslctx(meth);
@@ -73,21 +77,23 @@ asio::ssl::context arangodb::sslContext(
   if (sslctx.native_handle() == nullptr) {
     // could not create SSL context - this is mostly due to the OpenSSL
     // library not having been initialized
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to create SSL context");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "unable to create SSL context");
   }
 
   // load our keys and certificates
-  if (!SSL_CTX_use_certificate_chain_file(sslctx.native_handle(),
-                                          keyfile.c_str())) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot read certificate from '" << keyfile
-             << "': " << lastSSLError();
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "unable to read certificate from file");
+  if (!SSL_CTX_use_certificate_chain_file(sslctx.native_handle(), keyfile.c_str())) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "cannot read certificate from '" << keyfile << "': " << lastSSLError();
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "unable to read certificate from file");
   }
 
-  if (!SSL_CTX_use_PrivateKey_file(sslctx.native_handle(), keyfile.c_str(),
-                                   SSL_FILETYPE_PEM)) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot read key from '" << keyfile << "': " << lastSSLError();
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "unable to read key from keyfile");
+  if (!SSL_CTX_use_PrivateKey_file(sslctx.native_handle(), keyfile.c_str(), SSL_FILETYPE_PEM)) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "cannot read key from '" << keyfile << "': " << lastSSLError();
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "unable to read key from keyfile");
   }
 
 #if (OPENSSL_VERSION_NUMBER < 0x00905100L)
@@ -103,6 +109,9 @@ asio::ssl::context arangodb::sslContext(
 
 std::string arangodb::protocolName(SslProtocol protocol) {
   switch (protocol) {
+    case SSL_V2:
+      return "SSLv2";
+
     case SSL_V23:
       return "SSLv23";
 
@@ -118,6 +127,18 @@ std::string arangodb::protocolName(SslProtocol protocol) {
     default:
       return "unknown";
   }
+}
+
+std::unordered_set<uint64_t> arangodb::availableSslProtocols() {
+  return std::unordered_set<uint64_t>{SslProtocol::SSL_V2,  // unsupported!
+                                      SslProtocol::SSL_V23, SslProtocol::SSL_V3,
+                                      SslProtocol::TLS_V1, SslProtocol::TLS_V12};
+}
+
+std::string arangodb::availableSslProtocolsDescription() {
+  return "ssl protocol (1 = SSLv2 (unsupported), 2 = SSLv2 or SSLv3 "
+         "(negotiated), 3 = SSLv3, 4 = "
+         "TLSv1, 5 = TLSv1.2)";
 }
 
 ////////////////////////////////////////////////////////////////////////////////

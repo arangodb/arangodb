@@ -58,7 +58,7 @@ class OurLessThan {
       AqlValue const& lhs = left.getValue(reg.reg);
       AqlValue const& rhs = right.getValue(reg.reg);
 
-#ifdef USE_IRESEARCH
+#if 0 // #ifdef USE_IRESEARCH
       TRI_ASSERT(reg.comparator);
       int const cmp = (*reg.comparator)(reg.scorer.get(), _trx, lhs, rhs);
 #else

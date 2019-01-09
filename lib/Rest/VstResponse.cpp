@@ -56,19 +56,18 @@ void VstResponse::reset(ResponseCode code) {
   _generateBody = false;  // payload has to be set
 }
 
-void VstResponse::addPayload(VPackSlice const& slice,
-                             velocypack::Options const* options,
+void VstResponse::addPayload(VPackSlice const& slice, velocypack::Options const* options,
                              bool resolveExternals) {
   if (!options) {
     options = &VPackOptions::Options::Defaults;
   }
-  
+
   // only copy buffer if it contains externals
   if (resolveExternals) {
     bool resolveExt = VelocyPackHelper::hasNonClientTypes(slice, true, true);
     if (resolveExt) {  // resolve
       VPackBuffer<uint8_t> tmpBuffer;
-      tmpBuffer.reserve(slice.byteSize()); // reserve space already
+      tmpBuffer.reserve(slice.byteSize());  // reserve space already
       VPackBuilder builder(tmpBuffer, options);
       VelocyPackHelper::sanitizeNonClientTypes(slice, VPackSlice::noneSlice(),
                                                builder, options, true, true, true);
@@ -76,32 +75,30 @@ void VstResponse::addPayload(VPackSlice const& slice,
       return;
     }
   }
-    
+
   // just copy
   _vpackPayloads.emplace_back(slice.byteSize());
-  _vpackPayloads.back().append(slice.startAs<char const>(),
-                               slice.byteSize());
+  _vpackPayloads.back().append(slice.startAs<char const>(), slice.byteSize());
 }
 
 void VstResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
-                             velocypack::Options const* options,
-                             bool resolveExternals) {
+                             velocypack::Options const* options, bool resolveExternals) {
   if (!options) {
     options = &VPackOptions::Options::Defaults;
   }
-  
+
   // only copy buffer if it contains externals
   if (resolveExternals) {
     VPackSlice input(buffer.data());
     bool resolveExt = VelocyPackHelper::hasNonClientTypes(input, true, true);
     if (resolveExt) {  // resolve
       VPackBuffer<uint8_t> tmpBuffer;
-      tmpBuffer.reserve(buffer.length()); // reserve space already
+      tmpBuffer.reserve(buffer.length());  // reserve space already
       VPackBuilder builder(tmpBuffer, options);
       VelocyPackHelper::sanitizeNonClientTypes(input, VPackSlice::noneSlice(),
                                                builder, options, true, true, true);
       _vpackPayloads.push_back(std::move(tmpBuffer));
-      return; // done
+      return;  // done
     }
   }
   _vpackPayloads.push_back(std::move(buffer));
@@ -114,10 +111,10 @@ VPackMessageNoOwnBuffer VstResponse::prepareForNetwork() {
   builder.openArray();
   builder.add(VPackValue(int(1)));  // 1 == version
   builder.add(VPackValue(int(2)));  // 2 == response
-  builder.add(VPackValue(static_cast<int>(meta::underlyingValue(_responseCode)))); // 3 == request - return code
+  builder.add(VPackValue(static_cast<int>(meta::underlyingValue(_responseCode))));  // 3 == request - return code
 
   std::string currentHeader;
-  builder.openObject(); // 4 == meta
+  builder.openObject();  // 4 == meta
   for (auto& item : _headers) {
     currentHeader.assign(item.first);
     int capState = 1;
@@ -134,7 +131,7 @@ VPackMessageNoOwnBuffer VstResponse::prepareForNetwork() {
         } else if (it == ':') {
           capState = 2;
         }
-      } 
+      }
     }
     builder.add(currentHeader, VPackValue(item.second));
   }
@@ -149,15 +146,13 @@ VPackMessageNoOwnBuffer VstResponse::prepareForNetwork() {
       _generateBody = false;  // no body available
     }
     return VPackMessageNoOwnBuffer(VPackSlice(_header->data()),
-                                   VPackSlice::noneSlice(), _messageId,
-                                   _generateBody);
+                                   VPackSlice::noneSlice(), _messageId, _generateBody);
   } else {
     std::vector<VPackSlice> slices;
     for (auto const& buffer : _vpackPayloads) {
       slices.emplace_back(buffer.data());
     }
     return VPackMessageNoOwnBuffer(VPackSlice(_header->data()),
-                                   std::move(slices), _messageId,
-                                   _generateBody);
+                                   std::move(slices), _messageId, _generateBody);
   }
 }

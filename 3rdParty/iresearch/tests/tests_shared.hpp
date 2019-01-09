@@ -88,7 +88,4 @@ class test_base : public ::testing::Test {
   bool artifacts_;
 }; // test_base
 
-// writes formatted report to the specified output stream
-void flush_timers(std::ostream& out);
-
 #endif

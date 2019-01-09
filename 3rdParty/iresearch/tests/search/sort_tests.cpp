@@ -28,14 +28,14 @@
 TEST(sort_tests, order_equal) {
   struct dummy_scorer0: public irs::sort {
     DECLARE_SORT_TYPE() { static irs::sort::type_id type("dummy_scorer0"); return type; }
-    static ptr make() { PTR_NAMED(dummy_scorer0, ptr); return ptr; }
+    static ptr make() { return std::make_shared<dummy_scorer0>(); }
     dummy_scorer0(): irs::sort(dummy_scorer0::type()) { }
     virtual prepared::ptr prepare() const override { return nullptr; }
   };
 
   struct dummy_scorer1: public irs::sort {
     DECLARE_SORT_TYPE() { static irs::sort::type_id type("dummy_scorer1"); return type; }
-    static ptr make() { PTR_NAMED(dummy_scorer1, ptr); return ptr; }
+    static ptr make() { return std::make_shared<dummy_scorer1>(); }
     dummy_scorer1(): irs::sort(dummy_scorer1::type()) { }
     virtual prepared::ptr prepare() const override { return nullptr; }
   };

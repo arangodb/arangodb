@@ -21,16 +21,16 @@
 /// @author Dr. Oreste Costa-Panaia
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
 #include "Basics/CleanupFunctions.h"
+#include "Basics/Common.h"
 
 static void defaultExitFunction(int, void*);
 
 TRI_ExitFunction_t TRI_EXIT_FUNCTION = defaultExitFunction;
 
-void defaultExitFunction(int exitCode, void* /*data*/) { 
-  arangodb::basics::CleanupFunctions::run(exitCode, nullptr); 
-  _exit(exitCode); 
+void defaultExitFunction(int exitCode, void* /*data*/) {
+  arangodb::basics::CleanupFunctions::run(exitCode, nullptr);
+  _exit(exitCode);
 }
 
 void TRI_Application_Exit_SetExit(TRI_ExitFunction_t exitFunction) {

@@ -28,9 +28,9 @@
 namespace arangodb {
 class AcceptorUnixDomain final : public Acceptor {
  public:
-  AcceptorUnixDomain(rest::Scheduler* scheduler, Endpoint* endpoint)
-      : Acceptor(scheduler, endpoint),
-        _acceptor(scheduler->newDomainAcceptor()) {}
+  AcceptorUnixDomain(rest::GeneralServer& server,
+                     rest::GeneralServer::IoContext& context, Endpoint* endpoint)
+      : Acceptor(server, context, endpoint), _acceptor(context.newDomainAcceptor()) {}
 
  public:
   void open() override;
@@ -40,6 +40,6 @@ class AcceptorUnixDomain final : public Acceptor {
  private:
   std::unique_ptr<asio_ns::local::stream_protocol::acceptor> _acceptor;
 };
-}
+}  // namespace arangodb
 
 #endif

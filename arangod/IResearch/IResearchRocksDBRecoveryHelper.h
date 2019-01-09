@@ -50,8 +50,7 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
     TRI_idx_iid_t iid;
 
     IndexId(TRI_voc_tick_t db, TRI_voc_cid_t cid, TRI_idx_iid_t iid) noexcept
-      : db(db), cid(cid), iid(iid) {
-    }
+        : db(db), cid(cid), iid(iid) {}
 
     bool operator<(IndexId const& rhs) const noexcept {
       return db < rhs.db && cid < rhs.cid && iid < rhs.iid;
@@ -67,16 +66,24 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
   virtual void PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
                      const rocksdb::Slice& value) override;
 
-  virtual void DeleteCF(uint32_t column_family_id,
-                        const rocksdb::Slice& key) override;
+  virtual void DeleteCF(uint32_t column_family_id, const rocksdb::Slice& key) override {
+    handleDeleteCF(column_family_id, key);
+  }
 
-  virtual void SingleDeleteCF(uint32_t column_family_id,
-                              const rocksdb::Slice& key) override;
+  virtual void SingleDeleteCF(uint32_t column_family_id, const rocksdb::Slice& key) override {
+    handleDeleteCF(column_family_id, key);
+  }
+
+  virtual void DeleteRangeCF(uint32_t column_family_id, const rocksdb::Slice& begin_key,
+                             const rocksdb::Slice& end_key) override;
 
   virtual void LogData(const rocksdb::Slice& blob) override;
 
  private:
-  std::set<IndexId> _recoveredIndexes; // set of already recovered indexes
+  void handleDeleteCF(uint32_t column_family_id, const rocksdb::Slice& key);
+
+ private:
+  std::set<IndexId> _recoveredIndexes;  // set of already recovered indexes
   DatabaseFeature* _dbFeature;
   RocksDBEngine* _engine;
   uint32_t _documentCF;

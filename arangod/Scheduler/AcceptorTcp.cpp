@@ -31,7 +31,7 @@
 using namespace arangodb;
 
 void AcceptorTcp::open() {
-  std::unique_ptr<asio_ns::ip::tcp::resolver> resolver(_scheduler->newResolver());
+  std::unique_ptr<asio_ns::ip::tcp::resolver> resolver(_context.newResolver());
 
   std::string hostname = _endpoint->host();
   int portNumber = _endpoint->port();
@@ -44,11 +44,11 @@ void AcceptorTcp::open() {
   } else {  // we need to resolve the string containing the ip
     std::unique_ptr<asio_ns::ip::tcp::resolver::query> query;
     if (_endpoint->domain() == AF_INET6) {
-      query.reset(new asio_ns::ip::tcp::resolver::query(
-          asio_ns::ip::tcp::v6(), hostname, std::to_string(portNumber)));
+      query.reset(new asio_ns::ip::tcp::resolver::query(asio_ns::ip::tcp::v6(), hostname,
+                                                        std::to_string(portNumber)));
     } else if (_endpoint->domain() == AF_INET) {
-      query.reset(new asio_ns::ip::tcp::resolver::query(
-          asio_ns::ip::tcp::v4(), hostname, std::to_string(portNumber)));
+      query.reset(new asio_ns::ip::tcp::resolver::query(asio_ns::ip::tcp::v4(), hostname,
+                                                        std::to_string(portNumber)));
     } else {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_IP_ADDRESS_INVALID);
     }
@@ -91,31 +91,35 @@ void AcceptorTcp::open() {
 
   _acceptor->bind(asioEndpoint, err);
   if (err) {
-    LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to bind to endpoint '"
-                                          << _endpoint->specification()
-                                          << "': " << err.message();
+    LOG_TOPIC(ERR, Logger::COMMUNICATION)
+        << "unable to bind to endpoint '" << _endpoint->specification()
+        << "': " << err.message();
     throw std::runtime_error(err.message());
   }
 
   TRI_ASSERT(_endpoint->listenBacklog() > 8);
   _acceptor->listen(_endpoint->listenBacklog(), err);
   if (err) {
-    LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to listen to endpoint '"
-                                          << _endpoint->specification() << ": "
-                                          << err.message();
+    LOG_TOPIC(ERR, Logger::COMMUNICATION)
+        << "unable to listen to endpoint '" << _endpoint->specification()
+        << ": " << err.message();
     throw std::runtime_error(err.message());
   }
 }
 
 void AcceptorTcp::asyncAccept(AcceptHandler const& handler) {
   TRI_ASSERT(!_peer);
+
+  // select the io context for this socket
+  auto& context = _server.selectIoContext();
+
   if (_endpoint->encryption() == Endpoint::EncryptionType::SSL) {
-    _peer.reset(new SocketSslTcp(_scheduler,
-                                 SslServerFeature::SSL->createSslContext()));
+    auto sslContext = SslServerFeature::SSL->createSslContext();
+    _peer.reset(new SocketSslTcp(context, std::move(sslContext)));
     SocketSslTcp* peer = static_cast<SocketSslTcp*>(_peer.get());
     _acceptor->async_accept(peer->_socket, peer->_peerEndpoint, handler);
   } else {
-    _peer.reset(new SocketTcp(_scheduler));
+    _peer.reset(new SocketTcp(context));
     SocketTcp* peer = static_cast<SocketTcp*>(_peer.get());
     _acceptor->async_accept(*peer->_socket, peer->_peerEndpoint, handler);
   }

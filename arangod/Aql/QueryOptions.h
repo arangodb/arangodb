@@ -31,10 +31,10 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 namespace aql {
-  
+
 enum ProfileLevel : uint32_t {
   /// no profiling information
   PROFILE_LEVEL_NONE = 0,
@@ -65,6 +65,7 @@ struct QueryOptions {
   ProfileLevel profile;
   bool allPlans;
   bool verbosePlans;
+  bool stream;
   bool silent;
   bool failOnWarning;
   bool cache;
@@ -82,7 +83,7 @@ struct QueryOptions {
   transaction::Options transactionOptions;
 };
 
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

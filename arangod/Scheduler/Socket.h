@@ -30,28 +30,26 @@
 #include "Logger/Logger.h"
 #include "Scheduler/JobGuard.h"
 
+#include "GeneralServer/GeneralServer.h"
+
 namespace arangodb {
 namespace rest {
 class Scheduler;
 }
 
-typedef std::function<void(const asio_ns::error_code& ec,
-                           std::size_t transferred)>
-    AsyncHandler;
+typedef std::function<void(const asio_ns::error_code& ec, std::size_t transferred)> AsyncHandler;
 
 class Socket {
  public:
-  Socket(rest::Scheduler* scheduler, bool encrypted)
-      : _strand(scheduler->newStrand()),
-        _encrypted(encrypted),
-        _scheduler(scheduler) {
-    TRI_ASSERT(_scheduler != nullptr);
+  Socket(rest::GeneralServer::IoContext& context, bool encrypted)
+      : _context(context), _encrypted(encrypted) {
+    _context._clients++;
   }
 
   Socket(Socket const& that) = delete;
   Socket(Socket&& that) = delete;
 
-  virtual ~Socket() {}
+  virtual ~Socket() { _context._clients--; }
 
   bool isEncrypted() const { return _encrypted; }
 
@@ -65,8 +63,7 @@ class Socket {
     return false;
   }
 
-  void shutdown(asio_ns::error_code& ec, bool mustCloseSend,
-                bool mustCloseReceive) {
+  void shutdown(asio_ns::error_code& ec, bool mustCloseSend, bool mustCloseReceive) {
     if (mustCloseSend) {
       this->shutdownSend(ec);
       if (ec && ec != asio_ns::error::not_connected) {
@@ -84,18 +81,17 @@ class Socket {
     }
   }
 
-  void post(std::function<void()> handler) {
-    _scheduler->post(*_strand, handler);
+  void post(std::function<void()>&& handler) {
+    _context.post(std::move(handler));
   }
 
-  bool runningInThisThread() { return _strand->running_in_this_thread(); }
+  bool runningInThisThread() { return _context.runningInThisThread(); }
 
  public:
   virtual std::string peerAddress() const = 0;
   virtual int peerPort() const = 0;
   virtual void setNonBlocking(bool) = 0;
-  virtual size_t writeSome(basics::StringBuffer* buffer,
-                           asio_ns::error_code& ec) = 0;
+  virtual size_t writeSome(basics::StringBuffer* buffer, asio_ns::error_code& ec) = 0;
   virtual void asyncWrite(asio_ns::mutable_buffers_1 const& buffer,
                           AsyncHandler const& handler) = 0;
   virtual size_t readSome(asio_ns::mutable_buffers_1 const& buffer,
@@ -111,14 +107,12 @@ class Socket {
   virtual void shutdownSend(asio_ns::error_code& ec) = 0;
 
  protected:
-  // strand to ensure the connection's handlers are not called concurrently.
-  std::unique_ptr<asio_ns::io_context::strand> _strand;
+  rest::GeneralServer::IoContext& _context;
 
  private:
   bool const _encrypted;
   bool _handshakeDone = false;
-  rest::Scheduler* _scheduler;
 };
-}
+}  // namespace arangodb
 
 #endif

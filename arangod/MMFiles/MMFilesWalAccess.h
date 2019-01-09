@@ -35,8 +35,7 @@ class MMFilesWalAccess final : public WalAccess {
   MMFilesWalAccess() {}
 
   /// {"tickMin":"123", "tickMax":"456", "version":"3.2", "serverId":"abc"}
-  Result tickRange(
-      std::pair<TRI_voc_tick_t, TRI_voc_tick_t>& minMax) const override;
+  Result tickRange(std::pair<TRI_voc_tick_t, TRI_voc_tick_t>& minMax) const override;
 
   /// {"lastTick":"123",
   ///  "version":"3.2",
@@ -49,15 +48,13 @@ class MMFilesWalAccess final : public WalAccess {
 
   /// should return the list of transactions started, but not committed in that
   /// range (range can be adjusted)
-  WalAccessResult openTransactions(uint64_t tickStart, uint64_t tickEnd,
-                                   WalAccess::Filter const& filter,
+  WalAccessResult openTransactions(WalAccess::Filter const& filter,
                                    TransactionCallback const&) const override;
 
   /// Tails the wall, this will already sanitize the
-  WalAccessResult tail(uint64_t tickStart, uint64_t tickEnd, size_t chunkSize,
-                       TRI_voc_tid_t barrierId, WalAccess::Filter const& filter,
-                       MarkerCallback const&) const override;
+  WalAccessResult tail(WalAccess::Filter const& filter, size_t chunkSize,
+                       TRI_voc_tid_t barrierId, MarkerCallback const&) const override;
 };
-}
+}  // namespace arangodb
 
 #endif

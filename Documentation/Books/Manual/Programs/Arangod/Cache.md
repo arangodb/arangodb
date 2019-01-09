@@ -20,4 +20,4 @@ Global size limit for all hash caches: `--cache.size`
 The global caching system, all caches, and all the data contained therein will
 fit inside this limit. The size is specified in bytes. If there is less than
 4GiB of RAM on the system, the default value is 256MiB. If there is more,
-the default is `(system RAM size - 2GiB) * 0.3`.
+the default is `(system RAM size - 2GiB) * 0.25`.

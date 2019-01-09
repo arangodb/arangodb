@@ -223,7 +223,7 @@
     "type" : "boolean"
   },
   "output-directory" : {
-    "default" : "/Users/fceller/1_ArangoDB/ArangoDB-DEVEL/export",
+    "default" : "/home/steemann/ArangoNoAsan/export",
     "description" : "output directory",
     "enterpriseOnly" : false,
     "hidden" : false,

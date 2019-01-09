@@ -93,70 +93,130 @@ AqlItemBlock::AqlItemBlock(ResourceMonitor* resourceMonitor, VPackSlice const sl
   VPackArrayIterator dataIterator(data);
   VPackArrayIterator rawIterator(raw);
 
+  auto storeSingleValue = [this](size_t row, RegisterId column, VPackArrayIterator& it,
+                                 std::vector<AqlValue>& madeHere) {
+    AqlValue a(it.value());
+    it.next();
+    try {
+      setValue(row, column, a);  // if this throws, a is destroyed again
+    } catch (...) {
+      a.destroy();
+      throw;
+    }
+    madeHere.emplace_back(a);
+  };
+
+  enum RunType { NoRun = 0, EmptyRun, NextRun, PositionalRun };
+
+  int64_t runLength = 0;
+  RunType runType = NoRun;
+
   try {
+    size_t tablePos = 0;
     // skip the first two records
     rawIterator.next();
     rawIterator.next();
-    int64_t emptyRun = 0;
 
     for (RegisterId column = 0; column < _nrRegs; column++) {
       for (size_t i = 0; i < _nrItems; i++) {
-        if (emptyRun > 0) {
-          emptyRun--;
-        } else {
-          VPackSlice dataEntry = dataIterator.value();
-          dataIterator.next();
-          if (!dataEntry.isNumber()) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                           "data must contain only numbers");
+        if (runLength > 0) {
+          switch (runType) {
+            case EmptyRun:
+              // nothing to do
+              break;
+
+            case NextRun:
+              storeSingleValue(i, column, rawIterator, madeHere);
+              break;
+
+            case PositionalRun:
+              TRI_ASSERT(tablePos < madeHere.size());
+              setValue(i, column, madeHere[tablePos]);
+              break;
+
+            case NoRun: {
+              TRI_ASSERT(false);
+            }
           }
-          int64_t n = dataEntry.getNumericValue<int64_t>();
-          if (n == 0) {
-            // empty, do nothing here
-          } else if (n == -1) {
-            // empty run:
-            VPackSlice runLength = dataIterator.value();
-            dataIterator.next();
-            TRI_ASSERT(runLength.isNumber());
-            emptyRun = runLength.getNumericValue<int64_t>();
-            emptyRun--;
-          } else if (n == -2) {
-            // a range
-            VPackSlice lowBound = dataIterator.value();
-            dataIterator.next();
-            VPackSlice highBound = dataIterator.value();
-            dataIterator.next();
-             
-            int64_t low =
-                VelocyPackHelper::getNumericValue<int64_t>(lowBound, 0);
-            int64_t high =
-                VelocyPackHelper::getNumericValue<int64_t>(highBound, 0);
-            AqlValue a(low, high);
-            try {
-              setValue(i, column, a);
-            } catch (...) {
-              a.destroy();
-              throw;
+
+          --runLength;
+          if (runLength == 0) {
+            runType = NoRun;
+            tablePos = 0;
+          }
+
+          continue;
+        }
+
+        VPackSlice dataEntry = dataIterator.value();
+        dataIterator.next();
+        if (!dataEntry.isNumber()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         "data must contain only numbers");
+        }
+
+        int64_t n = dataEntry.getNumericValue<int64_t>();
+        if (n == 0) {
+          // empty, do nothing here
+        } else if (n == 1) {
+          // a VelocyPack value
+          storeSingleValue(i, column, rawIterator, madeHere);
+        } else if (n == -1 || n == -3 || n == -4) {
+          // -1: empty run, -3: run of "next" values, -4: run of positional
+          // values
+          VPackSlice v = dataIterator.value();
+          dataIterator.next();
+          TRI_ASSERT(v.isNumber());
+          runLength = v.getNumericValue<int64_t>();
+          runLength--;
+          switch (n) {
+            case -1:
+              runType = EmptyRun;
+              break;
+
+            case -3:
+              runType = NextRun;
+              storeSingleValue(i, column, rawIterator, madeHere);
+              break;
+
+            case -4: {
+              runType = PositionalRun;
+              VPackSlice v = dataIterator.value();
+              dataIterator.next();
+              TRI_ASSERT(v.isNumber());
+              tablePos = v.getNumericValue<size_t>();
+              if (tablePos >= madeHere.size()) {
+                // safeguard against out-of-bounds accesses
+                THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                               "found undefined data value");
+              }
+
+              setValue(i, column, madeHere[tablePos]);
             }
-          } else if (n == 1) {
-            // a VelocyPack value
-            AqlValue a(rawIterator.value());
-            rawIterator.next();
-            try {
-              setValue(i, column, a);  // if this throws, a is destroyed again
-            } catch (...) {
-              a.destroy();
-              throw;
-            }
-            madeHere.emplace_back(a);
-          } else if (n >= 2) {
-            setValue(i, column, madeHere[static_cast<size_t>(n)]);
-            // If this throws, all is OK, because it was already put into
-            // the block elsewhere.
-          } else {
+          }
+        } else if (n == -2) {
+          // a range
+          VPackSlice lowBound = dataIterator.value();
+          dataIterator.next();
+          VPackSlice highBound = dataIterator.value();
+          dataIterator.next();
+
+          int64_t low = VelocyPackHelper::getNumericValue<int64_t>(lowBound, 0);
+          int64_t high = VelocyPackHelper::getNumericValue<int64_t>(highBound, 0);
+          emplaceValue(i, column, low, high);
+        } else if (n >= 2) {
+          if (static_cast<size_t>(n) >= madeHere.size()) {
+            // safeguard against out-of-bounds accesses
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                            "found undefined data value");
           }
+
+          setValue(i, column, madeHere[static_cast<size_t>(n)]);
+          // If this throws, all is OK, because it was already put into
+          // the block elsewhere.
+        } else {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         "found invalid data encoding value");
         }
       }
     }
@@ -164,6 +224,9 @@ AqlItemBlock::AqlItemBlock(ResourceMonitor* resourceMonitor, VPackSlice const sl
     destroy();
     throw;
   }
+
+  TRI_ASSERT(runLength == 0);
+  TRI_ASSERT(runType == NoRun);
 }
 
 /// @brief destroy the block, used in the destructor and elsewhere
@@ -256,9 +319,7 @@ void AqlItemBlock::rescale(size_t nrItems, RegisterId nrRegs) {
 
 /// @brief clears out some columns (registers), this deletes the values if
 /// necessary, using the reference count.
-void AqlItemBlock::clearRegisters(
-    std::unordered_set<RegisterId> const& toClear) {
-
+void AqlItemBlock::clearRegisters(std::unordered_set<RegisterId> const& toClear) {
   for (size_t i = 0; i < _nrItems; i++) {
     for (auto const& reg : toClear) {
       AqlValue& a(_data[_nrRegs * i + reg]);
@@ -317,7 +378,7 @@ AqlItemBlock* AqlItemBlock::slice(size_t from, size_t to) const {
         } else {
           // simple copying of values
           res->setValue(row - from, col, a);
-        } 
+        }
       }
     }
   }
@@ -326,8 +387,7 @@ AqlItemBlock* AqlItemBlock::slice(size_t from, size_t to) const {
 }
 
 /// @brief slice/clone, this does a deep copy of all entries
-AqlItemBlock* AqlItemBlock::slice(
-    size_t row, std::unordered_set<RegisterId> const& registers) const {
+AqlItemBlock* AqlItemBlock::slice(size_t row, std::unordered_set<RegisterId> const& registers) const {
   std::unordered_set<AqlValue> cache;
 
   auto res = std::make_unique<AqlItemBlock>(_resourceMonitor, 1, _nrRegs);
@@ -366,8 +426,8 @@ AqlItemBlock* AqlItemBlock::slice(
 
 /// @brief slice/clone chosen rows for a subset, this does a deep copy
 /// of all entries
-AqlItemBlock* AqlItemBlock::slice(std::vector<size_t> const& chosen, size_t from,
-                                  size_t to) const {
+AqlItemBlock* AqlItemBlock::slice(std::vector<size_t> const& chosen,
+                                  size_t from, size_t to) const {
   TRI_ASSERT(from < to && to <= chosen.size());
 
   std::unordered_set<AqlValue> cache;
@@ -411,8 +471,7 @@ AqlItemBlock* AqlItemBlock::slice(std::vector<size_t> const& chosen, size_t from
 /// operation, because it is unclear, when the values to which our
 /// AqlValues point will vanish! In particular, do not use setValue
 /// any more.
-AqlItemBlock* AqlItemBlock::steal(std::vector<size_t> const& chosen, size_t from,
-                                  size_t to) {
+AqlItemBlock* AqlItemBlock::steal(std::vector<size_t> const& chosen, size_t from, size_t to) {
   TRI_ASSERT(from < to && to <= chosen.size());
 
   auto res = std::make_unique<AqlItemBlock>(_resourceMonitor, to - from, _nrRegs);
@@ -438,17 +497,17 @@ AqlItemBlock* AqlItemBlock::steal(std::vector<size_t> const& chosen, size_t from
 
 /// @brief concatenate multiple blocks
 AqlItemBlock* AqlItemBlock::concatenate(ResourceMonitor* resourceMonitor,
-    BlockCollector* collector) {
-  return concatenate(resourceMonitor, collector->_blocks); 
+                                        BlockCollector* collector) {
+  return concatenate(resourceMonitor, collector->_blocks);
 }
 
 /// @brief concatenate multiple blocks, note that the new block now owns all
 /// AqlValue pointers in the old blocks, therefore, the latter are all
 /// set to nullptr, just to be sure.
 AqlItemBlock* AqlItemBlock::concatenate(ResourceMonitor* resourceMonitor,
-    std::vector<AqlItemBlock*> const& blocks) {
+                                        std::vector<AqlItemBlock*> const& blocks) {
   TRI_ASSERT(!blocks.empty());
-  
+
   size_t totalSize = 0;
   RegisterId nrRegs = 0;
   for (auto& it : blocks) {
@@ -496,20 +555,28 @@ AqlItemBlock* AqlItemBlock::concatenate(ResourceMonitor* resourceMonitor,
 ///             from the first column (top to bottom) and going right.
 ///             Each entry found is encoded in the following way:
 ///               0  means a single empty entry
-///               -1 followed by a positive integer N (encoded as number)
-///                    means a run of that many empty entries
-///               -2 followed by two numbers LOW and HIGH means a range
-///                    and LOW and HIGH are the boundaries (inclusive)
-///               1 means a JSON entry at the "next" position in "raw"
-///                    the "next" position starts with 2 and is increased
-///                    by one for every 1 found in data
-///               integer values >= 2 mean a JSON entry, in this
-///                      case the "raw" list contains an entry in the
-///                      corresponding position
+///              -1  followed by a positive integer N (encoded as number)
+///                  means a run of that many empty entries. this is a
+///                  compression for multiple "0" entries
+///              -2  followed by two numbers LOW and HIGH means a range
+///                  and LOW and HIGH are the boundaries (inclusive)
+///              -3  followed by a positive integer N (encoded as number)
+///                  means a run of that many JSON entries which can
+///                  be found at the "next" position in "raw". this is
+///                  a compression for multiple "1" entries
+///              -4  followed by a positive integer N (encoded as number)
+///                  and followed by a positive integer P (encoded as number)
+///                  means a run of that many JSON entries which can
+///                  be found in the "raw" list at the position P
+///               1  means a JSON entry at the "next" position in "raw"
+///                  the "next" position starts with 2 and is increased
+///                  by one for every 1 found in data
+///             integer values >= 2 mean a JSON entry, in this
+///                  case the "raw" list contains an entry in the
+///                  corresponding position
 ///  "raw":     List of actual values, positions 0 and 1 are always null
-///                      such that actual indices start at 2
-void AqlItemBlock::toVelocyPack(transaction::Methods* trx,
-                                VPackBuilder& result) const {
+///                  such that actual indices start at 2
+void AqlItemBlock::toVelocyPack(transaction::Methods* trx, VPackBuilder& result) const {
   VPackOptions options(VPackOptions::Defaults);
   options.buildUnindexedArrays = true;
   options.buildUnindexedObjects = true;
@@ -520,26 +587,56 @@ void AqlItemBlock::toVelocyPack(transaction::Methods* trx,
   raw.add(VPackValue(VPackValueType::Null));
   raw.add(VPackValue(VPackValueType::Null));
 
-  std::unordered_map<AqlValue, size_t> table;  // remember duplicates
-  
   result.add("nrItems", VPackValue(_nrItems));
   result.add("nrRegs", VPackValue(_nrRegs));
   result.add("error", VPackValue(false));
   // Backwards compatbility 3.3
   result.add("exhausted", VPackValue(false));
+
+  enum State {
+    Empty,       // saw an empty value
+    Range,       // saw a range value
+    Next,        // saw a previously unknown value
+    Positional,  // saw a value previously encountered
+  };
+
+  std::unordered_map<AqlValue, size_t> table;  // remember duplicates
+  size_t lastTablePos = 0;
+  State lastState = Positional;
+
+  State currentState = Positional;
+  size_t runLength = 0;
+  size_t tablePos = 0;
+
   result.add("data", VPackValue(VPackValueType::Array));
 
-  size_t emptyCount = 0;  // here we count runs of empty AqlValues
+  // write out data buffered for repeated "empty" or "next" values
+  auto writeBuffered = [](State lastState, size_t lastTablePos,
+                          VPackBuilder& result, size_t runLength) {
+    if (lastState == Range) {
+      return;
+    }
 
-  auto commitEmpties = [&result, &emptyCount]() {  // this commits an empty run to the result
-    if (emptyCount > 0) {
-      if (emptyCount == 1) {
-        result.add(VPackValue(0));
-      } else {
-        result.add(VPackValue(-1));
-        result.add(VPackValue(emptyCount));
+    if (lastState == Positional) {
+      if (lastTablePos >= 2) {
+        if (runLength == 1) {
+          result.add(VPackValue(lastTablePos));
+        } else {
+          result.add(VPackValue(-4));
+          result.add(VPackValue(runLength));
+          result.add(VPackValue(lastTablePos));
+        }
       }
-      emptyCount = 0;
+    } else {
+      TRI_ASSERT(lastState == Empty || lastState == Next);
+      if (runLength == 1) {
+        // saw exactly one value
+        result.add(VPackValue(lastState == Empty ? 0 : 1));
+      } else {
+        // saw multiple values
+        result.add(VPackValue(lastState == Empty ? -1 : -3));
+        result.add(VPackValue(runLength));
+      }
     }
   };
 
@@ -547,31 +644,61 @@ void AqlItemBlock::toVelocyPack(transaction::Methods* trx,
   for (RegisterId column = 0; column < _nrRegs; column++) {
     for (size_t i = 0; i < _nrItems; i++) {
       AqlValue const& a(_data[i * _nrRegs + column]);
-      if (a.isEmpty()) {
-        emptyCount++;
-      } else {
-        commitEmpties();
-        if (a.isRange()) {
-          result.add(VPackValue(-2));
-          result.add(VPackValue(a.range()->_low));
-          result.add(VPackValue(a.range()->_high));
-        } else {
-          auto it = table.find(a);
 
-          if (it == table.end()) {
-            a.toVelocyPack(trx, raw, false);
-            result.add(VPackValue(1));
-            table.emplace(a, pos++);
-          } else {
-            result.add(VPackValue(it->second));
+      // determine current state
+      if (a.isEmpty()) {
+        currentState = Empty;
+      } else if (a.isRange()) {
+        currentState = Range;
+      } else {
+        auto it = table.find(a);
+
+        if (it == table.end()) {
+          currentState = Next;
+          a.toVelocyPack(trx, raw, false);
+          table.emplace(a, pos++);
+        } else {
+          currentState = Positional;
+          tablePos = it->second;
+          TRI_ASSERT(tablePos >= 2);
+          if (lastState != Positional) {
+            lastTablePos = tablePos;
           }
         }
       }
+
+      // handle state change
+      if (currentState != lastState ||
+          (currentState == Positional && tablePos != lastTablePos)) {
+        // write out remaining buffered data in case of a state change
+        writeBuffered(lastState, lastTablePos, result, runLength);
+
+        lastTablePos = 0;
+        lastState = currentState;
+        runLength = 0;
+      }
+
+      switch (currentState) {
+        case Empty:
+        case Next:
+        case Positional:
+          ++runLength;
+          lastTablePos = tablePos;
+          break;
+
+        case Range:
+          result.add(VPackValue(-2));
+          result.add(VPackValue(a.range()->_low));
+          result.add(VPackValue(a.range()->_high));
+          break;
+      }
     }
   }
-  commitEmpties();
-  
-  result.close(); // closes "data"
+
+  // write out any remaining buffered data
+  writeBuffered(lastState, lastTablePos, result, runLength);
+
+  result.close();  // closes "data"
 
   raw.close();
   result.add("raw", raw.slice());

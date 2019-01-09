@@ -28,7 +28,6 @@
 #error use <Basics/Common.h>
 #endif
 
-
 #ifndef __STDC_LIMIT_MACROS
 #define __STDC_LIMIT_MACROS
 #endif
@@ -40,8 +39,7 @@
 // padding
 
 #if defined(__amd64__) || defined(__amd64) || defined(__x86_64__) || \
-    defined(__x86_64) || defined(_M_X64) || defined(_M_AMD64) ||     \
-    defined(__aarch64__)
+    defined(__x86_64) || defined(_M_X64) || defined(_M_AMD64) || defined(__aarch64__)
 #undef TRI_PADDING_32
 #else
 #define TRI_PADDING_32 1
@@ -55,10 +53,9 @@
 #elif defined(__ppc__) || defined(__POWERPC__) || defined(_M_PPC)
 /* unaligned accesses are slow */
 #undef TRI_UNALIGNED_ACCESS
-#elif defined(__i386__) || defined(__x86_64__) || \
-      defined(_M_IX86) || defined(_M_X64)
+#elif defined(__i386__) || defined(__x86_64__) || defined(_M_IX86) || defined(_M_X64)
 /* unaligned accesses should work */
-#define TRI_UNALIGNED_ACCESS 1 
+#define TRI_UNALIGNED_ACCESS 1
 #else
 /* unknown platform. better not use unaligned accesses */
 #undef TRI_UNALIGNED_ACCESS
@@ -172,6 +169,7 @@
 #define TRI_LSEEK ::lseek
 #define TRI_MKDIR(a, b) ::mkdir((a), (b))
 #define TRI_OPEN(a, b) ::open((a), (b))
+#define TRI_FOPEN(a, b) ::fopen((a), (b))
 #define TRI_READ ::read
 #define TRI_RMDIR ::rmdir
 #define TRI_STAT ::stat
@@ -192,6 +190,7 @@
 #define TRI_LAST_ERROR_STR ::strerror(errno)
 #define TRI_SYSTEM_ERROR() \
   {}
+#define TRI_GET_ARGV(ARGC, ARGV)
 
 // sockets
 
@@ -329,6 +328,7 @@
 #define TRI_LSEEK ::lseek
 #define TRI_MKDIR(a, b) ::mkdir((a), (b))
 #define TRI_OPEN(a, b) ::open((a), (b))
+#define TRI_FOPEN(a, b) ::fopen((a), (b))
 #define TRI_READ ::read
 #define TRI_RMDIR ::rmdir
 #define TRI_STAT ::stat
@@ -349,6 +349,7 @@
 #define TRI_LAST_ERROR_STR ::strerror(errno)
 #define TRI_SYSTEM_ERROR() \
   {}
+#define TRI_GET_ARGV(ARGC, ARGV)
 
 // sockets
 
@@ -473,6 +474,7 @@
 #define TRI_LSEEK ::lseek
 #define TRI_MKDIR(a, b) ::mkdir((a), (b))
 #define TRI_OPEN(a, b) ::open((a), (b))
+#define TRI_FOPEN(a, b) ::fopen((a), (b))
 #define TRI_READ ::read
 #define TRI_RMDIR ::rmdir
 #define TRI_STAT ::stat
@@ -493,6 +495,7 @@
 #define TRI_LAST_ERROR_STR ::strerror(errno)
 #define TRI_SYSTEM_ERROR() \
   {}
+#define TRI_GET_ARGV(ARGC, ARGV)
 
 // sockets
 
@@ -596,7 +599,6 @@
 #define TRI_HAVE_POSIX_PWD_GRP 1
 #define TRI_HAVE_POSIX_THREADS 1
 #define TRI_HAVE_SC_PHYS_PAGES 1
-#define TRI_HAVE_SETLK 1
 
 #define TRI_HAVE_ANONYMOUS_MMAP 1
 
@@ -631,6 +633,7 @@
 #define TRI_LSEEK ::lseek
 #define TRI_MKDIR(a, b) ::mkdir((a), (b))
 #define TRI_OPEN(a, b) ::open((a), (b))
+#define TRI_FOPEN(a, b) ::fopen((a), (b))
 #define TRI_READ ::read
 #define TRI_RMDIR ::rmdir
 #define TRI_STAT ::stat
@@ -651,6 +654,7 @@
 #define TRI_LAST_ERROR_STR ::strerror(errno)
 #define TRI_SYSTEM_ERROR() \
   {}
+#define TRI_GET_ARGV(ARGC, ARGV)
 
 // sockets
 
@@ -704,7 +708,6 @@
 #include <WinSock2.h>
 #include <io.h>
 #include <stdio.h>
-
 // available include files
 
 #define TRI_HAVE_DIRECT_H 1
@@ -829,18 +832,13 @@ typedef unsigned char bool;
 
 #define O_RDONLY _O_RDONLY
 
-#define TRI_CHDIR ::_chdir
 #define TRI_CLOSE ::_close
 #define TRI_CREATE(a, b, c) TRI_createFile((a), (b), (c))
 #define TRI_FSTAT ::_fstat64
-#define TRI_GETCWD ::_getcwd
 #define TRI_LSEEK ::_lseeki64
-#define TRI_MKDIR(a, b) ::_mkdir((a))
+#define TRI_MKDIR(a, b) TRI_MKDIR_WIN32(a)
 #define TRI_OPEN(a, b) TRI_OPEN_WIN32((a), (b))
 #define TRI_READ ::_read
-#define TRI_RMDIR ::_rmdir
-#define TRI_STAT ::_stat64
-#define TRI_UNLINK ::_unlink
 #define TRI_WRITE ::_write
 #define TRI_FDOPEN(a, b) ::_fdopen((a), (b))
 
@@ -853,6 +851,17 @@ typedef unsigned char bool;
 
 #define TRI_ERRORBUF char windowsErrorBuf[256] = "";
 #define TRI_GET_ERRORBUF windowsErrorBuf
+#define TRI_GET_ARGV(ARGC, ARGV) TRI_GET_ARGV_WIN(ARGC, ARGV)
+
+// Implemented wrappers in win-utils.cpp:
+FILE* TRI_FOPEN(char const* filename, char const* mode);
+int TRI_CHDIR(char const* dirname);
+int TRI_STAT(char const* path, TRI_stat_t* buffer);
+char* TRI_GETCWD(char* buffer, int maxlen);
+int TRI_MKDIR_WIN32(char const* dirname);
+int TRI_RMDIR(char const* dirname);
+int TRI_UNLINK(char const* filename);
+void TRI_GET_ARGV_WIN(int& argc, char** argv);
 
 // system error string macro requires ERRORBUF to instantiate its buffer before.
 

@@ -288,7 +288,7 @@
   },
   "on-duplicate" : {
     "default" : "error",
-    "description" : "action to perform when a unique key constraint violation occurs. Possible values: update, ignore, replace, error",
+    "description" : "action to perform when a unique key constraint violation occurs. Possible values: ignore, replace, update, error",
     "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "",

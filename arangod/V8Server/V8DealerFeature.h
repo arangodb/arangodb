@@ -42,7 +42,7 @@ class V8Context;
 class V8DealerFeature final : public application_features::ApplicationFeature {
  public:
   static V8DealerFeature* DEALER;
-  
+
   struct Statistics {
     size_t available;
     size_t busy;
@@ -65,7 +65,8 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   double _maxContextAge;
   std::string _appPath;
   std::string _startupDirectory;
-  std::vector<std::string> _moduleDirectory;
+  std::string _nodeModulesDirectory;
+  std::vector<std::string> _moduleDirectories;
   bool _copyInstallation;
   uint64_t _nrMaxContexts;          // maximum number of contexts to create
   uint64_t _nrMinContexts;          // minimum number of contexts to keep
@@ -92,13 +93,11 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   /// reached the maximum number of contexts. this can be used to
   /// force the creation of another context for high priority tasks
   /// forceContext >= 0 means picking the context with that exact id
-  V8Context* enterContext(TRI_vocbase_t*, bool allowUseDatabase,
-                          ssize_t forceContext = -1);
+  V8Context* enterContext(TRI_vocbase_t*, bool allowUseDatabase, ssize_t forceContext = -1);
   void exitContext(V8Context*);
 
-  void defineContextUpdate(
-      std::function<void(v8::Isolate*, v8::Handle<v8::Context>, size_t)>,
-      TRI_vocbase_t*);
+  void defineContextUpdate(std::function<void(v8::Isolate*, v8::Handle<v8::Context>, size_t)>,
+                           TRI_vocbase_t*);
 
   void setMinimumContexts(size_t nr) {
     if (nr > _nrMinContexts) {
@@ -160,18 +159,14 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   std::map<std::string, double> _definedDoubles;
   std::map<std::string, std::string> _definedStrings;
 
-  std::vector<std::pair<
-      std::function<void(v8::Isolate*, v8::Handle<v8::Context>, size_t)>,
-      TRI_vocbase_t*>>
-      _contextUpdates;
+  std::vector<std::pair<std::function<void(v8::Isolate*, v8::Handle<v8::Context>, size_t)>, TRI_vocbase_t*>> _contextUpdates;
 };
 
 // enters and exits a context and provides an isolate
 // in case the passed in isolate is a nullptr
 class V8ContextDealerGuard {
  public:
-  explicit V8ContextDealerGuard(Result&, v8::Isolate*&, TRI_vocbase_t*,
-                                bool allowModification);
+  explicit V8ContextDealerGuard(Result&, v8::Isolate*&, TRI_vocbase_t*, bool allowModification);
   V8ContextDealerGuard(V8ContextDealerGuard const&) = delete;
   V8ContextDealerGuard& operator=(V8ContextDealerGuard const&) = delete;
   ~V8ContextDealerGuard();

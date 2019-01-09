@@ -24,8 +24,8 @@
 #ifndef ARANGOD_AQL_AQL_ITEM_BLOCK_MANAGER_H
 #define ARANGOD_AQL_AQL_ITEM_BLOCK_MANAGER_H 1
 
-#include "Basics/Common.h"
 #include "Aql/types.h"
+#include "Basics/Common.h"
 
 #include <array>
 
@@ -60,24 +60,20 @@ class AqlItemBlockManager {
 
  private:
   ResourceMonitor* _resourceMonitor;
-    
+
   static constexpr size_t numBuckets = 12;
   static constexpr size_t numBlocksPerBucket = 7;
 
   struct Bucket {
     std::array<AqlItemBlock*, numBlocksPerBucket> blocks;
     size_t numItems;
-    
+
     Bucket();
     ~Bucket();
 
-    bool empty() const noexcept { 
-      return numItems == 0; 
-    }
+    bool empty() const noexcept { return numItems == 0; }
 
-    bool full() const noexcept {
-      return (numItems == numBlocksPerBucket);
-    }
+    bool full() const noexcept { return (numItems == numBlocksPerBucket); }
 
     AqlItemBlock* pop() noexcept {
       TRI_ASSERT(!empty());
@@ -136,7 +132,7 @@ class AqlItemBlockManager {
   Bucket _buckets[numBuckets];
 };
 
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

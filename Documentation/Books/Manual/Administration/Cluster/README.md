@@ -6,7 +6,11 @@ This _Section_ includes information related to the administration of an ArangoDB
 For a general introduction to the ArangoDB Cluster, please refer to the
 Cluster [chapter](../../Architecture/DeploymentModes/Cluster/README.md).
 
-Please also check the following talks:
+There is also a detailed
+[Cluster Administration Course](https://www.arangodb.com/arangodb-cluster-course/)
+for download.
+
+Please check the following talks as well:
 
 | # | Date            | Title                                                                       | Who                                     | Link                                                                                                            |
 |---|-----------------|-----------------------------------------------------------------------------|-----------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------|
@@ -19,7 +23,7 @@ Enabling synchronous replication
 
 For an introduction about _Synchronous Replication_ in Cluster, please refer
 to the [_Cluster Architecture_](../../Architecture/DeploymentModes/Cluster/Architecture.md#synchronous-replication) section. 
-                                                               
+
 Synchronous replication can be enabled per _collection_. When creating a
 _collection_ you may specify the number of _replicas_ using the
 *replicationFactor* parameter. The default value is set to `1` which
@@ -36,7 +40,7 @@ Example:
 127.0.0.1:8530@_system> db._create("test", {"replicationFactor": 3})
 ```
 
-In the above case, any write operation will require 2 replicas to
+In the above case, any write operation will require 3 replicas to
 report success from now on. 
 
 Preparing growth

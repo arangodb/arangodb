@@ -42,6 +42,7 @@ constexpr char const* EDGE = "edge";
 constexpr char const* ENSURE_INDEX = "EnsureIndex";
 constexpr char const* FIELDS = "fields";
 constexpr char const* FOLLOWER_ID = "followerId";
+constexpr char const* FOLLOWERS_TO_DROP = "followersToDrop";
 constexpr char const* GLOB_UID = "globallyUniqueId";
 constexpr char const* ID = "id";
 constexpr char const* INDEX = "index";
@@ -69,6 +70,7 @@ constexpr char const* UNDERSCORE = "_";
 constexpr char const* UPDATE_COLLECTION = "UpdateCollection";
 constexpr char const* WAIT_FOR_SYNC = "waitForSync";
 
-}}
+}  // namespace maintenance
+}  // namespace arangodb
 
 #endif

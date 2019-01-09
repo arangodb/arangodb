@@ -43,13 +43,12 @@ REGISTER_ATTRIBUTE(Transaction);
 DEFINE_ATTRIBUTE_TYPE(Transaction);
 
 Transaction::Transaction(arangodb::transaction::Methods& trx)
-  : irs::basic_attribute<arangodb::transaction::Methods&>(trx) {
-}
+    : irs::basic_attribute<arangodb::transaction::Methods&>(trx) {}
 
-NS_END // attribute
-NS_END // iresearch
-NS_END // arangodb
+NS_END          // attribute
+    NS_END      // iresearch
+        NS_END  // arangodb
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+    // -----------------------------------------------------------------------------
+    // --SECTION-- END-OF-FILE
+    // -----------------------------------------------------------------------------

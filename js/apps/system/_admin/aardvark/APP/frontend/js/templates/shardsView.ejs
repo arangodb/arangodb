@@ -35,6 +35,11 @@
               </div>
             </div>
             <div class="pure-u-2-24 shardSyncIcons">
+                <% if (visible === name) { %>
+                  <i style="margin-left: 10px; color: #fff;" class="fa fa-arrow-down"></i>
+                <% } else { %>
+                  <i style="margin-left: 10px; color: #fff;" class="fa fa-arrow-right"></i>
+                <% } %>
               <% if (collectionInSync(name)) { %>
                 <i style="margin-left: 10px;" class="fa fa-check-circle"></i>
               <% } else { %>

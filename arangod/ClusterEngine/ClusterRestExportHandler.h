@@ -39,6 +39,6 @@ class ClusterRestExportHandler : public RestVocbaseBaseHandler {
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   RestStatus execute() override;
 };
-}
+}  // namespace arangodb
 
 #endif

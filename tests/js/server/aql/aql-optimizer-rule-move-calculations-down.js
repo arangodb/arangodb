@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE */
+/*global assertEqual, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
@@ -104,7 +104,7 @@ function optimizerRuleTestSuite () {
         "FOR i IN 1..10 LET result = i + 1 LET test = (FOR j IN 1..result RETURN j) RETURN test",
         "FOR i IN 1..10 LIMIT 2 LET result = i < 5 RETURN i",
         "FOR i IN 1..10 LET result = IS_STRING(i) FOR j IN 1..2 RETURN j",
-        "FOR i IN 1..10 LET result = IS_STRING(i) FILTER i < 10 FOR j IN 1..2 RETURN j",
+        "FOR i IN 1..10 FILTER i < 10 LET result = IS_STRING(i) FOR j IN 1..2 RETURN j",
         "FOR i IN 1..10 LET result = IS_STRING(i) COLLECT r = result RETURN r",
         "FOR i IN 1..10 LET result = MAX(i) FILTER result < 3 RETURN result",
         "FOR i IN 1..10 LET result = RAND() FILTER i < 10 RETURN result"
@@ -189,8 +189,8 @@ function optimizerRuleTestSuite () {
         var resultDisabled = AQL_EXECUTE(query[0], { }, paramDisabled);
         var resultEnabled  = AQL_EXECUTE(query[0], { }, paramEnabled);
 
-        assertTrue(planDisabled.plan.rules.indexOf(ruleName) === -1, query[0]);
-        assertTrue(planEnabled.plan.rules.indexOf(ruleName) !== -1, query[0]);
+        assertEqual(-1, planDisabled.plan.rules.indexOf(ruleName), query[0]);
+        assertNotEqual(-1, planEnabled.plan.rules.indexOf(ruleName), query[0]);
 
         assertEqual(resultDisabled.json, query[1], query[0]);
         assertEqual(resultEnabled.json, query[1], query[0]);
@@ -215,8 +215,8 @@ function optimizerRuleTestSuite () {
       var resultDisabled = AQL_EXECUTE(query, { }, paramDisabled);
       var resultEnabled  = AQL_EXECUTE(query, { }, paramEnabled);
 
-      assertTrue(planDisabled.plan.rules.indexOf(ruleName) === -1, query[0]);
-      assertTrue(planEnabled.plan.rules.indexOf(ruleName) !== -1, query[0]);
+      assertEqual(-1, planDisabled.plan.rules.indexOf(ruleName), query[0]);
+      assertNotEqual(-1, planEnabled.plan.rules.indexOf(ruleName), query[0]);
 
       assertEqual(resultDisabled.json, expected, query[0]);
       assertEqual(resultEnabled.json, expected, query[0]);
@@ -239,9 +239,8 @@ function optimizerRuleTestSuite () {
       var resultDisabled = AQL_EXECUTE(query, { }, paramDisabled);
       var resultEnabled  = AQL_EXECUTE(query, { }, paramEnabled);
 
-      assertTrue(planDisabled.plan.rules.indexOf(ruleName) === -1, query);
-      // should actually not kick in in cluster
-      assertEqual(planEnabled.plan.rules.indexOf(ruleName) === -1, isCluster, query);
+      assertEqual(-1, planDisabled.plan.rules.indexOf(ruleName), query);
+      assertNotEqual(-1, planEnabled.plan.rules.indexOf(ruleName), query);
 
       assertEqual(resultDisabled.json, expected, query);
       assertEqual(resultEnabled.json, expected, query);
@@ -260,9 +259,8 @@ function optimizerRuleTestSuite () {
       var resultDisabled = AQL_EXECUTE(query, { }, paramDisabled);
       var resultEnabled  = AQL_EXECUTE(query, { }, paramEnabled);
 
-      assertTrue(planDisabled.plan.rules.indexOf(ruleName) === -1, query);
-      // should actually not kick in in cluster
-      assertEqual(planEnabled.plan.rules.indexOf(ruleName) === -1, isCluster, query);
+      assertEqual(-1, planDisabled.plan.rules.indexOf(ruleName), query);
+      assertNotEqual(-1, planEnabled.plan.rules.indexOf(ruleName), query);
 
       assertEqual(resultDisabled.json, expected, query);
       assertEqual(resultEnabled.json, expected, query);
@@ -271,11 +269,6 @@ function optimizerRuleTestSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
-
 jsunity.run(optimizerRuleTestSuite);
 
 return jsunity.done();
-

@@ -65,7 +65,7 @@ int TRI_ParseQueryMMFilesFulltextIndex(TRI_fulltext_query_t*, char const*, bool*
 /// the query will take ownership of the search word
 /// the caller must not free the word itself
 bool TRI_SetQueryMMFilesFulltextIndex(TRI_fulltext_query_t*, size_t, char const*,
-                               size_t, TRI_fulltext_query_match_e,
-                               TRI_fulltext_query_operation_e);
+                                      size_t, TRI_fulltext_query_match_e,
+                                      TRI_fulltext_query_operation_e);
 
 #endif

@@ -124,7 +124,7 @@ INSERT { _from: "Characters/robb", _to: "Characters/ned" } INTO ChildOf
 ```
 
 However, creating the edges programmatically based on character names is a
-good excercise. Breakdown of the query:
+good exercise. Breakdown of the query:
 
 - Assign the relations in form of an array of objects with a *parent* and
   a *child* attribute each, both with sub-attributes *name* and *surname*,
@@ -272,6 +272,11 @@ As a quick fix, change the last line of the query to `RETURN DISTINCT v.name`
 to return each value only once. Keep in mind though, that there are
 [traversal options](../Graphs/Traversals.md#syntax) to suppress duplicate
 vertices early on.
+
+Also check out the
+[ArangoDB Graph Course](https://www.arangodb.com/arangodb-graph-course)
+which covers the basics, but also explains different traversal options
+and advanced graph queries.
 
 Traverse with variable depth
 ----------------------------

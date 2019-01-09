@@ -45,7 +45,6 @@ ReplicationFeature::ReplicationFeature(ApplicationServer& server)
     : ApplicationFeature(server, "Replication"),
       _replicationApplierAutoStart(true),
       _enableActiveFailover(false) {
-
   setOptional(true);
   startsAfter("BasicsPhase");
   startsAfter("Database");
@@ -55,29 +54,32 @@ ReplicationFeature::ReplicationFeature(ApplicationServer& server)
 
 void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("replication", "Configure the replication");
-  options->addHiddenOption("--replication.auto-start",
-                           "switch to enable or disable the automatic start "
-                           "of replication appliers",
-                           new BooleanParameter(&_replicationApplierAutoStart));
+  options->addOption("--replication.auto-start",
+                     "switch to enable or disable the automatic start "
+                     "of replication appliers",
+                     new BooleanParameter(&_replicationApplierAutoStart),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
   options->addSection("database", "Configure the database");
   options->addOldOption("server.disable-replication-applier",
                         "replication.auto-start");
   options->addOldOption("database.replication-applier",
                         "replication.auto-start");
-  options->addHiddenOption("--replication.automatic-failover",
-                           "Please use `--replication.active-failover` instead",
-                           new BooleanParameter(&_enableActiveFailover));
+  options->addOption("--replication.automatic-failover",
+                     "Please use `--replication.active-failover` instead",
+                     new BooleanParameter(&_enableActiveFailover),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
   options->addOption("--replication.active-failover",
-                      "Enable active-failover during asynchronous replication",
-                      new BooleanParameter(&_enableActiveFailover));
+                     "Enable active-failover during asynchronous replication",
+                     new BooleanParameter(&_enableActiveFailover));
 }
 
 void ReplicationFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
   auto feature = ApplicationServer::getFeature<ClusterFeature>("Cluster");
   if (_enableActiveFailover && feature->agencyEndpoints().empty()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-    << "automatic failover needs to be started with agency endpoint configured";
+    LOG_TOPIC(FATAL, arangodb::Logger::REPLICATION)
+        << "automatic failover needs to be started with agency endpoint "
+           "configured";
     FATAL_ERROR_EXIT();
   }
 }
@@ -87,12 +89,13 @@ void ReplicationFeature::prepare() {
     setEnabled(false);
     return;
   }
-  
+
   INSTANCE = this;
 }
 
 void ReplicationFeature::start() {
-  _globalReplicationApplier.reset(new GlobalReplicationApplier(GlobalReplicationApplier::loadConfiguration()));
+  _globalReplicationApplier.reset(
+      new GlobalReplicationApplier(GlobalReplicationApplier::loadConfiguration()));
 
   try {
     _globalReplicationApplier->loadState();
@@ -100,11 +103,13 @@ void ReplicationFeature::start() {
     // :snake:
   }
 
-  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "checking global applier startup. autoStart: " << _globalReplicationApplier->autoStart() << ", hasState: " << _globalReplicationApplier->hasState();
+  LOG_TOPIC(DEBUG, Logger::REPLICATION)
+      << "checking global applier startup. autoStart: "
+      << _globalReplicationApplier->autoStart()
+      << ", hasState: " << _globalReplicationApplier->hasState();
 
   if (_globalReplicationApplier->autoStart() &&
-      _globalReplicationApplier->hasState() &&
-      _replicationApplierAutoStart) {
+      _globalReplicationApplier->hasState() && _replicationApplierAutoStart) {
     _globalReplicationApplier->startTailing(0, false, 0);
   }
 }
@@ -143,17 +148,20 @@ void ReplicationFeature::startApplier(TRI_vocbase_t* vocbase) {
 
   if (vocbase->replicationApplier()->autoStart()) {
     if (!_replicationApplierAutoStart) {
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "replication applier explicitly deactivated for database '"
-                << vocbase->name() << "'";
+      LOG_TOPIC(INFO, arangodb::Logger::REPLICATION)
+          << "replication applier explicitly deactivated for database '"
+          << vocbase->name() << "'";
     } else {
       try {
         vocbase->replicationApplier()->startTailing(0, false, 0);
       } catch (std::exception const& ex) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "unable to start replication applier for database '"
-                  << vocbase->name() << "': " << ex.what();
+        LOG_TOPIC(WARN, arangodb::Logger::REPLICATION)
+            << "unable to start replication applier for database '"
+            << vocbase->name() << "': " << ex.what();
       } catch (...) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "unable to start replication applier for database '"
-                  << vocbase->name() << "'";
+        LOG_TOPIC(WARN, arangodb::Logger::REPLICATION)
+            << "unable to start replication applier for database '"
+            << vocbase->name() << "'";
       }
     }
   }
@@ -170,11 +178,11 @@ void ReplicationFeature::stopApplier(TRI_vocbase_t* vocbase) {
 
 // replace tcp:// with http://, and ssl:// with https://
 static std::string FixEndpointProto(std::string const& endpoint) {
-  if (endpoint.compare(0, 6, "tcp://") == 0) { //  find("tcp://", 0, 6)
-    return "http://" + endpoint.substr(6); // strlen("tcp://")
+  if (endpoint.compare(0, 6, "tcp://") == 0) {  //  find("tcp://", 0, 6)
+    return "http://" + endpoint.substr(6);      // strlen("tcp://")
   }
-  if (endpoint.compare(0, 6, "ssl://") == 0) { // find("ssl://", 0, 6) == 0
-    return "https://" + endpoint.substr(6); // strlen("ssl://")
+  if (endpoint.compare(0, 6, "ssl://") == 0) {  // find("ssl://", 0, 6) == 0
+    return "https://" + endpoint.substr(6);     // strlen("ssl://")
   }
   return endpoint;
 }
@@ -220,13 +228,12 @@ void ReplicationFeature::prepareFollowerResponse(GeneralResponse* response,
       setEndpointHeader(response, mode);
       writeError(TRI_ERROR_CLUSTER_NOT_LEADER, response);
       // return the endpoint of the actual leader
-    }
-    break;
+    } break;
 
     case ServerState::Mode::TRYAGAIN:
-      // intentionally do not set "Location" header, but use a custom header that
-      // clients can inspect. if they find an empty endpoint, it means that there
-      // is an ongoing leadership challenge
+      // intentionally do not set "Location" header, but use a custom header
+      // that clients can inspect. if they find an empty endpoint, it means that
+      // there is an ongoing leadership challenge
       response->setHeaderNC(StaticStrings::LeaderEndpoint, "");
       writeError(TRI_ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING, response);
       break;
@@ -242,4 +249,4 @@ void ReplicationFeature::prepareFollowerResponse(GeneralResponse* response,
   }
 }
 
-} // arangodb
+}  // namespace arangodb

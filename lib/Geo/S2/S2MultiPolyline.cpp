@@ -21,28 +21,27 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <set>
-using std::set;
 using std::multiset;
+using std::set;
 
 #include <vector>
 using std::vector;
 
 #include "S2MultiPolyline.h"
 
-#include <s2/util/coding/coder.h>
 #include <s2/s2cap.h>
 #include <s2/s2cell.h>
 #include <s2/s2latlng.h>
 #include <s2/s2latlng_rect_bounder.h>
 #include <s2/s2polyline.h>
+#include <s2/util/coding/coder.h>
 
 DECLARE_bool(s2debug);  // defined in s2.cc
 
-S2MultiPolyline::S2MultiPolyline()
-  : lines_() {}
+S2MultiPolyline::S2MultiPolyline() : lines_() {}
 
 S2MultiPolyline::S2MultiPolyline(vector<S2Polyline>&& lines)
-: lines_(std::move(lines)) {}
+    : lines_(std::move(lines)) {}
 
 void S2MultiPolyline::Init(std::vector<S2Polyline>&& lines) {
   lines_.clear();

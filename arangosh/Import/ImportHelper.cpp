@@ -25,7 +25,6 @@
 #include "ImportHelper.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/OpenFilesTracker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
@@ -45,7 +44,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function to determine if a field value is an integer
@@ -147,8 +145,7 @@ unsigned const ImportHelper::MaxBatchSize = 768 * 1024 * 1024;
 /// constructor and destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ImportHelper::ImportHelper(ClientFeature const* client,
-                           std::string const& endpoint,
+ImportHelper::ImportHelper(ClientFeature const* client, std::string const& endpoint,
                            httpclient::SimpleHttpClientParams const& params,
                            uint64_t maxUploadSize, uint32_t threadCount, bool autoUploadSize)
     : _httpClient(client->createHttpClient(endpoint, params)),
@@ -192,7 +189,7 @@ ImportHelper::ImportHelper(ClientFeature const* client,
   if (_autoUploadSize) {
     _autoTuneThread.reset(new AutoTuneThread(*this));
     _autoTuneThread->start();
-  } // if
+  }  // if
 
   // wait until all sender threads are ready
   while (true) {
@@ -227,7 +224,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   _lineBuffer.clear();
   _errorMessages.clear();
   _hasError = false;
-  
+
   if (!checkCreateCollection()) {
     return false;
   }
@@ -246,7 +243,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   } else {
     // read filesize
     totalLength = TRI_SizeFile(fileName.c_str());
-    fd = TRI_TRACKED_OPEN_FILE(fileName.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+    fd = TRI_OPEN(fileName.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
     if (fd < 0) {
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
@@ -259,13 +256,12 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   double nextProgress = ProgressStep;
 
   size_t separatorLength;
-  char* separator =
-      TRI_UnescapeUtf8String(_separator.c_str(),
-                             _separator.size(), &separatorLength, true);
+  char* separator = TRI_UnescapeUtf8String(_separator.c_str(), _separator.size(),
+                                           &separatorLength, true);
 
   if (separator == nullptr) {
     if (fd != STDIN_FILENO) {
-      TRI_TRACKED_CLOSE_FILE(fd);
+      TRI_CLOSE(fd);
     }
     _errorMessages.push_back("out of memory");
     return false;
@@ -273,8 +269,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
 
   TRI_csv_parser_t parser;
 
-  TRI_InitCsvParser(&parser, ProcessCsvBegin,
-                    ProcessCsvAdd, ProcessCsvEnd, nullptr);
+  TRI_InitCsvParser(&parser, ProcessCsvBegin, ProcessCsvAdd, ProcessCsvEnd, nullptr);
 
   TRI_SetSeparatorCsvParser(&parser, separator[0]);
   TRI_UseBackslashCsvParser(&parser, _useBackslash);
@@ -299,7 +294,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
       TRI_Free(separator);
       TRI_DestroyCsvParser(&parser);
       if (fd != STDIN_FILENO) {
-        TRI_TRACKED_CLOSE_FILE(fd);
+        TRI_CLOSE(fd);
       }
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
       return false;
@@ -326,7 +321,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   TRI_Free(separator);
 
   if (fd != STDIN_FILENO) {
-    TRI_TRACKED_CLOSE_FILE(fd);
+    TRI_CLOSE(fd);
   }
 
   waitForSenders();
@@ -337,14 +332,13 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
 }
 
 bool ImportHelper::importJson(std::string const& collectionName,
-                              std::string const& fileName,
-                              bool assumeLinewise) {
+                              std::string const& fileName, bool assumeLinewise) {
   _collectionName = collectionName;
   _firstLine = "";
   _outputBuffer.clear();
   _errorMessages.clear();
   _hasError = false;
-  
+
   if (!checkCreateCollection()) {
     return false;
   }
@@ -363,7 +357,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
   } else {
     // read filesize
     totalLength = TRI_SizeFile(fileName.c_str());
-    fd = TRI_TRACKED_OPEN_FILE(fileName.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+    fd = TRI_OPEN(fileName.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
     if (fd < 0) {
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
@@ -391,7 +385,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
       _errorMessages.push_back(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
 
       if (fd != STDIN_FILENO) {
-        TRI_TRACKED_CLOSE_FILE(fd);
+        TRI_CLOSE(fd);
       }
       return false;
     }
@@ -402,7 +396,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
     if (n < 0) {
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
       if (fd != STDIN_FILENO) {
-        TRI_TRACKED_CLOSE_FILE(fd);
+        TRI_CLOSE(fd);
       }
       return false;
     } else if (n == 0) {
@@ -434,11 +428,12 @@ bool ImportHelper::importJson(std::string const& collectionName,
     if (_outputBuffer.length() > _maxUploadSize) {
       if (isObject) {
         if (fd != STDIN_FILENO) {
-          TRI_TRACKED_CLOSE_FILE(fd);
+          TRI_CLOSE(fd);
         }
-        _errorMessages.push_back("import file is too big. please increase the value of --batch-size "
-                                 "(currently " +
-                                 StringUtils::itoa(_maxUploadSize) + ")");
+        _errorMessages.push_back(
+            "import file is too big. please increase the value of --batch-size "
+            "(currently " +
+            StringUtils::itoa(_maxUploadSize) + ")");
         return false;
       }
 
@@ -459,7 +454,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
   }
 
   if (fd != STDIN_FILENO) {
-    TRI_TRACKED_CLOSE_FILE(fd);
+    TRI_CLOSE(fd);
   }
 
   waitForSenders();
@@ -478,8 +473,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
 /// private functions
 ////////////////////////////////////////////////////////////////////////////////
 
-void ImportHelper::reportProgress(int64_t totalLength, int64_t totalRead,
-                                  double& nextProgress) {
+void ImportHelper::reportProgress(int64_t totalLength, int64_t totalRead, double& nextProgress) {
   if (!_progress) {
     return;
   }
@@ -491,8 +485,8 @@ void ImportHelper::reportProgress(int64_t totalLength, int64_t totalRead,
     static int64_t nextProcessed = 10 * 1000 * 1000;
 
     if (totalRead >= nextProcessed) {
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "processed " << totalRead
-                                               << " bytes of input file";
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+          << "processed " << totalRead << " bytes of input file";
       nextProcessed += 10 * 1000 * 1000;
     }
   } else {
@@ -543,9 +537,8 @@ void ImportHelper::beginLine(size_t row) {
 /// @brief adds a new CSV field
 ////////////////////////////////////////////////////////////////////////////////
 
-void ImportHelper::ProcessCsvAdd(TRI_csv_parser_t* parser, char const* field,
-                                 size_t fieldLength, size_t row, size_t column,
-                                 bool escaped) {
+void ImportHelper::ProcessCsvAdd(TRI_csv_parser_t* parser, char const* field, size_t fieldLength,
+                                 size_t row, size_t column, bool escaped) {
   auto importHelper = static_cast<ImportHelper*>(parser->_dataAdd);
   importHelper->addField(field, fieldLength, row, column, escaped);
 }
@@ -558,7 +551,7 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
   // we read the first line if we get here
   if (row == _rowsToSkip) {
     std::string name = std::string(field, fieldLength);
-    if (fieldLength > 0) { // translate field
+    if (fieldLength > 0) {  // translate field
       auto it = _translations.find(name);
       if (it != _translations.end()) {
         field = (*it).second.c_str();
@@ -568,7 +561,7 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
     _columnNames.push_back(std::move(name));
   }
   // skip removable attributes
-  if (!_removeAttributes.empty() &&
+  if (!_removeAttributes.empty() && column < _columnNames.size() &&
       _removeAttributes.find(_columnNames[column]) != _removeAttributes.end()) {
     return;
   }
@@ -596,8 +589,7 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
   }
 
   // check for literals null, false and true
-  if (fieldLength == 4 &&
-      (memcmp(field, "true", 4) == 0 || memcmp(field, "null", 4) == 0)) {
+  if (fieldLength == 4 && (memcmp(field, "true", 4) == 0 || memcmp(field, "null", 4) == 0)) {
     _lineBuffer.appendText(field, fieldLength);
     return;
   } else if (fieldLength == 5 && memcmp(field, "false", 5) == 0) {
@@ -669,9 +661,8 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
 /// @brief ends a CSV line
 ////////////////////////////////////////////////////////////////////////////////
 
-void ImportHelper::ProcessCsvEnd(TRI_csv_parser_t* parser, char const* field,
-                                 size_t fieldLength, size_t row, size_t column,
-                                 bool escaped) {
+void ImportHelper::ProcessCsvEnd(TRI_csv_parser_t* parser, char const* field, size_t fieldLength,
+                                 size_t row, size_t column, bool escaped) {
   auto importHelper = static_cast<ImportHelper*>(parser->_dataAdd);
 
   if (importHelper->getRowsRead() < importHelper->getRowsToSkip()) {
@@ -724,16 +715,15 @@ void ImportHelper::addLastField(char const* field, size_t fieldLength,
 
 bool ImportHelper::collectionExists() {
   std::string const url("/_api/collection/" + StringUtils::urlEncode(_collectionName));
-  std::unique_ptr<SimpleHttpResult> result(_httpClient->request(
-      rest::RequestType::GET, url, nullptr, 0));
+  std::unique_ptr<SimpleHttpResult> result(
+      _httpClient->request(rest::RequestType::GET, url, nullptr, 0));
 
   if (result == nullptr) {
     return false;
   }
 
   auto code = static_cast<rest::ResponseCode>(result->getHttpReturnCode());
-  if (code == rest::ResponseCode::OK ||
-      code == rest::ResponseCode::CREATED ||
+  if (code == rest::ResponseCode::OK || code == rest::ResponseCode::CREATED ||
       code == rest::ResponseCode::ACCEPTED) {
     // collection already exists or was created successfully
     return true;
@@ -752,7 +742,8 @@ bool ImportHelper::collectionExists() {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "unable to accesss collection '" << _collectionName
         << "', server returned status code: " << static_cast<int>(code)
-        << "; server returned message: " << Logger::CHARS(result->getBody().c_str(), result->getBody().length());
+        << "; server returned message: "
+        << Logger::CHARS(result->getBody().c_str(), result->getBody().length());
   }
   return false;
 }
@@ -771,19 +762,15 @@ bool ImportHelper::checkCreateCollection() {
   VPackBuilder builder;
 
   builder.openObject();
-  builder.add(
-    arangodb::StaticStrings::DataSourceName,
-    arangodb::velocypack::Value(_collectionName)
-  );
-  builder.add(
-    arangodb::StaticStrings::DataSourceType,
-    arangodb::velocypack::Value(_createCollectionType == "edge" ? 3 : 2)
-  );
+  builder.add(arangodb::StaticStrings::DataSourceName,
+              arangodb::velocypack::Value(_collectionName));
+  builder.add(arangodb::StaticStrings::DataSourceType,
+              arangodb::velocypack::Value(_createCollectionType == "edge" ? 3 : 2));
   builder.close();
 
   std::string data = builder.slice().toJson();
-  std::unique_ptr<SimpleHttpResult> result(_httpClient->request(
-      rest::RequestType::POST, url, data.c_str(), data.size()));
+  std::unique_ptr<SimpleHttpResult> result(
+      _httpClient->request(rest::RequestType::POST, url, data.c_str(), data.size()));
 
   if (result == nullptr) {
     return false;
@@ -791,8 +778,7 @@ bool ImportHelper::checkCreateCollection() {
 
   auto code = static_cast<rest::ResponseCode>(result->getHttpReturnCode());
   if (code == rest::ResponseCode::CONFLICT || code == rest::ResponseCode::OK ||
-      code == rest::ResponseCode::CREATED ||
-      code == rest::ResponseCode::ACCEPTED) {
+      code == rest::ResponseCode::CREATED || code == rest::ResponseCode::ACCEPTED) {
     // collection already exists or was created successfully
     return true;
   }
@@ -810,7 +796,8 @@ bool ImportHelper::checkCreateCollection() {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "unable to create collection '" << _collectionName
         << "', server returned status code: " << static_cast<int>(code)
-        << "; server returned message: " << Logger::CHARS(result->getBody().c_str(), result->getBody().length());
+        << "; server returned message: "
+        << Logger::CHARS(result->getBody().c_str(), result->getBody().length());
   }
   _hasError = true;
   return false;
@@ -822,9 +809,9 @@ bool ImportHelper::truncateCollection() {
   }
 
   std::string const url = "/_api/collection/" + _collectionName + "/truncate";
-  std::string data = "";// never send an completly empty string
-  std::unique_ptr<SimpleHttpResult> result(_httpClient->request(
-      rest::RequestType::PUT, url, data.c_str(), data.size()));
+  std::string data = "";  // never send an completly empty string
+  std::unique_ptr<SimpleHttpResult> result(
+      _httpClient->request(rest::RequestType::PUT, url, data.c_str(), data.size()));
 
   if (result == nullptr) {
     return false;
@@ -832,8 +819,7 @@ bool ImportHelper::truncateCollection() {
 
   auto code = static_cast<rest::ResponseCode>(result->getHttpReturnCode());
   if (code == rest::ResponseCode::CONFLICT || code == rest::ResponseCode::OK ||
-      code == rest::ResponseCode::CREATED ||
-      code == rest::ResponseCode::ACCEPTED) {
+      code == rest::ResponseCode::CREATED || code == rest::ResponseCode::ACCEPTED) {
     // collection already exists or was created successfully
     return true;
   }
@@ -851,9 +837,10 @@ void ImportHelper::sendCsvBuffer() {
     return;
   }
 
-  std::string url("/_api/import?" + getCollectionUrlPart() + "&line=" +
-                  StringUtils::itoa(_rowOffset) + "&details=true&onDuplicate=" +
-                  StringUtils::urlEncode(_onDuplicateAction) + "&ignoreMissing=" + (_ignoreMissing ? "true" : "false"));
+  std::string url("/_api/import?" + getCollectionUrlPart() +
+                  "&line=" + StringUtils::itoa(_rowOffset) +
+                  "&details=true&onDuplicate=" + StringUtils::urlEncode(_onDuplicateAction) +
+                  "&ignoreMissing=" + (_ignoreMissing ? "true" : "false"));
 
   if (!_fromCollectionPrefix.empty()) {
     url += "&fromPrefix=" + StringUtils::urlEncode(_fromCollectionPrefix);
@@ -885,8 +872,7 @@ void ImportHelper::sendJsonBuffer(char const* str, size_t len, bool isObject) {
 
   // build target url
   std::string url("/_api/import?" + getCollectionUrlPart() +
-                  "&details=true&onDuplicate=" +
-                  StringUtils::urlEncode(_onDuplicateAction));
+                  "&details=true&onDuplicate=" + StringUtils::urlEncode(_onDuplicateAction));
   if (isObject) {
     url += "&type=array";
   } else {
@@ -919,7 +905,7 @@ void ImportHelper::sendJsonBuffer(char const* str, size_t len, bool isObject) {
 SenderThread* ImportHelper::findIdleSender() {
   if (_autoUploadSize) {
     _autoTuneThread->paceSends();
-  } // if
+  }  // if
 
   while (!_senderThreads.empty()) {
     for (auto const& t : _senderThreads) {
@@ -957,5 +943,5 @@ void ImportHelper::waitForSenders() {
     std::this_thread::sleep_for(std::chrono::microseconds(10000));
   }
 }
-}
-}
+}  // namespace import
+}  // namespace arangodb

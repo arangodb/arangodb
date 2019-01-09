@@ -37,12 +37,7 @@
         this.collection.setSortingDesc(false);
       }
 
-      if ($('#databaseDropdown').is(':visible')) {
-        this.dropdownVisible = true;
-      } else {
-        this.dropdownVisible = false;
-      }
-
+      this.checkVisibility();
       this.render();
     },
 
@@ -80,6 +75,7 @@
           self.currentDB = db;
 
           self.collection.fetch({
+            cache: false,
             success: function () {
               // sorting
               self.collection.sort();
@@ -97,7 +93,7 @@
 
               if (self.dropdownVisible === true) {
                 $('#dbSortDesc').attr('checked', self.collection.sortOptions.desc);
-                $('#databaseToggle').toggleClass('activated');
+                $('#databaseToggle').addClass('activated');
                 $('#databaseDropdown2').show();
               }
 
@@ -114,12 +110,24 @@
       return this;
     },
 
+    checkVisibility: function () {
+      if ($('#databaseDropdown').is(':visible')) {
+        this.dropdownVisible = true;
+      } else {
+        this.dropdownVisible = false;
+      }
+      arangoHelper.setCheckboxStatus('#databaseDropdown');
+    },
+
     toggleSettingsDropdown: function () {
+      var self = this;
       // apply sorting to checkboxes
       $('#dbSortDesc').attr('checked', this.collection.sortOptions.desc);
 
       $('#databaseToggle').toggleClass('activated');
-      $('#databaseDropdown2').slideToggle(200);
+      $('#databaseDropdown2').slideToggle(200, function () {
+        self.checkVisibility();
+      });
     },
 
     selectedDatabase: function () {
@@ -129,15 +137,10 @@
     handleError: function (status, text, dbname) {
       if (status === 409) {
         arangoHelper.arangoError('DB', 'Database ' + dbname + ' already exists.');
-        return;
-      }
-      if (status === 400) {
+      } else if (status === 400) {
         arangoHelper.arangoError('DB', 'Invalid Parameters');
-        return;
-      }
-      if (status === 403) {
+      } else if (status === 403) {
         arangoHelper.arangoError('DB', 'Insufficent rights. Execute this from _system database');
-        return;
       }
     },
 

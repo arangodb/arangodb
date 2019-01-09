@@ -112,8 +112,7 @@ struct TransactionalBucket {
   /// bucket to allow basic LRU semantics. If no matching entry is found,
   /// nothing will be changed and a nullptr will be returned.
   //////////////////////////////////////////////////////////////////////////////
-  CachedValue* find(uint32_t hash, void const* key, size_t keySize,
-                    bool moveToFront = true);
+  CachedValue* find(uint32_t hash, void const* key, size_t keySize, bool moveToFront = true);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Inserts a given value if it is not blacklisted. Requires state to

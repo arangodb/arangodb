@@ -31,27 +31,12 @@
 #include "store/memory_directory.hpp"
 #include "utils/directory_utils.hpp"
 
-namespace tests {
-  class directory_cleaner_tests: public ::testing::Test {
-
-    virtual void SetUp() {
-      // Code here will be called immediately after the constructor (right before each test).
-    }
-
-    virtual void TearDown() {
-      // Code here will be called immediately after each test (right before the destructor).
-    }
-  };
-}
-
-using namespace tests;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-TEST_F(directory_cleaner_tests, test_directory_cleaner) {
-  iresearch::memory_directory dir;
+TEST(directory_cleaner_tests, test_directory_cleaner) {
+  irs::memory_directory dir;
 
   // add a dummy files
   {
@@ -233,7 +218,7 @@ TEST_F(directory_cleaner_tests, test_directory_cleaner) {
   ASSERT_TRUE(refs.empty());
 }
 
-TEST_F(directory_cleaner_tests, test_directory_cleaner_current_segment) {
+TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
   tests::json_doc_generator gen(
     test_base::resource("simple_sequential.json"),
     &tests::generic_json_field_factory 
@@ -241,15 +226,15 @@ TEST_F(directory_cleaner_tests, test_directory_cleaner_current_segment) {
   tests::document const* doc1 = gen.next();
   tests::document const* doc2 = gen.next();
   auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
-  iresearch::memory_directory dir;
-  iresearch::version10::format codec;
-  iresearch::format::ptr codec_ptr(&codec, [](iresearch::format*)->void{});
+  irs::memory_directory dir;
+  auto codec_ptr = irs::formats::get("1_0");
+  ASSERT_NE(nullptr, codec_ptr);
 
   iresearch::directory_cleaner::init(dir);
 
   // writer commit tracks files that are in active segments
   {
-    auto writer = iresearch::index_writer::make(dir, codec_ptr, iresearch::OPEN_MODE::OM_CREATE);
+    auto writer = iresearch::index_writer::make(dir, codec_ptr, iresearch::OM_CREATE);
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
@@ -267,14 +252,14 @@ TEST_F(directory_cleaner_tests, test_directory_cleaner_current_segment) {
     ASSERT_FALSE(files.empty());
     file_set.insert(files.begin(), files.end());
 
-    writer->remove(std::move(query_doc1.filter));
+    writer->documents().remove(std::move(query_doc1.filter));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->commit();
 
-    iresearch::directory_cleaner::clean(dir, iresearch::directory_utils::remove_except_current_segments(dir, codec));
+    iresearch::directory_cleaner::clean(dir, iresearch::directory_utils::remove_except_current_segments(dir, *codec_ptr));
     files.clear();
     ASSERT_TRUE(dir.visit(list_files));
     ASSERT_FALSE(files.empty());
@@ -292,7 +277,7 @@ TEST_F(directory_cleaner_tests, test_directory_cleaner_current_segment) {
     std::string segments_file;
 
     iresearch::index_meta index_meta;
-    auto meta_reader = codec.get_index_meta_reader();
+    auto meta_reader = codec_ptr->get_index_meta_reader();
     const auto index_exists = meta_reader->last_segments_file(dir, segments_file);
 
     ASSERT_TRUE(index_exists);
@@ -314,7 +299,7 @@ TEST_F(directory_cleaner_tests, test_directory_cleaner_current_segment) {
       return true;
     };
     std::unordered_set<std::string> current_files(file_set);
-    iresearch::directory_cleaner::clean(dir, iresearch::directory_utils::remove_except_current_segments(dir, codec));
+    iresearch::directory_cleaner::clean(dir, iresearch::directory_utils::remove_except_current_segments(dir, *codec_ptr));
     ASSERT_TRUE(dir.visit(list_files));
     ASSERT_FALSE(files.empty());
 

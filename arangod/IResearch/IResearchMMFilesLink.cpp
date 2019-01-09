@@ -22,80 +22,131 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Cluster/ServerState.h"
-#include "Logger/Logger.h"
+#include "IResearchCommon.h"
+#include "IResearchLinkHelper.h"
+#include "IResearchView.h"
+#include "Indexes/IndexFactory.h"
 #include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "MMFiles/MMFilesCollection.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
+#include "VocBase/LogicalCollection.h"
 
 #include "IResearchMMFilesLink.h"
-#include "IResearchLinkHelper.h"
 
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
-IResearchMMFilesLink::IResearchMMFilesLink(
-    TRI_idx_iid_t iid,
-    arangodb::LogicalCollection& collection
-): Index(iid, collection, IResearchLinkHelper::emptyIndexSlice()),
-   IResearchLink(iid, collection) {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  _unique = false; // cannot be unique since multiple fields are indexed
-  _sparse = true;  // always sparse
-}
-
-IResearchMMFilesLink::~IResearchMMFilesLink() {
-  // NOOP
-}
-
-/*static*/ IResearchMMFilesLink::ptr IResearchMMFilesLink::make(
-    arangodb::LogicalCollection& collection,
-    arangodb::velocypack::Slice const& definition,
-    TRI_idx_iid_t id,
-    bool isClusterConstructor
-) noexcept {
-  try {
-    PTR_NAMED(IResearchMMFilesLink, ptr, id, collection);
-
-    #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto* link = dynamic_cast<arangodb::iresearch::IResearchMMFilesLink*>(ptr.get());
-    #else
-      auto* link = static_cast<arangodb::iresearch::IResearchMMFilesLink*>(ptr.get());
-    #endif
-
-    return link && link->init(definition) ? ptr : nullptr;
-  } catch (arangodb::basics::Exception& e) {
-    LOG_TOPIC(WARN, Logger::DEVEL)
-      << "caught exception while creating IResearch view MMFiles link '" << id << "': " << e.code() << " " << e.what();
-    IR_LOG_EXCEPTION();
-  } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, Logger::DEVEL)
-      << "caught exception while creating IResearch view MMFiles link '" << id << "': " << e.what();
-    IR_LOG_EXCEPTION();
-  } catch (...) {
-    LOG_TOPIC(WARN, Logger::DEVEL)
-      << "caught exception while creating IResearch view MMFiles link '" << id << "'";
-    IR_LOG_EXCEPTION();
+////////////////////////////////////////////////////////////////////////////////
+/// @brief IResearchMMFilesLink-specific implementation of an IndexTypeFactory
+////////////////////////////////////////////////////////////////////////////////
+struct IResearchMMFilesLink::IndexFactory : public arangodb::IndexTypeFactory {
+  virtual bool equal(arangodb::velocypack::Slice const& lhs,
+                     arangodb::velocypack::Slice const& rhs) const override {
+    return arangodb::iresearch::IResearchLinkHelper::equal(lhs, rhs);
   }
 
-  return nullptr;
+  virtual arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
+                                       arangodb::LogicalCollection& collection,
+                                       arangodb::velocypack::Slice const& definition,
+                                       TRI_idx_iid_t id,
+                                       bool isClusterConstructor) const override {
+    try {
+      // ensure loaded so that we have valid data in next check
+      if (TRI_VOC_COL_STATUS_LOADED != collection.status()) {
+        collection.load();
+      }
+
+      // try casting underlying collection to an MMFilesCollection
+      // this may not succeed because we may have to deal with a
+      // PhysicalCollectionMock here
+      auto mmfilesCollection =
+          dynamic_cast<arangodb::MMFilesCollection*>(collection.getPhysical());
+
+      if (mmfilesCollection && !mmfilesCollection->hasAllPersistentLocalIds()) {
+        return arangodb::Result(
+            TRI_ERROR_INTERNAL,
+            "mmfiles collection uses pre-3.4 format and cannot be linked to an "
+            "arangosearch view; try recreating collection and moving the "
+            "contents to the new collection");
+      }
+
+      auto link =
+          std::shared_ptr<IResearchMMFilesLink>(new IResearchMMFilesLink(id, collection));
+      auto res = link->init(definition);
+
+      if (!res.ok()) {
+        return res;
+      }
+
+      index = link;
+    } catch (arangodb::basics::Exception const& e) {
+      IR_LOG_EXCEPTION();
+
+      return arangodb::Result(e.code(),
+                              std::string("caught exception while creating "
+                                          "arangosearch view MMFiles link '") +
+                                  std::to_string(id) + "': " + e.what());
+    } catch (std::exception const& e) {
+      IR_LOG_EXCEPTION();
+
+      return arangodb::Result(TRI_ERROR_INTERNAL,
+                              std::string("caught exception while creating "
+                                          "arangosearch view MMFiles link '") +
+                                  std::to_string(id) + "': " + e.what());
+    } catch (...) {
+      IR_LOG_EXCEPTION();
+
+      return arangodb::Result(TRI_ERROR_INTERNAL,
+                              std::string("caught exception while creating "
+                                          "arangosearch view MMFiles link '") +
+                                  std::to_string(id) + "'");
+    }
+
+    return arangodb::Result();
+  }
+
+  virtual arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
+                                     arangodb::velocypack::Slice definition,
+                                     bool isCreation) const override {
+    return IResearchLinkHelper::normalize(normalized, definition, isCreation);
+  }
+};
+
+IResearchMMFilesLink::IResearchMMFilesLink(TRI_idx_iid_t iid,
+                                           arangodb::LogicalCollection& collection)
+    : MMFilesIndex(iid, collection, IResearchLinkHelper::emptyIndexSlice()),
+      IResearchLink(iid, collection) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  _unique = false;  // cannot be unique since multiple fields are indexed
+  _sparse = true;   // always sparse
 }
 
-void IResearchMMFilesLink::toVelocyPack(
-    arangodb::velocypack::Builder& builder,
-    std::underlying_type<arangodb::Index::Serialize>::type flags
-) const {
+/*static*/ arangodb::IndexTypeFactory const& IResearchMMFilesLink::factory() {
+  static const IndexFactory factory;
+
+  return factory;
+}
+
+void IResearchMMFilesLink::toVelocyPack(arangodb::velocypack::Builder& builder,
+                                        std::underlying_type<arangodb::Index::Serialize>::type flags) const {
   if (builder.isOpenObject()) {
-    THROW_ARANGO_EXCEPTION(arangodb::Result(
-      TRI_ERROR_BAD_PARAMETER,
-      std::string("failed to generate link definition for IResearch view MMFiles link '") + std::to_string(arangodb::Index::id()) + "'"
-    ));
+    THROW_ARANGO_EXCEPTION(
+        arangodb::Result(TRI_ERROR_BAD_PARAMETER,
+                         std::string("failed to generate link definition for "
+                                     "arangosearch view MMFiles link '") +
+                             std::to_string(arangodb::Index::id()) + "'"));
   }
 
   builder.openObject();
 
   if (!json(builder)) {
-    THROW_ARANGO_EXCEPTION(arangodb::Result(
-      TRI_ERROR_INTERNAL,
-      std::string("failed to generate link definition for IResearch view MMFiles link '") + std::to_string(arangodb::Index::id()) + "'"
-    ));
+    THROW_ARANGO_EXCEPTION(
+        arangodb::Result(TRI_ERROR_INTERNAL,
+                         std::string("failed to generate link definition for "
+                                     "arangosearch view MMFiles link '") +
+                             std::to_string(arangodb::Index::id()) + "'"));
   }
 
   if (arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Figures)) {
@@ -110,9 +161,22 @@ void IResearchMMFilesLink::toVelocyPack(
   builder.close();
 }
 
-NS_END // iresearch
-NS_END // arangodb
+bool IResearchMMFilesLink::isPersistent() const {
+  auto* engine = arangodb::EngineSelectorFeature::ENGINE;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+  // FIXME TODO remove once MMFilesEngine will fillIndex(...) during recovery
+  // currently the index is created but fill is deffered untill the end of
+  // recovery at the end of recovery only non-persistent indexes are filled
+  if (engine && engine->inRecovery()) {
+    return false;
+  }
+
+  return true;  // records persisted into the iResearch view
+}
+
+NS_END      // iresearch
+    NS_END  // arangodb
+
+    // -----------------------------------------------------------------------------
+    // --SECTION-- END-OF-FILE
+    // -----------------------------------------------------------------------------

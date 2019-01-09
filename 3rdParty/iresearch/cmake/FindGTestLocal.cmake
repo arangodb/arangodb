@@ -84,15 +84,20 @@ if (GTEST_INCLUDE_DIR AND GTEST_SRC_DIR_GTEST AND GTEST_SRC_DIR_CMAKE)
     EXCLUDE_FROM_ALL # do not build unused targets
   )
 
-if (MSVC)
-  target_compile_options(gtest
-    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"    
-  )
+  if (MSVC)
+    # when compiling or linking against GTEST on MSVC2017 the following
+    # definition is required: /D _SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING
 
-  target_compile_options(gtest_main
-    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"    
-  )
-endif()
+    target_compile_options(gtest
+      PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
+      PRIVATE "/D _SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING"
+    )
+
+    target_compile_options(gtest_main
+      PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
+      PRIVATE "/D _SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING"
+    )
+  endif()
 
   set(GTEST_LIBRARIES gtest)
   set(GTEST_MAIN_LIBRARIES gtest_main)

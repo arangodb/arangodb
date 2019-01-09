@@ -98,7 +98,7 @@ ExecutionBlockImpl<Executor>::getSomeWithoutTrace(size_t atMost) {
   // it's not obvious that the loop will run at least once (e.g. after a
   // WAITING). It should, but I'd like that to be clearer. Initializing here
   // won't help much because it's unclear whether the value will be correct.
-  ExecutionState state;
+  ExecutionState state = ExecutionState::HASMORE;
   ExecutorStats executorStats{};
   std::unique_ptr<OutputAqlItemRow> row;  // holds temporary rows
 

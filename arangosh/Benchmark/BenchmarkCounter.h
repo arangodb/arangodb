@@ -178,7 +178,7 @@ class BenchmarkCounter {
 
   T _done;
 };
-}
-}
+}  // namespace arangobench
+}  // namespace arangodb
 
 #endif
