@@ -251,9 +251,6 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
     IResearchViewMeta meta;
     IResearchViewMetaState metaState;
 
-    {
-      WriteMutex mutex(impl->_mutex);
-      SCOPED_LOCK(mutex);
     if (!meta.init(definition, error)
         || (meta._version == 0 && !inUpgrade) // version 0 must be upgraded to split data-store on a per-link basis
         || meta._version > LATEST_VERSION
