@@ -1021,11 +1021,11 @@ function processQuery (query, explain) {
         var scorers = '';
         if (node.scorers && node.scorers.length > 0) {
             scorers = keyword(' LET ');
-            for (var i = 0;;) {
-              var scorer = node.scorers[i];
+            for (var j = 0;;) {
+              var scorer = node.scorers[j];
               scorers += variableName(scorer) + ' = ' + buildExpression(scorer.node);
 
-              if (++i >= node.scorers.length) {
+              if (++j >= node.scorers.length) {
                 break;
               }
 
