@@ -1,6 +1,8 @@
 v3.4.2 (XXXX-XX-XX)
 -------------------
 
+* updated bundled curl library to version 7.63
+
 * fix issue #7900: Bind values of `null` are not replaced by
   empty string anymore, when toggling between json and table
   view in the web-ui.
