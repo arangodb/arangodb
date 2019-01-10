@@ -1,6 +1,9 @@
 devel
 -----
 
+* fixed known issue #445: ArangoSearch ignores `_id` attribute even if `includeAllFields`
+  is set to `true`.
+
 * upgraded bundled boost library to version 1.69.0
 
 * upgraded bundled curl library to version 7.63
