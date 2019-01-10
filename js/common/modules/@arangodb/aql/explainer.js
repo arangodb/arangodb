@@ -1020,18 +1020,11 @@ function processQuery (query, explain) {
 
         var scorers = '';
         if (node.scorers && node.scorers.length > 0) {
-            scorers = keyword(' LET ');
-            for (var j = 0;;) {
-              var scorer = node.scorers[j];
-              scorers += variableName(scorer) + ' = ' + buildExpression(scorer.node);
-
-              if (++j >= node.scorers.length) {
-                break;
-              }
-
-              scorers += ', ';
-            }
+          scorers = keyword(' LET ' ) + node.scorers.map(function(scorer) {
+            return variableName(scorer) + ' = ' + buildExpression(scorer.node);
+          }).join(', ');
         }
+
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + view(node.view) + condition + scorers + '   ' + annotation('/* view query */');
       case 'IndexNode':
         collectionVariables[node.outVariable.id] = node.collection;

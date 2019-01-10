@@ -212,7 +212,7 @@ bool parseOptions(aql::AstNode const* optionsNode,
 // -----------------------------------------------------------------------------
 
 // in loop or non-deterministic
-bool hasDependecies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
+bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
                     aql::Variable const& ref,
                     std::unordered_set<aql::Variable const*>& vars) {
   if (!node.isDeterministic()) {
@@ -269,7 +269,7 @@ int evaluateVolatility(arangodb::iresearch::IResearchViewNode const& node) {
   // evaluate filter condition volatility
   auto& filterCondition = node.filterCondition();
   if (!::filterConditionIsEmpty(&filterCondition) && inInnerLoop) {
-    irs::set_bit<0>(::hasDependecies(plan, filterCondition, outVariable, vars), mask);
+    irs::set_bit<0>(::hasDependencies(plan, filterCondition, outVariable, vars), mask);
   }
 
   // evaluate sort condition volatility
@@ -278,7 +278,7 @@ int evaluateVolatility(arangodb::iresearch::IResearchViewNode const& node) {
     vars.clear();
 
     for (auto const& scorer : scorers) {
-      if (::hasDependecies(plan, *scorer.node, outVariable, vars)) {
+      if (::hasDependencies(plan, *scorer.node, outVariable, vars)) {
         irs::set_bit<1>(mask);
         break;
       }
