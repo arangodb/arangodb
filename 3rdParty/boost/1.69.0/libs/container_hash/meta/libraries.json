@@ -1,0 +1,20 @@
+[
+    {
+        "key": "functional/hash",
+        "boost-version": "1.33.0",
+        "name": "Container Hash",
+        "authors": [
+            "Daniel James"
+        ],
+        "maintainers": [
+            "Daniel James <dnljms -at- gmail.com>"
+        ],
+        "description": "An STL-compatible hash function object that can be extended to hash user defined types.",
+        "std": [
+            "tr1"
+        ],
+        "category": [
+            "Function-objects"
+        ]
+    }
+]

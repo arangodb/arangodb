@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE article PUBLIC "-//Boost//DTD BoostBook XML V1.0//EN"
+     "http://www.boost.org/tools/boostbook/dtd/boostbook.dtd">
+<article
+    id="simple_test_article"
+    last-revision="DEBUG MODE Date: 2000/12/20 12:00:00 $" 
+    xmlns:xi="http://www.w3.org/2001/XInclude">
+  <title>Simple Test Article</title>
+
+
+  <articleinfo>
+
+    <copyright>
+      <year>2016</year>
+      <holder>Daniel James</holder>
+    </copyright>
+
+    <legalnotice id="simple_test_article.legal">
+      <para>
+        Distributed under the Boost Software License, Version 1.0.
+        (See accompanying file LICENSE_1_0.txt or copy at
+        <ulink url="http://www.boost.org/LICENSE_1_0.txt">http://www.boost.org/LICENSE_1_0.txt</ulink>)
+    
+      </para>
+    </legalnotice>
+
+  </articleinfo>
+
+
+<section id="simple_test_article.one">
+<title><link linkend="simple_test_article.one">One</link></title>
+<bridgehead renderas="sect1" id="simple_test_article.one.h0"><phrase id="simple_test_article.one.a"/><link linkend="simple_test_article.one.a">A</link></bridgehead><para>
+Lorem ipsum dolor. Sit amet quis hendrerit pretium massa. Et imperdiet sit luctus et nam. Eget neque vivamus nec aliquam vestibulum. Venenatis id penatibus. Rutrum lobortis tempora. Turpis cras imperdiet. Quis parturient quam sed non libero donec in ut aliquam aliquam purus maecenas con dolor in est felis lorem amet vel. Risus mauris felis. Libero felis fringilla. Sed cursus metus dolor iaculis eget sit ac commodo. Molestie interdum nunc. Erat auctor suscipit. Turpis quisque nonummy. Integer vestibulum vivamus vulputate euismod et sed pretium urna metus scelerisque urna massa vestibulum neque.</para>
+<bridgehead renderas="sect3" id="simple_test_article.one.h1"><phrase id="simple_test_article.one.b"/><link linkend="simple_test_article.one.b">B</link></bridgehead></section>
+</article>
+

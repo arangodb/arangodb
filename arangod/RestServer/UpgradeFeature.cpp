@@ -50,6 +50,10 @@ UpgradeFeature::UpgradeFeature(application_features::ApplicationServer& server,
   startsAfter("AQLPhase");
 }
 
+void UpgradeFeature::addTask(methods::Upgrade::Task&& task) {
+  _tasks.push_back(std::move(task));
+}
+
 void UpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("database", "Configure the database");
 

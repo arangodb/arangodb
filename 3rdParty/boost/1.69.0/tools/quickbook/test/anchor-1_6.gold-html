@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <h3>
+      Anchor Test
+    </h3>
+    <div class="toc">
+      <p>
+        <b>Table of contents</b>
+      </p>
+      <ul>
+        <li>
+          <a href="#anchor_test.anchors">Anchors</a>
+        </li>
+        <li>
+          <a href="#anchor_test.section_anchor"><span></span>Section Anchor</a>
+        </li>
+        <li>
+          <a href="#anchor_test.conditional_section_anchor"><span></span>Conditional
+          Section Anchor</a>
+        </li>
+        <li>
+          <a href="#anchor_test.lists">Lists</a>
+        </li>
+        <li>
+          <a href="#anchor_test.anchors_in_templates">Anchors in templates</a>
+        </li>
+        <li>
+          <a href="#anchor_test.anchors_in_syntax_highlighted_co">Anchors in syntax
+          highlighted code</a>
+        </li>
+        <li>
+          <a href="#anchor_test.nested_anchors">Nested anchors</a>
+        </li>
+        <li>
+          <a href="#anchor_test.anchors_with_escapes">Anchors with escapes</a>
+        </li>
+      </ul>
+    </div>
+    <div id="anchor_test.anchors">
+      <h3>
+        Anchors
+      </h3>
+      <div id="anchor_test.anchors">
+        <p>
+          <span id="a1"></span>A paragraph containing several anchors. <span id="a2"></span>We
+          want to make sure they appear in the correct place. <span id="a3"></span>
+        </p>
+        <h3 id="anchor_test.anchors.this_heading_shouldn_t_pick_up_t">
+          This heading shouldn't pick up the previous anchor
+        </h3>
+        <span id="a4"></span>
+        <h3 id="anchor_test.anchors.this_heading_should_pick_up_the_">
+          This heading should pick up the previous anchor
+        </h3>
+        <span id="a5"></span>
+        <h3 id="anchor_test.anchors.and_this_one">
+          And this one
+        </h3>
+        <span id="a6"></span>
+        <h3 id="anchor_test.anchors.also_this_one">
+          Also this one
+        </h3>
+        <span id="a7"></span>
+        <h3 id="anchor_test.anchors.finally_this">
+          Finally this
+        </h3>
+        <span id="a8"></span>
+      </div>
+    </div>
+    <div id="anchor_test.section_anchor">
+      <h3>
+        <span id="a9"></span>Section Anchor
+      </h3>
+      <div id="anchor_test.section_anchor">
+        <span id="a11"></span>
+      </div>
+      <div id="anchor_test.section_anchor.nested_section">
+        <h3>
+          <span id="a10"></span>Nested Section
+        </h3>
+        <div id="anchor_test.section_anchor.nested_section">
+        </div>
+      </div>
+    </div>
+    <div id="anchor_test.conditional_section_anchor">
+      <h3>
+        <span id="a12"></span>Conditional Section Anchor
+      </h3>
+      <div id="anchor_test.conditional_section_anchor">
+      </div>
+    </div>
+    <div id="anchor_test.lists">
+      <h3>
+        Lists
+      </h3>
+      <div id="anchor_test.lists">
+        <span id="a14"></span>
+        <ul>
+          <li>
+            <div>
+              Item 1
+            </div>
+          </li>
+          <li>
+            <div>
+              Item 2
+            </div>
+          </li>
+          <li>
+            <div>
+              Nested List <span id="a15"></span>
+              <ul>
+                <li>
+                  <div>
+                    Nested Item 1
+                  </div>
+                </li>
+                <li>
+                  <div>
+                    Nested Item 2
+                  </div>
+                </li>
+                <li>
+                  <div>
+                    <span id="a16"></span>Nested Item 3
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </li>
+          <li>
+            <div>
+              Item 3
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+    <div id="anchor_test.anchors_in_templates">
+      <h3>
+        Anchors in templates
+      </h3>
+      <div id="anchor_test.anchors_in_templates">
+        <p>
+          <span id="t1"></span>Some text.
+        </p>
+        <p>
+          <span id="t2"></span>Text content
+        </p>
+      </div>
+    </div>
+    <div id="anchor_test.anchors_in_syntax_highlighted_co">
+      <h3>
+        Anchors in syntax highlighted code
+      </h3>
+      <div id="anchor_test.anchors_in_syntax_highlighted_co">
+<pre class="programlisting"><span class="keyword">int</span> <span id="s1"></span><span class="identifier">main</span><span class="special">()</span> <span class="special">{}</span>
+</pre>
+      </div>
+    </div>
+    <div id="anchor_test.nested_anchors">
+      <h3>
+        Nested anchors
+      </h3>
+      <div id="anchor_test.nested_anchors">
+        <div id="anchor_test.nested_anchors.table_with_anchors" class="table">
+          <table>
+            <caption>Table with anchors</caption>
+            <thead>
+              <tr>
+                <th>
+                  <p>
+                    Heading
+                  </p>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <p>
+                    <span id="table1"></span>Cell 1
+                  </p>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <p>
+                    <span id="table2"></span>Cell 2
+                  </p>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <p>
+                    Cell 3<span id="table3"></span>
+                  </p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div id="anchor_test.anchors_with_escapes">
+      <h3>
+        Anchors with escapes
+      </h3>
+      <div id="anchor_test.anchors_with_escapes">
+        <span id="[oddid]"></span>
+      </div>
+    </div>
+  </body>
+</html>
