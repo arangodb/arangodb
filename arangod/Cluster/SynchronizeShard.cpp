@@ -657,7 +657,7 @@ bool SynchronizeShard::first() {
   LOG_TOPIC(INFO, Logger::MAINTENANCE)
     << "SynchronizeShard: synchronizing shard '" << database << "/" << shard
     << "' for central '" << database << "/" << planId << "'";
-
+  
   auto* clusterInfo = ClusterInfo::instance();
   auto const ourselves = arangodb::ServerState::instance()->getId();
   auto startTime = system_clock::now();
@@ -683,7 +683,7 @@ bool SynchronizeShard::first() {
       std::stringstream error;
       error << "cancelled, ";
       AppendShardInformationToMessage(database, shard, planId, startTime, error);
-      LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "SynchronizeShard: " << error.str();
       _result.reset(TRI_ERROR_FAILED, error.str());
       return false;
     }
@@ -693,7 +693,7 @@ bool SynchronizeShard::first() {
       std::stringstream msg;
       msg << "exception in getCollection, ";
       AppendShardInformationToMessage(database, shard, planId, startTime, msg);
-      LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "SynchronizeOneShard: " << msg.str();
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "SynchronizeShard: " << msg.str();
       _result.reset(TRI_ERROR_FAILED, msg.str());
       return false;
     }
@@ -705,7 +705,7 @@ bool SynchronizeShard::first() {
 
     if (current.empty()) {
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-        << "synchronizeOneShard: cancelled, no servers in 'Current'";
+        << "SynchronizeShard: cancelled, no servers in 'Current'";
     } else if (current.front() == leader) {
       if (std::find(current.begin(), current.end(), ourselves) == current.end()) {
         break;  // start synchronization work
@@ -714,13 +714,13 @@ bool SynchronizeShard::first() {
       std::stringstream error;
       error << "already done, ";
       AppendShardInformationToMessage(database, shard, planId, startTime, error);
-      LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "SynchronizeShard: " << error.str();
       _result.reset(TRI_ERROR_FAILED, error.str());
       return false;
     }
 
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-      << "synchronizeOneShard: waiting for leader, " << database << "/"
+      << "SynchronizeShard: waiting for leader, " << database << "/"
       << shard << ", " << database << "/" << planId;
 
     std::this_thread::sleep_for(duration<double>(0.2));
@@ -737,7 +737,7 @@ bool SynchronizeShard::first() {
     if (collection == nullptr) {
       std::stringstream error;
       error << "failed to lookup local shard " << shard;
-      LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "SynchronizeShard: " << error.str();
       _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
       return false;
     }
@@ -755,7 +755,7 @@ bool SynchronizeShard::first() {
     if (docCount == 0) {
       // We have a short cut:
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-        << "synchronizeOneShard: trying short cut to synchronize local shard "
+        << "SynchronizeShard: trying short cut to synchronize local shard "
         "'"
         << database << "/" << shard << "' for central '" << database << "/"
         << planId << "'";
@@ -765,7 +765,7 @@ bool SynchronizeShard::first() {
         if (asResult.ok()) {
           if (Logger::isEnabled(LogLevel::DEBUG, Logger::MAINTENANCE)) {
             std::stringstream msg;
-            msg << "synchronizeOneShard: shortcut worked, done, ";
+            msg << "SynchronizeShard: shortcut worked, done, ";
             AppendShardInformationToMessage(database, shard, planId, startTime, msg);
             LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << msg.str();
           }
@@ -778,7 +778,7 @@ bool SynchronizeShard::first() {
     }
 
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-      << "synchronizeOneShard: trying to synchronize local shard '" << database
+      << "SynchronizeShard: trying to synchronize local shard '" << database
       << "/" << shard << "' for central '" << database << "/" << planId << "'";
 
     try {
@@ -793,7 +793,7 @@ bool SynchronizeShard::first() {
 
       if (isStopping()) {
         std::string errorMessage(
-          "synchronizeOneShard: synchronization failed for shard ");
+          "SynchronizeShard: synchronization failed for shard ");
         errorMessage += shard + ": shutdown in progress, giving up";
         LOG_TOPIC(INFO, Logger::MAINTENANCE) << errorMessage;
         _result.reset(TRI_ERROR_SHUTTING_DOWN, errorMessage);
@@ -835,7 +835,7 @@ bool SynchronizeShard::first() {
       // Long shard sync initialisation
       if (endTime - startTime > seconds(5)) {
         LOG_TOPIC(INFO, Logger::MAINTENANCE)
-          << "synchronizeOneShard: long call to syncCollection for shard"
+          << "SynchronizeShard: long call to syncCollection for shard"
           << shard << " " << res.errorMessage()
           << " start time: " << timepointToString(startTime)
           << ", end time: " << timepointToString(system_clock::now());
@@ -847,7 +847,7 @@ bool SynchronizeShard::first() {
         error << "could not initially synchronize shard " << shard << ": "
               << res.errorMessage();
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-          << "SynchronizeOneShard: " << error.str();
+          << "SynchronizeShard: " << error.str();
         _result.reset(TRI_ERROR_INTERNAL, error.str());
         return false;
       }
@@ -863,7 +863,7 @@ bool SynchronizeShard::first() {
         std::stringstream error;
         error << "shard " << shard << " seems to be gone from leader, this "
           "can happen if a collection was dropped during synchronization!";
-        LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
+        LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "SynchronizeShard: " << error.str();
         _result.reset(TRI_ERROR_INTERNAL, error.str());
         return false;
       }
@@ -916,7 +916,7 @@ bool SynchronizeShard::first() {
     // This wrap is just to not write the stream if not needed.
     std::stringstream msg;
     AppendShardInformationToMessage(database, shard, planId, startTime, msg);
-    LOG_TOPIC(INFO, Logger::MAINTENANCE) << "synchronizeOneShard: done, " << msg.str();
+    LOG_TOPIC(INFO, Logger::MAINTENANCE) << "SynchronizeShard: done, " << msg.str();
   }
   notify();
   return false;
@@ -934,7 +934,7 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
 
     if (isStopping()) {
       std::string errorMessage =
-        "synchronizeOneShard: startReadLockOnLeader (soft): shutting down";
+        "SynchronizeShard: startReadLockOnLeader (soft): shutting down";
       return ResultT<TRI_voc_tick_t>::error(TRI_ERROR_SHUTTING_DOWN, errorMessage);
     }
 
@@ -943,13 +943,13 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
     // will be a hard stop, but for rocksdb, this is a no-op:
     uint64_t lockJobId = 0;
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-      << "synchronizeOneShard: startReadLockOnLeader (soft): " << ep << ":"
+      << "SynchronizeShard: startReadLockOnLeader (soft): " << ep << ":"
       << database << ":" << collection.name();
     Result res = startReadLockOnLeader(ep, database, collection.name(),
                                        clientId, lockJobId, true, timeout);
     if (!res.ok()) {
       std::string errorMessage =
-        "synchronizeOneShard: error in startReadLockOnLeader (soft):" + res.errorMessage();
+        "SynchronizeShard: error in startReadLockOnLeader (soft):" + res.errorMessage();
       return ResultT<TRI_voc_tick_t>::error(TRI_ERROR_INTERNAL, errorMessage);
     }
 
@@ -1001,7 +1001,7 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
     readLockGuard.cancel();
     if (!res.ok()) {
       std::string errorMessage =
-        "synchronizeOneShard: error when cancelling soft read lock: " + res.errorMessage();
+        "SynchronizeShard: error when cancelling soft read lock: " + res.errorMessage();
       LOG_TOPIC(INFO, Logger::MAINTENANCE) << errorMessage;
       _result.reset(TRI_ERROR_INTERNAL, errorMessage);
       return ResultT<TRI_voc_tick_t>::error(TRI_ERROR_INTERNAL, errorMessage);
@@ -1026,13 +1026,13 @@ Result SynchronizeShard::catchupWithExclusiveLock(
   std::string const& leader, TRI_voc_tick_t lastLogTick, VPackBuilder& builder) {
   uint64_t lockJobId = 0;
   LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-    << "synchronizeOneShard: startReadLockOnLeader: " << ep << ":" << database
+    << "SynchronizeShard: startReadLockOnLeader: " << ep << ":" << database
     << ":" << collection.name();
   Result res = startReadLockOnLeader(ep, database, collection.name(), clientId,
                                      lockJobId, false);
   if (!res.ok()) {
     std::string errorMessage =
-      "synchronizeOneShard: error in startReadLockOnLeader (hard):" + res.errorMessage();
+      "SynchronizeShard: error in startReadLockOnLeader (hard):" + res.errorMessage();
     return {TRI_ERROR_INTERNAL, errorMessage};
   }
   auto readLockGuard = arangodb::scopeGuard([&]() {
@@ -1086,7 +1086,7 @@ void SynchronizeShard::setState(ActionState state) {
     auto const& shard = _description.get("shard");
     if (COMPLETE == state) {
       LOG_TOPIC(INFO, Logger::MAINTENANCE)
-        << "synchronizeOneShard: synchronization completed for shard " << shard;
+        << "SynchronizeShard: synchronization completed for shard " << shard;
     }
     _feature.incShardVersion(shard);
   }
