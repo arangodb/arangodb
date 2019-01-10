@@ -1,0 +1,38 @@
+= b2(1)
+Rene Rivera
+v0.0.0
+:doctype: manpage
+:manmanual: B2
+:mansource: B2
+:man-linkstyle: pass:[blue R < >]
+
+== NAME
+
+b2 - Boost Build
+
+== SYNOPSIS
+
+*b2* ['OPTION']... 'TARGET'...
+
+== OPTIONS
+
+*-n*::
+  Print out what would get built.
+
+== EXIT STATUS
+
+*0*::
+  Success.
+
+*1*::
+  Failure.
+
+== RESOURCES
+
+*Project web site:* http://boost.org
+
+== COPYING
+
+Copyright \(C) 2017 {author}. +
+Distributed under the Boost Software License, Version 1.0.
+(See accompanying file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)

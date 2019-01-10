@@ -1,0 +1,79 @@
+#==============================================================================
+#   Copyright (c) 2002 Joel de Guzman
+#   http://spirit.sourceforge.net/
+#
+#   Use, modification and distribution is subject to the Boost Software
+#   License, Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+#   http://www.boost.org/LICENSE_1_0.txt)
+#==============================================================================
+#
+#  Phoenix examples boost-jam file
+#  Joel de Guzman [Sept 27, 2002]
+#
+
+#unit-test sample1
+#    : fundamental/sample1.cpp
+#    :
+#    :
+#    ;
+
+unit-test sample2
+    : fundamental/sample2.cpp
+    :
+    :
+    ;
+
+unit-test sample3
+    : fundamental/sample3.cpp
+    :
+    :
+    ;
+
+unit-test sample4
+    : fundamental/sample4.cpp
+    :
+    :
+    ;
+
+unit-test sample5
+    : fundamental/sample5.cpp
+    :
+    :
+    ;
+
+unit-test sample6
+    : fundamental/sample6.cpp
+    :
+    :
+    ;
+
+unit-test sample7
+    : fundamental/sample7.cpp
+    :
+    :
+    ;
+
+unit-test sample8
+    : fundamental/sample8.cpp
+    :
+    :
+    ;
+
+unit-test sample9
+    : fundamental/sample9.cpp
+    :
+    :
+    ;
+
+unit-test sample10
+    : fundamental/sample10.cpp
+    :
+    :
+    ;
+
+unit-test closures
+    : fundamental/closures.cpp
+    :
+    :
+    ;
+

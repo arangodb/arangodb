@@ -24,6 +24,7 @@
 #define APPLICATION_FEATURES_UPGRADE_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "VocBase/Methods/Upgrade.h"
 
 namespace arangodb {
 
@@ -32,12 +33,15 @@ class UpgradeFeature final : public application_features::ApplicationFeature {
   UpgradeFeature(application_features::ApplicationServer& server, int* result,
                  std::vector<std::string> const& nonServerFeatures);
 
+  void addTask(methods::Upgrade::Task&& task);
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
 
  private:
+  friend struct methods::Upgrade;  // to allow access to '_tasks'
+
   bool _upgrade;
   bool _upgradeCheck;
 
@@ -45,6 +49,7 @@ class UpgradeFeature final : public application_features::ApplicationFeature {
 
   int* _result;
   std::vector<std::string> _nonServerFeatures;
+  std::vector<methods::Upgrade::Task> _tasks;
 };
 
 }  // namespace arangodb
