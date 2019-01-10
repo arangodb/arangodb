@@ -213,7 +213,7 @@ The following factors affect speed of _arangorestore_ in a Cluster:
 - **Replication Factor**: the higher the _replication factor_, the more
   time the restore will take. To speed up the restore you can restore
   using a _replication factor_ of 1 and then increase it again
-  after the restore. This will reduce number of network hops needed
+  after the restore. This will reduce the number of network hops needed
   during the restore.
 - **Restore Parallelization**: if the collections are not restored in
   parallel, the restore speed is highly affected. Parallel restore can
