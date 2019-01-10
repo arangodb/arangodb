@@ -278,6 +278,8 @@ struct Functions {
                         transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue CountDistinct(arangodb::aql::ExpressionContext*,
                                 transaction::Methods*, VPackFunctionParameters const&);
+  static AqlValue CheckDocument(arangodb::aql::ExpressionContext*,
+                                transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue Unique(arangodb::aql::ExpressionContext*,
                          transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue SortedUnique(arangodb::aql::ExpressionContext*,

@@ -44,7 +44,7 @@ RestRepairHandler::RestRepairHandler(GeneralRequest* request, GeneralResponse* r
     : RestBaseHandler(request, response) {}
 
 RestStatus RestRepairHandler::execute() {
-  if (SchedulerFeature::SCHEDULER->isStopping()) {
+  if (application_features::ApplicationServer::isStopping()) {
     generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_SHUTTING_DOWN);
     return RestStatus::DONE;
   }

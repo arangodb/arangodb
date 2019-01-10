@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <h3>
+      Heading Test 1.5
+    </h3>
+    <div class="toc">
+      <p>
+        <b>Table of contents</b>
+      </p>
+      <ul>
+        <li>
+          <a href="#heading_test_1_5.s1">S1</a>
+        </li>
+      </ul>
+    </div>
+    <h2 id="heading_test_1_5.generic_header">
+      Generic header
+    </h2>
+    <h1 id="heading_test_1_5.level_1">
+      Level 1
+    </h1>
+    <h2 id="heading_test_1_5.level_2">
+      Level 2
+    </h2>
+    <h3 id="heading_test_1_5.level_3">
+      Level 3
+    </h3>
+    <h4 id="heading_test_1_5.level_4">
+      Level 4
+    </h4>
+    <h5 id="heading_test_1_5.level_5">
+      Level 5
+    </h5>
+    <h6 id="heading_test_1_5.level_6">
+      Level 6
+    </h6>
+    <h1 id="heading_test_1_5._emphasis_role__bold__bold__emphasis_">
+      <span class="bold"><strong>Bold</strong></span>
+    </h1>
+    <h1 id="heading_test_1_5.comment">
+      Comment
+    </h1>
+    <h1 id="heading_test_1_5._notanid">
+      :notanid
+    </h1>
+    <h1 id="heading_test_1_5._also_not_an_id">
+      :also not an id
+    </h1>
+    <h1 id="heading_test_1_5._anchor_id__anchor___anchor_heading">
+      <span id="anchor"></span>Anchor heading
+    </h1>
+    <h1 id="heading_test_1_5._link_linkend__anchor__link_heading__link_">
+      <a href="#anchor">Link heading</a>
+    </h1>
+    <h2 id="heading_test_1_5.h1">
+      H1
+    </h2>
+    <h1 id="heading_test_1_5.h7">
+      H7
+    </h1>
+    <div id="heading_test_1_5.s1">
+      <h3>
+        S1
+      </h3>
+      <div id="heading_test_1_5.s1">
+        <h2 id="heading_test_1_5.s1.h2">
+          H2
+        </h2>
+        <h2 id="heading_test_1_5.s1.h4">
+          H4
+        </h2>
+        <h2 id="heading_test_1_5.s1.h6">
+          H6
+        </h2>
+      </div>
+      <div id="heading_test_1_5.s1.s2">
+        <h3>
+          S2
+        </h3>
+        <div id="heading_test_1_5.s1.s2">
+          <h3 id="heading_test_1_5.s1.s2.h3">
+            H3
+          </h3>
+        </div>
+      </div>
+      <div id="heading_test_1_5.s1.s3">
+        <h3>
+          S3
+        </h3>
+        <div id="heading_test_1_5.s1.s3">
+          <h4 id="heading_test_1_5.s1.s3.h5">
+            H5
+          </h4>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<explicit-failures-markup>
+    <!-- phoenix -->
+    <library name="phoenix">
+        <mark-expected-failures>
+            <test name="lambda_tests7"/>
+            <test name="lambda_tests10"/>
+            <test name="lambda_tests11"/>
+            <test name="lambda_tests14"/>
+            <test name="lambda_tests15"/>
+            <toolset name="msvc-12.0"/>
+            <note author="Kohei Takahsahi">
+                Wrokaround: define BOOST_RESULT_OF_USE_TR1
+            </note>
+        </mark-expected-failures>
+    </library>
+</explicit-failures-markup>
+

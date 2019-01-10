@@ -172,7 +172,7 @@ class IResearchLink {
   /// @brief update runtine data processing properties (not persisted)
   /// @return success
   //////////////////////////////////////////////////////////////////////////////
-  bool properties(irs::index_writer::segment_options const& properties);
+  arangodb::Result properties(irs::index_writer::segment_options const& properties);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove an ArangoDB document from an iResearch View

@@ -74,8 +74,10 @@ class RestoreFeature final : public application_features::ApplicationFeature {
     std::vector<std::string> views{};
     std::string inputPath{};
     uint64_t chunkSize{1024 * 1024 * 8};
-    uint64_t defaultNumberOfShards{1};
-    uint64_t defaultReplicationFactor{1};
+    uint64_t defaultNumberOfShards{1};     // deprecated
+    uint64_t defaultReplicationFactor{1};  // deprecated
+    std::vector<std::string> numberOfShards;
+    std::vector<std::string> replicationFactor;
     uint32_t threadCount{2};
     bool clusterMode{false};
     bool createDatabase{false};
@@ -87,6 +89,7 @@ class RestoreFeature final : public application_features::ApplicationFeature {
     bool includeSystemCollections{false};
     bool indexesFirst{false};
     bool overwrite{true};
+    bool cleanupDuplicateAttributes{false};
     bool progress{true};
   };
 

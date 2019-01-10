@@ -129,26 +129,13 @@ Encryption
 
 See [Arangodump](../Arangodump/Examples.md#encryption) for details.
 
-Restoring Revision IDs and Collection IDs
------------------------------------------
- 
-_arangorestore_ will reload document and edges data with the exact same *_key*, *_from* and 
-*_to* values found in the input directory. However, when loading document data, it will assign
-its own values for the *_rev* attribute of the reloaded documents. Though this difference is 
-intentional (normally, every server should create its own *_rev* values) there might be 
-situations when it is required to re-use the exact same *_rev* values for the reloaded data.
-This can be achieved by setting the *--recycle-ids* parameter to *true*:
-
-    arangorestore --collection myusers --collection myvalues --input-directory "dump"
-
-Note that setting *--recycle-ids* to *true* will also cause collections to be (re-)created in
-the target database with the exact same collection id as in the input directory. Any potentially
-existing collection in the target database with the same collection id will then be dropped.
-
 Reloading Data into a different Collection
 ------------------------------------------
 
-With some creativity you can use _arangodump_ and _arangorestore_ to transfer data from one
+_arangorestore_ will restore document and edges data with the exact same *_key*, *_rev*, *_from* 
+and *_to* values as found in the input directory. 
+
+With some creativity you can also use _arangodump_ and _arangorestore_ to transfer data from one
 collection into another (either on the same server or not). For example, to copy data from
 a collection *myvalues* in database *mydb* into a collection *mycopyvalues* in database *mycopy*,
 you can start with the following command:
@@ -165,7 +152,7 @@ After that, run the following command:
 Restoring in a Cluster
 ----------------------
 
-As of Version 2.1 the *arangorestore* tool supports sharding and can be
+From v2.1 on, the *arangorestore* tool supports sharding and can be
 used to restore data into a Cluster. Simply point it to one of the 
 _Coordinators_ in your Cluster and it will work as usual but on sharded
 collections in the Cluster.
@@ -177,13 +164,40 @@ servers will also be the same as at the time of the dump. This means
 in particular that _DBServers_ with the same IDs as before must be
 present in the cluster at time of the restore. 
 
-If a collection was dumped from a single instance, one can manually
-add the structural description for the shard keys and the number and
-distribution of the shards and then the restore into a cluster will
-work.
+If *arangorestore* is asked to restore a collection, it will use the same
+number of shards, replication factor and shard keys as when the collection
+was dumped. The distribution of the shards to the servers will also be the
+same as at the time of the dump, provided that the number of _DBServers_ in
+the cluster dumped from is identical to the number of DBServers in the
+to-be-restored-to cluster.
+
+To modify the number of _shards_ or the _replication factor_ for all or just
+some collections, *arangorestore* provides the options `--number-of-shards`
+and `--replication-factor` (starting from v3.3.22 and v3.4.2). These options
+can be specified multiple times as well, in order to override the settings
+for dedicated collections, e.g.
+
+    unix> arangorestore --number-of-shards 2 --number-of-shards mycollection=3 --number-of-shards test=4
+
+The above will restore all collections except "mycollection" and "test" with 2 shards. "mycollection"
+will have 3 shards when restored, and "test" will have 4. It is possible to omit the default value
+and only use collection-specific overrides. In this case, the number of shards for any collections not
+overridden will be determined by looking into the "numberOfShards" values contained in the dump.
+
+The `--replication-factor` options works in the same way, e.g.
+    
+    unix> arangorestore --replication-factor 2 --replication-factor mycollection=1
+
+will set the replication factor to 2 for all collections but "mycollection", which will get a
+replication factor of just 1.    
+
+If a collection was dumped from a single instance and is then restored into
+a cluster, the sharding will be done by the `_key` attribute by default. One can
+manually edit the structural description for the shard keys in the dump files if
+required.
 
 If you restore a collection that was dumped from a cluster into a single
-ArangoDB instance, the number of shards and the shard keys will silently
+ArangoDB instance, the number of shards, replication factor and shard keys will silently
 be ignored.
 
 Note that in a cluster, every newly created collection will have a new
@@ -203,15 +217,15 @@ The following factors affect speed of _arangorestore_ in a Cluster:
   parallel, the restore speed is highly affected. Parallel restore can
   be done from v3.4.0 by using the _threads_ option of _arangorestore_.
   Before v3.4.0 it is possible to achieve parallelization in other ways. 
-  
+
 Please refer to the [Fast Cluster Restore](FastClusterRestore.md) page
 for further operative details on how to take into account, when restoring
 using _arangorestore_, the two factors described above.
 
 ### Restoring collections with sharding prototypes
 
-*arangorestore* will yield an error, while trying to restore a
-collection, whose shard distribution follows a collection, which does
+*arangorestore* will yield an error when trying to restore a
+collection whose shard distribution follows a collection which does
 not exist in the cluster and which was not dumped along:
 
     arangorestore --collection clonedCollection --server.database mydb --input-directory "dump"
@@ -224,16 +238,16 @@ follows:
 
     arangorestore --collection clonedCollection --server.database mydb --input-directory "dump" --ignore-distribute-shards-like-errors
 
-Restore into an authentication enabled ArangoDB
+Restore into an authentication-enabled ArangoDB
 -----------------------------------------------
 
-Of course you can restore data into a password protected ArangoDB as well.
+Of course you can restore data into a password-protected ArangoDB as well.
 However this requires certain user rights for the user used in the restore process.
 The rights are described in detail in the [Managing Users](../../Administration/ManagingUsers/README.md) chapter.
 For restore this short overview is sufficient:
 
 - When importing into an existing database, the given user needs `Administrate`
   access on this database.
-- When creating a new Database during restore, the given user needs `Administrate`
+- When creating a new database during restore, the given user needs `Administrate`
   access on `_system`. The user will be promoted with `Administrate` access on the
   newly created database.

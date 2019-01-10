@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <h3>
+      Souce Mode Include
+    </h3>
+<pre class="programlisting">void main() {}</pre>
+<pre class="programlisting">void main() {}
+</pre>
+  </body>
+</html>

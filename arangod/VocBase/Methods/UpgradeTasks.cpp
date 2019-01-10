@@ -24,8 +24,10 @@
 #include "Agency/AgencyComm.h"
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
+#include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/files.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -307,12 +309,51 @@ bool UpgradeTasks::setupAppBundles(TRI_vocbase_t& vocbase,
 
 bool UpgradeTasks::persistLocalDocumentIds(TRI_vocbase_t& vocbase,
                                            arangodb::velocypack::Slice const& slice) {
-  if (EngineSelectorFeature::engineName() == MMFilesEngine::EngineName) {
-    Result res = basics::catchToResult([&vocbase]() -> Result {
-      MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
-      return engine->persistLocalDocumentIds(vocbase);
-    });
-    return res.ok();
+  if (EngineSelectorFeature::engineName() != MMFilesEngine::EngineName) {
+    return true;
   }
-  return true;
+  Result res = basics::catchToResult([&vocbase]() -> Result {
+    MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
+    return engine->persistLocalDocumentIds(vocbase);
+  });
+  return res.ok();
+}
+
+bool UpgradeTasks::renameReplicationApplierStateFiles(TRI_vocbase_t& vocbase,
+                                                      arangodb::velocypack::Slice const& slice) {
+  if (EngineSelectorFeature::engineName() == MMFilesEngine::EngineName) {
+    return true;
+  }
+  
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  std::string const path = engine->databasePath(&vocbase);
+  
+  std::string const source = arangodb::basics::FileUtils::buildFilename(
+      path, "REPLICATION-APPLIER-STATE");
+    
+  if (!basics::FileUtils::isRegularFile(source)) {
+    // source file does not exist
+    return true;
+  }
+
+  bool result = true;
+ 
+  // copy file REPLICATION-APPLIER-STATE to REPLICATION-APPLIER-STATE-<id> 
+  Result res = basics::catchToResult([&vocbase, &path, &source, &result]() -> Result {
+    std::string const dest = arangodb::basics::FileUtils::buildFilename(
+        path, "REPLICATION-APPLIER-STATE-" + std::to_string(vocbase.id()));
+
+    LOG_TOPIC(TRACE, Logger::STARTUP) << "copying replication applier file '" << source << "' to '" << dest << "'";
+
+    std::string error;
+    if (!TRI_CopyFile(source.c_str(), dest.c_str(), error)) {
+      LOG_TOPIC(WARN, Logger::STARTUP) << "could not copy replication applier file '" << source << "' to '" << dest << "'";
+      result = false;
+    }
+    return Result();
+  });
+  if (res.fail()) {
+    return false;
+  }
+  return result;
 }

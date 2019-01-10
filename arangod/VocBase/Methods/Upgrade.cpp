@@ -29,6 +29,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Rest/Version.h"
+#include "RestServer/UpgradeFeature.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/Methods/UpgradeTasks.h"
 #include "VocBase/Methods/Version.h"
@@ -38,10 +39,23 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+namespace {
+
+void addTask(std::string&& name, std::string&& desc, uint32_t systemFlag, uint32_t clusterFlag,
+             uint32_t dbFlag, arangodb::methods::Upgrade::TaskFunction&& action) {
+  auto* upgradeFeature =
+      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::UpgradeFeature>(
+          "Upgrade");
+
+  TRI_ASSERT(upgradeFeature);
+  upgradeFeature->addTask(arangodb::methods::Upgrade::Task{name, desc, systemFlag, clusterFlag,
+                                                           dbFlag, action});
+}
+
+}  // namespace
+
 using namespace arangodb;
 using namespace arangodb::methods;
-
-std::vector<Upgrade::Task> Upgrade::_tasks;
 
 /// corresponding to cluster-bootstrap.js
 UpgradeResult Upgrade::clusterBootstrap(TRI_vocbase_t& system) {
@@ -192,6 +206,12 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade, bool igno
 
 /// @brief register tasks, only run once on startup
 void methods::Upgrade::registerTasks() {
+  auto* upgradeFeature =
+      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::UpgradeFeature>(
+          "Upgrade");
+
+  TRI_ASSERT(upgradeFeature);
+  auto& _tasks = upgradeFeature->_tasks;
   TRI_ASSERT(_tasks.empty());
 
   addTask("upgradeGeoIndexes", "upgrade legacy geo indexes",
@@ -265,11 +285,24 @@ void methods::Upgrade::registerTasks() {
           /*system*/ Flags::DATABASE_ALL,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
           /*database*/ DATABASE_UPGRADE, &UpgradeTasks::persistLocalDocumentIds);
+  addTask("renameReplicationApplierStateFiles",
+          "rename replication applier state files",
+          /*system*/ Flags::DATABASE_ALL,
+          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
+          /*database*/ DATABASE_UPGRADE | DATABASE_EXISTING,
+          &UpgradeTasks::renameReplicationApplierStateFiles);
 }
 
 UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t& vocbase, VersionResult& vinfo,
                                          arangodb::velocypack::Slice const& params,
                                          uint32_t clusterFlag, uint32_t dbFlag) {
+  auto* upgradeFeature =
+      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::UpgradeFeature>(
+          "Upgrade");
+
+  TRI_ASSERT(upgradeFeature);
+  auto& _tasks = upgradeFeature->_tasks;
+
   TRI_ASSERT(clusterFlag != 0 && dbFlag != 0);
   TRI_ASSERT(!_tasks.empty());  // forgot to call registerTask!!
   // needs to run in superuser scope, otherwise we get errors
