@@ -2,6 +2,7 @@
   "check-configuration" : {
     "category" : "command",
     "default" : false,
+    "deprecatedIn" : null,
     "description" : "check the configuration and exit",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -14,6 +15,7 @@
   "config" : {
     "category" : "option",
     "default" : "",
+    "deprecatedIn" : null,
     "description" : "the configuration file or 'none'",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -26,6 +28,7 @@
   "configuration" : {
     "category" : "option",
     "default" : "",
+    "deprecatedIn" : null,
     "description" : "the configuration file or 'none'",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -38,6 +41,7 @@
   "console.audit-file" : {
     "category" : "option",
     "default" : "",
+    "deprecatedIn" : null,
     "description" : "audit log file to save commands and results",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -50,6 +54,7 @@
   "console.auto-complete" : {
     "category" : "option",
     "default" : true,
+    "deprecatedIn" : null,
     "description" : "enable auto completion",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -62,6 +67,7 @@
   "console.colors" : {
     "category" : "option",
     "default" : true,
+    "deprecatedIn" : null,
     "description" : "enable color support",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -74,6 +80,7 @@
   "console.pager" : {
     "category" : "option",
     "default" : false,
+    "deprecatedIn" : null,
     "description" : "enable paging",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -86,6 +93,7 @@
   "console.pager-command" : {
     "category" : "option",
     "default" : "less -X -R -F -L",
+    "deprecatedIn" : null,
     "description" : "pager command",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -98,6 +106,7 @@
   "console.pretty-print" : {
     "category" : "option",
     "default" : true,
+    "deprecatedIn" : null,
     "description" : "enable pretty printing",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -110,6 +119,7 @@
   "console.prompt" : {
     "category" : "option",
     "default" : "%E@%d> ",
+    "deprecatedIn" : null,
     "description" : "prompt used in REPL. prompt components are: '%t': current time as timestamp, '%p': duration of last command in seconds, '%d': name of current database, '%e': current endpoint, '%E': current endpoint without protocol, '%u': current user",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -122,6 +132,7 @@
   "default-language" : {
     "category" : "option",
     "default" : "",
+    "deprecatedIn" : null,
     "description" : "ISO-639 language code",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -135,6 +146,7 @@
     "category" : "option",
     "default" : [
     ],
+    "deprecatedIn" : null,
     "description" : "define key=value for a @key@ entry in config file",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -147,6 +159,7 @@
   "dump-dependencies" : {
     "category" : "command",
     "default" : false,
+    "deprecatedIn" : null,
     "description" : "dump dependency graph",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -159,6 +172,7 @@
   "dump-options" : {
     "category" : "command",
     "default" : true,
+    "deprecatedIn" : null,
     "description" : "dump configuration options in JSON format",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -172,6 +186,7 @@
     "category" : "option",
     "default" : [
     ],
+    "deprecatedIn" : null,
     "description" : "syntax check code Javascript code from file",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -184,6 +199,7 @@
   "javascript.client-module" : {
     "category" : "option",
     "default" : "client.js",
+    "deprecatedIn" : null,
     "description" : "client module to use at startup",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -208,6 +224,7 @@
   "javascript.copy-installation" : {
     "category" : "option",
     "default" : false,
+    "deprecatedIn" : null,
     "description" : "copy contents of 'javascript.startup-directory'",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -220,6 +237,7 @@
   "javascript.current-module-directory" : {
     "category" : "option",
     "default" : true,
+    "deprecatedIn" : null,
     "description" : "add current directory to module path",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -233,6 +251,7 @@
     "category" : "option",
     "default" : [
     ],
+    "deprecatedIn" : null,
     "description" : "execute Javascript code from file",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -246,6 +265,7 @@
     "category" : "option",
     "default" : [
     ],
+    "deprecatedIn" : null,
     "description" : "execute Javascript code from string",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -258,6 +278,7 @@
   "javascript.gc-interval" : {
     "category" : "option",
     "default" : 50,
+    "deprecatedIn" : null,
     "description" : "request-based garbage collection interval (each n.th command)",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -271,6 +292,7 @@
     "category" : "option",
     "default" : [
     ],
+    "deprecatedIn" : null,
     "description" : "additional paths containing JavaScript modules",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -283,6 +305,7 @@
   "javascript.startup-directory" : {
     "category" : "option",
     "default" : "./js",
+    "deprecatedIn" : null,
     "description" : "startup paths containing the Javascript files",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -295,6 +318,7 @@
   "javascript.unit-test-filter" : {
     "category" : "option",
     "default" : "",
+    "deprecatedIn" : null,
     "description" : "filter testcases in suite",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -308,6 +332,7 @@
     "category" : "option",
     "default" : [
     ],
+    "deprecatedIn" : null,
     "description" : "do not start as shell, run unit tests instead",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -320,6 +345,7 @@
   "javascript.v8-max-heap" : {
     "category" : "option",
     "default" : 3072,
+    "deprecatedIn" : null,
     "description" : "maximal heap size (in MB)",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -333,6 +359,7 @@
     "category" : "option",
     "default" : [
     ],
+    "deprecatedIn" : null,
     "description" : "options to pass to v8",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -346,6 +373,7 @@
     "category" : "option",
     "default" : [
     ],
+    "deprecatedIn" : null,
     "description" : "do not start as shell, run jslint instead",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -360,6 +388,7 @@
     "default" : [
       "info"
     ],
+    "deprecatedIn" : null,
     "description" : "the global or topic-specific log level",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -372,6 +401,7 @@
   "log.color" : {
     "category" : "option",
     "default" : true,
+    "deprecatedIn" : null,
     "description" : "use colors for TTY logging",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -384,6 +414,7 @@
   "log.escape" : {
     "category" : "option",
     "default" : true,
+    "deprecatedIn" : null,
     "description" : "escape characters when logging",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -396,6 +427,7 @@
   "log.file" : {
     "category" : "option",
     "default" : "-",
+    "deprecatedIn" : null,
     "description" : "shortcut for '--log.output file://<filename>'",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -408,6 +440,7 @@
   "log.force-direct" : {
     "category" : "option",
     "default" : false,
+    "deprecatedIn" : null,
     "description" : "do not start a seperate thread for logging",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -420,6 +453,7 @@
   "log.foreground-tty" : {
     "category" : "option",
     "default" : false,
+    "deprecatedIn" : null,
     "description" : "also log to tty if backgrounded",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -432,6 +466,7 @@
   "log.keep-logrotate" : {
     "category" : "option",
     "default" : false,
+    "deprecatedIn" : null,
     "description" : "keep the old log file after receiving a sighup",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -446,6 +481,7 @@
     "default" : [
       "info"
     ],
+    "deprecatedIn" : null,
     "description" : "the global or topic-specific log level",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -458,6 +494,7 @@
   "log.line-number" : {
     "category" : "option",
     "default" : false,
+    "deprecatedIn" : null,
     "description" : "append line number and file name",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -471,6 +508,7 @@
     "category" : "option",
     "default" : [
     ],
+    "deprecatedIn" : null,
     "description" : "log destination(s)",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -483,6 +521,7 @@
   "log.performance" : {
     "category" : "option",
     "default" : false,
+    "deprecatedIn" : null,
     "description" : "shortcut for '--log.level performance=trace'",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -495,6 +534,7 @@
   "log.prefix" : {
     "category" : "option",
     "default" : "",
+    "deprecatedIn" : null,
     "description" : "prefix log message with this string",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -519,6 +559,7 @@
   "log.role" : {
     "category" : "option",
     "default" : false,
+    "deprecatedIn" : null,
     "description" : "log server role",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -531,6 +572,7 @@
   "log.shorten-filenames" : {
     "category" : "option",
     "default" : true,
+    "deprecatedIn" : null,
     "description" : "shorten filenames in log output (use with --log.line-number)",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -543,6 +585,7 @@
   "log.thread" : {
     "category" : "option",
     "default" : false,
+    "deprecatedIn" : null,
     "description" : "show thread identifier in log message",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -555,6 +598,7 @@
   "log.thread-name" : {
     "category" : "option",
     "default" : false,
+    "deprecatedIn" : null,
     "description" : "show thread name in log message",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -567,6 +611,7 @@
   "log.use-local-time" : {
     "category" : "option",
     "default" : false,
+    "deprecatedIn" : null,
     "description" : "use local timezone instead of UTC",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -579,6 +624,7 @@
   "log.use-microtime" : {
     "category" : "option",
     "default" : false,
+    "deprecatedIn" : null,
     "description" : "use microtime instead",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -591,6 +637,7 @@
   "quiet" : {
     "category" : "option",
     "default" : false,
+    "deprecatedIn" : null,
     "description" : "silent startup",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -603,6 +650,7 @@
   "random.generator" : {
     "category" : "option",
     "default" : 1,
+    "deprecatedIn" : null,
     "description" : "random number generator to use (1 = MERSENNE, 2 = RANDOM, 3 = URANDOM, 4 = COMBINED (not for Windows), 5 = WinCrypt (Windows only)",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -616,6 +664,7 @@
   "server.ask-jwt-secret" : {
     "category" : "option",
     "default" : false,
+    "deprecatedIn" : null,
     "description" : "if this option is specified, the user will be prompted for a JWT secret. This option is not compatible with --server.username or --server.password. If specified, it will be used for all connections - even when a new connection to another server is created",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -628,6 +677,7 @@
   "server.authentication" : {
     "category" : "option",
     "default" : false,
+    "deprecatedIn" : null,
     "description" : "require authentication credentials when connecting (does not affect the server-side authentication settings)",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -640,6 +690,7 @@
   "server.connection-timeout" : {
     "category" : "option",
     "default" : 5,
+    "deprecatedIn" : null,
     "description" : "connection timeout in seconds",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -652,6 +703,7 @@
   "server.database" : {
     "category" : "option",
     "default" : "_system",
+    "deprecatedIn" : null,
     "description" : "database name to use when connecting",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -664,6 +716,7 @@
   "server.endpoint" : {
     "category" : "option",
     "default" : "http+tcp://127.0.0.1:8529",
+    "deprecatedIn" : null,
     "description" : "endpoint to connect to, use 'none' to start without a server",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -676,6 +729,7 @@
   "server.max-packet-size" : {
     "category" : "option",
     "default" : 1073741824,
+    "deprecatedIn" : null,
     "description" : "maximum packet size (in bytes) for client/server communication",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -688,6 +742,7 @@
   "server.password" : {
     "category" : "option",
     "default" : "",
+    "deprecatedIn" : null,
     "description" : "password to use when connecting. If not specified and authentication is required, the user will be prompted for a password",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -700,6 +755,7 @@
   "server.request-timeout" : {
     "category" : "option",
     "default" : 1200,
+    "deprecatedIn" : null,
     "description" : "request timeout in seconds",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -712,6 +768,7 @@
   "server.username" : {
     "category" : "option",
     "default" : "root",
+    "deprecatedIn" : null,
     "description" : "username to use when connecting",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -737,6 +794,7 @@
   "temp.path" : {
     "category" : "option",
     "default" : "",
+    "deprecatedIn" : null,
     "description" : "path for temporary files",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -749,6 +807,7 @@
   "version" : {
     "category" : "command",
     "default" : false,
+    "deprecatedIn" : null,
     "description" : "reports the version and exits",
     "dynamic" : false,
     "enterpriseOnly" : false,
