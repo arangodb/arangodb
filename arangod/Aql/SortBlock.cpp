@@ -231,7 +231,7 @@ class StandardSorter : public arangodb::aql::SortBlock::Sorter {
                     _buffer[coords[count].first]->steal(a);
                     _buffer[coords[count].first]->eraseValue(coords[count].second, j);
                     // If this has worked, responsibility is now with the
-                    // new block or indeed with us!
+                    // new block or requestBlockindeed with us!
                     // If the following does not work, we will create a
                     // few unnecessary copies, but this does not matter:
                     cache.emplace(a, a);
@@ -334,7 +334,7 @@ std::pair<ExecutionState, arangodb::Result> SortBlock::initializeCursor(AqlItemB
 
 std::pair<ExecutionState, arangodb::Result> SortBlock::getOrSkipSome(
     size_t atMost, bool skipping, AqlItemBlock*& result, size_t& skipped) {
-  TRI_ASSERT(result == nullptr && skipped == 0);
+  TRI_ASSERT(_sorter != nullptr && result == nullptr && skipped == 0);
 
   // sorter handles all the dirty work
   auto res = _sorter->sort();
