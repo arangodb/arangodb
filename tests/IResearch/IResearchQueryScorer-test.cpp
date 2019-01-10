@@ -788,7 +788,7 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
     }
   }
 
-  // ensure scorers are deduplicated (expression)
+  // ensure scorers are deduplicated (indexed access)
   {
     std::string const queryString =
       "LET obj = _NONDETERM_([ 2, 5 ]) "
@@ -896,6 +896,468 @@ TEST_CASE("IResearchQueryScorer", "[iresearch][iresearch-query]") {
         REQUIRE(value.isNumber());
         CHECK(5 == value.getNumber<size_t>());
       }
+    }
+  }
+
+  // ensure scorers are deduplicated (ternary)
+  {
+    std::string const queryString =
+      "LET obj = _NONDETERM_([ 2, 5 ]) "
+      "FOR d IN testView SEARCH d.name >= 'A' AND d.name <= 'C' "
+      "RETURN [ customscorer(d, obj[0] > obj[1] ? 1 : 2), customscorer(d, obj[0] > obj[1] ? 1 : 2) ] ";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, queryString, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+      }
+    ));
+
+    arangodb::aql::Query query(
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      std::shared_ptr<arangodb::velocypack::Builder>(),
+      arangodb::velocypack::Parser::fromJson("{}"),
+      arangodb::aql::PART_MAIN
+    );
+
+    query.prepare(arangodb::QueryRegistryFeature::registry());
+    auto* plan = query.plan();
+    REQUIRE(plan);
+
+    arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+
+    // only one scorer
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+    REQUIRE(1 == nodes.size());
+    auto* viewNode = arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(nodes.front());
+    REQUIRE(viewNode);
+    auto& scorers = viewNode->scorers();
+    REQUIRE(1 == scorers.size());
+    auto* var = scorers.front().var;
+    REQUIRE(var);
+
+    // check scorer
+    {
+      auto* expr = scorers.front().node;
+      REQUIRE(expr);
+      REQUIRE(arangodb::aql::NODE_TYPE_FCALL == expr->type);
+      auto* fn = static_cast<arangodb::aql::Function*>(expr->getData());
+      REQUIRE(fn);
+      REQUIRE(arangodb::iresearch::isScorer(*fn));
+      CHECK("CUSTOMSCORER" == fn->name);
+
+      REQUIRE(1 == expr->numMembers());
+      auto* args = expr->getMember(0);
+      REQUIRE(args);
+      REQUIRE(arangodb::aql::NODE_TYPE_ARRAY == args->type);
+      REQUIRE(2 == args->numMembers());
+      auto* arg0 = args->getMember(0); // reference to d
+      REQUIRE(arg0);
+      REQUIRE(static_cast<void const*>(&viewNode->outVariable()) == arg0->getData());
+      auto* arg1 = args->getMember(1);
+      REQUIRE(arg1);
+      REQUIRE(arangodb::aql::NODE_TYPE_OPERATOR_TERNARY == arg1->type);
+    }
+
+    // and 2 references
+    nodes.clear();
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::CALCULATION, true);
+    REQUIRE(2 == nodes.size());
+    for (auto const* node : nodes) {
+      auto* calcNode = arangodb::aql::ExecutionNode::castTo<arangodb::aql::CalculationNode const*>(node);
+      REQUIRE(calcNode);
+      REQUIRE(calcNode->expression());
+
+      if (calcNode->outVariable()->name == "obj") {
+        continue;
+      }
+
+      auto* exprNode = calcNode->expression()->node();
+      REQUIRE(exprNode);
+      REQUIRE(arangodb::aql::NODE_TYPE_ARRAY == exprNode->type);
+      REQUIRE(2 == exprNode->numMembers());
+      for (size_t i = 0; i < exprNode->numMembers(); ++i) {
+        auto* sub = exprNode->getMember(i);
+        REQUIRE(arangodb::aql::NODE_TYPE_REFERENCE == sub->type);
+        CHECK(static_cast<const void*>(var) == sub->getData());
+      }
+    }
+
+    // check execution
+    auto queryResult = arangodb::tests::executeQuery(vocbase, queryString);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(3 == resultIt.size());
+
+    for (;resultIt.valid(); resultIt.next()) {
+      auto const actualValue = resultIt.value();
+      REQUIRE(actualValue.isArray());
+
+      VPackArrayIterator scoreIt(actualValue);
+      CHECK(2 == scoreIt.size());
+
+      for (; scoreIt.valid(); scoreIt.next()) {
+        auto const value = scoreIt.value();
+        REQUIRE(value.isNumber());
+        CHECK(2 == value.getNumber<size_t>());
+      }
+    }
+  }
+
+  // ensure scorers aren't deduplicated (ternary)
+  {
+    std::string const queryString =
+      "LET obj = _NONDETERM_([ 2, 5 ]) "
+      "FOR d IN testView SEARCH d.name >= 'A' AND d.name <= 'C' "
+      "RETURN [ customscorer(d, obj[0] > obj[1] ? 1 : 2), customscorer(d, obj[1] > obj[2] ? 1 : 2) ] ";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, queryString, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+      }
+    ));
+
+    arangodb::aql::Query query(
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      std::shared_ptr<arangodb::velocypack::Builder>(),
+      arangodb::velocypack::Parser::fromJson("{}"),
+      arangodb::aql::PART_MAIN
+    );
+
+    query.prepare(arangodb::QueryRegistryFeature::registry());
+    auto* plan = query.plan();
+    REQUIRE(plan);
+
+    arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+
+    // only one scorer
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+    REQUIRE(1 == nodes.size());
+    auto* viewNode = arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(nodes.front());
+    REQUIRE(viewNode);
+    auto& scorers = viewNode->scorers();
+    REQUIRE(2 == scorers.size());
+    auto* var = scorers.front().var;
+    REQUIRE(var);
+
+    // check scorers
+    {
+      auto* expr = scorers[0].node;
+      REQUIRE(expr);
+      REQUIRE(arangodb::aql::NODE_TYPE_FCALL == expr->type);
+      auto* fn = static_cast<arangodb::aql::Function*>(expr->getData());
+      REQUIRE(fn);
+      REQUIRE(arangodb::iresearch::isScorer(*fn));
+      CHECK("CUSTOMSCORER" == fn->name);
+
+      REQUIRE(1 == expr->numMembers());
+      auto* args = expr->getMember(0);
+      REQUIRE(args);
+      REQUIRE(arangodb::aql::NODE_TYPE_ARRAY == args->type);
+      REQUIRE(2 == args->numMembers());
+      auto* arg0 = args->getMember(0); // reference to d
+      REQUIRE(arg0);
+      REQUIRE(static_cast<void const*>(&viewNode->outVariable()) == arg0->getData());
+      auto* arg1 = args->getMember(1);
+      REQUIRE(arg1);
+      REQUIRE(arangodb::aql::NODE_TYPE_OPERATOR_TERNARY == arg1->type);
+    }
+
+    {
+      auto* expr = scorers[1].node;
+      REQUIRE(expr);
+      REQUIRE(arangodb::aql::NODE_TYPE_FCALL == expr->type);
+      auto* fn = static_cast<arangodb::aql::Function*>(expr->getData());
+      REQUIRE(fn);
+      REQUIRE(arangodb::iresearch::isScorer(*fn));
+      CHECK("CUSTOMSCORER" == fn->name);
+
+      REQUIRE(1 == expr->numMembers());
+      auto* args = expr->getMember(0);
+      REQUIRE(args);
+      REQUIRE(arangodb::aql::NODE_TYPE_ARRAY == args->type);
+      REQUIRE(2 == args->numMembers());
+      auto* arg0 = args->getMember(0); // reference to d
+      REQUIRE(arg0);
+      REQUIRE(static_cast<void const*>(&viewNode->outVariable()) == arg0->getData());
+      auto* arg1 = args->getMember(1);
+      REQUIRE(arg1);
+      REQUIRE(arangodb::aql::NODE_TYPE_OPERATOR_TERNARY == arg1->type);
+    }
+
+    // check execution
+    auto queryResult = arangodb::tests::executeQuery(vocbase, queryString);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(3 == resultIt.size());
+
+    for (;resultIt.valid(); resultIt.next()) {
+      auto const actualValue = resultIt.value();
+      REQUIRE(actualValue.isArray());
+
+      VPackArrayIterator scoreIt(actualValue);
+      CHECK(2 == scoreIt.size());
+      REQUIRE(scoreIt.valid());
+
+      {
+        auto const value = scoreIt.value();
+        REQUIRE(value.isNumber());
+        CHECK(2 == value.getNumber<size_t>());
+        scoreIt.next();
+      }
+
+      {
+        auto const value = scoreIt.value();
+        REQUIRE(value.isNumber());
+        CHECK(1 == value.getNumber<size_t>());
+        scoreIt.next();
+      }
+
+      REQUIRE(!scoreIt.valid());
+    }
+  }
+
+  // ensure scorers are deduplicated (complex expression)
+  {
+    std::string const queryString =
+      "LET obj = _NONDETERM_([ 2, 5 ]) "
+      "FOR d IN testView SEARCH d.name >= 'A' AND d.name <= 'C' "
+      "RETURN [ customscorer(d, 5*obj[0]*TO_NUMBER(obj[1] > obj[2])/obj[1] - 1), customscorer(d, 5*obj[0]*TO_NUMBER(obj[1] > obj[2])/obj[1] - 1) ] ";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, queryString, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+      }
+    ));
+
+    arangodb::aql::Query query(
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      std::shared_ptr<arangodb::velocypack::Builder>(),
+      arangodb::velocypack::Parser::fromJson("{}"),
+      arangodb::aql::PART_MAIN
+    );
+
+    query.prepare(arangodb::QueryRegistryFeature::registry());
+    auto* plan = query.plan();
+    REQUIRE(plan);
+
+    arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+
+    // only one scorer
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+    REQUIRE(1 == nodes.size());
+    auto* viewNode = arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(nodes.front());
+    REQUIRE(viewNode);
+    auto& scorers = viewNode->scorers();
+    REQUIRE(1 == scorers.size());
+    auto* var = scorers.front().var;
+    REQUIRE(var);
+
+    // check scorer
+    {
+      auto* expr = scorers.front().node;
+      REQUIRE(expr);
+      REQUIRE(arangodb::aql::NODE_TYPE_FCALL == expr->type);
+      auto* fn = static_cast<arangodb::aql::Function*>(expr->getData());
+      REQUIRE(fn);
+      REQUIRE(arangodb::iresearch::isScorer(*fn));
+      CHECK("CUSTOMSCORER" == fn->name);
+
+      REQUIRE(1 == expr->numMembers());
+      auto* args = expr->getMember(0);
+      REQUIRE(args);
+      REQUIRE(arangodb::aql::NODE_TYPE_ARRAY == args->type);
+      REQUIRE(2 == args->numMembers());
+      auto* arg0 = args->getMember(0); // reference to d
+      REQUIRE(arg0);
+      REQUIRE(static_cast<void const*>(&viewNode->outVariable()) == arg0->getData());
+      auto* arg1 = args->getMember(1);
+      REQUIRE(arg1);
+      CHECK(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_MINUS == arg1->type);
+    }
+
+    // and 2 references
+    nodes.clear();
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::CALCULATION, true);
+    REQUIRE(2 == nodes.size());
+    for (auto const* node : nodes) {
+      auto* calcNode = arangodb::aql::ExecutionNode::castTo<arangodb::aql::CalculationNode const*>(node);
+      REQUIRE(calcNode);
+      REQUIRE(calcNode->expression());
+
+      if (calcNode->outVariable()->name == "obj") {
+        continue;
+      }
+
+      auto* exprNode = calcNode->expression()->node();
+      REQUIRE(exprNode);
+      REQUIRE(arangodb::aql::NODE_TYPE_ARRAY == exprNode->type);
+      REQUIRE(2 == exprNode->numMembers());
+      for (size_t i = 0; i < exprNode->numMembers(); ++i) {
+        auto* sub = exprNode->getMember(i);
+        REQUIRE(arangodb::aql::NODE_TYPE_REFERENCE == sub->type);
+        CHECK(static_cast<const void*>(var) == sub->getData());
+      }
+    }
+
+    // check execution
+    auto queryResult = arangodb::tests::executeQuery(vocbase, queryString);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(3 == resultIt.size());
+
+    for (;resultIt.valid(); resultIt.next()) {
+      auto const actualValue = resultIt.value();
+      REQUIRE(actualValue.isArray());
+
+      VPackArrayIterator scoreIt(actualValue);
+      CHECK(2 == scoreIt.size());
+
+      for (; scoreIt.valid(); scoreIt.next()) {
+        auto const value = scoreIt.value();
+        REQUIRE(value.isNumber());
+        CHECK(1 == value.getNumber<size_t>());
+      }
+    }
+  }
+
+  // ensure scorers aren't deduplicated (complex expression)
+  {
+    std::string const queryString =
+      "LET obj = _NONDETERM_([ 2, 5 ]) "
+      "FOR d IN testView SEARCH d.name >= 'A' AND d.name <= 'C' "
+      "RETURN [ customscorer(d, 5*obj[0]*TO_NUMBER(obj[1] > obj[2])/obj[1] - 1), customscorer(d, 5*obj[0]*TO_NUMBER(obj[1] > obj[2])/obj[1] - 2) ] ";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, queryString, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+      }
+    ));
+
+    arangodb::aql::Query query(
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      std::shared_ptr<arangodb::velocypack::Builder>(),
+      arangodb::velocypack::Parser::fromJson("{}"),
+      arangodb::aql::PART_MAIN
+    );
+
+    query.prepare(arangodb::QueryRegistryFeature::registry());
+    auto* plan = query.plan();
+    REQUIRE(plan);
+
+    arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+
+    // only one scorer
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+    REQUIRE(1 == nodes.size());
+    auto* viewNode = arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(nodes.front());
+    REQUIRE(viewNode);
+    auto& scorers = viewNode->scorers();
+    REQUIRE(2 == scorers.size());
+    auto* var = scorers.front().var;
+    REQUIRE(var);
+
+    // check scorers
+    {
+      auto* expr = scorers[0].node;
+      REQUIRE(expr);
+      REQUIRE(arangodb::aql::NODE_TYPE_FCALL == expr->type);
+      auto* fn = static_cast<arangodb::aql::Function*>(expr->getData());
+      REQUIRE(fn);
+      REQUIRE(arangodb::iresearch::isScorer(*fn));
+      CHECK("CUSTOMSCORER" == fn->name);
+
+      REQUIRE(1 == expr->numMembers());
+      auto* args = expr->getMember(0);
+      REQUIRE(args);
+      REQUIRE(arangodb::aql::NODE_TYPE_ARRAY == args->type);
+      REQUIRE(2 == args->numMembers());
+      auto* arg0 = args->getMember(0); // reference to d
+      REQUIRE(arg0);
+      REQUIRE(static_cast<void const*>(&viewNode->outVariable()) == arg0->getData());
+      auto* arg1 = args->getMember(1);
+      REQUIRE(arg1);
+      CHECK(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_MINUS == arg1->type);
+    }
+
+    {
+      auto* expr = scorers[1].node;
+      REQUIRE(expr);
+      REQUIRE(arangodb::aql::NODE_TYPE_FCALL == expr->type);
+      auto* fn = static_cast<arangodb::aql::Function*>(expr->getData());
+      REQUIRE(fn);
+      REQUIRE(arangodb::iresearch::isScorer(*fn));
+      CHECK("CUSTOMSCORER" == fn->name);
+
+      REQUIRE(1 == expr->numMembers());
+      auto* args = expr->getMember(0);
+      REQUIRE(args);
+      REQUIRE(arangodb::aql::NODE_TYPE_ARRAY == args->type);
+      REQUIRE(2 == args->numMembers());
+      auto* arg0 = args->getMember(0); // reference to d
+      REQUIRE(arg0);
+      REQUIRE(static_cast<void const*>(&viewNode->outVariable()) == arg0->getData());
+      auto* arg1 = args->getMember(1);
+      REQUIRE(arg1);
+      CHECK(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_MINUS == arg1->type);
+    }
+
+    // check execution
+    auto queryResult = arangodb::tests::executeQuery(vocbase, queryString);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(3 == resultIt.size());
+
+    for (;resultIt.valid(); resultIt.next()) {
+      auto const actualValue = resultIt.value();
+      REQUIRE(actualValue.isArray());
+
+      VPackArrayIterator scoreIt(actualValue);
+      CHECK(2 == scoreIt.size());
+      REQUIRE(scoreIt.valid());
+
+      {
+        auto const value = scoreIt.value();
+        REQUIRE(value.isNumber());
+        CHECK(1 == value.getNumber<size_t>());
+        scoreIt.next();
+      }
+
+      {
+        auto const value = scoreIt.value();
+        REQUIRE(value.isNumber());
+        CHECK(0 == value.getNumber<size_t>());
+        scoreIt.next();
+      }
+
+      REQUIRE(!scoreIt.valid());
     }
   }
 
