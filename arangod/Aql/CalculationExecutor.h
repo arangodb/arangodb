@@ -60,13 +60,13 @@ struct CalculationExecutorInfos : public ExecutorInfos {
   CalculationExecutorInfos(CalculationExecutorInfos const&) = delete;
   ~CalculationExecutorInfos() = default;
 
-  RegisterId _outputRegister;
+  RegisterId _outputRegisterId;
 
   Query* _query;
   Expression* _expression;
-  std::vector<Variable const*> _expInVars;
-  std::vector<RegisterId> _expInRegs;
-  Variable const* _conditionVariable;
+  std::vector<Variable const*> _expInVars;  // input variables for expresseion
+  std::vector<RegisterId> _expInRegs;       // input registers for expression?
+  Variable const* _condition;               // What kind of condition is this?
   bool _isReference = false;
 };
 

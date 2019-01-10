@@ -52,19 +52,19 @@ CalculationExecutorInfos::CalculationExecutorInfos(
 
     ,
     Query* query, Expression* expression, std::vector<Variable const*>&& expInVars,
-    std::vector<RegisterId>&& expInRegs, Variable const* conditionVar)
+    std::vector<RegisterId>&& expInRegs, Variable const* condition)
 
     : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(expInRegs.begin(),
                                                                      expInRegs.end()),
                     std::make_shared<std::unordered_set<RegisterId>>(
                         std::initializer_list<RegisterId>{outputRegister}),
                     nrInputRegisters, nrOutputRegisters, std::move(registersToClear)),
-      _outputRegister(outputRegister),
+      _outputRegisterId(outputRegister),
       _query(query),
       _expression(expression),
       _expInVars(std::move(expInVars)),
       _expInRegs(std::move(expInRegs)),
-      _conditionVariable(conditionVar) {
+      _condition(condition) {
   TRI_ASSERT(_expression != nullptr);
   TRI_ASSERT(_query->trx() != nullptr);
 
@@ -115,7 +115,7 @@ void doEvaluation(CalculationExecutorInfos& info, InputAqlItemRow& input,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    output.setValue(info._outputRegister, input, input.getValue(inRegs[0]));
+    output.setValue(info._outputRegisterId, input, input.getValue(inRegs[0]));
 
     if (info._query->killed()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
@@ -154,10 +154,13 @@ void doEvaluation(CalculationExecutorInfos& info, InputAqlItemRow& input,
 
 void executeExpression(CalculationExecutorInfos& info, InputAqlItemRow& input,
                        OutputAqlItemRow& output) {
-  bool const hasCondition = info._conditionVariable != nullptr;
+  bool const hasCondition = info._condition != nullptr;
+
+
   TRI_ASSERT(!hasCondition);
+  // TODO not implemented -- see old CalcualtionBlock.cpp for details -- below old impl
+  // what kind of condition could this be?
   if (hasCondition) {
-    // TODO not implemented -- see old CalcualtionBlock.cpp for details -- below old impl
 
     // if (hasCondition) {
     //  AqlValue const& conditionResult = result->getValueReference(i, _conditionReg);
@@ -183,7 +186,7 @@ void executeExpression(CalculationExecutorInfos& info, InputAqlItemRow& input,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  output.setValue(info._outputRegister, input, a);
+  output.setValue(info._outputRegisterId, input, a);
   guard.steal();  // itemblock has taken over now
 
   if (info._query->killed()) {
