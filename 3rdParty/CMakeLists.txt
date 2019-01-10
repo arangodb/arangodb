@@ -119,6 +119,7 @@ set(BOOST_VERSION ${BOOST_VERSION} PARENT_SCOPE)
 ################################################################################
 
 if (USE_IRESEARCH)
+  # THIS SHIT MUST GO
   add_library(boost-static IMPORTED STATIC)
   set_target_properties(boost-static PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/boost/${BOOST_VERSION}"

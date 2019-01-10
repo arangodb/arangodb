@@ -23,6 +23,11 @@
 #ifndef ARANGOD_FUTURES_BACKPORTS_H
 #define ARANGOD_FUTURES_BACKPORTS_H 1
 
+#if __cplusplus >= 201703L
+#include <type_traits>
+#include <utility>
+#endif
+
 namespace arangodb {
 namespace futures {
 
@@ -63,13 +68,15 @@ constexpr auto invoke(M(C::*d), Args&&... args)
 }
 
 #else
-#include <type_traits>
-#include <utility>
+using std::invoke;
 using in_place_t = std::in_place_t;
-using in_place = std::in_place;
-using is_invocable = std::is_invocable;
-using is_invocable_r = std::is_invocable_r;
-using invoke = std::invoke;
+inline constexpr in_place_t in_place{};
+
+template <class R, class FN, class... ArgTypes>
+using is_invocable_r = std::is_invocable_r<R, FN, ArgTypes...>;
+
+template <class FN, class... ArgTypes>
+using is_invocable = std::is_invocable<FN, ArgTypes...>;
 #endif
 
 }  // namespace futures
