@@ -7,7 +7,7 @@ Backup and restore can be done via the tools
 
 In order to speed up the _arangorestore_ performance in a cluster environment,
 the [Fast Cluster Restore](../Programs/Arangorestore/FastClusterRestore.md)
-procedure is recommended. 
+procedure is recommended.
 
 Performing frequent backups is important and a recommended best practices that
 can allow you to recover your data in case unexpected problems occur.

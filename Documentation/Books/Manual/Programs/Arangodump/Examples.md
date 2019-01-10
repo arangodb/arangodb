@@ -18,12 +18,12 @@ _arangodump_ will by default connect to the *_system* database using the default
 endpoint. If you want to connect to a different database or a different endpoint,
 or use authentication, you can use the following command-line options:
 
-- *--server.database <string>*: name of the database to connect to
-- *--server.endpoint <string>*: endpoint to connect to
-- *--server.username <string>*: username
-- *--server.password <string>*: password to use (omit this and you'll be prompted for the
+- `--server.database <string>`: name of the database to connect to
+- `--server.endpoint <string>`: endpoint to connect to
+- `--server.username <string>`: username
+- `--server.password <string>`: password to use (omit this and you'll be prompted for the
   password)
-- *--server.authentication <bool>*: whether or not to use authentication
+- `--server.authentication <bool>`: whether or not to use authentication
 
 Here's an example of dumping data from a non-standard endpoint, using a dedicated
 [database name](../../Appendix/Glossary.md#database-name):
@@ -39,9 +39,9 @@ By default, _arangodump_ will dump both structural information and documents fro
 non-system collections. To adjust this, there are the following command-line
 arguments:
 
-- *--dump-data <bool>*: set to *true* to include documents in the dump. Set to *false*
+- `--dump-data <bool>`: set to *true* to include documents in the dump. Set to *false*
   to exclude documents. The default value is *true*.
-- *--include-system-collections <bool>*: whether or not to include system collections
+- `--include-system-collections <bool>`: whether or not to include system collections
   in the dump. The default value is *false*. **Set to _true_ if you are using named
   graphs that you are interested in restoring.**
 

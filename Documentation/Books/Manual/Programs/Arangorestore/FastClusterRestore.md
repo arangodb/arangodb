@@ -10,9 +10,9 @@ with [_arangodump_](../Arangodump/README.md) has already been taken.
 
 {% hint 'info' %}
 The procedure described in this page is particularly useful for ArangoDB
-version 3.3, but can be used in 3.4 and later versions as well. Note that 
+version 3.3, but can be used in 3.4 and later versions as well. Note that
 from v3.4, _arangorestore_ includes the option _threads_ which can be a first
-good step already in achieving restore parallelization and its speed benefit. 
+good step already in achieving restore parallelization and its speed benefit.
 However, the the procedure below allows for even further parallelization (making
 using of different _Coordinators_), and the part regarding temporarily setting
 _replication factor_ to 1 is still useful in 3.4 and later versions.
@@ -23,12 +23,12 @@ The speed improvement obtained by the procedure below is achieved by:
 1. Restoring into a Cluster that has _replication factor_ 1, thus reducing
    number of network hops needed during the restore operation (_replication factor_
    is reverted to initial value at the end of the procedure - steps #2, #3 and #6).
-2. Restoring in parallel multiple collections on different _Coordinators_ 
-   (steps #4 and #5).  
+2. Restoring in parallel multiple collections on different _Coordinators_
+   (steps #4 and #5).
 
 {% hint 'info' %}
-Please refer to 
-[this](Examples.md#factors-affecting-speed-of-arangorestore-in-a-cluster) 
+Please refer to
+[this](Examples.md#factors-affecting-speed-of-arangorestore-in-a-cluster)
 section for further context on the factors affecting restore speed when restoring
 using _arangorestore_ in a Cluster.
 {% endhint %}
@@ -37,14 +37,14 @@ Step 1: Copy the _dump_ directory to all _Coordinators_
 -------------------------------------------------------
 
 The first step is to copy the directory that contains the _dump_ to all machines
-where _Coordinators_ are running. 
+where _Coordinators_ are running.
 
 {% hint 'info' %}
 This step is not strictly required as the backup can be restored over the
 network. However, if the restore is executed locally the restore speed is
 significantly improved.
 {% endhint %}
-	
+
 Step 2: Restore collection structures
 -------------------------------------
 
@@ -54,9 +54,9 @@ _Coordinator_ can be used) with the following command:
 ```
 arangorestore
   --server.endpoint <endpoint-of-a-coordinator>
-  --server.database <database-name> 
-  --server.password <password> 
-  --import-data false 
+  --server.database <database-name>
+  --server.password <password>
+  --import-data false
   --input-directory <dump-directory>
 ```
 
@@ -80,7 +80,7 @@ c.properties().replicationFactor); c.properties({ replicationFactor: 1 }); });'
   --server.endpoint <endpoint-of-a-coordinator>
   --server.database <database-name>
   --server.username <user-name>
-  --server.password <password> 
+  --server.password <password>
 ```
 
 Step 4: Create parallel restore scripts
@@ -191,7 +191,7 @@ for (let i = 0; i < dataFiles.length; ++i) {
 }
 
 var cnum = 0;
-// for (let i = 0; i < dataFiles.length; ++i) { 
+// for (let i = 0; i < dataFiles.length; ++i) {
 for (let i = 0; i < coordinators.length; ++i) {
   // var f = files[dataFiles[i]];
   // scripts[cnum].push(`${arangorestore} --collection ${f.collName} --input-directory ${dumpDir} --server.endpoint ${coordinators[cnum]} ` + otherArgs.join(" "));
@@ -234,7 +234,7 @@ scripts are named `coordinator_<number-of-coordinator>.sh` (e.g.
 `coordinator_0.sh`, `coordinator_1.sh`, `coordinator_2.sh`).
 
 **Note:** starting from v.3.4.0 the _arangorestore_ option *--threads N* can be
-passed to the command above, where _N_ is an integer, to further parallelize 
+passed to the command above, where _N_ is an integer, to further parallelize
 (so there will be a parallelization also in each _Coordinator_). *--threads 2*
 is used by default (from v.3.4.0 on) if the option *--threads* is not passed.
 
