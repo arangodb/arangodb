@@ -82,6 +82,8 @@ v3.4.2 (XXXX-XX-XX)
 
 * Improve single threaded performance by scheduler optimization.
 
+* Releveling logging in maintenance
+
 v3.4.1 (2018-12-19)
 -------------------
 
