@@ -429,7 +429,7 @@ arangodb::Result SynchronizeShard::getReadLock(
       return arangodb::Result();
     }
     
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+    LOG_TOPIC(WARN, Logger::MAINTENANCE)
       << "startReadLockOnLeader: couldn't POST lock body, "
       << postres->result->getHttpReturnMessage() << ", giving up.";
   
