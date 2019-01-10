@@ -121,6 +121,15 @@
       var deduplicate;
 
       switch (indexType) {
+        case 'Ttl':
+          fields = $('#newTtlFields').val();
+          var expireAfter = parseInt($('#newTtlExpireAfter').val(), 10) || 0;
+          postParameter = {
+            type: 'ttl',
+            fields: self.stringToArray(fields),
+            expireAfter: expireAfter
+          };
+          break;
         case 'Geo':
           // HANDLE ARRAY building
           fields = $('#newGeoFields').val();
@@ -179,24 +188,15 @@
             deduplicate: deduplicate
           };
           break;
-        case 'Ttl':
-          fields = $('#newTtlFields').val();
-          var expireAfter = parseInt($('#newTtlExpireAfter').val(), 10) || 0;
-          postParameter = {
-            type: 'ttl',
-            fields: self.stringToArray(fields),
-            expireAfter: expireAfter
-          };
-          break;
       }
 
       var callback = function (error, msg) {
         if (error) {
           if (msg) {
             var message = JSON.parse(msg.responseText);
-            arangoHelper.arangoError('Document error', message.errorMessage);
+            arangoHelper.arangoError('Index error', message.errorMessage);
           } else {
-            arangoHelper.arangoError('Document error', 'Could not create index.');
+            arangoHelper.arangoError('Index error', 'Could not create index.');
           }
         } else {
           arangoHelper.arangoNotification('Index', 'Creation in progress. This may take a while.');

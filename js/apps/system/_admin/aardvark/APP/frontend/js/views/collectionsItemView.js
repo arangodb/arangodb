@@ -532,6 +532,15 @@
       var sparse;
 
       switch (indexType) {
+        case 'Ttl':
+          fields = $('#newTtlFields').val();
+          var expireAfter = parseInt($('#newTtlExpireAfter').val(), 10) || 0;
+          postParameter = {
+            type: 'ttl',
+            fields: self.stringToArray(fields),
+            expireAfter: expireAfter
+          };
+          break;
         case 'Geo':
           // HANDLE ARRAY building
           fields = $('#newGeoFields').val();
@@ -577,15 +586,6 @@
             sparse: sparse
           };
           break;
-        case 'Ttl':
-          fields = $('#newTtlFields').val();
-          var expireAfter = parseInt($('#newTtlExpireAfter').val(), 10) || 0;
-          postParameter = {
-            type: 'ttl',
-            fields: self.stringToArray(fields),
-            expireAfter: expireAfter
-          };
-          break;
       }
       var callback = function (error, msg) {
         if (error) {
@@ -600,7 +600,6 @@
       };
 
       window.modalView.hide();
-      // $($('#infoTab').children()[1]).find('a').click()
       self.model.createIndex(postParameter, callback);
     },
 
