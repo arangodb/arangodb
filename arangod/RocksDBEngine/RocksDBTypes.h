@@ -79,9 +79,6 @@ enum class RocksDBLogType : char {
   SinglePut = '?',
   SingleRemove = '@',                  // <- deprecated
   DocumentRemoveAsPartOfUpdate = 'A',  // <- deprecated
-#ifdef USE_IRESEARCH
-  IResearchLinkDrop = 'C',
-#endif
   CommitTransaction = 'D',
   DocumentRemoveV2 = 'E',
   SingleRemoveV2 = 'F',
