@@ -124,9 +124,6 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
  public:
   explicit FieldIterator(arangodb::transaction::Methods& trx);
 
-  FieldIterator(arangodb::transaction::Methods& trx,
-                arangodb::velocypack::Slice const& doc, IResearchLinkMeta const& linkMeta);
-
   Field const& operator*() const noexcept { return _value; }
 
   FieldIterator& operator++() {

@@ -58,7 +58,6 @@ class MMFilesPathBasedIndex : public MMFilesIndex {
   /// otherwise the non-negative number is the index of the expanding one.
   std::vector<int> const& expanding() const { return _expanding; }
 
-  bool implicitlyUnique() const override;
   void load() override {}
 
  protected:

@@ -68,8 +68,10 @@ class SupervisedScheduler : public Scheduler {
   struct WorkItem {
     std::function<void()> _handler;
 
-    WorkItem(std::function<void()> const& handler) : _handler(handler) {}
-    WorkItem(std::function<void()>&& handler) : _handler(std::move(handler)) {}
+    explicit WorkItem(std::function<void()> const& handler)
+        : _handler(handler) {}
+    explicit WorkItem(std::function<void()>&& handler)
+        : _handler(std::move(handler)) {}
     virtual ~WorkItem() {}
 
     virtual void operator()() { _handler(); }
@@ -117,10 +119,10 @@ class SupervisedScheduler : public Scheduler {
     std::atomic<bool> _stop, _working;
     clock::time_point _lastJobStarted;
     std::unique_ptr<SupervisedSchedulerWorkerThread> _thread;
-    char padding[40];
+    char _padding[40];
 
     // initialize with harmless defaults: spin once, sleep forever
-    WorkerState(SupervisedScheduler& scheduler);
+    explicit WorkerState(SupervisedScheduler& scheduler);
     WorkerState(WorkerState&& that);
 
     bool start();

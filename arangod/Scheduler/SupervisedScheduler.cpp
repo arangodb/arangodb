@@ -53,7 +53,7 @@ namespace arangodb {
 
 class SupervisedSchedulerThread : virtual public Thread {
  public:
-  SupervisedSchedulerThread(SupervisedScheduler& scheduler)
+  explicit SupervisedSchedulerThread(SupervisedScheduler& scheduler)
       : Thread("Scheduler"), _scheduler(scheduler) {}
   ~SupervisedSchedulerThread() { shutdown(); }
 
@@ -63,14 +63,14 @@ class SupervisedSchedulerThread : virtual public Thread {
 
 class SupervisedSchedulerManagerThread final : public SupervisedSchedulerThread {
  public:
-  SupervisedSchedulerManagerThread(SupervisedScheduler& scheduler)
+  explicit SupervisedSchedulerManagerThread(SupervisedScheduler& scheduler)
       : Thread("SchedMan"), SupervisedSchedulerThread(scheduler) {}
   void run() override { _scheduler.runSupervisor(); };
 };
 
 class SupervisedSchedulerWorkerThread final : public SupervisedSchedulerThread {
  public:
-  SupervisedSchedulerWorkerThread(SupervisedScheduler& scheduler)
+  explicit SupervisedSchedulerWorkerThread(SupervisedScheduler& scheduler)
       : Thread("SchedWorker"), SupervisedSchedulerThread(scheduler) {}
   void run() override { _scheduler.runWorker(); };
 };
@@ -229,14 +229,13 @@ void SupervisedScheduler::runSupervisor() {
     startOneThread();
   }
 
-  uint64_t jobsDone, lastJobsDone = 0, jobsSubmitted, lastJobsSubmitted = 0;
-  uint64_t jobsStallingTick = 0, queueLength, lastQueueLength = 0;
-  uint64_t jobsDequeued;
+  uint64_t lastJobsDone = 0, lastJobsSubmitted = 0;
+  uint64_t jobsStallingTick = 0, lastQueueLength = 0;
 
   while (!_stopping) {
-    jobsDone = _jobsDone.load(std::memory_order_acquire);
-    jobsSubmitted = _jobsSubmitted.load(std::memory_order_acquire);
-    jobsDequeued = _jobsDequeued.load(std::memory_order_acquire);
+    uint64_t jobsDone = _jobsDone.load(std::memory_order_acquire);
+    uint64_t jobsSubmitted = _jobsSubmitted.load(std::memory_order_acquire);
+    uint64_t jobsDequeued = _jobsDequeued.load(std::memory_order_acquire);
 
     if (jobsDone == lastJobsDone && (jobsDequeued < jobsSubmitted)) {
       jobsStallingTick++;
@@ -244,7 +243,7 @@ void SupervisedScheduler::runSupervisor() {
       jobsStallingTick--;
     }
 
-    queueLength = jobsSubmitted - jobsDequeued;
+    uint64_t queueLength = jobsSubmitted - jobsDequeued;
 
     bool doStartOneThread = (((queueLength >= 3 * _numWorker) &&
                               ((lastQueueLength + _numWorker) < queueLength)) ||
@@ -423,7 +422,8 @@ SupervisedScheduler::WorkerState::WorkerState(SupervisedScheduler& scheduler)
     : _queueRetryCount(100),
       _sleepTimeout_ms(100),
       _stop(false),
-      _thread(new SupervisedSchedulerWorkerThread(scheduler)) {}
+      _thread(new SupervisedSchedulerWorkerThread(scheduler)),
+      _padding() {}
 
 bool SupervisedScheduler::WorkerState::start() { return _thread->start(); }
 

@@ -715,7 +715,6 @@ bool transaction::Methods::findIndexHandleForAndNode(
 }
 
 /// @brief Find out if any of the given requests has ended in a refusal
-
 static bool findRefusal(std::vector<ClusterCommRequest> const& requests) {
   for (auto const& it : requests) {
     if (it.done && it.result.status == CL_COMM_RECEIVED &&

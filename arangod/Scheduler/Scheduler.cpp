@@ -48,7 +48,7 @@ namespace arangodb {
 
 class SchedulerThread : virtual public Thread {
  public:
-  SchedulerThread(Scheduler& scheduler)
+  explicit SchedulerThread(Scheduler& scheduler)
       : Thread("Scheduler"), _scheduler(scheduler) {}
   ~SchedulerThread() { shutdown(); }
 
@@ -58,10 +58,10 @@ class SchedulerThread : virtual public Thread {
 
 class SchedulerCronThread : public SchedulerThread {
  public:
-  SchedulerCronThread(Scheduler& scheduler)
+  explicit SchedulerCronThread(Scheduler& scheduler)
       : Thread("SchedCron"), SchedulerThread(scheduler) {}
 
-  void run() { _scheduler.runCronThread(); }
+  void run() override { _scheduler.runCronThread(); }
 };
 
 }  // namespace arangodb
