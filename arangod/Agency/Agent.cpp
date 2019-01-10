@@ -1866,7 +1866,9 @@ void Agent::emptyCbTrashBin() {
   
   auto envelope = std::make_shared<VPackBuilder>();
   {
+    _cbtLock.assertNotLockedByCurrentThread();
     MUTEX_LOCKER(lock, _cbtLock);
+    
     auto early =
       std::chrono::duration_cast<std::chrono::seconds>(
         clock::now() - _callbackLastPurged).count() < 10;
@@ -1874,11 +1876,12 @@ void Agent::emptyCbTrashBin() {
     if (early || _callbackTrashBin.empty()) {
       return;
     }
+    
     { VPackArrayBuilder trxs(envelope.get());
       { VPackArrayBuilder trx(envelope.get());
-        for (auto const& i : _callbackTrashBin) {
-          for (auto const& j : i.second) {
-            { VPackObjectBuilder ak(envelope.get());
+        { VPackObjectBuilder ak(envelope.get());
+          for (auto const& i : _callbackTrashBin) {
+            for (auto const& j : i.second) {
               envelope->add(VPackValue(i.first));
               { VPackObjectBuilder oper(envelope.get());
                 envelope->add("op", VPackValue("unobserve"));
@@ -1886,9 +1889,10 @@ void Agent::emptyCbTrashBin() {
           }
         }
       }}
+    _callbackTrashBin.clear(); 
     _callbackLastPurged = std::chrono::steady_clock::now();
   }
-
+  
   // Best effort. Will be retried anyway
   auto wres = write(envelope);
 

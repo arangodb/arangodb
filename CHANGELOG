@@ -84,6 +84,8 @@ v3.4.2 (XXXX-XX-XX)
 
 * Releveling logging in maintenance
 
+* Callbacks subscribed to in agency are removed on 404 return code
+
 v3.4.1 (2018-12-19)
 -------------------
 
