@@ -240,7 +240,7 @@ void SslClientConnection::init(uint64_t sslProtocol) {
       // openssl version number format is
       // MNNFFPPS: major minor fix patch status
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
-      meth = TLSv1_3_method();
+      meth = TLS_client_method();
       break;
 #else
       // no TLS 1.3 support
