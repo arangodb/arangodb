@@ -113,7 +113,9 @@ bool equalTo(aql::AstNode const* lhs, aql::AstNode const* rhs) {
       return equalMembers(lhs, rhs);
     }
 
-    case aql::NODE_TYPE_ATTRIBUTE_ACCESS: {
+    case aql::NODE_TYPE_ATTRIBUTE_ACCESS:
+    case aql::NODE_TYPE_INDEXED_ACCESS:
+    case aql::NODE_TYPE_EXPANSION: {
       return attributeAccessEqual(lhs, rhs, nullptr);
     }
 
@@ -214,7 +216,6 @@ size_t hash(aql::AstNode const* node, size_t hash /*= 0*/) noexcept {
     }
 
     case aql::NODE_TYPE_INDEXED_ACCESS: {
-      hash = aql::AstNode(node->value).hashValue(hash);
       return hashMembers(*node, hash);
     }
 
@@ -484,14 +485,16 @@ bool attributeAccessEqual(arangodb::aql::AstNode const* lhs,
         if (root && offset) {
           aqlValue.reset(*offset);
 
-          if (!ctx) {
-            // can't evaluate expression at compile time
-            return true;
-          }
+          if (!aqlValue.isConstant()) {
+            if (!ctx) {
+              // can't evaluate expression at compile time
+              return true;
+            }
 
-          if (!aqlValue.execute(*ctx)) {
-            // failed to execute expression
-            return false;
+            if (!aqlValue.execute(*ctx)) {
+              // failed to execute expression
+              return false;
+            }
           }
 
           switch (aqlValue.type()) {
