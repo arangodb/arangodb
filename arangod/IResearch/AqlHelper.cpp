@@ -119,9 +119,28 @@ bool equalTo(aql::AstNode const* lhs, aql::AstNode const* rhs) {
       return attributeAccessEqual(lhs, rhs, nullptr);
     }
 
-    case aql::NODE_TYPE_VALUE:
-    case aql::NODE_TYPE_OBJECT: {
+    case aql::NODE_TYPE_VALUE: {
       return 0 == aql::CompareAstNodes(lhs, rhs, true);
+    }
+
+    case aql::NODE_TYPE_OBJECT: {
+      return equalMembers(lhs, rhs);
+    }
+
+    case aql::NODE_TYPE_OBJECT_ELEMENT: {
+      irs::string_ref lhsValue, rhsValue;
+      iresearch::parseValue(lhsValue, *lhs);
+      iresearch::parseValue(rhsValue, *rhs);
+
+      if (lhsValue != rhsValue) {
+        return false;
+      }
+
+      return equalMembers(lhs, rhs);
+    }
+
+    case aql::NODE_TYPE_CALCULATED_OBJECT_ELEMENT: {
+      return equalMembers(lhs, rhs);
     }
 
     case aql::NODE_TYPE_ARRAY: {
@@ -249,17 +268,17 @@ size_t hash(aql::AstNode const* node, size_t hash /*= 0*/) noexcept {
     }
 
     case aql::NODE_TYPE_OBJECT: {
-      for (size_t i = 0, n = node->numMembers(); i < n; ++i) {
-        auto sub = node->getMemberUnchecked(i);
+      return hashMembers(*node, hash);
+    }
 
-        if (sub) {
-          hash = fasthash64(static_cast<const void*>(sub->getStringValue()),
-                            sub->getStringLength(), hash);
-          TRI_ASSERT(sub->numMembers() > 0);
-          hash = iresearch::hash(sub->getMemberUnchecked(0), hash);
-        }
-      }
-      return hash;
+    case aql::NODE_TYPE_OBJECT_ELEMENT: {
+      hash = fasthash64(static_cast<const void*>(node->getStringValue()),
+                        node->getStringLength(), hash);
+      return hashMembers(*node, hash);
+    }
+
+    case aql::NODE_TYPE_CALCULATED_OBJECT_ELEMENT: {
+      return hashMembers(*node, hash);
     }
 
     case aql::NODE_TYPE_REFERENCE: {
