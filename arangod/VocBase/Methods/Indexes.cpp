@@ -259,11 +259,12 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
                                VPackSlice const& definition, bool create,
                                VPackBuilder& output) {
   TRI_ASSERT(collection != nullptr);
-  READ_LOCKER(readLocker, collection->vocbase()._inventoryLock);
+  
   Result res;
-
   bool created = false;
   std::shared_ptr<arangodb::Index> idx;
+  
+  READ_LOCKER(readLocker, collection->vocbase()._inventoryLock);
 
   if (create) {
     try {
@@ -279,6 +280,8 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
       return res.reset(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
     }
   }
+
+  readLocker.unlock();
 
   TRI_ASSERT(idx != nullptr);
 
@@ -327,7 +330,7 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice const& inp
     bool canRead = exec->canUseCollection(collection->name(), auth::Level::RO);
     if ((create && (lvl != auth::Level::RW || !canModify)) ||
         (lvl == auth::Level::NONE || !canRead)) {
-      return TRI_ERROR_FORBIDDEN;
+      return Result(TRI_ERROR_FORBIDDEN);
     }
   }
 
@@ -342,7 +345,7 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice const& inp
   }
 
   TRI_ASSERT(collection);
-  auto& dbname = collection->vocbase().name();
+  auto const& dbname = collection->vocbase().name();
   std::string const collname(collection->name());
   VPackSlice indexDef = normalized.slice();
 

@@ -52,7 +52,10 @@
                       <option value="Fulltext">Fulltext Index</option>
                     <% } %> 
                     <% if (supported.indexOf('skiplist') > -1) { %> 
-                      <option value="Skiplist">Skip-List Index</option>
+                      <option value="Skiplist">Skiplist Index</option>
+                    <% } %> 
+                    <% if (supported.indexOf('ttl') > -1) { %> 
+                      <option value="Ttl">TTL Index</option>
                     <% } %> 
                   </select>
                 </th>
@@ -269,6 +272,32 @@
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Duplicate index values from the same document into a unique array index will lead to an error or not.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+              </table>
+            </div>
+            <div id="newIndexTypeTtl" class="newIndexClass" style="display:none">
+              <table>
+                <tr>
+                  <th class="collectionTh">Fields:</th>
+                  <th><input type="text" id="newTtlFields" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A single attribute path. Example: createdDate">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Documents expire after (s):</th>
+                  <th><input type="text" id="newTtlExpireAfter" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Number of seconds to be added to each document's index attribute date value. If documents have reached their expiration timepoint, they will eventually get deleted by a background process.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>

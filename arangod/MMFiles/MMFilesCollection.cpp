@@ -2169,7 +2169,7 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods& trx,
   //  TRI_ASSERT(trx->isLocked(&_logicalCollection, AccessMode::Type::READ));
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(info.isObject());
-  std::shared_ptr<Index> idx = lookupIndex(info);
+  std::shared_ptr<Index> idx = PhysicalCollection::lookupIndex(info);
 
   if (idx != nullptr) {  // We already have this index.
     created = false;

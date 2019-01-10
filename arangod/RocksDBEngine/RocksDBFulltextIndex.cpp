@@ -49,7 +49,7 @@ RocksDBFulltextIndex::RocksDBFulltextIndex(TRI_idx_iid_t iid,
                                            arangodb::LogicalCollection& collection,
                                            arangodb::velocypack::Slice const& info)
     : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::fulltext(), false),
-      _minWordLength(TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT) {
+      _minWordLength(FulltextIndexLimits::minWordLengthDefault) {
   TRI_ASSERT(iid != 0);
   TRI_ASSERT(_cf == RocksDBColumnFamily::fulltext());
 
@@ -243,7 +243,7 @@ static void ExtractWords(std::set<std::string>& words, VPackSlice const value,
     // extract the string value for the indexed attribute
     // parse the document text
     arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(words, value.stringRef(),
-                                                             minWordLength, TRI_FULLTEXT_MAX_WORD_LENGTH,
+                                                             minWordLength, FulltextIndexLimits::maxWordLength,
                                                              true);
     // We don't care for the result. If the result is false, words stays
     // unchanged and is not indexed
@@ -363,13 +363,13 @@ Result RocksDBFulltextIndex::parseQueryString(std::string const& qstr, FulltextQ
     TRI_DEFER(TRI_Free(lowered));
 
     // calculate the proper prefix
-    char* prefixEnd = TRI_PrefixUtf8String(lowered, TRI_FULLTEXT_MAX_WORD_LENGTH);
+    char* prefixEnd = TRI_PrefixUtf8String(lowered, FulltextIndexLimits::maxWordLength);
     ptrdiff_t prefixLength = prefixEnd - lowered;
 
     query.emplace_back(std::string(lowered, (size_t)prefixLength), matchType, operation);
 
     ++i;
-    if (i >= TRI_FULLTEXT_SEARCH_MAX_WORDS) {
+    if (i >= FulltextIndexLimits::maxSearchWords) {
       break;
     }
   }

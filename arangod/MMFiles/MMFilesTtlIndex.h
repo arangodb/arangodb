@@ -18,31 +18,48 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ROCKSDB_SKIPLIST_INDEX_H
-#define ARANGOD_ROCKSDB_ROCKSDB_SKIPLIST_INDEX_H 1
+#ifndef ARANGOD_MMFILES_TTL_INDEX_H
+#define ARANGOD_MMFILES_TTL_INDEX_H 1
 
-#include "RocksDBEngine/RocksDBVPackIndex.h"
+#include "Basics/Common.h"
+#include "MMFiles/MMFilesSkiplistIndex.h"
+#include "VocBase/LocalDocumentId.h"
+#include "VocBase/vocbase.h"
 
 namespace arangodb {
+namespace transaction {
+class Methods;
+}
 
-class RocksDBSkiplistIndex : public RocksDBVPackIndex {
+namespace velocypack {
+class Slice;
+}
+
+class MMFilesTtlIndex final : public MMFilesSkiplistIndex {
  public:
-  RocksDBSkiplistIndex() = delete;
+  MMFilesTtlIndex() = delete;
 
-  RocksDBSkiplistIndex(TRI_idx_iid_t iid, LogicalCollection& coll,
-                       arangodb::velocypack::Slice const& info)
-      : RocksDBVPackIndex(iid, coll, info) {}
+  MMFilesTtlIndex(
+    TRI_idx_iid_t iid,
+    LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info
+  );
 
-  IndexType type() const override { return Index::TRI_IDX_TYPE_SKIPLIST_INDEX; }
+  ~MMFilesTtlIndex();
 
-  char const* typeName() const override { return "rocksdb-skiplist"; }
+  IndexType type() const override { return Index::TRI_IDX_TYPE_TTL_INDEX; }
 
-  bool isSorted() const override { return true; }
+  char const* typeName() const override { return "ttl"; }
+  
+  void toVelocyPack(arangodb::velocypack::Builder& builder,
+                    std::underlying_type<Index::Serialize>::type flags) const override;
+ 
+ private:
+  double const _expireAfter;
 };
-
-}  // namespace arangodb
+}
 
 #endif

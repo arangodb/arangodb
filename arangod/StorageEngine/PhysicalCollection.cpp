@@ -122,11 +122,16 @@ bool PhysicalCollection::hasIndexOfType(arangodb::Index::IndexType type) const {
   }
 
   VPackValueLength len;
-  const char* str = value.getStringUnchecked(len);
+  char const* str = value.getString(len);
   arangodb::Index::IndexType const type = arangodb::Index::type(str, len);
   for (auto const& idx : indexes) {
     if (idx->type() == type) {
       // Only check relevant indexes
+      if (type == arangodb::Index::IndexType::TRI_IDX_TYPE_TTL_INDEX) {
+        // directly return here, as we allow at most one ttl index per collection
+        return idx;
+      }
+
       if (idx->matchesDefinition(info)) {
         // We found an index for this definition.
         return idx;

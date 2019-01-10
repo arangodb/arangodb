@@ -194,6 +194,7 @@ ClusterIndexFactory::ClusterIndexFactory() {
   static const DefaultIndexFactory persistentIndexFactory("persistent");
   static const PrimaryIndexFactory primaryIndexFactory("primary");
   static const DefaultIndexFactory skiplistIndexFactory("skiplist");
+  static const DefaultIndexFactory ttlIndexFactory("ttl");
 
   emplace(edgeIndexFactory._type, edgeIndexFactory);
   emplace(fulltextIndexFactory._type, fulltextIndexFactory);
@@ -204,6 +205,7 @@ ClusterIndexFactory::ClusterIndexFactory() {
   emplace(persistentIndexFactory._type, persistentIndexFactory);
   emplace(primaryIndexFactory._type, primaryIndexFactory);
   emplace(skiplistIndexFactory._type, skiplistIndexFactory);
+  emplace(ttlIndexFactory._type, ttlIndexFactory);
 }
 
 Result ClusterIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
@@ -316,7 +318,3 @@ void ClusterIndexFactory::prepareIndexes(
 }
 
 }  // namespace arangodb
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

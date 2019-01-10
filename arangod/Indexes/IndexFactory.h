@@ -25,6 +25,7 @@
 #define ARANGOD_INDEXES_INDEX_FACTORY_H 1
 
 #include "Basics/Result.h"
+#include "Indexes/Index.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -37,29 +38,23 @@ class Builder;
 class Slice;
 }  // namespace velocypack
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief factory for comparing/instantiating/normalizing a definition for a
 ///        specific Index type
-////////////////////////////////////////////////////////////////////////////////
 struct IndexTypeFactory {
   virtual ~IndexTypeFactory() = default;  // define to silence warning
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief determine if the two Index definitions will result in the same
   ///        index once instantiated
-  //////////////////////////////////////////////////////////////////////////////
+  virtual bool equal(Index::IndexType type, velocypack::Slice const& lhs, velocypack::Slice const& rhs) const;
+  
   virtual bool equal(velocypack::Slice const& lhs, velocypack::Slice const& rhs) const = 0;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief instantiate an Index definition
-  //////////////////////////////////////////////////////////////////////////////
   virtual Result instantiate(std::shared_ptr<Index>& index, LogicalCollection& collection,
                              velocypack::Slice const& definition, TRI_idx_iid_t id,
                              bool isClusterConstructor) const = 0;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief normalize an Index definition prior to instantiation/persistence
-  //////////////////////////////////////////////////////////////////////////////
   virtual Result normalize(velocypack::Builder& normalized,
                            velocypack::Slice definition, bool isCreation) const = 0;
 };
@@ -94,6 +89,45 @@ class IndexFactory {
   virtual void prepareIndexes(LogicalCollection& col,
                               arangodb::velocypack::Slice const& indexesSlice,
                               std::vector<std::shared_ptr<arangodb::Index>>& indexes) const = 0;
+
+  /// @brief process the fields list, deduplicate it, and add it to the json
+  static Result processIndexFields(arangodb::velocypack::Slice definition, 
+                                   arangodb::velocypack::Builder& builder,
+                                   size_t minFields, size_t maxField, bool create,
+                                   bool allowExpansion);
+
+  /// @brief process the unique flag and add it to the json
+  static void processIndexUniqueFlag(arangodb::velocypack::Slice definition,
+                                     arangodb::velocypack::Builder& builder);
+
+  /// @brief process the sparse flag and add it to the json
+  static void processIndexSparseFlag(arangodb::velocypack::Slice definition,
+                                     arangodb::velocypack::Builder& builder, bool create);
+
+  /// @brief process the deduplicate flag and add it to the json
+  static void processIndexDeduplicateFlag(arangodb::velocypack::Slice definition, 
+                                          arangodb::velocypack::Builder& builder);
+
+  /// @brief process the geojson flag and add it to the json
+  static void processIndexGeoJsonFlag(arangodb::velocypack::Slice definition,
+                                      arangodb::velocypack::Builder& builder);
+
+  /// @brief enhances the json of a hash, skiplist or persistent index
+  static Result enhanceJsonIndexGeneric(arangodb::velocypack::Slice definition,
+                                        arangodb::velocypack::Builder& builder, bool create);
+
+  /// @brief enhances the json of a ttl index
+  static Result enhanceJsonIndexTtl(arangodb::velocypack::Slice definition,
+                                    arangodb::velocypack::Builder& builder, bool create);
+
+  /// @brief enhances the json of a geo, geo1 or geo2 index
+  static Result enhanceJsonIndexGeo(arangodb::velocypack::Slice definition,
+                                    arangodb::velocypack::Builder& builder, bool create,
+                                    int minFields, int maxFields);
+  
+  /// @brief enhances the json of a fulltext index
+  static Result enhanceJsonIndexFulltext(arangodb::velocypack::Slice definition,
+                                         arangodb::velocypack::Builder& builder, bool create);
 
  protected:
   /// @brief clear internal factory/normalizer maps

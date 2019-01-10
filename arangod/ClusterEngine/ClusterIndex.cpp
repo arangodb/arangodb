@@ -118,6 +118,7 @@ bool ClusterIndex::hasSelectivityEstimate() const {
            _indexType == Index::TRI_IDX_TYPE_EDGE_INDEX ||
            _indexType == Index::TRI_IDX_TYPE_HASH_INDEX ||
            _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
+           _indexType == Index::TRI_IDX_TYPE_TTL_INDEX ||
            _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX;
   } else if (_engineType == ClusterEngineType::MockEngine) {
     return false;
@@ -147,12 +148,14 @@ void ClusterIndex::updateClusterSelectivityEstimate(double estimate) {
 bool ClusterIndex::isSorted() const {
   if (_engineType == ClusterEngineType::MMFilesEngine) {
     return _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
+           _indexType == Index::TRI_IDX_TYPE_TTL_INDEX ||
            _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX;
   } else if (_engineType == ClusterEngineType::RocksDBEngine) {
     return _indexType == Index::TRI_IDX_TYPE_EDGE_INDEX ||
            _indexType == Index::TRI_IDX_TYPE_HASH_INDEX ||
            _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
            _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX ||
+           _indexType == Index::TRI_IDX_TYPE_TTL_INDEX ||
            _indexType == Index::TRI_IDX_TYPE_FULLTEXT_INDEX;
   } else if (_engineType == ClusterEngineType::MockEngine) {
     return false;
@@ -193,6 +196,7 @@ bool ClusterIndex::hasCoveringIterator() const {
            _indexType == Index::TRI_IDX_TYPE_EDGE_INDEX ||
            _indexType == Index::TRI_IDX_TYPE_HASH_INDEX ||
            _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
+           _indexType == Index::TRI_IDX_TYPE_TTL_INDEX ||
            _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX;
   }
   return false;
@@ -241,7 +245,8 @@ bool ClusterIndex::supportsFilterCondition(
       return matcher.matchOne(this, node, reference, itemsInIndex, estimatedItems, estimatedCost);
     }
 
-    case TRI_IDX_TYPE_SKIPLIST_INDEX: {
+    case TRI_IDX_TYPE_SKIPLIST_INDEX: 
+    case TRI_IDX_TYPE_TTL_INDEX: {
       if (_engineType == ClusterEngineType::MMFilesEngine) {
         return SkiplistIndexAttributeMatcher::supportsFilterCondition(
             allIndexes, this, node, reference, itemsInIndex, estimatedItems, estimatedCost);
@@ -301,7 +306,8 @@ bool ClusterIndex::supportsSortCondition(arangodb::aql::SortCondition const* sor
                                           estimatedCost, coveredAttributes);
     }
 
-    case TRI_IDX_TYPE_SKIPLIST_INDEX: {
+    case TRI_IDX_TYPE_SKIPLIST_INDEX: 
+    case TRI_IDX_TYPE_TTL_INDEX: {
       if (_engineType == ClusterEngineType::MMFilesEngine) {
         return SkiplistIndexAttributeMatcher::supportsSortCondition(
             this, sortCondition, reference, itemsInIndex, estimatedCost, coveredAttributes);
@@ -362,7 +368,8 @@ aql::AstNode* ClusterIndex::specializeCondition(aql::AstNode* node,
       return matcher.specializeOne(this, node, reference);
     }
 
-    case TRI_IDX_TYPE_SKIPLIST_INDEX: {
+    case TRI_IDX_TYPE_SKIPLIST_INDEX: 
+    case TRI_IDX_TYPE_TTL_INDEX: {
       if (_engineType == ClusterEngineType::MMFilesEngine) {
         return SkiplistIndexAttributeMatcher::specializeCondition(this, node, reference);
       } else if (_engineType == ClusterEngineType::RocksDBEngine) {

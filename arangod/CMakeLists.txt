@@ -475,6 +475,7 @@ SET(ARANGOD_SOURCES
   RestServer/SystemDatabaseFeature.cpp RestServer/SystemDatabaseFeature.h
   RestServer/TransactionManagerFeature.cpp
   RestServer/TraverserEngineRegistryFeature.cpp
+  RestServer/TtlFeature.cpp
   RestServer/UpgradeFeature.cpp
   RestServer/ViewTypesFeature.cpp
   RestServer/VocbaseContext.cpp

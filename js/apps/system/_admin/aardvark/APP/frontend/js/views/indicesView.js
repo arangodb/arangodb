@@ -179,6 +179,15 @@
             deduplicate: deduplicate
           };
           break;
+        case 'Ttl':
+          fields = $('#newTtlFields').val();
+          var expireAfter = parseInt($('#newTtlExpireAfter').val(), 10) || 0;
+          postParameter = {
+            type: 'ttl',
+            fields: self.stringToArray(fields),
+            expireAfter: expireAfter
+          };
+          break;
       }
 
       var callback = function (error, msg) {

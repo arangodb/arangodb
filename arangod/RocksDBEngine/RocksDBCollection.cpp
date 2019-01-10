@@ -51,6 +51,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
+#include "Utils/CollectionGuard.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
@@ -289,18 +290,12 @@ void RocksDBCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice)
 std::shared_ptr<Index> RocksDBCollection::createIndex(arangodb::velocypack::Slice const& info,
                                                       bool restore, bool& created) {
   TRI_ASSERT(info.isObject());
-  Result res;
 
   // Step 0. Lock all the things
   TRI_vocbase_t& vocbase = _logicalCollection.vocbase();
-  TRI_vocbase_col_status_e status;
-  res = vocbase.useCollection(&_logicalCollection, status);
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-  auto releaseGuard =
-      scopeGuard([&] { vocbase.releaseCollection(&_logicalCollection); });
-  res = lockWrite();
+  CollectionGuard guard(&vocbase, _logicalCollection.id());
+  
+  Result res = lockWrite();
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }

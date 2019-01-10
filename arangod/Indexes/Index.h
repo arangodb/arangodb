@@ -60,6 +60,16 @@ namespace transaction {
 class Methods;
 }
 
+/// @brief static limits for fulltext index
+struct FulltextIndexLimits {
+  /// @brief maximum length of an indexed word in characters
+  static constexpr int maxWordLength = 40;
+  /// @brief default minimum word length for a fulltext index
+  static constexpr int minWordLengthDefault = 2;
+  /// @brief maximum number of search words in a query
+  static constexpr int maxSearchWords = 32;
+};
+
 class Index {
  public:
   Index() = delete;
@@ -87,6 +97,7 @@ class Index {
     TRI_IDX_TYPE_EDGE_INDEX,
     TRI_IDX_TYPE_FULLTEXT_INDEX,
     TRI_IDX_TYPE_SKIPLIST_INDEX,
+    TRI_IDX_TYPE_TTL_INDEX,
     TRI_IDX_TYPE_PERSISTENT_INDEX,
 #ifdef USE_IRESEARCH
     TRI_IDX_TYPE_IRESEARCH_LINK,
