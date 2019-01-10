@@ -105,7 +105,15 @@ bool equalTo(aql::AstNode const* lhs, aql::AstNode const* rhs) {
     case aql::NODE_TYPE_OBJECT:
     case aql::NODE_TYPE_CALCULATED_OBJECT_ELEMENT:
     case aql::NODE_TYPE_ARRAY:
-    case aql::NODE_TYPE_RANGE: {
+    case aql::NODE_TYPE_RANGE:
+    case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
+    case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
+    case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
+    case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
+    case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
+    case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
+    case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
+    case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN: {
       return true;
     }
 
@@ -141,6 +149,10 @@ bool equalTo(aql::AstNode const* lhs, aql::AstNode const* rhs) {
       iresearch::parseValue(rhsName, *rhs);
 
       return lhsName == rhsName;
+    }
+
+    case aql::NODE_TYPE_QUANTIFIER: {
+      return lhs->value.value._int == rhs->value.value._int;
     }
 
     default: {
@@ -201,7 +213,15 @@ size_t hash(aql::AstNode const* node, size_t hash /*= 0*/) noexcept {
     case aql::NODE_TYPE_ARRAY:
     case aql::NODE_TYPE_OBJECT:
     case aql::NODE_TYPE_CALCULATED_OBJECT_ELEMENT:
-    case aql::NODE_TYPE_RANGE: {
+    case aql::NODE_TYPE_RANGE:
+    case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
+    case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
+    case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
+    case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
+    case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
+    case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
+    case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
+    case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN: {
       return hash;
     }
 
@@ -249,6 +269,11 @@ size_t hash(aql::AstNode const* node, size_t hash /*= 0*/) noexcept {
     case aql::NODE_TYPE_FCALL_USER: {
       return fasthash64(static_cast<const void*>(node->getStringValue()),
                         node->getStringLength(), hash);
+    }
+
+    case aql::NODE_TYPE_QUANTIFIER: {
+      return fasthash64(static_cast<const void*>(&node->value.value._int),
+                        sizeof(node->value.value._int), hash);
     }
 
     default: {
