@@ -23,13 +23,13 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ExecutionBlock.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Ast.h"
 #include "Aql/BlockCollector.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
+#include "ExecutionBlock.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -632,3 +632,5 @@ RegisterId ExecutionBlock::getNrOutputRegisters() const {
 
   return outputNrRegs;
 }
+
+bool ExecutionBlock::done() const { return _done; }

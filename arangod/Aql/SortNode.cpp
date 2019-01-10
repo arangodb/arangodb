@@ -21,12 +21,12 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "SortNode.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/SortBlock.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/StringBuffer.h"
+#include "SortNode.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::aql;
