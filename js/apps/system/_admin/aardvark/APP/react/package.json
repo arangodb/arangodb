@@ -5,6 +5,10 @@
   "dependencies": {
     "@babel/core": "7.1.0",
     "@svgr/webpack": "2.4.1",
+    "@types/react": "^16.7.18",
+    "@types/react-dom": "^16.0.11",
+    "@types/react-redux": "^6.0.12",
+    "@types/styled-components": "^4.1.5",
     "axios": "^0.18.0",
     "babel-core": "7.0.0-bridge.0",
     "babel-eslint": "9.0.0",
@@ -63,6 +67,7 @@
     "sigma": "1.2.0",
     "style-loader": "^0.23.1",
     "terser-webpack-plugin": "1.1.0",
+    "typescript": "^3.2.2",
     "underscore": "^1.9.1",
     "url-loader": "1.1.1",
     "webpack": "4.19.1",
@@ -87,11 +92,11 @@
   ],
   "devDependencies": {
     "arangojs": "^6.9.0",
-    "react-redux": "^5.1.1",
+    "react-redux": "^6.0.0",
     "redux": "^4.0.1",
     "styled-components": "^4.1.1",
     "styled-css-grid": "^1.1.1",
-    "styled-icons": "^4.0.0"
+    "styled-icons": "^6.3.0"
   },
   "jest": {
     "collectCoverageFrom": [

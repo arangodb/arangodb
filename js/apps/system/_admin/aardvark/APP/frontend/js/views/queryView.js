@@ -2708,26 +2708,10 @@
 
     getSystemQueries: function (callback) {
       var self = this;
-
-      $.ajax({
-        type: 'GET',
-        cache: false,
-        url: 'js/arango/aqltemplates.json',
-        contentType: 'application/json',
-        processData: false,
-        success: function (data) {
-          if (callback) {
-            callback(false);
-          }
-          self.queries = data;
-        },
-        error: function () {
-          if (callback) {
-            callback(true);
-          }
-          arangoHelper.arangoNotification('Query', 'Error while loading system templates');
-        }
-      });
+      if (callback) {
+        callback(false);
+      }
+      self.queries = window.aqltemplates;
     },
 
     updateLocalQueries: function () {

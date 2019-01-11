@@ -951,16 +951,6 @@
       this.tableView.setElement($('#docPureTable')).render();
       // we added some icons, so we need to fix their tooltips
       arangoHelper.fixTooltips('.icon_arangodb, .arangoicon', 'top');
-
-      if (!frontendConfig.react) {
-        $('.prettify').snippet('javascript', {
-          style: 'nedit',
-          menu: false,
-          startText: false,
-          transparent: true,
-          showNum: false
-        });
-      }
       this.resize();
     },
 

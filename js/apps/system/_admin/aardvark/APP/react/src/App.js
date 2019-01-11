@@ -1,4 +1,5 @@
 import React, { Component } from 'react';
+import ReactDOM from 'react-dom';
 import Overview from './views/shards/overview';
 import jsoneditor from 'jsoneditor';
 import * as d3 from 'd3';
@@ -8,12 +9,16 @@ import nvd3 from 'nvd3';
 // import logo from './logo.svg';
 import './App.css';
 
+// import new react views
+
+import './views/shards/ShardsReactView';
+
 // old libraries
 // import $ from 'jquery';
 import jQuery from 'jquery';
+
 import Backbone from 'backbone';
 import _ from 'underscore';
-
 import Sigma from 'sigma';
 
 // import old based css files
@@ -49,6 +54,7 @@ requireAll(require.context(
  * `require` all backbone dependencies
  */
 
+window.ReactDOM = ReactDOM;
 window.Joi = require('../../frontend/js/lib/joi-browser.min.js');
 window.jQuery = window.$ = jQuery;
 
@@ -58,7 +64,8 @@ require('../../frontend/js/arango/templateEngine.js');
 require('../../frontend/js/arango/arango.js');
 
 // only set this for development
-if (window.frontendConfig) {
+const env = process.env.NODE_ENV
+if (window.frontendConfig && env === 'development') {
   window.frontendConfig.basePath = "http://localhost:8529";
   window.frontendConfig.react = true;
 }
@@ -89,6 +96,10 @@ require('../../frontend/js/lib/tippy.js');
 require('../../frontend/js/lib/bootstrap-pagination.min.js');
 window.numeral = require('../../frontend/js/lib/numeral.min.js'); // TODO 
 window.JSONEditor = jsoneditor;
+// ace 
+window.define = window.ace.define;
+window.aqltemplates = require('../../frontend/aqltemplates.json');
+
 window.d3 = d3;
 require('../../frontend/js/lib/leaflet.js')
 require('../../frontend/js/lib/tile.stamen.js')
@@ -130,6 +141,11 @@ require('../../frontend/js/lib/wheelnav.slicePath.js');
 require('../../frontend/js/lib/wheelnav.min.js');
 window.Raphael = require('../../frontend/js/lib/raphael.min.js');
 require('../../frontend/js/lib/raphael.icons.min.js');
+
+//require('../../frontend/src/ace.js');
+//require('../../frontend/src/theme-textmate.js');
+//require('../../frontend/src/mode-json.js');
+//require('../../frontend/src/mode-aql.js');
 
 class App extends Component {
   // <Overview />

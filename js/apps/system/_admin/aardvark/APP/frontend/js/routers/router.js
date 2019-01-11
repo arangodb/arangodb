@@ -100,6 +100,9 @@
             this.loggerView.logTopicView.remove();
           }
         }
+
+        // react unmounting
+        ReactDOM.unmountComponentAtNode(document.getElementById("content"));
       }
 
       this.lastRoute = window.location.hash;
@@ -428,13 +431,7 @@
         this.navigate('#dashboard', {trigger: true});
         return;
       }
-      if (this.shardsView) {
-        this.shardsView.remove();
-      }
-      this.shardsView = new window.ShardsView({
-        dbServers: this.dbServers
-      });
-      this.shardsView.render();
+      window.ShardsReactView.render();
     },
 
     nodes: function (initialized) {

@@ -36,6 +36,10 @@
       "path": "frontend/src/ace.min.js",
       "gzip": true
     },
+    "/mode-aql.js": {
+      "path": "frontend/src/mode-aql.js",
+      "gzip": false
+    },
     "/favicon.ico": {
       "path": "favicon.ico",
       "gzip": false
