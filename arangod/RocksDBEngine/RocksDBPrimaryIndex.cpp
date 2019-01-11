@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBPrimaryIndex.h"
+#include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
@@ -29,7 +30,8 @@
 #include "Cache/CachedValue.h"
 #include "Cache/TransactionalCache.h"
 #include "Cluster/ServerState.h"
-#include "Indexes/SimpleAttributeEqualityMatcher.h"
+#include "Indexes/PersistentIndexAttributeMatcher.h"
+#include "Indexes/SkiplistIndexAttributeMatcher.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -62,6 +64,116 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
+
+namespace {
+  std::string const lowest;               // smallest possible key
+  std::string const highest = "\xFF";    // greatest possible key
+}
+
+RocksDBPrimaryIndexRangeIterator::RocksDBPrimaryIndexRangeIterator(
+    LogicalCollection* collection, transaction::Methods* trx,
+    arangodb::RocksDBPrimaryIndex const* index, bool reverse, RocksDBKeyBounds&& bounds)
+    : IndexIterator(collection, trx),
+      _index(index),
+      _cmp(index->comparator()),
+      _reverse(reverse),
+      _bounds(std::move(bounds)) {
+  TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::primary());
+
+  RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
+  rocksdb::ReadOptions options = mthds->iteratorReadOptions();
+  // we need to have a pointer to a slice for the upper bound
+  // so we need to assign the slice to an instance variable here
+  if (reverse) {
+    _rangeBound = _bounds.start();
+    options.iterate_lower_bound = &_rangeBound;
+  } else {
+    _rangeBound = _bounds.end();
+    options.iterate_upper_bound = &_rangeBound;
+  }
+
+  TRI_ASSERT(options.prefix_same_as_start);
+  _iterator = mthds->NewIterator(options, index->columnFamily());
+  if (reverse) {
+    _iterator->SeekForPrev(_bounds.end());
+  } else {
+    _iterator->Seek(_bounds.start());
+  }
+}
+
+/// @brief Reset the cursor
+void RocksDBPrimaryIndexRangeIterator::reset() {
+  TRI_ASSERT(_trx->state()->isRunning());
+
+  if (_reverse) {
+    _iterator->SeekForPrev(_bounds.end());
+  } else {
+    _iterator->Seek(_bounds.start());
+  }
+}
+
+bool RocksDBPrimaryIndexRangeIterator::outOfRange() const {
+  TRI_ASSERT(_trx->state()->isRunning());
+  if (_reverse) {
+    return (_cmp->Compare(_iterator->key(), _bounds.start()) < 0);
+  } else {
+    return (_cmp->Compare(_iterator->key(), _bounds.end()) > 0);
+  }
+}
+
+bool RocksDBPrimaryIndexRangeIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
+  TRI_ASSERT(_trx->state()->isRunning());
+
+  if (limit == 0 || !_iterator->Valid() || outOfRange()) {
+    // No limit no data, or we are actually done. The last call should have
+    // returned false
+    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+    return false;
+  }
+
+  while (limit > 0) {
+    TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
+
+    cb(RocksDBValue::documentId(_iterator->value()));
+
+    --limit;
+    if (_reverse) {
+      _iterator->Prev();
+    } else {
+      _iterator->Next();
+    }
+
+    if (!_iterator->Valid() || outOfRange()) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+void RocksDBPrimaryIndexRangeIterator::skip(uint64_t count, uint64_t& skipped) {
+  TRI_ASSERT(_trx->state()->isRunning());
+
+  if (!_iterator->Valid() || outOfRange()) {
+    return;
+  }
+
+  while (count > 0) {
+    TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
+
+    --count;
+    ++skipped;
+    if (_reverse) {
+      _iterator->Prev();
+    } else {
+      _iterator->Next();
+    }
+
+    if (!_iterator->Valid() || outOfRange()) {
+      return;
+    }
+  }
+}
 
 // ================ Primary Index Iterator ================
 
@@ -162,7 +274,7 @@ bool RocksDBPrimaryIndexInIterator::next(LocalDocumentIdCallback const& cb, size
     if (!_iterator.valid()) {
       return false;
     }
-  }
+  } 
   return true;
 }
 
@@ -187,7 +299,7 @@ bool RocksDBPrimaryIndexInIterator::nextCovering(DocumentCallback const& cb, siz
     if (!_iterator.valid()) {
       return false;
     }
-  }
+  } while (true);
   return true;
 }
 
@@ -415,8 +527,24 @@ bool RocksDBPrimaryIndex::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
     size_t itemsInIndex, size_t& estimatedItems, double& estimatedCost) const {
-  SimpleAttributeEqualityMatcher matcher(IndexAttributes);
-  return matcher.matchOne(this, node, reference, itemsInIndex, estimatedItems, estimatedCost);
+  std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
+  std::unordered_set<std::string> nonNullAttributes;
+
+  std::size_t values = 0;
+  SkiplistIndexAttributeMatcher::matchAttributes(this, node, reference, found,
+                                                 values, nonNullAttributes,
+                                                 /*skip evaluation (during execution)*/ false);
+  estimatedItems = values;
+  return !found.empty();
+}
+
+bool RocksDBPrimaryIndex::supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
+                                                arangodb::aql::Variable const* reference,
+                                                size_t itemsInIndex, double& estimatedCost,
+                                                size_t& coveredAttributes) const {
+  return PersistentIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference,
+                                                                itemsInIndex, estimatedCost,
+                                                                coveredAttributes);
 }
 
 /// @brief creates an IndexIterator for the given Condition
@@ -424,49 +552,215 @@ IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
     transaction::Methods* trx, ManagedDocumentResult*, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
+  if (node == nullptr) {
+    // full range scan
+    return new RocksDBPrimaryIndexRangeIterator(
+        &_collection /*logical collection*/, trx, this, !opts.ascending /*reverse*/,
+        RocksDBKeyBounds::PrimaryIndex(_objectId, ::lowest, ::highest));
+  }
+
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
-  TRI_ASSERT(node->numMembers() == 1);
 
-  auto comp = node->getMember(0);
-  // assume a.b == value
-  auto attrNode = comp->getMember(0);
-  auto valNode = comp->getMember(1);
+  size_t const n = node->numMembers();
+  TRI_ASSERT(n >= 1);
 
-  if (attrNode->type != aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-    // value == a.b  ->  flip the two sides
-    attrNode = comp->getMember(1);
-    valNode = comp->getMember(0);
-  }
-  TRI_ASSERT(attrNode->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS);
+  if (n == 1) {
+    auto comp = node->getMember(0);
+    // assume a.b == value
+    auto attrNode = comp->getMember(0);
+    auto valNode = comp->getMember(1);
 
-  if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
-    // a.b == value
-    return createEqIterator(trx, attrNode, valNode);
-  }
-
-  if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
-    // a.b IN values
-    if (valNode->isArray()) {
-      // a.b IN array
-      return createInIterator(trx, attrNode, valNode);
+    if (attrNode->type != aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+      // value == a.b  ->  flip the two sides
+      attrNode = comp->getMember(1);
+      valNode = comp->getMember(0);
     }
+
+    TRI_ASSERT(attrNode->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS);
+
+    if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+      // a.b == value
+      return createEqIterator(trx, attrNode, valNode);
+    }
+
+    if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+      // a.b IN values
+      if (valNode->isArray()) {
+        // a.b IN array
+        return createInIterator(trx, attrNode, valNode, opts.ascending);
+      }
+    }
+    // fall-through intentional here
+  }
+  
+  auto removeCollectionFromString =
+      [this, &trx](bool isId, std::string& value) -> int {
+    if (isId) {
+      char const* key = nullptr;
+      size_t outLength = 0;
+      std::shared_ptr<LogicalCollection> collection;
+      Result res = trx->resolveId(value.data(), value.length(), collection, key, outLength);
+
+      if (!res.ok()) {
+        // using the name of an unknown collection
+        if (_isRunningInCluster) {
+          // translate from our own shard name to "real" collection name
+          return value.compare(trx->resolver()->getCollectionName(_collection.id()));
+        } 
+        return value.compare(_collection.name());
+      }
+
+      TRI_ASSERT(key);
+      TRI_ASSERT(collection);
+
+      if (!_isRunningInCluster && collection->id() != _collection.id()) {
+        // using the name of a different collection...
+        return value.compare(_collection.name());
+      } else if (_isRunningInCluster && collection->planId() != _collection.planId()) {
+        // using a different collection
+        // translate from our own shard name to "real" collection name
+        return value.compare(trx->resolver()->getCollectionName(_collection.id())); 
+      }
+
+      // strip collection name prefix
+      value = std::string(key, outLength);
+    }
+
+    // usage of _key or same collection name
+    return 0;
+  };
+
+  std::string lower;
+  std::string upper;
+  bool lowerFound = false;
+  bool upperFound = false;
+
+  for (size_t i = 0; i < n; ++i) {
+    aql::AstNode const* comp = node->getMemberUnchecked(i);
+    
+    if (comp == nullptr) {
+      continue;
+    }
+
+    auto type = comp->type;
+
+    if (!(type == aql::NODE_TYPE_OPERATOR_BINARY_LE ||
+          type == aql::NODE_TYPE_OPERATOR_BINARY_LT || type == aql::NODE_TYPE_OPERATOR_BINARY_GE ||
+          type == aql::NODE_TYPE_OPERATOR_BINARY_GT ||
+          type == aql::NODE_TYPE_OPERATOR_BINARY_EQ
+        )) {
+      return new EmptyIndexIterator(&_collection, trx);
+    }
+
+    auto attrNode = comp->getMember(0);
+    auto valNode = comp->getMember(1);
+
+    if (attrNode->type != aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+      // value == a.b  ->  flip the two sides
+      attrNode = comp->getMember(1);
+      valNode = comp->getMember(0);
+      type = aql::Ast::ReverseOperator(type);
+    }
+
+    TRI_ASSERT(attrNode->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS);
+    bool const isId = (attrNode->stringEquals(StaticStrings::IdString));
+
+    std::string value; // empty string == lower bound
+    if (valNode->isStringValue()) {
+      value = valNode->getString();
+    } else if (valNode->isObject() || valNode->isArray()) {
+      // any array or object value is bigger than any potential key
+      value = ::highest;
+    } else if (valNode->isNullValue() || valNode->isBoolValue() || valNode->isIntValue()) {
+      // any null, bool or numeric value is lower than any potential key
+      // keep lower bound
+    } else {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("unhandled type for valNode: ") + valNode->getTypeString());
+    }
+
+    // strip collection name prefix from comparison value
+    int const cmpResult = removeCollectionFromString(isId, value);
+
+    if (type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+      if (cmpResult != 0) {
+        // doc._id == different collection
+        return new EmptyIndexIterator(&_collection, trx);
+      }
+      if (!upperFound || value < upper) {
+        upper = value;
+        upperFound = true;
+      }
+      if (!lowerFound || value < lower) {
+        lower = std::move(value);
+        lowerFound = true;
+      }
+    } else if (type == aql::NODE_TYPE_OPERATOR_BINARY_LE || type == aql::NODE_TYPE_OPERATOR_BINARY_LT) {
+      // a.b < value
+      if (cmpResult > 0) {
+        // doc._id < collection with "bigger" name
+        upper = ::highest;
+      } else if (cmpResult < 0) {
+        // doc._id < collection with "lower" name
+        return new EmptyIndexIterator(&_collection, trx);
+      } else {
+        if (type == aql::NODE_TYPE_OPERATOR_BINARY_LT && !value.empty()) {
+          value.back() -= 0x01U;  // modify upper bound so that it is not included
+        }
+        if (!upperFound || value < upper) {
+          upper = std::move(value);
+        }
+      }
+      upperFound = true;
+    } else if (type == aql::NODE_TYPE_OPERATOR_BINARY_GE || type == aql::NODE_TYPE_OPERATOR_BINARY_GT) {
+      // a.b > value
+      if (cmpResult < 0) {
+        // doc._id > collection with "smaller" name
+        lower = ::lowest;
+      } else if (cmpResult > 0) {
+        // doc._id > collection with "bigger" name
+        return new EmptyIndexIterator(&_collection, trx);
+      } else {
+        if (type == aql::NODE_TYPE_OPERATOR_BINARY_GE && !value.empty()) {
+          value.back() -= 0x01U;  // modify lower bound so it is included
+        }
+        if (!lowerFound || value > lower) {
+          lower = std::move(value);
+        }
+      }
+      lowerFound = true;
+    }
+  }  // for nodes
+
+  // if only one bound is given select the other (lowest or highest) accordingly
+  if (upperFound && !lowerFound) {
+    lower = ::lowest;
+    lowerFound = true;
+  } else if (lowerFound && !upperFound) {
+    upper = ::highest;
+    upperFound = true;
+  }
+
+  if (lowerFound && upperFound) {
+    return new RocksDBPrimaryIndexRangeIterator(
+        &_collection /*logical collection*/, trx, this, !opts.ascending /*reverse*/,
+        RocksDBKeyBounds::PrimaryIndex(_objectId, lower, upper));
   }
 
   // operator type unsupported or IN used on non-array
   return new EmptyIndexIterator(&_collection, trx);
-}
+};
 
 /// @brief specializes the condition for use with the index
 arangodb::aql::AstNode* RocksDBPrimaryIndex::specializeCondition(
     arangodb::aql::AstNode* node, arangodb::aql::Variable const* reference) const {
-  SimpleAttributeEqualityMatcher matcher(IndexAttributes);
-  return matcher.specializeOne(this, node, reference);
+  return SkiplistIndexAttributeMatcher::specializeCondition(this, node, reference);
 }
 
 /// @brief create the iterator, for a single attribute, IN operator
 IndexIterator* RocksDBPrimaryIndex::createInIterator(transaction::Methods* trx,
                                                      arangodb::aql::AstNode const* attrNode,
-                                                     arangodb::aql::AstNode const* valNode) {
+                                                     arangodb::aql::AstNode const* valNode, 
+                                                     bool ascending) {
   // _key or _id?
   bool const isId = (attrNode->stringEquals(StaticStrings::IdString));
 
@@ -480,10 +774,21 @@ IndexIterator* RocksDBPrimaryIndex::createInIterator(transaction::Methods* trx,
   size_t const n = valNode->numMembers();
 
   // only leave the valid elements
-  for (size_t i = 0; i < n; ++i) {
-    handleValNode(trx, keys.get(), valNode->getMemberUnchecked(i), isId);
-    TRI_IF_FAILURE("PrimaryIndex::iteratorValNodes") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  if (ascending) {
+    for (size_t i = 0; i < n; ++i) {
+      handleValNode(trx, keys.get(), valNode->getMemberUnchecked(i), isId);
+      TRI_IF_FAILURE("PrimaryIndex::iteratorValNodes") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+    }
+  } else {
+    size_t i = n;
+    while (i > 0) {
+      --i;
+      handleValNode(trx, keys.get(), valNode->getMemberUnchecked(i), isId);
+      TRI_IF_FAILURE("PrimaryIndex::iteratorValNodes") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
     }
   }
 
@@ -492,7 +797,7 @@ IndexIterator* RocksDBPrimaryIndex::createInIterator(transaction::Methods* trx,
   }
 
   keys->close();
-
+        
   return new RocksDBPrimaryIndexInIterator(&_collection, trx, this, std::move(keys), !isId);
 }
 

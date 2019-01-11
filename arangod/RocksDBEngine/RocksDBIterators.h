@@ -105,10 +105,9 @@ class RocksDBGenericIterator {
 
   ~RocksDBGenericIterator() {}
 
-  // the following functions return if the iterator
-  // is valid and in bounds on return.
-  bool next(GenericCallback const& cb,
-            size_t count);  // number of documents the callback should be applied to
+  //* The following functions returns true if the iterator is valid within bounds on return.
+  //  @param limit - number of documents the callback should be applied to
+  bool next(GenericCallback const& cb, size_t limit);
 
   // documents to skip, skipped documents
   bool skip(uint64_t count, uint64_t& skipped);

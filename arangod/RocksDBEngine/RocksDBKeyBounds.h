@@ -71,6 +71,13 @@ class RocksDBKeyBounds {
   static RocksDBKeyBounds PrimaryIndex(uint64_t indexId);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Bounds for all index-entries- within a range belonging to a
+  ///  specified primary index
+  //////////////////////////////////////////////////////////////////////////////
+  static RocksDBKeyBounds PrimaryIndex(uint64_t indexId, std::string const& lower,
+                                       std::string const& upper);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all index-entries belonging to a specified edge index
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKeyBounds EdgeIndex(uint64_t indexId);
@@ -209,6 +216,8 @@ class RocksDBKeyBounds {
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
                    VPackSlice const& second, VPackSlice const& third);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, uint64_t second, uint64_t third);
+  RocksDBKeyBounds(RocksDBEntryType type, uint64_t id, std::string const& lower,
+                   std::string const& upper);
 
  private:
   // private class that will hold both bounds in a single buffer (with only one

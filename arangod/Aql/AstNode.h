@@ -262,6 +262,7 @@ struct AstNode {
 
 /// @brief dump the node (for debugging purposes)
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  std::ostream& toStream(std::ostream& os, int indent) const;
   void dump(int indent) const;
 #endif
 

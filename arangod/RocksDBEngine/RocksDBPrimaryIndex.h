@@ -103,6 +103,45 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
   bool const _allowCoveringIndexOptimization;
 };
 
+class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
+ private:
+  friend class RocksDBVPackIndex;
+
+ public:
+  RocksDBPrimaryIndexRangeIterator(LogicalCollection* collection, transaction::Methods* trx,
+                                   arangodb::RocksDBPrimaryIndex const* index,
+                                   bool reverse, RocksDBKeyBounds&& bounds);
+
+  ~RocksDBPrimaryIndexRangeIterator() = default;
+
+ public:
+  char const* typeName() const override { return "rocksdb-range-index-iterator"; }
+
+  /// @brief Get the next limit many elements in the index
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
+
+  void skip(uint64_t count, uint64_t& skipped) override;
+
+  /// @brief Reset the cursor
+  void reset() override;
+
+  /// @brief we provide a method to provide the index attribute values
+  /// while scanning the index
+  bool hasCovering() const override { return false; }
+  // bool nextCovering(DocumentCallback const& cb, size_t limit) override;
+
+ private:
+  bool outOfRange() const;
+
+  arangodb::RocksDBPrimaryIndex const* _index;
+  rocksdb::Comparator const* _cmp;
+  std::unique_ptr<rocksdb::Iterator> _iterator;
+  bool const _reverse;
+  RocksDBKeyBounds _bounds;
+  // used for iterate_upper_bound iterate_lower_bound
+  rocksdb::Slice _rangeBound;
+};
+
 class RocksDBPrimaryIndex final : public RocksDBIndex {
   friend class RocksDBPrimaryIndexEqIterator;
   friend class RocksDBPrimaryIndexInIterator;
@@ -125,7 +164,7 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   bool hasCoveringIterator() const override { return true; }
 
-  bool isSorted() const override { return false; }
+  bool isSorted() const override { return true; }
 
   bool hasSelectivityEstimate() const override { return true; }
 
@@ -154,6 +193,10 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
                                arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
+  
+  bool supportsSortCondition(arangodb::aql::SortCondition const*,
+                             arangodb::aql::Variable const*, size_t, double&,
+                             size_t&) const override;
 
   IndexIterator* iteratorForCondition(transaction::Methods*, ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
@@ -184,7 +227,7 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
  private:
   /// @brief create the iterator, for a single attribute, IN operator
   IndexIterator* createInIterator(transaction::Methods*, arangodb::aql::AstNode const*,
-                                  arangodb::aql::AstNode const*);
+                                  arangodb::aql::AstNode const*, bool ascending);
 
   /// @brief create the iterator, for a single attribute, EQ operator
   IndexIterator* createEqIterator(transaction::Methods*, arangodb::aql::AstNode const*,
