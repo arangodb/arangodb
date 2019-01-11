@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <h3>
+      C++ Code Blocks
+    </h3>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">some_header</span><span class="special">&gt;</span>
+    <span class="preprocessor">#include</span> <span class="string">&quot;another_header.hpp&quot;</span>
+<span class="preprocessor">#   define</span> <span class="identifier">A_MACRO</span> <span class="identifier">value</span>
+<span class="preprocessor">#define</span> <span class="identifier">stringize</span><span class="special">(</span><span class="identifier">hello</span><span class="special">)</span> <span class="special">#</span><span class="identifier">hello</span>
+<span class="comment">// No escape</span>
+<span class="comment">/* No escape */</span>
+<span class="comment">/* No escape
+ * with newlines
+ */</span>
+<span class="comment">// In Header: &lt;<a href="http://www.boost.org/doc/libs/release/boost/optional/optional.hpp">boost/optional/optional.hpp</a>&gt;</span>
+<span class="comment">/* In Header: &lt;<a href="http://www.boost.org/doc/libs/release/boost/optional/optional.hpp">boost/optional/optional.hpp</a>&gt; */</span>
+<span class="comment">/* Multiple escapes: <span class="emphasis"><em>italic</em></span>
+ * <span class="underline">underline</span><span class="bold"><strong>bold</strong></span>
+ */</span>
+<span class="comment">/* Token pasting: */</span> <span class="identifier">a</span><span class="special">##</span><span class="identifier">b</span>
+</pre>
+    <p>
+      A badly formed comment:
+    </p>
+<pre class="programlisting"><span class="comment">/* Oh dear
+</span></pre>
+    <p>
+      A badly formed comment with an escape:
+    </p>
+<pre class="programlisting"><span class="comment">/* Oh dear <span class="bold"><strong>bold</strong></span>
+</span></pre>
+    <p>
+      Just some code:
+    </p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span> <span class="special">{</span>
+    <span class="keyword">constexpr</span> <span class="keyword">char32_t</span> <span class="identifier">x</span> <span class="special">=</span> <span class="char">'a'</span><span class="special">;</span>
+    <span class="keyword">const</span> <span class="keyword">auto</span> <span class="identifier">y</span> <span class="special">=</span> <span class="identifier">x</span> <span class="special">-</span> <span class="char">' '</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+  </body>
+</html>

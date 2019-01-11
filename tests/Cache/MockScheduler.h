@@ -29,8 +29,9 @@
 #define UNITTESTS_CACHE_MOCK_SCHEDULER_H
 
 #include "Basics/Common.h"
+#include "Basics/asio_ns.h"
 
-#include <asio/io_service.hpp>
+#include <boost/asio/io_service.hpp>
 #include <memory>
 #include <thread>
 #include <vector>
@@ -39,9 +40,9 @@ namespace arangodb {
 namespace cache {
 
 class MockScheduler {
-  typedef std::unique_ptr<asio::io_context::work> asio_worker;
-  std::unique_ptr<asio::io_context> _ioService;
-  std::unique_ptr<asio::io_context::work> _serviceGuard;
+  typedef std::unique_ptr<asio_ns::io_context::work> asio_worker;
+  std::unique_ptr<asio_ns::io_context> _ioService;
+  std::unique_ptr<asio_ns::io_context::work> _serviceGuard;
   std::vector<std::thread*> _group;
 
  public:

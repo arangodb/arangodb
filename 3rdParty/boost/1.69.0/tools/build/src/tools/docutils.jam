@@ -1,0 +1,125 @@
+# Copyright David Abrahams 2004. Distributed under the Boost
+# Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+# Support for docutils ReStructuredText processing.
+
+import type ;
+import scanner ;
+import generators ;
+import os ;
+import common ;
+import toolset ;
+import path ;
+import feature : feature ;
+import property ;
+import errors ;
+
+.initialized = ;
+
+type.register ReST : rst ;
+
+class rst-scanner : common-scanner
+{
+    rule __init__ ( paths * )
+    {
+        common-scanner.__init__ . $(paths) ;
+    }
+    
+    rule pattern ( )
+    {
+         return "^[ 	]*\\.\\.[ 	]+include::[ 	]+([^
+]+)"
+        "^[ 	]*\\.\\.[ 	]+image::[ 	]+([^
+]+)"
+        "^[ 	]*\\.\\.[ 	]+figure::[ 	]+([^
+]+)"
+        ;
+    }
+}
+
+scanner.register rst-scanner : include ;
+type.set-scanner ReST : rst-scanner ;
+
+generators.register-standard docutils.html : ReST : HTML ;
+
+rule init ( docutils-dir ? : tools-dir ? )
+{
+    docutils-dir ?= [ modules.peek : DOCUTILS_DIR ] ;
+    tools-dir ?= $(docutils-dir)/tools ;
+
+    if ! $(.initialized)
+    {
+        .initialized = true ;
+        if $(docutils-dir)
+        {
+            .docutils-dir = $(docutils-dir) ;
+            .tools-dir = $(tools-dir:R="") ;
+           
+            .setup = [ 
+                common.prepend-path-variable-command PYTHONPATH 
+                    : $(.docutils-dir) $(.docutils-dir)/extras ] ;
+            RST2XXX = [ common.find-tool rst2html ] ;
+        }
+        else
+        {
+            RST2XXX_PY = [ common.find-tool rst2html.py ] ;
+        }
+    }
+}
+
+rule html ( target : source : properties *  )
+{
+    if ! [ on $(target) return $(RST2XXX) ]
+    {
+        local python-cmd = [ property.select <python.interpreter> : $(properties) ] ;
+        if ! $(.tools-dir) && ! $(RST2XXX_PY) {
+            errors.user-error
+            "The docutils module is used, but not configured. "
+            : ""
+            : "Please modify your user-config.jam or project-config.jam to contain:"
+            : ""
+            : "    using docutils : <docutils-dir> ;"
+            : ""
+            : "On Ubuntu, 'docutils-common' package will create /usr/share/docutils."
+            : "Other flavours of Linux likely have docutils as package as well."
+            : "On Windows, you can install from http://docutils.sourceforge.net/."
+            ;
+        }
+        
+        if $(RST2XXX_PY)
+        {
+            if $(RST2XXX_PY:D)
+            {
+                # If we have a path to the rst2html.py script, we need to use
+                # the python interpreter to load it up.
+                RST2XXX on $(target) = $(python-cmd:G=:E="python") $(RST2XXX_PY) ;
+            }
+            else
+            {
+                # Otherwise, bare rst2html.py, we can just exec that directly.
+                # This work for both Nix, and the standard Windows Python installs.
+                RST2XXX on $(target) = $(RST2XXX_PY) ;
+            }
+        }
+        else
+        {
+            RST2XXX on $(target) = $(python-cmd:G=:E="python") $(.tools-dir)/rst2html.py ;
+        }
+    }
+}
+
+
+feature docutils : : free ;
+feature docutils-html : : free ;
+feature docutils-cmd : : free ;
+toolset.flags docutils COMMON-FLAGS : <docutils> ;
+toolset.flags docutils HTML-FLAGS : <docutils-html> ;
+toolset.flags docutils RST2XXX : <docutils-cmd> ;
+  
+actions html
+{
+    $(.setup)
+    "$(RST2XXX)" $(COMMON-FLAGS) $(HTML-FLAGS) $(>) $(<)
+}
+

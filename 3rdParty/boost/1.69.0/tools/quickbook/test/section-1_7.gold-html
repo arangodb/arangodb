@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <h3>
+      Section Id 1.7
+    </h3>
+    <div class="toc">
+      <p>
+        <b>Table of contents</b>
+      </p>
+      <ul>
+        <li>
+          <a href="#section_id_1_7.quickbook_section_no_id_test">Quickbook section
+          no id test</a>
+        </li>
+        <li>
+          <a href="#section_id_1_7.id_test1">Quickbook section id test</a>
+        </li>
+        <li>
+          <a href="#section_id_1_7.id_test2">Quickbook section id test</a>
+        </li>
+        <li>
+          <a href="#section_id_1_7.id_test3_quickbook_section_id_te">id_test3 Quickbook
+          section id test</a>
+        </li>
+        <li>
+          <a href="#section_id_1_7.--">Quickbook section odd id test</a>
+        </li>
+        <li>
+          <a href="#section_id_1_7.sect-abc">Section with template in id</a>
+        </li>
+        <li>
+          <a href="#section_id_1_7.link_section_id_1_7_id_test1_lin"><a href="#section_id_1_7.id_test1">Link
+          in title</a></a>
+        </li>
+        <li>
+          <a href="#section_id_1_7.link_section_id_1_7_id_test1_li0"><a href="#section_id_1_7.id_test1">Link</a>
+          in title</a>
+        </li>
+      </ul>
+    </div>
+    <div id="section_id_1_7.quickbook_section_no_id_test">
+      <h3>
+        Quickbook section no id test
+      </h3>
+      <div id="section_id_1_7.quickbook_section_no_id_test">
+      </div>
+    </div>
+    <div id="section_id_1_7.id_test1">
+      <h3>
+        Quickbook section id test
+      </h3>
+      <div id="section_id_1_7.id_test1">
+      </div>
+    </div>
+    <div id="section_id_1_7.id_test2">
+      <h3>
+        Quickbook section id test
+      </h3>
+      <div id="section_id_1_7.id_test2">
+      </div>
+    </div>
+    <div id="section_id_1_7.id_test3_quickbook_section_id_te">
+      <h3>
+        id_test3 Quickbook section id test
+      </h3>
+      <div id="section_id_1_7.id_test3_quickbook_section_id_te">
+      </div>
+    </div>
+    <div id="section_id_1_7.--">
+      <h3>
+        Quickbook section odd id test
+      </h3>
+      <div id="section_id_1_7.--">
+      </div>
+    </div>
+    <div id="section_id_1_7.sect-abc">
+      <h3>
+        Section with template in id
+      </h3>
+      <div id="section_id_1_7.sect-abc">
+      </div>
+    </div>
+    <div id="section_id_1_7.link_section_id_1_7_id_test1_lin">
+      <h3>
+        <a href="#section_id_1_7.id_test1">Link in title</a>
+      </h3>
+      <div id="section_id_1_7.link_section_id_1_7_id_test1_lin">
+      </div>
+    </div>
+    <div id="section_id_1_7.link_section_id_1_7_id_test1_li0">
+      <h3>
+        <a href="#section_id_1_7.id_test1">Link</a> in title
+      </h3>
+      <div id="section_id_1_7.link_section_id_1_7_id_test1_li0">
+      </div>
+    </div>
+  </body>
+</html>

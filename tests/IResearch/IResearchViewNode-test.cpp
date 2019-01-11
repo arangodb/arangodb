@@ -200,7 +200,7 @@ SECTION("construct") {
     CHECK(query.plan() == node.plan());
     CHECK(42 == node.id());
     CHECK(logicalView == node.view());
-    CHECK(node.sortCondition().empty());
+    CHECK(node.scorers().empty());
     CHECK(!node.volatility().first); // filter volatility
     CHECK(!node.volatility().second); // sort volatility
     CHECK(node.getVariablesUsedHere().empty());
@@ -245,7 +245,7 @@ SECTION("construct") {
     CHECK(query.plan() == node.plan());
     CHECK(42 == node.id());
     CHECK(logicalView == node.view());
-    CHECK(node.sortCondition().empty());
+    CHECK(node.scorers().empty());
     CHECK(!node.volatility().first); // filter volatility
     CHECK(!node.volatility().second); // sort volatility
     CHECK(node.getVariablesUsedHere().empty());
@@ -316,7 +316,7 @@ SECTION("construct") {
     CHECK(query.plan() == node.plan());
     CHECK(42 == node.id());
     CHECK(logicalView == node.view());
-    CHECK(node.sortCondition().empty());
+    CHECK(node.scorers().empty());
     CHECK(!node.volatility().first); // filter volatility
     CHECK(!node.volatility().second); // sort volatility
     CHECK(node.getVariablesUsedHere().empty());
@@ -418,7 +418,7 @@ SECTION("constructFromVPackSingleServer") {
     CHECK(query.plan() == node.plan());
     CHECK(42 == node.id());
     CHECK(logicalView == node.view());
-    CHECK(node.sortCondition().empty());
+    CHECK(node.scorers().empty());
     CHECK(!node.volatility().first); // filter volatility
     CHECK(!node.volatility().second); // sort volatility
     CHECK(node.getVariablesUsedHere().empty());
@@ -453,7 +453,7 @@ SECTION("constructFromVPackSingleServer") {
     CHECK(query.plan() == node.plan());
     CHECK(42 == node.id());
     CHECK(logicalView == node.view());
-    CHECK(node.sortCondition().empty());
+    CHECK(node.scorers().empty());
     CHECK(!node.volatility().first); // filter volatility
     CHECK(!node.volatility().second); // sort volatility
     CHECK(node.getVariablesUsedHere().empty());
@@ -488,7 +488,7 @@ SECTION("constructFromVPackSingleServer") {
     CHECK(query.plan() == node.plan());
     CHECK(42 == node.id());
     CHECK(logicalView == node.view());
-    CHECK(node.sortCondition().empty());
+    CHECK(node.scorers().empty());
     CHECK(!node.volatility().first); // filter volatility
     CHECK(!node.volatility().second); // sort volatility
     CHECK(node.getVariablesUsedHere().empty());
@@ -553,7 +553,7 @@ SECTION("clone") {
       CHECK(&node.vocbase() == &cloned.vocbase());
       CHECK(node.view() == cloned.view());
       CHECK(&node.filterCondition() == &cloned.filterCondition());
-      CHECK(node.sortCondition() == cloned.sortCondition());
+      CHECK(node.scorers() == cloned.scorers());
       CHECK(node.volatility() == cloned.volatility());
 
       CHECK(node.getCost() == cloned.getCost());
@@ -581,7 +581,7 @@ SECTION("clone") {
       CHECK(&node.vocbase() == &cloned.vocbase());
       CHECK(node.view() == cloned.view());
       CHECK(&node.filterCondition() == &cloned.filterCondition());
-      CHECK(node.sortCondition() == cloned.sortCondition());
+      CHECK(node.scorers() == cloned.scorers());
       CHECK(node.volatility() == cloned.volatility());
       CHECK(node.options().forceSync == cloned.options().forceSync);
 
@@ -609,7 +609,7 @@ SECTION("clone") {
       CHECK(&node.vocbase() == &cloned.vocbase());
       CHECK(node.view() == cloned.view());
       CHECK(&node.filterCondition() == &cloned.filterCondition());
-      CHECK(node.sortCondition() == cloned.sortCondition());
+      CHECK(node.scorers() == cloned.scorers());
       CHECK(node.volatility() == cloned.volatility());
       CHECK(node.options().forceSync == cloned.options().forceSync);
 
@@ -658,7 +658,7 @@ SECTION("clone") {
       CHECK(&node.vocbase() == &cloned.vocbase());
       CHECK(node.view() == cloned.view());
       CHECK(&node.filterCondition() == &cloned.filterCondition());
-      CHECK(node.sortCondition() == cloned.sortCondition());
+      CHECK(node.scorers() == cloned.scorers());
       CHECK(node.volatility() == cloned.volatility());
 
       CHECK(node.getCost() == cloned.getCost());
@@ -686,7 +686,7 @@ SECTION("clone") {
       CHECK(&node.vocbase() == &cloned.vocbase());
       CHECK(node.view() == cloned.view());
       CHECK(&node.filterCondition() == &cloned.filterCondition());
-      CHECK(node.sortCondition() == cloned.sortCondition());
+      CHECK(node.scorers() == cloned.scorers());
       CHECK(node.volatility() == cloned.volatility());
       CHECK(node.options().forceSync == cloned.options().forceSync);
 
@@ -714,7 +714,7 @@ SECTION("clone") {
       CHECK(&node.vocbase() == &cloned.vocbase());
       CHECK(node.view() == cloned.view());
       CHECK(&node.filterCondition() == &cloned.filterCondition());
-      CHECK(node.sortCondition() == cloned.sortCondition());
+      CHECK(node.scorers() == cloned.scorers());
       CHECK(node.volatility() == cloned.volatility());
       CHECK(node.options().forceSync == cloned.options().forceSync);
 
@@ -758,7 +758,7 @@ SECTION("clone") {
       CHECK(&node.vocbase() == &cloned.vocbase());
       CHECK(node.view() == cloned.view());
       CHECK(&node.filterCondition() == &cloned.filterCondition());
-      CHECK(node.sortCondition() == cloned.sortCondition());
+      CHECK(node.scorers() == cloned.scorers());
       CHECK(node.volatility() == cloned.volatility());
       CHECK(node.options().forceSync == cloned.options().forceSync);
 
@@ -790,7 +790,7 @@ SECTION("clone") {
       CHECK(&node.vocbase() == &cloned.vocbase());
       CHECK(node.view() == cloned.view());
       CHECK(&node.filterCondition() == &cloned.filterCondition());
-      CHECK(node.sortCondition() == cloned.sortCondition());
+      CHECK(node.scorers() == cloned.scorers());
       CHECK(node.volatility() == cloned.volatility());
       CHECK(node.options().forceSync == cloned.options().forceSync);
 
@@ -821,7 +821,7 @@ SECTION("clone") {
       CHECK(&node.vocbase() == &cloned.vocbase());
       CHECK(node.view() == cloned.view());
       CHECK(&node.filterCondition() == &cloned.filterCondition());
-      CHECK(node.sortCondition() == cloned.sortCondition());
+      CHECK(node.scorers() == cloned.scorers());
       CHECK(node.volatility() == cloned.volatility());
       CHECK(node.options().forceSync == cloned.options().forceSync);
 
@@ -892,7 +892,7 @@ SECTION("serialize") {
       CHECK(&node.vocbase() == &deserialized.vocbase());
       CHECK(node.view() == deserialized.view());
       CHECK(&node.filterCondition() == &deserialized.filterCondition());
-      CHECK(node.sortCondition() == deserialized.sortCondition());
+      CHECK(node.scorers() == deserialized.scorers());
       CHECK(node.volatility() == deserialized.volatility());
       CHECK(node.options().forceSync == deserialized.options().forceSync);
 
@@ -916,7 +916,7 @@ SECTION("serialize") {
       CHECK(&node.vocbase() == &deserialized.vocbase());
       CHECK(node.view() == deserialized.view());
       CHECK(&node.filterCondition() == &deserialized.filterCondition());
-      CHECK(node.sortCondition() == deserialized.sortCondition());
+      CHECK(node.scorers() == deserialized.scorers());
       CHECK(node.volatility() == deserialized.volatility());
       CHECK(node.options().forceSync == deserialized.options().forceSync);
 
@@ -980,7 +980,7 @@ SECTION("serialize") {
       CHECK(&node.vocbase() == &deserialized.vocbase());
       CHECK(node.view() == deserialized.view());
       CHECK(&node.filterCondition() == &deserialized.filterCondition());
-      CHECK(node.sortCondition() == deserialized.sortCondition());
+      CHECK(node.scorers() == deserialized.scorers());
       CHECK(node.volatility() == deserialized.volatility());
       CHECK(node.options().forceSync == deserialized.options().forceSync);
 
@@ -1004,7 +1004,7 @@ SECTION("serialize") {
       CHECK(&node.vocbase() == &deserialized.vocbase());
       CHECK(node.view() == deserialized.view());
       CHECK(&node.filterCondition() == &deserialized.filterCondition());
-      CHECK(node.sortCondition() == deserialized.sortCondition());
+      CHECK(node.scorers() == deserialized.scorers());
       CHECK(node.volatility() == deserialized.volatility());
       CHECK(node.options().forceSync == deserialized.options().forceSync);
 
