@@ -387,7 +387,6 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
         break;
       }
 
-      case RocksDBLogType::IResearchLinkDrop:  // do nothing
       case RocksDBLogType::DocumentOperationsPrologue:
       case RocksDBLogType::DocumentRemove:
       case RocksDBLogType::DocumentRemoveAsPartOfUpdate:

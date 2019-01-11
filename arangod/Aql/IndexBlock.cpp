@@ -156,7 +156,7 @@ arangodb::aql::AstNode* IndexBlock::makeUnique(arangodb::aql::AstNode* node) con
     bool isSorted = false;
     bool isSparse = false;
     auto unused = trx->getIndexFeatures(_indexes[_currentIndex], isSorted, isSparse);
-    if (isSparse) {
+    if (isSparse || isSorted) {
       // the index is sorted. we need to use SORTED_UNIQUE to get the
       // result back in index order
       return ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"), array);
