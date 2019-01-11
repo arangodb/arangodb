@@ -202,15 +202,16 @@ void IResearchViewBlockBase::reset() {
       irs::order order;
       irs::sort::ptr scorer;
 
-      for (auto const& sort : viewNode.sortCondition()) {
-        TRI_ASSERT(sort.node);
+      for (auto const& scorerNode : viewNode.scorers()) {
+        TRI_ASSERT(scorerNode.node);
 
-        if (!arangodb::iresearch::OrderFactory::scorer(&scorer, *sort.node, queryCtx)) {
+        if (!arangodb::iresearch::OrderFactory::scorer(&scorer, *scorerNode.node, queryCtx)) {
           // failed to append sort
           THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
         }
 
-        order.add(sort.asc, std::move(scorer));
+        // sorting order doesn't matter
+        order.add(true, std::move(scorer));
       }
 
       // compile order
@@ -427,7 +428,7 @@ bool IResearchViewBlock::resetIterator() {
     auto const& viewNode =
         *ExecutionNode::castTo<IResearchViewNode const*>(getPlanNode());
 
-    TRI_ASSERT(numScores == viewNode.sortCondition().size());
+    TRI_ASSERT(numScores == viewNode.scorers().size());
 #endif
   } else {
     _scr = &irs::score::no_score();

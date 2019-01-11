@@ -14,6 +14,9 @@ devel
   shown in the web UI (e.g. now a `_key` value of "10" will be shown before a `_key`
   value of "9").
 
+* fixed known issue #445: ArangoSearch ignores `_id` attribute even if `includeAllFields`
+  is set to `true`.
+
 * upgraded bundled boost library to version 1.69.0
 
 * upgraded bundled curl library to version 7.63
