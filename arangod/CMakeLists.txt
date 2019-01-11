@@ -190,7 +190,6 @@ SET(ARANGOD_SOURCES
   Aql/BindParameters.cpp
   Aql/BlockCollector.cpp
   Aql/BlockFetcher.cpp
-  Aql/CalculationBlock.cpp
   Aql/CalculationExecutor.cpp
   Aql/ClusterBlocks.cpp
   Aql/ClusterNodes.cpp

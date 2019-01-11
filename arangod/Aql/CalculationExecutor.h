@@ -101,8 +101,6 @@ class CalculationExecutor {
 
   InputAqlItemRow _currentRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
   ExecutionState _rowState;
-  size_t _inputArrayPosition = 0;
-  size_t _inputArrayLength = 0;
 };
 
 }  // namespace aql
