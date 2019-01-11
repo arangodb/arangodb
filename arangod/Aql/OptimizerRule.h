@@ -166,14 +166,14 @@ struct OptimizerRule {
     // remove redundant filters statements
     removeFiltersCoveredByTraversal,
 
-    // remove calculations that are redundant
-    // needs to run after filter removal
-    removeUnnecessaryCalculationsRule2,
-
 #ifdef USE_IRESEARCH
     // move filters and sort conditions into views and remove them
     handleArangoSearchViewsRule,
 #endif
+
+    // remove calculations that are redundant
+    // needs to run after filter removal
+    removeUnnecessaryCalculationsRule2,
 
     // remove now obsolete path variables
     removeTraversalPathVariable,

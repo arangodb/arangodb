@@ -1020,7 +1020,15 @@ function processQuery (query, explain, planIndex) {
         if (node.condition && node.condition.hasOwnProperty('type')) {
           condition = ' ' + keyword('SEARCH') + ' ' + buildExpression(node.condition);
         }
-        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + view(node.view) + condition + '   ' + annotation('/* view query */');
+
+        var scorers = '';
+        if (node.scorers && node.scorers.length > 0) {
+          scorers = keyword(' LET ' ) + node.scorers.map(function(scorer) {
+            return variableName(scorer) + ' = ' + buildExpression(scorer.node);
+          }).join(', ');
+        }
+
+        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + view(node.view) + condition + scorers + '   ' + annotation('/* view query */');
       case 'IndexNode':
         collectionVariables[node.outVariable.id] = node.collection;
         node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, false); });
