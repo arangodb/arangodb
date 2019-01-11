@@ -170,6 +170,7 @@ void Task::shutdownTasks() {
   }
 
   // wait for the tasks to be cleaned up
+  int iterations = 0;
   while (true) {
     size_t size;
     {
@@ -177,12 +178,14 @@ void Task::shutdownTasks() {
       size = _tasks.size();
     }
 
-    if (size > 0) {
-      LOG_TOPIC(INFO, Logger::FIXME) << "Waiting for " << size << " Tasks to complete.";
-      std::this_thread::sleep_for(std::chrono::seconds(1));
-    } else {
+    if (size == 0) {
       break;
     }
+
+    if (++iterations % 10 == 0) {
+      LOG_TOPIC(INFO, Logger::FIXME) << "waiting for " << size << " task(s) to complete";
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
   }
 }
 

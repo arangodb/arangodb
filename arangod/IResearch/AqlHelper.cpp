@@ -248,6 +248,7 @@ size_t hash(aql::AstNode const* node, size_t hash /*= 0*/) noexcept {
           return fasthash64(static_cast<const void*>(node->getStringValue()),
                             node->getStringLength(), hash);
       }
+      return hash;
     }
 
     case aql::NODE_TYPE_OBJECT_ELEMENT: {
