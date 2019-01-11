@@ -4,6 +4,8 @@
 - Setup react dev and production setups.  (Done)
 - Change "make frontend"
 
+## Fix Ace
+
 ## Build structure
 - Define a new and clean build directory infrastructure (Done)
 - Define a new and clean img directory as well (../frontend/img/ArangoDB-community-edition-Web-UI.svg) compressed vs non compresses svg's etc. REFACTOR!!! (Done)
