@@ -44,6 +44,7 @@
 #include "Aql/ModificationNodes.h"
 #include "Aql/NodeFinder.h"
 #include "Aql/Query.h"
+#include "Aql/ReturnExecutor.h"
 #include "Aql/ShortestPathNode.h"
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
@@ -1285,9 +1286,7 @@ void EnumerateListNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) 
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> EnumerateListNode::createBlock(
-    ExecutionEngine &engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
-) const {
+    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
@@ -1300,9 +1299,11 @@ std::unique_ptr<ExecutionBlock> EnumerateListNode::createBlock(
   RegisterId outRegister = it->second.registerId;
 
   EnumerateListExecutorInfos infos(inputRegister, outRegister,
-                      getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), engine.getQuery()->trx());
-  return std::make_unique<ExecutionBlockImpl<EnumerateListExecutor>>(&engine, this, std::move(infos));
+                                   getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                                   getRegisterPlan()->nrRegs[getDepth()],
+                                   getRegsToClear(), engine.getQuery()->trx());
+  return std::make_unique<ExecutionBlockImpl<EnumerateListExecutor>>(&engine, this,
+                                                                     std::move(infos));
 }
 
 /// @brief clone ExecutionNode recursively
@@ -1778,18 +1779,16 @@ void FilterNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> FilterNode::createBlock(
-    ExecutionEngine &engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
-) const {
+    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
   auto it = getRegisterPlan()->varInfo.find(_inVariable->id);
   TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
   RegisterId inputRegister = it->second.registerId;
 
-  FilterExecutorInfos infos(
-      inputRegister, getRegisterPlan()->nrRegs[previousNode->getDepth()],
-      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear());
+  FilterExecutorInfos infos(inputRegister,
+                            getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                            getRegisterPlan()->nrRegs[getDepth()], getRegsToClear());
   return std::make_unique<ExecutionBlockImpl<FilterExecutor>>(&engine, this,
                                                               std::move(infos));
 }
@@ -1846,7 +1845,19 @@ void ReturnNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<ReturnBlock>(&engine, this);
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+
+  auto it = getRegisterPlan()->varInfo.find(_inVariable->id);
+  TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+  RegisterId inputRegister = it->second.registerId;
+
+  ReturnExecutorInfos infos(inputRegister, 0,
+                            getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                            getRegisterPlan()->nrRegs[getDepth()],
+                            getRegsToClear());
+  return std::make_unique<ExecutionBlockImpl<ReturnExecutor>>(&engine, this,
+                                                              std::move(infos));
 }
 
 /// @brief clone ExecutionNode recursively

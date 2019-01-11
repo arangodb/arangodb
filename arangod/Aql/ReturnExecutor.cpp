@@ -36,53 +36,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-namespace {
-
-/// @brief OurLessThan
-class OurLessThan {
- public:
-  OurLessThan(
-      arangodb::transaction::Methods* trx,
-      AqlItemMatrix const& input,
-      std::vector<SortRegister> const& sortRegisters) noexcept
-    : _trx(trx),
-      _input(input),
-      _sortRegisters(sortRegisters) {
-  }
-
-  bool operator()(size_t const& a,
-                  size_t const& b) const {
-    InputAqlItemRow left = _input.getRow(a);
-    InputAqlItemRow right = _input.getRow(b);
-    for (auto const& reg : _sortRegisters) {
-      AqlValue const& lhs = left.getValue(reg.reg);
-      AqlValue const& rhs = right.getValue(reg.reg);
-
-#if 0 // #ifdef USE_IRESEARCH
-      TRI_ASSERT(reg.comparator);
-      int const cmp = (*reg.comparator)(reg.scorer.get(), _trx, lhs, rhs);
-#else
-      int const cmp = AqlValue::Compare(_trx, lhs, rhs, true);
-#endif
-
-      if (cmp < 0) {
-        return reg.asc;
-      } else if (cmp > 0) {
-        return !reg.asc;
-      }
-    }
-
-    return false;
-  }
-
- private:
-  arangodb::transaction::Methods* _trx;
-  AqlItemMatrix const& _input;
-  std::vector<SortRegister> const& _sortRegisters;
-}; // OurLessThan
-
-}
-
 static std::shared_ptr<std::unordered_set<RegisterId>> mapSortRegistersToRegisterIds(
     std::vector<SortRegister> const& sortRegisters) {
   auto set = std::make_shared<std::unordered_set<RegisterId>>();
@@ -92,90 +45,40 @@ static std::shared_ptr<std::unordered_set<RegisterId>> mapSortRegistersToRegiste
   return set;
 }
 
-ReturnExecutorInfos::ReturnExecutorInfos(
-    std::vector<SortRegister> sortRegisters, RegisterId nrInputRegisters,
-    RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> registersToClear, transaction::Methods* trx,
-    bool stable)
-    : ExecutorInfos(mapSortRegistersToRegisterIds(sortRegisters), nullptr,
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear)),
-      _trx(trx),
-      _sortRegisters(std::move(sortRegisters)),
-      _stable(stable) {
-  TRI_ASSERT(trx != nullptr);
-  TRI_ASSERT(!_sortRegisters.empty());
-}
-
-transaction::Methods* ReturnExecutorInfos::trx() const {
-  return _trx;
-}
-
-std::vector<SortRegister> const& ReturnExecutorInfos::sortRegisters() const {
-  return _sortRegisters;
-}
-
-bool ReturnExecutorInfos::stable() const {
-  return _stable;
-}
+ReturnExecutorInfos::ReturnExecutorInfos(RegisterId inputRegister, RegisterId outputRegister,
+                                         RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+                                         std::unordered_set<RegisterId> registersToClear)
+    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(
+                        std::initializer_list<RegisterId>{inputRegister}),
+                    std::make_shared<std::unordered_set<RegisterId>>(
+                        std::initializer_list<RegisterId>{outputRegister}),
+                    nrInputRegisters, nrOutputRegisters, std::move(registersToClear)) {}
 
 ReturnExecutor::ReturnExecutor(Fetcher& fetcher, ReturnExecutorInfos& infos)
-    :_infos(infos),  _fetcher(fetcher), _input(nullptr), _returnNext(0) {};
+    : _infos(infos), _fetcher(fetcher){};
 ReturnExecutor::~ReturnExecutor() = default;
 
-std::pair<ExecutionState, NoStats> ReturnExecutor::produceRow(
-    OutputAqlItemRow& output) {
+std::pair<ExecutionState, NoStats> ReturnExecutor::produceRow(OutputAqlItemRow& output) {
   ExecutionState state;
-  if (_input == nullptr) {
-    // We need to get data
-    std::tie(state, _input) = _fetcher.fetchAllRows();
-    if (state == ExecutionState::WAITING) {
-      return {state, NoStats{}};
-    }
-    // If the execution state was not waiting it is guaranteed that we get a matrix.
-    // Maybe empty still
-    TRI_ASSERT(_input != nullptr);
-    if (_input == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
-    // After allRows the dependency has to be done
+  InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  std::tie(state, inputRow) = _fetcher.fetchRow();
+
+  if (state == ExecutionState::WAITING) {
+    TRI_ASSERT(!inputRow);
+    return {state, NoStats{}};
+  }
+
+  if (!inputRow) {
     TRI_ASSERT(state == ExecutionState::DONE);
+    return {state, NoStats{}};
+  }
 
-    // Execute the sort
-    doSorting();
-  }
-  // If we get here we have an input matrix
-  // And we have a list of sorted indexes.
-  TRI_ASSERT(_input != nullptr);
-  TRI_ASSERT(_sortedIndexes.size() == _input->size());
-  if (_returnNext >= _sortedIndexes.size()) {
-    // Bail out if called too often,
-    // Bail out on no elements
-    return {ExecutionState::DONE, NoStats{}};
-  }
-  InputAqlItemRow inRow = _input->getRow(_sortedIndexes[_returnNext]);
-  output.copyRow(inRow);
-  _returnNext++;
-  if (_returnNext >= _sortedIndexes.size()) {
-    return {ExecutionState::DONE, NoStats{}};
-  }
-  return {ExecutionState::HASMORE, NoStats{}};
-}
+  AqlValue val;
+  val = inputRow.getValue(_infos._inputRegisterId);
+  AqlValueGuard guard(val, true);
 
-void ReturnExecutor::doSorting() {
-  TRI_IF_FAILURE("SortBlock::doSorting") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-  TRI_ASSERT(_input != nullptr);
-  _sortedIndexes.reserve(_input->size());
-  for (size_t i = 0; i < _input->size(); ++i) {
-    _sortedIndexes.emplace_back(i);
-  }
-  // comparison function
-  OurLessThan ourLessThan(_infos.trx(), *_input, _infos.sortRegisters());
-  if (_infos.stable()) {
-    std::stable_sort(_sortedIndexes.begin(), _sortedIndexes.end(), ourLessThan);
-  } else {
-    std::sort(_sortedIndexes.begin(), _sortedIndexes.end(), ourLessThan);
-  }
+  output.setValue(_infos._outputRegisterId, inputRow, val);
+  guard.steal();
+
+  return {state, NoStats{}};
 }

@@ -17,19 +17,19 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Goedderz
-/// @author Michael Hackstein
-/// @author Heiko Kernbach
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 
-#ifndef ARANGOD_AQL_SORT_EXECUTOR_H
-#define ARANGOD_AQL_SORT_EXECUTOR_H
+#ifndef ARANGOD_AQL_RETURN_EXECUTOR_H
+#define ARANGOD_AQL_RETURN_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
 
 #include "Aql/ExecutorInfos.h"
+#include "Aql/SingleRowFetcher.h"
+
+#include "Aql/Variable.h" //invar
 
 #include <memory>
 
@@ -49,26 +49,21 @@ struct SortRegister;
 
 class ReturnExecutorInfos : public ExecutorInfos {
  public:
-  ReturnExecutorInfos(std::vector<SortRegister> sortRegisters,
-                    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                    std::unordered_set<RegisterId> registersToClear,
-                    transaction::Methods* trx, bool stable);
+  ReturnExecutorInfos(RegisterId inputRegister,
+                RegisterId outputRegisters,
+                RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+                std::unordered_set<RegisterId> registersToClear);
 
   ReturnExecutorInfos() = delete;
   ReturnExecutorInfos(ReturnExecutorInfos &&) = default;
   ReturnExecutorInfos(ReturnExecutorInfos const&) = delete;
   ~ReturnExecutorInfos() = default;
 
-  arangodb::transaction::Methods* trx() const;
-
-  std::vector<SortRegister> const& sortRegisters() const;
-
-  bool stable() const;
-
- private:
-  arangodb::transaction::Methods* _trx;
-  std::vector<SortRegister> _sortRegisters;
-  bool _stable;
+  /// @brief the variable produced by Return
+  Variable const* _inVariable;
+  bool _count;
+  RegisterId _inputRegisterId;
+  RegisterId _outputRegisterId;
 };
 
 /**
@@ -76,7 +71,7 @@ class ReturnExecutorInfos : public ExecutorInfos {
  */
 class ReturnExecutor {
  public:
-  using Fetcher = AllRowsFetcher;
+  using Fetcher = SingleRowFetcher;
   using Infos = ReturnExecutorInfos;
   using Stats = NoStats;
 
@@ -92,18 +87,9 @@ class ReturnExecutor {
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
  private:
-  void doSorting();
-
- private:
   ReturnExecutorInfos& _infos;
-
   Fetcher& _fetcher;
 
-  AqlItemMatrix const* _input;
-
-  std::vector<size_t> _sortedIndexes;
-
-  size_t _returnNext;
 };
 }  // namespace aql
 }  // namespace arangodb
