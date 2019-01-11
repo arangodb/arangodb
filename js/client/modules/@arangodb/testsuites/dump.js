@@ -2,27 +2,27 @@
 /* global print */
 'use strict';
 
-// //////////////////////////////////////////////////////////////////////////////
-// / DISCLAIMER
-// /
-// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
-// / Copyright 2014 triagens GmbH, Cologne, Germany
-// /
-// / Licensed under the Apache License, Version 2.0 (the "License")
-// / you may not use this file except in compliance with the License.
-// / You may obtain a copy of the License at
-// /
-// /     http://www.apache.org/licenses/LICENSE-2.0
-// /
-// / Unless required by applicable law or agreed to in writing, software
-// / distributed under the License is distributed on an "AS IS" BASIS,
-// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// / See the License for the specific language governing permissions and
-// / limitations under the License.
-// /
-// / Copyright holder is ArangoDB GmbH, Cologne, Germany
-// /
-// / @author Max Neunhoeffer
+// /////////////////////////////////////////////////////////////////////////////
+// DISCLAIMER
+// 
+// Copyright 2016-2019 ArangoDB GmbH, Cologne, Germany
+// Copyright 2014 triagens GmbH, Cologne, Germany
+// 
+// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+// 
+//      http://www.apache.org/licenses/LICENSE-2.0
+// 
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// 
+// Copyright holder is ArangoDB GmbH, Cologne, Germany
+// 
+// @author Max Neunhoeffer
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
@@ -30,6 +30,7 @@ const functionsDocumentation = {
   'dump_encrypted': 'encrypted dump tests',
   'dump_authentication': 'dump tests with authentication'
 };
+
 const optionsDocumentation = [
   '   - `skipEncrypted` : if set to true the encryption tests are skipped'
 ];
@@ -225,9 +226,6 @@ function getClusterStrings(options)
   }
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief TEST: dump
-// //////////////////////////////////////////////////////////////////////////////
 function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, which, tstFiles, afterServerStart) {
   print(CYAN + which + ' tests...' + RESET);
 
@@ -279,8 +277,6 @@ function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, which, 
 
   return helper.extractResults();
 }
-
-// /////////////////////////////////////////////////////////////////////////////
 
 function dump (options) {
   let c = getClusterStrings(options);
@@ -376,7 +372,6 @@ function dumpEncrypted (options) {
   return dump_backend(options, {}, {}, dumpOptions, 'dump_encrypted', tstFiles, afterServerStart);
 }
 
-// /////////////////////////////////////////////////////////////////////////////
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['dump'] = dump;
