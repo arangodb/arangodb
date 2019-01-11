@@ -1,8 +1,8 @@
 {
   "name": "aardvark",
-  "description": "ArangoDB Admin Web Interface",
+  "description": "Reactive ArangoDB Admin Web Interface",
   "author": "ArangoDB GmbH",
-  "version": "3.0.0",
+  "version": "10.0.0",
   "license": "Apache-2.0",
 
   "engines": {
@@ -22,45 +22,26 @@
     {
       "name": "Michael Hackstein",
       "email": "m.hackstein@arangodb.com"
-    },
-    {
-      "name": "Lucas Dohmen",
-      "email": "lucas@arangodb.com"
     }
   ],
 
   "main": "index.js",
-  "defaultDocument": "index.html",
+  "defaultDocument": "react/build/index.html",
 
   "configuration": {
   },
 
   "files": {
-    "/css/sass.css": {
-      "path": "frontend/build/style-minified.css",
-      "gzip": true
-    },
-    "/css/style.css": {
-      "path": "frontend/build/extra-minified.css",
-      "gzip": true
-    },
     "/ace.js": {
       "path": "frontend/src/ace.min.js",
-      "gzip": true
-    },
-    "/app.js": {
-      "path": "frontend/build/app.min.js",
-      "gzip": true
-    },
-    "/libs.js": {
-      "path": "frontend/build/libs.min.js",
       "gzip": true
     },
     "/favicon.ico": {
       "path": "favicon.ico",
       "gzip": false
     },
-    "/fonts": "frontend/fonts",
+    "/static": "react/build/static",
+    "/static/css/static/media": "react/build/static/media",
     "/img": "frontend/compressed-img",
     "/data": "frontend/data",
     "/js/arango/aqltemplates.json": "frontend/aqltemplates.json",
@@ -70,4 +51,3 @@
     }
   }
 }
-
