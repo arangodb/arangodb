@@ -48,12 +48,13 @@ struct ApplierThread : public Thread {
     TRI_ASSERT(_syncer);
   }
 
-  ~ApplierThread() {
+  ~ApplierThread() {    
+    shutdown();
+
     {
       MUTEX_LOCKER(locker, _syncerMutex);
       _syncer.reset();
     }
-    shutdown();
   }
 
   void run() override {

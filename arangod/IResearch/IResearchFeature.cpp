@@ -333,33 +333,6 @@ bool iresearchViewUpgradeVersion0_1(TRI_vocbase_t& vocbase,
   return true;
 }
 
-void registerFunctions(arangodb::aql::AqlFunctionFeature& /*functions*/) {
-#if 0
-  arangodb::iresearch::addFunction(functions, {
-    "__ARANGOSEARCH_SCORE_DEBUG",  // name
-    ".",    // value to convert
-    arangodb::aql::Function::makeFlags(
-      arangodb::aql::Function::Flags::Deterministic,
-      arangodb::aql::Function::Flags::Cacheable,
-      arangodb::aql::Function::Flags::CanRunOnDBServer
-    ),
-    [](arangodb::aql::ExpressionContext*,
-       arangodb::transaction::Methods*,
-       arangodb::SmallVector<arangodb::aql::AqlValue> const& args) {
-      if (args.empty()) {
-        // no such input parameter. return NaN
-        return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(double_t(std::nan(""))));
-      } else {
-        // unsafe
-        VPackValueLength length;
-        auto const floatValue = *reinterpret_cast<float_t const*>(args[0].slice().getString(length));
-        return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(double_t(floatValue)));
-      }
-    }
-  });
-#endif
-}
-
 void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
   using arangodb::iresearch::addFunction;
   auto flags =
@@ -969,7 +942,6 @@ void IResearchFeature::start() {
     if (functions) {
       registerFilters(*functions);
       registerScorers(*functions);
-      registerFunctions(*functions);
     } else {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
           << "failure to find feature 'AQLFunctions' while registering "

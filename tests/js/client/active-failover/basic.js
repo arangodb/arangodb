@@ -88,7 +88,8 @@ function getClusterEndpoints() {
     url: baseUrl() + "/_api/cluster/endpoints",
     auth: {
       bearer: jwtRoot,
-    }
+    },
+    timeout: 120 
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'), JSON.stringify(res));
@@ -105,7 +106,8 @@ function getLoggerState(endpoint) {
     url: getUrl(endpoint) + "/_db/_system/_api/replication/logger-state",
     auth: {
       bearer: jwtRoot,
-    }
+    },
+    timeout: 120 
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'));
@@ -119,7 +121,8 @@ function getApplierState(endpoint) {
     url: getUrl(endpoint) + "/_db/_system/_api/replication/applier-state?global=true",
     auth: {
       bearer: jwtRoot,
-    }
+    },
+    timeout: 120 
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'));
@@ -162,7 +165,8 @@ function checkData(server) {
     url: getUrl(server) + "/_api/collection/" + cname + "/count",
     auth: {
       bearer: jwtRoot,
-    }
+    },
+    timeout: 120 
   });
 
   assertTrue(res instanceof request.Response);
@@ -180,7 +184,8 @@ function readAgencyValue(path) {
     auth: {
       bearer: jwtSuperuser,
     },
-    body: JSON.stringify([[path]])
+    body: JSON.stringify([[path]]),
+    timeout: 120 
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'), JSON.stringify(res));
@@ -253,9 +258,14 @@ function ActiveFailoverSuite() {
   let currentLead = leaderInAgency();
 
   return {
+    setUpAll: function () {
+      db._create(cname);
+    },
+
     setUp: function () {
-      let col = db._create(cname);
       assertTrue(checkInSync(currentLead, servers));
+
+      let col = db._collection(cname);
       for (let i = 0; i < 10000; i++) {
         col.save({ attr: i});
       }
@@ -273,15 +283,20 @@ function ActiveFailoverSuite() {
       currentLead = leaderInAgency();
       print("connecting shell to leader ", currentLead);
       connectToServer(currentLead);
-      if (db._collection(cname)) {
-        db._drop(cname);
-      }
 
       assertTrue(checkInSync(currentLead, servers));
 
       let endpoints = getClusterEndpoints();
       assertEqual(endpoints.length, servers.length);
       assertEqual(endpoints[0], currentLead);
+
+      db._collection(cname).truncate();
+    },
+
+    tearDownAll: function () {
+      if (db._collection(cname)) {
+        db._drop(cname);
+      }
     },
 
     // Basic test if followers get in sync
@@ -435,6 +450,10 @@ function ActiveFailoverSuite() {
 
       assertTrue(checkInSync(currentLead, servers));
       assertEqual(checkData(currentLead), 10000);
+      /*if (checkData(currentLead) != 10000) {
+        print("ERROR! DODEBUG")
+        while(1){}
+      }*/
 
       print("Suspending followers, except original leader");
       suspended = instanceinfo.arangods.filter(arangod => arangod.role !== 'agent' &&
