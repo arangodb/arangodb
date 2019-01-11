@@ -61,22 +61,6 @@ TransactionState::~TransactionState() {
   }
 }
 
-std::vector<std::string> TransactionState::collectionNames(
-    std::unordered_set<std::string> const& initial) const {
-  std::vector<std::string> result;
-  result.reserve(_collections.size() + initial.size());
-  for (auto const& it : initial) {
-    result.emplace_back(it);
-  }
-  for (auto const& trxCollection : _collections) {
-    if (trxCollection->collection() != nullptr) {
-      result.emplace_back(trxCollection->collectionName());
-    }
-  }
-
-  return result;
-}
-
 /// @brief return the collection from a transaction
 TransactionCollection* TransactionState::collection(TRI_voc_cid_t cid,
                                                     AccessMode::Type accessType) {
@@ -193,9 +177,12 @@ Result TransactionState::ensureCollections(int nestingLevel) {
 }
 
 /// @brief run a callback on all collections
-void TransactionState::allCollections(std::function<bool(TransactionCollection*)> const& cb) {
+void TransactionState::allCollections( // iterate
+    std::function<bool(TransactionCollection&)> const& cb // callback to invoke
+) {
   for (auto& trxCollection : _collections) {
-    if (!cb(trxCollection)) {
+    TRI_ASSERT(trxCollection); // ensured by addCollection(...)
+    if (!cb(*trxCollection)) {
       // abort early
       return;
     }

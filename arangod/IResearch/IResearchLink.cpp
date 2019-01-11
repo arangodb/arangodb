@@ -449,15 +449,10 @@ arangodb::Result IResearchLink::commit() {
       return arangodb::Result();  // reader not modified
     }
 
-    _dataStore._reader = reader;  // update reader
-
-    auto viewImpl = view();
-
-    // invalidate query cache if there were some data changes
-    if (viewImpl) {
-      arangodb::aql::QueryCache::instance()->invalidate(&(_collection.vocbase()),
-                                                        viewImpl->name());
-    }
+    _dataStore._reader = reader; // update reader
+    arangodb::aql::QueryCache::instance()->invalidate(
+      &(_collection.vocbase()), _viewGuid
+    );
   } catch (arangodb::basics::Exception const& e) {
     return arangodb::Result(
         e.code(),
@@ -1330,6 +1325,6 @@ std::shared_ptr<IResearchView> IResearchLink::view() const {
 NS_END      // iresearch
     NS_END  // arangodb
 
-    // -----------------------------------------------------------------------------
-    // --SECTION-- END-OF-FILE
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

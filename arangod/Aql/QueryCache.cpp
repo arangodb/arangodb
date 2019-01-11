@@ -29,6 +29,7 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/conversions.h"
 #include "Basics/fasthash.h"
+#include "VocBase/LogicalDataSource.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
@@ -65,7 +66,8 @@ static bool showBindVars = true;  // will be set once on startup. cannot be chan
 QueryCacheResultEntry::QueryCacheResultEntry(uint64_t hash, QueryString const& queryString,
                                              std::shared_ptr<VPackBuilder> const& queryResult,
                                              std::shared_ptr<VPackBuilder> const& bindVars,
-                                             std::vector<std::string>&& dataSources)
+    std::unordered_set<std::shared_ptr<arangodb::LogicalDataSource>>&& dataSources // query DataSources
+)
     : _hash(hash),
       _queryString(queryString.data(), queryString.size()),
       _queryResult(queryResult),
@@ -134,6 +136,7 @@ void QueryCacheResultEntry::toVelocyPack(VPackBuilder& builder) const {
   builder.add("hits", VPackValue(_hits.load()));
 
   double executionTime = this->executionTime();
+
   if (executionTime < 0.0) {
     builder.add("runTime", VPackValue(VPackValueType::Null));
   } else {
@@ -141,12 +144,17 @@ void QueryCacheResultEntry::toVelocyPack(VPackBuilder& builder) const {
   }
 
   auto timeString = TRI_StringTimeStamp(_stamp, false);
+
   builder.add("started", VPackValue(timeString));
 
   builder.add("dataSources", VPackValue(VPackValueType::Array));
+
   for (auto const& ds : _dataSources) {
-    builder.add(VPackValue(ds));
+    if (ds) {
+      builder.add(arangodb::velocypack::Value(ds->name()));
+    }
   }
+
   builder.close();
 
   builder.close();
@@ -252,14 +260,20 @@ void QueryCacheDatabaseEntry::store(std::shared_ptr<QueryCacheResultEntry>&& ent
 
   try {
     for (auto const& it : e->_dataSources) {
-      _entriesByDataSource[it].emplace(hash);
+      if (!it) {
+        continue; // skip null datasources
+      }
+
+      _dataSources.emplace(it->guid(), it);
+      _dataSources.emplace(it->name(), it);
+      _entriesByDataSource[it.get()].emplace(hash);
     }
   } catch (...) {
     // rollback
 
     // remove from data sources
     for (auto const& it : e->_dataSources) {
-      auto it2 = _entriesByDataSource.find(it);
+      auto it2 = _entriesByDataSource.find(it.get());
 
       if (it2 != _entriesByDataSource.end()) {
         (*it2).second.erase(hash);
@@ -292,11 +306,15 @@ void QueryCacheDatabaseEntry::invalidate(std::vector<std::string> const& dataSou
 /// @brief invalidate all entries for a data source in the database-specific
 /// cache
 void QueryCacheDatabaseEntry::invalidate(std::string const& dataSource) {
-  auto it = _entriesByDataSource.find(dataSource);
+  auto itr = _dataSources.find(dataSource);
 
-  if (it == _entriesByDataSource.end()) {
+  if (itr == _dataSources.end()) {
     return;
   }
+
+  auto ds = itr->second;
+  auto it = _entriesByDataSource.find(ds.get());
+  TRI_ASSERT(it != _entriesByDataSource.end()); // ensured by store(...)
 
   for (auto& it2 : (*it).second) {
     auto it3 = _entriesByHash.find(it2);
@@ -311,7 +329,10 @@ void QueryCacheDatabaseEntry::invalidate(std::string const& dataSource) {
     }
   }
 
+  // reverse of store(...)
   _entriesByDataSource.erase(it);
+  _dataSources.erase(ds->name());
+  _dataSources.erase(ds->guid());
 }
 
 /// @brief enforce maximum number of results
@@ -353,7 +374,7 @@ void QueryCacheDatabaseEntry::enforceMaxEntrySize(size_t value) {
 void QueryCacheDatabaseEntry::excludeSystem() {
   for (auto it = _entriesByDataSource.begin(); it != _entriesByDataSource.end();
        /* no hoisting */) {
-    if ((*it).first.empty() || (*it).first[0] != '_') {
+    if (!it->first || !it->first->system()) {
       // not a system collection
       ++it;
     } else {
@@ -374,7 +395,7 @@ void QueryCacheDatabaseEntry::excludeSystem() {
 
 void QueryCacheDatabaseEntry::removeDatasources(QueryCacheResultEntry const* e) {
   for (auto const& ds : e->_dataSources) {
-    auto it = _entriesByDataSource.find(ds);
+    auto it = _entriesByDataSource.find(ds.get());
 
     if (it != _entriesByDataSource.end()) {
       (*it).second.erase(e->_hash);
@@ -603,7 +624,7 @@ void QueryCache::store(TRI_vocbase_t* vocbase, std::shared_ptr<QueryCacheResultE
     // check if we need to exclude the entry because it refers to system
     // collections
     for (auto const& ds : e->_dataSources) {
-      if (!ds.empty() && ds[0] == '_') {
+      if (ds && ds->system()) {
         // refers to a system collection...
         return;
       }
