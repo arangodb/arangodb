@@ -34,7 +34,7 @@
 
 #include "IResearchViewMeta.h"
 
-NS_LOCAL
+namespace {
 
 const std::string POLICY_BYTES_ACCUM =
     "bytes_accum";  // {threshold} > (segment_bytes +
@@ -172,10 +172,10 @@ arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy createConsolidationP
       irs::index_utils::consolidation_policy(options), std::move(properties)};
 }
 
-NS_END
+}  // namespace
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
 IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
     : _cleanupIntervalStep(mask),
@@ -727,9 +727,9 @@ size_t IResearchViewMetaState::memory() const {
   return size;
 }
 
-NS_END      // iresearch
-    NS_END  // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
-    // -----------------------------------------------------------------------------
-    // --SECTION-- END-OF-FILE
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION-- END-OF-FILE
+// -----------------------------------------------------------------------------

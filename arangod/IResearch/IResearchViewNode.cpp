@@ -213,8 +213,8 @@ bool parseOptions(aql::AstNode const* optionsNode,
 
 // in loop or non-deterministic
 bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
-                    aql::Variable const& ref,
-                    arangodb::HashSet<aql::Variable const*>& vars) {
+                     aql::Variable const& ref,
+                     arangodb::HashSet<aql::Variable const*>& vars) {
   if (!node.isDeterministic()) {
     return false;
   }
