@@ -356,14 +356,14 @@ class HashSet {
     if (required_buckets <= _num_buckets) {
       return;
     }
-    size_t num_buckets = 4;
+    size_t num_buckets = 8;
     while (num_buckets < required_buckets) { num_buckets *= 2; }
 
     size_t states_size = ((num_buckets * sizeof(State) + 8 - 1) / 8) * 8;
     size_t keys_size = num_buckets * sizeof(KeyT);
-    // intentionally uninitialized here
+    // intentionally uninitialized here, initialization will be done below
     char* new_buffer;
-    if (states_size + keys_size <= sizeof(_local_buffer)) {
+    if (_buffer == nullptr && states_size + keys_size <= sizeof(_local_buffer)) {
       new_buffer = &_local_buffer[0];
     } else {
       new_buffer = new char[states_size + keys_size];
@@ -499,7 +499,7 @@ class HashSet {
   size_t  _num_filled       =  0;
   int     _max_probe_length = -1; // Our longest bucket-brigade is this long. ONLY when we have zero elements is this ever negative (-1).
   size_t  _mask             = 0;  // _num_buckets minus one
-  char    _local_buffer[64];      // first few bytes are always allocated here
+  char    _local_buffer[80];      // first few bytes are always allocated here
 };
 
 } // namespace emilib
