@@ -248,6 +248,7 @@ ExecutionState LimitBlock::getHasMoreState() {
   return ExecutionState::HASMORE;
 }
 
+#if 0
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ReturnBlock::getSome(size_t atMost) {
   traceGetSomeBegin(atMost);
 
@@ -327,6 +328,7 @@ RegisterId ReturnBlock::returnInheritedResults() {
 
   return it->second.registerId;
 }
+#endif
 
 /// @brief initializeCursor, only call base
 std::pair<ExecutionState, arangodb::Result> NoResultsBlock::initializeCursor(AqlItemBlock* items,

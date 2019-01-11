@@ -47,12 +47,16 @@ static std::shared_ptr<std::unordered_set<RegisterId>> mapSortRegistersToRegiste
 
 ReturnExecutorInfos::ReturnExecutorInfos(RegisterId inputRegister, RegisterId outputRegister,
                                          RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                                         std::unordered_set<RegisterId> registersToClear)
+                                         std::unordered_set<RegisterId> registersToClear,
+                                         bool returnInheritedResults)
     : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(
                         std::initializer_list<RegisterId>{inputRegister}),
                     std::make_shared<std::unordered_set<RegisterId>>(
                         std::initializer_list<RegisterId>{outputRegister}),
-                    nrInputRegisters, nrOutputRegisters, std::move(registersToClear)) {}
+                    nrInputRegisters, nrOutputRegisters, std::move(registersToClear)),
+      _inputRegisterId(inputRegister),
+      _outputRegisterId(outputRegister),
+      _returnInheritedResults(returnInheritedResults) {}
 
 ReturnExecutor::ReturnExecutor(Fetcher& fetcher, ReturnExecutorInfos& infos)
     : _infos(infos), _fetcher(fetcher){};
@@ -73,12 +77,16 @@ std::pair<ExecutionState, NoStats> ReturnExecutor::produceRow(OutputAqlItemRow& 
     return {state, NoStats{}};
   }
 
-  AqlValue val;
-  val = inputRow.getValue(_infos._inputRegisterId);
-  AqlValueGuard guard(val, true);
-
-  output.setValue(_infos._outputRegisterId, inputRow, val);
-  guard.steal();
+  if (_infos._returnInheritedResults) {
+    output.copyRow(inputRow);
+  } else {
+    AqlValue val;
+    val = inputRow.getValue(_infos._inputRegisterId);
+    AqlValueGuard guard(val, true);
+    LOG_DEVEL << "writing to ouputReg: " << _infos._outputRegisterId;
+    output.setValue(_infos._outputRegisterId, inputRow, val);
+    guard.steal();
+  }
 
   return {state, NoStats{}};
 }

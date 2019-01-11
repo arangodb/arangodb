@@ -109,6 +109,7 @@ class LimitBlock final : public ExecutionBlock {
   std::unique_ptr<AqlItemBlock> _result;
 };
 
+#if 0
 class ReturnBlock final : public ExecutionBlock {
  public:
   ReturnBlock(ExecutionEngine* engine, ReturnNode const* ep)
@@ -129,6 +130,7 @@ class ReturnBlock final : public ExecutionBlock {
   /// block into it
   bool _returnInheritedResults;
 };
+#endif
 
 class NoResultsBlock final : public ExecutionBlock {
  public:
