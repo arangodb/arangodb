@@ -40,7 +40,7 @@ class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResear
  public:
   virtual void afterTruncate(TRI_voc_tick_t /*tick*/) override {
     IResearchLink::afterTruncate();
-  };
+  }
 
   virtual void batchInsert(
       transaction::Methods& trx,
@@ -53,7 +53,7 @@ class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResear
     return IResearchLink::canBeDropped();
   }
 
-  virtual Result drop() override;
+  virtual arangodb::Result drop() override { return IResearchLink::drop(); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the factory for this type of index
