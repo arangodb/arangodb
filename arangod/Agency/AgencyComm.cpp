@@ -371,6 +371,48 @@ int AgencyCommResult::httpCode() const { return _statusCode; }
 
 bool AgencyCommResult::sent() const { return _sent; }
 
+void AgencyCommResult::toVelocyPack(VPackBuilder& builder) const {
+  { VPackObjectBuilder dump(&builder);
+    builder.add("location", VPackValue(_location));
+    builder.add("message", VPackValue(_message));
+    builder.add("sent", VPackValue(_sent));
+    builder.add("body", VPackValue(_body));
+    if (_vpack != nullptr) {
+      if (_vpack->isClosed()) {
+        builder.add("vpack", _vpack->slice());
+      }
+    }
+    builder.add("statusCode", VPackValue(_statusCode));
+    builder.add(VPackValue("values"));
+    { VPackObjectBuilder v(&builder);
+      for (auto const& value : _values) {
+        builder.add(VPackValue(value.first));
+        auto const& entry = value.second;
+        { VPackObjectBuilder vv(&builder);
+          builder.add("index", VPackValue(entry._index));
+          builder.add("isDir", VPackValue(entry._isDir));
+          if (entry._vpack != nullptr && entry._vpack->isClosed()) {
+            builder.add("vpack", entry._vpack->slice());
+          }}}
+    }}
+}
+
+
+VPackBuilder AgencyCommResult::toVelocyPack() const {
+  VPackBuilder builder;
+  toVelocyPack(builder);
+  return builder;
+}
+
+
+namespace std {
+ostream& operator<< (ostream& out, AgencyCommResult const& a) {
+  out << a.toVelocyPack().toJson();
+  return out;
+}
+}
+
+
 int AgencyCommResult::errorCode() const {
   try {
     if (!_body.empty()) {
@@ -1033,6 +1075,7 @@ AgencyCommResult AgencyComm::registerCallback(std::string const& key,
   AgencyCommResult res;
   for (size_t i = 0; i < 3; ++i) {
     res = sendTransactionWithFailover(transaction);
+    LOG_TOPIC(ERR, Logger::CLUSTER) << res;
     if (res.successful()) {
       return res;
     }

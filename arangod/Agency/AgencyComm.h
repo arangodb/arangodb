@@ -239,6 +239,11 @@ class AgencyCommResult {
   ~AgencyCommResult() = default;
 
  public:
+
+  void toVelocyPack(VPackBuilder&) const;
+  
+  VPackBuilder toVelocyPack() const;
+  
   void set(int code, std::string const& message);
 
   bool successful() const { return (_statusCode >= 200 && _statusCode <= 299); }
@@ -696,5 +701,9 @@ class AgencyComm {
   bool shouldInitializeStructure();
 };
 }  // namespace arangodb
+
+namespace std {
+ostream& operator<<(ostream& o, arangodb::AgencyCommResult const& a);
+}
 
 #endif
