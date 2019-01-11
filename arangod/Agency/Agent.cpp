@@ -1248,7 +1248,7 @@ void Agent::run() {
       advanceCommitIndex();
 
       // Empty store callback trash bin
-      emptyCbTrashBin();
+      //emptyCbTrashBin();
 
       bool commenceService = false;
       {
