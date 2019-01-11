@@ -28,6 +28,7 @@
 #include "fakeit.hpp"
 
 #include "Aql/AqlItemBlock.h"
+#include "Aql/Ast.h"
 #include "Aql/CalculationExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutorInfos.h"
@@ -36,7 +37,6 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
-#include "Aql/Ast.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -49,7 +49,7 @@
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
-//Query
+// Query
 #include "RestServer/AqlFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 
@@ -58,67 +58,70 @@ using namespace arangodb::aql;
 
 namespace {
 
-struct VocbaseSetup {
+struct FeatureSetup {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
-  VocbaseSetup(): engine(server), server(nullptr, nullptr) {
+  FeatureSetup() : engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     // setup required application features
-    features.emplace_back(new arangodb::DatabaseFeature(server), false); // required for TRI_vocbase_t::dropCollection(...)
-    features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // required for TRI_vocbase_t instantiation
-    features.emplace_back(new arangodb::ViewTypesFeature(server), false); // required for TRI_vocbase_t::createView(...)
+    features.emplace_back(new arangodb::DatabaseFeature(server),
+                          false);  // required for TRI_vocbase_t::dropCollection(...)
+    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // required for TRI_vocbase_t instantiation
+    features.emplace_back(new arangodb::ViewTypesFeature(server),
+                          false);  // required for TRI_vocbase_t::createView(...)
     features.emplace_back(new arangodb::ShardingFeature(server), false);
-    features.emplace_back(new arangodb::AqlFeature(server), true); // required to create query
-    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false); //required by aql feature
-    for (auto& f: features) {
+    features.emplace_back(new arangodb::AqlFeature(server), true);  // required to create query
+    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false);  // required by aql feature
+
+    for (auto& f : features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);
     }
 
-    for (auto& f: features) {
+    for (auto& f : features) {
       f.first->prepare();
     }
 
-    for (auto& f: features) {
+    for (auto& f : features) {
       if (f.second) {
         f.first->start();
       }
     }
-
   }
 
-  ~VocbaseSetup() {
+  ~FeatureSetup() {
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
     // destroy application features
-    for (auto& f: features) {
+    for (auto& f : features) {
       if (f.second) {
         f.first->stop();
       }
     }
 
-    for (auto& f: features) {
+    for (auto& f : features) {
       f.first->unprepare();
     }
   }
 };
 
-}
+}  // namespace
 
 namespace arangodb {
 namespace tests {
 namespace aql {
 
 SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
-
   ExecutionState state;
 
+  // create block manager
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager{&monitor};
-  // Mock of the Transaction
+
+  //// Mock of the Transaction
   // Enough for this test, will only be passed through and accessed
   // on documents alone.
   fakeit::Mock<transaction::Methods> mockTrx;
@@ -130,31 +133,40 @@ SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
   fakeit::When(Method(mockTrx, transactionContextPtr)).AlwaysReturn(&ctxt);
   fakeit::When(Method(mockContext, getVPackOptions)).AlwaysReturn(&arangodb::velocypack::Options::Defaults);
 
-  VocbaseSetup setup;
-  (void) setup;
-  TRI_vocbase_t voc{TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 42, "ulf"};
+  FeatureSetup setup;  // provides features used by code below
+  (void)setup;
 
+  //// create query and expression
+  TRI_vocbase_t voc{TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 42, "ulf"};
   Query query{false, voc, QueryString("RETURN 1+1"), nullptr /*bind params*/, nullptr /*options*/, QueryPart::PART_MAIN};
   query.injectTransaction(&trx);
   Ast ast{&query};
+  // build expression to evaluate
   AstNode* one = ast.createNodeValueInt(1);
-  AstNode* node = ast.createNodeBinaryOperator(AstNodeType::NODE_TYPE_OPERATOR_UNARY_PLUS, one, one);
-  ExecutionPlan plan{&ast};
-  Expression expr( &plan, &ast, node);
+  Variable var{"a", 0};
+  ast.scopes()->start(ScopeType::AQL_SCOPE_MAIN);
+  ast.scopes()->addVariable(&var);
+  AstNode* a = ast.createNodeReference("a");
+  ast.scopes()->endCurrent();
+  AstNode* node =
+      ast.createNodeBinaryOperator(AstNodeType::NODE_TYPE_OPERATOR_BINARY_PLUS, a, one);
 
+  ExecutionPlan plan{&ast};
+  Expression expr(&plan, &ast, node);
+
+
+  auto outRegID = RegisterId(1);
+  auto inRegID = RegisterId(0);
+
+  CalculationExecutorInfos infos(
+      outRegID /*out reg*/, RegisterId(1) /*in width*/,
+      RegisterId(2) /*out width*/, std::unordered_set<RegisterId>{} /*to clear*/,
+      &query /*query*/, &expr /*expression*/,
+      std::vector<Variable const*>{&var} /*expression in variables*/,
+      std::vector<RegisterId>{inRegID} /*expression in registers*/, nullptr /*condition*/
+  );
 
   GIVEN("there are no rows upstream") {
-    CalculationExecutorInfos infos(RegisterId(0),  // out reg
-                                   RegisterId(1),  // in width
-                                   RegisterId(1),  // out width
-                                   std::unordered_set<RegisterId>{},  // to clear
-                                   &query,                           // query
-                                   &expr,  // expression
-                                   std::vector<Variable const*>{}, //expression in variables
-                                   std::vector<RegisterId>{0},  // expression in registers
-                                   nullptr                     // condition
-    );
-
     auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
     auto outputBlockShell =
         std::make_unique<OutputAqlItemBlockShell>(itemBlockManager, std::move(block),
@@ -186,22 +198,125 @@ SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
       // EnumerateListExecutor::produceRow().
       NoStats stats{};
 
-    //   THEN("the executor should first return WAIT with nullptr") {
-    //     OutputAqlItemRow result(std::move(outputBlockShell));
-    //     std::tie(state, stats) = testee.produceRow(result);
-    //     REQUIRE(state == ExecutionState::WAITING);
-    //     REQUIRE(!result.produced());
+      THEN("the executor should first return WAIT with nullptr") {
+        OutputAqlItemRow result(std::move(outputBlockShell));
+        std::tie(state, stats) = testee.produceRow(result);
+        REQUIRE(state == ExecutionState::WAITING);
+        REQUIRE(!result.produced());
 
-    //     AND_THEN("the executor should return DONE with nullptr") {
-    //       std::tie(state, stats) = testee.produceRow(result);
-    //       REQUIRE(state == ExecutionState::DONE);
-    //       REQUIRE(!result.produced());
-    //     }
-    //   }
+        AND_THEN("the executor should return DONE with nullptr") {
+          std::tie(state, stats) = testee.produceRow(result);
+          REQUIRE(state == ExecutionState::DONE);
+          REQUIRE(!result.produced());
+        }
+      }
     }
 
-
   }  // GIVEN
+
+  GIVEN("there are rows in the upstream, and the last one has to be filtered") {
+    auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
+    auto outputBlockShell =
+        std::make_unique<OutputAqlItemBlockShell>(itemBlockManager, std::move(block),
+                                                  infos.getOutputRegisters(),
+                                                  infos.registersToKeep());
+
+    auto input = VPackParser::fromJson("[ [0], [1], [2] ]");
+
+    WHEN("the producer does not wait") {
+      SingleRowFetcherHelper fetcher(input->steal(), false);
+      CalculationExecutor testee(fetcher, infos);
+      NoStats stats{};
+
+      THEN("the executor should return the rows") {
+        OutputAqlItemRow row(std::move(outputBlockShell));
+
+        // 1
+        std::tie(state, stats) = testee.produceRow(row);
+        REQUIRE(state == ExecutionState::HASMORE);
+        REQUIRE(row.produced());
+        row.advanceRow();
+
+        // 2
+        std::tie(state, stats) = testee.produceRow(row);
+        REQUIRE(state == ExecutionState::HASMORE);
+        REQUIRE(row.produced());
+        row.advanceRow();
+
+        // 3
+        std::tie(state, stats) = testee.produceRow(row);
+        REQUIRE(state == ExecutionState::DONE);
+        REQUIRE(row.produced());
+        row.advanceRow();
+
+        AND_THEN("The output should stay stable") {
+          std::tie(state, stats) = testee.produceRow(row);
+          REQUIRE(state == ExecutionState::DONE);
+          REQUIRE(!row.produced());
+        }
+
+        // verify calculation
+        AqlValue value;
+        auto block = row.stealBlock();
+        for(std::size_t index = 0; index < 3; index++){
+          value = block->getValue(index, outRegID);
+          REQUIRE(value.isNumber());
+          REQUIRE(value.toInt64() == index+1);
+        }
+
+      }  // THEN
+    }    // WHEN
+
+    WHEN("the producer waits") {
+      SingleRowFetcherHelper fetcher(input->steal(), true);
+      CalculationExecutor testee(fetcher, infos);
+      NoStats stats{};
+
+      THEN("the executor should return the rows") {
+        OutputAqlItemRow row(std::move(outputBlockShell));
+
+        // waiting
+        std::tie(state, stats) = testee.produceRow(row);
+        REQUIRE(state == ExecutionState::WAITING);
+        REQUIRE(!row.produced());
+
+        // 1
+        std::tie(state, stats) = testee.produceRow(row);
+        REQUIRE(state == ExecutionState::HASMORE);
+        REQUIRE(row.produced());
+        row.advanceRow();
+
+        // waiting
+        std::tie(state, stats) = testee.produceRow(row);
+        REQUIRE(state == ExecutionState::WAITING);
+        REQUIRE(!row.produced());
+
+        // 2
+        std::tie(state, stats) = testee.produceRow(row);
+        REQUIRE(state == ExecutionState::HASMORE);
+        REQUIRE(row.produced());
+        row.advanceRow();
+
+        // waiting
+        std::tie(state, stats) = testee.produceRow(row);
+        REQUIRE(state == ExecutionState::WAITING);
+        REQUIRE(!row.produced());
+
+        // 3
+        std::tie(state, stats) = testee.produceRow(row);
+        REQUIRE(state == ExecutionState::DONE);
+        REQUIRE(row.produced());
+        row.advanceRow();
+
+        AND_THEN("The output should stay stable") {
+          std::tie(state, stats) = testee.produceRow(row);
+          REQUIRE(state == ExecutionState::DONE);
+          REQUIRE(!row.produced());
+        }
+      }
+    }
+  }
+
 }  // SCENARIO
 
 }  // namespace aql
