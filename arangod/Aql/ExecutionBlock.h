@@ -135,8 +135,6 @@ class ExecutionBlock {
 
   RegisterId getNrOutputRegisters() const;
 
-  bool done() const;
-
  protected:
   /// @brief request an AqlItemBlock from the memory manager
   AqlItemBlock* requestBlock(size_t nrItems, RegisterId nrRegs);

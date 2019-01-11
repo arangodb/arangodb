@@ -46,7 +46,9 @@ class SortBlock final : public ExecutionBlock {
     Sorter(arangodb::aql::SortBlock&, transaction::Methods*, std::deque<AqlItemBlock*>&,
            std::vector<SortRegister>&, Fetcher&&, Allocator&&);
     virtual ~Sorter();
-    virtual std::pair<ExecutionState, arangodb::Result> sort() = 0;
+    virtual std::pair<ExecutionState, arangodb::Result> fetch() = 0;
+    virtual arangodb::Result sort() = 0;
+    virtual bool empty() const = 0;
 
    protected:
     SortBlock& _block;
@@ -82,6 +84,9 @@ class SortBlock final : public ExecutionBlock {
 
   /// @brief whether or not the sort should be stable
   bool _stable;
+
+  /// @brief whether or not results must still be fetched from dependencies
+  bool _mustFetchAll;
 
   /// @brief the type of sorter to use
   SorterType _type;

@@ -632,5 +632,3 @@ RegisterId ExecutionBlock::getNrOutputRegisters() const {
 
   return outputNrRegs;
 }
-
-bool ExecutionBlock::done() const { return _done; }

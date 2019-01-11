@@ -67,35 +67,24 @@ class StandardSorter : public arangodb::aql::SortBlock::Sorter {
                  std::vector<arangodb::aql::SortRegister>& sortRegisters,
                  Fetcher&& fetch, Allocator&& allocate)
       : arangodb::aql::SortBlock::Sorter(block, trx, buffer, sortRegisters,
-                                         std::move(fetch), std::move(allocate)),
-        _mustFetchAll{!block.done()} {}
+                                         std::move(fetch), std::move(allocate)) {}
 
-  virtual std::pair<arangodb::aql::ExecutionState, arangodb::Result> sort() {
+  virtual std::pair<arangodb::aql::ExecutionState, arangodb::Result> fetch() {
     using arangodb::aql::ExecutionBlock;
     using arangodb::aql::ExecutionState;
 
-    if (_mustFetchAll) {
-      ExecutionState res = ExecutionState::HASMORE;
-      // suck all blocks into _buffer
-      while (res != ExecutionState::DONE) {
-        res = _fetch(ExecutionBlock::DefaultBatchSize()).first;
-        if (res == ExecutionState::WAITING) {
-          return {res, TRI_ERROR_NO_ERROR};
-        }
-      }
-
-      _mustFetchAll = false;
-      if (!_buffer.empty()) {
-        doSorting();
+    ExecutionState res = ExecutionState::HASMORE;
+    // suck all blocks into _buffer
+    while (res != ExecutionState::DONE) {
+      res = _fetch(ExecutionBlock::DefaultBatchSize()).first;
+      if (res == ExecutionState::WAITING) {
+        return {res, TRI_ERROR_NO_ERROR};
       }
     }
-
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
 
- private:
-  /// @brief do the actual heavy lifting of the sorting
-  void doSorting() {
+  virtual arangodb::Result sort() {
     using arangodb::aql::AqlItemBlock;
     using arangodb::aql::AqlValue;
     using arangodb::aql::ExecutionBlock;
@@ -256,17 +245,18 @@ class StandardSorter : public arangodb::aql::SortBlock::Sorter {
       for (auto& x : newbuffer) {
         delete x;
       }
-      throw;
+      throw;  // TODO properly rethrow
     }
     _buffer.swap(newbuffer);  // does not throw since allocators
     // are the same
     for (auto& x : newbuffer) {
       delete x;
     }
+
+    return TRI_ERROR_NO_ERROR;
   }
 
- private:
-  bool _mustFetchAll;
+  virtual bool empty() const { return _buffer.empty(); }
 };
 
 class ConstrainedHeapSorter : public arangodb::aql::SortBlock::Sorter {
@@ -279,11 +269,15 @@ class ConstrainedHeapSorter : public arangodb::aql::SortBlock::Sorter {
                                          std::move(fetch), std::move(allocate)),
         _limit{limit} {}
 
-  virtual std::pair<arangodb::aql::ExecutionState, arangodb::Result> sort() {
+  virtual std::pair<arangodb::aql::ExecutionState, arangodb::Result> fetch() {
     using arangodb::aql::ExecutionState;
 
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
+
+  virtual arangodb::Result sort() { return TRI_ERROR_NO_ERROR; }
+
+  virtual bool empty() const { return false; }
 
  private:
   size_t _limit;
@@ -305,6 +299,7 @@ SortBlock::SortBlock(ExecutionEngine* engine, SortNode const* en, SorterType typ
     : ExecutionBlock(engine, en), _stable(en->_stable), _type{type}, _limit{limit} {
   TRI_ASSERT(en && en->plan() && en->getRegisterPlan());
   SortRegister::fill(*en->plan(), *en->getRegisterPlan(), en->elements(), _sortRegisters);
+  initializeSorter();
 }
 
 SortBlock::~SortBlock() {}
@@ -312,16 +307,14 @@ SortBlock::~SortBlock() {}
 std::pair<ExecutionState, arangodb::Result> SortBlock::initializeCursor(AqlItemBlock* items,
                                                                         size_t pos) {
   auto res = ExecutionBlock::initializeCursor(items, pos);
-  if (res.first == ExecutionState::WAITING || !res.second.ok()) {
+
+  if (res.first == ExecutionState::WAITING || res.second.fail()) {
     // If we need to wait or get an error we return as is.
     return res;
   }
 
+  _mustFetchAll = !_done;
   _pos = 0;
-
-  if (_sorter.get() == nullptr) {
-    initializeSorter();
-  }
 
   return res;
 }
@@ -330,11 +323,21 @@ std::pair<ExecutionState, arangodb::Result> SortBlock::getOrSkipSome(
     size_t atMost, bool skipping, AqlItemBlock*& result, size_t& skipped) {
   TRI_ASSERT(_sorter != nullptr && result == nullptr && skipped == 0);
 
-  // sorter handles all the dirty work
-  auto res = _sorter->sort();
-  if (res.first == ExecutionState::WAITING || !res.second.ok()) {
-    // If we need to wait or get an error we return as is.
-    return res;
+  if (_mustFetchAll) {
+    // sorter handles all the dirty work
+    auto res = _sorter->fetch();
+    if (res.first == ExecutionState::WAITING || res.second.fail()) {
+      // If we need to wait or get an error we return as is.
+      return res;
+    }
+    _mustFetchAll = false;
+
+    if (!_sorter->empty()) {
+      auto result = _sorter->sort();
+      if (result.fail()) {
+        return {ExecutionState::DONE, result};
+      }
+    }
   }
 
   return ExecutionBlock::getOrSkipSome(atMost, skipping, result, skipped);
@@ -343,24 +346,27 @@ std::pair<ExecutionState, arangodb::Result> SortBlock::getOrSkipSome(
 bool SortBlock::stable() const { return _stable; }
 
 void SortBlock::initializeSorter() {
-  auto fetch = [this](size_t atMost) -> std::pair<ExecutionState, bool> {
-    return getBlock(atMost);
-  };
-  auto allocate = [this](size_t nrItems, RegisterId nrRegs) -> AqlItemBlock* {
-    return requestBlock(nrItems, nrRegs);
-  };
-  switch (_type) {
-    case SorterType::Standard: {
-      _sorter = std::make_unique<::StandardSorter>(*this, _trx, _buffer, _sortRegisters,
-                                                   std::move(fetch), std::move(allocate));
-      break;
-    }
-    case SorterType::ConstrainedHeap: {
-      TRI_ASSERT(!_stable && _limit > 0);
-      _sorter = std::make_unique<::ConstrainedHeapSorter>(*this, _trx, _buffer, _sortRegisters,
-                                                          std::move(fetch),
-                                                          std::move(allocate), _limit);
-      break;
+  if (_sorter == nullptr) {
+    auto fetch = [this](size_t atMost) -> std::pair<ExecutionState, bool> {
+      return getBlock(atMost);
+    };
+    auto allocate = [this](size_t nrItems, RegisterId nrRegs) -> AqlItemBlock* {
+      return requestBlock(nrItems, nrRegs);
+    };
+    switch (_type) {
+      case SorterType::Standard: {
+        _sorter = std::make_unique<::StandardSorter>(*this, _trx, _buffer,
+                                                     _sortRegisters, std::move(fetch),
+                                                     std::move(allocate));
+        break;
+      }
+      case SorterType::ConstrainedHeap: {
+        TRI_ASSERT(!_stable && _limit > 0);
+        _sorter = std::make_unique<::ConstrainedHeapSorter>(*this, _trx, _buffer, _sortRegisters,
+                                                            std::move(fetch),
+                                                            std::move(allocate), _limit);
+        break;
+      }
     }
   }
 }
