@@ -42,7 +42,7 @@ class OurLessThan {
       auto const& lhs = _buffer[a.first]->getValueReference(a.second, reg.reg);
       auto const& rhs = _buffer[b.first]->getValueReference(b.second, reg.reg);
 
-      int const cmp = AqlValue::Compare(_trx, lhs, rhs, true);
+      int const cmp = arangodb::aql::AqlValue::Compare(_trx, lhs, rhs, true);
 
       if (cmp < 0) {
         return reg.asc;
