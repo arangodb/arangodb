@@ -1388,8 +1388,10 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBui
   }
 
   // If the transaction was not committed, it is automatically aborted
-  delete _trx;
-  _trx = nullptr;
+  if(_trx != nullptr) {
+    delete _trx;
+    _trx = nullptr;
+  }
 
   _plan.reset();
   return ExecutionState::DONE;
