@@ -31,26 +31,27 @@
 #include "index/index_writer.hpp"
 #include "velocypack/Builder.h"
 
-NS_BEGIN(arangodb)
-NS_BEGIN(velocypack)
+namespace arangodb {
+namespace velocypack {
 
 struct ObjectBuilder;  // forward declarations
 class Slice;           // forward declarations
 
-NS_END      // velocypack
-    NS_END  // arangodb
+}  // namespace velocypack
+}  // namespace arangodb
 
-    NS_BEGIN(arangodb) NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
-    // -----------------------------------------------------------------------------
-    // --SECTION--                                                      public
-    // types
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      public
+// types
+// -----------------------------------------------------------------------------
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief metadata describing the IResearch view
-    ////////////////////////////////////////////////////////////////////////////////
-    struct IResearchViewMeta {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief metadata describing the IResearch view
+////////////////////////////////////////////////////////////////////////////////
+struct IResearchViewMeta {
   class ConsolidationPolicy {
    public:
     ConsolidationPolicy() = default;
@@ -233,7 +234,7 @@ struct IResearchViewMetaState {
   size_t memory() const;
 };
 
-NS_END      // iresearch
-    NS_END  // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
 #endif

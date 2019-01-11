@@ -145,9 +145,8 @@ bool visit(aql::SortCondition const& sort, Visitor const& visitor) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief visits variables referenced in a specified expression
 ////////////////////////////////////////////////////////////////////////////////
-void visitReferencedVariables(
-    aql::AstNode const& root,
-    std::function<void(aql::Variable const&)> const& visitor);
+void visitReferencedVariables(aql::AstNode const& root,
+                              std::function<void(aql::Variable const&)> const& visitor);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief visits the specified node using the provided 'visitor' according
