@@ -1,0 +1,22 @@
+{                                                                                                                                                                                        
+  "maskings1": {
+    "type": "masked",
+    "maskings": [
+      {
+        "path": "name",
+        "type": "xify_front",
+        "unmaskedLength": 1
+      },
+      {
+        "path": ".name",
+        "type": "xify_front",
+        "unmaskedLength": 2
+      },
+      {
+        "path": "email",
+        "type": "xify_front",
+        "unmaskedLength": 3
+      }
+    ]                                                                                                                                                                                    
+  }                                                                                                                                                                                      
+}                                                                                                                                                                                        
