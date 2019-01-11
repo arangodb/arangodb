@@ -19,6 +19,7 @@ const ManifestPlugin = require('webpack-manifest-plugin');
 const ModuleNotFoundPlugin = require('react-dev-utils/ModuleNotFoundPlugin');
 const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin-alt');
 const typescriptFormatter = require('react-dev-utils/typescriptFormatter');
+const CompressionPlugin = require('compression-webpack-plugin');
 
 
 // Webpack uses `publicPath` to determine where the app is being served from.
@@ -180,6 +181,10 @@ module.exports = {
   module: {
     strictExportPresence: true,
     rules: [
+      {
+        test: /sigma.*/,
+        use: 'imports-loader?this=>window',
+      },
       {
         test: /\.html$/,
         use: {
@@ -356,6 +361,7 @@ module.exports = {
     ],
   },
   plugins: [
+    // new CompressionPlugin(),
     // Generates an `index.html` file with the <script> injected.
     new HtmlWebpackPlugin({
       inject: true,

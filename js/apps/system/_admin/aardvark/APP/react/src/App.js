@@ -14,6 +14,8 @@ import jQuery from 'jquery';
 import Backbone from 'backbone';
 import _ from 'underscore';
 
+import Sigma from 'sigma';
+
 // import old based css files
 import '../../frontend/ttf/arangofont/style.css';
 import '../../frontend/css/bootstrap.css';
@@ -31,6 +33,7 @@ import '../../frontend/css/grids-responsive-min.css';
 
 // import sass files
 import '../../frontend/scss/style.scss';
+import('sigma/build/plugins/sigma.layout.forceAtlas2.min'); // TODO maybe also import other plugins like this
 
 // import sass files
 function requireAll(context) {
@@ -46,12 +49,9 @@ requireAll(require.context(
  * `require` all backbone dependencies
  */
 
-// duplicate, needs to be removed? see import above
-window.jquery = window.$ = window.jQuery = require(
-  '../../frontend/js/lib/jquery-2.1.0.min.js'
-);
-
 window.Joi = require('../../frontend/js/lib/joi-browser.min.js');
+window.jQuery = window.$ = jQuery;
+
 require('../../frontend/js/lib/select2.min.js');
 window._ = _;
 require('../../frontend/js/arango/templateEngine.js');
@@ -70,6 +70,7 @@ require('../../frontend/js/lib/bootstrap-min.js');
 require('../../frontend/js/routers/router.js');
 require('../../frontend/js/routers/versionCheck.js');
 require('../../frontend/js/routers/startApp.js');
+
 
 requireAll(require.context(
   '../../frontend/js/views/'
@@ -95,6 +96,40 @@ require('../../frontend/js/lib/tile.stamen.js')
 // require('../../frontend/js/lib/nv.d3.min.js');
 
 window.prettyBytes = require('../../frontend/js/lib/pretty-bytes.js');
+window.Dygraph = require('../../frontend/js/lib/dygraph-combined.min.js');
+require('../../frontend/js/config/dygraphConfig.js');
+window.moment = require('../../frontend/js/lib/moment.min.js');
+
+// sigma
+//window.sigma = require('../../frontend/js/lib/sigma.min.js');
+
+// window.sigma = Sigma;
+window.sigma = Sigma;
+require('../../frontend/js/lib/sigma.canvas.edges.autoCurve.js');
+require('../../frontend/js/lib/sigma.canvas.edges.curve.js');
+require('../../frontend/js/lib/sigma.canvas.edges.dashed.js');
+require('../../frontend/js/lib/sigma.canvas.edges.dotted.js');
+require('../../frontend/js/lib/sigma.canvas.edges.labels.curve.js');
+require('../../frontend/js/lib/sigma.canvas.edges.labels.curvedArrow.js');
+require('../../frontend/js/lib/sigma.canvas.edges.labels.def.js');
+require('../../frontend/js/lib/sigma.canvas.edges.tapered.js');
+require('../../frontend/js/lib/sigma.exporters.image.js');
+require('../../frontend/js/lib/sigma.layout.fruchtermanReingold.js');
+require('../../frontend/js/lib/sigma.layout.noverlap.js');
+require('../../frontend/js/lib/sigma.plugins.animate.js');
+require('../../frontend/js/lib/sigma.plugins.dragNodes.js');
+require('../../frontend/js/lib/sigma.plugins.filter.js');
+require('../../frontend/js/lib/sigma.plugins.fullScreen.js');
+require('../../frontend/js/lib/sigma.plugins.lasso.js');
+require('../../frontend/js/lib/sigma.renderers.halo.js');
+require('../../frontend/js/lib/jquery.csv.min.js');
+//require('../../frontend/js/lib/worker.js');
+//require('../../frontend/js/lib/supervisor.js');
+
+require('../../frontend/js/lib/wheelnav.slicePath.js');
+require('../../frontend/js/lib/wheelnav.min.js');
+window.Raphael = require('../../frontend/js/lib/raphael.min.js');
+require('../../frontend/js/lib/raphael.icons.min.js');
 
 class App extends Component {
   // <Overview />

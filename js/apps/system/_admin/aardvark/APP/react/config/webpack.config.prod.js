@@ -21,11 +21,11 @@ const getClientEnvironment = require('./env');
 const ModuleNotFoundPlugin = require('react-dev-utils/ModuleNotFoundPlugin');
 const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin-alt');
 const typescriptFormatter = require('react-dev-utils/typescriptFormatter');
-
+const CompressionPlugin = require('compression-webpack-plugin');
 
 // Webpack uses `publicPath` to determine where the app is being served from.
 // It requires a trailing slash, or the file assets will get an incorrect path.
-const publicPath = paths.servedPath;
+const publicPath = "";
 // Some apps do not use client-side routing with pushState.
 // For these, "homepage" can be set to "." to enable relative asset paths.
 const shouldUseRelativeAssetPaths = publicPath === './';
@@ -224,7 +224,10 @@ module.exports = {
       // Support React Native Web
       // https://www.smashingmagazine.com/2016/08/a-glimpse-into-the-future-with-react-native-for-web/
       'react-native': 'react-native-web',
-      'old-frontend': path.resolve(__dirname, '../frontend')
+      'old-frontend': path.resolve(__dirname, '../frontend'),
+      '/img': path.resolve(__dirname, '../../frontend/img'),
+      './img': path.resolve(__dirname, '../../frontend/img'),
+      'img': path.resolve(__dirname, '../../frontend/img')
     },
     plugins: [
       // Adds support for installing with Plug'n'Play, leading to faster installs and adding
@@ -248,6 +251,19 @@ module.exports = {
   module: {
     strictExportPresence: true,
     rules: [
+      {
+        test: /sigma.*/,
+        use: 'imports-loader?this=>window',
+      },
+      {
+        test: /\.html$/,
+        use: {
+          loader: 'html-loader',
+          options: {
+            interpolate: true
+          }
+        }
+      },
       // Disable require.ensure as it's not a standard language feature.
       { parser: { requireEnsure: false } },
 
@@ -524,6 +540,7 @@ module.exports = {
         silent: true,
         formatter: typescriptFormatter,
       }),
+      new CompressionPlugin()
   ].filter(Boolean),
   // Some libraries import Node modules but don't use them in the browser.
   // Tell Webpack to provide empty mocks for them so importing them works.
