@@ -317,7 +317,6 @@ SortBlock::~SortBlock() {}
 std::pair<ExecutionState, arangodb::Result> SortBlock::initializeCursor(AqlItemBlock* items,
                                                                         size_t pos) {
   auto res = ExecutionBlock::initializeCursor(items, pos);
-
   if (res.first == ExecutionState::WAITING || !res.second.ok()) {
     // If we need to wait or get an error we return as is.
     return res;
@@ -338,7 +337,8 @@ std::pair<ExecutionState, arangodb::Result> SortBlock::getOrSkipSome(
 
   // sorter handles all the dirty work
   auto res = _sorter->sort();
-  if (res.first == ExecutionState::WAITING) {
+  if (res.first == ExecutionState::WAITING || !res.second.ok()) {
+    // If we need to wait or get an error we return as is.
     return res;
   }
 
