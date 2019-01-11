@@ -44,6 +44,7 @@ if (USE_IRESEARCH)
     IResearch/IResearchQueryNumericTerm-test.cpp
     IResearch/IResearchQueryOr-test.cpp
     IResearch/IResearchQueryPhrase-test.cpp
+    IResearch/IResearchQueryScorer-test.cpp
     IResearch/IResearchQuerySelectAll-test.cpp
     IResearch/IResearchQueryStartsWith-test.cpp
     IResearch/IResearchQueryStringTerm-test.cpp

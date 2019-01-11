@@ -61,7 +61,7 @@ class SchedulerCronThread : public SchedulerThread {
   explicit SchedulerCronThread(Scheduler& scheduler)
       : Thread("SchedCron"), SchedulerThread(scheduler) {}
 
-  void run() { _scheduler.runCronThread(); }
+  void run() override { _scheduler.runCronThread(); }
 };
 
 }  // namespace arangodb

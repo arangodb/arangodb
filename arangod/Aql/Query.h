@@ -296,6 +296,10 @@ class Query {
     _views.emplace(name);
   }
 
+  std::unordered_set<std::string> const& views() const noexcept {
+    return _views;
+  }
+
   /// @brief look up a graph in the _graphs collection
   graph::Graph const* lookupGraphByName(std::string const& name);
 

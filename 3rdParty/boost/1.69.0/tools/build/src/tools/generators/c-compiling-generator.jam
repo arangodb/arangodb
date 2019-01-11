@@ -1,0 +1,70 @@
+# Copyright 2002-2017 Rene Rivera
+# Copyright 2002-2017 Vladimir Prus
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+import "class" : new ;
+import generators ;
+import virtual-target ;
+
+# Declare a special compiler generator. The only thing it does is changing the
+# type used to represent 'action' in the constructed dependency graph to
+# 'compile-action'. That class in turn adds additional include paths to handle
+# cases when a source file includes headers which are generated themselves.
+#
+class C-compiling-generator : generator
+{
+    rule __init__ ( id : source-types + : target-types + : requirements *
+        : optional-properties * )
+    {
+        generator.__init__ $(id) : $(source-types) : $(target-types) :
+            $(requirements) : $(optional-properties) ;
+    }
+
+    rule action-class ( )
+    {
+        return compile-action ;
+    }
+}
+
+
+rule register-c-compiler ( id : source-types + : target-types + : requirements *
+    : optional-properties * )
+{
+    generators.register [ new C-compiling-generator $(id) : $(source-types) :
+        $(target-types) : $(requirements) : $(optional-properties) ] ;
+}
+
+# FIXME: this is ugly, should find a better way (we would like client code to
+# register all generators as "generators.some-rule" instead of
+# "some-module.some-rule".)
+#
+IMPORT $(__name__) : register-c-compiler : : generators.register-c-compiler ;
+
+class compile-action : action
+{
+    import sequence ;
+
+    rule __init__ ( targets * : sources * : action-name : properties * )
+    {
+        action.__init__ $(targets) : $(sources) : $(action-name) : $(properties) ;
+    }
+
+    # For all virtual targets for the same dependency graph as self, i.e. which
+    # belong to the same main target, add their directories to the include path.
+    #
+    rule adjust-properties ( property-set )
+    {
+        local s = [ $(self.targets[1]).creating-subvariant ] ;
+        if $(s)
+        {
+            return [ $(property-set).add-raw
+              [ $(s).implicit-includes "include" : H ] ] ;
+        }
+        else
+        {
+            return $(property-set) ;
+        }
+    }
+}

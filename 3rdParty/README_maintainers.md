@@ -1,15 +1,15 @@
 3rd Party components and what to do on update
 =============================================
 
-## asio
-
-https://think-async.com/Asio/
-
 ## boost
 
 https://www.boost.org/
 
 (we don't ship the upstream documentation!)
+To remove some unused doc files, you can run something as follows:
+
+    cd 3rdParty/boost/1.69.0
+    for i in `find -type d -name "doc"`; do git rm -r "$i"; done
 
 
 ## catch
