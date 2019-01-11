@@ -35,8 +35,8 @@
 
 #include "IResearchRocksDBLink.h"
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief IResearchRocksDBLink-specific implementation of an IndexTypeFactory
@@ -148,8 +148,8 @@ void IResearchRocksDBLink::toVelocyPack(arangodb::velocypack::Builder& builder,
   builder.close();
 }
 
-NS_END      // iresearch
-    NS_END  // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
