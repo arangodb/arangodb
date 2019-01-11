@@ -1248,7 +1248,7 @@ void Agent::run() {
       advanceCommitIndex();
 
       // Empty store callback trash bin
-      //emptyCbTrashBin();
+      emptyCbTrashBin();
 
       bool commenceService = false;
       {
@@ -1893,7 +1893,7 @@ void Agent::emptyCbTrashBin() {
     _callbackLastPurged = std::chrono::steady_clock::now();
   }
   
-  LOG_TOPIC(INFO,Logger::FIXME) << envelope->toJson();
+  LOG_DEVEL << envelope->toJson();
 
   // Best effort. Will be retried anyway
   auto wres = write(envelope);
