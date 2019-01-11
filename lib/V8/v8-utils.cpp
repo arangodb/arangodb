@@ -45,6 +45,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Thread.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/files.h"
 #include "Basics/process-utils.h"
