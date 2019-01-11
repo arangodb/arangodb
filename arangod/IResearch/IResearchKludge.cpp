@@ -25,9 +25,9 @@
 
 #include "Basics/Common.h"
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
-NS_BEGIN(kludge)
+namespace arangodb {
+namespace iresearch {
+namespace kludge {
 
 const char TYPE_DELIMITER = '\0';
 const char ANALYZER_DELIMITER = '\1';
@@ -65,10 +65,10 @@ void demangleStringField(std::string& name, AnalyzerPool const& pool) {
   name.resize(name.size() - suffixSize);
 }
 
-NS_END          // kludge
-    NS_END      // iresearch
-        NS_END  // arangodb
+}  // namespace kludge
+}  // namespace iresearch
+}  // namespace arangodb
 
-    // -----------------------------------------------------------------------------
-    // --SECTION-- END-OF-FILE
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION-- END-OF-FILE
+// -----------------------------------------------------------------------------

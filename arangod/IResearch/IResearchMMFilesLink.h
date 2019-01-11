@@ -33,8 +33,8 @@ namespace arangodb {
 struct IndexTypeFactory;  // forward declaration
 }
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
 class IResearchMMFilesLink final : public arangodb::MMFilesIndex, public IResearchLink {
  public:
@@ -131,7 +131,7 @@ class IResearchMMFilesLink final : public arangodb::MMFilesIndex, public IResear
   IResearchMMFilesLink(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection);
 };
 
-NS_END      // iresearch
-    NS_END  // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
 #endif
