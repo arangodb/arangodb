@@ -100,16 +100,16 @@
 
       $('#modal-dialog .modal-body .collectionTh > input').unbind('keydown');
       $('#modal-dialog .modal-body .collectionTh > input').unbind('return');
-      $('#modal-dialog .modal-body .collectionTh > input', $(this.el)).bind('keydown', 'return', function () {
-        if (!$('#modal-dialog .modal-footer .button-success').is(':disabled')) {
+      $('#modal-dialog .modal-body .collectionTh > input', $(this.el)).bind('keydown', 'return', function (e) {
+        if (!$('#modal-dialog .modal-footer .button-success').is(':disabled') && e.keyCode === 13) {
           $('#modal-dialog .modal-footer .button-success').click();
         }
       });
 
       $('#modal-dialog .modal-body .collectionTh > select').unbind('keydown');
       $('#modal-dialog .modal-body .collectionTh > select').unbind('return');
-      $('#modal-dialog .modal-body .collectionTh > select', $(this.el)).bind('keydown', 'return', function () {
-        if (!$('#modal-dialog .modal-footer .button-success').is(':disabled')) {
+      $('#modal-dialog .modal-body .collectionTh > select', $(this.el)).bind('keydown', 'return', function (e) {
+        if (!$('#modal-dialog .modal-footer .button-success').is(':disabled') && e.keyCode === 13) {
           $('#modal-dialog .modal-footer .button-success').click();
         }
       });
