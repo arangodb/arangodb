@@ -28,6 +28,7 @@
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
@@ -159,11 +160,17 @@ class Index {
   }
 
   /// @brief whether or not any attribute is expanded
-  inline bool attributeMatches(std::vector<arangodb::basics::AttributeName> const& attribute) const {
+  inline bool attributeMatches(std::vector<arangodb::basics::AttributeName> const& attribute,
+                               bool isPrimary = false) const {
     for (auto const& it : _fields) {
       if (arangodb::basics::AttributeName::isIdentical(attribute, it, true)) {
         return true;
       }
+    }
+    if (isPrimary) {
+      static std::vector<arangodb::basics::AttributeName> const vec_id{
+          {StaticStrings::IdString, false}};
+      return arangodb::basics::AttributeName::isIdentical(attribute, vec_id, true);
     }
     return false;
   }
@@ -389,6 +396,9 @@ class Index {
 
   mutable bool _unique;
   mutable bool _sparse;
+
+  // use this with c++17  --  attributeMatches
+  // static inline std::vector<arangodb::basics::AttributeName> const vec_id {{ StaticStrings::IdString, false }};
 };
 }  // namespace arangodb
 

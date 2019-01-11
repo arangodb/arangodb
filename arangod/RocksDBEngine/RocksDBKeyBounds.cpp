@@ -99,6 +99,11 @@ RocksDBKeyBounds RocksDBKeyBounds::UniqueVPackIndex(uint64_t indexId, VPackSlice
   return RocksDBKeyBounds(RocksDBEntryType::UniqueVPackIndexValue, indexId, left, right);
 }
 
+RocksDBKeyBounds RocksDBKeyBounds::PrimaryIndex(uint64_t indexId, std::string const& left,
+                                                std::string const& right) {
+  return RocksDBKeyBounds(RocksDBEntryType::PrimaryIndexValue, indexId, left, right);
+}
+
 /// used for point lookups
 RocksDBKeyBounds RocksDBKeyBounds::UniqueVPackIndex(uint64_t indexId, VPackSlice const& left) {
   return RocksDBKeyBounds(RocksDBEntryType::UniqueVPackIndexValue, indexId, left);
@@ -223,6 +228,38 @@ rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
       return RocksDBColumnFamily::definitions();
   }
   THROW_ARANGO_EXCEPTION(TRI_ERROR_TYPE_ERROR);
+}
+
+/// bounds to iterate over specified word or edge
+RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t id,
+                                   std::string const& lower, std::string const& upper)
+    : _type(type) {
+  switch (_type) {
+    case RocksDBEntryType::PrimaryIndexValue: {
+      // format: id lower id upper
+      //         start    end
+      _internals.reserve(sizeof(id) + (lower.size() + sizeof(_stringSeparator)) +
+                         sizeof(id) + (upper.size() + sizeof(_stringSeparator)));
+
+      // id - lower
+      uint64ToPersistent(_internals.buffer(), id);
+      _internals.buffer().append(lower.data(), lower.length());
+      _internals.push_back(_stringSeparator);
+
+      // set separator
+      _internals.separate();
+
+      // id - upper
+      uint64ToPersistent(_internals.buffer(), id);
+      _internals.buffer().append(upper.data(), upper.length());
+      _internals.push_back(_stringSeparator);
+
+      break;
+    }
+
+    default:
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+  }
 }
 
 // constructor for an empty bound. do not use for anything but to
