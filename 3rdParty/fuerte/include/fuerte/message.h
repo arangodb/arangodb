@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2018-2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -30,7 +30,6 @@
 
 #include <fuerte/asio_ns.h>
 #include <fuerte/types.h>
-#include <boost/optional.hpp>
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
@@ -134,13 +133,22 @@ class Message {
   ///////////////////////////////////////////////
   // get payload
   ///////////////////////////////////////////////
-  virtual std::vector<velocypack::Slice> const& slices() = 0;
+  virtual std::vector<velocypack::Slice> slices() const = 0;
   virtual asio_ns::const_buffer payload() const = 0;
   virtual size_t payloadSize() const = 0;
   std::string payloadAsString() const {
     auto p = payload();
     return std::string(asio_ns::buffer_cast<char const*>(p),
                        asio_ns::buffer_size(p));
+  }
+  
+  /// get the content as a slice
+  velocypack::Slice slice() {
+    auto slices = this->slices();
+    if (!slices.empty()) {
+      return slices[0];
+    }
+    return velocypack::Slice::noneSlice();
   }
 
   // content-type header accessors
@@ -155,20 +163,12 @@ class Request final : public Message {
 
   Request(RequestHeader&& messageHeader = RequestHeader())
       : header(std::move(messageHeader)),
-        _sealed(false),
-        _modified(true),
-        _isVpack(boost::none),
-        _builder(nullptr),
-        _payloadLength(0),
+        _isVPack(false),
         _timeout(defaultTimeout) {}
   
   Request(RequestHeader const& messageHeader)
       : header(messageHeader),
-        _sealed(false),
-        _modified(true),
-        _isVpack(boost::none),
-        _builder(nullptr),
-        _payloadLength(0),
+        _isVPack(false),
         _timeout(defaultTimeout) {}
   
   /// @brief request header
@@ -192,7 +192,6 @@ class Request final : public Message {
   void addVPack(velocypack::Buffer<uint8_t> const& buffer);
   void addVPack(velocypack::Buffer<uint8_t>&& buffer);
   void addBinary(uint8_t const* data, std::size_t length);
-  void addBinarySingle(velocypack::Buffer<uint8_t>&& buffer);
 
   ///////////////////////////////////////////////
   // get payload
@@ -200,7 +199,7 @@ class Request final : public Message {
   
   /// @brief get velocypack slices contained in request
   /// only valid iff the data was added via addVPack
-  std::vector<velocypack::Slice> const& slices() override;
+  std::vector<velocypack::Slice> slices() const override;
   asio_ns::const_buffer payload() const override;
   size_t payloadSize() const override;
 
@@ -211,14 +210,7 @@ class Request final : public Message {
 
  private:
   velocypack::Buffer<uint8_t> _payload;
-  bool _sealed;
-  bool _modified;
-  ::boost::optional<bool> _isVpack;
-  /// used to by addVPack to build a requst buffer
-  std::shared_ptr<velocypack::Builder> _builder;
-  std::vector<velocypack::Slice> _slices;
-  std::size_t _payloadLength;  // because VPackBuffer has quirks we need
-                               // to track the Length manually
+  bool _isVPack;
   std::chrono::milliseconds _timeout;
 };
 
@@ -237,7 +229,7 @@ class Response final : public Message {
   // get / check status
   ///////////////////////////////////////////////
 
-  // statusCode returns the (HTTP) status code for the request (400==OK).
+  // statusCode returns the (HTTP) status code for the request (200==OK).
   StatusCode statusCode() { return header.responseCode; }
   // checkStatus returns true if the statusCode equals one of the given valid
   // code, false otherwise.
@@ -265,17 +257,17 @@ class Response final : public Message {
   bool isContentTypeHtml() const;
   bool isContentTypeText() const;
   /// @brief validates and returns VPack response. Only valid for velocypack
-  std::vector<velocypack::Slice> const& slices() override;
+  std::vector<velocypack::Slice> slices() const override;
   asio_ns::const_buffer payload() const override;
   size_t payloadSize() const override;
   std::shared_ptr<velocypack::Buffer<uint8_t>> copyPayload() const;
   
+  /// @brief move in the payload
   void setPayload(velocypack::Buffer<uint8_t>&& buffer, size_t payloadOffset);
 
  private:
   velocypack::Buffer<uint8_t> _payload;
   size_t _payloadOffset;
-  std::vector<velocypack::Slice> _slices;
 };
 }}}  // namespace arangodb::fuerte::v1
 #endif

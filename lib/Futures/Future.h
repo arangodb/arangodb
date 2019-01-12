@@ -24,7 +24,6 @@
 #define ARANGOD_FUTURES_FUTURE_H 1
 
 #include <chrono>
-#include <future>
 #include <thread>
 
 #include "Futures/Exceptions.h"
@@ -141,6 +140,12 @@ class Future {
   friend Future<Unit> makeFuture();
   
 public:
+  
+  enum class Status : uint8_t {
+    Ready,
+    Timeout,
+    Deferred
+  };
   
   typedef T value_type;
   
@@ -275,25 +280,25 @@ public:
   /// waits for the result, returns if it is not available
   /// for the specified timeout duration. Future must be valid
   template<class Rep, class Period >
-  std::future_status wait_for(const std::chrono::duration<Rep,Period>& timeout_duration) const {
+  Status wait_for(const std::chrono::duration<Rep,Period>& timeout_duration) const {
     return wait_until(std::chrono::steady_clock::now() + timeout_duration);
   }
   
   /// waits for the result, returns if it is not available until
   /// specified time point. Future must be valid
   template<class Clock, class Duration>
-  std::future_status wait_until(const std::chrono::time_point<Clock,Duration>& timeout_time) const {
+  Status wait_until(const std::chrono::time_point<Clock,Duration>& timeout_time) const {
     if (isReady()) {
-      return std::future_status::ready;
+      return Status::Ready;
     }
     std::this_thread::yield();
     while(!isReady()) {
       if (Clock::now() > timeout_time) {
-        return std::future_status::timeout;
+        return Status::Timeout;
       }
       std::this_thread::yield();
     }
-    return std::future_status::ready;
+    return Status::Ready;
   }
   
   /// When this Future has completed, execute func which is a function that
@@ -307,7 +312,7 @@ public:
   ///
   /// Preconditions:
   ///
-  /// - `valid() == true` (else throws std::future_error(std::future_errc::no_state))
+  /// - `valid() == true` (else throws FutureException(ErrorCode::NoState))
   ///
   /// Postconditions:
   ///

@@ -36,8 +36,7 @@
 namespace arangodb {
 namespace network {
   
-Result resolveDestination(DestinationId const& dest,
-                          std::string& endpoint) {
+Result resolveDestination(DestinationId const& dest, std::string& endpoint) {
   using namespace arangodb;
   Result res;
   
@@ -60,7 +59,8 @@ Result resolveDestination(DestinationId const& dest,
       if (!resp->empty()) {
         serverID = (*resp)[0];
       } else {
-        LOG_TOPIC(ERR, Logger::CLUSTER) << "cannot find responsible server for shard '" << shardID << "'";
+        LOG_TOPIC(ERR, Logger::CLUSTER) << "cannot find responsible server for shard '"
+          << shardID << "'";
         return res.reset(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
       }
     }
@@ -101,23 +101,23 @@ Result resolveDestination(DestinationId const& dest,
   return res;
 }
   
-OperationResult errorCodeFromBody(arangodb::velocypack::Buffer<uint8_t> const& body,
-                                  int defaultErrorCode) {
+OperationResult errorFromBody(arangodb::velocypack::Buffer<uint8_t> const& body,
+                              int defaultErrorCode) {
   if (body.size() > 0) {
-    return errorCodeFromBody(VPackSlice(body.data()), defaultErrorCode);
+    return errorFromBody(VPackSlice(body.data()), defaultErrorCode);
   }
   return OperationResult(defaultErrorCode);
 }
   
-OperationResult errorCodeFromBody(std::shared_ptr<VPackBuilder> const& body,
-                                  int defaultErrorCode) {
+OperationResult errorFromBody(std::shared_ptr<VPackBuilder> const& body,
+                              int defaultErrorCode) {
   if (body) {
-    return errorCodeFromBody(body->slice(), defaultErrorCode);
+    return errorFromBody(body->slice(), defaultErrorCode);
   }
   return OperationResult(defaultErrorCode);
 }
   
-OperationResult errorCodeFromBody(VPackSlice const& body, int defaultErrorCode) {
+OperationResult errorFromBody(VPackSlice const& body, int defaultErrorCode) {
   // read the error number from the response and use it if present
   if (body.isObject()) {
     VPackSlice num = body.get(StaticStrings::ErrorNum);
@@ -133,6 +133,18 @@ OperationResult errorCodeFromBody(VPackSlice const& body, int defaultErrorCode) 
   }
   
   return OperationResult(defaultErrorCode);
+}
+  
+/// @brief extract the error code form the body
+int errorCodeFromBody(arangodb::velocypack::Slice const& body) {
+  if (body.isObject()) {
+    VPackSlice num = body.get(StaticStrings::ErrorNum);
+    if (num.isNumber()) {
+      // we found an error number, so let's use it!
+      return num.getNumericValue<int>();
+    }
+  }
+  return TRI_ERROR_ILLEGAL_NUMBER;
 }
   
 ////////////////////////////////////////////////////////////////////////////////
@@ -159,7 +171,7 @@ void errorCodesFromHeaders(network::Headers headers,
 }
 
   
-int arangoErrorCode(network::Response const& res) {
+int fuerteToArangoErrorCode(network::Response const& res) {
   // This function creates an error code from a ClusterCommResult,
   // but only if it is a communication error. If the communication
   // was successful and there was an HTTP error code, this function
@@ -185,7 +197,6 @@ int arangoErrorCode(network::Response const& res) {
     case fuerte::ErrorCondition::ReadError:
     case fuerte::ErrorCondition::WriteError:
     case fuerte::ErrorCondition::Canceled:
-    case fuerte::ErrorCondition::MalformedURL:
     case fuerte::ErrorCondition::ProtocolError:
       return TRI_ERROR_CLUSTER_CONNECTION_LOST;
       
@@ -211,15 +222,15 @@ OperationResult clusterResultInsert(arangodb::fuerte::StatusCode code,
       return OperationResult(Result(), std::move(body), nullptr, copy, errorCounter);
     }
     case fuerte::StatusPreconditionFailed:
-      return network::errorCodeFromBody(*body, TRI_ERROR_ARANGO_CONFLICT);
+      return network::errorFromBody(*body, TRI_ERROR_ARANGO_CONFLICT);
     case fuerte::StatusBadRequest:
-      return network::errorCodeFromBody(*body, TRI_ERROR_INTERNAL);
+      return network::errorFromBody(*body, TRI_ERROR_INTERNAL);
     case fuerte::StatusNotFound:
-      return network::errorCodeFromBody(*body, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+      return network::errorFromBody(*body, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     case fuerte::StatusConflict:
-      return network::errorCodeFromBody(*body, TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+      return network::errorFromBody(*body, TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
     default:
-      return network::errorCodeFromBody(*body, TRI_ERROR_INTERNAL);
+      return network::errorFromBody(*body, TRI_ERROR_INTERNAL);
   }
 }
 }} // arangodb::network

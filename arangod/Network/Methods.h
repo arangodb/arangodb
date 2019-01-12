@@ -43,12 +43,19 @@ namespace network {
   };
   using FutureRes = arangodb::futures::Future<Response>;
   
+  /// @brief send a request to a given destination
   FutureRes sendRequest(DestinationId const& destination, arangodb::fuerte::RestVerb type,
                         std::string const& path, velocypack::Buffer<uint8_t> payload,
                         Timeout timeout, Headers const& headers = {});
-  FutureRes sendRequest(DestinationId const& destination, arangodb::fuerte::RestVerb type,
-                        std::string const& path, arangodb::velocypack::Slice payload,
-                        Timeout timeout, Headers const& headers = {});
+
+  /// @brief send a request to a given destination, retry under certain conditions
+  /// a retry will be triggered if the connection was lost our could not be established
+  /// optionally a retry will be performed in the case of until timeout is exceeded
+  FutureRes sendRequestRetry(DestinationId const& destination, arangodb::fuerte::RestVerb type,
+                             std::string const& path, velocypack::Buffer<uint8_t> payload,
+                             Timeout timeout, Headers const& headers = {},
+                             bool retryNotFound = false);
+  
 }}
 
 #endif

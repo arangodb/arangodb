@@ -124,41 +124,41 @@ void parseSchema(std::string const& schema,
   }
 }
 
-ConnectionBuilder& ConnectionBuilder::endpoint(std::string const& host) {
+ConnectionBuilder& ConnectionBuilder::endpoint(std::string const& spec) {
   // we need to handle unix:// urls seperately
-  size_t pos = host.find("://");
+  size_t pos = spec.find("://");
   if (pos == std::string::npos) {
-    throw std::runtime_error(std::string("invalid endpoint spec: ") + host);
+    throw std::runtime_error(std::string("invalid endpoint spec: ") + spec);
   }
-  std::string schema = host.substr(0, pos);
+  std::string schema = spec.substr(0, pos);
   boost::algorithm::to_lower(schema); // in-place
   parseSchema(schema, _conf);
   
   if (_conf._socketType == SocketType::Unix) {
     // unix:///a/b/c does not contain a port
-    _conf._host = host.substr(pos + 3);
+    _conf._host = spec.substr(pos + 3);
     return *this;
   }
   
   // now lets perform proper URL parsing
   struct http_parser_url parsed;
   http_parser_url_init(&parsed);
-  int error = http_parser_parse_url(host.c_str(), host.length(), 0, &parsed);
+  int error = http_parser_parse_url(spec.c_str(), spec.length(), 0, &parsed);
   if (error != 0) {
-    throw std::runtime_error(std::string("invalid endpoint spec: ") + host);
+    throw std::runtime_error(std::string("invalid endpoint spec: ") + spec);
   }
   
   // put hostname, port and path in seperate strings
   if (!(parsed.field_set & (1 << UF_HOST))) {
-    throw std::runtime_error(std::string("invalid host: ") + host);
+    throw std::runtime_error(std::string("invalid host: ") + spec);
   }
-  _conf._host = host.substr(parsed.field_data[UF_HOST].off,
+  _conf._host = spec.substr(parsed.field_data[UF_HOST].off,
                             parsed.field_data[UF_HOST].len);
   
   if (!(parsed.field_set & (1 << UF_PORT))) {
-    throw std::runtime_error(std::string("invalid port: ") + host);
+    throw std::runtime_error(std::string("invalid port: ") + spec);
   }
-  _conf._port = host.substr(parsed.field_data[UF_PORT].off,
+  _conf._port = spec.substr(parsed.field_data[UF_PORT].off,
                             parsed.field_data[UF_PORT].len);
 
   return *this;

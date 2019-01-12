@@ -40,14 +40,17 @@ namespace network {
   Result resolveDestination(DestinationId const& dest, std::string&);
   
   /// @brief extract the error from a cluster response
-  OperationResult errorCodeFromBody(arangodb::velocypack::Buffer<uint8_t> const& body,
-                                    int defaultErrorCode);
+  OperationResult errorFromBody(arangodb::velocypack::Buffer<uint8_t> const& body,
+                                int defaultErrorCode);
   /// @brief extract the error from a cluster response
-  OperationResult errorCodeFromBody(std::shared_ptr<VPackBuilder> const&,
-                                    int defaultErrorCode);
+  OperationResult errorFromBody(std::shared_ptr<VPackBuilder> const&,
+                                int defaultErrorCode);
   /// @brief extract the error from a cluster response
-  OperationResult errorCodeFromBody(arangodb::velocypack::Slice const& body,
-                                    int defaultErrorCode);
+  OperationResult errorFromBody(arangodb::velocypack::Slice const& body,
+                                int defaultErrorCode);
+  
+  /// @brief extract the error code form the body
+  int errorCodeFromBody(arangodb::velocypack::Slice const& body);
   
   /// @brief Extract all error baby-style error codes and store them in a map
   void errorCodesFromHeaders(network::Headers headers,
@@ -55,7 +58,7 @@ namespace network {
                              bool includeNotFound);
   
   /// @brief transform response into arango error code
-  int arangoErrorCode(network::Response const& res);
+  int fuerteToArangoErrorCode(network::Response const& res);
   
   /// @brief Create Cluster Communication result for insert
   OperationResult clusterResultInsert(fuerte::StatusCode responsecode,

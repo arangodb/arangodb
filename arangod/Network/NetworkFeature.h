@@ -42,36 +42,15 @@ class NetworkFeature final : public application_features::ApplicationFeature {
   void beginShutdown() override;
   void stop() override;
   void unprepare() override;
-  
-  size_t numThreads() const {
-    return _numThreads;
-  }
-  
-  size_t maxOpenConnections() const {
-    return _maxOpenConnections;
-  }
-  
-  uint64_t requestTimeoutMilli() const {
-    return _requestTimeoutMilli;
-  }
-  
-  uint64_t connectionTtlMilli() const {
-    return _connectionTtlMilli;
-  }
-  
-  bool verifyHost() const {
-    return _verifyHosts;
-  }
-  
+    
   /// @brief global connection pool
   static arangodb::network::ConnectionPool* pool() {
     return _poolPtr.load(std::memory_order_acquire);
   }
 
  private:
-  uint64_t _numThreads;
+  uint64_t _numIOThreads;
   uint64_t _maxOpenConnections;
-  uint64_t _requestTimeoutMilli;
   uint64_t _connectionTtlMilli;
   bool _verifyHosts;
   

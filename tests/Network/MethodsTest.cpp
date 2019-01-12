@@ -1,7 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite for Network/Methods.cpp
+///
+/// @file
+///
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,25 +24,17 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_NETWORK_TYPES_H
-#define ARANGOD_NETWORK_TYPES_H 1
+#include "catch.hpp"
 
-#include <chrono>
-#include <fuerte/types.h>
+#include "Network/ConnectionPool.h"
 
-namespace arangodb {
-namespace network {
-  
-  struct Response;
-  typedef std::string DestinationId;
-  
-  using Headers = std::map<std::string, std::string>;
-  using Timeout = std::chrono::duration<double>;
-  
-  /// @brief unified endpoint
-  typedef std::string EndpointSpec;
+#include <fuerte/connection.h>
+#include <fuerte/requests.h>
 
-  
-}}
+using namespace arangodb;
+using namespace arangodb::network;
 
-#endif
+TEST_CASE("network::Methods", "[network]") {
+#warning TODO
+}
+

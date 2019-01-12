@@ -26,23 +26,20 @@
 
 #include "Basics/Common.h"
 #include "Basics/StringRef.h"
+
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "Agency/AgencyComm.h"
 #include "Cluster/TraverserEngineRegistry.h"
-#include "Rest/HttpResponse.h"
+#include "Futures/Future.h"
+#include "Rest/CommonDefines.h"
+#include "Utils/OperationResult.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
 
-namespace arangodb {
-namespace velocypack {
-template <typename T>
-class Buffer;
-class Builder;
-class Slice;
-}
 
+namespace arangodb {
 struct OperationOptions;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -58,7 +55,8 @@ std::unordered_map<std::string, std::string> getForwardableRequestHeaders(
 ////////////////////////////////////////////////////////////////////////////////
 
 bool shardKeysChanged(LogicalCollection const& collection,
-                      VPackSlice const& oldValue, VPackSlice const& newValue,
+                      VPackSlice const& oldValue,
+                      VPackSlice const& newValue,
                       bool isPatch);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -101,13 +99,9 @@ int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string con
 /// @brief creates a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-Result createDocumentOnCoordinator(
-    std::string const& dbname, std::string const& collname,
-    transaction::Methods const& trx,
-    OperationOptions const& options, arangodb::velocypack::Slice const& slice,
-    arangodb::rest::ResponseCode& responseCode,
-    std::unordered_map<int, size_t>& errorCounters,
-    std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
+futures::Future<OperationResult> createDocumentOnCoordinator(
+    transaction::Methods const& trx, LogicalCollection&,
+    OperationOptions const& options, VPackSlice const& slice);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a document in a coordinator

@@ -43,6 +43,8 @@ StatusCode constexpr StatusUndefined = 0;
 StatusCode constexpr StatusOK = 200;
 StatusCode constexpr StatusCreated = 201;
 StatusCode constexpr StatusAccepted = 202;
+StatusCode constexpr StatusPartial = 203;
+StatusCode constexpr StatusNoContent = 204;
 StatusCode constexpr StatusBadRequest = 400;
 StatusCode constexpr StatusUnauthorized = 401;
 StatusCode constexpr StatusForbidden = 403;
@@ -87,7 +89,6 @@ enum class ErrorCondition : Error {
   WriteError = 1103,
   
   Canceled = 1104,
-  MalformedURL = 1105,
 
   ProtocolError = 3000,
 };

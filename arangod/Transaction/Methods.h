@@ -28,6 +28,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringRef.h"
 #include "Basics/Result.h"
+#include "Futures/Future.h"
 #include "Rest/CommonDefines.h"
 #include "Transaction/CountCache.h"
 #include "Transaction/Hints.h"
@@ -116,6 +117,8 @@ class Methods {
   };
 
   using VPackSlice = arangodb::velocypack::Slice;
+  template<typename T>
+  using Future = futures::Future<T>;
 
   /// @brief transaction::Methods
  private:
@@ -182,8 +185,8 @@ class Methods {
   /// @brief return internals of transaction
   inline TransactionState* state() const { return _state; }
 
-  Result resolveId(char const* handle, size_t length, TRI_voc_cid_t& cid, char const*& key, size_t& outLength);
-  Result resolveId(char const* handle, size_t length, std::shared_ptr<LogicalCollection>& collection, char const*& key, size_t& outLength);
+  Result resolveId(char const* handle, size_t length, std::shared_ptr<LogicalCollection>& collection,
+                   char const*& key, size_t& outLength);
 
   /// @brief return a pointer to the transaction context
   std::shared_ptr<transaction::Context> transactionContext() const {
@@ -233,8 +236,8 @@ class Methods {
   /// @brief whether or not a ditch has been created for the collection
   ENTERPRISE_VIRT bool isPinned(TRI_voc_cid_t cid) const;
 
-  /// @brief extract the _id attribute from a slice, and convert it into a
-  /// string
+  /// @brief extract the _id attribute from a slice,
+  ///        and convert it into a string
   std::string extractIdString(VPackSlice);
 
   /// @brief read many documents, using skip and limit in arbitrary order
@@ -288,13 +291,20 @@ class Methods {
   ENTERPRISE_VIRT OperationResult document(std::string const& collectionName,
                            VPackSlice const value,
                            OperationOptions& options);
+  
+  /// @deprecated use async variant
+  OperationResult insert(std::string const& cname,
+                         VPackSlice const value,
+                         OperationOptions const& options) {
+    return this->insertF(cname, value, options).get();
+  }
 
   /// @brief create one or multiple documents in a collection
   /// the single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
-  OperationResult insert(std::string const& collectionName,
-                         VPackSlice const value,
-                         OperationOptions const& options);
+  Future<OperationResult> insertF(std::string const& collectionName,
+                                  VPackSlice const value,
+                                  OperationOptions const& options);
 
   /// @brief update/patch one or multiple documents in a collecti  Result
   /// the single-document variant of this operation will either succeed or,
@@ -433,6 +443,9 @@ class Methods {
 
   /// @brief return the collection name resolver
   CollectionNameResolver const* resolver() const;
+  
+  /// @brief wait for sync to disk
+  void waitForSyncTick(TRI_voc_tick_t tick) const;
 
 #ifdef USE_ENTERPRISE
   virtual bool isInaccessibleCollectionId(TRI_voc_cid_t /*cid*/) { return false; }
@@ -460,13 +473,13 @@ class Methods {
                                 VPackSlice const value,
                                 OperationOptions& options);
 
-  OperationResult insertCoordinator(std::string const& collectionName,
-                                    VPackSlice const value,
-                                    OperationOptions& options);
+  Future<OperationResult> insertCoordinator(std::string const& collectionName,
+                                            VPackSlice const value,
+                                            OperationOptions& options);
 
-  OperationResult insertLocal(std::string const& collectionName,
-                              VPackSlice const value,
-                              OperationOptions& options);
+  Future<OperationResult> insertLocal(std::string const& collectionName,
+                                      VPackSlice const value,
+                                      OperationOptions& options);
 
   OperationResult updateCoordinator(std::string const& collectionName,
                                     VPackSlice const newValue,
@@ -552,13 +565,6 @@ class Methods {
   OperationResult clusterResultDocument(
       rest::ResponseCode const& responseCode,
       std::shared_ptr<arangodb::velocypack::Builder> const& resultBody,
-      std::unordered_map<int, size_t> const& errorCounter) const;
-
-/// @brief Helper create a Cluster Communication insert
-  OperationResult clusterResultInsert(
-      rest::ResponseCode const& responseCode,
-      std::shared_ptr<arangodb::velocypack::Builder> const& resultBody,
-      OperationOptions const& options,
       std::unordered_map<int, size_t> const& errorCounter) const;
 
 /// @brief Helper create a Cluster Communication modify result

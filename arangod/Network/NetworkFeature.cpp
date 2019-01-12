@@ -38,9 +38,8 @@ NetworkFeature::NetworkFeature(
     application_features::ApplicationServer& server
 )
     : ApplicationFeature(server, "Network"),
-      _numThreads(1),
+      _numIOThreads(1),
       _maxOpenConnections(128),
-      _requestTimeoutMilli(60 * 1000),
       _connectionTtlMilli(5 * 60 * 1000),
       _verifyHosts(false) {
   setOptional(true);
@@ -50,26 +49,24 @@ NetworkFeature::NetworkFeature(
 void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("--network", "Networking ");
   
-  options->addOption("--network.threads",
+  options->addOption("--network.io-threads",
                      "number of network IO threads",
-                     new UInt64Parameter(&_numThreads));
+                     new UInt64Parameter(&_numIOThreads));
   options->addOption("--network.max-open-connections",
                      "max open network connections",
                      new UInt64Parameter(&_maxOpenConnections));
+  options->addOption("--network.connection-ttl",
+                     "default time-to-live of connections",
+                     new UInt64Parameter(&_connectionTtlMilli));
   options->addOption("--network.verify-hosts",
                      "verify hosts when using TLS",
                      new BooleanParameter(&_verifyHosts));
 }
   
 void NetworkFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
-  if (_numThreads < 1) {
-    _numThreads = 1;
-  }
+  _numIOThreads = std::min<uint64_t>(1, std::max<uint64_t>(8, _numIOThreads));
   if (_maxOpenConnections < 8) {
     _maxOpenConnections = 8;
-  }
-  if (_requestTimeoutMilli < 10000) {
-    _requestTimeoutMilli = 10000;
   }
   if (_connectionTtlMilli < 10000) {
     _connectionTtlMilli = 10000;
@@ -77,7 +74,13 @@ void NetworkFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
 }
   
 void NetworkFeature::prepare() {
-  _pool = std::make_unique<network::ConnectionPool>(this);
+  network::ConnectionPool::Config config;
+  config.numIOThreads = _numIOThreads;
+  config.maxOpenConnections = _maxOpenConnections;
+  config.connectionTtlMilli = _connectionTtlMilli;
+  config.verifyHosts = _verifyHosts;
+  
+  _pool = std::make_unique<network::ConnectionPool>(config);
   _poolPtr.store(_pool.get(), std::memory_order_release);
 }
   
