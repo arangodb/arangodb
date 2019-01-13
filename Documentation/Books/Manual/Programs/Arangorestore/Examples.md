@@ -111,7 +111,7 @@ It can be specified multiple times if required:
     arangorestore --collection myusers --collection myvalues --input-directory "dump"
 
 Collections will be processed by in alphabetical order by _arangorestore_, with all document
-collections being processed before all [edge collection](../../Appendix/Glossary.md#edge-collection)s.
+collections being processed before all [edge collections](../../Appendix/Glossary.md#edge-collection).
 This is to ensure that reloading data into edge collections will have the
 document collections linked in edges (*_from* and *_to* attributes) loaded.
 
