@@ -146,7 +146,7 @@ Making the ICU database publically available
 
 If you intend to use the machine for development purposes, it may be more practical to copy it to a common place:
 
-    cp 3rdParty/V8/v5.7.492.77/third_party/icu/source/data/in/icudtl58l.dat /cygdrive/c/Windows/
+    cd 3rdParty/V8/v*/third_party/icu/source/data/in && cp icudt*.dat /cygdrive/c/Windows/
 
 And configure your environment (yes this instruction remembers to the hitchhikers guide to the galaxy...) so that
 `ICU_DATA` points to `c:\\Windows`. You do that by opening the explorer,
@@ -168,8 +168,6 @@ You can then run the integration tests in the cygwin shell like that:
     --javascript.execute UnitTests/unittest.js \
       -- \
       all \
-      --ruby c:/tools/ruby25/bin/ruby \
-      --rspec c:/tools/ruby25/bin/rspec \
       --build Build64 \
       --buildType RelWithDebInfo \
       --skipNondeterministic true \
@@ -177,30 +175,12 @@ You can then run the integration tests in the cygwin shell like that:
       --skipBoost true \
       --skipGeo true
 
-Documentation (Optional)
-========================
-
-NodeJS *(needs to be run with Administrator privileges again)*:
-
-    choco install -y nodejs
-
-Gitbook:
-
-    npm install -g gitbook-cli
-
-Markdown-pp:
-
-    git clone https://github.com/triAGENS/markdown-pp.git
-    cd markdown-pp
-    python setup.py install
-
-Ditaa:
-
-    Download and install: http://ditaa.sourceforge.net/#download 
+Additional options `--ruby c:/tools/ruby25/bin/ruby` and `--rspec c:/tools/ruby25/bin/rspec` should be used only if Ruby is not in the *PATH*.
 
 **Authors**:
 [Frank Celler](https://github.com/fceller),
-[Wilfried Goesgens](https://github.com/dothebart) and
-[Simran Brucherseifer](https://github.com/Simran-B).
+[Wilfried Goesgens](https://github.com/dothebart),
+[Simran Brucherseifer](https://github.com/Simran-B) and
+[Vadim Kondratyev](https://github.com/KVS85).
 
 **Tags**: #windows
