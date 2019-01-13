@@ -5,9 +5,11 @@ Backup and restore can be done via the tools
 [_arangodump_](../Programs/Arangodump/README.md) and
 [_arangorestore_](../Programs/Arangorestore/README.md).
 
-In order to speed up the _arangorestore_ performance in a cluster environment,
+{% hint 'tip' %}
+In order to speed up the _arangorestore_ performance in a Cluster environment,
 the [Fast Cluster Restore](../Programs/Arangorestore/FastClusterRestore.md)
 procedure is recommended.
+{% endhint %}
 
 Performing frequent backups is important and a recommended best practices that
 can allow you to recover your data in case unexpected problems occur.
