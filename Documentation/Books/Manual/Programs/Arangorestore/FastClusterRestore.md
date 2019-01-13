@@ -2,7 +2,7 @@ Fast Cluster Restore
 ====================
 
 The _Fast Cluster Restore_ procedure documented in this page is recommended
-to speed up the performance of [_arangorestore_](../Arangorestore/README.md)
+to speed-up the performance of [_arangorestore_](../Arangorestore/README.md)
 in a Cluster environment.
 
 It is assumed that a Cluster environment is running and a _logical_ backup
@@ -11,10 +11,10 @@ with [_arangodump_](../Arangodump/README.md) has already been taken.
 {% hint 'info' %}
 The procedure described in this page is particularly useful for ArangoDB
 version 3.3, but can be used in 3.4 and later versions as well. Note that
-from v3.4, _arangorestore_ includes the option _threads_ which can be a first
+from v3.4, _arangorestore_ includes the option `--threads` which can be a first
 good step already in achieving restore parallelization and its speed benefit.
-However, the the procedure below allows for even further parallelization (making
-using of different _Coordinators_), and the part regarding temporarily setting
+However, the procedure below allows for even further parallelization (making
+use of different _Coordinators_), and the part regarding temporarily setting
 _replication factor_ to 1 is still useful in 3.4 and later versions.
 {% endhint %}
 
@@ -49,7 +49,9 @@ Step 2: Restore collection structures
 -------------------------------------
 
 The collection structures have to be restored from exactly one _Coordinator_ (any
-_Coordinator_ can be used) with the following command:
+_Coordinator_ can be used) with a command similar to the following one. Please add
+any additional needed option for your specific use case, e.g. `--create-database`
+if the database where you want to restore does not exist yet:
 
 ```
 arangorestore
@@ -60,13 +62,21 @@ arangorestore
   --input-directory <dump-directory>
 ```
 
+{% hint 'info' %}
+If you are using v3.3.22 or higher, or v3.4.2 or higher, please also add in the
+command above the option `--replication-factor 1`.
+{% hint 'tip' %}
+
 The option `--import-data false`  tells _arangorestore_ to restore only the
-collection structure and no data. Reason why the structure is restored before
-the data is that this allows to change _replication factor_ before restoring
-the data.
+collection structure and no data.
 
 Step 3: Set _Replication Factor_ to 1
 --------------------------------------
+
+{% hint 'info' %}
+This step is **not** needed if you are using v3.3.22 or higher or v3.4.2 or higher
+and you have used in the previous step the option `--replication-factor 1`.
+{% hint 'tip' %}
 
 To speed up restore, it is possible to set the _replication factor_ to 1 before
 importing any data. Run the following command from exactly one _Coordinator_ (any
@@ -86,10 +96,13 @@ c.properties().replicationFactor); c.properties({ replicationFactor: 1 }); });'
 Step 4: Create parallel restore scripts
 ---------------------------------------
 
-Now that the Cluster is prepared, the parallel restore scripts have to be
-created. Therefore we will use a script that is provided below:
+Now that the Cluster is prepared, the `parallelRestore` script will be used.
 
-_parallelRestore.js_:
+Please create the below `parallelRestore` script in any of your _Coordinators_.
+
+When executed (see below for further details), this script will create other scripts
+that can be then copied and then executed on each _Coordinator_.
+
 
 ```
 #!/bin/sh
@@ -213,8 +226,11 @@ ${ARANGOSH} --javascript.execute /tmp/parallelRestore$$.js -- "$@"
 rm /tmp/parallelRestore$$.js
 ```
 
-To run this script, all coordinator endpoints of the cluster have to be
-provided. The example below is a template for a cluster with 3 coordinators:
+To run this script, all _Coordinator_ endpoints of the Cluster have to be
+provided. The script accepts all options of the tool _arangorestore_.
+
+The command below can for instance be used on a Cluster with three
+_Coordinators_:
 
 ```
 ./parallelRestore.js <dump-directory>
@@ -227,16 +243,19 @@ provided. The example below is a template for a cluster with 3 coordinators:
   --create-collection false
 ```
 
-Note the use of the option `--create-collection false` (since we already
-created the collection structure before). The above command will create 3 scripts,
-whereas 3 corresponds to the amount of listed coordinators. The resulting
-scripts are named `coordinator_<number-of-coordinator>.sh` (e.g.
-`coordinator_0.sh`, `coordinator_1.sh`, `coordinator_2.sh`).
+**Notes:** 
 
-**Note:** starting from v3.4.0 the _arangorestore_ option *--threads N* can be
-passed to the command above, where _N_ is an integer, to further parallelize
-(so there will be a parallelization also in each _Coordinator_). *--threads 2*
-is used by default (from v3.4.0 on) if the option *--threads* is not passed.
+ - The option `--create-collection false` is passed since the collection
+   structures were created already in the previous step.
+ - Starting from v3.4.0 the _arangorestore_ option *--threads N* can be
+   passed to the command above, where _N_ is an integer, to further parallelize
+   the restore (default is `--threads 2`).
+
+The above command will create three scripts, where three corresponds to
+the amount of listed _Coordinators_. 
+
+The resulting scripts are named `coordinator_<number-of-coordinator>.sh` (e.g.
+`coordinator_0.sh`, `coordinator_1.sh`, `coordinator_2.sh`).
 
 Step 5: Execute parallel restore scripts
 ----------------------------------------
