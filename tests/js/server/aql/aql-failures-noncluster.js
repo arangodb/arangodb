@@ -415,7 +415,7 @@ function ahuacatlFailureSuite () {
 
     testEnumerateCollectionBlock : function () {
       internal.debugSetFailAt("EnumerateCollectionBlock::moreDocuments");
-      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value2 == 9 COLLECT key = i._key RETURN key");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value2 == 9 COLLECT key = i.value2 RETURN key");
     },
 
 ////////////////////////////////////////////////////////////////////////////////

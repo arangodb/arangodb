@@ -35,8 +35,8 @@
 
 #include "IResearchRocksDBLink.h"
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief IResearchRocksDBLink-specific implementation of an IndexTypeFactory
@@ -111,33 +111,6 @@ IResearchRocksDBLink::IResearchRocksDBLink(TRI_idx_iid_t iid,
   return factory;
 }
 
-arangodb::Result IResearchRocksDBLink::drop() {
-  auto* engine = arangodb::EngineSelectorFeature::ENGINE;
-
-  if (!engine || !engine->inRecovery()) {
-    auto view = IResearchLink::view();
-    auto logValue = RocksDBLogValue::IResearchLinkDrop(
-        arangodb::Index::_collection.vocbase().id(),
-        arangodb::Index::_collection.id(),
-        view ? view->id() : 0,  // 0 == invalid TRI_voc_cid_t according to
-                                // transaction::Methods
-        arangodb::Index::_iid);
-    rocksdb::WriteBatch batch;
-    rocksdb::WriteOptions wo;  // TODO: check which options would make sense
-    auto db = rocksutils::globalRocksDB();
-
-    batch.PutLogData(logValue.slice());
-
-    auto res = arangodb::rocksutils::convertStatus(db->Write(wo, &batch));
-
-    if (!res.ok()) {
-      return res;
-    }
-  }
-
-  return IResearchLink::drop();
-}
-
 void IResearchRocksDBLink::toVelocyPack(arangodb::velocypack::Builder& builder,
                                         std::underlying_type<arangodb::Index::Serialize>::type flags) const {
   if (builder.isOpenObject()) {
@@ -175,9 +148,9 @@ void IResearchRocksDBLink::toVelocyPack(arangodb::velocypack::Builder& builder,
   builder.close();
 }
 
-NS_END      // iresearch
-    NS_END  // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
-    // -----------------------------------------------------------------------------
-    // --SECTION-- END-OF-FILE
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

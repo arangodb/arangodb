@@ -46,7 +46,7 @@ function optimizerCollectMethodsTestSuite () {
       c = db._create("UnitTestsCollection", { numberOfShards: 3 });
 
       for (var i = 0; i < 1500; ++i) {
-        c.save({ group: "test" + (i % 10), value: i });
+        c.save({ group: "test" + (i % 10), value: i, haxe: "test" + i });
       }
     },
 
@@ -96,7 +96,7 @@ function optimizerCollectMethodsTestSuite () {
     testNumberOfPlansWithInto : function () {
       var queries = [
         "FOR j IN " + c.name() + " COLLECT value = j INTO g RETURN g",
-        "FOR j IN " + c.name() + " COLLECT value = j INTO g = j._key RETURN g",
+        "FOR j IN " + c.name() + " COLLECT value = j INTO g = j.haxe RETURN g",
         "FOR j IN " + c.name() + " COLLECT value = j INTO g RETURN [ value, g ]",
         "FOR j IN " + c.name() + " COLLECT value = j INTO g KEEP j RETURN g"
       ];
@@ -115,7 +115,7 @@ function optimizerCollectMethodsTestSuite () {
     testHashed : function () {
       var queries = [
         [ "FOR j IN " + c.name() + " COLLECT value = j RETURN value", 1500 ],
-        [ "FOR j IN " + c.name() + " COLLECT value = j._key RETURN value", 1500 ],
+        [ "FOR j IN " + c.name() + " COLLECT value = j.haxe RETURN value", 1500 ],
         [ "FOR j IN " + c.name() + " COLLECT value = j.group RETURN value", 10 ],
         [ "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value RETURN [ value1, value2 ]", 1500 ],
         [ "FOR j IN " + c.name() + " COLLECT value = j.group WITH COUNT INTO l RETURN [ value, l ]", 10 ],
@@ -159,7 +159,7 @@ function optimizerCollectMethodsTestSuite () {
 
       var queries = [
         [ "FOR j IN " + c.name() + " COLLECT value = j RETURN value", 1500 ],
-        [ "FOR j IN " + c.name() + " COLLECT value = j._key RETURN value", 1500 ],
+        [ "FOR j IN " + c.name() + " COLLECT value = j.haxe RETURN value", 1500 ],
         [ "FOR j IN " + c.name() + " COLLECT value = j.group RETURN value", 10 ],
         [ "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value RETURN [ value1, value2 ]", 1500 ],
         [ "FOR j IN " + c.name() + " COLLECT value = j.group WITH COUNT INTO l RETURN [ value, l ]", 10 ],
@@ -204,7 +204,7 @@ function optimizerCollectMethodsTestSuite () {
       
       var queries = [
                      [ "FOR j IN " + c.name() + " COLLECT value = j RETURN value", 1500, false],
-                     [ "FOR j IN " + c.name() + " COLLECT value = j._key RETURN value", 1500, false],
+                     [ "FOR j IN " + c.name() + " COLLECT value = j.haxe RETURN value", 1500, false],
                      [ "FOR j IN " + c.name() + " COLLECT value = j.group RETURN value", 10, true],
                      [ "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value RETURN [ value1, value2 ]", 1500, true ],
                      [ "FOR j IN " + c.name() + " COLLECT value = j.group WITH COUNT INTO l RETURN [ value, l ]", 10, true ],
@@ -312,7 +312,7 @@ function optimizerCollectMethodsTestSuite () {
     testSortRemoval : function () {
       var queries = [
         [ "FOR j IN " + c.name() + " COLLECT value = j SORT null RETURN value", 1500 ],
-        [ "FOR j IN " + c.name() + " COLLECT value = j._key SORT null RETURN value", 1500 ],
+        [ "FOR j IN " + c.name() + " COLLECT value = j.haxe SORT null RETURN value", 1500 ],
         [ "FOR j IN " + c.name() + " COLLECT value = j.group SORT null RETURN value", 10 ],
         [ "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value SORT null RETURN [ value1, value2 ]", 1500 ],
         [ "FOR j IN " + c.name() + " COLLECT value = j.group WITH COUNT INTO l SORT null RETURN [ value, l ]", 10 ],

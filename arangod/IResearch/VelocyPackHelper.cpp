@@ -26,8 +26,8 @@
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
 bool mergeSlice(arangodb::velocypack::Builder& builder,
                 arangodb::velocypack::Slice const& slice) {
@@ -144,9 +144,9 @@ ObjectIterator& ObjectIterator::operator++() {
   return *this;
 }
 
-NS_END      // iresearch
-    NS_END  // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
-    // -----------------------------------------------------------------------------
-    // --SECTION-- END-OF-FILE
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION-- END-OF-FILE
+// -----------------------------------------------------------------------------

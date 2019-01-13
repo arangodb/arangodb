@@ -1,3 +1,19 @@
+.markdown-section small {
+  font-size: 80%;
+}
+.markdown-section sub, .markdown-section sup {
+  font-size: 75%;
+  line-height: 0;
+  position: relative;
+  vertical-align: baseline;
+}
+.markdown-section sup {
+  top: -.5em;
+}
+.markdown-section sub {
+  bottom: -.25em;
+}
+
 div.example_show_button {
   border: medium solid lightgray;
   text-align: center;

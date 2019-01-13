@@ -31,18 +31,19 @@
 
 #include "utils/string.hpp"  // for irs::string_ref
 
-NS_BEGIN(arangodb)
-NS_BEGIN(velocypack)
+namespace arangodb {
+namespace velocypack {
 
 class Builder;  // forward declarations
 
-NS_END      // velocypack
-    NS_END  // arangodb
+}  // namespace velocypack
+}  // namespace arangodb
 
-        NS_BEGIN(arangodb) NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
-    // according to Slice.h:330
-    uint8_t const COMPACT_ARRAY = 0x13;
+// according to Slice.h:330
+uint8_t const COMPACT_ARRAY = 0x13;
 uint8_t const COMPACT_OBJECT = 0x14;
 
 inline bool isArrayOrObject(VPackSlice const& slice) {
@@ -375,7 +376,7 @@ class ObjectIterator {
   std::vector<Iterator> _stack;
 };  // ObjectIterator
 
-NS_END      // iresearch
-    NS_END  // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
 #endif

@@ -213,8 +213,8 @@ bool parseOptions(aql::AstNode const* optionsNode,
 
 // in loop or non-deterministic
 bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
-                    aql::Variable const& ref,
-                    std::unordered_set<aql::Variable const*>& vars) {
+                     aql::Variable const& ref,
+                     std::unordered_set<aql::Variable const*>& vars) {
   if (!node.isDeterministic()) {
     return false;
   }
