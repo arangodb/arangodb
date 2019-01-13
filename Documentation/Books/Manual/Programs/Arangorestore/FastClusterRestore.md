@@ -39,7 +39,7 @@ Step 1: Copy the _dump_ directory to all _Coordinators_
 The first step is to copy the directory that contains the _dump_ to all machines
 where _Coordinators_ are running.
 
-{% hint 'info' %}
+{% hint 'tip' %}
 This step is not strictly required as the backup can be restored over the
 network. However, if the restore is executed locally the restore speed is
 significantly improved.
