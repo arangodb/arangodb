@@ -179,7 +179,7 @@ and `--replication-factor` (starting from v3.3.22 and v3.4.2). These options
 can be specified multiple times as well, in order to override the settings
 for dedicated collections, e.g.
 
-    unix> arangorestore --number-of-shards 2 --number-of-shards mycollection=3 --number-of-shards test=4
+    arangorestore --number-of-shards 2 --number-of-shards mycollection=3 --number-of-shards test=4
 
 The above will restore all collections except "mycollection" and "test" with
 2 shards. "mycollection" will have 3 shards when restored, and "test" will
@@ -190,7 +190,7 @@ collections not overridden will be determined by looking into the
 
 The `--replication-factor` options works in the same way, e.g.
 
-    unix> arangorestore --replication-factor 2 --replication-factor mycollection=1
+    arangorestore --replication-factor 2 --replication-factor mycollection=1
 
 will set the replication factor to 2 for all collections but "mycollection", which will get a
 replication factor of just 1.
