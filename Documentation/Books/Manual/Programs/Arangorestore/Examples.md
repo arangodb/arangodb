@@ -112,8 +112,17 @@ It can be specified multiple times if required:
 
 Collections will be processed by in alphabetical order by _arangorestore_, with all document
 collections being processed before all [edge collections](../../Appendix/Glossary.md#edge-collection).
-This is to ensure that reloading data into edge collections will have the
-document collections linked in edges (*_from* and *_to* attributes) loaded.
+This remains valid also when multiple threads are in use (from v3.4.0 on).
+
+Note however that when restoring an edge collection no internal checks are made in order to validate that
+the documents that the edges connect exist or not. As a consequence, when restoring individual collections
+which are part of a graph you are not required to restore in a specific order. 
+
+{% hint 'warning' %}
+When restoring only a subset of collections of your database, and graphs are in use, you will need
+to make sure you are restoring all the need collections (the ones that are part of the graph) as 
+otherwise you might have edges pointing to non existing documents.
+{% endhint %}
 
 To restrict reloading to specific views, there is the *--view* option.
 Should you specify the *--collection* parameter views will not be restored _unless_ you explicitly
