@@ -166,13 +166,6 @@ used to restore data into a Cluster. Simply point it to one of the
 _Coordinators_ in your Cluster and it will work as usual but on sharded
 collections in the Cluster.
 
-If *arangorestore* is asked to drop and re-create a collection, it
-will use the same number of shards and the same shard keys as when
-the collection was dumped. The distribution of the shards to the
-servers will also be the same as at the time of the dump. This means
-in particular that _DBServers_ with the same IDs as before must be
-present in the cluster at time of the restore.
-
 If *arangorestore* is asked to restore a collection, it will use the same
 number of shards, replication factor and shard keys as when the collection
 was dumped. The distribution of the shards to the servers will also be the
