@@ -233,7 +233,7 @@ The command below can for instance be used on a Cluster with three
 _Coordinators_:
 
 ```
-./parallelRestore.js <dump-directory>
+./parallelRestore <dump-directory>
   tcp://<ip-of-coordinator1>:<port of coordinator1>,
   tcp://<ip-of-coordinator2>:<port of coordinator2>,
   tcp://<ip-of-coordinator3>:<port of coordinator3>
