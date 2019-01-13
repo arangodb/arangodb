@@ -202,10 +202,6 @@ If you restore a collection that was dumped from a cluster into a single
 ArangoDB instance, the number of shards, replication factor and shard keys will silently
 be ignored.
 
-Note that in a cluster, every newly created collection will have a new
-ID, it is not possible to reuse the ID from the originally dumped
-collection. This is for safety reasons to ensure consistency of IDs.
-
 ### Factors affecting speed of arangorestore in a Cluster
 
 The following factors affect speed of _arangorestore_ in a Cluster:
