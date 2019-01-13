@@ -387,6 +387,7 @@ void DatabaseFeature::beginShutdown() {
 
 void DatabaseFeature::stop() {
   stopAppliers();
+  MUTEX_LOCKER(mutexLocker, _databasesMutex);
 
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();

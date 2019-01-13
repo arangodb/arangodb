@@ -45,7 +45,7 @@ using namespace arangodb::cache;
 
 TEST_CASE("cache::TransactionalCache", "[cache][!hide][longRunning]") {
   SECTION("test basic cache construction") {
-    auto postFn = [](std::function<void()>) -> bool { return false; };
+    auto postFn = [](std::function<void(bool)>) -> bool { return false; };
     Manager manager(postFn, 1024 * 1024);
     auto cache1 =
         manager.createCache(CacheType::Transactional, false, 256 * 1024);
@@ -63,7 +63,7 @@ TEST_CASE("cache::TransactionalCache", "[cache][!hide][longRunning]") {
 
   SECTION("verify that insertion works as expected") {
     uint64_t cacheLimit = 256 * 1024;
-    auto postFn = [](std::function<void()>) -> bool { return false; };
+    auto postFn = [](std::function<void(bool)>) -> bool { return false; };
     Manager manager(postFn, 4 * cacheLimit);
     auto cache =
         manager.createCache(CacheType::Transactional, false, cacheLimit);
@@ -115,7 +115,7 @@ TEST_CASE("cache::TransactionalCache", "[cache][!hide][longRunning]") {
 
   SECTION("verify removal works as expected") {
     uint64_t cacheLimit = 256 * 1024;
-    auto postFn = [](std::function<void()>) -> bool { return false; };
+    auto postFn = [](std::function<void(bool)>) -> bool { return false; };
     Manager manager(postFn, 4 * cacheLimit);
     auto cache =
         manager.createCache(CacheType::Transactional, false, cacheLimit);
@@ -174,7 +174,7 @@ TEST_CASE("cache::TransactionalCache", "[cache][!hide][longRunning]") {
 
   SECTION("verify blacklisting works as expected") {
     uint64_t cacheLimit = 256 * 1024;
-    auto postFn = [](std::function<void()>) -> bool { return false; };
+    auto postFn = [](std::function<void(bool)>) -> bool { return false; };
     Manager manager(postFn, 4 * cacheLimit);
     auto cache =
         manager.createCache(CacheType::Transactional, false, cacheLimit);
@@ -240,7 +240,7 @@ TEST_CASE("cache::TransactionalCache", "[cache][!hide][longRunning]") {
   SECTION("verify cache can grow correctly when it runs out of space") {
     uint64_t minimumUsage = 1024 * 1024;
     MockScheduler scheduler(4);
-    auto postFn = [&scheduler](std::function<void()> fn) -> bool {
+    auto postFn = [&scheduler](std::function<void(bool)> fn) -> bool {
       scheduler.post(fn);
       return true;
     };
@@ -265,7 +265,7 @@ TEST_CASE("cache::TransactionalCache", "[cache][!hide][longRunning]") {
   SECTION("test behavior under mixed load") {
     RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
     MockScheduler scheduler(4);
-    auto postFn = [&scheduler](std::function<void()> fn) -> bool {
+    auto postFn = [&scheduler](std::function<void(bool)> fn) -> bool {
       scheduler.post(fn);
       return true;
     };

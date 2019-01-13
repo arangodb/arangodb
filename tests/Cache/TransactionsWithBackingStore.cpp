@@ -75,7 +75,7 @@ TEST_CASE("cache with backing store", "[cache][!hide][longRunning]") {
   SECTION("test hit rate for read-only hotset workload") {
     RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
     MockScheduler scheduler(4);
-    auto postFn = [&scheduler](std::function<void()> fn) -> bool {
+    auto postFn = [&scheduler](std::function<void(bool)> fn) -> bool {
       scheduler.post(fn);
       return true;
     };
@@ -128,7 +128,7 @@ TEST_CASE("cache with backing store", "[cache][!hide][longRunning]") {
   SECTION("test hit rate for mixed workload") {
     RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
     MockScheduler scheduler(4);
-    auto postFn = [&scheduler](std::function<void()> fn) -> bool {
+    auto postFn = [&scheduler](std::function<void(bool)> fn) -> bool {
       scheduler.post(fn);
       return true;
     };
@@ -210,7 +210,7 @@ TEST_CASE("cache with backing store", "[cache][!hide][longRunning]") {
   SECTION("test transactionality for mixed workload") {
     RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
     MockScheduler scheduler(4);
-    auto postFn = [&scheduler](std::function<void()> fn) -> bool {
+    auto postFn = [&scheduler](std::function<void(bool)> fn) -> bool {
       scheduler.post(fn);
       return true;
     };
@@ -297,7 +297,7 @@ TEST_CASE("cache with backing store", "[cache][!hide][longRunning]") {
   SECTION("test rebalancing in the wild") {
     RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
     MockScheduler scheduler(4);
-    auto postFn = [&scheduler](std::function<void()> fn) -> bool {
+    auto postFn = [&scheduler](std::function<void(bool)> fn) -> bool {
       scheduler.post(fn);
       return true;
     };

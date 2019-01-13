@@ -219,7 +219,7 @@ bool RestBatchHandler::executeNextHandler() {
   }
 
   // now scheduler the real handler
-  bool ok = SchedulerFeature::SCHEDULER->queue(handler->priority(), [this, self, handler]() {
+  bool ok = SchedulerFeature::SCHEDULER->queue(handler->priority(), [this, self, handler](bool) {
     // start to work for this handler
     // ignore any errors here, will be handled later by inspecting the response
     try {

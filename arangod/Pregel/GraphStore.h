@@ -75,7 +75,7 @@ class GraphStore {
   GraphFormat<V, E> const* graphFormat() { return _graphFormat.get(); }
 
   // ====================== NOT THREAD SAFE ===========================
-  void loadShards(WorkerConfig* state, std::function<void()> const&);
+  void loadShards(WorkerConfig* state, std::function<void(bool)> const&);
   void loadDocument(WorkerConfig* config, std::string const& documentID);
   void loadDocument(WorkerConfig* config, PregelShard sourceShard, PregelKey const& _key);
   // ======================================================================
@@ -91,7 +91,7 @@ class GraphStore {
   void replaceVertexData(VertexEntry const* entry, void* data, size_t size);
 
   /// Write results to database
-  void storeResults(WorkerConfig* config, std::function<void()> const&);
+  void storeResults(WorkerConfig* config, std::function<void(bool)> const&);
 
  private:
   std::map<CollectionID, std::vector<VertexShardInfo>> _allocateSpace();

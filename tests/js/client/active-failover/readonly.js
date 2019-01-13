@@ -90,7 +90,8 @@ function getClusterEndpoints() {
     url: baseUrl() + "/_api/cluster/endpoints",
     auth: {
       bearer: jwtRoot,
-    }
+    },
+    timeout: 120 
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'), JSON.stringify(res));
@@ -107,7 +108,8 @@ function getLoggerState(endpoint) {
     url: getUrl(endpoint) + "/_db/_system/_api/replication/logger-state",
     auth: {
       bearer: jwtRoot,
-    }
+    },
+    timeout: 120 
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'));
@@ -121,7 +123,8 @@ function getApplierState(endpoint) {
     url: getUrl(endpoint) + "/_db/_system/_api/replication/applier-state?global=true",
     auth: {
       bearer: jwtRoot,
-    }
+    },
+    timeout: 120 
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'));
@@ -164,7 +167,8 @@ function checkData(server) {
     url: getUrl(server) + "/_api/collection/" + cname + "/count",
     auth: {
       bearer: jwtRoot,
-    }
+    },
+    timeout: 120 
   });
 
   assertTrue(res instanceof request.Response);
@@ -182,7 +186,8 @@ function readAgencyValue(path) {
     auth: {
       bearer: jwtSuperuser,
     },
-    body: JSON.stringify([[path]])
+    body: JSON.stringify([[path]]),
+    timeout: 120 
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'), JSON.stringify(res));
@@ -253,7 +258,8 @@ function setReadOnly(endpoint, ro) {
       bearer: jwtRoot,
     },
     body: {"mode" : str},
-    json: true
+    json: true,
+    timeout: 120 
   });
   print(JSON.stringify(res));
 
@@ -418,7 +424,7 @@ function ActiveFailoverSuite() {
 
       // await failover and check that follower get in sync
       currentLead = checkForFailover(currentLead);
-      assertTrue(currentLead === firstLeader, "Did not fail to original leader");
+      assertEqual(currentLead, firstLeader, "Did not fail to original leader");
 
       suspended.forEach(arangod => {
         print("Resuming: ", arangod.endpoint);

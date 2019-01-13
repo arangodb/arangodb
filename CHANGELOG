@@ -1,6 +1,12 @@
 v3.4.2 (XXXX-XX-XX)
 -------------------
 
+* fix issue #7900: Bind values of `null` are not replaced by
+  empty string anymore, when toggling between json and table
+  view in the web-ui.
+
+* Use base64url to encode and decode JWT parts.
+
 * added AQL function `CHECK_DOCUMENT` for document validity checks
 
 * when detecting parse errors in the JSON input sent to the restore API, now
@@ -8,7 +14,7 @@ v3.4.2 (XXXX-XX-XX)
   but hiding there was a problem.
 
 * do not respond with an internal error in case of JSON parse errors detected
-  in incoming HTTP requests 
+  in incoming HTTP requests
 
 * added arangorestore option `--cleanup-duplicate-attributes` to clean up input documents
   with redundant attribute names
@@ -25,7 +31,7 @@ v3.4.2 (XXXX-XX-XX)
   default values for the number of shards and the replication factor, resp. for all
   restored collections. If specified, these default values will be used regardless
   of whether the number of shards or the replication factor values are already present
-  in the metadata of the dumped collections. 
+  in the metadata of the dumped collections.
 
   It is also possible to override the values on a per-collection level by specifying
   the options multiple times, e.g.
@@ -41,10 +47,10 @@ v3.4.2 (XXXX-XX-XX)
       --number-of-shards mycollection=3 --number-of-shards test=4
 
   This will use the number of shards as specified in the dump, except for the collections
-  "mycollection" and "test". 
+  "mycollection" and "test".
 
   The `--replication-factor` option works similarly.
-  
+
 * validate uniqueness of attribute names in AQL in cases in which it was not
   done before. When constructing AQL objects via object literals, there was
   no validation about object attribute names being unique. For example, it was
@@ -54,9 +60,9 @@ v3.4.2 (XXXX-XX-XX)
 
   This resulted in a document having two "a" attributes, which is obviously
   undesired. Now, when an attribute value is used multiple times, only the first
-  assigned value will be used for that attribute in AQL. It is not possible to 
+  assigned value will be used for that attribute in AQL. It is not possible to
   specify the same attribute multiple times and overwrite the attribute's value
-  with by that. That means in the above example, the value of "a" will be 1, 
+  with by that. That means in the above example, the value of "a" will be 1,
   and not 2.
   This changes the behavior for overriding attribute values in AQL compared to
   previous versions of ArangoDB, as previous versions in some cases allowed
@@ -65,14 +71,18 @@ v3.4.2 (XXXX-XX-XX)
   value. In order to explicitly override a value in an existing object, use the
   AQL MERGE function.
 
-  To avoid all these issues, users are encouraged to use unambiguous attribute 
+  To avoid all these issues, users are encouraged to use unambiguous attribute
   names in objects/documents in AQL. Outside of AQL, specifying the same attribute
   multiple times may even result in a parse error, e.g. when sending such data
   to ArangoDB's HTTP REST API.
-  
+
 * fixed issue #7834: AQL Query crashes instance
 
 * Added --server.jwt-secret-keyfile option.
+
+* Improve single threaded performance by scheduler optimization.
+
+* Releveling logging in maintenance
 
 v3.4.1 (2018-12-19)
 -------------------
@@ -141,6 +151,8 @@ v3.4.1 (2018-12-19)
     options, such as `--version`, `--dump-options`, `--dump-dependencies` etc.,
     and "option" for all others.
 
+* Fixed a bug in synchroneous replication intialisation for, where a
+  shard's db server is rebooted during that period
 
 v3.4.0 (2018-12-06)
 -------------------

@@ -297,7 +297,7 @@ Result Syncer::JobSynchronizer::waitForResponse(
   return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
 }
 
-void Syncer::JobSynchronizer::request(std::function<void()> const& cb) {
+void Syncer::JobSynchronizer::request(std::function<void(bool)> const& cb) {
   // by indicating that we have posted an async job, the caller
   // will block on exit until all posted jobs have finished
   if (!jobPosted()) {
@@ -306,14 +306,14 @@ void Syncer::JobSynchronizer::request(std::function<void()> const& cb) {
 
   try {
     auto self = shared_from_this();
-    SchedulerFeature::SCHEDULER->queue(RequestPriority::LOW, [this, self, cb]() {
+    SchedulerFeature::SCHEDULER->queue(RequestPriority::LOW, [this, self, cb](bool isDirect) {
       // whatever happens next, when we leave this here, we need to indicate
       // that there is no more posted job.
       // otherwise the calling thread may block forever waiting on the posted
       // jobs to finish
       auto guard = scopeGuard([this]() { jobDone(); });
 
-      cb();
+      cb(isDirect);
     });
   } catch (...) {
     // will get here only if Scheduler::post threw
