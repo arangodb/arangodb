@@ -1,15 +1,15 @@
 3rd Party components and what to do on update
 =============================================
 
-## asio
-
-https://think-async.com/Asio/
-
 ## boost
 
 https://www.boost.org/
 
 (we don't ship the upstream documentation!)
+To remove some unused doc files, you can run something as follows:
+
+    cd 3rdParty/boost/1.69.0
+    for i in `find -type d -name "doc"`; do git rm -r "$i"; done
 
 
 ## catch
@@ -26,6 +26,23 @@ HTTP client library https://curl.haxx.se/
 
 We apply several build system patches to avoid unneccessary recompiles, bugfixes.
 
+For example, we commented out curl's check for nroff to avoid documentation
+building (and complaining about it on Windows).
+
+We also deactivated some of curl's install CMake commands, as we don't need
+anything installed (apart from that the vanilla curl install commands don't work
+when compiled as part of ArangoDB).
+
+We also disabled adding the OpenSSL libraries via the following command:
+
+   list(APPEND CURL_LIBS OpenSSL::SSL OpenSSL::Crypto)
+
+and instead are using the command
+ 
+   list(APPEND CURL_LIBS ${OPENSSL_LIBRARIES})
+
+from the previous version of curl's CMake file. When not applying this change,
+the static builds try to look for libssl.so, which will not work.
 
 ## date
 

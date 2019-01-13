@@ -47,6 +47,7 @@ enum SslProtocol {
   SSL_V3 = 3,
   TLS_V1 = 4,
   TLS_V12 = 5,
+  TLS_V13 = 6,
 
   SSL_LAST
 };
@@ -63,7 +64,7 @@ std::unordered_set<uint64_t> availableSslProtocols();
 /// @brief returns a string description the available SSL protocols
 std::string availableSslProtocolsDescription();
 
-asio::ssl::context sslContext(SslProtocol, std::string const& keyfile);
+asio_ns::ssl::context sslContext(SslProtocol, std::string const& keyfile);
 
 std::string protocolName(SslProtocol protocol);
 

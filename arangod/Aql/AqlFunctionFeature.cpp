@@ -421,15 +421,16 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"VERSION", "", Function::makeFlags(FF::Deterministic), &Functions::Version});  // deterministic, not cacheable. only on
                                                                                       // coordinator
   add({"FAIL", "|.", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Fail});  // not deterministic and not cacheable
-  add({"NOOPT", ".", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Passthru});  // prevents all optimizations!
+  add({"NOOPT", ".", Function::makeFlags(FF::CanRunOnDBServer, FF::NoEval), &Functions::Passthru});  // prevents all optimizations!
+  add({"NOEVAL", ".", Function::makeFlags(FF::Deterministic, FF::CanRunOnDBServer, FF::NoEval), &Functions::Passthru});  // prevents all optimizations!
   add({"SLEEP", ".", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Sleep});  // not deterministic and not cacheable
   add({"COLLECTIONS", "", Function::makeFlags(), &Functions::Collections});  // not deterministic and not cacheable
   add({"CURRENT_USER", "", Function::makeFlags(FF::Deterministic),
        &Functions::CurrentUser});  // deterministic, but not cacheable
   add({"CURRENT_DATABASE", "", Function::makeFlags(FF::Deterministic),
        &Functions::CurrentDatabase});  // deterministic, but not cacheable
-  add({"CHECK_DOCUMENT", ".", Function::makeFlags(FF::CanRunOnDBServer), 
-       &Functions::CheckDocument}); // not deterministic and not cacheable
+  add({"CHECK_DOCUMENT", ".", Function::makeFlags(FF::CanRunOnDBServer),
+       &Functions::CheckDocument});  // not deterministic and not cacheable
   add({"COLLECTION_COUNT", ".h", Function::makeFlags(), &Functions::CollectionCount});  // not deterministic and not cacheable
   add({"PREGEL_RESULT", ".", Function::makeFlags(FF::CanRunOnDBServer),
        &Functions::PregelResult});  // not deterministic and not cacheable
@@ -439,6 +440,8 @@ void AqlFunctionFeature::addMiscFunctions() {
   // NEAR, WITHIN, WITHIN_RECTANGLE and FULLTEXT are replaced by the AQL
   // optimizer with collection-based subqueries they are all not marked as
   // non-deterministic and non-cacheable here as they refer to documents
+  // note further that all of these function call will be replaced by equivalent
+  // subqueries by the optimizer
   add({"NEAR", ".h,.,.|.,.", Function::makeFlags(), &Functions::NotImplemented});
   add({"WITHIN", ".h,.,.,.|.", Function::makeFlags(), &Functions::NotImplemented});
   add({"WITHIN_RECTANGLE", "h.,.,.,.,.", Function::makeFlags(), &Functions::NotImplemented});

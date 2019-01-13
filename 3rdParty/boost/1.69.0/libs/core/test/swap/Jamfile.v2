@@ -1,0 +1,71 @@
+# Copyright (c) 2007, 2008 Joseph Gauterin
+#
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+# bring in rules for testing
+import testing ;
+
+local compile_tests =
+    root_header_1.cpp
+    root_header_2.cpp
+    lib_header_1.cpp
+    lib_header_2.cpp
+    mixed_headers_1.cpp
+    mixed_headers_2.cpp
+    ;
+
+local compile_fail_tests =
+    const_wrapper_fail.cpp ;
+
+local run_tests =
+    primitive.cpp
+    specialized_in_boost.cpp
+    specialized_in_global.cpp
+    specialized_in_other.cpp
+    specialized_in_std.cpp
+    specialized_in_boost_and_other.cpp
+    std_bitset.cpp
+    std_dateorder.cpp
+    std_string.cpp
+    std_typeinfo_ptr.cpp
+    std_vector_of_boost.cpp
+    std_vector_of_global.cpp
+    std_vector_of_other.cpp
+    no_ambiguity_in_boost.cpp
+    array_of_array_of_class.cpp
+    array_of_array_of_int.cpp
+    array_of_class.cpp
+    array_of_int.cpp
+    array_of_template.cpp
+    ;
+
+rule test_all
+{
+    local all_rules ;
+    local file ;
+
+    for file in $(compile_tests)
+    {
+        local test_name = [ MATCH "([^.]*).cpp$" : $(file) ] ;
+        all_rules += [ compile $(file) : : "swap-$(test_name)" ] ;
+    }
+
+    for file in $(compile_fail_tests)
+    {
+        local test_name = [ MATCH "([^.]*).cpp$" : $(file) ] ;
+        all_rules += [ compile-fail $(file) : : "swap-$(test_name)" ] ;
+    }
+
+    for file in $(run_tests)
+    {
+        local test_name = [ MATCH "([^.]*).cpp$" : $(file) ] ;
+        all_rules += [ run $(file) : : : : "swap-$(test_name)" ] ;
+    }
+
+    #ECHO All rules: $(all_rules) ;
+    return $(all_rules) ;
+}
+
+test-suite core/swap : [ test_all r ] ;

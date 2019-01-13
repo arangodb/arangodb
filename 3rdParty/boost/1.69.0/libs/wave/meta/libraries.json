@@ -1,0 +1,14 @@
+{
+    "key": "wave",
+    "name": "Wave",
+    "authors": [
+        "Hartmut Kaiser"
+    ],
+    "description": "The Boost.Wave library is a Standards conformant, and highly configurable implementation of the mandated C99/C++ preprocessor functionality packed behind an easy to use iterator interface.",
+    "category": [
+        "String"
+    ],
+    "maintainers": [
+        "Hartmut Kaiser <hartmut.kaiser -at- gmail.com>"
+    ]
+}

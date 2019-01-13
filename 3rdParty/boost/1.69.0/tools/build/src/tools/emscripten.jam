@@ -1,0 +1,113 @@
+# Copyright Rene Rivera 2016
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt
+# or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+import feature ;
+import os ;
+import toolset ;
+import common ;
+import gcc ;
+import type ;
+
+feature.feature embind : off on : propagated ;
+feature.feature closure : off on full : propagated ;
+feature.feature link-optimization : off on full : propagated ;
+
+rule init ( version ? :  command * : options * )
+{
+    command = [ common.get-invocation-command emscripten
+        : emcc 
+        : $(command) ] ;
+
+    # Determine the version
+    if $(command)
+    {
+        local command-string = \"$(command)\" ;
+        command-string = $(command-string:J=" ") ;
+        version ?= [ MATCH "([0-9.]+)"
+            : [ SHELL "$(command-string) --version" ] ] ;
+    }
+
+    local condition = [ common.check-init-parameters emscripten
+        : version $(version) ] ;
+
+    common.handle-options emscripten : $(condition) : $(command) : $(options) ;
+}
+
+feature.extend toolset : emscripten ;
+
+toolset.inherit-generators emscripten <toolset>emscripten
+    : gcc
+    : gcc.mingw.link gcc.mingw.link.dll gcc.compile.c.pch gcc.compile.c++.pch
+    ;
+toolset.inherit-rules emscripten : gcc ;
+toolset.inherit-flags emscripten : gcc 
+        :
+        <optimization>off <optimization>speed <optimization>space
+        <profiling>off <profiling>on
+        <inlining>off <inlining>on <inlining>full
+        <warnings>off <warnings>all <warnings>on
+        <warnings-as-errors>off <warnings-as-errors>on
+        <debug-symbols>off <debug-symbols>on
+        <rtti>off <rtti>on
+        ;
+
+type.set-generated-target-suffix EXE : <toolset>emscripten : "js" ;
+type.set-generated-target-suffix OBJ : <toolset>emscripten : "bc" ;
+type.set-generated-target-suffix STATIC_LIB : <toolset>emscripten : "bc" ;
+
+toolset.flags emscripten.compile OPTIONS <flags> ;
+toolset.flags emscripten.compile OPTIONS <cflags> ;
+toolset.flags emscripten.compile.c++ OPTIONS <cxxflags> ;
+
+toolset.flags emscripten.compile OPTIONS <optimization>off : -O0 ;
+toolset.flags emscripten.compile OPTIONS <optimization>speed : -O3 ;
+toolset.flags emscripten.compile OPTIONS <optimization>space : -Oz ;
+toolset.flags emscripten.link OPTIONS <optimization>off : -O0 ;
+toolset.flags emscripten.link OPTIONS <optimization>speed : -O3 ;
+toolset.flags emscripten.link OPTIONS <optimization>space : -O3 ;
+
+toolset.flags emscripten.compile OPTIONS <profiling>on : --profiling-funcs ;
+
+toolset.flags emscripten.compile OPTIONS <inlining>off : -fno-inline ;
+toolset.flags emscripten.compile OPTIONS <inlining>on : -Wno-inline ;
+toolset.flags emscripten.compile OPTIONS <inlining>full : -Wno-inline ;
+
+toolset.flags emscripten.compile OPTIONS <warnings>off : -w ;
+toolset.flags emscripten.compile OPTIONS <warnings>on : -Wall ;
+toolset.flags emscripten.compile OPTIONS <warnings>all : -Wall -pedantic ;
+toolset.flags emscripten.compile OPTIONS <warnings-as-errors>on : -Werror ;
+
+toolset.flags emscripten OPTIONS <debug-symbols>off : -g0 ;
+toolset.flags emscripten OPTIONS <debug-symbols>on : -g4 -s DEMANGLE_SUPPORT=1 ;
+toolset.flags emscripten OPTIONS <rtti>off : -fno-rtti ;
+
+toolset.flags emscripten.link OPTIONS <embind>on : --bind ;
+toolset.flags emscripten.link OPTIONS <closure>on : --closure 1 ;
+toolset.flags emscripten.link OPTIONS <closure>full : --closure 2 ;
+toolset.flags emscripten.link OPTIONS <link-optimization>off : --llvm-lto 0 ;
+toolset.flags emscripten.link OPTIONS <link-optimization>on : --llvm-lto 1 ;
+toolset.flags emscripten.link OPTIONS <link-optimization>full : --llvm-lto 3 ;
+
+actions compile.c
+{
+    "$(CONFIG_COMMAND)" -x c $(OPTIONS) -D$(DEFINES) -I"$(INCLUDES)" -c -o "$(<)" "$(>)"
+}
+
+actions compile.c++
+{
+    "$(CONFIG_COMMAND)" -x c++ $(OPTIONS) -D$(DEFINES) -I"$(INCLUDES)" -c -o "$(<)" "$(>)"
+}
+
+actions archive
+{
+    "$(CONFIG_COMMAND)" $(AROPTIONS) -o "$(<)" "$(>)"
+}
+
+toolset.flags emscripten.link USER_OPTIONS <linkflags> ;
+
+actions link bind LIBRARIES
+{
+    "$(CONFIG_COMMAND)" $(USER_OPTIONS) -L"$(LINKPATH)" -o "$(<)" "$(>)" "$(LIBRARIES)" $(START-GROUP) $(FINDLIBS-ST-PFX) -l$(FINDLIBS-ST) $(FINDLIBS-SA-PFX) -l$(FINDLIBS-SA) $(END-GROUP) $(OPTIONS)
+}

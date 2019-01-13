@@ -35,8 +35,8 @@
 
 #include "IResearchMMFilesLink.h"
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief IResearchMMFilesLink-specific implementation of an IndexTypeFactory
@@ -174,9 +174,9 @@ bool IResearchMMFilesLink::isPersistent() const {
   return true;  // records persisted into the iResearch view
 }
 
-NS_END      // iresearch
-    NS_END  // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
-    // -----------------------------------------------------------------------------
-    // --SECTION-- END-OF-FILE
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION-- END-OF-FILE
+// -----------------------------------------------------------------------------

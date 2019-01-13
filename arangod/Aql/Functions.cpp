@@ -217,9 +217,9 @@ bool isValidDocument(VPackSlice slice) {
 
   if (slice.isObject()) {
     std::unordered_set<VPackStringRef> keys;
-  
+
     auto it = VPackObjectIterator(slice, true);
-    
+
     while (it.valid()) {
       if (!keys.emplace(it.key().stringRef()).second) {
         // duplicate key
@@ -6769,8 +6769,7 @@ AqlValue Functions::CollectionCount(ExpressionContext*, transaction::Methods* tr
 }
 
 /// @brief function CHECK_DOCUMENT
-AqlValue Functions::CheckDocument(ExpressionContext*,
-                                  transaction::Methods* trx,
+AqlValue Functions::CheckDocument(ExpressionContext*, transaction::Methods* trx,
                                   VPackFunctionParameters const& parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   if (!value.isObject()) {

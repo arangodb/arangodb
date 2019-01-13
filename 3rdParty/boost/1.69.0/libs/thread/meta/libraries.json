@@ -1,0 +1,19 @@
+[
+  {
+    "key": "thread",
+    "name": "Thread",
+    "authors": [
+      "Anthony Williams",
+      "Vicente J. Botet Escriba"
+    ],
+    "maintainers": [
+      "Vicente J. Botet Escriba <vicente.botet -at- wanadoo.fr>"
+    ],
+    "description":
+      "Portable C++ multi-threading. C++03, C++11, C++14, C++17.",
+    "std": [ "proposal" ],    
+    "category": [
+      "Concurrent", "System"
+    ]
+  }
+]

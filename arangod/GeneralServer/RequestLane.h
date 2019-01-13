@@ -49,6 +49,9 @@ enum class RequestLane {
   // which are not CLIENT_AQL or CLIENT_V8.
   CLIENT_SLOW,
 
+  // Used for all requests send by the web ui
+  CLIENT_UI,
+
   // For requests between agents. These are basically the
   // requests used to implement RAFT.
   AGENCY_INTERNAL,
@@ -77,7 +80,10 @@ enum class RequestLane {
 
   // For periodic or one-off V8-based tasks executed by the
   // Scheduler.
-  TASK_V8
+  TASK_V8,
+
+  // Internal tasks with low priority
+  INTERNAL_LOW,
 
   // Not yet used:
   // For requests which go from the agency back to coordinators or
@@ -87,6 +93,38 @@ enum class RequestLane {
 };
 
 enum class RequestPriority { HIGH, MED, LOW };
+
+inline RequestPriority PriorityRequestLane(RequestLane lane) {
+  switch (lane) {
+    case RequestLane::CLIENT_FAST:
+      return RequestPriority::HIGH;
+    case RequestLane::CLIENT_AQL:
+      return RequestPriority::LOW;
+    case RequestLane::CLIENT_V8:
+      return RequestPriority::LOW;
+    case RequestLane::CLIENT_SLOW:
+      return RequestPriority::LOW;
+    case RequestLane::AGENCY_INTERNAL:
+      return RequestPriority::HIGH;
+    case RequestLane::AGENCY_CLUSTER:
+      return RequestPriority::LOW;
+    case RequestLane::CLUSTER_INTERNAL:
+      return RequestPriority::HIGH;
+    case RequestLane::CLUSTER_V8:
+      return RequestPriority::LOW;
+    case RequestLane::CLUSTER_ADMIN:
+      return RequestPriority::LOW;
+    case RequestLane::SERVER_REPLICATION:
+      return RequestPriority::LOW;
+    case RequestLane::TASK_V8:
+      return RequestPriority::LOW;
+    case RequestLane::INTERNAL_LOW:
+      return RequestPriority::LOW;
+    case RequestLane::CLIENT_UI:
+      return RequestPriority::HIGH;
+  }
+  return RequestPriority::LOW;
+}
 
 }  // namespace arangodb
 

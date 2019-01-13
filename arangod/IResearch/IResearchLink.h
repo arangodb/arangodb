@@ -34,8 +34,8 @@
 #include "Indexes/Index.h"
 #include "Transaction/Status.h"
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
 class AsyncMeta;      // forward declaration
 class IResearchView;  // forward declaration
@@ -172,7 +172,7 @@ class IResearchLink {
   /// @brief update runtine data processing properties (not persisted)
   /// @return success
   //////////////////////////////////////////////////////////////////////////////
-  bool properties(irs::index_writer::segment_options const& properties);
+  arangodb::Result properties(irs::index_writer::segment_options const& properties);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove an ArangoDB document from an iResearch View
@@ -261,7 +261,7 @@ class IResearchLink {
   arangodb::Result initDataStore();
 };  // IResearchLink
 
-NS_END      // iresearch
-    NS_END  // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
 #endif

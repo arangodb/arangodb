@@ -840,7 +840,7 @@ function arrayIndexNonArraySuite () {
       });
       assertNotEqual(-1, nodeTypes.indexOf("IndexNode"));
 
-      const query2 = `FOR x IN ${cName} FILTER null IN x.a[*] SORT x._key RETURN x._key`;
+      const query2 = `FOR x IN ${cName} FILTER null IN x.a[*] SORT x._rev RETURN x._key`;
       plan = AQL_EXPLAIN(query2).plan;
       nodeTypes = plan.nodes.map(function(node) {
         return node.type;
@@ -1157,7 +1157,7 @@ function arrayIndexNonArraySuite () {
       });
       assertNotEqual(-1, nodeTypes.indexOf("IndexNode"));
 
-      const query2 = `FOR x IN ${cName} FILTER null IN x.a[*] SORT x._key RETURN x._key`;
+      const query2 = `FOR x IN ${cName} FILTER null IN x.a[*] SORT x._rev RETURN x._key`;
       plan = AQL_EXPLAIN(query2).plan;
       nodeTypes = plan.nodes.map(function(node) {
         return node.type;

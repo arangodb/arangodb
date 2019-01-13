@@ -33,7 +33,6 @@
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
 #include "IResearchCommon.h"
-#include "IResearchOrderFactory.h"
 #include "IResearchView.h"
 #include "IResearchViewBlock.h"
 #include "IResearchViewCoordinator.h"
@@ -59,19 +58,18 @@ inline bool filterConditionIsEmpty(aql::AstNode const* filterCondition) {
 // -----------------------------------------------------------------------------
 
 void toVelocyPack(velocypack::Builder& builder,
-                  std::vector<arangodb::iresearch::IResearchSort> const& sorts,
-                  bool verbose) {
+                  std::vector<arangodb::iresearch::Scorer> const& scorers, bool verbose) {
   VPackArrayBuilder arrayScope(&builder);
-  for (auto const sort : sorts) {
+  for (auto const& scorer : scorers) {
     VPackObjectBuilder objectScope(&builder);
-    builder.add("varId", VPackValue(sort.var->id));
-    builder.add("asc", VPackValue(sort.asc));
+    builder.add("id", VPackValue(scorer.var->id));
+    builder.add("name", VPackValue(scorer.var->name));  // for explainer.js
     builder.add(VPackValue("node"));
-    sort.node->toVelocyPack(builder, verbose);
+    scorer.node->toVelocyPack(builder, verbose);
   }
 }
 
-std::vector<arangodb::iresearch::IResearchSort> fromVelocyPack(
+std::vector<arangodb::iresearch::Scorer> fromVelocyPack(
     arangodb::aql::ExecutionPlan& plan, arangodb::velocypack::Slice const& slice) {
   if (!slice.isArray()) {
     LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
@@ -85,11 +83,11 @@ std::vector<arangodb::iresearch::IResearchSort> fromVelocyPack(
   auto const* vars = plan.getAst()->variables();
   TRI_ASSERT(vars);
 
-  std::vector<arangodb::iresearch::IResearchSort> sorts;
+  std::vector<arangodb::iresearch::Scorer> scorers;
 
   size_t i = 0;
   for (auto const sortSlice : velocypack::ArrayIterator(slice)) {
-    auto const varIdSlice = sortSlice.get("varId");
+    auto const varIdSlice = sortSlice.get("id");
 
     if (!varIdSlice.isNumber()) {
       LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
@@ -107,24 +105,14 @@ std::vector<arangodb::iresearch::IResearchSort> fromVelocyPack(
       return {};
     }
 
-    auto const ascSlice = sortSlice.get("asc");
-
-    if (!ascSlice.isBoolean()) {
-      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-          << "malformed order mark at line " << i << "', boolean expected";
-      return {};
-    }
-
-    bool const asc = ascSlice.getBoolean();
-
     // will be owned by Ast
     auto* node = new aql::AstNode(ast, sortSlice.get("node"));
 
-    sorts.emplace_back(var, node, asc);
+    scorers.emplace_back(var, node);
     ++i;
   }
 
-  return sorts;
+  return scorers;
 }
 
 // -----------------------------------------------------------------------------
@@ -224,9 +212,9 @@ bool parseOptions(aql::AstNode const* optionsNode,
 // -----------------------------------------------------------------------------
 
 // in loop or non-deterministic
-bool hasDependecies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
-                    aql::Variable const& ref,
-                    std::unordered_set<aql::Variable const*>& vars) {
+bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
+                     aql::Variable const& ref,
+                     std::unordered_set<aql::Variable const*>& vars) {
   if (!node.isDeterministic()) {
     return false;
   }
@@ -281,16 +269,16 @@ int evaluateVolatility(arangodb::iresearch::IResearchViewNode const& node) {
   // evaluate filter condition volatility
   auto& filterCondition = node.filterCondition();
   if (!::filterConditionIsEmpty(&filterCondition) && inInnerLoop) {
-    irs::set_bit<0>(::hasDependecies(plan, filterCondition, outVariable, vars), mask);
+    irs::set_bit<0>(::hasDependencies(plan, filterCondition, outVariable, vars), mask);
   }
 
   // evaluate sort condition volatility
-  auto& sortCondition = node.sortCondition();
-  if (!sortCondition.empty() && inInnerLoop) {
+  auto& scorers = node.scorers();
+  if (!scorers.empty() && inInnerLoop) {
     vars.clear();
 
-    for (auto const& sort : sortCondition) {
-      if (::hasDependecies(plan, *sort.node, outVariable, vars)) {
+    for (auto const& scorer : scorers) {
+      if (::hasDependencies(plan, *scorer.node, outVariable, vars)) {
         irs::set_bit<1>(mask);
         break;
       }
@@ -315,19 +303,18 @@ namespace iresearch {
 
 IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, size_t id,
                                      TRI_vocbase_t& vocbase,
-                                     std::shared_ptr<const arangodb::LogicalView> const& view,
-                                     arangodb::aql::Variable const& outVariable,
-                                     arangodb::aql::AstNode* filterCondition,
-                                     arangodb::aql::AstNode* options,
-                                     std::vector<IResearchSort>&& sortCondition)
-    : arangodb::aql::ExecutionNode(&plan, id),
+                                     std::shared_ptr<const LogicalView> const& view,
+                                     aql::Variable const& outVariable,
+                                     aql::AstNode* filterCondition,
+                                     aql::AstNode* options, std::vector<Scorer>&& scorers)
+    : aql::ExecutionNode(&plan, id),
       _vocbase(vocbase),
       _view(view),
       _outVariable(&outVariable),
       // in case if filter is not specified
       // set it to surrogate 'RETURN ALL' node
       _filterCondition(filterCondition ? filterCondition : &ALL),
-      _sortCondition(std::move(sortCondition)) {
+      _scorers(std::move(scorers)) {
   TRI_ASSERT(_view);
   TRI_ASSERT(iresearch::DATA_SOURCE_TYPE == _view->type());
   TRI_ASSERT(LogicalView::category() == _view->category());
@@ -348,7 +335,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
       // in case if filter is not specified
       // set it to surrogate 'RETURN ALL' node
       _filterCondition(&ALL),
-      _sortCondition(fromVelocyPack(plan, base.get("sortCondition"))) {
+      _scorers(fromVelocyPack(plan, base.get("scorers"))) {
   // view
   auto const viewIdSlice = base.get("viewId");
 
@@ -442,10 +429,10 @@ void IResearchViewNode::planNodeRegisters(std::vector<aql::RegisterId>& nrRegsHe
   //  }
 
   // plan registers for output scores
-  for (auto const& sort : _sortCondition) {
+  for (auto const& scorer : _scorers) {
     ++nrRegsHere[depth];
     ++nrRegs[depth];
-    varInfo.emplace(sort.var->id, VarInfo(depth, totalNrRegs++));
+    varInfo.emplace(scorer.var->id, VarInfo(depth, totalNrRegs++));
   }
 }
 
@@ -484,8 +471,8 @@ void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) 
   }
 
   // sort condition
-  nodes.add(VPackValue("sortCondition"));
-  ::toVelocyPack(nodes, _sortCondition, flags != 0);
+  nodes.add(VPackValue("scorers"));
+  ::toVelocyPack(nodes, _scorers, flags != 0);
 
   // shards
   {
@@ -544,8 +531,8 @@ aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan, bool with
 
   auto node =
       std::make_unique<IResearchViewNode>(*plan, _id, _vocbase, _view, *outVariable,
-                                          const_cast<aql::AstNode*>(_filterCondition), nullptr,
-                                          decltype(_sortCondition)(_sortCondition));
+                                          const_cast<aql::AstNode*>(_filterCondition),
+                                          nullptr, decltype(_scorers)(_scorers));
   node->_shards = _shards;
   node->_options = _options;
   node->_volatilityMask = _volatilityMask;
@@ -578,6 +565,10 @@ std::vector<aql::Variable const*> IResearchViewNode::getVariablesUsedHere() cons
 void IResearchViewNode::getVariablesUsedHere(std::unordered_set<aql::Variable const*>& vars) const {
   if (!::filterConditionIsEmpty(_filterCondition)) {
     aql::Ast::getReferencedVariables(_filterCondition, vars);
+  }
+
+  for (auto& scorer : _scorers) {
+    aql::Ast::getReferencedVariables(scorer.node, vars);
   }
 }
 
@@ -665,7 +656,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
       << "Finish getting snapshot for view '" << view.name() << "'";
 
-  if (_sortCondition.empty()) {
+  if (_scorers.empty()) {
     // unordered case
     return std::make_unique<IResearchViewUnorderedBlock>(*reader, engine, *this);
   }

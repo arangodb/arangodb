@@ -32,13 +32,7 @@ InitialSyncer::InitialSyncer(ReplicationApplierConfiguration const& configuratio
     : Syncer(configuration), _progress{setter} {}
 
 InitialSyncer::~InitialSyncer() {
-  if (_batchPingTimer) {
-    try {
-      _batchPingTimer->cancel();
-    } catch (...) {
-      // cancel may throw
-    }
-  }
+  _batchPingTimer.reset();
 
   try {
     if (!_state.isChildSyncer) {
@@ -55,21 +49,17 @@ void InitialSyncer::startRecurringBatchExtension() {
     return;
   }
 
-  if (!_batchPingTimer) {
-    _batchPingTimer.reset(SchedulerFeature::SCHEDULER->newSteadyTimer());
-  }
-
   int secs = _batch.ttl / 2;
   if (secs < 30) {
     secs = 30;
   }
-  _batchPingTimer->expires_after(std::chrono::seconds(secs));
-  _batchPingTimer->async_wait([this](asio_ns::error_code ec) {
-    if (!ec && _batch.id != 0 && !isAborted()) {
-      _batch.extend(_state.connection, _progress);
-      startRecurringBatchExtension();
-    }
-  });
+  _batchPingTimer = SchedulerFeature::SCHEDULER->queueDelay(
+      RequestLane::SERVER_REPLICATION, std::chrono::seconds(secs), [this](bool cancelled) {
+        if (!cancelled && _batch.id != 0 && !isAborted()) {
+          _batch.extend(_state.connection, _progress);
+          startRecurringBatchExtension();
+        }
+      });
 }
 
 }  // namespace arangodb
