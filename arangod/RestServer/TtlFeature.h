@@ -24,12 +24,35 @@
 #define ARANGOD_REST_SERVER_TTL_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/Mutex.h"
 
 #include <chrono>
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
 
 class TtlThread;
+
+struct TtlStatistics {
+  // number of times the background thread was running
+  uint64_t runs = 0;
+  // number of documents removed
+  uint64_t removed = 0;
+  // number of times the background thread stopped prematurely because it hit the configured limit
+  uint64_t reachedLimit = 0;
+
+
+  TtlStatistics& operator+=(TtlStatistics const& other) {
+    runs += other.runs;
+    removed += other.removed;
+    reachedLimit += other.reachedLimit;
+    return *this;
+  }
+
+  void toVelocyPack(arangodb::velocypack::Builder&) const;
+};
 
 class TtlFeature final : public application_features::ApplicationFeature {
  public:
@@ -42,15 +65,33 @@ class TtlFeature final : public application_features::ApplicationFeature {
   void start() override final;
   void stop() override final;
 
+  /// @brief turn expiring/removing outdated documents on
+  void activate() { _active = true; }
+  /// @brief turn expiring/removing outdated documents off
+  void deactivate() { _active = false; }
+  /// @brief whether or not expiring/removing outdated documents is currently turned on
+  bool isActive() const { return _active; }
+
+  TtlStatistics stats() const;
+
+  void statsToVelocyPack(arangodb::velocypack::Builder& builder) const;
+
+  void updateStats(TtlStatistics const& stats);
+  
  private:
   void shutdownThread() noexcept;
-
+  
  private:
   uint64_t _frequency;
   uint64_t _maxTotalRemoves;
   uint64_t _maxCollectionRemoves;
+  bool _onlyLoadedCollections;
+  std::atomic<bool> _active;
 
   std::shared_ptr<TtlThread> _thread;
+
+  mutable Mutex _statisticsMutex; 
+  TtlStatistics _statistics;
 };
 
 }  // namespace arangodb

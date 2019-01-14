@@ -46,6 +46,7 @@
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/TtlFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -513,6 +514,10 @@ void HeartbeatThread::runSingleServer() {
   GlobalReplicationApplier* applier = replication->globalReplicationApplier();
   ClusterInfo* ci = ClusterInfo::instance();
   TRI_ASSERT(applier != nullptr && ci != nullptr);
+      
+  TtlFeature* ttlFeature =
+      application_features::ApplicationServer::getFeature<TtlFeature>("Ttl");
+  TRI_ASSERT(ttlFeature != nullptr);
 
   std::string const leaderPath = "Plan/AsyncReplication/Leader";
   std::string const transientPath = "AsyncReplication/" + _myId;
@@ -657,6 +662,9 @@ void HeartbeatThread::runSingleServer() {
           applier->stopAndJoin();
         }
         lastTick = EngineSelectorFeature::ENGINE->currentTick();
+        
+        // server is now responsible for expiring outdated documents
+        ttlFeature->activate();
 
         // put the leader in optional read-only mode
         auto readOnlySlice = response.get(
@@ -678,6 +686,9 @@ void HeartbeatThread::runSingleServer() {
       std::string const leaderStr = leader.copyString();
       TRI_ASSERT(!leaderStr.empty());
       LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Following: " << leader;
+        
+      // server is not responsible anymore for expiring outdated documents
+      ttlFeature->deactivate();
 
       ServerState::instance()->setFoxxmaster(leaderStr);  // leader is foxxmater
       ServerState::instance()->setReadOnly(true);  // Disable writes with dirty-read header

@@ -4782,7 +4782,7 @@ AqlValue Functions::Union(ExpressionContext* expressionContext, transaction::Met
     AqlValueMaterializer materializer(trx);
     VPackSlice slice = materializer.slice(value, false);
 
-    // this passes ownership for the JSON contens into result
+    // this passes ownership for the JSON contents into result
     for (auto const& it : VPackArrayIterator(slice)) {
       builder->add(it);
       TRI_IF_FAILURE("AqlFunctions::OutOfMemory2") {

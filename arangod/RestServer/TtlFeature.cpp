@@ -26,7 +26,9 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/Thread.h"
+#include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/Parameters.h"
@@ -37,6 +39,9 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include <thread>
 
@@ -49,17 +54,31 @@ std::string const removeQuery("FOR doc IN @@collection FILTER doc.@indexAttribut
 }
 
 namespace arangodb {
+  
+void TtlStatistics::toVelocyPack(VPackBuilder& builder) const {
+  builder.openObject();
+  builder.add("runs", VPackValue(runs));
+  builder.add("documentsRemoved", VPackValue(removed));
+  builder.add("limitReached", VPackValue(reachedLimit));
+  builder.close();
+};
 
 class TtlThread final : public Thread {
  public:
-  TtlThread(std::chrono::milliseconds frequency, 
+  TtlThread(TtlFeature* ttlFeature,
+            std::chrono::milliseconds frequency, 
             uint64_t maxTotalRemoves, 
-            uint64_t maxCollectionRemoves) 
+            uint64_t maxCollectionRemoves,
+            bool onlyLoadedCollections) 
        : Thread("TTL"), 
+         _ttlFeature(ttlFeature),
          _frequency(frequency),
          _maxTotalRemoves(maxTotalRemoves),
          _maxCollectionRemoves(maxCollectionRemoves),
-         _nextStart(std::chrono::steady_clock::now() + frequency) {}
+         _onlyLoadedCollections(onlyLoadedCollections),
+         _nextStart(std::chrono::steady_clock::now() + frequency) {
+    TRI_ASSERT(_ttlFeature != nullptr);
+  }
 
   ~TtlThread() { shutdown(); }
 
@@ -68,40 +87,56 @@ class TtlThread final : public Thread {
 
     // wake up the thread that may be waiting in run()
     CONDITION_LOCKER(guard, _condition);
-    guard.broadcast();
+    guard.signal();
   }
 
  protected:
   void run() override {
-    LOG_TOPIC(TRACE, Logger::FIXME) << "starting TTL background thread with interval " << _frequency.count() << " milliseconds";
-
+    LOG_TOPIC(TRACE, Logger::TTL) << "starting TTL background thread with interval " << _frequency.count() << " milliseconds, max removals per run: " << _maxTotalRemoves << ", max removals per collection per run " << _maxCollectionRemoves;
+    
     while (!isStopping()) {
       auto const now = std::chrono::steady_clock::now();
 
-      if (now < _nextStart) {
+      while (now < _nextStart && isActive()) {
         // wait for our start...
         CONDITION_LOCKER(guard, _condition);
         guard.wait(std::chrono::microseconds(std::chrono::duration_cast<std::chrono::microseconds>(_nextStart - now)));
       }
 
       if (isStopping()) {
-        break;
+        // server shutdown
+        return;
       }
       
       _nextStart += _frequency;
 
       try {
-        work();
+        TtlStatistics stats;
+        work(stats);
+
+        // merge stats
+        _ttlFeature->updateStats(stats);
       } catch (std::exception const& ex) {
-        LOG_TOPIC(WARN, Logger::FIXME) << "caught exception in TTL background thread: " << ex.what();
+        LOG_TOPIC(WARN, Logger::TTL) << "caught exception in TTL background thread: " << ex.what();
       } catch (...) {
-        LOG_TOPIC(WARN, Logger::FIXME) << "caught unknown exception in TTL background thread";
+        LOG_TOPIC(WARN, Logger::TTL) << "caught unknown exception in TTL background thread";
       }
     }
   }
 
  private:
-  void work() {
+  /// @brief whether or not the background thread shall continue working
+  bool isActive() const {
+    return _ttlFeature->isActive() && !isStopping();
+  }
+
+  void work(TtlStatistics& stats) {
+    if (!isActive()) {
+      return;
+    }
+    
+    stats.runs++;
+
     auto queryRegistryFeature =
         application_features::ApplicationServer::getFeature<QueryRegistryFeature>(
             "QueryRegistry");
@@ -113,22 +148,44 @@ class TtlThread final : public Thread {
     // iterate over all databases  
     auto db = DatabaseFeature::DATABASE;
     for (auto const& name : db->getDatabaseNames()) {
+      if (!isActive()) {
+        // feature deactivated (for example, due to running on current follower in
+        // active failover setup)
+        return;
+      }
+
       TRI_vocbase_t* vocbase = db->useDatabase(name);
 
       if (vocbase == nullptr) {
         continue;
       }
-      
+          
       // make sure we decrease the reference counter later
       TRI_DEFER(vocbase->release());
+      
+      LOG_TOPIC(DEBUG, Logger::TTL) << "TTL thread going to process database '" << vocbase->name() << "'";
 
       std::vector<std::shared_ptr<arangodb::LogicalCollection>> collections = vocbase->collections(false);
 
       for (auto const& collection : collections) {
-        if (collection->status() != TRI_VOC_COL_STATUS_LOADED) {
+        if (!isActive()) {
+          // feature deactivated (for example, due to running on current follower in
+          // active failover setup)
+          return;
+        }
+
+        if (_onlyLoadedCollections &&
+            collection->status() != TRI_VOC_COL_STATUS_LOADED) {
           // we only care about collections that are already loaded here.
           // otherwise our check may load them all into memory, and sure this is
           // something we want to avoid here
+          continue;
+        }
+        
+        if (ServerState::instance()->isDBServer() &&
+            !collection->followers()->getLeader().empty()) {
+          // we are a follower for this shard. do not remove any data here, but
+          // let the leader carry out the removal and replicate it
           continue;
         }
 
@@ -150,7 +207,7 @@ class TtlThread final : public Thread {
           }
 
           double expireAfter = ea.getNumericValue<double>();
-          LOG_TOPIC(DEBUG, Logger::FIXME) << "TTL thread going to work for collection " << collection->name() << ", expireAfter: " << expireAfter << ", stamp: " << (stamp - expireAfter) << ", limit: " << std::min(_maxCollectionRemoves, limitLeft);
+          LOG_TOPIC(DEBUG, Logger::TTL) << "TTL thread going to work for collection '" << collection->name() << "', expireAfter: " << expireAfter << ", stamp: " << (stamp - expireAfter) << ", limit: " << std::min(_maxCollectionRemoves, limitLeft);
 
           auto bindVars = std::make_shared<VPackBuilder>();
           bindVars->openObject();
@@ -171,7 +228,12 @@ class TtlThread final : public Thread {
           if (queryResult.code != TRI_ERROR_NO_ERROR) {
             // we can probably live with an error here...
             // the thread will try to remove the documents again on next iteration
-            LOG_TOPIC(DEBUG, Logger::FIXME) << "error during TTL document removal: " << queryResult.details;
+            if (queryResult.code != TRI_ERROR_ARANGO_READ_ONLY &&
+                queryResult.code != TRI_ERROR_ARANGO_CONFLICT &&
+                queryResult.code != TRI_ERROR_LOCKED &&
+                queryResult.code != TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
+              LOG_TOPIC(WARN, Logger::TTL) << "error during TTL document removal for collection '" << collection->name() << "': " << queryResult.details;
+            }
           } else {
             auto extra = queryResult.extra;
             if (extra != nullptr) {
@@ -180,11 +242,14 @@ class TtlThread final : public Thread {
                 v = v.get("writesExecuted");
                 if (v.isNumber()) {
                   uint64_t removed = v.getNumericValue<uint64_t>();
-                  LOG_TOPIC(DEBUG, Logger::FIXME) << "TTL thread removed " << removed << " documents for collection " << collection->name();
-                  if (limitLeft >= removed) {
-                    limitLeft -= removed;
-                  } else { 
-                    limitLeft = 0;
+                  stats.removed += removed;
+                  if (removed > 0) {
+                    LOG_TOPIC(INFO, Logger::TTL) << "TTL thread removed " << removed << " documents for collection '" << collection->name() << "'";
+                    if (limitLeft >= removed) {
+                      limitLeft -= removed;
+                    } else { 
+                      limitLeft = 0;
+                    }
                   }
                 }
               }
@@ -197,6 +262,7 @@ class TtlThread final : public Thread {
 
         if (limitLeft == 0) {
           // removed as much as we are allowed to. now stop and remove more in next iteration
+          ++stats.reachedLimit;
           return;
         }
     
@@ -209,6 +275,8 @@ class TtlThread final : public Thread {
   }
 
  private:
+  TtlFeature* _ttlFeature;
+
   arangodb::basics::ConditionVariable _condition;
   
   /// @brief the thread run interval
@@ -216,6 +284,7 @@ class TtlThread final : public Thread {
   
   uint64_t const _maxTotalRemoves;
   uint64_t const _maxCollectionRemoves;
+  bool _onlyLoadedCollections;
   
   /// @brief next time the thread should run
   std::chrono::time_point<std::chrono::steady_clock> _nextStart;
@@ -232,10 +301,11 @@ TtlFeature::TtlFeature(
     : ApplicationFeature(server, "Ttl"), 
       _frequency(60 * 1000),
       _maxTotalRemoves(1000000),
-      _maxCollectionRemoves(100000) {
+      _maxCollectionRemoves(100000),
+      _onlyLoadedCollections(true),
+      _active(true) {
+  startsAfter("DatabasePhase");
   startsAfter("ServerPhase");
-
-  // TODO!
 }
 
 TtlFeature::~TtlFeature() {
@@ -254,10 +324,23 @@ void TtlFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   
   options->addOption("ttl.max-collection-removes", "maximum number of documents to remove per collection",
                      new UInt64Parameter(&_maxCollectionRemoves));
+
+  options->addOption("ttl.only-loaded-collection", "only consider already loaded collections for removal",
+                     new BooleanParameter(&_onlyLoadedCollections));
 }
 
 void TtlFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  // TODO
+  if (_maxTotalRemoves == 0) {
+    LOG_TOPIC(FATAL, arangodb::Logger::STARTUP)
+        << "invalid value for '--ttl.max-total-removes'.";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (_maxCollectionRemoves == 0) {
+    LOG_TOPIC(FATAL, arangodb::Logger::STARTUP)
+        << "invalid value for '--ttl.max-collection-removes'.";
+    FATAL_ERROR_EXIT();
+  }
 }
 
 void TtlFeature::start() {
@@ -273,7 +356,7 @@ void TtlFeature::start() {
     return;
   }
 
-  _thread.reset(new TtlThread(std::chrono::milliseconds(_frequency), _maxTotalRemoves, _maxCollectionRemoves));
+  _thread.reset(new TtlThread(this, std::chrono::milliseconds(_frequency), _maxTotalRemoves, _maxCollectionRemoves, _onlyLoadedCollections));
 
   if (!_thread->start()) {
     LOG_TOPIC(FATAL, Logger::ENGINES) << "could not start ttl background thread";
@@ -282,13 +365,27 @@ void TtlFeature::start() {
 }
 
 void TtlFeature::beginShutdown() {
+  // this will make the TTL background thread stop as soon as possible
+  _active = false;
+  
   if (_thread != nullptr) {
+    // this will also wake up the thread if it should be sleeping
     _thread->beginShutdown();
   }
 }
 
 void TtlFeature::stop() {
   shutdownThread();
+}
+
+void TtlFeature::statsToVelocyPack(VPackBuilder& builder) const {
+  MUTEX_LOCKER(locker, _statisticsMutex);
+  _statistics.toVelocyPack(builder);
+}
+
+void TtlFeature::updateStats(TtlStatistics const& stats) {
+  MUTEX_LOCKER(locker, _statisticsMutex);
+  _statistics += stats;
 }
 
 void TtlFeature::shutdownThread() noexcept {
