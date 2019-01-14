@@ -78,7 +78,7 @@ Note that the V8 build scripts and gyp aren't compatible with Python 3.x hence y
 
 Download and extract the release tarball from https://www.arangodb.com/download/
 
-Or clone the github repository, and checkout the branch or tag you need (3.4)
+Or clone the GitHub repository and checkout the branch or tag you need (e.g. `devel`)
 
     git clone https://github.com/arangodb/arangodb.git -b 3.4
     cd arangodb
@@ -89,7 +89,8 @@ Generate the Visual studio project files, and check back that cmake discovered a
     cd Build64
     cmake -G "Visual Studio 15 2017 Win64" ..
 
-Note that in some cases cmake struggles to find the proper python interpreter (i.e. the cygwin one won't work). You can force overrule it by appending:
+Note that in some cases cmake struggles to find the proper python interpreter
+(i.e. the cygwin one won't work). You can force overrule it by appending:
 
     -DPYTHON_EXECUTABLE:FILEPATH=C:/Python27/python.exe
 
