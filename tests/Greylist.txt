@@ -3,6 +3,3 @@
 In this file we collect information about which tests are currently
 greylisted. Please add a reason and date, and possibly links to issues
 or PRs.
-
- - `./tests/js/client/resilience/foxxmaster-grey.js` there is a bug in the
-   test code. Alan is looking into it.

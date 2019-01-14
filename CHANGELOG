@@ -1,6 +1,10 @@
 v3.4.2 (XXXX-XX-XX)
 -------------------
 
+
+* fixed an issue where a crashed coordinator can lead to some Foxx queue jobs
+  erroneously either left hanging or being restarted
+
 * fix issue #7903: Regression on ISO8601 string compatibility in AQL
 
   millisecond parts of AQL date values were limited to up to 3 digits.
