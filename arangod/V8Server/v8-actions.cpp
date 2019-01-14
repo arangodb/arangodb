@@ -1504,6 +1504,39 @@ static void JS_DebugSetFailAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief checks a failure point
+///
+/// @FUN{internal.debugShouldFailAt(@FA{point})}
+///
+/// Checks if a specific intentional failure point is set
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+static void JS_DebugShouldFailAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  TRI_GET_GLOBALS();
+
+  if (v8g->_vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MEMORY();
+  }
+  std::string dbname(v8g->_vocbase->name());
+
+  // extract arguments
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("debugShouldFailAt(<point>)");
+  }
+
+  std::string const point = TRI_ObjectToString(args[0]);
+
+  TRI_V8_RETURN_BOOL(TRI_ShouldFailDebugging(point.c_str()));
+
+  TRI_V8_TRY_CATCH_END
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a failure point
 ///
 /// @FUN{internal.debugRemoveFailAt(@FA{point})}
@@ -1607,5 +1640,9 @@ void TRI_InitV8DebugUtils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                TRI_V8_ASCII_STRING(isolate,
                                                    "SYS_DEBUG_REMOVE_FAILAT"),
                                JS_DebugRemoveFailAt);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate,
+                                                   "SYS_DEBUG_SHOULD_FAILAT"),
+                               JS_DebugShouldFailAt);
 #endif
 }

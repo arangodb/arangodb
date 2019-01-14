@@ -42,6 +42,7 @@
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "VocBase/ticks.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -833,6 +834,11 @@ void ServerState::setFoxxmaster(std::string const& foxxmaster) {
   if (_foxxmaster != foxxmaster) {
     setFoxxmasterQueueupdate(true);
     _foxxmaster = foxxmaster;
+
+    // We're the new foxxmaster, set this once.
+    if (isFoxxmaster()) {
+      setFoxxmasterSinceNow();
+    }
   }
 }
 
@@ -842,6 +848,14 @@ bool ServerState::getFoxxmasterQueueupdate() const noexcept {
 
 void ServerState::setFoxxmasterQueueupdate(bool value) {
   _foxxmasterQueueupdate = value;
+}
+
+TRI_voc_tick_t ServerState::getFoxxmasterSince() const noexcept {
+  return _foxxmasterSince;
+}
+
+void ServerState::setFoxxmasterSinceNow() {
+  ServerState::_foxxmasterSince = TRI_HybridLogicalClock();
 }
 
 std::ostream& operator<<(std::ostream& stream, arangodb::ServerState::RoleEnum role) {

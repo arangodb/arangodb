@@ -251,6 +251,22 @@ static inline v8::Handle<v8::String> v8Utf8StringFactory(v8::Isolate* isolate,
   args.GetReturnValue().Set(v8::False(isolate)); \
   return
 
+/// @brief Return a bool
+///   implicitly requires 'args and 'isolate' to be available
+#define TRI_V8_RETURN_BOOL(WHAT)                   \
+  if (WHAT) {                                      \
+    args.GetReturnValue().Set(v8::True(isolate));  \
+  } else {                                         \
+    args.GetReturnValue().Set(v8::False(isolate)); \
+  }                                                \
+  return
+
+/// @brief Return an integer
+///   implicitly requires 'args and 'isolate' to be available
+#define TRI_V8_RETURN_INTEGER(WHAT)                           \
+  args.GetReturnValue().Set(v8::Integer::New(isolate, WHAT)); \
+  return
+
 /// @brief return 'null'
 ///   implicitly requires 'args and 'isolate' to be available
 #define TRI_V8_RETURN_NULL()                    \
