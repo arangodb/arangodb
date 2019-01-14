@@ -1,11 +1,27 @@
 devel
 -----
 
-* RocksDB primary index can now be used by the optimizer to optimize queries
-  that use `_key` or `_id` in SORT and FILTER conditions.
+* fixed an issue where a crashed coordinator can lead to some Foxx queue jobs
+  erroneously either left hanging or being restarted
+
+* fix issue #7900: Bind values of `null` are not replaced by
+  empty string anymore, when toggling between json and table
+  view in the web-ui.
+
+* fix issue #7903: Regression on ISO8601 string compatibility in AQL
+
+  millisecond parts of AQL date values were limited to up to 3 digits.
+  Now the length of the millisecond part is unrestricted, but the 
+  millisecond precision is still limit to up to 3 digits.
+
+* fix issue #7900: Bind values of `null` are not replaced by empty string 
+  anymore, when toggling between JSON and table view in the web UI
+
+* the RocksDB primary index can now be used by the optimizer to optimize queries
+  that use `_key` or `_id` for sorting or for range queries.
 
 * the web UI will now by default show the documents of a collection lexicographically
-  sorted by their `_key` values.
+  sorted when sorting documents by their `_key` values.
 
   Previous versions of ArangoDB tried to interpret `_key` values as numeric values if
   possible and sorted by these. That previous sort strategy never used an index and 
