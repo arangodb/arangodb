@@ -65,7 +65,7 @@ arangorestore
 {% hint 'info' %}
 If you are using v3.3.22 or higher, or v3.4.2 or higher, please also add in the
 command above the option `--replication-factor 1`.
-{% hint 'tip' %}
+{% endhint %}
 
 The option `--import-data false`  tells _arangorestore_ to restore only the
 collection structure and no data.
@@ -76,7 +76,7 @@ Step 3: Set _Replication Factor_ to 1
 {% hint 'info' %}
 This step is **not** needed if you are using v3.3.22 or higher or v3.4.2 or higher
 and you have used in the previous step the option `--replication-factor 1`.
-{% hint 'tip' %}
+{% endhint %}
 
 To speed up restore, it is possible to set the _replication factor_ to 1 before
 importing any data. Run the following command from exactly one _Coordinator_ (any
