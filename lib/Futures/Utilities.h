@@ -101,23 +101,23 @@ void foreach (F&& f, Args && ... args) {
 /// This function is thread-safe for Futures running on different threads.
 /// It will complete in whichever thread the last Future completes in.
 /// @return for (Future<T1>, Future<T2>, ...) input is Future<std::tuple<Try<T1>, Try<T2>, ...>>.
-template <typename... Fs>
-Future<std::tuple<Try<typename isFuture<Fs>::inner>...>> collectAll(Fs&&... fs) {
-  using Result = std::tuple<Try<typename isFuture<Fs>::inner>...>;
-  struct Context {
-    ~Context() { p.setValue(std::move(results)); }
-    Promise<Result> p;
-    Result results;
-  };
-  auto ctx = std::make_shared<Context>();
-
-  detail::foreach (
-      [&](auto i, auto&& f) {
-        f.then([i, ctx](auto&& t) { std::get<i>(ctx->results) = std::move(t); });
-      },
-      std::move(fs)...);
-  return ctx->p.getFuture();
-}
+//template <typename... Fs>
+//Future<std::tuple<Try<typename isFuture<Fs>::inner>...>> collectAll(Fs&&... fs) {
+//  using Result = std::tuple<Try<typename isFuture<Fs>::inner>...>;
+//  struct Context {
+//    ~Context() { p.setValue(std::move(results)); }
+//    Promise<Result> p;
+//    Result results;
+//  };
+//  auto ctx = std::make_shared<Context>();
+//
+//  detail::foreach (
+//      [&](auto i, auto&& f) {
+//        f.then([i, ctx](auto&& t) { std::get<i>(ctx->results) = std::move(t); });
+//      },
+//      std::move(fs)...);
+//  return ctx->p.getFuture();
+//}
 
 /// @brief When all the input Futures complete, the returned Future will
 /// complete. Errors do not cause early termination; this Future will always
