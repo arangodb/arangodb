@@ -31,6 +31,9 @@
 
 #include "catch.hpp"
 
+#include <condition_variable>
+#include <mutex>
+
 using namespace arangodb::futures;
 
 namespace {
