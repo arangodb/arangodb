@@ -942,7 +942,7 @@ void arangodb::aql::removeRedundantSortsRule(Optimizer* opt,
     return;
   }
 
-  std::unordered_set<ExecutionNode*> toUnlink;
+  arangodb::HashSet<ExecutionNode*> toUnlink;
   arangodb::basics::StringBuffer buffer;
 
   for (auto const& n : nodes) {
@@ -1086,7 +1086,7 @@ void arangodb::aql::removeUnnecessaryFiltersRule(Optimizer* opt,
   plan->findNodesOfType(nodes, EN::FILTER, true);
 
   bool modified = false;
-  std::unordered_set<ExecutionNode*> toUnlink;
+  arangodb::HashSet<ExecutionNode*> toUnlink;
 
   for (auto const& n : nodes) {
     // now check who introduced our variable
@@ -2396,7 +2396,7 @@ void arangodb::aql::fuseFiltersRule(Optimizer* opt, std::unique_ptr<ExecutionPla
     return;
   }
 
-  std::unordered_set<ExecutionNode*> seen;
+  arangodb::HashSet<ExecutionNode*> seen;
   // candidates of CalculationNode, FilterNode
   std::vector<std::pair<ExecutionNode*, ExecutionNode*>> candidates;
 
@@ -2611,7 +2611,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(Optimizer* opt,
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, ::removeUnnecessaryCalculationsNodeTypes, true);
 
-  std::unordered_set<ExecutionNode*> toUnlink;
+  arangodb::HashSet<ExecutionNode*> toUnlink;
 
   for (auto const& n : nodes) {
     if (n->getType() == EN::CALCULATION) {
@@ -3157,7 +3157,7 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(Optimizer* opt,
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::FILTER, true);
 
-  std::unordered_set<ExecutionNode*> toUnlink;
+  arangodb::HashSet<ExecutionNode*> toUnlink;
   bool modified = false;
   // this rule may modify the plan in place, but the new plan
   // may not yet be optimal. so we may pass it into this same
@@ -3300,7 +3300,7 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(Optimizer* opt,
 
   plan->findNodesOfType(nodes, ::interchangeAdjacentEnumerationsNodeTypes, true);
 
-  std::unordered_set<ExecutionNode*> nodesSet;
+  arangodb::HashSet<ExecutionNode*> nodesSet;
   for (auto const& n : nodes) {
     TRI_ASSERT(nodesSet.find(n) == nodesSet.end());
     nodesSet.emplace(n);
@@ -4686,7 +4686,7 @@ void arangodb::aql::removeUnnecessaryRemoteScatterRule(Optimizer* opt,
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::REMOTE, true);
 
-  std::unordered_set<ExecutionNode*> toUnlink;
+  arangodb::HashSet<ExecutionNode*> toUnlink;
 
   for (auto& n : nodes) {
     // check if the remote node is preceeded by a scatter node and any number of
@@ -4771,7 +4771,7 @@ void arangodb::aql::restrictToSingleShardRule(Optimizer* opt,
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::REMOTE, true);
 
-  std::unordered_set<ExecutionNode*> toUnlink;
+  arangodb::HashSet<ExecutionNode*> toUnlink;
   std::map<Collection const*, std::unordered_set<std::string>> modificationRestrictions;
 
   for (auto& node : nodes) {
@@ -4801,7 +4801,7 @@ void arangodb::aql::restrictToSingleShardRule(Optimizer* opt,
             // REMOTE node in front of us, we can probably move the remote parts
             // of the query to our side. this is only the case if the remote
             // part does not call any remote parts itself
-            std::unordered_set<ExecutionNode*> toRemove;
+            arangodb::HashSet<ExecutionNode*> toRemove;
 
             auto c = deps[0];
             toRemove.emplace(c);
@@ -4877,7 +4877,7 @@ void arangodb::aql::restrictToSingleShardRule(Optimizer* opt,
 /// WalkerWorker for undistributeRemoveAfterEnumColl
 class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
   ExecutionPlan* _plan;
-  std::unordered_set<ExecutionNode*>& _toUnlink;
+  arangodb::HashSet<ExecutionNode*>& _toUnlink;
   bool _remove;
   bool _scatter;
   bool _gather;
@@ -4887,7 +4887,7 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
   ExecutionNode* _lastNode;
 
  public:
-  RemoveToEnumCollFinder(ExecutionPlan* plan, std::unordered_set<ExecutionNode*>& toUnlink)
+  RemoveToEnumCollFinder(ExecutionPlan* plan, arangodb::HashSet<ExecutionNode*>& toUnlink)
       : _plan(plan),
         _toUnlink(toUnlink),
         _remove(false),
@@ -5138,7 +5138,7 @@ void arangodb::aql::undistributeRemoveAfterEnumCollRule(Optimizer* opt,
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::REMOVE, true);
 
-  std::unordered_set<ExecutionNode*> toUnlink;
+  arangodb::HashSet<ExecutionNode*> toUnlink;
 
   for (auto& n : nodes) {
     RemoveToEnumCollFinder finder(plan.get(), toUnlink);
@@ -5889,7 +5889,7 @@ void arangodb::aql::removeFiltersCoveredByTraversal(Optimizer* opt,
   }
 
   bool modified = false;
-  std::unordered_set<ExecutionNode*> toUnlink;
+  arangodb::HashSet<ExecutionNode*> toUnlink;
 
   for (auto const& node : fNodes) {
     auto fn = ExecutionNode::castTo<FilterNode const*>(node);
