@@ -44,7 +44,7 @@ CalculationBlock::CalculationBlock(ExecutionEngine* engine, CalculationNode cons
       _outReg(ExecutionNode::MaxRegisterId),
       _conditionReg(ExecutionNode::MaxRegisterId),
       _isRunningInCluster(ServerState::instance()->isRunningInCluster()) {
-  std::unordered_set<Variable const*> inVars;
+  arangodb::HashSet<Variable const*> inVars;
   _expression->variables(inVars);
 
   _inVars.reserve(inVars.size());
