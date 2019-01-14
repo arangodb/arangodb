@@ -112,7 +112,7 @@ Future<std::tuple<Try<typename isFuture<Fs>::inner>...>> collectAll(Fs&&... fs) 
   auto ctx = std::make_shared<Context>();
 
   detail::foreach (
-      [&](size_t i, auto&& f) {
+      [&](auto i, auto&& f) {
         f.then([i, ctx](auto&& t) { std::get<i>(ctx->results) = std::move(t); });
       },
       std::move(fs)...);
