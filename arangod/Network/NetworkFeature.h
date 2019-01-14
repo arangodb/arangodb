@@ -47,8 +47,14 @@ class NetworkFeature final : public application_features::ApplicationFeature {
   static arangodb::network::ConnectionPool* pool() {
     return _poolPtr.load(std::memory_order_acquire);
   }
+  
+#ifdef TEST_VIRTUAL
+  static void setPoolTesting(arangodb::network::ConnectionPool* pool) {
+    _poolPtr.store(pool, std::memory_order_release);
+  }
+#endif
 
- private:
+ protected:
   uint64_t _numIOThreads;
   uint64_t _maxOpenConnections;
   uint64_t _connectionTtlMilli;

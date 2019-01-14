@@ -89,8 +89,8 @@ FutureRes sendRequest(DestinationId const& destination, RestVerb type,
   }
   
   arangodb::network::EndpointSpec endpoint;
-  Result res = resolveDestination(destination, endpoint);
-  if (!res.ok()) { // FIXME return an error  ?!
+  int res = resolveDestination(destination, endpoint);
+  if (res != TRI_ERROR_NO_ERROR) { // FIXME return an error  ?!
     return futures::makeFuture(Response{destination, errorToInt(ErrorCondition::Canceled), nullptr});
   }
   TRI_ASSERT(!endpoint.empty());
@@ -111,7 +111,9 @@ FutureRes sendRequest(DestinationId const& destination, RestVerb type,
   });
   return f;
 }
-  
+ 
+/// Handler class with enough information to keep retrying
+/// a request until an overal timeout is hit (or the request succeeds)
 template<typename F>
 class RequestsState : public std::enable_shared_from_this<RequestsState<F>> {
   
@@ -158,11 +160,9 @@ public:
       return; // we are done
     }
     
-//    if (_dueTime <= std::chrono::steady_clock::now()) {
-    
     arangodb::network::EndpointSpec endpoint;
-    Result res = resolveDestination(_destination, endpoint);
-    if (!res.ok()) {
+    int res = resolveDestination(_destination, endpoint);
+    if (res != TRI_ERROR_NO_ERROR) { // ClusterInfo did not work
       _cb(Response{_destination, errorToInt(ErrorCondition::Canceled), nullptr});
       return;
     }
@@ -205,7 +205,7 @@ private:
           break;
         } else if (res->statusCode() == fuerte::StatusNotFound && _retryOnCollNotFound &&
                    TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == network::errorCodeFromBody(res->slice())) {
-          LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "retrying later";
+          LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "retrying request";
         } else {
           _cb(Response{_destination, errorToInt(ErrorCondition::Canceled), std::move(res)});
           break;
@@ -264,7 +264,7 @@ FutureRes sendRequestRetry(DestinationId const& destination, arangodb::fuerte::R
   //  auto req = prepareRequest(type, path, std::move(payload), timeout, headers);
   auto rs = std::make_shared<RequestsState<decltype(cb)>>(destination, type, path, std::move(payload),
                                                           timeout, headers, retryNotFound, std::move(cb));
-  rs->sendRequest();
+  rs->sendRequest(); // will auto reference itself
   
   return f;
 }

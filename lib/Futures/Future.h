@@ -129,6 +129,12 @@ namespace detail {
   struct EmptyConstructor{};
 }
   
+enum class FutureStatus : uint8_t {
+  Ready,
+  Timeout,
+  Deferred
+};
+  
 /// Simple Future library based on Facebooks Folly
 template<typename T>
 class Future {
@@ -140,12 +146,6 @@ class Future {
   friend Future<Unit> makeFuture();
   
 public:
-  
-  enum class Status : uint8_t {
-    Ready,
-    Timeout,
-    Deferred
-  };
   
   typedef T value_type;
   
@@ -280,25 +280,25 @@ public:
   /// waits for the result, returns if it is not available
   /// for the specified timeout duration. Future must be valid
   template<class Rep, class Period >
-  Status wait_for(const std::chrono::duration<Rep,Period>& timeout_duration) const {
+  FutureStatus wait_for(const std::chrono::duration<Rep,Period>& timeout_duration) const {
     return wait_until(std::chrono::steady_clock::now() + timeout_duration);
   }
   
   /// waits for the result, returns if it is not available until
   /// specified time point. Future must be valid
   template<class Clock, class Duration>
-  Status wait_until(const std::chrono::time_point<Clock,Duration>& timeout_time) const {
+  FutureStatus wait_until(const std::chrono::time_point<Clock,Duration>& timeout_time) const {
     if (isReady()) {
-      return Status::Ready;
+      return FutureStatus::Ready;
     }
     std::this_thread::yield();
     while(!isReady()) {
       if (Clock::now() > timeout_time) {
-        return Status::Timeout;
+        return FutureStatus::Timeout;
       }
       std::this_thread::yield();
     }
-    return Status::Ready;
+    return FutureStatus::Ready;
   }
   
   /// When this Future has completed, execute func which is a function that

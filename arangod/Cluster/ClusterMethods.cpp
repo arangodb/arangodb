@@ -517,10 +517,7 @@ static void collectResponsesFromAllShards(
   std::unordered_map<ShardID, std::shared_ptr<VPackBuilder>>& resultMap) {
   // If none of the shards responds we return a SERVER_ERROR;
   for (Try<arangodb::network::Response> const& tryRes : responses) {
-    if (tryRes.hasException()) {
-      TRI_ASSERT(false);
-      continue; // TODO
-    }
+    tryRes.throwIfFailed(); // just throw the error upwards
     
     network::Response const& res = tryRes.get();
     ShardID sId = res.destination.substr(6);

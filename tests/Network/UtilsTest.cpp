@@ -26,15 +26,49 @@
 
 #include "catch.hpp"
 
+#include "Basics/StaticStrings.h"
 #include "Network/Utils.h"
 
 #include <fuerte/connection.h>
 #include <fuerte/requests.h>
 
+#include <velocypack/Parser.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 using namespace arangodb::network;
 
 TEST_CASE("network utils", "[network]") {
-#warning TODO
+
+  
+  SECTION("resolve destinations") {
+    
+  }
+  
+  SECTION("errorFromBody") {
+    const char* str = "{\"errorNum\":1337, \"errorMessage\":\"abc\"}";
+    auto res = network::errorFromBody(VPackParser::fromJson(str), 0);
+    CHECK(res.errorNumber() == 1337);
+    CHECK(res.errorMessage() == "abc");
+  }
+  
+  SECTION("errorCodeFromBody") {
+    const char* str = "{\"errorNum\":1337, \"errorMessage\":\"abc\"}";
+    auto body = VPackParser::fromJson(str);
+    auto res = network::errorCodeFromBody(body->slice());
+    CHECK(res == 1337);
+  }
+  
+  SECTION("errorCodesFromHeaders") {
+    network::Headers headers;
+    headers[StaticStrings::ErrorCodes] = "{\"5\":2}";
+    
+    std::unordered_map<int, size_t> errorCounter;
+    network::errorCodesFromHeaders(headers, errorCounter, true);
+    CHECK(errorCounter.size() == 1);
+    CHECK(errorCounter.begin()->first == 5);
+    CHECK(errorCounter.begin()->second == 2);
+  }
+  
 }
 

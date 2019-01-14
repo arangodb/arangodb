@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -36,14 +36,18 @@
 namespace arangodb {
 namespace network {
   
-Result resolveDestination(DestinationId const& dest, std::string& endpoint) {
+int resolveDestination(DestinationId const& dest, std::string& endpoint) {
   using namespace arangodb;
-  Result res;
+  
+  if (dest.find("tcp://") == 0 || dest.find("ssl://") == 0) {
+    endpoint = dest;
+    return TRI_ERROR_NO_ERROR;  // all good
+  }
   
   // Now look up the actual endpoint:
-  auto ci = ClusterInfo::instance();
+  auto* ci = ClusterInfo::instance();
   if (!ci) {
-    return res.reset(TRI_ERROR_SHUTTING_DOWN);
+    return TRI_ERROR_SHUTTING_DOWN;
   }
   
   // This sets result.shardId, result.serverId and result.endpoint,
@@ -52,7 +56,7 @@ Result resolveDestination(DestinationId const& dest, std::string& endpoint) {
   // is looked up, both can fail and immediately lead to a CL_COMM_ERROR
   // state.
   ServerID serverID;
-  if (dest.substr(0, 6) == "shard:") {
+  if (dest.find("shard:") == 0) {
     ShardID shardID = dest.substr(6);
     {
       std::shared_ptr<std::vector<ServerID>> resp = ci->getResponsibleServer(shardID);
@@ -61,44 +65,30 @@ Result resolveDestination(DestinationId const& dest, std::string& endpoint) {
       } else {
         LOG_TOPIC(ERR, Logger::CLUSTER) << "cannot find responsible server for shard '"
           << shardID << "'";
-        return res.reset(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
+        return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
       }
     }
     LOG_TOPIC(DEBUG, Logger::CLUSTER) << "Responsible server: " << serverID;
-  } else if (dest.substr(0, 7) == "server:") {
+  } else if (dest.find("server:") == 0) {
     serverID = dest.substr(7);
-  } else if (dest.substr(0, 6) == "tcp://" || dest.substr(0, 6) == "ssl://") {
-    endpoint = dest;
-    return res;  // all good
   } else {
     std::string errorMessage = "did not understand destination'" + dest + "'";
-//    if (logConnectionErrors) {
-      LOG_TOPIC(ERR, Logger::COMMUNICATION)
-      << "did not understand destination '" << dest << "'";
-//    } else {
-//      LOG_TOPIC(INFO, Logger::CLUSTER)
-//      << "did not understand destination '" << dest << "'";
-//    }
-    return res.reset(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
+    LOG_TOPIC(ERR, Logger::COMMUNICATION)
+    << "did not understand destination '" << dest << "'";
+    return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
   }
 
   endpoint = ci->getServerEndpoint(serverID);
   if (endpoint.empty()) {
-//    status = CL_COMM_BACKEND_UNAVAILABLE;
     if (serverID.find(',') != std::string::npos) {
       TRI_ASSERT(false);
     }
     std::string errorMessage = "did not find endpoint of server '" + serverID + "'";
-//    if (logConnectionErrors) {
-      LOG_TOPIC(ERR, Logger::COMMUNICATION)
-      << "did not find endpoint of server '" << serverID << "'";
-//    } else {
-//      LOG_TOPIC(INFO, Logger::CLUSTER)
-//      << "did not find endpoint of server '" << serverID << "'";
-//    }
-    return res.reset(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);;
+    LOG_TOPIC(ERR, Logger::COMMUNICATION)
+    << "did not find endpoint of server '" << serverID << "'";
+    return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
   }
-  return res;
+  return TRI_ERROR_NO_ERROR;
 }
   
 OperationResult errorFromBody(arangodb::velocypack::Buffer<uint8_t> const& body,

@@ -263,8 +263,8 @@ class Response final : public Message {
   std::shared_ptr<velocypack::Buffer<uint8_t>> copyPayload() const;
   
   /// @brief move in the payload
-  void setPayload(velocypack::Buffer<uint8_t>&& buffer, size_t payloadOffset);
-
+  void setPayload(velocypack::Buffer<uint8_t> buffer, size_t payloadOffset);
+  
  private:
   velocypack::Buffer<uint8_t> _payload;
   size_t _payloadOffset;

@@ -270,6 +270,12 @@ class ApplicationServer {
   void setupDependencies(bool failOnMissing);
 
   std::vector<ApplicationFeature*> const& getOrderedFeatures() { return _orderedFeatures; }
+  
+#ifdef TEST_VIRTUAL
+  static void setStateUnsafe(ServerState ss) {
+    server->_state = ss;
+  }
+#endif
  
  private:
   // throws an exception that a requested feature was not found

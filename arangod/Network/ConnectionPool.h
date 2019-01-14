@@ -41,7 +41,8 @@ namespace fuerte { inline namespace v1 {
 namespace network {
 
 /// @brief simple connection pool managing fuerte connections
-class ConnectionPool final {
+class ConnectionPool {
+protected:
   struct Connection;
 
 public:
@@ -73,7 +74,7 @@ public:
 public:
   
   ConnectionPool(ConnectionPool::Config const& config);
-  ~ConnectionPool();
+  virtual ~ConnectionPool();
   
   /// @brief request a connection for a specific endpoint
   /// note: it is the callers responsibility to ensure the endpoint
@@ -93,7 +94,7 @@ public:
   /// @brief return the number of open connections
   size_t numOpenConnections() const;
   
-private:
+protected:
   
   /// @brief connection container
   struct Connection {
@@ -124,7 +125,7 @@ private:
     std::vector<std::unique_ptr<Connection>> connections;
   };
   
-  std::shared_ptr<fuerte::Connection> createConnection(fuerte::ConnectionBuilder&);
+  TEST_VIRTUAL std::shared_ptr<fuerte::Connection> createConnection(fuerte::ConnectionBuilder&);
   Ref selectConnection(ConnectionList&, fuerte::ConnectionBuilder& builder);
   
 private:

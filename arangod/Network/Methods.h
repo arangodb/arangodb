@@ -34,10 +34,9 @@
 namespace arangodb {
 namespace network {
   
-  /// response structure
+  /// Response data structure
   struct Response {
     DestinationId destination;
-    
     fuerte::Error error; /// connectivity error
     std::unique_ptr<arangodb::fuerte::Response> response;
   };

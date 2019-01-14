@@ -288,8 +288,8 @@ std::shared_ptr<velocypack::Buffer<uint8_t>> Response::copyPayload() const {
                  _payload.byteSize() - _payloadOffset);
   return buffer;
 }
-
-void Response::setPayload(VPackBuffer<uint8_t>&& buffer, size_t payloadOffset) {
+  
+void Response::setPayload(VPackBuffer<uint8_t> buffer, size_t payloadOffset) {
   _payloadOffset = payloadOffset;
   _payload = std::move(buffer);
 }
