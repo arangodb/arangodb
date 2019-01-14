@@ -80,8 +80,10 @@ inline irs::columnstore_reader::values_reader_f pkColumn(irs::sub_reader const& 
   return reader ? reader->values() : irs::columnstore_reader::values_reader_f{};
 }
 
-inline arangodb::LogicalCollection* lookupCollection(arangodb::transaction::Methods& trx,
-                                                     TRI_voc_cid_t cid) {
+inline std::shared_ptr<arangodb::LogicalCollection> lookupCollection( // find collection
+    arangodb::transaction::Methods& trx, // transaction
+    TRI_voc_cid_t cid // collection identifier
+) {
   TRI_ASSERT(trx.state());
 
   // this is necessary for MMFiles
@@ -202,15 +204,16 @@ void IResearchViewBlockBase::reset() {
       irs::order order;
       irs::sort::ptr scorer;
 
-      for (auto const& sort : viewNode.sortCondition()) {
-        TRI_ASSERT(sort.node);
+      for (auto const& scorerNode : viewNode.scorers()) {
+        TRI_ASSERT(scorerNode.node);
 
-        if (!arangodb::iresearch::OrderFactory::scorer(&scorer, *sort.node, queryCtx)) {
+        if (!arangodb::iresearch::OrderFactory::scorer(&scorer, *scorerNode.node, queryCtx)) {
           // failed to append sort
           THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
         }
 
-        order.add(sort.asc, std::move(scorer));
+        // sorting order doesn't matter
+        order.add(true, std::move(scorer));
       }
 
       // compile order
@@ -427,7 +430,7 @@ bool IResearchViewBlock::resetIterator() {
     auto const& viewNode =
         *ExecutionNode::castTo<IResearchViewNode const*>(getPlanNode());
 
-    TRI_ASSERT(numScores == viewNode.sortCondition().size());
+    TRI_ASSERT(numScores == viewNode.scorers().size());
 #endif
   } else {
     _scr = &irs::score::no_score();
@@ -444,8 +447,7 @@ bool IResearchViewBlock::next(ReadContext& ctx, size_t limit) {
     }
 
     auto const cid = _reader.cid(_readerOffset);  // CID is constant until resetIterator()
-
-    auto* collection = lookupCollection(*_trx, cid);
+    auto collection = lookupCollection(*_trx, cid);
 
     if (!collection) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
@@ -564,8 +566,7 @@ bool IResearchViewUnorderedBlock::next(ReadContext& ctx, size_t limit) {
     }
 
     auto const cid = _reader.cid(_readerOffset);  // CID is constant until resetIterator()
-
-    auto* collection = lookupCollection(*_trx, cid);
+    auto collection = lookupCollection(*_trx, cid);
 
     if (!collection) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)

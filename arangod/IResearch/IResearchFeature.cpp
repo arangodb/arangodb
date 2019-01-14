@@ -61,20 +61,22 @@
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalView.h"
 
-NS_BEGIN(arangodb)
+namespace arangodb {
 
-NS_BEGIN(basics)
+namespace basics {
+
 class VPackStringBufferAdapter;
-NS_END  // basics
+}  // namespace basics
 
-    NS_BEGIN(aql) class Query;
-NS_END  // aql
+namespace aql {
+class Query;
+}  // namespace aql
 
-    NS_END  // arangodb
+}  // namespace arangodb
 
-        NS_LOCAL
+namespace {
 
-    typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
+typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
 typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
 
 class IResearchLogTopic final : public arangodb::LogTopic {
@@ -333,33 +335,6 @@ bool iresearchViewUpgradeVersion0_1(TRI_vocbase_t& vocbase,
   return true;
 }
 
-void registerFunctions(arangodb::aql::AqlFunctionFeature& /*functions*/) {
-#if 0
-  arangodb::iresearch::addFunction(functions, {
-    "__ARANGOSEARCH_SCORE_DEBUG",  // name
-    ".",    // value to convert
-    arangodb::aql::Function::makeFlags(
-      arangodb::aql::Function::Flags::Deterministic,
-      arangodb::aql::Function::Flags::Cacheable,
-      arangodb::aql::Function::Flags::CanRunOnDBServer
-    ),
-    [](arangodb::aql::ExpressionContext*,
-       arangodb::transaction::Methods*,
-       arangodb::SmallVector<arangodb::aql::AqlValue> const& args) {
-      if (args.empty()) {
-        // no such input parameter. return NaN
-        return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(double_t(std::nan(""))));
-      } else {
-        // unsafe
-        VPackValueLength length;
-        auto const floatValue = *reinterpret_cast<float_t const*>(args[0].slice().getString(length));
-        return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(double_t(floatValue)));
-      }
-    }
-  });
-#endif
-}
-
 void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
   using arangodb::iresearch::addFunction;
   auto flags =
@@ -566,10 +541,10 @@ void registerTransactionDataSourceRegistrationCallback() {
 std::string const FEATURE_NAME("ArangoSearch");
 IResearchLogTopic LIBIRESEARCH("libiresearch");
 
-NS_END
+}  // namespace
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
 bool isFilter(arangodb::aql::Function const& func) noexcept {
   return func.implementation == &dummyFilterFunc;
@@ -969,7 +944,6 @@ void IResearchFeature::start() {
     if (functions) {
       registerFilters(*functions);
       registerScorers(*functions);
-      registerFunctions(*functions);
     } else {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
           << "failure to find feature 'AQLFunctions' while registering "
@@ -1004,8 +978,8 @@ void IResearchFeature::validateOptions(std::shared_ptr<arangodb::options::Progra
   ApplicationFeature::validateOptions(options);
 }
 
-NS_END      // iresearch
-    NS_END  // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

@@ -1,0 +1,18 @@
+{
+    "key": "spirit/repository",
+    "name": "Spirit Repository",
+    "authors": [
+        "Joel de Guzman",
+        "Hartmut Kaiser",
+        "Dan Nuffer"
+    ],
+    "description": "The Spirit repository is a community effort collecting different reusable components (primitives, directives, grammars, etc.) for Qi parsers and Karma generators.",
+    "category": [
+        "Parsing",
+        "String"
+    ],
+    "maintainers": [
+        "Joel de Guzman <joel -at- boost-consulting.com>",
+        "Hartmut Kaiser <hartmut.kaiser -at- gmail.com>"
+    ]
+}

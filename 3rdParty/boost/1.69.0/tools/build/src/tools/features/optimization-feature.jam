@@ -1,0 +1,20 @@
+# Copyright 2017 Rene Rivera
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+# TODO: Documentation.
+
+import feature ;
+
+feature.feature optimization
+    : off speed space
+    : propagated ;
+
+feature.feature inlining
+    : off on full
+    : propagated ;
+
+feature.feature vectorize
+    : off on full
+    : propagated ;

@@ -1,0 +1,578 @@
+#  Copyright (c) 2015 Artur Shepilko
+#
+#  Use, modification and distribution is subject to the Boost Software
+#  License Version 1.0. (See accompanying file LICENSE_1_0.txt or
+#  http://www.boost.org/LICENSE_1_0.txt)
+
+# Implements OpenVMS-based HP DECC/C++ toolset.
+# Relies on POSIX-style path handling bjam/Boost.Build implementation for VMS.
+
+import "class" : new ;
+import property ;
+import generators ;
+import os ;
+import toolset : flags ;
+import feature ;
+import type ;
+import common ;
+import unix ;
+import path ;
+
+
+if [ MATCH (--debug-configuration) : [ modules.peek : ARGV ] ]
+{
+    .debug-configuration = true ;
+}
+
+feature.extend toolset : vmsdecc ;
+
+toolset.inherit-generators  vmsdecc : unix : unix.link unix.link.dll ;
+toolset.inherit-flags vmsdecc : unix ;
+toolset.inherit-rules vmsdecc : unix ;
+
+generators.override vmsdecc.archive-generator : builtin.archive-generator ;
+generators.override vmsdecc.prebuilt : builtin.prebuilt ;
+generators.override vmsdecc.searched-lib-generator : searched-lib-generator ;
+
+type.set-generated-target-suffix EXE : <toolset>vmsdecc <target-os>vms : exe ;
+type.set-generated-target-suffix OBJ : <toolset>vmsdecc <target-os>vms : obj ;
+type.set-generated-target-suffix PREPROCESSED_C : <toolset>vmsdecc <target-os>vms : i ;
+type.set-generated-target-suffix PREPROCESSED_CPP : <toolset>vmsdecc <target-os>vms : ixx ;
+type.set-generated-target-suffix STATIC_LIB : <toolset>vmsdecc <target-os>vms : olb ; ## xxx.olb
+
+type.register-suffixes exe : SHARED_LIB ;
+type.set-generated-target-prefix SHARED_LIB : <toolset>vmsdecc <target-os>vms : shr ; ## shrxxx.exe
+type.set-generated-target-suffix SHARED_LIB : <toolset>vmsdecc <target-os>vms : exe ; ## shrxxx.exe
+
+.OBJ = .obj ; ## suffix
+.nl = "
+" ;
+
+rule init ( version ? : command * : options * )
+{
+    local argv = [ modules.peek : ARGV ] ;
+
+    local condition = [
+      common.check-init-parameters vmsdecc : version $(version) ] ;
+
+    # CC and CXX are CLI commands, so no need to search for the executables
+    command = CXX ;
+    toolset.flags vmsdecc .CXX $(condition) : CXX ;
+    common.handle-options vmsdecc : $(condition) : $(command) : $(options) ;
+
+    local command_c = $(command[1--2]) $(command[-1]:B=CC) ;
+    toolset.flags vmsdecc .CC $(condition) : $(command_c) ;
+
+    local linker = [ feature.get-values <linker> : $(options) ] ;
+    linker ?= CXXLINK ;
+    toolset.flags vmsdecc.link .LD $(condition) :  $(linker) ;
+    if $(.debug-configuration)
+    {
+        ECHO notice\: using linker "::" $(condition) "::" $(linker[1]) ;
+    }
+
+    local archiver = LIB ;
+    toolset.flags vmsdecc.archive .AR $(condition) :  $(archiver) ;
+
+    local b2 = $(argv[1]) ;
+    toolset.flags vmsdecc .B2 $(condition) :  $(b2) ;
+}
+
+# Declare generators
+generators.register-c-compiler vmsdecc.compile.c++.preprocess : CPP : PREPROCESSED_CPP : <toolset>vmsdecc ;
+generators.register-c-compiler vmsdecc.compile.c.preprocess   : C   : PREPROCESSED_C   : <toolset>vmsdecc ;
+generators.register-c-compiler vmsdecc.compile.c : C : OBJ : <toolset>vmsdecc ;
+generators.register-c-compiler vmsdecc.compile.c++ : CPP : OBJ : <toolset>vmsdecc ;
+
+# Declare flags and actions for compilation
+flags vmsdecc.compile OPTIONS <debug-symbols>on : /DEBUG ;
+flags vmsdecc.compile OPTIONS <profiling>on : /DEBUG ;   ## needs PCA link options
+flags vmsdecc.compile OPTIONS <optimization>off : /NOOPT ;
+flags vmsdecc.compile OPTIONS <optimization>speed : /OPT=INLINE=SPEED/OPT=NOINLINE ;
+flags vmsdecc.compile OPTIONS <optimization>space : /OPT=INLINE=SIZE/OPT=NOINLINE ;
+flags vmsdecc.compile OPTIONS <warnings>off : /NOWARN ;
+flags vmsdecc.compile OPTIONS <warnings>on : /WARN ;
+flags vmsdecc.compile OPTIONS <warnings>all  : /WARN=ENABLE=ALL ;
+
+flags vmsdecc.compile.c++ OPTIONS <inlining>off : /OPT=NOINLINE ;
+
+flags vmsdecc OPTIONS <address-model>32 : /POINTER=32 ;
+flags vmsdecc OPTIONS <address-model>64 : /POINTER=64 ; ## /POINTER=64=ARGV argv-64
+
+flags vmsdecc.compile OPTIONS <cflags> ;
+flags vmsdecc.compile.c++ OPTIONS <cxxflags> ;
+flags vmsdecc.compile DEFINES <define> ;
+flags vmsdecc.compile UNDEFS <undef> ;
+flags vmsdecc.compile INCLUDES <include> ;
+flags vmsdecc.compile.c++ TEMPLATE_DEPTH <c++-template-depth> ;
+
+feature.feature cxx-repository          :                 : free path ; #order-sensitive ;
+flags vmsdecc CXX-REPOS <cxx-repository> ;
+
+
+local rule get-includes ( sources * : includes * )
+{
+    local result ;
+
+    ## Expect POSIX-style path, quote in double-quotes
+    for local d in $(sources:D) $(includes)
+    {
+        if $(d)
+        {
+            local QUOTE = \" ;
+            local SEP = / ;
+
+            local enquote = false ;
+            local addsep = false ;
+
+            s = [ SPLIT_BY_CHARACTERS $(d) : $(QUOTE) ] ;
+
+            if $(s) = $(d) { enquote = true ; }
+            if [ SPLIT_BY_CHARACTERS $(s) : $(SEP) ] = $(s) { addsep = true ; }
+
+            if $(addsep)
+            {
+                d = $(s)$(SEP) ;
+                enquote = true ;
+            }
+
+            if $(enquote)
+            {
+                d = $(QUOTE)$(d)$(QUOTE) ;
+            }
+
+            if ! $(d) in $(result)
+            {
+                result += $(d) ;
+            }
+        }
+    }
+
+    return $(result) ;
+}
+
+CXX-REPO-NAME = cxx_repository ;
+
+local rule get-target-cxx-repo ( target )
+{
+    return [ path.join $(target) $(CXX-REPO-NAME) ] ;
+}
+
+rule compile.c++ ( targets * : sources * : properties * )
+{
+  DEPENDS $(targets) : [ on $(targets) return $(SOURCE-INCLUDES) ] ;
+  DEPENDS $(targets) : [ on $(targets) return $(CXX-REPOS) ] ;
+
+  DEFINES on $(targets) = [ on $(targets) return "__USE_STD_IOSTREAM" $(DEFINES) ] ;
+
+  INCLUDES on $(targets) = [ on $(targets) get-includes $(sources) : $(INCLUDES) ] ;
+
+  TARGET-CXX-REPO on $(targets) =  [ on $(targets[1]) get-target-cxx-repo $(LOCATE) ] ;
+  CXX-REPOS on $(targets) = [ on $(targets) return $(TARGET-CXX-REPO) $(CXX-REPOS) ] ;
+}
+
+
+rule compile.c ( targets * : sources * : properties * )
+{
+  DEPENDS $(targets) : [ on $(targets) return $(SOURCE-INCLUDES) ] ;
+
+  INCLUDES on $(targets) = [ on $(targets) get-includes $(sources) : $(INCLUDES) ] ;
+}
+
+actions compile.c
+{
+    $(.CC) $(OPTIONS) /DEF=("$(DEFINES:J=",")") /UNDEF=("$(UNDEFS:J=",")") /INC=($(INCLUDES:J=,)) /OBJ=$(<:W) $(>:W)
+}
+
+actions compile.c++
+{
+    $(.CXX) $(OPTIONS) /DEF=("$(DEFINES:J=",")") /UNDEF=("$(UNDEFS:J=",")") /INC=($(INCLUDES:J=,)) /REPO=($(CXX-REPOS:WJ=,)) /OBJ=$(<:W) $(>:W)
+}
+
+
+
+# Custom linking generator to separate dependency libraries and optfiles from
+# the list of sources. The objfiles, libraries, and optfiles are then referenced
+# via properties. This allows separate qualification of object-files and libraries
+# on linker command line.
+#
+class vmsdecc-linking-generator : linking-generator
+{
+    rule run ( project name ? : property-set : sources + )
+    {
+        local result = [ linking-generator.run $(project) $(name) : $(property-set)
+            : $(sources) ] ;
+
+        return $(result) ;
+    }
+
+    rule generated-targets ( sources + : property-set : project name ? )
+    {
+        local sources2 ;     # Sources to pass to inherited rule.
+        local properties2 ;  # Properties to pass to inherited rule.
+        local objfiles ;     # Object files.
+        local libraries ;    # Library sources.
+
+        properties2 = [ $(property-set).raw ] ;
+
+        for local s in $(sources)
+        {
+            if [ type.is-derived [ $(s).type ] OBJ ]
+            {
+                objfiles += $(s) ;
+                properties2 += <link-objfile>$(s) ;
+            }
+            else if [ type.is-derived [ $(s).type ] STATIC_LIB ]
+            {
+                libraries += $(s) ;
+                properties2 += <link-staticlib>$(s) ;
+            }
+            else if [ type.is-derived [ $(s).type ] SHARED_LIB ]
+            {
+                libraries += $(s) ;
+                properties2 += <link-sharedlib>$(s) ;
+            }
+        }
+
+
+        return [ linking-generator.generated-targets $(sources)
+            : [ property-set.create $(properties2) ] : $(project) $(name) ] ;
+    }
+}
+
+
+generators.register [ new vmsdecc-linking-generator vmsdecc.link :
+    OBJ SEARCHED_LIB STATIC_LIB SHARED_LIB : EXE : <toolset>vmsdecc ] ;
+
+generators.register [ new vmsdecc-linking-generator vmsdecc.link.dll :
+    OBJ SEARCHED_LIB STATIC_LIB SHARED_LIB : SHARED_LIB : <toolset>vmsdecc ] ;
+
+
+
+# Declare flags and actions for linking
+flags vmsdecc.link OPTIONS <debug-symbols>on : /DEBUG ;
+# Strip the binary when no debugging is needed
+flags vmsdecc.link OPTIONS <debug-symbols>off : /NODEBUG ;
+flags vmsdecc.link OPTIONS <profiling>on : /DEBUG ; ## need "DEFINE LIB$DEBUG PCA$COLLECTOR"
+flags vmsdecc.link OPTIONS <linkflags> ;
+flags vmsdecc.link LINKPATH <library-path> ;
+flags vmsdecc.link FINDLIBS-ST <find-static-library> ;
+flags vmsdecc.link FINDLIBS-SA <find-shared-library> ;
+flags vmsdecc.link LIBRARIES <library-file> ;
+flags vmsdecc.link LINK-RUNTIME <runtime-link>static : static ;
+flags vmsdecc.link LINK-RUNTIME <runtime-link>shared : dynamic ;
+flags vmsdecc.link RPATH <dll-path> ;
+flags vmsdecc.link FINDLIBS-SA ;
+
+feature.feature "link-objfile"          :                 : free dependency path incidental ;
+flags vmsdecc.link LINK-OBJS <link-objfile> ;
+
+feature.feature "link-libmodule"          :                 : free dependency incidental ;
+flags vmsdecc.link LINK-LIBMODULES <link-libmodule> ;
+
+feature.feature "link-staticlib"          :                 : free dependency path incidental ;
+flags vmsdecc.link LINK-LIBS <link-staticlib> ;
+
+feature.feature "link-sharedlib"          :                 : free dependency path incidental ;
+flags vmsdecc.link LINK-SHAREDLIBS <link-sharedlib> ;
+
+feature.feature "link-optfile"          :                 : free dependency path incidental ;
+flags vmsdecc.link LINK-OPTS <link-optfile> ;
+
+
+local rule export-target-var-contents ( var-name : values * )
+{
+    local result ;
+    local nl = "
+" ;
+    local locate ;
+
+    if $(var-name)
+    {
+        result +=
+            "$(nl)$(var-name) =" ;
+        for local f in $(values)
+        {
+            locate = [ on $(f) return $(LOCATE) ] ;
+            result +=
+                "$(nl)\"$(f:TG=:R=$(locate))\"" ;
+        }
+        result += "$(nl)    ;" ;
+    }
+
+    return $(result) ;
+}
+
+# VMS linker usually expects an explicit object module that contains main().
+# Yet on *NIX, the main module can be automatically resolved from a library --
+# this may arguably be convenient with dynamic linking, and is also used with
+# Boost.Test.
+# To handle such cases on VMS, one needs first to locate the library module
+# containing main(), then include it in sources for the link command.
+# GLOB_ARCHIVE built-in can locate the module name (globbing by symbol MAIN).
+# To be able to use its result during jam-parsing stage, we need to execute it
+# from a separate jam-file that produces a pre-defined option file for link.
+#
+
+actions write-jam-file-contents
+{
+    SET FILE /VER=1 @($(<:W):E= $(>) )
+}
+
+
+local rule mainmod-link-opt.generate ( jam-file : opt-file : objs * : libs * : sharedlibs * )
+{
+    local nl = "
+" ;
+    local $ = $ ;
+    local @ = @ ;
+
+    if $(jam-file) && $(opt-file)
+    {
+        local .contents on $(jam-file) =
+            "# This file was auto-generated by <toolset>$(__name__)." ;
+
+        .contents on $(jam-file) +=
+            "$(nl)OPT-FILE = $(opt-file) ;" ;
+
+        .contents on $(jam-file) += [ on $(jam-file)
+            export-target-var-contents "OBJS" : $(objs) ] ;
+
+        .contents on $(jam-file) += [ on $(jam-file)
+            export-target-var-contents "LIBS" : $(libs) ] ;
+
+        .contents on $(jam-file) += [ on $(jam-file)
+            export-target-var-contents "SHAREDLIBS" : $(sharedlibs) ] ;
+
+        .contents on $(jam-file) +=
+            "$(nl).nl = \"$(nl)\" ;"
+            ;
+        .contents on $(jam-file) +=
+            "$(nl)local rule get-main-members ( libs * : symbol-main ? )"
+            "$(nl){"
+            "$(nl)    local result ;"
+            "$(nl)    symbol-main ?= \"MAIN\" ;"
+            "$(nl)    for local libfile in $($)(libs)"
+            "$(nl)    {"
+            "$(nl)        local main = [ GLOB_ARCHIVE $($)(libfile) : : : $($)(symbol-main) ] ;"
+            "$(nl)        if $($)(main)"
+            "$(nl)        {"
+            "$(nl)            result += $($)(main) ;"
+            "$(nl)        }"
+            "$(nl)    }"
+            "$(nl)    return  $($)(result) ;"
+            "$(nl)}"
+            ;
+        .contents on $(jam-file) +=
+            "$(nl)local rule get-libmods ( members * )"
+            "$(nl){"
+            "$(nl)    local result ;"
+            "$(nl)    for local m in $($)(members)"
+            "$(nl)    {"
+            "$(nl)        local lib = $($)(m:WDBS) ;"
+            "$(nl)        local mem = $($)(m:M) ;"
+            "$(nl)        if $($)(mem)"
+            "$(nl)        {"
+            "$(nl)            local mod = [ SPLIT_BY_CHARACTERS $($)(mem) : \"()\" ] ;"
+            "$(nl)            result += $($)(lib)/INC=($($)(mod:B))/LIB ;"
+            "$(nl)        }"
+            "$(nl)    }"
+            "$(nl)    return $($)(result) ;"
+            "$(nl)}"
+            ;
+        .contents on $(jam-file) +=
+            "$(nl)rule mainmod-link-opt ( opt-file : libs * : objs * )"
+            "$(nl){"
+            "$(nl)    local main-members = [ on $($)(opt-file[1]) get-main-members $($)(libs) ] ;"
+            "$(nl)    LIBMODULES on $($)(opt-file[1]) = [ on $($)(opt-file[1]) get-libmods $($)(main-members[1]) ] ;"
+            "$(nl)}"
+            ;
+        .contents on $(jam-file) +=
+            "$(nl)actions mainmod-link-opt bind OBJS LIBMODULES"
+            "$(nl){"
+            "$(nl)    SET FILE /VER=1 $(@)($($)(<:W):E= $($)(LIBMODULES:J=,-$($)(.nl))-$($)(.nl) )"
+            "$(nl)}"
+            ;
+        .contents on $(jam-file) +=
+            "$(nl)local rule make"
+            "$(nl){"
+            "$(nl)    if $($)(OPT-FILE)"
+            "$(nl)    {"
+            "$(nl)        DEPENDS all : $($)(OPT-FILE) ;"
+            "$(nl)        DEPENDS $($)(OPT-FILE) : $($)(LIBS) $($)(OBJS) ;"
+            "$(nl)        mainmod-link-opt $($)(OPT-FILE) : $($)(LIBS) : $($)(OBJS) ;"
+            "$(nl)    }"
+            "$(nl)}"
+            "$(nl)make all ;"
+            ;
+
+        write-jam-file-contents $(jam-file) : [ on $(jam-file) return $(.contents) ] ;
+
+    }
+}
+
+
+rule link ( targets * : sources * : properties * )
+{
+    DEPENDS $(targets) : [ on $(targets) return $(CXX-REPOS) ] ;
+    DEPENDS $(targets) : [ on $(targets) return $(LINK-OBJS) ] ;
+    DEPENDS $(targets) : [ on $(targets) return $(LINK-LIBS) ] ;
+    DEPENDS $(targets) : [ on $(targets) return $(LINK-SHAREDLIBS) ] ;
+    DEPENDS $(targets) : [ on $(targets) return $(LINK-OPTS) ] ;
+    DEPENDS $(targets) : [ on $(targets) return $(LIBRARIES) ] ;
+
+
+    for local s in $(sources)
+    {
+        local r = [ on $(s) return $(TARGET-CXX-REPO) ] ;
+
+        if ! $(r) in [ on $(targets[1]) return $(CXX-REPOS) ]
+        {
+            CXX-REPOS on $(targets[1]) += $(r) ;
+        }
+    }
+
+    local locate = [ on $(targets[1]) return $(LOCATE) ] ;
+    LINK-MAINMOD-OPT on $(targets[1]) = $(targets[1]:TG=:R=$(locate):S=$MAINMOD.opt) ;
+    LINK-MAINMOD-JAM on $(targets[1]) = $(targets[1]:TG=:R=$(locate):S=$MAINMOD.jam) ;
+    #on $(targets[1]) TEMPORARY $(LINK-MAINMOD-JAM) ;
+
+    DEPENDS $(targets) : [ on $(targets) return $(LINK-MAINMOD-OPT) ] ;
+    DEPENDS $(targets) : [ on $(targets) return $(LINK-MAINMOD-JAM) ] ;
+    on $(targets[1]) DEPENDS $(LINK-MAINMOD-OPT) : $(LINK-MAINMOD-JAM) ;
+
+    on $(targets[1]) mainmod-link-opt.generate $(LINK-MAINMOD-JAM)
+        : $(LINK-MAINMOD-OPT) : $(LINK-OBJS) : $(LINK-LIBS) $(LIBRARIES) : $(LINK-SHAREDLIBS) ;
+
+
+}
+
+actions link bind LINK-OBJS LINK-MAINMOD-JAM LINK-MAINMOD-OPT LINK-LIBS LIBRARIES LINK-SHAREDLIBS LINK-OPTS CXX-REPOS
+{
+    CXX_REPOS = "" +"$(CXX-REPOS:WJ=,)"
+    IF (CXX_REPOS .EQS. "") THEN  CXX_REPOS = "NL:"
+    DEF /NOLOG REPOS 'CXX_REPOS'
+    SET FILE /VER=1 @($(<:WS=$INPUT.opt):E= $(LINK-OBJS:WJ=,-$(.nl))-$(.nl) ,$(LINK-LIBS:WJ=/LIB,-$(.nl))/LIB-$(.nl) ,$(LIBRARIES:WJ=/LIB,-$(.nl))/LIB-$(.nl) ,$(LINK-SHAREDLIBS:WJ=/SHARE,-$(.nl))/SHARE-$(.nl) )
+    MC $(.B2) -f $(LINK-MAINMOD-JAM:W)
+    $(.LD) $(OPTIONS) /REPO=(REPOS:) /EXE=$(<:W) $(LINK-MAINMOD-OPT:W)/OPT, $(<:WS=$INPUT.opt)/OPT ,$(LINK-OPTS:WJ=/OPT,)/OPT
+}
+
+# Slight mods for dlls
+rule link.dll ( targets * : sources * : properties * )
+{
+    DEPENDS $(targets) : [ on $(targets) return $(CXX-REPOS) ] ;
+    DEPENDS $(targets) : [ on $(targets) return $(LINK-OBJS) ] ;
+    DEPENDS $(targets) : [ on $(targets) return $(LINK-LIBS) ] ;
+    DEPENDS $(targets) : [ on $(targets) return $(LINK-SHAREDLIBS) ] ;
+    DEPENDS $(targets) : [ on $(targets) return $(LINK-OPTS) ] ;
+    DEPENDS $(targets) : [ on $(targets) return $(LIBRARIES) ] ;
+
+    for local s in $(sources)
+    {
+        local r = [ on $(s) return $(TARGET-CXX-REPO) ] ;
+
+        if ! $(r) in [ on $(targets[1]) return $(CXX-REPOS) ]
+        {
+            CXX-REPOS on $(targets[1]) += $(r) ;
+        }
+    }
+
+
+    local locate = [ on $(targets[1]) return $(LOCATE) ] ;
+    LINK-MAINMOD-OPT on $(targets[1]) = $(targets[1]:TG=:R=$(locate):S=$MAINMOD.opt) ;
+    LINK-MAINMOD-JAM on $(targets[1]) = $(targets[1]:TG=:R=$(locate):S=$MAINMOD.jam) ;
+    #on $(targets[1]) TEMPORARY $(LINK-MAINMOD-JAM) ;
+
+    DEPENDS $(targets) : [ on $(targets) return $(LINK-MAINMOD-OPT) ] ;
+    DEPENDS $(targets) : [ on $(targets) return $(LINK-MAINMOD-JAM) ] ;
+    on $(targets[1]) DEPENDS $(LINK-MAINMOD-OPT) : $(LINK-MAINMOD-JAM) ;
+
+    on $(targets[1]) mainmod-link-opt.generate $(LINK-MAINMOD-JAM)
+        : $(LINK-MAINMOD-OPT) : $(LINK-OBJS) : $(LINK-LIBS) $(LIBRARIES) : $(LINK-SHAREDLIBS) ;
+
+}
+
+actions link.dll bind LINK-OBJS LINK-MAINMOD-JAM LINK-MAINMOD-OPT LINK-LIB LINK-LIBS LIBRARIES LINK-SHAREDLIBS LINK-OPTS CXX-REPOS
+{
+    CXX_REPOS = "" +"$(CXX-REPOS:WJ=,)"
+    IF (CXX_REPOS .EQS. "") THEN  CXX_REPOS = "NL:"
+    DEF /NOLOG REPOS 'CXX_REPOS'
+    SET FILE /VER=1 @($(<:WS=$INPUT.opt):E= $(LINK-OBJS:WJ=,-$(.nl))-$(.nl) ,$(LINK-LIBS:WJ=/LIB,-$(.nl))/LIB-$(.nl) ,$(LIBRARIES:WJ=/LIB,-$(.nl))/LIB-$(.nl) ,$(LINK-SHAREDLIBS:WJ=/SHARE,-$(.nl))/SHARE-$(.nl) )
+    MC $(.B2) -f $(LINK-MAINMOD-JAM:W)
+    $(.LD) $(OPTIONS) /REPO=(REPOS:) /SHARE=$(<:W) $(LINK-MAINMOD-OPT:W)/OPT, $(<:WS=$INPUT.opt)/OPT ,$(LINK-OPTS:WJ=/OPT,)/OPT
+}
+
+
+
+flags vmsdecc.archive AROPTIONS <archiveflags> ;
+
+
+local rule vms-join-wildcard-name ( path * : name )
+{
+    local files ;
+
+    if $(name)
+    {
+        for local d in $(path)
+        {
+            files += $(d)$(name) ;
+        }
+
+        files ?= $(name) ;
+
+    }
+
+    return $(files) ;
+}
+
+
+rule archive ( targets + : sources * : properties * )
+{
+    local clean.a = $(targets[1])(clean) ;
+    TEMPORARY $(clean.a) ;
+    NOCARE $(clean.a) ;
+    LOCATE on $(clean.a) = [ on $(targets[1]) return $(LOCATE) ] ;
+    DEPENDS $(clean.a) : $(sources) ;
+    DEPENDS $(targets) : $(clean.a) ;
+    common.RmTemps $(clean.a) : $(targets) ;
+
+
+    #CXX-REPOS on $(targets[1]) = null ;  ## reset
+
+    for local s in $(sources)
+    {
+        local r = [ on $(s) return $(TARGET-CXX-REPO) ] ;
+
+        if ! $(r) in [ on $(targets[1]) return $(CXX-REPOS) ]
+        {
+            CXX-REPOS on $(targets[1]) += $(r) ;
+        }
+    }
+
+    if [ on $(targets[1]) return $(CXX-REPOS) ]
+    {
+        CXX-REPO-OBJS on $(targets[1]) = [ on $(targets[1]) return [ vms-join-wildcard-name $(CXX-REPOS:W) : *$(.OBJ) ] ] ;
+
+        #DEPENDS $(targets) : [ on $(targets[1]) return $(CXX-REPO-OBJS) ] ;
+    }
+}
+
+# Declare action for creating static libraries
+actions piecemeal archive
+{
+    HAVE_REPO_OBJS = "F"
+    IF ("" +"$(CXX-REPO-OBJS[1])" .NES. "")
+    THEN
+       IF ( "" +F$SEARCH("$(CXX-REPO-OBJS[1])") .NES. "")
+       THEN
+          HAVE_REPO_OBJS = "T"
+       ENDIF
+    ENDIF
+    $(.AR) /CREATE /REPL $(AROPTIONS) $(<:W) $(>:WJ=,)
+    IF (HAVE_REPO_OBJS)
+    THEN
+        $(.AR) /REPL $(AROPTIONS) $(<:W) $(CXX-REPO-OBJS:J=,)
+        PIPE DEL /NOLOG /NOCONF $(CXX-REPO-OBJS:J=;*,);* 2>NL: >NL:
+    ENDIF
+}
+

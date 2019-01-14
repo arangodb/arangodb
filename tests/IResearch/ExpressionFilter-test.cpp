@@ -80,7 +80,7 @@
 
 extern const char* ARGV0; // defined in main.cpp
 
-NS_LOCAL
+namespace {
 
 struct custom_sort: public irs::sort {
   DECLARE_SORT_TYPE();
@@ -326,7 +326,7 @@ struct IResearchExpressionFilterSetup {
   }
 }; // TestSetup
 
-NS_END
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
