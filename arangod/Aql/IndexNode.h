@@ -98,11 +98,8 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
     return std::vector<Variable const*>{_outVariable};
   }
 
-  /// @brief getVariablesUsedHere, returning a vector
-  std::vector<Variable const*> getVariablesUsedHere() const override final;
-
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const override final;
+  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final;
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;

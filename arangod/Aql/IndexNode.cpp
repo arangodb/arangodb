@@ -273,24 +273,8 @@ CostEstimate IndexNode::estimateCost() const {
   return estimate;
 }
 
-/// @brief getVariablesUsedHere, returning a vector
-std::vector<Variable const*> IndexNode::getVariablesUsedHere() const {
-  std::unordered_set<Variable const*> s;
-  // actual work is done by that method
-  getVariablesUsedHere(s);
-
-  // copy result into vector
-  std::vector<Variable const*> v;
-  v.reserve(s.size());
-
-  for (auto const& vv : s) {
-    v.emplace_back(const_cast<Variable*>(vv));
-  }
-  return v;
-}
-
 /// @brief getVariablesUsedHere, modifying the set in-place
-void IndexNode::getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const {
+void IndexNode::getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const {
   Ast::getReferencedVariables(_condition->root(), vars);
 
   vars.erase(_outVariable);
