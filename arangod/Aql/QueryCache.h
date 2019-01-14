@@ -136,9 +136,6 @@ struct QueryCacheDatabaseEntry {
   /// @brief link the result entry to the end of the list
   void link(QueryCacheResultEntry*);
 
-  /// @brief DataSource ID by name or guid
-  std::unordered_map<std::string, std::shared_ptr<arangodb::LogicalDataSource>> _dataSources; // non-nullptr value ensured by store(...)
-
   /// @brief hash table that maps query hashes to query results
   std::unordered_map<uint64_t, std::shared_ptr<QueryCacheResultEntry>> _entriesByHash;
 
