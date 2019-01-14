@@ -346,8 +346,9 @@ int MMFilesTransactionState::addOperation(LocalDocumentId const& documentId,
   }
 
   auto queryCache = arangodb::aql::QueryCache::instance();
+
   if (queryCache->mayBeActive()) {
-    queryCache->invalidate(&_vocbase, collection->name());
+    queryCache->invalidate(&_vocbase, collection->guid());
   }
 
   physical->setRevision(revisionId, false);
@@ -494,8 +495,8 @@ int MMFilesTransactionState::writeCommitMarker() {
       // also sync RocksDB WAL if required
       bool hasPersistentIndex = false;
 
-      allCollections([&hasPersistentIndex](TransactionCollection* collection) {
-        auto c = static_cast<MMFilesTransactionCollection*>(collection);
+      allCollections([&hasPersistentIndex](TransactionCollection& collection)->bool {
+        auto* c = static_cast<MMFilesTransactionCollection*>(&collection);
 
         if (c->canAccess(AccessMode::Type::WRITE) &&
             c->collection()->getPhysical()->hasIndexOfType(
@@ -507,6 +508,7 @@ int MMFilesTransactionState::writeCommitMarker() {
 
         return true;
       });
+
       if (hasPersistentIndex) {
         MMFilesPersistentIndexFeature::syncWal();
       }
