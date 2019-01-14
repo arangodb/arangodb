@@ -131,6 +131,7 @@ void MMFilesCleanupThread::run() {
   }
 
   LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "shutting down cleanup thread";
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "shutting down cleanup thread";
 }
 
 /// @brief checks all datafiles of a collection
