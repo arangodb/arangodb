@@ -16,9 +16,9 @@ Solution
 With ArangoDB 3.0 a complete cmake environment was introduced. This also streamlines the dependencies on Windows.
 We suggest to use [chocolatey.org](https://chocolatey.org/) to install most of the dependencies. For sure
 most projects offer their own setup & install packages, chocolatey offers a simplified way to install them
-with less user interactions. You can even use chocolatey via the brand new
-[ansibles 2.0 winrm facility](http://docs.ansible.com/ansible/intro_windows.html)
-to do unattended installations of some software on Windows - the cool thing Linux guys always told you about.
+with less user interactions. You can even use chocolatey via
+[ansibles 2.7 winrm facility](https://docs.ansible.com/ansible/latest/user_guide/windows.html)
+to do unattended installations of some software on Windows.
 
 ### Ingredients
 
