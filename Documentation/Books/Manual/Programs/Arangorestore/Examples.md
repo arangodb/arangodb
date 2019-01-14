@@ -120,7 +120,7 @@ which are part of a graph you are not required to restore in a specific order.
 
 {% hint 'warning' %}
 When restoring only a subset of collections of your database, and graphs are in use, you will need
-to make sure you are restoring all the need collections (the ones that are part of the graph) as 
+to make sure you are restoring all the needed collections (the ones that are part of the graph) as 
 otherwise you might have edges pointing to non existing documents.
 {% endhint %}
 
