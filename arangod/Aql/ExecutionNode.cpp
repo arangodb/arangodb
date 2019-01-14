@@ -1490,7 +1490,7 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
   TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
   RegisterId outputRegister = it->second.registerId;
 
-  std::unordered_set<Variable const*> inVars;
+  arangodb::HashSet<Variable const*> inVars;
   _expression->variables(inVars);
 
   std::vector<Variable const*> expInVars;
@@ -1519,13 +1519,10 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
       this->expression(), std::move(expInVars)  // required by expression.execute
       ,
       std::move(expInRegs)  // required by expression.execute
-      ,
-      _conditionVariable  // unused for now (conditon reg?)
   );
 
   return std::make_unique<ExecutionBlockImpl<CalculationExecutor>>(&engine, this,
                                                                    std::move(infos));
-  // return std::make_unique<CalculationBlock>(&engine, this);
 }
 
 ExecutionNode* CalculationNode::clone(ExecutionPlan* plan, bool withDependencies,

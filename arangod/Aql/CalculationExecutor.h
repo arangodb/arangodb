@@ -49,11 +49,10 @@ struct Variable;
 
 struct CalculationExecutorInfos : public ExecutorInfos {
   CalculationExecutorInfos(RegisterId outputRegister, RegisterId nrInputRegisters,
-                           RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear
-
-                           ,
-                           Query*, Expression*, std::vector<Variable const*>&& expInVars,
-                           std::vector<RegisterId>&& expInRegs, Variable const* conditionVar);
+                           RegisterId nrOutputRegisters,
+                           std::unordered_set<RegisterId> registersToClear, Query*,
+                           Expression*, std::vector<Variable const*>&& expInVars,
+                           std::vector<RegisterId>&& expInRegs);
 
   CalculationExecutorInfos() = delete;
   CalculationExecutorInfos(CalculationExecutorInfos&&) = default;
@@ -66,7 +65,6 @@ struct CalculationExecutorInfos : public ExecutorInfos {
   Expression* _expression;
   std::vector<Variable const*> _expInVars;  // input variables for expresseion
   std::vector<RegisterId> _expInRegs;       // input registers for expression?
-  Variable const* _condition;               // What kind of condition is this?
   bool _isReference = false;
 };
 

@@ -163,7 +163,7 @@ SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
       RegisterId(2) /*out width*/, std::unordered_set<RegisterId>{} /*to clear*/,
       &query /*query*/, &expr /*expression*/,
       std::vector<Variable const*>{&var} /*expression in variables*/,
-      std::vector<RegisterId>{inRegID} /*expression in registers*/, nullptr /*condition*/
+      std::vector<RegisterId>{inRegID} /*expression in registers*/
   );
 
   GIVEN("there are no rows upstream") {

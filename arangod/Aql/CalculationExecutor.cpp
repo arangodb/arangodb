@@ -51,8 +51,8 @@ CalculationExecutorInfos::CalculationExecutorInfos(
     RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear
 
     ,
-    Query* query, Expression* expression, std::vector<Variable const*>&& expInVars,
-    std::vector<RegisterId>&& expInRegs, Variable const* condition)
+    Query* query, Expression* expression,
+    std::vector<Variable const*>&& expInVars, std::vector<RegisterId>&& expInRegs)
 
     : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(expInRegs.begin(),
                                                                      expInRegs.end()),
@@ -63,8 +63,7 @@ CalculationExecutorInfos::CalculationExecutorInfos(
       _query(query),
       _expression(expression),
       _expInVars(std::move(expInVars)),
-      _expInRegs(std::move(expInRegs)),
-      _condition(condition) {
+      _expInRegs(std::move(expInRegs)) {
   TRI_ASSERT(_expression != nullptr);
   TRI_ASSERT(_query->trx() != nullptr);
 
@@ -154,27 +153,6 @@ void doEvaluation(CalculationExecutorInfos& info, InputAqlItemRow& input,
 
 void executeExpression(CalculationExecutorInfos& info, InputAqlItemRow& input,
                        OutputAqlItemRow& output) {
-  bool const hasCondition = info._condition != nullptr;
-
-
-  TRI_ASSERT(!hasCondition);
-  // TODO not implemented -- see old CalcualtionBlock.cpp for details -- below old impl
-  // what kind of condition could this be?
-  if (hasCondition) {
-
-    // if (hasCondition) {
-    //  AqlValue const& conditionResult = result->getValueReference(i, _conditionReg);
-
-    //  if (!conditionResult.toBoolean()) {
-    //    TRI_IF_FAILURE("CalculationBlock::executeExpressionWithCondition") {
-    //      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    //    }
-    //    result->emplaceValue(i, _outReg,
-    //    arangodb::velocypack::Slice::nullSlice()); continue;
-    //  }
-    //}
-  }
-
   // execute the expression
   ExecutorExpressionContext ctx(info._query, input, info._expInVars, info._expInRegs);
 
