@@ -32,6 +32,11 @@
 namespace arangodb {
 namespace aql {
 
+inline std::shared_ptr<std::unordered_set<RegisterId>>
+make_shared_unordered_set(std::initializer_list<RegisterId> const& list = std::initializer_list<RegisterId>{}){
+  return std::make_shared<std::unordered_set<RegisterId>>(list);
+}
+
 /**
  * @brief Class to be handed into Executors during construction
  *        This class should be independend from AQL internal

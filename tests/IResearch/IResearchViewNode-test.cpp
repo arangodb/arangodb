@@ -40,6 +40,8 @@
 #include "Aql/BasicBlocks.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/OptimizerRulesFeature.h"
+#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/NoResultsExecutor.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchFilterFactory.h"
@@ -1225,7 +1227,7 @@ SECTION("createBlockCoordinator") {
   auto emptyBlock = node.createBlock(engine, EMPTY);
   arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_SINGLE);
   CHECK(nullptr != emptyBlock);
-  CHECK(nullptr != dynamic_cast<arangodb::aql::NoResultsBlock*>(emptyBlock.get()));
+  CHECK(nullptr != dynamic_cast< arangodb::aql::ExecutionBlockImpl<arangodb::aql::NoResultsExecutor>* >(emptyBlock.get()));
 }
 
 }

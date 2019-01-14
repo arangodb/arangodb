@@ -37,14 +37,16 @@
 #include "ApplicationFeatures/V8Phase.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AstNode.h"
+#include "Agency/Store.h"
 #include "Aql/BasicBlocks.h"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Function.h"
+#include "Aql/NoResultsExecutor.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/SortCondition.h"
-#include "Agency/Store.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/files.h"
 #include "Utils/ExecContext.h"
@@ -228,13 +230,13 @@ struct IResearchViewCoordinatorSetup {
     arangodb::application_features::ApplicationServer::server = nullptr;
 
     // destroy application features
-    for (auto f = orderedFeatures.rbegin() ; f != orderedFeatures.rend(); ++f) { 
+    for (auto f = orderedFeatures.rbegin() ; f != orderedFeatures.rend(); ++f) {
       if (features.at((*f)->name()).second) {
         (*f)->stop();
       }
     }
 
-    for (auto f = orderedFeatures.rbegin() ; f != orderedFeatures.rend(); ++f) { 
+    for (auto f = orderedFeatures.rbegin() ; f != orderedFeatures.rend(); ++f) {
       (*f)->unprepare();
     }
 
@@ -4642,7 +4644,7 @@ SECTION("IResearchViewNode::createBlock") {
     std::unordered_map<arangodb::aql::ExecutionNode*, arangodb::aql::ExecutionBlock*> cache;
     auto execBlock = node.createBlock(engine, cache);
     CHECK(nullptr != execBlock);
-    CHECK(nullptr != dynamic_cast<arangodb::aql::NoResultsBlock*>(execBlock.get()));
+    CHECK(nullptr != dynamic_cast< arangodb::aql::ExecutionBlockImpl<arangodb::aql::NoResultsExecutor>* >(execBlock.get()));
 
     // drop view
     CHECK(view->drop().ok());

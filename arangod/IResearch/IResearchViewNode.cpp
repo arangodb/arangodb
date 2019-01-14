@@ -25,8 +25,10 @@
 #include "Aql/Ast.h"
 #include "Aql/BasicBlocks.h"
 #include "Aql/Condition.h"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/NoResultsExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
 #include "AqlHelper.h"
@@ -584,7 +586,10 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     TRI_ASSERT(this->empty());
 #endif
 
-    return std::make_unique<aql::NoResultsBlock>(&engine, this);
+  aql::ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(), arangodb::aql::make_shared_unordered_set(), 0, 0, getRegsToClear());
+
+  return std::make_unique<aql::ExecutionBlockImpl<aql::NoResultsExecutor>>(&engine, this,
+                                                                 std::move(infos));
   }
 
   auto* trx = engine.getQuery()->trx();
