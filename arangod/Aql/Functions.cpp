@@ -1521,16 +1521,20 @@ AqlValue dateFromParameters(arangodb::aql::Query* query, transaction::Methods* t
     milliseconds ms(0);
 
     if (parameters.size() >= 4) {
-      h = hours((extractFunctionParameterValue(parameters, 3).toInt64(trx)));
+      h = hours(extractFunctionParameterValue(parameters, 3).toInt64(trx));
     }
     if (parameters.size() >= 5) {
-      min = minutes((extractFunctionParameterValue(parameters, 4).toInt64(trx)));
+      min = minutes(extractFunctionParameterValue(parameters, 4).toInt64(trx));
     }
     if (parameters.size() >= 6) {
-      s = seconds((extractFunctionParameterValue(parameters, 5).toInt64(trx)));
+      s = seconds(extractFunctionParameterValue(parameters, 5).toInt64(trx));
     }
     if (parameters.size() == 7) {
-      ms = milliseconds((extractFunctionParameterValue(parameters, 6).toInt64(trx)));
+      int64_t v = extractFunctionParameterValue(parameters, 6).toInt64(trx);
+      if (v > 999) {
+        v = 999;
+      }
+      ms = milliseconds(v);
     }
 
     if ((h < hours{0}) || (min < minutes{0}) || (s < seconds{0}) ||

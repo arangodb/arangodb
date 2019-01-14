@@ -1,8 +1,15 @@
 v3.4.2 (XXXX-XX-XX)
 -------------------
 
+
 * fixed an issue where a crashed coordinator can lead to some Foxx queue jobs
   erroneously either left hanging or being restarted
+
+* fix issue #7903: Regression on ISO8601 string compatibility in AQL
+
+  millisecond parts of AQL date values were limited to up to 3 digits.
+  Now the length of the millisecond part is unrestricted, but the 
+  millisecond precision is still limit to up to 3 digits.
 
 * fix issue #7900: Bind values of `null` are not replaced by
   empty string anymore, when toggling between json and table
@@ -84,6 +91,8 @@ v3.4.2 (XXXX-XX-XX)
 * Added --server.jwt-secret-keyfile option.
 
 * Improve single threaded performance by scheduler optimization.
+
+* Releveling logging in maintenance
 
 v3.4.1 (2018-12-19)
 -------------------
