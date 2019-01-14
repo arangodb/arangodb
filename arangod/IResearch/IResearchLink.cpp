@@ -42,7 +42,7 @@
 
 #include "IResearchLink.h"
 
-NS_LOCAL
+namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the storage format used with IResearch writers
@@ -204,10 +204,10 @@ inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx
   return arangodb::Result();
 }
 
-NS_END
+}  // namespace
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
 IResearchLink::IResearchLink(TRI_idx_iid_t iid,
                              arangodb::LogicalCollection& collection)
@@ -1327,9 +1327,9 @@ std::shared_ptr<IResearchView> IResearchLink::view() const {
           : _collection.vocbase().lookupView(_viewGuid));
 }
 
-NS_END      // iresearch
-    NS_END  // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
-    // -----------------------------------------------------------------------------
-    // --SECTION-- END-OF-FILE
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION-- END-OF-FILE
+// -----------------------------------------------------------------------------

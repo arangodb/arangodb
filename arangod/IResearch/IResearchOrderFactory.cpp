@@ -43,7 +43,7 @@
 // --SECTION--                                        OrderFactory dependencies
 // ----------------------------------------------------------------------------
 
-NS_LOCAL
+namespace {
 
 arangodb::aql::AstNode const EMPTY_ARGS(arangodb::aql::NODE_TYPE_ARRAY);
 
@@ -200,10 +200,10 @@ bool fromFCallUser(irs::sort::ptr* scorer, arangodb::aql::AstNode const& node,
   return fromFCall(scorer, scorerName, node.getMemberUnchecked(0), ctx);
 }
 
-NS_END
+}  // namespace
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                    ScorerReplacer implementation
@@ -340,9 +340,9 @@ void ScorerReplacer::extract(aql::Variable const& var, std::vector<Scorer>& scor
   return bool(*comparer);
 }
 
-NS_END      // iresearch
-    NS_END  // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
-    // -----------------------------------------------------------------------------
-    // --SECTION-- END-OF-FILE
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION-- END-OF-FILE
+// -----------------------------------------------------------------------------

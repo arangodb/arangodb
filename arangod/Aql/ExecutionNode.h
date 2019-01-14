@@ -351,13 +351,8 @@ class ExecutionNode {
    *   the SetHere functions.
    */
 
-  /// @brief getVariablesUsedHere, returning a vector
-  virtual std::vector<Variable const*> getVariablesUsedHere() const {
-    return std::vector<Variable const*>();
-  }
-
   /// @brief getVariablesUsedHere, modifying the set in-place
-  virtual void getVariablesUsedHere(std::unordered_set<Variable const*>&) const {
+  virtual void getVariablesUsedHere(arangodb::HashSet<Variable const*>&) const {
     // do nothing!
   }
 
@@ -367,18 +362,19 @@ class ExecutionNode {
   }
 
   /// @brief getVariableIdsUsedHere
-  std::unordered_set<VariableId> getVariableIdsUsedHere() const {
-    auto v(getVariablesUsedHere());
+  arangodb::HashSet<VariableId> getVariableIdsUsedHere() const {
+    arangodb::HashSet<Variable const*> vars;
+    getVariablesUsedHere(vars);
 
-    std::unordered_set<VariableId> ids;
-    for (auto& it : v) {
+    arangodb::HashSet<VariableId> ids;
+    for (auto& it : vars) {
       ids.emplace(it->id);
     }
     return ids;
   }
 
   /// @brief tests whether the node sets one of the passed variables
-  bool setsVariable(std::unordered_set<Variable const*> const& which) const {
+  bool setsVariable(arangodb::HashSet<Variable const*> const& which) const {
     for (auto const& v : getVariablesSetHere()) {
       if (which.find(v) != which.end()) {
         return true;
@@ -388,24 +384,24 @@ class ExecutionNode {
   }
 
   /// @brief setVarsUsedLater
-  void setVarsUsedLater(std::unordered_set<Variable const*>& v) {
+  void setVarsUsedLater(arangodb::HashSet<Variable const*>& v) {
     _varsUsedLater = v;
   }
 
   /// @brief getVarsUsedLater, this returns the set of variables that will be
   /// used later than this node, i.e. in the repeated parents.
-  std::unordered_set<Variable const*> const& getVarsUsedLater() const {
+  arangodb::HashSet<Variable const*> const& getVarsUsedLater() const {
     TRI_ASSERT(_varUsageValid);
     return _varsUsedLater;
   }
 
   /// @brief setVarsValid
-  void setVarsValid(std::unordered_set<Variable const*>& v) { _varsValid = v; }
+  void setVarsValid(arangodb::HashSet<Variable const*>& v) { _varsValid = v; }
 
   /// @brief getVarsValid, this returns the set of variables that is valid
   /// for items leaving this node, this includes those that will be set here
   /// (see getVariablesSetHere).
-  std::unordered_set<Variable const*> const& getVarsValid() const {
+  arangodb::HashSet<Variable const*> const& getVarsValid() const {
     TRI_ASSERT(_varUsageValid);
     return _varsValid;
   }
@@ -513,7 +509,7 @@ class ExecutionNode {
   }
 
   /// @brief check if a variable will be used later
-  bool isVarUsedLater(Variable const* variable) const {
+  inline bool isVarUsedLater(Variable const* variable) const {
     return (_varsUsedLater.find(variable) != _varsUsedLater.end());
   }
 
@@ -563,9 +559,9 @@ class ExecutionNode {
   /// when an item comes into the current node. Both are only valid if
   /// _varUsageValid is true. Use ExecutionPlan::findVarUsage to set
   /// this.
-  std::unordered_set<Variable const*> _varsUsedLater;
+  arangodb::HashSet<Variable const*> _varsUsedLater;
 
-  std::unordered_set<Variable const*> _varsValid;
+  arangodb::HashSet<Variable const*> _varsValid;
 
   /// @brief depth of the current frame, will be filled in by planRegisters
   int _depth;
@@ -715,13 +711,8 @@ class EnumerateListNode : public ExecutionNode {
   /// @brief the cost of an enumerate list node
   CostEstimate estimateCost() const override final;
 
-  /// @brief getVariablesUsedHere, returning a vector
-  std::vector<Variable const*> getVariablesUsedHere() const override final {
-    return std::vector<Variable const*>{_inVariable};
-  }
-
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const override final {
+  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final {
     vars.emplace(_inVariable);
   }
 
@@ -850,27 +841,8 @@ class CalculationNode : public ExecutionNode {
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
 
-  /// @brief getVariablesUsedHere, returning a vector
-  std::vector<Variable const*> getVariablesUsedHere() const override final {
-    std::unordered_set<Variable const*> vars;
-    _expression->variables(vars);
-
-    std::vector<Variable const*> v;
-    v.reserve(vars.size());
-
-    for (auto const& vv : vars) {
-      v.emplace_back(vv);
-    }
-
-    if (_conditionVariable != nullptr) {
-      v.emplace_back(_conditionVariable);
-    }
-
-    return v;
-  }
-
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const override final {
+  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final {
     _expression->variables(vars);
 
     if (_conditionVariable != nullptr) {
@@ -951,11 +923,8 @@ class SubqueryNode : public ExecutionNode {
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
 
-  /// @brief getVariablesUsedHere, returning a vector
-  std::vector<Variable const*> getVariablesUsedHere() const override final;
-
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const override final;
+  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final;
 
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final {
@@ -1010,13 +979,8 @@ class FilterNode : public ExecutionNode {
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
 
-  /// @brief getVariablesUsedHere, returning a vector
-  std::vector<Variable const*> getVariablesUsedHere() const override final {
-    return std::vector<Variable const*>{_inVariable};
-  }
-
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const override final {
+  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final {
     vars.emplace(_inVariable);
   }
 
@@ -1116,13 +1080,8 @@ class ReturnNode : public ExecutionNode {
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
 
-  /// @brief getVariablesUsedHere, returning a vector
-  std::vector<Variable const*> getVariablesUsedHere() const override final {
-    return std::vector<Variable const*>{_inVariable};
-  }
-
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const override final {
+  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final {
     vars.emplace(_inVariable);
   }
 
