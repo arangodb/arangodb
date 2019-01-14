@@ -32,6 +32,12 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+
+class LogicalDataSource; // forward declaration
+
+}
+
+namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
@@ -56,7 +62,8 @@ struct QueryCacheResultEntry {
   QueryCacheResultEntry(uint64_t hash, QueryString const& queryString,
                         std::shared_ptr<arangodb::velocypack::Builder> const& queryResult,
                         std::shared_ptr<arangodb::velocypack::Builder> const& bindVars,
-                        std::vector<std::string>&& dataSources);
+    std::unordered_set<std::shared_ptr<arangodb::LogicalDataSource>>&& dataSources // query DataSources
+  );
 
   ~QueryCacheResultEntry() = default;
 
@@ -64,8 +71,8 @@ struct QueryCacheResultEntry {
   std::string const _queryString;
   std::shared_ptr<arangodb::velocypack::Builder> const _queryResult;
   std::shared_ptr<arangodb::velocypack::Builder> const _bindVars;
+  std::unordered_set<std::shared_ptr<arangodb::LogicalDataSource>> const _dataSources; // query DataSources
   std::shared_ptr<arangodb::velocypack::Builder> _stats;
-  std::vector<std::string> const _dataSources;
   size_t _size;
   size_t _rows;
   std::atomic<uint64_t> _hits;
@@ -100,11 +107,11 @@ struct QueryCacheDatabaseEntry {
 
   /// @brief invalidate all entries for the given data sources in the
   /// database-specific cache
-  void invalidate(std::vector<std::string> const& dataSources);
+  void invalidate(std::vector<std::string> const& dataSourceGuids);
 
   /// @brief invalidate all entries for a data source in the
   /// database-specific cache
-  void invalidate(std::string const& dataSource);
+  void invalidate(std::string const& dataSourceGuid);
 
   void queriesToVelocyPack(arangodb::velocypack::Builder& builder) const;
 
@@ -129,13 +136,17 @@ struct QueryCacheDatabaseEntry {
   /// @brief link the result entry to the end of the list
   void link(QueryCacheResultEntry*);
 
+  /// @brief DataSource ID by name or guid
+  std::unordered_map<std::string, std::shared_ptr<arangodb::LogicalDataSource>> _dataSources; // non-nullptr value ensured by store(...)
+
   /// @brief hash table that maps query hashes to query results
   std::unordered_map<uint64_t, std::shared_ptr<QueryCacheResultEntry>> _entriesByHash;
 
   /// @brief hash table that contains all data souce-specific query results
-  /// maps from data sources names to a set of query results as defined in
+  ///        maps from data sources GUIDs to a set of query results as defined in
   /// _entriesByHash
-  std::unordered_map<std::string, std::unordered_set<uint64_t>> _entriesByDataSource;
+  typedef std::pair<std::shared_ptr<arangodb::LogicalDataSource>, std::unordered_set<uint64_t>> GuidEntry;
+  std::unordered_map<std::string, GuidEntry> _entriesByDataSourceGuid; // non-nullptr LogicalDataSource ensured by store(...)
 
   /// @brief beginning of linked list of result entries
   QueryCacheResultEntry* _head;
@@ -197,10 +208,10 @@ class QueryCache {
   void store(TRI_vocbase_t* vocbase, std::shared_ptr<QueryCacheResultEntry> entry);
 
   /// @brief invalidate all queries for the given data sources
-  void invalidate(TRI_vocbase_t* vocbase, std::vector<std::string> const& dataSources);
+  void invalidate(TRI_vocbase_t* vocbase, std::vector<std::string> const& dataSourceGuids);
 
   /// @brief invalidate all queries for a particular data source
-  void invalidate(TRI_vocbase_t* vocbase, std::string const& dataSource);
+  void invalidate(TRI_vocbase_t* vocbase, std::string const& dataSourceGuid);
 
   /// @brief invalidate all queries for a particular database
   void invalidate(TRI_vocbase_t* vocbase);
