@@ -1878,15 +1878,14 @@ void Agent::emptyCbTrashBin() {
     }
     
     { VPackArrayBuilder trxs(envelope.get());
-      { VPackArrayBuilder trx(envelope.get());
-        { VPackObjectBuilder ak(envelope.get());
-          for (auto const& i : _callbackTrashBin) {
-            for (auto const& j : i.second) {
+      for (auto const& i : _callbackTrashBin) {
+        for (auto const& j : i.second) {
+          { VPackArrayBuilder trx(envelope.get());
+            { VPackObjectBuilder ak(envelope.get());
               envelope->add(VPackValue(i.first));
               { VPackObjectBuilder oper(envelope.get());
                 envelope->add("op", VPackValue("unobserve"));
-                envelope->add("url", VPackValue(j));}}
-          }
+                envelope->add("url", VPackValue(j));}}}
         }
       }}
     _callbackTrashBin.clear(); 

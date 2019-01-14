@@ -102,13 +102,13 @@ class Topics {
 
 }  // namespace
 
-LogTopic Logger::AGENCY("agency", LogLevel::DEBUG);
-LogTopic Logger::AGENCYCOMM("agencycomm", LogLevel::DEBUG);
+LogTopic Logger::AGENCY("agency", LogLevel::INFO);
+LogTopic Logger::AGENCYCOMM("agencycomm", LogLevel::INFO);
 LogTopic Logger::AQL("aql", LogLevel::INFO);
 LogTopic Logger::AUTHENTICATION("authentication");
 LogTopic Logger::AUTHORIZATION("authorization");
 LogTopic Logger::CACHE("cache", LogLevel::INFO);
-LogTopic Logger::CLUSTER("cluster", LogLevel::DEBUG);
+LogTopic Logger::CLUSTER("cluster", LogLevel::INFO);
 LogTopic Logger::COLLECTOR("collector");
 LogTopic Logger::COMMUNICATION("communication", LogLevel::INFO);
 LogTopic Logger::COMPACTOR("compactor");

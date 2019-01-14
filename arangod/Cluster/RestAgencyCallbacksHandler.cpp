@@ -55,7 +55,6 @@ RestStatus RestAgencyCallbacksHandler::execute() {
   }
 
   bool parseSuccess = true;
-  LOG_DEVEL << _request->payload().toJson();
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess || body.isNone()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
