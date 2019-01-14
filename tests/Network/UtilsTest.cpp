@@ -41,9 +41,9 @@ using namespace arangodb::network;
 TEST_CASE("network utils", "[network]") {
 
   
-  SECTION("resolve destinations") {
-    
-  }
+//  SECTION("resolve destinations") {
+//    // TBD figure out how to mock ClusterInfo
+//  }
   
   SECTION("errorFromBody") {
     const char* str = "{\"errorNum\":1337, \"errorMessage\":\"abc\"}";
