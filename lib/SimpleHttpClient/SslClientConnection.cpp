@@ -227,11 +227,19 @@ void SslClientConnection::init(uint64_t sslProtocol) {
       break;
 
     case TLS_V1:
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      meth = TLS_client_method();
+#else
       meth = TLSv1_method();
+#endif
       break;
 
     case TLS_V12:
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      meth = TLS_client_method();
+#else
       meth = TLSv1_2_method();
+#endif
       break;
 
     case TLS_V13:

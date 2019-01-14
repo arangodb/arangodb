@@ -1032,7 +1032,7 @@ void registerInvalidArgumentWarning(ExpressionContext* expressionContext,
                     TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
 }
 
-bool parameterToTimePoint(ExpressionContext* expressionContext, 
+bool parameterToTimePoint(ExpressionContext* expressionContext,
                           VPackFunctionParameters const& parameters,
                           tp_sys_clock_ms& tp, char const* AFN, size_t parameterIndex) {
   AqlValue const& value = extractFunctionParameterValue(parameters, parameterIndex);
@@ -1541,8 +1541,11 @@ AqlValue dateFromParameters(
       s = seconds((extractFunctionParameterValue(parameters, 5).toInt64()));
     }
     if (parameters.size() == 7) {
-      ms = milliseconds(
-          (extractFunctionParameterValue(parameters, 6).toInt64()));
+      int64_t v = extractFunctionParameterValue(parameters, 6).toInt64();
+      if (v > 999) {
+        v = 999;
+      }
+      ms = milliseconds(v);
     }
 
     if ((h < hours{0}) || (min < minutes{0}) || (s < seconds{0}) ||
@@ -2219,7 +2222,7 @@ AqlValue Functions::Last(ExpressionContext* expressionContext,
 }
 
 /// @brief function NTH
-AqlValue Functions::Nth(ExpressionContext* expressionContext, 
+AqlValue Functions::Nth(ExpressionContext* expressionContext,
                         transaction::Methods*,
                         VPackFunctionParameters const& parameters) {
   static char const* AFN = "NTH";

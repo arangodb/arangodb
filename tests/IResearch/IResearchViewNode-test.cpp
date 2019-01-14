@@ -203,7 +203,9 @@ SECTION("construct") {
     CHECK(node.scorers().empty());
     CHECK(!node.volatility().first); // filter volatility
     CHECK(!node.volatility().second); // sort volatility
-    CHECK(node.getVariablesUsedHere().empty());
+    arangodb::HashSet<arangodb::aql::Variable const*> usedHere;
+    node.getVariablesUsedHere(usedHere);
+    CHECK(usedHere.empty());
     auto const setHere = node.getVariablesSetHere();
     CHECK(1 == setHere.size());
     CHECK(&outVariable == setHere[0]);
@@ -248,7 +250,9 @@ SECTION("construct") {
     CHECK(node.scorers().empty());
     CHECK(!node.volatility().first); // filter volatility
     CHECK(!node.volatility().second); // sort volatility
-    CHECK(node.getVariablesUsedHere().empty());
+    arangodb::HashSet<arangodb::aql::Variable const*> usedHere;
+    node.getVariablesUsedHere(usedHere);
+    CHECK(usedHere.empty());
     auto const setHere = node.getVariablesSetHere();
     CHECK(1 == setHere.size());
     CHECK(&outVariable == setHere[0]);
@@ -319,7 +323,9 @@ SECTION("construct") {
     CHECK(node.scorers().empty());
     CHECK(!node.volatility().first); // filter volatility
     CHECK(!node.volatility().second); // sort volatility
-    CHECK(node.getVariablesUsedHere().empty());
+    arangodb::HashSet<arangodb::aql::Variable const*> usedHere;
+    node.getVariablesUsedHere(usedHere);
+    CHECK(usedHere.empty());
     auto const setHere = node.getVariablesSetHere();
     CHECK(1 == setHere.size());
     CHECK(&outVariable == setHere[0]);
@@ -421,7 +427,9 @@ SECTION("constructFromVPackSingleServer") {
     CHECK(node.scorers().empty());
     CHECK(!node.volatility().first); // filter volatility
     CHECK(!node.volatility().second); // sort volatility
-    CHECK(node.getVariablesUsedHere().empty());
+    arangodb::HashSet<arangodb::aql::Variable const*> usedHere;
+    node.getVariablesUsedHere(usedHere);
+    CHECK(usedHere.empty());
     auto const setHere = node.getVariablesSetHere();
     CHECK(1 == setHere.size());
     CHECK(outVariable.id == setHere[0]->id);
@@ -456,7 +464,9 @@ SECTION("constructFromVPackSingleServer") {
     CHECK(node.scorers().empty());
     CHECK(!node.volatility().first); // filter volatility
     CHECK(!node.volatility().second); // sort volatility
-    CHECK(node.getVariablesUsedHere().empty());
+    arangodb::HashSet<arangodb::aql::Variable const*> usedHere;
+    node.getVariablesUsedHere(usedHere);
+    CHECK(usedHere.empty());
     auto const setHere = node.getVariablesSetHere();
     CHECK(1 == setHere.size());
     CHECK(outVariable.id == setHere[0]->id);
@@ -491,7 +501,9 @@ SECTION("constructFromVPackSingleServer") {
     CHECK(node.scorers().empty());
     CHECK(!node.volatility().first); // filter volatility
     CHECK(!node.volatility().second); // sort volatility
-    CHECK(node.getVariablesUsedHere().empty());
+    arangodb::HashSet<arangodb::aql::Variable const*> usedHere;
+    node.getVariablesUsedHere(usedHere);
+    CHECK(usedHere.empty());
     auto const setHere = node.getVariablesSetHere();
     CHECK(1 == setHere.size());
     CHECK(outVariable.id == setHere[0]->id);

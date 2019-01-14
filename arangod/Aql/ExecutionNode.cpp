@@ -738,7 +738,9 @@ struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode> {
     }
     std::cout << ep->getTypeString() << " ";
     std::cout << "regsUsedHere: ";
-    for (auto const& v : ep->getVariablesUsedHere()) {
+    arangodb::HashSet<Variable const*> variablesUsedHere;
+    ep->getVariablesUsedHere(variablesUsedHere);
+    for (auto const& v : variablesUsedHere) {
       std::cout << ep->getRegisterPlan()->varInfo.find(v->id)->second.registerId
                 << " ";
     }
@@ -1053,8 +1055,9 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
   // Now find out which registers ought to be erased after this node:
   if (en->getType() != ExecutionNode::RETURN) {
     // ReturnNodes are special, since they return a single column anyway
-    std::unordered_set<Variable const*> const& varsUsedLater = en->getVarsUsedLater();
-    std::vector<Variable const*> const& varsUsedHere = en->getVariablesUsedHere();
+    arangodb::HashSet<Variable const*> varsUsedLater = en->getVarsUsedLater();
+    arangodb::HashSet<Variable const*> varsUsedHere;
+    en->getVariablesUsedHere(varsUsedHere);
 
     // We need to delete those variables that have been used here but are not
     // used any more later:
@@ -1592,7 +1595,9 @@ bool SubqueryNode::isConst() {
     return false;
   }
 
-  for (auto const& v : getVariablesUsedHere()) {
+  arangodb::HashSet<Variable const*> vars;
+  getVariablesUsedHere(vars);
+  for (auto const& v : vars) {
     auto setter = _plan->getVarSetBy(v->id);
 
     if (setter == nullptr || setter->getType() != CALCULATION) {
@@ -1709,8 +1714,8 @@ CostEstimate SubqueryNode::estimateCost() const {
 
 /// @brief helper struct to find all (outer) variables used in a SubqueryNode
 struct SubqueryVarUsageFinder final : public WalkerWorker<ExecutionNode> {
-  std::unordered_set<Variable const*> _usedLater;
-  std::unordered_set<Variable const*> _valid;
+  arangodb::HashSet<Variable const*> _usedLater;
+  arangodb::HashSet<Variable const*> _valid;
 
   SubqueryVarUsageFinder() {}
 
@@ -1748,23 +1753,8 @@ struct SubqueryVarUsageFinder final : public WalkerWorker<ExecutionNode> {
   }
 };
 
-/// @brief getVariablesUsedHere, returning a vector
-std::vector<Variable const*> SubqueryNode::getVariablesUsedHere() const {
-  SubqueryVarUsageFinder finder;
-  _subquery->walk(finder);
-
-  std::vector<Variable const*> v;
-  for (auto var : finder._usedLater) {
-    if (finder._valid.find(var) == finder._valid.end()) {
-      v.emplace_back(var);
-    }
-  }
-
-  return v;
-}
-
 /// @brief getVariablesUsedHere, modifying the set in-place
-void SubqueryNode::getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const {
+void SubqueryNode::getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const {
   SubqueryVarUsageFinder finder;
   _subquery->walk(finder);
 

@@ -124,11 +124,8 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
     _scorers = std::move(scorers);
   }
 
-  /// @brief getVariablesUsedHere, returning a vector
-  std::vector<aql::Variable const*> getVariablesUsedHere() const override final;
-
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(std::unordered_set<aql::Variable const*>& vars) const override final;
+  void getVariablesUsedHere(arangodb::HashSet<aql::Variable const*>& vars) const override final;
 
   /// @brief returns IResearchViewNode options
   Options const& options() const noexcept { return _options; }

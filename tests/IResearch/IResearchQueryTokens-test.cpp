@@ -68,7 +68,7 @@
 
 #include <velocypack/Iterator.h>
 
-NS_LOCAL
+namespace {
 
 struct TestTermAttribute: public irs::term_attribute {
  public:
@@ -171,7 +171,7 @@ struct IResearchQueryTokensSetup {
   }
 }; // IResearchQuerySetup
 
-NS_END
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite

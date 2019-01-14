@@ -541,10 +541,8 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
     }
 
     case EN::FILTER: {
-      std::vector<Variable const*> invars = en->getVariablesUsedHere();
-      TRI_ASSERT(invars.size() == 1);
       // register which variable is used in a FILTER
-      _filterVariables.emplace(invars[0]->id);
+      _filterVariables.emplace(ExecutionNode::castTo<FilterNode const*>(en)->inVariable()->id);
       break;
     }
 
@@ -602,7 +600,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
       TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
       // edit in-place; TODO: replace node instead
       TEMPORARILY_UNLOCK_NODE(andNode);
-      std::unordered_set<Variable const*> varsUsedByCondition;
+      arangodb::HashSet<Variable const*> varsUsedByCondition;
 
       auto originalFilterConditions = std::make_unique<Condition>(_plan->getAst());
       for (size_t i = andNode->numMembers(); i > 0; --i) {
@@ -738,7 +736,7 @@ bool TraversalConditionFinder::enterSubquery(ExecutionNode*, ExecutionNode*) {
 }
 
 bool TraversalConditionFinder::isTrueOnNull(AstNode* node, Variable const* pathVar) const {
-  std::unordered_set<Variable const*> vars;
+  arangodb::HashSet<Variable const*> vars;
   Ast::getReferencedVariables(node, vars);
   if (vars.size() > 1) {
     // More then one variable.
