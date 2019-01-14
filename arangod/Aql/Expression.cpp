@@ -66,7 +66,6 @@ Expression::Expression(ExecutionPlan* plan, Ast* ast, AstNode* node)
       _canRunOnDBServer(false),
       _isDeterministic(false),
       _willUseV8(false),
-      _attributes(),
       _expressionContext(nullptr) {
   _ast->query()->unPrepareV8Context();
   TRI_ASSERT(_ast != nullptr);
@@ -186,7 +185,6 @@ void Expression::invalidateAfterReplacements() {
   }
 
   const_cast<AstNode*>(_node)->clearFlags();
-  _attributes.clear();
 }
 
 /// @brief invalidates an expression

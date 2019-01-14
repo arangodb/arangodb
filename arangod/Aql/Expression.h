@@ -341,10 +341,6 @@ class Expression {
   /// @brief whether or not the expression will make use of V8
   bool _willUseV8;
 
-  /// @brief the top-level attributes used in the expression, grouped
-  /// by variable name
-  std::unordered_map<Variable const*, std::unordered_set<std::string>> _attributes;
-
   /// @brief variables only temporarily valid during execution
   std::unordered_map<Variable const*, arangodb::velocypack::Slice> _variables;
 
