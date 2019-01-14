@@ -36,21 +36,30 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+// Missing functionality
+//
+// RegisterId ReturnBlock::returnInheritedResults() {
+//   _returnInheritedResults = true;
+//
+//   auto ep = ExecutionNode::castTo<ReturnNode const*>(getPlanNode());
+//   auto it = ep->getRegisterPlan()->varInfo.find(ep->_inVariable->id);
+//   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
+//
+//   return it->second.registerId;
+// }
+
 ReturnExecutorInfos::ReturnExecutorInfos(RegisterId inputRegister, RegisterId outputRegister,
                                          RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                                          std::unordered_set<RegisterId> registersToClear,
                                          bool returnInheritedResults)
     : ExecutorInfos(make_shared_unordered_set({inputRegister}),
-                    make_shared_unordered_set({outputRegister}),
-                    nrInputRegisters, nrOutputRegisters,
-                    std::unordered_set<RegisterId>{} /*to clear*/, // std::move(registersToClear),
+                    make_shared_unordered_set({outputRegister}), nrInputRegisters,
+                    nrOutputRegisters, std::unordered_set<RegisterId>{} /*to clear*/,  // std::move(registersToClear),
                     std::unordered_set<RegisterId>{} /*to keep*/
                     ),
       _inputRegisterId(inputRegister),
       _outputRegisterId(outputRegister),
-      _returnInheritedResults(returnInheritedResults) {
-
-      }
+      _returnInheritedResults(returnInheritedResults) {}
 
 ReturnExecutor::ReturnExecutor(Fetcher& fetcher, ReturnExecutorInfos& infos)
     : _infos(infos), _fetcher(fetcher){};
@@ -77,7 +86,7 @@ std::pair<ExecutionState, NoStats> ReturnExecutor::produceRow(OutputAqlItemRow& 
     AqlValue val;
     val = inputRow.getValue(_infos._inputRegisterId);
     AqlValueGuard guard(val, true);
-    //LOG_DEVEL << "writing to ouputReg: " << _infos._outputRegisterId;
+    // LOG_DEVEL << "writing to ouputReg: " << _infos._outputRegisterId;
     output.setValue(_infos._outputRegisterId, inputRow, val);
     guard.steal();
   }
