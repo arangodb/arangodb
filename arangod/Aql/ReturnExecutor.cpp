@@ -36,14 +36,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-static std::shared_ptr<std::unordered_set<RegisterId>> mapSortRegistersToRegisterIds(
-    std::vector<SortRegister> const& sortRegisters) {
-  auto set = std::make_shared<std::unordered_set<RegisterId>>();
-  std::transform(sortRegisters.begin(), sortRegisters.end(),
-                 std::inserter(*set, set->begin()),
-                 [](SortRegister const& sortReg) { return sortReg.reg; });
-  return set;
-}
 ReturnExecutorInfos::ReturnExecutorInfos(RegisterId inputRegister, RegisterId outputRegister,
                                          RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                                          std::unordered_set<RegisterId> registersToClear,

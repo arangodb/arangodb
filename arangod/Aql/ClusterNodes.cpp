@@ -243,18 +243,8 @@ void DistributeNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags) c
   builder.close();
 }
 
-/// @brief getVariablesUsedHere, returning a vector
-std::vector<Variable const*> DistributeNode::getVariablesUsedHere() const {
-  std::vector<Variable const*> vars;
-  vars.emplace_back(_variable);
-  if (_variable != _alternativeVariable) {
-    vars.emplace_back(_alternativeVariable);
-  }
-  return vars;
-}
-
 /// @brief getVariablesUsedHere, modifying the set in-place
-void DistributeNode::getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const {
+void DistributeNode::getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const {
   vars.emplace(_variable);
   vars.emplace(_alternativeVariable);
 }

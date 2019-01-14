@@ -59,6 +59,7 @@ char const* rocksDBEntryTypeName(RocksDBEntryType);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Used to for various metadata in the write-ahead-log
+/// @note for deprecated values please leave the value in the enum as a comment
 ////////////////////////////////////////////////////////////////////////////////
 enum class RocksDBLogType : char {
   Invalid = 0,
@@ -79,9 +80,7 @@ enum class RocksDBLogType : char {
   SinglePut = '?',
   SingleRemove = '@',                  // <- deprecated
   DocumentRemoveAsPartOfUpdate = 'A',  // <- deprecated
-#ifdef USE_IRESEARCH
-  IResearchLinkDrop = 'C',
-#endif
+  // 'C' deprecated
   CommitTransaction = 'D',
   DocumentRemoveV2 = 'E',
   SingleRemoveV2 = 'F',

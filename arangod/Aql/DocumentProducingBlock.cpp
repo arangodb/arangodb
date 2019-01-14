@@ -37,9 +37,9 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 namespace {
-static inline void handleProjections(DocumentProducingNode const* node,
-                                     transaction::Methods const* trxPtr, VPackSlice slice,
-                                     VPackBuilder& b, bool useRawDocumentPointers) {
+inline void handleProjections(DocumentProducingNode const* node,
+                              transaction::Methods const* trxPtr, VPackSlice slice,
+                              VPackBuilder& b, bool useRawDocumentPointers) {
   for (auto const& it : node->projections()) {
     if (it == StaticStrings::IdString) {
       VPackSlice found = transaction::helpers::extractIdFromDocument(slice);

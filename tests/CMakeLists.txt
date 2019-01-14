@@ -120,6 +120,7 @@ set(ARANGODB_TESTS_SOURCES
   Basics/vector-test.cpp
   Basics/structure-size-test.cpp
   Basics/EndpointTest.cpp
+  Basics/HashSetTest.cpp
   Basics/LoggerTest.cpp
   Basics/StringBufferTest.cpp
   Basics/StringUtilsTest.cpp

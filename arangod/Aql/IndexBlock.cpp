@@ -236,7 +236,7 @@ void IndexBlock::initializeOnce() {
 
     _hasV8Expression |= e->willUseV8();
 
-    std::unordered_set<Variable const*> inVars;
+    arangodb::HashSet<Variable const*> inVars;
     e->variables(inVars);
 
     _nonConstExpressions.emplace_back(

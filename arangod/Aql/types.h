@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_TYPES_H 1
 
 #include "Basics/Common.h"
+#include "Basics/HashSet.h"
 
 namespace arangodb {
 namespace aql {

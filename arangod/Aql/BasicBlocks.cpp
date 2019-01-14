@@ -33,7 +33,7 @@ SingletonBlock::SingletonBlock(ExecutionEngine* engine, SingletonNode const* ep)
     : ExecutionBlock(engine, ep) {
   auto en = ExecutionNode::castTo<SingletonNode const*>(getPlanNode());
   auto const& registerPlan = en->getRegisterPlan()->varInfo;
-  std::unordered_set<Variable const*> const& varsUsedLater = en->getVarsUsedLater();
+  arangodb::HashSet<Variable const*> const& varsUsedLater = en->getVarsUsedLater();
 
   for (auto const& it : varsUsedLater) {
     auto it2 = registerPlan.find(it->id);
