@@ -35,7 +35,7 @@ bool StoreCallback::operator()(arangodb::ClusterCommResult* res) {
 
   if (res->status == CL_COMM_ERROR) {
     LOG_DEVEL
-      << res->endpoint + _url << "(" << res->status << ", " << res->errorMessage
+      << _url << "(" << res->status << ", " << res->errorMessage
       << "): " << _body->toJson();
     
     if (res->result->getHttpReturnCode() == 404 && _agent != nullptr) {
