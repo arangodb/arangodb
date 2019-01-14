@@ -6,8 +6,9 @@ Problem
 
 I want to compile ArangoDB 3.4 and onwards under Windows.
 
-**Note:** For this recipe you need at least ArangoDB 3.4;
-For ArangoDB version before 3.4 look at the [old Compiling ArangoDB under Windows](https://docs.arangodb.com/3.0/Cookbook/CompilingUnderWindows.html).
+**Note:** If you want to compile version 3.3 or earlier, then look at the
+[Compiling ArangoDB under Windows](https://docs.arangodb.com/3.3/Cookbook/Compiling/Windows.html)
+recipe in the 3.3 documentation.
 
 Solution
 --------
@@ -21,7 +22,8 @@ to do unattended installations of some software on Windows - the cool thing Linu
 
 ### Ingredients
 
-First install the choco package manager by pasting this tiny cmdlet into a command window *(needs to be run with Administrator privileges; Right click start menu, **Command Prompt (Admin)**)*:
+First install the choco package manager by pasting this tiny cmdlet into a command window
+*(needs to be run with Administrator privileges; Right click start menu, **Command Prompt (Admin)**)*:
 
     @powershell -NoProfile -ExecutionPolicy Bypass -Command "iex ((new-object net.webclient).DownloadString('https://chocolatey.org/install.ps1'))" && SET PATH=%PATH%;%ALLUSERSPROFILE%\chocolatey\bin
 
@@ -32,22 +34,29 @@ Since choco currently fails to alter the environment for
 we suggest to download and install Visual Studio by hand.
 Currently Visual Studio 2017 is the only supported option.
 
-**You need to make sure that it installs the "Desktop development with C++" preset, else cmake will fail to dectect it later on.**
-**Also "Windows 8.1 SDK and UCRT SDK" optional component is required to be selected during Visual Studio installation, else V8 will fail to compile later on.**
+{% hint 'warning' %}
+You need to make sure that it installs the **Desktop development with C++** preset,
+else cmake will fail to detect it later on. Furthermore, the **Windows 8.1 SDK and UCRT SDK**
+optional component is required to be selected during Visual Studio installation, else V8
+will fail to compile later on.
+{% endhint %}
 
 After it successfully installed, start it once, so it can finish its setup.
 
-#### More dependencies
-Now you can invoke the choco package manager for an unattended install of the dependencies *(needs to be run with Administrator privileges again)*:
+#### More Dependencies
+
+Now you can invoke the choco package manager for an unattended install of the dependencies
+*(needs to be run with Administrator privileges again)*:
 
     choco install -y cmake.portable nsis python2 procdump windbg wget 
 
 Then we need to install the [OpenSSL](https://openssl.org) library from its sources or using precompiled
 [Third Party OpenSSL Related Binary Distributions](https://wiki.openssl.org/index.php/Binaries).
 
-#### Optional
+#### Optional Dependencies
 
-If you intend to run the unit tests or compile from git, you also need *(needs to be run with Administrator privileges again)*:
+If you intend to run the unit tests or compile from git, you also need
+*(needs to be run with Administrator privileges again)*:
 
     choco install -y git winflexbison ruby
 
@@ -55,7 +64,8 @@ Close and reopen the Administrator command window in order to continue with the 
 
     choco install -y ruby2.devkit
 
-And manually install the requirements via the `Gemfile` fetched from the ArangoDB Git repository *(needs to be run with Administrator privileges)*:
+And manually install the requirements via the `Gemfile` fetched from the ArangoDB Git repository
+*(needs to be run with Administrator privileges)*:
 
     wget https://raw.githubusercontent.com/arangodb/arangodb/3.4/tests/rb/HttpInterface/Gemfile
     setx PATH %PATH%;C:\tools\DevKit2\bin;C:\tools\DevKit2\mingw\bin /m
@@ -65,6 +75,7 @@ And manually install the requirements via the `Gemfile` fetched from the ArangoD
 Note that the V8 build scripts and gyp aren't compatible with Python 3.x hence you need python2!
 
 ### Building ArangoDB
+
 Download and extract the release tarball from https://www.arangodb.com/download/
 
 Or clone the github repository, and checkout the branch or tag you need (3.4)
@@ -89,10 +100,11 @@ You can now load these in the Visual Studio IDE or use cmake to start the build:
 The binaries need the ICU datafile `icudt54l.dat`, which is automatically copied into the directory containing the
 executable.
 
-For development, unit tests and documentation: Cygwin (Optional)
-===============================================================
+### Unit tests (Optional)
 
-The documentation and unit tests still require a [cygwin](https://www.cygwin.com/) environment. Here are the hints how to get it properly installed:
+The unit tests require a [cygwin](https://www.cygwin.com/) environment.
+
+#### Cygwin Installation Hints
 
 You need at least `make` from cygwin. Cygwin also offers a `cmake`. Do **not** install the cygwin cmake.
 
@@ -115,8 +127,7 @@ Turning ACL off (noacl) for all mounts in cygwin fixes permissions troubles that
     C:/cygwin64      /          ntfs      override,binary,auto,noacl  0  0
     none             /cygdrive  cygdrive  binary,posix=0,user,noacl   0  0
 
-Enable native symlinks for Cygwin and git
------------------------------------------
+#### Enable native symlinks for Cygwin and git
 
 Cygwin will create proprietary files as placeholders by default instead of
 actually symlinking files. The placeholders later tell Cygwin where to resolve
@@ -141,8 +152,7 @@ And in Cygwin:
 
     ln -s source target
 
-Making the ICU database publically available
---------------------------------------------
+#### Making the ICU database publically available
 
 If you intend to use the machine for development purposes, it may be more practical to copy it to a common place:
 
@@ -156,8 +166,7 @@ And variable name: `ICU_DATA` to the value: `c:\\Windows`
 
 ![HowtoSetEnv](../assets/CompilingUnderWindows/SetEnvironmentVar.png)
 
-Running Unit tests (Optional)
----------------------------
+#### Running Unit tests
 
 You can then run the integration tests in the cygwin shell like that:
 
@@ -175,7 +184,8 @@ You can then run the integration tests in the cygwin shell like that:
       --skipBoost true \
       --skipGeo true
 
-Additional options `--ruby c:/tools/ruby25/bin/ruby` and `--rspec c:/tools/ruby25/bin/rspec` should be used only if Ruby is not in the *PATH*.
+Additional options `--ruby c:/tools/ruby25/bin/ruby` and `--rspec c:/tools/ruby25/bin/rspec`
+should be used only if Ruby is not in the *PATH*.
 
 **Authors**:
 [Frank Celler](https://github.com/fceller),
