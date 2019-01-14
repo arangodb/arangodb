@@ -29,8 +29,16 @@
 #include "Basics/Common.h"
 #include "Aql/types.h"
 
+
+
 namespace arangodb {
 namespace aql {
+
+
+inline std::shared_ptr<std::unordered_set<RegisterId>>
+make_shared_unordered_set(std::initializer_list<RegisterId> const& list = std::initializer_list<RegisterId>{}){
+  return std::make_shared<std::unordered_set<RegisterId>>(list);
+}
 
 /**
  * @brief Class to be handed into Executors during construction
@@ -59,6 +67,14 @@ class ExecutorInfos {
                 std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
                 RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                 std::unordered_set<RegisterId> registersToClear);
+
+  //TODO - This constructor needs to be removed once the register planning is updated.
+  //       It was introduced to implement the ReturnExecutor.
+  ExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
+                std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
+                RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+                std::unordered_set<RegisterId> registersToClear,
+                std::unordered_set<RegisterId> registersToKeep);
 
   ExecutorInfos(ExecutorInfos &&) = default;
   ExecutorInfos(ExecutorInfos const&) = delete;

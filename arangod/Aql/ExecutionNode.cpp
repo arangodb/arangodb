@@ -1852,25 +1852,17 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
   TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
   RegisterId inputRegister = it->second.registerId;
 
-  LOG_DEVEL << "-------------------------------";
-  LOG_DEVEL << "inputRegister:     " << inputRegister;
-  LOG_DEVEL << "input block width: " << getRegisterPlan()->nrRegs[previousNode->getDepth()];
-  LOG_DEVEL << "ouput block width: " << getRegisterPlan()->nrRegs[getDepth()];
+  //REMOVE this if register planning changes have been made and the ReturnExecutor is final
+  //LOG_DEVEL << "-------------------------------";
+  //LOG_DEVEL << "inputRegister:     " << inputRegister;
+  //LOG_DEVEL << "input block width: " << getRegisterPlan()->nrRegs[previousNode->getDepth()];
+  //LOG_DEVEL << "ouput block width: " << getRegisterPlan()->nrRegs[getDepth()];
 
-  std::stringstream ss;
-  for(auto const& a : getRegsToClear()){
-    ss << a << " ";
-  }
-  LOG_DEVEL << "registersToClear:  " << ss.rdbuf();
-
-// 2019-01-11T17:45:05Z [16940] S ERROR ###### -------------------------------
-// 2019-01-11T17:45:05Z [16940] S ERROR ###### inputRegister:     0
-// 2019-01-11T17:45:05Z [16940] S ERROR ###### input block width: 1
-// 2019-01-11T17:45:05Z [16940] S ERROR ###### ouput block width: 1
-// 2019-01-11T17:45:05Z [16940] S ERROR ###### registersToClear:
-// 2019-01-11T17:45:05Z [16940] S ERROR ###### writing to ouputReg: 0
-// 2019-01-11T17:45:05Z [16940] S FATAL assertion failed in /home/oberon/checkouts/arangodb2/arangod/Aql/AqlItemBlock.h:104: _data[index * _nrRegs + varNr].isEmpty()
-
+  //std::stringstream ss;
+  //for(auto const& a : getRegsToClear()){
+  //  ss << a << " ";
+  //}
+  //LOG_DEVEL << "registersToClear:  " << ss.rdbuf();
 
   ReturnExecutorInfos infos(inputRegister, 0,
                             getRegisterPlan()->nrRegs[previousNode->getDepth()],

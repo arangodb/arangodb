@@ -44,19 +44,21 @@ static std::shared_ptr<std::unordered_set<RegisterId>> mapSortRegistersToRegiste
                  [](SortRegister const& sortReg) { return sortReg.reg; });
   return set;
 }
-
 ReturnExecutorInfos::ReturnExecutorInfos(RegisterId inputRegister, RegisterId outputRegister,
                                          RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                                          std::unordered_set<RegisterId> registersToClear,
                                          bool returnInheritedResults)
-    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(
-                        std::initializer_list<RegisterId>{inputRegister}),
-                    std::make_shared<std::unordered_set<RegisterId>>(
-                        std::initializer_list<RegisterId>{outputRegister}),
-                    nrInputRegisters, nrOutputRegisters, std::move(registersToClear)),
+    : ExecutorInfos(make_shared_unordered_set({inputRegister}),
+                    make_shared_unordered_set({outputRegister}),
+                    nrInputRegisters, nrOutputRegisters,
+                    std::unordered_set<RegisterId>{} /*to clear*/, // std::move(registersToClear),
+                    std::unordered_set<RegisterId>{} /*to keep*/
+                    ),
       _inputRegisterId(inputRegister),
       _outputRegisterId(outputRegister),
-      _returnInheritedResults(returnInheritedResults) {}
+      _returnInheritedResults(returnInheritedResults) {
+
+      }
 
 ReturnExecutor::ReturnExecutor(Fetcher& fetcher, ReturnExecutorInfos& infos)
     : _infos(infos), _fetcher(fetcher){};
@@ -83,7 +85,7 @@ std::pair<ExecutionState, NoStats> ReturnExecutor::produceRow(OutputAqlItemRow& 
     AqlValue val;
     val = inputRow.getValue(_infos._inputRegisterId);
     AqlValueGuard guard(val, true);
-    LOG_DEVEL << "writing to ouputReg: " << _infos._outputRegisterId;
+    //LOG_DEVEL << "writing to ouputReg: " << _infos._outputRegisterId;
     output.setValue(_infos._outputRegisterId, inputRow, val);
     guard.steal();
   }
