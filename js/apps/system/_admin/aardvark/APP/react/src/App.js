@@ -66,7 +66,7 @@ require('../../frontend/js/arango/arango.js');
 // only set this for development
 const env = process.env.NODE_ENV
 if (window.frontendConfig && env === 'development') {
-  window.frontendConfig.basePath = "http://localhost:8529";
+  window.frontendConfig.basePath = "http://localhost:8530";
   window.frontendConfig.react = true;
 }
 
@@ -151,10 +151,7 @@ class App extends Component {
   // <Overview />
   render() {
     return (
-      <div className="App">
-        <h2>Test </h2>
-        
-      </div>
+      <div className="App"></div>
     );
   }
 }
