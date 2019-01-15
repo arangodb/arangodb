@@ -150,6 +150,26 @@ VPackBuilder ProgramOptions::toVPack(bool onlyTouched, bool detailed,
                       VPackValue(section.enterpriseOnly ||
                                  option.hasFlag(arangodb::options::Flags::Enterprise)));
           builder.add("requiresValue", VPackValue(option.parameter->requiresValue()));
+          builder.add(VPackValue("introducedIn"));
+          if (option.hasIntroducedIn()) {
+            builder.openArray();
+            for (auto const& it : option.introducedInVersions) {
+              builder.add(VPackValue(option.toVersionString(it)));
+            }
+            builder.close();
+          } else {
+            builder.add(VPackValue(VPackValueType::Null));
+          }
+          builder.add(VPackValue("deprecatedIn"));
+          if (option.hasDeprecatedIn()) {
+            builder.openArray();
+            for (auto const& it : option.deprecatedInVersions) {
+              builder.add(VPackValue(option.toVersionString(it)));
+            }
+            builder.close();
+          } else {
+            builder.add(VPackValue(VPackValueType::Null));
+          }
           std::string values = option.parameter->description();
           if (!values.empty()) {
             builder.add("values", VPackValue(values));
@@ -289,6 +309,30 @@ bool ProgramOptions::requiresValue(std::string const& name) const {
   }
 
   return (*it2).second.parameter->requiresValue();
+}
+
+// returns the option by name. will throw if the option cannot be found
+Option& ProgramOptions::getOption(std::string const& name) {
+  std::string stripped = name;
+  size_t const pos = stripped.find(',');
+  if (pos != std::string::npos) {
+    // remove shorthand
+    stripped = stripped.substr(0, pos);
+  }
+  auto parts = Option::splitName(stripped);
+  auto it = _sections.find(parts.first);
+
+  if (it == _sections.end()) {
+    throw std::logic_error(std::string("option '") + stripped + "' not found");
+  }
+
+  auto it2 = (*it).second.options.find(parts.second);
+
+  if (it2 == (*it).second.options.end()) {
+    throw std::logic_error(std::string("option '") + stripped + "' not found");
+  }
+
+  return (*it2).second;
 }
 
 // returns an option description

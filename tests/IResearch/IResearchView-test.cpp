@@ -89,7 +89,7 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
 
-NS_LOCAL
+namespace {
 
 struct DocIdScorer: public irs::sort {
   DECLARE_SORT_TYPE() { static irs::sort::type_id type("test_doc_id"); return type; }
@@ -124,7 +124,7 @@ struct DocIdScorer: public irs::sort {
 
 REGISTER_SCORER_TEXT(DocIdScorer, DocIdScorer::make);
 
-NS_END
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -2982,7 +2982,11 @@ SECTION("test_transaction_registration") {
     CHECK((nullptr != trx.state()->findCollection(logicalCollection0->id())));
     CHECK((nullptr != trx.state()->findCollection(logicalCollection1->id())));
     std::unordered_set<std::string> expectedNames = { "testCollection0", "testCollection1" };
-    auto actualNames = trx.state()->collectionNames();
+    std::unordered_set<std::string> actualNames;
+    trx.state()->allCollections([&actualNames](arangodb::TransactionCollection& col)->bool {
+      actualNames.emplace(col.collection()->name());
+      return true;
+    });
 
     for(auto& entry: actualNames) {
       CHECK((1 == expectedNames.erase(entry)));
@@ -3004,7 +3008,11 @@ SECTION("test_transaction_registration") {
     CHECK((nullptr != trx.state()->findCollection(logicalCollection0->id())));
     CHECK((nullptr != trx.state()->findCollection(logicalCollection1->id())));
     std::unordered_set<std::string> expectedNames = { "testCollection0", "testCollection1" };
-    auto actualNames = trx.state()->collectionNames();
+    std::unordered_set<std::string> actualNames;
+    trx.state()->allCollections([&actualNames](arangodb::TransactionCollection& col)->bool {
+      actualNames.emplace(col.collection()->name());
+      return true;
+    });
 
     for(auto& entry: actualNames) {
       CHECK((1 == expectedNames.erase(entry)));
@@ -3026,7 +3034,11 @@ SECTION("test_transaction_registration") {
     CHECK((nullptr != trx.state()->findCollection(logicalCollection0->id())));
     CHECK((nullptr != trx.state()->findCollection(logicalCollection1->id())));
     std::unordered_set<std::string> expectedNames = { "testCollection0", "testCollection1" };
-    auto actualNames = trx.state()->collectionNames();
+    std::unordered_set<std::string> actualNames;
+    trx.state()->allCollections([&actualNames](arangodb::TransactionCollection& col)->bool {
+      actualNames.emplace(col.collection()->name());
+      return true;
+    });
 
     for(auto& entry: actualNames) {
       CHECK((1 == expectedNames.erase(entry)));
@@ -3048,7 +3060,11 @@ SECTION("test_transaction_registration") {
     CHECK((nullptr != trx.state()->findCollection(logicalCollection0->id())));
     CHECK((nullptr != trx.state()->findCollection(logicalCollection1->id())));
     std::unordered_set<std::string> expectedNames = { "testCollection0", "testCollection1" };
-    auto actualNames = trx.state()->collectionNames();
+    std::unordered_set<std::string> actualNames;
+    trx.state()->allCollections([&actualNames](arangodb::TransactionCollection& col)->bool {
+      actualNames.emplace(col.collection()->name());
+      return true;
+    });
 
     for(auto& entry: actualNames) {
       CHECK((1 == expectedNames.erase(entry)));
@@ -3070,7 +3086,11 @@ SECTION("test_transaction_registration") {
     CHECK((nullptr != trx.state()->findCollection(logicalCollection0->id())));
     CHECK((nullptr != trx.state()->findCollection(logicalCollection1->id())));
     std::unordered_set<std::string> expectedNames = { "testCollection0", "testCollection1" };
-    auto actualNames = trx.state()->collectionNames();
+    std::unordered_set<std::string> actualNames;
+    trx.state()->allCollections([&actualNames](arangodb::TransactionCollection& col)->bool {
+      actualNames.emplace(col.collection()->name());
+      return true;
+    });
 
     for(auto& entry: actualNames) {
       CHECK((1 == expectedNames.erase(entry)));
@@ -3092,7 +3112,11 @@ SECTION("test_transaction_registration") {
     CHECK((nullptr != trx.state()->findCollection(logicalCollection0->id())));
     CHECK((nullptr != trx.state()->findCollection(logicalCollection1->id())));
     std::unordered_set<std::string> expectedNames = { "testCollection0", "testCollection1" };
-    auto actualNames = trx.state()->collectionNames();
+    std::unordered_set<std::string> actualNames;
+    trx.state()->allCollections([&actualNames](arangodb::TransactionCollection& col)->bool {
+      actualNames.emplace(col.collection()->name());
+      return true;
+    });
 
     for(auto& entry: actualNames) {
       CHECK((1 == expectedNames.erase(entry)));
@@ -3116,7 +3140,11 @@ SECTION("test_transaction_registration") {
     CHECK((1 == trx.state()->numCollections()));
     CHECK((nullptr != trx.state()->findCollection(logicalCollection0->id())));
     std::unordered_set<std::string> expectedNames = { "testCollection0" };
-    auto actualNames = trx.state()->collectionNames();
+    std::unordered_set<std::string> actualNames;
+    trx.state()->allCollections([&actualNames](arangodb::TransactionCollection& col)->bool {
+      actualNames.emplace(col.collection()->name());
+      return true;
+    });
 
     for(auto& entry: actualNames) {
       CHECK((1 == expectedNames.erase(entry)));
@@ -3137,7 +3165,11 @@ SECTION("test_transaction_registration") {
     CHECK((1 == trx.state()->numCollections()));
     CHECK((nullptr != trx.state()->findCollection(logicalCollection0->id())));
     std::unordered_set<std::string> expectedNames = { "testCollection0" };
-    auto actualNames = trx.state()->collectionNames();
+    std::unordered_set<std::string> actualNames;
+    trx.state()->allCollections([&actualNames](arangodb::TransactionCollection& col)->bool {
+      actualNames.emplace(col.collection()->name());
+      return true;
+    });
 
     for(auto& entry: actualNames) {
       CHECK((1 == expectedNames.erase(entry)));
@@ -3158,7 +3190,11 @@ SECTION("test_transaction_registration") {
     CHECK((1 == trx.state()->numCollections()));
     CHECK((nullptr != trx.state()->findCollection(logicalCollection0->id())));
     std::unordered_set<std::string> expectedNames = { "testCollection0" };
-    auto actualNames = trx.state()->collectionNames();
+    std::unordered_set<std::string> actualNames;
+    trx.state()->allCollections([&actualNames](arangodb::TransactionCollection& col)->bool {
+      actualNames.emplace(col.collection()->name());
+      return true;
+    });
 
     for(auto& entry: actualNames) {
       CHECK((1 == expectedNames.erase(entry)));
@@ -3179,7 +3215,11 @@ SECTION("test_transaction_registration") {
     CHECK((1 == trx.state()->numCollections()));
     CHECK((nullptr != trx.state()->findCollection(logicalCollection0->id())));
     std::unordered_set<std::string> expectedNames = { "testCollection0" };
-    auto actualNames = trx.state()->collectionNames();
+    std::unordered_set<std::string> actualNames;
+    trx.state()->allCollections([&actualNames](arangodb::TransactionCollection& col)->bool {
+      actualNames.emplace(col.collection()->name());
+      return true;
+    });
 
     for(auto& entry: actualNames) {
       CHECK((1 == expectedNames.erase(entry)));
@@ -3200,7 +3240,11 @@ SECTION("test_transaction_registration") {
     CHECK((1 == trx.state()->numCollections()));
     CHECK((nullptr != trx.state()->findCollection(logicalCollection0->id())));
     std::unordered_set<std::string> expectedNames = { "testCollection0" };
-    auto actualNames = trx.state()->collectionNames();
+    std::unordered_set<std::string> actualNames;
+    trx.state()->allCollections([&actualNames](arangodb::TransactionCollection& col)->bool {
+      actualNames.emplace(col.collection()->name());
+      return true;
+    });
 
     for(auto& entry: actualNames) {
       CHECK((1 == expectedNames.erase(entry)));
@@ -3221,7 +3265,11 @@ SECTION("test_transaction_registration") {
     CHECK((1 == trx.state()->numCollections()));
     CHECK((nullptr != trx.state()->findCollection(logicalCollection0->id())));
     std::unordered_set<std::string> expectedNames = { "testCollection0" };
-    auto actualNames = trx.state()->collectionNames();
+    std::unordered_set<std::string> actualNames;
+    trx.state()->allCollections([&actualNames](arangodb::TransactionCollection& col)->bool {
+      actualNames.emplace(col.collection()->name());
+      return true;
+    });
 
     for(auto& entry: actualNames) {
       CHECK((1 == expectedNames.erase(entry)));

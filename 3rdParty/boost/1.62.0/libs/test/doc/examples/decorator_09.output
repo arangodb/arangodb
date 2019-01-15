@@ -1,5 +1,0 @@
-//[example_output
-> decorator_09 --list_content
-test_1 : enable only when ODBC is available
-test_2*: descriptions add up
-//]

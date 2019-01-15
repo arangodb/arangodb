@@ -44,6 +44,7 @@ if (USE_IRESEARCH)
     IResearch/IResearchQueryNumericTerm-test.cpp
     IResearch/IResearchQueryOr-test.cpp
     IResearch/IResearchQueryPhrase-test.cpp
+    IResearch/IResearchQueryScorer-test.cpp
     IResearch/IResearchQuerySelectAll-test.cpp
     IResearch/IResearchQueryStartsWith-test.cpp
     IResearch/IResearchQueryStringTerm-test.cpp
@@ -104,6 +105,7 @@ set(ARANGODB_TESTS_SOURCES
   Basics/vector-test.cpp
   Basics/structure-size-test.cpp
   Basics/EndpointTest.cpp
+  Basics/HashSetTest.cpp
   Basics/LoggerTest.cpp
   Basics/StringBufferTest.cpp
   Basics/StringUtilsTest.cpp
@@ -149,9 +151,15 @@ set(ARANGODB_TESTS_SOURCES
 
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags
-  # this speeds up the compilation with newer g++ versions and prevents the
-  # "variable tracking size limit exceeded warnings"
-  set_source_files_properties(${ARANGODB_TESTS_SOURCES} PROPERTIES COMPILE_FLAGS -fno-var-tracking)
+  # this speeds up the compilation with optimizations and newer g++ versions 
+  # and prevents the "variable tracking size limit exceeded warnings" from
+  # occurring
+  if (CMAKE_COMPILER_IS_GNUCC)
+    # also turn off super-expensive global common subexpression elimination for tests
+    set_source_files_properties(${ARANGODB_TESTS_SOURCES} PROPERTIES COMPILE_FLAGS "-fno-var-tracking -fno-gcse")
+  else ()
+    set_source_files_properties(${ARANGODB_TESTS_SOURCES} PROPERTIES COMPILE_FLAGS -fno-var-tracking)
+  endif ()
 endif ()
 
 add_executable(

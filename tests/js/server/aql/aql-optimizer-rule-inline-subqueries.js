@@ -280,7 +280,7 @@ function optimizerRuleViewTestSuite () {
       assertEqual("v", viewNode.condition.subNodes[0].subNodes[0].subNodes[0].subNodes[0].name);
       assertEqual("reference", viewNode.condition.subNodes[0].subNodes[0].subNodes[1].type);
       assertEqual("outer", viewNode.condition.subNodes[0].subNodes[0].subNodes[1].name);
-      assertEqual([], viewNode.sortCondition);
+      assertEqual([], viewNode.scorers);
     },
     
     testNoVariableReplacementInSearchCondition : function () {
@@ -305,7 +305,7 @@ function optimizerRuleViewTestSuite () {
       assertEqual("reference",        viewNode.condition.subNodes[0].subNodes[0].subNodes[0].subNodes[0].type);
       assertEqual("v", viewNode.condition.subNodes[0].subNodes[0].subNodes[0].subNodes[0].name);
       assertEqual("value", viewNode.condition.subNodes[0].subNodes[0].subNodes[1].type);
-      assertEqual([], viewNode.sortCondition);
+      assertEqual([], viewNode.scorers);
     },
 
   };

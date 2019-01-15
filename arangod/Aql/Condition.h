@@ -27,6 +27,7 @@
 #include "Aql/AstNode.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Common.h"
+#include "Basics/HashSet.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Slice.h>
@@ -230,7 +231,7 @@ class Condition {
   AstNode* removeTraversalCondition(ExecutionPlan const*, Variable const*, AstNode*);
 
   /// @brief remove (now) invalid variables from the condition
-  bool removeInvalidVariables(std::unordered_set<Variable const*> const&);
+  bool removeInvalidVariables(arangodb::HashSet<Variable const*> const&);
 
   /// @brief locate indexes which can be used for conditions
   /// return value is a pair indicating whether the index can be used for

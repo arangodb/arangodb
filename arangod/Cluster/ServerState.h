@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteSpinLock.h"
+#include "VocBase/voc-types.h"
 
 namespace arangodb {
 class AgencyComm;
@@ -120,9 +121,6 @@ class ServerState {
 
   /// @brief whether or not the cluster was properly initialized
   bool initialized() const { return _initialized; }
-
-  /// @brief flush the server state (used for testing)
-  void flush();
 
   bool isSingleServer() { return isSingleServer(loadRole()); }
 
@@ -242,6 +240,8 @@ class ServerState {
 
   bool getFoxxmasterQueueupdate() const noexcept;
 
+  TRI_voc_tick_t getFoxxmasterSince() const noexcept;
+
   std::string getPersistedId();
   bool hasPersistedId();
   bool writePersistedId(std::string const&);
@@ -273,6 +273,8 @@ class ServerState {
 
   /// @brief write the Current/ServersRegistered entry
   bool registerAtAgencyPhase2(AgencyComm&);
+
+  void setFoxxmasterSinceNow();
 
  private:
   /// @brief server role
@@ -309,6 +311,9 @@ class ServerState {
   std::string _foxxmaster;
 
   bool _foxxmasterQueueupdate;
+
+  // @brief point in time since which this server is the Foxxmaster
+  TRI_voc_tick_t _foxxmasterSince;
 };
 }  // namespace arangodb
 

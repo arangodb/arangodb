@@ -292,7 +292,6 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header, uint64_t messageId)
   if (_authorized || !_auth->isActive()) {
     _authenticatedUser = std::move(entry._username);
     // simon: drivers expect a response for their auth request
-
     addErrorResponse(ResponseCode::OK, rest::ContentType::VPACK, messageId,
                      TRI_ERROR_NO_ERROR, "auth successful");
   } else {

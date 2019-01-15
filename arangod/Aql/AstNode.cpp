@@ -1,6 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
-///
 /// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
@@ -44,6 +43,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/ValueType.h>
 #include <velocypack/velocypack-aliases.h>
 #include <array>
@@ -174,7 +174,7 @@ std::unordered_map<int, std::string const> const AstNode::ValueTypeNames{
 namespace {
 
 /// @brief quick translation array from an AST node value type to a VPack type
-static std::array<VPackValueType, 5> const valueTypes{{
+std::array<VPackValueType, 5> const valueTypes{{
     VPackValueType::Null,    //    VALUE_TYPE_NULL   = 0,
     VPackValueType::Bool,    //    VALUE_TYPE_BOOL   = 1,
     VPackValueType::Int,     //    VALUE_TYPE_INT    = 2,
@@ -194,7 +194,29 @@ static_assert(AstNodeValueType::VALUE_TYPE_STRING == 4,
               "incorrect ast node value types");
 
 /// @brief get the node type for inter-node comparisons
-static VPackValueType getNodeCompareType(AstNode const* node) {
+inline int valueTypeOrder(VPackValueType type) {
+  switch (type) {
+    case VPackValueType::Null:
+      return 0;
+    case VPackValueType::Bool:
+      return 1;
+    case VPackValueType::Int:
+    case VPackValueType::Double:
+      return 2;
+    case VPackValueType::String:
+    case VPackValueType::Custom: // _id
+      return 3;
+    case VPackValueType::Array:
+      return 4;
+    case VPackValueType::Object:
+      return 5;
+    default: 
+      return 0; // null
+  }
+}
+
+/// @brief get the node type for inter-node comparisons
+VPackValueType getNodeCompareType(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
   if (node->type == NODE_TYPE_VALUE) {
@@ -214,7 +236,7 @@ static VPackValueType getNodeCompareType(AstNode const* node) {
   return VPackValueType::Null;
 }
 
-static inline int compareDoubleValues(double lhs, double rhs) {
+inline int compareDoubleValues(double lhs, double rhs) {
   if (arangodb::almostEquals(lhs, rhs)) {
     return 0;
   }
@@ -257,7 +279,7 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs, bool 
                                  static_cast<double>(rhs->getIntValue()));
     }
 
-    int diff = static_cast<int>(lType) - static_cast<int>(rType);
+    int diff = valueTypeOrder(lType) - valueTypeOrder(rType);
 
     TRI_ASSERT(diff != 0);
 
@@ -746,6 +768,17 @@ std::string AstNode::getString() const {
   return std::string(getStringValue(), getStringLength());
 }
 
+/// @brief return the string value of a node, as a StringRef
+arangodb::StringRef AstNode::getStringRef() const noexcept {
+  TRI_ASSERT(type == NODE_TYPE_VALUE || type == NODE_TYPE_OBJECT_ELEMENT ||
+             type == NODE_TYPE_ATTRIBUTE_ACCESS || type == NODE_TYPE_PARAMETER ||
+             type == NODE_TYPE_PARAMETER_DATASOURCE || type == NODE_TYPE_COLLECTION ||
+             type == NODE_TYPE_VIEW || type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS ||
+             type == NODE_TYPE_FCALL_USER);
+  TRI_ASSERT(value.type == VALUE_TYPE_STRING);
+  return arangodb::StringRef(getStringValue(), getStringLength());
+}
+
 /// @brief test if all members of a node are equality comparisons
 bool AstNode::isOnlyEqualityMatch() const {
   if (type != NODE_TYPE_OPERATOR_BINARY_AND && type != NODE_TYPE_OPERATOR_NARY_AND) {
@@ -815,28 +848,31 @@ uint64_t AstNode::hashValue(uint64_t hash) const noexcept {
 
 /// @brief dump the node (for debugging purposes)
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-void AstNode::dump(int level) const {
+std::ostream& AstNode::toStream(std::ostream& os, int level) const {
   for (int i = 0; i < level; ++i) {
-    std::cout << "  ";
+    os << "  ";
   }
-  std::cout << "- " << getTypeString();
+  os << "- " << getTypeString();
 
   if (type == NODE_TYPE_VALUE || type == NODE_TYPE_ARRAY) {
-    std::cout << ": " << toVelocyPackValue().get()->toJson();
+    os << ": " << toVelocyPackValue().get()->toJson();
   } else if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    std::cout << ": " << getString();
+    os << ": " << getString();
   } else if (type == NODE_TYPE_REFERENCE) {
-    std::cout << ": " << static_cast<Variable const*>(getData())->name;
+    os << ": " << static_cast<Variable const*>(getData())->name;
   }
-  std::cout << "\n";
+  os << "\n";
 
   size_t const n = numMembers();
 
   for (size_t i = 0; i < n; ++i) {
     auto sub = getMemberUnchecked(i);
-    sub->dump(level + 1);
+    sub->toStream(os, level + 1);
   }
+  return os;
 }
+
+void AstNode::dump(int indent) const { toStream(std::cout, indent); }
 #endif
 
 /// @brief compute the value for a constant value node
@@ -977,10 +1013,20 @@ void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
 
   if (type == NODE_TYPE_OBJECT) {
     builder.openObject();
+
+    std::unordered_set<VPackStringRef> keys;
     size_t const n = numMembers();
+
     for (size_t i = 0; i < n; ++i) {
       auto member = getMemberUnchecked(i);
       if (member != nullptr) {
+        VPackStringRef key(member->getStringValue(), member->getStringLength());
+
+        if (n > 1 && !keys.emplace(key).second) {
+          // duplicate key, skip it
+          continue;
+        }
+
         builder.add(VPackValuePair(member->getStringValue(),
                                    member->getStringLength(), VPackValueType::String));
         member->getMember(0)->toVelocyPackValue(builder);

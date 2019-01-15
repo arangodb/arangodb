@@ -207,6 +207,12 @@ void RocksDBTransactionState::createTransaction() {
   // unclear performance implications do not use for now
   // trxOpts.deadlock_detect = !hasHint(transaction::Hints::Hint::NO_DLD);
 
+  if (isOnlyExclusiveTransaction()) {
+    // we are exclusively modifying collection data here, so we can turn off
+    // all concurrency controls to save time
+    trxOpts.skip_concurrency_control = true;
+  }
+
   TRI_ASSERT(_rocksTransaction == nullptr ||
              _rocksTransaction->GetState() == rocksdb::Transaction::COMMITED ||
              (_rocksTransaction->GetState() == rocksdb::Transaction::STARTED &&
@@ -532,8 +538,9 @@ Result RocksDBTransactionState::addOperation(TRI_voc_cid_t cid, TRI_voc_rid_t re
 
   // clear the query cache for this collection
   auto queryCache = arangodb::aql::QueryCache::instance();
-  if (queryCache->mayBeActive()) {
-    queryCache->invalidate(&_vocbase, tcoll->collectionName());
+
+  if (queryCache->mayBeActive() && tcoll->collection()) {
+    queryCache->invalidate(&_vocbase, tcoll->collection()->guid());
   }
 
   switch (operationType) {
