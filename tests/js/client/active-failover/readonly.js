@@ -312,11 +312,6 @@ function ActiveFailoverSuite() {
       print("connecting shell to leader ", currentLead);
       connectToServer(currentLead);
 
-      /*setReadOnly(currentLead, false);
-      if (db._collection(cname)) {
-        db._drop(cname);
-      }*/
-
       setReadOnly(currentLead, false);
       assertTrue(checkInSync(currentLead, servers));
 
@@ -389,7 +384,7 @@ function ActiveFailoverSuite() {
       let oldLead = currentLead;
       // await failover and check that follower get in sync
       currentLead = checkForFailover(currentLead);
-      return;
+
       assertTrue(currentLead !== oldLead);
       print("Failover to new leader : ", currentLead);
 

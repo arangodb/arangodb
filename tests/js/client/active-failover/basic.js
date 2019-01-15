@@ -450,10 +450,6 @@ function ActiveFailoverSuite() {
 
       assertTrue(checkInSync(currentLead, servers));
       assertEqual(checkData(currentLead), 10000);
-      /*if (checkData(currentLead) != 10000) {
-        print("ERROR! DODEBUG")
-        while(1){}
-      }*/
 
       print("Suspending followers, except original leader");
       suspended = instanceinfo.arangods.filter(arangod => arangod.role !== 'agent' &&
