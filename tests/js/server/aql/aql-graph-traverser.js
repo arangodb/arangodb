@@ -3935,6 +3935,31 @@ function exampleGraphsSuite () {
   };
 }
 
+function pruneTraversalSuite() {
+  return {
+    setUpAll: () => {
+      cleanup();
+      createBaseGraph();
+    },
+
+    tearDownAll: () => {
+      cleanup();
+    },
+
+    testAllowPruningOnV: () => {
+      const q = `
+        FOR v IN 1..3 ANY "${vertex.B}" ${en}
+          PRUNE v._key == "C"
+          RETURN v._key
+      `;
+      const res = db._query(q);
+      assertEqual(res.count(), 5);
+      assertEqual(res.toArray().sort(), ['A', 'C', 'C', 'E', 'F'].sort());
+    }
+
+  };
+}
+
 jsunity.run(simpleInboundOutboundSuite);
 jsunity.run(limitSuite);
 jsunity.run(nestedSuite);
@@ -3954,5 +3979,7 @@ jsunity.run(exampleGraphsSuite);
 if (!isCluster) {
   jsunity.run(optimizeNonVertexCentricIndexesSuite);
 }
+
+jsunity.run(pruneTraversalSuite);
 
 return jsunity.done();

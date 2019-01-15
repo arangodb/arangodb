@@ -44,7 +44,7 @@ PathEnumerator::PathEnumerator(Traverser* traverser, std::string const& startVer
 
 DepthFirstEnumerator::DepthFirstEnumerator(Traverser* traverser, std::string const& startVertex,
                                            TraverserOptions* opts)
-    : PathEnumerator(traverser, startVertex, opts) {}
+    : PathEnumerator(traverser, startVertex, opts), _pruneNext(false) {}
 
 DepthFirstEnumerator::~DepthFirstEnumerator() {}
 
@@ -61,7 +61,7 @@ bool DepthFirstEnumerator::next() {
   }
 
   while (true) {
-    if (_enumeratedPath.edges.size() < _opts->maxDepth) {
+    if (_enumeratedPath.edges.size() < _opts->maxDepth && !_pruneNext) {
       // We are not done with this path, so
       // we reserve the cursor for next depth
       auto cursor = _opts->nextCursor(_traverser->mmdr(),
@@ -77,6 +77,7 @@ bool DepthFirstEnumerator::next() {
         _enumeratedPath.edges.pop_back();
       }
     }
+    _pruneNext = false;
 
     bool foundPath = false;
 
@@ -168,6 +169,10 @@ bool DepthFirstEnumerator::next() {
       return false;
     }
   }  // while (true)
+}
+
+void DepthFirstEnumerator::prune() {
+  _pruneNext = true;
 }
 
 arangodb::aql::AqlValue DepthFirstEnumerator::lastVertexToAqlValue() {

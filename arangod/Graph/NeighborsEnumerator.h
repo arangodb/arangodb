@@ -38,6 +38,7 @@ class NeighborsEnumerator final : public arangodb::traverser::PathEnumerator {
   std::unordered_set<arangodb::StringRef> _currentDepth;
   std::unordered_set<arangodb::StringRef> _lastDepth;
   std::unordered_set<arangodb::StringRef>::iterator _iterator;
+  std::unordered_set<arangodb::StringRef> _toPrune;
 
   uint64_t _searchDepth;
 
@@ -60,11 +61,18 @@ class NeighborsEnumerator final : public arangodb::traverser::PathEnumerator {
 
   bool next() override;
 
+  void prune() override;
+
   aql::AqlValue lastVertexToAqlValue() override;
 
   aql::AqlValue lastEdgeToAqlValue() override;
 
   aql::AqlValue pathToAqlValue(arangodb::velocypack::Builder& result) override;
+
+ private:
+
+  void swapLastAndCurrentDepth();
+
 };
 
 }  // namespace graph

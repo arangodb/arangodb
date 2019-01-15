@@ -23,6 +23,7 @@
 
 #include "TraversalBlock.h"
 #include "Aql/AqlItemBlock.h"
+#include "Aql/BaseExpressionContext.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
@@ -64,7 +65,8 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
       _edgeReg(0),
       _pathVar(nullptr),
       _pathReg(0),
-      _engines(nullptr) {
+      _engines(nullptr),
+      _pruneExpression(ep->pruneExpression()) {
   auto const& registerPlan = ep->getRegisterPlan()->varInfo;
   ep->getConditionVariables(_inVars);
   for (auto const& v : _inVars) {
@@ -124,12 +126,25 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
 
   auto varInfo = getPlanNode()->getRegisterPlan()->varInfo;
 
+  // Copy _inRegs/Vars to _pruneRegs/Vars
+  
+  _pruneVars.reserve(_inVars.size());
+  _pruneRegs.reserve(_inRegs.size());
+  for (auto const v : _inVars) {
+    _pruneVars.emplace_back(v);
+  }
+  for (auto const r : _inRegs) {
+    _pruneRegs.emplace_back(r);
+  }
+
   if (usesVertexOutput()) {
     TRI_ASSERT(_vertexVar != nullptr);
     auto it = varInfo.find(_vertexVar->id);
     TRI_ASSERT(it != varInfo.end());
     TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
     _vertexReg = it->second.registerId;
+    _pruneVars.emplace_back(_vertexVar);
+    _pruneRegs.emplace_back(_vertexReg);
   }
   if (usesEdgeOutput()) {
     TRI_ASSERT(_edgeVar != nullptr);
@@ -137,6 +152,8 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
     TRI_ASSERT(it != varInfo.end());
     TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
     _edgeReg = it->second.registerId;
+    _pruneVars.emplace_back(_edgeVar);
+    _pruneRegs.emplace_back(_edgeReg);
   }
   if (usesPathOutput()) {
     TRI_ASSERT(_pathVar != nullptr);
@@ -144,6 +161,8 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
     TRI_ASSERT(it != varInfo.end());
     TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
     _pathReg = it->second.registerId;
+    _pruneVars.emplace_back(_pathVar);
+    _pruneRegs.emplace_back(_pathReg);
   }
 }
 
@@ -229,6 +248,7 @@ std::pair<ExecutionState, Result> TraversalBlock::shutdown(int errorCode) {
   return {state, result};
 }
 
+#if 0
 /// @brief read more paths from _traverser. returns true if there are more
 /// paths.
 bool TraversalBlock::getSomePaths(size_t hint) {
@@ -258,7 +278,7 @@ bool TraversalBlock::getSomePaths(size_t hint) {
     }
 
     if (usesVertexOutput()) {
-      _vertices.emplace_back(_traverser->lastVertexToAqlValue());
+      _vertices.setValue(_traverser->lastVertexToAqlValue());
     }
     if (usesEdgeOutput()) {
       _edges.emplace_back(_traverser->lastEdgeToAqlValue());
@@ -267,6 +287,18 @@ bool TraversalBlock::getSomePaths(size_t hint) {
       tmp->clear();
       _paths.emplace_back(_traverser->pathToAqlValue(*tmp.builder()));
     }
+
+    if (_pruneExpression) {
+      bool mustDestroy = false;
+      // TODO inject variables
+      BaseExpressionContext ctx(query, i, result, _inVars, _inRegs);
+      aql::AqlValue res = _pruneExpression->execute(_trx, &ctx, mustDestroy);
+      arangodb::aql::AqlValueGuard guard(res, mustDestroy);
+      TRI_ASSERT(res.isBoolean());
+      if (res.toBoolean()) {
+        LOG_DEVEL << "Trigger PRUNE!";
+      }
+    }
     throwIfKilled();  // check if we were aborted
   }
 
@@ -274,6 +306,7 @@ bool TraversalBlock::getSomePaths(size_t hint) {
   _engine->_stats.filtered += _traverser->getAndResetFilteredPaths();
   return !_vertices.empty();
 }
+#endif
 
 /// @brief skip the next paths
 size_t TraversalBlock::skipPaths(size_t hint) {
@@ -339,6 +372,146 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items, size_t pos) {
   }
 }
 
+// First : hasMore, Second: written
+std::pair<bool, bool> TraversalBlock::writePath(size_t sourceRowId, AqlItemBlock const& source,
+                                                size_t resultRowId, AqlItemBlock& result) {
+  //We have a place reserved for this row.
+  TRI_ASSERT(resultRowId < result.size());
+
+  if (!_traverser->hasMore() || !_traverser->next()) {
+    // Nothing more, nothing written.
+    return {false, false};
+  }
+
+  if (resultRowId == 0) {
+    inheritRegisters(&source, &result, sourceRowId);
+  } else {
+    // re-use already copied AqlValues
+    result.copyValuesFromFirstRow(resultRowId, getNrInputRegisters());
+  }
+
+  if (usesVertexOutput()) {
+    result.setValue(resultRowId, _vertexReg, _traverser->lastVertexToAqlValue());
+  }
+
+  if (usesEdgeOutput()) {
+    result.setValue(resultRowId, _edgeReg, _traverser->lastEdgeToAqlValue());
+  }
+
+  if (usesPathOutput()) {
+    transaction::BuilderLeaser tmp(_trx);
+    tmp->clear();
+    result.setValue(resultRowId, _pathReg, _traverser->pathToAqlValue(*tmp.builder()));
+  }
+
+  if (_pruneExpression) {
+    bool mustDestroy = false;
+    // TODO inject variables maybe _inVars or _inRegs need modification
+    BaseExpressionContext ctx(_engine->getQuery(), resultRowId, &result, _pruneVars, _pruneRegs);
+    aql::AqlValue res = _pruneExpression->execute(_trx, &ctx, mustDestroy);
+    arangodb::aql::AqlValueGuard guard(res, mustDestroy);
+    TRI_ASSERT(res.isBoolean());
+    if (res.toBoolean()) {
+      _traverser->prune();
+    }
+  }
+
+  return {_traverser->hasMore(), true};
+}
+
+/// @brief getSome
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> TraversalBlock::getSome(size_t atMost) {
+  traceGetSomeBegin(atMost);
+  RegisterId const nrOutRegs = getNrOutputRegisters();
+  RegisterId const nrInRegs = getNrInputRegisters();
+
+  while (!_done && _skipped < atMost) {
+    size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
+    BufferState bufferState = getBlockIfNeeded(toFetch);
+
+    if (bufferState == BufferState::WAITING) {
+      return {ExecutionState::WAITING, nullptr};
+    }
+    if (bufferState == BufferState::NO_MORE_BLOCKS) {
+      break;
+    }
+    TRI_ASSERT(bufferState == BufferState::HAS_BLOCKS ||
+               bufferState == BufferState::HAS_NEW_BLOCK);
+
+    TRI_ASSERT(!_buffer.empty());
+
+    // If we get here, we do have _buffer.front()
+    AqlItemBlock* cur = _buffer.front();
+    TRI_ASSERT(cur != nullptr);
+    TRI_ASSERT(nrInRegs == cur->getNrRegs());
+
+    // Initialization on the first row of each new block
+    if (bufferState == BufferState::HAS_NEW_BLOCK) {
+      // A new row (and therefore block) should only be fetched at the very
+      // beginning, or after the traverser is completely processed; in either
+      // case, the traverser should be done.
+      TRI_ASSERT(_pos == 0 && !_traverser->hasMore());
+      initializePaths(cur, _pos);
+    }
+
+    size_t toSend = atMost - _skipped;
+
+    std::unique_ptr<AqlItemBlock> res(requestBlock(toSend, nrOutRegs));
+    TRI_ASSERT(getNrInputRegisters() <= res->getNrRegs());
+
+    bool hasMore = true;
+    bool hasWritten = false;
+    size_t j = 0; // Needed after the loop
+    for (j = 0; j < toSend; j++) {
+      std::tie(hasMore, hasWritten) = writePath(_pos, *cur, j, *res.get());
+      if (!hasWritten) {
+        TRI_ASSERT(!hasMore);
+      }
+      if (!hasMore) {
+        if (j == 0) {
+          // No results, throw it away
+          res.reset();
+        } else if (j < toSend) {
+          res->shrink(j);
+        }
+        advanceCursor(0, j);
+        break;
+      }
+    }
+    if (j > 0) {
+      // We have produced a row
+      if (j < toSend) {
+        // But not all
+        res->shrink(j);
+      }
+      // Add it to collector
+      _collector.add(std::move(res));
+    } else {
+      res.reset();
+    }
+    if (!hasMore) {
+      _engine->_stats.scannedIndex += _traverser->getAndResetReadDocuments();
+      _engine->_stats.filtered += _traverser->getAndResetFilteredPaths();
+      // Reset the traverser
+      _usedConstant = false;
+      AqlItemBlock* removedBlock = advanceCursor(1, 0);
+      if (removedBlock == nullptr) {
+        initializePaths(cur, _pos);
+      }
+      returnBlockUnlessNull(removedBlock);
+    }
+  }
+
+  std::unique_ptr<AqlItemBlock> result(_collector.steal());
+  _skipped = 0;
+
+  // Clear out registers no longer needed later:
+  clearRegisters(result.get());
+  traceGetSomeEnd(result.get(), getHasMoreState());
+  return {getHasMoreState(), std::move(result)};
+}
+
+#if 0
 /// @brief getSome
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> TraversalBlock::getSome(size_t atMost) {
   traceGetSomeBegin(atMost);
@@ -433,6 +606,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> TraversalBlock::getSome
   traceGetSomeEnd(result.get(), getHasMoreState());
   return {getHasMoreState(), std::move(result)};
 }
+#endif
 
 /// @brief skipSome
 std::pair<ExecutionState, size_t> TraversalBlock::skipSome(size_t atMost) {

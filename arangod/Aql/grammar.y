@@ -199,7 +199,7 @@ static AstNode const* GetIntoExpression(AstNode const* node) {
   return node->getMember(1);
 }
 
-static AstNode const* TransformOutputVariables(Parser* parser, AstNode const* names) {
+static AstNode* TransformOutputVariables(Parser* parser, AstNode const* names) {
   auto wrapperNode = parser->ast()->createNodeArray();
   for (size_t i = 0; i < names->numMembers(); ++i) {
     AstNode* variableNameNode = names->getMemberUnchecked(i);
@@ -579,9 +579,7 @@ traversal_graph_info:
       infoNode->addMember($2);
       // Graph
       infoNode->addMember($3);
-      parser->pushStack(infoNode);
-    } prune_and_options {
-      $$ = static_cast<AstNode*>(parser->popStack());
+      $$ = infoNode;
     }
   ;
 
@@ -683,6 +681,12 @@ for_statement:
       auto graphInfoNode = static_cast<AstNode*>($4);
       TRI_ASSERT(graphInfoNode != nullptr);
       TRI_ASSERT(graphInfoNode->type == NODE_TYPE_ARRAY);
+      parser->pushStack(variablesNode);
+      parser->pushStack(graphInfoNode);
+      // This stack push/pop magic is necessary to allow v, e, and p in the prune condition
+    } prune_and_options {
+      auto graphInfoNode = static_cast<AstNode*>(parser->popStack());
+      auto variablesNode = static_cast<AstNode*>(parser->popStack());
       auto node = parser->ast()->createNodeTraversal(variablesNode, graphInfoNode);
       parser->ast()->addOperation(node);
     }

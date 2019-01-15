@@ -59,9 +59,13 @@ class TraversalBlock final : public ExecutionBlock {
   /// @brief cleanup, here we clean up all internally generated values
   void freeCaches();
 
+
+  std::pair<bool, bool> writePath(size_t sourceRowId, AqlItemBlock const& source,
+                                  size_t resultRowId, AqlItemBlock& result);
+
   /// @brief read more paths from _traverser. returns true if there are more
   /// paths.
-  bool getSomePaths(size_t hint);
+  // bool getSomePaths(size_t hint);
 
   /// @brief skip the next paths
   size_t skipPaths(size_t hint);
@@ -146,6 +150,16 @@ class TraversalBlock final : public ExecutionBlock {
   std::vector<RegisterId> _inRegs;
 
   std::unordered_map<ServerID, traverser::TraverserEngineID> const* _engines;
+
+  /// @brief The condition given in PRUNE (might be empty)
+  ///        The Node keeps responsibility
+  Expression* _pruneExpression;
+
+  // @brief _pruneVars, a vector containing all _inVars and all outVars
+  std::vector<Variable const*> _pruneVars;
+
+  // @brief _pruneRegs, a vector containg all _inRegs and outRegs
+  std::vector<RegisterId> _pruneRegs;
 };
 }  // namespace aql
 }  // namespace arangodb

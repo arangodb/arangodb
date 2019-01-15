@@ -84,13 +84,15 @@ void TraversalNode::TraversalEdgeConditionBuilder::toVelocyPack(VPackBuilder& bu
 
 TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
                              AstNode const* direction, AstNode const* start,
-                             AstNode const* graph, std::unique_ptr<BaseOptions> options)
+                             AstNode const* graph, std::unique_ptr<Expression> pruneExpression,
+                             std::unique_ptr<BaseOptions> options)
     : GraphNode(plan, id, vocbase, direction, graph, std::move(options)),
       _pathOutVariable(nullptr),
       _inVariable(nullptr),
       _condition(nullptr),
       _fromCondition(nullptr),
-      _toCondition(nullptr) {
+      _toCondition(nullptr),
+      _pruneExpression(std::move(pruneExpression)) {
   TRI_ASSERT(start != nullptr);
 
   auto ast = _plan->getAst();

@@ -58,8 +58,7 @@ bool NeighborsEnumerator::next() {
         return false;
       }
 
-      _lastDepth.swap(_currentDepth);
-      _currentDepth.clear();
+      swapLastAndCurrentDepth();
       for (auto const& nextVertex : _lastDepth) {
         auto callback = [&](EdgeDocumentToken&& eid, VPackSlice other, size_t cursorId) {
           if (_opts->hasEdgeFilter(_searchDepth, cursorId)) {
@@ -114,6 +113,10 @@ bool NeighborsEnumerator::next() {
   return true;
 }
 
+void NeighborsEnumerator::prune() {
+  _toPrune.emplace(*_iterator);
+}
+
 arangodb::aql::AqlValue NeighborsEnumerator::lastVertexToAqlValue() {
   TRI_ASSERT(_iterator != _currentDepth.end());
   return _traverser->fetchVertexData(*_iterator);
@@ -131,4 +134,16 @@ arangodb::aql::AqlValue NeighborsEnumerator::pathToAqlValue(arangodb::velocypack
   // But the Block asks for it.
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+void NeighborsEnumerator::swapLastAndCurrentDepth() {
+  // Filter all in _toPrune
+  if (!_toPrune.empty()) {
+    for (auto const& it : _toPrune) {
+      _currentDepth.erase(it);
+    }
+    _toPrune.clear();
+  }
+  _lastDepth.swap(_currentDepth);
+  _currentDepth.clear();
 }

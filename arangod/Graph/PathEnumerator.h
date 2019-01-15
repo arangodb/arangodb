@@ -95,6 +95,8 @@ class PathEnumerator {
 
   virtual bool next() = 0;
 
+  virtual void prune() = 0;
+
   virtual aql::AqlValue lastVertexToAqlValue() = 0;
   virtual aql::AqlValue lastEdgeToAqlValue() = 0;
   virtual aql::AqlValue pathToAqlValue(arangodb::velocypack::Builder&) = 0;
@@ -107,6 +109,11 @@ class DepthFirstEnumerator final : public PathEnumerator {
   //////////////////////////////////////////////////////////////////////////////
 
   std::stack<std::unique_ptr<graph::EdgeCursor>> _edgeCursors;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Flag if we need to prune the next path
+  //////////////////////////////////////////////////////////////////////////////
+  bool _pruneNext;
 
  public:
   DepthFirstEnumerator(Traverser* traverser, std::string const& startVertex,
@@ -124,6 +131,8 @@ class DepthFirstEnumerator final : public PathEnumerator {
   /// @brief Prunes the current path prefix, the next function should not return
   ///        any path having this prefix anymore.
   //////////////////////////////////////////////////////////////////////////////
+
+  void prune() override;
 
   aql::AqlValue lastVertexToAqlValue() override;
 

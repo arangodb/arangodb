@@ -207,6 +207,13 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(arangodb::aql::Que
   return ret;
 }
 
+std::unique_ptr<Expression> createPruneExpression(ExecutionPlan* plan, Ast* ast, AstNode* node) {
+  if (node->type == NODE_TYPE_NOP) {
+    return nullptr;
+  }
+  return std::make_unique<Expression>(plan, ast, node);
+}
+
 }  // namespace
 
 /// @brief create the plan
@@ -1007,8 +1014,8 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous, AstNode
     previous = calc;
   }
 
-  // Prune Condition
-  AstNode const* pruneCondition = node->getMember(3);
+  // Prune Expression
+  std::unique_ptr<Expression> pruneExpression = createPruneExpression(this, _ast, node->getMember(3));
 
   auto options =
       createTraversalOptions(getAst()->query(), direction, node->getMember(4));
@@ -1020,7 +1027,8 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous, AstNode
 
   // First create the node
   auto travNode = new TraversalNode(this, nextId(), &(_ast->query()->vocbase()),
-                                    direction, start, graph, std::move(options));
+                                    direction, start, graph,
+                                    std::move(pruneExpression), std::move(options));
 
   auto variable = node->getMember(5);
   TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);

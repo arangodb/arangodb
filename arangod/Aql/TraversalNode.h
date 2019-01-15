@@ -79,7 +79,8 @@ class TraversalNode : public GraphNode {
  public:
   TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
                 AstNode const* direction, AstNode const* start,
-                AstNode const* graph, std::unique_ptr<graph::BaseOptions> options);
+                AstNode const* graph, std::unique_ptr<Expression> pruneExpression,
+                std::unique_ptr<graph::BaseOptions> options);
 
   TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
@@ -198,6 +199,12 @@ class TraversalNode : public GraphNode {
   ///        of blocks.
   void prepareOptions() override;
 
+  // @brief Get reference to the Prune expression.
+  //        You are not responsible for it!
+  Expression* pruneExpression() const {
+    return _pruneExpression.get();
+  }
+
  private:
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   void checkConditionsDefined() const;
@@ -224,6 +231,9 @@ class TraversalNode : public GraphNode {
 
   /// @brief The hard coded condition on _to
   AstNode* _toCondition;
+
+  /// @brief The condition given in PRUNE (might be empty)
+  std::unique_ptr<Expression> _pruneExpression;
 
   /// @brief The global edge condition. Does not contain
   ///        _from and _to checks

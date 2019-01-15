@@ -181,6 +181,9 @@ bool BreadthFirstEnumerator::next() {
   return true;
 }
 
+void BreadthFirstEnumerator::prune() {
+}
+
 arangodb::aql::AqlValue BreadthFirstEnumerator::lastVertexToAqlValue() {
   TRI_ASSERT(_lastReturned < _schreier.size());
   return _traverser->fetchVertexData(_schreier[_lastReturned]->vertex);

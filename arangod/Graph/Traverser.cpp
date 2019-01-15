@@ -141,7 +141,6 @@ Traverser::Traverser(arangodb::traverser::TraverserOptions* opts,
     : _trx(trx),
       _mmdr(mmdr),
       _startIdBuilder(trx),
-      _pruneNext(false),
       _done(true),
       _opts(opts),
       _canUseOptimizedNeighbors(false) {
@@ -196,4 +195,8 @@ size_t arangodb::traverser::Traverser::getAndResetFilteredPaths() {
 
 void arangodb::traverser::Traverser::allowOptimizedNeighbors() {
   _canUseOptimizedNeighbors = true;
+}
+
+void arangodb::traverser::Traverser::prune() {
+  _enumerator->prune();
 }
