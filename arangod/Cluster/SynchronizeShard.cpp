@@ -111,7 +111,7 @@ SynchronizeShard::SynchronizeShard(MaintenanceFeature& feature, ActionDescriptio
   TRI_ASSERT(desc.has(SHARD_VERSION));
 
   if (!error.str().empty()) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << "SynchronizeShard: " << error.str();
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "SynchronizeShard: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
@@ -187,7 +187,7 @@ static arangodb::Result collectionCount(std::shared_ptr<arangodb::LogicalCollect
 
   Result res = trx.begin();
   if (!res.ok()) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << "Failed to start count transaction: " << res;
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "Failed to start count transaction: " << res;
     return res;
   }
 
@@ -196,7 +196,7 @@ static arangodb::Result collectionCount(std::shared_ptr<arangodb::LogicalCollect
   res = trx.finish(opResult.result);
 
   if (res.fail()) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
         << "Failed to finish count transaction: " << res;
     return res;
   }
@@ -232,7 +232,7 @@ static arangodb::Result addShardFollower(std::string const& endpoint,
       std::string errorMsg(
           "SynchronizeShard::addShardFollower: Failed to lookup collection ");
       errorMsg += shard;
-      LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << errorMsg;
       return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
     }
 
@@ -276,7 +276,7 @@ static arangodb::Result addShardFollower(std::string const& endpoint,
     if (result == nullptr || result->getHttpReturnCode() != 200) {
       if (lockJobId != 0) {
         errorMessage += comres->stringifyErrorMessage();
-        LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMessage;
+        LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << errorMessage;
       } else {
         errorMessage += "With shortcut (can happen, no problem).";
         LOG_TOPIC(INFO, Logger::MAINTENANCE) << errorMessage;
@@ -292,7 +292,7 @@ static arangodb::Result addShardFollower(std::string const& endpoint,
     errorMsg += database;
     errorMsg += " exception: ";
     errorMsg += e.what();
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << errorMsg;
     return arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
   }
 }
@@ -322,7 +322,7 @@ static arangodb::Result cancelReadLockOnLeader(std::string const& endpoint,
 
   if (result == nullptr || result->getHttpReturnCode() != 200) {
     auto errorMessage = comres->stringifyErrorMessage();
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
         << "cancelReadLockOnLeader: exception caught for " << body.toJson()
         << ": " << errorMessage;
     return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
@@ -355,7 +355,7 @@ static arangodb::Result cancelBarrier(std::string const& endpoint,
   // and is preferable over a segfault.
   TRI_ASSERT(comres != nullptr);
   if (comres == nullptr) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
         << "CancelBarrier: error: syncRequest returned null";
     return arangodb::Result{TRI_ERROR_INTERNAL};
   }
@@ -365,14 +365,14 @@ static arangodb::Result cancelBarrier(std::string const& endpoint,
     if (result == nullptr ||
         (result->getHttpReturnCode() != 200 && result->getHttpReturnCode() != 204)) {
       std::string errorMessage = comres->stringifyErrorMessage();
-      LOG_TOPIC(ERR, Logger::MAINTENANCE) << "CancelBarrier: error" << errorMessage;
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "CancelBarrier: error" << errorMessage;
       return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
     }
   } else {
     std::string error(
         "CancelBarrier: failed to send message to leader : status ");
     error += comres->status;
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << error;
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << error;
     return arangodb::Result(TRI_ERROR_INTERNAL, error);
   }
 
@@ -478,7 +478,7 @@ arangodb::Result SynchronizeShard::getReadLock(
     
   }
 
-  LOG_TOPIC(ERR, Logger::MAINTENANCE)
+  LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
     << "startReadLockOnLeader: couldn't obtain lock on shard leader giving up";
 
   double timeLeft =
@@ -491,7 +491,7 @@ arangodb::Result SynchronizeShard::getReadLock(
     clientId, 1, endpoint, rest::RequestType::DELETE_REQ, url, body.toJson(),
     std::unordered_map<std::string, std::string>(), timeLeft);
   if (r->result == nullptr || r->result->getHttpReturnCode() != 200) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
       << "startReadLockOnLeader: cancelation error for shard - " << collection
       << " " << r->getErrorCode() << ": " << r->stringifyErrorMessage();
   }
@@ -507,7 +507,7 @@ arangodb::Result SynchronizeShard::startReadLockOnLeader(
   rlid = 0;
   arangodb::Result result = getReadLockId(endpoint, database, clientId, timeout, rlid);
   if (!result.ok()) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << result.errorMessage();
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << result.errorMessage();
     return result;
   } else {
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "Got read lock id: " << rlid;
@@ -559,7 +559,7 @@ static arangodb::Result replicationSynchronize(
     Result r = syncer->run(configuration._incremental);
 
     if (r.fail()) {
-      LOG_TOPIC(ERR, Logger::REPLICATION)
+      LOG_TOPIC(DEBUG, Logger::REPLICATION)
           << "initial sync failed for database '" << database
           << "': " << r.errorMessage();
       THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(),
@@ -640,7 +640,7 @@ static arangodb::Result replicationSynchronizeCatchup(VPackSlice const& conf, do
   }
 
   if (r.fail()) {
-    LOG_TOPIC(ERR, Logger::REPLICATION)
+    LOG_TOPIC(DEBUG, Logger::REPLICATION)
         << "syncCollectionFinalize failed: " << r.errorMessage();
   }
 
@@ -677,7 +677,7 @@ static arangodb::Result replicationSynchronizeFinalize(VPackSlice const& conf) {
   }
 
   if (r.fail()) {
-    LOG_TOPIC(ERR, Logger::REPLICATION)
+    LOG_TOPIC(DEBUG, Logger::REPLICATION)
         << "syncCollectionFinalize failed: " << r.errorMessage();
   }
 
@@ -690,7 +690,7 @@ bool SynchronizeShard::first() {
   std::string shard = _description.get(SHARD);
   std::string leader = _description.get(THE_LEADER);
 
-  LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+  LOG_TOPIC(INFO, Logger::MAINTENANCE)
       << "SynchronizeShard: synchronizing shard '" << database << "/" << shard
       << "' for central '" << database << "/" << planId << "'";
 
@@ -772,7 +772,7 @@ bool SynchronizeShard::first() {
     if (collection == nullptr) {
       std::stringstream error;
       error << "failed to lookup local shard " << shard;
-      LOG_TOPIC(ERR, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
       _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
       return false;
     }
@@ -782,7 +782,7 @@ bool SynchronizeShard::first() {
     if (!collectionCount(collection, docCount).ok()) {
       std::stringstream error;
       error << "failed to get a count on leader " << shard;
-      LOG_TOPIC(ERR, Logger::MAINTENANCE) << "SynchronizeShard " << error.str();
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "SynchronizeShard " << error.str();
       _result.reset(TRI_ERROR_INTERNAL, error.str());
       return false;
     }
@@ -879,7 +879,7 @@ bool SynchronizeShard::first() {
         std::stringstream error;
         error << "could not initially synchronize shard " << shard << ": "
               << res.errorMessage();
-        LOG_TOPIC(ERR, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
+        LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
         _result.reset(TRI_ERROR_INTERNAL, error.str());
         return false;
       }
@@ -897,7 +897,7 @@ bool SynchronizeShard::first() {
             << "shard " << shard
             << " seems to be gone from leader, this "
                "can happen if a collection was dropped during synchronization!";
-        LOG_TOPIC(WARN, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
+        LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
         _result.reset(TRI_ERROR_INTERNAL, error.str());
         return false;
       }
@@ -931,7 +931,7 @@ bool SynchronizeShard::first() {
       error << "synchronization of";
       AppendShardInformationToMessage(database, shard, planId, startTime, error);
       error << " failed: " << e.what();
-      LOG_TOPIC(ERR, Logger::MAINTENANCE) << error.str();
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << error.str();
       _result.reset(TRI_ERROR_INTERNAL, e.what());
       return false;
     }
@@ -939,7 +939,7 @@ bool SynchronizeShard::first() {
   } catch (std::exception const& e) {
     // This catches the case that we could not even find the collection
     // locally, because the DatabaseGuard constructor threw.
-    LOG_TOPIC(WARN, Logger::MAINTENANCE)
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
         << "action " << _description << " failed with exception " << e.what();
     _result.reset(TRI_ERROR_INTERNAL, e.what());
     return false;
@@ -1046,7 +1046,7 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
     }
   }
   if (didTimeout) {
-    LOG_TOPIC(WARN, Logger::MAINTENANCE)
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
         << "Could not catchup under softLock for " << shard << " on leader: " << leader
         << " now activating hardLock. This is expected under high load.";
   }
@@ -1127,9 +1127,12 @@ Result SynchronizeShard::catchupWithExclusiveLock(
 
 void SynchronizeShard::setState(ActionState state) {
   if ((COMPLETE == state || FAILED == state) && _state != state) {
-    TRI_ASSERT(_description.has("shard"));
-    _feature.incShardVersion(_description.get("shard"));
+    auto const& shard = _description.get("shard");
+    if (COMPLETE == state) {
+      LOG_TOPIC(INFO, Logger::MAINTENANCE)
+        << "SynchronizeShard: synchronization completed for shard " << shard;
+    }
+    _feature.incShardVersion(shard);
   }
-
   ActionBase::setState(state);
 }
