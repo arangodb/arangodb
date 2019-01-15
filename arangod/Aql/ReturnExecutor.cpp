@@ -17,19 +17,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ReturnExecutor.h"
-
 #include "Basics/Common.h"
-
-#include "Aql/AllRowsFetcher.h"
-#include "Aql/AqlItemMatrix.h"
-#include "Aql/ExecutionBlockImpl.h"
-#include "Aql/InputAqlItemRow.h"
+#include "ReturnExecutor.h"
+#include "Aql/AqlValue.h"
 #include "Aql/OutputAqlItemRow.h"
-#include "Aql/SortRegister.h"
 
 #include <algorithm>
 
@@ -65,19 +59,20 @@ ReturnExecutor::ReturnExecutor(Fetcher& fetcher, ReturnExecutorInfos& infos)
     : _infos(infos), _fetcher(fetcher){};
 ReturnExecutor::~ReturnExecutor() = default;
 
-std::pair<ExecutionState, NoStats> ReturnExecutor::produceRow(OutputAqlItemRow& output) {
+std::pair<ExecutionState, ReturnExecutor::Stats> ReturnExecutor::produceRow(OutputAqlItemRow& output) {
   ExecutionState state;
+  ReturnExecutor::Stats stats;
   InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
   std::tie(state, inputRow) = _fetcher.fetchRow();
 
   if (state == ExecutionState::WAITING) {
     TRI_ASSERT(!inputRow);
-    return {state, NoStats{}};
+    return {state, std::move(stats)};
   }
 
   if (!inputRow) {
     TRI_ASSERT(state == ExecutionState::DONE);
-    return {state, NoStats{}};
+    return {state, std::move(stats)};
   }
 
   if (_infos._returnInheritedResults) {
@@ -91,5 +86,6 @@ std::pair<ExecutionState, NoStats> ReturnExecutor::produceRow(OutputAqlItemRow& 
     guard.steal();
   }
 
-  return {state, NoStats{}};
+  stats.incrCounted();
+  return {state, std::move(stats)};
 }

@@ -69,7 +69,7 @@ SCENARIO("ReturnExecutor", "[AQL][EXECUTOR][RETURN]") {
     WHEN("the producer does not wait") {
       SingleRowFetcherHelper fetcher(input.steal(), false);
       ReturnExecutor testee(fetcher, infos);
-      NoStats stats{};
+      CountStats stats{};
 
       THEN("the executor should return DONE with nullptr") {
         OutputAqlItemRow result(std::move(outputBlockShell));
@@ -82,7 +82,7 @@ SCENARIO("ReturnExecutor", "[AQL][EXECUTOR][RETURN]") {
     WHEN("the producer waits") {
       SingleRowFetcherHelper fetcher(input.steal(), true);
       ReturnExecutor testee(fetcher, infos);
-      NoStats stats{};
+      CountStats stats{};
 
       THEN("the executor should first return WAIT with nullptr") {
         OutputAqlItemRow result(std::move(outputBlockShell));
@@ -106,7 +106,7 @@ SCENARIO("ReturnExecutor", "[AQL][EXECUTOR][RETURN]") {
     WHEN("the producer does not wait") {
       SingleRowFetcherHelper fetcher(input->steal(), false);
       ReturnExecutor testee(fetcher, infos);
-      NoStats stats{};
+      CountStats stats{};
 
       THEN("the executor should return the rows") {
         OutputAqlItemRow row(std::move(outputBlockShell));
@@ -137,7 +137,7 @@ SCENARIO("ReturnExecutor", "[AQL][EXECUTOR][RETURN]") {
     WHEN("the producer waits") {
       SingleRowFetcherHelper fetcher(input->steal(), true);
       ReturnExecutor testee(fetcher, infos);
-      NoStats stats{};
+      CountStats stats{};
 
       THEN("the executor should return the rows") {
         OutputAqlItemRow row(std::move(outputBlockShell));
