@@ -571,7 +571,9 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(QueryRegistry* queryRegist
       // caller needs to look into when fetching the results
 
       // in short: this avoids copying the return values
-      engine->resultRegister(static_cast<ReturnBlock*>(root)->returnInheritedResults());
+
+      //RENABLE?!
+      //engine->resultRegister(static_cast<ReturnBlock*>(root)->returnInheritedResults());
     }
 
     engine->_root = root;

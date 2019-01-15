@@ -1047,7 +1047,6 @@ struct SortInformation {
 /// @brief class ReturnNode
 class ReturnNode : public ExecutionNode {
   friend class ExecutionBlock;
-  friend class ReturnBlock;
   friend class RedundantCalculationsReplacer;
 
   /// @brief constructors for various arguments, always with offset and limit

@@ -93,6 +93,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/FilterExecutorTest.cpp
   Aql/NoResultsExecutorTest.cpp
   Aql/RestAqlHandlerTest.cpp
+  Aql/ReturnExecutorTest.cpp
   Aql/SingleRowFetcherTest.cpp
   Aql/SortExecutorTest.cpp
   Aql/TestEmptyExecutorHelper.cpp
