@@ -18,12 +18,14 @@ First, you obviously need a Kubernetes cluster and the right credentials
 to access it. If you already have this, you can immediately skip to the
 next section. Since different cloud providers differ slightly in their
 Kubernetes offering, we have put together detailed tutorials for those
-platforms we officially support, follow the link for detailed setup
+platforms we officially support. We also provide a tutorial to deploy
+ArangoDB on bare metal Kubernetes. Follow the links below for detailed setup
 instructions:
 
  - [Amazon Elastic Kubernetes Service (EKS)](EKS.md)
  - [Google Kubernetes Engine (GKE)](GKE.md)
  - [Microsoft Azure Kubernetes Service (AKS)](AKS.md)
+ - [Bare Metal Kubernetes](bare-metal.md)
 
 Note that in particular the details of Role Based Access Control (RBAC)
 matter.
