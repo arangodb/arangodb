@@ -101,7 +101,6 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
 
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager{&monitor};
-
   auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
 
   TraverserOptions traversalOptions(fakedQuery.get());
