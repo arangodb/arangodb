@@ -163,6 +163,7 @@ class StorageEngineMock: public arangodb::StorageEngine {
  public:
   static std::function<void()> before;
   static bool inRecoveryResult;
+  static std::string versionFilenameResult;
   std::map<std::pair<TRI_voc_tick_t, TRI_voc_cid_t>, arangodb::velocypack::Builder> views;
   std::atomic<size_t> vocbaseCount;
 

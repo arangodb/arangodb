@@ -1,0 +1,179 @@
+# Copyright 2002-2017 Rene Rivera
+# Copyright 2002-2017 Vladimir Prus
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+import "class" : new ;
+import generators ;
+
+# The generator class for handling EXE and SHARED_LIB creation.
+#
+class linking-generator : generator
+{
+    import path ;
+    import project ;
+    import property-set ;
+    import type ;
+
+    rule __init__ ( id
+        composing ?    :  # The generator will be composing if a non-empty
+                          # string is passed or the parameter is not given. To
+                          # make the generator non-composing, pass an empty
+                          # string ("").
+        source-types + :
+        target-types + :
+        requirements * )
+    {
+        composing ?= true ;
+        generator.__init__ $(id) $(composing) : $(source-types)
+            : $(target-types) : $(requirements) ;
+    }
+
+    rule run ( project name ? : property-set : sources + )
+    {
+        sources += [ $(property-set).get <library>  ] ;
+
+        # Add <library-path> properties for all searched libraries.
+        local extra = <relevant>link ;
+        for local s in $(sources)
+        {
+            if [ $(s).type ] = SEARCHED_LIB
+            {
+                local search = [ $(s).search ] ;
+                extra += <library-path>$(search) ;
+            }
+        }
+
+        # It is possible that sources include shared libraries that did not came
+        # from 'lib' targets, e.g. .so files specified as sources. In this case
+        # we have to add extra dll-path properties and propagate extra xdll-path
+        # properties so that application linking to us will get xdll-path to
+        # those libraries.
+        local extra-xdll-paths ;
+        for local s in $(sources)
+        {
+            if [ type.is-derived [ $(s).type ] SHARED_LIB ] && ! [ $(s).action ]
+            {
+                local location = [ path.root [ $(s).name ]
+                    [ $(s).path ] ] ;
+                extra-xdll-paths += [ path.parent $(location) ] ;
+            }
+        }
+
+        # Hardcode DLL paths only when linking executables.
+        # Pros: do not need to relink libraries when installing.
+        # Cons: "standalone" libraries (plugins, python extensions) can not
+        # hardcode paths to dependent libraries.
+        if [ $(property-set).get <hardcode-dll-paths> ] = true
+            && [ type.is-derived $(self.target-types[1]) EXE ]
+        {
+            local xdll-path = [ $(property-set).get <xdll-path> ] ;
+            extra += <dll-path>$(xdll-path) <dll-path>$(extra-xdll-paths) ;
+        }
+
+        if $(extra)
+        {
+            property-set = [ $(property-set).add-raw $(extra) ] ;
+        }
+
+        local result = [ generator.run $(project) $(name) : $(property-set)
+            : $(sources) ] ;
+
+        local ur ;
+        if $(result)
+        {
+            ur = [ extra-usage-requirements $(result[2-]) : $(property-set) ] ;
+            ur = [ $(ur).add-raw
+                   <relevant>link <xdll-path>$(extra-xdll-paths) ] ;
+            ur = [ $(ur).add $(result[1]) ] ;
+        }
+        return $(ur) $(result[2-]) ;
+    }
+
+    rule extra-usage-requirements ( created-targets * : property-set )
+    {
+        local result = [ property-set.empty ] ;
+        local extra ;
+
+        # Add appropriate <xdll-path> usage requirements.
+        local raw = [ $(property-set).raw ] ;
+        if <link>shared in $(raw)
+        {
+            local paths ;
+            local pwd = [ path.pwd ] ;
+            for local t in $(created-targets)
+            {
+                if [ type.is-derived [ $(t).type ] SHARED_LIB ]
+                {
+                    paths += [ path.root [ path.make [ $(t).path ] ] $(pwd) ] ;
+                }
+            }
+            extra += $(paths:G=<xdll-path>) ;
+        }
+
+        # We need to pass <xdll-path> features that we've got from sources,
+        # because if a shared library is built, exe using it needs to know paths
+        # to other shared libraries this one depends on in order to be able to
+        # find them all at runtime.
+
+        # Just pass all features in property-set, it is theoretically possible
+        # that we will propagate <xdll-path> features explicitly specified by
+        # the user, but then the user is to blame for using an internal feature.
+        local values = [ $(property-set).get <xdll-path> ] ;
+        extra += $(values:G=<xdll-path>) ;
+
+        if $(extra)
+        {
+            result = [ property-set.create $(extra) ] ;
+        }
+        return $(result) ;
+    }
+
+    rule generated-targets ( sources + : property-set : project name ? )
+    {
+        local sources2 ;     # Sources to pass to inherited rule.
+        local properties2 ;  # Properties to pass to inherited rule.
+        local libraries ;    # Library sources.
+
+        # Searched libraries are not passed as arguments to the linker but via
+        # some option. So, we pass them to the action using a property.
+        properties2 = [ $(property-set).raw ] ;
+        local fsa ;
+        local fst ;
+        for local s in $(sources)
+        {
+            if [ type.is-derived [ $(s).type ] SEARCHED_LIB ]
+            {
+                local name = [ $(s).name ] ;
+                if [ $(s).shared ]
+                {
+                    fsa += $(name) ;
+                }
+                else
+                {
+                    fst += $(name) ;
+                }
+            }
+            else
+            {
+                sources2 += $(s) ;
+            }
+        }
+        properties2 += <find-shared-library>$(fsa:J=&&)
+                       <find-static-library>$(fst:J=&&) ;
+
+        return [ generator.generated-targets $(sources2)
+            : [ property-set.create $(properties2) ] : $(project) $(name) ] ;
+    }
+}
+
+
+rule register-linker ( id composing ? : source-types + : target-types +
+    : requirements * )
+{
+    generators.register [ new linking-generator $(id) $(composing)
+        : $(source-types) : $(target-types) : $(requirements) ] ;
+}
+
+IMPORT $(__name__) : register-linker : : generators.register-linker ;

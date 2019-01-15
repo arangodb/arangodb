@@ -33,7 +33,6 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
-#include "Scheduler/JobGuard.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Hints.h"
@@ -163,13 +162,31 @@ std::shared_ptr<VPackBuilder> Task::registeredTasks() {
 }
 
 void Task::shutdownTasks() {
-  MUTEX_LOCKER(guard, _tasksLock);
-
-  for (auto& it : _tasks) {
-    it.second.second->cancel();
+  {
+    MUTEX_LOCKER(guard, _tasksLock);
+    for (auto& it : _tasks) {
+      it.second.second->cancel();
+    }
   }
 
-  _tasks.clear();
+  // wait for the tasks to be cleaned up
+  int iterations = 0;
+  while (true) {
+    size_t size;
+    {
+      MUTEX_LOCKER(guard, _tasksLock);
+      size = _tasks.size();
+    }
+
+    if (size == 0) {
+      break;
+    }
+
+    if (++iterations % 10 == 0) {
+      LOG_TOPIC(INFO, Logger::FIXME) << "waiting for " << size << " task(s) to complete";
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+  }
 }
 
 void Task::removeTasksForDatabase(std::string const& name) {
@@ -239,11 +256,11 @@ void Task::setParameter(std::shared_ptr<arangodb::velocypack::Builder> const& pa
 
 void Task::setUser(std::string const& user) { _user = user; }
 
-std::function<void(const asio::error_code&)> Task::callbackFunction() {
+std::function<void(bool cancelled)> Task::callbackFunction() {
   auto self = shared_from_this();
 
-  return [self, this](const asio::error_code& error) {
-    if (error) {
+  return [self, this](bool cancelled) {
+    if (cancelled) {
       MUTEX_LOCKER(guard, _tasksLock);
 
       auto itr = _tasks.find(_id);
@@ -270,25 +287,24 @@ std::function<void(const asio::error_code&)> Task::callbackFunction() {
     }
 
     // permissions might have changed since starting this task
-    if (SchedulerFeature::SCHEDULER->isStopping() || !allowContinue) {
-      Task::unregisterTask(_id, false);
+    if (application_features::ApplicationServer::isStopping() || !allowContinue) {
+      Task::unregisterTask(_id, true);
       return;
     }
 
     // now do the work:
-    SchedulerFeature::SCHEDULER->queue(RequestPriority::LOW, [self, this, execContext] {
+    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [self, this, execContext] {
       ExecContextScope scope(_user.empty() ? ExecContext::superuser()
                                            : execContext.get());
-
       work(execContext.get());
 
-      if (_periodic.load() && !SchedulerFeature::SCHEDULER->isStopping()) {
+      if (_periodic.load() && !application_features::ApplicationServer::isStopping()) {
         // requeue the task
         queue(_interval);
       } else {
         // in case of one-off tasks or in case of a shutdown, simply
         // remove the task from the list
-        Task::unregisterTask(_id, false);
+        Task::unregisterTask(_id, true);
       }
     });
   };
@@ -297,9 +313,10 @@ std::function<void(const asio::error_code&)> Task::callbackFunction() {
 void Task::start() {
   TRI_ASSERT(ExecContext::CURRENT == nullptr || ExecContext::CURRENT->isAdminUser() ||
              (!_user.empty() && ExecContext::CURRENT->user() == _user));
+
   {
-    MUTEX_LOCKER(lock, _timerMutex);
-    _timer.reset(SchedulerFeature::SCHEDULER->newSteadyTimer());
+    MUTEX_LOCKER(lock, _taskHandleMutex);
+    _taskHandle.reset();
   }
 
   if (_offset.count() <= 0) {
@@ -311,20 +328,16 @@ void Task::start() {
 }
 
 void Task::queue(std::chrono::microseconds offset) {
-  MUTEX_LOCKER(lock, _timerMutex);
-  _timer->expires_from_now(offset);
-  _timer->async_wait(callbackFunction());
+  MUTEX_LOCKER(lock, _taskHandleMutex);
+  _taskHandle = SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW,
+                                                        offset, callbackFunction());
 }
 
 void Task::cancel() {
   // this will prevent the task from dispatching itself again
   _periodic.store(false);
-
-  asio::error_code ec;
-  {
-    MUTEX_LOCKER(lock, _timerMutex);
-    _timer->cancel(ec);
-  }
+  MUTEX_LOCKER(lock, _taskHandleMutex);
+  _taskHandle.reset();
 }
 
 std::shared_ptr<VPackBuilder> Task::toVelocyPack() const {

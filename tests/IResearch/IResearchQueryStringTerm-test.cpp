@@ -72,7 +72,7 @@
 
 extern const char* ARGV0; // defined in main.cpp
 
-NS_LOCAL
+namespace {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -195,7 +195,7 @@ struct IResearchQueryStringTermSetup {
   }
 }; // IResearchQuerySetup
 
-NS_END
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite

@@ -29,7 +29,7 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Ast.h"
 #include "Aql/BasicBlocks.h"
-#include "Aql/CalculationBlock.h"
+#include "Aql/CalculationExecutor.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/CollectNode.h"
 #include "Aql/Collection.h"
@@ -44,6 +44,7 @@
 #include "Aql/ModificationNodes.h"
 #include "Aql/NodeFinder.h"
 #include "Aql/Query.h"
+#include "Aql/ReturnExecutor.h"
 #include "Aql/ShortestPathNode.h"
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
@@ -738,7 +739,9 @@ struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode> {
     }
     std::cout << ep->getTypeString() << " ";
     std::cout << "regsUsedHere: ";
-    for (auto const& v : ep->getVariablesUsedHere()) {
+    arangodb::HashSet<Variable const*> variablesUsedHere;
+    ep->getVariablesUsedHere(variablesUsedHere);
+    for (auto const& v : variablesUsedHere) {
       std::cout << ep->getRegisterPlan()->varInfo.find(v->id)->second.registerId
                 << " ";
     }
@@ -1053,8 +1056,9 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
   // Now find out which registers ought to be erased after this node:
   if (en->getType() != ExecutionNode::RETURN) {
     // ReturnNodes are special, since they return a single column anyway
-    std::unordered_set<Variable const*> const& varsUsedLater = en->getVarsUsedLater();
-    std::vector<Variable const*> const& varsUsedHere = en->getVariablesUsedHere();
+    arangodb::HashSet<Variable const*> varsUsedLater = en->getVarsUsedLater();
+    arangodb::HashSet<Variable const*> varsUsedHere;
+    en->getVariablesUsedHere(varsUsedHere);
 
     // We need to delete those variables that have been used here but are not
     // used any more later:
@@ -1285,9 +1289,7 @@ void EnumerateListNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) 
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> EnumerateListNode::createBlock(
-    ExecutionEngine &engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
-) const {
+    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
@@ -1300,9 +1302,11 @@ std::unique_ptr<ExecutionBlock> EnumerateListNode::createBlock(
   RegisterId outRegister = it->second.registerId;
 
   EnumerateListExecutorInfos infos(inputRegister, outRegister,
-                      getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), engine.getQuery()->trx());
-  return std::make_unique<ExecutionBlockImpl<EnumerateListExecutor>>(&engine, this, std::move(infos));
+                                   getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                                   getRegisterPlan()->nrRegs[getDepth()],
+                                   getRegsToClear(), engine.getQuery()->trx());
+  return std::make_unique<ExecutionBlockImpl<EnumerateListExecutor>>(&engine, this,
+                                                                     std::move(infos));
 }
 
 /// @brief clone ExecutionNode recursively
@@ -1481,7 +1485,45 @@ void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) co
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<CalculationBlock>(&engine, this);
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+  auto it = getRegisterPlan()->varInfo.find(_outVariable->id);
+  TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+  RegisterId outputRegister = it->second.registerId;
+
+  arangodb::HashSet<Variable const*> inVars;
+  _expression->variables(inVars);
+
+  std::vector<Variable const*> expInVars;
+  expInVars.reserve(inVars.size());
+  std::vector<RegisterId> expInRegs;
+  expInRegs.reserve(inVars.size());
+
+  auto& varInfo = getRegisterPlan()->varInfo;
+  for (auto& var : inVars) {
+    TRI_ASSERT(var != nullptr);
+    auto infoIter = varInfo.find(var->id);
+    TRI_ASSERT(infoIter != varInfo.end());
+    TRI_ASSERT(infoIter->second.registerId < ExecutionNode::MaxRegisterId);
+
+    expInVars.emplace_back(var);
+    expInRegs.emplace_back(infoIter->second.registerId);
+  }
+
+  CalculationExecutorInfos infos(
+      outputRegister, getRegisterPlan()->nrRegs[previousNode->getDepth()],
+      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear()
+
+                                                 ,
+      engine.getQuery()  // used for v8 contexts and in expression
+      ,
+      this->expression(), std::move(expInVars)  // required by expression.execute
+      ,
+      std::move(expInRegs)  // required by expression.execute
+  );
+
+  return std::make_unique<ExecutionBlockImpl<CalculationExecutor>>(&engine, this,
+                                                                   std::move(infos));
 }
 
 ExecutionNode* CalculationNode::clone(ExecutionPlan* plan, bool withDependencies,
@@ -1551,7 +1593,9 @@ bool SubqueryNode::isConst() {
     return false;
   }
 
-  for (auto const& v : getVariablesUsedHere()) {
+  arangodb::HashSet<Variable const*> vars;
+  getVariablesUsedHere(vars);
+  for (auto const& v : vars) {
     auto setter = _plan->getVarSetBy(v->id);
 
     if (setter == nullptr || setter->getType() != CALCULATION) {
@@ -1668,8 +1712,8 @@ CostEstimate SubqueryNode::estimateCost() const {
 
 /// @brief helper struct to find all (outer) variables used in a SubqueryNode
 struct SubqueryVarUsageFinder final : public WalkerWorker<ExecutionNode> {
-  std::unordered_set<Variable const*> _usedLater;
-  std::unordered_set<Variable const*> _valid;
+  arangodb::HashSet<Variable const*> _usedLater;
+  arangodb::HashSet<Variable const*> _valid;
 
   SubqueryVarUsageFinder() {}
 
@@ -1707,23 +1751,8 @@ struct SubqueryVarUsageFinder final : public WalkerWorker<ExecutionNode> {
   }
 };
 
-/// @brief getVariablesUsedHere, returning a vector
-std::vector<Variable const*> SubqueryNode::getVariablesUsedHere() const {
-  SubqueryVarUsageFinder finder;
-  _subquery->walk(finder);
-
-  std::vector<Variable const*> v;
-  for (auto var : finder._usedLater) {
-    if (finder._valid.find(var) == finder._valid.end()) {
-      v.emplace_back(var);
-    }
-  }
-
-  return v;
-}
-
 /// @brief getVariablesUsedHere, modifying the set in-place
-void SubqueryNode::getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const {
+void SubqueryNode::getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const {
   SubqueryVarUsageFinder finder;
   _subquery->walk(finder);
 
@@ -1778,18 +1807,16 @@ void FilterNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> FilterNode::createBlock(
-    ExecutionEngine &engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
-) const {
+    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
   auto it = getRegisterPlan()->varInfo.find(_inVariable->id);
   TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
   RegisterId inputRegister = it->second.registerId;
 
-  FilterExecutorInfos infos(
-      inputRegister, getRegisterPlan()->nrRegs[previousNode->getDepth()],
-      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear());
+  FilterExecutorInfos infos(inputRegister,
+                            getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                            getRegisterPlan()->nrRegs[getDepth()], getRegsToClear());
   return std::make_unique<ExecutionBlockImpl<FilterExecutor>>(&engine, this,
                                                               std::move(infos));
 }
@@ -1846,7 +1873,32 @@ void ReturnNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<ReturnBlock>(&engine, this);
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+
+  auto it = getRegisterPlan()->varInfo.find(_inVariable->id);
+  TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+  RegisterId inputRegister = it->second.registerId;
+
+  // TODO - remove LOGGING once register planning changes have been made and the ReturnExecutor is final
+  // LOG_DEVEL << "-------------------------------";
+  // LOG_DEVEL << "inputRegister:     " << inputRegister;
+  // LOG_DEVEL << "input block width: " << getRegisterPlan()->nrRegs[previousNode->getDepth()];
+  // LOG_DEVEL << "ouput block width: " << getRegisterPlan()->nrRegs[getDepth()];
+
+  // std::stringstream ss;
+  // for(auto const& a : getRegsToClear()){
+  //  ss << a << " ";
+  //}
+  // LOG_DEVEL << "registersToClear:  " << ss.rdbuf();
+
+  ReturnExecutorInfos infos(inputRegister, 0,
+                            getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                            getRegisterPlan()->nrRegs[getDepth()],  // if that is set to 1 - infos will complain that there are less output than input registers
+                            getRegsToClear(),
+                            false /*return inherited was set on return block*/);
+  return std::make_unique<ExecutionBlockImpl<ReturnExecutor>>(&engine, this,
+                                                              std::move(infos));
 }
 
 /// @brief clone ExecutionNode recursively

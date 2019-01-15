@@ -27,10 +27,6 @@
 #include "Aql/ExecutionNode.h"
 #include "types.h"
 
-#if 0  // #ifdef USE_IRESEARCH
-#include "search/sort.hpp"
-#endif
-
 namespace arangodb {
 namespace aql {
 
@@ -39,6 +35,7 @@ namespace aql {
 struct SortRegister {
    SortRegister(SortRegister&) = delete; //we can not copy the ireseach scorer
    SortRegister(SortRegister&&) = default;
+
 #if 0  // #ifdef USE_IRESEARCH
   typedef int(*CompareFunc)(
     irs::sort::prepared const* scorer,
@@ -50,7 +47,7 @@ struct SortRegister {
   irs::sort::prepared::ptr scorer;
   CompareFunc comparator;
 #endif
-  //std::vector<std::string> attributePath;
+
   std::vector<std::string> const& attributePath;
   RegisterId reg;
   bool asc;

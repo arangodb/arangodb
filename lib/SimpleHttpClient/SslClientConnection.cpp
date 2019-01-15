@@ -24,6 +24,11 @@
 #include "SslClientConnection.h"
 
 #include <openssl/ssl.h>
+#include <openssl/opensslv.h>
+
+#ifndef OPENSSL_VERSION_NUMBER
+#error expecting OPENSSL_VERSION_NUMBER to be defined
+#endif
 
 #ifdef TRI_HAVE_WINSOCK2_H
 #include <WS2tcpip.h>
@@ -221,29 +226,46 @@ void SslClientConnection::init(uint64_t sslProtocol) {
       meth = SSLv23_method();
       break;
 
-#if defined OPENSSL_VERSION_MAJOR && OPENSSL_VERSION_MAJOR == 1
-#if defined OPENSSL_VERSION_MINOR && OPENSSL_VERSION_MINOR >= 1
     case TLS_V1:
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      meth = TLS_client_method();
+#else
+      meth = TLSv1_method();
+#endif
+      break;
+
     case TLS_V12:
-    case SSL_UNKNOWN:
-    default:
-      // default is to use TLSv12
-      meth = TLS_method();
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      meth = TLS_client_method();
+#else
+      meth = TLSv1_2_method();
+#endif
+      break;
+
+    case TLS_V13:
+      // TLS 1.3, only supported from OpenSSL 1.1.1 onwards
+
+      // openssl version number format is
+      // MNNFFPPS: major minor fix patch status
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+      meth = TLS_client_method();
       break;
 #else
-    case TLS_V1:
-      meth = TLSv1_method();
-      break;
-    case TLS_V12:
-      meth = TLSv1_2_method();
-      break;
+      // no TLS 1.3 support
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                     "TLS 1.3 is not supported in this build");
+#endif
+
     case SSL_UNKNOWN:
     default:
-      // default is to use TLSv12
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      // The actual protocol version used will be negotiated to the highest version mutually supported by the client and the server. The supported protocols are SSLv3, TLSv1, TLSv1.1 and TLSv1.2. Applications should use these methods, and avoid the version-specific methods described below.
+      meth = TLS_method();
+#else
+      // default to TLS 1.2
       meth = TLSv1_2_method();
+#endif
       break;
-#endif
-#endif
   }
 
   _ctx = SSL_CTX_new(meth);
@@ -297,6 +319,7 @@ bool SslClientConnection::connectSocket() {
   switch (SslProtocol(_sslProtocol)) {
     case TLS_V1:
     case TLS_V12:
+    case TLS_V13:
     default:
       SSL_set_tlsext_host_name(_ssl, _endpoint->host().c_str());
   }

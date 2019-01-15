@@ -89,7 +89,7 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
 
-NS_LOCAL
+namespace {
 
 struct DocIdScorer: public irs::sort {
   DECLARE_SORT_TYPE() { static irs::sort::type_id type("test_doc_id"); return type; }
@@ -124,7 +124,7 @@ struct DocIdScorer: public irs::sort {
 
 REGISTER_SCORER_TEXT(DocIdScorer, DocIdScorer::make);
 
-NS_END
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down

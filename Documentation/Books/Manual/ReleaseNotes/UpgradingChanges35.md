@@ -6,6 +6,15 @@ upgrading to ArangoDB 3.5, and adjust any client programs if necessary.
 
 The following incompatible changes have been made in ArangoDB 3.5:
 
+
+UI
+--
+
+Primary index keys will now always be sorted in lexicographical order as keys are
+strings. An exception for values representing numerical values has been removed
+when shown in the UI. Therefore a key with value "10" will be displayed before
+a key having "9" as value.
+
 AQL
 ---
 
@@ -34,4 +43,3 @@ undefined.
 This change is about making queries as the above fail with a parse error, as an 
 unknown variable `key1` is accessed here, avoiding the undefined behavior. This is 
 also in line with what the documentation states about variable invalidation.
-

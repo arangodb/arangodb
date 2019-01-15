@@ -209,6 +209,45 @@ std::string executeDateFormatRegex(std::string const& search, tp_sys_clock_ms co
   return s;
 }
 
+/// @brief validates documents for duplicate attribute names
+bool isValidDocument(VPackSlice slice) {
+  if (slice.isExternal()) {
+    slice = slice.resolveExternals();
+  }
+
+  if (slice.isObject()) {
+    std::unordered_set<VPackStringRef> keys;
+
+    auto it = VPackObjectIterator(slice, true);
+
+    while (it.valid()) {
+      if (!keys.emplace(it.key().stringRef()).second) {
+        // duplicate key
+        return false;
+      }
+
+      // recurse into object values
+      if (!isValidDocument(it.value())) {
+        return false;
+      }
+      it.next();
+    }
+  } else if (slice.isArray()) {
+    auto it = VPackArrayIterator(slice);
+
+    while (it.valid()) {
+      // recursively validate array values
+      if (!isValidDocument(it.value())) {
+        return false;
+      }
+      it.next();
+    }
+  }
+
+  // all other types are considered valid
+  return true;
+}
+
 std::string tail(std::string const& source, size_t const length) {
   if (length >= source.size()) {
     return source;
@@ -993,7 +1032,7 @@ void registerInvalidArgumentWarning(ExpressionContext* expressionContext,
                     TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
 }
 
-bool parameterToTimePoint(ExpressionContext* expressionContext, 
+bool parameterToTimePoint(ExpressionContext* expressionContext,
                           VPackFunctionParameters const& parameters,
                           tp_sys_clock_ms& tp, char const* AFN, size_t parameterIndex) {
   AqlValue const& value = extractFunctionParameterValue(parameters, parameterIndex);
@@ -1502,8 +1541,11 @@ AqlValue dateFromParameters(
       s = seconds((extractFunctionParameterValue(parameters, 5).toInt64()));
     }
     if (parameters.size() == 7) {
-      ms = milliseconds(
-          (extractFunctionParameterValue(parameters, 6).toInt64()));
+      int64_t v = extractFunctionParameterValue(parameters, 6).toInt64();
+      if (v > 999) {
+        v = 999;
+      }
+      ms = milliseconds(v);
     }
 
     if ((h < hours{0}) || (min < minutes{0}) || (s < seconds{0}) ||
@@ -2180,7 +2222,7 @@ AqlValue Functions::Last(ExpressionContext* expressionContext,
 }
 
 /// @brief function NTH
-AqlValue Functions::Nth(ExpressionContext* expressionContext, 
+AqlValue Functions::Nth(ExpressionContext* expressionContext,
                         transaction::Methods*,
                         VPackFunctionParameters const& parameters) {
   static char const* AFN = "NTH";
@@ -6741,6 +6783,21 @@ AqlValue Functions::CollectionCount(ExpressionContext*, transaction::Methods* tr
   }
 
   return AqlValue(res.slice());
+}
+
+/// @brief function CHECK_DOCUMENT
+AqlValue Functions::CheckDocument(ExpressionContext*, transaction::Methods* trx,
+                                  VPackFunctionParameters const& parameters) {
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+  if (!value.isObject()) {
+    // no document at all
+    return AqlValue(AqlValueHintBool(false));
+  }
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value, false);
+
+  return AqlValue(AqlValueHintBool(::isValidDocument(slice)));
 }
 
 /// @brief function VARIANCE_SAMPLE

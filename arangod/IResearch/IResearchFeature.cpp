@@ -37,6 +37,7 @@
 #include "Aql/Function.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/SmallVector.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Containers.h"
 #include "IResearchCommon.h"
@@ -50,6 +51,8 @@
 #include "IResearchViewCoordinator.h"
 #include "Logger/LogMacros.h"
 #include "MMFiles/MMFilesEngine.h"
+#include "RestServer/DatabasePathFeature.h"
+#include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -58,20 +61,22 @@
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalView.h"
 
-NS_BEGIN(arangodb)
+namespace arangodb {
 
-NS_BEGIN(basics)
+namespace basics {
+
 class VPackStringBufferAdapter;
-NS_END  // basics
+}  // namespace basics
 
-    NS_BEGIN(aql) class Query;
-NS_END  // aql
+namespace aql {
+class Query;
+}  // namespace aql
 
-    NS_END  // arangodb
+}  // namespace arangodb
 
-        NS_LOCAL
+namespace {
 
-    typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
+typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
 typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
 
 class IResearchLogTopic final : public arangodb::LogTopic {
@@ -156,31 +161,178 @@ size_t computeThreadPoolSize(size_t threads, size_t threadsLimit) {
                                      size_t(std::thread::hardware_concurrency()) / 4));
 }
 
-void registerFunctions(arangodb::aql::AqlFunctionFeature& /*functions*/) {
-#if 0
-  arangodb::iresearch::addFunction(functions, {
-    "__ARANGOSEARCH_SCORE_DEBUG",  // name
-    ".",    // value to convert
-    arangodb::aql::Function::makeFlags(
-      arangodb::aql::Function::Flags::Deterministic,
-      arangodb::aql::Function::Flags::Cacheable,
-      arangodb::aql::Function::Flags::CanRunOnDBServer
-    ),
-    [](arangodb::aql::ExpressionContext*,
-       arangodb::transaction::Methods*,
-       arangodb::SmallVector<arangodb::aql::AqlValue> const& args) {
-      if (args.empty()) {
-        // no such input parameter. return NaN
-        return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(double_t(std::nan(""))));
-      } else {
-        // unsafe
-        VPackValueLength length;
-        auto const floatValue = *reinterpret_cast<float_t const*>(args[0].slice().getString(length));
-        return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(double_t(floatValue)));
+bool iresearchViewUpgradeVersion0_1(TRI_vocbase_t& vocbase,
+                                    arangodb::velocypack::Slice const& upgradeParams) {
+  std::vector<std::shared_ptr<arangodb::LogicalView>> views;
+
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    auto* ci = arangodb::ClusterInfo::instance();
+
+    if (!ci) {
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+          << "failure to find 'ClusterInfo' instance while upgrading "
+             "IResearchView from version 0 to version 1";
+
+      return false;  // internal error
+    }
+
+    views = ci->getViews(vocbase.name());
+  } else if (arangodb::ServerState::instance()->isSingleServer() ||
+             arangodb::ServerState::instance()->isDBServer()) {
+    views = vocbase.views();
+  } else {
+    return true;  // not applicable for other ServerState roles
+  }
+
+  for (auto& view : views) {
+    if (arangodb::ServerState::instance()->isCoordinator()) {
+      if (!arangodb::LogicalView::cast<arangodb::iresearch::IResearchViewCoordinator>(
+              view.get())) {
+        continue;  // not an IResearchViewCoordinator
+      }
+    } else {  // single-server and db-server
+      if (!arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(view.get())) {
+        continue;  // not an IResearchView
       }
     }
-  });
-#endif
+
+    arangodb::velocypack::Builder builder;
+    arangodb::Result res;
+
+    builder.openObject();
+    res = view->properties(builder, true, true);  // get JSON with meta + 'version'
+    builder.close();
+
+    if (!res.ok()) {
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+          << "failure to generate persisted definition while upgrading "
+             "IResearchView from version 0 to version 1";
+
+      return false;  // definition generation failure
+    }
+
+    auto versionSlice =
+        builder.slice().get(arangodb::iresearch::StaticStrings::VersionField);
+
+    if (!versionSlice.isNumber<uint32_t>()) {
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+          << "failure to find 'version' field while upgrading IResearchView "
+             "from version 0 to version 1";
+
+      return false;  // required field is missing
+    }
+
+    auto version = versionSlice.getNumber<uint32_t>();
+
+    if (0 != version) {
+      continue;  // no upgrade required
+    }
+
+    builder.clear();
+    builder.openObject();
+    res = view->properties(builder, true, false);  // get JSON with end-user definition
+    builder.close();
+
+    if (!res.ok()) {
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+          << "failure to generate persisted definition while upgrading "
+             "IResearchView from version 0 to version 1";
+
+      return false;  // definition generation failure
+    }
+
+    irs::utf8_path dataPath;
+
+    if (arangodb::ServerState::instance()->isSingleServer() ||
+        arangodb::ServerState::instance()->isDBServer()) {
+      auto* dbPathFeature =
+          arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabasePathFeature>(
+              "DatabasePath");
+
+      if (!dbPathFeature) {
+        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+            << "failure to find feature 'DatabasePath' while upgrading "
+               "IResearchView from version 0 to version 1";
+
+        return false;  // required feature is missing
+      }
+
+      // original algorithm for computing data-store path
+      static const std::string subPath("databases");
+      static const std::string dbPath("database-");
+
+      dataPath = irs::utf8_path(dbPathFeature->directory());
+      dataPath /= subPath;
+      dataPath /= dbPath;
+      dataPath += std::to_string(vocbase.id());
+      dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
+      dataPath += "-";
+      dataPath += std::to_string(view->id());
+    }
+
+    res = view->drop();  // drop view (including all links)
+
+    if (!res.ok()) {
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+          << "failure to drop view while upgrading IResearchView from version "
+             "0 to version 1";
+
+      return false;  // view drom failure
+    }
+
+    // .........................................................................
+    // non-recoverable state below here
+    // .........................................................................
+
+    // non-version 0 IResearchView implementations no longer drop from vocbase
+    // on db-server, do it explicitly
+    if (arangodb::ServerState::instance()->isDBServer()) {
+      res = arangodb::LogicalViewHelperStorageEngine::drop(*view);
+
+      if (!res.ok()) {
+        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+            << "failure to drop view from vocbase while upgrading "
+               "IResearchView from version 0 to version 1";
+
+        return false;  // view drom failure
+      }
+    }
+
+    if (arangodb::ServerState::instance()->isSingleServer() ||
+        arangodb::ServerState::instance()->isDBServer()) {
+      bool exists;
+
+      // remove any stale data-store
+      if (!dataPath.exists(exists) || (exists && !dataPath.remove())) {
+        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+            << "failure to remove old data-store path while upgrading "
+               "IResearchView from version 0 to version 1, view definition: "
+            << builder.slice().toString();
+
+        return false;  // data-store removal failure
+      }
+    }
+
+    if (arangodb::ServerState::instance()->isDBServer()) {
+      continue;  // no need to recreate per-cid view
+    }
+
+    // recreate view
+    res = arangodb::iresearch::IResearchView::factory().create(view, vocbase,
+                                                               builder.slice());
+
+    if (!res.ok()) {
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+          << "failure to recreate view while upgrading IResearchView from "
+             "version 0 to version 1, error: "
+          << res.errorNumber() << " " << res.errorMessage()
+          << ", view definition: " << builder.slice().toString();
+
+      return false;  // data-store removal failure
+    }
+  }
+
+  return true;
 }
 
 void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
@@ -277,6 +429,44 @@ void registerRecoveryHelper() {
   }
 }
 
+void registerUpgradeTasks() {
+  auto* upgrade =
+      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::UpgradeFeature>(
+          "Upgrade");
+
+  if (!upgrade) {
+    return;  // nothing to register with (OK if no tasks actually need to be applied)
+  }
+
+  // move IResearch data-store from IResearchView to IResearchLink
+  {
+    arangodb::methods::Upgrade::Task task;
+
+    task.name = "IResearhView version 0->1";
+    task.description =
+        "move IResearch data-store from IResearchView to IResearchLink";
+    task.systemFlag = arangodb::methods::Upgrade::Flags::DATABASE_ALL;
+    task.clusterFlags = arangodb::methods::Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL  // any 1 single coordinator
+                        | arangodb::methods::Upgrade::Flags::CLUSTER_DB_SERVER_LOCAL  // db-server
+                        | arangodb::methods::Upgrade::Flags::CLUSTER_LOCAL  // any cluster node (filtred out in task) FIXME TODO without this db-server never ges invoked
+                        | arangodb::methods::Upgrade::Flags::CLUSTER_NONE  // local server
+        ;
+    task.databaseFlags = arangodb::methods::Upgrade::Flags::DATABASE_UPGRADE;
+    task.action = &iresearchViewUpgradeVersion0_1;
+    upgrade->addTask(std::move(task));
+
+    // FIXME TODO find out why CLUSTER_COORDINATOR_GLOBAL will only work with DATABASE_INIT (hardcoded in Upgrade::clusterBootstrap(...))
+    task.name = "IResearhView version 0->1";
+    task.description =
+        "move IResearch data-store from IResearchView to IResearchLink";
+    task.systemFlag = arangodb::methods::Upgrade::Flags::DATABASE_ALL;
+    task.clusterFlags = arangodb::methods::Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL;  // any 1 single coordinator
+    task.databaseFlags = arangodb::methods::Upgrade::Flags::DATABASE_INIT;
+    task.action = &iresearchViewUpgradeVersion0_1;
+    upgrade->addTask(std::move(task));
+  }
+}
+
 void registerViewFactory() {
   auto& viewType = arangodb::iresearch::DATA_SOURCE_TYPE;
   auto* viewTypes =
@@ -351,10 +541,10 @@ void registerTransactionDataSourceRegistrationCallback() {
 std::string const FEATURE_NAME("ArangoSearch");
 IResearchLogTopic LIBIRESEARCH("libiresearch");
 
-NS_END
+}  // namespace
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
 bool isFilter(arangodb::aql::Function const& func) noexcept {
   return func.implementation == &dummyFilterFunc;
@@ -754,13 +944,14 @@ void IResearchFeature::start() {
     if (functions) {
       registerFilters(*functions);
       registerScorers(*functions);
-      registerFunctions(*functions);
     } else {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
           << "failure to find feature 'AQLFunctions' while registering "
              "arangosearch filters";
     }
   }
+
+  registerUpgradeTasks();  // register tasks after UpgradeFeature::prepare() has finished
 
   _running.store(true);
 }
@@ -787,9 +978,9 @@ void IResearchFeature::validateOptions(std::shared_ptr<arangodb::options::Progra
   ApplicationFeature::validateOptions(options);
 }
 
-NS_END      // iresearch
-    NS_END  // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
-    // -----------------------------------------------------------------------------
-    // --SECTION-- END-OF-FILE
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

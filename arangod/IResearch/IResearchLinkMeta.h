@@ -34,31 +34,32 @@
 #include "Containers.h"
 #include "IResearchAnalyzerFeature.h"
 
-NS_BEGIN(arangodb)
-NS_BEGIN(velocypack)
+namespace arangodb {
+namespace velocypack {
 
 class Builder;         // forward declarations
 struct ObjectBuilder;  // forward declarations
 class Slice;           // forward declarations
 
-NS_END      // velocypack
-    NS_END  // arangodb
+}  // namespace velocypack
+}  // namespace arangodb
 
-        NS_BEGIN(arangodb) NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
-    // -----------------------------------------------------------------------------
-    // --SECTION--                                                      public
-    // types
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      public
+// types
+// -----------------------------------------------------------------------------
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief enum of possible ways to store values in the view
-    ////////////////////////////////////////////////////////////////////////////////
-    enum class ValueStorage : uint32_t {
-      NONE = 0,  // do not store values in the view
-      ID,        // only store value existance
-      FULL,      // store full value in the view
-    };
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enum of possible ways to store values in the view
+////////////////////////////////////////////////////////////////////////////////
+enum class ValueStorage : uint32_t {
+  NONE = 0,  // do not store values in the view
+  ID,        // only store value existance
+  FULL,      // store full value in the view
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief metadata describing how to process a field in a collection
@@ -146,7 +147,7 @@ struct IResearchLinkMeta {
   size_t memory() const noexcept;
 };  // IResearchLinkMeta
 
-NS_END      // iresearch
-    NS_END  // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
 #endif

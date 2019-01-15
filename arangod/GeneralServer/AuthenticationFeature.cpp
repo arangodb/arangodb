@@ -25,6 +25,8 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/Common.h"
 #include "Auth/Handler.h"
+#include "Basics/FileUtils.h"
+#include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -101,13 +103,40 @@ void AuthenticationFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
                      new BooleanParameter(&_authenticationUnixSockets));
 #endif
 
+  // Maybe deprecate this option in devel
   options->addOption("--server.jwt-secret",
                      "secret to use when doing jwt authentication",
                      new StringParameter(&_jwtSecretProgramOption));
+
+  options->addOption(
+      "--server.jwt-secret-keyfile",
+      "file containing jwt secret to use when doing jwt authentication.",
+      new StringParameter(&_jwtSecretKeyfileProgramOption));
 }
 
 void AuthenticationFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
-  if (!_jwtSecretProgramOption.empty()) {
+  if (!_jwtSecretKeyfileProgramOption.empty()) {
+    try {
+      // Note that the secret is trimmed for whitespace, because whitespace
+      // at the end of a file can easily happen. We do not base64-encode,
+      // though, so the bytes count as given. Zero bytes might be a problem
+      // here.
+      _jwtSecretProgramOption =
+          basics::StringUtils::trim(basics::FileUtils::slurp(_jwtSecretKeyfileProgramOption),
+                                    " \t\n\r");
+    } catch (std::exception const& ex) {
+      LOG_TOPIC(FATAL, Logger::STARTUP)
+          << "unable to read content of jwt-secret file '"
+          << _jwtSecretKeyfileProgramOption << "': " << ex.what()
+          << ". please make sure the file/directory is readable for the "
+             "arangod process and user";
+      FATAL_ERROR_EXIT();
+    }
+
+  } else if (!_jwtSecretProgramOption.empty()) {
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "--server.jwt-secret is insecure. Use --server.jwt-secret-keyfile "
+           "instead.";
     if (_jwtSecretProgramOption.length() > _maxSecretLength) {
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
           << "Given JWT secret too long. Max length is " << _maxSecretLength;

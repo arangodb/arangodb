@@ -50,7 +50,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 
-NS_LOCAL
+namespace {
 
 struct TestAttribute: public irs::attribute {
   DECLARE_ATTRIBUTE_TYPE();
@@ -172,7 +172,7 @@ struct StorageEngineWrapper {
   StorageEngineMock& operator*() { return instance; }
 };
 
-NS_END
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down

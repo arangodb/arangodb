@@ -59,7 +59,7 @@
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
 
-NS_LOCAL
+namespace {
 
 struct TestAttribute: public irs::attribute {
   DECLARE_ATTRIBUTE_TYPE();
@@ -86,7 +86,7 @@ private:
 DEFINE_ANALYZER_TYPE_NAMED(EmptyAnalyzer, "empty");
 REGISTER_ANALYZER_JSON(EmptyAnalyzer, EmptyAnalyzer::make);
 
-NS_END
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down

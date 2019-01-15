@@ -37,7 +37,7 @@
 #include "IResearchLinkMeta.h"
 #include "Misc.h"
 
-NS_LOCAL
+namespace {
 
 bool equalAnalyzers(arangodb::iresearch::IResearchLinkMeta::Analyzers const& lhs,
                     arangodb::iresearch::IResearchLinkMeta::Analyzers const& rhs) noexcept {
@@ -64,10 +64,10 @@ bool equalAnalyzers(arangodb::iresearch::IResearchLinkMeta::Analyzers const& lhs
   return true;
 }
 
-NS_END
+}  // namespace
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
 IResearchLinkMeta::Mask::Mask(bool mask /*= false*/) noexcept
     : _analyzers(mask),
@@ -473,9 +473,9 @@ size_t IResearchLinkMeta::memory() const noexcept {
   return size;
 }
 
-NS_END      // iresearch
-    NS_END  // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
-    // -----------------------------------------------------------------------------
-    // --SECTION-- END-OF-FILE
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION-- END-OF-FILE
+// -----------------------------------------------------------------------------

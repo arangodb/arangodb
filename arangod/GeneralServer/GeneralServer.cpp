@@ -39,7 +39,6 @@ using namespace arangodb::rest;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
 GeneralServer::GeneralServer(uint64_t numIoThreads)
     : _numIoThreads(numIoThreads), _contexts(numIoThreads) {}
 

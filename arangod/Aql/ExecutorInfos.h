@@ -26,11 +26,16 @@
 #ifndef ARANGOD_AQL_EXECUTOR_INFOS_H
 #define ARANGOD_AQL_EXECUTOR_INFOS_H 1
 
-#include "Basics/Common.h"
 #include "Aql/types.h"
+#include "Basics/Common.h"
 
 namespace arangodb {
 namespace aql {
+
+inline std::shared_ptr<std::unordered_set<RegisterId>> make_shared_unordered_set(
+    std::initializer_list<RegisterId> const& list = std::initializer_list<RegisterId>{}) {
+  return std::make_shared<std::unordered_set<RegisterId>>(list);
+}
 
 /**
  * @brief Class to be handed into Executors during construction
@@ -42,8 +47,8 @@ class ExecutorInfos {
   /**
    * @brief Input for Executors. Derived classes exist where additional
    *        input is needed.
-   * @param inputRegisters Registers the Executor may use as input
-   * @param outputRegisters Registers the Executor writes into
+   * @param readableInputRegisters Registers the Executor may use as input
+   * @param writeableOutputRegisters Registers the Executor writes into
    * @param nrInputRegisters Width of input AqlItemBlocks
    * @param nrOutputRegisters Width of output AqlItemBlocks
    * @param registersToClear Registers that are not used after this block, so
@@ -55,12 +60,21 @@ class ExecutorInfos {
    *   TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
    *   RegisterId register = it->second.registerId;
    */
-  ExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
-                std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
+
+  ExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
+                std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
                 RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                 std::unordered_set<RegisterId> registersToClear);
 
-  ExecutorInfos(ExecutorInfos &&) = default;
+  //TODO - This constructor needs to be removed once the register planning is updated.
+  //       It was introduced to implement the ReturnExecutor.
+  ExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
+                std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
+                RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+                std::unordered_set<RegisterId> registersToClear,
+                std::unordered_set<RegisterId> registersToKeep);
+
+  ExecutorInfos(ExecutorInfos&&) = default;
   ExecutorInfos(ExecutorInfos const&) = delete;
   ~ExecutorInfos() = default;
 
@@ -72,8 +86,7 @@ class ExecutorInfos {
    *
    * @return The indices of the input registers.
    */
-  std::shared_ptr<const std::unordered_set<RegisterId>> const getInputRegisters()
-      const {
+  std::shared_ptr<const std::unordered_set<RegisterId>> const getInputRegisters() const {
     return _inRegs;
   }
 
@@ -87,27 +100,25 @@ class ExecutorInfos {
    *
    * @return The indices of the output registers.
    */
-  std::shared_ptr<const std::unordered_set<RegisterId>> const getOutputRegisters()
-      const {
+  std::shared_ptr<const std::unordered_set<RegisterId>> const getOutputRegisters() const {
     return _outRegs;
   }
 
   /**
-  * @brief Total number of registers in input AqlItemBlocks. Not to be confused
-  *        with the input registers the current Executor actually reads. See
-  *        getInputRegisters() for that.
-  */
+   * @brief Total number of registers in input AqlItemBlocks. Not to be confused
+   *        with the input registers the current Executor actually reads. See
+   *        getInputRegisters() for that.
+   */
   RegisterId numberOfInputRegisters() const { return _numInRegs; }
 
   /**
-  * @brief Total number of registers in output AqlItemBlocks. Not to be confused
-  *        with the output registers the current Executor actually writes. See
-  *        getOutputRegisters() for that.
-  */
+   * @brief Total number of registers in output AqlItemBlocks. Not to be
+   * confused with the output registers the current Executor actually writes.
+   * See getOutputRegisters() for that.
+   */
   RegisterId numberOfOutputRegisters() const { return _numOutRegs; }
 
-  std::shared_ptr<const std::unordered_set<RegisterId>> const& registersToKeep()
-      const {
+  std::shared_ptr<const std::unordered_set<RegisterId>> const& registersToKeep() const {
     return _registersToKeep;
   }
 
@@ -115,7 +126,7 @@ class ExecutorInfos {
     return _registersToClear;
   }
 
- private:
+ protected:
   std::shared_ptr<const std::unordered_set<RegisterId>> _inRegs;
 
   std::shared_ptr<const std::unordered_set<RegisterId>> _outRegs;
@@ -129,7 +140,7 @@ class ExecutorInfos {
   std::unordered_set<RegisterId> const _registersToClear;
 };
 
-} // aql
-} // arangodb
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

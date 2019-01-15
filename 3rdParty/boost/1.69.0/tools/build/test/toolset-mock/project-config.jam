@@ -1,0 +1,40 @@
+# Copyright 2017 Steven Watanabe
+#
+# Distributed under the Boost Software License, Version 1.0.
+#    (See accompanying file LICENSE_1_0.txt or copy at
+#          http://www.boost.org/LICENSE_1_0.txt)
+
+import modules ;
+
+path-constant here : . ;
+
+using gcc : 4.8.3 : python $(here)/src/gcc-4.8.3-linux.py : : <target-os>linux ;
+using gcc : 4.2.1 : python $(here)/src/gcc-4.2.1-darwin.py : : <target-os>darwin ;
+
+# hard-code this to make the test work on other platforms
+modules.poke darwin : .host-osx-version : 10.11.0 ;
+using darwin : 4.2.1 : python $(here)/src/darwin-4.2.1.py
+  : <archiver>$(here)/src/bin/libtool
+    <striper>$(here)/src/bin/strip
+  : <target-os>darwin
+  ;
+
+using clang-darwin : 3.9.0 : python $(here)/src/clang-3.9.0-darwin.py
+  : <archiver>$(here)/src/bin/ar
+    <ranlib>$(here)/src/bin/ranlib
+  ;
+
+using clang-linux : 3.9.0 : python $(here)/src/clang-linux-3.9.0.py
+  : <archiver>$(here)/src/bin/ar
+    <ranlib>$(here)/src/bin/ranlib
+  ;
+
+using clang-vxworks : 4.0.1 : python $(here)/src/clang-vxworks-4.0.1.py
+  : <linker>$(here)/src/bin/ld
+    <archiver>$(here)/src/bin/ar
+  ;
+
+using intel-darwin : 10.2 : python $(here)/src/intel-darwin-10.2.py
+  : <archiver>$(here)/src/bin/ar
+    <ranlib>$(here)/src/bin/ranlib
+  ;

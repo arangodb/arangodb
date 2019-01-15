@@ -30,6 +30,7 @@
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/Syncer.h"
 #include "Replication/utilities.h"
+#include "Scheduler/Scheduler.h"
 
 #include <velocypack/Slice.h>
 
@@ -99,7 +100,7 @@ class InitialSyncer : public Syncer {
   replutils::BatchInfo _batch;
   replutils::ProgressInfo _progress;
   /// recurring task to keep the batch alive
-  std::unique_ptr<asio_ns::steady_timer> _batchPingTimer;
+  Scheduler::WorkHandle _batchPingTimer;
 };
 }  // namespace arangodb
 

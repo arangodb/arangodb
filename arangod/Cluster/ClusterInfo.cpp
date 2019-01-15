@@ -2754,7 +2754,6 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   size_t const numberOfShards =
       basics::VelocyPackHelper::readNumericValue<size_t>(collection,
                                                          StaticStrings::NumberOfShards, 1);
-
   VPackSlice indexes = collection.get("indexes");
   if (!indexes.isArray()) {
     LOG_TOPIC(DEBUG, Logger::CLUSTER) << "Failed to find index " << databaseName
