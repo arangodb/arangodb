@@ -271,7 +271,7 @@ Once the _arangorestore_ process on every _Coordinator_ is completed, the
 _replication factor_ has to be set to its initial value.
 
 Run the following command from exactly one _Coordinator_ (any _Coordinator_ can be
-used) - please adjust the `replicationFactor` value to your specific case (2 in the
+used). Please adjust the `replicationFactor` value to your specific case (2 in the
 example below):
 
 ```

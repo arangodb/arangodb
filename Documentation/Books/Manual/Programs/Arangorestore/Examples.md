@@ -215,7 +215,7 @@ The following factors affect speed of _arangorestore_ in a Cluster:
   during the restore.
 - **Restore Parallelization**: if the collections are not restored in
   parallel, the restore speed is highly affected. A parallel restore can
-  be done from v3.4.0 by using the `--threads`_ option of _arangorestore_.
+  be done from v3.4.0 by using the `--threads` option of _arangorestore_.
   Before v3.4.0 it is possible to achieve parallelization by restoring
   on multiple _Coordinators_ at the same time. Depending on your specific
   case, parallelizing on multiple _Coordinators_ can still be useful even
