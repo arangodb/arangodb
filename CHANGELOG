@@ -1,6 +1,5 @@
-v3.4.2 (XXXX-XX-XX)
+v3.4.2 (2019-01-15)
 -------------------
-
 
 * fixed an issue where a crashed coordinator can lead to some Foxx queue jobs
   erroneously either left hanging or being restarted
@@ -9,7 +8,7 @@ v3.4.2 (XXXX-XX-XX)
 
   millisecond parts of AQL date values were limited to up to 3 digits.
   Now the length of the millisecond part is unrestricted, but the 
-  millisecond precision is still limit to up to 3 digits.
+  millisecond precision is still limited to up to 3 digits.
 
 * fix issue #7900: Bind values of `null` are not replaced by
   empty string anymore, when toggling between json and table
