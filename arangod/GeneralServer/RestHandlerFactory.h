@@ -40,15 +40,13 @@ class RestHandlerFactory {
 
  public:
   // handler creator
-  typedef RestHandler* (*create_fptr)(GeneralRequest*, GeneralResponse*,
-                                      void* data);
-  
+  typedef RestHandler* (*create_fptr)(GeneralRequest*, GeneralResponse*, void* data);
+
  public:
   // cppcheck-suppress *
   RestHandlerFactory() : _notFound(nullptr) {}
-  
- public:
 
+ public:
   // creates a new handler
   RestHandler* createHandler(std::unique_ptr<GeneralRequest>,
                              std::unique_ptr<GeneralResponse>) const;
@@ -57,14 +55,12 @@ class RestHandlerFactory {
   void addHandler(std::string const& path, create_fptr, void* data = nullptr);
 
   // adds a prefix path and constructor to the factory
-  void addPrefixHandler(std::string const& path, create_fptr,
-                        void* data = nullptr);
+  void addPrefixHandler(std::string const& path, create_fptr, void* data = nullptr);
 
   // adds a path and constructor to the factory
   void addNotFoundHandler(create_fptr);
 
  private:
-
   // list of constructors
   std::unordered_map<std::string, std::pair<create_fptr, void*>> _constructors;
 
@@ -74,7 +70,7 @@ class RestHandlerFactory {
   // constructor for a not-found handler
   create_fptr _notFound;
 };
-}
-}
+}  // namespace rest
+}  // namespace arangodb
 
 #endif

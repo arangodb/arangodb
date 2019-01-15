@@ -28,13 +28,15 @@
 using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
 
-AgentCallback::AgentCallback() :
-  _agent(0), _last(0), _toLog(0), _startTime(0.0) {}
+AgentCallback::AgentCallback()
+    : _agent(0), _last(0), _toLog(0), _startTime(0.0) {}
 
-AgentCallback::AgentCallback(Agent* agent, std::string const& slaveID,
-                             index_t last, size_t toLog)
-  : _agent(agent), _last(last), _slaveID(slaveID), _toLog(toLog),
-    _startTime(TRI_microtime())  {}
+AgentCallback::AgentCallback(Agent* agent, std::string const& slaveID, index_t last, size_t toLog)
+    : _agent(agent),
+      _last(last),
+      _slaveID(slaveID),
+      _toLog(toLog),
+      _startTime(TRI_microtime()) {}
 
 void AgentCallback::shutdown() { _agent = 0; }
 
@@ -48,15 +50,14 @@ bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
         success = body->slice().get("success").isTrue();
         otherTerm = body->slice().get("term").getNumber<term_t>();
       } catch (std::exception const& e) {
-        LOG_TOPIC(WARN, Logger::AGENCY) 
-          << "Bad callback message received: " << e.what();
+        LOG_TOPIC(WARN, Logger::AGENCY) << "Bad callback message received: " << e.what();
         _agent->reportFailed(_slaveID, _toLog);
       }
       if (otherTerm > _agent->term()) {
         _agent->resign(otherTerm);
       } else if (!success) {
         LOG_TOPIC(DEBUG, Logger::CLUSTER)
-          << "Got negative answer from follower, will retry later.";
+            << "Got negative answer from follower, will retry later.";
         // This reportFailed will reset _confirmed in Agent fot this follower
         _agent->reportFailed(_slaveID, _toLog, true);
       } else {
@@ -67,36 +68,32 @@ bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
             int64_t now = std::llround(steadyClockToDouble() * 1000);
             if (now - sts > 1000) {  // a second round trip time!
               LOG_TOPIC(DEBUG, Logger::AGENCY)
-                << "Round trip for appendEntriesRPC took " << now - sts
-                << " milliseconds, which is way too high!";
+                  << "Round trip for appendEntriesRPC took " << now - sts
+                  << " milliseconds, which is way too high!";
             }
-          } catch(...) {
+          } catch (...) {
             LOG_TOPIC(WARN, Logger::AGENCY)
-              << "Exception when looking at senderTimeStamp in appendEntriesRPC"
-                 " answer.";
+                << "Exception when looking at senderTimeStamp in "
+                   "appendEntriesRPC"
+                   " answer.";
           }
         }
-          
-        LOG_TOPIC(DEBUG, Logger::AGENCY) << "AgentCallback: "
-          << body->slice().toJson();
+
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "AgentCallback: " << body->slice().toJson();
         _agent->reportIn(_slaveID, _last, _toLog);
       }
     }
     LOG_TOPIC(DEBUG, Logger::AGENCY)
-      << "Got good callback from AppendEntriesRPC: "
-      << "comm_status(" << res->status
-      << "), last(" << _last << "), follower("
-      << _slaveID << "), time("
-      << TRI_microtime() - _startTime << ")";
+        << "Got good callback from AppendEntriesRPC: "
+        << "comm_status(" << res->status << "), last(" << _last << "), follower("
+        << _slaveID << "), time(" << TRI_microtime() - _startTime << ")";
   } else {
     if (_agent == nullptr || !_agent->isStopping()) {
       // Do not warn if we are already shutting down:
-      LOG_TOPIC(WARN, Logger::AGENCY) 
-        << "Got bad callback from AppendEntriesRPC: "
-        << "comm_status(" << res->status
-        << "), last(" << _last << "), follower("
-        << _slaveID << "), time("
-        << TRI_microtime() - _startTime << ")";
+      LOG_TOPIC(WARN, Logger::AGENCY)
+          << "Got bad callback from AppendEntriesRPC: "
+          << "comm_status(" << res->status << "), last(" << _last << "), follower("
+          << _slaveID << "), time(" << TRI_microtime() - _startTime << ")";
     }
     if (_agent != nullptr) {
       _agent->reportFailed(_slaveID, _toLog);

@@ -29,11 +29,7 @@ using namespace arangodb;
 
 /// @brief create a slot
 MMFilesWalSlot::MMFilesWalSlot()
-    : _tick(0),
-      _logfile(nullptr),
-      _mem(nullptr),
-      _size(0),
-      _status(StatusType::UNUSED) {}
+    : _tick(0), _logfile(nullptr), _mem(nullptr), _size(0), _status(StatusType::UNUSED) {}
 
 /// @brief return the slot status as a string
 std::string MMFilesWalSlot::statusText() const {
@@ -79,20 +75,20 @@ void MMFilesWalSlot::finalize(MMFilesWalMarker const* marker) {
   // calculate the crc
   dfm->setCrc(0);
   TRI_voc_crc_t crc = TRI_InitialCrc32();
-  crc = TRI_BlockCrc32(crc, static_cast<char const*>(_mem),
-                       static_cast<uint32_t>(size));
+  crc = TRI_BlockCrc32(crc, static_cast<char const*>(_mem), static_cast<uint32_t>(size));
   dfm->setCrc(TRI_FinalCrc32(crc));
 
   TRI_IF_FAILURE("WalSlotCrc") {
     // intentionally corrupt the marker
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "intentionally writing corrupt marker into datafile";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "intentionally writing corrupt marker into datafile";
     dfm->setCrc(0xdeadbeef);
   }
 }
 
 /// @brief calculate the CRC value for the source region (this will modify
 /// the source region) and copy the calculated marker data into the slot
-/// note that marker type has to be set already in the src 
+/// note that marker type has to be set already in the src
 void MMFilesWalSlot::fill(void* src, size_t size) {
   TRI_ASSERT(size == _size);
   TRI_ASSERT(src != nullptr);
@@ -109,13 +105,13 @@ void MMFilesWalSlot::fill(void* src, size_t size) {
   // calculate the crc
   marker->setCrc(0);
   TRI_voc_crc_t crc = TRI_InitialCrc32();
-  crc = TRI_BlockCrc32(crc, (char const*)marker,
-                       static_cast<uint32_t>(size));
+  crc = TRI_BlockCrc32(crc, (char const*)marker, static_cast<uint32_t>(size));
   marker->setCrc(TRI_FinalCrc32(crc));
 
   TRI_IF_FAILURE("WalSlotCrc") {
     // intentionally corrupt the marker
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "intentionally writing corrupt marker into datafile";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "intentionally writing corrupt marker into datafile";
     marker->setCrc(0xdeadbeef);
   }
 
@@ -136,7 +132,7 @@ void MMFilesWalSlot::setUnused() {
 
 /// @brief mark as slot as used
 void MMFilesWalSlot::setUsed(void* mem, uint32_t size, MMFilesWalLogfile* logfile,
-                   MMFilesWalSlot::TickType tick) {
+                             MMFilesWalSlot::TickType tick) {
   TRI_ASSERT(isUnused());
   TRI_ASSERT(logfile != nullptr);
   _tick = tick;

@@ -23,8 +23,8 @@
 
 #include "JSLoader.h"
 
-#include "Logger/Logger.h"
 #include "Basics/StringUtils.h"
+#include "Logger/Logger.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 
@@ -41,9 +41,9 @@ JSLoader::JSLoader() {}
 /// @brief executes a named script in the global context
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> JSLoader::executeGlobalScript(
-    v8::Isolate* isolate, v8::Handle<v8::Context> context,
-    std::string const& name) {
+v8::Handle<v8::Value> JSLoader::executeGlobalScript(v8::Isolate* isolate,
+                                                    v8::Handle<v8::Context> context,
+                                                    std::string const& name) {
   v8::EscapableHandleScope scope(isolate);
   v8::TryCatch tryCatch;
   v8::Handle<v8::Value> result;
@@ -54,7 +54,8 @@ v8::Handle<v8::Value> JSLoader::executeGlobalScript(
 
   if (i == _scripts.end()) {
     // correct the path/name
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unknown script '" << StringUtils::correctPath(name) << "'";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "unknown script '" << StringUtils::correctPath(name) << "'";
     return v8::Undefined(isolate);
   }
 
@@ -81,10 +82,8 @@ v8::Handle<v8::Value> JSLoader::executeGlobalScript(
 /// @brief loads a named script
 ////////////////////////////////////////////////////////////////////////////////
 
-JSLoader::eState JSLoader::loadScript(v8::Isolate* isolate,
-                                      v8::Handle<v8::Context>& context,
-                                      std::string const& name,
-                                      VPackBuilder* builder) {
+JSLoader::eState JSLoader::loadScript(v8::Isolate* isolate, v8::Handle<v8::Context>& context,
+                                      std::string const& name, VPackBuilder* builder) {
   v8::HandleScope scope(isolate);
   v8::TryCatch tryCatch;
 
@@ -94,7 +93,8 @@ JSLoader::eState JSLoader::loadScript(v8::Isolate* isolate,
 
   if (i == _scripts.end()) {
     // correct the path/name
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unknown script '" << StringUtils::correctPath(name) << "'";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "unknown script '" << StringUtils::correctPath(name) << "'";
     return eFailLoad;
   }
 
@@ -102,8 +102,8 @@ JSLoader::eState JSLoader::loadScript(v8::Isolate* isolate,
   v8::Context::Scope context_scope(context);
 
   v8::Handle<v8::Value> result =
-    TRI_ExecuteJavaScriptString(isolate, context, TRI_V8_STD_STRING(isolate, i->second),
-                                TRI_V8_STD_STRING(isolate, name), false);
+      TRI_ExecuteJavaScriptString(isolate, context, TRI_V8_STD_STRING(isolate, i->second),
+                                  TRI_V8_STD_STRING(isolate, name), false);
 
   if (tryCatch.HasCaught()) {
     if (tryCatch.CanContinue()) {
@@ -123,8 +123,7 @@ JSLoader::eState JSLoader::loadScript(v8::Isolate* isolate,
       } else {
         builder->add(VPackValue(VPackValueType::Null));
       }
-    }
-    catch (...) {
+    } catch (...) {
     }
   }
 
@@ -135,8 +134,7 @@ JSLoader::eState JSLoader::loadScript(v8::Isolate* isolate,
 /// @brief loads all scripts
 ////////////////////////////////////////////////////////////////////////////////
 
-bool JSLoader::loadAllScripts(v8::Isolate* isolate,
-                              v8::Handle<v8::Context>& context) {
+bool JSLoader::loadAllScripts(v8::Isolate* isolate, v8::Handle<v8::Context>& context) {
   v8::HandleScope scope(isolate);
 
   if (_directory.empty()) {
@@ -159,8 +157,7 @@ bool JSLoader::loadAllScripts(v8::Isolate* isolate,
 /// @brief loads a named script
 ////////////////////////////////////////////////////////////////////////////////
 
-bool JSLoader::executeScript(v8::Isolate* isolate,
-                             v8::Handle<v8::Context>& context,
+bool JSLoader::executeScript(v8::Isolate* isolate, v8::Handle<v8::Context>& context,
                              std::string const& name) {
   v8::HandleScope scope(isolate);
   v8::TryCatch tryCatch;
@@ -194,8 +191,7 @@ bool JSLoader::executeScript(v8::Isolate* isolate,
 /// @brief executes all scripts
 ////////////////////////////////////////////////////////////////////////////////
 
-bool JSLoader::executeAllScripts(v8::Isolate* isolate,
-                                 v8::Handle<v8::Context>& context) {
+bool JSLoader::executeAllScripts(v8::Isolate* isolate, v8::Handle<v8::Context>& context) {
   v8::HandleScope scope(isolate);
   v8::TryCatch tryCatch;
 

@@ -65,12 +65,10 @@ void EdgeConditionBuilder::swapSides(AstNode* cond) {
     // If used correctly this class guarantuees that the last element
     // of the nary-and is the _from or _to part and is exchangable.
     TRI_ASSERT(_modCondition->numMembers() > 0);
-    auto changeNode =
-        _modCondition->getMemberUnchecked(_modCondition->numMembers() - 1);
+    auto changeNode = _modCondition->getMemberUnchecked(_modCondition->numMembers() - 1);
     TRI_ASSERT(changeNode == _fromCondition || changeNode == _toCondition);
 #endif
-    _modCondition->changeMember(_modCondition->numMembers() - 1,
-                                cond);
+    _modCondition->changeMember(_modCondition->numMembers() - 1, cond);
   } else {
     _modCondition->addMember(cond);
     _containsCondition = true;
@@ -96,24 +94,24 @@ AstNode* EdgeConditionBuilder::getInboundCondition() {
   return _modCondition;
 }
 
-EdgeConditionBuilderContainer::EdgeConditionBuilderContainer() :
-  EdgeConditionBuilder(nullptr) {
-    auto node = std::make_unique<AstNode>(NODE_TYPE_OPERATOR_NARY_AND);
-    _astNodes.emplace_back(node.get());
-    _modCondition = node.release();
+EdgeConditionBuilderContainer::EdgeConditionBuilderContainer()
+    : EdgeConditionBuilder(nullptr) {
+  auto node = std::make_unique<AstNode>(NODE_TYPE_OPERATOR_NARY_AND);
+  _astNodes.emplace_back(node.get());
+  _modCondition = node.release();
 
-    auto comp = std::make_unique<AstNode>(NODE_TYPE_VALUE);
-    comp->setValueType(VALUE_TYPE_STRING);
-    comp->setStringValue("", 0);
-    _astNodes.emplace_back(comp.get());
-    _compareNode = comp.release();
+  auto comp = std::make_unique<AstNode>(NODE_TYPE_VALUE);
+  comp->setValueType(VALUE_TYPE_STRING);
+  comp->setStringValue("", 0);
+  _astNodes.emplace_back(comp.get());
+  _compareNode = comp.release();
 
-    _var = _varGen.createTemporaryVariable();
+  _var = _varGen.createTemporaryVariable();
 
-    auto varNode = std::make_unique<AstNode>(NODE_TYPE_REFERENCE);
-    varNode->setData(_var);
-    _astNodes.emplace_back(varNode.get());
-    _varNode = varNode.release();
+  auto varNode = std::make_unique<AstNode>(NODE_TYPE_REFERENCE);
+  varNode->setData(_var);
+  _astNodes.emplace_back(varNode.get());
+  _varNode = varNode.release();
 }
 
 EdgeConditionBuilderContainer::~EdgeConditionBuilderContainer() {
@@ -212,24 +210,31 @@ Graph::Graph(VPackSlice const& slice) : _vertexColls(), _edgeColls() {
     for (auto const& def : VPackArrayIterator(edgeDefs)) {
       TRI_ASSERT(def.isObject());
       try {
-        std::string eCol = arangodb::basics::VelocyPackHelper::getStringValue(
-          def, "collection", "");
+        std::string eCol =
+            arangodb::basics::VelocyPackHelper::getStringValue(def,
+                                                               "collection", "");
         addEdgeCollection(eCol);
       } catch (...) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_GRAPH_INVALID_GRAPH, "didn't find 'collection' in the graph definition");
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_GRAPH_INVALID_GRAPH,
+            "didn't find 'collection' in the graph definition");
       }
       // TODO what if graph is not in a valid format any more
       try {
         VPackSlice tmp = def.get("from");
         insertVertexCollections(tmp);
       } catch (...) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_GRAPH_INVALID_GRAPH, "didn't find from-collection in the graph definition");
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_GRAPH_INVALID_GRAPH,
+            "didn't find from-collection in the graph definition");
       }
       try {
         VPackSlice tmp = def.get("to");
         insertVertexCollections(tmp);
       } catch (...) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_GRAPH_INVALID_GRAPH, "didn't find to-collection in the graph definition");
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_GRAPH_INVALID_GRAPH,
+            "didn't find to-collection in the graph definition");
       }
     }
   }
@@ -239,5 +244,4 @@ Graph::Graph(VPackSlice const& slice) : _vertexColls(), _edgeColls() {
   }
 }
 
-void Graph::enhanceEngineInfo(VPackBuilder&) const {
-}
+void Graph::enhanceEngineInfo(VPackBuilder&) const {}

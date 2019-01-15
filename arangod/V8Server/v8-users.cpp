@@ -32,7 +32,6 @@
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
-#include "V8/v8-vpack.h"
 #include "V8Server/v8-externals.h"
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocbaseprivate.h"
@@ -58,7 +57,7 @@ static bool IsAdminUser() {
 /// check ExecContext if system use
 static bool CanAccessUser(std::string const& user) {
   if (ExecContext::CURRENT != nullptr) {
-    return IsAdminUser()|| user == ExecContext::CURRENT->user();
+    return IsAdminUser() || user == ExecContext::CURRENT->user();
   }
   return true;
 }
@@ -77,9 +76,8 @@ void StoreUser(v8::FunctionCallbackInfo<v8::Value> const& args, bool replace) {
   if (!CanAccessUser(username)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
-  std::string pass = args.Length() > 1 && args[1]->IsString()
-                         ? TRI_ObjectToString(args[1])
-                         : "";
+  std::string pass =
+      args.Length() > 1 && args[1]->IsString() ? TRI_ObjectToString(args[1]) : "";
   bool active = true;
   if (args.Length() >= 3 && args[2]->IsBoolean()) {
     active = TRI_ObjectToBoolean(args[2]);
@@ -92,13 +90,13 @@ void StoreUser(v8::FunctionCallbackInfo<v8::Value> const& args, bool replace) {
       TRI_V8_THROW_EXCEPTION(r);
     }
   }
-  
+
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (um == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                                    "users are not supported on this server");
   }
-  
+
   Result r = um->storeUser(replace, username, pass, active, extras.slice());
   if (r.fail()) {
     TRI_V8_THROW_EXCEPTION(r);
@@ -140,7 +138,7 @@ static void JS_UpdateUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_EXCEPTION(r);
     }
   }
-  
+
   AuthenticationFeature* af = AuthenticationFeature::instance();
   af->userManager()->updateUser(username, [&](auth::User& u) {
     if (args.Length() > 1 && args[1]->IsString()) {
@@ -166,7 +164,7 @@ static void JS_RemoveUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("remove(username)");
   }
   if (!IsAdminUser()) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
@@ -174,7 +172,7 @@ static void JS_RemoveUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                                    "users are not supported on this server");
   }
-  
+
   Result r = um->removeUser(TRI_ObjectToString(args[0]));
   if (!r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);
@@ -202,7 +200,7 @@ static void JS_GetUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                                    "users are not supported on this server");
   }
-  
+
   VPackBuilder result = um->serializeUser(username);
   if (!result.isEmpty()) {
     TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
@@ -221,11 +219,11 @@ static void JS_ReloadAuthData(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (!IsAdminUser()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
-  
+
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (um != nullptr) {
     um->outdate();
-    um->reloadAllUsers(); // noop except on coordinator
+    um->reloadAllUsers();  // noop except on coordinator
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -255,11 +253,10 @@ static void JS_GrantDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                                    "users are not supported on this server");
   }
-  Result r = um->updateUser(username,
-          [&](auth::User& entry) {
-            entry.grantDatabase(db, lvl);
-            return TRI_ERROR_NO_ERROR;
-          });
+  Result r = um->updateUser(username, [&](auth::User& entry) {
+    entry.grantDatabase(db, lvl);
+    return TRI_ERROR_NO_ERROR;
+  });
   if (!r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);
   }
@@ -283,13 +280,13 @@ static void JS_RevokeDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                                    "users are not supported on this server");
   }
-  
+
   std::string username = TRI_ObjectToString(args[0]);
   std::string db = TRI_ObjectToString(args[1]);
   Result r = um->updateUser(username, [&](auth::User& entry) {
-        entry.removeDatabase(db);
-        return TRI_ERROR_NO_ERROR;
-      });
+    entry.removeDatabase(db);
+    return TRI_ERROR_NO_ERROR;
+  });
   if (!r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);
   }
@@ -298,8 +295,7 @@ static void JS_RevokeDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_GrantCollection(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_GrantCollection(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   if (args.Length() < 3 || !args[0]->IsString() || !args[1]->IsString() ||
@@ -315,7 +311,7 @@ static void JS_GrantCollection(
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                                    "users are not supported on this server");
   }
-  
+
   std::string username = TRI_ObjectToString(args[0]);
   std::string db = TRI_ObjectToString(args[1]);
   std::string coll = TRI_ObjectToString(args[2]);
@@ -337,8 +333,7 @@ static void JS_GrantCollection(
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_RevokeCollection(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_RevokeCollection(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   if (args.Length() < 3 || !args[0]->IsString() || !args[1]->IsString() ||
@@ -348,7 +343,7 @@ static void JS_RevokeCollection(
   if (!IsAdminUser()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
-  
+
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (um == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
@@ -358,12 +353,11 @@ static void JS_RevokeCollection(
   std::string username = TRI_ObjectToString(args[0]);
   std::string db = TRI_ObjectToString(args[1]);
   std::string coll = TRI_ObjectToString(args[2]);
-  
-  Result r = um->updateUser(
-      username, [&](auth::User& entry) {
-        entry.removeCollection(db, coll);
-        return TRI_ERROR_NO_ERROR;
-      });
+
+  Result r = um->updateUser(username, [&](auth::User& entry) {
+    entry.removeCollection(db, coll);
+    return TRI_ERROR_NO_ERROR;
+  });
   if (!r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);
   }
@@ -373,8 +367,7 @@ static void JS_RevokeCollection(
 }
 
 // create/update (value != null) or delete (value == null)
-static void JS_UpdateConfigData(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_UpdateConfigData(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   if (args.Length() < 2 || !args[0]->IsString() || !args[1]->IsString()) {
@@ -397,16 +390,16 @@ static void JS_UpdateConfigData(
   } else {
     merge.add(key, VPackSlice::nullSlice());
   }
-  
+
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (um == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                                    "users are not supported on this server");
   }
-  
+
   Result r = um->updateUser(username, [&](auth::User& u) {
-    VPackBuilder updated = VelocyPackHelper::merge(u.configData(),
-                                                   merge.slice(), true, true);
+    VPackBuilder updated =
+        VelocyPackHelper::merge(u.configData(), merge.slice(), true, true);
     u.setConfigData(std::move(updated));
     return TRI_ERROR_NO_ERROR;
   });
@@ -435,7 +428,7 @@ static void JS_GetConfigData(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                                    "users are not supported on this server");
   }
-  
+
   v8::Handle<v8::Value> result;
   Result r = um->accessUser(username, [&](auth::User const& u) {
     if (u.configData().isObject()) {
@@ -448,7 +441,7 @@ static void JS_GetConfigData(v8::FunctionCallbackInfo<v8::Value> const& args) {
   } else if (!result.IsEmpty()) {
     TRI_V8_RETURN(result);
   }
-  
+
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
@@ -459,7 +452,8 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() > 3 || args.Length() == 0 || !args[0]->IsString() ||
       (args.Length() > 1 && !args[1]->IsString()) ||
       (args.Length() > 2 && !args[2]->IsString())) {
-    TRI_V8_THROW_EXCEPTION_USAGE("permission(username[, database, collection])");
+    TRI_V8_THROW_EXCEPTION_USAGE(
+        "permission(username[, database, collection])");
   }
 
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
@@ -467,7 +461,7 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                                    "users are not supported on this server");
   }
-  
+
   std::string username = TRI_ObjectToString(isolate, args[0]);
   if (args.Length() > 1) {
     std::string dbname = TRI_ObjectToString(isolate, args[1]);
@@ -478,7 +472,7 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
     } else {
       lvl = um->databaseAuthLevel(username, dbname);
     }
-    
+
     if (lvl == auth::Level::RO) {
       TRI_V8_RETURN(TRI_V8_ASCII_STRING(isolate, "ro"));
     } else if (lvl == auth::Level::RW) {
@@ -490,7 +484,7 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
     DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t* vocbase) {
       auth::Level lvl = um->databaseAuthLevel(username, vocbase->name());
-      if (lvl != auth::Level::NONE) { // hide non accessible collections
+      if (lvl != auth::Level::NONE) {  // hide non accessible collections
         result->ForceSet(TRI_V8_STD_STRING(isolate, vocbase->name()),
                          TRI_V8_STD_STRING(isolate, auth::convertFromAuthLevel(lvl)));
       }
@@ -515,7 +509,7 @@ static void JS_AuthIsActive(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_CurrentUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  if (args.Length() != 0 ) {
+  if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("currentUser()");
   }
   if (ExecContext::CURRENT != nullptr) {
@@ -537,44 +531,36 @@ void TRI_InitV8Users(v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase,
   rt->SetInternalFieldCount(2);
 
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "save"), JS_SaveUser);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "replace"),
-                       JS_ReplaceUser);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "update"),
-                       JS_UpdateUser);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "remove"),
-                       JS_RemoveUser);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "document"),
-                       JS_GetUser);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "reload"),
-                       JS_ReloadAuthData);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "grantDatabase"),
-                       JS_GrantDatabase);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "revokeDatabase"),
-                       JS_RevokeDatabase);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "grantCollection"),
-                       JS_GrantCollection);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "revokeCollection"),
-                       JS_RevokeCollection);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "updateConfigData"),
-                       JS_UpdateConfigData);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "configData"),
-                       JS_GetConfigData);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "permission"),
-                       JS_GetPermission);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "currentUser"),
-                       JS_CurrentUser);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "isAuthActive"),
-                       JS_AuthIsActive);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "replace"), JS_ReplaceUser);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "update"), JS_UpdateUser);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "remove"), JS_RemoveUser);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "document"), JS_GetUser);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "reload"), JS_ReloadAuthData);
+  TRI_AddMethodVocbase(isolate, rt,
+                       TRI_V8_ASCII_STRING(isolate, "grantDatabase"), JS_GrantDatabase);
+  TRI_AddMethodVocbase(isolate, rt,
+                       TRI_V8_ASCII_STRING(isolate, "revokeDatabase"), JS_RevokeDatabase);
+  TRI_AddMethodVocbase(isolate, rt,
+                       TRI_V8_ASCII_STRING(isolate, "grantCollection"), JS_GrantCollection);
+  TRI_AddMethodVocbase(isolate, rt,
+                       TRI_V8_ASCII_STRING(isolate, "revokeCollection"), JS_RevokeCollection);
+  TRI_AddMethodVocbase(isolate, rt,
+                       TRI_V8_ASCII_STRING(isolate, "updateConfigData"), JS_UpdateConfigData);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "configData"), JS_GetConfigData);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "permission"), JS_GetPermission);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "currentUser"), JS_CurrentUser);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "isAuthActive"), JS_AuthIsActive);
 
   v8g->UsersTempl.Reset(isolate, rt);
   ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoUsersCtor"));
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "ArangoUsersCtor"),
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "ArangoUsersCtor"),
                                ft->GetFunction(), true);
 
   // register the global object
   v8::Handle<v8::Object> aa = rt->NewInstance();
   if (!aa.IsEmpty()) {
-    TRI_AddGlobalVariableVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "ArangoUsers"),
-                                 aa);
+    TRI_AddGlobalVariableVocbase(isolate,
+                                 TRI_V8_ASCII_STRING(isolate, "ArangoUsers"), aa);
   }
 }

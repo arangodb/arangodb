@@ -47,8 +47,7 @@ namespace cache {
 /// which over-writes itself after it fills up (thus only maintaining a recent
 /// window on the records).
 ////////////////////////////////////////////////////////////////////////////////
-template <class T, class Comparator = std::equal_to<T>,
-          class Hasher = std::hash<T>>
+template <class T, class Comparator = std::equal_to<T>, class Hasher = std::hash<T>>
 class FrequencyBuffer {
  public:
   typedef std::vector<std::pair<T, uint64_t>> stats_t;
@@ -65,11 +64,7 @@ class FrequencyBuffer {
   /// @brief Initialize with the given capacity.
   //////////////////////////////////////////////////////////////////////////////
   explicit FrequencyBuffer(size_t capacity)
-      : _capacity(0),
-        _mask(0),
-        _buffer(nullptr),
-        _cmp(),
-        _empty() {
+      : _capacity(0), _mask(0), _buffer(nullptr), _cmp(), _empty() {
     size_t i = 0;
     for (; (static_cast<size_t>(1) << i) < capacity; i++) {
     }
@@ -91,8 +86,7 @@ class FrequencyBuffer {
   /// @brief Reports the memory usage in bytes.
   //////////////////////////////////////////////////////////////////////////////
   size_t memoryUsage() const {
-    return ((_capacity * sizeof(T)) + sizeof(FrequencyBuffer<T>) +
-            sizeof(std::vector<T>));
+    return ((_capacity * sizeof(T)) + sizeof(FrequencyBuffer<T>) + sizeof(std::vector<T>));
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -102,7 +96,7 @@ class FrequencyBuffer {
     // we do not care about the order in which threads insert their values
     (*_buffer)[basics::SharedPRNG::rand() & _mask] = record;
   }
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Remove all occurrences of the specified event record.
   //////////////////////////////////////////////////////////////////////////////
@@ -139,7 +133,7 @@ class FrequencyBuffer {
                 return left.second < right.second;
               });
 
-    return data; // RVO moves this out
+    return data;  // RVO moves this out
   }
 
   //////////////////////////////////////////////////////////////////////////////

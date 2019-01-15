@@ -126,7 +126,7 @@ class ConditionVariable {
 
   TRI_condition_t _condition;
 };
-}
-}
+}  // namespace basics
+}  // namespace arangodb
 
 #endif

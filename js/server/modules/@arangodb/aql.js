@@ -1220,6 +1220,12 @@ function AQL_COLLECTION_COUNT (name) {
   return c.count();
 }
 
+function AQL_CHECK_DOCUMENT () {
+  'use strict';
+  
+  THROW('CHECK_DOCUMENT', INTERNAL.errors.ERROR_NOT_IMPLEMENTED);
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief execute ternary operator
 // /
@@ -5736,6 +5742,7 @@ exports.AQL_DATE_DIFF = AQL_DATE_DIFF;
 exports.AQL_DATE_COMPARE = AQL_DATE_COMPARE;
 exports.AQL_DATE_FORMAT = AQL_DATE_FORMAT;
 exports.AQL_PREGEL_RESULT = AQL_PREGEL_RESULT;
+exports.AQL_CHECK_DOCUMENT = AQL_CHECK_DOCUMENT;
 
 exports.reload = reloadUserFunctions;
 exports.clearCaches = clearCaches;

@@ -34,8 +34,7 @@ class QueryRegistry;
 
 class RestSimpleQueryHandler : public RestCursorHandler {
  public:
-  RestSimpleQueryHandler(GeneralRequest*, GeneralResponse*,
-                         arangodb::aql::QueryRegistry*);
+  RestSimpleQueryHandler(GeneralRequest*, GeneralResponse*, arangodb::aql::QueryRegistry*);
 
  public:
   size_t queue() const override;
@@ -46,6 +45,6 @@ class RestSimpleQueryHandler : public RestCursorHandler {
   void allDocumentKeys();
   void byExample();
 };
-}
+}  // namespace arangodb
 
 #endif

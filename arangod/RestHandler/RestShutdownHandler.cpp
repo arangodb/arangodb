@@ -35,8 +35,7 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::rest;
 
-RestShutdownHandler::RestShutdownHandler(GeneralRequest* request,
-                                         GeneralResponse* response)
+RestShutdownHandler::RestShutdownHandler(GeneralRequest* request, GeneralResponse* response)
     : RestBaseHandler(request, response) {}
 
 bool RestShutdownHandler::isDirect() const { return true; }
@@ -46,8 +45,7 @@ bool RestShutdownHandler::isDirect() const { return true; }
 ////////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestShutdownHandler::execute() {
-  if (ExecContext::CURRENT != nullptr &&
-      !ExecContext::CURRENT->isAdminUser()) {
+  if (ExecContext::CURRENT != nullptr && !ExecContext::CURRENT->isAdminUser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "you need admin rights to trigger shutdown");
     return RestStatus::DONE;
@@ -56,17 +54,15 @@ RestStatus RestShutdownHandler::execute() {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
     return RestStatus::DONE;
   }
-  
+
   bool removeFromCluster;
-  std::string const& remove =
-      _request->value("remove_from_cluster", removeFromCluster);
+  std::string const& remove = _request->value("remove_from_cluster", removeFromCluster);
   removeFromCluster = removeFromCluster && remove == "1";
 
   bool shutdownClusterFound;
   std::string const& shutdownCluster =
       _request->value("shutdown_cluster", shutdownClusterFound);
-  if (shutdownClusterFound && shutdownCluster == "1" &&
-    AgencyCommManager::isEnabled()) {
+  if (shutdownClusterFound && shutdownCluster == "1" && AgencyCommManager::isEnabled()) {
     AgencyComm agency;
     VPackBuilder builder;
     builder.add(VPackValue(true));
@@ -84,7 +80,7 @@ RestStatus RestShutdownHandler::execute() {
   }
 
   ApplicationServer::server->beginShutdown();
-  
+
   try {
     VPackBuilder result;
     result.add(VPackValue("OK"));

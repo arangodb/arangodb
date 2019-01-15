@@ -64,15 +64,12 @@ class MMFilesWalLogfile {
   static MMFilesWalLogfile* createNew(std::string const&, MMFilesWalLogfile::IdType, uint32_t);
 
   /// @brief open an existing logfile
-  static MMFilesWalLogfile* openExisting(std::string const&, MMFilesWalLogfile::IdType, bool wasCollected, bool ignoreErrors);
+  static MMFilesWalLogfile* openExisting(std::string const&, MMFilesWalLogfile::IdType,
+                                         bool wasCollected, bool ignoreErrors);
 
-  int lockInMemory() {
-    return _df->lockInMemory();
-  }
-  
-  int unlockFromMemory() {
-    return _df->unlockFromMemory();
-  }
+  int lockInMemory() { return _df->lockInMemory(); }
+
+  int unlockFromMemory() { return _df->unlockFromMemory(); }
 
   /// @brief return the filename
   inline std::string filename() const {
@@ -84,11 +81,11 @@ class MMFilesWalLogfile {
 
   /// @brief return the datafile pointer
   inline MMFilesDatafile* df() const { return _df; }
-  
+
   /// @brief return the pointer to the logfile contents
-  inline char const* data() const { 
+  inline char const* data() const {
     TRI_ASSERT(_df != nullptr);
-    return _df->data(); 
+    return _df->data();
   }
 
   /// @brief return the file descriptor
@@ -132,10 +129,8 @@ class MMFilesWalLogfile {
 
   /// @brief whether or not the logfile is sealed
   inline bool isSealed() const {
-    return (_status == StatusType::SEAL_REQUESTED ||
-            _status == StatusType::SEALED ||
-            _status == StatusType::COLLECTION_REQUESTED ||
-            _status == StatusType::COLLECTED);
+    return (_status == StatusType::SEAL_REQUESTED || _status == StatusType::SEALED ||
+            _status == StatusType::COLLECTION_REQUESTED || _status == StatusType::COLLECTED);
   }
 
   /// @brief whether or not the logfile can be sealed
@@ -145,14 +140,12 @@ class MMFilesWalLogfile {
 
   /// @brief whether or not the logfile can be collected
   inline bool canBeCollected() const {
-    return (_status == StatusType::SEALED ||
-            _status == StatusType::COLLECTION_REQUESTED);
+    return (_status == StatusType::SEALED || _status == StatusType::COLLECTION_REQUESTED);
   }
 
   /// @brief whether or not the logfile can be removed
   inline bool canBeRemoved() const {
-    return (_status == StatusType::COLLECTED && _collectQueueSize == 0 &&
-            _users == 0);
+    return (_status == StatusType::COLLECTED && _collectQueueSize == 0 && _users == 0);
   }
 
   /// @brief return the logfile status as a string
@@ -211,7 +204,9 @@ class MMFilesWalLogfile {
         break;
     }
 
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "changing logfile status from " << statusText(_status) << " to " << statusText(status) << " for logfile " << id();
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+        << "changing logfile status from " << statusText(_status) << " to "
+        << statusText(status) << " for logfile " << id();
     _status = status;
   }
 
@@ -251,6 +246,6 @@ class MMFilesWalLogfile {
   std::atomic<int64_t> _collectQueueSize;
 };
 
-}
+}  // namespace arangodb
 
 #endif

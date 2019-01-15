@@ -105,15 +105,12 @@ struct MMFilesEdgeIndexHelper {
   }
 };
 
-typedef arangodb::basics::AssocMulti<arangodb::velocypack::Slice,
-                                     MMFilesSimpleIndexElement, uint32_t, false, MMFilesEdgeIndexHelper>
-    TRI_MMFilesEdgeIndexHash_t;
+typedef arangodb::basics::AssocMulti<arangodb::velocypack::Slice, MMFilesSimpleIndexElement, uint32_t, false, MMFilesEdgeIndexHelper> TRI_MMFilesEdgeIndexHash_t;
 
 class MMFilesEdgeIndexIterator final : public IndexIterator {
  public:
   MMFilesEdgeIndexIterator(LogicalCollection* collection,
-                           transaction::Methods* trx,
-                           ManagedDocumentResult* mmdr,
+                           transaction::Methods* trx, ManagedDocumentResult* mmdr,
                            arangodb::MMFilesEdgeIndex const* index,
                            TRI_MMFilesEdgeIndexHash_t const* indexImpl,
                            std::unique_ptr<VPackBuilder>& keys);
@@ -157,8 +154,7 @@ class MMFilesEdgeIndex final : public MMFilesIndex {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimateLocal(
-      arangodb::StringRef const* = nullptr) const override;
+  double selectivityEstimateLocal(arangodb::StringRef const* = nullptr) const override;
 
   size_t memory() const override;
 
@@ -167,10 +163,10 @@ class MMFilesEdgeIndex final : public MMFilesIndex {
   void toVelocyPackFigures(VPackBuilder&) const override;
 
   Result insert(transaction::Methods*, LocalDocumentId const& documentId,
-             arangodb::velocypack::Slice const&, OperationMode mode) override;
+                arangodb::velocypack::Slice const&, OperationMode mode) override;
 
   Result remove(transaction::Methods*, LocalDocumentId const& documentId,
-             arangodb::velocypack::Slice const&, OperationMode mode) override;
+                arangodb::velocypack::Slice const&, OperationMode mode) override;
 
   void batchInsert(transaction::Methods*,
                    std::vector<std::pair<LocalDocumentId, VPackSlice>> const&,
@@ -191,14 +187,12 @@ class MMFilesEdgeIndex final : public MMFilesIndex {
                                arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
 
-  IndexIterator* iteratorForCondition(transaction::Methods*,
-                                      ManagedDocumentResult*,
+  IndexIterator* iteratorForCondition(transaction::Methods*, ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
-                                      arangodb::aql::Variable const*,
-                                      bool) override;
+                                      arangodb::aql::Variable const*, bool) override;
 
-  arangodb::aql::AstNode* specializeCondition(
-      arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
+  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode*,
+                                              arangodb::aql::Variable const*) const override;
 
   /// @brief Transform the list of search slices to search values.
   ///        This will multiply all IN entries and simply return all other
@@ -217,13 +211,12 @@ class MMFilesEdgeIndex final : public MMFilesIndex {
                                   arangodb::aql::AstNode const*) const;
 
   /// @brief add a single value node to the iterator's keys
-  void handleValNode(VPackBuilder* keys,
-                     arangodb::aql::AstNode const* valNode) const;
+  void handleValNode(VPackBuilder* keys, arangodb::aql::AstNode const* valNode) const;
 
-  MMFilesSimpleIndexElement buildFromElement(
-      LocalDocumentId const& documentId, arangodb::velocypack::Slice const& doc) const;
-  MMFilesSimpleIndexElement buildToElement(
-      LocalDocumentId const& documentId, arangodb::velocypack::Slice const& doc) const;
+  MMFilesSimpleIndexElement buildFromElement(LocalDocumentId const& documentId,
+                                             arangodb::velocypack::Slice const& doc) const;
+  MMFilesSimpleIndexElement buildToElement(LocalDocumentId const& documentId,
+                                           arangodb::velocypack::Slice const& doc) const;
 
  private:
   /// @brief the hash table for _from
@@ -232,6 +225,6 @@ class MMFilesEdgeIndex final : public MMFilesIndex {
   /// @brief the hash table for _to
   std::unique_ptr<TRI_MMFilesEdgeIndexHash_t> _edgesTo;
 };
-}
+}  // namespace arangodb
 
 #endif

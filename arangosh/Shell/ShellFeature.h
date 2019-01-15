@@ -32,8 +32,7 @@ class ShellFeature final : public application_features::ApplicationFeature {
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(
-      std::shared_ptr<options::ProgramOptions> options) override;
+  void validateOptions(std::shared_ptr<options::ProgramOptions> options) override;
   void start() override;
 
  private:
@@ -58,6 +57,6 @@ class ShellFeature final : public application_features::ApplicationFeature {
   RunMode _runMode;
   std::vector<std::string> _positionals;
 };
-}
+}  // namespace arangodb
 
 #endif

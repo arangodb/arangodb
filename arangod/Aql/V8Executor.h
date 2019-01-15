@@ -24,9 +24,9 @@
 #ifndef ARANGOD_AQL_V8EXECUTOR_H
 #define ARANGOD_AQL_V8EXECUTOR_H 1
 
-#include "Basics/Common.h"
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
+#include "Basics/Common.h"
 #include "V8/v8-globals.h"
 
 namespace arangodb {
@@ -61,7 +61,8 @@ class V8Executor {
 
   /// @brief checks if a V8 exception has occurred and throws an appropriate C++
   /// exception from it if so
-  static void HandleV8Error(v8::TryCatch&, v8::Handle<v8::Value>&, arangodb::basics::StringBuffer*, bool duringCompile);
+  static void HandleV8Error(v8::TryCatch&, v8::Handle<v8::Value>&,
+                            arangodb::basics::StringBuffer*, bool duringCompile);
 
  private:
   /// @brief traverse the expression and note all user-defined functions
@@ -160,15 +161,14 @@ class V8Executor {
 
   /// @brief mapping from literal array/objects to register ids
   std::unordered_map<AstNode const*, size_t> _constantRegisters;
-  
+
   /// @brief mapping from user-defined function names to register ids
   std::unordered_map<std::string, size_t> _userFunctions;
 
   /// @brief local value for literal object size threshold
   size_t const _literalSizeThreshold;
-
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

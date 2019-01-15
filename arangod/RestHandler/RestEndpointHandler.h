@@ -39,6 +39,6 @@ class RestEndpointHandler : public RestVocbaseBaseHandler {
  protected:
   void retrieveEndpoints();
 };
-}
+}  // namespace arangodb
 
 #endif

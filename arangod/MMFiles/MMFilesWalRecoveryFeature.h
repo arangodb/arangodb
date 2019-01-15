@@ -32,7 +32,6 @@ class ProgramOptions;
 }
 
 class MMFilesWalRecoveryFeature final : public application_features::ApplicationFeature {
-
   MMFilesWalRecoveryFeature(MMFilesWalRecoveryFeature const&) = delete;
   MMFilesWalRecoveryFeature& operator=(MMFilesWalRecoveryFeature const&) = delete;
 
@@ -42,9 +41,8 @@ class MMFilesWalRecoveryFeature final : public application_features::Application
 
  public:
   void start() override final;
-
 };
 
-}
+}  // namespace arangodb
 
 #endif

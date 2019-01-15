@@ -1,5 +1,98 @@
-v3.3.21 (XXXX-XX-XX)
+v3.3.22 (XXXX-XX-XX)
 --------------------
+
+* fixed an issue where a crashed coordinator can lead to some Foxx queue jobs
+  erroneously either left hanging or being restarted
+
+* fix issue #7900: Bind values of `null` are not replaced by
+  empty string anymore, when toggling between json and table
+  view in the web-ui.
+
+* Use base64url to encode and decode JWT parts.
+
+* added AQL function `CHECK_DOCUMENT` for document validity checks
+
+* added arangorestore option `--cleanup-duplicate-attributes` to clean up input documents
+  with redundant attribute names
+
+  Importing such documents without the option set will make arangorestore fail with an
+  error, and setting the option will make the restore process clean up the input by using
+  just the first specified value for each redundant attribute.
+
+* the arangorestore options `--default-number-of-shards` and `--default-replication-factor`
+  are now deprecated in favor of the much more powerful options `--number-of-shards`
+  and `--replication-factor`
+
+  The new options `--number-of-shards` and `--replication-factor` allow specifying
+  default values for the number of shards and the replication factor, resp. for all
+  restored collections. If specified, these default values will be used regardless
+  of whether the number of shards or the replication factor values are already present
+  in the metadata of the dumped collections.
+
+  It is also possible to override the values on a per-collection level by specifying
+  the options multiple times, e.g.
+
+      --number-of-shards 2 --number-of-shards mycollection=3 --number-of-shards test=4
+
+  The above will create all collections with 2 shards, except the collection "mycollection"
+  (3 shards) and "test" (4 shards).
+
+  By omitting the default value, it is also possible to use the number of shards/replication
+  factor values from the dump for all collections but the explicitly specified ones, e.g.
+
+      --number-of-shards mycollection=3 --number-of-shards test=4
+
+  This will use the number of shards as specified in the dump, except for the collections
+  "mycollection" and "test".
+
+  The `--replication-factor` option works similarly.
+
+* Added `--server.jwt-secret-keyfile` option.
+
+* validate uniqueness of attribute names in AQL in cases in which it was not
+  done before. When constructing AQL objects via object literals, there was
+  no validation about object attribute names being unique. For example, it was
+  possible to create objects with duplicate attribute names as follows:
+
+      INSERT { a: 1, a: 2 } INTO collection
+
+  This resulted in a document having two "a" attributes, which is obviously
+  undesired. Now, when an attribute value is used multiple times, only the first
+  assigned value will be used for that attribute in AQL. It is not possible to
+  specify the same attribute multiple times and overwrite the attribute's value
+  with by that. That means in the above example, the value of "a" will be 1,
+  and not 2.
+  This changes the behavior for overriding attribute values in AQL compared to
+  previous versions of ArangoDB, as previous versions in some cases allowed
+  duplicate attribute names in objects/documents (which is undesired) and in
+  other cases used the _last_ value assigned to an attribute instead of the _first_
+  value. In order to explicitly override a value in an existing object, use the
+  AQL MERGE function.
+
+  To avoid all these issues, users are encouraged to use unambiguous attribute
+  names in objects/documents in AQL. Outside of AQL, specifying the same attribute
+  multiple times may even result in a parse error, e.g. when sending such data
+  to ArangoDB's HTTP REST API.
+
+* when detecting parse errors in the JSON input sent to the restore API, now
+  abort with a proper error containing the problem description instead of aborting
+  but hiding there was a problem.
+
+* remove Swagger map files from the build to reduce package sizes
+
+* do not respond with an internal error in case of JSON parse errors detected
+  in incoming HTTP requests
+
+* fixed issue #7834: AQL Query crashes instance
+
+v3.3.21 (2018-12-13)
+--------------------
+
+* fix thread shutdown in _WIN32 builds
+
+  Previous versions used a wrong comparison logic to determine the current
+  thread id when shutting down a thread, leading to threads hanging in their
+  destructors on thread shutdown
 
 * fixed TypeError being thrown instead of validation errors when Foxx manifest
   validation fails

@@ -48,18 +48,17 @@ struct PageRank : public SimpleAlgorithm<float, float, float> {
     return new SumCombiner<float>();
   }
 
-  VertexComputation<float, float, float>* createComputation(
-      WorkerConfig const*) const override;
+  VertexComputation<float, float, float>* createComputation(WorkerConfig const*) const override;
 
   WorkerContext* workerContext(VPackSlice userParams) const override;
-  
+
   MasterContext* masterContext(VPackSlice userParams) const override;
 
   IAggregator* aggregator(std::string const& name) const override;
 
   uint64_t maxGlobalSuperstep() const override { return _maxGSS; }
 };
-}
-}
-}
+}  // namespace algos
+}  // namespace pregel
+}  // namespace arangodb
 #endif

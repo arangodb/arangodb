@@ -100,13 +100,12 @@ double GeoIndex_distance(GeoCoordinate* c1, GeoCoordinate* c2);
 int GeoIndex_insert(GeoIdx* gi, RocksDBMethods* rocksMethods, GeoCoordinate* c);
 int GeoIndex_remove(GeoIdx* gi, RocksDBMethods* rocksMethods, GeoCoordinate* c);
 int GeoIndex_hint(GeoIdx* gi, int hint);
-GeoCoordinates* GeoIndex_PointsWithinRadius(GeoIdx* gi, RocksDBMethods* rocksMethods, GeoCoordinate* c,
-                                            double d);
-GeoCoordinates* GeoIndex_NearestCountPoints(GeoIdx* gi, RocksDBMethods* rocksMethods, GeoCoordinate* c,
-                                            int count);
+GeoCoordinates* GeoIndex_PointsWithinRadius(GeoIdx* gi, RocksDBMethods* rocksMethods,
+                                            GeoCoordinate* c, double d);
+GeoCoordinates* GeoIndex_NearestCountPoints(GeoIdx* gi, RocksDBMethods* rocksMethods,
+                                            GeoCoordinate* c, int count);
 GeoCursor* GeoIndex_NewCursor(GeoIdx* gi, RocksDBMethods* rocksMethods, GeoCoordinate* c);
-GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count,
-                                    bool returnDistances = true,
+GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count, bool returnDistances = true,
                                     double maxDistance = -1.0);
 void GeoIndex_CursorFree(GeoCursor* gc);
 void GeoIndex_CoordinatesFree(GeoCoordinates* clist);
@@ -114,7 +113,7 @@ void GeoIndex_CoordinatesFree(GeoCoordinates* clist);
 void GeoIndex_INDEXDUMP(GeoIdx* gi, RocksDBMethods* rocksMethods, FILE* f);
 int GeoIndex_INDEXVALID(GeoIdx* gi, RocksDBMethods* rocksMethods);
 #endif
-}
-}
+}  // namespace rocksdbengine
+}  // namespace arangodb
 #endif
 /* end of GeoIdx.h  */

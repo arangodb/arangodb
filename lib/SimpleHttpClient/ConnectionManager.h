@@ -30,7 +30,6 @@
 
 #include <list>
 
-
 namespace arangodb {
 namespace httpclient {
 
@@ -96,10 +95,8 @@ class ConnectionManager {
     std::string const _endpointSpecification;
     time_t _lastUsed;
 
-    SingleServerConnection(ServerConnections* manager,
-                           GeneralClientConnection* connection,
-                           Endpoint* endpoint,
-                           std::string const& endpointSpecification)
+    SingleServerConnection(ServerConnections* manager, GeneralClientConnection* connection,
+                           Endpoint* endpoint, std::string const& endpointSpecification)
         : _connections(manager),
           _connection(connection),
           _endpoint(endpoint),
@@ -213,6 +210,6 @@ class ConnectionManager {
 
   ConnectionsBucket _connectionsBuckets[ConnectionManagerBuckets()];
 };
-}
-}
+}  // namespace httpclient
+}  // namespace arangodb
 #endif

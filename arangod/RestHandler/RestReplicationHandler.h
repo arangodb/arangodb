@@ -249,8 +249,9 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief restores the structure of a collection, coordinator case
   //////////////////////////////////////////////////////////////////////////////
 
-  Result processRestoreCollectionCoordinator(VPackSlice const&, bool overwrite, bool force,
-                                             uint64_t numberOfShards, uint64_t replicationFactor,
+  Result processRestoreCollectionCoordinator(VPackSlice const&, bool overwrite,
+                                             bool force, uint64_t numberOfShards,
+                                             uint64_t replicationFactor,
                                              bool ignoreDistributeShardsLikeErrors);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -263,8 +264,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief restores the data of a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  Result processRestoreDataBatch(transaction::Methods& trx,
-                                 std::string const& colName);
+  Result processRestoreDataBatch(transaction::Methods& trx, std::string const& colName);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the indexes of a collection
@@ -319,9 +319,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// is deleted.
   //////////////////////////////////////////////////////////////////////////////
 
-  static std::unordered_map<std::string,
-                            std::shared_ptr<SingleCollectionTransaction>>
-      _holdReadLockJobs;
+  static std::unordered_map<std::string, std::shared_ptr<SingleCollectionTransaction>> _holdReadLockJobs;
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -337,7 +335,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   static uint64_t const _maxChunkSize;
 
  protected:
-
   //////////////////////////////////////////////////////////////////////////////
   /// SECTION:
   /// Functions to be implemented by specialisation
@@ -404,5 +401,5 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
 
   virtual void handleCommandDump() = 0;
 };
-}
+}  // namespace arangodb
 #endif

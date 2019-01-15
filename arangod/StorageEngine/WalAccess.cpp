@@ -32,10 +32,9 @@ bool WalAccessContext::shouldHandleDB(TRI_voc_tick_t dbid) const {
 }
 
 /// @brief Check if collection is in filter
-bool WalAccessContext::shouldHandleCollection(TRI_voc_tick_t dbid,
-                                              TRI_voc_cid_t cid) const {
-  return _filter.vocbase == 0 || (_filter.vocbase == dbid &&
-         (_filter.collection == 0 || _filter.collection == cid));
+bool WalAccessContext::shouldHandleCollection(TRI_voc_tick_t dbid, TRI_voc_cid_t cid) const {
+  return _filter.vocbase == 0 ||
+         (_filter.vocbase == dbid && (_filter.collection == 0 || _filter.collection == cid));
 }
 
 /// @brief try to get collection, may return null
@@ -54,8 +53,7 @@ TRI_vocbase_t* WalAccessContext::loadVocbase(TRI_voc_tick_t dbid) {
   }
 }
 
-LogicalCollection* WalAccessContext::loadCollection(TRI_voc_tick_t dbid,
-                                                    TRI_voc_cid_t cid) {
+LogicalCollection* WalAccessContext::loadCollection(TRI_voc_tick_t dbid, TRI_voc_cid_t cid) {
   TRI_ASSERT(dbid != 0);
   TRI_ASSERT(cid != 0);
   TRI_vocbase_t* vocbase = loadVocbase(dbid);
@@ -69,7 +67,7 @@ LogicalCollection* WalAccessContext::loadCollection(TRI_voc_tick_t dbid,
       if (created.second) {
         return created.first->second.collection();
       }
-    } catch(...) {
+    } catch (...) {
       // weglaecheln
     }
   }

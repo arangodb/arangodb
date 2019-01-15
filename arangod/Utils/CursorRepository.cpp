@@ -44,7 +44,7 @@ bool authorized(std::pair<arangodb::Cursor*, std::string> const& cursor) {
 
   return (cursor.second == context->user());
 }
-}
+}  // namespace
 
 using namespace arangodb;
 
@@ -78,9 +78,11 @@ CursorRepository::~CursorRepository() {
     }
 
     if (tries == 0) {
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "waiting for used cursors to become unused";
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+          << "waiting for used cursors to become unused";
     } else if (tries == 120) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "giving up waiting for unused cursors";
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+          << "giving up waiting for unused cursors";
     }
 
     usleep(500000);
@@ -125,16 +127,16 @@ Cursor* CursorRepository::addCursor(std::unique_ptr<Cursor> cursor) {
 /// the cursor will take ownership of both json and extra
 ////////////////////////////////////////////////////////////////////////////////
 
-Cursor* CursorRepository::createFromQueryResult(
-    aql::QueryResult&& result, size_t batchSize, std::shared_ptr<VPackBuilder> extra,
-    double ttl, bool count) {
+Cursor* CursorRepository::createFromQueryResult(aql::QueryResult&& result, size_t batchSize,
+                                                std::shared_ptr<VPackBuilder> extra,
+                                                double ttl, bool count) {
   TRI_ASSERT(result.result != nullptr);
 
-  CursorId const id = TRI_NewServerSpecificTick(); // embedded server id
+  CursorId const id = TRI_NewServerSpecificTick();  // embedded server id
 
   std::unique_ptr<Cursor> cursor;
-  cursor.reset(new VelocyPackCursor(
-      _vocbase, id, std::move(result), batchSize, extra, ttl, count));
+  cursor.reset(new VelocyPackCursor(_vocbase, id, std::move(result), batchSize,
+                                    extra, ttl, count));
   cursor->use();
 
   return addCursor(std::move(cursor));

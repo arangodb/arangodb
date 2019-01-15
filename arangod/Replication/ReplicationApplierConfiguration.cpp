@@ -35,7 +35,7 @@
 using namespace arangodb;
 
 /// @brief construct the configuration with default values
-ReplicationApplierConfiguration::ReplicationApplierConfiguration() 
+ReplicationApplierConfiguration::ReplicationApplierConfiguration()
     : _endpoint(),
       _database(),
       _username(),
@@ -84,7 +84,7 @@ void ReplicationApplierConfiguration::reset() {
   _autoResyncRetries = 2;
   _sslProtocol = 0;
   _skipCreateDrop = false;
-  _autoStart = false; 
+  _autoStart = false;
   _adaptivePolling = true;
   _autoResync = false;
   _includeSystem = true;
@@ -94,20 +94,21 @@ void ReplicationApplierConfiguration::reset() {
   _restrictType.clear();
   _restrictCollections.clear();
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  _force32mode = false; 
+  _force32mode = false;
 #endif
 }
 
 /// @brief get a VelocyPack representation
 /// expects builder to be in an open Object state
-void ReplicationApplierConfiguration::toVelocyPack(VPackBuilder& builder, bool includePassword, bool includeJwt) const {
+void ReplicationApplierConfiguration::toVelocyPack(VPackBuilder& builder, bool includePassword,
+                                                   bool includeJwt) const {
   if (!_endpoint.empty()) {
     builder.add("endpoint", VPackValue(_endpoint));
   }
   if (!_database.empty()) {
     builder.add("database", VPackValue(_database));
   }
-  
+
   bool hasUsernamePassword = false;
   if (!_username.empty()) {
     hasUsernamePassword = true;
@@ -146,32 +147,28 @@ void ReplicationApplierConfiguration::toVelocyPack(VPackBuilder& builder, bool i
   builder.close();  // restrictCollections
 
   builder.add("connectionRetryWaitTime",
-              VPackValue(static_cast<double>(_connectionRetryWaitTime) /
-                         (1000.0 * 1000.0)));
+              VPackValue(static_cast<double>(_connectionRetryWaitTime) / (1000.0 * 1000.0)));
   builder.add("initialSyncMaxWaitTime",
-              VPackValue(static_cast<double>(_initialSyncMaxWaitTime) /
-                         (1000.0 * 1000.0)));
-  builder.add(
-      "idleMinWaitTime",
-      VPackValue(static_cast<double>(_idleMinWaitTime) / (1000.0 * 1000.0)));
-  builder.add(
-      "idleMaxWaitTime",
-      VPackValue(static_cast<double>(_idleMaxWaitTime) / (1000.0 * 1000.0)));
+              VPackValue(static_cast<double>(_initialSyncMaxWaitTime) / (1000.0 * 1000.0)));
+  builder.add("idleMinWaitTime",
+              VPackValue(static_cast<double>(_idleMinWaitTime) / (1000.0 * 1000.0)));
+  builder.add("idleMaxWaitTime",
+              VPackValue(static_cast<double>(_idleMaxWaitTime) / (1000.0 * 1000.0)));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   builder.add("force32mode", VPackValue(_force32mode));
 #endif
 }
 
 /// @brief create a configuration object from velocypack
-ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(VPackSlice slice, 
-                                                                                std::string const& databaseName) {
+ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
+    VPackSlice slice, std::string const& databaseName) {
   return fromVelocyPack(ReplicationApplierConfiguration(), slice, databaseName);
 }
 
 /// @brief create a configuration object from velocypack, merging it with an existing one
-ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(ReplicationApplierConfiguration const& existing,
-                                                                                VPackSlice slice, 
-                                                                                std::string const& databaseName) {
+ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
+    ReplicationApplierConfiguration const& existing, VPackSlice slice,
+    std::string const& databaseName) {
   // copy existing configuration
   ReplicationApplierConfiguration configuration = existing;
 
@@ -189,7 +186,7 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
   if (value.isString() && value.getStringLength() > 0) {
     hasUsernamePassword = true;
     configuration._username = value.copyString();
-    
+
     value = slice.get("password");
     if (value.isString()) {
       configuration._password = value.copyString();
@@ -201,7 +198,8 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
     if (value.isString()) {
       configuration._jwt = value.copyString();
     } else {
-      auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
+      auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>(
+          "Cluster");
       if (cluster->isEnabled()) {
         auto af = AuthenticationFeature::instance();
         if (af != nullptr) {
@@ -226,7 +224,7 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
   if (value.isNumber()) {
     configuration._maxConnectRetries = value.getNumber<uint64_t>();
   }
-  
+
   value = slice.get("lockTimeoutRetries");
   if (value.isNumber()) {
     configuration._lockTimeoutRetries = value.getNumber<uint64_t>();
@@ -241,7 +239,7 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
   if (value.isNumber()) {
     configuration._chunkSize = value.getNumber<uint64_t>();
   }
-  
+
   value = slice.get("skipCreateDrop");
   if (value.isBoolean()) {
     configuration._skipCreateDrop = value.getBoolean();
@@ -356,29 +354,34 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
       configuration._endpoint = value.copyString();
     }
   }
-  
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   value = slice.get("force32mode");
   if (value.isBool()) {
     configuration._force32mode = value.getBool();
   }
 #endif
-  
+
   return configuration;
 }
 
 /// @brief validate the configuration. will throw if the config is invalid
 void ReplicationApplierConfiguration::validate() const {
   if (_endpoint.empty()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "invalid value for <endpoint>");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION,
+                                   "invalid value for <endpoint>");
   }
 
-  if (!_restrictType.empty() && _restrictType != "include" && _restrictType != "exclude") {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "invalid value for <restrictType>");
+  if (!_restrictType.empty() && _restrictType != "include" &&
+      _restrictType != "exclude") {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION,
+                                   "invalid value for <restrictType>");
   }
 
   if ((_restrictType.empty() && !_restrictCollections.empty()) ||
       (!_restrictType.empty() && _restrictCollections.empty())) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "invalid value for <restrictCollections> or <restrictType>");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION,
+        "invalid value for <restrictCollections> or <restrictType>");
   }
 }

@@ -271,8 +271,7 @@ double GeoIndex_distance(GeoCoordinate* c1, GeoCoordinate* c2) {
   z2 = sin(c2->latitude * M_PI / 180.0);
   x2 = cos(c2->latitude * M_PI / 180.0) * cos(c2->longitude * M_PI / 180.0);
   y2 = cos(c2->latitude * M_PI / 180.0) * sin(c2->longitude * M_PI / 180.0);
-  mole = sqrt((xx1 - x2) * (xx1 - x2) + (yy1 - y2) * (yy1 - y2) +
-              (z1 - z2) * (z1 - z2));
+  mole = sqrt((xx1 - x2) * (xx1 - x2) + (yy1 - y2) * (yy1 - y2) + (z1 - z2) * (z1 - z2));
   if (mole > 2.0) mole = 2.0; /* make sure arcsin succeeds! */
   return 2.0 * EARTHRADIAN * asin(mole / 2.0);
 }
@@ -315,8 +314,7 @@ int GeoIndexNewPot(GeoIx* gix) {
     x = x / y;
     if (x > 1000000000L) return -2;
     int newpotct = (int)x;
-    gp = static_cast<GeoPot*>(TRI_Reallocate(gix->pots,
-                                             newpotct * sizeof(GeoPot)));
+    gp = static_cast<GeoPot*>(TRI_Reallocate(gix->pots, newpotct * sizeof(GeoPot)));
 
     if (gp == nullptr) {
       return -2;
@@ -360,18 +358,15 @@ GeoIdx* GeoIndex_new(void) {
   GeoIx* gix;
   int i, j;
 
-  gix = static_cast<GeoIx*>(
-      TRI_Allocate(sizeof(GeoIx)));
+  gix = static_cast<GeoIx*>(TRI_Allocate(sizeof(GeoIx)));
 
   if (gix == nullptr) {
     return (GeoIdx*)gix;
   }
 
   /* try to allocate all the things we need  */
-  gix->pots = static_cast<GeoPot*>(
-      TRI_Allocate(GEOPOTSTART * sizeof(GeoPot)));
-  gix->gc = static_cast<GeoCoordinate*>(TRI_Allocate(
-      GEOSLOTSTART * sizeof(GeoCoordinate)));
+  gix->pots = static_cast<GeoPot*>(TRI_Allocate(GEOPOTSTART * sizeof(GeoPot)));
+  gix->gc = static_cast<GeoCoordinate*>(TRI_Allocate(GEOSLOTSTART * sizeof(GeoCoordinate)));
 
   /* if any of them fail, free the ones that succeeded  */
   /* and then return the nullptr for our user      */
@@ -390,8 +385,7 @@ GeoIdx* GeoIndex_new(void) {
   }
 
   // set initial memory usage
-  gix->_memoryUsed =
-      GEOPOTSTART * sizeof(GeoPot) + GEOSLOTSTART * sizeof(GeoCoordinate);
+  gix->_memoryUsed = GEOPOTSTART * sizeof(GeoPot) + GEOSLOTSTART * sizeof(GeoCoordinate);
 
   /* initialize chain of empty slots  */
   for (i = 0; i < GEOSLOTSTART; i++) {
@@ -666,8 +660,8 @@ void GeoMkDetail(GeoIx* gix, GeoDetailedPoint* gd, GeoCoordinate* c) {
     double xx1 = (gix->fixed.x)[i];
     double yy1 = (gix->fixed.y)[i];
     double z1 = (gix->fixed.z)[i];
-    double snmd = (xx1 - gd->x) * (xx1 - gd->x) + (yy1 - gd->y) * (yy1 - gd->y) +
-           (z1 - gd->z) * (z1 - gd->z);
+    double snmd = (xx1 - gd->x) * (xx1 - gd->x) +
+                  (yy1 - gd->y) * (yy1 - gd->y) + (z1 - gd->z) * (z1 - gd->z);
     (gd->fixdist)[i] = (GeoFix)(asin(sqrt(snmd) / 2.0) * ARCSINFIX);
   }
 }
@@ -781,12 +775,9 @@ GeoResults* GeoResultsCons(int alloc) {
     return NULL;
   }
 
-  gres = static_cast<GeoResults*>(
-      TRI_Allocate(sizeof(GeoResults)));
-  sa = static_cast<int*>(
-      TRI_Allocate(alloc * sizeof(int)));
-  dd = static_cast<double*>(
-      TRI_Allocate(alloc * sizeof(double)));
+  gres = static_cast<GeoResults*>(TRI_Allocate(sizeof(GeoResults)));
+  sa = static_cast<int*>(TRI_Allocate(alloc * sizeof(int)));
+  dd = static_cast<double*>(TRI_Allocate(alloc * sizeof(double)));
   if ((gres == NULL) || (sa == NULL) || (dd == NULL)) {
     if (gres != NULL) {
       TRI_Free(gres);
@@ -898,10 +889,8 @@ int GeoResultsGrow(GeoResults* gr) {
   /* otherwise grow by about 50%  */
   newsiz = gr->pointsct + (gr->pointsct / 2) + 1;
   if (newsiz > 1000000000) return -1;
-  sa = static_cast<int*>(
-      TRI_Reallocate(gr->slot, newsiz * sizeof(int)));
-  dd = static_cast<double*>(
-      TRI_Reallocate(gr->snmd, newsiz * sizeof(double)));
+  sa = static_cast<int*>(TRI_Reallocate(gr->slot, newsiz * sizeof(int)));
+  dd = static_cast<double*>(TRI_Reallocate(gr->snmd, newsiz * sizeof(double)));
   if ((sa == NULL) || (dd == NULL)) {
     if (sa != NULL) gr->slot = sa;
     if (dd != NULL) gr->snmd = dd;
@@ -943,10 +932,8 @@ GeoCoordinates* GeoAnswers(GeoIx* gix, GeoResults* gr, bool returnDistances) {
     return NULL;
   }
 
-  ans = static_cast<GeoCoordinates*>(
-      TRI_Allocate(sizeof(GeoCoordinates)));
-  gc = static_cast<GeoCoordinate*>(TRI_Allocate(
-      gr->pointsct * sizeof(GeoCoordinate)));
+  ans = static_cast<GeoCoordinates*>(TRI_Allocate(sizeof(GeoCoordinates)));
+  gc = static_cast<GeoCoordinate*>(TRI_Allocate(gr->pointsct * sizeof(GeoCoordinate)));
 
   if ((ans == NULL) || (gc == NULL)) {
     if (ans != NULL) {
@@ -1019,8 +1006,7 @@ double GeoSNMD(GeoDetailedPoint* gd, GeoCoordinate* c) {
   z = sin(lat);
   x = latCos * cos(lon);
   y = latCos * sin(lon);
-  return (x - gd->x) * (x - gd->x) + (y - gd->y) * (y - gd->y) +
-         (z - gd->z) * (z - gd->z);
+  return (x - gd->x) * (x - gd->x) + (y - gd->y) * (y - gd->y) + (z - gd->z) * (z - gd->z);
 }
 /* =================================================== */
 /*           GeoIndex_PointsWithinRadius               */
@@ -1052,8 +1038,7 @@ double GeoSNMD(GeoDetailedPoint* gd, GeoCoordinate* c) {
 /* GeoCoordinate data (lat/longitude and data pointer) */
 /* needed for the return to the caller.                */
 /* =================================================== */
-GeoCoordinates* GeoIndex_PointsWithinRadius(GeoIdx* gi, GeoCoordinate* c,
-                                            double d) {
+GeoCoordinates* GeoIndex_PointsWithinRadius(GeoIdx* gi, GeoCoordinate* c, double d) {
   GeoResults* gres;
   GeoCoordinates* answer;
   GeoDetailedPoint gd;
@@ -1117,8 +1102,7 @@ GeoCoordinates* GeoIndex_PointsWithinRadius(GeoIdx* gi, GeoCoordinate* c,
 /* useful points onto the top of the stack for early   */
 /* processing.                                         */
 /* =================================================== */
-GeoCoordinates* GeoIndex_NearestCountPoints(GeoIdx* gi, GeoCoordinate* c,
-                                            int count) {
+GeoCoordinates* GeoIndex_NearestCountPoints(GeoIdx* gi, GeoCoordinate* c, int count) {
   GeoResults* gr;
   GeoDetailedPoint gd;
   GeoCoordinates* answer;
@@ -1204,8 +1188,8 @@ int GeoIndexNewSlot(GeoIx* gix) {
     x = x / y;
     if (x > 2000000000L) return -2;
     int newslotct = (int)x;
-    gc = static_cast<GeoCoordinate*>(TRI_Reallocate(
-        gix->gc, newslotct * sizeof(GeoCoordinate)));
+    gc = static_cast<GeoCoordinate*>(
+        TRI_Reallocate(gix->gc, newslotct * sizeof(GeoCoordinate)));
 
     if (gc == NULL) {
       return -2;
@@ -1281,8 +1265,7 @@ int GeoFind(GeoPath* gt, GeoDetailedPoint* gd) {
       slot = gp->points[i];
       gc = gix->gc + slot;
       if (((gd->gc)->latitude == gc->latitude) &&
-          ((gd->gc)->longitude == gc->longitude) &&
-          ((gd->gc)->data == gc->data)) {
+          ((gd->gc)->longitude == gc->longitude) && ((gd->gc)->data == gc->data)) {
         gt->path[gt->pathlength] = i;
         return 1;
       }
@@ -2000,14 +1983,18 @@ typedef struct {
   GeoFix dist;
 } hpot;  // pot for putting on the heap
 
-static bool hpotcompare(hpot const& a, hpot const& b) { return (a.dist > b.dist); }
+static bool hpotcompare(hpot const& a, hpot const& b) {
+  return (a.dist > b.dist);
+}
 
 typedef struct {
   int slot;
   double snmd;
 } hslot;  // pot for putting on the heap
 
-static bool hslotcompare(hslot const& a, hslot const& b) { return (a.snmd > b.snmd); }
+static bool hslotcompare(hslot const& a, hslot const& b) {
+  return (a.snmd > b.snmd);
+}
 
 typedef struct {
   GeoIx* Ix; /* GeoIndex          */
@@ -2047,7 +2034,7 @@ GeoCursor* GeoIndex_NewCursor(GeoIdx* gi, GeoCoordinate* c) {
   if (gcr == nullptr) {
     return (GeoCursor*)gcr;
   }
-  
+
   GeoIx* gix = (GeoIx*)gi;
   gcr->Ix = gix;
 
@@ -2059,14 +2046,15 @@ GeoCursor* GeoIndex_NewCursor(GeoIdx* gi, GeoCoordinate* c) {
   gcr->slotsnmd = 20.0;
   gcr->potheap.push_back(hp);
   // not necessary here because potheap only contains one element
-  //std::push_heap(gcr->potheap.begin(), gcr->potheap.end(), hpotcompare);
+  // std::push_heap(gcr->potheap.begin(), gcr->potheap.end(), hpotcompare);
   TRI_ASSERT(gcr->potheap.size() == 1);
 
   // cppcheck-suppress *
   return (GeoCursor*)gcr;
 }
 
-GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count, bool returnDistances, double maxDistance) {
+GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count,
+                                    bool returnDistances, double maxDistance) {
   int i, j, r;
   GeoCoordinate* ct;
   GeoCoordinates* gcts;
@@ -2106,9 +2094,8 @@ GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count, bool returnDistanc
           hs.snmd = GeoSNMD(&(gcr->gd), ct);
           hs.slot = j;
           gcr->slotheap.push_back(hs);
-          std::push_heap(gcr->slotheap.begin(), gcr->slotheap.end(),
-                         hslotcompare);
-          /* 
+          std::push_heap(gcr->slotheap.begin(), gcr->slotheap.end(), hslotcompare);
+          /*
             TODO: skip useless results early here
           if (hs.snmd <= (maxsnmd * 1.00000000000001)) {
             gcr->slotheap.push_back(hs);
@@ -2165,9 +2152,7 @@ GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count, bool returnDistanc
   return gcts;
 }
 
-void GeoIndex_CursorFree(GeoCursor* gc) {
-  delete reinterpret_cast<GeoCr*>(gc);
-}
+void GeoIndex_CursorFree(GeoCursor* gc) { delete reinterpret_cast<GeoCr*>(gc); }
 
 /* =================================================== */
 /*        The remaining routines are usually           */
@@ -2182,8 +2167,7 @@ void RecursivePotDump(GeoIx* gix, FILE* f, int pot) {
   int i;
   GeoPot* gp;
   gp = gix->pots + pot;
-  fprintf(f, "GP. pot %d level %d  Kids %d %d\n", pot, gp->level, gp->LorLeaf,
-          gp->RorPoints);
+  fprintf(f, "GP. pot %d level %d  Kids %d %d\n", pot, gp->level, gp->LorLeaf, gp->RorPoints);
   fprintf(f, "strings %llx %llx %llx\n", gp->start, gp->middle, gp->end);
   fprintf(f, "maxdists ");
   for (i = 0; i < GeoIndexFIXEDPOINTS; i++) fprintf(f, " %x", gp->maxdist[i]);

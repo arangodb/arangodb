@@ -23,18 +23,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Utf8Helper.h"
-#include "Logger/Logger.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/directories.h"
 #include "Basics/tri-strings.h"
-#include "unicode/normalizer2.h"
+#include "Logger/Logger.h"
 #include "unicode/brkiter.h"
+#include "unicode/normalizer2.h"
+#include "unicode/putil.h"
 #include "unicode/ucasemap.h"
 #include "unicode/uclean.h"
+#include "unicode/udata.h"
 #include "unicode/unorm2.h"
 #include "unicode/ustdio.h"
-#include "unicode/putil.h"
-#include "unicode/udata.h"
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
@@ -44,12 +44,12 @@ using namespace arangodb::basics;
 
 Utf8Helper Utf8Helper::DefaultUtf8Helper(nullptr);
 
-Utf8Helper::Utf8Helper(std::string const& lang, void *icuDataPtr)
-  : _coll(nullptr) {
+Utf8Helper::Utf8Helper(std::string const& lang, void* icuDataPtr)
+    : _coll(nullptr) {
   setCollatorLanguage(lang, icuDataPtr);
 }
 
-Utf8Helper::Utf8Helper(void *icuDataPtr) : Utf8Helper("", icuDataPtr) {}
+Utf8Helper::Utf8Helper(void* icuDataPtr) : Utf8Helper("", icuDataPtr) {}
 
 Utf8Helper::~Utf8Helper() {
   if (_coll) {
@@ -65,15 +65,16 @@ int Utf8Helper::compareUtf8(char const* left, char const* right) const {
   TRI_ASSERT(right != nullptr);
 
   if (!_coll) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "no Collator in Utf8Helper::compareUtf8()!";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "no Collator in Utf8Helper::compareUtf8()!";
     return (strcmp(left, right));
   }
 
   UErrorCode status = U_ZERO_ERROR;
-  int result =
-      _coll->compareUTF8(StringPiece(left), StringPiece(right), status);
+  int result = _coll->compareUTF8(StringPiece(left), StringPiece(right), status);
   if (U_FAILURE(status)) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error in Collator::compareUTF8(...): " << u_errorName(status);
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "error in Collator::compareUTF8(...): " << u_errorName(status);
     return (strcmp(left, right));
   }
 
@@ -87,11 +88,11 @@ int Utf8Helper::compareUtf8(char const* left, size_t leftLength,
   TRI_ASSERT(_coll);
 
   UErrorCode status = U_ZERO_ERROR;
-  int result =
-      _coll->compareUTF8(StringPiece(left, (int32_t)leftLength),
-                         StringPiece(right, (int32_t)rightLength), status);
+  int result = _coll->compareUTF8(StringPiece(left, (int32_t)leftLength),
+                                  StringPiece(right, (int32_t)rightLength), status);
   if (U_FAILURE(status)) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error in Collator::compareUTF8(...): " << u_errorName(status);
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "error in Collator::compareUTF8(...): " << u_errorName(status);
     return (strncmp(left, right, leftLength < rightLength ? leftLength : rightLength));
   }
 
@@ -104,15 +105,15 @@ int Utf8Helper::compareUtf16(uint16_t const* left, size_t leftLength,
   TRI_ASSERT(right != nullptr);
 
   if (!_coll) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "no Collator in Utf8Helper::compareUtf16()!";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "no Collator in Utf8Helper::compareUtf16()!";
 
     if (leftLength == rightLength) {
       return memcmp((const void*)left, (const void*)right, leftLength * 2);
     }
 
-    int result =
-        memcmp((const void*)left, (const void*)right,
-               leftLength < rightLength ? leftLength * 2 : rightLength * 2);
+    int result = memcmp((const void*)left, (const void*)right,
+                        leftLength < rightLength ? leftLength * 2 : rightLength * 2);
 
     if (result == 0) {
       if (leftLength < rightLength) {
@@ -134,13 +135,14 @@ int Utf8Helper::compareUtf16(uint16_t const* left, size_t leftLength,
 
 bool Utf8Helper::setCollatorLanguage(std::string const& lang, void* icuDataPointer) {
   if (icuDataPointer == nullptr) {
-     return false;
-    }
+    return false;
+  }
 
   UErrorCode status = U_ZERO_ERROR;
   udata_setCommonData(reinterpret_cast<void*>(icuDataPointer), &status);
   if (U_FAILURE(status)) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error while udata_setCommonData(...): " << u_errorName(status);
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "error while udata_setCommonData(...): " << u_errorName(status);
     return false;
   }
   status = U_ZERO_ERROR;
@@ -150,7 +152,8 @@ bool Utf8Helper::setCollatorLanguage(std::string const& lang, void* icuDataPoint
     const Locale& locale = _coll->getLocale(type, status);
 
     if (U_FAILURE(status)) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error in Collator::getLocale(...): " << u_errorName(status);
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "error in Collator::getLocale(...): " << u_errorName(status);
       return false;
     }
     if (lang == locale.getName()) {
@@ -168,7 +171,9 @@ bool Utf8Helper::setCollatorLanguage(std::string const& lang, void* icuDataPoint
   }
 
   if (U_FAILURE(status)) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error in Collator::createInstance('" << lang << "'): " << u_errorName(status);
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "error in Collator::createInstance('" << lang
+        << "'): " << u_errorName(status);
     if (coll) {
       delete coll;
     }
@@ -179,12 +184,12 @@ bool Utf8Helper::setCollatorLanguage(std::string const& lang, void* icuDataPoint
   coll->setAttribute(UCOL_CASE_FIRST, UCOL_UPPER_FIRST, status);  // A < a
   coll->setAttribute(UCOL_NORMALIZATION_MODE, UCOL_OFF,
                      status);  // no normalization
-  coll->setAttribute(
-      UCOL_STRENGTH, UCOL_IDENTICAL,
-      status);  // UCOL_IDENTICAL, UCOL_PRIMARY, UCOL_SECONDARY, UCOL_TERTIARY
+  coll->setAttribute(UCOL_STRENGTH, UCOL_IDENTICAL,
+                     status);  // UCOL_IDENTICAL, UCOL_PRIMARY, UCOL_SECONDARY, UCOL_TERTIARY
 
   if (U_FAILURE(status)) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error in Collator::setAttribute(...): " << u_errorName(status);
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "error in Collator::setAttribute(...): " << u_errorName(status);
     delete coll;
     return false;
   }
@@ -204,7 +209,8 @@ std::string Utf8Helper::getCollatorLanguage() {
     const Locale& locale = _coll->getLocale(type, status);
 
     if (U_FAILURE(status)) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error in Collator::getLocale(...): " << u_errorName(status);
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "error in Collator::getLocale(...): " << u_errorName(status);
       return "";
     }
     return locale.getLanguage();
@@ -219,7 +225,8 @@ std::string Utf8Helper::getCollatorCountry() {
     const Locale& locale = _coll->getLocale(type, status);
 
     if (U_FAILURE(status)) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error in Collator::getLocale(...): " << u_errorName(status);
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "error in Collator::getLocale(...): " << u_errorName(status);
       return "";
     }
     return locale.getCountry();
@@ -233,8 +240,7 @@ std::string Utf8Helper::getCollatorCountry() {
 
 std::string Utf8Helper::toLowerCase(std::string const& src) {
   int32_t utf8len = 0;
-  char* utf8 = tolower(src.c_str(), (int32_t)src.length(),
-                       utf8len);
+  char* utf8 = tolower(src.c_str(), (int32_t)src.length(), utf8len);
 
   if (utf8 == nullptr) {
     return std::string();
@@ -249,8 +255,7 @@ std::string Utf8Helper::toLowerCase(std::string const& src) {
 /// @brief Lowercase the characters in a UTF-8 string.
 ////////////////////////////////////////////////////////////////////////////////
 
-char* Utf8Helper::tolower(char const* src,
-                          int32_t srcLength, int32_t& dstLength) {
+char* Utf8Helper::tolower(char const* src, int32_t srcLength, int32_t& dstLength) {
   char* utf8_dest = nullptr;
 
   if (src == nullptr || srcLength == 0) {
@@ -269,10 +274,10 @@ char* Utf8Helper::tolower(char const* src,
   LocalUCaseMapPointer csm(ucasemap_open(locale.c_str(), options, &status));
 
   if (U_FAILURE(status)) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error in ucasemap_open(...): " << u_errorName(status);
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "error in ucasemap_open(...): " << u_errorName(status);
   } else {
-    utf8_dest =
-        (char*)TRI_Allocate((srcLength + 1) * sizeof(char));
+    utf8_dest = (char*)TRI_Allocate((srcLength + 1) * sizeof(char));
     if (utf8_dest == nullptr) {
       return nullptr;
     }
@@ -283,8 +288,7 @@ char* Utf8Helper::tolower(char const* src,
     if (status == U_BUFFER_OVERFLOW_ERROR) {
       status = U_ZERO_ERROR;
       TRI_Free(utf8_dest);
-      utf8_dest =
-          (char*)TRI_Allocate((dstLength + 1) * sizeof(char));
+      utf8_dest = (char*)TRI_Allocate((dstLength + 1) * sizeof(char));
       if (utf8_dest == nullptr) {
         return nullptr;
       }
@@ -294,7 +298,8 @@ char* Utf8Helper::tolower(char const* src,
     }
 
     if (U_FAILURE(status)) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error in ucasemap_utf8ToLower(...): " << u_errorName(status);
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "error in ucasemap_utf8ToLower(...): " << u_errorName(status);
       TRI_Free(utf8_dest);
     } else {
       return utf8_dest;
@@ -315,8 +320,7 @@ char* Utf8Helper::tolower(char const* src,
 
 std::string Utf8Helper::toUpperCase(std::string const& src) {
   int32_t utf8len = 0;
-  char* utf8 = toupper(src.c_str(), (int32_t)src.length(),
-                       utf8len);
+  char* utf8 = toupper(src.c_str(), (int32_t)src.length(), utf8len);
   if (utf8 == nullptr) {
     return std::string();
   }
@@ -330,8 +334,7 @@ std::string Utf8Helper::toUpperCase(std::string const& src) {
 /// @brief Lowercase the characters in a UTF-8 string.
 ////////////////////////////////////////////////////////////////////////////////
 
-char* Utf8Helper::toupper(char const* src,
-                          int32_t srcLength, int32_t& dstLength) {
+char* Utf8Helper::toupper(char const* src, int32_t srcLength, int32_t& dstLength) {
   char* utf8_dest = nullptr;
 
   if (src == nullptr || srcLength == 0) {
@@ -350,10 +353,10 @@ char* Utf8Helper::toupper(char const* src,
   LocalUCaseMapPointer csm(ucasemap_open(locale.c_str(), options, &status));
 
   if (U_FAILURE(status)) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error in ucasemap_open(...): " << u_errorName(status);
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "error in ucasemap_open(...): " << u_errorName(status);
   } else {
-    utf8_dest =
-        (char*)TRI_Allocate((srcLength + 1) * sizeof(char));
+    utf8_dest = (char*)TRI_Allocate((srcLength + 1) * sizeof(char));
     if (utf8_dest == nullptr) {
       return nullptr;
     }
@@ -364,8 +367,7 @@ char* Utf8Helper::toupper(char const* src,
     if (status == U_BUFFER_OVERFLOW_ERROR) {
       status = U_ZERO_ERROR;
       TRI_Free(utf8_dest);
-      utf8_dest =
-          (char*)TRI_Allocate((dstLength + 1) * sizeof(char));
+      utf8_dest = (char*)TRI_Allocate((dstLength + 1) * sizeof(char));
       if (utf8_dest == nullptr) {
         return nullptr;
       }
@@ -375,7 +377,8 @@ char* Utf8Helper::toupper(char const* src,
     }
 
     if (U_FAILURE(status)) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error in ucasemap_utf8ToUpper(...): " << u_errorName(status);
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "error in ucasemap_utf8ToUpper(...): " << u_errorName(status);
       TRI_Free(utf8_dest);
     } else {
       return utf8_dest;
@@ -394,9 +397,8 @@ char* Utf8Helper::toupper(char const* src,
 /// @brief Extract the words from a UTF-8 string.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Utf8Helper::tokenize(std::set<std::string>& words,
-                          std::string const& text, size_t minimalLength,
-                          size_t maximalLength, bool lowerCase) {
+bool Utf8Helper::tokenize(std::set<std::string>& words, std::string const& text,
+                          size_t minimalLength, size_t maximalLength, bool lowerCase) {
   UErrorCode status = U_ZERO_ERROR;
   UnicodeString word;
 
@@ -416,8 +418,7 @@ bool Utf8Helper::tokenize(std::set<std::string>& words,
   if (lowerCase) {
     // lower case string
     int32_t lowerLength = 0;
-    char* lower =
-        tolower(text.c_str(), (int32_t)textLength, lowerLength);
+    char* lower = tolower(text.c_str(), (int32_t)textLength, lowerLength);
 
     if (lower == nullptr) {
       // out of memory
@@ -429,12 +430,10 @@ bool Utf8Helper::tokenize(std::set<std::string>& words,
       return false;
     }
 
-    textUtf16 = TRI_Utf8ToUChar(lower, lowerLength,
-                                &textUtf16Length);
+    textUtf16 = TRI_Utf8ToUChar(lower, lowerLength, &textUtf16Length);
     TRI_Free(lower);
   } else {
-    textUtf16 = TRI_Utf8ToUChar(text.c_str(), (int32_t)textLength,
-                                &textUtf16Length);
+    textUtf16 = TRI_Utf8ToUChar(text.c_str(), (int32_t)textLength, &textUtf16Length);
   }
 
   if (textUtf16 == nullptr) {
@@ -446,20 +445,19 @@ bool Utf8Helper::tokenize(std::set<std::string>& words,
 
   if (U_FAILURE(status)) {
     TRI_Free(textUtf16);
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error in Collator::getLocale(...): " << u_errorName(status);
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "error in Collator::getLocale(...): " << u_errorName(status);
     return false;
   }
 
-  UChar* tempUtf16 = (UChar*)TRI_Allocate(
-      (textUtf16Length + 1) * sizeof(UChar));
+  UChar* tempUtf16 = (UChar*)TRI_Allocate((textUtf16Length + 1) * sizeof(UChar));
 
   if (tempUtf16 == nullptr) {
     TRI_Free(textUtf16);
     return false;
   }
 
-  BreakIterator* wordIterator =
-      BreakIterator::createWordInstance(locale, status);
+  BreakIterator* wordIterator = BreakIterator::createWordInstance(locale, status);
   TRI_ASSERT(wordIterator != nullptr);
   UnicodeString utext(textUtf16);
 
@@ -477,8 +475,7 @@ bool Utf8Helper::tokenize(std::set<std::string>& words,
       utext.extractBetween(start, (int32_t)(start + chunkLength), tempUtf16, 0);
 
       size_t utf8WordLength;
-      char* utf8Word = TRI_UCharToUtf8(tempUtf16,
-                                       chunkLength, &utf8WordLength);
+      char* utf8Word = TRI_UCharToUtf8(tempUtf16, chunkLength, &utf8WordLength);
       if (utf8Word != nullptr) {
         std::string word(utf8Word, utf8WordLength);
         words.emplace(word);
@@ -502,8 +499,8 @@ bool Utf8Helper::tokenize(std::set<std::string>& words,
 RegexMatcher* Utf8Helper::buildMatcher(std::string const& pattern) {
   UErrorCode status = U_ZERO_ERROR;
 
-  auto matcher = std::make_unique<RegexMatcher>(
-      UnicodeString::fromUTF8(pattern), 0, status);
+  auto matcher =
+      std::make_unique<RegexMatcher>(UnicodeString::fromUTF8(pattern), 0, status);
   if (U_FAILURE(status)) {
     return nullptr;
   }
@@ -515,12 +512,11 @@ RegexMatcher* Utf8Helper::buildMatcher(std::string const& pattern) {
 /// @brief whether or not value matches a regex
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Utf8Helper::matches(RegexMatcher* matcher, 
-                         char const* value, size_t valueLength, 
-                         bool partial, bool& error) {
+bool Utf8Helper::matches(RegexMatcher* matcher, char const* value,
+                         size_t valueLength, bool partial, bool& error) {
   TRI_ASSERT(value != nullptr);
-  UnicodeString v = UnicodeString::fromUTF8(
-      StringPiece(value, static_cast<int32_t>(valueLength)));
+  UnicodeString v =
+      UnicodeString::fromUTF8(StringPiece(value, static_cast<int32_t>(valueLength)));
 
   matcher->reset(v);
 
@@ -548,14 +544,13 @@ bool Utf8Helper::matches(RegexMatcher* matcher,
 /// @brief replace value using a regex
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string Utf8Helper::replace(RegexMatcher* matcher, 
-                                char const* value, size_t valueLength, 
-                                char const* replacement, size_t replacementLength,
-                                bool partial, bool& error) {
+std::string Utf8Helper::replace(RegexMatcher* matcher, char const* value,
+                                size_t valueLength, char const* replacement,
+                                size_t replacementLength, bool partial, bool& error) {
   TRI_ASSERT(value != nullptr);
-  UnicodeString v = UnicodeString::fromUTF8(
-      StringPiece(value, static_cast<int32_t>(valueLength)));
-  
+  UnicodeString v =
+      UnicodeString::fromUTF8(StringPiece(value, static_cast<int32_t>(valueLength)));
+
   UnicodeString r = UnicodeString::fromUTF8(
       StringPiece(replacement, static_cast<int32_t>(replacementLength)));
 
@@ -579,7 +574,7 @@ std::string Utf8Helper::replace(RegexMatcher* matcher,
     error = true;
     return StaticStrings::Empty;
   }
-    
+
   std::string utf8;
   result.toUTF8String(utf8);
   return utf8;
@@ -590,18 +585,15 @@ std::string Utf8Helper::replace(RegexMatcher* matcher,
 /// Basic/Utf8Helper.cpp)
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_tolower_utf8(char const* src,
-                       int32_t srcLength, int32_t* dstLength) {
-  return Utf8Helper::DefaultUtf8Helper.tolower(src, srcLength,
-                                               *dstLength);
+char* TRI_tolower_utf8(char const* src, int32_t srcLength, int32_t* dstLength) {
+  return Utf8Helper::DefaultUtf8Helper.tolower(src, srcLength, *dstLength);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a utf-8 string to a uchar (utf-16)
 ////////////////////////////////////////////////////////////////////////////////
 
-UChar* TRI_Utf8ToUChar(char const* utf8,
-                       size_t inLength, size_t* outLength) {
+UChar* TRI_Utf8ToUChar(char const* utf8, size_t inLength, size_t* outLength) {
   int32_t utf16Length;
 
   // 1. convert utf8 string to utf16
@@ -612,8 +604,7 @@ UChar* TRI_Utf8ToUChar(char const* utf8,
     return nullptr;
   }
 
-  UChar* utf16 =
-      (UChar*)TRI_Allocate((utf16Length + 1) * sizeof(UChar));
+  UChar* utf16 = (UChar*)TRI_Allocate((utf16Length + 1) * sizeof(UChar));
   if (utf16 == nullptr) {
     return nullptr;
   }
@@ -621,8 +612,7 @@ UChar* TRI_Utf8ToUChar(char const* utf8,
   // now convert
   status = U_ZERO_ERROR;
   // the +1 will append a 0 byte at the end
-  u_strFromUTF8(utf16, utf16Length + 1, nullptr, utf8, (int32_t)inLength,
-                &status);
+  u_strFromUTF8(utf16, utf16Length + 1, nullptr, utf8, (int32_t)inLength, &status);
   if (status != U_ZERO_ERROR) {
     TRI_Free(utf16);
     return nullptr;
@@ -637,8 +627,7 @@ UChar* TRI_Utf8ToUChar(char const* utf8,
 /// @brief convert a uchar (utf-16) to a utf-8 string
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_UCharToUtf8(UChar const* uchar,
-                      size_t inLength, size_t* outLength) {
+char* TRI_UCharToUtf8(UChar const* uchar, size_t inLength, size_t* outLength) {
   int32_t utf8Length;
 
   // calculate utf8 string length
@@ -674,8 +663,7 @@ char* TRI_UCharToUtf8(UChar const* uchar,
 /// @brief normalize an utf8 string (NFC)
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_normalize_utf8_to_NFC(char const* utf8,
-                                size_t inLength, size_t* outLength) {
+char* TRI_normalize_utf8_to_NFC(char const* utf8, size_t inLength, size_t* outLength) {
   size_t utf16Length;
 
   *outLength = 0;
@@ -708,8 +696,7 @@ char* TRI_normalize_utf8_to_NFC(char const* utf8,
 /// @brief normalize an utf8 string (NFC)
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_normalize_utf16_to_NFC(uint16_t const* utf16,
-                                 size_t inLength, size_t* outLength) {
+char* TRI_normalize_utf16_to_NFC(uint16_t const* utf16, size_t inLength, size_t* outLength) {
   *outLength = 0;
   char* utf8Dest;
 
@@ -722,8 +709,7 @@ char* TRI_normalize_utf16_to_NFC(uint16_t const* utf16,
   }
 
   UErrorCode status = U_ZERO_ERROR;
-  UNormalizer2 const* norm2 =
-      unorm2_getInstance(nullptr, "nfc", UNORM2_COMPOSE, &status);
+  UNormalizer2 const* norm2 = unorm2_getInstance(nullptr, "nfc", UNORM2_COMPOSE, &status);
 
   if (status != U_ZERO_ERROR) {
     return nullptr;
@@ -740,8 +726,7 @@ char* TRI_normalize_utf16_to_NFC(uint16_t const* utf16,
     mustFree = false;
   } else {
     // use dynamic memory
-    utf16Dest =
-        (UChar*)TRI_Allocate((inLength + 1) * sizeof(UChar));
+    utf16Dest = (UChar*)TRI_Allocate((inLength + 1) * sizeof(UChar));
     if (utf16Dest == nullptr) {
       return nullptr;
     }
@@ -753,16 +738,14 @@ char* TRI_normalize_utf16_to_NFC(uint16_t const* utf16,
 
   while (true) {
     status = U_ZERO_ERROR;
-    utf16DestLength =
-        unorm2_normalize(norm2, (UChar*)utf16, (int32_t)inLength, utf16Dest,
-                         (int32_t)(inLength + overhead + 1), &status);
+    utf16DestLength = unorm2_normalize(norm2, (UChar*)utf16, (int32_t)inLength, utf16Dest,
+                                       (int32_t)(inLength + overhead + 1), &status);
 
     if (status == U_ZERO_ERROR) {
       break;
     }
 
-    if (status == U_BUFFER_OVERFLOW_ERROR ||
-        status == U_STRING_NOT_TERMINATED_WARNING) {
+    if (status == U_BUFFER_OVERFLOW_ERROR || status == U_STRING_NOT_TERMINATED_WARNING) {
       // output buffer was too small. now re-try with a bigger buffer (inLength
       // + overhead size)
       if (mustFree) {
@@ -790,8 +773,7 @@ char* TRI_normalize_utf16_to_NFC(uint16_t const* utf16,
         }
       }
 
-      utf16Dest = (UChar*)TRI_Allocate(
-          (inLength + overhead + 1) * sizeof(UChar));
+      utf16Dest = (UChar*)TRI_Allocate((inLength + overhead + 1) * sizeof(UChar));
 
       if (utf16Dest != nullptr) {
         // got new memory. now try again with the adjusted, bigger buffer
@@ -809,8 +791,7 @@ char* TRI_normalize_utf16_to_NFC(uint16_t const* utf16,
   }
 
   // Convert data back from UChar (UTF-16) to UTF-8
-  utf8Dest =
-      TRI_UCharToUtf8(utf16Dest, (size_t)utf16DestLength, outLength);
+  utf8Dest = TRI_UCharToUtf8(utf16Dest, (size_t)utf16DestLength, outLength);
 
   if (mustFree) {
     TRI_Free(utf16Dest);

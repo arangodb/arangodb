@@ -41,8 +41,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestDocumentHandler::RestDocumentHandler(GeneralRequest* request,
-                                         GeneralResponse* response)
+RestDocumentHandler::RestDocumentHandler(GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
 // returns the queue name
@@ -108,8 +107,7 @@ bool RestDocumentHandler::createDocument() {
   }
 
   if (!found || collectionName.empty()) {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting " + DOCUMENT_PATH +
                       "/<collectionname> or query parameter 'collection'");
     return false;
@@ -124,14 +122,10 @@ bool RestDocumentHandler::createDocument() {
   VPackSlice body = parsedBody->slice();
 
   arangodb::OperationOptions opOptions;
-  opOptions.isRestore =
-      extractBooleanParameter(StaticStrings::IsRestoreString, false);
-  opOptions.waitForSync =
-      extractBooleanParameter(StaticStrings::WaitForSyncString, false);
-  opOptions.returnNew =
-      extractBooleanParameter(StaticStrings::ReturnNewString, false);
-  opOptions.silent =
-      extractBooleanParameter(StaticStrings::SilentString, false);
+  opOptions.isRestore = extractBooleanParameter(StaticStrings::IsRestoreString, false);
+  opOptions.waitForSync = extractBooleanParameter(StaticStrings::WaitForSyncString, false);
+  opOptions.returnNew = extractBooleanParameter(StaticStrings::ReturnNewString, false);
+  opOptions.silent = extractBooleanParameter(StaticStrings::SilentString, false);
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 
@@ -150,8 +144,7 @@ bool RestDocumentHandler::createDocument() {
     return false;
   }
 
-  arangodb::OperationResult result =
-      trx.insert(collectionName, body, opOptions);
+  arangodb::OperationResult result = trx.insert(collectionName, body, opOptions);
 
   // Will commit if no error occured.
   // or abort if an error occured.
@@ -186,16 +179,14 @@ bool RestDocumentHandler::readDocument() {
   switch (len) {
     case 0:
     case 1:
-      generateError(rest::ResponseCode::NOT_FOUND,
-                    TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
                     "expecting GET /_api/document/<document-handle>");
       return false;
     case 2:
       return readSingleDocument(true);
 
     default:
-      generateError(rest::ResponseCode::BAD,
-                    TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                     "expecting GET /_api/document/<document-handle>");
       return false;
   }
@@ -224,8 +215,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
 
   TRI_voc_rid_t ifRid = extractRevision("if-match", isValidRevision);
   if (!isValidRevision) {
-    ifRid =
-        UINT64_MAX;  // an impossible rev, so precondition failed will happen
+    ifRid = UINT64_MAX;  // an impossible rev, so precondition failed will happen
   }
 
   VPackBuilder builder;
@@ -378,23 +368,18 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
 
   if ((!isArrayCase && !body.isObject()) || (isArrayCase && !body.isArray())) {
     generateTransactionError(collectionName,
-        OperationResult(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID), "");
+                             OperationResult(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID),
+                             "");
     return false;
   }
 
   OperationOptions opOptions;
-  opOptions.isRestore =
-      extractBooleanParameter(StaticStrings::IsRestoreString, false);
-  opOptions.ignoreRevs =
-      extractBooleanParameter(StaticStrings::IgnoreRevsString, true);
-  opOptions.waitForSync =
-      extractBooleanParameter(StaticStrings::WaitForSyncString, false);
-  opOptions.returnNew =
-      extractBooleanParameter(StaticStrings::ReturnNewString, false);
-  opOptions.returnOld =
-      extractBooleanParameter(StaticStrings::ReturnOldString, false);
-  opOptions.silent =
-      extractBooleanParameter(StaticStrings::SilentString, false);
+  opOptions.isRestore = extractBooleanParameter(StaticStrings::IsRestoreString, false);
+  opOptions.ignoreRevs = extractBooleanParameter(StaticStrings::IgnoreRevsString, true);
+  opOptions.waitForSync = extractBooleanParameter(StaticStrings::WaitForSyncString, false);
+  opOptions.returnNew = extractBooleanParameter(StaticStrings::ReturnNewString, false);
+  opOptions.returnOld = extractBooleanParameter(StaticStrings::ReturnOldString, false);
+  opOptions.silent = extractBooleanParameter(StaticStrings::SilentString, false);
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 
@@ -409,12 +394,11 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     if (headerRev != 0) {
       opOptions.ignoreRevs = false;
     }
-    
+
     VPackSlice keyInBody = body.get(StaticStrings::KeyString);
     TRI_voc_rid_t revInBody = TRI_ExtractRevisionId(body);
-    if ((headerRev != 0 && revInBody != headerRev) ||
-        keyInBody.isNone() || keyInBody.isNull() ||
-        (keyInBody.isString() && keyInBody.copyString() != key)) {
+    if ((headerRev != 0 && revInBody != headerRev) || keyInBody.isNone() ||
+        keyInBody.isNull() || (keyInBody.isString() && keyInBody.copyString() != key)) {
       // We need to rewrite the document with the given revision and key:
       builder = std::make_shared<VPackBuilder>();
       {
@@ -422,11 +406,9 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
         TRI_SanitizeObject(body, *builder);
         builder->add(StaticStrings::KeyString, VPackValue(key));
         if (headerRev != 0) {
-          builder->add(StaticStrings::RevString,
-                       VPackValue(TRI_RidToString(headerRev)));
+          builder->add(StaticStrings::RevString, VPackValue(TRI_RidToString(headerRev)));
         } else if (!opOptions.ignoreRevs && revInBody != 0) {
-          builder->add(StaticStrings::RevString,
-                       VPackValue(TRI_RidToString(headerRev)));
+          builder->add(StaticStrings::RevString, VPackValue(TRI_RidToString(headerRev)));
         }
       }
       body = builder->slice();
@@ -454,8 +436,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   OperationResult result(TRI_ERROR_NO_ERROR);
   if (isPatch) {
     // patching an existing document
-    opOptions.keepNull =
-        extractBooleanParameter(StaticStrings::KeepNullString, true);
+    opOptions.keepNull = extractBooleanParameter(StaticStrings::KeepNullString, true);
     opOptions.mergeObjects =
         extractBooleanParameter(StaticStrings::MergeObjectsString, true);
     result = trx.update(collectionName, body, opOptions);
@@ -518,14 +499,10 @@ bool RestDocumentHandler::deleteDocument() {
   }
 
   OperationOptions opOptions;
-  opOptions.returnOld =
-      extractBooleanParameter(StaticStrings::ReturnOldString, false);
-  opOptions.ignoreRevs =
-      extractBooleanParameter(StaticStrings::IgnoreRevsString, true);
-  opOptions.waitForSync =
-      extractBooleanParameter(StaticStrings::WaitForSyncString, false);
-  opOptions.silent =
-      extractBooleanParameter(StaticStrings::SilentString, false);
+  opOptions.returnOld = extractBooleanParameter(StaticStrings::ReturnOldString, false);
+  opOptions.ignoreRevs = extractBooleanParameter(StaticStrings::IgnoreRevsString, true);
+  opOptions.waitForSync = extractBooleanParameter(StaticStrings::WaitForSyncString, false);
+  opOptions.silent = extractBooleanParameter(StaticStrings::SilentString, false);
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 
@@ -540,8 +517,7 @@ bool RestDocumentHandler::deleteDocument() {
       builder.add(StaticStrings::KeyString, VPackValue(key));
       if (revision != 0) {
         opOptions.ignoreRevs = false;
-        builder.add(StaticStrings::RevString,
-                    VPackValue(TRI_RidToString(revision)));
+        builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(revision)));
       }
     }
     search = builder.slice();
@@ -615,12 +591,10 @@ bool RestDocumentHandler::readManyDocuments() {
   std::string const& collectionName = suffixes[0];
 
   OperationOptions opOptions;
-  opOptions.ignoreRevs =
-      extractBooleanParameter(StaticStrings::IgnoreRevsString, true);
+  opOptions.ignoreRevs = extractBooleanParameter(StaticStrings::IgnoreRevsString, true);
 
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  SingleCollectionTransaction trx(ctx, collectionName,
-                                  AccessMode::Type::READ);
+  SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::READ);
 
   // ...........................................................................
   // inside read transaction

@@ -31,8 +31,7 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-MMFilesRestWalHandler::MMFilesRestWalHandler(
-    GeneralRequest* request, GeneralResponse* response)
+MMFilesRestWalHandler::MMFilesRestWalHandler(GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
 RestStatus MMFilesRestWalHandler::execute() {
@@ -43,7 +42,7 @@ RestStatus MMFilesRestWalHandler::execute() {
                   "expecting /_admin/wal/<operation>");
     return RestStatus::DONE;
   }
-  
+
   std::string const& operation = suffixes[0];
 
   // extract the sub-request type
@@ -70,23 +69,20 @@ RestStatus MMFilesRestWalHandler::execute() {
     return RestStatus::DONE;
   }
 
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
 
 void MMFilesRestWalHandler::properties() {
-  
   auto l = MMFilesLogfileManager::instance();
 
   if (_request->requestType() == rest::RequestType::PUT) {
-    if (ExecContext::CURRENT != nullptr &&
-        !ExecContext::CURRENT->isAdminUser()) {
+    if (ExecContext::CURRENT != nullptr && !ExecContext::CURRENT->isAdminUser()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     "you need admin rights to modify WAL properties");
       return;
     }
-    
+
     std::shared_ptr<VPackBuilder> parsedRequest;
     VPackSlice slice;
     try {
@@ -106,27 +102,27 @@ void MMFilesRestWalHandler::properties() {
       bool value = slice.get("allowOversizeEntries").getBoolean();
       l->allowOversizeEntries(value);
     }
-    
+
     if (slice.hasKey("logfileSize")) {
       uint32_t value = slice.get("logfileSize").getNumericValue<uint32_t>();
       l->filesize(value);
     }
-    
+
     if (slice.hasKey("historicLogfiles")) {
       uint32_t value = slice.get("historicLogfiles").getNumericValue<uint32_t>();
       l->historicLogfiles(value);
     }
-    
+
     if (slice.hasKey("reserveLogfiles")) {
       uint32_t value = slice.get("reserveLogfiles").getNumericValue<uint32_t>();
       l->reserveLogfiles(value);
     }
-    
+
     if (slice.hasKey("throttleWait")) {
       uint64_t value = slice.get("throttleWait").getNumericValue<uint64_t>();
       l->maxThrottleWait(value);
     }
-    
+
     if (slice.hasKey("throttleWhenPending")) {
       uint64_t value = slice.get("throttleWhenPending").getNumericValue<uint64_t>();
       l->throttleWhenPending(value);
@@ -161,7 +157,7 @@ void MMFilesRestWalHandler::flush() {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid body value. expecting object");
   }
-  
+
   bool waitForSync = false;
   bool waitForCollector = false;
   double maxWaitTime = 300.0;
@@ -174,7 +170,7 @@ void MMFilesRestWalHandler::flush() {
     } else if (value.isBoolean()) {
       waitForSync = value.getBoolean();
     }
-    
+
     value = slice.get("waitForCollector");
     if (value.isString()) {
       waitForCollector = (value.copyString() == "true");
@@ -204,17 +200,17 @@ void MMFilesRestWalHandler::flush() {
     {
       std::string const& v = _request->value("maxWaitTime", found);
       if (found) {
-        maxWaitTime =  basics::StringUtils::doubleDecimal(v);
+        maxWaitTime = basics::StringUtils::doubleDecimal(v);
       }
     }
   }
-  
+
   int res;
   if (ServerState::instance()->isCoordinator()) {
     res = flushWalOnAllDBServers(waitForSync, waitForCollector, maxWaitTime);
   } else {
-    res = MMFilesLogfileManager::instance()->flush(
-        waitForSync, waitForCollector, false, maxWaitTime);
+    res = MMFilesLogfileManager::instance()->flush(waitForSync, waitForCollector,
+                                                   false, maxWaitTime);
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -225,9 +221,8 @@ void MMFilesRestWalHandler::flush() {
 }
 
 void MMFilesRestWalHandler::transactions() {
-  auto const& info =
-      MMFilesLogfileManager::instance()->runningTransactions();
- 
+  auto const& info = MMFilesLogfileManager::instance()->runningTransactions();
+
   VPackBuilder builder;
   builder.openObject();
   builder.add("runningTransactions", VPackValue(static_cast<double>(std::get<0>(info))));

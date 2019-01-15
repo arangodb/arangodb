@@ -39,7 +39,8 @@ class Methods;
 class IndexLookupContext {
  public:
   IndexLookupContext() = delete;
-  IndexLookupContext(transaction::Methods* trx, LogicalCollection* collection, ManagedDocumentResult* result, size_t numFields);
+  IndexLookupContext(transaction::Methods* trx, LogicalCollection* collection,
+                     ManagedDocumentResult* result, size_t numFields);
   ~IndexLookupContext() {}
 
   uint8_t const* lookup(LocalDocumentId token);
@@ -55,6 +56,6 @@ class IndexLookupContext {
   size_t const _numFields;
 };
 
-}
+}  // namespace arangodb
 
 #endif

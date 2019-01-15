@@ -42,6 +42,6 @@ class RestAqlFunctionsHandler : public RestVocbaseBaseHandler {
   RestStatus execute() override;
   char const* name() const override final { return "RestAqlFunctionsHandler"; }
 };
-}
+}  // namespace arangodb
 
 #endif

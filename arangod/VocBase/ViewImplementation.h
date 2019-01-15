@@ -38,17 +38,15 @@ class Result;
 /// @brief interface for view implementation
 class ViewImplementation {
  protected:
-  ViewImplementation(LogicalView* logical,
-                     arangodb::velocypack::Slice const& info)
+  ViewImplementation(LogicalView* logical, arangodb::velocypack::Slice const& info)
       : _logicalView(logical) {}
 
  public:
   virtual ~ViewImplementation() = default;
 
   /// @brief called when a view's properties are updated
-  virtual arangodb::Result updateProperties(
-      arangodb::velocypack::Slice const& slice, bool partialUpdate,
-      bool doSync) = 0;
+  virtual arangodb::Result updateProperties(arangodb::velocypack::Slice const& slice,
+                                            bool partialUpdate, bool doSync) = 0;
 
   /// @brief callend when a view's properties are materialized into
   /// the VelocyPack Builder passed into the method. the implementation
@@ -76,9 +74,7 @@ class ViewImplementation {
 /// view's general and implementation-specific properties. the isNew
 /// flag will be true if the view is first created, and false if a
 /// view is re-opened on a server restart.
-typedef std::function<std::unique_ptr<ViewImplementation>(
-    LogicalView*, arangodb::velocypack::Slice const&, bool isNew)>
-    ViewCreator;
+typedef std::function<std::unique_ptr<ViewImplementation>(LogicalView*, arangodb::velocypack::Slice const&, bool isNew)> ViewCreator;
 
 }  // namespace arangodb
 

@@ -40,8 +40,7 @@ using namespace arangodb::application_features;
 using namespace arangodb::options;
 
 UnitTestsFeature::UnitTestsFeature(application_features::ApplicationServer* server, int* result)
-    : ApplicationFeature(server, "UnitTests"),
-      _result(result) {
+    : ApplicationFeature(server, "UnitTests"), _result(result) {
   startsAfter("Nonce");
   startsAfter("Server");
   startsAfter("GeneralServer");
@@ -61,10 +60,10 @@ void UnitTestsFeature::start() {
 }
 
 int UnitTestsFeature::runUnitTests(std::vector<std::string> const& unitTests) {
-  DatabaseFeature* database = 
+  DatabaseFeature* database =
       ApplicationServer::getFeature<DatabaseFeature>("Database");
   V8Context* context =
-  V8DealerFeature::DEALER->enterContext(database->systemDatabase(), true);
+      V8DealerFeature::DEALER->enterContext(database->systemDatabase(), true);
 
   if (context == nullptr) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot acquire V8 context";
@@ -91,17 +90,18 @@ int UnitTestsFeature::runUnitTests(std::vector<std::string> const& unitTests) {
         sysTestFiles->Set((uint32_t)i, TRI_V8_STD_STRING(isolate, unitTests[i]));
       }
 
-      localContext->Global()->Set(TRI_V8_ASCII_STRING(isolate, "SYS_UNIT_TESTS"),
+      localContext->Global()->Set(TRI_V8_ASCII_STRING(isolate,
+                                                      "SYS_UNIT_TESTS"),
                                   sysTestFiles);
-      localContext->Global()->Set(TRI_V8_ASCII_STRING(isolate, "SYS_UNIT_TESTS_RESULT"),
+      localContext->Global()->Set(TRI_V8_ASCII_STRING(isolate,
+                                                      "SYS_UNIT_TESTS_RESULT"),
                                   v8::True(isolate));
 
-      v8::Local<v8::String> name(
-          TRI_V8_ASCII_STRING(isolate, TRI_V8_SHELL_COMMAND_NAME));
+      v8::Local<v8::String> name(TRI_V8_ASCII_STRING(isolate, TRI_V8_SHELL_COMMAND_NAME));
 
       // run tests
-      auto input = TRI_V8_ASCII_STRING(isolate, 
-          "require(\"@arangodb/testrunner\").runCommandLineTests();");
+      auto input = TRI_V8_ASCII_STRING(
+          isolate, "require(\"@arangodb/testrunner\").runCommandLineTests();");
       TRI_ExecuteJavaScriptString(isolate, localContext, input, name, true);
 
       if (tryCatch.HasCaught()) {

@@ -24,8 +24,8 @@
 #ifndef ARANGOD_AQL_QUERY_RESULT_V8_H
 #define ARANGOD_AQL_QUERY_RESULT_V8_H 1
 
-#include "Basics/Common.h"
 #include "Aql/QueryResult.h"
+#include "Basics/Common.h"
 
 #include <v8.h>
 
@@ -48,7 +48,7 @@ struct QueryResultV8 : public QueryResult {
 
   v8::Handle<v8::Array> result;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

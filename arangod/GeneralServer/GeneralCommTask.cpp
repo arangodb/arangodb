@@ -60,23 +60,21 @@ namespace {
 static std::string const AdminAardvark("/_admin/aardvark/");
 static std::string const ApiUser("/_api/user/");
 static std::string const Open("/_open/");
-}
+}  // namespace
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 GeneralCommTask::GeneralCommTask(EventLoop loop, GeneralServer* server,
-                                 std::unique_ptr<Socket> socket,
-                                 ConnectionInfo&& info, double keepAliveTimeout,
-                                 bool skipSocketInit)
+                                 std::unique_ptr<Socket> socket, ConnectionInfo&& info,
+                                 double keepAliveTimeout, bool skipSocketInit)
     : Task(loop, "GeneralCommTask"),
-      SocketTask(loop, std::move(socket), std::move(info), keepAliveTimeout,
-                 skipSocketInit),
+      SocketTask(loop, std::move(socket), std::move(info), keepAliveTimeout, skipSocketInit),
       _server(server),
       _auth(nullptr) {
-  _auth = application_features::ApplicationServer::getFeature<
-      AuthenticationFeature>("Authentication");
+  _auth = application_features::ApplicationServer::getFeature<AuthenticationFeature>(
+      "Authentication");
   TRI_ASSERT(_auth != nullptr);
 }
 
@@ -106,8 +104,7 @@ TRI_vocbase_t* lookupDatabaseFromRequest(GeneralRequest& req) {
     // as a fallback
     req.setDatabaseName(StaticStrings::SystemDatabase);
     if (ServerState::instance()->isCoordinator()) {
-      return databaseFeature->useDatabaseCoordinator(
-          StaticStrings::SystemDatabase);
+      return databaseFeature->useDatabaseCoordinator(StaticStrings::SystemDatabase);
     }
     return databaseFeature->useDatabase(StaticStrings::SystemDatabase);
   }
@@ -117,7 +114,7 @@ TRI_vocbase_t* lookupDatabaseFromRequest(GeneralRequest& req) {
   }
   return databaseFeature->useDatabase(dbName);
 }
-}
+}  // namespace
 
 /// Set the appropriate requestContext
 namespace {
@@ -143,28 +140,27 @@ bool resolveRequestContext(GeneralRequest& req) {
   // the "true" means the request is the owner of the context
   return true;
 }
-}
+}  // namespace
 
 /// Must be called before calling executeRequest, will add an error
 /// response if execution is supposed to be aborted
-GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
-    GeneralRequest& req) {
+GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& req) {
   if (!::resolveRequestContext(req)) {
-
     // BUG FIX - do not answer with DATABASE_NOT_FOUND, when follower in active failover
     auto mode = ServerState::serverMode();
     switch (mode) {
       case ServerState::Mode::TRYAGAIN:
       case ServerState::Mode::REDIRECT: {
-        auto resp = createResponse(rest::ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
+        auto resp =
+            createResponse(rest::ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
         ReplicationFeature::prepareFollowerResponse(resp.get(), mode);
         addResponse(*resp.get(), nullptr);
         return RequestFlow::Abort;
       }
       default:
         addErrorResponse(rest::ResponseCode::NOT_FOUND, req.contentTypeResponse(),
-               req.messageId(), TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-               TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND));
+                         req.messageId(), TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+                         TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND));
         return RequestFlow::Abort;
     }
   }
@@ -172,11 +168,10 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
 
   // check source
   bool found;
-  std::string const& source =
-      req.header(StaticStrings::ClusterCommSource, found);
+  std::string const& source = req.header(StaticStrings::ClusterCommSource, found);
   if (found) {
-    LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"request-source\",\"" << (void*)this
-                                       << "\",\"" << source << "\"";
+    LOG_TOPIC(DEBUG, Logger::REQUESTS)
+        << "\"request-source\",\"" << (void*)this << "\",\"" << source << "\"";
   }
 
   // now check the authentication will determine if the user can access
@@ -184,9 +179,8 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
   // users API to allow logins
   const rest::ResponseCode ok = GeneralCommTask::canAccessPath(req);
   if (ok == rest::ResponseCode::UNAUTHORIZED) {
-    addErrorResponse(rest::ResponseCode::UNAUTHORIZED,
-                     req.contentTypeResponse(), req.messageId(),
-                     TRI_ERROR_FORBIDDEN,
+    addErrorResponse(rest::ResponseCode::UNAUTHORIZED, req.contentTypeResponse(),
+                     req.messageId(), TRI_ERROR_FORBIDDEN,
                      "not authorized to execute this request");
     return RequestFlow::Abort;
   }
@@ -207,8 +201,7 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
 /// Must be called from addResponse, before response is rendered
 void GeneralCommTask::finishExecution(GeneralResponse& res) const {
   ServerState::Mode mode = ServerState::serverMode();
-  if (mode == ServerState::Mode::REDIRECT ||
-      mode == ServerState::Mode::TRYAGAIN) {
+  if (mode == ServerState::Mode::REDIRECT || mode == ServerState::Mode::TRYAGAIN) {
     ReplicationFeature::setEndpointHeader(&res, mode);
   }
 
@@ -216,9 +209,8 @@ void GeneralCommTask::finishExecution(GeneralResponse& res) const {
 }
 
 /// Push this request into the execution pipeline
-void GeneralCommTask::executeRequest(
-    std::unique_ptr<GeneralRequest>&& request,
-    std::unique_ptr<GeneralResponse>&& response) {
+void GeneralCommTask::executeRequest(std::unique_ptr<GeneralRequest>&& request,
+                                     std::unique_ptr<GeneralResponse>&& response) {
   bool found;
   // check for an async request (before the handler steals the request)
   std::string const& asyncExec = request->header(StaticStrings::Async, found);
@@ -237,8 +229,8 @@ void GeneralCommTask::executeRequest(
   rest::ContentType respType = request->contentTypeResponse();
   // create a handler, this takes ownership of request and response
   std::shared_ptr<RestHandler> handler(
-      GeneralServerFeature::HANDLER_FACTORY->createHandler(
-          std::move(request), std::move(response)));
+      GeneralServerFeature::HANDLER_FACTORY->createHandler(std::move(request),
+                                                           std::move(response)));
 
   // give up, if we cannot find a handler
   if (handler == nullptr) {
@@ -284,8 +276,7 @@ void GeneralCommTask::executeRequest(
       addResponse(*response, nullptr);
     } else {
       addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
-                       request->contentTypeResponse(), messageId,
-                       TRI_ERROR_QUEUE_FULL,
+                       request->contentTypeResponse(), messageId, TRI_ERROR_QUEUE_FULL,
                        TRI_errno_string(TRI_ERROR_QUEUE_FULL));
     }
   } else {
@@ -355,9 +346,8 @@ RequestStatistics* GeneralCommTask::stealStatistics(uint64_t id) {
 
 /// @brief send response including error response body
 void GeneralCommTask::addErrorResponse(rest::ResponseCode code,
-                                       rest::ContentType respType,
-                                       uint64_t messageId, int errorNum,
-                                       std::string const& msg) {
+                                       rest::ContentType respType, uint64_t messageId,
+                                       int errorNum, std::string const& msg) {
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
   builder.openObject();
@@ -403,10 +393,8 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   }
 
   if (isDirect) {
-    TRI_ASSERT(handler->queue() !=
-               JobQueue::AQL_QUEUE);  // not allowed with strands
-    handleRequestDirectly(basics::ConditionalLocking::DoNotLock,
-                          std::move(handler));
+    TRI_ASSERT(handler->queue() != JobQueue::AQL_QUEUE);  // not allowed with strands
+    handleRequestDirectly(basics::ConditionalLocking::DoNotLock, std::move(handler));
     _loop.scheduler->wakeupJobQueue();
     return true;
   }
@@ -415,19 +403,17 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 
   if (isPrio) {
     _loop.scheduler->post([self, this, handler]() {
-      handleRequestDirectly(basics::ConditionalLocking::DoLock,
-                            std::move(handler));
+      handleRequestDirectly(basics::ConditionalLocking::DoLock, std::move(handler));
     });
     return true;
   }
 
   // ok, we need to queue the request
-  LOG_TOPIC(TRACE, Logger::THREADS) << "too much work, queuing handler: "
-                                    << _loop.scheduler->infoStatus();
+  LOG_TOPIC(TRACE, Logger::THREADS)
+      << "too much work, queuing handler: " << _loop.scheduler->infoStatus();
   uint64_t messageId = handler->messageId();
-  auto job = std::make_unique<Job>(
-      _server, std::move(handler),
-      [self, this](std::shared_ptr<RestHandler> h) {
+  auto job =
+      std::make_unique<Job>(_server, std::move(handler), [self, this](std::shared_ptr<RestHandler> h) {
         handleRequestDirectly(basics::ConditionalLocking::DoLock, std::move(h));
       });
 
@@ -435,16 +421,14 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   if (!ok) {
     addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
                      handler->request()->contentTypeResponse(), messageId,
-                     TRI_ERROR_QUEUE_FULL,
-                     TRI_errno_string(TRI_ERROR_QUEUE_FULL));
+                     TRI_ERROR_QUEUE_FULL, TRI_errno_string(TRI_ERROR_QUEUE_FULL));
   }
 
   return ok;
 }
 
 // Just run the handler, could have been called in a different thread
-void GeneralCommTask::handleRequestDirectly(
-    bool doLock, std::shared_ptr<RestHandler> handler) {
+void GeneralCommTask::handleRequestDirectly(bool doLock, std::shared_ptr<RestHandler> handler) {
   TRI_ASSERT(doLock || _peer->strand.running_in_this_thread());
 
   handler->runHandler([this, doLock](rest::RestHandler* handler) {
@@ -470,16 +454,16 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
                                          uint64_t* jobId) {
   auto self = shared_from_this();
   if (jobId != nullptr) {
-    // use the handler id as identifier
-    *jobId = handler->handlerId();
     GeneralServerFeature::JOB_MANAGER->initAsyncJob(handler.get());
+    *jobId = handler->handlerId();
+
     // callback will persist the response with the AsyncJobManager
-    auto job = std::make_unique<Job>(
-        _server, std::move(handler), [self](std::shared_ptr<RestHandler> h) {
-          h->runHandler([self](RestHandler* h) {
-            GeneralServerFeature::JOB_MANAGER->finishAsyncJob(h);
-          });
-        });
+    auto job = std::make_unique<Job>(_server, std::move(handler),
+                                     [self](std::shared_ptr<RestHandler> h) {
+                                       h->runHandler([self](RestHandler* h) {
+                                         GeneralServerFeature::JOB_MANAGER->finishAsyncJob(h);
+                                       });
+                                     });
     return SchedulerFeature::SCHEDULER->queue(std::move(job));
   } else {
     // here the response will just be ignored
@@ -495,8 +479,7 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
 /// @brief checks the access rights for a specified path
 ////////////////////////////////////////////////////////////////////////////////
 
-rest::ResponseCode GeneralCommTask::canAccessPath(
-    GeneralRequest& request) const {
+rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest& request) const {
   if (!_auth->isActive()) {
     // no authentication required at all
     return rest::ResponseCode::OK;
@@ -506,14 +489,12 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
   std::string const& username = request.user();
   bool userAuthenticated = request.authenticated();
 
-  rest::ResponseCode result = userAuthenticated
-                                  ? rest::ResponseCode::OK
-                                  : rest::ResponseCode::UNAUTHORIZED;
+  rest::ResponseCode result = userAuthenticated ? rest::ResponseCode::OK
+                                                : rest::ResponseCode::UNAUTHORIZED;
 
   VocbaseContext* vc = static_cast<VocbaseContext*>(request.requestContext());
   TRI_ASSERT(vc != nullptr);
-  if (vc->databaseAuthLevel() == auth::Level::NONE &&
-      !StringUtils::isPrefix(path, ApiUser)) {
+  if (vc->databaseAuthLevel() == auth::Level::NONE && !StringUtils::isPrefix(path, ApiUser)) {
     events::NotAuthorized(&request);
     result = rest::ResponseCode::UNAUTHORIZED;
     LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "Access forbidden to " << path;
@@ -551,8 +532,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
           // simon: upgrade rights for Foxx apps. FIXME
           result = rest::ResponseCode::OK;
           vc->forceSuperuser();
-          LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "Upgrading rights for "
-                                                  << path;
+          LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "Upgrading rights for " << path;
         }
       }
     }
@@ -568,9 +548,8 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
       } else if (userAuthenticated && path == "/_api/cluster/endpoints") {
         // allow authenticated users to access cluster/endpoints
         result = rest::ResponseCode::OK;
-        //vc->forceReadOnly();
-      } else if (request.requestType() == RequestType::POST &&
-                 !username.empty() &&
+        // vc->forceReadOnly();
+      } else if (request.requestType() == RequestType::POST && !username.empty() &&
                  StringUtils::isPrefix(path, ApiUser + username + '/')) {
         // simon: unauthorized users should be able to call
         // `/_api/users/<name>` to check their passwords

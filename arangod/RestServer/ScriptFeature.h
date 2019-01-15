@@ -44,6 +44,6 @@ class ScriptFeature final : public application_features::ApplicationFeature {
  private:
   int* _result;
 };
-}
+}  // namespace arangodb
 
 #endif

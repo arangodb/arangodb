@@ -49,6 +49,6 @@ class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
  private:
   void returnContext();
 };
-}
+}  // namespace arangodb
 
 #endif

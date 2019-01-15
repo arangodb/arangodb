@@ -25,9 +25,9 @@
 
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
+#include "MMFiles/MMFilesLogfileManager.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "MMFiles/MMFilesLogfileManager.h"
 #include "RestServer/DatabaseFeature.h"
 
 using namespace arangodb;
@@ -37,15 +37,14 @@ using namespace arangodb::options;
 
 MMFilesWalRecoveryFeature::MMFilesWalRecoveryFeature(ApplicationServer* server)
     : ApplicationFeature(server, "MMFilesWalRecovery") {
-
   setOptional(true);
   requiresElevatedPrivileges(false);
-  startsAfter("Database"); 
+  startsAfter("Database");
   startsAfter("MMFilesLogfileManager");
   startsAfter("MMFilesPersistentIndex");
   startsAfter("Scheduler");
   startsAfter("ServerId");
-  
+
   startsBefore("Agency");
   startsBefore("Server");
   startsBefore("Upgrade");
@@ -60,14 +59,17 @@ MMFilesWalRecoveryFeature::MMFilesWalRecoveryFeature(ApplicationServer* server)
 /// recovery state has been build. additionally, all databases have been
 /// opened already so we can use collections
 void MMFilesWalRecoveryFeature::start() {
-  MMFilesLogfileManager* logfileManager = ApplicationServer::getFeature<MMFilesLogfileManager>("MMFilesLogfileManager");
+  MMFilesLogfileManager* logfileManager =
+      ApplicationServer::getFeature<MMFilesLogfileManager>(
+          "MMFilesLogfileManager");
 
   TRI_ASSERT(!logfileManager->allowWrites());
 
   int res = logfileManager->runRecovery();
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "unable to finish WAL recovery: " << TRI_errno_string(res);
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "unable to finish WAL recovery: " << TRI_errno_string(res);
     FATAL_ERROR_EXIT();
   }
 
@@ -75,9 +77,9 @@ void MMFilesWalRecoveryFeature::start() {
     // if we got here, the MMFilesLogfileManager has already logged a fatal error and we can simply abort
     FATAL_ERROR_EXIT();
   }
-  
+
   // notify everyone that recovery is now done
-  auto databaseFeature = ApplicationServer::getFeature<DatabaseFeature>("Database");
+  auto databaseFeature =
+      ApplicationServer::getFeature<DatabaseFeature>("Database");
   databaseFeature->recoveryDone();
 }
-

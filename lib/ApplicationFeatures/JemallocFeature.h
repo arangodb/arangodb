@@ -51,6 +51,6 @@ class JemallocFeature final : public application_features::ApplicationFeature {
   static char _staticPath[PATH_MAX + 1];
 #endif
 };
-}
+}  // namespace arangodb
 
 #endif

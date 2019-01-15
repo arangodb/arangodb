@@ -41,6 +41,6 @@ class RestDatabaseHandler : public arangodb::RestVocbaseBaseHandler {
   RestStatus createDatabase();
   RestStatus deleteDatabase();
 };
-}
+}  // namespace arangodb
 
 #endif

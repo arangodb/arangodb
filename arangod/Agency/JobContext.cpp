@@ -34,19 +34,18 @@
 
 using namespace arangodb::consensus;
 
-JobContext::JobContext (JOB_STATUS status, std::string id, Node const& snapshot,
-                        AgentInterface* agent) : _job(nullptr) {
-
+JobContext::JobContext(JOB_STATUS status, std::string id, Node const& snapshot,
+                       AgentInterface* agent)
+    : _job(nullptr) {
   std::string path = pos[status] + id;
   auto typePair = snapshot.hasAsString(path + "/type");
   std::string type;
 
   if (typePair.second) {
     type = typePair.first;
-  } // if
+  }  // if
 
-
-  if        (type == "failedLeader") {
+  if (type == "failedLeader") {
     _job = std::make_unique<FailedLeader>(snapshot, agent, status, id);
   } else if (type == "failedFollower") {
     _job = std::make_unique<FailedFollower>(snapshot, agent, status, id);
@@ -63,10 +62,9 @@ JobContext::JobContext (JOB_STATUS status, std::string id, Node const& snapshot,
   } else if (type == "activeFailover") {
     _job = std::make_unique<ActiveFailoverJob>(snapshot, agent, status, id);
   } else {
-    LOG_TOPIC(ERR, Logger::AGENCY) <<
-    "Failed to run supervision job " << type << " with id " << id;
+    LOG_TOPIC(ERR, Logger::AGENCY)
+        << "Failed to run supervision job " << type << " with id " << id;
   }
-
 }
 
 void JobContext::create(std::shared_ptr<VPackBuilder> b) {

@@ -29,7 +29,7 @@
 #include "StorageEngine/TransactionCollection.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
-                                
+
 namespace arangodb {
 struct MMFilesDocumentOperation;
 namespace transaction {
@@ -40,20 +40,20 @@ class TransactionState;
 /// @brief collection used in a transaction
 class MMFilesTransactionCollection final : public TransactionCollection {
  public:
-
-  MMFilesTransactionCollection(TransactionState* trx, TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel);
+  MMFilesTransactionCollection(TransactionState* trx, TRI_voc_cid_t cid,
+                               AccessMode::Type accessType, int nestingLevel);
   ~MMFilesTransactionCollection();
-  
+
   /// @brief request a main-level lock for a collection
   /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
-  /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
-  /// returns any other error code otherwise
+  /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired
+  /// and no other error occurred returns any other error code otherwise
   int lockRecursive() override;
- 
+
   /// @brief request a lock for a collection
   /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
-  /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
-  /// returns any other error code otherwise
+  /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired
+  /// and no other error occurred returns any other error code otherwise
   int lockRecursive(AccessMode::Type, int nestingLevel) override;
 
   /// @brief request an unlock for a collection
@@ -61,10 +61,10 @@ class MMFilesTransactionCollection final : public TransactionCollection {
 
   /// @brief check whether a collection is locked in a specific mode in a transaction
   bool isLocked(AccessMode::Type, int nestingLevel) const override;
-  
+
   /// @brief check whether a collection is locked at all
   bool isLocked() const override;
-  
+
   /// @brief whether or not any write operations for the collection happened
   bool hasOperations() const override;
 
@@ -75,14 +75,14 @@ class MMFilesTransactionCollection final : public TransactionCollection {
   int use(int nestingLevel) override;
   void unuse(int nestingLevel) override;
   void release() override;
-  
+
   void addOperation(MMFilesDocumentOperation* operation);
-  
+
  private:
   /// @brief request a lock for a collection
   /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
-  /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
-  /// returns any other error code otherwise
+  /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired
+  /// and no other error occurred returns any other error code otherwise
   int doLock(AccessMode::Type, int nestingLevel);
 
   /// @brief request an unlock for a collection
@@ -91,14 +91,14 @@ class MMFilesTransactionCollection final : public TransactionCollection {
  private:
   SmallVector<MMFilesDocumentOperation*, 64>::allocator_type::arena_type _arena;
   SmallVector<MMFilesDocumentOperation*, 64> _operations;
-  TRI_voc_rid_t _originalRevision;   // collection revision at trx start
-  int _nestingLevel;  // the transaction level that added this collection
+  TRI_voc_rid_t _originalRevision;  // collection revision at trx start
+  int _nestingLevel;       // the transaction level that added this collection
   bool _compactionLocked;  // was the compaction lock grabbed for the collection?
-  bool _waitForSync;      // whether or not the collection has waitForSync
-  
+  bool _waitForSync;       // whether or not the collection has waitForSync
+
   AccessMode::Type _lockType;  // collection lock type
 };
 
-}
+}  // namespace arangodb
 
 #endif

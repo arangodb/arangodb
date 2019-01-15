@@ -51,6 +51,6 @@ class RestCollectionHandler : public arangodb::RestVocbaseBaseHandler {
                                 bool showProperties, bool showFigures,
                                 bool showCount, bool aggregateCount);
 };
-}
+}  // namespace arangodb
 
 #endif

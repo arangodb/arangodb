@@ -105,6 +105,6 @@ class CollectionKeysRepository {
 
   static size_t const MaxCollectCount;
 };
-}
+}  // namespace arangodb
 
 #endif

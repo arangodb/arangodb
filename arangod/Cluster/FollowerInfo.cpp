@@ -47,8 +47,7 @@ std::shared_ptr<std::vector<ServerID> const> FollowerInfo::get() {
 /// there).
 ////////////////////////////////////////////////////////////////////////////////
 
-static VPackBuilder newShardEntry(VPackSlice oldValue, ServerID const& sid,
-                                  bool add) {
+static VPackBuilder newShardEntry(VPackSlice oldValue, ServerID const& sid, bool add) {
   VPackBuilder newValue;
   VPackSlice servers;
   {
@@ -104,7 +103,7 @@ void FollowerInfo::add(ServerID const& sid) {
   // First check if there is anything to do:
   for (auto const& s : *_followers) {
     if (s == sid) {
-      return;   // Do nothing, if follower already there
+      return;  // Do nothing, if follower already there
     }
   }
   // Fully copy the vector:
@@ -131,11 +130,10 @@ void FollowerInfo::add(ServerID const& sid) {
     AgencyCommResult res = ac.getValues(path);
 
     if (res.successful()) {
-      velocypack::Slice currentEntry =
-          res.slice()[0].get(std::vector<std::string>(
-              {AgencyCommManager::path(), "Current", "Collections",
-               _docColl->vocbase()->name(), std::to_string(_docColl->planId()),
-               _docColl->name()}));
+      velocypack::Slice currentEntry = res.slice()[0].get(std::vector<std::string>(
+          {AgencyCommManager::path(), "Current", "Collections",
+           _docColl->vocbase()->name(), std::to_string(_docColl->planId()),
+           _docColl->name()}));
 
       if (!currentEntry.isObject()) {
         LOG_TOPIC(ERR, Logger::CLUSTER)
@@ -149,12 +147,12 @@ void FollowerInfo::add(ServerID const& sid) {
                           "/" + std::to_string(_docColl->planId()) + "/" +
                           _docColl->name();
         AgencyWriteTransaction trx;
-        trx.preconditions.push_back(AgencyPrecondition(
-            key, AgencyPrecondition::Type::VALUE, currentEntry));
-        trx.operations.push_back(AgencyOperation(
-            key, AgencyValueOperationType::SET, newValue.slice()));
-        trx.operations.push_back(AgencyOperation(
-            "Current/Version", AgencySimpleOperationType::INCREMENT_OP));
+        trx.preconditions.push_back(
+            AgencyPrecondition(key, AgencyPrecondition::Type::VALUE, currentEntry));
+        trx.operations.push_back(
+            AgencyOperation(key, AgencyValueOperationType::SET, newValue.slice()));
+        trx.operations.push_back(
+            AgencyOperation("Current/Version", AgencySimpleOperationType::INCREMENT_OP));
         AgencyCommResult res2 = ac.sendTransactionWithFailover(trx);
         if (res2.successful()) {
           success = true;
@@ -165,8 +163,8 @@ void FollowerInfo::add(ServerID const& sid) {
         }
       }
     } else {
-      LOG_TOPIC(ERR, Logger::CLUSTER) << "FollowerInfo::add, could not read "
-                                      << path << " in agency.";
+      LOG_TOPIC(ERR, Logger::CLUSTER)
+          << "FollowerInfo::add, could not read " << path << " in agency.";
     }
     usleep(500000);
   } while (TRI_microtime() < startTime + 30);
@@ -234,11 +232,10 @@ bool FollowerInfo::remove(ServerID const& sid) {
   do {
     AgencyCommResult res = ac.getValues(path);
     if (res.successful()) {
-      velocypack::Slice currentEntry =
-          res.slice()[0].get(std::vector<std::string>(
-              {AgencyCommManager::path(), "Current", "Collections",
-               _docColl->vocbase()->name(), std::to_string(_docColl->planId()),
-               _docColl->name()}));
+      velocypack::Slice currentEntry = res.slice()[0].get(std::vector<std::string>(
+          {AgencyCommManager::path(), "Current", "Collections",
+           _docColl->vocbase()->name(), std::to_string(_docColl->planId()),
+           _docColl->name()}));
 
       if (!currentEntry.isObject()) {
         LOG_TOPIC(ERR, Logger::CLUSTER)
@@ -252,12 +249,12 @@ bool FollowerInfo::remove(ServerID const& sid) {
                           "/" + std::to_string(_docColl->planId()) + "/" +
                           _docColl->name();
         AgencyWriteTransaction trx;
-        trx.preconditions.push_back(AgencyPrecondition(
-            key, AgencyPrecondition::Type::VALUE, currentEntry));
-        trx.operations.push_back(AgencyOperation(
-            key, AgencyValueOperationType::SET, newValue.slice()));
-        trx.operations.push_back(AgencyOperation(
-            "Current/Version", AgencySimpleOperationType::INCREMENT_OP));
+        trx.preconditions.push_back(
+            AgencyPrecondition(key, AgencyPrecondition::Type::VALUE, currentEntry));
+        trx.operations.push_back(
+            AgencyOperation(key, AgencyValueOperationType::SET, newValue.slice()));
+        trx.operations.push_back(
+            AgencyOperation("Current/Version", AgencySimpleOperationType::INCREMENT_OP));
         AgencyCommResult res2 = ac.sendTransactionWithFailover(trx);
         if (res2.successful()) {
           success = true;
@@ -265,16 +262,17 @@ bool FollowerInfo::remove(ServerID const& sid) {
         } else {
           LOG_TOPIC(WARN, Logger::CLUSTER)
               << "FollowerInfo::remove, could not cas key " << path
-              << ". status code: " << res2._statusCode << ", incriminating body: " << res2.bodyRef();
+              << ". status code: " << res2._statusCode
+              << ", incriminating body: " << res2.bodyRef();
         }
       }
     } else {
-      LOG_TOPIC(ERR, Logger::CLUSTER) << "FollowerInfo::remove, could not read "
-                                      << path << " in agency.";
+      LOG_TOPIC(ERR, Logger::CLUSTER)
+          << "FollowerInfo::remove, could not read " << path << " in agency.";
     }
     usleep(500000);
-  } while (TRI_microtime() < startTime + 30
-    && application_features::ApplicationServer::isRetryOK());
+  } while (TRI_microtime() < startTime + 30 &&
+           application_features::ApplicationServer::isRetryOK());
   if (!success) {
     _followers = _oldFollowers;
     LOG_TOPIC(ERR, Logger::CLUSTER)

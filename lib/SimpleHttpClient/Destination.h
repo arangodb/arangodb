@@ -40,7 +40,7 @@ class Destination {
  private:
   std::string const _url;
 };
-}
-}
+}  // namespace communicator
+}  // namespace arangodb
 
 #endif

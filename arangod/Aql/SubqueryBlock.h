@@ -64,12 +64,12 @@ class SubqueryBlock : public ExecutionBlock {
   /// @brief we need to have an executionblock and where to write the result
   ExecutionBlock* _subquery;
 
-  /// @brief whether the subquery is const and will always return the same values
-  /// when invoked multiple times
+  /// @brief whether the subquery is const and will always return the same
+  /// values when invoked multiple times
   bool _subqueryIsConst;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

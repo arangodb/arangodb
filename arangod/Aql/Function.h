@@ -24,8 +24,8 @@
 #ifndef ARANGOD_AQL_FUNCTION_H
 #define ARANGOD_AQL_FUNCTION_H 1
 
-#include "Basics/Common.h"
 #include "Aql/Functions.h"
+#include "Basics/Common.h"
 
 namespace arangodb {
 namespace aql {
@@ -36,12 +36,9 @@ struct Function {
   Function() = delete;
 
   /// @brief create the function
-  Function(std::string const& name, 
-           char const* arguments, bool isDeterministic,
-           bool canThrow, bool canRunOnDBServer,
-           bool canPassArgumentsByReference,
-           FunctionImplementation implementation = nullptr,
-           ExecutionCondition = nullptr);
+  Function(std::string const& name, char const* arguments, bool isDeterministic,
+           bool canThrow, bool canRunOnDBServer, bool canPassArgumentsByReference,
+           FunctionImplementation implementation = nullptr, ExecutionCondition = nullptr);
 
   /// @brief destroy the function
   ~Function();
@@ -52,9 +49,7 @@ struct Function {
     return false;
   }
 
-  inline bool hasImplementation() const {
-    return implementation != nullptr;
-  }
+  inline bool hasImplementation() const { return implementation != nullptr; }
 
   /// @brief checks if the function produces a result that can
   /// be cached by the AQL query result cache
@@ -86,10 +81,10 @@ struct Function {
 
   /// @brief function name (name visible to the end user, may be an alias)
   std::string name;
-  
+
   /// @brief function name (internal, must not be an alias)
   std::string const nonAliasedName;
-  
+
   /// @brief function arguments
   char const* arguments;
 
@@ -128,7 +123,7 @@ struct Function {
   /// @brief maximum number of function arguments that can be used
   static size_t const MaxArguments = 65536;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

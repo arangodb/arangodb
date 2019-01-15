@@ -40,15 +40,11 @@ class HandlerResult : public arangodb::Result {
   HandlerResult(int errorNumber, arangodb::auth::Source const& source)
       : Result(errorNumber), _authSource(source) {}
 
-  HandlerResult(std::set<std::string> const& roles,
-                auth::Source const& source)
-      : Result(TRI_ERROR_NO_ERROR),
-        _authSource(source),
-        _roles(roles) {}
+  HandlerResult(std::set<std::string> const& roles, auth::Source const& source)
+      : Result(TRI_ERROR_NO_ERROR), _authSource(source), _roles(roles) {}
 
  public:
   arangodb::auth::Source source() const { return _authSource; }
-
 
   std::set<std::string> roles() const { return _roles; }
 
@@ -71,7 +67,7 @@ class Handler {
   virtual ~Handler() {}
 };
 
-}  // auth
-}  // arangodb
+}  // namespace auth
+}  // namespace arangodb
 
 #endif

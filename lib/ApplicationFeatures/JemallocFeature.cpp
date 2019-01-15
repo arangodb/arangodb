@@ -36,8 +36,7 @@ using namespace arangodb::options;
 char JemallocFeature::_staticPath[PATH_MAX + 1];
 #endif
 
-JemallocFeature::JemallocFeature(
-    application_features::ApplicationServer* server)
+JemallocFeature::JemallocFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Jemalloc"), _defaultPath("./") {
   setOptional(false);
   requiresElevatedPrivileges(false);
@@ -80,9 +79,8 @@ void JemallocFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
     _path += TRI_DIR_SEPARATOR_STR;
   }
 
-  LOG_TOPIC(INFO, Logger::MEMORY)
-      << "using jemalloc with vm.resident-limit = " << _residentLimit
-      << ", vm.path = '" << _path << "'";
+  LOG_TOPIC(INFO, Logger::MEMORY) << "using jemalloc with vm.resident-limit = " << _residentLimit
+                                  << ", vm.path = '" << _path << "'";
 #else
   LOG_TOPIC(INFO, Logger::MEMORY) << "jemalloc has been disabled";
 #endif
@@ -117,9 +115,8 @@ void JemallocFeature::start() {
 
     if (!FileUtils::isDirectory(_staticPath)) {
       if (!FileUtils::createDirectory(_staticPath, 0700)) {
-        LOG_TOPIC(FATAL, Logger::MEMORY)
-            << "cannot create directory '" << _staticPath
-            << "' for VM files: " << strerror(errno);
+        LOG_TOPIC(FATAL, Logger::MEMORY) << "cannot create directory '" << _staticPath
+                                         << "' for VM files: " << strerror(errno);
         FATAL_ERROR_EXIT();
       }
     } else {
@@ -131,8 +128,7 @@ void JemallocFeature::start() {
           int en;
 
           if (FileUtils::remove(full, &en)) {
-            LOG_TOPIC(TRACE, Logger::MEMORY)
-                << "removed old file '" << full << "'";
+            LOG_TOPIC(TRACE, Logger::MEMORY) << "removed old file '" << full << "'";
           } else {
             LOG_TOPIC(FATAL, Logger::MEMORY)
                 << "cannot remove file '" << full << "': " << strerror(en);

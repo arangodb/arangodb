@@ -26,14 +26,14 @@
 #include "Basics/StringRef.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesDitch.h"
-#include "MMFiles/MMFilesLogfileManager.h" 
 #include "MMFiles/MMFilesEngine.h"
+#include "MMFiles/MMFilesLogfileManager.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -43,7 +43,8 @@
 
 using namespace arangodb;
 
-MMFilesCollectionKeys::MMFilesCollectionKeys(TRI_vocbase_t* vocbase, std::unique_ptr<CollectionGuard> guard,
+MMFilesCollectionKeys::MMFilesCollectionKeys(TRI_vocbase_t* vocbase,
+                                             std::unique_ptr<CollectionGuard> guard,
                                              TRI_voc_tick_t blockerId, double ttl)
     : CollectionKeys(vocbase, ttl),
       _guard(std::move(guard)),
@@ -73,9 +74,8 @@ MMFilesCollectionKeys::~MMFilesCollectionKeys() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void MMFilesCollectionKeys::create(TRI_voc_tick_t maxTick) {
-  MMFilesLogfileManager::instance()->waitForCollectorQueue(
-      _collection->cid(), 30.0);
-  
+  MMFilesLogfileManager::instance()->waitForCollectorQueue(_collection->cid(), 30.0);
+
   MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
   engine->preventCompaction(_collection->vocbase(), [this](TRI_vocbase_t* vocbase) {
     // create a ditch under the compaction lock
@@ -105,22 +105,22 @@ void MMFilesCollectionKeys::create(TRI_voc_tick_t maxTick) {
     }
 
     ManagedDocumentResult mmdr;
-    MMFilesCollection *mmColl = MMFilesCollection::toMMFilesCollection(_collection);
-    trx.invokeOnAllElements(
-        _collection->name(), [this, &trx, &maxTick, &mmdr, &mmColl](LocalDocumentId const& token) {
-          if (mmColl->readDocumentConditional(&trx, token, maxTick, mmdr)) {
-            _vpack.emplace_back(mmdr.vpack());
-          }
-          return true;
-        });
+    MMFilesCollection* mmColl = MMFilesCollection::toMMFilesCollection(_collection);
+    trx.invokeOnAllElements(_collection->name(), [this, &trx, &maxTick, &mmdr,
+                                                  &mmColl](LocalDocumentId const& token) {
+      if (mmColl->readDocumentConditional(&trx, token, maxTick, mmdr)) {
+        _vpack.emplace_back(mmdr.vpack());
+      }
+      return true;
+    });
 
     trx.finish(res);
   }
 
   // now sort all document tokens without the read-lock
-  std::sort(_vpack.begin(), _vpack.end(),
-            [](uint8_t const* lhs, uint8_t const* rhs) -> bool {
-    return (StringRef(transaction::helpers::extractKeyFromDocument(VPackSlice(lhs))) < StringRef(transaction::helpers::extractKeyFromDocument(VPackSlice(rhs))));
+  std::sort(_vpack.begin(), _vpack.end(), [](uint8_t const* lhs, uint8_t const* rhs) -> bool {
+    return (StringRef(transaction::helpers::extractKeyFromDocument(VPackSlice(lhs))) <
+            StringRef(transaction::helpers::extractKeyFromDocument(VPackSlice(rhs))));
   });
 }
 
@@ -128,10 +128,9 @@ void MMFilesCollectionKeys::create(TRI_voc_tick_t maxTick) {
 /// @brief hashes a chunk of keys
 ////////////////////////////////////////////////////////////////////////////////
 
-std::tuple<std::string, std::string, uint64_t> MMFilesCollectionKeys::hashChunk(
-    size_t from, size_t to) const {
-  if (from >= _vpack.size() || to > _vpack.size() || from >= to ||
-      to == 0) {
+std::tuple<std::string, std::string, uint64_t> MMFilesCollectionKeys::hashChunk(size_t from,
+                                                                                size_t to) const {
+  if (from >= _vpack.size() || to > _vpack.size() || from >= to || to == 0) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
 
@@ -147,24 +146,22 @@ std::tuple<std::string, std::string, uint64_t> MMFilesCollectionKeys::hashChunk(
     VPackSlice current(_vpack.at(i));
     TRI_ASSERT(current.isObject());
 
-    // we can get away with the fast hash function here, as key values are 
+    // we can get away with the fast hash function here, as key values are
     // restricted to strings
     hash ^= transaction::helpers::extractKeyFromDocument(current).hashString();
     hash ^= transaction::helpers::extractRevSliceFromDocument(current).hash();
   }
 
-  return std::make_tuple(
-    transaction::helpers::extractKeyFromDocument(first).copyString(),
-    transaction::helpers::extractKeyFromDocument(last).copyString(),
-    hash);
+  return std::make_tuple(transaction::helpers::extractKeyFromDocument(first).copyString(),
+                         transaction::helpers::extractKeyFromDocument(last).copyString(),
+                         hash);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dumps keys into the result
 ////////////////////////////////////////////////////////////////////////////////
 
-void MMFilesCollectionKeys::dumpKeys(VPackBuilder& result, size_t chunk,
-                              size_t chunkSize) const {
+void MMFilesCollectionKeys::dumpKeys(VPackBuilder& result, size_t chunk, size_t chunkSize) const {
   size_t from = chunk * chunkSize;
   size_t to = (chunk + 1) * chunkSize;
 
@@ -175,7 +172,7 @@ void MMFilesCollectionKeys::dumpKeys(VPackBuilder& result, size_t chunk,
   if (from >= _vpack.size() || from >= to || to == 0) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
-  
+
   for (size_t i = from; i < to; ++i) {
     VPackSlice current(_vpack.at(i));
     TRI_ASSERT(current.isObject());
@@ -191,13 +188,13 @@ void MMFilesCollectionKeys::dumpKeys(VPackBuilder& result, size_t chunk,
 /// @brief dumps documents into the result
 ////////////////////////////////////////////////////////////////////////////////
 
-void MMFilesCollectionKeys::dumpDocs(arangodb::velocypack::Builder& result, size_t chunk,
-                                     size_t chunkSize, size_t offsetInChunk, size_t maxChunkSize, 
-                                     VPackSlice const& ids) const {
+void MMFilesCollectionKeys::dumpDocs(arangodb::velocypack::Builder& result,
+                                     size_t chunk, size_t chunkSize, size_t offsetInChunk,
+                                     size_t maxChunkSize, VPackSlice const& ids) const {
   if (!ids.isArray()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
-        
+
   auto buffer = result.buffer();
   size_t offset = 0;
   for (auto const& it : VPackArrayIterator(ids)) {
@@ -210,11 +207,11 @@ void MMFilesCollectionKeys::dumpDocs(arangodb::velocypack::Builder& result, size
     if (position >= _vpack.size()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
     }
-    
+
     if (offset < offsetInChunk) {
       // skip over the initial few documents
       result.add(VPackValue(VPackValueType::Null));
-    } else { 
+    } else {
       VPackSlice current(_vpack.at(position));
       TRI_ASSERT(current.isObject());
       result.add(current);
@@ -227,4 +224,3 @@ void MMFilesCollectionKeys::dumpDocs(arangodb::velocypack::Builder& result, size
     ++offset;
   }
 }
-

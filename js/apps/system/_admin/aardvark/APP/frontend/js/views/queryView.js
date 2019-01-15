@@ -1096,6 +1096,8 @@
       _.each(foundBindParams, function (word) {
         if (self.bindParamTableObj[word]) {
           newObject[word] = self.bindParamTableObj[word];
+        } else if (self.bindParamTableObj[word] === null) {
+          newObject[word] = null;
         } else {
           newObject[word] = '';
         }

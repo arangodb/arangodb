@@ -45,8 +45,7 @@ class RestoreFeature final : public application_features::ApplicationFeature,
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(
-      std::shared_ptr<options::ProgramOptions> options) override;
+  void validateOptions(std::shared_ptr<options::ProgramOptions> options) override;
   void prepare() override;
   void start() override;
 
@@ -61,25 +60,30 @@ class RestoreFeature final : public application_features::ApplicationFeature,
   bool _importStructure;
   bool _progress;
   bool _overwrite;
+  bool _cleanupDuplicateAttributes;
   bool _force;
   bool _ignoreDistributeShardsLikeErrors;
   bool _clusterMode;
-  uint64_t _defaultNumberOfShards;
-  uint64_t _defaultReplicationFactor;
+  uint64_t _defaultNumberOfShards; // deprecated
+  uint64_t _defaultReplicationFactor; // deprecated
+  std::vector<std::string> _numberOfShards;
+  std::vector<std::string> _replicationFactor;
 
  private:
   int tryCreateDatabase(ClientFeature*, std::string const& name);
   int sendRestoreCollection(VPackSlice const& slice, std::string const& name,
                             std::string& errorMsg);
   int sendRestoreIndexes(VPackSlice const& slice, std::string& errorMsg);
-  int sendRestoreData(std::string const& cname, char const* buffer,
-                      size_t bufferSize, std::string& errorMsg);
+  Result sendRestoreData(std::string const& cname, char const* buffer,
+                         size_t bufferSize);
   Result readEncryptionInfo();
   Result readDumpInfo();
   int processInputDirectory(std::string& errorMsg);
   ssize_t readData(int fd, char* data, size_t len);
   void beginDecryption(int fd);
   void endDecryption(int fd);
+  uint64_t getReplicationFactor(VPackSlice const& slice, bool& isSatellite) const;
+  uint64_t getNumberOfShards(VPackSlice const& slice) const;
 
  private:
   int* _result;
@@ -95,6 +99,6 @@ class RestoreFeature final : public application_features::ApplicationFeature,
     uint64_t _totalRead;
   } _stats;
 };
-}
+}  // namespace arangodb
 
 #endif

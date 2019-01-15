@@ -52,6 +52,6 @@ class RestViewHandler : public RestVocbaseBaseHandler {
   void getViewProperties(std::string const&);
   void getListOfViews();
 };
-}
+}  // namespace arangodb
 
 #endif

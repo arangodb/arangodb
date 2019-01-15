@@ -32,22 +32,21 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
-      
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
 namespace {
-static inline void handleProjections(DocumentProducingNode const* node, 
-                                     transaction::Methods const* trxPtr,
-                                     VPackSlice slice, 
-                                     VPackBuilder& b, 
-                                     bool useRawDocumentPointers) {
+static inline void handleProjections(DocumentProducingNode const* node,
+                                     transaction::Methods const* trxPtr, VPackSlice slice,
+                                     VPackBuilder& b, bool useRawDocumentPointers) {
   for (auto const& it : node->projections()) {
     if (it == StaticStrings::IdString) {
       VPackSlice found = transaction::helpers::extractIdFromDocument(slice);
       if (found.isCustom()) {
         // _id as a custom type needs special treatment
-        b.add(it, VPackValue(transaction::helpers::extractIdString(trxPtr->resolver(), found, slice)));
+        b.add(it, VPackValue(transaction::helpers::extractIdString(trxPtr->resolver(),
+                                                                   found, slice)));
       } else {
         b.add(it, found);
       }
@@ -76,20 +75,22 @@ static inline void handleProjections(DocumentProducingNode const* node,
   }
 }
 
-} // namespace
+}  // namespace
 
-DocumentProducingBlock::DocumentProducingBlock(DocumentProducingNode const* node, transaction::Methods* trx)
+DocumentProducingBlock::DocumentProducingBlock(DocumentProducingNode const* node,
+                                               transaction::Methods* trx)
     : _trxPtr(trx),
       _node(node),
-      _produceResult(dynamic_cast<ExecutionNode const*>(_node)->isVarUsedLater(_node->outVariable())),
+      _produceResult(dynamic_cast<ExecutionNode const*>(_node)->isVarUsedLater(
+          _node->outVariable())),
       _useRawDocumentPointers(EngineSelectorFeature::ENGINE->useRawDocumentPointers()),
       _allowCoveringIndexOptimization(true) {}
 
 void DocumentProducingBlock::buildCallback() {
   if (!_produceResult) {
     // no result needed
-    _documentProducer = [](AqlItemBlock* res, VPackSlice, size_t registerId, size_t& row,
-              size_t fromRow) {
+    _documentProducer = [](AqlItemBlock* res, VPackSlice, size_t registerId,
+                           size_t& row, size_t fromRow) {
       if (row != fromRow) {
         // re-use already copied AQLValues
         res->copyValuesFromRow(row, static_cast<RegisterId>(registerId), fromRow);
@@ -103,18 +104,19 @@ void DocumentProducingBlock::buildCallback() {
     // return a projection
     if (!_node->coveringIndexAttributePositions().empty()) {
       // projections from an index value (covering index)
-      _documentProducer = [this](AqlItemBlock* res, VPackSlice slice, size_t registerId, size_t& row, size_t fromRow) {
+      _documentProducer = [this](AqlItemBlock* res, VPackSlice slice,
+                                 size_t registerId, size_t& row, size_t fromRow) {
         transaction::BuilderLeaser b(_trxPtr);
         b->openObject(true);
 
         if (_allowCoveringIndexOptimization) {
-          // a potential call by a covering index iterator... 
+          // a potential call by a covering index iterator...
           bool const isArray = slice.isArray();
           size_t i = 0;
           VPackSlice found;
           for (auto const& it : _node->projections()) {
             if (isArray) {
-              // we will get a Slice with an array of index values. now we need to 
+              // we will get a Slice with an array of index values. now we need to
               // look up the array values from the correct positions to populate the
               // result with the projection values
               // this case will be triggered for indexes that can be set up on any
@@ -144,9 +146,10 @@ void DocumentProducingBlock::buildCallback() {
         }
 
         b->close();
-              
-        res->emplaceValue(row, static_cast<arangodb::aql::RegisterId>(registerId), AqlValue(b.get()));
-        
+
+        res->emplaceValue(row, static_cast<arangodb::aql::RegisterId>(registerId),
+                          AqlValue(b.get()));
+
         if (row != fromRow) {
           // re-use already copied AQLValues
           res->copyValuesFromRow(row, static_cast<RegisterId>(registerId), fromRow);
@@ -155,16 +158,18 @@ void DocumentProducingBlock::buildCallback() {
       };
       return;
     }
-      
+
     // projections from a "real" document
-    _documentProducer = [this](AqlItemBlock* res, VPackSlice slice, size_t registerId, size_t& row, size_t fromRow) {
+    _documentProducer = [this](AqlItemBlock* res, VPackSlice slice,
+                               size_t registerId, size_t& row, size_t fromRow) {
       transaction::BuilderLeaser b(_trxPtr);
       b->openObject(true);
       handleProjections(_node, _trxPtr, slice, *b.get(), _useRawDocumentPointers);
       b->close();
-            
-      res->emplaceValue(row, static_cast<arangodb::aql::RegisterId>(registerId), AqlValue(b.get()));
-      
+
+      res->emplaceValue(row, static_cast<arangodb::aql::RegisterId>(registerId),
+                        AqlValue(b.get()));
+
       if (row != fromRow) {
         // re-use already copied AQLValues
         res->copyValuesFromRow(row, static_cast<RegisterId>(registerId), fromRow);
@@ -175,7 +180,8 @@ void DocumentProducingBlock::buildCallback() {
   }
 
   // return the document as is
-  _documentProducer = [this](AqlItemBlock* res, VPackSlice slice, size_t registerId, size_t& row, size_t fromRow) {
+  _documentProducer = [this](AqlItemBlock* res, VPackSlice slice,
+                             size_t registerId, size_t& row, size_t fromRow) {
     uint8_t const* vpack = slice.begin();
     if (_useRawDocumentPointers) {
       res->emplaceValue(row, static_cast<arangodb::aql::RegisterId>(registerId),

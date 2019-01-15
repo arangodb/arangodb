@@ -30,20 +30,21 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 namespace transaction {
 
 struct Options {
   Options();
-  
+
   /// @brief adjust the global default values for transactions
-  static void setLimits(uint64_t maxTransactionSize, uint64_t intermediateCommitSize, uint64_t intermediateCommitCount);
+  static void setLimits(uint64_t maxTransactionSize, uint64_t intermediateCommitSize,
+                        uint64_t intermediateCommitCount);
 
   /// @brief read the options from a vpack slice
   void fromVelocyPack(arangodb::velocypack::Slice const&);
 
-  /// @brief add the options to an opened vpack builder 
+  /// @brief add the options to an opened vpack builder
   void toVelocyPack(arangodb::velocypack::Builder&) const;
 
   static constexpr double defaultLockTimeout = 900.0;
@@ -56,14 +57,14 @@ struct Options {
   uint64_t maxTransactionSize;
   uint64_t intermediateCommitSize;
   uint64_t intermediateCommitCount;
-  bool allowImplicitCollections; 
+  bool allowImplicitCollections;
   bool waitForSync;
 #ifdef USE_ENTERPRISE
   bool skipInaccessibleCollections;
 #endif
 };
 
-}
-}
+}  // namespace transaction
+}  // namespace arangodb
 
 #endif

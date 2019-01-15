@@ -66,13 +66,10 @@ class PregelFeature final : public application_features::ApplicationFeature {
     return nullptr;
   }
 
-  static void handleConductorRequest(std::string const& path,
-                                     VPackSlice const& body,
+  static void handleConductorRequest(std::string const& path, VPackSlice const& body,
                                      VPackBuilder& outResponse);
-  static void handleWorkerRequest(TRI_vocbase_t* vocbase,
-                                  std::string const& path,
-                                  VPackSlice const& body,
-                                  VPackBuilder& outBuilder);
+  static void handleWorkerRequest(TRI_vocbase_t* vocbase, std::string const& path,
+                                  VPackSlice const& body, VPackBuilder& outBuilder);
 
  private:
   Mutex _mutex;
@@ -80,7 +77,7 @@ class PregelFeature final : public application_features::ApplicationFeature {
   std::unordered_map<uint64_t, std::shared_ptr<Conductor>> _conductors;
   std::unordered_map<uint64_t, std::shared_ptr<IWorker>> _workers;
 };
-}
-}
+}  // namespace pregel
+}  // namespace arangodb
 
 #endif

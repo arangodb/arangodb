@@ -36,17 +36,13 @@
 #include "Rest/GeneralRequest.h"
 #include "Statistics/RequestStatistics.h"
 #include "Utils/ExecContext.h"
+#include "VocBase/ticks.h"
 
 #include <iostream>
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-
-namespace {
-std::atomic_uint_fast64_t NEXT_HANDLER_ID(
-    static_cast<uint64_t>(TRI_microtime() * 100000.0));
-}
 
 thread_local RestHandler const* RestHandler::CURRENT_HANDLER = nullptr;
 
@@ -55,15 +51,14 @@ thread_local RestHandler const* RestHandler::CURRENT_HANDLER = nullptr;
 // -----------------------------------------------------------------------------
 
 RestHandler::RestHandler(GeneralRequest* request, GeneralResponse* response)
-    : _handlerId(NEXT_HANDLER_ID.fetch_add(1, std::memory_order_seq_cst)),
+    : _handlerId(0),
       _canceled(false),
       _request(request),
       _response(response),
       _statistics(nullptr),
       _state(HandlerState::PREPARE) {
   bool found;
-  std::string const& startThread =
-      _request->header(StaticStrings::StartThread, found);
+  std::string const& startThread = _request->header(StaticStrings::StartThread, found);
 
   if (found) {
     _needsOwnThread = StringUtils::boolean(startThread);
@@ -81,6 +76,10 @@ RestHandler::~RestHandler() {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
+
+void RestHandler::assignHandlerId() {
+  _handlerId = TRI_NewServerSpecificTick();
+}
 
 uint64_t RestHandler::messageId() const {
   uint64_t messageId = 0UL;
@@ -128,15 +127,14 @@ bool RestHandler::forwardRequest() {
     return false;
   }
 
-  std::string serverId =
-      ClusterInfo::instance()->getCoordinatorByShortID(shortId);
+  std::string serverId = ClusterInfo::instance()->getCoordinatorByShortID(shortId);
   if ("" == serverId) {
     // no mapping in agency, try to handle the request here
     return false;
   }
 
-  LOG_TOPIC(DEBUG, Logger::REQUESTS) <<
-      "forwarding request " << _request->messageId() << " to " << serverId;
+  LOG_TOPIC(DEBUG, Logger::REQUESTS)
+      << "forwarding request " << _request->messageId() << " to " << serverId;
 
   bool useVst = false;
   if (_request->transportType() == Endpoint::TransportType::VST) {
@@ -144,10 +142,8 @@ bool RestHandler::forwardRequest() {
   }
   std::string const& dbname = _request->databaseName();
 
-  std::unordered_map<std::string, std::string> const& oldHeaders =
-      _request->headers();
-  std::unordered_map<std::string, std::string>::const_iterator it =
-      oldHeaders.begin();
+  std::unordered_map<std::string, std::string> const& oldHeaders = _request->headers();
+  std::unordered_map<std::string, std::string>::const_iterator it = oldHeaders.begin();
   std::unordered_map<std::string, std::string> headers;
   while (it != oldHeaders.end()) {
     std::string const& key = (*it).first;
@@ -160,12 +156,10 @@ bool RestHandler::forwardRequest() {
   }
   auto auth = AuthenticationFeature::instance();
   if (auth != nullptr && auth->isActive()) {
-
     // when in superuser mode, username is empty
     //  in this case ClusterComm will add the default superuser token
     std::string const& username = _request->user();
     if (!username.empty()) {
-
       VPackBuilder builder;
       {
         VPackObjectBuilder payload{&builder};
@@ -244,8 +238,7 @@ bool RestHandler::forwardRequest() {
   }
 
   bool dummy;
-  resetResponse(
-      static_cast<rest::ResponseCode>(res->result->getHttpReturnCode()));
+  resetResponse(static_cast<rest::ResponseCode>(res->result->getHttpReturnCode()));
 
   _response->setContentType(
       res->result->getHeaderField(StaticStrings::ContentTypeHeader, dummy));
@@ -261,8 +254,7 @@ bool RestHandler::forwardRequest() {
     // need to switch back from http to vst
     std::shared_ptr<VPackBuilder> builder = res->result->getBodyVelocyPack();
     std::shared_ptr<VPackBuffer<uint8_t>> buf = builder->steal();
-    _response->setPayload(std::move(*buf),
-                          true);
+    _response->setPayload(std::move(*buf), true);
   }
 
   auto const& resultHeaders = res->result->getHeaderFields();
@@ -289,14 +281,16 @@ void RestHandler::runHandlerStateMachine() {
           this->finalizeEngine();
         }
         if (_state == HandlerState::PAUSED) {
-          LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "Pausing rest handler execution";
-          return; // stop state machine
+          LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+              << "Pausing rest handler execution";
+          return;  // stop state machine
         }
         break;
       }
 
       case HandlerState::PAUSED:
-        LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "Resuming rest handler execution";
+        LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+            << "Resuming rest handler execution";
         TRI_ASSERT(_response != nullptr);
         _callback(this);
         _state = HandlerState::FINALIZE;
@@ -361,19 +355,21 @@ int RestHandler::finalizeEngine() {
   try {
     finalizeExecute();
   } catch (Exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception in " << name() << ": "
-             << DIAGNOSTIC_INFORMATION(ex);
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "caught exception in " << name() << ": " << DIAGNOSTIC_INFORMATION(ex);
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     handleError(ex);
     res = ex.code();
   } catch (std::bad_alloc const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught memory exception in " << name() << ": " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "caught memory exception in " << name() << ": " << ex.what();
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
     handleError(err);
     res = TRI_ERROR_OUT_OF_MEMORY;
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception in " << name() << ": " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "caught exception in " << name() << ": " << ex.what();
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
     handleError(err);
@@ -408,7 +404,7 @@ int RestHandler::executeEngine() {
     if (result == RestStatus::FAIL) {
       LOG_TOPIC(WARN, Logger::REQUESTS) << "Rest handler reported fail";
     } else if (result == RestStatus::WAITING) {
-      _state = HandlerState::PAUSED; // wait for someone to continue the state machine
+      _state = HandlerState::PAUSED;  // wait for someone to continue the state machine
       return TRI_ERROR_NO_ERROR;
     } else if (_response == nullptr) {
       Exception err(TRI_ERROR_INTERNAL, "no response received from handler",
@@ -422,32 +418,41 @@ int RestHandler::executeEngine() {
     return TRI_ERROR_NO_ERROR;
   } catch (Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "caught exception in " << name() << ": "
-              << DIAGNOSTIC_INFORMATION(ex);
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "caught exception in " << name() << ": " << DIAGNOSTIC_INFORMATION(ex);
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     handleError(ex);
   } catch (arangodb::velocypack::Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "caught velocypack exception in " << name() << ": "
-              << DIAGNOSTIC_INFORMATION(ex);
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "caught velocypack exception in " << name() << ": "
+        << DIAGNOSTIC_INFORMATION(ex);
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
-    Exception err(TRI_ERROR_INTERNAL, std::string("VPack error: ") + ex.what(),
-                  __FILE__, __LINE__);
-    handleError(err);
+    if (ex.errorCode() == arangodb::velocypack::Exception::ExceptionType::ParseError ||
+        ex.errorCode() == arangodb::velocypack::Exception::ExceptionType::UnexpectedControlCharacter) {
+      Exception err(TRI_ERROR_HTTP_CORRUPTED_JSON,
+                    std::string("JSON parse error: ") + ex.what(), __FILE__, __LINE__);
+      handleError(err);
+    } else {
+      Exception err(TRI_ERROR_INTERNAL, std::string("VPack error: ") + ex.what(),
+                    __FILE__, __LINE__);
+      handleError(err);
+    }
   } catch (std::bad_alloc const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "caught memory exception in " << name() << ": "
-              << DIAGNOSTIC_INFORMATION(ex);
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "caught memory exception in " << name() << ": "
+        << DIAGNOSTIC_INFORMATION(ex);
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (std::exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "caught exception in " << name() << ": "
-              << DIAGNOSTIC_INFORMATION(ex);
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "caught exception in " << name() << ": " << DIAGNOSTIC_INFORMATION(ex);
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
@@ -476,10 +481,8 @@ void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
     builder.add(VPackValue(VPackValueType::Object));
     builder.add(StaticStrings::Error, VPackValue(true));
     builder.add(StaticStrings::ErrorMessage, VPackValue(message));
-    builder.add(StaticStrings::Code,
-                VPackValue(static_cast<int>(code)));
-    builder.add(StaticStrings::ErrorNum,
-                VPackValue(errorNumber));
+    builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
+    builder.add(StaticStrings::ErrorNum, VPackValue(errorNumber));
     builder.close();
 
     VPackOptions options(VPackOptions::Defaults);

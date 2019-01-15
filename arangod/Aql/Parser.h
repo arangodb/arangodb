@@ -24,9 +24,9 @@
 #ifndef ARANGOD_AQL_PARSER_H
 #define ARANGOD_AQL_PARSER_H 1
 
-#include "Basics/Common.h"
 #include "Aql/Ast.h"
 #include "Aql/Query.h"
+#include "Basics/Common.h"
 
 namespace arangodb {
 namespace aql {
@@ -35,8 +35,8 @@ struct AstNode;
 class Query;
 struct QueryResult;
 class Parser;
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 /// @brief forwards for the parse function provided by the parser (.y)
 int Aqlparse(arangodb::aql::Parser*);
@@ -71,7 +71,7 @@ class Parser {
 
   /// @brief return the scanner
   inline void* scanner() const { return _scanner; }
-  
+
   /// @brief a pointer to the start of the query string
   char const* queryStringStart() const { return _queryStringStart; }
 
@@ -94,11 +94,11 @@ class Parser {
 
   /// @brief adjust the current parse position
   inline void increaseOffset(size_t offset) { _offset += offset; }
-  
+
   inline void decreaseOffset(int offset) {
     _offset -= static_cast<size_t>(offset);
   }
-  
+
   /// @brief adjust the current parse position
   inline void decreaseOffset(size_t offset) { _offset -= offset; }
 
@@ -182,7 +182,7 @@ class Parser {
   /// @brief whether or not the query is a modification query
   bool _isModificationQuery;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

@@ -61,7 +61,7 @@ struct ModificationOptions {
   bool ignoreRevs;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

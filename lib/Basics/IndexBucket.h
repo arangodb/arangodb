@@ -40,28 +40,28 @@ struct IndexBucket {
   IndexType _nrCollisions;  // the number of entries that have
                             // a key that was previously in the table
   EntryType* _table;        // the table itself
-  int _file;                // file descriptor for memory mapped file (-1 = no file)
-  char* _filename;          // name of memory mapped file (nullptr = no file)
+  int _file;        // file descriptor for memory mapped file (-1 = no file)
+  char* _filename;  // name of memory mapped file (nullptr = no file)
   void* _mmHandle;
 
-  IndexBucket() 
-      : _nrAlloc(0), 
-        _nrUsed(0), 
-        _nrCollisions(0), 
-        _table(nullptr), 
-        _file(-1), 
+  IndexBucket()
+      : _nrAlloc(0),
+        _nrUsed(0),
+        _nrCollisions(0),
+        _table(nullptr),
+        _file(-1),
         _filename(nullptr),
         _mmHandle(nullptr) {}
   IndexBucket(IndexBucket const&) = delete;
   IndexBucket& operator=(IndexBucket const&) = delete;
-  
+
   // move ctor. this takes over responsibility for the resources from other
-  IndexBucket(IndexBucket&& other) 
-      : _nrAlloc(other._nrAlloc), 
-        _nrUsed(other._nrUsed), 
-        _nrCollisions(other._nrCollisions), 
-        _table(other._table), 
-        _file(other._file), 
+  IndexBucket(IndexBucket&& other)
+      : _nrAlloc(other._nrAlloc),
+        _nrUsed(other._nrUsed),
+        _nrCollisions(other._nrCollisions),
+        _table(other._table),
+        _file(other._file),
         _filename(other._filename),
         _mmHandle(other._mmHandle) {
     other._nrAlloc = 0;
@@ -74,8 +74,8 @@ struct IndexBucket {
   }
 
   IndexBucket& operator=(IndexBucket&& other) {
-    deallocate(); // free own resources first
-      
+    deallocate();  // free own resources first
+
     _nrAlloc = other._nrAlloc;
     _nrUsed = other._nrUsed;
     _nrCollisions = other._nrCollisions;
@@ -95,15 +95,11 @@ struct IndexBucket {
     return *this;
   }
 
-  ~IndexBucket() {
-    deallocate();
-  }
+  ~IndexBucket() { deallocate(); }
 
  public:
-  size_t memoryUsage() const {
-    return requiredSize(_nrAlloc);
-  }
-    
+  size_t memoryUsage() const { return requiredSize(_nrAlloc); }
+
   size_t requiredSize(size_t numberElements) const {
     return numberElements * sizeof(EntryType);
   }
@@ -156,21 +152,22 @@ struct IndexBucket {
  private:
   EntryType* allocateMemory(size_t numberElements) {
     TRI_ASSERT(numberElements > 0);
-    
+
     if (_file == -1) {
       return new EntryType[numberElements]();
     }
-    
+
     size_t const totalSize = requiredSize(numberElements);
-  
-    // initialize the file 
+
+    // initialize the file
     TRI_ASSERT(_file > 0);
-    TRI_ASSERT(_mmHandle == nullptr); 
+    TRI_ASSERT(_mmHandle == nullptr);
 
     void* data;
     int flags = MAP_SHARED;
-    int res = TRI_MMFile(nullptr, totalSize, PROT_WRITE | PROT_READ, flags, _file, &_mmHandle, 0, &data);
-    
+    int res = TRI_MMFile(nullptr, totalSize, PROT_WRITE | PROT_READ, flags,
+                         _file, &_mmHandle, 0, &data);
+
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }
@@ -179,8 +176,8 @@ struct IndexBucket {
 
     try {
       // call placement new constructor
-      (void) new (data) EntryType[numberElements]();
-    
+      (void)new (data) EntryType[numberElements]();
+
       return static_cast<EntryType*>(data);
     } catch (...) {
       TRI_UNMMFile(data, totalSize, _file, &_mmHandle);
@@ -194,12 +191,12 @@ struct IndexBucket {
       TRI_ASSERT(_nrAlloc == 0);
       TRI_ASSERT(_nrUsed == 0);
       return;
-    } 
+    }
 
     if (_file == -1) {
       delete[] _table;
     } else {
-      if (TRI_UNMMFile(_table, requiredSize(_nrAlloc), _file, &_mmHandle) != TRI_ERROR_NO_ERROR) { 
+      if (TRI_UNMMFile(_table, requiredSize(_nrAlloc), _file, &_mmHandle) != TRI_ERROR_NO_ERROR) {
         // unmapping failed
         LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "munmap failed";
       }
@@ -220,7 +217,7 @@ struct IndexBucket {
   void deallocateTempfile() {}
 };
 
-}
-}
+}  // namespace basics
+}  // namespace arangodb
 
 #endif

@@ -144,15 +144,13 @@ class ResultT : public arangodb::Result {
   ResultT(boost::optional<T>&& val_, int errorNumber)
       : Result(errorNumber), _val(std::move(val_)) {}
 
-  ResultT(boost::optional<T>&& val_, int errorNumber,
-          std::string const& errorMessage)
+  ResultT(boost::optional<T>&& val_, int errorNumber, std::string const& errorMessage)
       : Result(errorNumber, errorMessage), _val(std::move(val_)) {}
 
   ResultT(boost::optional<T> const& val_, int errorNumber)
       : Result(errorNumber), _val(val_) {}
 
-  ResultT(boost::optional<T> const& val_, int errorNumber,
-          std::string const& errorMessage)
+  ResultT(boost::optional<T> const& val_, int errorNumber, std::string const& errorMessage)
       : Result(errorNumber, errorMessage), _val(val_) {}
 };
 

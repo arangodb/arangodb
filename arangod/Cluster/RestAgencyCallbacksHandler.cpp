@@ -32,10 +32,9 @@ using namespace arangodb::rest;
 
 RestAgencyCallbacksHandler::RestAgencyCallbacksHandler(GeneralRequest* request,
                                                        GeneralResponse* response,
-    arangodb::AgencyCallbackRegistry* agencyCallbackRegistry)
-  : RestVocbaseBaseHandler(request, response),
-    _agencyCallbackRegistry(agencyCallbackRegistry) {
-}
+                                                       arangodb::AgencyCallbackRegistry* agencyCallbackRegistry)
+    : RestVocbaseBaseHandler(request, response),
+      _agencyCallbackRegistry(agencyCallbackRegistry) {}
 
 bool RestAgencyCallbacksHandler::isDirect() const { return false; }
 
@@ -51,14 +50,12 @@ RestStatus RestAgencyCallbacksHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
   if (type != rest::RequestType::POST) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
-  
+
   bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(parseSuccess);
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
   if (!parseSuccess) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid JSON");
@@ -72,7 +69,7 @@ RestStatus RestAgencyCallbacksHandler::execute() {
 
     auto callback = _agencyCallbackRegistry->getCallback(index);
     LOG_TOPIC(DEBUG, Logger::CLUSTER)
-      << "Agency callback has been triggered. refetching!";
+        << "Agency callback has been triggered. refetching!";
     callback->refetchAndUpdate(true, false);
     resetResponse(arangodb::rest::ResponseCode::ACCEPTED);
   } catch (arangodb::basics::Exception const&) {

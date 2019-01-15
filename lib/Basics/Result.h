@@ -30,8 +30,7 @@ class Result {
  public:
   Result() : _errorNumber(TRI_ERROR_NO_ERROR) {}
 
-  Result(int errorNumber)
-      : _errorNumber(errorNumber){
+  Result(int errorNumber) : _errorNumber(errorNumber) {
     if (errorNumber != TRI_ERROR_NO_ERROR) {
       _errorMessage = TRI_errno_string(errorNumber);
     }
@@ -42,33 +41,32 @@ class Result {
 
   Result(int errorNumber, std::string&& errorMessage)
       : _errorNumber(errorNumber), _errorMessage(std::move(errorMessage)) {}
-  
+
   // copy
-  Result(Result const& other) 
-      : _errorNumber(other._errorNumber), 
-        _errorMessage(other._errorMessage) {}
+  Result(Result const& other)
+      : _errorNumber(other._errorNumber), _errorMessage(other._errorMessage) {}
 
   Result& operator=(Result const& other) {
     _errorNumber = other._errorNumber;
     _errorMessage = other._errorMessage;
-    return *this; 
+    return *this;
   }
- 
-  // move 
-  Result(Result&& other) noexcept 
-      : _errorNumber(other._errorNumber), 
+
+  // move
+  Result(Result&& other) noexcept
+      : _errorNumber(other._errorNumber),
         _errorMessage(std::move(other._errorMessage)) {}
-  
+
   Result& operator=(Result&& other) noexcept {
     _errorNumber = other._errorNumber;
     _errorMessage = std::move(other._errorMessage);
-    return *this; 
+    return *this;
   }
 
   virtual ~Result() {}
 
  public:
-  bool ok()   const { return _errorNumber == TRI_ERROR_NO_ERROR; }
+  bool ok() const { return _errorNumber == TRI_ERROR_NO_ERROR; }
   bool fail() const { return !ok(); }
 
   int errorNumber() const { return _errorNumber; }
@@ -120,6 +118,6 @@ class Result {
   int _errorNumber;
   std::string _errorMessage;
 };
-}
+}  // namespace arangodb
 
 #endif

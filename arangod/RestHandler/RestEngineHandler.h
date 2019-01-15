@@ -36,11 +36,11 @@ class RestEngineHandler : public arangodb::RestBaseHandler {
   bool isDirect() const override { return true; }
   RestStatus execute() override;
 
-protected:
+ protected:
   void handleGet();
   void getCapabilities();
   void getStats();
 };
-}
+}  // namespace arangodb
 
 #endif

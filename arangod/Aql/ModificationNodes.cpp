@@ -32,25 +32,23 @@ using namespace arangodb::aql;
 
 static bool const Optional = true;
 
-ModificationNode::ModificationNode(ExecutionPlan* plan,
-                                   arangodb::velocypack::Slice const& base)
+ModificationNode::ModificationNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       _vocbase(plan->getAst()->query()->vocbase()),
       _collection(plan->getAst()->query()->collections()->get(
           base.get("collection").copyString())),
       _options(base),
-      _outVariableOld(
-          Variable::varFromVPack(plan->getAst(), base, "outVariableOld", Optional)),
-      _outVariableNew(
-          Variable::varFromVPack(plan->getAst(), base, "outVariableNew", Optional)), 
+      _outVariableOld(Variable::varFromVPack(plan->getAst(), base,
+                                             "outVariableOld", Optional)),
+      _outVariableNew(Variable::varFromVPack(plan->getAst(), base,
+                                             "outVariableNew", Optional)),
       _countStats(base.get("countStats").getBool()) {
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_collection != nullptr);
 }
 
 /// @brief toVelocyPack
-void ModificationNode::toVelocyPackHelper(VPackBuilder& builder,
-                                          bool verbose) const {
+void ModificationNode::toVelocyPackHelper(VPackBuilder& builder, bool verbose) const {
   ExecutionNode::toVelocyPackHelperGeneric(builder,
                                            verbose);  // call base class method
   // Now put info about vocbase and cid in there
@@ -109,14 +107,12 @@ ExecutionNode* RemoveNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   if (withProperties) {
     if (_outVariableOld != nullptr) {
-      outVariableOld =
-          plan->getAst()->variables()->createVariable(outVariableOld);
+      outVariableOld = plan->getAst()->variables()->createVariable(outVariableOld);
     }
     inVariable = plan->getAst()->variables()->createVariable(inVariable);
   }
 
-  auto c = new RemoveNode(plan, _id, _vocbase, _collection, _options,
-                          inVariable, outVariableOld);
+  auto c = new RemoveNode(plan, _id, _vocbase, _collection, _options, inVariable, outVariableOld);
   if (!_countStats) {
     c->disableStatistics();
   }
@@ -151,14 +147,12 @@ ExecutionNode* InsertNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   if (withProperties) {
     if (_outVariableNew != nullptr) {
-      outVariableNew =
-          plan->getAst()->variables()->createVariable(outVariableNew);
+      outVariableNew = plan->getAst()->variables()->createVariable(outVariableNew);
     }
     inVariable = plan->getAst()->variables()->createVariable(inVariable);
   }
 
-  auto c = new InsertNode(plan, _id, _vocbase, _collection, _options,
-                          inVariable, outVariableNew);
+  auto c = new InsertNode(plan, _id, _vocbase, _collection, _options, inVariable, outVariableNew);
   if (!_countStats) {
     c->disableStatistics();
   }
@@ -170,14 +164,15 @@ ExecutionNode* InsertNode::clone(ExecutionPlan* plan, bool withDependencies,
 
 UpdateNode::UpdateNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ModificationNode(plan, base),
-      _inDocVariable(Variable::varFromVPack(plan->getAst(), base, "inDocVariable")),
-      _inKeyVariable(
-          Variable::varFromVPack(plan->getAst(), base, "inKeyVariable", Optional)) {}
+      _inDocVariable(
+          Variable::varFromVPack(plan->getAst(), base, "inDocVariable")),
+      _inKeyVariable(Variable::varFromVPack(plan->getAst(), base,
+                                            "inKeyVariable", Optional)) {}
 
 /// @brief toVelocyPack
 void UpdateNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   ModificationNode::toVelocyPackHelper(nodes, verbose);
-  
+
   nodes.add(VPackValue("inDocVariable"));
   _inDocVariable->toVelocyPack(nodes);
 
@@ -201,23 +196,19 @@ ExecutionNode* UpdateNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   if (withProperties) {
     if (_outVariableOld != nullptr) {
-      outVariableOld =
-          plan->getAst()->variables()->createVariable(outVariableOld);
+      outVariableOld = plan->getAst()->variables()->createVariable(outVariableOld);
     }
     if (_outVariableNew != nullptr) {
-      outVariableNew =
-          plan->getAst()->variables()->createVariable(outVariableNew);
+      outVariableNew = plan->getAst()->variables()->createVariable(outVariableNew);
     }
     if (inKeyVariable != nullptr) {
-      inKeyVariable =
-          plan->getAst()->variables()->createVariable(inKeyVariable);
+      inKeyVariable = plan->getAst()->variables()->createVariable(inKeyVariable);
     }
     inDocVariable = plan->getAst()->variables()->createVariable(inDocVariable);
   }
 
-  auto c =
-      new UpdateNode(plan, _id, _vocbase, _collection, _options, inDocVariable,
-                     inKeyVariable, outVariableOld, outVariableNew);
+  auto c = new UpdateNode(plan, _id, _vocbase, _collection, _options, inDocVariable,
+                          inKeyVariable, outVariableOld, outVariableNew);
   if (!_countStats) {
     c->disableStatistics();
   }
@@ -227,12 +218,12 @@ ExecutionNode* UpdateNode::clone(ExecutionPlan* plan, bool withDependencies,
   return static_cast<ExecutionNode*>(c);
 }
 
-ReplaceNode::ReplaceNode(ExecutionPlan* plan,
-                         arangodb::velocypack::Slice const& base)
+ReplaceNode::ReplaceNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ModificationNode(plan, base),
-      _inDocVariable(Variable::varFromVPack(plan->getAst(), base, "inDocVariable")),
-      _inKeyVariable(
-          Variable::varFromVPack(plan->getAst(), base, "inKeyVariable", Optional)) {}
+      _inDocVariable(
+          Variable::varFromVPack(plan->getAst(), base, "inDocVariable")),
+      _inKeyVariable(Variable::varFromVPack(plan->getAst(), base,
+                                            "inKeyVariable", Optional)) {}
 
 /// @brief toVelocyPack
 void ReplaceNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
@@ -261,23 +252,19 @@ ExecutionNode* ReplaceNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   if (withProperties) {
     if (_outVariableOld != nullptr) {
-      outVariableOld =
-          plan->getAst()->variables()->createVariable(outVariableOld);
+      outVariableOld = plan->getAst()->variables()->createVariable(outVariableOld);
     }
     if (_outVariableNew != nullptr) {
-      outVariableNew =
-          plan->getAst()->variables()->createVariable(outVariableNew);
+      outVariableNew = plan->getAst()->variables()->createVariable(outVariableNew);
     }
     if (inKeyVariable != nullptr) {
-      inKeyVariable =
-          plan->getAst()->variables()->createVariable(inKeyVariable);
+      inKeyVariable = plan->getAst()->variables()->createVariable(inKeyVariable);
     }
     inDocVariable = plan->getAst()->variables()->createVariable(inDocVariable);
   }
 
-  auto c =
-      new ReplaceNode(plan, _id, _vocbase, _collection, _options, inDocVariable,
-                      inKeyVariable, outVariableOld, outVariableNew);
+  auto c = new ReplaceNode(plan, _id, _vocbase, _collection, _options, inDocVariable,
+                           inKeyVariable, outVariableOld, outVariableNew);
   if (!_countStats) {
     c->disableStatistics();
   }
@@ -289,14 +276,16 @@ ExecutionNode* ReplaceNode::clone(ExecutionPlan* plan, bool withDependencies,
 
 UpsertNode::UpsertNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ModificationNode(plan, base),
-      _inDocVariable(Variable::varFromVPack(plan->getAst(), base, "inDocVariable")),
-      _insertVariable(Variable::varFromVPack(plan->getAst(), base, "insertVariable")),
-      _updateVariable(Variable::varFromVPack(plan->getAst(), base, "updateVariable")),
+      _inDocVariable(
+          Variable::varFromVPack(plan->getAst(), base, "inDocVariable")),
+      _insertVariable(
+          Variable::varFromVPack(plan->getAst(), base, "insertVariable")),
+      _updateVariable(
+          Variable::varFromVPack(plan->getAst(), base, "updateVariable")),
       _isReplace(base.get("isReplace").getBoolean()) {}
 
 /// @brief toVelocyPack
-void UpsertNode::toVelocyPackHelper(VPackBuilder& nodes,
-                              bool verbose) const {
+void UpsertNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   ModificationNode::toVelocyPackHelper(nodes, verbose);
 
   nodes.add(VPackValue("inDocVariable"));
@@ -321,19 +310,15 @@ ExecutionNode* UpsertNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   if (withProperties) {
     if (_outVariableNew != nullptr) {
-      outVariableNew =
-          plan->getAst()->variables()->createVariable(outVariableNew);
+      outVariableNew = plan->getAst()->variables()->createVariable(outVariableNew);
     }
     inDocVariable = plan->getAst()->variables()->createVariable(inDocVariable);
-    insertVariable =
-        plan->getAst()->variables()->createVariable(insertVariable);
-    updateVariable =
-        plan->getAst()->variables()->createVariable(updateVariable);
+    insertVariable = plan->getAst()->variables()->createVariable(insertVariable);
+    updateVariable = plan->getAst()->variables()->createVariable(updateVariable);
   }
 
-  auto c = new UpsertNode(plan, _id, _vocbase, _collection, _options,
-                          inDocVariable, insertVariable, updateVariable,
-                          outVariableNew, _isReplace);
+  auto c = new UpsertNode(plan, _id, _vocbase, _collection, _options, inDocVariable,
+                          insertVariable, updateVariable, outVariableNew, _isReplace);
   if (!_countStats) {
     c->disableStatistics();
   }

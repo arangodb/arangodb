@@ -24,9 +24,9 @@
 #ifndef ARANGOD_REST_HANDLER_REST_CURSOR_HANDLER_H
 #define ARANGOD_REST_HANDLER_REST_CURSOR_HANDLER_H 1
 
+#include "Aql/QueryResult.h"
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
-#include "Aql/QueryResult.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 #include <velocypack/Builder.h>
@@ -37,11 +37,11 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 namespace aql {
 class Query;
 class QueryRegistry;
-}
+}  // namespace aql
 
 class Cursor;
 
@@ -51,8 +51,7 @@ class Cursor;
 
 class RestCursorHandler : public RestVocbaseBaseHandler {
  public:
-  RestCursorHandler(GeneralRequest*, GeneralResponse*,
-                    arangodb::aql::QueryRegistry*);
+  RestCursorHandler(GeneralRequest*, GeneralResponse*, arangodb::aql::QueryRegistry*);
 
  public:
   size_t queue() const override;
@@ -104,8 +103,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// @brief build options for the query as JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::velocypack::Builder buildOptions(
-      arangodb::velocypack::Slice const&) const;
+  arangodb::velocypack::Builder buildOptions(arangodb::velocypack::Slice const&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief builds the "extra" attribute values from the result.
@@ -113,8 +111,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// several values
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<arangodb::velocypack::Builder> buildExtra(
-      arangodb::aql::QueryResult&) const;
+  std::shared_ptr<arangodb::velocypack::Builder> buildExtra(arangodb::aql::QueryResult&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief append the contents of the cursor into the response body
@@ -179,6 +176,6 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
 
   bool _isValidForFinalize;
 };
-}
+}  // namespace arangodb
 
 #endif

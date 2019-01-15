@@ -29,8 +29,7 @@
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 
-ApplicationFeature::ApplicationFeature(ApplicationServer* server,
-                                       std::string const& name)
+ApplicationFeature::ApplicationFeature(ApplicationServer* server, std::string const& name)
     : _server(server),
       _name(name),
       _state(ApplicationServer::FeatureState::UNINITIALIZED),
@@ -47,8 +46,8 @@ void ApplicationFeature::collectOptions(std::shared_ptr<ProgramOptions>) {}
 
 // load options from somewhere. this method will only be called for enabled
 // features
-void ApplicationFeature::loadOptions(std::shared_ptr<ProgramOptions>,
-                                     char const* binaryPath) {}
+void ApplicationFeature::loadOptions(std::shared_ptr<ProgramOptions>, char const* binaryPath) {
+}
 
 // validate the feature's options. this method will only be called for active
 // features, after the ApplicationServer has determined which features should be
@@ -111,7 +110,8 @@ void ApplicationFeature::determineAncestors() {
 
   std::vector<std::string> path;
 
-  std::function<void(std::string const&)> build = [this, &build, &path](std::string const& name) {
+  std::function<void(std::string const&)> build = [this, &build,
+                                                   &path](std::string const& name) {
     // lookup the feature first. it may not exist
     if (!this->server()->exists(name)) {
       // feature not found. no worries
@@ -127,8 +127,9 @@ void ApplicationFeature::determineAncestors() {
           if (ancestor == _name) {
             path.emplace_back(ancestor);
             THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_INTERNAL,
-              "dependencies for feature '" + _name + "' are cyclic: " + arangodb::basics::StringUtils::join(path, " <= "));
+                TRI_ERROR_INTERNAL,
+                "dependencies for feature '" + _name + "' are cyclic: " +
+                    arangodb::basics::StringUtils::join(path, " <= "));
           }
           build(ancestor);
         }
@@ -140,4 +141,3 @@ void ApplicationFeature::determineAncestors() {
   build(_name);
   _ancestorsDetermined = true;
 }
-

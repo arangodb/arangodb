@@ -34,7 +34,7 @@ class RestBatchHandler;
 namespace rest {
 class VstCommTask;
 class GeneralCommTask;
-}
+}  // namespace rest
 
 using rest::VPackMessageNoOwnBuffer;
 
@@ -55,13 +55,11 @@ class VstResponse : public GeneralResponse {
   };
 
   VPackMessageNoOwnBuffer prepareForNetwork();
-  
+
   void reset(ResponseCode code) final;
-  void addPayload(VPackSlice const&,
-                  arangodb::velocypack::Options const* = nullptr,
+  void addPayload(VPackSlice const&, arangodb::velocypack::Options const* = nullptr,
                   bool resolveExternals = true) override;
-  void addPayload(VPackBuffer<uint8_t>&&,
-                  arangodb::velocypack::Options const* = nullptr,
+  void addPayload(VPackBuffer<uint8_t>&&, arangodb::velocypack::Options const* = nullptr,
                   bool resolveExternals = true) override;
 
  private:
@@ -73,6 +71,6 @@ class VstResponse : public GeneralResponse {
   /// actual payloads
   std::vector<VPackBuffer<uint8_t>> _vpackPayloads;
 };
-}
+}  // namespace arangodb
 
 #endif

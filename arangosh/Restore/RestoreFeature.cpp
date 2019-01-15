@@ -24,6 +24,8 @@
 
 #include <iostream>
 
+#include <velocypack/Collection.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -56,23 +58,57 @@ using namespace arangodb::httpclient;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
+static void makeAttributesUnique(arangodb::velocypack::Builder& builder, arangodb::velocypack::Slice slice) {
+  if (slice.isObject()) {
+    std::unordered_set<std::string> keys;
+
+    builder.openObject();
+
+    auto it = arangodb::velocypack::ObjectIterator(slice, true);
+    
+    while (it.valid()) {
+      if (!keys.emplace(it.key().copyString()).second) {
+        // duplicate key
+        it.next();
+        continue;
+      }
+
+      // process attributes recursively
+      builder.add(it.key());
+      makeAttributesUnique(builder, it.value());
+      it.next();
+    }
+
+    builder.close();
+  } else if (slice.isArray()) {
+    builder.openArray();
+
+    auto it = arangodb::velocypack::ArrayIterator(slice);
+    
+    while (it.valid()) {
+      // recurse into array
+      makeAttributesUnique(builder, it.value());
+      it.next();
+    }
+
+    builder.close();
+  } else {
+    // non-compound value!
+    builder.add(slice);
+  }
+}
+
 /// @brief check whether HTTP response is valid, complete, and not an error
-arangodb::Result checkHttpResponse(
-    arangodb::httpclient::SimpleHttpClient& client,
-    std::unique_ptr<arangodb::httpclient::SimpleHttpResult>& response,
-    char const* requestAction,
-    std::string const& originalRequest) {
+arangodb::Result checkHttpResponse(arangodb::httpclient::SimpleHttpClient& client,
+                                   std::unique_ptr<arangodb::httpclient::SimpleHttpResult>& response,
+                                   char const* requestAction,
+                                   std::string const& originalRequest) {
   using arangodb::basics::StringUtils::itoa;
   if (response == nullptr || !response->isComplete()) {
     return {TRI_ERROR_INTERNAL,
-        "got invalid response from server: '" +
-        client.getErrorMessage() +
-        "' while executing '" +
-        requestAction +
-        "' with this payload: '" +
-        originalRequest +
-        "'"
-        };
+            "got invalid response from server: '" + client.getErrorMessage() +
+                "' while executing '" + requestAction +
+                "' with this payload: '" + originalRequest + "'"};
   }
   if (response->wasHttpError()) {
     int errorNum = TRI_ERROR_INTERNAL;
@@ -83,21 +119,15 @@ arangodb::Result checkHttpResponse(
       errorNum = error.get(arangodb::StaticStrings::ErrorNum).getNumericValue<int>();
       errorMsg = error.get(arangodb::StaticStrings::ErrorMessage).copyString();
     }
-    return {errorNum,
-        "got invalid response from server: HTTP " +
-        itoa(response->getHttpReturnCode()) + ": '" +
-        errorMsg +
-        "' while executing '" +
-        requestAction +
-        "' with this payload: '" +
-        originalRequest +
-        "'"};
+    return {errorNum, "got invalid response from server: HTTP " +
+                          itoa(response->getHttpReturnCode()) + ": '" +
+                          errorMsg + "' while executing '" + requestAction +
+                          "' with this payload: '" + originalRequest + "'"};
   }
   return {TRI_ERROR_NO_ERROR};
 }
 
-RestoreFeature::RestoreFeature(application_features::ApplicationServer* server,
-                               int* result)
+RestoreFeature::RestoreFeature(application_features::ApplicationServer* server, int* result)
     : ApplicationFeature(server, "Restore"),
       _collections(),
       _chunkSize(1024 * 1024 * 8),
@@ -108,6 +138,7 @@ RestoreFeature::RestoreFeature(application_features::ApplicationServer* server,
       _importStructure(true),
       _progress(true),
       _overwrite(true),
+      _cleanupDuplicateAttributes(false),
       _force(false),
       _ignoreDistributeShardsLikeErrors(false),
       _clusterMode(false),
@@ -131,15 +162,14 @@ RestoreFeature::RestoreFeature(application_features::ApplicationServer* server,
       FileUtils::buildFilename(FileUtils::currentDirectory().result(), "dump");
 }
 
-void RestoreFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
+void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
   options->addOption(
       "--collection",
       "restrict to collection name (can be specified multiple times)",
       new VectorParameter<StringParameter>(&_collections));
 
-  options->addObsoleteOption(
-      "--recycle-ids", "collection ids are now handled automatically", false);
+  options->addObsoleteOption("--recycle-ids",
+                             "collection ids are now handled automatically", false);
 
   options->addOption("--batch-size",
                      "maximum size for individual data batches (in bytes)",
@@ -152,13 +182,17 @@ void RestoreFeature::collectOptions(
   options->addOption("--create-database",
                      "create the target database if it does not exist",
                      new BooleanParameter(&_createDatabase));
-  
-  options->addOption("--force-same-database",
-                     "force usage of the same database name as in the source dump.json file",
-                     new BooleanParameter(&_forceSameDatabase));
+
+  options->addOption(
+      "--force-same-database",
+      "force usage of the same database name as in the source dump.json file",
+      new BooleanParameter(&_forceSameDatabase));
 
   options->addOption("--input-directory", "input directory",
                      new StringParameter(&_inputDirectory));
+
+  options->addHiddenOption("--cleanup-duplicate-attributes", "clean up duplicate attributes in input documents instead of making the restore operation fail (since v3.3.22 and v3.4.2)",
+                     new BooleanParameter(&_cleanupDuplicateAttributes));
 
   options->addOption("--import-data", "import data into collection",
                      new BooleanParameter(&_importData));
@@ -166,19 +200,18 @@ void RestoreFeature::collectOptions(
   options->addOption("--create-collection", "create collection structure",
                      new BooleanParameter(&_importStructure));
 
-  options->addOption("--progress", "show progress",
-                     new BooleanParameter(&_progress));
+  options->addOption("--progress", "show progress", new BooleanParameter(&_progress));
 
   options->addOption("--overwrite", "overwrite collections if they exist",
                      new BooleanParameter(&_overwrite));
-
-  options->addOption("--default-number-of-shards",
-                     "default value for numberOfShards if not specified",
-                     new UInt64Parameter(&_defaultNumberOfShards));
-
-  options->addOption("--default-replication-factor",
-                     "default value for replicationFactor if not specified",
-                     new UInt64Parameter(&_defaultReplicationFactor));
+  
+  options->addOption("--number-of-shards",
+                     "value for numberOfShards (from v3.3.22 and v3.4.2; can be specified multiple times, e.g. --numberOfShards 2 --numberOfShards myCollection=3)",
+                     new VectorParameter<StringParameter>(&_numberOfShards));
+  
+  options->addOption("--replication-factor",
+                     "value for replicationFactor (from v3.3.22 and v3.4.2; can be specified multiple times, e.g. --replicationFactor 2 --replicationFactor myCollection=3)",
+                     new VectorParameter<StringParameter>(&_replicationFactor));
 
   options->addOption(
       "--ignore-distribute-shards-like-errors",
@@ -188,10 +221,19 @@ void RestoreFeature::collectOptions(
   options->addOption(
       "--force", "continue restore even in the face of some server-side errors",
       new BooleanParameter(&_force));
+  
+  // deprecated options
+  options->addHiddenOption("--default-number-of-shards",
+                           "default value for numberOfShards if not specified (deprecated from v3.3.22 and v3.4.2)",
+                           new UInt64Parameter(&_defaultNumberOfShards));
+
+  options->addHiddenOption("--default-replication-factor",
+                           "default value for replicationFactor if not specified (deprecated from v3.3.22 and v3.4.2)",
+                           new UInt64Parameter(&_defaultReplicationFactor));
+
 }
 
-void RestoreFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
+void RestoreFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
   auto const& positionals = options->processingResult()._positionals;
   size_t n = positionals.size();
 
@@ -208,11 +250,57 @@ void RestoreFeature::validateOptions(
   if (_chunkSize < 1024 * 128) {
     _chunkSize = 1024 * 128;
   }
+
+  // validate shards and replication factor
+  if (_defaultNumberOfShards == 0) {
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "invalid value for `--default-number-of-shards`, expecting at least 1";
+    FATAL_ERROR_EXIT();
+  }
+  
+  if (_defaultReplicationFactor == 0) {
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "invalid value for `--default-replication-factor, expecting at least 1";
+    FATAL_ERROR_EXIT();
+  }
+  
+  for (auto& it : _numberOfShards) {
+    auto parts = basics::StringUtils::split(it, '=');
+    if (parts.size() == 1 && basics::StringUtils::uint64(parts[0]) > 0) {
+      // valid
+      continue;
+    } else if (parts.size() == 2 && basics::StringUtils::uint64(parts[1]) > 0) {
+      // valid
+      continue;
+    }
+    // invalid!
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "got invalid value '" << it << "' for `--number-of-shards";
+    FATAL_ERROR_EXIT();
+  }
+
+  for (auto& it : _replicationFactor) {
+    auto parts = basics::StringUtils::split(it, '=');
+    if (parts.size() == 1) {
+      if (parts[0] == "satellite" || basics::StringUtils::uint64(parts[0]) > 0) {
+        // valid
+        continue;
+      }
+    } else if (parts.size() == 2) {
+      if (parts[1] == "satellite" || basics::StringUtils::uint64(parts[1]) > 0) {
+        // valid
+        continue;
+      }
+    }
+    // invalid!
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "got invalid value '" << it << "' for `--replication-factor";
+    FATAL_ERROR_EXIT();
+  }
 }
 
 void RestoreFeature::prepare() {
-  if (!_inputDirectory.empty() &&
-      _inputDirectory.back() == TRI_DIR_SEPARATOR_CHAR) {
+  if (!_inputDirectory.empty() && _inputDirectory.back() == TRI_DIR_SEPARATOR_CHAR) {
     // trim trailing slash from path because it may cause problems on ...
     // Windows
     TRI_ASSERT(_inputDirectory.size() > 0);
@@ -236,8 +324,7 @@ void RestoreFeature::prepare() {
   }
 }
 
-int RestoreFeature::tryCreateDatabase(ClientFeature* client,
-                                      std::string const& name) {
+int RestoreFeature::tryCreateDatabase(ClientFeature* client, std::string const& name) {
   VPackBuilder builder;
   builder.openObject();
   builder.add("name", VPackValue(name));
@@ -251,8 +338,9 @@ int RestoreFeature::tryCreateDatabase(ClientFeature* client,
 
   std::string const body = builder.slice().toJson();
 
-  std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
-      rest::RequestType::POST, "/_api/database", body.c_str(), body.size()));
+  std::unique_ptr<SimpleHttpResult> response(
+      _httpClient->request(rest::RequestType::POST, "/_api/database",
+                           body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
     return TRI_ERROR_INTERNAL;
@@ -268,57 +356,54 @@ int RestoreFeature::tryCreateDatabase(ClientFeature* client,
   if (returnCode == static_cast<int>(rest::ResponseCode::UNAUTHORIZED) ||
       returnCode == static_cast<int>(rest::ResponseCode::FORBIDDEN)) {
     // invalid authorization
-    _httpClient->setErrorMessage(getHttpErrorMessage(response.get(), nullptr),
-                                 false);
+    _httpClient->setErrorMessage(getHttpErrorMessage(response.get(), nullptr), false);
     return TRI_ERROR_FORBIDDEN;
   }
 
   // any other error
-  _httpClient->setErrorMessage(getHttpErrorMessage(response.get(), nullptr),
-                               false);
+  _httpClient->setErrorMessage(getHttpErrorMessage(response.get(), nullptr), false);
   return TRI_ERROR_INTERNAL;
 }
 
 int RestoreFeature::sendRestoreCollection(VPackSlice const& slice,
-                                          std::string const& name,
-                                          std::string& errorMsg) {
+                                          std::string const& name, std::string& errorMsg) {
   std::string url =
       "/_api/replication/restore-collection"
       "?overwrite=" +
-      std::string(_overwrite ? "true" : "false") + "&force=" +
-      std::string(_force ? "true" : "false") +
+      std::string(_overwrite ? "true" : "false") +
+      "&force=" + std::string(_force ? "true" : "false") +
       "&ignoreDistributeShardsLikeErrors=" +
       std::string(_ignoreDistributeShardsLikeErrors ? "true" : "false");
 
-  if (_clusterMode) {
-    if (!slice.hasKey(std::vector<std::string>({"parameters", "shards"})) &&
-        !slice.hasKey(
-            std::vector<std::string>({"parameters", "numberOfShards"}))) {
-      // no "shards" and no "numberOfShards" attribute present. now assume
-      // default value from --default-number-of-shards
-      std::cerr << "# no sharding information specified for collection '"
-                << name << "', using default number of shards "
-                << _defaultNumberOfShards << std::endl;
-      url += "&numberOfShards=" + std::to_string(_defaultNumberOfShards);
-    }
-    if (!slice.hasKey(
-            std::vector<std::string>({"parameters", "replicationFactor"}))) {
-      // No replication factor given, so take the default:
-      std::cerr << "# no replication information specified for collection '"
-                << name << "', using default replication factor "
-                << _defaultReplicationFactor << std::endl;
-      url += "&replicationFactor=" + std::to_string(_defaultReplicationFactor);
-    }
+  VPackSlice const parameters = slice.get("parameters");
+
+  // build cluster options using command-line parameter values
+  VPackBuilder newOptions;
+  newOptions.openObject();
+  bool isSatellite = false;
+  uint64_t replicationFactor = getReplicationFactor(parameters, isSatellite);
+  if (isSatellite) {
+    newOptions.add("replicationFactor", VPackValue("satellite"));
+  } else {
+    newOptions.add("replicationFactor", VPackValue(replicationFactor));
   }
+  newOptions.add("numberOfShards", VPackValue(getNumberOfShards(parameters)));
+  newOptions.close();
 
-  std::string const body = slice.toJson();
+  VPackBuilder b;
+  b.openObject();
+  b.add("indexes", slice.get("indexes"));
+  b.add(VPackValue("parameters"));
+  VPackCollection::merge(b, parameters, newOptions.slice(), true, false);
+  b.close();
 
-  std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
-      rest::RequestType::PUT, url, body.c_str(), body.size()));
+  std::string const body = b.slice().toJson();
+
+  std::unique_ptr<SimpleHttpResult> response(
+      _httpClient->request(rest::RequestType::PUT, url, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
-    errorMsg =
-        "got invalid response from server: " + _httpClient->getErrorMessage();
+    errorMsg = "got invalid response from server: " + _httpClient->getErrorMessage();
 
     return TRI_ERROR_INTERNAL;
   }
@@ -337,18 +422,16 @@ int RestoreFeature::sendRestoreCollection(VPackSlice const& slice,
   return TRI_ERROR_NO_ERROR;
 }
 
-int RestoreFeature::sendRestoreIndexes(VPackSlice const& slice,
-                                       std::string& errorMsg) {
+int RestoreFeature::sendRestoreIndexes(VPackSlice const& slice, std::string& errorMsg) {
   std::string const url = "/_api/replication/restore-indexes?force=" +
                           std::string(_force ? "true" : "false");
   std::string const body = slice.toJson();
 
-  std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
-      rest::RequestType::PUT, url, body.c_str(), body.size()));
+  std::unique_ptr<SimpleHttpResult> response(
+      _httpClient->request(rest::RequestType::PUT, url, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
-    errorMsg =
-        "got invalid response from server: " + _httpClient->getErrorMessage();
+    errorMsg = "got invalid response from server: " + _httpClient->getErrorMessage();
 
     return TRI_ERROR_INTERNAL;
   }
@@ -367,35 +450,102 @@ int RestoreFeature::sendRestoreIndexes(VPackSlice const& slice,
   return TRI_ERROR_NO_ERROR;
 }
 
-int RestoreFeature::sendRestoreData(std::string const& cname,
-                                    char const* buffer, size_t bufferSize,
-                                    std::string& errorMsg) {
-  std::string const url = "/_api/replication/restore-data?collection=" +
-                          StringUtils::urlEncode(cname) + "&force=" +
-                          (_force ? "true" : "false");
+Result RestoreFeature::sendRestoreData(std::string const& cname, char const* buffer,
+                                       size_t bufferSize) {
+  // the following two structs are needed for cleaning up duplicate attributes 
+  arangodb::velocypack::Builder result;
+  arangodb::basics::StringBuffer cleaned(false);
+
+  if (_cleanupDuplicateAttributes) {
+    int res = cleaned.reserve(bufferSize);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      // out of memory
+      THROW_ARANGO_EXCEPTION(res);
+    }
+    
+    arangodb::velocypack::Options options = arangodb::velocypack::Options::Defaults;
+    // do *not* check duplicate attributes here (because that would throw)
+    options.checkAttributeUniqueness = false;
+    arangodb::velocypack::Builder builder(&options);
+
+    // instead, we need to manually check for duplicate attributes...
+    char const* p = buffer;
+    char const* e = p + bufferSize;
+      
+    while (p < e) {
+      while (p < e && (*p == ' ' || *p == '\r' || *p == '\n' || *p == '\t')) {
+        ++p;
+      }
+
+      // detect line ending
+      size_t length;
+      char const* nl = static_cast<char const*>(memchr(p, '\n', e - p)); 
+      if (nl == nullptr) {
+        length = e - p;
+      } else {
+        length = nl - p;
+      }
+      
+      builder.clear();
+      try {
+        VPackParser parser(builder, builder.options);
+        parser.parse(p, length);
+      } catch (arangodb::velocypack::Exception const& ex) {
+        return {TRI_ERROR_HTTP_CORRUPTED_JSON, ex.what()};
+      } catch (std::bad_alloc const& ex) {
+        return {TRI_ERROR_OUT_OF_MEMORY};
+      } catch (std::exception const& ex) {
+        return {TRI_ERROR_INTERNAL, ex.what()};
+      }
+
+      // recursively clean up duplicate attributes in the document
+      result.clear();
+      makeAttributesUnique(result, builder.slice());
+      
+      std::string const json = result.toJson();
+      cleaned.appendText(json.data(), json.size());
+
+      if (nl == nullptr) {
+        // done
+        break;
+      }
+      
+      cleaned.appendChar('\n');
+      // advance behind newline
+      p = nl + 1;
+    }
+  
+    // now point to the cleaned up data  
+    buffer = cleaned.c_str();
+    bufferSize = cleaned.length(); 
+  }
+ 
+  std::string const url =
+      "/_api/replication/restore-data?collection=" + StringUtils::urlEncode(cname) +
+      "&force=" + (_force ? "true" : "false");
 
   std::unique_ptr<SimpleHttpResult> response(
       _httpClient->request(rest::RequestType::PUT, url, buffer, bufferSize));
 
   if (response == nullptr || !response->isComplete()) {
-    errorMsg =
-        "got invalid response from server: " + _httpClient->getErrorMessage();
+    std::string errorMsg = "got invalid response from server: " + _httpClient->getErrorMessage();
 
-    return TRI_ERROR_INTERNAL;
+    return {TRI_ERROR_INTERNAL, errorMsg};
   }
 
   if (response->wasHttpError()) {
     int err;
-    errorMsg = getHttpErrorMessage(response.get(), &err);
+    std::string errorMsg = getHttpErrorMessage(response.get(), &err);
 
     if (err != TRI_ERROR_NO_ERROR) {
-      return err;
+      return {err, errorMsg};
     }
 
-    return TRI_ERROR_INTERNAL;
+    return {TRI_ERROR_INTERNAL, errorMsg};
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return {};
 }
 
 static bool SortCollections(VPackBuilder const& l, VPackBuilder const& r) {
@@ -417,8 +567,8 @@ static bool SortCollections(VPackBuilder const& l, VPackBuilder const& r) {
 
   int leftType =
       arangodb::basics::VelocyPackHelper::getNumericValue<int>(left, "type", 0);
-  int rightType = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-      right, "type", 0);
+  int rightType =
+      arangodb::basics::VelocyPackHelper::getNumericValue<int>(right, "type", 0);
 
   if (leftType != rightType) {
     return leftType < rightType;
@@ -435,7 +585,8 @@ static bool SortCollections(VPackBuilder const& l, VPackBuilder const& r) {
 Result RestoreFeature::readEncryptionInfo() {
   std::string encryptionType;
   try {
-    std::string const encryptionFilename = FileUtils::buildFilename(_inputDirectory, "ENCRYPTION");
+    std::string const encryptionFilename =
+        FileUtils::buildFilename(_inputDirectory, "ENCRYPTION");
     if (FileUtils::exists(encryptionFilename)) {
       encryptionType = StringUtils::trim(FileUtils::slurp(encryptionFilename));
     } else {
@@ -452,10 +603,16 @@ Result RestoreFeature::readEncryptionInfo() {
   if (encryptionType != "none") {
 #ifdef USE_ENTERPRISE
     if (!_encryption->keyOptionSpecified()) {
-      std::cerr << "the dump data seems to be encrypted with " << encryptionType << ", but no key information was specified to decrypt the dump" << std::endl;
-      std::cerr << "it is recommended to specify either `--encryption.key-file` or `--encryption.key-generator` when invoking arangorestore with an encrypted dump" << std::endl;
+      std::cerr << "the dump data seems to be encrypted with " << encryptionType
+                << ", but no key information was specified to decrypt the dump"
+                << std::endl;
+      std::cerr << "it is recommended to specify either "
+                   "`--encryption.key-file` or `--encryption.key-generator` "
+                   "when invoking arangorestore with an encrypted dump"
+                << std::endl;
     } else {
-      std::cout << "# using encryption type " << encryptionType << " for reading dump" << std::endl;
+      std::cout << "# using encryption type " << encryptionType
+                << " for reading dump" << std::endl;
     }
 #endif
   }
@@ -467,15 +624,14 @@ Result RestoreFeature::readDumpInfo() {
   std::string databaseName;
 
   try {
-    std::string const fqn = _inputDirectory + TRI_DIR_SEPARATOR_STR + "dump.json";
+    std::string const fqn =
+        _inputDirectory + TRI_DIR_SEPARATOR_STR + "dump.json";
 #ifdef USE_ENTERPRISE
     VPackBuilder fileContentBuilder =
-        (_encryption != nullptr)
-            ? _encryption->velocyPackFromFile(fqn)
-            : basics::VelocyPackHelper::velocyPackFromFile(fqn);
+        (_encryption != nullptr) ? _encryption->velocyPackFromFile(fqn)
+                                 : basics::VelocyPackHelper::velocyPackFromFile(fqn);
 #else
-    VPackBuilder fileContentBuilder =
-        basics::VelocyPackHelper::velocyPackFromFile(fqn);
+    VPackBuilder fileContentBuilder = basics::VelocyPackHelper::velocyPackFromFile(fqn);
 #endif
     VPackSlice const fileContent = fileContentBuilder.slice();
 
@@ -483,30 +639,31 @@ Result RestoreFeature::readDumpInfo() {
   } catch (...) {
     // the above may go wrong for several reasons
   }
-  
+
   if (!databaseName.empty()) {
     std::cout << "Database name in source dump is '" << databaseName << "'" << std::endl;
   }
 
-
-  ClientFeature* client =
-      application_features::ApplicationServer::getFeature<ClientFeature>(
-          "Client");
+  ClientFeature* client = application_features::ApplicationServer::getFeature<ClientFeature>(
+      "Client");
   if (_forceSameDatabase && databaseName != client->databaseName()) {
-    return Result(TRI_ERROR_BAD_PARAMETER, std::string("database name in dump.json ('") + databaseName + "') does not match specified database name ('" + client->databaseName() + "')");
+    return Result(TRI_ERROR_BAD_PARAMETER,
+                  std::string("database name in dump.json ('") + databaseName +
+                      "') does not match specified database name ('" +
+                      client->databaseName() + "')");
   }
 
   return Result();
 }
 
-arangodb::Result triggerFoxxHeal(
-    arangodb::httpclient::SimpleHttpClient& httpClient) {
+arangodb::Result triggerFoxxHeal(arangodb::httpclient::SimpleHttpClient& httpClient) {
   using arangodb::Logger;
   using arangodb::httpclient::SimpleHttpResult;
   const std::string FoxxHealUrl = "/_api/foxx/_local/heal";
   std::string body = "";
-  std::unique_ptr<SimpleHttpResult> response(httpClient.request(
-        arangodb::rest::RequestType::POST, FoxxHealUrl, body.c_str(), body.length()));
+  std::unique_ptr<SimpleHttpResult> response(
+      httpClient.request(arangodb::rest::RequestType::POST, FoxxHealUrl,
+                         body.c_str(), body.length()));
   return ::checkHttpResponse(httpClient, response, "trigger self heal", body);
 }
 
@@ -517,8 +674,7 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
     restrictList.insert(std::pair<std::string, bool>(_collections[i], true));
   }
   try {
-    std::vector<std::string> const files =
-        FileUtils::listFiles(_inputDirectory);
+    std::vector<std::string> const files = FileUtils::listFiles(_inputDirectory);
     std::string const suffix = std::string(".structure.json");
     std::vector<VPackBuilder> collections;
 
@@ -529,8 +685,7 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
       for (std::string const& file : files) {
         size_t const nameLength = file.size();
 
-        if (nameLength <= suffix.size() ||
-            file.substr(file.size() - suffix.size()) != suffix) {
+        if (nameLength <= suffix.size() || file.substr(file.size() - suffix.size()) != suffix) {
           // some other file
           continue;
         }
@@ -574,8 +729,7 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
         bool overwriteName = false;
 
         if (cname != name &&
-            name !=
-                (cname + "_" + arangodb::rest::SslInterface::sslMD5(cname))) {
+            name != (cname + "_" + arangodb::rest::SslInterface::sslMD5(cname))) {
           // file has a different name than found in structure file
           if (_importStructure) {
             // we cannot go on if there is a mismatch
@@ -594,8 +748,7 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
           }
         }
 
-        if (!restrictList.empty() &&
-            restrictList.find(cname) == restrictList.end()) {
+        if (!restrictList.empty() && restrictList.find(cname) == restrictList.end()) {
           // collection name not in list
           continue;
         }
@@ -617,19 +770,21 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
       VPackSlice const collection = b.slice();
       VPackSlice const parameters = collection.get("parameters");
       VPackSlice const indexes = collection.get("indexes");
-      VPackSlice params = collection.get("parameters");
+      VPackSlice params = parameters;
       if (params.isObject()) {
         params = params.get("name");
         // Only these two are relevant for FOXX.
-        if (params.isString() && (params.isEqualString("_apps") || params.isEqualString("_appbundles"))) {
+        if (params.isString() && (params.isEqualString("_apps") ||
+                                  params.isEqualString("_appbundles"))) {
           didModifyFoxxCollection = true;
         }
       };
       std::string const cname =
           arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name",
                                                              "");
-      int type = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-          parameters, "type", 2);
+      int type =
+          arangodb::basics::VelocyPackHelper::getNumericValue<int>(parameters,
+                                                                   "type", 2);
 
       std::string const collectionType(type == 2 ? "document" : "edge");
 
@@ -659,9 +814,9 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
 
       if (_importData) {
         // import data. check if we have a datafile
-        std::string datafile =
-            _inputDirectory + TRI_DIR_SEPARATOR_STR + cname + "_" +
-            arangodb::rest::SslInterface::sslMD5(cname) + ".data.json";
+        std::string datafile = _inputDirectory + TRI_DIR_SEPARATOR_STR + cname +
+                               "_" + arangodb::rest::SslInterface::sslMD5(cname) +
+                               ".data.json";
         if (!TRI_ExistsFile(datafile.c_str())) {
           datafile =
               _inputDirectory + TRI_DIR_SEPARATOR_STR + cname + ".data.json";
@@ -670,18 +825,18 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
         if (TRI_ExistsFile(datafile.c_str())) {
           int64_t dataSize = TRI_SizeFile(datafile.c_str());
           // found a datafile
-          int fd =
-              TRI_TRACKED_OPEN_FILE(datafile.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+          int fd = TRI_TRACKED_OPEN_FILE(datafile.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
           if (fd < 0) {
             errorMsg = "cannot open collection data file '" + datafile + "'";
 
             return TRI_ERROR_INTERNAL;
           }
-          
+
           if (_progress) {
             std::cout << "# Loading data into " << collectionType
-                      << " collection '" << cname << "', data size: " << dataSize << " byte(s)" << std::endl;
+                      << " collection '" << cname
+                      << "', data size: " << dataSize << " byte(s)" << std::endl;
           }
 
           beginDecryption(fd);
@@ -725,8 +880,8 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
             // do we have a buffer?
             if (buffer.length() > 0) {
               // look for the last \n in the buffer
-              char* found = (char*)memrchr((const void*)buffer.begin(), '\n',
-                                           buffer.length());
+              char* found =
+                  (char*)memrchr((const void*)buffer.begin(), '\n', buffer.length());
               size_t length;
 
               if (found == nullptr) {
@@ -745,14 +900,19 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
 
               _stats._totalBatches++;
 
-              int res =
-                  sendRestoreData(cname, buffer.begin(), length, errorMsg);
-              
+              Result r = sendRestoreData(cname, buffer.begin(), length);
+              int res = r.errorNumber();
+              errorMsg = r.errorMessage(); 
+
               _stats._totalSent += length;
 
               if (_progress && dataSize > 0 && numReadSinceLastReport > 1024 * 1024 * 8) {
                 // report every 8MB of transferred data
-                std::cout << "# Progress: still processing collection '" << cname << "', " << numReadForThisCollection << " of " << dataSize << " byte(s) restored (" << int(100. * double(numReadForThisCollection) / double(dataSize)) << " %)" << std::endl;
+                std::cout << "# Progress: still processing collection '"
+                          << cname << "', " << numReadForThisCollection
+                          << " of " << dataSize << " byte(s) restored ("
+                          << int(100. * double(numReadForThisCollection) / double(dataSize))
+                          << " %)" << std::endl;
                 numReadSinceLastReport = 0;
               }
 
@@ -760,8 +920,7 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
                 if (errorMsg.empty()) {
                   errorMsg = std::string(TRI_errno_string(res));
                 } else {
-                  errorMsg =
-                      std::string(TRI_errno_string(res)) + ": " + errorMsg;
+                  errorMsg = std::string(TRI_errno_string(res)) + ": " + errorMsg;
                 }
 
                 if (_force) {
@@ -811,19 +970,24 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
       }
 
       if (_progress) {
-        std::cout << "# Progress: restored " << _stats._totalCollections << " of " << collections.size() 
-                  << " collection(s), read " << _stats._totalRead << " byte(s) from datafiles, "
-                  << "sent " << _stats._totalBatches << " data batch(es) of " << _stats._totalSent << " byte(s) total size" << std::endl;
+        std::cout << "# Progress: restored " << _stats._totalCollections
+                  << " of " << collections.size() << " collection(s), read "
+                  << _stats._totalRead << " byte(s) from datafiles, "
+                  << "sent " << _stats._totalBatches << " data batch(es) of "
+                  << _stats._totalSent << " byte(s) total size" << std::endl;
       }
 
       if (didModifyFoxxCollection) {
         // if we get here we need to trigger foxx heal
         Result res = ::triggerFoxxHeal(*_httpClient);
         if (res.fail()) {
-          LOG_TOPIC(WARN, Logger::RESTORE) << "Reloading of Foxx failed. In the cluster Foxx Services will be available eventually, On SingleServers send a POST request to /_api/foxx/_local/heal on the current database with an empty body.";
+          LOG_TOPIC(WARN, Logger::RESTORE)
+              << "Reloading of Foxx failed. In the cluster Foxx Services will "
+                 "be available eventually, On SingleServers send a POST "
+                 "request to /_api/foxx/_local/heal on the current database "
+                 "with an empty body.";
         }
       }
-
     }
   } catch (std::exception const& ex) {
     errorMsg = "arangorestore terminated because of an unhandled exception: ";
@@ -838,14 +1002,12 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
 
 void RestoreFeature::start() {
 #ifdef USE_ENTERPRISE
-  _encryption =
-      application_features::ApplicationServer::getFeature<EncryptionFeature>(
-          "Encryption");
+  _encryption = application_features::ApplicationServer::getFeature<EncryptionFeature>(
+      "Encryption");
 #endif
 
-  ClientFeature* client =
-      application_features::ApplicationServer::getFeature<ClientFeature>(
-          "Client");
+  ClientFeature* client = application_features::ApplicationServer::getFeature<ClientFeature>(
+      "Client");
 
   int ret = EXIT_SUCCESS;
   *_result = ret;
@@ -860,10 +1022,8 @@ void RestoreFeature::start() {
 
   std::string dbName = client->databaseName();
 
-  _httpClient->params().setLocationRewriter(static_cast<void*>(client),
-                                            &rewriteLocation);
-  _httpClient->params().setUserNamePassword("/", client->username(),
-                                            client->password());
+  _httpClient->params().setLocationRewriter(static_cast<void*>(client), &rewriteLocation);
+  _httpClient->params().setUserNamePassword("/", client->username(), client->password());
 
   // read encryption info
   {
@@ -897,10 +1057,9 @@ void RestoreFeature::start() {
     int res = tryCreateDatabase(client, dbName);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Could not create database '"
-                                              << dbName << "'";
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-          << _httpClient->getErrorMessage() << "'";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "Could not create database '" << dbName << "'";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << _httpClient->getErrorMessage() << "'";
       FATAL_ERROR_EXIT();
     }
 
@@ -913,10 +1072,8 @@ void RestoreFeature::start() {
 
   if (!_httpClient->isConnected()) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "Could not connect to endpoint "
-        << _httpClient->getEndpointSpecification();
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << _httpClient->getErrorMessage()
-                                              << "'";
+        << "Could not connect to endpoint " << _httpClient->getEndpointSpecification();
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << _httpClient->getErrorMessage() << "'";
     FATAL_ERROR_EXIT();
   }
 
@@ -969,8 +1126,7 @@ void RestoreFeature::start() {
 
   if (_progress) {
     if (_importData) {
-      std::cout << "Processed " << _stats._totalCollections
-                << " collection(s), "
+      std::cout << "Processed " << _stats._totalCollections << " collection(s), "
                 << "read " << _stats._totalRead << " byte(s) from datafiles, "
                 << "sent " << _stats._totalBatches << " data batch(es)" << std::endl;
     } else if (_importStructure) {
@@ -1015,3 +1171,91 @@ void RestoreFeature::endDecryption(int fd) {
   }
 #endif
 }
+
+uint64_t RestoreFeature::getReplicationFactor(VPackSlice const& slice, bool& isSatellite) const {
+  uint64_t result = _defaultReplicationFactor;
+  isSatellite = false;
+
+  VPackSlice s = slice.get("replicationFactor");
+  if (s.isInteger()) {
+    result = s.getNumericValue<uint64_t>();
+  } else if (s.isString()) {
+    if (s.copyString() == "satellite") {
+      isSatellite = true;
+    }
+  }
+
+  s = slice.get("name");
+  if (!s.isString()) {
+    // should not happen, but anyway, let's be safe here
+    return result;
+  }
+
+  if (!_replicationFactor.empty()) {
+    std::string const name = s.copyString();
+
+    for (auto const& it : _replicationFactor) {
+      auto parts = basics::StringUtils::split(it, '=');
+      if (parts.size() == 1) {
+        // this is the default value, e.g. `--replicationFactor 2`
+        if (parts[0] == "satellite") {
+          isSatellite = true;
+        } else { 
+          result = basics::StringUtils::uint64(parts[0]);
+        }
+      }
+
+      // look if we have a more specific value, e.g. `--replicationFactor myCollection=3`
+      if (parts.size() != 2 || parts[0] != name) {
+        // somehow invalid or different collection
+        continue;
+      }
+      if (parts[1] == "satellite") {
+        isSatellite = true;
+      } else {
+        result = basics::StringUtils::uint64(parts[1]);
+      }
+      break;
+    }
+  }
+
+  return result;
+}
+
+uint64_t RestoreFeature::getNumberOfShards(VPackSlice const& slice) const {
+  uint64_t result = _defaultNumberOfShards;
+
+  VPackSlice s = slice.get("numberOfShards");
+  if (s.isInteger()) {
+    result = s.getNumericValue<uint64_t>();
+  }
+
+  s = slice.get("name");
+  if (!s.isString()) {
+    // should not happen, but anyway, let's be safe here
+    return result;
+  }
+
+  if (!_numberOfShards.empty()) {
+    std::string const name = s.copyString();
+
+    for (auto const& it : _numberOfShards) {
+      auto parts = basics::StringUtils::split(it, '=');
+      if (parts.size() == 1) {
+        // this is the default value, e.g. `--numberOfShards 2`
+        result = basics::StringUtils::uint64(parts[0]);
+      }
+
+      // look if we have a more specific value, e.g. `--numberOfShards myCollection=3`
+      if (parts.size() != 2 || parts[0] != name) {
+        // somehow invalid or different collection
+        continue;
+      }
+      result = basics::StringUtils::uint64(parts[1]);
+      break;
+    }
+  }
+
+  return result;
+}
+

@@ -26,8 +26,8 @@
 #include "Basics/Common.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
-#include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
+#include "RocksDBEngine/RocksDBKeyBounds.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -37,7 +37,7 @@ namespace rocksdb {
 class Iterator;
 class Comparator;
 class TransactionDB;
-}
+}  // namespace rocksdb
 
 namespace arangodb {
 class RocksDBCollection;
@@ -50,8 +50,7 @@ typedef std::function<void(rocksdb::Slice const& key, rocksdb::Slice const& valu
 class RocksDBAllIndexIterator final : public IndexIterator {
  public:
   RocksDBAllIndexIterator(LogicalCollection* collection,
-                          transaction::Methods* trx,
-                          ManagedDocumentResult* mmdr,
+                          transaction::Methods* trx, ManagedDocumentResult* mmdr,
                           RocksDBPrimaryIndex const* index, bool reverse);
 
   ~RocksDBAllIndexIterator() {}
@@ -75,10 +74,8 @@ class RocksDBAllIndexIterator final : public IndexIterator {
 
 class RocksDBAnyIndexIterator final : public IndexIterator {
  public:
-  RocksDBAnyIndexIterator(LogicalCollection* collection,
-                          transaction::Methods* trx,
-                          ManagedDocumentResult* mmdr,
-                          RocksDBPrimaryIndex const* index);
+  RocksDBAnyIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
+                          ManagedDocumentResult* mmdr, RocksDBPrimaryIndex const* index);
 
   ~RocksDBAnyIndexIterator() {}
 
@@ -103,27 +100,28 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
 
 class RocksDBGenericIterator {
  public:
-  RocksDBGenericIterator(rocksdb::ReadOptions& options
-                        ,RocksDBKeyBounds const& bounds
-                        ,bool reverse=false);
+  RocksDBGenericIterator(rocksdb::ReadOptions& options,
+                         RocksDBKeyBounds const& bounds, bool reverse = false);
   RocksDBGenericIterator(RocksDBGenericIterator&&) = default;
 
   ~RocksDBGenericIterator() {}
 
   // the following functions return if the iterator
   // is valid and in bounds on return.
-  bool next(GenericCallback const& cb // void(rocksdb::Slice const& key,rocksd:Slice const& value)
-           , size_t count //number of documents the callback should be applied to
-           );
+  bool next(GenericCallback const& cb  // void(rocksdb::Slice const& key,rocksd:Slice const& value)
+            ,
+            size_t count  // number of documents the callback should be applied to
+  );
 
-  bool skip(uint64_t count // documents to skip
-           ,uint64_t& skipped // skipped documents
-           );
+  bool skip(uint64_t count  // documents to skip
+            ,
+            uint64_t& skipped  // skipped documents
+  );
   bool seek(rocksdb::Slice const& key);
   bool reset();
   bool hasMore() const;
 
-  //return bounds
+  // return bounds
   RocksDBKeyBounds const& bounds() const { return _bounds; }
 
  private:
@@ -135,8 +133,9 @@ class RocksDBGenericIterator {
   rocksdb::Comparator const* _cmp;
 };
 
-RocksDBGenericIterator createPrimaryIndexIterator(transaction::Methods* trx, LogicalCollection* col);
+RocksDBGenericIterator createPrimaryIndexIterator(transaction::Methods* trx,
+                                                  LogicalCollection* col);
 
-} //namespace arangodb
+}  // namespace arangodb
 
 #endif

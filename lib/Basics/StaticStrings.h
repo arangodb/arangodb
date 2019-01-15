@@ -117,10 +117,10 @@ class StaticStrings {
   static std::string const MimeTypeJson;
   static std::string const MimeTypeText;
   static std::string const MimeTypeVPack;
-  
+
   // misc strings
   static std::string const checksumFileJs;
 };
-}
+}  // namespace arangodb
 
 #endif

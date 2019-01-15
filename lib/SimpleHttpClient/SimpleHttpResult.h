@@ -100,7 +100,7 @@ class SimpleHttpResult {
   void setHttpReturnMessage(std::string const& message) {
     _returnMessage = message;
   }
-  
+
   void setHttpReturnMessage(std::string&& message) {
     _returnMessage = std::move(message);
   }
@@ -264,6 +264,6 @@ class SimpleHttpResult {
   // sent (to the operating system):
   bool _haveSentRequestFully;
 };
-}
-}
+}  // namespace httpclient
+}  // namespace arangodb
 #endif
