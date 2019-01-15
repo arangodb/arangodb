@@ -228,7 +228,7 @@ struct V8Cursor final {
       bool busy;
       Cursor* cc = cursors->find(_cursorId, Cursor::CURSOR_VPACK, busy);
       if (busy || cc == nullptr) {
-        TRI_V8_SET_ERROR("cursor is busy");
+        TRI_V8_SET_ERROR(TRI_errno_string(TRI_ERROR_CURSOR_BUSY));
         return false;  // someone else is using it
       }
       TRI_DEFER(cc->release());

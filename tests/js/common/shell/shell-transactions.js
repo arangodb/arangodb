@@ -605,6 +605,33 @@ function TransactionsImplicitCollectionsSuite () {
       assertEqual(100000, result);
     },
 
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief perform an infinite loop
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testUseQueryStreamCursorInAql2 : function () {
+      let docs = [];
+      for(let i = 0; i < 5000; i++) {
+        docs.push({value: i});
+      }
+      c1.save(docs);
+      
+      var result = db._executeTransaction({
+        collections: { allowImplicit: false, read: cn1 },
+        action: `function (params) {
+          const db = require('internal').db;
+          let cc = cursor = db._query("FOR o IN @@cn1 RETURN o", { '@cn1' : params.cn1 }, {stream: true});
+          let xx = 0;
+          while(cc.hasNext()) {
+            db._collection(params.cn2).save(cc.next())
+            xx++;
+          };
+          return xx; }`,
+        params: { cn1: cn1, cn2: cn2 }
+      });
+      assertEqual(5000, result);
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief uses an explicitly declared collection for reading
 ////////////////////////////////////////////////////////////////////////////////
