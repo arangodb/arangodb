@@ -42,7 +42,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 // required for VocbaseSetup, that will allow to create a vocbase
-#include "../IResearch/StorageEngineMock.h"
+#include "../Mocks/StorageEngineMock.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
