@@ -9,7 +9,7 @@ various ArangoDB processes on different machines, either directly
 or using Docker containers.
 
 - [Single Instance](Single.md)
-- [Single Instance vs. Cluster](../Architecture/DifferenceSingleCluster.md)
+- [Single Instance vs. Cluster](../Architecture/SingleInstanceVsCluster.md)
 - [Cluster](Cluster.md)
   - [DC/OS, Apache Mesos and Marathon](Mesos.md)
   - [Generic & Docker](ArangoDBStarter.md)
