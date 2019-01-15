@@ -7,24 +7,31 @@ infinite ways of setting up a k8s cluster. With great flexibility
 comes great complexity. There are inifinite ways of hitting barriers.
 
 This guide is a walk through for, again in lack of a better word,
-a reasonable and flexibel setup to get to an ArangoDB cluster setup on
+a reasonable and flexible setup to get to an ArangoDB cluster setup on
 a baremetal kubernetes setup.
 
 ## BEWARE: Do not use this setup for production!
 
-This guide does not involve setting up dedicated master nodes or high availability for Kubernetes, but uses for sake of simplicity a single untainted master. This is the very definition of a test environment.
+This guide does not involve setting up dedicated master nodes or high
+availability for Kubernetes, but uses for sake of simplicity a single untainted
+master. This is the very definition of a test environment.
 
-If you are interested in running a high available Kubernetes setup, please refer to: [Creating Highly Available Clusters with kubeadm](https://kubernetes.io/docs/setup/independent/high-availability/)
+If you are interested in running a high available Kubernetes setup, please refer
+to:
+[Creating Highly Available Clusters with kubeadm](https://kubernetes.io/docs/setup/independent/high-availability/)
 
 ## Requirements
 
-Let there be 3 Linux boxes, `kube01 (192.168.10.61)`, `kube02 (192.168.10.62)` and `kube03 (192.168.10.3)`, with `kubeadm` and `kubectl` installed and off we go:
+Let there be 3 Linux boxes, `kube01 (192.168.10.61)`, `kube02 (192.168.10.62)`
+and `kube03 (192.168.10.3)`, with `kubeadm` and `kubectl` installed and off we
+go:
 
 * `kubeadm`, `kubectl` version `>=1.10` 
 
 ## Initialise the master node
 
-The master node is outstanding in that it handles the API server and some other vital infrastructure 
+The master node is outstanding in that it handles the API server and some other
+vital infrastructure 
 
 ```
 sudo kubeadm init --pod-network-cidr=10.244.0.0/16
@@ -97,7 +104,8 @@ sudo kubeadm init --pod-network-cidr=10.244.0.0/16
   kubeadm join 192.168.10.61:6443 --token blcr1y.49wloegyaugice8a --discovery-token-ca-cert-hash sha256:0505933664d28054a62298c68dc91e9b2b5cf01ecfa2228f3c8fa2412b7a78c8
 ```
 
-Go ahead and do as above instructed and see into getting kubectl to work on the master:
+Go ahead and do as above instructed and see into getting kubectl to work on the
+master:
 
 ```
 mkdir -p $HOME/.kube
@@ -107,7 +115,9 @@ sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
 ## Deploy a pod network
 
-For this guide, we go with **flannel**, as it is an easy way of setting up a layer 3 network, which uses the Kubernetes API and just works anywhere, where a network between the involved machines works:
+For this guide, we go with **flannel**, as it is an easy way of setting up a
+layer 3 network, which uses the Kubernetes API and just works anywhere, where a
+network between the involved machines works:
 
 ```
 kubectl apply -f \ 
@@ -127,7 +137,8 @@ kubectl apply -f \
 
 ## Join remaining nodes
 
-Run the above join commands on the nodes `kube02` and `kube03`. Below is the output on `kube02` for the setup for this guide:
+Run the above join commands on the nodes `kube02` and `kube03`. Below is the
+output on `kube02` for the setup for this guide:
 
 ```
 sudo kubeadm join 192.168.10.61:6443 --token blcr1y.49wloegyaugice8a --discovery-token-ca-cert-hash sha256:0505933664d28054a62298c68dc91e9b2b5cf01ecfa2228f3c8fa2412b7a78c8
@@ -207,7 +218,8 @@ kubectl get all --all-namespaces
 
 ## Deploy helm
 
-- Obtain current [helm release](https://github.com/helm/helm/releases) for your architecture
+- Obtain current [helm release](https://github.com/helm/helm/releases) for your
+architecture
 
 - Create tiller user
 
@@ -328,7 +340,8 @@ You can now deploy ArangoDeployment & ArangoDeploymentReplication resources.
 See https://docs.arangodb.com/devel/Manual/Tutorials/Kubernetes/
 for how to get started.
 ```
-- As unlike cloud k8s offerings no file volume infrastructure exists, we need to still deploy the storage operator chart:
+- As unlike cloud k8s offerings no file volume infrastructure exists, we need to
+still deploy the storage operator chart:
 
 ```
 helm install \ 
@@ -425,13 +438,15 @@ kubectl get services
   kubernetes                               ClusterIP   10.96.0.1       <none>        443/TCP          69m
 ```
 
-- In this case, according to the access service, `example-simple-cluster-ea`, the cluster's coordinators are reachable here:
+- In this case, according to the access service, `example-simple-cluster-ea`,
+the cluster's coordinators are reachable here:
 
 https://kube01:30551, https://kube02:30551 and https://kube03:30551
 
 ## LoadBalancing
 
-For this guide we like to use the `metallb` load balancer, which can be easiy installed as a simple layer 2 load balancer:
+For this guide we like to use the `metallb` load balancer, which can be easily
+installed as a simple layer 2 load balancer:
 
 - install the `metalllb` controller: 
 
@@ -453,13 +468,17 @@ kubectl apply -f \
   deployment.apps/controller created
 ```
 
-- Deploy network range configurator. Assuming that the range for the IP addresses, which are granted to `metalllb` for load balancing is 192.168.10.224/28, download the [exmample layer2 configurator](https://raw.githubusercontent.com/google/metallb/v0.7.3/manifests/example-layer2-config.yaml).
+- Deploy network range configurator. Assuming that the range for the IP
+addresses, which are granted to `metalllb` for load balancing
+is 192.168.10.224/28, download the
+[example layer2 configurator](https://raw.githubusercontent.com/google/metallb/v0.7.3/manifests/example-layer2-config.yaml).
 
 ```
 wget https://raw.githubusercontent.com/google/metallb/v0.7.3/manifests/example-layer2-config.yaml
 ```
 
-- Edit the `example-layer2-config.yaml` file to use the according addresses. Do this with great care, as YAML files are indention sensitive.  
+- Edit the `example-layer2-config.yaml` file to use the according addresses. Do
+this with great care, as YAML files are indention sensitive.
 
 ```
 apiVersion: v1
@@ -509,4 +528,5 @@ kubectl get services
   kubernetes                               ClusterIP      10.96.0.1       <none>           443/TCP          89m
 ```
 
-- Now you are able of accessing all 3 coordinators through https://192.168.10.224:8529
+- Now you are able of accessing all 3 coordinators through
+https://192.168.10.224:8529
