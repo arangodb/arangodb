@@ -22,12 +22,11 @@
 
 #include "CalculationExecutor.h"
 
-#include "Aql/AqlValue.h"
-#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutorInfos.h"
-#include "Aql/InputAqlItemRow.h"
+#include "Aql/Expression.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Aql/Stats.h"
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"

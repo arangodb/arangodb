@@ -23,14 +23,10 @@
 #ifndef ARANGOD_AQL_CALACULATION_EXECUTOR_H
 #define ARANGOD_AQL_CALACULATION_EXECUTOR_H
 
-#include "Aql/AqlValue.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
-#include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
-#include "Aql/types.h"
 
-#include <memory>
 
 namespace arangodb {
 namespace transaction {
