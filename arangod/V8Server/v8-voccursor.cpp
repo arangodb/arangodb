@@ -573,8 +573,7 @@ void TRI_InitV8cursor(v8::Handle<v8::Context> context, TRI_v8_global_t* v8g) {
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(1);
 
-  ft->PrototypeTemplate()->Set(TRI_V8_ASCII_STRING(isolate,
-                                                   "isArangoResultSet"),
+  ft->PrototypeTemplate()->Set(TRI_V8_ASCII_STRING(isolate, "isArangoResultSet"),
                                v8::True(isolate));
   TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "toArray"),
                         V8Cursor::toArray);
