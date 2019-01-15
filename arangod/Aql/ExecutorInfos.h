@@ -49,8 +49,8 @@ class ExecutorInfos {
   /**
    * @brief Input for Executors. Derived classes exist where additional
    *        input is needed.
-   * @param inputRegisters Registers the Executor may use as input
-   * @param outputRegisters Registers the Executor writes into
+   * @param readableInputRegisters Registers the Executor may use as input
+   * @param writeableOutputRegisters Registers the Executor writes into
    * @param nrInputRegisters Width of input AqlItemBlocks
    * @param nrOutputRegisters Width of output AqlItemBlocks
    * @param registersToClear Registers that are not used after this block, so
@@ -62,8 +62,9 @@ class ExecutorInfos {
    *   TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
    *   RegisterId register = it->second.registerId;
    */
-  ExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
-                std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
+
+  ExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
+                std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
                 RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                 std::unordered_set<RegisterId> registersToClear);
 
@@ -127,7 +128,7 @@ class ExecutorInfos {
     return _registersToClear;
   }
 
- private:
+ protected:
   std::shared_ptr<const std::unordered_set<RegisterId>> _inRegs;
 
   std::shared_ptr<const std::unordered_set<RegisterId>> _outRegs;

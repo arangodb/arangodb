@@ -25,12 +25,12 @@
 using namespace arangodb::aql;
 
 ExecutorInfos::ExecutorInfos(
-    std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
-    std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
+    std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
+    std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     std::unordered_set<RegisterId> registersToClear)
-    : _inRegs(std::move(inputRegisters)),
-      _outRegs(std::move(outputRegisters)),
+    : _inRegs(std::move(readableInputRegisters)),
+      _outRegs(std::move(writeableOutputRegisters)),
       _numInRegs(nrInputRegisters),
       _numOutRegs(nrOutputRegisters),
       _registersToKeep(nullptr),
