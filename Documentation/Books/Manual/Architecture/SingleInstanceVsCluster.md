@@ -6,7 +6,7 @@ of ArangoDB behave very similarly. However, there are differences due to
 the different nature of these setups. This can lead to a discrepancy in behavior
 between these two configurations. A summary of potential differences follows.
 
-See [Migrating Single Instance to Cluster](../Deployment/MigratingSingleInstanceCluster.md)
+See [Migrating from Single Instance to Cluster](../Deployment/MigratingSingleInstanceCluster.md)
 for practical information.
 
 Locking and dead-lock prevention
