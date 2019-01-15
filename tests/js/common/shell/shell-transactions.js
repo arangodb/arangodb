@@ -582,7 +582,7 @@ function TransactionsImplicitCollectionsSuite () {
 
     testUseQueryStreamCursorInAql : function () {
       let docs = [];
-      for(let i = 0; i < 100000; i++) {
+      for(let i = 0; i < 50000; i++) {
         docs.push({value: i});
         if (i % 5000 === 0) {
           c1.save(docs);
@@ -602,7 +602,7 @@ function TransactionsImplicitCollectionsSuite () {
           return xx; }`,
         params: { cn1: cn1 }
       });
-      assertEqual(100000, result);
+      assertEqual(50000, result);
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -617,13 +617,13 @@ function TransactionsImplicitCollectionsSuite () {
       c1.save(docs);
       
       var result = db._executeTransaction({
-        collections: { allowImplicit: false, read: cn1 },
+        collections: { allowImplicit: false, read: cn1, write: cn2 },
         action: `function (params) {
           const db = require('internal').db;
           let cc = cursor = db._query("FOR o IN @@cn1 RETURN o", { '@cn1' : params.cn1 }, {stream: true});
           let xx = 0;
           while(cc.hasNext()) {
-            db._collection(params.cn2).save(cc.next())
+            db._collection(params.cn2).save({val: cc.next(), _from:"abc/x", _to:"abc/y"});
             xx++;
           };
           return xx; }`,
