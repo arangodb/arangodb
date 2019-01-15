@@ -1182,6 +1182,10 @@ retry:
         LOG_TOPIC(WARN, Logger::REPLICATION)
             << "replication applier stopped for database '" << _state.databaseName
             << "' because required tick is not present on master";
+      } else {
+        LOG_TOPIC(WARN, Logger::REPLICATION)
+            << "replication applier stopped for database '" << _state.databaseName
+            << "': " << res.errorMessage();
       }
 
       // remove previous applier state
@@ -1249,6 +1253,10 @@ retry:
         // increase number of syncs counter
         WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
         ++_applier->_state._totalResyncs;
+       
+        // necessary to reset the state here, because otherwise running the
+        // InitialSyncer may fail with "applier is running" errors 
+        _applier->_state._phase = ReplicationApplierState::ActivityPhase::INACTIVE;
       }
 
       // do an automatic full resync
@@ -1273,7 +1281,7 @@ retry:
         }
         res.reset(r.errorNumber(), r.errorMessage());
         LOG_TOPIC(WARN, Logger::REPLICATION)
-            << "(global tailing) initial replication failed: " << res.errorMessage();
+            << "initial replication failed: " << res.errorMessage();
         // fall through otherwise
       } catch (...) {
         res.reset(TRI_ERROR_INTERNAL,
@@ -1813,7 +1821,7 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
     mustFetchBatch = false;
     auto self = shared_from_this();
     sharedStatus->request([this, self, sharedStatus, fetchTick, lastScannedTick,
-                           firstRegularTick]() {
+                           firstRegularTick](bool) {
       fetchMasterLog(sharedStatus, fetchTick, lastScannedTick, firstRegularTick);
     });
   }

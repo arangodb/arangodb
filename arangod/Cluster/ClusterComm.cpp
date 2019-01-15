@@ -1222,7 +1222,7 @@ void ClusterComm::disable() {
   }
 }
 
-void ClusterComm::scheduleMe(std::function<void()> task) {
+void ClusterComm::scheduleMe(std::function<void(bool)> task) {
   arangodb::SchedulerFeature::SCHEDULER->queue(RequestPriority::HIGH, task);
 }
 

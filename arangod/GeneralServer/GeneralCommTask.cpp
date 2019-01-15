@@ -436,9 +436,16 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   auto const prio = handler->priority();
   auto self = shared_from_this();
 
-  bool ok = SchedulerFeature::SCHEDULER->queue(prio, [self, this, handler]() {
-    handleRequestDirectly(basics::ConditionalLocking::DoLock, std::move(handler));
-  });
+  bool tryDirect = allowDirectHandling() && _peer->runningInThisThread();
+
+  bool ok = SchedulerFeature::SCHEDULER->queue(
+      prio,
+      [self, this, handler](bool isDirect) {
+        handleRequest(isDirect ? basics::ConditionalLocking::DoNotLock
+                               : basics::ConditionalLocking::DoLock,
+                      std::move(handler));
+      },
+      tryDirect);
 
   uint64_t messageId = handler->messageId();
 
@@ -452,13 +459,12 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 }
 
 // Just run the handler, could have been called in a different thread
-void GeneralCommTask::handleRequestDirectly(bool doLock, std::shared_ptr<RestHandler> handler) {
+void GeneralCommTask::handleRequest(bool doLock, std::shared_ptr<RestHandler> handler) {
   TRI_ASSERT(doLock || _peer->runningInThisThread());
 
   auto self = shared_from_this();
   handler->runHandler([self, this, doLock](rest::RestHandler* handler) {
     RequestStatistics* stat = handler->stealStatistics();
-    // TODO we could reduce all of this to strand::dispatch ?
     if (doLock || !_peer->runningInThisThread()) {
       // Note that the latter is for the case that a handler was put to sleep
       // and woke up in a different thread.
@@ -482,14 +488,14 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
     *jobId = handler->handlerId();
 
     // callback will persist the response with the AsyncJobManager
-    return SchedulerFeature::SCHEDULER->queue(handler->priority(), [self, handler] {
+    return SchedulerFeature::SCHEDULER->queue(handler->priority(), [self, handler](bool) {
       handler->runHandler([](RestHandler* h) {
         GeneralServerFeature::JOB_MANAGER->finishAsyncJob(h);
       });
     });
   } else {
     // here the response will just be ignored
-    return SchedulerFeature::SCHEDULER->queue(handler->priority(), [self, handler] {
+    return SchedulerFeature::SCHEDULER->queue(handler->priority(), [self, handler](bool) {
       handler->runHandler([](RestHandler*) {});
     });
   }

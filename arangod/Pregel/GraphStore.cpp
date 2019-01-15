@@ -187,7 +187,8 @@ std::map<CollectionID, std::vector<VertexShardInfo>> GraphStore<V, E>::_allocate
 }
 
 template <typename V, typename E>
-void GraphStore<V, E>::loadShards(WorkerConfig* config, std::function<void()> const& callback) {
+void GraphStore<V, E>::loadShards(WorkerConfig* config,
+                                  std::function<void(bool)> const& callback) {
   _config = config;
   TRI_ASSERT(_runningThreads == 0);
   LOG_TOPIC(DEBUG, Logger::PREGEL)
@@ -195,7 +196,7 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config, std::function<void()> co
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  scheduler->queue(RequestPriority::LOW, [this, scheduler, callback] {
+  scheduler->queue(RequestPriority::LOW, [this, scheduler, callback](bool) {
     // hold the current position where the ith vertex shard can
     // start to write its data. At the end the offset should equal the
     // sum of the counts of all ith edge shards
@@ -229,12 +230,12 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config, std::function<void()> co
           TRI_ASSERT(vertexOff < _index.size());
           TRI_ASSERT(info.numEdges == 0 || edgeDataOffsets[shardIdx] < _edges->size());
 
-          scheduler->queue(RequestPriority::LOW,
-                           [this, &info, &edgeDataOffsets, vertexOff, shardIdx] {
-                             TRI_DEFER(_runningThreads--);  // exception safe
-                             _loadVertices(*info.trx, info.vertexShard, info.edgeShards,
-                                           vertexOff, edgeDataOffsets[shardIdx]);
-                           });
+          scheduler->queue(RequestPriority::LOW, [this, &info, &edgeDataOffsets,
+                                                  vertexOff, shardIdx](bool) {
+            TRI_DEFER(_runningThreads--);  // exception safe
+            _loadVertices(*info.trx, info.vertexShard, info.edgeShards,
+                          vertexOff, edgeDataOffsets[shardIdx]);
+          });
           // update to next offset
           vertexOff += info.numVertices;
         } catch (...) {
@@ -594,7 +595,8 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
 }
 
 template <typename V, typename E>
-void GraphStore<V, E>::storeResults(WorkerConfig* config, std::function<void()> const& cb) {
+void GraphStore<V, E>::storeResults(WorkerConfig* config,
+                                    std::function<void(bool)> const& cb) {
   _config = config;
 
   double now = TRI_microtime();
@@ -608,7 +610,8 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config, std::function<void()> 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   do {
     _runningThreads++;
-    SchedulerFeature::SCHEDULER->queue(RequestPriority::LOW, [this, start, end, now, cb] {
+    SchedulerFeature::SCHEDULER->queue(RequestPriority::LOW, [this, start, end, now,
+                                                              cb](bool isDirect) {
       try {
         RangeIterator<VertexEntry> it = vertexIterator(start, end);
         _storeVertices(_config->globalShardIDs(), it);
@@ -620,7 +623,7 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config, std::function<void()> 
       if (_runningThreads == 0) {
         LOG_TOPIC(DEBUG, Logger::PREGEL)
             << "Storing data took " << (TRI_microtime() - now) << "s";
-        cb();
+        cb(isDirect);
       }
     });
     start = end;
