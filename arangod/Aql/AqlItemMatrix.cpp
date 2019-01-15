@@ -63,6 +63,8 @@ InputAqlItemRow AqlItemMatrix::getRow(size_t index) const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   size_t iterations = 0;
 #endif
+  size_t minIndex = 0;
+  size_t maxIndex = _blocks.size() - 1;
 
   // Under the assumption that all but the last block will have the
   // DefaultBatchSize size, this algorithm will hit the correct block in the
@@ -71,8 +73,12 @@ InputAqlItemRow AqlItemMatrix::getRow(size_t index) const {
   while (true) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     ++iterations;
+    TRI_ASSERT(iterations < _blocks.size() * 2);
 #endif
-    TRI_ASSERT(mostLikelyIndex < _blocks.size());
+    TRI_ASSERT(minIndex >= 0 && minIndex <= maxIndex);
+    TRI_ASSERT(maxIndex < _blocks.size());
+    TRI_ASSERT(mostLikelyIndex <= maxIndex);
+    TRI_ASSERT(mostLikelyIndex >= minIndex);
     auto& candidate = _blocks[mostLikelyIndex];
     TRI_ASSERT(candidate.second != nullptr);
     if (index < candidate.first) {
@@ -82,8 +88,12 @@ InputAqlItemRow AqlItemMatrix::getRow(size_t index) const {
       TRI_ASSERT(mostLikelyIndex > 0);
       // To assure yourself of the correctness, remember that / rounds down and
       // 0 <= mostLikelyIndex / 2 < mostLikelyIndex
-      mostLikelyIndex /= 2;
+      // Narrow down upper Border
+      maxIndex = mostLikelyIndex;
+
+      mostLikelyIndex = minIndex + (mostLikelyIndex - minIndex) / 2;
     } else if (index >= candidate.first + candidate.second->block().size()) {
+      minIndex = mostLikelyIndex;
       // This block ends before the requested index, go right.
       // Assert that there is a right to go to. This could only go wrong if the
       // candidate.first values are wrong.
@@ -102,8 +112,7 @@ InputAqlItemRow AqlItemMatrix::getRow(size_t index) const {
       // Please do not bother to shorten the following expression, the
       // compilers are perfectly capable of doing that, and here the correctness
       // is easier to see.
-      size_t const numBlocksRightFromHere =
-          _blocks.size() - (mostLikelyIndex + 1);
+      size_t const numBlocksRightFromHere = maxIndex < mostLikelyIndex;
       mostLikelyIndex += 1 + numBlocksRightFromHere / 2;
     } else {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

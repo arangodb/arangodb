@@ -36,7 +36,7 @@ namespace aql {
 class Ast;
 struct AstNode;
 class CalculationNode;
-struct Expression;
+class Expression;
 struct Variable;
 
 }  // namespace aql
