@@ -76,6 +76,8 @@ Known Issues
 
 For a list of known issues, please refer to one of the following sections:
 
-- [Known Issues in 3.4](KnownIssues34.md)
-- [Known Issues in 3.3](KnownIssues33.md)
-- [Known Issues in 3.2](KnownIssues32.md)
+- Known Issues in 3.x:
+  [3.5](KnownIssues35.md),
+  [3.4](KnownIssues34.md),
+  [3.3](KnownIssues33.md),
+  [3.2](KnownIssues32.md)
