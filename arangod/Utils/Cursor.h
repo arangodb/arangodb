@@ -40,7 +40,7 @@ class Context;
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 typedef TRI_voc_tick_t CursorId;
 
@@ -93,7 +93,7 @@ class Cursor {
   }
 
   virtual CursorType type() const = 0;
-  
+
   virtual void kill() {}
 
   virtual size_t count() const = 0;
@@ -109,8 +109,8 @@ class Cursor {
    * @return First: ExecutionState either DONE or WAITING. On Waiting we need to free this thread on DONE we have a result.
    *         Second: Result If State==DONE this contains Error information or NO_ERROR. On NO_ERROR result is filled.
    */
-  virtual std::pair<aql::ExecutionState, Result> dump(
-      velocypack::Builder& result, std::function<void()> const&) = 0;
+  virtual std::pair<aql::ExecutionState, Result> dump(velocypack::Builder& result,
+                                                      std::function<void(bool)> const&) = 0;
 
   /**
    * @brief Dump the cursor result. This is guaranteed to return the result in this thread.
@@ -130,6 +130,6 @@ class Cursor {
   bool _isDeleted;
   bool _isUsed;
 };
-}
+}  // namespace arangodb
 
 #endif

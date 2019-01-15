@@ -50,7 +50,7 @@ TEST_CASE("cache::Rebalancer", "[cache][!hide][longRunning]") {
   SECTION("test rebalancing with PlainCache") {
     RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
     MockScheduler scheduler(4);
-    auto postFn = [&scheduler](std::function<void()> fn) -> bool {
+    auto postFn = [&scheduler](std::function<void(bool)> fn) -> bool {
       scheduler.post(fn);
       return true;
     };
@@ -176,7 +176,7 @@ TEST_CASE("cache::Rebalancer", "[cache][!hide][longRunning]") {
   SECTION("test rebalancing with TransactionalCache") {
     RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
     MockScheduler scheduler(4);
-    auto postFn = [&scheduler](std::function<void()> fn) -> bool {
+    auto postFn = [&scheduler](std::function<void(bool)> fn) -> bool {
       scheduler.post(fn);
       return true;
     };

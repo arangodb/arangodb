@@ -74,7 +74,7 @@ struct Version {
  private:
   static uint64_t parseVersion(const char* str, size_t len);
 };
-}
-}
+}  // namespace methods
+}  // namespace arangodb
 
 #endif

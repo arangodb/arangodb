@@ -62,9 +62,8 @@ class ClientManager {
    * @param  logDatabaseNotFound  If true, log errors when database was not found
    * @return            Status code and possible error message
    */
-  Result getConnectedClient(std::unique_ptr<httpclient::SimpleHttpClient>&
-                                httpClient, bool force, bool logServerVersion,
-                                bool logDatabaseNotFound);
+  Result getConnectedClient(std::unique_ptr<httpclient::SimpleHttpClient>& httpClient,
+                            bool force, bool logServerVersion, bool logDatabaseNotFound);
 
   /**
    * @brief Initializes a client, connects to server, and verifies version
@@ -79,8 +78,8 @@ class ClientManager {
    * @param  logDatabaseNotFound  If true, log errors when database was not found
    * @return         A connected `SimpleHttpClient`
    */
-  std::unique_ptr<httpclient::SimpleHttpClient> getConnectedClient(
-      bool force, bool logServerVersion, bool logDatabaseNotFound);
+  std::unique_ptr<httpclient::SimpleHttpClient> getConnectedClient(bool force, bool logServerVersion,
+                                                                   bool logDatabaseNotFound);
 
   /**
    * @brief Conditionally prefixes a relative URI with database-specific path
@@ -95,8 +94,7 @@ class ClientManager {
    * @param  client Client to use for request
    * @return        status result; `true` if successful and part of a cluster
    */
-  std::pair<Result, bool> getArangoIsCluster(
-      httpclient::SimpleHttpClient& client);
+  std::pair<Result, bool> getArangoIsCluster(httpclient::SimpleHttpClient& client);
 
   /**
    * Determines whether the ArangoDB instance is using the specified engine
@@ -106,8 +104,8 @@ class ClientManager {
    * @return        status result; `true` if successful and specified engine is
    *                in use
    */
-  std::pair<Result, bool> getArangoIsUsingEngine(
-      httpclient::SimpleHttpClient& httpClient, std::string const& name);
+  std::pair<Result, bool> getArangoIsUsingEngine(httpclient::SimpleHttpClient& httpClient,
+                                                 std::string const& name);
 
  private:
   LogTopic& _topic;

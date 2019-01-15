@@ -24,8 +24,8 @@
 #ifndef ARANGOD_AQL_EXPRESSION_CONTEXT_H
 #define ARANGOD_AQL_EXPRESSION_CONTEXT_H 1
 
-#include "Basics/Common.h"
 #include "Aql/types.h"
+#include "Basics/Common.h"
 
 namespace arangodb {
 namespace aql {
@@ -45,8 +45,9 @@ class ExpressionContext {
 
   virtual Variable const* getVariable(size_t i) const = 0;
 
-  virtual AqlValue getVariableValue(Variable const* variable, bool doCopy, bool& mustDestroy) const = 0;
+  virtual AqlValue getVariableValue(Variable const* variable, bool doCopy,
+                                    bool& mustDestroy) const = 0;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 #endif

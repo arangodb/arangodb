@@ -59,8 +59,7 @@ class Scheduler {
   friend class arangodb::SchedulerThread;
 
  public:
-  Scheduler(uint64_t minThreads, uint64_t maxThreads,
-            uint64_t fifo1Size, uint64_t fifo2Size);
+  Scheduler(uint64_t minThreads, uint64_t maxThreads, uint64_t fifo1Size, uint64_t fifo2Size);
   virtual ~Scheduler();
 
   // queue handling:
@@ -75,7 +74,7 @@ class Scheduler {
   // currently serving the `io_context`.
   //
   // `numQueued` returns the number of jobs queued in the io_context
-  // that are not yet worked on.
+  // (that are working or not yet worked on).
   //
   // `numWorking`returns the number of jobs currently worked on.
   //
@@ -96,7 +95,7 @@ class Scheduler {
     uint64_t _fifo3;
   };
 
-  bool queue(RequestPriority prio, std::function<void()> const&);
+  bool queue(RequestPriority prio, std::function<void(bool)> const&, bool isHandler = false);
   void post(asio_ns::io_context::strand&, std::function<void()> const callback);
 
   void addQueueStatistics(velocypack::Builder&) const;
@@ -107,7 +106,7 @@ class Scheduler {
   bool isStopping() const noexcept { return (_counters & (1ULL << 63)) != 0; }
 
  private:
-  void post(std::function<void()> const callback);
+  void post(std::function<void(bool)> const callback, bool isHandler);
   void drain();
 
   inline void setStopping() noexcept { _counters |= (1ULL << 63); }
@@ -133,7 +132,10 @@ class Scheduler {
     return (value >> 32) & 0xFFFFULL;
   }
 
-  inline void incQueued() noexcept { _counters += 1ULL << 32; }
+  inline uint64_t incQueued() noexcept {
+    uint64_t old = _counters.fetch_add(1ULL << 32);
+    return (old >> 32) & 0xFFFFULL;
+  }
 
   inline void decQueued() noexcept {
     TRI_ASSERT(((_counters & 0XFFFF00000000UL) >> 32) > 0);
@@ -150,7 +152,6 @@ class Scheduler {
     TRI_ASSERT(((_counters & 0XFFFF0000UL) >> 16) > 0);
     _counters -= 1ULL << 16;
   }
-
 
   // we store most of the threads status info in a single atomic uint64_t
   // the encoding of the values inside this variable is (left to right means
@@ -177,12 +178,11 @@ class Scheduler {
   // queue is full
 
   struct FifoJob {
-    FifoJob(std::function<void()> const& callback)
-        : _callback(callback) {}
-    std::function<void()> _callback;
+    FifoJob(std::function<void(bool)> const& callback) : _callback(callback) {}
+    std::function<void(bool)> _callback;
   };
 
-  bool pushToFifo(int64_t fifo, std::function<void()> const& callback);
+  bool pushToFifo(int64_t fifo, std::function<void(bool)> const& callback);
   bool popFifo(int64_t fifo);
 
   static constexpr int64_t NUMBER_FIFOS = 3;
@@ -212,9 +212,8 @@ class Scheduler {
     return new asio_ns::steady_timer(*_ioContext);
   }
 
-  asio_ns::io_context::strand* newStrand() {
-    return new asio_ns::io_context::strand(*_ioContext);
-  }
+  asio_ns::io_context::strand* newStrand();
+  void releaseStrand(asio_ns::io_context::strand* strandDone);
 
   asio_ns::ip::tcp::acceptor* newAcceptor() {
     return new asio_ns::ip::tcp::acceptor(*_ioContext);
@@ -236,10 +235,8 @@ class Scheduler {
   }
 #endif
 
-  asio_ns::ssl::stream<asio_ns::ip::tcp::socket>* newSslSocket(
-      asio_ns::ssl::context& context) {
-    return new asio_ns::ssl::stream<asio_ns::ip::tcp::socket>(*_ioContext,
-                                                              context);
+  asio_ns::ssl::stream<asio_ns::ip::tcp::socket>* newSslSocket(asio_ns::ssl::context& context) {
+    return new asio_ns::ssl::stream<asio_ns::ip::tcp::socket>(*_ioContext, context);
   }
 
   asio_ns::ip::tcp::resolver* newResolver() {

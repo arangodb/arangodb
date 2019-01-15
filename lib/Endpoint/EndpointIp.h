@@ -59,6 +59,6 @@ class EndpointIp : public Endpoint {
   uint16_t const _port;
   bool const _reuseAddress;
 };
-}
+}  // namespace arangodb
 
 #endif

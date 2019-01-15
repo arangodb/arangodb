@@ -25,8 +25,8 @@
 #define ARANGOD_MMFILES_MMFILES_COLLECTOR_CACHE_H 1
 
 #include "Basics/Common.h"
-#include "MMFiles/MMFilesDitch.h"
 #include "MMFiles/MMFilesDatafileStatisticsContainer.h"
+#include "MMFiles/MMFilesDitch.h"
 #include "VocBase/voc-types.h"
 
 struct MMFilesDatafile;
@@ -36,9 +36,8 @@ namespace arangodb {
 class MMFilesWalLogfile;
 
 struct MMFilesCollectorOperation {
-  MMFilesCollectorOperation(char const* datafilePosition,
-                     uint32_t datafileMarkerSize, char const* walPosition,
-                     TRI_voc_fid_t datafileId)
+  MMFilesCollectorOperation(char const* datafilePosition, uint32_t datafileMarkerSize,
+                            char const* walPosition, TRI_voc_fid_t datafileId)
       : datafilePosition(datafilePosition),
         datafileMarkerSize(datafileMarkerSize),
         walPosition(walPosition),
@@ -60,8 +59,8 @@ struct MMFilesCollectorCache {
   MMFilesCollectorCache& operator=(MMFilesCollectorCache const&) = delete;
 
   MMFilesCollectorCache(TRI_voc_cid_t collectionId, TRI_voc_tick_t databaseId,
-                 MMFilesWalLogfile* logfile, int64_t totalOperationsCount,
-                 size_t operationsSize)
+                        MMFilesWalLogfile* logfile,
+                        int64_t totalOperationsCount, size_t operationsSize)
       : collectionId(collectionId),
         databaseId(databaseId),
         logfile(logfile),
@@ -133,14 +132,13 @@ struct MMFilesCollectorCache {
   /// @brief last datafile written to
   MMFilesDatafile* lastDatafile;
 };
-  
+
 /// @brief typedef key => document marker
-typedef std::unordered_map<std::string, struct MMFilesMarker const*>
-    MMFilesDocumentOperationsType;
+typedef std::unordered_map<std::string, struct MMFilesMarker const*> MMFilesDocumentOperationsType;
 
 /// @brief typedef for structural operation (attributes, shapes) markers
 typedef std::vector<struct MMFilesMarker const*> MMFilesOperationsType;
 
-}
+}  // namespace arangodb
 
 #endif

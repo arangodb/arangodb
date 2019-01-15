@@ -35,5 +35,5 @@ FoxxFeaturePhase::FoxxFeaturePhase(ApplicationServer& server)
   startsAfter("Frontend");
 }
 
-} // application_features
-} // arangodb
+}  // namespace application_features
+}  // namespace arangodb

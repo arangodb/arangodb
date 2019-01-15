@@ -42,14 +42,14 @@ enum Signal { GRACEFUL, IMMEDIATE };
 //  (some require time checks and/or combination tests)
 //
 enum ActionState {
-  READY = 1,     // waiting for a worker on the deque
-  EXECUTING = 2, // user or worker thread currently executing
-  WAITING = 3,   // initiated a pre-task, waiting for its completion
-  WAITINGPRE = 4,// parent task created, about to execute on parent's thread
-  WAITINGPOST = 5,// parent task created, will execute after parent's success
-  PAUSED = 6,    // (not implemented) user paused task
-  COMPLETE = 7,  // task completed successfully
-  FAILED = 8,    // task failed, no longer executing
+  READY = 1,        // waiting for a worker on the deque
+  EXECUTING = 2,    // user or worker thread currently executing
+  WAITING = 3,      // initiated a pre-task, waiting for its completion
+  WAITINGPRE = 4,   // parent task created, about to execute on parent's thread
+  WAITINGPOST = 5,  // parent task created, will execute after parent's success
+  PAUSED = 6,       // (not implemented) user paused task
+  COMPLETE = 7,     // task completed successfully
+  FAILED = 8,       // task failed, no longer executing
 };
 
 /**
@@ -59,18 +59,16 @@ enum ActionState {
  * action. Members are declared const, thus thread safety guards are ommited.
  */
 struct ActionDescription {
-
-public:
-
+ public:
   /**
    * @brief Construct with properties
    * @param  desc  Descriminatory properties, which are considered for hash
    * @param  supp  Non discriminatory properties
    */
   explicit ActionDescription(
-    std::map<std::string, std::string> const& desc,
-    std::shared_ptr<VPackBuilder> const suppl = std::make_shared<VPackBuilder>());
-  
+      std::map<std::string, std::string> const& desc,
+      std::shared_ptr<VPackBuilder> const suppl = std::make_shared<VPackBuilder>());
+
   /**
    * @brief Clean up
    */
@@ -80,14 +78,14 @@ public:
    * @brief Check equality (only _description considered)
    * @param  other  Other descriptor
    */
-  bool operator== (ActionDescription const& other) const;
+  bool operator==(ActionDescription const& other) const;
 
   /**
    * @brief Calculate hash of _description as concatenation
    * @param  other  Other descriptor
    */
   std::size_t hash() const;
-  static std::size_t hash(std::map<std::string, std::string> const &desc);
+  static std::size_t hash(std::map<std::string, std::string> const& desc);
 
   /// @brief Name of action
   std::string const& name() const;
@@ -157,30 +155,27 @@ public:
    */
   std::shared_ptr<VPackBuilder> const properties() const;
 
-private:
-
+ private:
   /** @brief discriminatory properties */
   std::map<std::string, std::string> const _description;
 
   /** @brief non-discriminatory properties */
   std::shared_ptr<VPackBuilder> const _properties;
-
 };
 
-}}
-
-
+}  // namespace maintenance
+}  // namespace arangodb
 
 namespace std {
-ostream& operator<< (
-  ostream& o, arangodb::maintenance::ActionDescription const& d);
+ostream& operator<<(ostream& o, arangodb::maintenance::ActionDescription const& d);
 /// @brief Hash function used by std::unordered_map<ActionDescription,...>
-template<> struct hash<arangodb::maintenance::ActionDescription> {
+template <>
+struct hash<arangodb::maintenance::ActionDescription> {
   typedef arangodb::maintenance::ActionDescription argument_t;
   typedef std::size_t result_t;
   result_t operator()(argument_t const& a) const noexcept;
 };
 
-}
+}  // namespace std
 
 #endif

@@ -50,15 +50,14 @@ namespace arangodb {
 Manager* CacheManagerFeature::MANAGER = nullptr;
 const uint64_t CacheManagerFeature::minRebalancingInterval = 500 * 1000;
 
-CacheManagerFeature::CacheManagerFeature(
-    application_features::ApplicationServer& server
-)
+CacheManagerFeature::CacheManagerFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "CacheManager"),
       _manager(nullptr),
       _rebalancer(nullptr),
       _cacheSize((TRI_PhysicalMemory >= (static_cast<uint64_t>(4) << 30))
-                  ? static_cast<uint64_t>((TRI_PhysicalMemory - (static_cast<uint64_t>(2) << 30)) * 0.25)
-                  : (256 << 20)),
+                     ? static_cast<uint64_t>(
+                           (TRI_PhysicalMemory - (static_cast<uint64_t>(2) << 30)) * 0.25)
+                     : (256 << 20)),
       _rebalancingInterval(static_cast<uint64_t>(2 * 1000 * 1000)) {
   setOptional(true);
   startsAfter("BasicsPhase");
@@ -66,8 +65,7 @@ CacheManagerFeature::CacheManagerFeature(
 
 CacheManagerFeature::~CacheManagerFeature() {}
 
-void CacheManagerFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
+void CacheManagerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("cache", "Configure the hash cache");
 
   options->addOption("--cache.size", "size of cache in bytes",
@@ -79,12 +77,10 @@ void CacheManagerFeature::collectOptions(
                      new UInt64Parameter(&_rebalancingInterval));
 }
 
-void CacheManagerFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions>) {
+void CacheManagerFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
   if (_cacheSize < Manager::minSize) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-        << "invalid value for `--cache.size', need at least "
-        << Manager::minSize;
+        << "invalid value for `--cache.size', need at least " << Manager::minSize;
     FATAL_ERROR_EXIT();
   }
 
@@ -98,14 +94,13 @@ void CacheManagerFeature::validateOptions(
 
 void CacheManagerFeature::start() {
   auto scheduler = SchedulerFeature::SCHEDULER;
-  auto postFn = [scheduler](std::function<void()> fn) -> bool {
+  auto postFn = [scheduler](std::function<void(bool)> fn) -> bool {
     scheduler->queue(RequestPriority::LOW, fn);
     return true;
   };
   _manager.reset(new Manager(postFn, _cacheSize));
   MANAGER = _manager.get();
-  _rebalancer.reset(
-      new CacheRebalancerThread(_manager.get(), _rebalancingInterval));
+  _rebalancer.reset(new CacheRebalancerThread(_manager.get(), _rebalancingInterval));
   _rebalancer->start();
   LOG_TOPIC(DEBUG, Logger::STARTUP) << "cache manager has started";
 }
@@ -125,4 +120,4 @@ void CacheManagerFeature::stop() {
 
 void CacheManagerFeature::unprepare() { MANAGER = nullptr; }
 
-} // arangodb
+}  // namespace arangodb

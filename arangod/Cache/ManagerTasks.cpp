@@ -38,7 +38,7 @@ FreeMemoryTask::~FreeMemoryTask() {}
 bool FreeMemoryTask::dispatch() {
   _manager->prepareTask(_environment);
   auto self = shared_from_this();
-  return _manager->post([self, this]() -> void { run(); });
+  return _manager->post([self, this](bool) -> void { run(); });
 }
 
 void FreeMemoryTask::run() {
@@ -60,19 +60,15 @@ void FreeMemoryTask::run() {
 }
 
 MigrateTask::MigrateTask(Manager::TaskEnvironment environment, Manager* manager,
-                         std::shared_ptr<Cache> cache,
-                         std::shared_ptr<Table> table)
-    : _environment(environment),
-      _manager(manager),
-      _cache(cache),
-      _table(table) {}
+                         std::shared_ptr<Cache> cache, std::shared_ptr<Table> table)
+    : _environment(environment), _manager(manager), _cache(cache), _table(table) {}
 
 MigrateTask::~MigrateTask() {}
 
 bool MigrateTask::dispatch() {
   _manager->prepareTask(_environment);
   auto self = shared_from_this();
-  return _manager->post([self, this]() -> void { run(); });
+  return _manager->post([self, this](bool) -> void { run(); });
 }
 
 void MigrateTask::run() {

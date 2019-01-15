@@ -27,12 +27,9 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-WakeupQueryCallback::WakeupQueryCallback(ExecutionBlock* initiator,
-                                         Query* query)
-    : _initiator(initiator), 
-      _query(query),
-      _sharedState(query->sharedState()) {}
-  
+WakeupQueryCallback::WakeupQueryCallback(ExecutionBlock* initiator, Query* query)
+    : _initiator(initiator), _query(query), _sharedState(query->sharedState()) {}
+
 WakeupQueryCallback::~WakeupQueryCallback() {}
 
 bool WakeupQueryCallback::operator()(ClusterCommResult* result) {

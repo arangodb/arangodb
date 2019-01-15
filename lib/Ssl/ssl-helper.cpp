@@ -39,8 +39,7 @@ extern "C" const SSL_METHOD* SSLv3_method(void);
 /// @brief creates an SSL context
 ////////////////////////////////////////////////////////////////////////////////
 
-asio::ssl::context arangodb::sslContext(
-    SslProtocol protocol, std::string const& keyfile) {
+asio::ssl::context arangodb::sslContext(SslProtocol protocol, std::string const& keyfile) {
   // create our context
 
   using asio::ssl::context;
@@ -65,7 +64,8 @@ asio::ssl::context arangodb::sslContext(
       break;
 
     default:
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unknown SSL protocol method");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "unknown SSL protocol method");
   }
 
   asio::ssl::context sslctx(meth);
@@ -73,21 +73,23 @@ asio::ssl::context arangodb::sslContext(
   if (sslctx.native_handle() == nullptr) {
     // could not create SSL context - this is mostly due to the OpenSSL
     // library not having been initialized
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to create SSL context");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "unable to create SSL context");
   }
 
   // load our keys and certificates
-  if (!SSL_CTX_use_certificate_chain_file(sslctx.native_handle(),
-                                          keyfile.c_str())) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot read certificate from '" << keyfile
-             << "': " << lastSSLError();
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "unable to read certificate from file");
+  if (!SSL_CTX_use_certificate_chain_file(sslctx.native_handle(), keyfile.c_str())) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "cannot read certificate from '" << keyfile << "': " << lastSSLError();
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "unable to read certificate from file");
   }
 
-  if (!SSL_CTX_use_PrivateKey_file(sslctx.native_handle(), keyfile.c_str(),
-                                   SSL_FILETYPE_PEM)) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot read key from '" << keyfile << "': " << lastSSLError();
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "unable to read key from keyfile");
+  if (!SSL_CTX_use_PrivateKey_file(sslctx.native_handle(), keyfile.c_str(), SSL_FILETYPE_PEM)) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "cannot read key from '" << keyfile << "': " << lastSSLError();
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "unable to read key from keyfile");
   }
 
 #if (OPENSSL_VERSION_NUMBER < 0x00905100L)

@@ -39,8 +39,7 @@
 using namespace arangodb;
 using namespace arangodb::pregel;
 
-IAlgorithm* AlgoRegistry::createAlgorithm(std::string const& algorithm,
-                                          VPackSlice userParams) {
+IAlgorithm* AlgoRegistry::createAlgorithm(std::string const& algorithm, VPackSlice userParams) {
   if (algorithm == "sssp") {
     return new algos::SSSPAlgorithm(userParams);
   } else if (algorithm == "pagerank") {
@@ -75,18 +74,14 @@ IAlgorithm* AlgoRegistry::createAlgorithm(std::string const& algorithm,
 }
 
 template <typename V, typename E, typename M>
-/*static*/ std::unique_ptr<IWorker> AlgoRegistry::createWorker(
-    TRI_vocbase_t& vocbase,
-    Algorithm<V, E, M>* algo,
-    VPackSlice body
-) {
+/*static*/ std::unique_ptr<IWorker> AlgoRegistry::createWorker(TRI_vocbase_t& vocbase,
+                                                               Algorithm<V, E, M>* algo,
+                                                               VPackSlice body) {
   return std::make_unique<Worker<V, E, M>>(vocbase, algo, body);
 }
 
-/*static*/std::unique_ptr<IWorker> AlgoRegistry::createWorker(
-    TRI_vocbase_t& vocbase,
-    VPackSlice body
-) {
+/*static*/ std::unique_ptr<IWorker> AlgoRegistry::createWorker(TRI_vocbase_t& vocbase,
+                                                               VPackSlice body) {
   VPackSlice algoSlice = body.get(Utils::algorithmKey);
 
   if (!algoSlice.isString()) {
@@ -96,27 +91,22 @@ template <typename V, typename E, typename M>
 
   VPackSlice userParams = body.get(Utils::userParametersKey);
   std::string algorithm = algoSlice.copyString();
-  std::transform(algorithm.begin(), algorithm.end(), algorithm.begin(),
-                 ::tolower);
+  std::transform(algorithm.begin(), algorithm.end(), algorithm.begin(), ::tolower);
 
   if (algorithm == "sssp") {
     return createWorker(vocbase, new algos::SSSPAlgorithm(userParams), body);
   } else if (algorithm == "pagerank") {
     return createWorker(vocbase, new algos::PageRank(userParams), body);
   } else if (algorithm == "recoveringpagerank") {
-    return createWorker(vocbase, new algos::RecoveringPageRank(userParams),
-                        body);
+    return createWorker(vocbase, new algos::RecoveringPageRank(userParams), body);
   } else if (algorithm == "shortestpath") {
-    return createWorker(vocbase, new algos::ShortestPathAlgorithm(userParams),
-                        body);
+    return createWorker(vocbase, new algos::ShortestPathAlgorithm(userParams), body);
   } else if (algorithm == "linerank") {
     return createWorker(vocbase, new algos::LineRank(userParams), body);
   } else if (algorithm == "effectivecloseness") {
-    return createWorker(vocbase, new algos::EffectiveCloseness(userParams),
-                        body);
+    return createWorker(vocbase, new algos::EffectiveCloseness(userParams), body);
   } else if (algorithm == "connectedcomponents") {
-    return createWorker(vocbase, new algos::ConnectedComponents(userParams),
-                        body);
+    return createWorker(vocbase, new algos::ConnectedComponents(userParams), body);
   } else if (algorithm == "scc") {
     return createWorker(vocbase, new algos::SCC(userParams), body);
   } else if (algorithm == "asyncscc") {
@@ -129,7 +119,7 @@ template <typename V, typename E, typename M>
     return createWorker(vocbase, new algos::SLPA(userParams), body);
   } else if (algorithm == "dmid") {
     return createWorker(vocbase, new algos::DMID(userParams), body);
-  } 
+  }
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                  "Unsupported algorithm");

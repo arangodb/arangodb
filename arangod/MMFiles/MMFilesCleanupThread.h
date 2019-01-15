@@ -59,6 +59,6 @@ class MMFilesCleanupThread final : public Thread {
   arangodb::basics::ConditionVariable _condition;
 };
 
-}
+}  // namespace arangodb
 
 #endif

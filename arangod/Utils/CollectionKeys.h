@@ -89,8 +89,7 @@ class CollectionKeys {
   /// @brief hashes a chunk of keys
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual std::tuple<std::string, std::string, uint64_t> hashChunk(size_t,
-                                                           size_t) const = 0;
+  virtual std::tuple<std::string, std::string, uint64_t> hashChunk(size_t, size_t) const = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief dumps keys into the result
@@ -102,7 +101,7 @@ class CollectionKeys {
   /// @brief dumps documents into the result
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void dumpDocs(arangodb::velocypack::Builder& result, size_t chunk, 
+  virtual void dumpDocs(arangodb::velocypack::Builder& result, size_t chunk,
                         size_t chunkSize, size_t offsetInChunk, size_t maxChunkSize,
                         arangodb::velocypack::Slice const& ids) const = 0;
 
@@ -115,6 +114,6 @@ class CollectionKeys {
   bool _isDeleted;
   bool _isUsed;
 };
-}
+}  // namespace arangodb
 
 #endif

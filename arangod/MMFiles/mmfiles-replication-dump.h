@@ -40,10 +40,9 @@
 
 /// @brief replication dump container
 struct MMFilesReplicationDumpContext {
-  MMFilesReplicationDumpContext(std::shared_ptr<arangodb::transaction::Context> const&
-                             transactionContext,
-                         size_t chunkSize, bool includeSystem,
-                         TRI_voc_cid_t restrictCollection, bool useVst = false)
+  MMFilesReplicationDumpContext(std::shared_ptr<arangodb::transaction::Context> const& transactionContext,
+                                size_t chunkSize, bool includeSystem,
+                                TRI_voc_cid_t restrictCollection, bool useVst = false)
       : _transactionContext(transactionContext),
         _vocbase(&(transactionContext->vocbase())),
         _buffer(nullptr),
@@ -101,19 +100,16 @@ struct MMFilesReplicationDumpContext {
 
 /// @brief dump data from a single collection
 int MMFilesDumpCollectionReplication(MMFilesReplicationDumpContext*,
-                                  arangodb::LogicalCollection*, TRI_voc_tick_t,
-                                  TRI_voc_tick_t, bool);
+                                     arangodb::LogicalCollection*,
+                                     TRI_voc_tick_t, TRI_voc_tick_t, bool);
 
 /// @brief dump data from the replication log
 int MMFilesDumpLogReplication(MMFilesReplicationDumpContext*,
-                           std::unordered_set<TRI_voc_tid_t> const&,
-                           TRI_voc_tick_t, TRI_voc_tick_t, TRI_voc_tick_t,
-                           bool);
+                              std::unordered_set<TRI_voc_tid_t> const&,
+                              TRI_voc_tick_t, TRI_voc_tick_t, TRI_voc_tick_t, bool);
 
 /// @brief determine the transactions that were open at a given point in time
-int MMFilesDetermineOpenTransactionsReplication(MMFilesReplicationDumpContext*,
-                                             TRI_voc_tick_t, TRI_voc_tick_t,
-                                             bool useVst = false);
-
+int MMFilesDetermineOpenTransactionsReplication(MMFilesReplicationDumpContext*, TRI_voc_tick_t,
+                                                TRI_voc_tick_t, bool useVst = false);
 
 #endif

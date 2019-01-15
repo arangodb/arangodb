@@ -1,5 +1,5 @@
 /*jshint strict: false, sub: true */
-/*global print, assertTrue, assertEqual */
+/*global print, assertTrue, assertEqual, assertNotEqual */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -88,7 +88,8 @@ function getClusterEndpoints() {
     url: baseUrl() + "/_api/cluster/endpoints",
     auth: {
       bearer: jwtRoot,
-    }
+    },
+    timeout: 120 
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'), JSON.stringify(res));
@@ -105,7 +106,8 @@ function getLoggerState(endpoint) {
     url: getUrl(endpoint) + "/_db/_system/_api/replication/logger-state",
     auth: {
       bearer: jwtRoot,
-    }
+    },
+    timeout: 120 
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'));
@@ -119,7 +121,8 @@ function getApplierState(endpoint) {
     url: getUrl(endpoint) + "/_db/_system/_api/replication/applier-state?global=true",
     auth: {
       bearer: jwtRoot,
-    }
+    },
+    timeout: 120 
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'));
@@ -162,7 +165,8 @@ function checkData(server) {
     url: getUrl(server) + "/_api/collection/" + cname + "/count",
     auth: {
       bearer: jwtRoot,
-    }
+    },
+    timeout: 120 
   });
 
   assertTrue(res instanceof request.Response);
@@ -180,7 +184,8 @@ function readAgencyValue(path) {
     auth: {
       bearer: jwtSuperuser,
     },
-    body: JSON.stringify([[path]])
+    body: JSON.stringify([[path]]),
+    timeout: 120 
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'), JSON.stringify(res));
@@ -311,7 +316,7 @@ function ActiveFailoverSuite() {
       let oldLead = currentLead;
       // await failover and check that follower get in sync
       currentLead = checkForFailover(currentLead);
-      assertTrue(currentLead !== oldLead);
+      assertNotEqual(currentLead, oldLead);
       print("Failover to new leader : ", currentLead);
 
       internal.wait(5); // settle down, heartbeat interval is 1s
@@ -463,7 +468,7 @@ function ActiveFailoverSuite() {
     /*testCleanup: function () {
 
       let res = readAgencyValue("/arango/Plan/AsyncReplication/Leader");
-      assertTrue(res !== null);
+      assertNotEqual(res, null);
       let uuid = res[0].arango.Plan.AsyncReplication.Leader;
       res = readAgencyValue("/arango/Supervision/Health");
       let lead = res[0].arango.Supervision.Health[uuid].Endpoint;

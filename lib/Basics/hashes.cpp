@@ -460,64 +460,58 @@ extern "C" uint32_t TRI_BlockCrc32_intrinsics(uint32_t value,
 /// code found at http://create.stephan-brumme.com/crc32/#slicing-by-8-overview,
 /// original source is http://sourceforge.net/projects/slicing-by-8/
 extern "C" {
-    
-  uint32_t TRI_BlockCrc32_C(uint32_t value, char const* data, size_t length) {
+
+uint32_t TRI_BlockCrc32_C(uint32_t value, char const* data, size_t length) {
 #ifndef TRI_UNALIGNED_ACCESS
-    // byte-wise hashing to support platforms that don't permit
-    // unaligned accesses of uint32_t values
-    uint8_t const* currentChar = reinterpret_cast<uint8_t const*>(data);
-    while (length--) {
-      value = (value >> 8) ^ Crc32Lookup[0][(value & 0xFF) ^ *currentChar++];
-    }
-    return value;
-#else
-    // hash two words in parallel
-    uint32_t const* current = reinterpret_cast<uint32_t const*>(data);
-
-    // process eight bytes at once
-    while (length >= 8) {
-      uint32_t one = *current++ ^ value;
-      uint32_t two = *current++;
-
-      value = Crc32Lookup[0][(two >> 24) & 0xFF] ^
-              Crc32Lookup[1][(two >> 16) & 0xFF] ^
-              Crc32Lookup[2][(two >> 8) & 0xFF] ^ Crc32Lookup[3][two & 0xFF] ^
-              Crc32Lookup[4][(one >> 24) & 0xFF] ^
-              Crc32Lookup[5][(one >> 16) & 0xFF] ^
-              Crc32Lookup[6][(one >> 8) & 0xFF] ^ Crc32Lookup[7][one & 0xFF];
-      length -= 8;
-    }
-
-    uint8_t const* currentChar = reinterpret_cast<uint8_t const*>(current);
-    // remaining 1 to 7 bytes (standard CRC table-based algorithm)
-    while (length--) {
-      value = (value >> 8) ^ Crc32Lookup[0][(value & 0xFF) ^ *currentChar++];
-    }
-    return value;
-#endif
+  // byte-wise hashing to support platforms that don't permit
+  // unaligned accesses of uint32_t values
+  uint8_t const* currentChar = reinterpret_cast<uint8_t const*>(data);
+  while (length--) {
+    value = (value >> 8) ^ Crc32Lookup[0][(value & 0xFF) ^ *currentChar++];
   }
+  return value;
+#else
+  // hash two words in parallel
+  uint32_t const* current = reinterpret_cast<uint32_t const*>(data);
+
+  // process eight bytes at once
+  while (length >= 8) {
+    uint32_t one = *current++ ^ value;
+    uint32_t two = *current++;
+
+    value = Crc32Lookup[0][(two >> 24) & 0xFF] ^ Crc32Lookup[1][(two >> 16) & 0xFF] ^
+            Crc32Lookup[2][(two >> 8) & 0xFF] ^ Crc32Lookup[3][two & 0xFF] ^
+            Crc32Lookup[4][(one >> 24) & 0xFF] ^ Crc32Lookup[5][(one >> 16) & 0xFF] ^
+            Crc32Lookup[6][(one >> 8) & 0xFF] ^ Crc32Lookup[7][one & 0xFF];
+    length -= 8;
+  }
+
+  uint8_t const* currentChar = reinterpret_cast<uint8_t const*>(current);
+  // remaining 1 to 7 bytes (standard CRC table-based algorithm)
+  while (length--) {
+    value = (value >> 8) ^ Crc32Lookup[0][(value & 0xFF) ^ *currentChar++];
+  }
+  return value;
+#endif
+}
 
 #if ENABLE_ASM_CRC32 == 1
-  static uint32_t TRI_BlockCrc32_Detect(uint32_t hash,
-                                        char const* data,
-                                        size_t length) {
-    if (HasSSE42()) {
-      TRI_BlockCrc32 = TRI_BlockCrc32_SSE42;
-      //TRI_BlockCrc32 = TRI_BlockCrc32_intrinsics;
-    } else {
-      TRI_BlockCrc32 = TRI_BlockCrc32_C;
-    }
-    return (*TRI_BlockCrc32)(hash, data, length);
+static uint32_t TRI_BlockCrc32_Detect(uint32_t hash, char const* data, size_t length) {
+  if (HasSSE42()) {
+    TRI_BlockCrc32 = TRI_BlockCrc32_SSE42;
+    // TRI_BlockCrc32 = TRI_BlockCrc32_intrinsics;
+  } else {
+    TRI_BlockCrc32 = TRI_BlockCrc32_C;
   }
+  return (*TRI_BlockCrc32)(hash, data, length);
+}
 
-  uint32_t (*TRI_BlockCrc32)(uint32_t hash, char const* data, size_t length)
-      = TRI_BlockCrc32_Detect;
+uint32_t (*TRI_BlockCrc32)(uint32_t hash, char const* data, size_t length) = TRI_BlockCrc32_Detect;
 #else
-  uint32_t (*TRI_BlockCrc32)(uint32_t hash, char const* data, size_t length)
-      = TRI_BlockCrc32_C;
+uint32_t (*TRI_BlockCrc32)(uint32_t hash, char const* data, size_t length) = TRI_BlockCrc32_C;
 #endif
 
-}   // extern "C"
+}  // extern "C"
 
 /// @brief computes a CRC32 for memory blobs
 uint32_t TRI_Crc32HashPointer(void const* data, size_t length) {
@@ -535,4 +529,3 @@ uint32_t TRI_Crc32HashString(char const* data) {
   crc = (*TRI_BlockCrc32)(crc, data, len);
   return TRI_FinalCrc32(crc);
 }
-

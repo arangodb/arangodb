@@ -37,7 +37,6 @@ class ClusterRestReplicationHandler : public RestReplicationHandler {
   ~ClusterRestReplicationHandler() {}
 
  public:
-
   char const* name() const override final {
     return "ClusterRestReplicationHandler";
   }
@@ -45,7 +44,6 @@ class ClusterRestReplicationHandler : public RestReplicationHandler {
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
 
  private:
-
   /// @brief handle a follow command for the replication log
   void handleCommandLoggerFollow() override;
 
@@ -55,7 +53,7 @@ class ClusterRestReplicationHandler : public RestReplicationHandler {
 
   /// @brief handle a batch command
   void handleCommandBatch() override;
-  
+
   /// @brief add or remove a WAL logfile barrier
   void handleCommandBarrier() override;
 
@@ -77,6 +75,6 @@ class ClusterRestReplicationHandler : public RestReplicationHandler {
   /// @brief handle a dump command for a specific collection
   void handleCommandDump() override;
 };
-}
+}  // namespace arangodb
 
 #endif

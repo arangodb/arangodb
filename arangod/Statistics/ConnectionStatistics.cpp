@@ -37,10 +37,7 @@ Mutex ConnectionStatistics::_dataLock;
 
 std::unique_ptr<ConnectionStatistics[]> ConnectionStatistics::_statisticsBuffer;
 
-boost::lockfree::queue<
-    ConnectionStatistics*,
-    boost::lockfree::capacity<ConnectionStatistics::QUEUE_SIZE>>
-    ConnectionStatistics::_freeList;
+boost::lockfree::queue<ConnectionStatistics*, boost::lockfree::capacity<ConnectionStatistics::QUEUE_SIZE>> ConnectionStatistics::_freeList;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static public methods

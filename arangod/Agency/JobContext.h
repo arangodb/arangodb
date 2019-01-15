@@ -35,14 +35,10 @@
 namespace arangodb {
 namespace consensus {
 
-
 class JobContext {
-
-public:
-
+ public:
   /// @brief Contextualize arbitrary Job
-  JobContext(JOB_STATUS status, std::string id, Node const& snapshot,
-             AgentInterface* agent);
+  JobContext(JOB_STATUS status, std::string id, Node const& snapshot, AgentInterface* agent);
 
   /// @brief Create job
   void create(std::shared_ptr<VPackBuilder> b = nullptr);
@@ -52,17 +48,16 @@ public:
 
   /// @brief Run job
   void run();
-  
+
   /// @brief Abort job
   void abort();
 
-private:
-  
+ private:
   /// @brief Actual job context
   std::unique_ptr<Job> _job;
-
 };
 
-}}
+}  // namespace consensus
+}  // namespace arangodb
 
 #endif

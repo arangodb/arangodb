@@ -4,5 +4,18 @@ In this file we collect information about which tests are currently
 greylisted. Please add a reason and date, and possibly links to issues
 or PRs.
 
- - `./tests/js/client/resilience/foxxmaster-grey.js` there is a bug in the
-   test code. Alan is looking into it.
+ - `./tests/js/server/recovery/corrupted-crc-mmfiles-grey.js` sometimes fails with
+
+      [FAILED]  tests/js/server/recovery/corrupted-crc-mmfiles.js
+
+      "test" failed: failed to read /work/tmp/arangosh_MNeeKL/crashtmp/6/tmp/testresult.json - ArangoError 2: No such file or directory: while reading /work/tmp/arangosh_MNeeKL/crashtmp/6/tmp/testresult.json
+
+ - `./tests/js/client/shell/shell-foxx-api-spec-grey.js` sometimes fails with
+
+    [FAILED]  tests/js/client/shell/shell-foxx-api-spec.js
+
+      "Foxx service dependencies should be overwritten after replace" failed: ArangoError: service files missing
+Mount: /foxx-crud-test
+    at Object.exports.checkRequestResult (js/client/modules/@arangodb/arangosh.js:97:21)
+    at Object.install (js/client/modules/@arangodb/foxx/manager.js:282:12)
+    at Context.it (tests/js/client/shell/shell-foxx-api-spec.js:1001:17)

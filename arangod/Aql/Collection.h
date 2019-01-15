@@ -50,15 +50,13 @@ struct Collection {
 
   AccessMode::Type accessType() const { return _accessType; }
   void accessType(AccessMode::Type type) { _accessType = type; }
-  
+
   bool isReadWrite() const { return _isReadWrite; }
 
   void isReadWrite(bool isReadWrite) { _isReadWrite = isReadWrite; }
 
   /// @brief set the current shard
-  void setCurrentShard(std::string const& shard) {
-    _currentShard = shard;
-  }
+  void setCurrentShard(std::string const& shard) { _currentShard = shard; }
 
   /// @brief remove the current shard
   void resetCurrentShard() { _currentShard.clear(); }
@@ -123,20 +121,20 @@ struct Collection {
 
  private:
   arangodb::LogicalCollection* _collection;
-  
+
   TRI_vocbase_t* _vocbase;
-  
+
   std::string _name;
 
   /// @brief currently handled shard. this is a temporary variable that will
   /// only be filled during plan creation
   std::string _currentShard;
-  
+
   AccessMode::Type _accessType;
 
   bool _isReadWrite;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

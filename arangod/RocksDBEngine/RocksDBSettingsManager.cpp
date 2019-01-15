@@ -55,8 +55,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace {
-arangodb::Result writeSettings(rocksdb::WriteBatch& batch, VPackBuilder& b,
-                               uint64_t seqNumber) {
+arangodb::Result writeSettings(rocksdb::WriteBatch& batch, VPackBuilder& b, uint64_t seqNumber) {
   using arangodb::EngineSelectorFeature;
   using arangodb::Logger;
   using arangodb::Result;
@@ -97,10 +96,7 @@ namespace arangodb {
 /// Constructor needs to be called synchrunously,
 /// will load counts from the db and scan the WAL
 RocksDBSettingsManager::RocksDBSettingsManager(rocksdb::TransactionDB* db)
-    : _lastSync(0), 
-      _syncing(false), 
-      _db(db->GetRootDB()),
-      _initialReleasedTick(0) {}
+    : _lastSync(0), _syncing(false), _db(db->GetRootDB()), _initialReleasedTick(0) {}
 
 /// retrieve initial values from the database
 void RocksDBSettingsManager::retrieveInitialValues() {
@@ -112,8 +108,8 @@ bool RocksDBSettingsManager::lockForSync(bool force) {
   if (force) {
     while (true) {
       bool expected = false;
-      bool res = _syncing.compare_exchange_strong(
-          expected, true, std::memory_order_acquire, std::memory_order_relaxed);
+      bool res = _syncing.compare_exchange_strong(expected, true, std::memory_order_acquire,
+                                                  std::memory_order_relaxed);
       if (res) {
         break;
       }
@@ -122,8 +118,7 @@ bool RocksDBSettingsManager::lockForSync(bool force) {
   } else {
     bool expected = false;
 
-    if (!_syncing.compare_exchange_strong(expected, true,
-                                          std::memory_order_acquire,
+    if (!_syncing.compare_exchange_strong(expected, true, std::memory_order_acquire,
                                           std::memory_order_relaxed)) {
       return false;
     }
@@ -142,31 +137,31 @@ Result RocksDBSettingsManager::sync(bool force) {
   if (!lockForSync(force)) {
     return Result();
   }
-  
+
   // only one thread can enter here at a time
 
   // make sure we give up our lock when we exit this function
-  auto guard = scopeGuard([this]() { _syncing.store(false, std::memory_order_release); });
-  
+  auto guard =
+      scopeGuard([this]() { _syncing.store(false, std::memory_order_release); });
+
   // fetch the seq number prior to any writes; this guarantees that we save
   // any subsequent updates in the WAL to replay if we crash in the middle
   auto maxSeqNr = _db->GetLatestSequenceNumber();
   auto minSeqNr = maxSeqNr;
 
   rocksdb::TransactionOptions opts;
-  opts.lock_timeout = 50; // do not wait for locking keys
-  
+  opts.lock_timeout = 50;  // do not wait for locking keys
+
   rocksdb::WriteOptions wo;
   rocksdb::WriteBatch batch;
-  _tmpBuilder.clear(); // recycle our builder
-  
+  _tmpBuilder.clear();  // recycle our builder
+
   RocksDBEngine* engine = rocksutils::globalRocksEngine();
   auto dbfeature = arangodb::DatabaseFeature::DATABASE;
-  
+
   bool didWork = false;
   auto mappings = engine->collectionMappings();
   for (auto const& pair : mappings) {
-    
     TRI_voc_tick_t dbid = pair.first;
     TRI_voc_cid_t cid = pair.second;
     TRI_vocbase_t* vocbase = dbfeature->useDatabase(dbid);
@@ -183,18 +178,18 @@ Result RocksDBSettingsManager::sync(bool force) {
       continue;
     }
     TRI_DEFER(vocbase->releaseCollection(coll.get()));
-    
+
     auto* rcoll = static_cast<RocksDBCollection*>(coll->getPhysical());
     rocksdb::SequenceNumber appliedSeq = minSeqNr;
     Result res = rcoll->meta().serializeMeta(batch, *coll, force, _tmpBuilder, appliedSeq);
     minSeqNr = std::min(minSeqNr, appliedSeq);
-    
+
     const std::string err = "could not sync metadata for collection '";
     if (res.fail()) {
       LOG_TOPIC(WARN, Logger::ENGINES) << err << coll->name() << "'";
       return res;
     }
-    
+
     if (batch.Count() > 0) {
       auto s = _db->Write(wo, &batch);
       if (!s.ok()) {
@@ -205,18 +200,18 @@ Result RocksDBSettingsManager::sync(bool force) {
     }
     batch.Clear();
   }
-  
+
   if (!didWork) {
     WRITE_LOCKER(guard, _rwLock);
     _lastSync = minSeqNr;
-    return Result(); // nothing was written
+    return Result();  // nothing was written
   }
-  
+
   _tmpBuilder.clear();
   Result res = writeSettings(batch, _tmpBuilder, minSeqNr);
   if (res.fail()) {
-    LOG_TOPIC(WARN, Logger::ENGINES) << "could not store metadata settings "
-      << res.errorMessage();
+    LOG_TOPIC(WARN, Logger::ENGINES)
+        << "could not store metadata settings " << res.errorMessage();
     return res;
   }
 
@@ -242,8 +237,7 @@ void RocksDBSettingsManager::loadSettings() {
     // key may not be there, so don't fail when not found
     VPackSlice slice = VPackSlice(result.data());
     TRI_ASSERT(slice.isObject());
-    LOG_TOPIC(TRACE, Logger::ENGINES)
-        << "read initial settings: " << slice.toJson();
+    LOG_TOPIC(TRACE, Logger::ENGINES) << "read initial settings: " << slice.toJson();
 
     if (!result.empty()) {
       WRITE_LOCKER(guard, _rwLock);
@@ -265,16 +259,14 @@ void RocksDBSettingsManager::loadSettings() {
         if (slice.hasKey("releasedTick")) {
           _initialReleasedTick =
               basics::VelocyPackHelper::stringUInt64(slice.get("releasedTick"));
-          LOG_TOPIC(TRACE, Logger::ENGINES)
-              << "using released tick: " << _initialReleasedTick;
+          LOG_TOPIC(TRACE, Logger::ENGINES) << "using released tick: " << _initialReleasedTick;
           EngineSelectorFeature::ENGINE->releaseTick(_initialReleasedTick);
         }
 
         if (slice.hasKey("lastSync")) {
           _lastSync =
               basics::VelocyPackHelper::stringUInt64(slice.get("lastSync"));
-          LOG_TOPIC(TRACE, Logger::ENGINES)
-              << "last background settings sync: " << _lastSync;
+          LOG_TOPIC(TRACE, Logger::ENGINES) << "last background settings sync: " << _lastSync;
         }
       } catch (...) {
         LOG_TOPIC(WARN, Logger::ENGINES)
