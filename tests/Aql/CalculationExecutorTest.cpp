@@ -214,7 +214,7 @@ SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
 
   }  // GIVEN
 
-  GIVEN("there are rows in the upstream, and the last one has to be filtered") {
+  GIVEN("there are rows in the upstream") {
     auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
     auto outputBlockShell =
         std::make_unique<OutputAqlItemBlockShell>(itemBlockManager, std::move(block),

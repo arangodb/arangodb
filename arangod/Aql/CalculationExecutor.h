@@ -64,9 +64,6 @@ struct CalculationExecutorInfos : public ExecutorInfos {
   bool _isReference = false;
 };
 
-/**
- * @brief Implementation of Filter Node
- */
 class CalculationExecutor {
  public:
   using Fetcher = SingleRowFetcher;
