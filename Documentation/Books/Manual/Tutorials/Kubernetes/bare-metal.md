@@ -395,9 +395,9 @@ helm install \
 ```
 kubectl apply -f https://raw.githubusercontent.com/arangodb/kube-arangodb/master/examples/arango-local-storage.yaml
 ```
-```  
+```
   arangolocalstorage.storage.arangodb.com/arangodb-local-storage created
-``` 
+```
 
 - Deploy simple cluster
 
@@ -474,7 +474,7 @@ data:
       protocol: layer2
       addresses:
       - 192.168.10.224/28
-``` 
+```
 
 - deploy the configuration map:
 
@@ -499,7 +499,8 @@ kubectl delete service example-simple-cluster-ea
 ```
 kubectl get services
 ```
-```  NAME                                     TYPE           CLUSTER-IP      EXTERNAL-IP      PORT(S)          AGE
+```
+  NAME                                     TYPE           CLUSTER-IP      EXTERNAL-IP      PORT(S)          AGE
   arango-deployment-operator               ClusterIP      10.104.189.81   <none>           8528/TCP         34m
   arango-deployment-replication-operator   ClusterIP      10.107.2.133    <none>           8528/TCP         34m
   example-simple-cluster                   ClusterIP      10.109.170.64   <none>           8529/TCP         24m
