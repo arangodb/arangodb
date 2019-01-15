@@ -1,4 +1,4 @@
-<!-- don't edit here, it's from https://@github.com/arangodb/kube-arangodb.git / docs/Manual/ -->
+
 # ArangoDB on bare metal Kubernetes
 
 A not of warning for lack of a better word upfront: Kubernetes is
@@ -28,7 +28,7 @@ go:
 
 * `kubeadm`, `kubectl` version `>=1.10` 
 
-## Initialise the master node
+## Initialize the master node
 
 The master node is outstanding in that it handles the API server and some other
 vital infrastructure 
@@ -177,7 +177,7 @@ kubectl taint nodes --all node-role.kubernetes.io/master-
   taint "node-role.kubernetes.io/master:" not found
 ```
 
-## Wait for nodes to get ready and sanity checking
+- Wait for nodes to get ready and sanity checking
 
 After some brief period, you should see that your nodes are good to go:
 
@@ -240,7 +240,7 @@ architecture
     clusterrolebinding.rbac.authorization.k8s.io/tiller-cluster-rule created
   ```
 
-- Initialise helm
+- Initialize helm
 
   ```
   helm init --service-account tiller
@@ -528,5 +528,5 @@ kubectl get services
   kubernetes                               ClusterIP      10.96.0.1       <none>           443/TCP          89m
 ```
 
-- Now you are able of accessing all 3 coordinators through
+- Now you are able to access all 3 coordinators through
 https://192.168.10.224:8529

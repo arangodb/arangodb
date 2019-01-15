@@ -25,7 +25,7 @@ instructions:
  - [Amazon Elastic Kubernetes Service (EKS)](EKS.md)
  - [Google Kubernetes Engine (GKE)](GKE.md)
  - [Microsoft Azure Kubernetes Service (AKS)](AKS.md)
- - [Bare Metal Kubernetes](bare-metal.md)
+ - [Bare Metal Kubernetes](BareMetal.md)
 
 Note that in particular the details of Role Based Access Control (RBAC)
 matter.

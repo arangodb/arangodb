@@ -24,7 +24,7 @@
     * [Amazon EKS](Tutorials/Kubernetes/EKS.md)
     * [Google GKE](Tutorials/Kubernetes/GKE.md)
     * [Azure AKS](Tutorials/Kubernetes/AKS.md)
-    * [Bare Metal](Tutorials/Kubernetes/bare-metal.md)
+    * [Bare Metal](Tutorials/Kubernetes/BareMetal.md)
   * [DC2DC on Kubernetes](Tutorials/Kubernetes/DC2DC.md)
 * [Programs & Tools](Programs/README.md)
   * [ArangoDB Server](Programs/Arangod/README.md)
