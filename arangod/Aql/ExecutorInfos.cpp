@@ -62,3 +62,32 @@ ExecutorInfos::ExecutorInfos(
   TRI_ASSERT(_registersToClear.size() + _registersToKeep->size() ==
              nrInputRegisters);
 }
+
+ExecutorInfos::ExecutorInfos(
+    std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
+    std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
+    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+    std::unordered_set<RegisterId> registersToClear,
+    std::unordered_set<RegisterId> registersToKeep)
+    : _inRegs(std::move(inputRegisters)),
+      _outRegs(std::move(outputRegisters)),
+      _numInRegs(nrInputRegisters),
+      _numOutRegs(nrOutputRegisters),
+      _registersToKeep(std::make_shared<std::unordered_set<RegisterId>>(std::move(registersToKeep))),
+      _registersToClear(std::move(registersToClear)) {
+  // We allow these to be passed as nullptr for ease of use, but do NOT allow
+  // the members to be null for simplicity and safety.
+  if (_inRegs == nullptr) {
+    _inRegs = std::make_shared<decltype(_inRegs)::element_type>();
+  }
+  if (_outRegs == nullptr) {
+    _outRegs = std::make_shared<decltype(_outRegs)::element_type>();
+  }
+  for (RegisterId const inReg : *_inRegs) {
+    TRI_ASSERT(inReg < nrInputRegisters);
+  }
+  for (RegisterId const outReg : *_outRegs) {
+    TRI_ASSERT(outReg < nrOutputRegisters);
+  }
+  TRI_ASSERT(nrInputRegisters <= nrOutputRegisters);
+}
