@@ -1880,22 +1880,23 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
   TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
   RegisterId inputRegister = it->second.registerId;
 
-  //REMOVE this if register planning changes have been made and the ReturnExecutor is final
-  //LOG_DEVEL << "-------------------------------";
-  //LOG_DEVEL << "inputRegister:     " << inputRegister;
-  //LOG_DEVEL << "input block width: " << getRegisterPlan()->nrRegs[previousNode->getDepth()];
-  //LOG_DEVEL << "ouput block width: " << getRegisterPlan()->nrRegs[getDepth()];
+  // TODO - remove LOGGING once register planning changes have been made and the ReturnExecutor is final
+  // LOG_DEVEL << "-------------------------------";
+  // LOG_DEVEL << "inputRegister:     " << inputRegister;
+  // LOG_DEVEL << "input block width: " << getRegisterPlan()->nrRegs[previousNode->getDepth()];
+  // LOG_DEVEL << "ouput block width: " << getRegisterPlan()->nrRegs[getDepth()];
 
-  //std::stringstream ss;
-  //for(auto const& a : getRegsToClear()){
+  // std::stringstream ss;
+  // for(auto const& a : getRegsToClear()){
   //  ss << a << " ";
   //}
-  //LOG_DEVEL << "registersToClear:  " << ss.rdbuf();
+  // LOG_DEVEL << "registersToClear:  " << ss.rdbuf();
 
   ReturnExecutorInfos infos(inputRegister, 0,
                             getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                            getRegisterPlan()->nrRegs[getDepth()], // if that is set to 1 - infos will complain that there are less output than input registers
-                            getRegsToClear(), false /*return inherited was set on return block*/);
+                            getRegisterPlan()->nrRegs[getDepth()],  // if that is set to 1 - infos will complain that there are less output than input registers
+                            getRegsToClear(),
+                            false /*return inherited was set on return block*/);
   return std::make_unique<ExecutionBlockImpl<ReturnExecutor>>(&engine, this,
                                                               std::move(infos));
 }

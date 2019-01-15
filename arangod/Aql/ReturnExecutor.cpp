@@ -48,7 +48,7 @@ ReturnExecutorInfos::ReturnExecutorInfos(RegisterId inputRegister, RegisterId ou
                                          bool returnInheritedResults)
     : ExecutorInfos(make_shared_unordered_set({inputRegister}),
                     make_shared_unordered_set({outputRegister}), nrInputRegisters,
-                    nrOutputRegisters, std::unordered_set<RegisterId>{} /*to clear*/,  // std::move(registersToClear),
+                    nrOutputRegisters, std::unordered_set<RegisterId>{} /*to clear*/,  // std::move(registersToClear) // use this once register planning is fixed
                     std::unordered_set<RegisterId>{} /*to keep*/
                     ),
       _inputRegisterId(inputRegister),
@@ -81,7 +81,6 @@ std::pair<ExecutionState, ReturnExecutor::Stats> ReturnExecutor::produceRow(Outp
     AqlValue val;
     val = inputRow.getValue(_infos._inputRegisterId);
     AqlValueGuard guard(val, true);
-    // LOG_DEVEL << "writing to ouputReg: " << _infos._outputRegisterId;
     output.setValue(_infos._outputRegisterId, inputRow, val);
     guard.steal();
   }

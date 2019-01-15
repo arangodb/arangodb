@@ -33,8 +33,55 @@ namespace aql {
 
 // no-op statistics for all Executors that don't have custom stats.
 class NoStats {};
+
 inline ExecutionStats& operator+=(ExecutionStats& stats, NoStats const&) {
   return stats;
+}
+
+
+class CountStats {
+ public:
+  CountStats() noexcept : _counted(0) {}
+
+  void setCounted(std::size_t counted) noexcept { _counted = counted; }
+
+  void addCounted(std::size_t counted) noexcept { _counted += counted; }
+
+  void incrCounted() noexcept { _counted++; }
+
+  std::size_t getCounted() const noexcept { return _counted; }
+
+ private:
+  std::size_t _counted;
+};
+
+inline ExecutionStats& operator+=(ExecutionStats& executionStats,
+                                  CountStats const& filterStats) noexcept {
+  executionStats.count += filterStats.getCounted();
+  return executionStats;
+}
+
+
+class FilterStats {
+ public:
+  FilterStats() noexcept : _filtered(0) {}
+
+  void setFiltered(std::size_t filtered) noexcept { _filtered = filtered; }
+
+  void addFiltered(std::size_t filtered) noexcept { _filtered += filtered; }
+
+  void incrFiltered() noexcept { _filtered++; }
+
+  std::size_t getFiltered() const noexcept { return _filtered; }
+
+ private:
+  std::size_t _filtered;
+};
+
+inline ExecutionStats& operator+=(ExecutionStats& executionStats,
+                           FilterStats const& filterStats) noexcept {
+  executionStats.filtered += filterStats.getFiltered();
+  return executionStats;
 }
 
 }  // namespace aql

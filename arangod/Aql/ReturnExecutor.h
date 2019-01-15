@@ -24,7 +24,7 @@
 #ifndef ARANGOD_AQL_RETURN_EXECUTOR_H
 #define ARANGOD_AQL_RETURN_EXECUTOR_H
 
-#include "Aql/CountStats.h"
+#include "Aql/Stats.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/SingleRowFetcher.h"

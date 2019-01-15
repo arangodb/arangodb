@@ -104,7 +104,7 @@ SCENARIO("ReturnExecutor", "[AQL][EXECUTOR][RETURN]") {
         "[ [true], [false], [true] ]");
 
     WHEN("the producer does not wait") {
-      SingleRowFetcherHelper fetcher(input->steal(), false);
+      SingleRowFetcherHelper fetcher(input->buffer(), false);
       ReturnExecutor testee(fetcher, infos);
       CountStats stats{};
 
@@ -126,13 +126,24 @@ SCENARIO("ReturnExecutor", "[AQL][EXECUTOR][RETURN]") {
         REQUIRE(row.produced());
         row.advanceRow();
 
+
         AND_THEN("The output should stay stable") {
           std::tie(state, stats) = testee.produceRow(row);
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(!row.produced());
         }
-      }
-    }
+
+        // verify result
+        AqlValue value;
+        auto block = row.stealBlock();
+        for(std::size_t index = 0; index < 3; index++){
+          value = block->getValue(index, 0);
+          REQUIRE(value.isBoolean());
+          REQUIRE(value.toBoolean() == input->slice().at(index).at(0).getBool());
+        }
+
+      } //WHEN
+    } //GIVEN
 
     WHEN("the producer waits") {
       SingleRowFetcherHelper fetcher(input->steal(), true);
