@@ -46,13 +46,9 @@ void executeExpression(CalculationExecutorInfos& info, InputAqlItemRow& input,
 }  // namespace _detail
 
 CalculationExecutorInfos::CalculationExecutorInfos(
-    RegisterId outputRegister, RegisterId nrInputRegisters,
-    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear
-
-    ,
-    Query* query, Expression* expression,
+    RegisterId outputRegister, RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+    std::unordered_set<RegisterId> registersToClear, Query* query, Expression* expression,
     std::vector<Variable const*>&& expInVars, std::vector<RegisterId>&& expInRegs)
-
     : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(expInRegs.begin(),
                                                                      expInRegs.end()),
                     std::make_shared<std::unordered_set<RegisterId>>(
@@ -62,7 +58,8 @@ CalculationExecutorInfos::CalculationExecutorInfos(
       _query(query),
       _expression(expression),
       _expInVars(std::move(expInVars)),
-      _expInRegs(std::move(expInRegs)) {
+      _expInRegs(std::move(expInRegs)),
+      _isReference(false) {
   TRI_ASSERT(_expression != nullptr);
   TRI_ASSERT(_query->trx() != nullptr);
 
@@ -73,7 +70,10 @@ CalculationExecutorInfos::CalculationExecutorInfos(
 }
 
 CalculationExecutor::CalculationExecutor(Fetcher& fetcher, CalculationExecutorInfos& infos)
-    : _infos(infos), _fetcher(fetcher), _rowState(ExecutionState::HASMORE){};
+    : _infos(infos),
+      _fetcher(fetcher),
+      _currentRow(InputAqlItemRow{CreateInvalidInputRowHint{}}),
+      _rowState(ExecutionState::HASMORE){};
 
 std::pair<ExecutionState, NoStats> CalculationExecutor::produceRow(OutputAqlItemRow& output) {
   ExecutionState state;

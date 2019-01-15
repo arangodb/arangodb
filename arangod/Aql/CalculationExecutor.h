@@ -27,7 +27,6 @@
 #include "Aql/ExecutorInfos.h"
 #include "Aql/OutputAqlItemRow.h"
 
-
 namespace arangodb {
 namespace transaction {
 class Methods;
@@ -60,8 +59,8 @@ struct CalculationExecutorInfos : public ExecutorInfos {
   Query* _query;
   Expression* _expression;
   std::vector<Variable const*> _expInVars;  // input variables for expresseion
-  std::vector<RegisterId> _expInRegs;       // input registers for expression?
-  bool _isReference = false;
+  std::vector<RegisterId> _expInRegs;       // input registers for expression
+  bool _isReference;
 };
 
 class CalculationExecutor {
@@ -84,13 +83,9 @@ class CalculationExecutor {
   CalculationExecutorInfos& _infos;
 
  private:
-  AqlValue getAqlValue(AqlValue const& inVarReg, size_t const& pos, bool& mustDestroy);
-  void initialize();
-
- private:
   Fetcher& _fetcher;
 
-  InputAqlItemRow _currentRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  InputAqlItemRow _currentRow;
   ExecutionState _rowState;
 };
 
