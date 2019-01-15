@@ -32,7 +32,7 @@ password and choice of storage engine as it is.
 {% endhint %}
 
 - After installing the new package, you will have both packages installed.
-You can uninstall the old one manually (make a copy of your old configuration
+- You can uninstall the old one manually (make a copy of your old configuration
 file first).
 
 ![Uninstall old version](both_installations.png)
