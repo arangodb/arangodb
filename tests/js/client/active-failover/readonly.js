@@ -371,7 +371,7 @@ function ActiveFailoverSuite() {
     testLeaderAfterFailover: function () {
       assertTrue(checkInSync(currentLead, servers));
       assertEqual(checkData(currentLead), 10000);
-      
+
       // set it read-only
       setReadOnly(currentLead, true);
 
