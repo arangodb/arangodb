@@ -1,20 +1,22 @@
 
-# ArangoDB on bare metal Kubernetes
+# ArangoDB on bare-metal Kubernetes
 
-A not of warning for lack of a better word upfront: Kubernetes is
+A word of warning for lack of a better word upfront: Kubernetes (k8s) is
 awesome and powerful. As with awesome and powerful things, there is
 infinite ways of setting up a k8s cluster. With great flexibility
-comes great complexity. There are inifinite ways of hitting barriers.
+comes great complexity. There are infinite ways of hitting barriers.
 
 This guide is a walk through for, again in lack of a better word,
 a reasonable and flexible setup to get to an ArangoDB cluster setup on
-a baremetal kubernetes setup.
-
-## BEWARE: Do not use this setup for production!
+a bare-metal Kubernetes setup.
 
 This guide does not involve setting up dedicated master nodes or high
 availability for Kubernetes, but uses for sake of simplicity a single untainted
 master. This is the very definition of a test environment.
+
+{% hint 'danger' %}
+Do not use this setup in production, but testing only!
+{% endhint %}
 
 If you are interested in running a high available Kubernetes setup, please refer
 to:
@@ -22,11 +24,15 @@ to:
 
 ## Requirements
 
-Let there be 3 Linux boxes, `kube01 (192.168.10.61)`, `kube02 (192.168.10.62)`
-and `kube03 (192.168.10.3)`, with `kubeadm` and `kubectl` installed and off we
-go:
+Let there be 3 Linux boxes,
 
-* `kubeadm`, `kubectl` version `>=1.10` 
+- `kube01 (192.168.10.61)`
+- `kube02 (192.168.10.62)`
+- `kube03 (192.168.10.3)`
+
+… with `kubeadm` and `kubectl` installed and off we go:
+
+- `kubeadm`, `kubectl` version `>=1.10`
 
 ## Initialize the master node
 
@@ -177,8 +183,7 @@ kubectl taint nodes --all node-role.kubernetes.io/master-
   taint "node-role.kubernetes.io/master:" not found
 ```
 
-- Wait for nodes to get ready and sanity checking
-
+Wait for nodes to get ready and sanity checking.
 After some brief period, you should see that your nodes are good to go:
 
 ```
@@ -219,7 +224,7 @@ kubectl get all --all-namespaces
 ## Deploy helm
 
 - Obtain current [helm release](https://github.com/helm/helm/releases) for your
-architecture
+  architecture
 
 - Create tiller user
 
@@ -258,275 +263,280 @@ architecture
 
 - Deploy ArangoDB custom resource definition chart
 
-```
-helm install https://github.com/arangodb/kube-arangodb/releases/download/0.3.7/kube-arangodb-crd.tgz
-```
-```
-  NAME:   hoping-gorilla
-  LAST DEPLOYED: Mon Jan 14 06:10:27 2019
-  NAMESPACE: default
-  STATUS: DEPLOYED
+  ```
+  helm install https://github.com/arangodb/kube-arangodb/releases/download/0.3.7/kube-arangodb-crd.tgz
+  ```
+  ```
+    NAME:   hoping-gorilla
+    LAST DEPLOYED: Mon Jan 14 06:10:27 2019
+    NAMESPACE: default
+    STATUS: DEPLOYED
+  
+    RESOURCES:
+    ==> v1beta1/CustomResourceDefinition
+    NAME                                                            AGE
+    arangodeployments.database.arangodb.com                         0s
+    arangodeploymentreplications.replication.database.arangodb.com  0s
+  
+  
+    NOTES:
+  
+    kube-arangodb-crd has been deployed successfully!
+  
+    Your release is named 'hoping-gorilla'.
+  
+    You can now continue install kube-arangodb chart.
+  ```
 
-  RESOURCES:
-  ==> v1beta1/CustomResourceDefinition
-  NAME                                                            AGE
-  arangodeployments.database.arangodb.com                         0s
-  arangodeploymentreplications.replication.database.arangodb.com  0s
-
-
-  NOTES:
-
-  kube-arangodb-crd has been deployed successfully!
-
-  Your release is named 'hoping-gorilla'.
-
-  You can now continue install kube-arangodb chart.
-```
 - Deploy ArangoDB operator chart
 
-```
-helm install https://github.com/arangodb/kube-arangodb/releases/download/0.3.7/kube-arangodb.tgz
-```
-```
-  NAME:   illocutionary-whippet
-  LAST DEPLOYED: Mon Jan 14 06:11:58 2019
-  NAMESPACE: default
-  STATUS: DEPLOYED
-
-  RESOURCES:
-  ==> v1beta1/ClusterRole
-  NAME                                                   AGE
-  illocutionary-whippet-deployment-replications          0s
-  illocutionary-whippet-deployment-replication-operator  0s
-  illocutionary-whippet-deployments                      0s
-  illocutionary-whippet-deployment-operator              0s
-
-  ==> v1beta1/ClusterRoleBinding
-  NAME                                                           AGE
-  illocutionary-whippet-deployment-replication-operator-default  0s
-  illocutionary-whippet-deployment-operator-default              0s
-
-  ==> v1beta1/RoleBinding
-  NAME                                           AGE
-  illocutionary-whippet-deployment-replications  0s
-  illocutionary-whippet-deployments              0s
-
-  ==> v1/Service
-  NAME                                    TYPE       CLUSTER-IP     EXTERNAL-IP  PORT(S)    AGE
-  arango-deployment-replication-operator  ClusterIP  10.107.2.133   <none>       8528/TCP  0s
-  arango-deployment-operator              ClusterIP  10.104.189.81  <none>       8528/TCP  0s
-
-  ==> v1beta1/Deployment
-  NAME                                    DESIRED  CURRENT  UP-TO-DATE  AVAILABLE  AGE
-  arango-deployment-replication-operator  2        2        2           0          0s
-  arango-deployment-operator              2        2        2           0          0s
-
-  ==> v1/Pod(related)
-  NAME                                                     READY  STATUS             RESTARTS  AGE
-  arango-deployment-replication-operator-5f679fbfd8-nk8kz  0/1    Pending            0         0s
-  arango-deployment-replication-operator-5f679fbfd8-pbxdl  0/1    ContainerCreating  0         0s
-  arango-deployment-operator-65f969fc84-gjgl9              0/1    Pending            0         0s
-  arango-deployment-operator-65f969fc84-wg4nf              0/1    ContainerCreating  0         0s
-
-
-NOTES:
-
-kube-arangodb has been deployed successfully!
-
-Your release is named 'illocutionary-whippet'.
-
-You can now deploy ArangoDeployment & ArangoDeploymentReplication resources.
-
-See https://docs.arangodb.com/devel/Manual/Tutorials/Kubernetes/
-for how to get started.
-```
-- As unlike cloud k8s offerings no file volume infrastructure exists, we need to
-still deploy the storage operator chart:
-
-```
-helm install \ 
-	https://github.com/arangodb/kube-arangodb/releases/download/0.3.7/kube-arangodb-storage.tgz
-```
-```
-  NAME:   sad-newt
-  LAST DEPLOYED: Mon Jan 14 06:14:15 2019
-  NAMESPACE: default
-  STATUS: DEPLOYED
-
-  RESOURCES:
-  ==> v1/ServiceAccount
-  NAME                     SECRETS  AGE
-  arango-storage-operator  1        1s
-
-  ==> v1beta1/CustomResourceDefinition
-  NAME                                      AGE
-  arangolocalstorages.storage.arangodb.com  1s
-
-  ==> v1beta1/ClusterRole
-  NAME                       AGE
-  sad-newt-storages          1s
-  sad-newt-storage-operator  1s
-
-  ==> v1beta1/ClusterRoleBinding
-  NAME                       AGE
-  sad-newt-storage-operator  1s
-
-  ==> v1beta1/RoleBinding
-  NAME               AGE
-  sad-newt-storages  1s
-
-  ==> v1/Service
-  NAME                     TYPE       CLUSTER-IP      EXTERNAL-IP  PORT(S)   AGE
-  arango-storage-operator  ClusterIP  10.104.172.100  <none>       8528/TCP  1s
-
-  ==> v1beta1/Deployment
-  NAME                     DESIRED  CURRENT  UP-TO-DATE  AVAILABLE  AGE
-  arango-storage-operator  2        2        2           0          1s
-
-  ==> v1/Pod(related)
-  NAME                                      READY  STATUS             RESTARTS  AGE
-  arango-storage-operator-6bc64ccdfb-tzllq  0/1    ContainerCreating  0         0s
-  arango-storage-operator-6bc64ccdfb-zdlxk  0/1    Pending            0         0s
-
-
+  ```
+  helm install https://github.com/arangodb/kube-arangodb/releases/download/0.3.7/kube-arangodb.tgz
+  ```
+  ```
+    NAME:   illocutionary-whippet
+    LAST DEPLOYED: Mon Jan 14 06:11:58 2019
+    NAMESPACE: default
+    STATUS: DEPLOYED
+  
+    RESOURCES:
+    ==> v1beta1/ClusterRole
+    NAME                                                   AGE
+    illocutionary-whippet-deployment-replications          0s
+    illocutionary-whippet-deployment-replication-operator  0s
+    illocutionary-whippet-deployments                      0s
+    illocutionary-whippet-deployment-operator              0s
+  
+    ==> v1beta1/ClusterRoleBinding
+    NAME                                                           AGE
+    illocutionary-whippet-deployment-replication-operator-default  0s
+    illocutionary-whippet-deployment-operator-default              0s
+  
+    ==> v1beta1/RoleBinding
+    NAME                                           AGE
+    illocutionary-whippet-deployment-replications  0s
+    illocutionary-whippet-deployments              0s
+  
+    ==> v1/Service
+    NAME                                    TYPE       CLUSTER-IP     EXTERNAL-IP  PORT(S)    AGE
+    arango-deployment-replication-operator  ClusterIP  10.107.2.133   <none>       8528/TCP  0s
+    arango-deployment-operator              ClusterIP  10.104.189.81  <none>       8528/TCP  0s
+  
+    ==> v1beta1/Deployment
+    NAME                                    DESIRED  CURRENT  UP-TO-DATE  AVAILABLE  AGE
+    arango-deployment-replication-operator  2        2        2           0          0s
+    arango-deployment-operator              2        2        2           0          0s
+  
+    ==> v1/Pod(related)
+    NAME                                                     READY  STATUS             RESTARTS  AGE
+    arango-deployment-replication-operator-5f679fbfd8-nk8kz  0/1    Pending            0         0s
+    arango-deployment-replication-operator-5f679fbfd8-pbxdl  0/1    ContainerCreating  0         0s
+    arango-deployment-operator-65f969fc84-gjgl9              0/1    Pending            0         0s
+    arango-deployment-operator-65f969fc84-wg4nf              0/1    ContainerCreating  0         0s
+  
+  
   NOTES:
+  
+  kube-arangodb has been deployed successfully!
+  
+  Your release is named 'illocutionary-whippet'.
+  
+  You can now deploy ArangoDeployment & ArangoDeploymentReplication resources.
+  
+  See https://docs.arangodb.com/devel/Manual/Tutorials/Kubernetes/
+  for how to get started.
+  ```
 
-  kube-arangodb-storage has been deployed successfully!
+- Unlike cloud k8s offerings no file volume infrastructure exists, we need to
+  still deploy the storage operator chart:
 
-  Your release is named 'sad-newt'.
+  ```
+  helm install \ 
+  	https://github.com/arangodb/kube-arangodb/releases/download/0.3.7/kube-arangodb-storage.tgz
+  ```
+  ```
+    NAME:   sad-newt
+    LAST DEPLOYED: Mon Jan 14 06:14:15 2019
+    NAMESPACE: default
+    STATUS: DEPLOYED
+  
+    RESOURCES:
+    ==> v1/ServiceAccount
+    NAME                     SECRETS  AGE
+    arango-storage-operator  1        1s
+  
+    ==> v1beta1/CustomResourceDefinition
+    NAME                                      AGE
+    arangolocalstorages.storage.arangodb.com  1s
+  
+    ==> v1beta1/ClusterRole
+    NAME                       AGE
+    sad-newt-storages          1s
+    sad-newt-storage-operator  1s
+  
+    ==> v1beta1/ClusterRoleBinding
+    NAME                       AGE
+    sad-newt-storage-operator  1s
+  
+    ==> v1beta1/RoleBinding
+    NAME               AGE
+    sad-newt-storages  1s
+  
+    ==> v1/Service
+    NAME                     TYPE       CLUSTER-IP      EXTERNAL-IP  PORT(S)   AGE
+    arango-storage-operator  ClusterIP  10.104.172.100  <none>       8528/TCP  1s
+  
+    ==> v1beta1/Deployment
+    NAME                     DESIRED  CURRENT  UP-TO-DATE  AVAILABLE  AGE
+    arango-storage-operator  2        2        2           0          1s
+  
+    ==> v1/Pod(related)
+    NAME                                      READY  STATUS             RESTARTS  AGE
+    arango-storage-operator-6bc64ccdfb-tzllq  0/1    ContainerCreating  0         0s
+    arango-storage-operator-6bc64ccdfb-zdlxk  0/1    Pending            0         0s
+  
+  
+    NOTES:
+  
+    kube-arangodb-storage has been deployed successfully!
+  
+    Your release is named 'sad-newt'.
+  
+    You can now deploy an ArangoLocalStorage resource.
+  
+    See https://docs.arangodb.com/devel/Manual/Deployment/Kubernetes/StorageResource.html
+    for further instructions.
+  
+  ```
 
-  You can now deploy an ArangoLocalStorage resource.
-
-  See https://docs.arangodb.com/devel/Manual/Deployment/Kubernetes/StorageResource.html
-  for further instructions.
-
-```
 ## Deploy ArangoDB cluster
 
 - Deploy local storage
 
-```
-kubectl apply -f https://raw.githubusercontent.com/arangodb/kube-arangodb/master/examples/arango-local-storage.yaml
-```
-```
-  arangolocalstorage.storage.arangodb.com/arangodb-local-storage created
-```
+  ```
+  kubectl apply -f https://raw.githubusercontent.com/arangodb/kube-arangodb/master/examples/arango-local-storage.yaml
+  ```
+  ```
+    arangolocalstorage.storage.arangodb.com/arangodb-local-storage created
+  ```
 
 - Deploy simple cluster
 
-```
-kubectl apply -f https://raw.githubusercontent.com/arangodb/kube-arangodb/master/examples/simple-cluster.yaml
-```
-```
-  arangodeployment.database.arangodb.com/example-simple-cluster created
-```
+  ```
+  kubectl apply -f https://raw.githubusercontent.com/arangodb/kube-arangodb/master/examples/simple-cluster.yaml
+  ```
+  ```
+    arangodeployment.database.arangodb.com/example-simple-cluster created
+  ```
 
 ## Access your cluster
 
 - Find your cluster's network address:
 
-```
-kubectl get services
-```
-```
-  NAME                                     TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
-  arango-deployment-operator               ClusterIP   10.104.189.81   <none>        8528/TCP         14m
-  arango-deployment-replication-operator   ClusterIP   10.107.2.133    <none>        8528/TCP         14m
-  example-simple-cluster                   ClusterIP   10.109.170.64   <none>        8529/TCP         5m18s
-  example-simple-cluster-ea                NodePort    10.98.198.7     <none>        8529:30551/TCP   4m8s
-  example-simple-cluster-int               ClusterIP   None            <none>        8529/TCP         5m19s
-  kubernetes                               ClusterIP   10.96.0.1       <none>        443/TCP          69m
-```
+  ```
+  kubectl get services
+  ```
+  ```
+    NAME                                     TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
+    arango-deployment-operator               ClusterIP   10.104.189.81   <none>        8528/TCP         14m
+    arango-deployment-replication-operator   ClusterIP   10.107.2.133    <none>        8528/TCP         14m
+    example-simple-cluster                   ClusterIP   10.109.170.64   <none>        8529/TCP         5m18s
+    example-simple-cluster-ea                NodePort    10.98.198.7     <none>        8529:30551/TCP   4m8s
+    example-simple-cluster-int               ClusterIP   None            <none>        8529/TCP         5m19s
+    kubernetes                               ClusterIP   10.96.0.1       <none>        443/TCP          69m
+  ```
 
 - In this case, according to the access service, `example-simple-cluster-ea`,
-the cluster's coordinators are reachable here:
+  the cluster's coordinators are reachable here:
 
-https://kube01:30551, https://kube02:30551 and https://kube03:30551
+  - https://kube01:30551
+  - https://kube02:30551
+  - https://kube03:30551
 
 ## LoadBalancing
 
 For this guide we like to use the `metallb` load balancer, which can be easily
 installed as a simple layer 2 load balancer:
 
-- install the `metalllb` controller: 
+- Install the `metalllb` controller: 
 
-```
-kubectl apply -f \
-	https://raw.githubusercontent.com/google/metallb/v0.7.3/manifests/metallb.yaml
-```
-```
-  namespace/metallb-system created
-  serviceaccount/controller created
-  serviceaccount/speaker created
-  clusterrole.rbac.authorization.k8s.io/metallb-system:controller created
-  clusterrole.rbac.authorization.k8s.io/metallb-system:speaker created
-  role.rbac.authorization.k8s.io/config-watcher created
-  clusterrolebinding.rbac.authorization.k8s.io/metallb-system:controller created
-  clusterrolebinding.rbac.authorization.k8s.io/metallb-system:speaker created
-  rolebinding.rbac.authorization.k8s.io/config-watcher created
-  daemonset.apps/speaker created
-  deployment.apps/controller created
-```
+  ```
+  kubectl apply -f \
+  	https://raw.githubusercontent.com/google/metallb/v0.7.3/manifests/metallb.yaml
+  ```
+  ```
+    namespace/metallb-system created
+    serviceaccount/controller created
+    serviceaccount/speaker created
+    clusterrole.rbac.authorization.k8s.io/metallb-system:controller created
+    clusterrole.rbac.authorization.k8s.io/metallb-system:speaker created
+    role.rbac.authorization.k8s.io/config-watcher created
+    clusterrolebinding.rbac.authorization.k8s.io/metallb-system:controller created
+    clusterrolebinding.rbac.authorization.k8s.io/metallb-system:speaker created
+    rolebinding.rbac.authorization.k8s.io/config-watcher created
+    daemonset.apps/speaker created
+    deployment.apps/controller created
+  ```
 
 - Deploy network range configurator. Assuming that the range for the IP
-addresses, which are granted to `metalllb` for load balancing
-is 192.168.10.224/28, download the
-[example layer2 configurator](https://raw.githubusercontent.com/google/metallb/v0.7.3/manifests/example-layer2-config.yaml).
+  addresses, which are granted to `metalllb` for load balancing
+  is 192.168.10.224/28, download the
+  [example layer2 configurator](https://raw.githubusercontent.com/google/metallb/v0.7.3/manifests/example-layer2-config.yaml).
 
-```
-wget https://raw.githubusercontent.com/google/metallb/v0.7.3/manifests/example-layer2-config.yaml
-```
+  ```
+  wget https://raw.githubusercontent.com/google/metallb/v0.7.3/manifests/example-layer2-config.yaml
+  ```
 
 - Edit the `example-layer2-config.yaml` file to use the according addresses. Do
-this with great care, as YAML files are indention sensitive.
+  this with great care, as YAML files are indention sensitive.
+  
+  ```
+  apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    namespace: metallb-system
+    name: config
+  data:
+    config: |
+      address-pools:
+      - name: my-ip-space
+        protocol: layer2
+        addresses:
+        - 192.168.10.224/28
+  ```
 
-```
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  namespace: metallb-system
-  name: config
-data:
-  config: |
-    address-pools:
-    - name: my-ip-space
-      protocol: layer2
-      addresses:
-      - 192.168.10.224/28
-```
+- Deploy the configuration map:
 
-- deploy the configuration map:
+  ```
+  kubectl apply -f example-layer2-config.yaml
+  ```
+  ```
+    configmap/config created
+  ```
 
-```
-kubectl apply -f example-layer2-config.yaml
-```
-```
-  configmap/config created
-```
+- Restart ArangoDB's endpoint access service:
 
-- restart ArangoDB's endpoint access service:
+  ```
+  kubectl delete service example-simple-cluster-ea
+  ```
+  ```
+    service "example-simple-cluster-ea" deleted
+  ```
 
-```
-kubectl delete service example-simple-cluster-ea
-```
-```
-  service "example-simple-cluster-ea" deleted
-```
+- Watch, how the service goes from `Nodeport` to `LoadBalancer` the output above 
 
-- watch, how the service goes from `Nodeport` to `LoadBalancer` the output above 
-
-```
-kubectl get services
-```
-```
-  NAME                                     TYPE           CLUSTER-IP      EXTERNAL-IP      PORT(S)          AGE
-  arango-deployment-operator               ClusterIP      10.104.189.81   <none>           8528/TCP         34m
-  arango-deployment-replication-operator   ClusterIP      10.107.2.133    <none>           8528/TCP         34m
-  example-simple-cluster                   ClusterIP      10.109.170.64   <none>           8529/TCP         24m
-  example-simple-cluster-ea                LoadBalancer   10.97.217.222   192.168.10.224   8529:30292/TCP   22s
-  example-simple-cluster-int               ClusterIP      None            <none>           8529/TCP         24m
-  kubernetes                               ClusterIP      10.96.0.1       <none>           443/TCP          89m
-```
+  ```
+  kubectl get services
+  ```
+  ```
+    NAME                                     TYPE           CLUSTER-IP      EXTERNAL-IP      PORT(S)          AGE
+    arango-deployment-operator               ClusterIP      10.104.189.81   <none>           8528/TCP         34m
+    arango-deployment-replication-operator   ClusterIP      10.107.2.133    <none>           8528/TCP         34m
+    example-simple-cluster                   ClusterIP      10.109.170.64   <none>           8529/TCP         24m
+    example-simple-cluster-ea                LoadBalancer   10.97.217.222   192.168.10.224   8529:30292/TCP   22s
+    example-simple-cluster-int               ClusterIP      None            <none>           8529/TCP         24m
+    kubernetes                               ClusterIP      10.96.0.1       <none>           443/TCP          89m
+  ```
 
 - Now you are able to access all 3 coordinators through
-https://192.168.10.224:8529
+  https://192.168.10.224:8529
