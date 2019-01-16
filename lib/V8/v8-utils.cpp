@@ -307,8 +307,9 @@ static void JS_Options(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("options()");
   }
 
-  VPackBuilder builder =
-      ApplicationServer::server->options({"server.password"});
+  VPackBuilder builder = ApplicationServer::server->options(
+      {"server.password", "database.password", "ldap.bindpasswd",
+       "server.jwt-secret"});
   auto result = TRI_VPackToV8(isolate, builder.slice());
 
   TRI_V8_RETURN(result);
