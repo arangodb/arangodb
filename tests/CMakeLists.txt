@@ -140,6 +140,9 @@ set(ARANGODB_TESTS_SOURCES
   Maintenance/MaintenanceFeatureTest.cpp
   Maintenance/MaintenanceRestHandlerTest.cpp
   Maintenance/MaintenanceTest.cpp
+  Network/ConnectionPoolTest.cpp
+  Network/MethodsTest.cpp
+  Network/UtilsTest.cpp
   Pregel/typedbuffer.cpp
   RocksDBEngine/Endian.cpp
   RocksDBEngine/KeyTest.cpp

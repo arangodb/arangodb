@@ -368,6 +368,10 @@ SET(ARANGOD_SOURCES
   Indexes/SimpleAttributeEqualityMatcher.cpp
   Indexes/SkiplistIndexAttributeMatcher.cpp
   InternalRestHandler/InternalRestTraverserHandler.cpp
+  Network/ConnectionPool.cpp
+  Network/Methods.cpp
+  Network/NetworkFeature.cpp
+  Network/Utils.cpp
   Pregel/AggregatorHandler.cpp
   Pregel/AlgoRegistry.cpp
   Pregel/Algos/AsyncSCC.cpp
